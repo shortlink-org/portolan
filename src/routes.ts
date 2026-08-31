@@ -16,6 +16,7 @@ export const paths = {
       id: flowStepId(slug, stepId),
     })}`,
   adrs: () => "/adrs",
+  problems: () => "/problems",
   adr: (slug: string) => `/adrs/${slug}`,
   graph: () => "/graph",
   context: (contextId: string) => `/c/${contextId}`,
@@ -52,6 +53,41 @@ export const AGGREGATE_ANCHOR = {
   events: "bb-events",
   commands: "bb-commands",
   queries: "bb-queries",
+} as const;
+
+/** The section anchors on an event page, in the order the TOC lists them. */
+export const EVENT_ANCHOR = {
+  schema: "ev-schema",
+  versions: "ev-versions",
+  consumers: "ev-consumers",
+  flows: "ev-flows",
+  decisions: "ev-decisions",
+} as const;
+
+/** The section anchors on a value object or entity page. */
+export const BLOCK_ANCHOR = {
+  shape: "bl-shape",
+  usedIn: "bl-used-in",
+  siblings: "bl-siblings",
+} as const;
+
+/** The section anchors on a context page. */
+export const CONTEXT_ANCHOR = {
+  services: "ctx-services",
+  aggregates: "ctx-aggregates",
+  events: "ctx-events",
+} as const;
+
+/** The section anchors on a service page's overview tab. */
+export const SERVICE_ANCHOR = {
+  aggregates: "svc-aggregates",
+  events: "svc-events",
+} as const;
+
+/** The section anchors on the overview, so "g d" has somewhere to land. */
+export const OVERVIEW_ANCHOR = {
+  contexts: "contexts",
+  flows: "flows-by-reach",
 } as const;
 
 /** Path to the page that owns an event, or null if the event is not in the catalog. */
@@ -102,6 +138,7 @@ const ROUTES: RegExp[] = [
   /^\/flows$/,
   /^\/flows\/[^/]+$/,
   /^\/adrs$/,
+  /^\/problems$/,
   /^\/adrs\/[^/]+$/,
   /^\/c\/[^/]+$/,
   /^\/c\/[^/]+\/[^/]+$/,
@@ -125,6 +162,7 @@ export function allCatalogPaths(catalog: Catalog): string[] {
     paths.flows(),
     paths.graph(),
     paths.adrs(),
+    paths.problems(),
   ];
   for (const flow of catalog.flows) out.push(paths.flow(flow.slug));
   for (const adr of catalog.adrs) out.push(paths.adr(adr.slug));

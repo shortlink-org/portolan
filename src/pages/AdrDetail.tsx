@@ -5,6 +5,7 @@ import type { Adr } from "../catalog";
 import { adrNumber } from "../lib/adr";
 import { Markdown } from "../components/Markdown";
 import { Empty } from "../components/PageHeader";
+import { Ident } from "../components/Ident";
 import {
   AdrNumber,
   AdrScopePill,
@@ -172,10 +173,10 @@ export function AdrDetail() {
             <AdrScopePill scope={adr.scope} />
           </div>
         </div>
-        <div className="mono mt-2 flex flex-wrap gap-x-4 text-muted">
+        <div className="mono mt-2 flex flex-wrap items-center gap-x-4 text-muted">
           <span title="decision date">{adr.date}</span>
-          <span title="source file">{adr.source}</span>
-          <span>{adr.id}</span>
+          <Ident value={adr.source} title={`${adr.source} — click to copy`} />
+          <Ident value={adr.id} />
         </div>
       </div>
 

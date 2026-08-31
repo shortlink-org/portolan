@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { ADMONITION_KINDS, ADMONITION_LABEL, parseAdmonition } from "./admonition";
+import {
+  ADMONITION_KINDS,
+  ADMONITION_LABEL,
+  parseAdmonition,
+} from "./admonition";
 
 describe("GitHub admonitions", () => {
   it("labels every kind it claims to know", () => {

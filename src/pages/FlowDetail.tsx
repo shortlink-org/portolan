@@ -29,6 +29,7 @@ import {
   SavedGroup,
   useCanvasResize,
 } from "../app/panels";
+import { Ident } from "../components/Ident";
 import { ContextPill, ProvenanceBadge } from "../components/primitives";
 
 /**
@@ -249,7 +250,7 @@ export function FlowDetail() {
           <h1 className="text-md font-semibold" title={flow.name}>
             {flow.name}
           </h1>
-          <span className="mono text-muted">{flow.id}</span>
+          <Ident value={flow.id} className="text-muted" />
           <div className="ml-auto flex items-center gap-2">
             <ProvenanceBadge
               provenance={flow.provenance}
@@ -257,9 +258,9 @@ export function FlowDetail() {
               verifiedAt={flow.verifiedAt}
             />
             {flow.source ? (
-              <span className="mono text-muted" title={flow.source}>
+              <Ident value={flow.source} className="text-muted">
                 {middleTruncate(flow.source)}
-              </span>
+              </Ident>
             ) : null}
           </div>
         </div>
@@ -272,14 +273,24 @@ export function FlowDetail() {
               <ContextPill key={c} id={c} name={contextName(c)} />
             ))}
           </div>
+          {/* The count of what is not on screen is the one control that can
+              put it back, so it is the button that does. */}
           {hiddenCount > 0 ? (
-            <span className="mono text-muted">
-              {hiddenCount} step{hiddenCount === 1 ? "" : "s"} hidden
-            </span>
+            <button
+              type="button"
+              onClick={() => setCrossOnly(false)}
+              title="Show the steps this view is leaving out"
+              className="mono rounded-control text-muted hover:text-ink"
+            >
+              <span className="tnum">{hiddenCount}</span> step
+              {hiddenCount === 1 ? "" : "s"} hidden — show them
+            </button>
           ) : null}
-          <span className="mono text-muted" title="LikeC4 view id">
-            {viewId}
-          </span>
+          <Ident
+            value={viewId}
+            className="text-muted"
+            title={`LikeC4 view ${viewId} — click to copy`}
+          />
           {pairingBroken ? (
             <span
               className="mono flex items-center gap-1 status-unresolved"

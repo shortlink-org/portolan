@@ -24,21 +24,148 @@ import { AggregatePage } from "../pages/AggregatePage";
 import { BlockPage } from "../pages/BlockPage";
 import { EventPage } from "../pages/EventPage";
 import { GraphPage } from "../pages/GraphPage";
+import { Problems } from "../pages/Problems";
 import { NotFoundPage } from "../pages/NotFound";
+import { CatalogFailure } from "../pages/CatalogFailure";
+import { catalogError } from "../data";
 import { WithDetail } from "../selection/DetailPanel";
 import { SelectionSync } from "../selection/sync";
+import { HashScroll } from "./HashScroll";
 import { CommandPalette } from "./CommandPalette";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 import { SearchProvider } from "./search";
 import { ThemeProvider } from "./theme";
+import { DensityProvider } from "./density";
+import { useNarrow } from "./responsive";
+import { ShortcutsSheet, useShortcuts } from "./shortcuts";
+import { useUiStore } from "./ui-store";
+
+/** Every route, once. Rendered inside a pane on wide layouts and alone below. */
+function AppRoutes() {
+  return (
+    <Routes>
+      <Route path="/" element={<Overview />} />
+      <Route path="/flows" element={<FlowIndex />} />
+      <Route
+        path="/flows/:flow"
+        element={
+          <WithDetail id="flow">
+            <FlowDetail />
+          </WithDetail>
+        }
+      />
+      <Route path="/adrs" element={<AdrIndex />} />
+      <Route path="/adrs/:adr" element={<AdrDetail />} />
+      <Route path="/problems" element={<Problems />} />
+      <Route
+        path="/c/:context"
+        element={
+          <WithDetail id="context">
+            <ContextPage />
+          </WithDetail>
+        }
+      />
+      <Route
+        path="/c/:context/:service"
+        element={
+          <WithDetail id="service">
+            <ServicePage />
+          </WithDetail>
+        }
+      />
+      <Route
+        path="/c/:context/:service/:aggregate"
+        element={<AggregatePage />}
+      />
+      {/* The two literal segments come first: a block page must not be
+          read as an event whose slug happens to be "vo". */}
+      <Route
+        path="/c/:context/:service/:aggregate/vo/:block"
+        element={<BlockPage kind="vo" />}
+      />
+      <Route
+        path="/c/:context/:service/:aggregate/entity/:block"
+        element={<BlockPage kind="entity" />}
+      />
+      <Route
+        path="/c/:context/:service/:aggregate/:event"
+        element={
+          <WithDetail id="event">
+            <EventPage />
+          </WithDetail>
+        }
+      />
+      <Route
+        path="/graph"
+        element={
+          <WithDetail id="graph">
+            <GraphPage />
+          </WithDetail>
+        }
+      />
+      <Route path="/index.html" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<NotFoundPage />} />
+    </Routes>
+  );
+}
+
+/**
+ * The catalog tree as an overlay, below the narrow breakpoint. It is the same
+ * Sidebar; only the box around it changes, so nothing about the tree has two
+ * implementations.
+ */
+function SidebarDrawer() {
+  const open = useUiStore((s) => s.drawer);
+  const setDrawer = useUiStore((s) => s.setDrawer);
+  const { pathname } = useLocation();
+
+  // Navigating is what the tree is for, so a click that moves the reader ends
+  // the drawer's job. Without this the page they asked for is behind a scrim.
+  useEffect(() => setDrawer(false), [pathname, setDrawer]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      e.stopPropagation();
+      setDrawer(false);
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [open, setDrawer]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="overlay-in fixed inset-0 z-40 flex"
+      style={{ background: "color-mix(in srgb, #000 45%, transparent)" }}
+      onMouseDown={() => setDrawer(false)}
+    >
+      <div
+        className="drawer-in h-full w-[min(320px,85vw)] bg-canvas shadow-md"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <Sidebar />
+      </div>
+    </div>
+  );
+}
 
 function Shell() {
   const [palette, setPalette] = useState(false);
+  const [help, setHelp] = useState(false);
   const [railed, setRailed] = useState(false);
   const { pathname } = useLocation();
   const settle = useCanvasResize();
   const sidebarRef = usePanelRef();
+  const narrow = useNarrow();
+  const toggleDrawer = useUiStore((s) => s.toggleDrawer);
+  const setDrawer = useUiStore((s) => s.setDrawer);
+  const toggleDetail = useUiStore((s) => s.toggleDetail);
+  const revealNonce = useUiStore((s) => s.revealNonce);
 
   // Collapsed is a fact about pixels, not about who dragged: the rail appears
   // whether the reader dragged past the minimum or pressed a rail button.
@@ -68,129 +195,123 @@ function Shell() {
     setRailed(sidebarRef.current?.isCollapsed() ?? false);
   }, [sidebarRef]);
 
+  // "[" means the same thing at both widths - show me the tree, or stop
+  // showing it - and reaches for whichever mechanism is on screen.
+  const toggleSidebar = useCallback(() => {
+    if (narrow) {
+      toggleDrawer();
+      return;
+    }
+    const panel = sidebarRef.current;
+    if (!panel) return;
+    if (panel.isCollapsed()) expandSidebar();
+    else panel.collapse();
+  }, [narrow, toggleDrawer, sidebarRef, expandSidebar]);
+
+  // "Reveal in tree" selects; the tree then opens its own ancestors and scrolls
+  // itself. The one thing it cannot do from inside a collapsed pane is become
+  // visible, which is this.
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        setPalette(true);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+    if (revealNonce === 0) return;
+    if (narrow) setDrawer(true);
+    else if (sidebarRef.current?.isCollapsed()) expandSidebar();
+  }, [revealNonce, narrow, setDrawer, sidebarRef, expandSidebar]);
+
+  useShortcuts(
+    {
+      openPalette: () => setPalette(true),
+      openHelp: () => setHelp(true),
+      toggleSidebar,
+      toggleDetail,
+    },
+    // While a modal owns the keyboard the global bindings stand down; ⌘K and
+    // Esc are handled inside the modals themselves.
+    !palette && !help,
+  );
 
   return (
     <div className="flex h-full flex-col bg-canvas text-ink">
       <SelectionSync />
-      <TopBar onOpenPalette={() => setPalette(true)} />
-      <SavedGroup
-        id="portolan:shell"
-        orientation="horizontal"
-        className="min-h-0 flex-1"
-      >
-        <Panel
-          id="sidebar"
-          defaultSize="18"
-          minSize="12"
-          maxSize="28"
-          collapsible
-          collapsedSize="48px"
-          className="h-full text-sm"
-          panelRef={sidebarRef}
-          onResize={onSidebarResize}
-        >
-          <Sidebar railed={railed} onExpand={expandSidebar} />
-        </Panel>
+      <HashScroll />
+      <TopBar
+        onOpenPalette={() => setPalette(true)}
+        onOpenHelp={() => setHelp(true)}
+        onToggleSidebar={toggleSidebar}
+        narrow={narrow}
+      />
 
-        <ResizeHandle id="shell" />
-
-        {/* The main pane owns a canvas on most routes, so a drag here has to
-            reach the diagram - debounced, once the reader lets go. */}
-        <Panel id="main" className="h-full min-w-0" onResize={settle}>
+      {narrow ? (
+        <>
           {/* `key` on the route content is what makes the page transition fire:
-              a new pathname is a new element, so the mount animation runs again.
-              There is no exit - the outgoing page is simply gone. */}
-          <main key={pathname} className="page-in h-full overflow-hidden">
-            {/* The detail rail rides along with every page that draws a diagram,
-              so a selection made anywhere has somewhere to be read. */}
-            <Routes>
-              <Route path="/" element={<Overview />} />
-              <Route path="/flows" element={<FlowIndex />} />
-              <Route
-                path="/flows/:flow"
-                element={
-                  <WithDetail id="flow">
-                    <FlowDetail />
-                  </WithDetail>
-                }
-              />
-              <Route path="/adrs" element={<AdrIndex />} />
-              <Route path="/adrs/:adr" element={<AdrDetail />} />
-              <Route
-                path="/c/:context"
-                element={
-                  <WithDetail id="context">
-                    <ContextPage />
-                  </WithDetail>
-                }
-              />
-              <Route
-                path="/c/:context/:service"
-                element={
-                  <WithDetail id="service">
-                    <ServicePage />
-                  </WithDetail>
-                }
-              />
-              <Route
-                path="/c/:context/:service/:aggregate"
-                element={<AggregatePage />}
-              />
-              {/* The two literal segments come first: a block page must not be
-                read as an event whose slug happens to be "vo". */}
-              <Route
-                path="/c/:context/:service/:aggregate/vo/:block"
-                element={<BlockPage kind="vo" />}
-              />
-              <Route
-                path="/c/:context/:service/:aggregate/entity/:block"
-                element={<BlockPage kind="entity" />}
-              />
-              <Route
-                path="/c/:context/:service/:aggregate/:event"
-                element={
-                  <WithDetail id="event">
-                    <EventPage />
-                  </WithDetail>
-                }
-              />
-              <Route
-                path="/graph"
-                element={
-                  <WithDetail id="graph">
-                    <GraphPage />
-                  </WithDetail>
-                }
-              />
-              <Route path="/index.html" element={<Navigate to="/" replace />} />
-              <Route path="*" element={<NotFoundPage />} />
-            </Routes>
+              a new pathname is a new element, so the mount animation runs again. */}
+          <main
+            key={pathname}
+            className="page-in min-h-0 flex-1 overflow-hidden"
+          >
+            <AppRoutes />
           </main>
-        </Panel>
-      </SavedGroup>
+          <SidebarDrawer />
+        </>
+      ) : (
+        <SavedGroup
+          id="portolan:shell"
+          orientation="horizontal"
+          className="min-h-0 flex-1"
+        >
+          <Panel
+            id="sidebar"
+            defaultSize="18"
+            minSize="12"
+            maxSize="28"
+            collapsible
+            collapsedSize="48px"
+            className="h-full text-sm"
+            panelRef={sidebarRef}
+            onResize={onSidebarResize}
+          >
+            <Sidebar railed={railed} onExpand={expandSidebar} />
+          </Panel>
+
+          <ResizeHandle id="shell" />
+
+          {/* The main pane owns a canvas on most routes, so a drag here has to
+              reach the diagram - debounced, once the reader lets go. */}
+          <Panel id="main" className="h-full min-w-0" onResize={settle}>
+            {/* The detail rail rides along with every page that draws a
+                diagram, so a selection made anywhere has somewhere to be read. */}
+            <main key={pathname} className="page-in h-full overflow-hidden">
+              <AppRoutes />
+            </main>
+          </Panel>
+        </SavedGroup>
+      )}
+
       <CommandPalette open={palette} onClose={() => setPalette(false)} />
+      <ShortcutsSheet open={help} onClose={() => setHelp(false)} />
     </div>
   );
 }
 
 export function App() {
+  // A catalog that failed validation is the whole app's answer, so it is
+  // decided above the router: there is no route worth reaching.
+  if (catalogError) {
+    return (
+      <ThemeProvider>
+        <CatalogFailure error={catalogError} />
+      </ThemeProvider>
+    );
+  }
+
   return (
     <ThemeProvider>
-      <SearchProvider>
-        <BrowserRouter basename={import.meta.env.BASE_URL}>
-          <Shell />
-        </BrowserRouter>
-      </SearchProvider>
+      <DensityProvider>
+        <SearchProvider>
+          <BrowserRouter basename={import.meta.env.BASE_URL}>
+            <Shell />
+          </BrowserRouter>
+        </SearchProvider>
+      </DensityProvider>
     </ThemeProvider>
   );
 }

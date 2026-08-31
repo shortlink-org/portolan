@@ -1,32 +1,45 @@
 // The visual half of the taxonomy in src/lib/kinds.ts. One icon per kind,
 // painted from a token, so nothing downstream picks its own glyph or colour.
 
-import {
-  ArrowRight,
-  Diamond,
-  Hexagon,
-  HelpCircle,
-  Route,
-  ScrollText,
-  Server,
-  Shapes,
-  Square,
-  Zap,
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { Hexagon, Route, ScrollText, Server, Shapes } from "lucide-react";
 import type { Kind } from "../lib/kinds";
 import { KIND_LABEL } from "../lib/kinds";
 import { ctxStyle } from "../lib/context-color";
+import {
+  CommandIcon,
+  EntityIcon,
+  EventIcon,
+  QueryIcon,
+  ValueObjectIcon,
+} from "./ddd-icons";
 
-export const KIND_ICON: Record<Kind, LucideIcon> = {
+/**
+ * Anything that takes `size` and paints itself from `currentColor` - lucide's
+ * icons and portolan's own five, which are drawn on lucide's grid precisely so
+ * this type can cover both.
+ */
+type IconComponent = (props: {
+  size?: number;
+  className?: string;
+  style?: React.CSSProperties;
+  "aria-hidden"?: boolean;
+}) => React.ReactNode;
+
+/**
+ * The five DDD building blocks are drawn in ./ddd-icons; everything else is
+ * app chrome and stays lucide. That split is the rule, not a coincidence: a
+ * domain concept gets a mark that says what it is, a piece of furniture gets
+ * the furniture library.
+ */
+export const KIND_ICON: Record<Kind, IconComponent> = {
   context: Hexagon, // unused: contexts draw a coloured dot instead
   service: Server,
   aggregate: Hexagon,
-  event: Zap,
-  vo: Diamond,
-  entity: Square,
-  command: ArrowRight,
-  query: HelpCircle,
+  event: EventIcon,
+  vo: ValueObjectIcon,
+  entity: EntityIcon,
+  command: CommandIcon,
+  query: QueryIcon,
   def: Shapes,
   flow: Route,
   adr: ScrollText,
@@ -99,7 +112,6 @@ export function KindIcon({
     );
   }
   const Icon = KIND_ICON[kind];
-  const filled = kind === "entity";
   return (
     <Icon
       size={size}
@@ -107,10 +119,7 @@ export function KindIcon({
       /* `block` drops the inline baseline gap so the glyph centres on the
          cap-height of the text beside it rather than sitting on its baseline. */
       className={`block shrink-0 ${className}`}
-      style={{
-        color: KIND_COLOR[kind],
-        fill: filled ? "currentColor" : "none",
-      }}
+      style={{ color: KIND_COLOR[kind] }}
     />
   );
 }

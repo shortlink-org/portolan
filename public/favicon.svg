@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <!-- The sidebar mark, alone. Ink on light chrome, paper on dark: a favicon
+       sits on the browser's own surface, not on the app's. -->
+  <style>
+    .mark { fill: #14181c; stroke: #14181c; }
+    @media (prefers-color-scheme: dark) {
+      .mark { fill: #e3e8ee; stroke: #e3e8ee; }
+    }
+  </style>
+  <circle class="mark" cx="12" cy="12" r="7.1" fill="none" stroke-width="1.4" opacity="0.55" />
+  <path class="mark" stroke="none" d="M 12 1.4 L 12.96 9.69 L 16.38 7.62 L 14.31 11.04 L 22.6 12 L 14.31 12.96 L 16.38 16.38 L 12.96 14.31 L 12 22.6 L 11.04 14.31 L 7.62 16.38 L 9.69 12.96 L 1.4 12 L 9.69 11.04 L 7.62 7.62 L 11.04 9.69 Z" />
+</svg>

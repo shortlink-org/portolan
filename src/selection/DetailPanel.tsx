@@ -14,12 +14,21 @@ import {
   useCanvasResize,
   usePanelRef,
 } from "../app/panels";
+import { useNarrow } from "../app/responsive";
+import { useUiStore } from "../app/ui-store";
 import { catalog, index } from "../data";
 import { usesOfDef } from "../lib/derive";
 import { ctxStyle } from "../lib/context-color";
+import { Ident } from "../components/Ident";
 import { StatusChip } from "../components/primitives";
 import { StepDetailBody } from "../flow/StepDetail";
-import { paths } from "../routes";
+import {
+  AGGREGATE_ANCHOR,
+  EVENT_ANCHOR,
+  SERVICE_ANCHOR,
+  eventPath as eventPathOf,
+  paths,
+} from "../routes";
 import type { Resolved, Selection } from "./model";
 import { resolveSelection } from "./model";
 import { selectionPath } from "./pages";
@@ -141,9 +150,11 @@ function EventBody({
       ) : null}
 
       <Label>Source</Label>
-      <div className="mono break-all text-muted">
-        {latest?.source ?? "not recorded"}
-      </div>
+      {latest?.source ? (
+        <Ident block value={latest.source} className="text-muted" />
+      ) : (
+        <div className="mono text-muted">not recorded</div>
+      )}
     </>
   );
 }
@@ -160,20 +171,25 @@ function ServiceBody({
 
   return (
     <>
-      <div className="mono mt-1.5 text-muted">
-        {service.repo}/{service.path}
-      </div>
+      <Ident
+        block
+        value={`${service.repo}/${service.path}`}
+        className="mt-1.5 text-muted"
+      />
 
       <Label>Provides</Label>
-      <div className="mono text-muted">
-        {methods} method{methods === 1 ? "" : "s"} over{" "}
-        {service.provides.length} service
+      {/* The count opens the tab that lists the methods it counted. */}
+      <Link
+        to={`${paths.service(context.id, service.slug)}?tab=provides`}
+        className="mono rounded-control text-muted hover:text-ink"
+      >
+        <span className="tnum">{methods}</span> method
+        {methods === 1 ? "" : "s"} over{" "}
+        <span className="tnum">{service.provides.length}</span> service
         {service.provides.length === 1 ? "" : "s"}
-      </div>
+      </Link>
       {service.provides.map((p) => (
-        <div key={p.id} className="mono truncate text-muted" title={p.id}>
-          {p.id}
-        </div>
+        <Ident block key={p.id} value={p.id} className="text-muted" />
       ))}
 
       <Label>Consumes</Label>
@@ -182,19 +198,21 @@ function ServiceBody({
       ) : null}
       {service.consumes.map((call) => (
         <Row key={call.id}>
-          <span className="mono truncate" title={call.id}>
-            {call.id}
-          </span>
+          <Ident value={call.id} />
           <span className="ml-auto shrink-0">
             <StatusChip status={call.status} title={call.note} />
           </span>
         </Row>
       ))}
       {unresolved.length > 0 ? (
-        <div className="mono mt-1 text-unresolved">
-          {unresolved.length} call{unresolved.length === 1 ? "" : "s"} resolve
-          to nothing in the catalog
-        </div>
+        <Link
+          to={paths.problems()}
+          className="mono mt-1 block rounded-control text-unresolved hover:underline"
+        >
+          <span className="tnum">{unresolved.length}</span> call
+          {unresolved.length === 1 ? "" : "s"} resolve to nothing in the catalog
+          →
+        </Link>
       ) : null}
 
       <Label>Publishes</Label>
@@ -204,9 +222,13 @@ function ServiceBody({
       {events.map((e) => (
         <Row key={e.id}>
           <SelectLink id={e.id}>{e.name}</SelectLink>
-          <span className="mono ml-auto shrink-0 text-muted">
+          <Link
+            to={`${eventPathOf(e.id) ?? paths.service(context.id, service.slug)}#${EVENT_ANCHOR.consumers}`}
+            title={`${e.consumers.length} consumers of ${e.name}`}
+            className="mono tnum ml-auto shrink-0 rounded-control text-muted hover:text-ink"
+          >
             {e.consumers.length}
-          </span>
+          </Link>
         </Row>
       ))}
 
@@ -221,9 +243,14 @@ function AggregateBody({
 }: {
   resolved: Extract<Resolved, { kind: "aggregate" }>;
 }) {
-  const { aggregate, service } = resolved;
+  const { aggregate, service, context } = resolved;
   const commands = aggregate.operations.filter((o) => o.kind === "command");
   const queries = aggregate.operations.filter((o) => o.kind === "query");
+  const aggregatePath = paths.aggregate(
+    context.id,
+    service.slug,
+    aggregate.slug,
+  );
 
   return (
     <>
@@ -231,9 +258,21 @@ function AggregateBody({
       <SelectLink id={service.id}>{service.id}</SelectLink>
 
       <Label>Operations</Label>
-      <div className="mono text-muted">
-        {commands.length} command{commands.length === 1 ? "" : "s"} ·{" "}
-        {queries.length} quer{queries.length === 1 ? "y" : "ies"}
+      <div className="mono flex gap-3 text-muted">
+        <Link
+          to={`${aggregatePath}#${AGGREGATE_ANCHOR.commands}`}
+          className="rounded-control hover:text-ink"
+        >
+          <span className="tnum">{commands.length}</span> command
+          {commands.length === 1 ? "" : "s"}
+        </Link>
+        <Link
+          to={`${aggregatePath}#${AGGREGATE_ANCHOR.queries}`}
+          className="rounded-control hover:text-ink"
+        >
+          <span className="tnum">{queries.length}</span> quer
+          {queries.length === 1 ? "y" : "ies"}
+        </Link>
       </div>
 
       <Label>Events</Label>
@@ -262,9 +301,15 @@ function ContextBody({
       {context.services.map((s) => (
         <Row key={s.id}>
           <SelectLink id={s.id}>{s.slug}</SelectLink>
-          <span className="mono ml-auto shrink-0 text-muted">
-            {s.aggregates.reduce((n, a) => n + a.events.length, 0)} events
-          </span>
+          <Link
+            to={`${paths.service(context.id, s.slug)}#${SERVICE_ANCHOR.events}`}
+            className="mono ml-auto shrink-0 rounded-control text-muted hover:text-ink"
+          >
+            <span className="tnum">
+              {s.aggregates.reduce((n, a) => n + a.events.length, 0)}
+            </span>{" "}
+            events
+          </Link>
         </Row>
       ))}
     </>
@@ -456,7 +501,7 @@ export function DetailPanel() {
           ) : null}
         </div>
         {resolved?.kind !== "flow-step" && resolved !== null ? (
-          <div className="mono mt-0.5 break-all text-muted">{selection.id}</div>
+          <Ident block value={selection.id} className="mt-0.5 text-muted" />
         ) : null}
 
         {page ? (
@@ -506,15 +551,55 @@ export function WithDetail({
   children: ReactNode;
 }) {
   const selection = useSelectionStore((s) => s.selection);
+  const clear = useSelectionStore((s) => s.clear);
+  const hidden = useUiStore((s) => s.detailHidden);
+  const setHidden = useUiStore((s) => s.setDetailHidden);
   const detailRef = usePanelRef();
   const settle = useCanvasResize();
+  const narrow = useNarrow();
+  const open = selection !== null && !hidden;
+
+  // Picking something new is a request to see it. "]" means "not now", not
+  // "never again", so the next selection brings the rail back rather than
+  // landing silently behind a panel the reader forgot they folded away.
+  const selectedId = selection?.id ?? null;
+  useEffect(() => {
+    if (selectedId !== null) setHidden(false);
+  }, [selectedId, setHidden]);
 
   useEffect(() => {
     const panel = detailRef.current;
     if (!panel) return;
-    if (selection) panel.expand();
+    if (open) panel.expand();
     else panel.collapse();
-  }, [selection, detailRef]);
+    // `narrow` is in the list because the Group unmounts across the
+    // breakpoint: the panel that comes back has to be told again.
+  }, [open, narrow, detailRef]);
+
+  // Below the breakpoint there is no room for a third pane, so the rail becomes
+  // a sheet over the page. Esc is already the app's "clear the selection", and
+  // clearing the selection is exactly what closes this.
+  if (narrow) {
+    return (
+      <div className="relative h-full min-h-0">
+        {children}
+        {open ? (
+          <div
+            className="overlay-in fixed inset-0 z-40 flex justify-end"
+            style={{ background: "color-mix(in srgb, #000 45%, transparent)" }}
+            onMouseDown={() => clear("panel")}
+          >
+            <div
+              className="sheet-in h-full w-[85%] shadow-md"
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <DetailPanel />
+            </div>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <SavedGroup

@@ -5,17 +5,31 @@ import { contextStats, flowsByReach } from "../lib/derive";
 import { contextVar, ctxStyle } from "../lib/context-color";
 import { absoluteTime, relativeTime } from "../lib/format";
 import { useCountUp, staggerStyle } from "../lib/motion";
-import { paths } from "../routes";
+import { CONTEXT_ANCHOR, OVERVIEW_ANCHOR, paths } from "../routes";
 import { SectionTitle } from "../components/PageHeader";
+import { Ident } from "../components/Ident";
+import { RowActions } from "../components/RowActions";
 import { ContextPill, ProvenanceBadge } from "../components/primitives";
 
-/** A measurement that arrives rather than appears. 200ms, linear, once. */
-function Count({ value, unit }: { value: number; unit: string }) {
+/**
+ * A measurement that arrives rather than appears - 200ms, linear, once - and
+ * then takes you to what it measured. A number that counts something the app
+ * can show and does not link to it is a dead end wearing a fact's clothes.
+ */
+function Count({
+  value,
+  unit,
+  to,
+}: {
+  value: number;
+  unit: string;
+  to: string;
+}) {
   const shown = useCountUp(value);
   return (
-    <span className="tnum">
-      {shown} {unit}
-    </span>
+    <Link to={to} className="rounded-control hover:text-ink">
+      <span className="tnum">{shown}</span> {unit}
+    </Link>
   );
 }
 
@@ -39,15 +53,17 @@ export function Overview() {
         </span>
       </div>
 
-      <div className="mt-section">
+      <section id={OVERVIEW_ANCHOR.contexts} className="mt-section">
         <SectionTitle>Contexts</SectionTitle>
-        <div className="grid gap-grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))]">
+        <div
+          className="grid gap-grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))]"
+          data-nav-list
+        >
           {catalog.contexts.map((context, i) => {
             const stats = contextStats(context);
             return (
-              <Link
+              <div
                 key={context.id}
-                to={paths.context(context.id)}
                 className="card stagger-in"
                 /* Longhands only: React warns when a shorthand and a longhand
                    for the same edge disagree across renders. */
@@ -58,35 +74,63 @@ export function Overview() {
                 }}
               >
                 <div className="flex items-baseline gap-2">
-                  <span className="font-semibold" title={context.name}>
+                  <Link
+                    to={paths.context(context.id)}
+                    data-nav-item
+                    className="rounded-control font-semibold hover:underline"
+                    title={context.name}
+                  >
                     {context.name}
-                  </span>
-                  <span className="mono ctx" style={ctxStyle(context.id)}>
-                    {context.id}
-                  </span>
+                  </Link>
+                  <Ident
+                    value={context.id}
+                    className="ctx"
+                    style={ctxStyle(context.id)}
+                  />
+                  {/* The actions ride on the title row, where there is room
+                      for them: on the counts row they squeeze three links
+                      into two lines each. */}
+                  <RowActions
+                    copy={context.id}
+                    reveal={context.id}
+                    label={context.name}
+                  />
                   {stats.unresolved > 0 ? (
-                    <span
+                    <Link
+                      to={paths.problems()}
                       className="chip ml-auto status-unresolved"
-                      title="unresolved rpc calls and unresolved event consumers"
+                      title="unresolved rpc calls and unresolved event consumers — open Problems"
                     >
                       <AlertTriangle size={12} aria-hidden />
                       {stats.unresolved}
-                    </span>
+                    </Link>
                   ) : null}
                 </div>
                 <p className="mt-2 text-muted">{context.summary}</p>
-                <div className="mono mt-4 flex gap-4 text-muted">
-                  <Count value={stats.services} unit="services" />
-                  <Count value={stats.aggregates} unit="aggregates" />
-                  <Count value={stats.events} unit="events" />
+                <div className="mono mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 whitespace-nowrap text-muted">
+                  <Count
+                    value={stats.services}
+                    unit="services"
+                    to={`${paths.context(context.id)}#${CONTEXT_ANCHOR.services}`}
+                  />
+                  <Count
+                    value={stats.aggregates}
+                    unit="aggregates"
+                    to={`${paths.context(context.id)}#${CONTEXT_ANCHOR.aggregates}`}
+                  />
+                  <Count
+                    value={stats.events}
+                    unit="events"
+                    to={`${paths.context(context.id)}#${CONTEXT_ANCHOR.events}`}
+                  />
                 </div>
-              </Link>
+              </div>
             );
           })}
         </div>
-      </div>
+      </section>
 
-      <div className="mt-section">
+      <section id={OVERVIEW_ANCHOR.flows} className="mt-section">
         <SectionTitle
           right={
             <Link
@@ -99,12 +143,13 @@ export function Overview() {
         >
           Flows by reach
         </SectionTitle>
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2" data-nav-list>
           {reach.map(({ flow, contexts }, i) => {
             return (
               <Link
                 key={flow.slug}
                 to={paths.flow(flow.slug)}
+                data-nav-item
                 className="row stagger-in flex-wrap"
                 style={staggerStyle(i)}
               >
@@ -133,7 +178,7 @@ export function Overview() {
             );
           })}
         </div>
-      </div>
+      </section>
     </div>
   );
 }

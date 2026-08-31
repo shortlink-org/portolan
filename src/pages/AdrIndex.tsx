@@ -9,6 +9,7 @@ import {
   AdrStatusChip,
 } from "../components/primitives";
 import { Empty } from "../components/PageHeader";
+import { RowActions } from "../components/RowActions";
 import { paths } from "../routes";
 import { staggerStyle } from "../lib/motion";
 
@@ -112,35 +113,34 @@ export function AdrIndex() {
 
       {rows.length === 0 ? (
         <div className="mt-section">
-          <Empty>no decision matches this filter</Empty>
+          <Empty>nothing on the record matches this filter</Empty>
         </div>
       ) : (
-        <div className="mt-section max-w-table overflow-hidden rounded-card border border-line shadow-xs">
-          <table className="w-full">
-            {/* The header pins itself over the rows it names, translucent so
-                the reader can see the list still running underneath. */}
-            <thead className="sticky-bar sticky top-0 z-10">
-              <tr className="label border-b border-line text-left">
+        <div className="mt-section max-w-table overflow-x-auto rounded-card border border-line shadow-xs">
+          {/* The header pins itself over the rows it names, and the number
+              column pins itself to the left: at any width, a reader can still
+              say which decision a row is. */}
+          <table className="tbl tbl-sticky" data-nav-list>
+            <thead>
+              <tr className="label text-left">
                 <th className="px-4 py-2 font-normal">#</th>
                 <th className="px-4 py-2 font-normal">title</th>
                 <th className="px-4 py-2 font-normal">status</th>
                 <th className="px-4 py-2 font-normal">scope</th>
                 <th className="px-4 py-2 font-normal">date</th>
+                <th className="px-4 py-2 font-normal" />
               </tr>
             </thead>
             <tbody>
               {rows.map((adr, i) => (
-                <tr
-                  key={adr.id}
-                  className="stagger-in border-b border-line last:border-b-0 t-micro transition-colors hover:bg-surface"
-                  style={staggerStyle(i)}
-                >
+                <tr key={adr.id} className="stagger-in" style={staggerStyle(i)}>
                   <td className="px-4 py-2 align-top whitespace-nowrap">
                     <AdrNumber adr={adr} />
                   </td>
                   <td className="px-4 py-2 align-top">
                     <Link
                       to={paths.adr(adr.slug)}
+                      data-nav-item
                       className="rounded-control hover:underline"
                       title={adr.title}
                     >
@@ -153,8 +153,11 @@ export function AdrIndex() {
                   <td className="px-4 py-2 align-top">
                     <AdrScopePill scope={adr.scope} />
                   </td>
-                  <td className="mono px-4 py-2 align-top whitespace-nowrap text-muted">
+                  <td className="meta px-4 py-2 align-top whitespace-nowrap tabular-nums">
                     {adr.date}
+                  </td>
+                  <td className="px-4 py-2 align-top whitespace-nowrap">
+                    <RowActions copy={adr.id} label={adr.id} />
                   </td>
                 </tr>
               ))}

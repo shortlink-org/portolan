@@ -4,10 +4,13 @@ import { catalog } from "../data";
 import { flowsForService } from "../lib/derive";
 import { adrsForService, isCurrent } from "../lib/adr";
 import { AdrRow } from "../components/AdrRow";
-import { paths, servicePath } from "../routes";
+import { EVENT_ANCHOR, SERVICE_ANCHOR, paths, servicePath } from "../routes";
 import { Markdown } from "../components/Markdown";
 import { middleTruncate } from "../lib/format";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
+import { Ident } from "../components/Ident";
+import { KindIcon } from "../components/kind";
+import { RowActions } from "../components/RowActions";
 import {
   ContextPill,
   ProvenanceBadge,
@@ -42,6 +45,9 @@ export function ServicePage() {
 
   if (!context || !service) return <NotFound kind="Service" id={serviceSlug} />;
 
+  const events = service.aggregates.flatMap((aggregate) =>
+    aggregate.events.map((event) => ({ aggregate, event })),
+  );
   const flows = flowsForService(catalog, service.id);
   const adrs = adrsForService(catalog, service.id, context.id);
   const current = adrs.filter(isCurrent);
@@ -63,13 +69,24 @@ export function ServicePage() {
         contextId={context.id}
         right={<ContextPill id={context.id} name={context.name} />}
       >
-        <div className="mono mt-2 flex flex-wrap gap-x-4 text-muted">
-          <span title={service.repo}>{middleTruncate(service.repo, 32)}</span>
-          <span title={service.path}>{middleTruncate(service.path, 32)}</span>
-          <span className="tnum">
-            {service.aggregates.length} aggregates ·{" "}
-            {service.aggregates.reduce((n, a) => n + a.events.length, 0)} events
-          </span>
+        <div className="mono mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-muted">
+          <Ident value={service.repo}>{middleTruncate(service.repo, 32)}</Ident>
+          <Ident value={service.path}>{middleTruncate(service.path, 32)}</Ident>
+          <span aria-hidden className="h-4 w-px bg-line-strong" />
+          {/* Both counts land in the section that lists what they counted;
+              the tabs above do the same job for the other four. */}
+          <a
+            href={`#${SERVICE_ANCHOR.aggregates}`}
+            className="rounded-control hover:text-ink"
+          >
+            <span className="tnum">{service.aggregates.length}</span> aggregates
+          </a>
+          <a
+            href={`#${SERVICE_ANCHOR.events}`}
+            className="rounded-control hover:text-ink"
+          >
+            <span className="tnum">{events.length}</span> events
+          </a>
         </div>
 
         {/* Tabs keep the underline rather than becoming a segmented box: they
@@ -109,57 +126,136 @@ export function ServicePage() {
             <C4View viewId={serviceViewId(service)} height={300} />
             <div className="mt-section" />
             <Markdown>{service.readme}</Markdown>
-            <div className="mt-section max-w-prose">
+            <section
+              id={SERVICE_ANCHOR.aggregates}
+              className="mt-section max-w-table"
+            >
               <SectionTitle>Aggregates</SectionTitle>
-              <div className="flex flex-col gap-1">
-                {service.aggregates.map((aggregate) => (
-                  <Link
-                    key={aggregate.id}
-                    to={paths.aggregate(
+              <div className="flex flex-col gap-1" data-nav-list>
+                {service.aggregates.map((aggregate) => {
+                  const to = paths.aggregate(
+                    context.id,
+                    service.slug,
+                    aggregate.slug,
+                  );
+                  return (
+                    <div key={aggregate.id} className="row px-2 py-1.5">
+                      <KindIcon kind="aggregate" />
+                      <Link
+                        to={to}
+                        data-nav-item
+                        className="mono rounded-control"
+                      >
+                        {aggregate.slug}
+                      </Link>
+                      <span className="meta">{aggregate.name}</span>
+                      <Link
+                        to={`${to}#bb-events`}
+                        className="mono ml-auto rounded-control hover:underline"
+                        style={{
+                          color:
+                            aggregate.events.length === 0
+                              ? "var(--status-declared)"
+                              : "var(--fg-muted)",
+                        }}
+                      >
+                        <span className="tnum">{aggregate.events.length}</span>{" "}
+                        events
+                      </Link>
+                      <RowActions
+                        copy={aggregate.id}
+                        reveal={aggregate.id}
+                        label={aggregate.name}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section
+              id={SERVICE_ANCHOR.events}
+              className="mt-section max-w-table"
+            >
+              <SectionTitle
+                right={
+                  <span className="mono text-muted">
+                    everything this service announces
+                  </span>
+                }
+              >
+                Events
+              </SectionTitle>
+              {events.length === 0 ? (
+                <Empty>this service announces nothing — it only answers</Empty>
+              ) : (
+                <div className="flex flex-col gap-1" data-nav-list>
+                  {events.map(({ aggregate, event }) => {
+                    const to = paths.event(
                       context.id,
                       service.slug,
                       aggregate.slug,
-                    )}
-                    className="row px-2 py-1.5"
-                  >
-                    <span className="mono">{aggregate.slug}</span>
-                    <span className="text-muted">{aggregate.name}</span>
-                    <span
-                      className="mono ml-auto"
-                      style={{
-                        color:
-                          aggregate.events.length === 0
-                            ? "var(--status-declared)"
-                            : "var(--fg-muted)",
-                      }}
-                    >
-                      {aggregate.events.length} events
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            </div>
+                      event.slug,
+                    );
+                    return (
+                      <div key={event.id} className="row gap-2">
+                        <KindIcon kind="event" />
+                        <Link
+                          to={to}
+                          data-nav-item
+                          className="mono rounded-control"
+                          style={{ color: "var(--kind-event)" }}
+                        >
+                          {event.name}
+                        </Link>
+                        <span className="mono text-muted">
+                          {aggregate.slug}
+                        </span>
+                        <Link
+                          to={`${to}#${EVENT_ANCHOR.consumers}`}
+                          className="mono ml-auto rounded-control text-muted hover:text-ink"
+                        >
+                          <span className="tnum">{event.consumers.length}</span>{" "}
+                          {event.consumers.length === 1
+                            ? "consumer"
+                            : "consumers"}
+                        </Link>
+                        <RowActions
+                          copy={event.id}
+                          reveal={event.id}
+                          label={event.name}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
           </>
         ) : null}
 
         {tab === "provides" ? (
           <div className="flex flex-col gap-4">
             {service.provides.length === 0 ? (
-              <Empty>this service provides no rpc</Empty>
+              <Empty>this service answers nothing — it only listens</Empty>
             ) : null}
             {service.provides.map((provided) => (
-              <div key={provided.id} className="border border-line">
+              <div
+                key={provided.id}
+                className="rounded-card border border-line"
+              >
                 <div className="mono flex flex-wrap items-center gap-x-3 border-b px-3 py-1.5 border-line bg-surface">
-                  <span>{provided.id}</span>
-                  <span className="ml-auto text-muted">{provided.source}</span>
+                  <Ident value={provided.id} className="text-ink" />
+                  <Ident value={provided.source} className="ml-auto" />
                 </div>
-                <ul>
+                <ul data-nav-list>
                   {provided.methods.map((method) => (
                     <li
                       key={method}
-                      className="mono border-b px-3 py-1 last:border-b-0 border-line"
+                      className="row rounded-none border-x-0 border-t-0 last:border-b-0"
                     >
-                      {provided.id}/{method}
+                      <Ident value={`${provided.id}/${method}`} />
+                      <RowActions copy={`${provided.id}/${method}`} />
                     </li>
                   ))}
                 </ul>
@@ -169,16 +265,16 @@ export function ServicePage() {
         ) : null}
 
         {tab === "consumes" ? (
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1" data-nav-list>
             {service.consumes.length === 0 ? (
-              <Empty>this service calls nobody</Empty>
+              <Empty>this service calls nobody — it only answers</Empty>
             ) : null}
             {service.consumes.map((call) => {
               const to = servicePath(call.peer);
               return (
                 <div
                   key={call.id}
-                  className="flex flex-wrap items-start gap-x-3 gap-y-1 border px-3 py-2"
+                  className="flex flex-wrap items-start gap-x-3 gap-y-1 rounded-control border px-3 py-2"
                   style={{
                     borderColor:
                       call.status === "unresolved"
@@ -186,9 +282,14 @@ export function ServicePage() {
                         : "var(--border)",
                   }}
                 >
-                  <span className="mono">{call.id}</span>
+                  <Ident value={call.id} className="text-ink" />
                   <StatusChip status={call.status} />
-                  <span className="mono ml-auto text-muted">{call.source}</span>
+                  <Ident value={call.source} className="ml-auto" />
+                  <RowActions
+                    copy={call.id}
+                    {...(to ? { reveal: call.peer } : {})}
+                    label={call.id}
+                  />
                   <div className="mono w-full text-muted">
                     peer:{" "}
                     {to ? (
@@ -215,7 +316,7 @@ export function ServicePage() {
         {tab === "decisions" ? (
           <div className="flex max-w-prose flex-col gap-1">
             {adrs.length === 0 ? (
-              <Empty>no decision names this service</Empty>
+              <Empty>nothing on the record names this service</Empty>
             ) : null}
             {current.map((adr) => (
               <AdrRow key={adr.id} adr={adr} />
@@ -242,15 +343,16 @@ export function ServicePage() {
         ) : null}
 
         {tab === "flows" ? (
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1" data-nav-list>
             {flows.length === 0 ? (
-              <Empty>no flow involves this service</Empty>
+              <Empty>no chart runs through here yet</Empty>
             ) : null}
             {flows.map((flow) => {
               return (
                 <Link
                   key={flow.slug}
                   to={paths.flow(flow.slug)}
+                  data-nav-item
                   className="row flex-wrap"
                 >
                   <span className="font-semibold">{flow.name}</span>

@@ -76,7 +76,9 @@ function asAdmonition(
   const marker = parseAdmonition(inline[0]);
   if (!marker) return null;
 
-  const lead = marker.rest ? [marker.rest, ...inline.slice(1)] : inline.slice(1);
+  const lead = marker.rest
+    ? [marker.rest, ...inline.slice(1)]
+    : inline.slice(1);
   return {
     kind: marker.kind,
     body: [...(lead.length ? [<p key="lead">{lead}</p>] : []), ...rest],

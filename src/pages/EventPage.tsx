@@ -1,13 +1,16 @@
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
 import { ChevronDown, ChevronRight, Plus } from "lucide-react";
-import { catalog } from "../data";
+import { catalog, index } from "../data";
 import type { Field } from "../catalog";
 import { addedFields, stepsReferencing } from "../lib/derive";
 import { ctxStyle } from "../lib/context-color";
-import { middleTruncate } from "../lib/format";
-import { paths, servicePath } from "../routes";
+import { EVENT_ANCHOR, paths, servicePath } from "../routes";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
+import { Ident } from "../components/Ident";
+import { RowActions } from "../components/RowActions";
+import { Toc } from "../components/Toc";
+import type { TocItem } from "../components/Toc";
 import { StatusChip } from "../components/primitives";
 import { NotFound } from "./NotFound";
 import { FocusedEventGraphPane } from "../graph/FocusedEventGraph";
@@ -18,16 +21,19 @@ function FieldRow({
   added,
   expanded,
   onToggle,
+  owner,
 }: {
   field: Field;
   added: boolean;
   expanded: boolean;
   onToggle: () => void;
+  /** The event and version the field belongs to, for what "copy id" copies. */
+  owner: string;
 }) {
   const def = field.ref ? catalog.defs[field.ref] : undefined;
   return (
     <>
-      <tr className="border-t align-top border-line">
+      <tr className="align-top">
         <td className="py-1 pr-2">
           {def ? (
             <button
@@ -47,26 +53,34 @@ function FieldRow({
             <span className="mono pl-4">{field.name}</span>
           )}
         </td>
-        <td className="mono py-1 pr-3 whitespace-nowrap text-muted">
-          {field.type}
+        <td className="py-1 pr-3 whitespace-nowrap">
+          <Ident value={field.ref ?? field.type} className="text-muted">
+            {field.type}
+          </Ident>
         </td>
-        <td className="py-1 pr-3 text-muted">{field.doc}</td>
+        <td className="meta py-1 pr-3">{field.doc}</td>
         <td className="py-1 whitespace-nowrap">
-          {added ? (
-            <span
-              className="mono inline-flex items-center gap-1 text-verified"
-              title="added in this version"
-            >
-              <Plus size={10} aria-hidden />
-              new
-            </span>
-          ) : null}
+          <span className="flex items-center gap-2">
+            {added ? (
+              <span
+                className="mono inline-flex items-center gap-1 text-verified"
+                title="added in this version"
+              >
+                <Plus size={10} aria-hidden />
+                new
+              </span>
+            ) : null}
+            <RowActions
+              copy={`${owner}.${field.name}`}
+              label={`${field.name}`}
+            />
+          </span>
         </td>
       </tr>
       {expanded && def ? (
         <tr className="bg-surface">
           <td colSpan={4} className="px-4 py-2">
-            <div className="mono mb-1 text-muted">{field.ref}</div>
+            <Ident block value={field.ref ?? ""} className="mb-1 text-muted" />
             <table className="w-full">
               <tbody>
                 {def.fields.map((sub) => (
@@ -126,6 +140,8 @@ export function EventPage() {
     return <NotFound kind="Event" id={eventSlug} />;
   }
 
+  const decisions = index.adrsByEvent.get(event.id) ?? [];
+
   const toggle = (name: string) =>
     setExpanded((prev) => {
       const next = new Set(prev);
@@ -133,6 +149,36 @@ export function EventPage() {
       else next.add(name);
       return next;
     });
+
+  // The five things there are to know about an event, in the order a reader
+  // asks them: what shape is it, how did it get that shape, who listens, where
+  // does it happen, and what was decided about it.
+  const toc: TocItem[] = [
+    { id: EVENT_ANCHOR.schema, label: "Schema" },
+    { id: EVENT_ANCHOR.versions, label: "Versions" },
+    { id: EVENT_ANCHOR.consumers, label: "Consumers" },
+    { id: EVENT_ANCHOR.flows, label: "Flows" },
+    { id: EVENT_ANCHOR.decisions, label: "Decisions" },
+  ];
+
+  /** Every count on this page opens the section that holds what it counted. */
+  const Count = ({
+    n,
+    anchor,
+    unit,
+  }: {
+    n: number;
+    anchor: string;
+    unit: string;
+  }) => (
+    <a
+      href={`#${anchor}`}
+      className="mono rounded-control text-muted hover:text-ink"
+      title={`jump to ${unit}`}
+    >
+      <span className="tnum">{n}</span> {unit}
+    </a>
+  );
 
   return (
     <div className="h-full overflow-y-auto">
@@ -160,71 +206,180 @@ export function EventPage() {
         }
       >
         <p className="mt-2 max-w-prose text-muted">{selected.doc}</p>
-        <div className="mono mt-2 text-muted" title={selected.source}>
-          {middleTruncate(selected.source)}
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+          <Ident value={selected.source} className="text-muted" />
+          <span aria-hidden className="h-4 w-px bg-line-strong" />
+          <Count
+            n={selected.fields.length}
+            anchor={EVENT_ANCHOR.schema}
+            unit="fields"
+          />
+          <Count
+            n={event.versions.length}
+            anchor={EVENT_ANCHOR.versions}
+            unit={event.versions.length === 1 ? "version" : "versions"}
+          />
+          <Count
+            n={event.consumers.length}
+            anchor={EVENT_ANCHOR.consumers}
+            unit={event.consumers.length === 1 ? "consumer" : "consumers"}
+          />
+          <Count
+            n={appearances.length}
+            anchor={EVENT_ANCHOR.flows}
+            unit={appearances.length === 1 ? "flow step" : "flow steps"}
+          />
+          <Count
+            n={decisions.length}
+            anchor={EVENT_ANCHOR.decisions}
+            unit={decisions.length === 1 ? "decision" : "decisions"}
+          />
         </div>
       </PageHeader>
 
-      <div className="p-gutter">
-        <SectionTitle
-          right={
-            <span className="mono text-muted">
-              {selected.fields.length} fields · {selected.version}
-            </span>
-          }
-        >
-          Fields
-        </SectionTitle>
-        <table className="w-full max-w-table">
-          {/* The column names stay put while the field list scrolls past. */}
-          <thead className="sticky-bar sticky top-0 z-10">
-            <tr className="label">
-              <th className="pb-2 text-left font-normal">name</th>
-              <th className="pb-2 text-left font-normal">type</th>
-              <th className="pb-2 text-left font-normal">doc</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {selected.fields.map((field) => (
-              <FieldRow
-                key={field.name}
-                field={field}
-                added={added.has(field.name)}
-                expanded={expanded.has(field.name)}
-                onToggle={() => toggle(field.name)}
-              />
-            ))}
-          </tbody>
-        </table>
-
-        <div className="mt-section grid gap-section grid-cols-2">
-          <div>
-            <SectionTitle>Published by</SectionTitle>
-            <Link
-              to={paths.service(context.id, service.slug)}
-              className="chip-lg ctx"
-              style={ctxStyle(context.id)}
+      <div className="flex gap-section p-gutter">
+        <div className="min-w-0 flex-1">
+          {/* --- Schema ------------------------------------------------- */}
+          <section id={EVENT_ANCHOR.schema}>
+            <SectionTitle
+              right={
+                <span className="mono text-muted">
+                  {selected.fields.length} fields · {selected.version}
+                </span>
+              }
             >
-              {service.id}
-            </Link>
+              Schema
+            </SectionTitle>
+            {/* The field list is the widest thing on the page. Its header and
+                its first column stay put while the rest scrolls under them. */}
+            <div className="max-w-table overflow-x-auto">
+              <table className="tbl tbl-sticky">
+                <thead>
+                  <tr className="label text-left">
+                    <th className="pb-2 font-normal">name</th>
+                    <th className="pb-2 font-normal">type</th>
+                    <th className="pb-2 font-normal">doc</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {selected.fields.map((field) => (
+                    <FieldRow
+                      key={field.name}
+                      field={field}
+                      added={added.has(field.name)}
+                      expanded={expanded.has(field.name)}
+                      onToggle={() => toggle(field.name)}
+                      owner={`${event.id}@${selected.version}`}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
 
-            <div className="mt-section">
-              <SectionTitle>Consumed by</SectionTitle>
-              <div className="flex flex-col gap-1.5">
+          {/* --- Versions ----------------------------------------------- */}
+          <section
+            id={EVENT_ANCHOR.versions}
+            className="mt-section max-w-table"
+          >
+            <SectionTitle
+              right={<span className="mono text-muted">oldest first</span>}
+            >
+              Versions
+            </SectionTitle>
+            {/* The row is a div holding a button, not a button holding
+                buttons: the actions are interactive too, and interactive
+                content does not nest. */}
+            <div className="flex flex-col gap-1" data-nav-list>
+              {event.versions.map((v) => {
+                const on = v.version === selected.version;
+                return (
+                  <div
+                    key={v.version}
+                    className="row items-start gap-3"
+                    style={{
+                      borderColor: on ? "var(--accent)" : "var(--border)",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      data-nav-item
+                      onClick={() => setVersion(v.version)}
+                      aria-pressed={on}
+                      className="flex min-w-0 flex-1 items-start gap-3 rounded-control text-left"
+                    >
+                      <span
+                        className="mono shrink-0 rounded-[4px] border px-1"
+                        style={{
+                          borderColor: on ? "var(--accent)" : "var(--border)",
+                          color: on ? "var(--accent)" : "var(--fg-muted)",
+                        }}
+                      >
+                        {v.version}
+                      </span>
+                      {v.version === latest ? (
+                        <span className="mono shrink-0 text-muted">latest</span>
+                      ) : null}
+                      <span className="min-w-0 flex-1 truncate" title={v.doc}>
+                        {v.doc}
+                      </span>
+                    </button>
+                    <span className="mono shrink-0 text-muted">
+                      {v.fields.length}f
+                    </span>
+                    <RowActions
+                      copy={`${event.id}@${v.version}`}
+                      label={`${event.name} ${v.version}`}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* --- Consumers ---------------------------------------------- */}
+          <section id={EVENT_ANCHOR.consumers} className="mt-section">
+            <SectionTitle
+              right={
+                <span className="mono text-muted">
+                  published by{" "}
+                  <Link
+                    to={paths.service(context.id, service.slug)}
+                    className="chip ctx"
+                    style={ctxStyle(context.id)}
+                  >
+                    <span aria-hidden className="dot" />
+                    {service.id}
+                  </Link>
+                </span>
+              }
+            >
+              Consumers
+            </SectionTitle>
+
+            <div className="flex flex-col gap-3 lg:flex-row">
+              <div
+                className="flex min-w-0 flex-1 flex-col gap-1.5"
+                data-nav-list
+              >
                 {event.consumers.length === 0 ? (
-                  <Empty>nothing consumes this event</Empty>
+                  <Empty>nobody is listening — this event falls silent</Empty>
                 ) : null}
                 {event.consumers.map((consumer) => {
                   const to = servicePath(consumer.service);
                   return (
                     <div
                       key={consumer.service}
-                      className="flex items-start gap-2 rounded-control border px-3 py-2 border-line"
+                      className="row items-start gap-2"
                     >
                       <div className="min-w-0 flex-1">
                         {to ? (
-                          <Link to={to} className="mono text-accent">
+                          <Link
+                            to={to}
+                            data-nav-item
+                            className="mono rounded-control text-accent"
+                          >
                             {consumer.service}
                           </Link>
                         ) : (
@@ -237,40 +392,82 @@ export function EventPage() {
                         ) : null}
                       </div>
                       <StatusChip status={consumer.status} />
+                      <RowActions
+                        copy={consumer.service}
+                        {...(to ? { reveal: consumer.service } : {})}
+                      />
                     </div>
                   );
                 })}
               </div>
+
+              {/* producer -> event -> consumers, the same fact as a picture */}
+              <div className="min-w-0 flex-1">
+                <FocusedEventGraphPane event={event} height={230} />
+              </div>
             </div>
-          </div>
+          </section>
 
-          <div>
-            <SectionTitle>Shape</SectionTitle>
-            <FocusedEventGraphPane event={event} height={230} />
-
-            <div className="mt-section">
-              <SectionTitle>Appears in flows</SectionTitle>
-              {appearances.length === 0 ? (
-                <Empty>no flow references this event</Empty>
-              ) : (
-                <div className="flex flex-col gap-1">
-                  {appearances.map((ref) => (
+          {/* --- Flows -------------------------------------------------- */}
+          <section id={EVENT_ANCHOR.flows} className="mt-section max-w-table">
+            <SectionTitle>Flows</SectionTitle>
+            {appearances.length === 0 ? (
+              <Empty>no flow has been charted through this event</Empty>
+            ) : (
+              <div className="flex flex-col gap-1" data-nav-list>
+                {appearances.map((ref) => (
+                  <div
+                    key={`${ref.flow.slug}-${ref.stepId}`}
+                    className="row mono gap-2"
+                  >
                     <Link
-                      key={`${ref.flow.slug}-${ref.stepId}`}
                       to={paths.flowStep(ref.flow.slug, ref.stepId)}
-                      className="row mono gap-2 px-2 py-1"
+                      data-nav-item
+                      className="rounded-control text-accent"
                     >
-                      <span className="text-accent">{ref.flow.slug}</span>
-                      <span className="text-muted">
-                        step {ref.number} · #{ref.stepId}
-                      </span>
+                      {ref.flow.slug}
                     </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+                    <span className="text-muted">
+                      step {ref.number} · #{ref.stepId}
+                    </span>
+                    <RowActions copy={`${ref.flow.slug}/${ref.stepId}`} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* --- Decisions ---------------------------------------------- */}
+          <section
+            id={EVENT_ANCHOR.decisions}
+            className="mt-section max-w-table"
+          >
+            <SectionTitle>Decisions</SectionTitle>
+            {decisions.length === 0 ? (
+              <Empty>
+                nothing has been decided about this event on the record
+              </Empty>
+            ) : (
+              <div className="flex flex-col gap-1" data-nav-list>
+                {decisions.map((adr) => (
+                  <div key={adr.id} className="row gap-2">
+                    <span className="mono shrink-0 text-muted">{adr.id}</span>
+                    <Link
+                      to={paths.adr(adr.slug)}
+                      data-nav-item
+                      className="min-w-0 truncate rounded-control"
+                    >
+                      {adr.title}
+                    </Link>
+                    <RowActions copy={adr.id} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
         </div>
+
+        <Toc items={toc} label="Sections of this event" />
       </div>
     </div>
   );

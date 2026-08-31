@@ -1,14 +1,50 @@
 import { Link } from "react-router";
-import { Moon, Network, Search, Sun } from "lucide-react";
+import {
+  Keyboard,
+  Menu,
+  Moon,
+  Network,
+  Rows2,
+  Rows4,
+  Search,
+  Sun,
+} from "lucide-react";
 import { Breadcrumbs } from "./Breadcrumbs";
 import { BuildStamp } from "./BuildStamp";
+import { useDensity } from "./density";
 import { useTheme } from "./theme";
 
-export function TopBar({ onOpenPalette }: { onOpenPalette: () => void }) {
+export function TopBar({
+  onOpenPalette,
+  onOpenHelp,
+  onToggleSidebar,
+  narrow = false,
+}: {
+  onOpenPalette: () => void;
+  onOpenHelp: () => void;
+  onToggleSidebar: () => void;
+  /** Below the narrow breakpoint the tree is a drawer, opened from here. */
+  narrow?: boolean;
+}) {
   const { theme, toggle } = useTheme();
+  const { density, toggle: toggleDensity } = useDensity();
+  const compact = density === "compact";
 
   return (
     <header className="flex h-12 shrink-0 items-center gap-4 border-b px-gutter border-line bg-canvas">
+      {narrow ? (
+        <button
+          type="button"
+          onClick={onToggleSidebar}
+          aria-label="Open the catalog"
+          aria-keyshortcuts="["
+          title="Catalog — ["
+          className="-ml-2 flex size-8 shrink-0 items-center justify-center rounded-control text-muted t-micro transition-colors hover:bg-surface hover:text-ink"
+        >
+          <Menu size={16} aria-hidden />
+        </button>
+      ) : null}
+
       <Breadcrumbs />
 
       <div className="ml-auto flex items-center gap-3">
@@ -28,13 +64,41 @@ export function TopBar({ onOpenPalette }: { onOpenPalette: () => void }) {
           </span>
         </button>
 
-        {/* One border around the pair, a hairline between them: two controls,
+        {/* One border around the set, hairlines between them: four controls,
             one object. */}
         <div className="seg">
           <Link to="/graph" className="flex items-center gap-1.5">
             <Network size={16} aria-hidden />
             graph
           </Link>
+          {/* Density is a property of the whole app, so it lives beside the
+              theme: both are "how portolan is set", not "what is on screen". */}
+          <button
+            type="button"
+            onClick={toggleDensity}
+            aria-pressed={compact}
+            aria-label={
+              compact ? "Switch to comfortable rows" : "Switch to compact rows"
+            }
+            title={compact ? "Comfortable rows" : "Compact rows"}
+            className="flex items-center"
+          >
+            {compact ? (
+              <Rows2 size={16} aria-hidden />
+            ) : (
+              <Rows4 size={16} aria-hidden />
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={onOpenHelp}
+            aria-label="Keyboard shortcuts"
+            aria-keyshortcuts="?"
+            title="Keyboard shortcuts — ?"
+            className="flex items-center"
+          >
+            <Keyboard size={16} aria-hidden />
+          </button>
           <button
             type="button"
             onClick={toggle}

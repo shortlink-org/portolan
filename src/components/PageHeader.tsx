@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { ctxStyle } from "../lib/context-color";
+import { Ident } from "./Ident";
 
 /**
  * The header strip every entity page opens with. `contextId` paints the hero
@@ -30,11 +31,9 @@ export function PageHeader({
         <h1 className="text-md font-semibold" title={name}>
           {name}
         </h1>
-        {id ? (
-          <span className="mono text-muted" title={id}>
-            {id}
-          </span>
-        ) : null}
+        {/* The id under a page's own name is the single most-copied string in
+            the app - it is what a reader takes to a grep or a ticket. */}
+        {id ? <Ident value={id} className="text-muted" /> : null}
         {right ? (
           <div className="ml-auto flex items-center gap-2">{right}</div>
         ) : null}

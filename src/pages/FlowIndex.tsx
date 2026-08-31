@@ -5,6 +5,9 @@ import { catalog } from "../data";
 import { flowContexts, walkSteps } from "../catalog";
 import { contextName, contextVar } from "../lib/context-color";
 import { staggerStyle } from "../lib/motion";
+import { Ident } from "../components/Ident";
+import { RowActions } from "../components/RowActions";
+import { Empty } from "../components/PageHeader";
 import { ContextPill, ProvenanceBadge } from "../components/primitives";
 
 type Sort = "contexts" | "name" | "steps";
@@ -115,45 +118,68 @@ export function FlowIndex() {
         </div>
       </div>
 
-      <div className="mt-section grid gap-grid grid-cols-[repeat(auto-fill,minmax(380px,1fr))]">
-        {rows.map(({ flow, contexts, steps }, i) => {
-          return (
-            <Link
-              key={flow.slug}
-              to={`/flows/${flow.slug}`}
-              className="card stagger-in"
-              style={{
-                ...staggerStyle(i),
-                borderLeftWidth: 3,
-              }}
-            >
-              <div className="flex items-baseline gap-2">
-                <span className="font-semibold" title={flow.name}>
-                  {flow.name}
-                </span>
-                <span className="mono text-muted">{flow.slug}</span>
-              </div>
+      {rows.length === 0 ? (
+        <div className="mt-section">
+          <Empty>no flow crosses every context you have picked</Empty>
+        </div>
+      ) : (
+        <div
+          className="mt-section grid gap-grid grid-cols-[repeat(auto-fill,minmax(380px,1fr))]"
+          data-nav-list
+        >
+          {rows.map(({ flow, contexts, steps }, i) => {
+            return (
+              <div
+                key={flow.slug}
+                className="card stagger-in"
+                style={{
+                  ...staggerStyle(i),
+                  borderLeftWidth: 3,
+                }}
+              >
+                <div className="flex items-baseline gap-2">
+                  <Link
+                    to={`/flows/${flow.slug}`}
+                    data-nav-item
+                    className="rounded-control font-semibold hover:underline"
+                    title={flow.name}
+                  >
+                    {flow.name}
+                  </Link>
+                  <Ident value={flow.id} className="text-muted">
+                    {flow.slug}
+                  </Ident>
+                  <RowActions copy={flow.id} label={flow.name} />
+                </div>
 
-              <p className="mt-2 line-clamp-2 text-muted">{flow.summary}</p>
+                <p className="mt-2 line-clamp-2 text-muted">{flow.summary}</p>
 
-              <div className="mt-4 flex flex-wrap items-center gap-1.5">
-                {contexts.map((c) => (
-                  <ContextPill key={c} id={c} name={contextName(c)} />
-                ))}
-                <span className="mono ml-auto text-muted">{steps} steps</span>
-              </div>
+                <div className="mt-4 flex flex-wrap items-center gap-1.5">
+                  {contexts.map((c) => (
+                    <ContextPill key={c} id={c} name={contextName(c)} />
+                  ))}
+                  {/* The count opens the sequence it counted. */}
+                  <Link
+                    to={`/flows/${flow.slug}`}
+                    className="mono ml-auto rounded-control text-muted hover:text-ink"
+                    title="open the step list"
+                  >
+                    <span className="tnum">{steps}</span> steps
+                  </Link>
+                </div>
 
-              <div className="mt-4">
-                <ProvenanceBadge
-                  provenance={flow.provenance}
-                  source={flow.source}
-                  verifiedAt={flow.verifiedAt}
-                />
+                <div className="mt-4">
+                  <ProvenanceBadge
+                    provenance={flow.provenance}
+                    source={flow.source}
+                    verifiedAt={flow.verifiedAt}
+                  />
+                </div>
               </div>
-            </Link>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

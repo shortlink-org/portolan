@@ -4,6 +4,7 @@ import { AlertTriangle } from "lucide-react";
 import { stepFrames } from "../catalog";
 import type { Flow, Step, StepFrame } from "../catalog";
 import { index } from "../data";
+import { Ident } from "../components/Ident";
 import { AdrNumber, StatusChip } from "../components/primitives";
 import { paths, eventPath, servicePath } from "../routes";
 
@@ -31,7 +32,9 @@ function EventDetail({ step, flow }: { step: Step; flow: Flow }) {
 
   return (
     <>
-      <div className="mono text-[13px] text-ink">{event.name}</div>
+      <Ident block value={event.id} className="text-ink">
+        {event.name}
+      </Ident>
       <div className="mt-1.5 flex flex-wrap gap-1">
         {event.versions.map((v) => (
           <span
@@ -130,7 +133,7 @@ function EventDetail({ step, flow }: { step: Step; flow: Flow }) {
       {latest ? (
         <>
           <Label>Source</Label>
-          <div className="mono break-all text-muted">{latest.source}</div>
+          <Ident block value={latest.source} className="text-muted" />
         </>
       ) : null}
     </>
@@ -147,7 +150,7 @@ function RpcDetail({ step }: { step: Step }) {
 
   return (
     <>
-      <div className="mono break-all text-[13px] text-ink">{method}</div>
+      <Ident block value={method} className="text-ink" />
 
       <Label>Provider</Label>
       {provider && providerPath ? (
@@ -166,7 +169,7 @@ function RpcDetail({ step }: { step: Step }) {
           <Label>Declared by</Label>
           <div className="mono text-muted">peer: {call.peer}</div>
           <Label>Source</Label>
-          <div className="mono break-all text-muted">{call.source}</div>
+          <Ident block value={call.source} className="text-muted" />
         </>
       ) : (
         <>
@@ -327,7 +330,7 @@ export function StepDetailBody({ step, flow }: { step: Step; flow: Flow }) {
       {step.line && step.kind !== "call" ? (
         <>
           <Label>Observed at</Label>
-          <div className="mono break-all text-muted">{step.line}</div>
+          <Ident block value={step.line} className="text-muted" />
         </>
       ) : null}
     </>

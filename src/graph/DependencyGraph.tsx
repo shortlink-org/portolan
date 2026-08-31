@@ -4,6 +4,7 @@ import { Background, ReactFlow, ReactFlowProvider } from "@xyflow/react";
 import type { Edge, Node } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import type { ServiceGraph } from "../lib/derive";
+import { DiagramSkeleton } from "../components/DiagramSkeleton";
 import { servicePath } from "../routes";
 import { useSelectionStore } from "../selection/store";
 import { nodeTypes } from "./nodes";
@@ -127,7 +128,10 @@ export function DependencyGraph({ graph }: { graph: ServiceGraph }) {
   );
 
   return (
-    <div className="h-full w-full">
+    /* The box is the box whether elk has answered or not: the skeleton is
+       laid over it, never in place of it, so nothing reflows on arrival. */
+    <div className="relative h-full w-full">
+      {ready ? null : <DiagramSkeleton />}
       <ReactFlow
         nodes={shownNodes}
         edges={shownEdges}

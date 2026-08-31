@@ -53,8 +53,10 @@ export function SelectionSync() {
       return;
     }
 
-    // Same page, and the selection left the URL — history moved, not us.
-    if (previous.hash.startsWith(SEL) && !location.hash.startsWith(SEL)) {
+    // Same page, and the selection left the URL for *nothing* — history moved,
+    // not us. A hash that is some other anchor is a reader jumping to a section
+    // of the page they are already on, which is not a deselection.
+    if (previous.hash.startsWith(SEL) && location.hash === "") {
       store.clear("url");
     }
   }, [location.pathname, location.hash]);
@@ -68,8 +70,11 @@ export function SelectionSync() {
     const current = useSelectionStore.getState().selection;
     const want = selectionHash(current);
     if (location.hash === want) return;
-    // Anchors that are not ours — a readme outline link, say — are left alone
-    // as long as nothing is selected.
+    // Anchors that are not ours — a section link, a readme outline entry — are
+    // left alone, selection or no selection. Stamping #sel= over one would
+    // scroll the reader back off the section they just asked for, and the
+    // selection is not lost by being absent from the URL for a moment.
+    if (location.hash !== "" && !location.hash.startsWith(SEL)) return;
     if (!current && !location.hash.startsWith(SEL)) return;
     navigate(
       { pathname: location.pathname, search: location.search, hash: want },

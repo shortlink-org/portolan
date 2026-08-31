@@ -3,6 +3,7 @@ import { Background, ReactFlow, ReactFlowProvider } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import type { Event } from "../catalog";
 import { index } from "../data";
+import { DiagramSkeleton } from "../components/DiagramSkeleton";
 import { nodeTypes } from "./nodes";
 import { useElkFlow } from "./useElkFlow";
 import type { FlowSpec } from "./useElkFlow";
@@ -106,7 +107,8 @@ export function FocusedEventGraph({
   );
 
   return (
-    <div style={{ height }} className="w-full border">
+    <div style={{ height }} className="relative w-full border">
+      {ready ? null : <DiagramSkeleton />}
       <ReactFlow
         nodes={shownNodes}
         edges={edges}

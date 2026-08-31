@@ -379,3 +379,69 @@ export function usesOfDef(catalog: Catalog, defId: string): DefUse {
     .map(([id]) => id);
   return { events, defs };
 }
+
+// ---------------------------------------------------------------------------
+// Problems
+// ---------------------------------------------------------------------------
+
+/**
+ * One edge in the estate that does not land. Two things can be wrong, and they
+ * are wrong in the same way: a service calls an rpc whose provider is not in
+ * the catalog, or an event names a consumer that is not either. Both mean the
+ * chart draws an arrow into open water.
+ */
+export interface Problem {
+  kind: "rpc" | "consumer";
+  /** The context that owns the end we can see. */
+  context: string;
+  /** The service that owns the end we can see. */
+  service: string;
+  /** The call id or the event id - what is on the near end of the edge. */
+  id: string;
+  /** The name that resolves to nothing. */
+  peer: string;
+  note: string | undefined;
+  source: string | undefined;
+}
+
+/**
+ * Every unresolved edge, contexts in catalog order. Nothing is scored and
+ * nothing is ranked: an unresolved consumer is exactly as broken as an
+ * unresolved call, and sorting them by badness would invent a fact.
+ */
+export function problems(catalog: Catalog): Problem[] {
+  const out: Problem[] = [];
+  for (const context of catalog.contexts) {
+    for (const service of context.services) {
+      for (const call of service.consumes) {
+        if (call.status !== "unresolved") continue;
+        out.push({
+          kind: "rpc",
+          context: context.id,
+          service: service.id,
+          id: call.id,
+          peer: call.peer,
+          note: call.note,
+          source: call.source,
+        });
+      }
+      for (const aggregate of service.aggregates) {
+        for (const event of aggregate.events) {
+          for (const consumer of event.consumers) {
+            if (consumer.status !== "unresolved") continue;
+            out.push({
+              kind: "consumer",
+              context: context.id,
+              service: service.id,
+              id: event.id,
+              peer: consumer.service,
+              note: consumer.note,
+              source: undefined,
+            });
+          }
+        }
+      }
+    }
+  }
+  return out;
+}

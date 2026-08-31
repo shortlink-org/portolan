@@ -13,7 +13,16 @@ import { KIND_LABEL, KIND_PLURAL } from "../lib/kinds";
 import type { Kind } from "../lib/kinds";
 import { KindIcon } from "../components/kind";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
-import { blockPath, eventPath, paths, servicePath } from "../routes";
+import { Ident } from "../components/Ident";
+import { Toc } from "../components/Toc";
+import type { TocItem } from "../components/Toc";
+import {
+  BLOCK_ANCHOR,
+  blockPath,
+  eventPath,
+  paths,
+  servicePath,
+} from "../routes";
 import { NotFound } from "./NotFound";
 
 const USAGE_KIND: Record<DefUsage["kind"], Kind | null> = {
@@ -42,8 +51,8 @@ function usagePath(usage: DefUsage): string | null {
 
 function ShapeTable({ fields }: { fields: Field[] }) {
   return (
-    <table className="w-full max-w-prose">
-      <thead className="sticky-bar sticky top-0 z-10">
+    <table className="tbl tbl-sticky max-w-prose">
+      <thead>
         <tr className="label">
           <th className="pb-2 text-left font-normal">name</th>
           <th className="pb-2 text-left font-normal">type</th>
@@ -54,21 +63,23 @@ function ShapeTable({ fields }: { fields: Field[] }) {
         {fields.map((field) => {
           const ref = field.ref;
           return (
-            <tr key={field.name} className="border-t align-top border-line">
+            <tr key={field.name} className="align-top">
               <td className="mono py-1 pr-3 whitespace-nowrap">{field.name}</td>
-              <td className="mono py-1 pr-3 whitespace-nowrap text-muted">
-                {field.type}
-                {ref ? (
-                  <span
-                    className="ml-1.5"
-                    title={`shared type ${ref}`}
-                    style={{ color: "var(--fg-muted)" }}
-                  >
-                    ↗
-                  </span>
-                ) : null}
+              <td className="py-1 pr-3 whitespace-nowrap">
+                <Ident
+                  value={ref ?? field.type}
+                  className="text-muted"
+                  title={
+                    ref
+                      ? `shared type ${ref} — click to copy`
+                      : `${field.type} — click to copy`
+                  }
+                >
+                  {field.type}
+                  {ref ? <span className="ml-1.5">↗</span> : null}
+                </Ident>
               </td>
-              <td className="py-1 text-muted">{field.doc}</td>
+              <td className="meta py-1">{field.doc}</td>
             </tr>
           );
         })}
@@ -104,6 +115,12 @@ export function BlockPage({ kind }: { kind: BlockKind }) {
     return <NotFound kind={KIND_LABEL[kind]} id={blockSlug} />;
   }
 
+  const toc: TocItem[] = [
+    { id: BLOCK_ANCHOR.shape, label: "Shape" },
+    { id: BLOCK_ANCHOR.usedIn, label: "Used in" },
+    { id: BLOCK_ANCHOR.siblings, label: "Siblings" },
+  ];
+
   const fields = blockFields(catalog, block);
   const isRoot =
     kind === "entity" && rootEntity(aggregate)?.slug === block.slug;
@@ -133,138 +150,162 @@ export function BlockPage({ kind }: { kind: BlockKind }) {
         }
       >
         <p className="mt-2 max-w-prose text-muted">{block.doc}</p>
-        <div className="mono mt-1.5 text-muted">
+        <div className="mono mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-muted">
           {block.ref ? (
-            <>
-              shared type <span className="text-ink">{block.ref}</span> — the
-              same shape wherever it is named
-            </>
+            <span className="flex items-center gap-1.5">
+              shared type
+              <Ident value={block.ref} className="text-ink" />— the same shape
+              wherever it is named
+            </span>
           ) : (
-            <>local to {aggregate.id} — no shared type</>
+            <span>local to {aggregate.id} — no shared type</span>
           )}
+          <span aria-hidden className="h-4 w-px bg-line-strong" />
+          <a
+            href={`#${BLOCK_ANCHOR.shape}`}
+            className="rounded-control hover:text-ink"
+          >
+            <span className="tnum">{fields.length}</span> fields
+          </a>
+          {block.ref ? (
+            <a
+              href={`#${BLOCK_ANCHOR.usedIn}`}
+              className="rounded-control hover:text-ink"
+            >
+              <span className="tnum">{usages.length}</span>{" "}
+              {usages.length === 1 ? "reference" : "references"}
+            </a>
+          ) : null}
         </div>
       </PageHeader>
 
-      <div className="p-gutter">
-        <SectionTitle
-          right={
-            <span className="mono text-muted">{fields.length} fields</span>
-          }
-        >
-          Shape
-        </SectionTitle>
-        {fields.length === 0 ? (
-          <Empty>the catalog knows this block by name only</Empty>
-        ) : (
-          <ShapeTable fields={fields} />
-        )}
+      <div className="flex gap-section p-gutter">
+        <div className="min-w-0 flex-1">
+          <section id={BLOCK_ANCHOR.shape}>
+            <SectionTitle
+              right={
+                <span className="mono text-muted">{fields.length} fields</span>
+              }
+            >
+              Shape
+            </SectionTitle>
+            {fields.length === 0 ? (
+              <Empty>the catalog knows this block by name only</Empty>
+            ) : (
+              <ShapeTable fields={fields} />
+            )}
+          </section>
 
-        <div className="mt-section max-w-prose">
-          <SectionTitle
-            right={
-              block.ref ? (
-                <span className="mono text-muted">
-                  {usages.length} references
-                </span>
-              ) : null
-            }
-          >
-            Used in
-          </SectionTitle>
-          {!block.ref ? (
-            <Empty>
-              an inline shape is used only here — give it a shared type to track
-              it across the catalog
-            </Empty>
-          ) : usages.length === 0 ? (
-            <Empty>nothing else names {block.ref}</Empty>
-          ) : (
-            <div className="flex flex-col gap-1">
-              {usages.map((usage) => {
-                const to = usagePath(usage);
-                const icon = USAGE_KIND[usage.kind];
-                const body = (
-                  <>
-                    {icon ? <KindIcon kind={icon} /> : null}
-                    <span
-                      className="mono"
-                      style={
-                        usage.kind === "event"
-                          ? { color: "var(--kind-event)" }
-                          : undefined
-                      }
-                    >
-                      {usage.name}
-                    </span>
-                    <span className="mono truncate text-muted">
-                      {usage.owner}
-                    </span>
-                    <span className="mono ml-auto flex shrink-0 gap-1.5 text-muted">
-                      {usage.fields.length > 0 ? (
-                        <span title="fields that carry this type">
-                          {usage.fields.join(", ")}
-                        </span>
-                      ) : (
-                        <span>same type</span>
-                      )}
-                      {usage.versions && usage.versions.length > 0 ? (
-                        <span className="rounded-[4px] border px-1 border-line">
-                          {usage.versions.join(" ")}
-                        </span>
-                      ) : null}
-                    </span>
-                  </>
-                );
-                return to ? (
-                  <Link
-                    key={`${usage.kind}:${usage.id}`}
-                    to={to}
-                    className="row gap-2 px-3 py-2"
-                  >
-                    {body}
-                  </Link>
-                ) : (
-                  <div
-                    key={`${usage.kind}:${usage.id}`}
-                    className="flex items-center gap-2 rounded-control border px-3 py-2 border-line"
-                    title="shared type — no page of its own"
-                  >
-                    {body}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        <div className="mt-section max-w-prose">
-          <SectionTitle>Siblings</SectionTitle>
-          <div className="flex flex-wrap gap-1.5">
-            {list
-              .filter((b) => b.slug !== block.slug)
-              .map((sibling) => (
-                <Link
-                  key={sibling.id}
-                  to={
-                    (blockPath(sibling.id) as string) ??
-                    paths.aggregate(context.id, service.slug, aggregate.slug)
-                  }
-                  className="chip-lg border-line-strong text-muted"
-                >
-                  <KindIcon kind={kind} />
-                  {sibling.name}
-                </Link>
-              ))}
-            {list.length <= 1 ? (
+          <div className="mt-section max-w-prose" id={BLOCK_ANCHOR.usedIn}>
+            <SectionTitle
+              right={
+                block.ref ? (
+                  <span className="mono text-muted">
+                    {usages.length} references
+                  </span>
+                ) : null
+              }
+            >
+              Used in
+            </SectionTitle>
+            {!block.ref ? (
               <Empty>
-                the only {KIND_LABEL[kind]} in {aggregate.name}
+                an inline shape is used only here — give it a shared type to
+                track it across the catalog
               </Empty>
-            ) : null}
+            ) : usages.length === 0 ? (
+              <Empty>nothing else names {block.ref}</Empty>
+            ) : (
+              <div className="flex flex-col gap-1" data-nav-list>
+                {usages.map((usage) => {
+                  const to = usagePath(usage);
+                  const icon = USAGE_KIND[usage.kind];
+                  const body = (
+                    <>
+                      {icon ? <KindIcon kind={icon} /> : null}
+                      <span
+                        className="mono"
+                        style={
+                          usage.kind === "event"
+                            ? { color: "var(--kind-event)" }
+                            : undefined
+                        }
+                      >
+                        {usage.name}
+                      </span>
+                      <span className="mono truncate text-muted">
+                        {usage.owner}
+                      </span>
+                      <span className="mono ml-auto flex shrink-0 gap-1.5 text-muted">
+                        {usage.fields.length > 0 ? (
+                          <span title="fields that carry this type">
+                            {usage.fields.join(", ")}
+                          </span>
+                        ) : (
+                          <span>same type</span>
+                        )}
+                        {usage.versions && usage.versions.length > 0 ? (
+                          <span className="rounded-[4px] border px-1 border-line">
+                            {usage.versions.join(" ")}
+                          </span>
+                        ) : null}
+                      </span>
+                    </>
+                  );
+                  return to ? (
+                    <Link
+                      key={`${usage.kind}:${usage.id}`}
+                      to={to}
+                      data-nav-item
+                      className="row gap-2 px-3 py-2"
+                    >
+                      {body}
+                    </Link>
+                  ) : (
+                    <div
+                      key={`${usage.kind}:${usage.id}`}
+                      className="flex items-center gap-2 rounded-control border px-3 py-2 border-line"
+                      title="shared type — no page of its own"
+                    >
+                      {body}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
-          <div className="mono mt-2 text-muted">
-            {KIND_PLURAL[kind]} of {aggregate.id}
+
+          <div className="mt-section max-w-prose" id={BLOCK_ANCHOR.siblings}>
+            <SectionTitle>Siblings</SectionTitle>
+            <div className="flex flex-wrap gap-1.5">
+              {list
+                .filter((b) => b.slug !== block.slug)
+                .map((sibling) => (
+                  <Link
+                    key={sibling.id}
+                    to={
+                      (blockPath(sibling.id) as string) ??
+                      paths.aggregate(context.id, service.slug, aggregate.slug)
+                    }
+                    className="chip-lg border-line-strong text-muted"
+                  >
+                    <KindIcon kind={kind} />
+                    {sibling.name}
+                  </Link>
+                ))}
+              {list.length <= 1 ? (
+                <Empty>
+                  the only {KIND_LABEL[kind]} in {aggregate.name}
+                </Empty>
+              ) : null}
+            </div>
+            <div className="mono mt-2 text-muted">
+              {KIND_PLURAL[kind]} of {aggregate.id}
+            </div>
           </div>
         </div>
+
+        <Toc items={toc} label={`Sections of this ${KIND_LABEL[kind]}`} />
       </div>
     </div>
   );

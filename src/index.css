@@ -70,6 +70,14 @@
   --w-prose: 900px;
   --w-table: 1200px;
 
+  /* Density. Two settings, three tokens, set on <html data-density>. The
+     comfortable row is 40px because that is a row you read; the compact one is
+     30px because that is a row you scan. Nothing else changes: no font swap,
+     no border loss, no second layout. */
+  --row-h: 40px;
+  --row-h-tree: 22px;
+  --text-meta: 13px;
+
   /* Motion. Three durations, two easings, nothing else. */
   --dur-micro: 150ms;
   --dur-panel: 250ms;
@@ -77,6 +85,12 @@
   --dur-narrative: 400ms;
   --ease-out: cubic-bezier(0.2, 0, 0, 1);
   --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-density="compact"] {
+  --row-h: 30px;
+  --row-h-tree: 18px;
+  --text-meta: 12px;
 }
 
 .dark {
@@ -282,6 +296,7 @@
   }
   .row {
     @apply flex items-center gap-3 rounded-control border border-line px-3 py-2;
+    min-height: var(--row-h);
     transition: background-color var(--dur-micro) var(--ease-out);
   }
   .row:hover {
@@ -369,8 +384,117 @@
     -webkit-backdrop-filter: blur(8px);
   }
 
+  /* One line with a bit of character, never an illustration block. The dashed
+     border and the 4% glow are the whole of the decoration. */
   .empty {
     @apply mono glow rounded-card border border-dashed border-line-strong px-3 py-4 text-center text-muted;
+  }
+
+  /* ---------------------------------------------------------------------
+     Identifiers. Every id, path and type name in the app is an <Ident>, and
+     every <Ident> is this button: it looks like text until the pointer is on
+     it, then it looks like something you can take.
+     --------------------------------------------------------------------- */
+  .ident {
+    @apply trunc cursor-copy rounded-[4px] text-left align-baseline;
+    transition:
+      background-color var(--dur-micro) var(--ease-out),
+      color var(--dur-micro) var(--ease-out);
+  }
+  .ident:hover {
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    color: var(--accent);
+  }
+  /* Above and centred so it never covers the id it is confirming. */
+  .ident-tip {
+    @apply mono pointer-events-none absolute bottom-full left-1/2 z-30 mb-1 rounded-[4px] border px-1.5 py-px whitespace-nowrap;
+    transform: translateX(-50%);
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--bg);
+    box-shadow: var(--shadow-xs);
+  }
+
+  /* ---------------------------------------------------------------------
+     Tables. Density lives in --row-h; the sticky pair keeps the header and
+     the first column on screen while a wide table scrolls under them.
+     --------------------------------------------------------------------- */
+  .tbl {
+    @apply w-full;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+  .tbl td,
+  .tbl th {
+    height: var(--row-h);
+  }
+  /* The row rule is drawn on the cells, not on the row: `border-collapse:
+     separate` is what makes a sticky column possible, and a separated table
+     never paints a border set on <tr>. */
+  .tbl thead th,
+  .tbl tbody td {
+    border-bottom: 1px solid var(--border);
+  }
+  .tbl tbody tr:last-child td {
+    border-bottom: 0;
+  }
+  .tbl tbody tr {
+    transition: background-color var(--dur-micro) var(--ease-out);
+  }
+  .tbl tbody tr:hover {
+    background: var(--surface);
+  }
+  /* The header is translucent over its own rows, and opaque where a sticky
+     first column passes under it - two translucent layers stack into a smear. */
+  .tbl-sticky thead th {
+    @apply sticky top-0 z-20;
+    background: color-mix(in srgb, var(--bg) 80%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .tbl-sticky tbody td:first-child,
+  .tbl-sticky thead th:first-child {
+    @apply sticky left-0 z-10;
+    background: var(--bg);
+  }
+  .tbl-sticky thead th:first-child {
+    z-index: 30;
+  }
+  .tbl-sticky tbody tr:hover td:first-child {
+    background: var(--surface);
+  }
+
+  /* A row's actions: present in the DOM, invisible until the row is under the
+     pointer or something inside it has focus, so a table of forty rows is not
+     also a table of eighty buttons. */
+  .row-actions {
+    @apply flex items-center gap-1 opacity-0;
+    transition: opacity var(--dur-micro) var(--ease-out);
+  }
+  tr:hover .row-actions,
+  .row:hover .row-actions,
+  .row-actions:focus-within {
+    @apply opacity-100;
+  }
+  .row-action {
+    @apply mono flex items-center gap-1 rounded-control border px-1.5 py-px border-line text-muted;
+    transition:
+      background-color var(--dur-micro) var(--ease-out),
+      color var(--dur-micro) var(--ease-out);
+  }
+  .row-action:hover {
+    @apply bg-surface text-ink;
+  }
+
+  /* The sidebar tree obeys the same density switch as the tables. */
+  .tree-row {
+    min-height: var(--row-h-tree);
+  }
+
+  /* Secondary text inside a row: 13px comfortable, 12px compact. */
+  .meta {
+    color: var(--fg-muted);
+    font-size: var(--text-meta);
   }
 }
 
@@ -425,6 +549,20 @@
   }
 }
 
+/* The two overlays that arrive from an edge rather than from nowhere: the
+   catalog drawer from the left, the detail sheet from the right. Both are the
+   panel duration - they are panels, they have just run out of room to be one. */
+@keyframes drawer-in {
+  from {
+    transform: translateX(-100%);
+  }
+}
+@keyframes sheet-in {
+  from {
+    transform: translateX(100%);
+  }
+}
+
 /* Route content rises on mount. No exit: the outgoing route is simply gone. */
 @utility page-in {
   animation: page-in var(--dur-page) var(--ease-out) both;
@@ -437,6 +575,12 @@
 }
 @utility overlay-in {
   animation: fade-in var(--dur-panel) var(--ease-out) both;
+}
+@utility drawer-in {
+  animation: drawer-in var(--dur-panel) var(--ease-out) both;
+}
+@utility sheet-in {
+  animation: sheet-in var(--dur-panel) var(--ease-out) both;
 }
 /* 20ms per row, capped at ten rows by the --i the row sets. */
 @utility stagger-in {
@@ -472,8 +616,8 @@
     animation-duration: 1ms !important;
     animation-delay: 0ms !important;
     animation-iteration-count: 1 !important;
-    transition-property: opacity, background-color, border-color, color, fill,
-      stroke !important;
+    transition-property:
+      opacity, background-color, border-color, color, fill, stroke !important;
     transition-duration: 1ms !important;
     scroll-behavior: auto !important;
   }

@@ -7,9 +7,13 @@ import { markdownOutline } from "../lib/derive";
 import { KIND_LABEL, KIND_PLURAL } from "../lib/kinds";
 import type { LeafKind } from "../lib/kinds";
 import { KindIcon } from "../components/kind";
-import { AGGREGATE_ANCHOR, paths } from "../routes";
+import { AGGREGATE_ANCHOR, EVENT_ANCHOR, paths } from "../routes";
 import { Markdown } from "../components/Markdown";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
+import { Ident } from "../components/Ident";
+import { RowActions } from "../components/RowActions";
+import { Toc } from "../components/Toc";
+import type { TocItem } from "../components/Toc";
 import { NotFound } from "./NotFound";
 
 /**
@@ -93,41 +97,48 @@ function BlockList({
   rootName?: string;
 }) {
   if (blocks.length === 0) {
-    return <Empty>this aggregate declares no {KIND_PLURAL[kind]}</Empty>;
+    return (
+      <Empty>no {KIND_PLURAL[kind]} declared — the shape lives elsewhere</Empty>
+    );
   }
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1" data-nav-list>
+      {/* A div holding a link, not a link holding buttons: the shared-type id
+          copies itself and the row carries actions, and neither of those can
+          live inside an anchor. */}
       {blocks.map((block) => {
         const fields = blockFields(catalog, block);
         return (
-          <Link
-            key={block.id}
-            to={linkTo(block)}
-            className="row items-start gap-2 px-3 py-2"
-          >
+          <div key={block.id} className="row items-start gap-2 px-3 py-2">
             <span className="mt-0.5 flex shrink-0">
               <KindIcon kind={kind} />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="mono" title={block.name}>
+              <Link
+                to={linkTo(block)}
+                data-nav-item
+                className="mono rounded-control"
+                title={block.name}
+              >
                 {block.name}
-              </span>
+              </Link>
               {block.name === rootName ? (
                 <span className="mono ml-2 text-muted">root</span>
               ) : null}
-              <span className="block truncate text-muted" title={block.doc}>
+              <span className="meta block truncate" title={block.doc}>
                 {block.doc}
               </span>
             </span>
-            <span className="mono ml-auto shrink-0 text-muted">
+            <span className="mono ml-auto flex shrink-0 items-center gap-2 text-muted">
               {block.ref ? (
-                <span title={`shared type ${block.ref}`}>{block.ref}</span>
+                <Ident value={block.ref} title={`shared type ${block.ref}`} />
               ) : (
                 <span title="shape written inline">inline</span>
               )}
-              <span className="ml-2">{fields.length}f</span>
+              <span>{fields.length}f</span>
             </span>
-          </Link>
+            <RowActions copy={block.id} label={block.name} />
+          </div>
         );
       })}
     </div>
@@ -159,10 +170,8 @@ function OperationList({
             <KindIcon kind={kind} />
           </span>
           <div className="min-w-0">
-            <div className="mono">{op.id}</div>
-            {op.doc ? (
-              <p className="mt-0.5 text-muted">{op.doc}</p>
-            ) : null}
+            <Ident block value={op.id} />
+            {op.doc ? <p className="mt-0.5 text-muted">{op.doc}</p> : null}
           </div>
         </li>
       ))}
@@ -191,6 +200,17 @@ export function AggregatePage() {
   const commands = aggregate.operations.filter((o) => o.kind === "command");
   const queries = aggregate.operations.filter((o) => o.kind === "query");
   const root = rootEntity(aggregate);
+
+  // The readme's own headings first, then the five sections the page adds
+  // under it. One rail, in the order the page is actually written in.
+  const toc: TocItem[] = [
+    ...outline.map((h) => ({ id: h.slug, label: h.text, depth: h.depth })),
+    { id: AGGREGATE_ANCHOR.entities, label: "Entities" },
+    { id: AGGREGATE_ANCHOR.valueObjects, label: "Value objects" },
+    { id: AGGREGATE_ANCHOR.events, label: "Events" },
+    { id: AGGREGATE_ANCHOR.commands, label: "Commands" },
+    { id: AGGREGATE_ANCHOR.queries, label: "Queries" },
+  ];
 
   const voPath = (block: Block) =>
     paths.valueObject(context.id, service.slug, aggregate.slug, block.slug);
@@ -260,53 +280,72 @@ export function AggregatePage() {
             <SectionTitle>Events</SectionTitle>
             {aggregate.events.length === 0 ? (
               <Empty>
-                this aggregate publishes no events — see the readme for why
+                nothing is announced from here — the readme says why
               </Empty>
             ) : (
-              <div className="flex flex-col gap-1">
-                {aggregate.events.map((event) => (
-                  <Link
-                    key={event.id}
-                    to={paths.event(
-                      context.id,
-                      service.slug,
-                      aggregate.slug,
-                      event.slug,
-                    )}
-                    className="row flex-wrap gap-2 px-3 py-2"
-                  >
-                    <KindIcon kind="event" />
-                    <span
-                      className="mono"
-                      style={{ color: "var(--kind-event)" }}
+              /* The row is a div rather than a link so the consumer count can
+                 be a link of its own: a count that says "4 consumers" and does
+                 not take you to them is a count that lied. */
+              <div className="flex flex-col gap-1" data-nav-list>
+                {aggregate.events.map((event) => {
+                  const to = paths.event(
+                    context.id,
+                    service.slug,
+                    aggregate.slug,
+                    event.slug,
+                  );
+                  return (
+                    <div
+                      key={event.id}
+                      className="row flex-wrap gap-2 px-3 py-2"
                     >
-                      {event.name}
-                    </span>
-                    <span className="flex gap-1">
-                      {event.versions.map((v, i) => (
-                        <span
-                          key={v.version}
-                          className="mono rounded-[4px] border px-1"
-                          style={{
-                            borderColor:
-                              i === event.versions.length - 1
-                                ? "var(--accent)"
-                                : "var(--border)",
-                            color:
-                              i === event.versions.length - 1
-                                ? "var(--accent)"
-                                : "var(--fg-muted)",
-                          }}
-                        >
-                          {v.version}
-                        </span>
-                      ))}
-                    </span>
-                    <span className="mono ml-auto text-muted">
-                      {event.consumers.length} consumers
-                    </span>
-                  </Link>
-                ))}
+                      <KindIcon kind="event" />
+                      <Link
+                        to={to}
+                        data-nav-item
+                        className="mono rounded-control"
+                        style={{ color: "var(--kind-event)" }}
+                      >
+                        {event.name}
+                      </Link>
+                      <span className="flex gap-1">
+                        {event.versions.map((v, i) => (
+                          <span
+                            key={v.version}
+                            className="mono rounded-[4px] border px-1"
+                            style={{
+                              borderColor:
+                                i === event.versions.length - 1
+                                  ? "var(--accent)"
+                                  : "var(--border)",
+                              color:
+                                i === event.versions.length - 1
+                                  ? "var(--accent)"
+                                  : "var(--fg-muted)",
+                            }}
+                          >
+                            {v.version}
+                          </span>
+                        ))}
+                      </span>
+                      <Link
+                        to={`${to}#${EVENT_ANCHOR.consumers}`}
+                        className="mono ml-auto rounded-control text-muted hover:text-ink"
+                        title="open the consumers of this event"
+                      >
+                        <span className="tnum">{event.consumers.length}</span>{" "}
+                        {event.consumers.length === 1
+                          ? "consumer"
+                          : "consumers"}
+                      </Link>
+                      <RowActions
+                        copy={event.id}
+                        reveal={event.id}
+                        label={event.name}
+                      />
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -325,7 +364,9 @@ export function AggregatePage() {
               >
                 Commands
               </SectionTitle>
-              {commands.length === 0 ? <Empty>none</Empty> : null}
+              {commands.length === 0 ? (
+                <Empty>nothing changes this aggregate from outside</Empty>
+              ) : null}
               <OperationList kind="command" operations={commands} />
             </div>
             <div id={AGGREGATE_ANCHOR.queries}>
@@ -338,37 +379,15 @@ export function AggregatePage() {
               >
                 Queries
               </SectionTitle>
-              {queries.length === 0 ? <Empty>none</Empty> : null}
+              {queries.length === 0 ? (
+                <Empty>nothing reads this aggregate by name</Empty>
+              ) : null}
               <OperationList kind="query" operations={queries} />
             </div>
           </div>
         </div>
 
-        {outline.length > 0 ? (
-          <nav
-            /* Pinned beside the page it indexes, translucent so the content
-               scrolling past it stays visible. */
-            className="sticky-bar sticky top-0 hidden h-fit w-52 shrink-0 self-start rounded-card border-l pl-4 lg:block border-line"
-            aria-label="Readme outline"
-          >
-            <div className="label mb-2">Outline</div>
-            <ul>
-              {outline.map((heading) => (
-                <li
-                  key={heading.slug}
-                  style={{ paddingLeft: (heading.depth - 1) * 10 }}
-                >
-                  <a
-                    href={`#${heading.slug}`}
-                    className={`block truncate py-0.5 hover:underline ${heading.depth === 1 ? "text-ink" : "text-muted"}`}
-                  >
-                    {heading.text}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </nav>
-        ) : null}
+        <Toc items={toc} label="Sections of this aggregate" title="Outline" />
       </div>
     </div>
   );

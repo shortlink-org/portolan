@@ -5,17 +5,37 @@ import { contextStats } from "../lib/derive";
 import { contextVar } from "../lib/context-color";
 import { middleTruncate } from "../lib/format";
 import { staggerStyle } from "../lib/motion";
-import { paths } from "../routes";
-import { PageHeader, SectionTitle } from "../components/PageHeader";
+import { CONTEXT_ANCHOR, EVENT_ANCHOR, paths } from "../routes";
+import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
+import { Ident } from "../components/Ident";
+import { KindIcon } from "../components/kind";
+import { RowActions } from "../components/RowActions";
+import { Toc } from "../components/Toc";
+import type { TocItem } from "../components/Toc";
 import { NotFound } from "./NotFound";
 import { C4View } from "../likec4/C4View";
 import { contextViewId } from "../likec4/ids";
+
+const TOC: TocItem[] = [
+  { id: CONTEXT_ANCHOR.services, label: "Services" },
+  { id: CONTEXT_ANCHOR.aggregates, label: "Aggregates" },
+  { id: CONTEXT_ANCHOR.events, label: "Events" },
+];
 
 export function ContextPage() {
   const { context: contextId } = useParams();
   const context = catalog.contexts.find((c) => c.id === contextId);
   if (!context) return <NotFound kind="Context" id={contextId} />;
   const stats = contextStats(context);
+
+  // Flattened once, here: a context is read as "what does this domain own",
+  // and the answer is not one service deep.
+  const aggregates = context.services.flatMap((service) =>
+    service.aggregates.map((aggregate) => ({ service, aggregate })),
+  );
+  const events = aggregates.flatMap(({ service, aggregate }) =>
+    aggregate.events.map((event) => ({ service, aggregate, event })),
+  );
 
   return (
     <div className="h-full overflow-y-auto">
@@ -26,57 +46,225 @@ export function ContextPage() {
         contextId={context.id}
         right={
           stats.unresolved > 0 ? (
-            <span className="chip-lg status-unresolved">
+            <Link
+              to={paths.problems()}
+              className="chip-lg status-unresolved"
+              title="see every edge in the estate that lands nowhere"
+            >
               <AlertTriangle size={14} aria-hidden />
               {stats.unresolved} unresolved
-            </span>
+            </Link>
           ) : null
         }
       >
         <p className="mt-2 max-w-prose text-muted">{context.summary}</p>
+        {/* Three counts, three sections. None of them is decoration. */}
+        <div className="mono mt-3 flex flex-wrap items-center gap-x-4 text-muted">
+          <a
+            href={`#${CONTEXT_ANCHOR.services}`}
+            className="rounded-control hover:text-ink"
+          >
+            <span className="tnum">{stats.services}</span> services
+          </a>
+          <a
+            href={`#${CONTEXT_ANCHOR.aggregates}`}
+            className="rounded-control hover:text-ink"
+          >
+            <span className="tnum">{stats.aggregates}</span> aggregates
+          </a>
+          <a
+            href={`#${CONTEXT_ANCHOR.events}`}
+            className="rounded-control hover:text-ink"
+          >
+            <span className="tnum">{stats.events}</span> events
+          </a>
+        </div>
       </PageHeader>
 
-      <div className="p-gutter">
-        <SectionTitle>Model</SectionTitle>
-        <C4View viewId={contextViewId(context)} height={340} />
+      <div className="flex gap-section p-gutter">
+        <div className="min-w-0 flex-1">
+          <SectionTitle>Model</SectionTitle>
+          <C4View viewId={contextViewId(context)} height={340} />
 
-        <div className="mt-section" />
-        <SectionTitle>Services</SectionTitle>
-        <div className="grid gap-grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))]">
-          {context.services.map((service, i) => (
-            <Link
-              key={service.id}
-              to={paths.service(context.id, service.slug)}
-              className="card stagger-in"
-              style={{
-                ...staggerStyle(i),
-                borderLeftWidth: 3,
-                borderLeftColor: contextVar(context.id),
-              }}
+          {/* --- Services ----------------------------------------------- */}
+          <section id={CONTEXT_ANCHOR.services} className="mt-section">
+            <SectionTitle>Services</SectionTitle>
+            <div
+              className="grid gap-grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))]"
+              data-nav-list
             >
-              <div className="flex items-baseline gap-2">
-                <span className="font-semibold" title={service.name}>
-                  {service.name}
+              {context.services.map((service, i) => (
+                <div
+                  key={service.id}
+                  className="card stagger-in"
+                  style={{
+                    ...staggerStyle(i),
+                    borderLeftWidth: 3,
+                    borderLeftColor: contextVar(context.id),
+                  }}
+                >
+                  <div className="flex items-baseline gap-2">
+                    <Link
+                      to={paths.service(context.id, service.slug)}
+                      data-nav-item
+                      className="rounded-control font-semibold hover:underline"
+                      title={service.name}
+                    >
+                      {service.name}
+                    </Link>
+                    <Ident value={service.id} className="text-muted" />
+                    <RowActions
+                      copy={service.id}
+                      reveal={service.id}
+                      label={service.name}
+                    />
+                  </div>
+                  {/* Each number is a link into the part of the service page
+                      that lists what it counted. */}
+                  <div className="mono mt-4 flex flex-wrap gap-x-4 text-muted">
+                    <Link
+                      to={`${paths.service(context.id, service.slug)}#svc-aggregates`}
+                      className="rounded-control hover:text-ink"
+                    >
+                      <span className="tnum">{service.aggregates.length}</span>{" "}
+                      aggregates
+                    </Link>
+                    <Link
+                      to={`${paths.service(context.id, service.slug)}#svc-events`}
+                      className="rounded-control hover:text-ink"
+                    >
+                      <span className="tnum">
+                        {service.aggregates.reduce(
+                          (n, a) => n + a.events.length,
+                          0,
+                        )}
+                      </span>{" "}
+                      events
+                    </Link>
+                    <Link
+                      to={`${paths.service(context.id, service.slug)}?tab=consumes`}
+                      className="rounded-control hover:text-ink"
+                    >
+                      <span className="tnum">{service.consumes.length}</span>{" "}
+                      calls out
+                    </Link>
+                  </div>
+                  <div
+                    className="mono trunc mt-2 text-muted"
+                    title={`${service.repo}/${service.path}`}
+                  >
+                    {middleTruncate(`${service.repo}/${service.path}`)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* --- Aggregates --------------------------------------------- */}
+          <section
+            id={CONTEXT_ANCHOR.aggregates}
+            className="mt-section max-w-table"
+          >
+            <SectionTitle
+              right={
+                <span className="mono text-muted">
+                  every aggregate this domain owns, whichever service holds it
                 </span>
-                <span className="mono text-muted">{service.id}</span>
+              }
+            >
+              Aggregates
+            </SectionTitle>
+            {aggregates.length === 0 ? (
+              <Empty>this domain owns nothing yet — only services</Empty>
+            ) : (
+              <div className="flex flex-col gap-1" data-nav-list>
+                {aggregates.map(({ service, aggregate }) => (
+                  <div key={aggregate.id} className="row gap-2">
+                    <KindIcon kind="aggregate" />
+                    <Link
+                      to={paths.aggregate(
+                        context.id,
+                        service.slug,
+                        aggregate.slug,
+                      )}
+                      data-nav-item
+                      className="mono rounded-control font-medium"
+                    >
+                      {aggregate.name}
+                    </Link>
+                    <span className="meta">{service.slug}</span>
+                    <span className="meta">root {aggregate.root}</span>
+                    <RowActions
+                      copy={aggregate.id}
+                      reveal={aggregate.id}
+                      label={aggregate.name}
+                    />
+                  </div>
+                ))}
               </div>
-              <div className="mono mt-4 flex flex-wrap gap-x-4 text-muted">
-                <span>{service.aggregates.length} aggregates</span>
-                <span>
-                  {service.aggregates.reduce((n, a) => n + a.events.length, 0)}{" "}
-                  events
+            )}
+          </section>
+
+          {/* --- Events -------------------------------------------------- */}
+          <section
+            id={CONTEXT_ANCHOR.events}
+            className="mt-section max-w-table"
+          >
+            <SectionTitle
+              right={
+                <span className="mono text-muted">
+                  what the rest of the estate hears from here
                 </span>
-                <span>{service.consumes.length} calls out</span>
+              }
+            >
+              Events
+            </SectionTitle>
+            {events.length === 0 ? (
+              <Empty>this domain announces nothing — it only listens</Empty>
+            ) : (
+              <div className="flex flex-col gap-1" data-nav-list>
+                {events.map(({ service, aggregate, event }) => {
+                  const to = paths.event(
+                    context.id,
+                    service.slug,
+                    aggregate.slug,
+                    event.slug,
+                  );
+                  return (
+                    <div key={event.id} className="row gap-2">
+                      <KindIcon kind="event" />
+                      <Link
+                        to={to}
+                        data-nav-item
+                        className="mono rounded-control"
+                        style={{ color: "var(--kind-event)" }}
+                      >
+                        {event.name}
+                      </Link>
+                      <span className="mono text-muted">{aggregate.slug}</span>
+                      <Link
+                        to={`${to}#${EVENT_ANCHOR.consumers}`}
+                        className="mono ml-auto rounded-control text-muted hover:text-ink"
+                      >
+                        <span className="tnum">{event.consumers.length}</span>{" "}
+                        {event.consumers.length === 1
+                          ? "consumer"
+                          : "consumers"}
+                      </Link>
+                      <RowActions
+                        copy={event.id}
+                        reveal={event.id}
+                        label={event.name}
+                      />
+                    </div>
+                  );
+                })}
               </div>
-              <div
-                className="mono trunc mt-2 text-muted"
-                title={`${service.repo}/${service.path}`}
-              >
-                {middleTruncate(`${service.repo}/${service.path}`)}
-              </div>
-            </Link>
-          ))}
+            )}
+          </section>
         </div>
+
+        <Toc items={TOC} label="Sections of this context" />
       </div>
     </div>
   );

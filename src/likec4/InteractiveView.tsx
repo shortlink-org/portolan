@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { ReactLikeC4, isLikeC4ViewId } from "./generated";
 import { useTheme } from "../app/theme";
+import { Ident } from "../components/Ident";
 import { buildHighlightCss } from "./highlight-css";
 
 export interface InteractiveViewProps {
@@ -18,12 +19,24 @@ export interface InteractiveViewProps {
   onCanvas?: () => void;
 }
 
+/**
+ * A view id that resolves to nothing. This is not an error the reader caused
+ * and not one they can fix from here, so it is stated rather than alarmed
+ * about: the id in monospace, because that is the thing to go and look for,
+ * and one muted line saying why the box is empty.
+ *
+ * The box keeps its size. A diagram that fails to exist must not also make the
+ * page around it change shape.
+ */
 function Missing({ viewId }: { viewId: string }) {
   return (
     <div className="flex h-full items-center justify-center p-6">
-      <div className="mono border border-dashed px-3 py-2 status-unresolved">
-        LikeC4 view “{viewId}” is not in the generated bundle — run npm run
-        likec4:gen
+      <div className="max-w-prose rounded-card border border-dashed px-4 py-3 text-center border-line-strong">
+        <Ident value={viewId} className="text-ink" />
+        <p className="mono mt-1.5 text-muted">
+          no such view in the generated bundle — it was renamed, or the bundle
+          is older than the model
+        </p>
       </div>
     </div>
   );

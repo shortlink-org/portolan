@@ -15,6 +15,7 @@ import { ctxStyle } from "../lib/context-color";
 import { KIND_CHIP, LEAF_KINDS } from "../lib/kinds";
 import type { Kind, LeafKind } from "../lib/kinds";
 import { KindIcon } from "../components/kind";
+import { CompassRose, Wordmark } from "../components/logo";
 import { isStruck } from "../components/primitives";
 import { paths } from "../routes";
 import { useSearch } from "./search";
@@ -181,7 +182,8 @@ function Leaf({
       /* The edge is always 2px, transparent when idle: lighting a row must not
          shift the text beside it. `pulse-once` keys off `selected` so the
          outline runs exactly once, on the row that just became the selection. */
-      className={`flex items-center gap-1.5 py-[3px] pr-2 t-micro transition-colors hover:bg-surface ${
+      data-nav-item
+      className={`tree-row flex items-center gap-1.5 py-[3px] pr-2 t-micro transition-colors hover:bg-surface ${
         selected ? "pulse-once" : ""
       }`}
     >
@@ -223,7 +225,7 @@ function Branch({
   return (
     <>
       <div
-        className={`flex items-stretch t-micro transition-colors hover:bg-surface ${
+        className={`tree-row flex items-stretch t-micro transition-colors hover:bg-surface ${
           selected ? "pulse-once" : ""
         }`}
         style={{
@@ -247,6 +249,7 @@ function Branch({
           to={to}
           end
           data-sel={selId}
+          data-nav-item
           onClick={onClick}
           className="flex min-w-0 flex-1 items-center gap-1.5 py-[3px] pr-2"
         >
@@ -286,7 +289,7 @@ function Group({
         onClick={onToggle}
         aria-expanded={open}
         style={{ paddingLeft: indent(depth) }}
-        className="group-row"
+        className="tree-row group-row"
       >
         <Chevron open={open} />
         <KindIcon kind={kind} />
@@ -323,6 +326,9 @@ function IconRail({ onExpand }: { onExpand: () => void }) {
       className="flex h-full flex-col items-center gap-1 border-r py-3 border-line bg-canvas"
       aria-label="Catalog (collapsed)"
     >
+      {/* The mark survives the collapse; the wordmark does not fit and is not
+          missed - at 48px the rose is the whole identity. */}
+      <CompassRose size={18} className="mb-1 text-ink" />
       <button
         type="button"
         onClick={onExpand}
@@ -476,6 +482,14 @@ export function Sidebar({
       className="flex h-full flex-col border-r border-line bg-canvas"
       aria-label="Catalog"
     >
+      {/* The mark and the name, at the top of the one pane that is always on
+          screen. 16px beside a 13px wordmark: the same pairing every row of the
+          tree below uses, so the header reads as the first row of the tree
+          rather than as a banner sitting on top of one. */}
+      <div className="flex shrink-0 items-center border-b px-3 py-2.5 border-line">
+        <Wordmark />
+      </div>
+
       <div className="border-b p-3 border-line">
         <input
           ref={inputRef}
@@ -520,7 +534,11 @@ export function Sidebar({
         </div>
       </div>
 
-      <div ref={scrollerRef} className="flex-1 overflow-y-auto pb-8">
+      <div
+        ref={scrollerRef}
+        data-nav-list
+        className="flex-1 overflow-y-auto pb-8"
+      >
         <div className="label sticky-bar sticky top-0 z-10 px-3 pt-4 pb-1.5">
           Flows
         </div>
@@ -626,7 +644,8 @@ export function Sidebar({
         ))}
         <NavLink
           to={paths.adrs()}
-          className="mono block py-[3px] pr-2 pl-[8px] text-accent hover:bg-surface"
+          data-nav-item
+          className="tree-row mono flex items-center py-[3px] pr-2 pl-[8px] text-accent hover:bg-surface"
         >
           view all {catalog.adrs.length} →
         </NavLink>
