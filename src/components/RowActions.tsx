@@ -7,6 +7,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Copy, ListTree } from "lucide-react";
+import { toClipboard } from "../lib/clipboard";
 import { useUiStore } from "../app/ui-store";
 import { useSelectionStore } from "../selection/store";
 
@@ -45,14 +46,11 @@ export function RowActions({
     (e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      void navigator.clipboard
-        .writeText(copy)
-        .then(() => setCopied(true))
-        .catch(() => setCopied(false))
-        .finally(() => {
-          if (timer.current) clearTimeout(timer.current);
-          timer.current = setTimeout(() => setCopied(false), SHOWN_MS);
-        });
+      void toClipboard(copy).then((ok) => {
+        setCopied(ok);
+        if (timer.current) clearTimeout(timer.current);
+        timer.current = setTimeout(() => setCopied(false), SHOWN_MS);
+      });
     },
     [copy],
   );

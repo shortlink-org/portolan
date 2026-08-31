@@ -30,6 +30,7 @@ import {
   useCanvasResize,
 } from "../app/panels";
 import { Ident } from "../components/Ident";
+import { Select } from "../components/Select";
 import { ContextPill, ProvenanceBadge } from "../components/primitives";
 
 /**
@@ -304,24 +305,24 @@ export function FlowDetail() {
           {/* Only a flow that actually forks gets a path picker; for the other
               three there is one path and naming it would be noise. */}
           {paths.paths.length > 1 ? (
-            <label className="tbtn ml-auto flex items-center gap-1.5">
+            <div className="ml-auto flex items-center gap-1.5 text-muted">
               <Split size={14} aria-hidden />
-              <span className="sr-only">Path through this flow</span>
-              <select
+              <Select
                 value={pathId}
-                onChange={(e) => setPathId(e.target.value)}
-                className="mono bg-transparent text-inherit outline-none"
+                onChange={setPathId}
+                label="Path through this flow"
                 title="Show only the steps that run on one path through this flow"
-              >
-                <option value="">all branches</option>
-                {paths.paths.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.label}
-                    {p.terminal ? " (ends flow)" : ""}
-                  </option>
-                ))}
-              </select>
-            </label>
+                menuWidth={320}
+                options={[
+                  { value: "", label: "all branches" },
+                  ...paths.paths.map((p) => ({
+                    value: p.id,
+                    label: p.label,
+                    ...(p.terminal ? { note: "ends the flow" } : {}),
+                  })),
+                ]}
+              />
+            </div>
           ) : null}
 
           <div className={`seg ${paths.paths.length > 1 ? "" : "ml-auto"}`}>

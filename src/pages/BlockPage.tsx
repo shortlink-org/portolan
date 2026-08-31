@@ -183,6 +183,7 @@ export function BlockPage({ kind }: { kind: BlockKind }) {
         <div className="min-w-0 flex-1">
           <section id={BLOCK_ANCHOR.shape}>
             <SectionTitle
+              anchor={BLOCK_ANCHOR.shape}
               right={
                 <span className="mono text-muted">{fields.length} fields</span>
               }
@@ -198,6 +199,7 @@ export function BlockPage({ kind }: { kind: BlockKind }) {
 
           <div className="mt-section max-w-prose" id={BLOCK_ANCHOR.usedIn}>
             <SectionTitle
+              anchor={BLOCK_ANCHOR.usedIn}
               right={
                 block.ref ? (
                   <span className="mono text-muted">
@@ -276,7 +278,7 @@ export function BlockPage({ kind }: { kind: BlockKind }) {
           </div>
 
           <div className="mt-section max-w-prose" id={BLOCK_ANCHOR.siblings}>
-            <SectionTitle>Siblings</SectionTitle>
+            <SectionTitle anchor={BLOCK_ANCHOR.siblings}>Siblings</SectionTitle>
             <div className="flex flex-wrap gap-1.5">
               {list
                 .filter((b) => b.slug !== block.slug)

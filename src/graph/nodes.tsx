@@ -7,7 +7,11 @@ export type ServiceNodeData = {
   label: string;
   context: string | null;
   ghost: boolean;
-  kind: "service" | "event" | "producer";
+  kind: "service" | "event" | "producer" | "context";
+  /** Second line, on the nodes big enough to hold one. */
+  sub?: string;
+  /** Right-aligned tag - a context's classification, and nothing else so far. */
+  tag?: string;
 };
 
 export type PortolanNode = Node<ServiceNodeData, "portolan">;

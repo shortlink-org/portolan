@@ -8,11 +8,18 @@
 // Rows carry the same kind icons as the sidebar tree, and the same taxonomy
 // narrows the list: "e: item" searches events, "vo: money" value objects.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import {
+  Combobox,
+  ComboboxInput,
+  ComboboxOption,
+  ComboboxOptions,
+} from "@headlessui/react";
 import { useLocation, useNavigate } from "react-router";
+import { Modal } from "../components/Overlay";
 import { catalog } from "../data";
 import { paletteItems, search } from "../lib/palette";
-import type { PaletteItem } from "../lib/palette";
+import type { PaletteHit, PaletteItem } from "../lib/palette";
 import { KIND_LABEL, KIND_PREFIXES, canonicalPrefix } from "../lib/kinds";
 import type { Kind } from "../lib/kinds";
 import { ctxStyle } from "../lib/context-color";
@@ -42,38 +49,25 @@ export function CommandPalette({
   onClose: () => void;
 }) {
   const [query, setQuery] = useState("");
-  const [cursor, setCursor] = useState(0);
+  // Only so a hint chip can hand the caret back after filling the prefix in.
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
   const setSelection = useSelectionStore((s) => s.set);
-  const listRef = useRef<HTMLUListElement | null>(null);
-  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const result = useMemo(() => search(ITEMS, open ? query : ""), [open, query]);
-  const results = open ? result.items : [];
+  const results = open ? result.hits : [];
 
-  useEffect(() => {
-    if (!open) return;
+  const close = (): void => {
+    onClose();
+    // Cleared on the way out rather than on the way in: the palette unmounts,
+    // and a query left behind would flash under the next ⌘K before the effect
+    // that cleared it ran.
     setQuery("");
-    setCursor(0);
-    // Focus after paint so the overlay is mounted and the caret lands.
-    const t = setTimeout(() => inputRef.current?.focus(), 0);
-    return () => clearTimeout(t);
-  }, [open]);
-
-  useEffect(() => setCursor(0), [query]);
-
-  useEffect(() => {
-    const el = listRef.current?.querySelector<HTMLElement>(
-      `[data-at="${cursor}"]`,
-    );
-    el?.scrollIntoView({ block: "nearest" });
-  }, [cursor, results]);
-
-  if (!open) return null;
+  };
 
   const commit = (item: PaletteItem): void => {
-    onClose();
+    close();
 
     if (item.selectId) {
       const selection = selectionFor(item.selectId);
@@ -100,153 +94,162 @@ export function CommandPalette({
     if (item.path && item.path !== location.pathname) navigate(item.path);
   };
 
-  const onKeyDown = (e: React.KeyboardEvent): void => {
-    if (e.key === "Escape") {
-      e.preventDefault();
-      // Stopped here so the global handler does not also clear the selection.
-      e.stopPropagation();
-      onClose();
-      return;
-    }
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setCursor((c) => Math.min(results.length - 1, c + 1));
-      return;
-    }
-    if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setCursor((c) => Math.max(0, c - 1));
-      return;
-    }
-    if (e.key === "Enter") {
-      e.preventDefault();
-      const item = results[cursor];
-      if (item) commit(item);
-    }
-  };
-
   return (
-    <div
-      className="overlay-in fixed inset-0 z-50 flex items-start justify-center pt-[12vh]"
-      style={{ background: "color-mix(in srgb, #000 45%, transparent)" }}
-      onMouseDown={onClose}
-    >
+    <Modal open={open} onClose={close} label="Command palette">
+      {/* The combobox owns the list: which row is active, keeping it in view,
+          ↑↓ and ⏎, and the aria wiring that makes the input announce the row
+          under it. Escape is caught on the way DOWN, before the combobox can
+          take it - inside a modal there is nothing to close but the modal, and
+          a first Escape that only closes an invisible listbox reads as an
+          Escape that did nothing. */}
       <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="Command palette"
-        className="palette-in flex max-h-[70vh] w-[min(680px,92vw)] flex-col overflow-hidden rounded-modal border bg-canvas border-line-strong shadow-md"
-        onMouseDown={(e) => e.stopPropagation()}
-        onKeyDown={onKeyDown}
+        className="flex min-h-0 flex-col"
+        onKeyDownCapture={(e) => {
+          if (e.key !== "Escape") return;
+          e.preventDefault();
+          e.stopPropagation();
+          close();
+        }}
       >
-        {/* The one accent glow the palette gets: 4%, radial, behind the input. */}
-        <input
-          ref={inputRef}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="jump to anything — or narrow with e: vo: ent: agg: cmd: q:"
-          spellCheck={false}
-          aria-label="Search the catalog"
-          className="glow mono w-full border-b bg-transparent px-4 py-3 text-sm outline-none border-line placeholder:text-muted"
-        />
+        <Combobox<PaletteHit | null>
+          value={null}
+          onChange={(hit) => {
+            if (hit) commit(hit.item);
+          }}
+          immediate
+        >
+          {/* The one accent glow the palette gets: 4%, radial, behind the input. */}
+          <ComboboxInput
+            ref={inputRef}
+            autoFocus
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="jump to anything — or narrow with e: vo: ent: agg: cmd: q:"
+            spellCheck={false}
+            aria-label="Search the catalog"
+            className="glow mono w-full shrink-0 border-b bg-transparent px-4 py-3 text-sm outline-none border-line placeholder:text-muted"
+          />
 
-        <div className="mono flex flex-wrap items-center gap-x-2 gap-y-1 border-b px-4 py-2 border-line text-muted">
-          {result.kind ? (
-            <>
-              <span>only</span>
-              <span
-                className="chip"
-                style={{ borderColor: "var(--accent)", color: "var(--accent)" }}
-              >
-                <KindIcon kind={result.kind} />
-                {KIND_LABEL[result.kind]}
-              </span>
-              {result.term ? <span>matching “{result.term}”</span> : null}
-            </>
-          ) : (
-            <>
-              <span>narrow to</span>
-              {HINT_KINDS.map((kind) => (
-                <button
-                  key={kind}
-                  type="button"
-                  onClick={() => {
-                    setQuery(`${canonicalPrefix(kind)}: `);
-                    inputRef.current?.focus();
+          <div className="mono flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b px-4 py-2 border-line text-muted">
+            {result.kind ? (
+              <>
+                <span>only</span>
+                <span
+                  className="chip"
+                  style={{
+                    borderColor: "var(--accent)",
+                    color: "var(--accent)",
                   }}
-                  className="inline-flex items-center gap-1 rounded-control px-0.5 t-micro transition-colors hover:text-ink"
-                  title={`${KIND_PREFIXES[kind].join(" / ")} — ${KIND_LABEL[kind]}`}
                 >
-                  <KindIcon kind={kind} />
-                  {canonicalPrefix(kind)}:
-                </button>
-              ))}
-            </>
-          )}
-        </div>
-
-        {results.length === 0 ? (
-          <div className="glow mono px-4 py-8 text-center text-muted">
-            no match
-          </div>
-        ) : (
-          <ul ref={listRef} className="min-h-0 flex-1 overflow-y-auto">
-            {results.map((item, i) => {
-              const active = i === cursor;
-              return (
-                <li key={item.id} data-at={i}>
+                  <KindIcon kind={result.kind} />
+                  {KIND_LABEL[result.kind]}
+                </span>
+                {result.term ? <span>matching “{result.term}”</span> : null}
+              </>
+            ) : (
+              <>
+                <span>narrow to</span>
+                {HINT_KINDS.map((kind) => (
                   <button
+                    key={kind}
                     type="button"
-                    onMouseMove={() => setCursor(i)}
-                    onClick={() => commit(item)}
-                    className="flex w-full items-center gap-2 px-4 py-1.5 text-left t-micro transition-colors"
-                    style={{
-                      background: active ? "var(--surface-2)" : undefined,
-                      borderLeft: `2px solid ${active ? "var(--accent)" : "transparent"}`,
+                    onClick={() => {
+                      setQuery(`${canonicalPrefix(kind)}: `);
+                      inputRef.current?.focus();
                     }}
+                    className="inline-flex items-center gap-1 rounded-control px-0.5 t-micro transition-colors hover:text-ink"
+                    title={`${KIND_PREFIXES[kind].join(" / ")} — ${KIND_LABEL[kind]}`}
                   >
-                    <span
-                      className="flex shrink-0"
-                      style={ctxStyle(item.context)}
-                    >
-                      <KindIcon
-                        kind={item.kind}
-                        {...(item.context ? { contextId: item.context } : {})}
-                      />
-                    </span>
-                    <span
-                      className="mono shrink-0"
-                      title={item.name}
-                      style={
-                        item.kind === "event"
-                          ? { color: "var(--kind-event)" }
-                          : undefined
-                      }
-                    >
-                      {item.name}
-                    </span>
-                    <span
-                      className="mono truncate text-muted"
-                      title={item.detail}
-                    >
-                      {item.detail}
-                    </span>
-                    <span className="mono ml-auto flex shrink-0 items-center gap-2 text-muted">
-                      {item.badge ? (
-                        <span className="rounded-[4px] border px-1 border-line">
-                          {item.badge}
+                    <KindIcon kind={kind} />
+                    {canonicalPrefix(kind)}:
+                  </button>
+                ))}
+              </>
+            )}
+          </div>
+
+          {results.length === 0 ? (
+            <div className="glow mono px-4 py-8 text-center text-muted">
+              no match
+            </div>
+          ) : (
+            /* `static` because the list is the palette: there is no closed
+               state to render, and the modal around it is what "closed" means
+               here. */
+            <ComboboxOptions static className="min-h-0 flex-1 overflow-y-auto">
+              {results.map(({ item, excerpt }) => (
+                <ComboboxOption
+                  key={item.id}
+                  value={{ item, ...(excerpt ? { excerpt } : {}) }}
+                  /* The 2px edge is always drawn and only changes colour, so
+                     the row under the cursor never nudges the text beside it. */
+                  className={({ focus }) =>
+                    `flex w-full cursor-pointer flex-col gap-0.5 border-l-2 px-4 py-1.5 text-left t-micro transition-colors ${
+                      focus ? "bg-raised border-accent" : "border-transparent"
+                    }`
+                  }
+                >
+                  {() => (
+                    <>
+                      <span className="flex w-full items-center gap-2">
+                        <span
+                          className="flex shrink-0"
+                          style={ctxStyle(item.context)}
+                        >
+                          <KindIcon
+                            kind={item.kind}
+                            {...(item.context
+                              ? { contextId: item.context }
+                              : {})}
+                          />
+                        </span>
+                        <span
+                          className="mono shrink-0"
+                          title={item.name}
+                          style={
+                            item.kind === "event"
+                              ? { color: "var(--kind-event)" }
+                              : undefined
+                          }
+                        >
+                          {item.name}
+                        </span>
+                        <span
+                          className="mono truncate text-muted"
+                          title={item.detail}
+                        >
+                          {item.detail}
+                        </span>
+                        <span className="mono ml-auto flex shrink-0 items-center gap-2 text-muted">
+                          {item.badge ? (
+                            <span className="rounded-[4px] border px-1 border-line">
+                              {item.badge}
+                            </span>
+                          ) : null}
+                          <span className="label">{KIND_LABEL[item.kind]}</span>
+                        </span>
+                      </span>
+                      {/* Why this row is here. Sans, not mono: the line above
+                          is identifiers, this one is a sentence, and the two
+                          must not be mistaken for each other. */}
+                      {excerpt ? (
+                        <span className="w-full truncate pl-6 text-xs text-muted">
+                          {excerpt.before}
+                          <span style={{ color: "var(--accent)" }}>
+                            {excerpt.match}
+                          </span>
+                          {excerpt.after}
                         </span>
                       ) : null}
-                      <span className="label">{KIND_LABEL[item.kind]}</span>
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
+                    </>
+                  )}
+                </ComboboxOption>
+              ))}
+            </ComboboxOptions>
+          )}
+        </Combobox>
 
-        <div className="mono flex items-center gap-3 border-t px-4 py-2 border-line text-muted">
+        <div className="mono flex shrink-0 items-center gap-3 border-t px-4 py-2 border-line text-muted">
           <span>↑↓ move</span>
           <span>⏎ select</span>
           <span>esc close</span>
@@ -256,6 +259,6 @@ export function CommandPalette({
           </span>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

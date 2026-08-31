@@ -107,17 +107,20 @@ function StepRow({
         >
           {step.label ?? step.ref ?? step.kind}
         </span>
-        <span className="mono flex items-center gap-1 truncate text-muted">
-          <span className="truncate" title={step.from}>
-            {step.from}
+        {/* Two ids on one line in a rail the reader can drag down to a
+            quarter of the pane. Both are cut from the left, so what survives
+            is the end that differs. */}
+        <span className="mono flex items-center gap-1 text-muted">
+          <span className="trunc-tail" title={step.from}>
+            <bdi>{step.from}</bdi>
           </span>
           {self ? (
             <CornerDownLeft size={12} aria-hidden className="shrink-0" />
           ) : (
             <ArrowRight size={12} aria-hidden className="shrink-0" />
           )}
-          <span className="truncate" title={step.to}>
-            {step.to}
+          <span className="trunc-tail" title={step.to}>
+            <bdi>{step.to}</bdi>
           </span>
         </span>
       </span>

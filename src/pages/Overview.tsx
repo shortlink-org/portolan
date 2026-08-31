@@ -2,7 +2,7 @@ import { Link } from "react-router";
 import { AlertTriangle } from "lucide-react";
 import { catalog } from "../data";
 import { contextStats, flowsByReach } from "../lib/derive";
-import { contextVar, ctxStyle } from "../lib/context-color";
+import { ctxStyle } from "../lib/context-color";
 import { absoluteTime, relativeTime } from "../lib/format";
 import { useCountUp, staggerStyle } from "../lib/motion";
 import { CONTEXT_ANCHOR, OVERVIEW_ANCHOR, paths } from "../routes";
@@ -58,7 +58,7 @@ export function Overview() {
       </div>
 
       <section id={OVERVIEW_ANCHOR.contexts} className="mt-section">
-        <SectionTitle>Contexts</SectionTitle>
+        <SectionTitle anchor={OVERVIEW_ANCHOR.contexts}>Contexts</SectionTitle>
         <div
           className="grid gap-grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))]"
           data-nav-list
@@ -68,14 +68,8 @@ export function Overview() {
             return (
               <div
                 key={context.id}
-                className="card stagger-in"
-                /* Longhands only: React warns when a shorthand and a longhand
-                   for the same edge disagree across renders. */
-                style={{
-                  ...staggerStyle(i),
-                  borderLeftWidth: 3,
-                  borderLeftColor: contextVar(context.id),
-                }}
+                className="card card-tagged stagger-in"
+                style={{ ...staggerStyle(i), ...ctxStyle(context.id) }}
               >
                 {/* Wraps: with a name, an id, the row actions and up to two
                     chips on one line, a 300px card runs out of room before the
@@ -85,7 +79,7 @@ export function Overview() {
                   <Link
                     to={paths.context(context.id)}
                     data-nav-item
-                    className="rounded-control font-semibold hover:underline"
+                    className="card-link rounded-control font-semibold"
                     title={context.name}
                   >
                     {context.name}
@@ -145,6 +139,7 @@ export function Overview() {
 
       <section id={OVERVIEW_ANCHOR.flows} className="mt-section">
         <SectionTitle
+          anchor={OVERVIEW_ANCHOR.flows}
           right={
             <Link
               to={paths.flows()}

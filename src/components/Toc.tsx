@@ -4,6 +4,15 @@
 // component every long page uses, because two implementations of "where am I"
 // is exactly how the two start disagreeing.
 //
+// It costs 24px of the page, not 208.
+//
+// At rest it is a column of ticks - one per section, the one you are in lit -
+// which is the whole of what a table of contents is for while you are reading:
+// how many sections, and which. The names are what you want only when you have
+// decided to leave, so they arrive on hover or focus, in a panel that opens
+// leftwards OVER the page rather than pushing it. Nothing reflows: the dock
+// keeps its 24px whether the panel is open or not.
+//
 // Spy notes: the observer's root is the page's own scroll container, not the
 // window - this shell never scrolls the document - and the bottom margin is
 // pulled up to 65% so a section counts as "here" once its heading reaches the
@@ -76,7 +85,7 @@ export function Toc({
   items: readonly TocItem[];
   /** Accessible name for the nav landmark. */
   label?: string;
-  /** The heading printed above the list. */
+  /** The heading printed above the list, once the panel is open. */
   title?: string;
 }) {
   const ids = useMemo(() => items.map((i) => i.id), [items]);
@@ -86,40 +95,38 @@ export function Toc({
 
   return (
     <nav
-      /* Pinned beside the page it indexes, translucent so the content
-         scrolling past it stays visible. Hidden below the two-column
-         breakpoint, where the page has no right edge to spare. */
-      className="sticky-bar sticky top-0 hidden h-fit w-52 shrink-0 self-start border-l lg:block border-line"
+      /* Hidden below the two-column breakpoint, where the page has no right
+         edge to spare at all. */
+      className="toc-dock sticky top-0 hidden h-fit shrink-0 self-start lg:block"
       aria-label={label}
     >
-      <div className="label mb-2 pl-4">{title}</div>
-      <ul>
-        {items.map((item) => {
-          const on = item.id === active;
-          return (
-            <li key={item.id}>
-              <a
-                href={`#${item.id}`}
-                aria-current={on ? "location" : undefined}
-                /* The marker lights the rail the TOC is already drawing: a 2px
-                   rule laid over the nav's own hairline, always present and
-                   transparent when idle, so nothing shifts as it moves. */
-                className={`block truncate border-l-2 py-0.5 pl-4 t-micro transition-colors hover:underline ${
-                  on ? "text-ink" : "text-muted"
-                }`}
-                style={{
-                  borderColor: on ? "var(--accent)" : "transparent",
-                  /* -1 laps the nav's own hairline, so the lit rule replaces
-                     it rather than sitting beside it. */
-                  marginLeft: -1 + ((item.depth ?? 1) - 1) * 10,
-                }}
-              >
-                {item.label}
-              </a>
-            </li>
-          );
-        })}
-      </ul>
+      <div className="toc-panel">
+        <div className="label toc-name mb-1 px-3 pt-1">{title}</div>
+        <ul>
+          {items.map((item) => {
+            const on = item.id === active;
+            return (
+              <li key={item.id}>
+                <a
+                  href={`#${item.id}`}
+                  aria-current={on ? "location" : undefined}
+                  /* The tick is the marker AND the hairline: 2px, always
+                     drawn, transparent when idle, so nothing shifts as the
+                     spy moves down the page. */
+                  className={`toc-item ${on ? "text-ink" : "text-muted"}`}
+                  style={{
+                    borderColor: on ? "var(--accent)" : "var(--border)",
+                    marginLeft: ((item.depth ?? 1) - 1) * 10,
+                  }}
+                  title={item.label}
+                >
+                  <span className="toc-name">{item.label}</span>
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
     </nav>
   );
 }

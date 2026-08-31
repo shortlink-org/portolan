@@ -13,6 +13,7 @@
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
 import { X } from "lucide-react";
+import { Modal } from "../components/Overlay";
 import { OVERVIEW_ANCHOR, paths } from "../routes";
 
 export interface Shortcut {
@@ -32,6 +33,7 @@ export const GO_TO: { key: string; to: string; what: string }[] = [
     to: `${paths.overview()}#${OVERVIEW_ANCHOR.contexts}`,
     what: "domains — the contexts, on the overview",
   },
+  { key: "m", to: paths.map(), what: "the context map" },
   { key: "p", to: paths.problems(), what: "problems" },
   { key: "o", to: paths.overview(), what: "overview" },
 ];
@@ -212,36 +214,14 @@ export function ShortcutsSheet({
   open: boolean;
   onClose: () => void;
 }) {
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        // Stopped so the global Esc does not also clear the selection: the
-        // reader was closing a sheet, not deselecting anything.
-        e.preventDefault();
-        e.stopPropagation();
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
-  }, [open, onClose]);
-
-  if (!open) return null;
-
   return (
-    <div
-      className="overlay-in fixed inset-0 z-50 flex items-start justify-center pt-[12vh]"
-      style={{ background: "color-mix(in srgb, #000 45%, transparent)" }}
-      onMouseDown={onClose}
+    <Modal
+      open={open}
+      onClose={onClose}
+      label="Keyboard shortcuts"
+      width="min(560px,92vw)"
     >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="Keyboard shortcuts"
-        className="palette-in flex max-h-[70vh] w-[min(560px,92vw)] flex-col overflow-hidden rounded-modal border bg-canvas border-line-strong shadow-md"
-        onMouseDown={(e) => e.stopPropagation()}
-      >
+      <>
         <div className="flex shrink-0 items-center gap-2 border-b px-4 py-2.5 border-line">
           <span className="label">keyboard</span>
           <button
@@ -281,7 +261,7 @@ export function ShortcutsSheet({
             exception, because that is what a field is for
           </p>
         </div>
-      </div>
-    </div>
+      </>
+    </Modal>
   );
 }

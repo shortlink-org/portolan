@@ -1,11 +1,51 @@
 // The command palette's index and its ranking. Pure: given a catalog and a
 // query string it returns the rows to draw, so the ordering can be asserted in
 // a test rather than eyeballed.
+//
+// Every row also carries the PROSE that belongs to it - a context's summary, a
+// readme and the invariants written in it, an event's version notes, a field's
+// doc line, the body of a decision. Names and ids are how you find a thing you
+// can already name; prose is how you find the thing you can only describe
+// ("the rule about two currencies in one order"). It is the last tier the
+// scorer tries, so a prose hit never displaces a name, and a hit brings its
+// own line of context back with it - a row that matched on something the
+// reader cannot see is a row they have to open to understand.
 
-import type { Catalog } from "../catalog";
+import type { Block, Catalog, Event, Field } from "../catalog";
 import { parseQuery } from "./kinds";
 import type { Kind, ParsedQuery } from "./kinds";
 import { paths } from "../routes";
+
+/**
+ * Markdown, flattened to one line of searchable prose.
+ *
+ * Fenced code is dropped whole: a readme's Go snippet would match half the
+ * catalog's identifiers and answer nothing. The remaining marks are stripped
+ * rather than parsed - `**never**` must be found by typing "never", and an
+ * excerpt is a sentence, not a rendering.
+ */
+export function flattenProse(markdown: string): string {
+  return markdown
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/[`*_#>|[\]]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Everything a field says about itself, for the row that owns the field. */
+function fieldProse(fields: readonly Field[] | undefined): string {
+  return (fields ?? []).map((f) => `${f.name} ${f.doc}`).join(" ");
+}
+
+function eventProse(event: Event): string {
+  return event.versions
+    .map((v) => `${v.doc} ${fieldProse(v.fields)}`)
+    .join(" ");
+}
+
+function blockProse(block: Block): string {
+  return `${block.doc} ${fieldProse(block.fields)}`;
+}
 
 export interface PaletteItem {
   kind: Kind;
@@ -27,6 +67,12 @@ export interface PaletteItem {
   context: string | null;
   /** Right-aligned extra, e.g. an event's latest version. */
   badge?: string;
+  /**
+   * The row's own prose, flattened to one line. Searched last, and only for
+   * terms long enough to mean something; a row with nothing written about it
+   * simply leaves it out.
+   */
+  text?: string;
 }
 
 /** Every navigable thing in the catalog, built once at module load. */
@@ -42,6 +88,7 @@ export function paletteItems(catalog: Catalog): PaletteItem[] {
       detail: context.name,
       path: paths.context(context.id),
       context: context.id,
+      text: flattenProse(`${context.name} ${context.summary}`),
     });
 
     for (const service of context.services) {
@@ -53,6 +100,7 @@ export function paletteItems(catalog: Catalog): PaletteItem[] {
         detail: service.id,
         path: paths.service(context.id, service.slug),
         context: context.id,
+        text: flattenProse(`${service.name} ${service.readme}`),
       });
 
       for (const aggregate of service.aggregates) {
@@ -65,6 +113,9 @@ export function paletteItems(catalog: Catalog): PaletteItem[] {
           path: paths.aggregate(context.id, service.slug, aggregate.slug),
           context: context.id,
           badge: `root: ${aggregate.root}`,
+          // The readme is where the invariants live, and an invariant is the
+          // one fact about an aggregate nobody can guess the name of.
+          text: flattenProse(`${aggregate.name} ${aggregate.readme}`),
         });
 
         for (const event of aggregate.events) {
@@ -83,6 +134,7 @@ export function paletteItems(catalog: Catalog): PaletteItem[] {
             ),
             context: context.id,
             ...(latest ? { badge: latest.version } : {}),
+            text: flattenProse(eventProse(event)),
           });
         }
 
@@ -99,6 +151,7 @@ export function paletteItems(catalog: Catalog): PaletteItem[] {
               vo.slug,
             ),
             context: context.id,
+            text: flattenProse(blockProse(vo)),
           });
         }
 
@@ -116,6 +169,7 @@ export function paletteItems(catalog: Catalog): PaletteItem[] {
             ),
             context: context.id,
             ...(entity.name === aggregate.root ? { badge: "root" } : {}),
+            text: flattenProse(blockProse(entity)),
           });
         }
 
@@ -129,6 +183,7 @@ export function paletteItems(catalog: Catalog): PaletteItem[] {
             detail: aggregate.id,
             path: `${paths.aggregate(context.id, service.slug, aggregate.slug)}#bb-${op.kind === "command" ? "commands" : "queries"}`,
             context: context.id,
+            ...(op.doc ? { text: flattenProse(op.doc) } : {}),
           });
         }
       }
@@ -148,6 +203,7 @@ export function paletteItems(catalog: Catalog): PaletteItem[] {
       path: null,
       context: null,
       badge: `${def.fields.length}f`,
+      text: flattenProse(fieldProse(def.fields)),
     });
   }
 
@@ -159,6 +215,7 @@ export function paletteItems(catalog: Catalog): PaletteItem[] {
       detail: flow.name,
       path: paths.flow(flow.slug),
       context: null,
+      text: flattenProse(`${flow.name} ${flow.summary}`),
     });
   }
 
@@ -171,6 +228,7 @@ export function paletteItems(catalog: Catalog): PaletteItem[] {
       path: paths.adr(adr.slug),
       context: adr.scope.kind === "context" ? adr.scope.context : null,
       badge: adr.status,
+      text: flattenProse(`${adr.title} ${adr.body}`),
     });
   }
 
@@ -200,7 +258,62 @@ export function score(item: PaletteItem, term: string): number | null {
   if (name.includes(needle)) return 3;
   if (item.id.toLowerCase().includes(needle)) return 4;
   if (item.detail.toLowerCase().includes(needle)) return 5;
+  // Last, and only for a term with something to say. Two characters match
+  // prose everywhere and rank nothing; the floor is what stops "or" from
+  // returning the whole estate under the rows that actually answered.
+  if (
+    term.length >= PROSE_MIN &&
+    item.text &&
+    item.text.toLowerCase().includes(needle)
+  )
+    return 6;
   return null;
+}
+
+/** Shortest term the prose tier will answer. Below it, names only. */
+export const PROSE_MIN = 3;
+
+/** How much of the sentence around a hit comes back with it. */
+const LEAD = 32;
+const TRAIL = 56;
+
+/**
+ * The words around a prose hit, cut to fit one row.
+ *
+ * Returned as three parts rather than one string so the caller can mark the
+ * match without parsing its own output back apart - and so a term containing
+ * regex punctuation is never a regex.
+ */
+export interface Excerpt {
+  before: string;
+  match: string;
+  after: string;
+}
+
+export function excerptOf(text: string, term: string): Excerpt | null {
+  if (!term) return null;
+  const at = text.toLowerCase().indexOf(term.toLowerCase());
+  if (at < 0) return null;
+
+  const end = at + term.length;
+  // Cut at a space where there is one nearby, so an excerpt starts on a word
+  // rather than in the middle of one.
+  let from = Math.max(0, at - LEAD);
+  if (from > 0) {
+    const space = text.indexOf(" ", from);
+    if (space >= 0 && space < at) from = space + 1;
+  }
+  let to = Math.min(text.length, end + TRAIL);
+  if (to < text.length) {
+    const space = text.lastIndexOf(" ", to);
+    if (space > end) to = space;
+  }
+
+  return {
+    before: (from > 0 ? "…" : "") + text.slice(from, at),
+    match: text.slice(at, end),
+    after: text.slice(end, to) + (to < text.length ? "…" : ""),
+  };
 }
 
 function escapeRegex(raw: string): string {
@@ -222,11 +335,25 @@ const KIND_RANK: Record<Kind, number> = {
   adr: 10,
 };
 
+/**
+ * One row of the result list. A hit is not the same thing as an index row: it
+ * knows WHY it is here, which is the whole difference between a name match and
+ * a match on something written three paragraphs into a readme.
+ */
+export interface PaletteHit {
+  item: PaletteItem;
+  /** Set only when the term was found in prose and nowhere shorter. */
+  excerpt?: Excerpt;
+}
+
 export interface PaletteResult extends ParsedQuery {
-  items: PaletteItem[];
+  hits: PaletteHit[];
   /** Matches dropped by the limit, so the palette can say so. */
   truncated: number;
 }
+
+/** The score the prose tier returns; the one tier that owes an excerpt. */
+const PROSE_SCORE = 6;
 
 export function search(
   items: PaletteItem[],
@@ -252,9 +379,15 @@ export function search(
       a.item.id.localeCompare(b.item.id),
   );
 
+  const hits = scored.slice(0, limit).map(({ item, score: s }) => {
+    if (s !== PROSE_SCORE || !item.text) return { item };
+    const excerpt = excerptOf(item.text, parsed.term);
+    return excerpt ? { item, excerpt } : { item };
+  });
+
   return {
     ...parsed,
-    items: scored.slice(0, limit).map((s) => s.item),
+    hits,
     truncated: Math.max(0, scored.length - limit),
   };
 }

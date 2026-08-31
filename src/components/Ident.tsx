@@ -10,33 +10,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
+import { toClipboard } from "../lib/clipboard";
 
 /** How long "copied" stays up. One second: long enough to read, short enough. */
 const SHOWN_MS = 1000;
-
-async function toClipboard(text: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    // Insecure origin, or a browser that refuses without a gesture it trusts.
-    // The fallback is old but it is the one that still works there.
-    try {
-      const area = document.createElement("textarea");
-      area.value = text;
-      area.setAttribute("readonly", "");
-      area.style.position = "fixed";
-      area.style.opacity = "0";
-      document.body.appendChild(area);
-      area.select();
-      const ok = document.execCommand("copy");
-      document.body.removeChild(area);
-      return ok;
-    } catch {
-      return false;
-    }
-  }
-}
 
 export function Ident({
   value,

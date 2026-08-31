@@ -41,6 +41,8 @@ function crumbsFor(pathname: string): Crumb[] {
 
   if (parts[0] === "graph") return [{ label: "graph", to: "/graph" }];
 
+  if (parts[0] === "map") return [{ label: "map", to: "/map" }];
+
   if (parts[0] === "c") {
     const [, contextId, serviceSlug, aggregateSlug, eventSlug] = parts;
     const crumbs: Crumb[] = [];

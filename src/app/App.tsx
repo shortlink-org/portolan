@@ -18,6 +18,7 @@ import { FlowIndex } from "../pages/FlowIndex";
 import { AdrIndex } from "../pages/AdrIndex";
 import { AdrDetail } from "../pages/AdrDetail";
 import { Overview } from "../pages/Overview";
+import { ContextMap } from "../pages/ContextMap";
 import { ContextPage } from "../pages/ContextPage";
 import { ServicePage } from "../pages/ServicePage";
 import { AggregatePage } from "../pages/AggregatePage";
@@ -28,6 +29,7 @@ import { Problems } from "../pages/Problems";
 import { NotFoundPage } from "../pages/NotFound";
 import { CatalogFailure } from "../pages/CatalogFailure";
 import { catalogError } from "../data";
+import { SidePanel } from "../components/Overlay";
 import { WithDetail } from "../selection/DetailPanel";
 import { SelectionSync } from "../selection/sync";
 import { HashScroll } from "./HashScroll";
@@ -58,6 +60,14 @@ function AppRoutes() {
       <Route path="/adrs" element={<AdrIndex />} />
       <Route path="/adrs/:adr" element={<AdrDetail />} />
       <Route path="/problems" element={<Problems />} />
+      <Route
+        path="/map"
+        element={
+          <WithDetail id="map">
+            <ContextMap />
+          </WithDetail>
+        }
+      />
       <Route
         path="/c/:context"
         element={
@@ -124,33 +134,16 @@ function SidebarDrawer() {
   // the drawer's job. Without this the page they asked for is behind a scrim.
   useEffect(() => setDrawer(false), [pathname, setDrawer]);
 
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      e.preventDefault();
-      e.stopPropagation();
-      setDrawer(false);
-    };
-    window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
-  }, [open, setDrawer]);
-
-  if (!open) return null;
-
   return (
-    <div
-      className="overlay-in fixed inset-0 z-40 flex"
-      style={{ background: "color-mix(in srgb, #000 45%, transparent)" }}
-      onMouseDown={() => setDrawer(false)}
+    <SidePanel
+      open={open}
+      onClose={() => setDrawer(false)}
+      side="left"
+      label="Catalog"
+      width="min(320px,85vw)"
     >
-      <div
-        className="drawer-in h-full w-[min(320px,85vw)] bg-canvas shadow-md"
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <Sidebar />
-      </div>
-    </div>
+      <Sidebar />
+    </SidePanel>
   );
 }
 

@@ -13,6 +13,15 @@ export interface LayoutInput {
   /** extra space between layers; the focused graph wants more than the big one */
   layerSpacing?: number;
   nodeSpacing?: number;
+  /**
+   * "layered" is a flow: it reads left to right and every edge is a step. The
+   * context map is not a flow - it is a map, its edges run both ways, and a
+   * layered pass would put a third domain in the middle of the line between
+   * the other two. "stress" spreads the nodes in two dimensions instead, and
+   * `edgeLength` is how far apart it tries to hold them.
+   */
+  algorithm?: "layered" | "stress";
+  edgeLength?: number;
 }
 
 export interface LayoutResult {
@@ -36,21 +45,29 @@ export async function layoutWithElk(input: LayoutInput): Promise<LayoutResult> {
       : {}),
   }));
 
+  const stress = input.algorithm === "stress";
   const graph: ElkNode = {
     id: "root",
-    layoutOptions: {
-      "elk.algorithm": "layered",
-      "elk.direction": input.direction ?? "RIGHT",
-      "elk.layered.spacing.nodeNodeBetweenLayers": String(
-        input.layerSpacing ?? 130,
-      ),
-      "elk.spacing.nodeNode": String(input.nodeSpacing ?? 34),
-      "elk.layered.spacing.edgeNodeBetweenLayers": "24",
-      "elk.spacing.edgeLabel": "6",
-      "elk.layered.nodePlacement.strategy": "NETWORK_SIMPLEX",
-      "elk.layered.crossingMinimization.semiInteractive": "true",
-      "elk.padding": "[top=16,left=16,bottom=16,right=16]",
-    },
+    layoutOptions: stress
+      ? {
+          "elk.algorithm": "stress",
+          "elk.stress.desiredEdgeLength": String(input.edgeLength ?? 320),
+          "elk.spacing.nodeNode": String(input.nodeSpacing ?? 60),
+          "elk.padding": "[top=16,left=16,bottom=16,right=16]",
+        }
+      : {
+          "elk.algorithm": "layered",
+          "elk.direction": input.direction ?? "RIGHT",
+          "elk.layered.spacing.nodeNodeBetweenLayers": String(
+            input.layerSpacing ?? 130,
+          ),
+          "elk.spacing.nodeNode": String(input.nodeSpacing ?? 34),
+          "elk.layered.spacing.edgeNodeBetweenLayers": "24",
+          "elk.spacing.edgeLabel": "6",
+          "elk.layered.nodePlacement.strategy": "NETWORK_SIMPLEX",
+          "elk.layered.crossingMinimization.semiInteractive": "true",
+          "elk.padding": "[top=16,left=16,bottom=16,right=16]",
+        },
     children,
     edges,
   };

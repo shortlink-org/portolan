@@ -7,6 +7,7 @@ import { addedFields, stepsReferencing } from "../lib/derive";
 import { ctxStyle } from "../lib/context-color";
 import { EVENT_ANCHOR, paths, servicePath } from "../routes";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
+import { Select } from "../components/Select";
 import { Ident } from "../components/Ident";
 import { RowActions } from "../components/RowActions";
 import { Toc } from "../components/Toc";
@@ -188,21 +189,22 @@ export function EventPage() {
         id={event.id}
         contextId={context.id}
         right={
-          <label className="mono flex items-center gap-1.5 text-muted">
+          <span className="mono flex items-center gap-1.5 text-muted">
             version
-            <select
+            <Select
               value={selected.version}
-              onChange={(e) => setVersion(e.target.value)}
-              className="mono rounded-control border bg-transparent px-2 py-1 border-line text-ink"
-            >
-              {[...event.versions].reverse().map((v) => (
-                <option key={v.version} value={v.version}>
-                  {v.version}
-                  {v.version === latest ? " (latest)" : ""}
-                </option>
-              ))}
-            </select>
-          </label>
+              onChange={setVersion}
+              label="Schema version"
+              title="Which version of this event's schema the page shows"
+              menuWidth={260}
+              options={[...event.versions].reverse().map((v) => ({
+                value: v.version,
+                label:
+                  v.version === latest ? `${v.version} (latest)` : v.version,
+                note: v.doc,
+              }))}
+            />
+          </span>
         }
       >
         <p className="mt-2 max-w-prose text-muted">{selected.doc}</p>
@@ -242,6 +244,7 @@ export function EventPage() {
           {/* --- Schema ------------------------------------------------- */}
           <section id={EVENT_ANCHOR.schema}>
             <SectionTitle
+              anchor={EVENT_ANCHOR.schema}
               right={
                 <span className="mono text-muted">
                   {selected.fields.length} fields · {selected.version}
@@ -284,6 +287,7 @@ export function EventPage() {
             className="mt-section max-w-table"
           >
             <SectionTitle
+              anchor={EVENT_ANCHOR.versions}
               right={<span className="mono text-muted">oldest first</span>}
             >
               Versions
@@ -341,6 +345,7 @@ export function EventPage() {
           {/* --- Consumers ---------------------------------------------- */}
           <section id={EVENT_ANCHOR.consumers} className="mt-section">
             <SectionTitle
+              anchor={EVENT_ANCHOR.consumers}
               right={
                 <span className="mono text-muted">
                   published by{" "}
@@ -410,7 +415,7 @@ export function EventPage() {
 
           {/* --- Flows -------------------------------------------------- */}
           <section id={EVENT_ANCHOR.flows} className="mt-section max-w-table">
-            <SectionTitle>Flows</SectionTitle>
+            <SectionTitle anchor={EVENT_ANCHOR.flows}>Flows</SectionTitle>
             {appearances.length === 0 ? (
               <Empty>no flow has been charted through this event</Empty>
             ) : (
@@ -442,7 +447,9 @@ export function EventPage() {
             id={EVENT_ANCHOR.decisions}
             className="mt-section max-w-table"
           >
-            <SectionTitle>Decisions</SectionTitle>
+            <SectionTitle anchor={EVENT_ANCHOR.decisions}>
+              Decisions
+            </SectionTitle>
             {decisions.length === 0 ? (
               <Empty>
                 nothing has been decided about this event on the record

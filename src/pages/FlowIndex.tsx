@@ -141,7 +141,7 @@ export function FlowIndex() {
                   <Link
                     to={`/flows/${flow.slug}`}
                     data-nav-item
-                    className="rounded-control font-semibold hover:underline"
+                    className="card-link rounded-control font-semibold"
                     title={flow.name}
                   >
                     {flow.name}

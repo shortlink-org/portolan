@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { ctxStyle } from "../lib/context-color";
+import { AnchorLink } from "./AnchorLink";
 import { Ident } from "./Ident";
 
 /**
@@ -46,13 +47,25 @@ export function PageHeader({
 export function SectionTitle({
   children,
   right,
+  anchor,
 }: {
   children: ReactNode;
   right?: ReactNode;
+  /**
+   * The id of the section this titles. Every count in this app already links
+   * to one of these; passing it here is what lets a reader link back out.
+   */
+  anchor?: string;
 }) {
   return (
-    <div className="mb-3 flex items-center gap-2">
+    <div className={`mb-3 flex items-center gap-2 ${anchor ? "anchored" : ""}`}>
       <h2 className="label">{children}</h2>
+      {anchor ? (
+        <AnchorLink
+          id={anchor}
+          {...(typeof children === "string" ? { label: children } : {})}
+        />
+      ) : null}
       {right ? <div className="ml-auto">{right}</div> : null}
     </div>
   );

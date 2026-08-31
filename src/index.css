@@ -252,6 +252,21 @@
   min-width: 0;
 }
 
+/* The same, cut from the other end. A dotted id reads right to left: the head
+   is the context, which every rail already says in colour, and the tail is the
+   only part that tells two participants apart. `shop.oms` and `shop.pricing`
+   truncated from the right are both `sho…`; from the left they are `…oms` and
+   `…pricing`, which is the whole question the line was asked.
+   The box is rtl so the ellipsis lands at the start; the text inside must be
+   wrapped in <bdi> so it is isolated and still reads left to right. */
+@utility trunc-tail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  direction: rtl;
+}
+
 @layer components {
   /* The bordered monospace token used for status, contexts and provenance. */
   .chip {
@@ -284,15 +299,73 @@
   }
 
   /* A bordered, hoverable block that is also a link. Padding is the card
-     token; the shadow is the only elevation a card ever gets. */
+     token; the shadow is the only elevation a card ever gets - a card does not
+     rise on hover, because md is the overlay tier and a grid of twelve cards
+     that all want to be overlays is a grid nobody can read. What changes on
+     hover is the border, from the hairline to the strong one: the card firms
+     up rather than lifts. */
   .card {
-    @apply block rounded-card border border-line p-card shadow-xs;
+    @apply relative block rounded-card border border-line p-card shadow-xs;
     transition:
       background-color var(--dur-micro) var(--ease-out),
       border-color var(--dur-micro) var(--ease-out);
   }
   .card:hover {
     @apply bg-surface;
+    border-color: var(--border-strong);
+  }
+
+  /* A card that HOLDS destinations rather than being one. It must not light
+     up under the pointer: a surface that reacts to hover and answers no click
+     is the fastest way to teach a reader that hover means nothing here. */
+  .card-static:hover {
+    background: transparent;
+    border-color: var(--border);
+  }
+
+  /* The context stripe, as a class rather than three inline style longhands
+     on every card that wants one. It stays its context's colour while the
+     other three edges firm up, so hovering never costs the card its tag. */
+  .card-tagged {
+    border-left-width: 3px;
+    border-left-color: var(--ctx, var(--accent));
+  }
+  .card-tagged:hover {
+    border-left-color: var(--ctx, var(--accent));
+  }
+
+  /*
+   * A card whose title is a link, made clickable everywhere.
+   *
+   * A 300px card with one 90px link in the corner of it is a target the reader
+   * has to aim at, and every card in this app is a card about ONE thing. The
+   * title's ::after covers the whole card, so a click anywhere follows it;
+   * every other control inside is lifted above that sheet so the counts, the
+   * chips and the row actions keep their own clicks. Links cannot nest, which
+   * is why this is a pseudo-element and not a wrapper.
+   */
+  .card-link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+  }
+  .card :is(a, button):not(.card-link) {
+    position: relative;
+    z-index: 1;
+  }
+  .card:hover .card-link {
+    text-decoration: underline;
+  }
+  /* The ring belongs to the card, not to the eight characters of its name:
+     j and k move focus to the title, and what the reader needs to see is
+     which card they are standing on. */
+  .card:has(.card-link:focus-visible) {
+    outline: 2px solid color-mix(in srgb, var(--accent) 40%, transparent);
+    outline-offset: 2px;
+  }
+  .card .card-link:focus-visible {
+    outline: none;
   }
   .row {
     @apply flex items-center gap-3 rounded-control border border-line px-3 py-2;
@@ -364,6 +437,66 @@
   /* Non-navigable header for a group of leaves inside an aggregate. */
   .group-row {
     @apply mono flex w-full items-center gap-1.5 py-[3px] pr-2 text-left text-muted hover:bg-surface;
+  }
+
+  /* ---------------------------------------------------------------------
+     The table of contents dock. 24px of the page, whatever the section names
+     are - the panel inside is absolute and anchored to the dock's right edge,
+     so opening it costs the layout nothing and closing it costs no reflow.
+     --------------------------------------------------------------------- */
+  .toc-dock {
+    width: 24px;
+  }
+  /* In flow, so the dock has a height to be hovered at all - what overlays is
+     the WIDTH. The panel grows to 216px while its left margin goes equally
+     negative, so its right edge never moves and the extra 192px are taken out
+     of the page rather than added to it. */
+  .toc-panel {
+    position: relative;
+    z-index: 20;
+    width: 24px;
+    overflow: hidden;
+    padding-bottom: 4px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-card);
+    transition:
+      width var(--dur-micro) var(--ease-out),
+      margin-left var(--dur-micro) var(--ease-out),
+      background-color var(--dur-micro) var(--ease-out),
+      border-color var(--dur-micro) var(--ease-out),
+      box-shadow var(--dur-micro) var(--ease-out);
+  }
+  .toc-dock:hover .toc-panel,
+  .toc-panel:focus-within {
+    width: 216px;
+    margin-left: -192px;
+    border-color: var(--border-strong);
+    background: var(--bg);
+    box-shadow: var(--shadow-md);
+  }
+  /* The tick is the marker and the hairline at once: 2px, always drawn, so
+     nothing shifts as the spy moves down the page. */
+  .toc-item {
+    @apply block truncate py-0.5 pr-2 pl-2.5;
+    border-left-width: 2px;
+    border-left-style: solid;
+    transition:
+      color var(--dur-micro) var(--ease-out),
+      border-color var(--dur-micro) var(--ease-out);
+  }
+  .toc-item:hover {
+    text-decoration: underline;
+  }
+  /* Names are what you want once you have decided to leave, not while you are
+     reading. They are clipped rather than removed, so the panel can measure
+     them the moment it opens and a screen reader can always read them. */
+  .toc-name {
+    @apply block truncate opacity-0;
+    transition: opacity var(--dur-micro) var(--ease-out);
+  }
+  .toc-dock:hover .toc-name,
+  .toc-panel:focus-within .toc-name {
+    @apply opacity-100;
   }
 
   /* Anything that pins itself over scrolling content is translucent, not
@@ -473,6 +606,7 @@
   }
   tr:hover .row-actions,
   .row:hover .row-actions,
+  .card:hover .row-actions,
   .row-actions:focus-within {
     @apply opacity-100;
   }
@@ -484,6 +618,27 @@
   }
   .row-action:hover {
     @apply bg-surface text-ink;
+  }
+
+  /* A heading you can link to. `.anchored` is a trigger and nothing else - it
+     sets no layout, so it can be dropped onto a row that already has one, or
+     onto a markdown <h2> that must keep its own rule underneath. The chain is
+     in the DOM at rest, invisible, so keyboard focus can still reach it: a
+     page with nine sections must not be a page with nine chain icons. */
+  .anchor-link {
+    @apply inline-flex shrink-0 items-center rounded-[4px] p-0.5 opacity-0 text-muted;
+    transition:
+      opacity var(--dur-micro) var(--ease-out),
+      background-color var(--dur-micro) var(--ease-out),
+      color var(--dur-micro) var(--ease-out);
+  }
+  .anchored:hover .anchor-link,
+  .anchor-link:focus-visible {
+    @apply opacity-100;
+  }
+  .anchor-link:hover {
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
   }
 
   /* The sidebar tree obeys the same density switch as the tables. */
@@ -722,6 +877,12 @@ h3 {
   font-size: var(--text-base);
   font-weight: 600;
   margin: 16px 0 4px;
+}
+/* A readme heading keeps its own block layout and its own rule; the chain
+   simply rides at the end of the line. */
+.prose .anchor-link {
+  margin-left: 6px;
+  vertical-align: middle;
 }
 .prose p {
   margin: 8px 0;

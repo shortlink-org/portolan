@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { catalog } from "../data";
-import { paletteItems, search } from "./palette";
+import { excerptOf, flattenProse, paletteItems, search } from "./palette";
 import { isRoutable } from "../routes";
 import { allEvents } from "../catalog";
 
 const items = paletteItems(catalog);
-const kinds = (raw: string) =>
-  new Set(search(items, raw).items.map((i) => i.kind));
+const rows = (raw: string, limit?: number) =>
+  search(items, raw, limit).hits.map((h) => h.item);
+const kinds = (raw: string) => new Set(rows(raw).map((i) => i.kind));
 
 describe("palette index", () => {
   it("indexes every kind, and every row goes somewhere real", () => {
@@ -86,13 +87,11 @@ describe("prefix filters", () => {
   });
 
   it("finds the value objects called Money and not the events holding one", () => {
-    const result = search(items, "vo: money");
-    expect(result.items.length).toBeGreaterThan(1);
-    expect(result.items.every((i) => i.name === "Money")).toBe(true);
+    const found = rows("vo: money");
+    expect(found.length).toBeGreaterThan(1);
+    expect(found.every((i) => i.name === "Money")).toBe(true);
     // Money is a shared kernel type: several aggregates name it.
-    expect(new Set(result.items.map((i) => i.detail)).size).toBe(
-      result.items.length,
-    );
+    expect(new Set(found.map((i) => i.detail)).size).toBe(found.length);
   });
 
   it("echoes the parse back so the palette can show what it understood", () => {
@@ -105,30 +104,117 @@ describe("prefix filters", () => {
 
 describe("ranking", () => {
   it("puts an exact name above a partial one", () => {
-    const first = search(items, "Money").items[0];
+    const first = rows("Money")[0];
     expect(first?.name).toBe("Money");
   });
 
   it("prefers a name match to an id or owner match", () => {
-    const result = search(items, "OrderPlaced");
-    expect(result.items[0]?.id).toBe("shop.oms.order.OrderPlaced");
+    expect(rows("OrderPlaced")[0]?.id).toBe("shop.oms.order.OrderPlaced");
   });
 
   it("matches at word boundaries inside a camelCase name", () => {
-    const names = search(items, "cmd: item").items.map((i) => i.name);
+    const names = rows("cmd: item").map((i) => i.name);
     expect(names).toContain("AddItem");
     expect(names).toContain("RemoveItem");
   });
 
   it("returns nothing rather than everything for a miss", () => {
     const result = search(items, "zzzzz");
-    expect(result.items).toEqual([]);
+    expect(result.hits).toEqual([]);
     expect(result.truncated).toBe(0);
   });
 
   it("reports what the limit dropped", () => {
     const result = search(items, "", 5);
-    expect(result.items).toHaveLength(5);
+    expect(result.hits).toHaveLength(5);
     expect(result.truncated).toBe(items.length - 5);
+  });
+});
+
+describe("prose", () => {
+  it("finds an aggregate by an invariant nobody knows the name of", () => {
+    const hit = search(items, "un-cancel").hits[0];
+    expect(hit?.item.id).toBe("shop.oms.order");
+    // A prose hit must say why it is here, or the reader has to open it.
+    expect(hit?.excerpt?.match).toBe("un-cancel");
+    expect(hit?.excerpt?.before).toContain("terminal");
+  });
+
+  it("finds a decision by what its body argues, not by its number", () => {
+    const found = rows("QueryWorkflow").map((i) => i.id);
+    expect(found).toContain("shop.oms.0003");
+  });
+
+  it("searches field docs, so a shape is findable by what it means", () => {
+    // FxRate.rateMicros: "An integer on purpose: a float rate cannot be
+    // reproduced exactly from a stored posting."
+    expect(rows("float rate").map((i) => i.id)).toContain("def:FxRate");
+  });
+
+  it("never lets a prose hit displace a name", () => {
+    const found = rows("Money");
+    const firstProse = found.findIndex(
+      (i) => !i.name.toLowerCase().includes("money"),
+    );
+    const lastName = found.reduce(
+      (at, i, n) => (i.name.toLowerCase().includes("money") ? n : at),
+      -1,
+    );
+    if (firstProse >= 0) expect(firstProse).toBeGreaterThan(lastName);
+  });
+
+  it("holds the prose tier shut for a term too short to mean anything", () => {
+    // "or" is in half the readmes in the catalog and names nothing.
+    expect(
+      rows("or").every((i) =>
+        `${i.name} ${i.id} ${i.detail}`.toLowerCase().includes("or"),
+      ),
+    ).toBe(true);
+  });
+
+  it("carries no excerpt on a row that matched by name", () => {
+    expect(search(items, "OrderPlaced").hits[0]?.excerpt).toBeUndefined();
+  });
+});
+
+describe("flattenProse", () => {
+  it("drops fenced code, which matches identifiers and answers nothing", () => {
+    expect(
+      flattenProse("keep this\n\n```go\nfunc Secret() {}\n```\n\nand this"),
+    ).toBe("keep this and this");
+  });
+
+  it("strips the marks so bold prose is found by typing the word", () => {
+    expect(flattenProse("it is **never** set")).toBe("it is never set");
+  });
+});
+
+describe("excerptOf", () => {
+  it("returns the match verbatim, with the words either side", () => {
+    const cut = excerptOf(
+      "the total is recomputed on every mutation",
+      "recomputed",
+    );
+    expect(cut?.match).toBe("recomputed");
+    expect(`${cut?.before}${cut?.match}${cut?.after}`).toBe(
+      "the total is recomputed on every mutation",
+    );
+  });
+
+  it("marks with an ellipsis the ends it cut", () => {
+    const long = "x".repeat(200) + " needle " + "y".repeat(200);
+    const cut = excerptOf(long, "needle");
+    expect(cut?.before.startsWith("…")).toBe(true);
+    expect(cut?.after.endsWith("…")).toBe(true);
+  });
+
+  it("is not a regex: a term full of punctuation still matches itself", () => {
+    expect(excerptOf("see events/v1 for the shape", "events/v1")?.match).toBe(
+      "events/v1",
+    );
+  });
+
+  it("says nothing when the text does not hold the term", () => {
+    expect(excerptOf("nothing here", "needle")).toBeNull();
   });
 });

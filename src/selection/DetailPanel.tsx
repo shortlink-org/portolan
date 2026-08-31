@@ -14,6 +14,7 @@ import {
   useCanvasResize,
   usePanelRef,
 } from "../app/panels";
+import { SidePanel } from "../components/Overlay";
 import { useNarrow } from "../app/responsive";
 import { useUiStore } from "../app/ui-store";
 import { catalog, index } from "../data";
@@ -583,20 +584,15 @@ export function WithDetail({
     return (
       <div className="relative h-full min-h-0">
         {children}
-        {open ? (
-          <div
-            className="overlay-in fixed inset-0 z-40 flex justify-end"
-            style={{ background: "color-mix(in srgb, #000 45%, transparent)" }}
-            onMouseDown={() => clear("panel")}
-          >
-            <div
-              className="sheet-in h-full w-[85%] shadow-md"
-              onMouseDown={(e) => e.stopPropagation()}
-            >
-              <DetailPanel />
-            </div>
-          </div>
-        ) : null}
+        <SidePanel
+          open={open}
+          onClose={() => clear("panel")}
+          side="right"
+          label="Selection detail"
+          width="85%"
+        >
+          <DetailPanel />
+        </SidePanel>
       </div>
     );
   }

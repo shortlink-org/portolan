@@ -2,7 +2,7 @@ import { Link, useParams } from "react-router";
 import { AlertTriangle } from "lucide-react";
 import { catalog } from "../data";
 import { contextStats } from "../lib/derive";
-import { contextVar } from "../lib/context-color";
+import { ctxStyle } from "../lib/context-color";
 import { middleTruncate } from "../lib/format";
 import { staggerStyle } from "../lib/motion";
 import { CONTEXT_ANCHOR, EVENT_ANCHOR, paths } from "../routes";
@@ -96,7 +96,9 @@ export function ContextPage() {
 
           {/* --- Services ----------------------------------------------- */}
           <section id={CONTEXT_ANCHOR.services} className="mt-section">
-            <SectionTitle>Services</SectionTitle>
+            <SectionTitle anchor={CONTEXT_ANCHOR.services}>
+              Services
+            </SectionTitle>
             <div
               className="grid gap-grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))]"
               data-nav-list
@@ -104,18 +106,14 @@ export function ContextPage() {
               {context.services.map((service, i) => (
                 <div
                   key={service.id}
-                  className="card stagger-in"
-                  style={{
-                    ...staggerStyle(i),
-                    borderLeftWidth: 3,
-                    borderLeftColor: contextVar(context.id),
-                  }}
+                  className="card card-tagged stagger-in"
+                  style={{ ...staggerStyle(i), ...ctxStyle(context.id) }}
                 >
                   <div className="flex items-baseline gap-2">
                     <Link
                       to={paths.service(context.id, service.slug)}
                       data-nav-item
-                      className="rounded-control font-semibold hover:underline"
+                      className="card-link rounded-control font-semibold"
                       title={service.name}
                     >
                       {service.name}
@@ -174,6 +172,7 @@ export function ContextPage() {
             className="mt-section max-w-table"
           >
             <SectionTitle
+              anchor={CONTEXT_ANCHOR.aggregates}
               right={
                 <span className="mono text-muted">
                   every aggregate this domain owns, whichever service holds it
@@ -219,6 +218,7 @@ export function ContextPage() {
             className="mt-section max-w-table"
           >
             <SectionTitle
+              anchor={CONTEXT_ANCHOR.events}
               right={
                 <span className="mono text-muted">
                   what the rest of the estate hears from here

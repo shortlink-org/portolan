@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { catalog } from "../data";
 import { flowsForService } from "../lib/derive";
@@ -61,7 +62,20 @@ export function ServicePage() {
   };
 
   return (
-    <div className="h-full overflow-y-auto">
+    /* `manual`: the arrow keys move focus and ⏎ commits, rather than switching
+       the panel on every keypress. Each tab here is a page - one of them draws
+       a C4 view - and automatic activation would render four of them on the
+       way to the fifth, writing four URLs behind it. */
+    <TabGroup
+      manual
+      as="div"
+      className="h-full overflow-y-auto"
+      selectedIndex={TABS.indexOf(tab)}
+      onChange={(at) => {
+        const next = TABS[at] ?? "overview";
+        setParams(next === "overview" ? {} : { tab: next }, { replace: true });
+      }}
+    >
       <PageHeader
         kind="service"
         name={service.name}
@@ -93,34 +107,29 @@ export function ServicePage() {
             switch the page under them, they do not filter a list beside them.
             The 2px rule is always drawn, transparent when idle, so selecting a
             tab never lifts the row. */}
-        <div className="mt-4 flex gap-0" role="tablist">
+        <TabList className="mt-4 flex gap-0">
           {TABS.map((t) => (
-            <button
+            <Tab
               key={t}
-              type="button"
-              role="tab"
-              onClick={() =>
-                setParams(t === "overview" ? {} : { tab: t }, { replace: true })
+              className={({ selected }) =>
+                `mono rounded-t-control border-b-2 px-3 py-1.5 t-micro transition-colors focus:outline-none ${
+                  selected
+                    ? "border-accent text-ink"
+                    : "border-transparent text-muted hover:text-ink"
+                }`
               }
-              aria-selected={tab === t}
-              aria-current={tab === t ? "page" : undefined}
-              className="mono rounded-t-control border-b-2 px-3 py-1.5 t-micro transition-colors"
-              style={{
-                borderColor: tab === t ? "var(--accent)" : "transparent",
-                color: tab === t ? "var(--fg)" : "var(--fg-muted)",
-              }}
             >
               {t}
               {counts[t] !== null ? (
                 <span className="tnum ml-1.5 text-muted">{counts[t]}</span>
               ) : null}
-            </button>
+            </Tab>
           ))}
-        </div>
+        </TabList>
       </PageHeader>
 
-      <div className="p-gutter">
-        {tab === "overview" ? (
+      <TabPanels className="p-gutter">
+        <TabPanel>
           <>
             <SectionTitle>Model</SectionTitle>
             <C4View viewId={serviceViewId(service)} height={300} />
@@ -130,7 +139,9 @@ export function ServicePage() {
               id={SERVICE_ANCHOR.aggregates}
               className="mt-section max-w-table"
             >
-              <SectionTitle>Aggregates</SectionTitle>
+              <SectionTitle anchor={SERVICE_ANCHOR.aggregates}>
+                Aggregates
+              </SectionTitle>
               <div className="flex flex-col gap-1" data-nav-list>
                 {service.aggregates.map((aggregate) => {
                   const to = paths.aggregate(
@@ -178,6 +189,7 @@ export function ServicePage() {
               className="mt-section max-w-table"
             >
               <SectionTitle
+                anchor={SERVICE_ANCHOR.events}
                 right={
                   <span className="mono text-muted">
                     everything this service announces
@@ -232,9 +244,9 @@ export function ServicePage() {
               )}
             </section>
           </>
-        ) : null}
+        </TabPanel>
 
-        {tab === "provides" ? (
+        <TabPanel>
           <div className="flex flex-col gap-4">
             {service.provides.length === 0 ? (
               <Empty>this service answers nothing — it only listens</Empty>
@@ -262,9 +274,9 @@ export function ServicePage() {
               </div>
             ))}
           </div>
-        ) : null}
+        </TabPanel>
 
-        {tab === "consumes" ? (
+        <TabPanel>
           <div className="flex flex-col gap-1" data-nav-list>
             {service.consumes.length === 0 ? (
               <Empty>this service calls nobody — it only answers</Empty>
@@ -311,38 +323,9 @@ export function ServicePage() {
               );
             })}
           </div>
-        ) : null}
+        </TabPanel>
 
-        {tab === "decisions" ? (
-          <div className="flex max-w-prose flex-col gap-1">
-            {adrs.length === 0 ? (
-              <Empty>nothing on the record names this service</Empty>
-            ) : null}
-            {current.map((adr) => (
-              <AdrRow key={adr.id} adr={adr} />
-            ))}
-            {retired.length > 0 ? (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setShowRetired((v) => !v)}
-                  aria-expanded={showRetired}
-                  className="mono mt-1 self-start border border-dashed px-2 py-1 border-line-strong text-muted hover:bg-surface"
-                >
-                  {showRetired ? "hide" : "show"} {retired.length}{" "}
-                  {retired.every((a) => a.status === "superseded")
-                    ? "superseded"
-                    : "no longer in force"}
-                </button>
-                {showRetired
-                  ? retired.map((adr) => <AdrRow key={adr.id} adr={adr} />)
-                  : null}
-              </>
-            ) : null}
-          </div>
-        ) : null}
-
-        {tab === "flows" ? (
+        <TabPanel>
           <div className="flex flex-col gap-1" data-nav-list>
             {flows.length === 0 ? (
               <Empty>no chart runs through here yet</Empty>
@@ -371,8 +354,37 @@ export function ServicePage() {
               );
             })}
           </div>
-        ) : null}
-      </div>
-    </div>
+        </TabPanel>
+
+        <TabPanel>
+          <div className="flex max-w-prose flex-col gap-1">
+            {adrs.length === 0 ? (
+              <Empty>nothing on the record names this service</Empty>
+            ) : null}
+            {current.map((adr) => (
+              <AdrRow key={adr.id} adr={adr} />
+            ))}
+            {retired.length > 0 ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setShowRetired((v) => !v)}
+                  aria-expanded={showRetired}
+                  className="mono mt-1 self-start border border-dashed px-2 py-1 border-line-strong text-muted hover:bg-surface"
+                >
+                  {showRetired ? "hide" : "show"} {retired.length}{" "}
+                  {retired.every((a) => a.status === "superseded")
+                    ? "superseded"
+                    : "no longer in force"}
+                </button>
+                {showRetired
+                  ? retired.map((adr) => <AdrRow key={adr.id} adr={adr} />)
+                  : null}
+              </>
+            ) : null}
+          </div>
+        </TabPanel>
+      </TabPanels>
+    </TabGroup>
   );
 }

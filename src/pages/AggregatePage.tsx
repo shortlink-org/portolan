@@ -240,6 +240,7 @@ export function AggregatePage() {
             id={AGGREGATE_ANCHOR.entities}
           >
             <SectionTitle
+              anchor={AGGREGATE_ANCHOR.entities}
               right={
                 <span className="mono text-muted">
                   identity matters — these are tracked over time
@@ -261,6 +262,7 @@ export function AggregatePage() {
             id={AGGREGATE_ANCHOR.valueObjects}
           >
             <SectionTitle
+              anchor={AGGREGATE_ANCHOR.valueObjects}
               right={
                 <span className="mono text-muted">
                   no identity — equal values are the same value
@@ -277,7 +279,7 @@ export function AggregatePage() {
           </div>
 
           <div className="mt-section max-w-prose" id={AGGREGATE_ANCHOR.events}>
-            <SectionTitle>Events</SectionTitle>
+            <SectionTitle anchor={AGGREGATE_ANCHOR.events}>Events</SectionTitle>
             {aggregate.events.length === 0 ? (
               <Empty>
                 nothing is announced from here — the readme says why
@@ -356,6 +358,7 @@ export function AggregatePage() {
           <div className="mt-8 flex max-w-prose flex-col gap-section">
             <div id={AGGREGATE_ANCHOR.commands}>
               <SectionTitle
+                anchor={AGGREGATE_ANCHOR.commands}
                 right={
                   <span className="mono text-muted">
                     they change the aggregate — one row lock each
@@ -371,6 +374,7 @@ export function AggregatePage() {
             </div>
             <div id={AGGREGATE_ANCHOR.queries}>
               <SectionTitle
+                anchor={AGGREGATE_ANCHOR.queries}
                 right={
                   <span className="mono text-muted">
                     they change nothing — and may be behind

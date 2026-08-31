@@ -11,6 +11,7 @@ import {
 import type { ComponentPropsWithoutRef, CSSProperties, ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { ADMONITION_LABEL, parseAdmonition } from "../lib/admonition";
+import { AnchorLink } from "./AnchorLink";
 import type { AdmonitionKind } from "../lib/admonition";
 import { headingSlug } from "../lib/derive";
 import { Mermaid } from "./Mermaid";
@@ -25,11 +26,25 @@ function textOf(node: React.ReactNode): string {
   return "";
 }
 
-/** Headings get ids so the outline rail can jump to them. */
+/**
+ * Headings get ids so the outline rail can jump to them - and, having an id,
+ * they get the link back out. A readme heading is where an invariant is
+ * written down, so "send me the rule about cancelling" is a link, not a
+ * screenshot.
+ */
 function heading(level: 1 | 2 | 3) {
   return function Heading(props: ComponentPropsWithoutRef<"h1">) {
     const Tag = `h${level}` as const;
-    return <Tag id={headingSlug(textOf(props.children))}>{props.children}</Tag>;
+    const text = textOf(props.children);
+    const id = headingSlug(text);
+    // A heading whose text slugs to nothing has no anchor to offer.
+    if (!id) return <Tag>{props.children}</Tag>;
+    return (
+      <Tag id={id} className="anchored">
+        {props.children}
+        <AnchorLink id={id} label={text} />
+      </Tag>
+    );
   };
 }
 

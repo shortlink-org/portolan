@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import {
   Keyboard,
+  Map,
   Menu,
   Moon,
   Network,
@@ -67,7 +68,23 @@ export function TopBar({
         {/* One border around the set, hairlines between them: four controls,
             one object. */}
         <div className="seg">
-          <Link to="/graph" className="flex items-center gap-1.5">
+          {/* The two whole-estate views, side by side: the map is the domains
+              and what stands between them, the graph is the services and what
+              runs between them. */}
+          <Link
+            to="/map"
+            className="flex items-center gap-1.5"
+            aria-keyshortcuts="g m"
+            title="Context map — g m"
+          >
+            <Map size={16} aria-hidden />
+            map
+          </Link>
+          <Link
+            to="/graph"
+            className="flex items-center gap-1.5"
+            title="Dependency graph"
+          >
             <Network size={16} aria-hidden />
             graph
           </Link>

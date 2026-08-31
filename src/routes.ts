@@ -19,6 +19,9 @@ export const paths = {
   problems: () => "/problems",
   adr: (slug: string) => `/adrs/${slug}`,
   graph: () => "/graph",
+  map: () => "/map",
+  /** The map, with one relationship already open. */
+  relation: (relationId: string) => `/map#rel-${relationId}`,
   context: (contextId: string) => `/c/${contextId}`,
   service: (contextId: string, serviceSlug: string) =>
     `/c/${contextId}/${serviceSlug}`,
@@ -84,6 +87,17 @@ export const SERVICE_ANCHOR = {
   events: "svc-events",
 } as const;
 
+/** The section anchors on the context map. */
+export const MAP_ANCHOR = {
+  model: "map-model",
+  relations: "map-relations",
+} as const;
+
+/** The id of one relationship's row, which is also its deep link. */
+export function relationAnchor(relationId: string): string {
+  return `rel-${relationId}`;
+}
+
 /** The section anchors on the overview, so "g d" has somewhere to land. */
 export const OVERVIEW_ANCHOR = {
   contexts: "contexts",
@@ -139,6 +153,7 @@ const ROUTES: RegExp[] = [
   /^\/flows\/[^/]+$/,
   /^\/adrs$/,
   /^\/problems$/,
+  /^\/map$/,
   /^\/adrs\/[^/]+$/,
   /^\/c\/[^/]+$/,
   /^\/c\/[^/]+\/[^/]+$/,
@@ -161,6 +176,7 @@ export function allCatalogPaths(catalog: Catalog): string[] {
     paths.overview(),
     paths.flows(),
     paths.graph(),
+    paths.map(),
     paths.adrs(),
     paths.problems(),
   ];
