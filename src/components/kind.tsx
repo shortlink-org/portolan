@@ -107,7 +107,10 @@ export function KindIcon({
       /* `block` drops the inline baseline gap so the glyph centres on the
          cap-height of the text beside it rather than sitting on its baseline. */
       className={`block shrink-0 ${className}`}
-      style={{ color: KIND_COLOR[kind], fill: filled ? "currentColor" : "none" }}
+      style={{
+        color: KIND_COLOR[kind],
+        fill: filled ? "currentColor" : "none",
+      }}
     />
   );
 }

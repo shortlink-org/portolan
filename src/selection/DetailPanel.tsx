@@ -15,7 +15,6 @@ import {
   usePanelRef,
 } from "../app/panels";
 import { catalog, index } from "../data";
-import { coverageRatio, flowCoverage } from "../catalog";
 import { usesOfDef } from "../lib/derive";
 import { ctxStyle } from "../lib/context-color";
 import { StatusChip } from "../components/primitives";
@@ -53,7 +52,11 @@ function SelectLink({ id, children }: { id: string; children: ReactNode }) {
 // Bodies
 // ---------------------------------------------------------------------------
 
-function EventBody({ resolved }: { resolved: Extract<Resolved, { kind: "event" }> }) {
+function EventBody({
+  resolved,
+}: {
+  resolved: Extract<Resolved, { kind: "event" }>;
+}) {
   const { event, service } = resolved;
   const latest = event.versions[event.versions.length - 1];
   const flows = index.flowsByEvent.get(event.id) ?? [];
@@ -86,11 +89,7 @@ function EventBody({ resolved }: { resolved: Extract<Resolved, { kind: "event" }
             <tr key={f.name} className="align-top">
               <td className="mono py-0.5 pr-2 whitespace-nowrap">{f.name}</td>
               <td className="mono py-0.5 text-muted">
-                {f.ref ? (
-                  <SelectLink id={f.ref}>{f.type}</SelectLink>
-                ) : (
-                  f.type
-                )}
+                {f.ref ? <SelectLink id={f.ref}>{f.type}</SelectLink> : f.type}
               </td>
             </tr>
           ))}
@@ -193,8 +192,8 @@ function ServiceBody({
       ))}
       {unresolved.length > 0 ? (
         <div className="mono mt-1 text-unresolved">
-          {unresolved.length} call{unresolved.length === 1 ? "" : "s"} resolve to
-          nothing in the catalog
+          {unresolved.length} call{unresolved.length === 1 ? "" : "s"} resolve
+          to nothing in the catalog
         </div>
       ) : null}
 
@@ -322,16 +321,12 @@ function FlowStepBody({
 }: {
   resolved: Extract<Resolved, { kind: "flow-step" }>;
 }) {
-  const cov = flowCoverage(resolved.flow);
   return (
     <>
       <div className="mono mt-1 mb-2 flex items-center gap-2 text-muted">
         <Link to={paths.flow(resolved.flow.slug)} className="text-accent">
           {resolved.flow.slug}
         </Link>
-        <span className="ml-auto">
-          {Math.round(coverageRatio(cov) * 100)}% verified
-        </span>
       </div>
       <StepDetailBody step={resolved.step} flow={resolved.flow} />
     </>
@@ -442,7 +437,9 @@ export function DetailPanel() {
             {resolved?.kind === "event"
               ? resolved.event.name
               : resolved?.kind === "flow-step"
-                ? (resolved.step.label ?? resolved.step.ref ?? resolved.step.kind)
+                ? (resolved.step.label ??
+                  resolved.step.ref ??
+                  resolved.step.kind)
                 : selection.id}
           </span>
           {resolved?.kind === "event" ||

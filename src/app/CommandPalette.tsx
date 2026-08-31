@@ -49,10 +49,7 @@ export function CommandPalette({
   const listRef = useRef<HTMLUListElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  const result = useMemo(
-    () => search(ITEMS, open ? query : ""),
-    [open, query],
-  );
+  const result = useMemo(() => search(ITEMS, open ? query : ""), [open, query]);
   const results = open ? result.items : [];
 
   useEffect(() => {
@@ -228,7 +225,10 @@ export function CommandPalette({
                     >
                       {item.name}
                     </span>
-                    <span className="mono truncate text-muted" title={item.detail}>
+                    <span
+                      className="mono truncate text-muted"
+                      title={item.detail}
+                    >
                       {item.detail}
                     </span>
                     <span className="mono ml-auto flex shrink-0 items-center gap-2 text-muted">

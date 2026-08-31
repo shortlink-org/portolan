@@ -32,6 +32,12 @@
      than amber-600 so 12px mono still clears contrast on white. */
   --kind-event: #b45309;
 
+  /* GitHub paints `[!IMPORTANT]` purple. Purple already exists in the context
+     ramp, where it means "this context"; the alert gets a name of its own so
+     the two can never drift into each other. The other four alerts reuse the
+     status ramp, which already carries their meaning. */
+  --alert-important: #7a3fa8;
+
   --ctx-0: #2563a8;
   --ctx-1: #7a3fa8;
   --ctx-2: #0f7a6c;
@@ -90,6 +96,8 @@
   --status-unresolved: #ff6b63;
 
   --kind-event: #e8a33d;
+
+  --alert-important: #b98cf0;
 
   --ctx-0: #6aa5f0;
   --ctx-1: #b98cf0;
@@ -643,4 +651,29 @@ h3 {
   padding-left: 12px;
   color: var(--fg-muted);
   margin: 12px 0;
+}
+
+/* GitHub admonitions. `> [!NOTE]` and its four siblings arrive in any README
+   written on GitHub; left as a blockquote they read as a quotation, which is
+   the opposite of what the author meant. One box, tinted from the --callout
+   colour the component sets, so five kinds need one rule. */
+.prose .callout {
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--callout) 28%, var(--border));
+  border-left: 3px solid var(--callout);
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--callout) 5%, transparent);
+}
+.prose .callout-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 4px;
+  color: var(--callout);
+  font-weight: 600;
+  font-size: var(--text-sm);
+}
+.prose .callout > :last-child {
+  margin-bottom: 0;
 }

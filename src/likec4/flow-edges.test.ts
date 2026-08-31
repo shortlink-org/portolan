@@ -39,7 +39,10 @@ describe("drawnStepIds", () => {
     for (const flow of catalog.flows) {
       const hidden = hiddenStepIds(flow);
       const drawn = drawnStepIds(flow, true);
-      expect(drawn.some((id) => hidden.has(id)), flow.slug).toBe(false);
+      expect(
+        drawn.some((id) => hidden.has(id)),
+        flow.slug,
+      ).toBe(false);
       expect(drawn.length, flow.slug).toBe(
         walkSteps(flow.steps).length - hidden.size,
       );

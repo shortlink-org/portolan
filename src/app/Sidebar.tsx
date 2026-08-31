@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, useLocation, useMatch } from "react-router";
-import { ChevronRight, Circle, PanelLeftOpen } from "lucide-react";
+import { ChevronRight, PanelLeftOpen } from "lucide-react";
 import { catalog } from "../data";
-import { coverageRatio, flowCoverage } from "../catalog";
 import type {
   Aggregate,
   Block,
@@ -177,8 +176,7 @@ function Leaf({
         background: isActive || selected ? "var(--surface-2)" : undefined,
         borderLeftWidth: 2,
         borderLeftStyle: "solid",
-        borderLeftColor:
-          isActive || selected ? "var(--accent)" : "transparent",
+        borderLeftColor: isActive || selected ? "var(--accent)" : "transparent",
       })}
       /* The edge is always 2px, transparent when idle: lighting a row must not
          shift the text beside it. `pulse-once` keys off `selected` so the
@@ -523,44 +521,24 @@ export function Sidebar({
       </div>
 
       <div ref={scrollerRef} className="flex-1 overflow-y-auto pb-8">
-        <div className="label sticky-bar sticky top-0 z-10 px-3 pt-4 pb-1.5">Flows</div>
+        <div className="label sticky-bar sticky top-0 z-10 px-3 pt-4 pb-1.5">
+          Flows
+        </div>
         {flows.length === 0 ? (
           <div className="px-3 py-1 text-muted">no match</div>
         ) : null}
         {flows.map((flow) => {
-          const cov = flowCoverage(flow);
           return (
             <Leaf key={flow.slug} to={paths.flow(flow.slug)} depth={0}>
               <KindIcon kind="flow" />
               <span className="mono truncate">{flow.slug}</span>
-              {cov.unresolved > 0 ? (
-                <Circle
-                  size={7}
-                  aria-label="has unresolved steps"
-                  className="ml-auto shrink-0"
-                  style={{
-                    color: "var(--status-unresolved)",
-                    fill: "var(--status-unresolved)",
-                  }}
-                />
-              ) : (
-                <span
-                  className="mono ml-auto shrink-0"
-                  style={{
-                    color:
-                      coverageRatio(cov) === 1
-                        ? "var(--status-verified)"
-                        : "var(--fg-muted)",
-                  }}
-                >
-                  {Math.round(coverageRatio(cov) * 100)}%
-                </span>
-              )}
             </Leaf>
           );
         })}
 
-        <div className="label sticky-bar sticky top-0 z-10 px-3 pt-5 pb-1.5">Domains</div>
+        <div className="label sticky-bar sticky top-0 z-10 px-3 pt-5 pb-1.5">
+          Domains
+        </div>
         {contexts.length === 0 ? (
           <div className="px-3 py-1 text-muted">no match</div>
         ) : null}
@@ -578,7 +556,10 @@ export function Sidebar({
                 selId={context.id}
               >
                 <KindIcon kind="context" contextId={context.id} />
-                <span className="mono truncate ctx" style={ctxStyle(context.id)}>
+                <span
+                  className="mono truncate ctx"
+                  style={ctxStyle(context.id)}
+                >
                   {context.id}
                 </span>
               </Branch>
@@ -621,12 +602,19 @@ export function Sidebar({
           );
         })}
 
-        <div className="label sticky-bar sticky top-0 z-10 px-3 pt-5 pb-1.5">Decisions</div>
+        <div className="label sticky-bar sticky top-0 z-10 px-3 pt-5 pb-1.5">
+          Decisions
+        </div>
         {adrs.length === 0 ? (
           <div className="px-3 py-1 text-muted">no match</div>
         ) : null}
         {adrs.map((adr) => (
-          <Leaf key={adr.id} to={paths.adr(adr.slug)} depth={0} title={adr.title}>
+          <Leaf
+            key={adr.id}
+            to={paths.adr(adr.slug)}
+            depth={0}
+            title={adr.title}
+          >
             <KindIcon kind="adr" />
             <span
               className={`mono shrink-0 ${isStruck(adr.status) ? "line-through text-muted" : ""}`}

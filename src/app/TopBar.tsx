@@ -1,20 +1,11 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import { GitCommitHorizontal, Moon, Network, Search, Sun } from "lucide-react";
-import { catalog } from "../data";
-import { absoluteTime, relativeTime } from "../lib/format";
+import { Moon, Network, Search, Sun } from "lucide-react";
 import { Breadcrumbs } from "./Breadcrumbs";
+import { BuildStamp } from "./BuildStamp";
 import { useTheme } from "./theme";
 
 export function TopBar({ onOpenPalette }: { onOpenPalette: () => void }) {
   const { theme, toggle } = useTheme();
-  const [, force] = useState(0);
-
-  // The build indicator is relative time; nudge it once a minute.
-  useEffect(() => {
-    const t = setInterval(() => force((n) => n + 1), 60_000);
-    return () => clearInterval(t);
-  }, []);
 
   return (
     <header className="flex h-12 shrink-0 items-center gap-4 border-b px-gutter border-line bg-canvas">
@@ -48,7 +39,9 @@ export function TopBar({ onOpenPalette }: { onOpenPalette: () => void }) {
             type="button"
             onClick={toggle}
             aria-label={
-              theme === "dark" ? "Switch to light theme" : "Switch to dark theme"
+              theme === "dark"
+                ? "Switch to light theme"
+                : "Switch to dark theme"
             }
             className="flex items-center"
           >
@@ -60,17 +53,7 @@ export function TopBar({ onOpenPalette }: { onOpenPalette: () => void }) {
           </button>
         </div>
 
-        <div
-          className="mono flex items-center gap-1.5 rounded-control border px-2 py-1.5 border-line text-muted"
-          title={`generated ${absoluteTime(catalog.generatedAt)} at commit ${catalog.commit}`}
-        >
-          <GitCommitHorizontal size={16} aria-hidden className="shrink-0" />
-          {catalog.commit}
-          <span aria-hidden className="text-line-strong">
-            ·
-          </span>
-          {relativeTime(catalog.generatedAt)}
-        </div>
+        <BuildStamp />
       </div>
     </header>
   );

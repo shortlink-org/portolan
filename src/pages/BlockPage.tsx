@@ -94,7 +94,9 @@ export function BlockPage({ kind }: { kind: BlockKind }) {
 
   const usages = useMemo(
     () =>
-      block?.ref ? usagesOfDef(catalog, block.ref, block.id) : ([] as DefUsage[]),
+      block?.ref
+        ? usagesOfDef(catalog, block.ref, block.id)
+        : ([] as DefUsage[]),
     [block],
   );
 
@@ -103,7 +105,8 @@ export function BlockPage({ kind }: { kind: BlockKind }) {
   }
 
   const fields = blockFields(catalog, block);
-  const isRoot = kind === "entity" && rootEntity(aggregate)?.slug === block.slug;
+  const isRoot =
+    kind === "entity" && rootEntity(aggregate)?.slug === block.slug;
 
   return (
     <div className="h-full overflow-y-auto">
@@ -144,7 +147,9 @@ export function BlockPage({ kind }: { kind: BlockKind }) {
 
       <div className="p-gutter">
         <SectionTitle
-          right={<span className="mono text-muted">{fields.length} fields</span>}
+          right={
+            <span className="mono text-muted">{fields.length} fields</span>
+          }
         >
           Shape
         </SectionTitle>

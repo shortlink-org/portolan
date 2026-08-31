@@ -1,18 +1,13 @@
 import { Link } from "react-router";
 import { AlertTriangle } from "lucide-react";
 import { catalog } from "../data";
-import { flowCoverage } from "../catalog";
 import { contextStats, flowsByReach } from "../lib/derive";
 import { contextVar, ctxStyle } from "../lib/context-color";
 import { absoluteTime, relativeTime } from "../lib/format";
 import { useCountUp, staggerStyle } from "../lib/motion";
 import { paths } from "../routes";
 import { SectionTitle } from "../components/PageHeader";
-import {
-  ContextPill,
-  CoverageBar,
-  ProvenanceBadge,
-} from "../components/primitives";
+import { ContextPill, ProvenanceBadge } from "../components/primitives";
 
 /** A measurement that arrives rather than appears. 200ms, linear, once. */
 function Count({ value, unit }: { value: number; unit: string }) {
@@ -34,11 +29,13 @@ export function Overview() {
         <span className="text-muted">
           the chart is drawn from measurements; the code is the territory
         </span>
+        {/* The catalog's own provenance, not the app's: the top bar carries
+            the build this bundle came from. */}
         <span
           className="mono ml-auto text-muted"
-          title={absoluteTime(catalog.generatedAt)}
+          title={`catalog generated ${absoluteTime(catalog.generatedAt)} from commit ${catalog.commit}`}
         >
-          {catalog.commit} · {relativeTime(catalog.generatedAt)}
+          catalog {catalog.commit} · {relativeTime(catalog.generatedAt)}
         </span>
       </div>
 
@@ -104,19 +101,12 @@ export function Overview() {
         </SectionTitle>
         <div className="flex flex-col gap-2">
           {reach.map(({ flow, contexts }, i) => {
-            const cov = flowCoverage(flow);
             return (
               <Link
                 key={flow.slug}
                 to={paths.flow(flow.slug)}
                 className="row stagger-in flex-wrap"
-                style={{
-                  ...staggerStyle(i),
-                  borderColor:
-                    cov.unresolved > 0
-                      ? "var(--status-unresolved)"
-                      : "var(--border)",
-                }}
+                style={staggerStyle(i)}
               >
                 <span
                   className="mono w-6 shrink-0 text-right text-muted"
@@ -132,14 +122,13 @@ export function Overview() {
                     <ContextPill key={c} id={c} />
                   ))}
                 </div>
-                <ProvenanceBadge
-                  provenance={flow.provenance}
-                  source={flow.source}
-                  verifiedAt={flow.verifiedAt}
-                />
-                <div className="ml-auto w-48">
-                  <CoverageBar coverage={cov} />
-                </div>
+                <span className="ml-auto shrink-0">
+                  <ProvenanceBadge
+                    provenance={flow.provenance}
+                    source={flow.source}
+                    verifiedAt={flow.verifiedAt}
+                  />
+                </span>
               </Link>
             );
           })}

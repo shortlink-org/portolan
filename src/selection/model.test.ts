@@ -130,7 +130,9 @@ describe("sameSelection", () => {
   it("compares by value, and treats null as its own value", () => {
     expect(sameSelection(null, null)).toBe(true);
     expect(sameSelection(null, selectionFor("shop"))).toBe(false);
-    expect(sameSelection(selectionFor("shop"), selectionFor("shop"))).toBe(true);
+    expect(sameSelection(selectionFor("shop"), selectionFor("shop"))).toBe(
+      true,
+    );
     expect(sameSelection(selectionFor("shop"), selectionFor("shop.oms"))).toBe(
       false,
     );

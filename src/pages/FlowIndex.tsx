@@ -1,37 +1,27 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
-import { AlertTriangle, ArrowUpDown } from "lucide-react";
+import { ArrowUpDown } from "lucide-react";
 import { catalog } from "../data";
-import {
-  coverageRatio,
-  flowContexts,
-  flowCoverage,
-  walkSteps,
-} from "../catalog";
+import { flowContexts, walkSteps } from "../catalog";
 import { contextName, contextVar } from "../lib/context-color";
 import { staggerStyle } from "../lib/motion";
-import {
-  ContextPill,
-  CoverageBar,
-  ProvenanceBadge,
-} from "../components/primitives";
+import { ContextPill, ProvenanceBadge } from "../components/primitives";
 
-type Sort = "coverage" | "name" | "contexts";
+type Sort = "contexts" | "name" | "steps";
 
 const SORTS: { key: Sort; label: string }[] = [
-  { key: "coverage", label: "coverage ↑" },
-  { key: "name", label: "name" },
   { key: "contexts", label: "contexts crossed" },
+  { key: "steps", label: "steps" },
+  { key: "name", label: "name" },
 ];
 
 export function FlowIndex() {
-  const [sort, setSort] = useState<Sort>("coverage");
+  const [sort, setSort] = useState<Sort>("contexts");
   const [active, setActive] = useState<Set<string>>(new Set());
 
   const rows = useMemo(() => {
     const built = catalog.flows.map((flow) => ({
       flow,
-      coverage: flowCoverage(flow),
       contexts: flowContexts(flow),
       steps: walkSteps(flow.steps).length,
     }));
@@ -39,15 +29,15 @@ export function FlowIndex() {
       active.size === 0
         ? built
         : built.filter((r) => r.contexts.some((c) => active.has(c)));
+    // Every comparator falls through to the name, so the order is total and
+    // the grid does not reshuffle between renders.
     const sorted = [...filtered];
-    if (sort === "coverage") {
-      sorted.sort(
-        (a, b) =>
-          coverageRatio(a.coverage) - coverageRatio(b.coverage) ||
-          a.flow.name.localeCompare(b.flow.name),
-      );
-    } else if (sort === "name") {
+    if (sort === "name") {
       sorted.sort((a, b) => a.flow.name.localeCompare(b.flow.name));
+    } else if (sort === "steps") {
+      sorted.sort(
+        (a, b) => b.steps - a.steps || a.flow.name.localeCompare(b.flow.name),
+      );
     } else {
       sorted.sort(
         (a, b) =>
@@ -126,25 +116,15 @@ export function FlowIndex() {
       </div>
 
       <div className="mt-section grid gap-grid grid-cols-[repeat(auto-fill,minmax(380px,1fr))]">
-        {rows.map(({ flow, coverage, contexts, steps }, i) => {
-          const broken = coverage.unresolved > 0;
+        {rows.map(({ flow, contexts, steps }, i) => {
           return (
             <Link
               key={flow.slug}
               to={`/flows/${flow.slug}`}
               className="card stagger-in"
-              /* The left edge is 3px on every card, coloured only when the flow
-                 is broken: a card that grew its border when it went unresolved
-                 shifted every word inside it. */
               style={{
                 ...staggerStyle(i),
-                borderColor: broken
-                  ? "var(--status-unresolved)"
-                  : "var(--border)",
                 borderLeftWidth: 3,
-                borderLeftColor: broken
-                  ? "var(--status-unresolved)"
-                  : "var(--border)",
               }}
             >
               <div className="flex items-baseline gap-2">
@@ -152,12 +132,6 @@ export function FlowIndex() {
                   {flow.name}
                 </span>
                 <span className="mono text-muted">{flow.slug}</span>
-                {broken ? (
-                  <span className="mono ml-auto flex items-center gap-1 text-unresolved">
-                    <AlertTriangle size={11} aria-hidden />
-                    {coverage.unresolved} unresolved
-                  </span>
-                ) : null}
               </div>
 
               <p className="mt-2 line-clamp-2 text-muted">{flow.summary}</p>
@@ -167,10 +141,6 @@ export function FlowIndex() {
                   <ContextPill key={c} id={c} name={contextName(c)} />
                 ))}
                 <span className="mono ml-auto text-muted">{steps} steps</span>
-              </div>
-
-              <div className="mt-4">
-                <CoverageBar coverage={coverage} />
               </div>
 
               <div className="mt-4">

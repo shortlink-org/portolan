@@ -48,10 +48,9 @@ interface Route {
 }
 
 function parseRoute(pathname: string): Route {
-  const segments = (pathname.split("#")[0] ?? "")
-    .split("?")[0]
-    ?.split("/")
-    .filter(Boolean) ?? [];
+  const segments =
+    (pathname.split("#")[0] ?? "").split("?")[0]?.split("/").filter(Boolean) ??
+    [];
   const head = segments[0];
   if (segments.length === 0) return { kind: "overview", segments };
   if (head === "flows") {

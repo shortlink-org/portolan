@@ -1,14 +1,7 @@
 import { Link } from "react-router";
 import { AlertTriangle, Activity, FlaskConical } from "lucide-react";
 import type { ReactNode } from "react";
-import type {
-  Adr,
-  AdrScope,
-  AdrStatus,
-  Coverage,
-  Provenance,
-  Status,
-} from "../catalog";
+import type { Adr, AdrScope, AdrStatus, Provenance, Status } from "../catalog";
 import { index } from "../data";
 import { adrNumber } from "../lib/adr";
 import { ctxStyle } from "../lib/context-color";
@@ -67,63 +60,6 @@ export function ContextPill({ id, name }: { id: string; name?: string }) {
       <span aria-hidden className="dot" />
       {name ?? id}
     </span>
-  );
-}
-
-export function CoverageBar({
-  coverage,
-  showCounts = true,
-  width,
-}: {
-  coverage: Coverage;
-  showCounts?: boolean;
-  width?: number | string;
-}) {
-  const { verified, declared, unresolved, total } = coverage;
-  const pct = (n: number) => (total === 0 ? 0 : (n / total) * 100);
-  const segments: { key: Status; n: number }[] = [
-    { key: "verified", n: verified },
-    { key: "declared", n: declared },
-    { key: "unresolved", n: unresolved },
-  ];
-  return (
-    <div
-      className="flex items-center gap-2"
-      style={width ? { width } : undefined}
-    >
-      {/* The track fills once, on first paint. The segments keep the status
-          colours and their proportions; only the reveal is animated. */}
-      <div
-        className="h-1.5 flex-1 overflow-hidden rounded-full border border-line"
-        title={`${verified} verified / ${declared} declared / ${unresolved} unresolved`}
-      >
-        <div className="bar-fill flex h-full w-full">
-          {segments.map((s) =>
-            s.n === 0 ? null : (
-              <div
-                key={s.key}
-                className="h-full"
-                style={{ width: `${pct(s.n)}%`, background: statusVar(s.key) }}
-              />
-            ),
-          )}
-          {total === 0 ? <div className="h-full w-full bg-raised" /> : null}
-        </div>
-      </div>
-      {showCounts ? (
-        <div className="mono flex shrink-0 items-center gap-1.5">
-          {segments.map((s) => (
-            <span
-              key={s.key}
-              className={s.n === 0 ? "text-muted" : STATUS_TEXT[s.key]}
-            >
-              {s.n}
-            </span>
-          ))}
-          <span className="text-muted">/{total}</span>
-        </div>
-      ) : null}
-    </div>
   );
 }
 

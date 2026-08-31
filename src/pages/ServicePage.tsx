@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { catalog } from "../data";
-import { coverageRatio, flowCoverage } from "../catalog";
 import { flowsForService } from "../lib/derive";
 import { adrsForService, isCurrent } from "../lib/adr";
 import { AdrRow } from "../components/AdrRow";
@@ -11,7 +10,6 @@ import { middleTruncate } from "../lib/format";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
 import {
   ContextPill,
-  CoverageBar,
   ProvenanceBadge,
   StatusChip,
 } from "../components/primitives";
@@ -249,31 +247,23 @@ export function ServicePage() {
               <Empty>no flow involves this service</Empty>
             ) : null}
             {flows.map((flow) => {
-              const cov = flowCoverage(flow);
               return (
                 <Link
                   key={flow.slug}
                   to={paths.flow(flow.slug)}
                   className="row flex-wrap"
-                  style={{
-                    borderColor:
-                      cov.unresolved > 0
-                        ? "var(--status-unresolved)"
-                        : "var(--border)",
-                  }}
                 >
                   <span className="font-semibold">{flow.name}</span>
                   <span className="mono text-muted">{flow.slug}</span>
-                  <ProvenanceBadge
-                    provenance={flow.provenance}
-                    source={flow.source}
-                    verifiedAt={flow.verifiedAt}
-                  />
-                  <div className="ml-auto w-48">
-                    <CoverageBar coverage={cov} />
-                  </div>
-                  <span className="mono w-10 text-right text-muted">
-                    {Math.round(coverageRatio(cov) * 100)}%
+                  {/* How far this flow can be trusted, in one word. There is
+                      no score beside it: the per-step statuses on the flow
+                      page are where that question is actually answered. */}
+                  <span className="ml-auto shrink-0">
+                    <ProvenanceBadge
+                      provenance={flow.provenance}
+                      source={flow.source}
+                      verifiedAt={flow.verifiedAt}
+                    />
                   </span>
                 </Link>
               );

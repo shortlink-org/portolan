@@ -88,7 +88,10 @@ export function FocusedEventGraph({
   // are catalog ids, so a click here reads the same as a click anywhere else.
   const onNodeClick = useCallback(
     (_: React.MouseEvent, node: { id: string }) =>
-      select(node.id.startsWith("event:") ? node.id.slice(6) : node.id, "diagram"),
+      select(
+        node.id.startsWith("event:") ? node.id.slice(6) : node.id,
+        "diagram",
+      ),
     [select],
   );
 

@@ -43,10 +43,7 @@ function Shell() {
   // Collapsed is a fact about pixels, not about who dragged: the rail appears
   // whether the reader dragged past the minimum or pressed a rail button.
   const onSidebarResize = useCallback(
-    (size: { inPixels: number }) => {
-      (window as any).__sidebarResizes = ((window as any).__sidebarResizes ?? 0) + 1;
-      setRailed(size.inPixels <= 56);
-    },
+    (size: { inPixels: number }) => setRailed(size.inPixels <= 56),
     [],
   );
 
@@ -62,6 +59,13 @@ function Shell() {
     if (!panel) return;
     panel.expand();
     if (panel.getSize().asPercentage <= 13) panel.resize("18");
+  }, [sidebarRef]);
+
+  // A layout restored from a previous session can arrive already collapsed,
+  // and no resize fires for a size that never changed - so the rail has to be
+  // read off the panel once on mount, or the full tree renders into 48px.
+  useEffect(() => {
+    setRailed(sidebarRef.current?.isCollapsed() ?? false);
   }, [sidebarRef]);
 
   useEffect(() => {
@@ -107,69 +111,69 @@ function Shell() {
               a new pathname is a new element, so the mount animation runs again.
               There is no exit - the outgoing page is simply gone. */}
           <main key={pathname} className="page-in h-full overflow-hidden">
-          {/* The detail rail rides along with every page that draws a diagram,
+            {/* The detail rail rides along with every page that draws a diagram,
               so a selection made anywhere has somewhere to be read. */}
-          <Routes>
-            <Route path="/" element={<Overview />} />
-            <Route path="/flows" element={<FlowIndex />} />
-            <Route
-              path="/flows/:flow"
-              element={
-                <WithDetail id="flow">
-                  <FlowDetail />
-                </WithDetail>
-              }
-            />
-            <Route path="/adrs" element={<AdrIndex />} />
-            <Route path="/adrs/:adr" element={<AdrDetail />} />
-            <Route
-              path="/c/:context"
-              element={
-                <WithDetail id="context">
-                  <ContextPage />
-                </WithDetail>
-              }
-            />
-            <Route
-              path="/c/:context/:service"
-              element={
-                <WithDetail id="service">
-                  <ServicePage />
-                </WithDetail>
-              }
-            />
-            <Route
-              path="/c/:context/:service/:aggregate"
-              element={<AggregatePage />}
-            />
-            {/* The two literal segments come first: a block page must not be
+            <Routes>
+              <Route path="/" element={<Overview />} />
+              <Route path="/flows" element={<FlowIndex />} />
+              <Route
+                path="/flows/:flow"
+                element={
+                  <WithDetail id="flow">
+                    <FlowDetail />
+                  </WithDetail>
+                }
+              />
+              <Route path="/adrs" element={<AdrIndex />} />
+              <Route path="/adrs/:adr" element={<AdrDetail />} />
+              <Route
+                path="/c/:context"
+                element={
+                  <WithDetail id="context">
+                    <ContextPage />
+                  </WithDetail>
+                }
+              />
+              <Route
+                path="/c/:context/:service"
+                element={
+                  <WithDetail id="service">
+                    <ServicePage />
+                  </WithDetail>
+                }
+              />
+              <Route
+                path="/c/:context/:service/:aggregate"
+                element={<AggregatePage />}
+              />
+              {/* The two literal segments come first: a block page must not be
                 read as an event whose slug happens to be "vo". */}
-            <Route
-              path="/c/:context/:service/:aggregate/vo/:block"
-              element={<BlockPage kind="vo" />}
-            />
-            <Route
-              path="/c/:context/:service/:aggregate/entity/:block"
-              element={<BlockPage kind="entity" />}
-            />
-            <Route
-              path="/c/:context/:service/:aggregate/:event"
-              element={
-                <WithDetail id="event">
-                  <EventPage />
-                </WithDetail>
-              }
-            />
-            <Route
-              path="/graph"
-              element={
-                <WithDetail id="graph">
-                  <GraphPage />
-                </WithDetail>
-              }
-            />
-            <Route path="/index.html" element={<Navigate to="/" replace />} />
-            <Route path="*" element={<NotFoundPage />} />
+              <Route
+                path="/c/:context/:service/:aggregate/vo/:block"
+                element={<BlockPage kind="vo" />}
+              />
+              <Route
+                path="/c/:context/:service/:aggregate/entity/:block"
+                element={<BlockPage kind="entity" />}
+              />
+              <Route
+                path="/c/:context/:service/:aggregate/:event"
+                element={
+                  <WithDetail id="event">
+                    <EventPage />
+                  </WithDetail>
+                }
+              />
+              <Route
+                path="/graph"
+                element={
+                  <WithDetail id="graph">
+                    <GraphPage />
+                  </WithDetail>
+                }
+              />
+              <Route path="/index.html" element={<Navigate to="/" replace />} />
+              <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </main>
         </Panel>

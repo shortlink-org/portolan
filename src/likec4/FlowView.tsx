@@ -7,6 +7,9 @@ import { flowPairing, viewHasNode } from "./view-index";
 import { flowStepId } from "../selection/model";
 import { useSelectionStore } from "../selection/store";
 
+/** A stable empty list, so `useMemo` below is not defeated by a fresh `[]`. */
+const NOTHING: readonly string[] = [];
+
 /**
  * The flow picture. LikeC4 owns it end to end: the sequence is declared in
  * likec4/views.c4, generated from the same catalog.json the rest of the page
@@ -17,11 +20,18 @@ export function FlowView({
   flow,
   crossOnly,
   litSteps = [],
+  pathSteps = null,
 }: {
   flow: Flow;
   crossOnly: boolean;
   /** Catalog step ids to mark; the rest of the sequence is dimmed. */
   litSteps?: readonly string[];
+  /**
+   * Steps of the path being read, when one is chosen. The picture keeps drawing
+   * every branch — the alt frame is the point of it — but the branches not
+   * taken recede, so what is on screen matches what the rail lists.
+   */
+  pathSteps?: readonly string[] | null;
 }) {
   const viewId = crossOnly ? flowCrossViewId(flow) : flowViewId(flow);
   const pairing = flowPairing(flow, crossOnly);
@@ -48,12 +58,16 @@ export function FlowView({
 
   const onCanvas = useCallback(() => clear("diagram"), [clear]);
 
+  // A selection is narrower than a path, so it wins: choosing a path lifts the
+  // branch you are reading, and clicking a step then narrows to that one step.
+  const marked = litSteps.length > 0 ? litSteps : (pathSteps ?? NOTHING);
+
   const highlightEdges = useMemo(
     () =>
-      litSteps
+      marked
         .map((stepId) => pairing.edgeOf.get(stepId))
         .filter((id): id is string => id !== undefined),
-    [litSteps, pairing],
+    [marked, pairing],
   );
 
   // Lanes are marked only for a selection made somewhere else, and only when

@@ -373,7 +373,9 @@ export function usesOfDef(catalog: Catalog, defId: string): DefUse {
     }
   }
   const defs = Object.entries(catalog.defs)
-    .filter(([id, def]) => id !== defId && def.fields.some((f) => f.ref === defId))
+    .filter(
+      ([id, def]) => id !== defId && def.fields.some((f) => f.ref === defId),
+    )
     .map(([id]) => id);
   return { events, defs };
 }

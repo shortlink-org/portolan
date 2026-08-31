@@ -192,7 +192,11 @@ export function score(item: PaletteItem, term: string): number | null {
   // A word boundary is a case change or one of . / - _ ; "item" should hit
   // "AddItem" and "line-item" but not rank with a mid-word accident.
   if (new RegExp(`(^|[.\\-_/ ])${escapeRegex(needle)}`).test(name)) return 2;
-  if (/[a-z]/.test(item.name) && new RegExp(`[a-z]${escapeRegex(term)}`).test(item.name)) return 2;
+  if (
+    /[a-z]/.test(item.name) &&
+    new RegExp(`[a-z]${escapeRegex(term)}`).test(item.name)
+  )
+    return 2;
   if (name.includes(needle)) return 3;
   if (item.id.toLowerCase().includes(needle)) return 4;
   if (item.detail.toLowerCase().includes(needle)) return 5;

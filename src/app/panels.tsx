@@ -92,9 +92,7 @@ export function ResizeHandle({
     <Separator
       {...(id ? { id } : {})}
       className={`group relative z-20 flex shrink-0 items-center justify-center ${
-        vertical
-          ? "w-2 cursor-col-resize"
-          : "h-2 cursor-row-resize"
+        vertical ? "w-2 cursor-col-resize" : "h-2 cursor-row-resize"
       }`}
       title="Drag to resize · double-click to reset"
     >
@@ -135,10 +133,8 @@ export function useCanvasResize(): () => void {
 
   return useCallback(() => {
     if (timer.current) clearTimeout(timer.current);
-    (window as any).__settleCalls = ((window as any).__settleCalls ?? 0) + 1;
     timer.current = setTimeout(() => {
       timer.current = null;
-      (window as any).__settleFired = ((window as any).__settleFired ?? 0) + 1;
       window.dispatchEvent(new Event("resize"));
     }, RESIZE_SETTLE_MS);
   }, []);

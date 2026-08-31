@@ -50,9 +50,9 @@ describe("selection hash", () => {
    * of panel instead of a wrong one.
    */
   it("re-derives the kind rather than trusting the URL", () => {
-    expect(parseSelectionHash("#sel=service:shop.oms.order.OrderPlaced")).toEqual(
-      { kind: "event", id: "shop.oms.order.OrderPlaced" },
-    );
+    expect(
+      parseSelectionHash("#sel=service:shop.oms.order.OrderPlaced"),
+    ).toEqual({ kind: "event", id: "shop.oms.order.OrderPlaced" });
     expect(parseSelectionHash("#sel=event:gone.for.good")).toEqual({
       kind: "unknown",
       id: "gone.for.good",

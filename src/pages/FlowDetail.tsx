@@ -6,8 +6,10 @@ import {
   Columns3,
   Filter,
   Rows3,
+  Split,
+  TriangleAlert,
 } from "lucide-react";
-import { flowContexts, flowCoverage, walkSteps } from "../catalog";
+import { flowContexts, walkSteps } from "../catalog";
 import type { Flow, Step } from "../catalog";
 import { index } from "../data";
 import { contextName, ctxStyle } from "../lib/context-color";
@@ -15,8 +17,10 @@ import { middleTruncate } from "../lib/format";
 import { hiddenStepIds } from "../flow/cross-context";
 import { StepRail } from "../flow/StepRail";
 import { buildOutline, outlineSteps } from "../flow/outline";
+import { findPath, flowPaths } from "../flow/paths";
 import { FlowView } from "../likec4/FlowView";
 import { flowCrossViewId, flowViewId } from "../likec4/ids";
+import { flowPairing } from "../likec4/view-index";
 import { flowStepId, parseFlowStepId } from "../selection/model";
 import { useSelectionStore } from "../selection/store";
 import {
@@ -25,11 +29,7 @@ import {
   SavedGroup,
   useCanvasResize,
 } from "../app/panels";
-import {
-  ContextPill,
-  CoverageBar,
-  ProvenanceBadge,
-} from "../components/primitives";
+import { ContextPill, ProvenanceBadge } from "../components/primitives";
 
 /**
  * A switch inside the view's segmented control. It carries no border of its
@@ -68,6 +68,8 @@ export function FlowDetail() {
 
   const [crossOnly, setCrossOnly] = useState(false);
   const [compact, setCompact] = useState(false);
+  /** Empty means every branch at once — the union, not a run. */
+  const [pathId, setPathId] = useState("");
 
   const selection = useSelectionStore((s) => s.selection);
   const select = useSelectionStore((s) => s.select);
@@ -84,11 +86,27 @@ export function FlowDetail() {
     () => (flow ? hiddenStepIds(flow) : new Set<string>()),
     [flow],
   );
+  const paths = useMemo(
+    () => (flow ? flowPaths(flow) : { paths: [], truncated: false }),
+    [flow],
+  );
+  const path = useMemo(
+    () => (pathId ? findPath(paths.paths, pathId) : null),
+    [paths, pathId],
+  );
+
   // Frames are part of the rail, not something flattened out of it, so the
   // outline is what the rail draws and what the arrow keys step through.
   const rows = useMemo(
-    () => (flow ? buildOutline(flow, { hidden, crossOnly }) : []),
-    [flow, hidden, crossOnly],
+    () =>
+      flow
+        ? buildOutline(flow, {
+            hidden,
+            crossOnly,
+            path: path ? path.stepIds : null,
+          })
+        : [],
+    [flow, hidden, crossOnly, path],
   );
   const walkable = useMemo(() => outlineSteps(rows), [rows]);
 
@@ -125,6 +143,15 @@ export function FlowDetail() {
     () => (selectedStepId ? [selectedStepId] : matches),
     [selectedStepId, matches],
   );
+
+  useEffect(() => {
+    // Choosing a path that does not contain the selected step would leave the
+    // rail marking nothing. The selection is the newer intent, so the filter
+    // yields to it rather than the other way round.
+    if (path && selectedStepId && !path.stepIds.has(selectedStepId)) {
+      setPathId("");
+    }
+  }, [path, selectedStepId]);
 
   const selectStep = useCallback(
     (stepId: string) => {
@@ -193,10 +220,19 @@ export function FlowDetail() {
     );
   }
 
-  const coverage = flowCoverage(flow);
   const contexts = flowContexts(flow);
   const viewId = crossOnly ? flowCrossViewId(flow) : flowViewId(flow);
   const hiddenCount = crossOnly ? hidden.size : 0;
+
+  /**
+   * Steps are paired to the diagram's arrows by position, which holds only
+   * while the generator and the view walk the sequence the same way. When it
+   * stops holding the pairing is abandoned and highlighting silently dies —
+   * so it is said out loud here instead, because a picture that quietly stops
+   * answering is worse than one that admits it cannot.
+   */
+  const pairingBroken =
+    allSteps.length > 0 && flowPairing(flow, crossOnly).edgeOf.size === 0;
 
   const cycle = (delta: number): void => {
     if (matches.length === 0) return;
@@ -236,10 +272,6 @@ export function FlowDetail() {
               <ContextPill key={c} id={c} name={contextName(c)} />
             ))}
           </div>
-          {/* Status lives here regardless of what the picture can express. */}
-          <div className="w-56">
-            <CoverageBar coverage={coverage} />
-          </div>
           {hiddenCount > 0 ? (
             <span className="mono text-muted">
               {hiddenCount} step{hiddenCount === 1 ? "" : "s"} hidden
@@ -248,8 +280,40 @@ export function FlowDetail() {
           <span className="mono text-muted" title="LikeC4 view id">
             {viewId}
           </span>
+          {pairingBroken ? (
+            <span
+              className="mono flex items-center gap-1 status-unresolved"
+              title="The generated view and the catalog disagree on how many steps this flow has, so a step cannot be matched to its arrow. Re-run `npm run likec4:gen`."
+            >
+              <TriangleAlert size={11} aria-hidden />
+              diagram highlighting unavailable
+            </span>
+          ) : null}
 
-          <div className="seg ml-auto">
+          {/* Only a flow that actually forks gets a path picker; for the other
+              three there is one path and naming it would be noise. */}
+          {paths.paths.length > 1 ? (
+            <label className="tbtn ml-auto flex items-center gap-1.5">
+              <Split size={14} aria-hidden />
+              <span className="sr-only">Path through this flow</span>
+              <select
+                value={pathId}
+                onChange={(e) => setPathId(e.target.value)}
+                className="mono bg-transparent text-inherit outline-none"
+                title="Show only the steps that run on one path through this flow"
+              >
+                <option value="">all branches</option>
+                {paths.paths.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label}
+                    {p.terminal ? " (ends flow)" : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+
+          <div className={`seg ${paths.paths.length > 1 ? "" : "ml-auto"}`}>
             <Toggle
               on={crossOnly}
               onClick={() => setCrossOnly((v) => !v)}
@@ -325,7 +389,12 @@ export function FlowDetail() {
               className="h-full min-w-0"
               onResize={settle}
             >
-              <FlowView flow={flow} crossOnly={crossOnly} litSteps={litSteps} />
+              <FlowView
+                flow={flow}
+                crossOnly={crossOnly}
+                litSteps={litSteps}
+                pathSteps={path ? [...path.stepIds] : null}
+              />
             </Panel>
           </SavedGroup>
         )}

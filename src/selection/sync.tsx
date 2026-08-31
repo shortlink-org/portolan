@@ -75,13 +75,7 @@ export function SelectionSync() {
       { pathname: location.pathname, search: location.search, hash: want },
       { replace: true },
     );
-  }, [
-    selection,
-    location.pathname,
-    location.search,
-    location.hash,
-    navigate,
-  ]);
+  }, [selection, location.pathname, location.search, location.hash, navigate]);
 
   // --- Esc clears ---------------------------------------------------------
   useEffect(() => {

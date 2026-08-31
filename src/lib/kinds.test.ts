@@ -28,7 +28,10 @@ describe("the taxonomy", () => {
     const seen = new Map<string, Kind>();
     for (const kind of ALL_KINDS) {
       for (const prefix of KIND_PREFIXES[kind]) {
-        expect(seen.get(prefix), `"${prefix}:" is claimed twice`).toBeUndefined();
+        expect(
+          seen.get(prefix),
+          `"${prefix}:" is claimed twice`,
+        ).toBeUndefined();
         seen.set(prefix, kind);
       }
     }

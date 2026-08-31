@@ -205,7 +205,14 @@ export interface Adr {
 }
 
 // ---------------------------------------------------------------------------
-// Traversal helpers. Coverage is DERIVED here, never stored in the JSON.
+// Traversal helpers. Everything here is DERIVED from the steps, never stored in
+// the JSON.
+//
+// There is deliberately no flow-level score. How far a flow can be trusted is
+// said by its `provenance` and, step by step, by each `Step.status`; a ratio
+// over those averaged claims that are not comparable, hid the only actionable
+// one (`unresolved`), and — once alt branches are counted — divided by a number
+// no single execution ever reaches.
 // ---------------------------------------------------------------------------
 
 /** Depth-first walk over every Step in a node list, in numbering order. */
@@ -309,30 +316,6 @@ export function stepFrames(nodes: FlowNode[]): Map<string, StepFrame[]> {
  */
 export function stepConditions(frames: readonly StepFrame[]): StepFrame[] {
   return frames.filter((f) => f.kind === "alt");
-}
-
-export interface Coverage {
-  verified: number;
-  declared: number;
-  unresolved: number;
-  total: number;
-}
-
-export function flowCoverage(flow: Flow): Coverage {
-  const steps = walkSteps(flow.steps);
-  const cov: Coverage = {
-    verified: 0,
-    declared: 0,
-    unresolved: 0,
-    total: steps.length,
-  };
-  for (const step of steps) cov[step.status] += 1;
-  return cov;
-}
-
-/** Fraction of steps that are verified; 1 for an empty flow so sorting stays stable. */
-export function coverageRatio(cov: Coverage): number {
-  return cov.total === 0 ? 1 : cov.verified / cov.total;
 }
 
 export function allServices(catalog: Catalog): Service[] {
@@ -543,14 +526,23 @@ export function byDateDesc(a: Adr, b: Adr): number {
 // ---------------------------------------------------------------------------
 
 export class CatalogError extends Error {
-  constructor(message: string) {
+  /**
+   * Where the violation is, as a reader would name it: "flow checkout-happy /
+   * step s4", "aggregate shop.oms.order". The message already says what is
+   * wrong; this says which line of the generator run to go and look at, and it
+   * is what the error page prints under the message.
+   */
+  readonly path: string | undefined;
+
+  constructor(message: string, path?: string) {
     super(message);
     this.name = "CatalogError";
+    this.path = path;
   }
 }
 
-function fail(message: string): never {
-  throw new CatalogError(message);
+function fail(message: string, path?: string): never {
+  throw new CatalogError(message, path);
 }
 
 function assertUniqueSlugs(
@@ -561,14 +553,14 @@ function assertUniqueSlugs(
   const seen = new Set<string>();
   for (const slug of slugs) {
     if (seen.has(slug))
-      fail(`${what} slug "${slug}" is not unique within ${parent}`);
+      fail(`${what} slug "${slug}" is not unique within ${parent}`, parent);
     seen.add(slug);
   }
 }
 
 export function validateCatalog(catalog: Catalog): Catalog {
-  if (!catalog.generatedAt) fail("catalog.generatedAt is missing");
-  if (!catalog.commit) fail("catalog.commit is missing");
+  if (!catalog.generatedAt) fail("catalog.generatedAt is missing", "catalog");
+  if (!catalog.commit) fail("catalog.commit is missing", "catalog");
 
   const eventIds = new Set<string>();
   const rpcIds = new Set<string>();
@@ -589,6 +581,7 @@ export function validateCatalog(catalog: Catalog): Catalog {
       if (service.id !== `${context.id}.${service.slug}`) {
         fail(
           `service "${service.id}" in context "${context.id}" must have id "${context.id}.${service.slug}"`,
+          `service ${service.id}`,
         );
       }
       for (const call of service.consumes) rpcIds.add(call.id);
@@ -598,6 +591,7 @@ export function validateCatalog(catalog: Catalog): Catalog {
             if (field.ref !== undefined && !(field.ref in catalog.defs)) {
               fail(
                 `field "${field.name}" of rpc message "${provided.id}.${message.name}" references unknown def "${field.ref}"`,
+                `service ${service.id} / rpc ${provided.id}.${message.name} / field ${field.name}`,
               );
             }
           }
@@ -620,6 +614,7 @@ export function validateCatalog(catalog: Catalog): Catalog {
           if (event.versions.length === 0) {
             fail(
               `event "${event.id}" has no versions; at least one is required`,
+              `event ${event.id}`,
             );
           }
           eventIds.add(event.id);
@@ -628,6 +623,7 @@ export function validateCatalog(catalog: Catalog): Catalog {
               if (field.ref !== undefined && !(field.ref in catalog.defs)) {
                 fail(
                   `field "${field.name}" of ${event.id}@${version.version} references unknown def "${field.ref}"`,
+                  `event ${event.id}@${version.version} / field ${field.name}`,
                 );
               }
             }
@@ -642,6 +638,7 @@ export function validateCatalog(catalog: Catalog): Catalog {
       if (field.ref !== undefined && !(field.ref in catalog.defs)) {
         fail(
           `field "${field.name}" of def "${defId}" references unknown def "${field.ref}"`,
+          `def ${defId} / field ${field.name}`,
         );
       }
     }
@@ -656,7 +653,10 @@ export function validateCatalog(catalog: Catalog): Catalog {
   for (const flow of catalog.flows) {
     const lanes = new Set(flow.participants.map((p) => p.id));
     if (lanes.size !== flow.participants.length) {
-      fail(`flow "${flow.slug}" has duplicate participant ids`);
+      fail(
+        `flow "${flow.slug}" has duplicate participant ids`,
+        `flow ${flow.id}`,
+      );
     }
     validateFlowFrames(flow, flow.steps);
 
@@ -664,18 +664,23 @@ export function validateCatalog(catalog: Catalog): Catalog {
     const stepIds = new Set<string>();
     for (const step of steps) {
       if (stepIds.has(step.id)) {
-        fail(`flow "${flow.slug}" has duplicate step id "${step.id}"`);
+        fail(
+          `flow "${flow.slug}" has duplicate step id "${step.id}"`,
+          `flow ${flow.id} / step ${step.id}`,
+        );
       }
       stepIds.add(step.id);
 
       if (!lanes.has(step.from)) {
         fail(
           `flow "${flow.slug}" step "${step.id}": from "${step.from}" is not a declared participant`,
+          `flow ${flow.id} / step ${step.id}`,
         );
       }
       if (!lanes.has(step.to)) {
         fail(
           `flow "${flow.slug}" step "${step.id}": to "${step.to}" is not a declared participant`,
+          `flow ${flow.id} / step ${step.id}`,
         );
       }
       if (step.ref !== undefined && step.status !== "unresolved") {
@@ -683,6 +688,7 @@ export function validateCatalog(catalog: Catalog): Catalog {
         if (!resolves) {
           fail(
             `flow "${flow.slug}" step "${step.id}": ref "${step.ref}" resolves to neither an Event nor an RpcCall, and status is "${step.status}" rather than "unresolved"`,
+            `flow ${flow.id} / step ${step.id}`,
           );
         }
       }
@@ -713,6 +719,7 @@ function validateFlowFrames(flow: Flow, nodes: FlowNode[]): void {
         if (!node.title) {
           fail(
             `flow "${flow.slug}" loop "${node.id}" has no title, so the diagram cannot say what it repeats until`,
+            `flow ${flow.id} / loop ${node.id}`,
           );
         }
         validateFlowFrames(flow, node.steps);
@@ -721,6 +728,7 @@ function validateFlowFrames(flow: Flow, nodes: FlowNode[]): void {
         if (node.branches.length < 2) {
           fail(
             `flow "${flow.slug}" alt "${node.id}" has ${node.branches.length} branch(es); an alt states a choice and needs at least two`,
+            `flow ${flow.id} / alt ${node.id}`,
           );
         }
         const titles = new Set<string>();
@@ -728,11 +736,13 @@ function validateFlowFrames(flow: Flow, nodes: FlowNode[]): void {
           if (!branch.title) {
             fail(
               `flow "${flow.slug}" alt "${node.id}" has a branch with no title, so nothing says when it runs`,
+              `flow ${flow.id} / alt ${node.id}`,
             );
           }
           if (titles.has(branch.title)) {
             fail(
               `flow "${flow.slug}" alt "${node.id}" has two branches titled "${branch.title}"`,
+              `flow ${flow.id} / alt ${node.id}`,
             );
           }
           titles.add(branch.title);
@@ -741,6 +751,7 @@ function validateFlowFrames(flow: Flow, nodes: FlowNode[]): void {
         if (node.branches.every((b) => b.terminal) && i < nodes.length - 1) {
           fail(
             `flow "${flow.slug}" alt "${node.id}": every branch is terminal, so the ${nodes.length - 1 - i} node(s) after it can never run`,
+            `flow ${flow.id} / alt ${node.id}`,
           );
         }
         break;
@@ -761,7 +772,10 @@ function validateBlocks(catalog: Catalog, aggregate: Aggregate): void {
     ["valueObjects", aggregate.valueObjects],
   ] as const) {
     if (!Array.isArray(list)) {
-      fail(`aggregate "${aggregate.id}" is missing its ${what} list`);
+      fail(
+        `aggregate "${aggregate.id}" is missing its ${what} list`,
+        `aggregate ${aggregate.id}`,
+      );
     }
   }
 
@@ -781,29 +795,41 @@ function validateBlocks(catalog: Catalog, aggregate: Aggregate): void {
     if (block.id !== `${aggregate.id}.${block.slug}`) {
       fail(
         `${what} "${block.id}" in aggregate "${aggregate.id}" must have id "${aggregate.id}.${block.slug}"`,
+        `aggregate ${aggregate.id} / ${what} ${block.slug}`,
       );
     }
     if (block.ref !== undefined && !(block.ref in catalog.defs)) {
-      fail(`${what} "${block.id}" references unknown def "${block.ref}"`);
+      fail(
+        `${what} "${block.id}" references unknown def "${block.ref}"`,
+        `aggregate ${aggregate.id} / ${what} ${block.slug}`,
+      );
     }
     if (block.ref === undefined && (block.fields ?? []).length === 0) {
       fail(
         `${what} "${block.id}" has neither a def ref nor any fields of its own`,
+        `aggregate ${aggregate.id} / ${what} ${block.slug}`,
       );
     }
     for (const field of block.fields ?? []) {
       if (field.ref !== undefined && !(field.ref in catalog.defs)) {
         fail(
           `field "${field.name}" of ${what} "${block.id}" references unknown def "${field.ref}"`,
+          `aggregate ${aggregate.id} / ${what} ${block.slug} / field ${field.name}`,
         );
       }
     }
   }
 
-  if (!aggregate.root) fail(`aggregate "${aggregate.id}" names no root entity`);
+  if (!aggregate.root) {
+    fail(
+      `aggregate "${aggregate.id}" names no root entity`,
+      `aggregate ${aggregate.id}`,
+    );
+  }
   if (!rootEntity(aggregate)) {
     fail(
       `aggregate "${aggregate.id}" names root "${aggregate.root}", which is not one of its entities`,
+      `aggregate ${aggregate.id}`,
     );
   }
 }
@@ -814,7 +840,7 @@ function validateBlocks(catalog: Catalog, aggregate: Aggregate): void {
  * nowhere, so both fail the build instead.
  */
 function validateAdrs(catalog: Catalog, eventIds: Set<string>): void {
-  if (!Array.isArray(catalog.adrs)) fail("catalog.adrs is missing");
+  if (!Array.isArray(catalog.adrs)) fail("catalog.adrs is missing", "catalog");
 
   const serviceIds = new Set(allServices(catalog).map((s) => s.id));
   const contextIds = new Set(catalog.contexts.map((c) => c.id));
@@ -828,17 +854,24 @@ function validateAdrs(catalog: Catalog, eventIds: Set<string>): void {
 
   const byId = new Map<string, Adr>();
   for (const adr of catalog.adrs) {
-    if (byId.has(adr.id)) fail(`adr id "${adr.id}" is not unique`);
+    if (byId.has(adr.id))
+      fail(`adr id "${adr.id}" is not unique`, `decision ${adr.id}`);
     byId.set(adr.id, adr);
   }
 
   for (const adr of catalog.adrs) {
     const padded = String(adr.number).padStart(4, "0");
     if (!adr.id.endsWith(`.${padded}`)) {
-      fail(`adr "${adr.id}" must end with its number, "${padded}"`);
+      fail(
+        `adr "${adr.id}" must end with its number, "${padded}"`,
+        `decision ${adr.id}`,
+      );
     }
     if (Number.isNaN(new Date(adr.date).getTime())) {
-      fail(`adr "${adr.id}" has an unparseable date "${adr.date}"`);
+      fail(
+        `adr "${adr.id}" has an unparseable date "${adr.date}"`,
+        `decision ${adr.id}`,
+      );
     }
 
     switch (adr.scope.kind) {
@@ -846,6 +879,7 @@ function validateAdrs(catalog: Catalog, eventIds: Set<string>): void {
         if (!contextIds.has(adr.scope.context)) {
           fail(
             `adr "${adr.id}" is scoped to unknown context "${adr.scope.context}"`,
+            `decision ${adr.id}`,
           );
         }
         break;
@@ -853,6 +887,7 @@ function validateAdrs(catalog: Catalog, eventIds: Set<string>): void {
         if (!serviceIds.has(adr.scope.service)) {
           fail(
             `adr "${adr.id}" is scoped to unknown service "${adr.scope.service}"`,
+            `decision ${adr.id}`,
           );
         }
         break;
@@ -862,49 +897,68 @@ function validateAdrs(catalog: Catalog, eventIds: Set<string>): void {
 
     for (const serviceId of adr.relates.services ?? []) {
       if (!serviceIds.has(serviceId)) {
-        fail(`adr "${adr.id}" relates to unknown service "${serviceId}"`);
+        fail(
+          `adr "${adr.id}" relates to unknown service "${serviceId}"`,
+          `decision ${adr.id}`,
+        );
       }
     }
     for (const eventId of adr.relates.events ?? []) {
       if (!eventIds.has(eventId)) {
-        fail(`adr "${adr.id}" relates to unknown event "${eventId}"`);
+        fail(
+          `adr "${adr.id}" relates to unknown event "${eventId}"`,
+          `decision ${adr.id}`,
+        );
       }
     }
     for (const flowSlug of adr.relates.flows ?? []) {
       if (!flowSlugs.has(flowSlug)) {
-        fail(`adr "${adr.id}" relates to unknown flow "${flowSlug}"`);
+        fail(
+          `adr "${adr.id}" relates to unknown flow "${flowSlug}"`,
+          `decision ${adr.id}`,
+        );
       }
     }
 
     // Supersession is a two-way fact. Recording one half of it is a bug in
     // whatever wrote the catalog, not a display problem to paper over.
     if (adr.status === "superseded" && !adr.supersededBy) {
-      fail(`adr "${adr.id}" is superseded but names no supersededBy`);
+      fail(
+        `adr "${adr.id}" is superseded but names no supersededBy`,
+        `decision ${adr.id}`,
+      );
     }
     if (adr.supersededBy !== undefined) {
       if (adr.status !== "superseded") {
         fail(
           `adr "${adr.id}" names supersededBy "${adr.supersededBy}" but its status is "${adr.status}", not "superseded"`,
+          `decision ${adr.id}`,
         );
       }
       const successor = byId.get(adr.supersededBy);
       if (!successor) {
         fail(
           `adr "${adr.id}" is superseded by unknown adr "${adr.supersededBy}"`,
+          `decision ${adr.id}`,
         );
       } else if (!(successor.supersedes ?? []).includes(adr.id)) {
         fail(
           `adr "${adr.id}" is superseded by "${successor.id}", but "${successor.id}" does not list it in supersedes`,
+          `decision ${adr.id}`,
         );
       }
     }
     for (const supersededId of adr.supersedes ?? []) {
       const predecessor = byId.get(supersededId);
       if (!predecessor) {
-        fail(`adr "${adr.id}" supersedes unknown adr "${supersededId}"`);
+        fail(
+          `adr "${adr.id}" supersedes unknown adr "${supersededId}"`,
+          `decision ${adr.id}`,
+        );
       } else if (predecessor.supersededBy !== adr.id) {
         fail(
           `adr "${adr.id}" supersedes "${supersededId}", but "${supersededId}" is not marked superseded by it`,
+          `decision ${adr.id}`,
         );
       }
     }

@@ -32,9 +32,12 @@ describe("buildHighlightCss", () => {
       for (const decl of body.split(";")) {
         const property = decl.split(":")[0]?.trim();
         if (!property) continue;
-        expect(["opacity", "outline", "outline-offset", "transition"]).toContain(
-          property,
-        );
+        expect([
+          "opacity",
+          "outline",
+          "outline-offset",
+          "transition",
+        ]).toContain(property);
       }
     }
   });
