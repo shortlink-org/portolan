@@ -1,0 +1,296 @@
+@import "tailwindcss";
+
+/* Theme is driven by a class on <html> so the toggle is instant and SSR-free. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ---------------------------------------------------------------------------
+   Tokens. Defined once, here. Nothing else in the app hard-codes a colour.
+   --------------------------------------------------------------------------- */
+:root {
+  --bg: #ffffff;
+  --surface: #f7f8f9;
+  --surface-2: #eef0f2;
+  --border: #d9dde1;
+  --border-strong: #b9c0c7;
+  --fg: #14181c;
+  --fg-muted: #61707d;
+  --accent: #1f6feb;
+
+  --status-verified: #157f4a;
+  --status-declared: #8a6d1f;
+  --status-unresolved: #c02a29;
+
+  /* Domain events are the loudest leaf in the tree. Amber, but a step darker
+     than amber-600 so 12px mono still clears contrast on white. */
+  --kind-event: #b45309;
+
+  --ctx-0: #2563a8;
+  --ctx-1: #7a3fa8;
+  --ctx-2: #0f7a6c;
+  --ctx-3: #a8552b;
+  --ctx-4: #4a5b8c;
+  --ctx-5: #8c4a6b;
+
+  --font-sans:
+    ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
+  --font-mono:
+    ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+}
+
+.dark {
+  --bg: #0c0e11;
+  --surface: #14181d;
+  --surface-2: #1b2027;
+  --border: #262c34;
+  --border-strong: #3a424c;
+  --fg: #e3e8ee;
+  --fg-muted: #8b97a4;
+  --accent: #5b9dff;
+
+  --status-verified: #3fbf7f;
+  --status-declared: #d6a844;
+  --status-unresolved: #ff6b63;
+
+  --kind-event: #e8a33d;
+
+  --ctx-0: #6aa5f0;
+  --ctx-1: #b98cf0;
+  --ctx-2: #46bfae;
+  --ctx-3: #e0925f;
+  --ctx-4: #8e9fd8;
+  --ctx-5: #d98bab;
+}
+
+@theme inline {
+  /* Roles, not raw names: `bg-canvas`, `text-muted`, `border-line`. The raw
+     custom properties above stay the single source of truth, so a theme swap
+     needs no rebuild and SVG/canvas code can still read them directly. */
+  --color-canvas: var(--bg);
+  --color-surface: var(--surface);
+  --color-raised: var(--surface-2);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+  --color-ink: var(--fg);
+  --color-muted: var(--fg-muted);
+  --color-accent: var(--accent);
+  --color-verified: var(--status-verified);
+  --color-declared: var(--status-declared);
+  --color-unresolved: var(--status-unresolved);
+  --color-event: var(--kind-event);
+
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
+  --radius-hair: 2px;
+}
+
+/* Identifiers are always monospace; prose never is. */
+@utility mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: -0.01em;
+}
+
+/* Paints from a --ctx custom property set on the element, so one class covers
+   every context colour without generating a utility per context. */
+@utility ctx {
+  color: var(--ctx);
+  border-color: var(--ctx);
+}
+
+@layer components {
+  /* The bordered monospace token used for status, contexts and provenance. */
+  .chip {
+    @apply mono inline-flex items-center gap-1 border px-1.5 py-px leading-4;
+  }
+  .chip-lg {
+    @apply mono inline-flex items-center gap-1.5 border px-1.5 py-0.5 leading-4;
+  }
+  /* Square marker that inherits the chip's colour. */
+  .dot {
+    @apply inline-block size-1.5 shrink-0 bg-current;
+  }
+
+  .status-verified {
+    color: var(--status-verified);
+    border-color: var(--status-verified);
+  }
+  .status-declared {
+    color: var(--status-declared);
+    border-color: var(--status-declared);
+  }
+  .status-unresolved {
+    color: var(--status-unresolved);
+    border-color: var(--status-unresolved);
+  }
+
+  /* Section label above a block of content. */
+  .label {
+    @apply mono uppercase text-muted;
+  }
+
+  /* A bordered, hoverable block that is also a link. */
+  .card {
+    @apply block border border-line p-3 hover:bg-surface;
+  }
+  .row {
+    @apply flex items-center gap-3 border border-line px-3 py-2 hover:bg-surface;
+  }
+
+  /* Toolbar and filter buttons. */
+  .tbtn {
+    @apply mono flex items-center gap-1.5 border border-line px-2 py-1 text-muted hover:bg-surface;
+  }
+  .tbtn-on {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+  }
+
+  /* Non-navigable header for a group of leaves inside an aggregate. */
+  .group-row {
+    @apply mono flex w-full items-center gap-1.5 py-[3px] pr-2 text-left text-muted hover:bg-surface;
+  }
+
+  /* The matching-steps pill rides above the rail and must survive the rail
+     scrolling itself to a match, or it scrolls out of sight the moment it
+     becomes useful. */
+  .pill-rail {
+    @apply mono sticky top-0 z-10 flex items-center gap-1.5 border-b px-2 py-1.5 border-line bg-canvas;
+  }
+
+  .empty {
+    @apply mono border border-dashed border-line-strong px-3 py-2 text-muted;
+  }
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+*:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Thin, unobtrusive scrollbars: the canvas scrolls constantly. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 0;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ---------------------------------------------------------------------------
+   Markdown prose. Capped near 900px; tables and canvases are not.
+   --------------------------------------------------------------------------- */
+.prose {
+  max-width: 900px;
+  color: var(--fg);
+}
+.prose h1 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 20px 0 8px;
+}
+.prose h2 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 20px 0 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+.prose h3 {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 16px 0 4px;
+}
+.prose p {
+  margin: 8px 0;
+  color: var(--fg);
+}
+.prose ul,
+.prose ol {
+  margin: 8px 0;
+  padding-left: 20px;
+  list-style: disc;
+}
+.prose ol {
+  list-style: decimal;
+}
+.prose li {
+  margin: 2px 0;
+}
+.prose a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.prose code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  padding: 0 3px;
+}
+.prose pre {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  overflow-x: auto;
+  margin: 10px 0;
+}
+.prose pre code {
+  background: none;
+  border: none;
+  padding: 0;
+}
+.prose table {
+  border-collapse: collapse;
+  margin: 10px 0;
+  font-size: 12px;
+  width: 100%;
+}
+.prose th,
+.prose td {
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+  text-align: left;
+}
+.prose th {
+  background: var(--surface);
+  font-weight: 600;
+}
+.prose blockquote {
+  border-left: 2px solid var(--border-strong);
+  padding-left: 10px;
+  color: var(--fg-muted);
+  margin: 10px 0;
+}

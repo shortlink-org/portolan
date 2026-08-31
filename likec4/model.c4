@@ -1,0 +1,182 @@
+// GENERATED — do not edit.
+model {
+  bus = broker 'bus'
+  customer = actor 'customer'
+  fraud_scoring = unknown 'fraud-scoring (unknown)'
+  analytics_sink = unknown 'analytics-sink (unknown)'
+
+  shop = context 'Shop' {
+    description 'Everything the customer touches before money moves: baskets, orders and prices.'
+    style { color ctx0 }
+    oms = service 'Order Management' {
+      description 'github.com/acme/shop/services/oms'
+      style { color ctx0 }
+      order = aggregate 'Order' {
+        OrderPlaced = event 'OrderPlaced' {
+          description 'Adds the acquisition channel so pricing and delivery can differ per channel.'
+        }
+        OrderConfirmed = event 'OrderConfirmed' {
+          description 'Payment captured and the order is committed to fulfilment.'
+        }
+        OrderCancelled = event 'OrderCancelled' {
+          description 'The order was cancelled before fulfilment, by the customer or by risk.'
+        }
+      }
+      basket = aggregate 'Basket' {
+        BasketCheckedOut = event 'BasketCheckedOut' {
+          description 'The customer submitted the basket. Precedes OrderPlaced by milliseconds.'
+        }
+      }
+    }
+    pricing = service 'Pricing' {
+      description 'github.com/acme/shop/services/pricing'
+      style { color ctx0 }
+      quote = aggregate 'Quote' {
+        QuoteIssued = event 'QuoteIssued' {
+          description 'A priced, time-boxed answer for one basket and one customer.'
+        }
+        QuoteExpired = event 'QuoteExpired' {
+          description 'A quote passed its expiry without being consumed.'
+        }
+      }
+      price_list = aggregate 'PriceList' {
+      }
+    }
+  }
+  payments = context 'Payments' {
+    description 'A double-entry ledger and the PSP integrations that feed it. Nothing here knows what an order is for.'
+    style { color ctx1 }
+    ledger = service 'Ledger' {
+      description 'github.com/acme/payments/services/ledger'
+      style { color ctx1 }
+      payment = aggregate 'Payment' {
+        PaymentAuthorized = event 'PaymentAuthorized' {
+          description 'Funds reserved with the PSP. No money has moved yet.'
+        }
+        PaymentCaptured = event 'PaymentCaptured' {
+          description 'Reserved funds settled. This is the event fulfilment reacts to.'
+        }
+        PaymentDeclined = event 'PaymentDeclined' {
+          description 'The PSP refused the authorisation or the capture.'
+        }
+      }
+      refund = aggregate 'Refund' {
+        RefundIssued = event 'RefundIssued' {
+          description 'A compensating posting pair against a captured payment.'
+        }
+      }
+    }
+  }
+  delivery = context 'Delivery' {
+    description 'Routes, parcels and proof of delivery. Reacts to captured payments, never to placed orders.'
+    style { color ctx2 }
+    core = service 'Delivery Core' {
+      description 'github.com/acme/delivery/services/core'
+      style { color ctx2 }
+      shipment = aggregate 'Shipment' {
+        ShipmentDispatched = event 'ShipmentDispatched' {
+          description 'A parcel physically left the depot.'
+        }
+        ShipmentDelivered = event 'ShipmentDelivered' {
+          description 'Proof of delivery recorded. Terminal for the shipment.'
+        }
+      }
+      route = aggregate 'Route' {
+        RoutePlanned = event 'RoutePlanned' {
+          description 'A vehicle and window were assigned a stop sequence.'
+        }
+      }
+    }
+  }
+
+  shop.oms -> payments.ledger 'OrderPlaced' {
+    style { color verified  line solid  head onormal }
+  }
+  shop.oms -> shop.pricing 'OrderPlaced' {
+    style { color declared  line dashed  head onormal }
+  }
+  shop.oms -> analytics_sink 'OrderPlaced' {
+    style { color unresolved  line dotted  head onormal }
+  }
+  shop.oms -> delivery.core 'OrderConfirmed' {
+    style { color verified  line solid  head onormal }
+  }
+  shop.oms -> payments.ledger 'OrderCancelled' {
+    style { color verified  line solid  head onormal }
+  }
+  shop.oms -> delivery.core 'OrderCancelled' {
+    style { color declared  line dashed  head onormal }
+  }
+  shop.oms -> shop.pricing 'BasketCheckedOut' {
+    style { color verified  line solid  head onormal }
+  }
+  shop.oms -> shop.pricing 'GetQuote' {
+    style { color verified  line solid  head normal }
+  }
+  shop.oms -> payments.ledger 'Authorize' {
+    style { color declared  line dashed  head normal }
+  }
+  shop.oms -> payments.ledger 'Capture' {
+    style { color declared  line dashed  head normal }
+  }
+  shop.oms -> payments.ledger 'Refund' {
+    style { color declared  line dashed  head normal }
+  }
+  shop.oms -> fraud_scoring 'Score' {
+    style { color unresolved  line dotted  head normal }
+  }
+  shop.pricing -> shop.oms 'QuoteIssued' {
+    style { color verified  line solid  head onormal }
+  }
+  shop.pricing -> shop.oms 'QuoteExpired' {
+    style { color declared  line dashed  head onormal }
+  }
+  shop.pricing -> shop.oms 'GetOrder' {
+    style { color verified  line solid  head normal }
+  }
+  payments.ledger -> shop.oms 'PaymentAuthorized' {
+    style { color verified  line solid  head onormal }
+  }
+  payments.ledger -> delivery.core 'PaymentAuthorized' {
+    style { color declared  line dashed  head onormal }
+  }
+  payments.ledger -> delivery.core 'PaymentCaptured' {
+    style { color verified  line solid  head onormal }
+  }
+  payments.ledger -> shop.oms 'PaymentCaptured' {
+    style { color verified  line solid  head onormal }
+  }
+  payments.ledger -> shop.oms 'PaymentDeclined' {
+    style { color verified  line solid  head onormal }
+  }
+  payments.ledger -> shop.oms 'RefundIssued' {
+    style { color declared  line dashed  head onormal }
+  }
+  payments.ledger -> delivery.core 'RefundIssued' {
+    style { color declared  line dashed  head onormal }
+  }
+  payments.ledger -> shop.oms 'GetOrder' {
+    style { color verified  line solid  head normal }
+  }
+  delivery.core -> shop.oms 'ShipmentDispatched' {
+    style { color verified  line solid  head onormal }
+  }
+  delivery.core -> analytics_sink 'ShipmentDispatched' {
+    style { color declared  line dashed  head onormal }
+  }
+  delivery.core -> shop.oms 'ShipmentDelivered' {
+    style { color verified  line solid  head onormal }
+  }
+  delivery.core -> analytics_sink 'ShipmentDelivered' {
+    style { color unresolved  line dotted  head onormal }
+  }
+  delivery.core -> shop.oms 'RoutePlanned' {
+    style { color declared  line dashed  head onormal }
+  }
+  delivery.core -> shop.oms 'GetOrder' {
+    style { color verified  line solid  head normal }
+  }
+  delivery.core -> payments.ledger 'GetPayment' {
+    style { color declared  line dashed  head normal }
+  }
+}

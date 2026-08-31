@@ -1,0 +1,2297 @@
+{
+  "generatedAt": "2026-08-29T09:14:22Z",
+  "commit": "4f1c9ae",
+  "defs": {
+    "Money": {
+      "fields": [
+        {
+          "name": "amountMinor",
+          "type": "int64",
+          "doc": "Amount in the minor unit of the currency."
+        },
+        {
+          "name": "currency",
+          "type": "string",
+          "doc": "ISO 4217 code, upper case."
+        }
+      ]
+    },
+    "Address": {
+      "fields": [
+        {
+          "name": "line1",
+          "type": "string",
+          "doc": "Street and number."
+        },
+        {
+          "name": "line2",
+          "type": "string",
+          "doc": "Optional second line."
+        },
+        {
+          "name": "city",
+          "type": "string",
+          "doc": "City or locality."
+        },
+        {
+          "name": "postcode",
+          "type": "string",
+          "doc": "Postal code, unvalidated."
+        },
+        {
+          "name": "country",
+          "type": "string",
+          "doc": "ISO 3166-1 alpha-2."
+        }
+      ]
+    },
+    "LineItem": {
+      "fields": [
+        {
+          "name": "sku",
+          "type": "string",
+          "doc": "Catalog SKU at the time of ordering."
+        },
+        {
+          "name": "quantity",
+          "type": "int32",
+          "doc": "Units ordered; always positive."
+        },
+        {
+          "name": "unitPrice",
+          "type": "Money",
+          "doc": "Price per unit, net of tax.",
+          "ref": "Money"
+        }
+      ]
+    },
+    "CustomerRef": {
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "doc": "Stable customer identifier."
+        },
+        {
+          "name": "segment",
+          "type": "string",
+          "doc": "Pricing segment at time of capture."
+        }
+      ]
+    }
+  },
+  "contexts": [
+    {
+      "id": "shop",
+      "name": "Shop",
+      "summary": "Everything the customer touches before money moves: baskets, orders and prices.",
+      "services": [
+        {
+          "id": "shop.oms",
+          "slug": "oms",
+          "name": "Order Management",
+          "repo": "github.com/acme/shop",
+          "path": "services/oms",
+          "readme": "# Order Management Service\n\n`shop.oms` owns the lifecycle of a customer order from the moment a basket is\nchecked out until the order is either fulfilled or cancelled. It is the write\nside of the `shop` bounded context and the only service permitted to mutate\norder state.\n\n## Responsibilities\n\n- Accept `PlaceOrder` and turn a basket snapshot into an immutable order.\n- Coordinate quoting, authorisation and dispatch without owning any of them.\n- Publish domain events describing what happened, never what should happen next.\n\n## Non-responsibilities\n\nPricing rules live in `shop.pricing`. Money movement lives in\n`payments.ledger`. Physical fulfilment lives in `delivery.core`. The OMS\nholds no schedule, no price list and no ledger balance.\n\n## Order lifecycle\n\n```mermaid\nstateDiagram-v2\n    [*] --> Draft\n    Draft --> Quoted: BasketCheckedOut\n    Quoted --> Placed: OrderPlaced\n    Placed --> Confirmed: PaymentCaptured\n    Placed --> Cancelled: risk rejected\n    Confirmed --> Fulfilled: ShipmentDelivered\n    Cancelled --> [*]\n    Fulfilled --> [*]\n```\n\n## Aggregates\n\n| Aggregate | Root entity   | Events | Notes                                   |\n| --------- | ------------- | ------ | --------------------------------------- |\n| `order`   | `Order`       | 3      | Transactional boundary for one order.   |\n| `basket`  | `Basket`      | 1      | Short lived; expires after 24h.         |\n\n## Consistency\n\nEvery command runs inside a single database transaction that also appends to the\noutbox table. The relay publishes to the bus at least once, so all consumers must\nbe idempotent on `event_id`.\n\n## Operational notes\n\n- Read replicas serve `GetOrder`; expect up to 400ms of replication lag.\n- The fraud scoring call is best-effort and fails open after 250ms.\n",
+          "provides": [
+            {
+              "id": "shop.v1.Orders",
+              "methods": [
+                "PlaceOrder",
+                "GetOrder",
+                "CancelOrder",
+                "ConfirmOrder"
+              ],
+              "source": "proto/shop/v1/orders.proto:12",
+              "messages": [
+                {
+                  "name": "PlaceOrderRequest",
+                  "fields": [
+                    {
+                      "name": "customer",
+                      "type": "CustomerRef",
+                      "doc": "Who is placing the order.",
+                      "ref": "CustomerRef"
+                    },
+                    {
+                      "name": "items",
+                      "type": "[]LineItem",
+                      "doc": "Basket contents at checkout.",
+                      "ref": "LineItem"
+                    },
+                    {
+                      "name": "shipTo",
+                      "type": "Address",
+                      "doc": "Delivery address.",
+                      "ref": "Address"
+                    }
+                  ]
+                },
+                {
+                  "name": "PlaceOrderResponse",
+                  "fields": [
+                    {
+                      "name": "orderId",
+                      "type": "string",
+                      "doc": "Id of the order just created."
+                    },
+                    {
+                      "name": "total",
+                      "type": "Money",
+                      "doc": "Total charged.",
+                      "ref": "Money"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "consumes": [
+            {
+              "id": "shop.v1.Pricing/GetQuote",
+              "peer": "shop.pricing",
+              "status": "verified",
+              "source": "internal/oms/client/pricing.go:34"
+            },
+            {
+              "id": "payments.v1.Payments/Authorize",
+              "peer": "payments.ledger",
+              "status": "declared",
+              "source": "internal/oms/client/payments.go:51"
+            },
+            {
+              "id": "payments.v1.Payments/Capture",
+              "peer": "payments.ledger",
+              "status": "declared",
+              "source": "internal/oms/client/payments.go:78"
+            },
+            {
+              "id": "payments.v1.Payments/Refund",
+              "peer": "payments.ledger",
+              "status": "declared",
+              "source": "internal/oms/client/payments.go:104"
+            },
+            {
+              "id": "fraud.v2.Scoring/Score",
+              "peer": "fraud-scoring",
+              "status": "unresolved",
+              "source": "internal/oms/client/fraud.go:22",
+              "note": "No service in the catalog provides fraud.v2.Scoring. The target is configured per environment via FRAUD_ADDR."
+            }
+          ],
+          "aggregates": [
+            {
+              "id": "shop.oms.order",
+              "slug": "order",
+              "name": "Order",
+              "readme": "# Order\n\nThe transactional boundary for a single customer order. One order, one\naggregate instance, one row lock.\n\n## Invariants\n\n- An order always has at least one line item.\n- The total is recomputed from line items on every mutation; it is never set\n  directly by a caller.\n- A cancelled order is terminal. There is no un-cancel.\n\n## Commands\n\n| Command        | Precondition            | Emits            |\n| -------------- | ----------------------- | ---------------- |\n| `PlaceOrder`   | quote is unexpired      | `OrderPlaced`    |\n| `ConfirmOrder` | payment captured        | `OrderConfirmed` |\n| `CancelOrder`  | not already fulfilled   | `OrderCancelled` |\n\n## Queries\n\n`GetOrder` and `ListOrdersForCustomer` are served from a read replica and are\neventually consistent with the write side.\n\n## Concurrency\n\nOptimistic, on a `version` column. A conflicting write returns\n`ErrConcurrentModification` and the caller is expected to reload and retry.",
+              "root": "Order",
+              "entities": [
+                {
+                  "id": "shop.oms.order.order",
+                  "slug": "order",
+                  "name": "Order",
+                  "doc": "The order itself. Identity is the order id, which is minted at placement and never reused.",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "string",
+                      "doc": "Order id, minted at placement."
+                    },
+                    {
+                      "name": "status",
+                      "type": "string",
+                      "doc": "placed | confirmed | cancelled."
+                    },
+                    {
+                      "name": "customer",
+                      "type": "CustomerRef",
+                      "doc": "Who placed it.",
+                      "ref": "CustomerRef"
+                    },
+                    {
+                      "name": "lines",
+                      "type": "[]OrderLine",
+                      "doc": "One line per SKU ordered."
+                    },
+                    {
+                      "name": "total",
+                      "type": "Money",
+                      "doc": "Order total, net of shipping.",
+                      "ref": "Money"
+                    },
+                    {
+                      "name": "shipTo",
+                      "type": "Address",
+                      "doc": "Delivery address as entered."
+                    }
+                  ]
+                },
+                {
+                  "id": "shop.oms.order.order-line",
+                  "slug": "order-line",
+                  "name": "OrderLine",
+                  "doc": "A single ordered SKU. Has identity inside the order so a line can be amended without rewriting the rest.",
+                  "fields": [
+                    {
+                      "name": "lineNo",
+                      "type": "int32",
+                      "doc": "Position in the order, 1-based."
+                    },
+                    {
+                      "name": "sku",
+                      "type": "string",
+                      "doc": "Catalog SKU at the time of ordering."
+                    },
+                    {
+                      "name": "quantity",
+                      "type": "int32",
+                      "doc": "Units ordered; always positive."
+                    },
+                    {
+                      "name": "unitPrice",
+                      "type": "Money",
+                      "doc": "Price per unit, net of tax.",
+                      "ref": "Money"
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [
+                {
+                  "id": "shop.oms.order.money",
+                  "slug": "money",
+                  "name": "Money",
+                  "doc": "An amount in a single currency. Equal amounts in the same currency are the same value.",
+                  "ref": "Money"
+                },
+                {
+                  "id": "shop.oms.order.address",
+                  "slug": "address",
+                  "name": "Address",
+                  "doc": "A postal address, unvalidated. Frozen onto the order at placement.",
+                  "ref": "Address"
+                },
+                {
+                  "id": "shop.oms.order.customer-ref",
+                  "slug": "customer-ref",
+                  "name": "CustomerRef",
+                  "doc": "A pointer at the customer, plus the pricing segment as it stood when the order was taken.",
+                  "ref": "CustomerRef"
+                }
+              ],
+              "operations": [
+                {
+                  "id": "PlaceOrder",
+                  "kind": "command"
+                },
+                {
+                  "id": "ConfirmOrder",
+                  "kind": "command"
+                },
+                {
+                  "id": "CancelOrder",
+                  "kind": "command"
+                },
+                {
+                  "id": "GetOrder",
+                  "kind": "query"
+                },
+                {
+                  "id": "ListOrdersForCustomer",
+                  "kind": "query"
+                }
+              ],
+              "events": [
+                {
+                  "id": "shop.oms.order.OrderPlaced",
+                  "slug": "order-placed",
+                  "name": "OrderPlaced",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "Emitted once a basket has been converted into an immutable order.",
+                      "source": "internal/oms/domain/order/events.go:41",
+                      "fields": [
+                        {
+                          "name": "orderId",
+                          "type": "string",
+                          "doc": "Identifier of the newly placed order."
+                        },
+                        {
+                          "name": "customer",
+                          "type": "CustomerRef",
+                          "doc": "Who placed the order.",
+                          "ref": "CustomerRef"
+                        },
+                        {
+                          "name": "items",
+                          "type": "[]LineItem",
+                          "doc": "Frozen basket contents.",
+                          "ref": "LineItem"
+                        },
+                        {
+                          "name": "total",
+                          "type": "Money",
+                          "doc": "Order total, net of shipping.",
+                          "ref": "Money"
+                        },
+                        {
+                          "name": "shipTo",
+                          "type": "Address",
+                          "doc": "Delivery address as entered by the customer.",
+                          "ref": "Address"
+                        },
+                        {
+                          "name": "placedAt",
+                          "type": "time.Time",
+                          "doc": "Server time the order was accepted."
+                        }
+                      ]
+                    },
+                    {
+                      "version": "v2",
+                      "doc": "Adds the acquisition channel so pricing and delivery can differ per channel.",
+                      "source": "internal/oms/domain/order/events.go:78",
+                      "fields": [
+                        {
+                          "name": "orderId",
+                          "type": "string",
+                          "doc": "Identifier of the newly placed order."
+                        },
+                        {
+                          "name": "customer",
+                          "type": "CustomerRef",
+                          "doc": "Who placed the order.",
+                          "ref": "CustomerRef"
+                        },
+                        {
+                          "name": "items",
+                          "type": "[]LineItem",
+                          "doc": "Frozen basket contents.",
+                          "ref": "LineItem"
+                        },
+                        {
+                          "name": "total",
+                          "type": "Money",
+                          "doc": "Order total, net of shipping.",
+                          "ref": "Money"
+                        },
+                        {
+                          "name": "shipTo",
+                          "type": "Address",
+                          "doc": "Delivery address as entered by the customer.",
+                          "ref": "Address"
+                        },
+                        {
+                          "name": "placedAt",
+                          "type": "time.Time",
+                          "doc": "Server time the order was accepted."
+                        },
+                        {
+                          "name": "channel",
+                          "type": "string",
+                          "doc": "New in v2. One of web, ios, android, pos."
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [
+                    {
+                      "service": "payments.ledger",
+                      "status": "verified"
+                    },
+                    {
+                      "service": "shop.pricing",
+                      "status": "declared"
+                    },
+                    {
+                      "service": "analytics-sink",
+                      "status": "unresolved",
+                      "note": "Seen on the bus in traces; no consumer registration found in any repo."
+                    }
+                  ]
+                },
+                {
+                  "id": "shop.oms.order.OrderConfirmed",
+                  "slug": "order-confirmed",
+                  "name": "OrderConfirmed",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "Payment captured and the order is committed to fulfilment.",
+                      "source": "internal/oms/domain/order/events.go:150",
+                      "fields": [
+                        {
+                          "name": "orderId",
+                          "type": "string",
+                          "doc": "Order that was confirmed."
+                        },
+                        {
+                          "name": "paymentId",
+                          "type": "string",
+                          "doc": "Ledger payment that backs this confirmation."
+                        },
+                        {
+                          "name": "confirmedAt",
+                          "type": "time.Time",
+                          "doc": "Server time of confirmation."
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [
+                    {
+                      "service": "delivery.core",
+                      "status": "verified"
+                    }
+                  ]
+                },
+                {
+                  "id": "shop.oms.order.OrderCancelled",
+                  "slug": "order-cancelled",
+                  "name": "OrderCancelled",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "The order was cancelled before fulfilment, by the customer or by risk.",
+                      "source": "internal/oms/domain/order/events.go:112",
+                      "fields": [
+                        {
+                          "name": "orderId",
+                          "type": "string",
+                          "doc": "Order that was cancelled."
+                        },
+                        {
+                          "name": "reason",
+                          "type": "string",
+                          "doc": "One of customer_request, risk_rejected, payment_failed."
+                        },
+                        {
+                          "name": "refundDue",
+                          "type": "Money",
+                          "doc": "Amount to be refunded, zero if nothing was captured.",
+                          "ref": "Money"
+                        },
+                        {
+                          "name": "cancelledAt",
+                          "type": "time.Time",
+                          "doc": "Server time of cancellation."
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [
+                    {
+                      "service": "payments.ledger",
+                      "status": "verified"
+                    },
+                    {
+                      "service": "delivery.core",
+                      "status": "declared"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "shop.oms.basket",
+              "slug": "basket",
+              "name": "Basket",
+              "readme": "# Basket\n\nA short-lived container of line items belonging to one customer session.\n\n## Lifetime\n\nBaskets expire 24 hours after the last mutation. Expiry is a hard delete; there\nis no archive. Anything worth keeping has already become an order.\n\n## Commands\n\n| Command           | Notes                                        |\n| ----------------- | -------------------------------------------- |\n| `AddItem`         | Merges quantity if the SKU is already present |\n| `RemoveItem`      | Removing the last item leaves an empty basket |\n| `CheckoutBasket`  | Freezes contents and emits the event          |\n\n## Queries\n\n`GetBasket` is served from the write store; baskets are too short-lived for\nreplication lag to be acceptable.",
+              "root": "Basket",
+              "entities": [
+                {
+                  "id": "shop.oms.basket.basket",
+                  "slug": "basket",
+                  "name": "Basket",
+                  "doc": "A customer's working basket. Lives until checkout, then becomes an order.",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "string",
+                      "doc": "Basket id, one per customer session."
+                    },
+                    {
+                      "name": "customer",
+                      "type": "CustomerRef",
+                      "doc": "Owner of the basket.",
+                      "ref": "CustomerRef"
+                    },
+                    {
+                      "name": "items",
+                      "type": "[]LineItem",
+                      "doc": "Current contents.",
+                      "ref": "LineItem"
+                    },
+                    {
+                      "name": "updatedAt",
+                      "type": "time.Time",
+                      "doc": "Last mutation, server time."
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [
+                {
+                  "id": "shop.oms.basket.line-item",
+                  "slug": "line-item",
+                  "name": "LineItem",
+                  "doc": "A SKU, a quantity and the price it was added at. Replaced wholesale on change.",
+                  "ref": "LineItem"
+                },
+                {
+                  "id": "shop.oms.basket.money",
+                  "slug": "money",
+                  "name": "Money",
+                  "doc": "An amount in a single currency.",
+                  "ref": "Money"
+                }
+              ],
+              "operations": [
+                {
+                  "id": "AddItem",
+                  "kind": "command"
+                },
+                {
+                  "id": "RemoveItem",
+                  "kind": "command"
+                },
+                {
+                  "id": "CheckoutBasket",
+                  "kind": "command"
+                },
+                {
+                  "id": "GetBasket",
+                  "kind": "query"
+                }
+              ],
+              "events": [
+                {
+                  "id": "shop.oms.basket.BasketCheckedOut",
+                  "slug": "basket-checked-out",
+                  "name": "BasketCheckedOut",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "The customer submitted the basket. Precedes OrderPlaced by milliseconds.",
+                      "source": "internal/oms/domain/basket/events.go:33",
+                      "fields": [
+                        {
+                          "name": "basketId",
+                          "type": "string",
+                          "doc": "Basket being checked out."
+                        },
+                        {
+                          "name": "customer",
+                          "type": "CustomerRef",
+                          "doc": "Who checked out.",
+                          "ref": "CustomerRef"
+                        },
+                        {
+                          "name": "items",
+                          "type": "[]LineItem",
+                          "doc": "Basket contents at submission.",
+                          "ref": "LineItem"
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [
+                    {
+                      "service": "shop.pricing",
+                      "status": "verified"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "shop.pricing",
+          "slug": "pricing",
+          "name": "Pricing",
+          "repo": "github.com/acme/shop",
+          "path": "services/pricing",
+          "readme": "# Pricing Service\n\n`shop.pricing` answers one question: what should this basket cost for this\ncustomer, right now. It is a pure read model over price lists, promotions and\ncustomer agreements. It never writes order state.\n\n## Design\n\nQuotes are immutable and time-boxed. A quote is issued with an explicit\nexpiry; the OMS must re-quote rather than reuse an expired one. This keeps\npricing decisions auditable long after the price list has changed.\n\n```mermaid\nflowchart LR\n    A[GetQuote] --> B{customer agreement?}\n    B -- yes --> C[Contract price list]\n    B -- no --> D[Public price list]\n    C --> E[Apply promotions]\n    D --> E\n    E --> F[QuoteIssued]\n```\n\n## Price list precedence\n\n| Rank | Source              | Scope             | Overrides            |\n| ---- | ------------------- | ----------------- | -------------------- |\n| 1    | Contract price list | One customer      | Everything below     |\n| 2    | Regional list       | One country       | Public list          |\n| 3    | Public list         | Everyone          | Nothing              |\n\nPromotions are applied after precedence is resolved and are never stacked more\nthan two deep.\n\n## Aggregates\n\n- `quote` — an issued quote and its expiry. Emits `QuoteIssued` and\n  `QuoteExpired`.\n- `price-list` — the price list itself. It is edited through an internal admin\n  tool that writes directly to the store, so this aggregate currently publishes\n  no domain events. That is a known gap, not a design choice.\n\n## Caching\n\nQuotes are cached for 60 seconds keyed by basket hash and customer segment. The\ncache is deliberately short: a stale quote is worse than a slow one.\n",
+          "provides": [
+            {
+              "id": "shop.v1.Pricing",
+              "methods": [
+                "GetQuote",
+                "ListPriceLists"
+              ],
+              "source": "proto/shop/v1/pricing.proto:9",
+              "messages": [
+                {
+                  "name": "GetQuoteRequest",
+                  "fields": [
+                    {
+                      "name": "items",
+                      "type": "[]LineItem",
+                      "doc": "Lines to price.",
+                      "ref": "LineItem"
+                    },
+                    {
+                      "name": "customer",
+                      "type": "CustomerRef",
+                      "doc": "Segment drives the discount.",
+                      "ref": "CustomerRef"
+                    }
+                  ]
+                },
+                {
+                  "name": "GetQuoteResponse",
+                  "fields": [
+                    {
+                      "name": "quoteId",
+                      "type": "string",
+                      "doc": "Quote id, to be echoed at checkout."
+                    },
+                    {
+                      "name": "total",
+                      "type": "Money",
+                      "doc": "Quoted total.",
+                      "ref": "Money"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "consumes": [
+            {
+              "id": "shop.v1.Orders/GetOrder",
+              "peer": "shop.oms",
+              "status": "verified",
+              "source": "internal/pricing/client/orders.go:19"
+            }
+          ],
+          "aggregates": [
+            {
+              "id": "shop.pricing.quote",
+              "slug": "quote",
+              "name": "Quote",
+              "readme": "# Quote\n\nAn immutable, time-boxed price for one basket and one customer.\n\n## Why immutable\n\nA quote is a promise. Re-deriving it later would give a different answer once\nprice lists change, which makes disputes unwinnable. So the quote is stored\nwhole, including which price list won and which promotions applied.\n\n## Commands\n\n| Command      | Notes                                       |\n| ------------ | ------------------------------------------- |\n| `IssueQuote` | Computes precedence and applies promotions  |\n| `ExpireQuote`| Called by the sweeper, never by a customer  |\n\n## Queries\n\n`GetQuote` returns the stored quote verbatim, including expired ones, so\nsupport can explain what a customer was shown.",
+              "root": "Quote",
+              "entities": [
+                {
+                  "id": "shop.pricing.quote.quote",
+                  "slug": "quote",
+                  "name": "Quote",
+                  "doc": "A price offered for a basket, valid until it expires.",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "string",
+                      "doc": "Quote id."
+                    },
+                    {
+                      "name": "basketId",
+                      "type": "string",
+                      "doc": "Basket the quote was calculated for."
+                    },
+                    {
+                      "name": "lines",
+                      "type": "[]QuotedLine",
+                      "doc": "Per-SKU pricing."
+                    },
+                    {
+                      "name": "total",
+                      "type": "Money",
+                      "doc": "Quoted total.",
+                      "ref": "Money"
+                    },
+                    {
+                      "name": "expiresAt",
+                      "type": "time.Time",
+                      "doc": "After this, the quote is void."
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [
+                {
+                  "id": "shop.pricing.quote.money",
+                  "slug": "money",
+                  "name": "Money",
+                  "doc": "An amount in a single currency.",
+                  "ref": "Money"
+                },
+                {
+                  "id": "shop.pricing.quote.quoted-line",
+                  "slug": "quoted-line",
+                  "name": "QuotedLine",
+                  "doc": "The price arrived at for one SKU, with the discount that produced it. Local to pricing; nothing outside quotes uses this shape.",
+                  "fields": [
+                    {
+                      "name": "sku",
+                      "type": "string",
+                      "doc": "SKU priced."
+                    },
+                    {
+                      "name": "unitPrice",
+                      "type": "Money",
+                      "doc": "Price per unit after discount.",
+                      "ref": "Money"
+                    },
+                    {
+                      "name": "discountMinor",
+                      "type": "int64",
+                      "doc": "Discount applied, in the minor unit."
+                    },
+                    {
+                      "name": "rule",
+                      "type": "string",
+                      "doc": "Id of the pricing rule that fired."
+                    }
+                  ]
+                }
+              ],
+              "operations": [
+                {
+                  "id": "IssueQuote",
+                  "kind": "command"
+                },
+                {
+                  "id": "ExpireQuote",
+                  "kind": "command"
+                },
+                {
+                  "id": "GetQuote",
+                  "kind": "query"
+                }
+              ],
+              "events": [
+                {
+                  "id": "shop.pricing.quote.QuoteIssued",
+                  "slug": "quote-issued",
+                  "name": "QuoteIssued",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "A priced, time-boxed answer for one basket and one customer.",
+                      "source": "internal/pricing/domain/quote/events.go:27",
+                      "fields": [
+                        {
+                          "name": "quoteId",
+                          "type": "string",
+                          "doc": "Identifier of the issued quote."
+                        },
+                        {
+                          "name": "basketId",
+                          "type": "string",
+                          "doc": "Basket the quote was computed for."
+                        },
+                        {
+                          "name": "total",
+                          "type": "Money",
+                          "doc": "Quoted total including promotions.",
+                          "ref": "Money"
+                        },
+                        {
+                          "name": "priceListId",
+                          "type": "string",
+                          "doc": "Price list that won precedence."
+                        },
+                        {
+                          "name": "expiresAt",
+                          "type": "time.Time",
+                          "doc": "After this instant the quote must not be used."
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [
+                    {
+                      "service": "shop.oms",
+                      "status": "verified"
+                    }
+                  ]
+                },
+                {
+                  "id": "shop.pricing.quote.QuoteExpired",
+                  "slug": "quote-expired",
+                  "name": "QuoteExpired",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "A quote passed its expiry without being consumed.",
+                      "source": "internal/pricing/domain/quote/events.go:61",
+                      "fields": [
+                        {
+                          "name": "quoteId",
+                          "type": "string",
+                          "doc": "Quote that expired."
+                        },
+                        {
+                          "name": "expiredAt",
+                          "type": "time.Time",
+                          "doc": "Instant the sweeper observed the expiry."
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [
+                    {
+                      "service": "shop.oms",
+                      "status": "declared",
+                      "note": "Handler exists but is registered behind a disabled feature flag."
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "shop.pricing.price-list",
+              "slug": "price-list",
+              "name": "PriceList",
+              "readme": "# PriceList\n\nThe set of prices that quoting reads from. Contract, regional and public lists\nshare this aggregate and differ only by scope.\n\n## No events\n\nThis aggregate publishes no domain events. Price lists are edited through an\ninternal admin tool that writes to the store directly, bypassing the domain\nlayer entirely.\n\nThat is a gap, not a decision. Anything that wants to react to a price change\ncurrently polls. Emitting `PriceListPublished` is tracked as work, and until it\nexists this page will keep showing an empty event list.\n\n## Commands\n\n| Command             | Notes                                    |\n| ------------------- | ---------------------------------------- |\n| `ImportPriceList`   | Bulk CSV import, validated then swapped  |\n| `ArchivePriceList`  | Soft delete; quoting stops selecting it  |\n\n## Queries\n\n`ListPriceLists` is the only read path and is heavily cached.",
+              "root": "PriceList",
+              "entities": [
+                {
+                  "id": "shop.pricing.price-list.price-list",
+                  "slug": "price-list",
+                  "name": "PriceList",
+                  "doc": "A dated set of prices, imported wholesale from the merchandising system.",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "string",
+                      "doc": "Price list id."
+                    },
+                    {
+                      "name": "name",
+                      "type": "string",
+                      "doc": "Human name, as given by merchandising."
+                    },
+                    {
+                      "name": "validFrom",
+                      "type": "time.Time",
+                      "doc": "First day the list applies."
+                    },
+                    {
+                      "name": "rows",
+                      "type": "[]PriceRow",
+                      "doc": "One row per SKU."
+                    }
+                  ]
+                },
+                {
+                  "id": "shop.pricing.price-list.price-row",
+                  "slug": "price-row",
+                  "name": "PriceRow",
+                  "doc": "One SKU's price inside a list. Identified by SKU within its list.",
+                  "fields": [
+                    {
+                      "name": "sku",
+                      "type": "string",
+                      "doc": "SKU priced."
+                    },
+                    {
+                      "name": "price",
+                      "type": "Money",
+                      "doc": "List price, net of tax.",
+                      "ref": "Money"
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [
+                {
+                  "id": "shop.pricing.price-list.money",
+                  "slug": "money",
+                  "name": "Money",
+                  "doc": "An amount in a single currency.",
+                  "ref": "Money"
+                }
+              ],
+              "operations": [
+                {
+                  "id": "ImportPriceList",
+                  "kind": "command"
+                },
+                {
+                  "id": "ArchivePriceList",
+                  "kind": "command"
+                },
+                {
+                  "id": "ListPriceLists",
+                  "kind": "query"
+                }
+              ],
+              "events": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "payments",
+      "name": "Payments",
+      "summary": "A double-entry ledger and the PSP integrations that feed it. Nothing here knows what an order is for.",
+      "services": [
+        {
+          "id": "payments.ledger",
+          "slug": "ledger",
+          "name": "Ledger",
+          "repo": "github.com/acme/payments",
+          "path": "services/ledger",
+          "readme": "# Payments Ledger\n\n`payments.ledger` is a double-entry ledger. Every movement of money is two\nbalanced postings, and nothing is ever deleted. Corrections are compensating\nentries.\n\n## Model\n\nAn authorisation reserves funds without moving them. A capture moves the\nreserved funds. A refund moves them back. Each of these is a separate posting\npair against the customer, merchant and settlement accounts.\n\n```mermaid\nsequenceDiagram\n    participant OMS as shop.oms\n    participant L as payments.ledger\n    participant PSP as psp (external)\n    OMS->>L: Authorize\n    L->>PSP: reserve funds\n    PSP-->>L: auth code\n    L-->>OMS: PaymentAuthorized\n    OMS->>L: Capture\n    L->>PSP: settle\n    L-->>OMS: PaymentCaptured\n```\n\n## Accounts\n\n| Account        | Type      | Increases on        | Decreases on       |\n| -------------- | --------- | ------------------- | ------------------ |\n| `customer`     | liability | refund              | capture            |\n| `merchant`     | asset     | capture             | refund             |\n| `settlement`   | asset     | payout received     | payout disbursed   |\n| `fees`         | expense   | capture             | refund             |\n\n## Guarantees\n\n- Postings are append only. There is no `UPDATE` on the postings table.\n- Every write is idempotent on `idempotency_key`, retained for 30 days.\n- The sum of all postings for a transaction is always zero; a nightly job\n  asserts this and pages on failure.\n\n## Aggregates\n\n- `payment` — authorisation, capture and decline.\n- `refund` — full and partial refunds against a captured payment.\n",
+          "provides": [
+            {
+              "id": "payments.v1.Payments",
+              "methods": [
+                "Authorize",
+                "Capture",
+                "Refund",
+                "GetPayment"
+              ],
+              "source": "proto/payments/v1/payments.proto:14",
+              "messages": [
+                {
+                  "name": "AuthorizeRequest",
+                  "fields": [
+                    {
+                      "name": "orderId",
+                      "type": "string",
+                      "doc": "Order to authorize against."
+                    },
+                    {
+                      "name": "amount",
+                      "type": "Money",
+                      "doc": "Amount to hold.",
+                      "ref": "Money"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "consumes": [
+            {
+              "id": "shop.v1.Orders/GetOrder",
+              "peer": "shop.oms",
+              "status": "verified",
+              "source": "internal/ledger/client/orders.go:27"
+            }
+          ],
+          "aggregates": [
+            {
+              "id": "payments.ledger.payment",
+              "slug": "payment",
+              "name": "Payment",
+              "readme": "# Payment\n\nOne authorisation and the captures made against it.\n\n## Postings\n\nEvery state change writes a balanced pair of postings. Nothing is updated in\nplace; a correction is a new pair with the opposite sign.\n\n| Transition   | Debit        | Credit       |\n| ------------ | ------------ | ------------ |\n| authorise    | (none)       | (none)       |\n| capture      | `merchant`   | `customer`   |\n| fee          | `fees`       | `merchant`   |\n| decline      | (none)       | (none)       |\n\nAuthorisations and declines write no postings: no money has moved.\n\n## Commands\n\n`Authorize`, `Capture` and `Decline` are all idempotent on\n`idempotency_key`, which is retained for 30 days.\n\n## Queries\n\n`GetPayment` returns the payment and its full posting history.",
+              "root": "Payment",
+              "entities": [
+                {
+                  "id": "payments.ledger.payment.payment",
+                  "slug": "payment",
+                  "name": "Payment",
+                  "doc": "One attempt to take money for an order, from authorization through to capture or decline.",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "string",
+                      "doc": "Payment id."
+                    },
+                    {
+                      "name": "orderId",
+                      "type": "string",
+                      "doc": "Order being paid for."
+                    },
+                    {
+                      "name": "amount",
+                      "type": "Money",
+                      "doc": "Amount authorized.",
+                      "ref": "Money"
+                    },
+                    {
+                      "name": "state",
+                      "type": "string",
+                      "doc": "authorized | captured | declined."
+                    },
+                    {
+                      "name": "card",
+                      "type": "CardRef",
+                      "doc": "Instrument used, tokenized."
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [
+                {
+                  "id": "payments.ledger.payment.money",
+                  "slug": "money",
+                  "name": "Money",
+                  "doc": "An amount in a single currency.",
+                  "ref": "Money"
+                },
+                {
+                  "id": "payments.ledger.payment.card-ref",
+                  "slug": "card-ref",
+                  "name": "CardRef",
+                  "doc": "A tokenized instrument. Never holds a PAN; the token is the identity as far as the ledger is concerned.",
+                  "fields": [
+                    {
+                      "name": "brand",
+                      "type": "string",
+                      "doc": "visa | mastercard | amex."
+                    },
+                    {
+                      "name": "last4",
+                      "type": "string",
+                      "doc": "Last four digits, for display only."
+                    },
+                    {
+                      "name": "token",
+                      "type": "string",
+                      "doc": "Vault token; the only thing the ledger stores."
+                    }
+                  ]
+                }
+              ],
+              "operations": [
+                {
+                  "id": "Authorize",
+                  "kind": "command"
+                },
+                {
+                  "id": "Capture",
+                  "kind": "command"
+                },
+                {
+                  "id": "Decline",
+                  "kind": "command"
+                },
+                {
+                  "id": "GetPayment",
+                  "kind": "query"
+                }
+              ],
+              "events": [
+                {
+                  "id": "payments.ledger.payment.PaymentAuthorized",
+                  "slug": "payment-authorized",
+                  "name": "PaymentAuthorized",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "Funds reserved with the PSP. No money has moved yet.",
+                      "source": "internal/ledger/domain/payment/events.go:44",
+                      "fields": [
+                        {
+                          "name": "paymentId",
+                          "type": "string",
+                          "doc": "Ledger identifier for this payment."
+                        },
+                        {
+                          "name": "orderId",
+                          "type": "string",
+                          "doc": "Order the authorisation belongs to."
+                        },
+                        {
+                          "name": "amount",
+                          "type": "Money",
+                          "doc": "Amount reserved.",
+                          "ref": "Money"
+                        },
+                        {
+                          "name": "authCode",
+                          "type": "string",
+                          "doc": "Opaque PSP authorisation code."
+                        },
+                        {
+                          "name": "expiresAt",
+                          "type": "time.Time",
+                          "doc": "Authorisations lapse after seven days."
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [
+                    {
+                      "service": "shop.oms",
+                      "status": "verified"
+                    },
+                    {
+                      "service": "delivery.core",
+                      "status": "declared",
+                      "note": "Used only to pre-warm route planning."
+                    }
+                  ]
+                },
+                {
+                  "id": "payments.ledger.payment.PaymentCaptured",
+                  "slug": "payment-captured",
+                  "name": "PaymentCaptured",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "Reserved funds settled. This is the event fulfilment reacts to.",
+                      "source": "internal/ledger/domain/payment/events.go:88",
+                      "fields": [
+                        {
+                          "name": "paymentId",
+                          "type": "string",
+                          "doc": "Ledger identifier for this payment."
+                        },
+                        {
+                          "name": "orderId",
+                          "type": "string",
+                          "doc": "Order the capture belongs to."
+                        },
+                        {
+                          "name": "amount",
+                          "type": "Money",
+                          "doc": "Amount actually captured; may be less than authorised.",
+                          "ref": "Money"
+                        },
+                        {
+                          "name": "capturedAt",
+                          "type": "time.Time",
+                          "doc": "Instant the PSP confirmed settlement."
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [
+                    {
+                      "service": "delivery.core",
+                      "status": "verified"
+                    },
+                    {
+                      "service": "shop.oms",
+                      "status": "verified"
+                    }
+                  ]
+                },
+                {
+                  "id": "payments.ledger.payment.PaymentDeclined",
+                  "slug": "payment-declined",
+                  "name": "PaymentDeclined",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "The PSP refused the authorisation or the capture.",
+                      "source": "internal/ledger/domain/payment/events.go:126",
+                      "fields": [
+                        {
+                          "name": "paymentId",
+                          "type": "string",
+                          "doc": "Ledger identifier for the attempted payment."
+                        },
+                        {
+                          "name": "orderId",
+                          "type": "string",
+                          "doc": "Order that failed to pay."
+                        },
+                        {
+                          "name": "code",
+                          "type": "string",
+                          "doc": "Normalised decline code, not the raw PSP string."
+                        },
+                        {
+                          "name": "retryable",
+                          "type": "bool",
+                          "doc": "Whether another attempt is worth making."
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [
+                    {
+                      "service": "shop.oms",
+                      "status": "verified"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "payments.ledger.refund",
+              "slug": "refund",
+              "name": "Refund",
+              "readme": "# Refund\n\nA compensating movement against a captured payment.\n\n## Rules\n\n- The sum of refunds against a payment may never exceed the captured amount.\n- A refund against an uncaptured payment is a void, handled by `Payment`, not\n  here.\n- Partial refunds are unlimited in count but each needs a distinct reason.\n\n## Commands\n\n| Command        | Precondition                    |\n| -------------- | ------------------------------- |\n| `IssueRefund`  | Payment captured, headroom left |\n\n## Queries\n\n`ListRefunds` returns refunds for one payment, newest first.",
+              "root": "Refund",
+              "entities": [
+                {
+                  "id": "payments.ledger.refund.refund",
+                  "slug": "refund",
+                  "name": "Refund",
+                  "doc": "Money returned against a captured payment.",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "string",
+                      "doc": "Refund id."
+                    },
+                    {
+                      "name": "paymentId",
+                      "type": "string",
+                      "doc": "Payment being refunded."
+                    },
+                    {
+                      "name": "amount",
+                      "type": "Money",
+                      "doc": "Amount returned; never exceeds the capture.",
+                      "ref": "Money"
+                    },
+                    {
+                      "name": "reason",
+                      "type": "string",
+                      "doc": "Free text, taken from the support tool."
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [
+                {
+                  "id": "payments.ledger.refund.money",
+                  "slug": "money",
+                  "name": "Money",
+                  "doc": "An amount in a single currency.",
+                  "ref": "Money"
+                }
+              ],
+              "operations": [
+                {
+                  "id": "IssueRefund",
+                  "kind": "command"
+                },
+                {
+                  "id": "ListRefunds",
+                  "kind": "query"
+                }
+              ],
+              "events": [
+                {
+                  "id": "payments.ledger.refund.RefundIssued",
+                  "slug": "refund-issued",
+                  "name": "RefundIssued",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "A compensating posting pair against a captured payment.",
+                      "source": "internal/ledger/domain/refund/events.go:30",
+                      "fields": [
+                        {
+                          "name": "refundId",
+                          "type": "string",
+                          "doc": "Identifier of the refund."
+                        },
+                        {
+                          "name": "paymentId",
+                          "type": "string",
+                          "doc": "Payment being refunded."
+                        },
+                        {
+                          "name": "amount",
+                          "type": "Money",
+                          "doc": "Amount refunded; may be partial.",
+                          "ref": "Money"
+                        },
+                        {
+                          "name": "reason",
+                          "type": "string",
+                          "doc": "Free text, surfaced to support tooling."
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [
+                    {
+                      "service": "shop.oms",
+                      "status": "declared"
+                    },
+                    {
+                      "service": "delivery.core",
+                      "status": "declared"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "delivery",
+      "name": "Delivery",
+      "summary": "Routes, parcels and proof of delivery. Reacts to captured payments, never to placed orders.",
+      "services": [
+        {
+          "id": "delivery.core",
+          "slug": "core",
+          "name": "Delivery Core",
+          "repo": "github.com/acme/delivery",
+          "path": "services/core",
+          "readme": "# Delivery Core\n\n`delivery.core` turns confirmed orders into physical movement: routes, parcels\nand proof of delivery. It is the only service in the `delivery` context and it\nowns every carrier integration.\n\n## Boundaries\n\nDelivery reacts to `PaymentCaptured` rather than to `OrderPlaced`. An order\nthat is placed but never paid must never reach a van. This is the single most\nimportant rule in the context.\n\n```mermaid\nflowchart TD\n    P[PaymentCaptured] --> R[Plan route]\n    R --> S[ShipmentDispatched]\n    S --> T{scan events}\n    T -- delivered --> D[ShipmentDelivered]\n    T -- failed --> F[Retry next window]\n    F --> R\n```\n\n## Carriers\n\n| Carrier   | Coverage      | Tracking      | Cutoff  |\n| --------- | ------------- | ------------- | ------- |\n| `inhouse` | Metro only    | Live GPS      | 18:00   |\n| `natpost` | National      | Scan events   | 15:30   |\n| `express` | International | Scan events   | 12:00   |\n\nCarrier choice is decided at route planning time and is not part of the order.\n\n## Aggregates\n\n- `shipment` — one parcel from dispatch to proof of delivery.\n- `route` — a planned sequence of stops for one vehicle and one window.\n\n## Retries\n\nA failed delivery attempt does not fail the shipment. The shipment stays open\nand is re-routed into the next available window, up to three attempts, after\nwhich it is returned to the depot and the order is flagged for support.\n\n## Observability\n\nEvery scan event carries the trace id of the originating `PaymentCaptured`\nmessage, which is how the shipment tracking flow was derived from traces.\n",
+          "provides": [
+            {
+              "id": "delivery.v1.Delivery",
+              "methods": [
+                "PlanRoute",
+                "TrackShipment",
+                "GetShipment"
+              ],
+              "source": "proto/delivery/v1/delivery.proto:11"
+            }
+          ],
+          "consumes": [
+            {
+              "id": "shop.v1.Orders/GetOrder",
+              "peer": "shop.oms",
+              "status": "verified",
+              "source": "internal/delivery/client/orders.go:31"
+            },
+            {
+              "id": "payments.v1.Payments/GetPayment",
+              "peer": "payments.ledger",
+              "status": "declared",
+              "source": "internal/delivery/client/payments.go:18"
+            }
+          ],
+          "aggregates": [
+            {
+              "id": "delivery.core.shipment",
+              "slug": "shipment",
+              "name": "Shipment",
+              "readme": "# Shipment\n\nOne parcel, from dispatch to proof of delivery.\n\n## Attempts\n\nA failed attempt does not fail the shipment. The shipment stays open and is\nre-routed into the next window, up to three attempts.\n\n| Attempt | Outcome            | Next                       |\n| ------- | ------------------ | -------------------------- |\n| 1       | no answer          | re-route, next window      |\n| 2       | no answer          | re-route, next window      |\n| 3       | no answer          | return to depot, flag order |\n\n## Commands\n\n`Dispatch`, `RecordScan` and `RecordDelivery` are the only writes. Scans\narrive from carrier webhooks and are deduplicated on the carrier scan id.\n\n## Queries\n\n`TrackShipment` is public-facing and rate limited per tracking reference.",
+              "root": "Shipment",
+              "entities": [
+                {
+                  "id": "delivery.core.shipment.shipment",
+                  "slug": "shipment",
+                  "name": "Shipment",
+                  "doc": "Goods on their way to one address. The unit carriers scan.",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "string",
+                      "doc": "Shipment id."
+                    },
+                    {
+                      "name": "orderId",
+                      "type": "string",
+                      "doc": "Order the goods belong to."
+                    },
+                    {
+                      "name": "parcels",
+                      "type": "[]Parcel",
+                      "doc": "Physical parcels in this shipment."
+                    },
+                    {
+                      "name": "shipTo",
+                      "type": "Address",
+                      "doc": "Destination.",
+                      "ref": "Address"
+                    },
+                    {
+                      "name": "state",
+                      "type": "string",
+                      "doc": "dispatched | in-transit | delivered."
+                    }
+                  ]
+                },
+                {
+                  "id": "delivery.core.shipment.parcel",
+                  "slug": "parcel",
+                  "name": "Parcel",
+                  "doc": "One box. Has its own tracking code and is scanned independently of its shipment.",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "string",
+                      "doc": "Parcel id."
+                    },
+                    {
+                      "name": "weightGrams",
+                      "type": "int32",
+                      "doc": "Gross weight at dispatch."
+                    },
+                    {
+                      "name": "tracking",
+                      "type": "TrackingCode",
+                      "doc": "Carrier tracking code."
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [
+                {
+                  "id": "delivery.core.shipment.address",
+                  "slug": "address",
+                  "name": "Address",
+                  "doc": "A postal address, unvalidated.",
+                  "ref": "Address"
+                },
+                {
+                  "id": "delivery.core.shipment.tracking-code",
+                  "slug": "tracking-code",
+                  "name": "TrackingCode",
+                  "doc": "A carrier and the code it issued. Meaningless without the carrier, so the two travel together.",
+                  "fields": [
+                    {
+                      "name": "carrier",
+                      "type": "string",
+                      "doc": "Carrier code, e.g. DHL."
+                    },
+                    {
+                      "name": "code",
+                      "type": "string",
+                      "doc": "Tracking code as issued by the carrier."
+                    }
+                  ]
+                }
+              ],
+              "operations": [
+                {
+                  "id": "Dispatch",
+                  "kind": "command"
+                },
+                {
+                  "id": "RecordScan",
+                  "kind": "command"
+                },
+                {
+                  "id": "RecordDelivery",
+                  "kind": "command"
+                },
+                {
+                  "id": "TrackShipment",
+                  "kind": "query"
+                },
+                {
+                  "id": "GetShipment",
+                  "kind": "query"
+                }
+              ],
+              "events": [
+                {
+                  "id": "delivery.core.shipment.ShipmentDispatched",
+                  "slug": "shipment-dispatched",
+                  "name": "ShipmentDispatched",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "A parcel physically left the depot.",
+                      "source": "internal/delivery/domain/shipment/events.go:52",
+                      "fields": [
+                        {
+                          "name": "shipmentId",
+                          "type": "string",
+                          "doc": "Identifier of the shipment."
+                        },
+                        {
+                          "name": "orderId",
+                          "type": "string",
+                          "doc": "Order being fulfilled."
+                        },
+                        {
+                          "name": "carrier",
+                          "type": "string",
+                          "doc": "One of inhouse, natpost, express."
+                        },
+                        {
+                          "name": "trackingRef",
+                          "type": "string",
+                          "doc": "Carrier tracking reference."
+                        },
+                        {
+                          "name": "shipTo",
+                          "type": "Address",
+                          "doc": "Address the parcel is routed to.",
+                          "ref": "Address"
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [
+                    {
+                      "service": "shop.oms",
+                      "status": "verified"
+                    },
+                    {
+                      "service": "analytics-sink",
+                      "status": "declared",
+                      "note": "Registered in the traces exporter, not in any Go repo."
+                    }
+                  ]
+                },
+                {
+                  "id": "delivery.core.shipment.ShipmentDelivered",
+                  "slug": "shipment-delivered",
+                  "name": "ShipmentDelivered",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "Proof of delivery recorded. Terminal for the shipment.",
+                      "source": "internal/delivery/domain/shipment/events.go:97",
+                      "fields": [
+                        {
+                          "name": "shipmentId",
+                          "type": "string",
+                          "doc": "Identifier of the shipment."
+                        },
+                        {
+                          "name": "orderId",
+                          "type": "string",
+                          "doc": "Order that is now fulfilled."
+                        },
+                        {
+                          "name": "signedBy",
+                          "type": "string",
+                          "doc": "Name captured at the door, empty for contactless."
+                        },
+                        {
+                          "name": "deliveredAt",
+                          "type": "time.Time",
+                          "doc": "Instant of the delivery scan."
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [
+                    {
+                      "service": "shop.oms",
+                      "status": "verified"
+                    },
+                    {
+                      "service": "analytics-sink",
+                      "status": "unresolved",
+                      "note": "Observed downstream of the bus in OTel traces; owner unknown."
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "delivery.core.route",
+              "slug": "route",
+              "name": "Route",
+              "readme": "# Route\n\nA planned sequence of stops for one vehicle and one delivery window.\n\n## Planning\n\nRoutes are planned once per window, ninety minutes before the window opens.\nShipments that miss the cut-off wait for the next window rather than forcing a\nre-plan; re-planning a live route is not supported.\n\n## Commands\n\n| Command       | Notes                                   |\n| ------------- | --------------------------------------- |\n| `PlanRoute`   | Assigns vehicle and stop order          |\n| `CloseRoute`  | Terminal; unfinished stops are re-queued |\n\n## Queries\n\n`GetRoute` returns stops in planned order, not in scan order.",
+              "root": "Route",
+              "entities": [
+                {
+                  "id": "delivery.core.route.route",
+                  "slug": "route",
+                  "name": "Route",
+                  "doc": "A day's driving for one vehicle, as planned the night before.",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "string",
+                      "doc": "Route id."
+                    },
+                    {
+                      "name": "date",
+                      "type": "string",
+                      "doc": "Delivery date, ISO."
+                    },
+                    {
+                      "name": "vehicleId",
+                      "type": "string",
+                      "doc": "Vehicle assigned."
+                    },
+                    {
+                      "name": "stops",
+                      "type": "[]Stop",
+                      "doc": "Stops in driving order."
+                    }
+                  ]
+                },
+                {
+                  "id": "delivery.core.route.stop",
+                  "slug": "stop",
+                  "name": "Stop",
+                  "doc": "One address on a route. Identified by its position, which is what the driver's app shows.",
+                  "fields": [
+                    {
+                      "name": "sequence",
+                      "type": "int32",
+                      "doc": "Position on the route, 1-based."
+                    },
+                    {
+                      "name": "address",
+                      "type": "Address",
+                      "doc": "Where to stop.",
+                      "ref": "Address"
+                    },
+                    {
+                      "name": "shipmentId",
+                      "type": "string",
+                      "doc": "Shipment dropped here."
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [
+                {
+                  "id": "delivery.core.route.address",
+                  "slug": "address",
+                  "name": "Address",
+                  "doc": "A postal address, unvalidated.",
+                  "ref": "Address"
+                }
+              ],
+              "operations": [
+                {
+                  "id": "PlanRoute",
+                  "kind": "command"
+                },
+                {
+                  "id": "CloseRoute",
+                  "kind": "command"
+                },
+                {
+                  "id": "GetRoute",
+                  "kind": "query"
+                }
+              ],
+              "events": [
+                {
+                  "id": "delivery.core.route.RoutePlanned",
+                  "slug": "route-planned",
+                  "name": "RoutePlanned",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "A vehicle and window were assigned a stop sequence.",
+                      "source": "internal/delivery/domain/route/events.go:38",
+                      "fields": [
+                        {
+                          "name": "routeId",
+                          "type": "string",
+                          "doc": "Identifier of the route."
+                        },
+                        {
+                          "name": "vehicleId",
+                          "type": "string",
+                          "doc": "Vehicle assigned to the route."
+                        },
+                        {
+                          "name": "stopCount",
+                          "type": "int32",
+                          "doc": "Number of stops on the route."
+                        },
+                        {
+                          "name": "windowStart",
+                          "type": "time.Time",
+                          "doc": "Start of the delivery window."
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [
+                    {
+                      "service": "shop.oms",
+                      "status": "declared"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "flows": [
+    {
+      "id": "flow.order-accepted",
+      "slug": "order-accepted",
+      "name": "Order accepted",
+      "summary": "The narrow happy path: an order is placed, the ledger hears about it, and funds are reserved. Three hops, all covered by one integration test.",
+      "provenance": "derived-from-test",
+      "source": "services/oms/test/integration/order_accepted_test.go",
+      "participants": [
+        {
+          "id": "shop.oms",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        },
+        {
+          "id": "payments.ledger",
+          "kind": "service",
+          "context": "payments"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "a1",
+          "from": "shop.oms",
+          "to": "bus",
+          "kind": "event",
+          "status": "verified",
+          "ref": "shop.oms.order.OrderPlaced",
+          "label": "OrderPlaced",
+          "line": "order_accepted_test.go:41"
+        },
+        {
+          "type": "step",
+          "id": "a2",
+          "from": "bus",
+          "to": "payments.ledger",
+          "kind": "event",
+          "status": "verified",
+          "ref": "shop.oms.order.OrderPlaced",
+          "label": "OrderPlaced",
+          "line": "order_accepted_test.go:58"
+        },
+        {
+          "type": "step",
+          "id": "a3",
+          "from": "payments.ledger",
+          "to": "bus",
+          "kind": "event",
+          "status": "verified",
+          "ref": "payments.ledger.payment.PaymentAuthorized",
+          "label": "PaymentAuthorized",
+          "line": "order_accepted_test.go:73"
+        }
+      ]
+    },
+    {
+      "id": "flow.checkout",
+      "slug": "checkout",
+      "name": "Checkout",
+      "summary": "The full checkout sequence from basket submission to dispatch, including the risk branch, the capture retry loop, and one call whose target is not in the catalog.",
+      "provenance": "derived-from-test",
+      "source": "services/oms/test/e2e/checkout_test.go",
+      "participants": [
+        {
+          "id": "customer",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.oms",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "shop.pricing",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "payments.ledger",
+          "kind": "service",
+          "context": "payments"
+        },
+        {
+          "id": "delivery.core",
+          "kind": "service",
+          "context": "delivery"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        },
+        {
+          "id": "fraud-scoring",
+          "kind": "unknown",
+          "context": null,
+          "label": "fraud-scoring (unknown)"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "customer",
+          "to": "shop.oms",
+          "kind": "rpc",
+          "status": "verified",
+          "label": "PlaceOrder",
+          "line": "checkout_test.go:62"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.oms",
+          "to": "shop.oms",
+          "kind": "call",
+          "status": "verified",
+          "label": "validateBasket",
+          "line": "internal/oms/app/checkout.go:88"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "shop.oms",
+          "to": "shop.pricing",
+          "kind": "rpc",
+          "status": "verified",
+          "ref": "shop.v1.Pricing/GetQuote",
+          "label": "GetQuote",
+          "line": "internal/oms/app/checkout.go:104"
+        },
+        {
+          "type": "alt",
+          "id": "alt-risk",
+          "branches": [
+            {
+              "title": "risk score below threshold",
+              "steps": [
+                {
+                  "type": "parallel",
+                  "id": "par-authorise",
+                  "title": "authorise and announce",
+                  "branches": [
+                    [
+                      {
+                        "type": "step",
+                        "id": "s4",
+                        "from": "shop.oms",
+                        "to": "payments.ledger",
+                        "kind": "rpc",
+                        "status": "declared",
+                        "ref": "payments.v1.Payments/Authorize",
+                        "label": "Authorize",
+                        "line": "internal/oms/app/checkout.go:141"
+                      }
+                    ],
+                    [
+                      {
+                        "type": "step",
+                        "id": "s5",
+                        "from": "shop.oms",
+                        "to": "bus",
+                        "kind": "event",
+                        "status": "verified",
+                        "ref": "shop.oms.order.OrderPlaced",
+                        "label": "OrderPlaced",
+                        "line": "checkout_test.go:118"
+                      }
+                    ]
+                  ]
+                },
+                {
+                  "type": "step",
+                  "id": "s6",
+                  "from": "shop.oms",
+                  "to": "fraud-scoring",
+                  "kind": "rpc",
+                  "status": "unresolved",
+                  "ref": "fraud.v2.Scoring/Score",
+                  "label": "Score",
+                  "note": "No service in the catalog provides fraud.v2.Scoring. The address comes from FRAUD_ADDR at runtime, so the peer cannot be resolved statically.",
+                  "line": "internal/oms/client/fraud.go:22"
+                }
+              ]
+            },
+            {
+              "title": "risk score above threshold",
+              "steps": [
+                {
+                  "type": "step",
+                  "id": "s7",
+                  "from": "shop.oms",
+                  "to": "bus",
+                  "kind": "event",
+                  "status": "declared",
+                  "ref": "shop.oms.order.OrderCancelled",
+                  "label": "OrderCancelled",
+                  "line": "internal/oms/app/checkout.go:176"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "loop",
+          "id": "loop-capture",
+          "title": "until captured, at most 3 attempts",
+          "steps": [
+            {
+              "type": "step",
+              "id": "s8",
+              "from": "payments.ledger",
+              "to": "bus",
+              "kind": "event",
+              "status": "verified",
+              "ref": "payments.ledger.payment.PaymentAuthorized",
+              "label": "PaymentAuthorized",
+              "line": "checkout_test.go:151"
+            },
+            {
+              "type": "step",
+              "id": "s9",
+              "from": "payments.ledger",
+              "to": "payments.ledger",
+              "kind": "call",
+              "status": "verified",
+              "label": "postJournalEntry",
+              "line": "internal/ledger/app/capture.go:59"
+            },
+            {
+              "type": "step",
+              "id": "s10",
+              "from": "shop.oms",
+              "to": "payments.ledger",
+              "kind": "rpc",
+              "status": "declared",
+              "ref": "payments.v1.Payments/Capture",
+              "label": "Capture",
+              "line": "internal/oms/app/capture.go:33"
+            },
+            {
+              "type": "step",
+              "id": "s11",
+              "from": "payments.ledger",
+              "to": "bus",
+              "kind": "event",
+              "status": "declared",
+              "ref": "payments.ledger.payment.PaymentCaptured",
+              "label": "PaymentCaptured",
+              "line": "internal/ledger/app/capture.go:91"
+            }
+          ]
+        },
+        {
+          "type": "step",
+          "id": "s12",
+          "from": "bus",
+          "to": "delivery.core",
+          "kind": "event",
+          "status": "declared",
+          "ref": "payments.ledger.payment.PaymentCaptured",
+          "label": "PaymentCaptured",
+          "line": "internal/delivery/app/subscribe.go:44"
+        },
+        {
+          "type": "step",
+          "id": "s13",
+          "from": "delivery.core",
+          "to": "delivery.core",
+          "kind": "call",
+          "status": "verified",
+          "label": "planRoute",
+          "line": "internal/delivery/app/route.go:71"
+        },
+        {
+          "type": "step",
+          "id": "s14",
+          "from": "delivery.core",
+          "to": "bus",
+          "kind": "event",
+          "status": "verified",
+          "ref": "delivery.core.shipment.ShipmentDispatched",
+          "label": "ShipmentDispatched",
+          "line": "checkout_test.go:203"
+        },
+        {
+          "type": "step",
+          "id": "s15",
+          "from": "shop.oms",
+          "to": "customer",
+          "kind": "rpc",
+          "status": "declared",
+          "label": "OrderConfirmation",
+          "line": "internal/oms/notify/confirmation.go:27"
+        }
+      ]
+    },
+    {
+      "id": "flow.refund-requested",
+      "slug": "refund-requested",
+      "name": "Refund requested",
+      "summary": "How a support-initiated refund is meant to travel through the system. Written by hand from the design doc; no step has been observed in a test or a trace.",
+      "provenance": "authored",
+      "source": "docs/flows/refund-requested.md",
+      "participants": [
+        {
+          "id": "customer",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.oms",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "payments.ledger",
+          "kind": "service",
+          "context": "payments"
+        },
+        {
+          "id": "delivery.core",
+          "kind": "service",
+          "context": "delivery"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "c1",
+          "from": "customer",
+          "to": "shop.oms",
+          "kind": "rpc",
+          "status": "declared",
+          "label": "RequestRefund"
+        },
+        {
+          "type": "step",
+          "id": "c2",
+          "from": "shop.oms",
+          "to": "payments.ledger",
+          "kind": "rpc",
+          "status": "declared",
+          "ref": "payments.v1.Payments/Refund",
+          "label": "Refund",
+          "line": "internal/oms/client/payments.go:104"
+        },
+        {
+          "type": "step",
+          "id": "c3",
+          "from": "payments.ledger",
+          "to": "bus",
+          "kind": "event",
+          "status": "declared",
+          "ref": "payments.ledger.refund.RefundIssued",
+          "label": "RefundIssued"
+        },
+        {
+          "type": "step",
+          "id": "c4",
+          "from": "bus",
+          "to": "delivery.core",
+          "kind": "event",
+          "status": "declared",
+          "ref": "payments.ledger.refund.RefundIssued",
+          "label": "RefundIssued",
+          "note": "Delivery is expected to cancel an undispatched shipment here. The handler is described in the design doc but has not been found in the repo."
+        },
+        {
+          "type": "step",
+          "id": "c5",
+          "from": "shop.oms",
+          "to": "bus",
+          "kind": "event",
+          "status": "declared",
+          "ref": "shop.oms.order.OrderCancelled",
+          "label": "OrderCancelled"
+        }
+      ]
+    },
+    {
+      "id": "flow.shipment-tracking",
+      "slug": "shipment-tracking",
+      "name": "Shipment tracking",
+      "summary": "Reconstructed from production traces over a 24 hour window. Shows one unknown consumer that no repository accounts for.",
+      "provenance": "derived-from-otel",
+      "verifiedAt": "2026-08-28T02:11:00Z",
+      "participants": [
+        {
+          "id": "customer",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "delivery.core",
+          "kind": "service",
+          "context": "delivery"
+        },
+        {
+          "id": "shop.oms",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        },
+        {
+          "id": "analytics-sink",
+          "kind": "unknown",
+          "context": null,
+          "label": "analytics-sink (unknown)"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "d1",
+          "from": "customer",
+          "to": "delivery.core",
+          "kind": "rpc",
+          "status": "verified",
+          "label": "TrackShipment",
+          "line": "trace 9f2c1a../span 04"
+        },
+        {
+          "type": "step",
+          "id": "d2",
+          "from": "delivery.core",
+          "to": "bus",
+          "kind": "event",
+          "status": "verified",
+          "ref": "delivery.core.shipment.ShipmentDispatched",
+          "label": "ShipmentDispatched",
+          "line": "trace 9f2c1a../span 11"
+        },
+        {
+          "type": "step",
+          "id": "d3",
+          "from": "bus",
+          "to": "shop.oms",
+          "kind": "event",
+          "status": "verified",
+          "ref": "delivery.core.shipment.ShipmentDispatched",
+          "label": "ShipmentDispatched",
+          "line": "trace 9f2c1a../span 12"
+        },
+        {
+          "type": "step",
+          "id": "d4",
+          "from": "delivery.core",
+          "to": "bus",
+          "kind": "event",
+          "status": "verified",
+          "ref": "delivery.core.shipment.ShipmentDelivered",
+          "label": "ShipmentDelivered",
+          "line": "trace 9f2c1a../span 27"
+        },
+        {
+          "type": "step",
+          "id": "d5",
+          "from": "bus",
+          "to": "analytics-sink",
+          "kind": "event",
+          "status": "declared",
+          "ref": "delivery.core.shipment.ShipmentDelivered",
+          "label": "ShipmentDelivered",
+          "note": "Consumer seen in traces only. No subscription registration exists in any indexed repository, so the owning team is unknown.",
+          "line": "trace 9f2c1a../span 31"
+        }
+      ]
+    }
+  ],
+  "adrs": [
+    {
+      "id": "shop.oms.0007",
+      "slug": "shop-oms-0007-cart-reads-via-repository",
+      "number": 7,
+      "title": "Cart reads go through CartRepository, not Temporal Queries",
+      "status": "accepted",
+      "date": "2026-04-23",
+      "scope": {
+        "kind": "service",
+        "service": "shop.oms"
+      },
+      "supersedes": [
+        "shop.oms.0003"
+      ],
+      "relates": {
+        "services": [
+          "shop.oms"
+        ],
+        "flows": [
+          "checkout"
+        ]
+      },
+      "source": "docs/adr/0007-cart-reads-via-repository.md",
+      "body": "# Cart reads go through CartRepository, not Temporal Queries\n\n## Context and Problem Statement\n\nA cart is owned by a long-running Temporal workflow for the whole of a checkout\nattempt. Reads of cart state come from three places: the storefront polling the\ncart page, the OMS API answering `GetCart`, and support tooling.\n\nADR-0003 chose to serve those reads with `QueryWorkflow` against the\nrunning workflow. That decision was never fully implemented, and the gap only\nbecame visible when the read path started failing in staging:\n\n- the cart workflow **registers no query handler at all** — `SetQueryHandler`\n  is absent from `cart_workflow.go`, so every `QueryWorkflow` call fails with\n  `unknown queryType`;\n- `EVENT_GET` is **reserved but unwired** in `proto/shop/v1/cart.proto`. The\n  enum value exists so the wire numbering stays stable, and nothing dispatches\n  on it;\n- reads therefore fall back to whatever the caller has locally, which for the\n  storefront meant a stale session copy.\n\nWe need one read path that is actually wired up, and we need it to survive a\ncompleted or archived workflow, which a query cannot.\n\n## Decision Drivers\n\n- A read must work after the workflow has closed. Carts are read for days\n  afterwards by support and by the returns flow.\n- Read load must not be answered by the workflow worker fleet.\n- The read path must be testable without a Temporal dev server.\n- Whatever we choose has to be the *only* path, so there is no second answer to\n  \"what is in this cart\".\n\n## Considered Options\n\n1. **`CartRepository` over the `cart_projection` table** — the workflow\n   publishes events, a projector writes rows, reads hit Postgres.\n2. **`QueryWorkflow` against the running workflow** — the option ADR-0003 took.\n3. **Both, with the query as a fast path** — query first, fall back to the\n   projection.\n\n## Decision Outcome\n\nChosen option: **`CartRepository` over the projection**.\n\nOption 2 cannot answer reads once the workflow closes, and pins read latency to\nworker availability. Option 3 gives two sources for one fact, which is how the\nstaging drift started; a cart read that sometimes comes from the workflow and\nsometimes from the projection is a cart read nobody can reason about.\n\nThe read path is now, in full:\n\n```mermaid\nsequenceDiagram\n    autonumber\n    participant SF as storefront\n    participant API as shop.oms API\n    participant Repo as CartRepository\n    participant PG as postgres · cart_projection\n    participant WF as cart workflow\n\n    SF->>API: GetCart(cart_id)\n    API->>Repo: Load(ctx, cart_id)\n    Repo->>PG: SELECT * FROM cart_projection WHERE cart_id = $1\n    PG-->>Repo: row (or none)\n    Repo-->>API: Cart\n    API-->>SF: CartResponse\n\n    Note over WF,PG: writes only - the workflow never answers a read\n    WF-)PG: projector applies cart events\n```\n\n### Consequences\n\n- Good: reads keep working after the workflow closes, and can be served from a\n  read replica.\n- Good: `CartRepository` is an interface; unit tests use an in-memory\n  implementation and never start a Temporal test environment.\n- Bad: the projection is eventually consistent. A read issued in the same\n  millisecond as a write can miss it, so the checkout path reads its own writes\n  from the command result rather than re-reading the cart.\n- Bad: one more thing to run — the projector is now on the critical path for\n  correctness of reads, and needs its own lag alert.\n\n## More Information\n\n`EVENT_GET` stays reserved in `proto/shop/v1/cart.proto`. Removing it would\nrecycle the field number onto a different meaning for any client still holding\nan old descriptor. It is dead on purpose; do not wire it.\n"
+    },
+    {
+      "id": "shop.oms.0003",
+      "slug": "shop-oms-0003-cart-state-via-temporal-query",
+      "number": 3,
+      "title": "Read cart state via Temporal QueryWorkflow",
+      "status": "superseded",
+      "date": "2025-06-18",
+      "scope": {
+        "kind": "service",
+        "service": "shop.oms"
+      },
+      "supersededBy": "shop.oms.0007",
+      "relates": {
+        "services": [
+          "shop.oms"
+        ],
+        "flows": [
+          "checkout"
+        ]
+      },
+      "source": "docs/adr/0003-cart-state-via-temporal-query.md",
+      "body": "# Read cart state via Temporal QueryWorkflow\n\n## Context and Problem Statement\n\nThe cart is being moved out of the session store and into a Temporal workflow,\nso that an abandoned checkout can be resumed and so that the cart has one\nowner. The workflow holds the authoritative cart in memory. The storefront\nstill needs to render the cart on every page load.\n\nWhere should that read come from?\n\n## Decision Drivers\n\n- The workflow already holds the exact state; anything else is a copy.\n- We do not want to build and operate a projection for a value that exists in\n  memory a few milliseconds away.\n- Temporal queries are strongly consistent against the workflow's own history.\n\n## Considered Options\n\n1. **`QueryWorkflow` against the cart workflow.**\n2. A read-model projection in Postgres, fed by cart events.\n3. Keep the session copy and accept the drift.\n\n## Decision Outcome\n\nChosen option: **`QueryWorkflow`**. It gives a strongly consistent read with no\nnew storage, no projector to run and no lag to alert on. Option 2 is a lot of\nmachinery for a value we already have; option 3 is the status quo we are trying\nto leave.\n\n```mermaid\nsequenceDiagram\n    autonumber\n    participant SF as storefront\n    participant API as shop.oms API\n    participant TC as temporal frontend\n    participant WF as cart workflow\n\n    SF->>API: GetCart(cart_id)\n    API->>TC: QueryWorkflow(cart_id, \"cart.get\")\n    TC->>WF: dispatch query handler\n    WF-->>TC: Cart (in-memory state)\n    TC-->>API: Cart\n    API-->>SF: CartResponse\n```\n\n### Consequences\n\n- Good: no projection, no projector, no lag.\n- Good: the read is as fresh as the workflow's own state.\n- Bad: a read fails once the workflow completes or is archived. Support tooling\n  will need a different path for historical carts.\n- Bad: read load lands on the workflow worker fleet.\n\n## More Information\n\n`EVENT_GET` is added to `proto/shop/v1/cart.proto` for the query dispatch.\n"
+    },
+    {
+      "id": "org.0001",
+      "slug": "org-0001-client-protos-in-consumer-infrastructure",
+      "number": 1,
+      "title": "Client proto copies live in the consumer's infrastructure layer",
+      "status": "accepted",
+      "date": "2025-03-11",
+      "scope": {
+        "kind": "org"
+      },
+      "relates": {
+        "services": [
+          "shop.oms",
+          "delivery.core"
+        ]
+      },
+      "source": "docs/adr/0001-client-protos-in-consumer-infrastructure.md",
+      "body": "# Client proto copies live in the consumer's infrastructure layer\n\n## Context and Problem Statement\n\nWhen `shop.oms` calls `payments.v1.Payments/Authorize`, it needs the payments\n`.proto`. Where does that file come from at build time?\n\nA shared schema repository consumed by every service is the obvious answer, and\nit is the one that couples every release to every other release: a change to a\nmessage nobody in `shop` uses still forces `shop` to bump, regenerate and\nretest.\n\n## Decision Drivers\n\n- A team must be able to release without waiting on another team's schema bump.\n- The boundary between contexts should be explicit in the code, not implicit in\n  a shared package.\n- Drift between a producer's schema and a consumer's copy must be **detectable**,\n  not merely hoped against.\n\n## Considered Options\n\n1. **A vendored copy of the producer's `.proto` under the consumer's\n   `internal/infrastructure/<peer>/`**, an anti-corruption layer in the DDD\n   sense: the copy is the consumer's translation boundary.\n2. **A shared schema repo** published as one versioned artifact for everyone.\n3. **Runtime reflection** — resolve descriptors from the server at startup.\n\n## Decision Outcome\n\nChosen option: **vendored copies in the consumer's infrastructure layer**.\n\nThis is the ACL trade-off taken deliberately:\n\n| | compile-time independence | drift risk |\n|---|---|---|\n| vendored copy | full — a consumer builds and ships alone | real — the copy can fall behind |\n| shared repo | none — every bump is everyone's bump | none |\n| reflection | full | moved to runtime, where it fails in production instead of in CI |\n\nWe take the drift risk because we can *measure* it, and we cannot measure the\ncost of coordinated releases until it has already been paid.\n\nThe mitigation is mechanical: **the catalog merge compares descriptors.** Each\nproducer publishes the descriptor set for the services it provides; each\nconsumer's vendored copy is parsed at catalog build time; a field, method or\nenum value that differs between the two is reported against the consuming\nservice and shows on its page as an unresolved call rather than silently\ncompiling.\n\n### Consequences\n\n- Good: `shop` and `delivery` release on their own cadence.\n- Good: the copy is a real boundary — a consumer may narrow a message to the\n  fields it actually uses, and that narrowing is visible in review.\n- Bad: the same `.proto` exists in several repositories. Someone reading two of\n  them may reasonably wonder which is authoritative. The producer's is; the\n  header comment on every vendored copy says so.\n- Bad: drift is caught at catalog build, which is after merge. It is not caught\n  at compile time, and it never will be.\n"
+    },
+    {
+      "id": "org.0002",
+      "slug": "org-0002-event-version-in-package-path",
+      "number": 2,
+      "title": "Domain event schema version is encoded in the package path (events/v1)",
+      "status": "accepted",
+      "date": "2025-05-02",
+      "scope": {
+        "kind": "org"
+      },
+      "relates": {
+        "events": [
+          "shop.oms.basket.BasketCheckedOut"
+        ]
+      },
+      "source": "docs/adr/0002-event-version-in-package-path.md",
+      "body": "# Domain event schema version is encoded in the package path (events/v1)\n\n## Context and Problem Statement\n\nA domain event outlives the code that published it. Consumers deserialize\nmessages written months earlier, and a consumer that is down for a day comes\nback to a backlog of the *old* shape. We need a versioning scheme that a\nconsumer can act on before it parses a single byte.\n\n## Decision Drivers\n\n- A consumer must be able to decide \"can I read this?\" from routing information\n  alone, without a registry lookup.\n- Two versions of one event must be publishable at the same time during a\n  migration.\n- The version must be visible in the source tree, in the topic name and in the\n  type URL — not only in a field.\n\n## Considered Options\n\n1. **Version in the package path**: `shop.events.v1.BasketCheckedOut`, file at\n   `proto/shop/events/v1/basket.proto`.\n2. **A `version` field inside the message.**\n3. **A schema registry** with subject-level compatibility rules.\n\n## Decision Outcome\n\nChosen option: **version in the package path**.\n\nThe version becomes part of the fully-qualified name, so it is part of the type\nURL, part of the generated Go package, and part of the topic name\n(`shop.events.v1.basket-checked-out`). A consumer subscribes to the versions it\nunderstands and is structurally incapable of receiving one it does not.\n\nOption 2 puts the version *inside* the payload, which means parsing an unknown\nshape to discover that it is unknown. Option 3 is the right answer at a\ndifferent scale; it adds an operational dependency on the publish path that we\nare not willing to take yet.\n\n### Consequences\n\n- Good: an unreadable version is never delivered — it is a different topic.\n- Good: v1 and v2 publish side by side during a migration; the producer emits\n  both until the v1 subscription drains.\n- Bad: a breaking change means a new package, a new topic and a period of dual\n  publishing. This is deliberate friction, and it is the point.\n- Bad: additive changes still land in v1. \"Is this additive?\" stays a judgement\n  call at review time, and the catalog's field diff per version is what makes\n  that call reviewable.\n"
+    },
+    {
+      "id": "payments.0004",
+      "slug": "payments-0004-idempotent-journal-entries",
+      "number": 4,
+      "title": "Journal entries are idempotent by (order_id, attempt)",
+      "status": "proposed",
+      "date": "2026-02-09",
+      "scope": {
+        "kind": "context",
+        "context": "payments"
+      },
+      "relates": {
+        "flows": [
+          "checkout"
+        ],
+        "events": [
+          "payments.ledger.payment.PaymentCaptured"
+        ]
+      },
+      "source": "docs/adr/0004-idempotent-journal-entries.md",
+      "body": "# Journal entries are idempotent by (order_id, attempt)\n\n## Context and Problem Statement\n\nThe ledger writes a journal entry when a capture succeeds. The capture path is\nat-least-once end to end: the PSP retries its webhook, our own consumer retries\non redelivery, and an operator can replay a partition. Today a replayed capture\nwrites a second journal entry, and the ledger has to be repaired by hand.\n\nThe natural key is not `order_id` alone: a declined authorization is followed by\na second, legitimate attempt on the same order, and that attempt must produce\nits own entry.\n\n## Decision Drivers\n\n- Replaying the capture consumer must be safe, always, with no operator\n  ceremony.\n- A genuine retry by the customer is a distinct financial fact and must not be\n  collapsed into the first one.\n- The guarantee should be enforced by the database, not by application code that\n  can be bypassed by the next caller.\n\n## Considered Options\n\n1. **A unique constraint on `(order_id, attempt)`**, with `attempt` carried on\n   the capture command and echoed on the event.\n2. **A dedup table keyed by the message id** of the inbound event.\n3. **Application-level \"does an entry exist?\" check** before insert.\n\n## Decision Outcome\n\nProposed: **unique constraint on `(order_id, attempt)`**, with the insert\nwritten as `INSERT ... ON CONFLICT (order_id, attempt) DO NOTHING`.\n\nOption 2 dedups the *transport*, not the *fact*: the same capture arriving via a\nwebhook and via the event bus has two message ids and would write twice. Option\n3 is a read-then-write race that fails exactly under the concurrency it is meant\nto protect against.\n\n### Consequences\n\n- Good: replay is a no-op at the storage layer, whatever the caller does.\n- Good: the key is a domain fact, so it holds across transports.\n- Bad: `attempt` has to be threaded through the capture command and onto\n  `PaymentCaptured`; a producer that omits it cannot be made idempotent.\n- Bad: existing rows have no `attempt`. The backfill assigns `attempt = 1` and\n  is only correct if no order in history was captured twice — which has to be\n  checked before this is accepted, not after.\n\n## Open Questions\n\n- Does the PSP guarantee a stable attempt identifier across its own retries, or\n  do we mint it ourselves at authorization time?\n- What is the correct behaviour when a capture arrives for an attempt that was\n  never authorized? Currently it would insert; it should probably reject.\n"
+    }
+  ]
+}

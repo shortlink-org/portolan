@@ -1,0 +1,278 @@
+// GENERATED — do not edit.
+views {
+  view ctx_shop of shop {
+    title 'Shop'
+    include *
+  }
+  view svc_shop_oms of shop.oms {
+    title 'Order Management'
+    include *, -> *, * ->
+  }
+  view svc_shop_pricing of shop.pricing {
+    title 'Pricing'
+    include *, -> *, * ->
+  }
+  view ctx_payments of payments {
+    title 'Payments'
+    include *
+  }
+  view svc_payments_ledger of payments.ledger {
+    title 'Ledger'
+    include *, -> *, * ->
+  }
+  view ctx_delivery of delivery {
+    title 'Delivery'
+    include *
+  }
+  view svc_delivery_core of delivery.core {
+    title 'Delivery Core'
+    include *, -> *, * ->
+  }
+
+  dynamic view flow_order_accepted {
+    title 'Order accepted'
+    description 'The narrow happy path: an order is placed, the ledger hears about it, and funds are reserved. Three hops, all covered by one integration test.'
+    shop.oms -> bus 'OrderPlaced' {
+      color verified  line solid  head onormal
+      notes 'order_accepted_test.go:41'
+    }
+    bus -> payments.ledger 'OrderPlaced' {
+      color verified  line solid  head onormal
+      notes 'order_accepted_test.go:58'
+    }
+    payments.ledger -> bus 'PaymentAuthorized' {
+      color verified  line solid  head onormal
+      notes 'order_accepted_test.go:73'
+    }
+  }
+
+  dynamic view flow_order_accepted_cross {
+    title 'Order accepted — crossings only'
+    shop.oms -> bus 'OrderPlaced' {
+      color verified  line solid  head onormal
+      notes 'order_accepted_test.go:41'
+    }
+    bus -> payments.ledger 'OrderPlaced' {
+      color verified  line solid  head onormal
+      notes 'order_accepted_test.go:58'
+    }
+    payments.ledger -> bus 'PaymentAuthorized' {
+      color verified  line solid  head onormal
+      notes 'order_accepted_test.go:73'
+    }
+  }
+
+  dynamic view flow_checkout {
+    title 'Checkout'
+    description 'The full checkout sequence from basket submission to dispatch, including the risk branch, the capture retry loop, and one call whose target is not in the catalog.'
+    customer -> shop.oms 'PlaceOrder' {
+      color verified  line solid  head normal
+      notes 'checkout_test.go:62'
+    }
+    shop.oms -> shop.oms 'validateBasket' {
+      color verified  line solid  head none
+      notes 'internal/oms/app/checkout.go:88'
+    }
+    shop.oms -> shop.pricing 'GetQuote' {
+      color verified  line solid  head normal
+      notes 'internal/oms/app/checkout.go:104'
+    }
+    parallel {
+      shop.oms -> payments.ledger '[risk score below threshold] Authorize' {
+        color declared  line dashed  head normal
+        notes 'alt branch: risk score below threshold — internal/oms/app/checkout.go:141'
+      }
+      shop.oms -> bus '[risk score below threshold] OrderPlaced' {
+        color verified  line solid  head onormal
+        notes 'alt branch: risk score below threshold — checkout_test.go:118'
+      }
+    }
+    shop.oms -> fraud_scoring '[risk score below threshold] Score' {
+      color unresolved  line dotted  head normal
+      notes 'alt branch: risk score below threshold — No service in the catalog provides fraud.v2.Scoring. The address comes from FRAUD_ADDR at runtime, so the peer cannot be resolved statically. — internal/oms/client/fraud.go:22'
+    }
+    shop.oms -> bus '[risk score above threshold] OrderCancelled' {
+      color declared  line dashed  head onormal
+      notes 'alt branch: risk score above threshold — internal/oms/app/checkout.go:176'
+    }
+    loop 'until captured, at most 3 attempts' {
+      payments.ledger -> bus 'PaymentAuthorized' {
+        color verified  line solid  head onormal
+        notes 'checkout_test.go:151'
+      }
+      payments.ledger -> payments.ledger 'postJournalEntry' {
+        color verified  line solid  head none
+        notes 'internal/ledger/app/capture.go:59'
+      }
+      shop.oms -> payments.ledger 'Capture' {
+        color declared  line dashed  head normal
+        notes 'internal/oms/app/capture.go:33'
+      }
+      payments.ledger -> bus 'PaymentCaptured' {
+        color declared  line dashed  head onormal
+        notes 'internal/ledger/app/capture.go:91'
+      }
+    }
+    bus -> delivery.core 'PaymentCaptured' {
+      color declared  line dashed  head onormal
+      notes 'internal/delivery/app/subscribe.go:44'
+    }
+    delivery.core -> delivery.core 'planRoute' {
+      color verified  line solid  head none
+      notes 'internal/delivery/app/route.go:71'
+    }
+    delivery.core -> bus 'ShipmentDispatched' {
+      color verified  line solid  head onormal
+      notes 'checkout_test.go:203'
+    }
+    shop.oms -> customer 'OrderConfirmation' {
+      color declared  line dashed  head normal
+      notes 'internal/oms/notify/confirmation.go:27'
+    }
+  }
+
+  dynamic view flow_checkout_cross {
+    title 'Checkout — crossings only'
+    customer -> shop.oms 'PlaceOrder' {
+      color verified  line solid  head normal
+      notes 'checkout_test.go:62'
+    }
+    parallel {
+      shop.oms -> payments.ledger '[risk score below threshold] Authorize' {
+        color declared  line dashed  head normal
+        notes 'alt branch: risk score below threshold — internal/oms/app/checkout.go:141'
+      }
+      shop.oms -> bus '[risk score below threshold] OrderPlaced' {
+        color verified  line solid  head onormal
+        notes 'alt branch: risk score below threshold — checkout_test.go:118'
+      }
+    }
+    shop.oms -> fraud_scoring '[risk score below threshold] Score' {
+      color unresolved  line dotted  head normal
+      notes 'alt branch: risk score below threshold — No service in the catalog provides fraud.v2.Scoring. The address comes from FRAUD_ADDR at runtime, so the peer cannot be resolved statically. — internal/oms/client/fraud.go:22'
+    }
+    shop.oms -> bus '[risk score above threshold] OrderCancelled' {
+      color declared  line dashed  head onormal
+      notes 'alt branch: risk score above threshold — internal/oms/app/checkout.go:176'
+    }
+    loop 'until captured, at most 3 attempts' {
+      payments.ledger -> bus 'PaymentAuthorized' {
+        color verified  line solid  head onormal
+        notes 'checkout_test.go:151'
+      }
+      shop.oms -> payments.ledger 'Capture' {
+        color declared  line dashed  head normal
+        notes 'internal/oms/app/capture.go:33'
+      }
+      payments.ledger -> bus 'PaymentCaptured' {
+        color declared  line dashed  head onormal
+        notes 'internal/ledger/app/capture.go:91'
+      }
+    }
+    bus -> delivery.core 'PaymentCaptured' {
+      color declared  line dashed  head onormal
+      notes 'internal/delivery/app/subscribe.go:44'
+    }
+    delivery.core -> bus 'ShipmentDispatched' {
+      color verified  line solid  head onormal
+      notes 'checkout_test.go:203'
+    }
+    shop.oms -> customer 'OrderConfirmation' {
+      color declared  line dashed  head normal
+      notes 'internal/oms/notify/confirmation.go:27'
+    }
+  }
+
+  dynamic view flow_refund_requested {
+    title 'Refund requested'
+    description 'How a support-initiated refund is meant to travel through the system. Written by hand from the design doc; no step has been observed in a test or a trace.'
+    customer -> shop.oms 'RequestRefund' {
+      color declared  line dashed  head normal
+    }
+    shop.oms -> payments.ledger 'Refund' {
+      color declared  line dashed  head normal
+      notes 'internal/oms/client/payments.go:104'
+    }
+    payments.ledger -> bus 'RefundIssued' {
+      color declared  line dashed  head onormal
+    }
+    bus -> delivery.core 'RefundIssued' {
+      color declared  line dashed  head onormal
+      notes 'Delivery is expected to cancel an undispatched shipment here. The handler is described in the design doc but has not been found in the repo.'
+    }
+    shop.oms -> bus 'OrderCancelled' {
+      color declared  line dashed  head onormal
+    }
+  }
+
+  dynamic view flow_refund_requested_cross {
+    title 'Refund requested — crossings only'
+    customer -> shop.oms 'RequestRefund' {
+      color declared  line dashed  head normal
+    }
+    shop.oms -> payments.ledger 'Refund' {
+      color declared  line dashed  head normal
+      notes 'internal/oms/client/payments.go:104'
+    }
+    payments.ledger -> bus 'RefundIssued' {
+      color declared  line dashed  head onormal
+    }
+    bus -> delivery.core 'RefundIssued' {
+      color declared  line dashed  head onormal
+      notes 'Delivery is expected to cancel an undispatched shipment here. The handler is described in the design doc but has not been found in the repo.'
+    }
+    shop.oms -> bus 'OrderCancelled' {
+      color declared  line dashed  head onormal
+    }
+  }
+
+  dynamic view flow_shipment_tracking {
+    title 'Shipment tracking'
+    description 'Reconstructed from production traces over a 24 hour window. Shows one unknown consumer that no repository accounts for.'
+    customer -> delivery.core 'TrackShipment' {
+      color verified  line solid  head normal
+      notes 'trace 9f2c1a../span 04'
+    }
+    delivery.core -> bus 'ShipmentDispatched' {
+      color verified  line solid  head onormal
+      notes 'trace 9f2c1a../span 11'
+    }
+    bus -> shop.oms 'ShipmentDispatched' {
+      color verified  line solid  head onormal
+      notes 'trace 9f2c1a../span 12'
+    }
+    delivery.core -> bus 'ShipmentDelivered' {
+      color verified  line solid  head onormal
+      notes 'trace 9f2c1a../span 27'
+    }
+    bus -> analytics_sink 'ShipmentDelivered' {
+      color declared  line dashed  head onormal
+      notes 'Consumer seen in traces only. No subscription registration exists in any indexed repository, so the owning team is unknown. — trace 9f2c1a../span 31'
+    }
+  }
+
+  dynamic view flow_shipment_tracking_cross {
+    title 'Shipment tracking — crossings only'
+    customer -> delivery.core 'TrackShipment' {
+      color verified  line solid  head normal
+      notes 'trace 9f2c1a../span 04'
+    }
+    delivery.core -> bus 'ShipmentDispatched' {
+      color verified  line solid  head onormal
+      notes 'trace 9f2c1a../span 11'
+    }
+    bus -> shop.oms 'ShipmentDispatched' {
+      color verified  line solid  head onormal
+      notes 'trace 9f2c1a../span 12'
+    }
+    delivery.core -> bus 'ShipmentDelivered' {
+      color verified  line solid  head onormal
+      notes 'trace 9f2c1a../span 27'
+    }
+    bus -> analytics_sink 'ShipmentDelivered' {
+      color declared  line dashed  head onormal
+      notes 'Consumer seen in traces only. No subscription registration exists in any indexed repository, so the owning team is unknown. — trace 9f2c1a../span 31'
+    }
+  }
+
+}
