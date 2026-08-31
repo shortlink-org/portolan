@@ -7,7 +7,7 @@
 
 import type {
   Aggregate,
-  Context,
+  BoundedContext,
   Event,
   Flow,
   Service,
@@ -67,20 +67,20 @@ export function parseFlowStepId(
 export interface ResolvedContext {
   kind: "context";
   id: string;
-  context: Context;
+  context: BoundedContext;
 }
 export interface ResolvedService {
   kind: "service";
   id: string;
   service: Service;
-  context: Context;
+  context: BoundedContext;
 }
 export interface ResolvedAggregate {
   kind: "aggregate";
   id: string;
   aggregate: Aggregate;
   service: Service;
-  context: Context;
+  context: BoundedContext;
 }
 export interface ResolvedEvent {
   kind: "event";
@@ -88,7 +88,7 @@ export interface ResolvedEvent {
   event: Event;
   aggregate: Aggregate;
   service: Service;
-  context: Context;
+  context: BoundedContext;
 }
 export interface ResolvedValueObject {
   kind: "value-object";

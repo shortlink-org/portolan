@@ -5,7 +5,7 @@ import { catalog } from "../data";
 import type {
   Aggregate,
   Block,
-  Context,
+  BoundedContext,
   Event,
   Operation,
   Service,
@@ -16,7 +16,7 @@ import { KIND_CHIP, LEAF_KINDS } from "../lib/kinds";
 import type { Kind, LeafKind } from "../lib/kinds";
 import { KindIcon } from "../components/kind";
 import { CompassRose, Wordmark } from "../components/logo";
-import { isStruck } from "../components/primitives";
+import { ClassificationBadge, isStruck } from "../components/primitives";
 import { paths } from "../routes";
 import { useSearch } from "./search";
 import { resolveSelection, selectionFor } from "../selection/model";
@@ -85,9 +85,9 @@ function matchAggregate(
 }
 
 function matchContext(
-  context: Context,
+  context: BoundedContext,
   q: string,
-): { context: Context; services: ServiceMatch[] } | null {
+): { context: BoundedContext; services: ServiceMatch[] } | null {
   const contextHit = matches(q, context.id, context.name);
   const services: ServiceMatch[] = [];
 
@@ -390,12 +390,16 @@ export function Sidebar({
     [query],
   );
 
+  // Alphabetical, not catalog order: the tree is a place to find a name you
+  // already know. Classification is a badge and never touches this order -
+  // sorting the core domains to the top would make the sidebar an argument.
   const contexts = useMemo(
     () =>
-      catalog.contexts
+      [...catalog.contexts]
+        .sort((a, b) => a.name.localeCompare(b.name))
         .map((c) => matchContext(c, query))
         .filter(
-          (x): x is { context: Context; services: ServiceMatch[] } =>
+          (x): x is { context: BoundedContext; services: ServiceMatch[] } =>
             x !== null,
         ),
     [query],
@@ -555,7 +559,7 @@ export function Sidebar({
         })}
 
         <div className="label sticky-bar sticky top-0 z-10 px-3 pt-5 pb-1.5">
-          Domains
+          Contexts
         </div>
         {contexts.length === 0 ? (
           <div className="px-3 py-1 text-muted">no match</div>
@@ -572,6 +576,12 @@ export function Sidebar({
                 onToggle={() => toggle(ckey, true)}
                 label={`context ${context.id}`}
                 selId={context.id}
+                right={
+                  <ClassificationBadge
+                    classification={context.classification}
+                    tiny
+                  />
+                }
               >
                 <KindIcon kind="context" contextId={context.id} />
                 <span

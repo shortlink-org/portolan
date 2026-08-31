@@ -1,7 +1,14 @@
 import { Link } from "react-router";
 import { AlertTriangle, Activity, FlaskConical } from "lucide-react";
 import type { ReactNode } from "react";
-import type { Adr, AdrScope, AdrStatus, Provenance, Status } from "../catalog";
+import type {
+  Adr,
+  AdrScope,
+  AdrStatus,
+  Classification,
+  Provenance,
+  Status,
+} from "../catalog";
 import { index } from "../data";
 import { adrNumber } from "../lib/adr";
 import { ctxStyle } from "../lib/context-color";
@@ -59,6 +66,57 @@ export function ContextPill({ id, name }: { id: string; name?: string }) {
     <span className="chip ctx" style={ctxStyle(id)}>
       <span aria-hidden className="dot" />
       {name ?? id}
+    </span>
+  );
+}
+
+/**
+ * How strategically a bounded context is rated, said in one word. Core is the
+ * only one worth the accent - "supporting" and "generic" are the answer "not
+ * where the value is", and a row full of loud badges says nothing at all.
+ */
+const CLASSIFICATION_META: Record<
+  Classification,
+  { className: string; title: string }
+> = {
+  core: {
+    className: "border-accent text-accent",
+    title: "core domain - where this estate competes",
+  },
+  supporting: {
+    className: "border-line-strong text-muted",
+    title: "supporting domain - needed here, but not a differentiator",
+  },
+  generic: {
+    className: "border-line-strong text-muted",
+    title: "generic domain - a solved problem, bought or borrowed",
+  },
+};
+
+/**
+ * The classification badge, and the only place it is drawn. A context with no
+ * classification renders nothing: an unrated domain is not a "generic" one, and
+ * a placeholder would state a call the estate has not made.
+ *
+ * `tiny` is the sidebar's 10px variant, where the badge rides at the end of a
+ * tree row and must not compete with the context name it annotates.
+ */
+export function ClassificationBadge({
+  classification,
+  tiny = false,
+}: {
+  classification?: Classification;
+  tiny?: boolean;
+}) {
+  if (!classification) return null;
+  const meta = CLASSIFICATION_META[classification];
+  return (
+    <span
+      className={`chip shrink-0 ${meta.className}`}
+      style={tiny ? { fontSize: 10, lineHeight: "14px" } : undefined}
+      title={meta.title}
+    >
+      {classification}
     </span>
   );
 }

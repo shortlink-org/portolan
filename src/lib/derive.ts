@@ -4,7 +4,7 @@
 import type {
   Block,
   Catalog,
-  Context,
+  BoundedContext,
   Event,
   Field,
   Flow,
@@ -21,7 +21,7 @@ export interface ContextStats {
   unresolved: number;
 }
 
-export function contextStats(context: Context): ContextStats {
+export function contextStats(context: BoundedContext): ContextStats {
   let aggregates = 0;
   let events = 0;
   let unresolved = 0;
@@ -109,7 +109,7 @@ export function serviceGraph(catalog: Catalog): ServiceGraph {
   const nodes = new Map<string, GraphNode>();
   const edges: GraphEdge[] = [];
 
-  const owner = new Map<string, { service: Service; context: Context }>();
+  const owner = new Map<string, { service: Service; context: BoundedContext }>();
   for (const context of catalog.contexts) {
     for (const service of context.services) {
       nodes.set(service.id, {

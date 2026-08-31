@@ -131,8 +131,10 @@
   "contexts": [
     {
       "id": "shop",
+      "slug": "shop",
       "name": "Shop",
       "summary": "Everything the customer touches before money moves: baskets, orders and prices.",
+      "classification": "core",
       "services": [
         {
           "id": "shop.oms",
@@ -1053,8 +1055,10 @@
     },
     {
       "id": "payments",
+      "slug": "payments",
       "name": "Payments",
       "summary": "A double-entry ledger and the PSP integrations that feed it. Nothing here knows what an order is for.",
+      "classification": "core",
       "services": [
         {
           "id": "payments.ledger",
@@ -1622,8 +1626,10 @@
     },
     {
       "id": "delivery",
+      "slug": "delivery",
       "name": "Delivery",
       "summary": "Routes, parcels and proof of delivery. Reacts to captured payments, never to placed orders.",
+      "classification": "supporting",
       "services": [
         {
           "id": "delivery.core",

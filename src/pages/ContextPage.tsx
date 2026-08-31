@@ -8,6 +8,7 @@ import { staggerStyle } from "../lib/motion";
 import { CONTEXT_ANCHOR, EVENT_ANCHOR, paths } from "../routes";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
 import { Ident } from "../components/Ident";
+import { ClassificationBadge } from "../components/primitives";
 import { KindIcon } from "../components/kind";
 import { RowActions } from "../components/RowActions";
 import { Toc } from "../components/Toc";
@@ -45,16 +46,19 @@ export function ContextPage() {
         id={context.id}
         contextId={context.id}
         right={
-          stats.unresolved > 0 ? (
-            <Link
-              to={paths.problems()}
-              className="chip-lg status-unresolved"
-              title="see every edge in the estate that lands nowhere"
-            >
-              <AlertTriangle size={14} aria-hidden />
-              {stats.unresolved} unresolved
-            </Link>
-          ) : null
+          <>
+            <ClassificationBadge classification={context.classification} />
+            {stats.unresolved > 0 ? (
+              <Link
+                to={paths.problems()}
+                className="chip-lg status-unresolved"
+                title="see every edge in the estate that lands nowhere"
+              >
+                <AlertTriangle size={14} aria-hidden />
+                {stats.unresolved} unresolved
+              </Link>
+            ) : null}
+          </>
         }
       >
         <p className="mt-2 max-w-prose text-muted">{context.summary}</p>
@@ -84,7 +88,11 @@ export function ContextPage() {
       <div className="flex gap-section p-gutter">
         <div className="min-w-0 flex-1">
           <SectionTitle>Model</SectionTitle>
-          <C4View viewId={contextViewId(context)} height={340} />
+          {/* The derived `ctx_<id>` view unless the catalog names another one. */}
+          <C4View
+            viewId={context.viewId ?? contextViewId(context)}
+            height={340}
+          />
 
           {/* --- Services ----------------------------------------------- */}
           <section id={CONTEXT_ANCHOR.services} className="mt-section">

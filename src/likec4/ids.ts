@@ -4,7 +4,7 @@
 import type {
   Aggregate,
   Catalog,
-  Context,
+  BoundedContext,
   Event,
   Flow,
   Participant,
@@ -22,7 +22,7 @@ export function fqn(catalogId: string): string {
   return catalogId.split(".").map(safeId).join(".");
 }
 
-export const contextFqn = (context: Context | string): string =>
+export const contextFqn = (context: BoundedContext | string): string =>
   fqn(typeof context === "string" ? context : context.id);
 
 export const serviceFqn = (service: Service | string): string =>
@@ -45,7 +45,7 @@ export function participantFqn(participant: Participant | string): string {
 
 // --- view ids -------------------------------------------------------------
 
-export const contextViewId = (context: Context | string): string =>
+export const contextViewId = (context: BoundedContext | string): string =>
   `ctx_${safeId(typeof context === "string" ? context : context.id)}`;
 
 export const serviceViewId = (service: Service | string): string =>

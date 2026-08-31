@@ -9,7 +9,11 @@ import { CONTEXT_ANCHOR, OVERVIEW_ANCHOR, paths } from "../routes";
 import { SectionTitle } from "../components/PageHeader";
 import { Ident } from "../components/Ident";
 import { RowActions } from "../components/RowActions";
-import { ContextPill, ProvenanceBadge } from "../components/primitives";
+import {
+  ClassificationBadge,
+  ContextPill,
+  ProvenanceBadge,
+} from "../components/primitives";
 
 /**
  * A measurement that arrives rather than appears - 200ms, linear, once - and
@@ -73,7 +77,11 @@ export function Overview() {
                   borderLeftColor: contextVar(context.id),
                 }}
               >
-                <div className="flex items-baseline gap-2">
+                {/* Wraps: with a name, an id, the row actions and up to two
+                    chips on one line, a 300px card runs out of room before the
+                    grid does, and an unwrapped row would push the whole column
+                    wider than its track. */}
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                   <Link
                     to={paths.context(context.id)}
                     data-nav-item
@@ -95,16 +103,21 @@ export function Overview() {
                     reveal={context.id}
                     label={context.name}
                   />
-                  {stats.unresolved > 0 ? (
-                    <Link
-                      to={paths.problems()}
-                      className="chip ml-auto status-unresolved"
-                      title="unresolved rpc calls and unresolved event consumers — open Problems"
-                    >
-                      <AlertTriangle size={12} aria-hidden />
-                      {stats.unresolved}
-                    </Link>
-                  ) : null}
+                  <span className="ml-auto flex items-center gap-2">
+                    <ClassificationBadge
+                      classification={context.classification}
+                    />
+                    {stats.unresolved > 0 ? (
+                      <Link
+                        to={paths.problems()}
+                        className="chip status-unresolved"
+                        title="unresolved rpc calls and unresolved event consumers — open Problems"
+                      >
+                        <AlertTriangle size={12} aria-hidden />
+                        {stats.unresolved}
+                      </Link>
+                    ) : null}
+                  </span>
                 </div>
                 <p className="mt-2 text-muted">{context.summary}</p>
                 <div className="mono mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 whitespace-nowrap text-muted">

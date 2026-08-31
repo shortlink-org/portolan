@@ -7,17 +7,40 @@ export type Provenance = "authored" | "derived-from-test" | "derived-from-otel";
 export interface Catalog {
   generatedAt: string; // ISO 8601
   commit: string; // short sha
-  contexts: Context[];
+  contexts: BoundedContext[];
   defs: Record<string, TypeDef>; // shared type definitions by id
   flows: Flow[];
   adrs: Adr[];
 }
-export interface Context {
+/**
+ * A bounded context: the estate's top grouping level, and nothing more. It owns
+ * services; it states no relationships to its neighbours. The map of who talks
+ * to whom is already drawn from the calls and events themselves.
+ */
+export interface BoundedContext {
+  /** A context sits at the root, so its id is its slug. The validator holds them equal. */
   id: string;
+  slug: string;
   name: string;
   summary: string;
+  /**
+   * How strategically the domain is rated. A badge, and only a badge: it never
+   * orders, groups or filters anything. Absent means the estate has not made
+   * the call, which renders as nothing at all rather than a default.
+   */
+  classification?: Classification;
+  /** LikeC4 view to embed on the context page, when the derived `ctx_<id>` is not the one wanted. */
+  viewId?: string;
   services: Service[];
 }
+
+export type Classification = "core" | "supporting" | "generic";
+
+export const CLASSIFICATIONS: readonly Classification[] = [
+  "core",
+  "supporting",
+  "generic",
+] as const;
 export interface Service {
   id: string; // "<context>.<slug>", e.g. "shop.oms"
   slug: string;
@@ -399,13 +422,13 @@ export interface BlockOwner {
   kind: BlockKind;
   aggregate: Aggregate;
   service: Service;
-  context: Context;
+  context: BoundedContext;
 }
 
 export interface CatalogIndex {
   catalog: Catalog;
   serviceById: Map<string, Service>;
-  serviceContext: Map<string, Context>;
+  serviceContext: Map<string, BoundedContext>;
   aggregateById: Map<string, Aggregate>;
   aggregateOwner: Map<string, Service>;
   eventById: Map<string, Event>;
@@ -427,7 +450,7 @@ export interface CatalogIndex {
 
 export function buildIndex(catalog: Catalog): CatalogIndex {
   const serviceById = new Map<string, Service>();
-  const serviceContext = new Map<string, Context>();
+  const serviceContext = new Map<string, BoundedContext>();
   const aggregateById = new Map<string, Aggregate>();
   const aggregateOwner = new Map<string, Service>();
   const eventById = new Map<string, Event>();
@@ -572,6 +595,24 @@ export function validateCatalog(catalog: Catalog): Catalog {
   );
 
   for (const context of catalog.contexts) {
+    // A context is a root, so it has nothing to be a slug relative to: id and
+    // slug are the same string, and holding them equal here keeps every route
+    // built from `context.id` addressing the same thing the slug names.
+    if (context.slug !== context.id) {
+      fail(
+        `context "${context.id}" has slug "${context.slug}"; a context sits at the root, so its slug must equal its id`,
+        `context ${context.id}`,
+      );
+    }
+    if (
+      context.classification !== undefined &&
+      !CLASSIFICATIONS.includes(context.classification)
+    ) {
+      fail(
+        `context "${context.id}" has classification "${context.classification}"; expected one of ${CLASSIFICATIONS.join(", ")}`,
+        `context ${context.id}`,
+      );
+    }
     assertUniqueSlugs(
       context.services.map((s) => s.slug),
       `context "${context.id}"`,

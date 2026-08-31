@@ -12,7 +12,7 @@ import {
   validateCatalog,
   walkSteps,
 } from "./catalog";
-import type { Adr, Alt, Catalog, Flow } from "./catalog";
+import type { Adr, Alt, Catalog, Classification, Flow } from "./catalog";
 
 const catalog = raw as unknown as Catalog;
 
@@ -60,6 +60,35 @@ describe("validateCatalog", () => {
     expect(() => validateCatalog(bad)).toThrowError(
       /references unknown def "Nonexistent"/,
     );
+  });
+
+  it("rejects a context whose slug is not its id", () => {
+    const bad = clone();
+    const context = bad.contexts[0];
+    if (!context) throw new Error("fixture has no contexts");
+    context.slug = "the-shop";
+    expect(() => validateCatalog(bad)).toThrowError(CatalogError);
+    expect(() => validateCatalog(bad)).toThrowError(
+      /context "shop" has slug "the-shop".*must equal its id/s,
+    );
+  });
+
+  it("rejects a classification outside the three it may take", () => {
+    const bad = clone();
+    const context = bad.contexts[0];
+    if (!context) throw new Error("fixture has no contexts");
+    context.classification = "strategic" as Classification;
+    expect(() => validateCatalog(bad)).toThrowError(
+      /classification "strategic"; expected one of core, supporting, generic/,
+    );
+  });
+
+  it("accepts a context that states no classification at all", () => {
+    const bad = clone();
+    const context = bad.contexts[0];
+    if (!context) throw new Error("fixture has no contexts");
+    delete context.classification;
+    expect(() => validateCatalog(bad)).not.toThrow();
   });
 
   it("rejects duplicate slugs within a parent", () => {
@@ -391,6 +420,11 @@ describe("sample data shape", () => {
       "shop",
       "payments",
       "delivery",
+    ]);
+    expect(catalog.contexts.map((c) => c.classification)).toEqual([
+      "core",
+      "core",
+      "supporting",
     ]);
     const services = catalog.contexts.flatMap((c) => c.services);
     expect(services.map((s) => s.id)).toEqual([
