@@ -1,9 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildHref,
   buildLabel,
   buildTitle,
-  commitUrl,
-  runUrl,
   type BuildInfo,
 } from "./build-info";
 
@@ -12,10 +11,10 @@ const CI: BuildInfo = {
   shortCommit: "4f1c9ae",
   branch: "main",
   builtAt: "2026-08-29T09:14:22Z",
-  repo: "shortlink-org/portolan",
-  server: "https://github.com",
-  runNumber: "128",
-  runId: "17390211",
+  commitUrl:
+    "https://gitlab.com/acme/portolan/-/commit/4f1c9ae0c1b2d3e4f5a6b7c8d9e0f1a2b3c4d5e6",
+  buildUrl: "https://gitlab.com/acme/portolan/-/pipelines/17390211",
+  buildNumber: "128",
   dirty: false,
 };
 
@@ -24,47 +23,37 @@ const UNKNOWN: BuildInfo = {
   shortCommit: "",
   branch: "",
   builtAt: "",
-  repo: "",
-  server: "",
-  runNumber: "",
-  runId: "",
+  commitUrl: "",
+  buildUrl: "",
+  buildNumber: "",
   dirty: false,
 };
 
-describe("runUrl", () => {
-  it("points at the run that produced the bundle", () => {
-    expect(runUrl(CI)).toBe(
-      "https://github.com/shortlink-org/portolan/actions/runs/17390211",
-    );
+describe("buildHref", () => {
+  it("opens the commit the stamp names", () => {
+    expect(buildHref(CI)).toBe(CI.commitUrl);
   });
 
-  it("is null for a build CI did not make", () => {
-    expect(runUrl({ ...CI, runId: "", runNumber: "" })).toBeNull();
-    expect(runUrl(UNKNOWN)).toBeNull();
-  });
-});
-
-describe("commitUrl", () => {
-  it("uses the full sha, which is what GitHub resolves", () => {
-    expect(commitUrl(CI)).toBe(
-      `https://github.com/shortlink-org/portolan/commit/${CI.commit}`,
-    );
+  it("settles for the pipeline when the forge is unknown", () => {
+    expect(buildHref({ ...CI, commitUrl: "" })).toBe(CI.buildUrl);
   });
 
-  it("is null without a repo to hang it on", () => {
-    expect(commitUrl({ ...CI, repo: "" })).toBeNull();
+  it("is null when there is nowhere to go", () => {
+    expect(buildHref(UNKNOWN)).toBeNull();
   });
 });
 
 describe("buildLabel", () => {
-  it("reads as the build number when there was a build", () => {
-    expect(buildLabel(CI)).toBe("#128");
+  it("reads as the commit, not the build number, even on CI", () => {
+    expect(buildLabel(CI)).toBe("4f1c9ae");
   });
 
-  it("falls back to the commit, marking a dirty tree", () => {
-    const local = { ...CI, runNumber: "", runId: "" };
-    expect(buildLabel(local)).toBe("4f1c9ae");
-    expect(buildLabel({ ...local, dirty: true })).toBe("4f1c9ae+");
+  it("marks a tree that was dirty when it was built", () => {
+    expect(buildLabel({ ...CI, dirty: true })).toBe("4f1c9ae+");
+  });
+
+  it("falls back to the build number when there is no commit", () => {
+    expect(buildLabel({ ...UNKNOWN, buildNumber: "128" })).toBe("#128");
   });
 
   it("says dev rather than nothing when git knew nothing", () => {
@@ -75,7 +64,7 @@ describe("buildLabel", () => {
 describe("buildTitle", () => {
   it("spells out every field that has an answer", () => {
     expect(buildTitle(CI)).toBe(
-      "build #128 · commit 4f1c9ae · branch main · built 2026-08-29 09:14:22Z",
+      "commit 4f1c9ae · branch main · build #128 · built 2026-08-29 09:14:22Z",
     );
   });
 

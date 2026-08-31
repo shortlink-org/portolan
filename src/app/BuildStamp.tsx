@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
 import { GitCommitHorizontal } from "lucide-react";
 import {
+  buildHref,
   buildInfo,
   buildLabel,
   buildTitle,
-  commitUrl,
-  runUrl,
 } from "../lib/build-info";
 import { relativeTime } from "../lib/format";
 
@@ -25,7 +24,9 @@ export function BuildStamp() {
     return () => clearInterval(t);
   }, []);
 
-  const href = runUrl() ?? commitUrl();
+  // The stamp names a commit, so it opens the commit; the run that built it
+  // is one click further, in the checks on that page.
+  const href = buildHref();
   const body = (
     <>
       <GitCommitHorizontal size={16} aria-hidden className="shrink-0" />

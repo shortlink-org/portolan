@@ -14,29 +14,59 @@ function git(args: string): string {
   }
 }
 
-/** "owner/repo" out of either remote form GitHub hands out. */
-function repoFromRemote(url: string): string {
-  return /github\.com[:/](.+?)(?:\.git)?$/.exec(url)?.[1] ?? "";
-}
-
-// On Actions the environment already knows all of this; locally we ask git.
-// Anything neither can answer stays empty, and the stamp shows less rather
-// than inventing a number.
 const env = process.env;
-const commit = env.GITHUB_SHA || git("rev-parse HEAD");
+
+// The stamp in the top bar, resolved at build time. Every field takes the
+// first answer it gets:
+//
+//   1. BUILD_* — set these to say exactly what the stamp should show and
+//      where it should link. Anything the CI below cannot work out (a forge
+//      we do not read the variables of, a mirror, a release pipeline) goes
+//      here.
+//   2. The CI that is running: GitHub Actions (which Gitea and Forgejo
+//      Actions copy) and GitLab CI, both self-hosted or not.
+//   3. git, for a build made by hand.
+//
+// Whatever nothing answers stays empty, and the stamp shows less rather than
+// linking somewhere that 404s.
+const gh = env.GITHUB_SHA
+  ? `${env.GITHUB_SERVER_URL || "https://github.com"}/${env.GITHUB_REPOSITORY}`
+  : "";
+const gl = env.CI_COMMIT_SHA ? env.CI_PROJECT_URL || "" : "";
+
+const commit =
+  env.BUILD_COMMIT ||
+  env.GITHUB_SHA ||
+  env.CI_COMMIT_SHA ||
+  git("rev-parse HEAD");
+
 const buildInfo = {
   commit,
   shortCommit: commit.slice(0, 7),
-  branch: env.GITHUB_REF_NAME || git("rev-parse --abbrev-ref HEAD"),
+  branch:
+    env.BUILD_BRANCH ||
+    env.GITHUB_REF_NAME ||
+    env.CI_COMMIT_REF_NAME ||
+    git("rev-parse --abbrev-ref HEAD"),
   builtAt: new Date().toISOString(),
-  repo:
-    env.GITHUB_REPOSITORY ||
-    repoFromRemote(git("config --get remote.origin.url")),
-  server: env.GITHUB_SERVER_URL || "https://github.com",
-  runNumber: env.GITHUB_RUN_NUMBER || "",
-  runId: env.GITHUB_RUN_ID || "",
+  commitUrl:
+    env.BUILD_COMMIT_URL ||
+    (gh && commit ? `${gh}/commit/${commit}` : "") ||
+    // GitLab namespaces project routes under /-/.
+    (gl && commit ? `${gl}/-/commit/${commit}` : ""),
+  buildUrl:
+    env.BUILD_URL ||
+    (gh && env.GITHUB_RUN_ID
+      ? `${gh}/actions/runs/${env.GITHUB_RUN_ID}`
+      : "") ||
+    env.CI_PIPELINE_URL ||
+    "",
+  // The number a human reads off a pipeline, not the id in its URL.
+  buildNumber:
+    env.BUILD_NUMBER || env.GITHUB_RUN_NUMBER || env.CI_PIPELINE_IID || "",
   // Only a local build can be dirty: CI builds a checkout of one commit.
-  dirty: !env.GITHUB_SHA && git("status --porcelain") !== "",
+  dirty:
+    !env.GITHUB_SHA && !env.CI_COMMIT_SHA && git("status --porcelain") !== "",
 };
 
 // GitHub Pages serves the app from /<repo>/, so CI sets BASE_PATH.

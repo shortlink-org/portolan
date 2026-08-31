@@ -2,20 +2,20 @@ import { absoluteTime } from "./format";
 
 /**
  * What the running bundle was actually built from. Filled in at build time by
- * the `__BUILD_INFO__` define in vite.config.ts: from the Actions environment
- * on CI, from git locally. Every field can be empty, and empty means "not
- * known" — a stamp that admits it has no build number is worth more than one
- * that invents a plausible-looking sha.
+ * the `__BUILD_INFO__` define in vite.config.ts, which is the only place that
+ * knows which forge and which CI produced it — by the time the value reaches
+ * here the links are already resolved. Every field can be empty, and empty
+ * means "not known": a stamp that admits it has no link is worth more than
+ * one that guesses a URL and 404s.
  */
 export type BuildInfo = {
   commit: string; // full sha
   shortCommit: string;
   branch: string;
   builtAt: string; // ISO 8601
-  repo: string; // "owner/repo"
-  server: string; // "https://github.com"
-  runNumber: string; // the number a human reads: "#128"
-  runId: string; // the number the run URL takes
+  commitUrl: string; // the commit page on whatever forge this lives on
+  buildUrl: string; // the CI run or pipeline that built it
+  buildNumber: string; // the number a human reads off that pipeline
   dirty: boolean; // local build with uncommitted changes
 };
 
@@ -26,10 +26,9 @@ const UNKNOWN: BuildInfo = {
   shortCommit: "",
   branch: "",
   builtAt: "",
-  repo: "",
-  server: "",
-  runNumber: "",
-  runId: "",
+  commitUrl: "",
+  buildUrl: "",
+  buildNumber: "",
   dirty: false,
 };
 
@@ -39,39 +38,35 @@ const UNKNOWN: BuildInfo = {
 export const buildInfo: BuildInfo =
   typeof __BUILD_INFO__ === "undefined" ? UNKNOWN : __BUILD_INFO__;
 
-/** The run that produced this bundle. Null when CI did not build it. */
-export function runUrl(info: BuildInfo = buildInfo): string | null {
-  if (!info.server || !info.repo || !info.runId) return null;
-  return `${info.server}/${info.repo}/actions/runs/${info.runId}`;
-}
-
-/** The commit this bundle was built from. Null when we cannot name a repo. */
-export function commitUrl(info: BuildInfo = buildInfo): string | null {
-  if (!info.server || !info.repo || !info.commit) return null;
-  return `${info.server}/${info.repo}/commit/${info.commit}`;
+/**
+ * Where the stamp goes when clicked: the commit it names, or the run that
+ * built it when the forge is unknown but CI is not. Null when neither.
+ */
+export function buildHref(info: BuildInfo = buildInfo): string | null {
+  return info.commitUrl || info.buildUrl || null;
 }
 
 /**
- * What the stamp reads: the build number when there was a build, the commit
- * when it was made by hand, and "dev" when git had nothing to say either.
+ * What the stamp reads: the commit, because that is the thing you can look up
+ * in the repo. The build number is CI bookkeeping and lives in the tooltip.
  * A trailing "+" means the tree had uncommitted changes.
  */
 export function buildLabel(info: BuildInfo = buildInfo): string {
-  if (info.runNumber) return `#${info.runNumber}`;
   if (info.shortCommit)
     return info.dirty ? `${info.shortCommit}+` : info.shortCommit;
+  if (info.buildNumber) return `#${info.buildNumber}`;
   return "dev";
 }
 
 /** The long form, for the tooltip: every field that has an answer. */
 export function buildTitle(info: BuildInfo = buildInfo): string {
   const parts: string[] = [];
-  if (info.runNumber) parts.push(`build #${info.runNumber}`);
   if (info.shortCommit)
     parts.push(
       `commit ${info.shortCommit}${info.dirty ? " + uncommitted changes" : ""}`,
     );
   if (info.branch) parts.push(`branch ${info.branch}`);
+  if (info.buildNumber) parts.push(`build #${info.buildNumber}`);
   parts.push(
     info.builtAt
       ? `built ${absoluteTime(info.builtAt)}`
