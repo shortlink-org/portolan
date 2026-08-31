@@ -78,6 +78,54 @@
           "doc": "Pricing segment at time of capture."
         }
       ]
+    },
+    "FxRate": {
+      "fields": [
+        {
+          "name": "base",
+          "type": "string",
+          "doc": "ISO 4217 code the rate converts from — the currency the customer was quoted in."
+        },
+        {
+          "name": "quote",
+          "type": "string",
+          "doc": "ISO 4217 code the rate converts to — the currency the acquirer settles in."
+        },
+        {
+          "name": "rateMicros",
+          "type": "int64",
+          "doc": "Rate scaled by 1e6. An integer on purpose: a float rate cannot be reproduced exactly from a stored posting."
+        },
+        {
+          "name": "quotedAt",
+          "type": "time.Time",
+          "doc": "When the rate was taken. A rate older than 60 seconds is refused rather than used."
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "doc": "`acquirer` for anything that moves money, `ecb-daily` for reporting only. The two disagree by a spread and must never be mixed."
+        }
+      ]
+    },
+    "GatewayRef": {
+      "fields": [
+        {
+          "name": "provider",
+          "type": "string",
+          "doc": "Which gateway owns the id. Only `psp` today; the column exists because a second acquirer is already scheduled."
+        },
+        {
+          "name": "chargeId",
+          "type": "string",
+          "doc": "The gateway's own id for the charge. The one handle that survives a restore of our database."
+        },
+        {
+          "name": "eventId",
+          "type": "string",
+          "doc": "Id of the webhook event that last touched this charge. This is what the dedup table is keyed on."
+        }
+      ]
     }
   },
   "contexts": [
@@ -156,8 +204,9 @@
             {
               "id": "payments.v1.Payments/Authorize",
               "peer": "payments.ledger",
-              "status": "declared",
-              "source": "internal/oms/client/payments.go:51"
+              "status": "verified",
+              "source": "internal/oms/client/payments.go:51",
+              "note": "Covered end to end by services/oms/test/integration/order_accepted_test.go."
             },
             {
               "id": "payments.v1.Payments/Capture",
@@ -177,6 +226,12 @@
               "status": "unresolved",
               "source": "internal/oms/client/fraud.go:22",
               "note": "No service in the catalog provides fraud.v2.Scoring. The target is configured per environment via FRAUD_ADDR."
+            },
+            {
+              "id": "delivery.v1.Delivery/GetShipment",
+              "peer": "delivery.core",
+              "status": "declared",
+              "source": "internal/oms/client/delivery.go:41"
             }
           ],
           "aggregates": [
@@ -184,7 +239,7 @@
               "id": "shop.oms.order",
               "slug": "order",
               "name": "Order",
-              "readme": "# Order\n\nThe transactional boundary for a single customer order. One order, one\naggregate instance, one row lock.\n\n## Invariants\n\n- An order always has at least one line item.\n- The total is recomputed from line items on every mutation; it is never set\n  directly by a caller.\n- A cancelled order is terminal. There is no un-cancel.\n\n## Commands\n\n| Command        | Precondition            | Emits            |\n| -------------- | ----------------------- | ---------------- |\n| `PlaceOrder`   | quote is unexpired      | `OrderPlaced`    |\n| `ConfirmOrder` | payment captured        | `OrderConfirmed` |\n| `CancelOrder`  | not already fulfilled   | `OrderCancelled` |\n\n## Queries\n\n`GetOrder` and `ListOrdersForCustomer` are served from a read replica and are\neventually consistent with the write side.\n\n## Concurrency\n\nOptimistic, on a `version` column. A conflicting write returns\n`ErrConcurrentModification` and the caller is expected to reload and retry.",
+              "readme": "# Order\n\nThe transactional boundary for a single customer order. One order, one\naggregate instance, one row lock.\n\n## Invariants\n\n- An order always has at least one line item.\n- The total is recomputed from line items on every mutation; it is never set\n  directly by a caller.\n- A cancelled order is terminal. There is no un-cancel.\n- Every line, and the total, is in the order's own currency. Mixing two\n  currencies in one order is refused at placement; nothing converts.\n- An order carries the risk decision that let it through, including a\n  `review` decision reached only because the scorer timed out.\n\n## Commands\n\n| Command        | Precondition            | Emits            |\n| -------------- | ----------------------- | ---------------- |\n| `PlaceOrder`   | quote is unexpired      | `OrderPlaced`    |\n| `ConfirmOrder` | payment captured        | `OrderConfirmed` |\n| `CancelOrder`  | not already fulfilled   | `OrderCancelled` |\n\n## Queries\n\n`GetOrder` and `ListOrdersForCustomer` are served from a read replica and are\neventually consistent with the write side.\n\n## Concurrency\n\nOptimistic, on a `version` column. A conflicting write returns\n`ErrConcurrentModification` and the caller is expected to reload and retry.",
               "root": "Order",
               "entities": [
                 {
@@ -201,7 +256,7 @@
                     {
                       "name": "status",
                       "type": "string",
-                      "doc": "placed | confirmed | cancelled."
+                      "doc": "placed | awaiting-review | confirmed | cancelled. `awaiting-review` is where a fail-open risk check leaves the order: accepted, but not yet trusted."
                     },
                     {
                       "name": "customer",
@@ -223,7 +278,18 @@
                     {
                       "name": "shipTo",
                       "type": "Address",
-                      "doc": "Delivery address as entered."
+                      "doc": "Delivery address as entered.",
+                      "ref": "Address"
+                    },
+                    {
+                      "name": "currency",
+                      "type": "string",
+                      "doc": "Presentment currency, frozen at placement. Every Money on the order is in it; a basket that would mix two is refused rather than converted."
+                    },
+                    {
+                      "name": "risk",
+                      "type": "RiskDecision",
+                      "doc": "How the risk check answered — including the case where it did not answer at all."
                     }
                   ]
                 },
@@ -278,28 +344,61 @@
                   "name": "CustomerRef",
                   "doc": "A pointer at the customer, plus the pricing segment as it stood when the order was taken.",
                   "ref": "CustomerRef"
+                },
+                {
+                  "id": "shop.oms.order.risk-decision",
+                  "slug": "risk-decision",
+                  "name": "RiskDecision",
+                  "doc": "What the scorer said about this order, and what was done when it said nothing.",
+                  "fields": [
+                    {
+                      "name": "score",
+                      "type": "int32",
+                      "doc": "0–100 as the model returned it. Absent when the decision was `review`."
+                    },
+                    {
+                      "name": "decision",
+                      "type": "string",
+                      "doc": "accept | reject | review. `review` is what a timed-out scorer produces, not an answer the model gave."
+                    },
+                    {
+                      "name": "decidedAt",
+                      "type": "time.Time",
+                      "doc": "When the decision was reached, which for `review` is when the deadline expired."
+                    },
+                    {
+                      "name": "source",
+                      "type": "string",
+                      "doc": "`fraud.v2.Scoring` when the model answered, `fail-open` when it did not."
+                    }
+                  ]
                 }
               ],
               "operations": [
                 {
                   "id": "PlaceOrder",
-                  "kind": "command"
+                  "kind": "command",
+                  "doc": "Turns a checked-out basket into an order. Requires an unexpired quote and one currency across every line; writes the order and its OrderPlaced outbox row in the same transaction."
                 },
                 {
                   "id": "ConfirmOrder",
-                  "kind": "command"
+                  "kind": "command",
+                  "doc": "Commits the order to fulfilment once the payment is authorized. Emits OrderConfirmed. Refuses an order still `awaiting-review`."
                 },
                 {
                   "id": "CancelOrder",
-                  "kind": "command"
+                  "kind": "command",
+                  "doc": "Ends the order. Allowed only while the shipment is `held` or `planned`, and that state is read from delivery rather than assumed. Emits OrderCancelled."
                 },
                 {
                   "id": "GetOrder",
-                  "kind": "query"
+                  "kind": "query",
+                  "doc": "One order with its lines and its risk decision. Served from a replica, so a read straight after a write can still show the previous status."
                 },
                 {
                   "id": "ListOrdersForCustomer",
-                  "kind": "query"
+                  "kind": "query",
+                  "doc": "A customer's orders, newest first, paginated on the placement timestamp. Never joins payments — the caller resolves those itself."
                 }
               ],
               "events": [
@@ -551,19 +650,23 @@
               "operations": [
                 {
                   "id": "AddItem",
-                  "kind": "command"
+                  "kind": "command",
+                  "doc": "Adds a SKU or increments one already there. The price is captured as the item is added and is not refreshed until checkout."
                 },
                 {
                   "id": "RemoveItem",
-                  "kind": "command"
+                  "kind": "command",
+                  "doc": "Removes a line outright. Decrementing to zero is a removal, not a line with quantity zero."
                 },
                 {
                   "id": "CheckoutBasket",
-                  "kind": "command"
+                  "kind": "command",
+                  "doc": "Freezes the basket and emits BasketCheckedOut. The basket stays readable for 24 hours afterwards so support can see what was actually submitted."
                 },
                 {
                   "id": "GetBasket",
-                  "kind": "query"
+                  "kind": "query",
+                  "doc": "The working basket for one session. An expired basket comes back empty rather than as a 404 — the storefront has nothing useful to do with the difference."
                 }
               ],
               "events": [
@@ -673,7 +776,7 @@
               "id": "shop.pricing.quote",
               "slug": "quote",
               "name": "Quote",
-              "readme": "# Quote\n\nAn immutable, time-boxed price for one basket and one customer.\n\n## Why immutable\n\nA quote is a promise. Re-deriving it later would give a different answer once\nprice lists change, which makes disputes unwinnable. So the quote is stored\nwhole, including which price list won and which promotions applied.\n\n## Commands\n\n| Command      | Notes                                       |\n| ------------ | ------------------------------------------- |\n| `IssueQuote` | Computes precedence and applies promotions  |\n| `ExpireQuote`| Called by the sweeper, never by a customer  |\n\n## Queries\n\n`GetQuote` returns the stored quote verbatim, including expired ones, so\nsupport can explain what a customer was shown.",
+              "readme": "# Quote\n\nAn immutable, time-boxed price for one basket and one customer.\n\n## Currency\n\nQuoting never converts. The customer's currency selects the price list, and a\ncurrency no active list covers is a refusal — an FX rate belongs to the\nmoment money moves, not to the moment a price is shown.\n\n## Why immutable\n\nA quote is a promise. Re-deriving it later would give a different answer once\nprice lists change, which makes disputes unwinnable. So the quote is stored\nwhole, including which price list won and which promotions applied.\n\n## Commands\n\n| Command      | Notes                                       |\n| ------------ | ------------------------------------------- |\n| `IssueQuote` | Computes precedence and applies promotions  |\n| `ExpireQuote`| Called by the sweeper, never by a customer  |\n\n## Queries\n\n`GetQuote` returns the stored quote verbatim, including expired ones, so\nsupport can explain what a customer was shown.",
               "root": "Quote",
               "entities": [
                 {
@@ -707,6 +810,16 @@
                       "name": "expiresAt",
                       "type": "time.Time",
                       "doc": "After this, the quote is void."
+                    },
+                    {
+                      "name": "currency",
+                      "type": "string",
+                      "doc": "ISO 4217, taken from the price list that won. A basket in a currency no active list covers is refused, not converted."
+                    },
+                    {
+                      "name": "priceListId",
+                      "type": "string",
+                      "doc": "Which list produced these prices. Stored so a disputed quote can be re-read against the list as it was."
                     }
                   ]
                 }
@@ -752,15 +865,18 @@
               "operations": [
                 {
                   "id": "IssueQuote",
-                  "kind": "command"
+                  "kind": "command",
+                  "doc": "Prices a basket against the list matching the customer's segment and currency. A basket in a currency no active list covers is refused rather than converted."
                 },
                 {
                   "id": "ExpireQuote",
-                  "kind": "command"
+                  "kind": "command",
+                  "doc": "Marks a quote past its validity. Runs on a sweep rather than on read, so an expired quote is briefly still readable."
                 },
                 {
                   "id": "GetQuote",
-                  "kind": "query"
+                  "kind": "query",
+                  "doc": "One quote, whole: the lines, which price list won, and which rule produced each discount."
                 }
               ],
               "events": [
@@ -875,6 +991,11 @@
                       "name": "rows",
                       "type": "[]PriceRow",
                       "doc": "One row per SKU."
+                    },
+                    {
+                      "name": "currency",
+                      "type": "string",
+                      "doc": "ISO 4217. A list prices in exactly one currency; a second currency is a second list, not a conversion."
                     }
                   ]
                 },
@@ -910,15 +1031,18 @@
               "operations": [
                 {
                   "id": "ImportPriceList",
-                  "kind": "command"
+                  "kind": "command",
+                  "doc": "Replaces a list wholesale from the merchandising export. A partial import is rejected outright — half a price list is worse than a stale one."
                 },
                 {
                   "id": "ArchivePriceList",
-                  "kind": "command"
+                  "kind": "command",
+                  "doc": "Takes a list out of quoting without deleting it. Quotes already issued from it stay valid until they expire."
                 },
                 {
                   "id": "ListPriceLists",
-                  "kind": "query"
+                  "kind": "query",
+                  "doc": "Active lists with their currency and validity window. The only pricing query the storefront may reach directly."
                 }
               ],
               "events": []
@@ -975,6 +1099,34 @@
               "peer": "shop.oms",
               "status": "verified",
               "source": "internal/ledger/client/orders.go:27"
+            },
+            {
+              "id": "psp.v2.Charges/Create",
+              "peer": "psp-gateway",
+              "status": "unresolved",
+              "source": "internal/ledger/adapter/psp/client.go:64",
+              "note": "Authorization. The peer is a third party; no service in the estate provides psp.v2.Charges, so the call cannot be resolved to anything the catalog knows."
+            },
+            {
+              "id": "psp.v2.Charges/Capture",
+              "peer": "psp-gateway",
+              "status": "unresolved",
+              "source": "internal/ledger/adapter/psp/client.go:102",
+              "note": "Settlement of an existing authorization. Same unresolvable peer as the rest of psp.v2.Charges."
+            },
+            {
+              "id": "psp.v2.Charges/Refund",
+              "peer": "psp-gateway",
+              "status": "unresolved",
+              "source": "internal/ledger/adapter/psp/client.go:138",
+              "note": "Returns money on a settled charge. Same unresolvable peer as the rest of psp.v2.Charges."
+            },
+            {
+              "id": "psp.v2.Charges/Void",
+              "peer": "psp-gateway",
+              "status": "unresolved",
+              "source": "internal/ledger/adapter/psp/client.go:171",
+              "note": "Cancels an authorization that was never captured. Same unresolvable peer as the rest of psp.v2.Charges."
             }
           ],
           "aggregates": [
@@ -982,7 +1134,7 @@
               "id": "payments.ledger.payment",
               "slug": "payment",
               "name": "Payment",
-              "readme": "# Payment\n\nOne authorisation and the captures made against it.\n\n## Postings\n\nEvery state change writes a balanced pair of postings. Nothing is updated in\nplace; a correction is a new pair with the opposite sign.\n\n| Transition   | Debit        | Credit       |\n| ------------ | ------------ | ------------ |\n| authorise    | (none)       | (none)       |\n| capture      | `merchant`   | `customer`   |\n| fee          | `fees`       | `merchant`   |\n| decline      | (none)       | (none)       |\n\nAuthorisations and declines write no postings: no money has moved.\n\n## Commands\n\n`Authorize`, `Capture` and `Decline` are all idempotent on\n`idempotency_key`, which is retained for 30 days.\n\n## Queries\n\n`GetPayment` returns the payment and its full posting history.",
+              "readme": "# Payment\n\nOne authorisation and the captures made against it.\n\n## Postings\n\nEvery state change writes a balanced pair of postings. Nothing is updated in\nplace; a correction is a new pair with the opposite sign.\n\n| Transition   | Debit        | Credit       |\n| ------------ | ------------ | ------------ |\n| authorise    | (none)       | (none)       |\n| capture      | `merchant`   | `customer`   |\n| fee          | `fees`       | `merchant`   |\n| decline      | (none)       | (none)       |\n\nAuthorisations and declines write no postings: no money has moved.\n\n## Currency\n\nThe customer is charged in the currency they were quoted in. When that is not\nthe currency the acquirer settles in, the rate is taken from the acquirer at\nauthorisation and stored on the payment — the posting has to be reproducible\nyears later, and a rate re-fetched then would be a different number. A\ncurrency with no acquirer behind it is a `currency_unsupported` decline, not a\nconversion.\n\n## Failure\n\n| Outcome    | Postings | Retryable                        |\n| ---------- | -------- | -------------------------------- |\n| `soft`     | none     | yes, on another instrument       |\n| `hard`     | none     | no                               |\n| `system`   | none     | yes, same instrument, with backoff |\n| `timeout`  | none yet | the webhook decides, not us      |\n\nA timeout is the only outcome that is not yet an outcome: the charge may well\nhave succeeded at the gateway, and until the webhook arrives nothing here may\nassume either way.\n\n## Commands\n\n`Authorize`, `Capture` and `Decline` are all idempotent on\n`idempotency_key`, which is retained for 30 days.\n\n## Queries\n\n`GetPayment` returns the payment and its full posting history.",
               "root": "Payment",
               "entities": [
                 {
@@ -1010,12 +1162,64 @@
                     {
                       "name": "state",
                       "type": "string",
-                      "doc": "authorized | captured | declined."
+                      "doc": "authorized | captured | declined | voided | settled. `voided` is a cancellation before capture and costs nothing; `declined` is a refusal."
                     },
                     {
                       "name": "card",
                       "type": "CardRef",
                       "doc": "Instrument used, tokenized."
+                    },
+                    {
+                      "name": "settlement",
+                      "type": "Money",
+                      "doc": "What the acquirer will actually settle, after any conversion. Equal to `amount` whenever the two currencies match.",
+                      "ref": "Money"
+                    },
+                    {
+                      "name": "fx",
+                      "type": "FxRate",
+                      "doc": "The rate that produced `settlement`. Absent when no conversion happened, which is the common case.",
+                      "ref": "FxRate"
+                    },
+                    {
+                      "name": "attempts",
+                      "type": "[]CaptureAttempt",
+                      "doc": "Every capture attempt, in order. The retry loop appends; nothing is ever overwritten."
+                    },
+                    {
+                      "name": "gateway",
+                      "type": "GatewayRef",
+                      "doc": "The charge as the gateway knows it.",
+                      "ref": "GatewayRef"
+                    }
+                  ]
+                },
+                {
+                  "id": "payments.ledger.payment.capture-attempt",
+                  "slug": "capture-attempt",
+                  "name": "CaptureAttempt",
+                  "doc": "One try at settling an authorization. Has identity inside the payment because the attempt number is what makes a retry safe.",
+                  "fields": [
+                    {
+                      "name": "attempt",
+                      "type": "int32",
+                      "doc": "1-based. Together with the order id this is the key ADR payments.0004 makes the journal idempotent on."
+                    },
+                    {
+                      "name": "requestedAt",
+                      "type": "time.Time",
+                      "doc": "When the attempt left for the gateway, not when it came back."
+                    },
+                    {
+                      "name": "outcome",
+                      "type": "string",
+                      "doc": "pending | captured | declined | timeout. A `timeout` is not a failure: only the gateway's webhook can say which it was."
+                    },
+                    {
+                      "name": "gateway",
+                      "type": "GatewayRef",
+                      "doc": "The gateway's ids for this attempt. A retry gets a new event id and keeps the charge id.",
+                      "ref": "GatewayRef"
                     }
                   ]
                 }
@@ -1050,24 +1254,70 @@
                       "doc": "Vault token; the only thing the ledger stores."
                     }
                   ]
+                },
+                {
+                  "id": "payments.ledger.payment.gateway-ref",
+                  "slug": "gateway-ref",
+                  "name": "GatewayRef",
+                  "doc": "How the gateway refers to a charge. Ours to store, never ours to mint.",
+                  "ref": "GatewayRef"
+                },
+                {
+                  "id": "payments.ledger.payment.fx-rate",
+                  "slug": "fx-rate",
+                  "name": "FxRate",
+                  "doc": "The rate applied when the customer's currency is not the one we settle in.",
+                  "ref": "FxRate"
+                },
+                {
+                  "id": "payments.ledger.payment.decline-reason",
+                  "slug": "decline-reason",
+                  "name": "DeclineReason",
+                  "doc": "Why a payment was refused, in enough detail to decide whether trying again is worth anything.",
+                  "fields": [
+                    {
+                      "name": "code",
+                      "type": "string",
+                      "doc": "The gateway's code, verbatim: `insufficient_funds`, `do_not_honor`, `currency_unsupported`, `expired_card`."
+                    },
+                    {
+                      "name": "category",
+                      "type": "string",
+                      "doc": "soft | hard | system. `soft` may be retried on another instrument, `hard` may not, `system` is ours to fix."
+                    },
+                    {
+                      "name": "retryable",
+                      "type": "bool",
+                      "doc": "Derived from the category, stored anyway so a consumer does not have to know the mapping."
+                    },
+                    {
+                      "name": "gatewayMessage",
+                      "type": "string",
+                      "doc": "The gateway's own words. Kept for support and never shown to a customer."
+                    }
+                  ]
                 }
               ],
               "operations": [
                 {
                   "id": "Authorize",
-                  "kind": "command"
+                  "kind": "command",
+                  "doc": "Reserves funds at the gateway and fixes the settlement currency. Idempotent on the caller's key for 30 days: a repeat returns the first answer instead of reserving twice."
                 },
                 {
                   "id": "Capture",
-                  "kind": "command"
+                  "kind": "command",
+                  "doc": "Settles a held authorization, wholly or in part. Appends a CaptureAttempt and posts the journal pair; the attempt number is what makes a retry safe."
                 },
                 {
                   "id": "Decline",
-                  "kind": "command"
+                  "kind": "command",
+                  "doc": "Records a refusal, the gateway's or ours, with its code and category. Writes no postings — no money moved."
                 },
                 {
                   "id": "GetPayment",
-                  "kind": "query"
+                  "kind": "query",
+                  "doc": "The payment with its capture attempts, its FX rate if there was one, and the full posting history."
                 }
               ],
               "events": [
@@ -1213,7 +1463,7 @@
               "id": "payments.ledger.refund",
               "slug": "refund",
               "name": "Refund",
-              "readme": "# Refund\n\nA compensating movement against a captured payment.\n\n## Rules\n\n- The sum of refunds against a payment may never exceed the captured amount.\n- A refund against an uncaptured payment is a void, handled by `Payment`, not\n  here.\n- Partial refunds are unlimited in count but each needs a distinct reason.\n\n## Commands\n\n| Command        | Precondition                    |\n| -------------- | ------------------------------- |\n| `IssueRefund`  | Payment captured, headroom left |\n\n## Queries\n\n`ListRefunds` returns refunds for one payment, newest first.",
+              "readme": "# Refund\n\nA compensating movement against a captured payment.\n\n## Rules\n\n- The sum of refunds against a payment may never exceed the captured amount.\n- A refund against an uncaptured payment is a void, handled by `Payment`, not\n  here.\n- Partial refunds are unlimited in count but each needs a distinct reason.\n\n## Settling\n\nA refund is not done when it is issued. It leaves here in `pending` and the\ngateway confirms it by webhook, usually in hours and sometimes in days. The\nhourly poll exists because that webhook is not guaranteed. A refund the\ngateway rejects is stored with its reason and published nowhere — the one\noutcome in this aggregate that no consumer can see.\n\n## Commands\n\n| Command        | Precondition                    |\n| -------------- | ------------------------------- |\n| `IssueRefund`  | Payment captured, headroom left |\n\n## Queries\n\n`ListRefunds` returns refunds for one payment, newest first.",
               "root": "Refund",
               "entities": [
                 {
@@ -1242,6 +1492,22 @@
                       "name": "reason",
                       "type": "string",
                       "doc": "Free text, taken from the support tool."
+                    },
+                    {
+                      "name": "state",
+                      "type": "string",
+                      "doc": "requested | pending | settled | rejected. `pending` belongs to the gateway, not to us, and it can sit there for days."
+                    },
+                    {
+                      "name": "settlement",
+                      "type": "Settlement",
+                      "doc": "Where the gateway has got to with it."
+                    },
+                    {
+                      "name": "gateway",
+                      "type": "GatewayRef",
+                      "doc": "The charge the refund is written against.",
+                      "ref": "GatewayRef"
                     }
                   ]
                 }
@@ -1253,16 +1519,53 @@
                   "name": "Money",
                   "doc": "An amount in a single currency.",
                   "ref": "Money"
+                },
+                {
+                  "id": "payments.ledger.refund.settlement",
+                  "slug": "settlement",
+                  "name": "Settlement",
+                  "doc": "The gateway's progress on a refund. Ours to record, not to decide.",
+                  "fields": [
+                    {
+                      "name": "state",
+                      "type": "string",
+                      "doc": "pending | settled | rejected, as last reported."
+                    },
+                    {
+                      "name": "requestedAt",
+                      "type": "time.Time",
+                      "doc": "When the refund was sent to the gateway."
+                    },
+                    {
+                      "name": "settledAt",
+                      "type": "time.Time",
+                      "doc": "When the gateway confirmed. Absent while pending, and absent forever if rejected."
+                    },
+                    {
+                      "name": "polls",
+                      "type": "int32",
+                      "doc": "How many times we asked. The poll is the fallback for a webhook that never came."
+                    }
+                  ]
+                },
+                {
+                  "id": "payments.ledger.refund.gateway-ref",
+                  "slug": "gateway-ref",
+                  "name": "GatewayRef",
+                  "doc": "The same shared reference the payment carries — a refund is written against the gateway's charge, not against ours.",
+                  "ref": "GatewayRef"
                 }
               ],
               "operations": [
                 {
                   "id": "IssueRefund",
-                  "kind": "command"
+                  "kind": "command",
+                  "doc": "Returns money against a captured payment, up to the headroom left on it. Lands in `pending` and stays there until the gateway settles or refuses it."
                 },
                 {
                   "id": "ListRefunds",
-                  "kind": "query"
+                  "kind": "query",
+                  "doc": "Refunds against one payment, newest first, including the ones the gateway rejected."
                 }
               ],
               "events": [
@@ -1359,7 +1662,7 @@
               "id": "delivery.core.shipment",
               "slug": "shipment",
               "name": "Shipment",
-              "readme": "# Shipment\n\nOne parcel, from dispatch to proof of delivery.\n\n## Attempts\n\nA failed attempt does not fail the shipment. The shipment stays open and is\nre-routed into the next window, up to three attempts.\n\n| Attempt | Outcome            | Next                       |\n| ------- | ------------------ | -------------------------- |\n| 1       | no answer          | re-route, next window      |\n| 2       | no answer          | re-route, next window      |\n| 3       | no answer          | return to depot, flag order |\n\n## Commands\n\n`Dispatch`, `RecordScan` and `RecordDelivery` are the only writes. Scans\narrive from carrier webhooks and are deduplicated on the carrier scan id.\n\n## Queries\n\n`TrackShipment` is public-facing and rate limited per tracking reference.",
+              "readme": "# Shipment\n\nOne parcel, from dispatch to proof of delivery.\n\n## Attempts\n\nA failed attempt does not fail the shipment. The shipment stays open and is\nre-routed into the next window, up to three attempts.\n\n| Attempt | Outcome            | Next                       |\n| ------- | ------------------ | -------------------------- |\n| 1       | no answer          | re-route, next window      |\n| 2       | no answer          | re-route, next window      |\n| 3       | no answer          | return to depot, flag order |\n\n## Exceptions\n\nAn `EXCEPTION` scan stops the shipment advancing and opens a delivery\nexception. What reads that queue is not in this catalog and emits no spans, so\nthe shipment-tracking flow ends there too — the gap is real, not a modelling\nomission.\n\n## Commands\n\n`Dispatch`, `RecordScan` and `RecordDelivery` are the only writes. Scans\narrive from carrier webhooks and are deduplicated on the carrier scan id.\n\n## Queries\n\n`TrackShipment` is public-facing and rate limited per tracking reference.",
               "root": "Shipment",
               "entities": [
                 {
@@ -1392,7 +1695,12 @@
                     {
                       "name": "state",
                       "type": "string",
-                      "doc": "dispatched | in-transit | delivered."
+                      "doc": "held | planned | dispatched | delivered | exception. A shipment sits in `held` from order confirmation until the money is actually captured."
+                    },
+                    {
+                      "name": "scans",
+                      "type": "[]Scan",
+                      "doc": "Every carrier scan, oldest first. Append-only: a corrected scan is a new one."
                     }
                   ]
                 },
@@ -1416,6 +1724,34 @@
                       "name": "tracking",
                       "type": "TrackingCode",
                       "doc": "Carrier tracking code."
+                    }
+                  ]
+                },
+                {
+                  "id": "delivery.core.shipment.scan",
+                  "slug": "scan",
+                  "name": "Scan",
+                  "doc": "One reading of a parcel by a carrier. Has identity because the carrier's scan id is what a retried webhook is deduplicated on.",
+                  "fields": [
+                    {
+                      "name": "carrierEventId",
+                      "type": "string",
+                      "doc": "The carrier's id for the scan. Deduplication is on this alone; a retried webhook carries the same one."
+                    },
+                    {
+                      "name": "code",
+                      "type": "string",
+                      "doc": "IN_TRANSIT | DELIVERED | EXCEPTION. The carrier's vocabulary, stored unmapped so a new code is visible rather than swallowed."
+                    },
+                    {
+                      "name": "scannedAt",
+                      "type": "time.Time",
+                      "doc": "When the carrier says it happened, which is not when we heard about it."
+                    },
+                    {
+                      "name": "location",
+                      "type": "string",
+                      "doc": "Depot or delivery point as the carrier names it. Free text; no two carriers agree."
                     }
                   ]
                 }
@@ -1450,23 +1786,28 @@
               "operations": [
                 {
                   "id": "Dispatch",
-                  "kind": "command"
+                  "kind": "command",
+                  "doc": "Releases a held shipment to a carrier and mints its tracking codes. Refused unless the payment is captured."
                 },
                 {
                   "id": "RecordScan",
-                  "kind": "command"
+                  "kind": "command",
+                  "doc": "Appends a carrier scan, deduplicated on the carrier's scan id. An EXCEPTION scan stops the shipment advancing and opens a delivery exception."
                 },
                 {
                   "id": "RecordDelivery",
-                  "kind": "command"
+                  "kind": "command",
+                  "doc": "Records proof of delivery and closes the shipment. Terminal: a scan arriving afterwards is stored and changes nothing."
                 },
                 {
                   "id": "TrackShipment",
-                  "kind": "query"
+                  "kind": "query",
+                  "doc": "The public tracking view for one reference. Rate limited per reference, and returns scans rather than internal state."
                 },
                 {
                   "id": "GetShipment",
-                  "kind": "query"
+                  "kind": "query",
+                  "doc": "The whole shipment, for callers inside the estate. This is what OMS reads before it will allow a cancellation."
                 }
               ],
               "events": [
@@ -1640,15 +1981,18 @@
               "operations": [
                 {
                   "id": "PlanRoute",
-                  "kind": "command"
+                  "kind": "command",
+                  "doc": "Sequences one window's shipments for one vehicle. Runs 90 minutes before the window opens; anything missing the cut-off waits for the next one."
                 },
                 {
                   "id": "CloseRoute",
-                  "kind": "command"
+                  "kind": "command",
+                  "doc": "Ends a route once every stop is recorded. A route with unrecorded stops cannot be closed."
                 },
                 {
                   "id": "GetRoute",
-                  "kind": "query"
+                  "kind": "query",
+                  "doc": "One route with its stops in driving order."
                 }
               ],
               "events": [
@@ -1704,7 +2048,7 @@
       "id": "flow.order-accepted",
       "slug": "order-accepted",
       "name": "Order accepted",
-      "summary": "The narrow happy path: an order is placed, the ledger hears about it, and funds are reserved. Three hops, all covered by one integration test.",
+      "summary": "The narrow slice one integration test pins end to end: an order commits with its outbox row, the relay publishes it, the ledger picks it up and the authorization comes back. Every hop here is asserted, which is why this is the only flow with no gaps in it.",
       "provenance": "derived-from-test",
       "source": "services/oms/test/integration/order_accepted_test.go",
       "participants": [
@@ -1712,6 +2056,12 @@
           "id": "shop.oms",
           "kind": "service",
           "context": "shop"
+        },
+        {
+          "id": "oms-db",
+          "kind": "store",
+          "context": "shop",
+          "label": "oms-db (postgres)"
         },
         {
           "id": "bus",
@@ -1729,34 +2079,81 @@
           "type": "step",
           "id": "a1",
           "from": "shop.oms",
-          "to": "bus",
-          "kind": "event",
+          "to": "oms-db",
+          "kind": "call",
           "status": "verified",
-          "ref": "shop.oms.order.OrderPlaced",
-          "label": "OrderPlaced",
-          "line": "order_accepted_test.go:41"
+          "label": "insertOrderAndOutboxRow",
+          "note": "The order row and the OrderPlaced outbox row commit in one transaction, so the event cannot be published before the order exists or lost after it does.",
+          "line": "internal/oms/adapter/postgres/order_repo.go:141"
         },
         {
           "type": "step",
           "id": "a2",
-          "from": "bus",
-          "to": "payments.ledger",
+          "from": "shop.oms",
+          "to": "bus",
           "kind": "event",
           "status": "verified",
-          "ref": "shop.oms.order.OrderPlaced",
           "label": "OrderPlaced",
+          "ref": "shop.oms.order.OrderPlaced",
+          "note": "Published by the outbox relay, not by the request handler. The test waits on the relay rather than on PlaceOrder returning.",
           "line": "order_accepted_test.go:58"
         },
         {
           "type": "step",
           "id": "a3",
+          "from": "bus",
+          "to": "payments.ledger",
+          "kind": "event",
+          "status": "verified",
+          "label": "OrderPlaced",
+          "ref": "shop.oms.order.OrderPlaced",
+          "note": "Consumer group `ledger-orders`, at-least-once. The test replays the same message a second time and asserts nothing changes.",
+          "line": "order_accepted_test.go:71"
+        },
+        {
+          "type": "step",
+          "id": "a4",
+          "from": "payments.ledger",
+          "to": "payments.ledger",
+          "kind": "call",
+          "status": "verified",
+          "label": "openReconciliationRecord",
+          "note": "The event only opens the record the gateway webhook later matches against. Authorizing is the synchronous call below, because checkout needs the answer before it can confirm.",
+          "line": "internal/ledger/app/intent.go:47"
+        },
+        {
+          "type": "step",
+          "id": "a5",
+          "from": "shop.oms",
+          "to": "payments.ledger",
+          "kind": "rpc",
+          "status": "verified",
+          "label": "Authorize",
+          "ref": "payments.v1.Payments/Authorize",
+          "note": "Carries the order's idempotency key. The gateway behind the ledger is the sandbox stub here; the real hop out of the estate is drawn in the checkout flow.",
+          "line": "order_accepted_test.go:88"
+        },
+        {
+          "type": "step",
+          "id": "a6",
           "from": "payments.ledger",
           "to": "bus",
           "kind": "event",
           "status": "verified",
-          "ref": "payments.ledger.payment.PaymentAuthorized",
           "label": "PaymentAuthorized",
-          "line": "order_accepted_test.go:73"
+          "ref": "payments.ledger.payment.PaymentAuthorized",
+          "line": "order_accepted_test.go:103"
+        },
+        {
+          "type": "step",
+          "id": "a7",
+          "from": "bus",
+          "to": "shop.oms",
+          "kind": "event",
+          "status": "verified",
+          "label": "PaymentAuthorized",
+          "ref": "payments.ledger.payment.PaymentAuthorized",
+          "line": "order_accepted_test.go:114"
         }
       ]
     },
@@ -1764,7 +2161,7 @@
       "id": "flow.checkout",
       "slug": "checkout",
       "name": "Checkout",
-      "summary": "The full checkout sequence from basket submission to dispatch, including the risk branch, the capture retry loop, and one call whose target is not in the catalog.",
+      "summary": "Basket to dispatch, as the e2e suite drives it: a priced basket, a risk call whose peer is not in the catalog, an outbox publish, an authorization at the gateway, a capture retried with backoff, and a shipment held until the money lands. Three branches and two hops are read from the code rather than observed.",
       "provenance": "derived-from-test",
       "source": "services/oms/test/e2e/checkout_test.go",
       "participants": [
@@ -1779,19 +2176,21 @@
           "context": "shop"
         },
         {
+          "id": "oms-db",
+          "kind": "store",
+          "context": "shop",
+          "label": "oms-db (postgres)"
+        },
+        {
           "id": "shop.pricing",
           "kind": "service",
           "context": "shop"
         },
         {
-          "id": "payments.ledger",
-          "kind": "service",
-          "context": "payments"
-        },
-        {
-          "id": "delivery.core",
-          "kind": "service",
-          "context": "delivery"
+          "id": "fraud-scoring",
+          "kind": "unknown",
+          "context": null,
+          "label": "fraud-scoring (unknown)"
         },
         {
           "id": "bus",
@@ -1799,10 +2198,20 @@
           "context": null
         },
         {
-          "id": "fraud-scoring",
-          "kind": "unknown",
+          "id": "payments.ledger",
+          "kind": "service",
+          "context": "payments"
+        },
+        {
+          "id": "psp-gateway",
+          "kind": "external",
           "context": null,
-          "label": "fraud-scoring (unknown)"
+          "label": "psp-gateway (external)"
+        },
+        {
+          "id": "delivery.core",
+          "kind": "service",
+          "context": "delivery"
         }
       ],
       "steps": [
@@ -1814,166 +2223,584 @@
           "kind": "rpc",
           "status": "verified",
           "label": "PlaceOrder",
+          "note": "HTTP edge. The handler requires an Idempotency-Key header and replays the stored response for a key it has already answered, so a double-tapped checkout cannot open two orders.",
           "line": "checkout_test.go:62"
         },
         {
           "type": "step",
           "id": "s2",
           "from": "shop.oms",
-          "to": "shop.oms",
+          "to": "oms-db",
           "kind": "call",
           "status": "verified",
-          "label": "validateBasket",
-          "line": "internal/oms/app/checkout.go:88"
+          "label": "loadBasket",
+          "line": "internal/oms/adapter/postgres/basket_repo.go:58"
         },
         {
           "type": "step",
           "id": "s3",
           "from": "shop.oms",
+          "to": "shop.oms",
+          "kind": "call",
+          "status": "verified",
+          "label": "validateBasket",
+          "note": "Rejects empty baskets and lines whose stock reservation has expired. Runs before anything leaves the process.",
+          "line": "internal/oms/app/checkout.go:88"
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "shop.oms",
           "to": "shop.pricing",
           "kind": "rpc",
           "status": "verified",
-          "ref": "shop.v1.Pricing/GetQuote",
           "label": "GetQuote",
+          "ref": "shop.v1.Pricing/GetQuote",
+          "note": "250 ms deadline, one retry on UNAVAILABLE.",
           "line": "internal/oms/app/checkout.go:104"
+        },
+        {
+          "type": "alt",
+          "id": "alt-quote",
+          "branches": [
+            {
+              "title": "pricing answers within the deadline",
+              "steps": [
+                {
+                  "type": "step",
+                  "id": "s5",
+                  "from": "shop.pricing",
+                  "to": "bus",
+                  "kind": "event",
+                  "status": "verified",
+                  "label": "QuoteIssued",
+                  "ref": "shop.pricing.quote.QuoteIssued",
+                  "note": "Published for the audit trail. The price checkout actually uses is the synchronous response above, not this event.",
+                  "line": "checkout_test.go:96"
+                }
+              ]
+            },
+            {
+              "title": "pricing deadline exceeded",
+              "steps": [
+                {
+                  "type": "step",
+                  "id": "s6",
+                  "from": "shop.oms",
+                  "to": "oms-db",
+                  "kind": "call",
+                  "status": "declared",
+                  "label": "readLastPriceSnapshot",
+                  "note": "Falls back to the snapshot written by the last price-list import and marks the order repriceable. The e2e suite has no case for this branch; it is read from the code.",
+                  "line": "internal/oms/app/checkout.go:118"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "step",
+          "id": "s7",
+          "from": "shop.oms",
+          "to": "fraud-scoring",
+          "kind": "rpc",
+          "status": "unresolved",
+          "label": "Score",
+          "ref": "fraud.v2.Scoring/Score",
+          "note": "No service in the catalog provides fraud.v2.Scoring. The address comes from FRAUD_ADDR at runtime, so the peer cannot be resolved statically.",
+          "line": "internal/oms/client/fraud.go:22"
         },
         {
           "type": "alt",
           "id": "alt-risk",
           "branches": [
             {
-              "title": "risk score below threshold",
+              "title": "score below 40",
               "steps": [
                 {
-                  "type": "parallel",
-                  "id": "par-authorise",
-                  "title": "authorise and announce",
-                  "branches": [
-                    [
-                      {
-                        "type": "step",
-                        "id": "s4",
-                        "from": "shop.oms",
-                        "to": "payments.ledger",
-                        "kind": "rpc",
-                        "status": "declared",
-                        "ref": "payments.v1.Payments/Authorize",
-                        "label": "Authorize",
-                        "line": "internal/oms/app/checkout.go:141"
-                      }
-                    ],
-                    [
-                      {
-                        "type": "step",
-                        "id": "s5",
-                        "from": "shop.oms",
-                        "to": "bus",
-                        "kind": "event",
-                        "status": "verified",
-                        "ref": "shop.oms.order.OrderPlaced",
-                        "label": "OrderPlaced",
-                        "line": "checkout_test.go:118"
-                      }
-                    ]
-                  ]
-                },
-                {
                   "type": "step",
-                  "id": "s6",
+                  "id": "s8",
                   "from": "shop.oms",
-                  "to": "fraud-scoring",
-                  "kind": "rpc",
-                  "status": "unresolved",
-                  "ref": "fraud.v2.Scoring/Score",
-                  "label": "Score",
-                  "note": "No service in the catalog provides fraud.v2.Scoring. The address comes from FRAUD_ADDR at runtime, so the peer cannot be resolved statically.",
-                  "line": "internal/oms/client/fraud.go:22"
+                  "to": "shop.oms",
+                  "kind": "call",
+                  "status": "verified",
+                  "label": "acceptOrder",
+                  "line": "checkout_test.go:131"
                 }
               ]
             },
             {
-              "title": "risk score above threshold",
+              "title": "score at or above 40",
               "terminal": true,
               "steps": [
                 {
                   "type": "step",
-                  "id": "s7",
+                  "id": "s9",
                   "from": "shop.oms",
                   "to": "bus",
                   "kind": "event",
                   "status": "declared",
-                  "ref": "shop.oms.order.OrderCancelled",
                   "label": "OrderCancelled",
+                  "ref": "shop.oms.order.OrderCancelled",
+                  "note": "The customer is shown a generic decline and the score never reaches the edge. Declared: the suite has no high-score fixture.",
                   "line": "internal/oms/app/checkout.go:176"
+                }
+              ]
+            },
+            {
+              "title": "scorer did not answer within 800 ms",
+              "steps": [
+                {
+                  "type": "step",
+                  "id": "s10",
+                  "from": "shop.oms",
+                  "to": "shop.oms",
+                  "kind": "call",
+                  "status": "declared",
+                  "label": "failOpenAndFlagForReview",
+                  "note": "The order continues and is queued for manual review. Failing open is read from the code; nothing exercises the timeout.",
+                  "line": "internal/oms/app/checkout.go:161"
                 }
               ]
             }
           ]
         },
         {
+          "type": "step",
+          "id": "s11",
+          "from": "shop.oms",
+          "to": "oms-db",
+          "kind": "call",
+          "status": "verified",
+          "label": "persistOrderAndOutboxRow",
+          "note": "One transaction for the order and the OrderPlaced outbox row. The order-accepted flow pins this hop on its own.",
+          "line": "internal/oms/app/checkout.go:191"
+        },
+        {
           "type": "loop",
-          "id": "loop-capture",
-          "title": "until captured, at most 3 attempts",
+          "id": "loop-outbox",
+          "title": "outbox relay, every 200 ms until the batch is empty",
           "steps": [
             {
               "type": "step",
-              "id": "s8",
-              "from": "payments.ledger",
+              "id": "s12",
+              "from": "shop.oms",
               "to": "bus",
               "kind": "event",
               "status": "verified",
-              "ref": "payments.ledger.payment.PaymentAuthorized",
-              "label": "PaymentAuthorized",
-              "line": "checkout_test.go:151"
+              "label": "OrderPlaced",
+              "ref": "shop.oms.order.OrderPlaced",
+              "line": "checkout_test.go:118"
             },
             {
               "type": "step",
-              "id": "s9",
+              "id": "s13",
+              "from": "shop.oms",
+              "to": "oms-db",
+              "kind": "call",
+              "status": "verified",
+              "label": "markOutboxRowSent",
+              "note": "Marking happens after the broker acks, so a crash in between republishes rather than drops. Consumers are expected to tolerate the repeat.",
+              "line": "internal/oms/adapter/postgres/outbox.go:73"
+            }
+          ]
+        },
+        {
+          "type": "parallel",
+          "id": "par-placed",
+          "title": "OrderPlaced fan-out",
+          "branches": [
+            [
+              {
+                "type": "step",
+                "id": "s14",
+                "from": "bus",
+                "to": "payments.ledger",
+                "kind": "event",
+                "status": "verified",
+                "label": "OrderPlaced",
+                "ref": "shop.oms.order.OrderPlaced",
+                "note": "Consumer group `ledger-orders`. Opens the reconciliation record the gateway webhook later matches against.",
+                "line": "checkout_test.go:126"
+              }
+            ],
+            [
+              {
+                "type": "step",
+                "id": "s15",
+                "from": "bus",
+                "to": "shop.pricing",
+                "kind": "event",
+                "status": "declared",
+                "label": "OrderPlaced",
+                "ref": "shop.oms.order.OrderPlaced",
+                "note": "Pricing marks the quote consumed. The subscription is registered in code but no test drives it.",
+                "line": "internal/pricing/app/subscribe.go:38"
+              }
+            ]
+          ]
+        },
+        {
+          "type": "step",
+          "id": "s16",
+          "from": "shop.oms",
+          "to": "payments.ledger",
+          "kind": "rpc",
+          "status": "verified",
+          "label": "Authorize",
+          "ref": "payments.v1.Payments/Authorize",
+          "note": "Carries the same idempotency key as the edge request, so a retried checkout cannot authorize twice.",
+          "line": "checkout_test.go:141"
+        },
+        {
+          "type": "alt",
+          "id": "alt-currency",
+          "branches": [
+            {
+              "title": "order currency is the acquirer's settlement currency",
+              "steps": [
+                {
+                  "type": "step",
+                  "id": "s17",
+                  "from": "payments.ledger",
+                  "to": "payments.ledger",
+                  "kind": "call",
+                  "status": "verified",
+                  "label": "settleDirect",
+                  "note": "No conversion and no FX row: `settlement` is the order amount. This is every EUR order, which is most of them.",
+                  "line": "checkout_test.go:144"
+                }
+              ]
+            },
+            {
+              "title": "order currency differs from the settlement currency",
+              "steps": [
+                {
+                  "type": "step",
+                  "id": "s18",
+                  "from": "payments.ledger",
+                  "to": "payments.ledger",
+                  "kind": "call",
+                  "status": "declared",
+                  "label": "quoteFxRate",
+                  "note": "The rate comes from the acquirer, not from the daily reference feed, and is refused if it is more than 60 s old. It is stored on the payment so the posting can be reproduced later.",
+                  "line": "internal/ledger/app/fx.go:38"
+                }
+              ]
+            },
+            {
+              "title": "no acquirer is configured for the currency",
+              "terminal": true,
+              "steps": [
+                {
+                  "type": "step",
+                  "id": "s19",
+                  "from": "payments.ledger",
+                  "to": "bus",
+                  "kind": "event",
+                  "status": "declared",
+                  "label": "PaymentDeclined",
+                  "ref": "payments.ledger.payment.PaymentDeclined",
+                  "note": "Code `currency_unsupported`, category `hard`. Nothing retries it and no other acquirer is tried, because there is only one.",
+                  "line": "internal/ledger/app/authorize.go:61"
+                },
+                {
+                  "type": "step",
+                  "id": "s20",
+                  "from": "bus",
+                  "to": "shop.oms",
+                  "kind": "event",
+                  "status": "declared",
+                  "label": "PaymentDeclined",
+                  "ref": "payments.ledger.payment.PaymentDeclined",
+                  "line": "internal/oms/app/decline.go:18"
+                },
+                {
+                  "type": "step",
+                  "id": "s21",
+                  "from": "shop.oms",
+                  "to": "bus",
+                  "kind": "event",
+                  "status": "declared",
+                  "label": "OrderCancelled",
+                  "ref": "shop.oms.order.OrderCancelled",
+                  "note": "The customer is told the currency is not accepted. This is the one decline that is worth saying out loud, and the edge says it.",
+                  "line": "internal/oms/app/decline.go:29"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "step",
+          "id": "s22",
+          "from": "payments.ledger",
+          "to": "psp-gateway",
+          "kind": "rpc",
+          "status": "unresolved",
+          "label": "Charges.Create (auth only)",
+          "ref": "psp.v2.Charges/Create",
+          "note": "Third-party gateway; no service in the estate provides psp.v2.Charges. A timeout here leaves the charge in a state only the gateway knows — the gateway-webhook flow is what resolves it.",
+          "line": "internal/ledger/adapter/psp/client.go:64"
+        },
+        {
+          "type": "alt",
+          "id": "alt-auth",
+          "branches": [
+            {
+              "title": "gateway approves",
+              "steps": [
+                {
+                  "type": "step",
+                  "id": "s23",
+                  "from": "payments.ledger",
+                  "to": "payments.ledger",
+                  "kind": "call",
+                  "status": "verified",
+                  "label": "postAuthorizationHold",
+                  "line": "internal/ledger/app/authorize.go:88"
+                },
+                {
+                  "type": "step",
+                  "id": "s24",
+                  "from": "payments.ledger",
+                  "to": "bus",
+                  "kind": "event",
+                  "status": "verified",
+                  "label": "PaymentAuthorized",
+                  "ref": "payments.ledger.payment.PaymentAuthorized",
+                  "line": "checkout_test.go:151"
+                },
+                {
+                  "type": "step",
+                  "id": "s25",
+                  "from": "bus",
+                  "to": "shop.oms",
+                  "kind": "event",
+                  "status": "verified",
+                  "label": "PaymentAuthorized",
+                  "ref": "payments.ledger.payment.PaymentAuthorized",
+                  "line": "checkout_test.go:154"
+                }
+              ]
+            },
+            {
+              "title": "gateway declines",
+              "terminal": true,
+              "steps": [
+                {
+                  "type": "step",
+                  "id": "s26",
+                  "from": "payments.ledger",
+                  "to": "bus",
+                  "kind": "event",
+                  "status": "verified",
+                  "label": "PaymentDeclined",
+                  "ref": "payments.ledger.payment.PaymentDeclined",
+                  "line": "checkout_test.go:167"
+                },
+                {
+                  "type": "step",
+                  "id": "s27",
+                  "from": "bus",
+                  "to": "shop.oms",
+                  "kind": "event",
+                  "status": "verified",
+                  "label": "PaymentDeclined",
+                  "ref": "payments.ledger.payment.PaymentDeclined",
+                  "line": "checkout_test.go:170"
+                },
+                {
+                  "type": "step",
+                  "id": "s28",
+                  "from": "shop.oms",
+                  "to": "bus",
+                  "kind": "event",
+                  "status": "declared",
+                  "label": "OrderCancelled",
+                  "ref": "shop.oms.order.OrderCancelled",
+                  "note": "The order is cancelled and the basket released. The publish is in the decline handler; no assertion covers it.",
+                  "line": "internal/oms/app/decline.go:29"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "step",
+          "id": "s29",
+          "from": "shop.oms",
+          "to": "bus",
+          "kind": "event",
+          "status": "verified",
+          "label": "OrderConfirmed",
+          "ref": "shop.oms.order.OrderConfirmed",
+          "line": "checkout_test.go:158"
+        },
+        {
+          "type": "step",
+          "id": "s30",
+          "from": "bus",
+          "to": "delivery.core",
+          "kind": "event",
+          "status": "verified",
+          "label": "OrderConfirmed",
+          "ref": "shop.oms.order.OrderConfirmed",
+          "note": "Creates the shipment in `held`. Nothing is handed to a carrier until the capture lands.",
+          "line": "internal/delivery/app/subscribe.go:44"
+        },
+        {
+          "type": "loop",
+          "id": "loop-capture",
+          "title": "capture retried with exponential backoff, at most 5 attempts over 24 h",
+          "steps": [
+            {
+              "type": "step",
+              "id": "s31",
+              "from": "shop.oms",
+              "to": "payments.ledger",
+              "kind": "rpc",
+              "status": "declared",
+              "label": "Capture",
+              "ref": "payments.v1.Payments/Capture",
+              "note": "The e2e suite stubs the ledger from this point, so the capture leg is read from the client rather than observed.",
+              "line": "internal/oms/app/capture.go:33"
+            },
+            {
+              "type": "step",
+              "id": "s32",
+              "from": "payments.ledger",
+              "to": "psp-gateway",
+              "kind": "rpc",
+              "status": "unresolved",
+              "label": "Charges.Capture",
+              "ref": "psp.v2.Charges/Capture",
+              "line": "internal/ledger/adapter/psp/client.go:102"
+            },
+            {
+              "type": "step",
+              "id": "s33",
               "from": "payments.ledger",
               "to": "payments.ledger",
               "kind": "call",
               "status": "verified",
               "label": "postJournalEntry",
+              "note": "Idempotent by (order_id, attempt), so a retry after a timeout cannot double-post. See ADR payments.0004.",
               "line": "internal/ledger/app/capture.go:59"
             },
             {
               "type": "step",
-              "id": "s10",
-              "from": "shop.oms",
-              "to": "payments.ledger",
-              "kind": "rpc",
-              "status": "declared",
-              "ref": "payments.v1.Payments/Capture",
-              "label": "Capture",
-              "line": "internal/oms/app/capture.go:33"
-            },
-            {
-              "type": "step",
-              "id": "s11",
+              "id": "s34",
               "from": "payments.ledger",
               "to": "bus",
               "kind": "event",
               "status": "declared",
-              "ref": "payments.ledger.payment.PaymentCaptured",
               "label": "PaymentCaptured",
+              "ref": "payments.ledger.payment.PaymentCaptured",
               "line": "internal/ledger/app/capture.go:91"
             }
           ]
         },
         {
-          "type": "step",
-          "id": "s12",
-          "from": "bus",
-          "to": "delivery.core",
-          "kind": "event",
-          "status": "declared",
-          "ref": "payments.ledger.payment.PaymentCaptured",
-          "label": "PaymentCaptured",
-          "line": "internal/delivery/app/subscribe.go:44"
+          "type": "alt",
+          "id": "alt-capture",
+          "branches": [
+            {
+              "title": "captured within the attempt budget",
+              "steps": [
+                {
+                  "type": "parallel",
+                  "id": "par-captured",
+                  "title": "PaymentCaptured fan-out",
+                  "branches": [
+                    [
+                      {
+                        "type": "step",
+                        "id": "s35",
+                        "from": "bus",
+                        "to": "delivery.core",
+                        "kind": "event",
+                        "status": "verified",
+                        "label": "PaymentCaptured",
+                        "ref": "payments.ledger.payment.PaymentCaptured",
+                        "note": "Releases the held shipment. This is the hop that turns money into a parcel.",
+                        "line": "checkout_test.go:188"
+                      }
+                    ],
+                    [
+                      {
+                        "type": "step",
+                        "id": "s36",
+                        "from": "bus",
+                        "to": "shop.oms",
+                        "kind": "event",
+                        "status": "verified",
+                        "label": "PaymentCaptured",
+                        "ref": "payments.ledger.payment.PaymentCaptured",
+                        "line": "checkout_test.go:190"
+                      }
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "title": "declined on every attempt",
+              "terminal": true,
+              "steps": [
+                {
+                  "type": "step",
+                  "id": "s37",
+                  "from": "payments.ledger",
+                  "to": "bus",
+                  "kind": "event",
+                  "status": "declared",
+                  "label": "PaymentDeclined",
+                  "ref": "payments.ledger.payment.PaymentDeclined",
+                  "note": "After the fifth attempt the authorization has expired anyway. Category `soft`: the customer can pay again, but not on this order.",
+                  "line": "internal/ledger/app/capture.go:118"
+                },
+                {
+                  "type": "step",
+                  "id": "s38",
+                  "from": "bus",
+                  "to": "shop.oms",
+                  "kind": "event",
+                  "status": "declared",
+                  "label": "PaymentDeclined",
+                  "ref": "payments.ledger.payment.PaymentDeclined",
+                  "line": "internal/oms/app/decline.go:18"
+                },
+                {
+                  "type": "step",
+                  "id": "s39",
+                  "from": "shop.oms",
+                  "to": "bus",
+                  "kind": "event",
+                  "status": "declared",
+                  "label": "OrderCancelled",
+                  "ref": "shop.oms.order.OrderCancelled",
+                  "line": "internal/oms/app/decline.go:29"
+                },
+                {
+                  "type": "step",
+                  "id": "s40",
+                  "from": "bus",
+                  "to": "delivery.core",
+                  "kind": "event",
+                  "status": "declared",
+                  "label": "OrderCancelled",
+                  "ref": "shop.oms.order.OrderCancelled",
+                  "note": "Drops the shipment that has been sitting in `held` since the order was confirmed. Nothing observed this hop — it is the failure path nobody has watched run.",
+                  "line": "internal/delivery/app/subscribe.go:62"
+                }
+              ]
+            }
+          ]
         },
         {
           "type": "step",
-          "id": "s13",
+          "id": "s41",
           "from": "delivery.core",
           "to": "delivery.core",
           "kind": "call",
@@ -1983,23 +2810,47 @@
         },
         {
           "type": "step",
-          "id": "s14",
+          "id": "s42",
+          "from": "delivery.core",
+          "to": "bus",
+          "kind": "event",
+          "status": "declared",
+          "label": "RoutePlanned",
+          "ref": "delivery.core.route.RoutePlanned",
+          "note": "OMS subscribes to this for the promised delivery date. The publish is in the planner; the suite asserts the shipment, not the route.",
+          "line": "internal/delivery/app/route.go:94"
+        },
+        {
+          "type": "step",
+          "id": "s43",
           "from": "delivery.core",
           "to": "bus",
           "kind": "event",
           "status": "verified",
-          "ref": "delivery.core.shipment.ShipmentDispatched",
           "label": "ShipmentDispatched",
+          "ref": "delivery.core.shipment.ShipmentDispatched",
           "line": "checkout_test.go:203"
         },
         {
           "type": "step",
-          "id": "s15",
+          "id": "s44",
+          "from": "bus",
+          "to": "shop.oms",
+          "kind": "event",
+          "status": "verified",
+          "label": "ShipmentDispatched",
+          "ref": "delivery.core.shipment.ShipmentDispatched",
+          "line": "checkout_test.go:206"
+        },
+        {
+          "type": "step",
+          "id": "s45",
           "from": "shop.oms",
           "to": "customer",
           "kind": "rpc",
           "status": "declared",
-          "label": "OrderConfirmation",
+          "label": "order confirmation",
+          "note": "Handed to the transactional mail provider. The hop leaves the estate and nothing in the catalog covers what happens to it.",
           "line": "internal/oms/notify/confirmation.go:27"
         }
       ]
@@ -2008,24 +2859,20 @@
       "id": "flow.refund-requested",
       "slug": "refund-requested",
       "name": "Refund requested",
-      "summary": "How a support-initiated refund is meant to travel through the system. Written by hand from the design doc; no step has been observed in a test or a trace.",
+      "summary": "How a support-initiated refund is meant to travel: the window is read off the shipment, an undispatched parcel is recalled first, and the money is returned through the ledger. Written by hand from the design doc — not one step has been observed in a test or a trace, which is why every hop on this page is declared.",
       "provenance": "authored",
       "source": "docs/flows/refund-requested.md",
       "participants": [
         {
-          "id": "customer",
+          "id": "agent",
           "kind": "actor",
-          "context": null
+          "context": null,
+          "label": "support agent"
         },
         {
           "id": "shop.oms",
           "kind": "service",
           "context": "shop"
-        },
-        {
-          "id": "payments.ledger",
-          "kind": "service",
-          "context": "payments"
         },
         {
           "id": "delivery.core",
@@ -2036,59 +2883,220 @@
           "id": "bus",
           "kind": "broker",
           "context": null
+        },
+        {
+          "id": "payments.ledger",
+          "kind": "service",
+          "context": "payments"
         }
       ],
       "steps": [
         {
           "type": "step",
           "id": "c1",
-          "from": "customer",
+          "from": "agent",
           "to": "shop.oms",
           "kind": "rpc",
           "status": "declared",
-          "label": "RequestRefund"
+          "label": "RequestRefund",
+          "note": "The support console, not the storefront. The doc does not say what authorizes the agent or whether a partial amount is allowed.",
+          "line": "refund-requested.md:24"
         },
         {
           "type": "step",
           "id": "c2",
           "from": "shop.oms",
-          "to": "payments.ledger",
+          "to": "delivery.core",
           "kind": "rpc",
           "status": "declared",
-          "ref": "payments.v1.Payments/Refund",
-          "label": "Refund",
-          "line": "internal/oms/client/payments.go:104"
+          "label": "GetShipment",
+          "ref": "delivery.v1.Delivery/GetShipment",
+          "note": "The refund window runs from the delivery date on the shipment, not from the order date, so the shipment has to be read before anything is decided.",
+          "line": "internal/oms/client/delivery.go:41"
         },
         {
           "type": "step",
           "id": "c3",
-          "from": "payments.ledger",
-          "to": "bus",
-          "kind": "event",
-          "status": "declared",
-          "ref": "payments.ledger.refund.RefundIssued",
-          "label": "RefundIssued"
-        },
-        {
-          "type": "step",
-          "id": "c4",
-          "from": "bus",
-          "to": "delivery.core",
-          "kind": "event",
-          "status": "declared",
-          "ref": "payments.ledger.refund.RefundIssued",
-          "label": "RefundIssued",
-          "note": "Delivery is expected to cancel an undispatched shipment here. The handler is described in the design doc but has not been found in the repo."
-        },
-        {
-          "type": "step",
-          "id": "c5",
           "from": "shop.oms",
-          "to": "bus",
-          "kind": "event",
+          "to": "shop.oms",
+          "kind": "call",
           "status": "declared",
-          "ref": "shop.oms.order.OrderCancelled",
-          "label": "OrderCancelled"
+          "label": "checkRefundWindow",
+          "note": "30 days after delivery. Orders never delivered have no window at all — the doc leaves that case open.",
+          "line": "internal/oms/app/refund.go:52"
+        },
+        {
+          "type": "alt",
+          "id": "alt-parcel",
+          "branches": [
+            {
+              "title": "shipment already delivered",
+              "steps": [
+                {
+                  "type": "step",
+                  "id": "c4",
+                  "from": "shop.oms",
+                  "to": "shop.oms",
+                  "kind": "call",
+                  "status": "declared",
+                  "label": "openReturnLabel",
+                  "line": "internal/oms/app/refund.go:71"
+                }
+              ]
+            },
+            {
+              "title": "shipment still in transit",
+              "steps": [
+                {
+                  "type": "step",
+                  "id": "c5",
+                  "from": "shop.oms",
+                  "to": "bus",
+                  "kind": "event",
+                  "status": "declared",
+                  "label": "OrderCancelled",
+                  "ref": "shop.oms.order.OrderCancelled",
+                  "line": "refund-requested.md:58"
+                },
+                {
+                  "type": "step",
+                  "id": "c6",
+                  "from": "bus",
+                  "to": "delivery.core",
+                  "kind": "event",
+                  "status": "declared",
+                  "label": "OrderCancelled",
+                  "ref": "shop.oms.order.OrderCancelled",
+                  "note": "Delivery is expected to recall the parcel here. The handler is described in the design doc, but no subscription for OrderCancelled was found in the delivery repository.",
+                  "line": "refund-requested.md:61"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "step",
+          "id": "c7",
+          "from": "shop.oms",
+          "to": "payments.ledger",
+          "kind": "rpc",
+          "status": "declared",
+          "label": "Refund",
+          "ref": "payments.v1.Payments/Refund",
+          "note": "Both branches rejoin here. The doc does not say what the amount is when the parcel was recalled but the shipping was already billed.",
+          "line": "internal/oms/client/payments.go:104"
+        },
+        {
+          "type": "step",
+          "id": "c8",
+          "from": "payments.ledger",
+          "to": "payments.ledger",
+          "kind": "call",
+          "status": "declared",
+          "label": "openRefund",
+          "line": "internal/ledger/app/refund.go:31"
+        },
+        {
+          "type": "loop",
+          "id": "loop-settle",
+          "title": "polled hourly until the gateway leaves `pending`, up to 7 days",
+          "steps": [
+            {
+              "type": "step",
+              "id": "c9",
+              "from": "payments.ledger",
+              "to": "payments.ledger",
+              "kind": "call",
+              "status": "declared",
+              "label": "pollGatewaySettlement",
+              "note": "The doc says the gateway confirms by webhook and that the poll is only the fallback. Neither path is covered by a test, and nothing says what happens on day 8.",
+              "line": "internal/ledger/app/refund.go:64"
+            }
+          ]
+        },
+        {
+          "type": "alt",
+          "id": "alt-settlement",
+          "branches": [
+            {
+              "title": "the gateway settles the refund",
+              "steps": [
+                {
+                  "type": "step",
+                  "id": "c10",
+                  "from": "payments.ledger",
+                  "to": "bus",
+                  "kind": "event",
+                  "status": "declared",
+                  "label": "RefundIssued",
+                  "ref": "payments.ledger.refund.RefundIssued",
+                  "line": "refund-requested.md:83"
+                },
+                {
+                  "type": "parallel",
+                  "id": "par-refunded",
+                  "title": "RefundIssued fan-out",
+                  "branches": [
+                    [
+                      {
+                        "type": "step",
+                        "id": "c11",
+                        "from": "bus",
+                        "to": "shop.oms",
+                        "kind": "event",
+                        "status": "declared",
+                        "label": "RefundIssued",
+                        "ref": "payments.ledger.refund.RefundIssued",
+                        "note": "Moves the order to `refunded`.",
+                        "line": "refund-requested.md:88"
+                      }
+                    ],
+                    [
+                      {
+                        "type": "step",
+                        "id": "c12",
+                        "from": "bus",
+                        "to": "delivery.core",
+                        "kind": "event",
+                        "status": "declared",
+                        "label": "RefundIssued",
+                        "ref": "payments.ledger.refund.RefundIssued",
+                        "note": "Closes the return leg. Same gap as the cancel handler above: declared in the doc, absent from the repository.",
+                        "line": "refund-requested.md:91"
+                      }
+                    ]
+                  ]
+                },
+                {
+                  "type": "step",
+                  "id": "c13",
+                  "from": "shop.oms",
+                  "to": "agent",
+                  "kind": "rpc",
+                  "status": "declared",
+                  "label": "refund receipt",
+                  "line": "refund-requested.md:96"
+                }
+              ]
+            },
+            {
+              "title": "the gateway refuses the refund",
+              "terminal": true,
+              "steps": [
+                {
+                  "type": "step",
+                  "id": "c14",
+                  "from": "payments.ledger",
+                  "to": "payments.ledger",
+                  "kind": "call",
+                  "status": "declared",
+                  "label": "recordRejection",
+                  "note": "The code and category are stored on the refund and nothing publishes them. Support finds out by looking, which the doc admits and does not fix.",
+                  "line": "refund-requested.md:101"
+                }
+              ]
+            }
+          ]
         }
       ]
     },
@@ -2096,7 +3104,7 @@
       "id": "flow.shipment-tracking",
       "slug": "shipment-tracking",
       "name": "Shipment tracking",
-      "summary": "Reconstructed from production traces over a 24 hour window. Shows one unknown consumer that no repository accounts for.",
+      "summary": "Reconstructed from production traces over a 24 hour window: the tracking page, the carrier's scan webhook, and what each scan code sets off. Two things only the traces know about — a consumer no repository accounts for, and an exception path whose reader emits no spans at all.",
       "provenance": "derived-from-otel",
       "verifiedAt": "2026-08-28T02:11:00Z",
       "participants": [
@@ -2104,6 +3112,12 @@
           "id": "customer",
           "kind": "actor",
           "context": null
+        },
+        {
+          "id": "carrier-api",
+          "kind": "external",
+          "context": null,
+          "label": "carrier-api (external)"
         },
         {
           "id": "delivery.core",
@@ -2136,52 +3150,550 @@
           "kind": "rpc",
           "status": "verified",
           "label": "TrackShipment",
+          "note": "Storefront tracking page. 41k calls in the window, p95 180 ms.",
           "line": "trace 9f2c1a../span 04"
         },
         {
           "type": "step",
           "id": "d2",
           "from": "delivery.core",
-          "to": "bus",
-          "kind": "event",
-          "status": "verified",
-          "ref": "delivery.core.shipment.ShipmentDispatched",
-          "label": "ShipmentDispatched",
-          "line": "trace 9f2c1a../span 11"
-        },
-        {
-          "type": "step",
-          "id": "d3",
-          "from": "bus",
           "to": "shop.oms",
-          "kind": "event",
+          "kind": "rpc",
           "status": "verified",
-          "ref": "delivery.core.shipment.ShipmentDispatched",
-          "label": "ShipmentDispatched",
-          "line": "trace 9f2c1a../span 12"
+          "label": "GetOrder",
+          "ref": "shop.v1.Orders/GetOrder",
+          "note": "Resolves the order reference shown beside the parcel. Present in 96% of the traces; the rest are served from the tracking cache.",
+          "line": "trace 9f2c1a../span 06"
+        },
+        {
+          "type": "loop",
+          "id": "loop-scan",
+          "title": "one iteration per carrier scan; 4 scans per shipment at p50 over the window",
+          "steps": [
+            {
+              "type": "step",
+              "id": "d3",
+              "from": "carrier-api",
+              "to": "delivery.core",
+              "kind": "rpc",
+              "status": "verified",
+              "label": "POST /webhooks/carrier/scan",
+              "note": "Signed with the carrier's shared secret. 1.3% of scans in the window are retries after a 5xx, and the traces show the retry landing on the same shipment without a second state change.",
+              "line": "trace 7be40d../span 01"
+            },
+            {
+              "type": "step",
+              "id": "d4",
+              "from": "delivery.core",
+              "to": "delivery.core",
+              "kind": "call",
+              "status": "verified",
+              "label": "RecordScan",
+              "line": "trace 7be40d../span 03"
+            }
+          ]
+        },
+        {
+          "type": "alt",
+          "id": "alt-scan",
+          "branches": [
+            {
+              "title": "scan code DELIVERED",
+              "steps": [
+                {
+                  "type": "step",
+                  "id": "d5",
+                  "from": "delivery.core",
+                  "to": "bus",
+                  "kind": "event",
+                  "status": "verified",
+                  "label": "ShipmentDelivered",
+                  "ref": "delivery.core.shipment.ShipmentDelivered",
+                  "line": "trace 7be40d../span 27"
+                },
+                {
+                  "type": "parallel",
+                  "id": "par-delivered",
+                  "title": "ShipmentDelivered fan-out",
+                  "branches": [
+                    [
+                      {
+                        "type": "step",
+                        "id": "d6",
+                        "from": "bus",
+                        "to": "shop.oms",
+                        "kind": "event",
+                        "status": "verified",
+                        "label": "ShipmentDelivered",
+                        "ref": "delivery.core.shipment.ShipmentDelivered",
+                        "note": "Closes the order and starts the 30-day refund window the refund flow reads.",
+                        "line": "trace 7be40d../span 29"
+                      }
+                    ],
+                    [
+                      {
+                        "type": "step",
+                        "id": "d7",
+                        "from": "bus",
+                        "to": "analytics-sink",
+                        "kind": "event",
+                        "status": "unresolved",
+                        "label": "ShipmentDelivered",
+                        "ref": "delivery.core.shipment.ShipmentDelivered",
+                        "note": "Seen in traces only, under client id `analytics-sink-2`. No subscription registration exists in any indexed repository, so the owning team is unknown and nobody can be told before this topic changes shape.",
+                        "line": "trace 7be40d../span 31"
+                      }
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "title": "scan code EXCEPTION",
+              "terminal": true,
+              "steps": [
+                {
+                  "type": "step",
+                  "id": "d8",
+                  "from": "delivery.core",
+                  "to": "delivery.core",
+                  "kind": "call",
+                  "status": "verified",
+                  "label": "openDeliveryException",
+                  "note": "The trace ends here. Whatever reads the exception queue emits no spans, so the catalog cannot say what happens to the parcel next.",
+                  "line": "trace 4c81f3../span 09"
+                }
+              ]
+            },
+            {
+              "title": "scan code IN_TRANSIT",
+              "steps": [
+                {
+                  "type": "step",
+                  "id": "d9",
+                  "from": "delivery.core",
+                  "to": "delivery.core",
+                  "kind": "call",
+                  "status": "verified",
+                  "label": "updateEta",
+                  "note": "No event is published for an in-transit scan; the tracking page reads the shipment directly. 83% of the scans in the window end here.",
+                  "line": "trace 7be40d../span 12"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "flow.gateway-webhook",
+      "slug": "gateway-webhook",
+      "name": "Gateway webhook",
+      "summary": "The gateway's side of the story, arriving after the fact. One signed callback, four ways to read it: a replay to ignore, a capture to record, a charge with no local payment to adopt, and a failure to pass on. The adopt branch is the only repair for a checkout that timed out mid-authorization, and it is the one branch no test covers.",
+      "provenance": "derived-from-test",
+      "source": "services/ledger/test/integration/webhook_test.go",
+      "participants": [
+        {
+          "id": "psp-gateway",
+          "kind": "external",
+          "context": null,
+          "label": "psp-gateway (external)"
+        },
+        {
+          "id": "payments.ledger",
+          "kind": "service",
+          "context": "payments"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        },
+        {
+          "id": "shop.oms",
+          "kind": "service",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "w1",
+          "from": "psp-gateway",
+          "to": "payments.ledger",
+          "kind": "rpc",
+          "status": "verified",
+          "label": "POST /webhooks/psp/v2",
+          "note": "HMAC-signed body. The gateway retries for three days with backoff until it gets a 2xx, so every branch below has to tolerate being run twice.",
+          "line": "webhook_test.go:38"
         },
         {
           "type": "step",
-          "id": "d4",
-          "from": "delivery.core",
-          "to": "bus",
-          "kind": "event",
+          "id": "w2",
+          "from": "payments.ledger",
+          "to": "payments.ledger",
+          "kind": "call",
           "status": "verified",
-          "ref": "delivery.core.shipment.ShipmentDelivered",
-          "label": "ShipmentDelivered",
-          "line": "trace 9f2c1a../span 27"
+          "label": "verifySignatureAndParse",
+          "note": "A bad signature is answered 401 and never reaches the dedup table. The test drives a tampered body for this.",
+          "line": "internal/ledger/adapter/psp/webhook.go:44"
+        },
+        {
+          "type": "alt",
+          "id": "alt-webhook",
+          "branches": [
+            {
+              "title": "event id already applied",
+              "steps": [
+                {
+                  "type": "step",
+                  "id": "w3",
+                  "from": "payments.ledger",
+                  "to": "payments.ledger",
+                  "kind": "call",
+                  "status": "verified",
+                  "label": "dropDuplicate",
+                  "note": "Dedup table keyed by the gateway's event id, rows kept 30 days. A replay older than that would be applied again; nothing guards it.",
+                  "line": "webhook_test.go:71"
+                }
+              ]
+            },
+            {
+              "title": "charge.succeeded, matching a local authorization",
+              "steps": [
+                {
+                  "type": "step",
+                  "id": "w4",
+                  "from": "payments.ledger",
+                  "to": "payments.ledger",
+                  "kind": "call",
+                  "status": "verified",
+                  "label": "markCaptured",
+                  "line": "internal/ledger/app/webhook.go:96"
+                },
+                {
+                  "type": "step",
+                  "id": "w5",
+                  "from": "payments.ledger",
+                  "to": "bus",
+                  "kind": "event",
+                  "status": "verified",
+                  "label": "PaymentCaptured",
+                  "ref": "payments.ledger.payment.PaymentCaptured",
+                  "line": "webhook_test.go:104"
+                }
+              ]
+            },
+            {
+              "title": "charge.succeeded, no local payment",
+              "steps": [
+                {
+                  "type": "step",
+                  "id": "w6",
+                  "from": "payments.ledger",
+                  "to": "shop.oms",
+                  "kind": "rpc",
+                  "status": "verified",
+                  "label": "GetOrder",
+                  "ref": "shop.v1.Orders/GetOrder",
+                  "note": "The order reference travels in the gateway's metadata. The ledger reads the order back to decide whether the charge belongs to this estate at all.",
+                  "line": "internal/ledger/app/webhook.go:132"
+                },
+                {
+                  "type": "step",
+                  "id": "w7",
+                  "from": "payments.ledger",
+                  "to": "payments.ledger",
+                  "kind": "call",
+                  "status": "declared",
+                  "label": "adoptOrphanCharge",
+                  "note": "Closes the gap left when the synchronous Authorize in checkout timed out after the gateway had already charged. Read from the code; the integration suite has no fixture for it, and it is the only path that keeps a customer from being charged for an order the estate never opened.",
+                  "line": "internal/ledger/app/webhook.go:151"
+                },
+                {
+                  "type": "step",
+                  "id": "w8",
+                  "from": "payments.ledger",
+                  "to": "bus",
+                  "kind": "event",
+                  "status": "declared",
+                  "label": "PaymentAuthorized",
+                  "ref": "payments.ledger.payment.PaymentAuthorized",
+                  "note": "Published late and out of order — consumers see the authorization after the charge already settled.",
+                  "line": "internal/ledger/app/webhook.go:168"
+                }
+              ]
+            },
+            {
+              "title": "charge.failed",
+              "steps": [
+                {
+                  "type": "step",
+                  "id": "w9",
+                  "from": "payments.ledger",
+                  "to": "bus",
+                  "kind": "event",
+                  "status": "verified",
+                  "label": "PaymentDeclined",
+                  "ref": "payments.ledger.payment.PaymentDeclined",
+                  "line": "webhook_test.go:126"
+                },
+                {
+                  "type": "step",
+                  "id": "w10",
+                  "from": "bus",
+                  "to": "shop.oms",
+                  "kind": "event",
+                  "status": "verified",
+                  "label": "PaymentDeclined",
+                  "ref": "payments.ledger.payment.PaymentDeclined",
+                  "line": "webhook_test.go:131"
+                }
+              ]
+            }
+          ]
         },
         {
           "type": "step",
-          "id": "d5",
-          "from": "bus",
-          "to": "analytics-sink",
-          "kind": "event",
+          "id": "w11",
+          "from": "payments.ledger",
+          "to": "psp-gateway",
+          "kind": "rpc",
+          "status": "verified",
+          "label": "ack 200",
+          "note": "Acked only after the branch above has committed. Anything else and the gateway replays, which is what makes the dedup table load-bearing.",
+          "line": "webhook_test.go:142"
+        }
+      ]
+    },
+    {
+      "id": "flow.order-cancelled",
+      "slug": "order-cancelled",
+      "name": "Order cancelled",
+      "summary": "A customer cancels before the parcel moves, and two compensations run side by side: the money is unwound at the gateway, and the stop is taken off the route. Whether the money is voided or refunded depends on how far payment got, and the delivery half is declared everywhere and observed nowhere.",
+      "provenance": "derived-from-test",
+      "source": "services/oms/test/e2e/cancel_test.go",
+      "participants": [
+        {
+          "id": "customer",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.oms",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        },
+        {
+          "id": "payments.ledger",
+          "kind": "service",
+          "context": "payments"
+        },
+        {
+          "id": "psp-gateway",
+          "kind": "external",
+          "context": null,
+          "label": "psp-gateway (external)"
+        },
+        {
+          "id": "delivery.core",
+          "kind": "service",
+          "context": "delivery"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "x1",
+          "from": "customer",
+          "to": "shop.oms",
+          "kind": "rpc",
+          "status": "verified",
+          "label": "CancelOrder",
+          "line": "cancel_test.go:44"
+        },
+        {
+          "type": "step",
+          "id": "x2",
+          "from": "shop.oms",
+          "to": "delivery.core",
+          "kind": "rpc",
           "status": "declared",
-          "ref": "delivery.core.shipment.ShipmentDelivered",
-          "label": "ShipmentDelivered",
-          "note": "Consumer seen in traces only. No subscription registration exists in any indexed repository, so the owning team is unknown.",
-          "line": "trace 9f2c1a../span 31"
+          "label": "GetShipment",
+          "ref": "delivery.v1.Delivery/GetShipment",
+          "note": "Cancelling is only allowed while the shipment is `held` or `planned`. The state comes from delivery, not from the order, so a stale read here is what lets a dispatched parcel be cancelled.",
+          "line": "internal/oms/client/delivery.go:41"
+        },
+        {
+          "type": "alt",
+          "id": "alt-cancel",
+          "branches": [
+            {
+              "title": "shipment not yet dispatched",
+              "steps": [
+                {
+                  "type": "step",
+                  "id": "x3",
+                  "from": "shop.oms",
+                  "to": "bus",
+                  "kind": "event",
+                  "status": "verified",
+                  "label": "OrderCancelled",
+                  "ref": "shop.oms.order.OrderCancelled",
+                  "line": "cancel_test.go:61"
+                },
+                {
+                  "type": "parallel",
+                  "id": "par-compensate",
+                  "title": "compensations, which do not wait for each other",
+                  "branches": [
+                    [
+                      {
+                        "type": "step",
+                        "id": "x4",
+                        "from": "bus",
+                        "to": "payments.ledger",
+                        "kind": "event",
+                        "status": "verified",
+                        "label": "OrderCancelled",
+                        "ref": "shop.oms.order.OrderCancelled",
+                        "line": "cancel_test.go:70"
+                      },
+                      {
+                        "type": "alt",
+                        "id": "alt-money",
+                        "branches": [
+                          {
+                            "title": "authorization not yet captured",
+                            "steps": [
+                              {
+                                "type": "step",
+                                "id": "x5",
+                                "from": "payments.ledger",
+                                "to": "psp-gateway",
+                                "kind": "rpc",
+                                "status": "unresolved",
+                                "label": "Charges.Void",
+                                "ref": "psp.v2.Charges/Void",
+                                "note": "Voiding costs nothing and leaves no trace on the customer's statement, which is why the capture is held back until dispatch in the first place.",
+                                "line": "internal/ledger/adapter/psp/client.go:171"
+                              },
+                              {
+                                "type": "step",
+                                "id": "x6",
+                                "from": "payments.ledger",
+                                "to": "payments.ledger",
+                                "kind": "call",
+                                "status": "verified",
+                                "label": "releaseHold",
+                                "line": "cancel_test.go:83"
+                              }
+                            ]
+                          },
+                          {
+                            "title": "payment already captured",
+                            "steps": [
+                              {
+                                "type": "step",
+                                "id": "x7",
+                                "from": "payments.ledger",
+                                "to": "psp-gateway",
+                                "kind": "rpc",
+                                "status": "unresolved",
+                                "label": "Charges.Refund",
+                                "ref": "psp.v2.Charges/Refund",
+                                "line": "internal/ledger/adapter/psp/client.go:138"
+                              },
+                              {
+                                "type": "step",
+                                "id": "x8",
+                                "from": "payments.ledger",
+                                "to": "bus",
+                                "kind": "event",
+                                "status": "declared",
+                                "label": "RefundIssued",
+                                "ref": "payments.ledger.refund.RefundIssued",
+                                "note": "The same event the support refund publishes. Nothing in the payload says which of the two happened, so a consumer cannot tell a cancelled order from a returned one.",
+                                "line": "internal/ledger/app/refund.go:88"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ],
+                    [
+                      {
+                        "type": "step",
+                        "id": "x9",
+                        "from": "bus",
+                        "to": "delivery.core",
+                        "kind": "event",
+                        "status": "declared",
+                        "label": "OrderCancelled",
+                        "ref": "shop.oms.order.OrderCancelled",
+                        "note": "The subscription is registered in the delivery repo, but no test covers it and no trace in the sampled window shows it firing.",
+                        "line": "internal/delivery/app/subscribe.go:62"
+                      },
+                      {
+                        "type": "step",
+                        "id": "x10",
+                        "from": "delivery.core",
+                        "to": "delivery.core",
+                        "kind": "call",
+                        "status": "declared",
+                        "label": "removeStopAndReplan",
+                        "line": "internal/delivery/app/route.go:112"
+                      },
+                      {
+                        "type": "step",
+                        "id": "x11",
+                        "from": "delivery.core",
+                        "to": "bus",
+                        "kind": "event",
+                        "status": "declared",
+                        "label": "RoutePlanned",
+                        "ref": "delivery.core.route.RoutePlanned",
+                        "note": "The route is republished without the stop. Consumers see a second RoutePlanned for the same route and are expected to take the later one.",
+                        "line": "internal/delivery/app/route.go:94"
+                      }
+                    ]
+                  ]
+                },
+                {
+                  "type": "step",
+                  "id": "x12",
+                  "from": "shop.oms",
+                  "to": "customer",
+                  "kind": "rpc",
+                  "status": "declared",
+                  "label": "cancellation confirmation",
+                  "line": "internal/oms/notify/cancellation.go:19"
+                }
+              ]
+            },
+            {
+              "title": "shipment already dispatched",
+              "terminal": true,
+              "steps": [
+                {
+                  "type": "step",
+                  "id": "x13",
+                  "from": "shop.oms",
+                  "to": "customer",
+                  "kind": "rpc",
+                  "status": "verified",
+                  "label": "409 Conflict",
+                  "note": "The edge refuses and points the customer at returns instead. What happens from there is the refund-requested flow, and none of it is observed.",
+                  "line": "cancel_test.go:118"
+                }
+              ]
+            }
+          ]
         }
       ]
     }

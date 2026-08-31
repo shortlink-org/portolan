@@ -40,6 +40,13 @@ export interface OutlineOptions {
   hidden: ReadonlySet<string>;
   /** When true, those steps are left out and empty frames go with them. */
   crossOnly: boolean;
+  /**
+   * When set, only steps on this path are kept. Kept apart from `hidden`
+   * because the two mean different things: a hidden step is one this view
+   * chooses not to draw and still marks with a dot, while an off-path step is
+   * one that does not happen at all on the path being read.
+   */
+  path?: ReadonlySet<string> | null;
 }
 
 /**
@@ -61,6 +68,7 @@ export function buildOutline(
           counter += 1;
           const hidden = options.hidden.has(node.id);
           if (options.crossOnly && hidden) break;
+          if (options.path && !options.path.has(node.id)) break;
           rows.push({
             type: "step",
             key: node.id,

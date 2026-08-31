@@ -1,8 +1,12 @@
 // GENERATED — do not edit.
 model {
+  oms_db = store 'oms-db (postgres)'
   bus = broker 'bus'
   customer = actor 'customer'
   fraud_scoring = unknown 'fraud-scoring (unknown)'
+  psp_gateway = external 'psp-gateway (external)'
+  agent = actor 'support agent'
+  carrier_api = external 'carrier-api (external)'
   analytics_sink = unknown 'analytics-sink (unknown)'
 
   shop = context 'Shop' {
@@ -114,7 +118,7 @@ model {
     style { color verified  line solid  head normal }
   }
   shop.oms -> payments.ledger 'Authorize' {
-    style { color declared  line dashed  head normal }
+    style { color verified  line solid  head normal }
   }
   shop.oms -> payments.ledger 'Capture' {
     style { color declared  line dashed  head normal }
@@ -124,6 +128,9 @@ model {
   }
   shop.oms -> fraud_scoring 'Score' {
     style { color unresolved  line dotted  head normal }
+  }
+  shop.oms -> delivery.core 'GetShipment' {
+    style { color declared  line dashed  head normal }
   }
   shop.pricing -> shop.oms 'QuoteIssued' {
     style { color verified  line solid  head onormal }
@@ -157,6 +164,18 @@ model {
   }
   payments.ledger -> shop.oms 'GetOrder' {
     style { color verified  line solid  head normal }
+  }
+  payments.ledger -> psp_gateway 'Create' {
+    style { color unresolved  line dotted  head normal }
+  }
+  payments.ledger -> psp_gateway 'Capture' {
+    style { color unresolved  line dotted  head normal }
+  }
+  payments.ledger -> psp_gateway 'Refund' {
+    style { color unresolved  line dotted  head normal }
+  }
+  payments.ledger -> psp_gateway 'Void' {
+    style { color unresolved  line dotted  head normal }
   }
   delivery.core -> shop.oms 'ShipmentDispatched' {
     style { color verified  line solid  head onormal }

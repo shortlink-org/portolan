@@ -179,60 +179,61 @@ model.push("}");
 // ---------------------------------------------------------------------------
 
 /**
- * LikeC4 dynamic views have `parallel` and `loop` but no `alt`. An alt branch is
- * therefore flattened into the sequence with its condition carried on every
- * step, so the exclusivity is stated in words where it cannot be drawn.
+ * Emits one flow as LikeC4 dynamic-view steps.
  *
- * That flattening is a real loss and this is where it is at its worst: a
- * TERMINAL branch is followed, in the drawing, by the steps it never reaches.
- * Every step of such a branch says so on its label and in its notes. The frame
- * itself still cannot be drawn here — the rail on the flow page is what shows
- * the structure, and the two are meant to be read together.
+ * Every frame in the catalog has a frame here: `alt` becomes `alt { when … else
+ * … }`, which is the same vocabulary the step rail uses, so the picture and the
+ * list read alike. Terminality has no LikeC4 keyword of its own; it is wrapped
+ * in a `break` frame, which is what a sequence diagram calls a branch that
+ * leaves the flow rather than rejoining it.
  */
-function emitSteps(nodes, out, indent, branch) {
+function emitSteps(nodes, out, indent) {
   for (const node of nodes) {
     if (node.type === "step") {
       const label = node.label ?? node.ref ?? node.kind;
-      const title = branch ? `[${branch.title}] ${label}` : label;
       const attrs = [
         `color ${node.status}`,
         `line ${STATUS_LINE[node.status]}`,
         `head ${KIND_HEAD[node.kind]}`,
       ];
+      // The condition used to be pasted onto every label because there was no
+      // frame to carry it. There is one now, so the label is just the message.
       const notes = [];
-      if (branch) {
-        notes.push(
-          branch.terminal
-            ? `alt branch: ${branch.title} — this branch ENDS the flow; the steps drawn after it do not follow from here`
-            : `alt branch: ${branch.title}`,
-        );
-      }
       if (node.note) notes.push(node.note);
       if (node.line) notes.push(node.line);
-      out.push(
-        `${indent}${fqn(node.from)} -> ${fqn(node.to)} ${q(title)} {`,
-      );
+      out.push(`${indent}${fqn(node.from)} -> ${fqn(node.to)} ${q(label)} {`);
       out.push(`${indent}  ${attrs.join("  ")}`);
       if (notes.length > 0) out.push(`${indent}  notes ${q(notes.join(" — "))}`);
       out.push(`${indent}}`);
       continue;
     }
     if (node.type === "parallel") {
-      out.push(`${indent}parallel {`);
-      for (const b of node.branches) emitSteps(b, out, `${indent}  `, branch);
+      out.push(`${indent}par ${node.title ? `${q(node.title)} ` : ""}{`);
+      for (const branch of node.branches) emitSteps(branch, out, `${indent}  `);
       out.push(`${indent}}`);
       continue;
     }
     if (node.type === "loop") {
       out.push(`${indent}loop ${q(node.title)} {`);
-      emitSteps(node.steps, out, `${indent}  `, branch);
+      emitSteps(node.steps, out, `${indent}  `);
       out.push(`${indent}}`);
       continue;
     }
     if (node.type === "alt") {
-      for (const b of node.branches) {
-        emitSteps(b.steps, out, indent, b);
-      }
+      out.push(`${indent}alt {`);
+      node.branches.forEach((branch, i) => {
+        const keyword = i === 0 ? "when" : "else";
+        out.push(`${indent}  ${keyword} ${q(branch.title)} {`);
+        if (branch.terminal) {
+          out.push(`${indent}    break 'ends the flow' {`);
+          emitSteps(branch.steps, out, `${indent}      `);
+          out.push(`${indent}    }`);
+        } else {
+          emitSteps(branch.steps, out, `${indent}    `);
+        }
+        out.push(`${indent}  }`);
+      });
+      out.push(`${indent}}`);
     }
   }
 }
@@ -295,7 +296,7 @@ for (const flow of catalog.flows) {
   views.push(`    title ${q(flow.name)}`);
   views.push(`    description ${q(flow.summary)}`);
   const body = [];
-  emitSteps(flow.steps, body, "    ", null);
+  emitSteps(flow.steps, body, "    ");
   views.push(...body);
   views.push("  }");
   views.push("");
@@ -304,7 +305,7 @@ for (const flow of catalog.flows) {
   views.push(`  dynamic view ${flowCrossViewId(flow)} {`);
   views.push(`    title ${q(`${flow.name} — crossings only`)}`);
   const crossBody = [];
-  emitSteps(cross, crossBody, "    ", null);
+  emitSteps(cross, crossBody, "    ");
   if (crossBody.length === 0) {
     // A flow with no crossing at all still needs a renderable view.
     const first = flow.participants[0];

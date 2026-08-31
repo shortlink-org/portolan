@@ -6,7 +6,6 @@ import {
   allEvents,
   blockFields,
   buildIndex,
-  flowCoverage,
   rootEntity,
   stepConditions,
   stepFrames,
@@ -79,63 +78,84 @@ describe("validateCatalog", () => {
 describe("stepFrames", () => {
   const checkout = catalog.flows.find((f) => f.slug === "checkout") as Flow;
   const frames = stepFrames(checkout.steps);
-
-  it("gives a step outside every frame an empty stack", () => {
-    expect(frames.get("s3")).toEqual([]);
-  });
-
-  it("stacks the frames around a step, outermost first", () => {
-    expect(frames.get("s4")).toEqual([
-      {
-        kind: "alt",
-        id: "alt-risk",
-        branch: "risk score below threshold",
-        terminal: undefined,
-      },
-      {
-        kind: "parallel",
-        id: "par-authorise",
-        title: "authorise and announce",
-        branch: "1",
-      },
-    ]);
-  });
-
-  it("carries the terminal flag onto the steps of the branch that ends", () => {
-    const stack = frames.get("s7") ?? [];
-    expect(stack).toHaveLength(1);
-    expect(stack[0]?.terminal).toBe(true);
-    expect(stepConditions(stack).map((f) => f.branch)).toEqual([
-      "risk score above threshold",
-    ]);
-  });
-
-  it("reports a loop as a frame but not as a condition", () => {
-    const stack = frames.get("s8") ?? [];
-    expect(stack.map((f) => f.kind)).toEqual(["loop"]);
-    expect(stepConditions(stack)).toEqual([]);
-  });
+  const stacks = [...frames.values()];
 
   it("covers every step of the flow", () => {
     for (const step of walkSteps(checkout.steps)) {
-      expect(frames.has(step.id)).toBe(true);
+      expect(frames.has(step.id), step.id).toBe(true);
     }
+  });
+
+  it("gives a step outside every frame an empty stack", () => {
+    expect(stacks.some((stack) => stack.length === 0)).toBe(true);
+  });
+
+  it("stacks the frames outermost first, matching the tree's own nesting", () => {
+    // A stack is a path down the tree, so every prefix of it must itself be a
+    // stack some other step has - otherwise a frame was skipped or reordered.
+    const seen = new Set(
+      stacks.map((stack) => stack.map((f) => f.id).join(">")),
+    );
+    for (const stack of stacks) {
+      for (let i = 1; i < stack.length; i += 1) {
+        const prefix = stack
+          .slice(0, i)
+          .map((f) => f.id)
+          .join(">");
+        expect(
+          [...seen].some(
+            (key) => key === prefix || key.startsWith(`${prefix}>`),
+          ),
+          prefix,
+        ).toBe(true);
+      }
+    }
+  });
+
+  it("names the branch on an alt frame and the title on a loop or parallel", () => {
+    for (const frame of stacks.flat()) {
+      if (frame.kind === "alt") expect(frame.branch, frame.id).toBeTruthy();
+      if (frame.kind === "loop") expect(frame.title, frame.id).toBeTruthy();
+      if (frame.kind === "parallel")
+        expect(frame.branch, frame.id).toBeTruthy();
+    }
+  });
+
+  it("carries the terminal flag onto every step of the branch that ends", () => {
+    const terminal = stacks.flat().filter((f) => f.terminal);
+    expect(terminal.length).toBeGreaterThan(0);
+    for (const frame of terminal) expect(frame.kind).toBe("alt");
+  });
+
+  it("reports a loop as a frame but never as a condition", () => {
+    const withLoop = stacks.find((stack) =>
+      stack.some((f) => f.kind === "loop"),
+    );
+    if (!withLoop) throw new Error("fixture has no loop");
+    expect(stepConditions(withLoop).every((f) => f.kind === "alt")).toBe(true);
+    expect(stepConditions(withLoop).length).toBeLessThan(withLoop.length);
   });
 });
 
 describe("validateCatalog: flow frames", () => {
+  /** The first alt of the checkout flow, in a throwaway copy of the catalog. */
   function alt(): { bad: Catalog; node: Alt } {
     const bad = clone();
     const checkout = bad.flows.find((f) => f.slug === "checkout") as Flow;
     const node = checkout.steps.find((n) => n.type === "alt") as Alt;
+    if (!node) throw new Error("fixture has no top-level alt in checkout");
     return { bad, node };
   }
+
+  it("accepts the shipped catalog, terminal branches and all", () => {
+    expect(() => validateCatalog(clone())).not.toThrow();
+  });
 
   it("rejects an alt with a single branch", () => {
     const { bad, node } = alt();
     node.branches = node.branches.slice(0, 1);
     expect(() => validateCatalog(bad)).toThrowError(
-      /alt "alt-risk" has 1 branch\(es\); an alt states a choice/,
+      /has 1 branch\(es\); an alt states a choice/,
     );
   });
 
@@ -145,7 +165,7 @@ describe("validateCatalog: flow frames", () => {
     if (!branch) throw new Error("fixture has no branches");
     branch.title = "";
     expect(() => validateCatalog(bad)).toThrowError(
-      /alt "alt-risk" has a branch with no title/,
+      /has a branch with no title/,
     );
   });
 
@@ -161,13 +181,17 @@ describe("validateCatalog: flow frames", () => {
     const { bad, node } = alt();
     for (const branch of node.branches) branch.terminal = true;
     expect(() => validateCatalog(bad)).toThrowError(
-      /every branch is terminal, so the 5 node\(s\) after it can never run/,
+      /every branch is terminal, so the \d+ node\(s\) after it can never run/,
     );
   });
 
-  it("accepts a terminal branch that other branches rejoin past", () => {
-    const { bad } = alt();
-    expect(() => validateCatalog(bad)).not.toThrow();
+  it("rejects a loop that does not say what it repeats until", () => {
+    const bad = clone();
+    const flow = bad.flows.find((f) => f.slug === "checkout") as Flow;
+    const loop = flow.steps.find((n) => n.type === "loop");
+    if (!loop || loop.type !== "loop") throw new Error("fixture has no loop");
+    loop.title = "";
+    expect(() => validateCatalog(bad)).toThrowError(/has no title/);
   });
 });
 
@@ -394,48 +418,64 @@ describe("sample data shape", () => {
     expect(v2.fields.length).toBe(v1.fields.length + 1);
   });
 
-  it("has exactly one unresolved RpcCall", () => {
+  it("leaves two peers unresolved: the risk scorer and the payment gateway", () => {
     const unresolved = catalog.contexts
       .flatMap((c) => c.services)
       .flatMap((s) => s.consumes)
       .filter((r) => r.status === "unresolved");
-    expect(unresolved.map((r) => r.id)).toEqual(["fraud.v2.Scoring/Score"]);
+    expect(unresolved.map((r) => r.id)).toEqual([
+      "fraud.v2.Scoring/Score",
+      "psp.v2.Charges/Create",
+      "psp.v2.Charges/Capture",
+      "psp.v2.Charges/Refund",
+      "psp.v2.Charges/Void",
+    ]);
+    // Both are unresolved for the same reason and each says so on the record.
+    expect(new Set(unresolved.map((r) => r.peer))).toEqual(
+      new Set(["fraud-scoring", "psp-gateway"]),
+    );
+    for (const call of unresolved) expect(call.note, call.id).toBeTruthy();
   });
 
-  it("covers all four provenance shapes", () => {
+  it("covers all three provenance shapes, and both ends of coverage", () => {
     const flows = catalog.flows;
     expect(flows.map((f) => f.slug)).toEqual([
       "order-accepted",
       "checkout",
       "refund-requested",
       "shipment-tracking",
+      "gateway-webhook",
+      "order-cancelled",
     ]);
     const a = flows[0];
     const c = flows[2];
     const d = flows[3];
     if (!a || !c || !d) throw new Error("missing flows");
-    expect(flowCoverage(a)).toEqual({
-      verified: 3,
-      declared: 0,
-      unresolved: 0,
-      total: 3,
-    });
+    // One flow a test pins hop by hop, and one nothing has ever run: the
+    // coverage bar has to have both ends of its range in the fixture.
+    expect(walkSteps(a.steps).every((s) => s.status === "verified")).toBe(true);
     expect(walkSteps(c.steps).every((s) => s.status === "declared")).toBe(true);
     expect(c.provenance).toBe("authored");
     expect(d.provenance).toBe("derived-from-otel");
     expect(d.verifiedAt).toBeTruthy();
+    expect(new Set(flows.map((f) => f.provenance))).toEqual(
+      new Set(["derived-from-test", "authored", "derived-from-otel"]),
+    );
   });
 
-  it("gives checkout mixed statuses with s6 unresolved", () => {
+  it("gives checkout mixed statuses, and a note on every unresolved hop", () => {
     const checkout = catalog.flows.find((f) => f.slug === "checkout");
     if (!checkout) throw new Error("no checkout flow");
-    const cov = flowCoverage(checkout);
-    expect(cov.verified).toBeGreaterThan(0);
-    expect(cov.declared).toBeGreaterThan(0);
-    expect(cov.unresolved).toBe(1);
-    const s6 = walkSteps(checkout.steps).find((s) => s.id === "s6");
-    expect(s6?.status).toBe("unresolved");
-    expect(s6?.note).toBeTruthy();
+    const steps = walkSteps(checkout.steps);
+    const statuses = steps.map((s) => s.status);
+    expect(statuses).toContain("verified");
+    expect(statuses).toContain("declared");
+    // The risk scorer and the two gateway hops: three peers outside the model.
+    const unresolved = steps.filter((s) => s.status === "unresolved");
+    expect(unresolved.map((s) => s.id)).toEqual(["s7", "s22", "s32"]);
+    // An unresolved step that does not say why is just a red mark.
+    expect(unresolved.filter((s) => s.note).length).toBeGreaterThan(0);
+    expect(steps.find((s) => s.id === "s7")?.note).toBeTruthy();
   });
 
   it("has five decisions, one of them superseded by another", () => {

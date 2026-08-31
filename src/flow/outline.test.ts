@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import raw from "../../data/catalog.json";
 import type { Catalog, Flow } from "../catalog";
+import { stepFrames, walkSteps } from "../catalog";
 import { hiddenStepIds } from "./cross-context";
+import { flowPaths } from "./paths";
 import { buildOutline, outlineSteps } from "./outline";
 import type { OutlineFrame } from "./outline";
 
@@ -15,36 +17,55 @@ function frames(rows: ReturnType<typeof buildOutline>): OutlineFrame[] {
 }
 
 describe("buildOutline", () => {
-  it("heads every frame, in sequence-diagram keywords", () => {
-    const got = frames(buildOutline(checkout, NO_FILTER)).map((f) => [
-      f.keyword,
-      f.title,
-    ]);
-    expect(got).toEqual([
-      ["alt", "risk score below threshold"],
-      ["par", "authorise and announce"],
-      ["and", undefined],
-      ["else", "risk score above threshold"],
-      ["loop", "until captured, at most 3 attempts"],
-    ]);
-  });
-
-  it("marks the branch that ends the flow", () => {
-    const terminal = frames(buildOutline(checkout, NO_FILTER)).filter(
-      (f) => f.terminal,
+  it("heads every frame with the keyword its shape calls for", () => {
+    const keywords = frames(buildOutline(checkout, NO_FILTER)).map(
+      (f) => f.keyword,
     );
-    expect(terminal.map((f) => f.title)).toEqual([
-      "risk score above threshold",
-    ]);
+    expect(keywords.length).toBeGreaterThan(0);
+    // A choice always opens with `alt` and continues with `else`; a parallel
+    // opens with `par` and continues with `and`. Neither continuation can
+    // appear before its opening, or the rail would show a branch of nothing.
+    const seenAlt = keywords.indexOf("alt");
+    const seenPar = keywords.indexOf("par");
+    expect(keywords.indexOf("else") === -1 || seenAlt !== -1).toBe(true);
+    expect(keywords.indexOf("and") === -1 || seenPar !== -1).toBe(true);
+    if (keywords.includes("else")) {
+      expect(seenAlt).toBeLessThan(keywords.indexOf("else"));
+    }
+    if (keywords.includes("and")) {
+      expect(seenPar).toBeLessThan(keywords.indexOf("and"));
+    }
+    for (const f of frames(buildOutline(checkout, NO_FILTER))) {
+      // Only `and` is nameless: it continues a parallel that is already named.
+      if (f.keyword !== "and") expect(f.title, f.keyword).toBeTruthy();
+    }
   });
 
-  it("indents steps under the frame that holds them", () => {
-    const rows = buildOutline(checkout, NO_FILTER);
-    const byId = new Map(outlineSteps(rows).map((r) => [r.step.id, r]));
-    expect(byId.get("s3")?.depth).toBe(0); // before the alt
-    expect(byId.get("s6")?.depth).toBe(1); // inside the alt
-    expect(byId.get("s4")?.depth).toBe(2); // inside the parallel inside it
-    expect(byId.get("s8")?.depth).toBe(1); // inside the loop
+  it("marks exactly the branches the catalog calls terminal", () => {
+    for (const flow of catalog.flows) {
+      const rows = buildOutline(flow, NO_FILTER);
+      const marked = frames(rows)
+        .filter((f) => f.terminal)
+        .map((f) => f.title);
+      const declared = [...stepFrames(flow.steps).values()]
+        .flat()
+        .filter((f) => f.terminal)
+        .map((f) => f.branch);
+      expect([...new Set(marked)].sort(), flow.slug).toEqual(
+        [...new Set(declared)].sort(),
+      );
+    }
+  });
+
+  it("indents every step by how many frames enclose it", () => {
+    for (const flow of catalog.flows) {
+      const enclosing = stepFrames(flow.steps);
+      for (const row of outlineSteps(buildOutline(flow, NO_FILTER))) {
+        expect(row.depth, `${flow.slug} ${row.step.id}`).toBe(
+          (enclosing.get(row.step.id) ?? []).length,
+        );
+      }
+    }
   });
 
   it("numbers over every step, filtered or not", () => {
@@ -65,34 +86,93 @@ describe("buildOutline", () => {
   });
 
   it("drops a frame whose every step the filter removed", () => {
-    // s9 is the only step of the loop that is not cross-context; hiding
-    // everything else must take the loop header with it.
+    const first = walkSteps(checkout.steps)[0];
+    if (!first) throw new Error("fixture has no steps");
     const hidden = new Set(
-      outlineSteps(buildOutline(checkout, NO_FILTER))
-        .map((r) => r.step.id)
-        .filter((id) => id !== "s3"),
+      walkSteps(checkout.steps)
+        .map((s) => s.id)
+        .filter((id) => id !== first.id),
     );
     const rows = buildOutline(checkout, { hidden, crossOnly: true });
     expect(frames(rows)).toEqual([]);
-    expect(outlineSteps(rows).map((r) => r.step.id)).toEqual(["s3"]);
+    expect(outlineSteps(rows).map((r) => r.step.id)).toEqual([first.id]);
   });
 
   it("opens the frame at the first branch that survives the filter", () => {
-    // Hide the whole first alt branch: the second one must read "alt", not
-    // "else", or the rail would show a choice with no opening arm.
-    const hidden = new Set(["s4", "s5", "s6"]);
+    // Hide every step of the first alt branch: the next surviving branch must
+    // read `alt`, not `else`, or the rail shows a choice with no opening arm.
+    const enclosing = stepFrames(checkout.steps);
+    const firstAlt = [...enclosing.values()]
+      .flat()
+      .find((f) => f.kind === "alt");
+    if (!firstAlt) throw new Error("fixture has no alt");
+    const firstBranch = firstAlt.branch;
+    const hidden = new Set(
+      walkSteps(checkout.steps)
+        .map((s) => s.id)
+        .filter((id) =>
+          (enclosing.get(id) ?? []).some(
+            (f) => f.id === firstAlt.id && f.branch === firstBranch,
+          ),
+        ),
+    );
     const rows = buildOutline(checkout, { hidden, crossOnly: true });
-    const alt = frames(rows).filter(
+    const opening = frames(rows).find(
       (f) => f.keyword === "alt" || f.keyword === "else",
     );
-    expect(alt).toHaveLength(1);
-    expect(alt[0]?.keyword).toBe("alt");
-    expect(alt[0]?.title).toBe("risk score above threshold");
-    expect(alt[0]?.terminal).toBe(true);
+    expect(opening?.keyword).toBe("alt");
+    expect(opening?.title).not.toBe(firstBranch);
+  });
+
+  it("keeps only the steps of a chosen path, and heads its branch as alt", () => {
+    const path = flowPaths(checkout).paths.find((p) => p.terminal);
+    if (!path) throw new Error("fixture has no terminal path");
+    const rows = buildOutline(checkout, { ...NO_FILTER, path: path.stepIds });
+
+    expect(outlineSteps(rows).map((r) => r.step.id)).toEqual([...path.stepIds]);
+    // One branch of each alt survives, so every choice opens its own frame and
+    // none of them continues one.
+    const choices = frames(rows).filter(
+      (f) => f.keyword === "alt" || f.keyword === "else",
+    );
+    expect(choices.map((f) => f.keyword)).toEqual(choices.map(() => "alt"));
+    expect(choices.map((f) => f.title)).toEqual(
+      path.choices.map((c) => c.title),
+    );
+    expect(choices.at(-1)?.terminal).toBe(true);
+  });
+
+  it("numbers a path by each step's place in the whole flow", () => {
+    const order = walkSteps(checkout.steps).map((s) => s.id);
+    const path = flowPaths(checkout).paths.find((p) => p.terminal);
+    if (!path) throw new Error("fixture has no terminal path");
+    const rows = buildOutline(checkout, { ...NO_FILTER, path: path.stepIds });
+    expect(outlineSteps(rows).map((r) => r.number)).toEqual(
+      [...path.stepIds].map((id) => order.indexOf(id) + 1),
+    );
+  });
+
+  it("composes the path filter with the cross-context one", () => {
+    const hidden = hiddenStepIds(checkout);
+    const path = flowPaths(checkout).paths.find((p) => p.terminal);
+    if (!path) throw new Error("fixture has no terminal path");
+    const rows = buildOutline(checkout, {
+      hidden,
+      crossOnly: true,
+      path: path.stepIds,
+    });
+    expect(outlineSteps(rows).map((r) => r.step.id)).toEqual(
+      [...path.stepIds].filter((id) => !hidden.has(id)),
+    );
   });
 
   it("emits nothing but steps for a flow with no frames", () => {
-    const flat = catalog.flows.find((f) => f.slug === "order-accepted") as Flow;
+    const flat = catalog.flows.find(
+      (f) =>
+        stepFrames(f.steps).size > 0 &&
+        [...stepFrames(f.steps).values()].every((s) => s.length === 0),
+    );
+    if (!flat) throw new Error("fixture has no flat flow");
     const rows = buildOutline(flat, NO_FILTER);
     expect(frames(rows)).toEqual([]);
     expect(rows).toHaveLength(outlineSteps(rows).length);

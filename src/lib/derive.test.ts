@@ -51,7 +51,13 @@ describe("flowsForService", () => {
     );
     expect(
       flowsForService(catalog, "payments.ledger").map((f) => f.slug),
-    ).toEqual(["order-accepted", "checkout", "refund-requested"]);
+    ).toEqual([
+      "order-accepted",
+      "checkout",
+      "refund-requested",
+      "gateway-webhook",
+      "order-cancelled",
+    ]);
   });
 });
 
@@ -59,11 +65,14 @@ describe("stepsReferencing", () => {
   it("deep-links every step that carries an event ref", () => {
     const refs = stepsReferencing(catalog, "shop.oms.order.OrderPlaced");
     expect(refs.map((r) => `${r.flow.slug}#${r.stepId}`)).toEqual([
-      "order-accepted#a1",
       "order-accepted#a2",
-      "checkout#s5",
+      "order-accepted#a3",
+      "checkout#s12",
+      "checkout#s14",
+      "checkout#s15",
     ]);
-    expect(refs[2]?.number).toBe(5);
+    // The number is the step's place in the whole flow, frames included.
+    expect(refs[2]?.number).toBe(12);
   });
 });
 

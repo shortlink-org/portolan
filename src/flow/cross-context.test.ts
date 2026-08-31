@@ -15,19 +15,28 @@ if (!checkout) throw new Error("fixture missing checkout flow");
 describe("isCrossContext", () => {
   it("drops internal calls, self messages and same-context hops", () => {
     expect([...hiddenStepIds(checkout)].sort()).toEqual([
+      "s10",
+      "s11",
       "s13",
+      "s17",
+      "s18",
       "s2",
+      "s23",
       "s3",
-      "s9",
+      "s33",
+      "s4",
+      "s41",
+      "s6",
+      "s8",
     ]);
   });
 
   it("keeps hops touching a null-context lane", () => {
     const contextOf = contextResolver(checkout);
-    const s5 = walkSteps(checkout.steps).find((s) => s.id === "s5");
-    if (!s5) throw new Error("no s5");
+    const s12 = walkSteps(checkout.steps).find((s) => s.id === "s12");
+    if (!s12) throw new Error("no s12");
     // shop.oms (shop) -> bus (null)
-    expect(isCrossContext(s5, contextOf)).toBe(true);
+    expect(isCrossContext(s12, contextOf)).toBe(true);
   });
 });
 

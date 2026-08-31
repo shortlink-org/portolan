@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Link, useParams } from "react-router";
 import { catalog } from "../data";
 import { blockCounts, blockFields, rootEntity } from "../catalog";
-import type { Aggregate, Block, BlockKind } from "../catalog";
+import type { Aggregate, Block, BlockKind, Operation } from "../catalog";
 import { markdownOutline } from "../lib/derive";
 import { KIND_LABEL, KIND_PLURAL } from "../lib/kinds";
 import type { LeafKind } from "../lib/kinds";
@@ -27,7 +27,11 @@ function BuildingBlocks({
   const counts = blockCounts(aggregate);
   const chips: { kind: LeafKind; n: number; anchor: string }[] = [
     { kind: "entity", n: counts.entities, anchor: AGGREGATE_ANCHOR.entities },
-    { kind: "vo", n: counts.valueObjects, anchor: AGGREGATE_ANCHOR.valueObjects },
+    {
+      kind: "vo",
+      n: counts.valueObjects,
+      anchor: AGGREGATE_ANCHOR.valueObjects,
+    },
     { kind: "event", n: counts.events, anchor: AGGREGATE_ANCHOR.events },
     { kind: "command", n: counts.commands, anchor: AGGREGATE_ANCHOR.commands },
     { kind: "query", n: counts.queries, anchor: AGGREGATE_ANCHOR.queries },
@@ -130,6 +134,42 @@ function BlockList({
   );
 }
 
+/**
+ * Commands and queries with what each one actually does. The sentence is the
+ * point: a bare `CancelOrder` says nothing about when it is refused, and the
+ * precondition is exactly what a reader came to this page for.
+ */
+function OperationList({
+  kind,
+  operations,
+}: {
+  kind: "command" | "query";
+  operations: Operation[];
+}) {
+  return (
+    <ul className="flex flex-col gap-1">
+      {operations.map((op) => (
+        <li
+          key={op.id}
+          className={`flex items-start gap-2 border-l-2 px-2 py-1.5 bg-surface ${
+            kind === "command" ? "border-verified" : "border-line-strong"
+          }`}
+        >
+          <span className="mt-px shrink-0">
+            <KindIcon kind={kind} />
+          </span>
+          <div className="min-w-0">
+            <div className="mono">{op.id}</div>
+            {op.doc ? (
+              <p className="mt-0.5 text-muted">{op.doc}</p>
+            ) : null}
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function AggregatePage() {
   const {
     context: contextId,
@@ -175,7 +215,10 @@ export function AggregatePage() {
 
           <Markdown>{aggregate.readme}</Markdown>
 
-          <div className="mt-section max-w-prose" id={AGGREGATE_ANCHOR.entities}>
+          <div
+            className="mt-section max-w-prose"
+            id={AGGREGATE_ANCHOR.entities}
+          >
             <SectionTitle
               right={
                 <span className="mono text-muted">
@@ -193,7 +236,10 @@ export function AggregatePage() {
             />
           </div>
 
-          <div className="mt-section max-w-prose" id={AGGREGATE_ANCHOR.valueObjects}>
+          <div
+            className="mt-section max-w-prose"
+            id={AGGREGATE_ANCHOR.valueObjects}
+          >
             <SectionTitle
               right={
                 <span className="mono text-muted">
@@ -230,7 +276,10 @@ export function AggregatePage() {
                     className="row flex-wrap gap-2 px-3 py-2"
                   >
                     <KindIcon kind="event" />
-                    <span className="mono" style={{ color: "var(--kind-event)" }}>
+                    <span
+                      className="mono"
+                      style={{ color: "var(--kind-event)" }}
+                    >
                       {event.name}
                     </span>
                     <span className="flex gap-1">
@@ -262,36 +311,35 @@ export function AggregatePage() {
             )}
           </div>
 
-          <div className="mt-8 grid max-w-prose gap-6 grid-cols-2">
+          {/* One column, not two: an operation whose precondition is written
+              down is a paragraph, and two prose columns half a page wide would
+              turn every one of them into a ladder. */}
+          <div className="mt-8 flex max-w-prose flex-col gap-section">
             <div id={AGGREGATE_ANCHOR.commands}>
-              <SectionTitle>Commands</SectionTitle>
+              <SectionTitle
+                right={
+                  <span className="mono text-muted">
+                    they change the aggregate — one row lock each
+                  </span>
+                }
+              >
+                Commands
+              </SectionTitle>
               {commands.length === 0 ? <Empty>none</Empty> : null}
-              <ul className="flex flex-col gap-1">
-                {commands.map((op) => (
-                  <li
-                    key={op.id}
-                    className="mono flex items-center gap-1.5 border-l-2 px-2 py-1 border-verified bg-surface"
-                  >
-                    <KindIcon kind="command" />
-                    {op.id}
-                  </li>
-                ))}
-              </ul>
+              <OperationList kind="command" operations={commands} />
             </div>
             <div id={AGGREGATE_ANCHOR.queries}>
-              <SectionTitle>Queries</SectionTitle>
+              <SectionTitle
+                right={
+                  <span className="mono text-muted">
+                    they change nothing — and may be behind
+                  </span>
+                }
+              >
+                Queries
+              </SectionTitle>
               {queries.length === 0 ? <Empty>none</Empty> : null}
-              <ul className="flex flex-col gap-1">
-                {queries.map((op) => (
-                  <li
-                    key={op.id}
-                    className="mono flex items-center gap-1.5 border-l-2 px-2 py-1 border-line-strong bg-surface"
-                  >
-                    <KindIcon kind="query" />
-                    {op.id}
-                  </li>
-                ))}
-              </ul>
+              <OperationList kind="query" operations={queries} />
             </div>
           </div>
         </div>
