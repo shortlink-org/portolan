@@ -8,7 +8,9 @@ export function AdrRow({ adr }: { adr: Adr }) {
   return (
     <Link to={paths.adr(adr.slug)} className="row flex-wrap">
       <AdrNumber adr={adr} />
-      <span className="font-semibold">{adr.title}</span>
+      <span className="font-semibold" title={adr.title}>
+        {adr.title}
+      </span>
       <AdrStatusChip status={adr.status} />
       <span className="ml-auto flex items-center gap-3">
         <AdrScopePill scope={adr.scope} link={false} />

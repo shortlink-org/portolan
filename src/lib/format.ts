@@ -40,3 +40,16 @@ export function absoluteTime(iso: string): string {
     .replace("T", " ")
     .replace(/\.\d+Z$/, "Z");
 }
+
+/**
+ * Middle truncation for file paths: the repo tells you where you are, the
+ * basename tells you what it is, and the middle is the part nobody reads.
+ * Returns the input untouched when it already fits.
+ */
+export function middleTruncate(value: string, max = 44): string {
+  if (value.length <= max) return value;
+  const keep = max - 1;
+  const head = Math.ceil(keep / 2);
+  const tail = Math.floor(keep / 2);
+  return `${value.slice(0, head)}…${value.slice(value.length - tail)}`;
+}

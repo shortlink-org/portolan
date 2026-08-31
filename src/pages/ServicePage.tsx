@@ -7,6 +7,7 @@ import { adrsForService, isCurrent } from "../lib/adr";
 import { AdrRow } from "../components/AdrRow";
 import { paths, servicePath } from "../routes";
 import { Markdown } from "../components/Markdown";
+import { middleTruncate } from "../lib/format";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
 import {
   ContextPill,
@@ -61,27 +62,34 @@ export function ServicePage() {
         kind="service"
         name={service.name}
         id={service.id}
+        contextId={context.id}
         right={<ContextPill id={context.id} name={context.name} />}
       >
-        <div className="mono mt-1.5 flex flex-wrap gap-x-4 text-muted">
-          <span>{service.repo}</span>
-          <span>{service.path}</span>
-          <span>
+        <div className="mono mt-2 flex flex-wrap gap-x-4 text-muted">
+          <span title={service.repo}>{middleTruncate(service.repo, 32)}</span>
+          <span title={service.path}>{middleTruncate(service.path, 32)}</span>
+          <span className="tnum">
             {service.aggregates.length} aggregates ·{" "}
             {service.aggregates.reduce((n, a) => n + a.events.length, 0)} events
           </span>
         </div>
 
-        <div className="mt-3 flex gap-0">
+        {/* Tabs keep the underline rather than becoming a segmented box: they
+            switch the page under them, they do not filter a list beside them.
+            The 2px rule is always drawn, transparent when idle, so selecting a
+            tab never lifts the row. */}
+        <div className="mt-4 flex gap-0" role="tablist">
           {TABS.map((t) => (
             <button
               key={t}
               type="button"
+              role="tab"
               onClick={() =>
                 setParams(t === "overview" ? {} : { tab: t }, { replace: true })
               }
+              aria-selected={tab === t}
               aria-current={tab === t ? "page" : undefined}
-              className="mono border-b-2 px-3 py-1"
+              className="mono rounded-t-control border-b-2 px-3 py-1.5 t-micro transition-colors"
               style={{
                 borderColor: tab === t ? "var(--accent)" : "transparent",
                 color: tab === t ? "var(--fg)" : "var(--fg-muted)",
@@ -89,21 +97,21 @@ export function ServicePage() {
             >
               {t}
               {counts[t] !== null ? (
-                <span className="ml-1.5 text-muted">{counts[t]}</span>
+                <span className="tnum ml-1.5 text-muted">{counts[t]}</span>
               ) : null}
             </button>
           ))}
         </div>
       </PageHeader>
 
-      <div className="p-4">
+      <div className="p-gutter">
         {tab === "overview" ? (
           <>
             <SectionTitle>Model</SectionTitle>
             <C4View viewId={serviceViewId(service)} height={300} />
-            <div className="mt-6" />
+            <div className="mt-section" />
             <Markdown>{service.readme}</Markdown>
-            <div className="mt-8 max-w-[900px]">
+            <div className="mt-section max-w-prose">
               <SectionTitle>Aggregates</SectionTitle>
               <div className="flex flex-col gap-1">
                 {service.aggregates.map((aggregate) => (
@@ -207,7 +215,7 @@ export function ServicePage() {
         ) : null}
 
         {tab === "decisions" ? (
-          <div className="flex max-w-[900px] flex-col gap-1">
+          <div className="flex max-w-prose flex-col gap-1">
             {adrs.length === 0 ? (
               <Empty>no decision names this service</Empty>
             ) : null}

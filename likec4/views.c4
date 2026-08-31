@@ -93,7 +93,7 @@ views {
     }
     shop.oms -> bus '[risk score above threshold] OrderCancelled' {
       color declared  line dashed  head onormal
-      notes 'alt branch: risk score above threshold — internal/oms/app/checkout.go:176'
+      notes 'alt branch: risk score above threshold — this branch ENDS the flow; the steps drawn after it do not follow from here — internal/oms/app/checkout.go:176'
     }
     loop 'until captured, at most 3 attempts' {
       payments.ledger -> bus 'PaymentAuthorized' {
@@ -153,7 +153,7 @@ views {
     }
     shop.oms -> bus '[risk score above threshold] OrderCancelled' {
       color declared  line dashed  head onormal
-      notes 'alt branch: risk score above threshold — internal/oms/app/checkout.go:176'
+      notes 'alt branch: risk score above threshold — this branch ENDS the flow; the steps drawn after it do not follow from here — internal/oms/app/checkout.go:176'
     }
     loop 'until captured, at most 3 attempts' {
       payments.ledger -> bus 'PaymentAuthorized' {

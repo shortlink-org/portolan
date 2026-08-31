@@ -5,6 +5,7 @@ import { catalog } from "../data";
 import type { Field } from "../catalog";
 import { addedFields, stepsReferencing } from "../lib/derive";
 import { ctxStyle } from "../lib/context-color";
+import { middleTruncate } from "../lib/format";
 import { paths, servicePath } from "../routes";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
 import { StatusChip } from "../components/primitives";
@@ -139,13 +140,14 @@ export function EventPage() {
         kind={`event · ${aggregate.id}`}
         name={event.name}
         id={event.id}
+        contextId={context.id}
         right={
           <label className="mono flex items-center gap-1.5 text-muted">
             version
             <select
               value={selected.version}
               onChange={(e) => setVersion(e.target.value)}
-              className="mono border bg-transparent px-1.5 py-0.5 border-line text-ink"
+              className="mono rounded-control border bg-transparent px-2 py-1 border-line text-ink"
             >
               {[...event.versions].reverse().map((v) => (
                 <option key={v.version} value={v.version}>
@@ -157,11 +159,13 @@ export function EventPage() {
           </label>
         }
       >
-        <p className="mt-1.5 max-w-[900px] text-muted">{selected.doc}</p>
-        <div className="mono mt-1.5 text-muted">{selected.source}</div>
+        <p className="mt-2 max-w-prose text-muted">{selected.doc}</p>
+        <div className="mono mt-2 text-muted" title={selected.source}>
+          {middleTruncate(selected.source)}
+        </div>
       </PageHeader>
 
-      <div className="p-4">
+      <div className="p-gutter">
         <SectionTitle
           right={
             <span className="mono text-muted">
@@ -171,12 +175,13 @@ export function EventPage() {
         >
           Fields
         </SectionTitle>
-        <table className="w-full">
-          <thead>
+        <table className="w-full max-w-table">
+          {/* The column names stay put while the field list scrolls past. */}
+          <thead className="sticky-bar sticky top-0 z-10">
             <tr className="label">
-              <th className="pb-1 text-left font-normal">name</th>
-              <th className="pb-1 text-left font-normal">type</th>
-              <th className="pb-1 text-left font-normal">doc</th>
+              <th className="pb-2 text-left font-normal">name</th>
+              <th className="pb-2 text-left font-normal">type</th>
+              <th className="pb-2 text-left font-normal">doc</th>
               <th />
             </tr>
           </thead>
@@ -193,7 +198,7 @@ export function EventPage() {
           </tbody>
         </table>
 
-        <div className="mt-6 grid gap-6 grid-cols-2">
+        <div className="mt-section grid gap-section grid-cols-2">
           <div>
             <SectionTitle>Published by</SectionTitle>
             <Link
@@ -204,7 +209,7 @@ export function EventPage() {
               {service.id}
             </Link>
 
-            <div className="mt-6">
+            <div className="mt-section">
               <SectionTitle>Consumed by</SectionTitle>
               <div className="flex flex-col gap-1.5">
                 {event.consumers.length === 0 ? (
@@ -215,7 +220,7 @@ export function EventPage() {
                   return (
                     <div
                       key={consumer.service}
-                      className="flex items-start gap-2 border px-2 py-1.5 border-line"
+                      className="flex items-start gap-2 rounded-control border px-3 py-2 border-line"
                     >
                       <div className="min-w-0 flex-1">
                         {to ? (
@@ -243,7 +248,7 @@ export function EventPage() {
             <SectionTitle>Shape</SectionTitle>
             <FocusedEventGraphPane event={event} height={230} />
 
-            <div className="mt-6">
+            <div className="mt-section">
               <SectionTitle>Appears in flows</SectionTitle>
               {appearances.length === 0 ? (
                 <Empty>no flow references this event</Empty>

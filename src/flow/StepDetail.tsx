@@ -1,6 +1,8 @@
+import { useMemo } from "react";
 import { Link } from "react-router";
 import { AlertTriangle } from "lucide-react";
-import type { Flow, Step } from "../catalog";
+import { stepFrames } from "../catalog";
+import type { Flow, Step, StepFrame } from "../catalog";
 import { index } from "../data";
 import { AdrNumber, StatusChip } from "../components/primitives";
 import { paths, eventPath, servicePath } from "../routes";
@@ -178,6 +180,78 @@ function RpcDetail({ step }: { step: Step }) {
   );
 }
 
+const FRAME_KEYWORD: Record<StepFrame["kind"], string> = {
+  alt: "alt",
+  parallel: "par",
+  loop: "loop",
+};
+
+/**
+ * The frames this step sits inside, outermost first. Selecting a step from a
+ * graph or the palette gives no sense of where in the flow it is, and a step
+ * pulled out of an alt is the one most likely to be misread: it does not run
+ * on every path, and nothing else on this panel would say so.
+ */
+function Frames({ step, flow }: { step: Step; flow: Flow }) {
+  const frames = useMemo(
+    () => stepFrames(flow.steps).get(step.id) ?? [],
+    [flow, step.id],
+  );
+  if (frames.length === 0) return null;
+
+  const conditional = frames.some((f) => f.kind === "alt");
+
+  return (
+    <div className="mb-3">
+      <div className="label mb-1">
+        {conditional ? "Runs only when" : "Runs inside"}
+      </div>
+      <div className="flex flex-col gap-1">
+        {frames.map((frame, i) => {
+          const alt = frame.kind === "alt";
+          const text =
+            frame.kind === "parallel"
+              ? [frame.title, `branch ${frame.branch}`]
+                  .filter(Boolean)
+                  .join(" · ")
+              : (frame.branch ?? frame.title ?? "");
+          return (
+            <div
+              key={`${frame.id}:${i}`}
+              className="flex items-baseline gap-1.5 border-l-2 py-0.5 pl-2"
+              style={{
+                borderColor: alt ? "var(--border-strong)" : "var(--border)",
+              }}
+            >
+              <span
+                className="mono shrink-0 border px-1 uppercase"
+                style={{
+                  borderColor: alt ? "var(--border-strong)" : "var(--border)",
+                  color: alt ? "var(--fg)" : "var(--fg-muted)",
+                }}
+              >
+                {FRAME_KEYWORD[frame.kind]}
+              </span>
+              <span className="mono min-w-0 flex-1" title={text}>
+                {text}
+              </span>
+              {frame.terminal ? (
+                <span
+                  className="mono shrink-0"
+                  style={{ color: "var(--status-unresolved)" }}
+                  title="This branch ends the flow — the steps drawn after it do not follow this one"
+                >
+                  ends flow
+                </span>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /**
  * Everything a step is, minus the frame. The frame belongs to the detail panel,
  * which draws the same header for every kind of selection.
@@ -192,6 +266,8 @@ export function StepDetailBody({ step, flow }: { step: Step; flow: Flow }) {
         <span>&rarr;</span>
         <span>{step.to}</span>
       </div>
+
+      <Frames step={step} flow={flow} />
 
       {/* A decision that names this step's event is the reason the step
           looks the way it does. It belongs next to the step, not three
@@ -220,7 +296,9 @@ export function StepDetailBody({ step, flow }: { step: Step; flow: Flow }) {
         <RpcDetail step={step} />
       ) : (
         <>
-          <div className="mono text-[13px]">{step.label ?? "internal call"}</div>
+          <div className="mono text-[13px]">
+            {step.label ?? "internal call"}
+          </div>
           <Label>Source</Label>
           <div className="mono break-all text-muted">
             {step.line ?? "not recorded"}

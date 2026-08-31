@@ -17,10 +17,10 @@ export function TopBar({ onOpenPalette }: { onOpenPalette: () => void }) {
   }, []);
 
   return (
-    <header className="flex h-10 shrink-0 items-center gap-3 border-b px-3 border-line bg-canvas">
+    <header className="flex h-12 shrink-0 items-center gap-4 border-b px-gutter border-line bg-canvas">
       <Breadcrumbs />
 
-      <div className="ml-auto flex items-center gap-2">
+      <div className="ml-auto flex items-center gap-3">
         {/* Opens the palette rather than filtering in place: the sidebar box
             narrows the tree, this one searches the whole catalog. */}
         <button
@@ -28,40 +28,47 @@ export function TopBar({ onOpenPalette }: { onOpenPalette: () => void }) {
           onClick={onOpenPalette}
           aria-label="Search catalog"
           aria-keyshortcuts="Meta+K Control+K"
-          className="mono flex w-56 items-center gap-1.5 border px-2 py-1 border-line text-muted hover:bg-surface"
+          className="mono flex w-56 items-center gap-2 rounded-control border px-2 py-1.5 border-line text-muted t-micro transition-colors hover:bg-surface hover:border-line-strong"
         >
-          <Search size={11} aria-hidden />
+          <Search size={16} aria-hidden className="shrink-0" />
           search
-          <span className="ml-auto border px-1 border-line">⌘K</span>
+          <span className="ml-auto rounded-[4px] border px-1 border-line">
+            ⌘K
+          </span>
         </button>
 
-        <Link to="/graph" className="tbtn">
-          <Network size={11} aria-hidden />
-          graph
-        </Link>
-
-        <button
-          type="button"
-          onClick={toggle}
-          aria-label={
-            theme === "dark" ? "Switch to light theme" : "Switch to dark theme"
-          }
-          className="tbtn"
-        >
-          {theme === "dark" ? (
-            <Sun size={12} aria-hidden />
-          ) : (
-            <Moon size={12} aria-hidden />
-          )}
-        </button>
+        {/* One border around the pair, a hairline between them: two controls,
+            one object. */}
+        <div className="seg">
+          <Link to="/graph" className="flex items-center gap-1.5">
+            <Network size={16} aria-hidden />
+            graph
+          </Link>
+          <button
+            type="button"
+            onClick={toggle}
+            aria-label={
+              theme === "dark" ? "Switch to light theme" : "Switch to dark theme"
+            }
+            className="flex items-center"
+          >
+            {theme === "dark" ? (
+              <Sun size={16} aria-hidden />
+            ) : (
+              <Moon size={16} aria-hidden />
+            )}
+          </button>
+        </div>
 
         <div
-          className="mono flex items-center gap-1.5 border px-2 py-1 border-line text-muted"
+          className="mono flex items-center gap-1.5 rounded-control border px-2 py-1.5 border-line text-muted"
           title={`generated ${absoluteTime(catalog.generatedAt)} at commit ${catalog.commit}`}
         >
-          <GitCommitHorizontal size={11} aria-hidden />
+          <GitCommitHorizontal size={16} aria-hidden className="shrink-0" />
           {catalog.commit}
-          <span className="text-line-strong">·</span>
+          <span aria-hidden className="text-line-strong">
+            ·
+          </span>
           {relativeTime(catalog.generatedAt)}
         </div>
       </div>

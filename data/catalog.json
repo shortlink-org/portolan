@@ -1893,6 +1893,7 @@
             },
             {
               "title": "risk score above threshold",
+              "terminal": true,
               "steps": [
                 {
                   "type": "step",

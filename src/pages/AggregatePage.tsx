@@ -34,11 +34,11 @@ function BuildingBlocks({
   ];
 
   return (
-    <section className="mb-6 border border-line">
-      <div className="label border-b border-line bg-surface px-3 py-1.5">
+    <section className="mb-section overflow-hidden rounded-card border border-line shadow-xs">
+      <div className="label border-b border-line bg-surface px-4 py-2">
         Building blocks
       </div>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2.5">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
         <span className="mono flex items-center gap-1.5 text-muted">
           root
           <KindIcon kind="entity" />
@@ -99,17 +99,21 @@ function BlockList({
           <Link
             key={block.id}
             to={linkTo(block)}
-            className="row items-start gap-2 px-2 py-1.5"
+            className="row items-start gap-2 px-3 py-2"
           >
             <span className="mt-0.5 flex shrink-0">
               <KindIcon kind={kind} />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="mono">{block.name}</span>
+              <span className="mono" title={block.name}>
+                {block.name}
+              </span>
               {block.name === rootName ? (
                 <span className="mono ml-2 text-muted">root</span>
               ) : null}
-              <span className="block truncate text-muted">{block.doc}</span>
+              <span className="block truncate text-muted" title={block.doc}>
+                {block.doc}
+              </span>
             </span>
             <span className="mono ml-auto shrink-0 text-muted">
               {block.ref ? (
@@ -159,9 +163,10 @@ export function AggregatePage() {
         kind={`aggregate · ${service.id}`}
         name={aggregate.name}
         id={aggregate.id}
+        contextId={context.id}
       />
 
-      <div className="flex gap-6 p-4">
+      <div className="flex gap-section p-gutter">
         <div className="min-w-0 flex-1">
           <BuildingBlocks
             aggregate={aggregate}
@@ -170,7 +175,7 @@ export function AggregatePage() {
 
           <Markdown>{aggregate.readme}</Markdown>
 
-          <div className="mt-8 max-w-[900px]" id={AGGREGATE_ANCHOR.entities}>
+          <div className="mt-section max-w-prose" id={AGGREGATE_ANCHOR.entities}>
             <SectionTitle
               right={
                 <span className="mono text-muted">
@@ -188,7 +193,7 @@ export function AggregatePage() {
             />
           </div>
 
-          <div className="mt-8 max-w-[900px]" id={AGGREGATE_ANCHOR.valueObjects}>
+          <div className="mt-section max-w-prose" id={AGGREGATE_ANCHOR.valueObjects}>
             <SectionTitle
               right={
                 <span className="mono text-muted">
@@ -205,7 +210,7 @@ export function AggregatePage() {
             />
           </div>
 
-          <div className="mt-8 max-w-[900px]" id={AGGREGATE_ANCHOR.events}>
+          <div className="mt-section max-w-prose" id={AGGREGATE_ANCHOR.events}>
             <SectionTitle>Events</SectionTitle>
             {aggregate.events.length === 0 ? (
               <Empty>
@@ -222,7 +227,7 @@ export function AggregatePage() {
                       aggregate.slug,
                       event.slug,
                     )}
-                    className="row flex-wrap gap-2 px-2 py-1.5"
+                    className="row flex-wrap gap-2 px-3 py-2"
                   >
                     <KindIcon kind="event" />
                     <span className="mono" style={{ color: "var(--kind-event)" }}>
@@ -232,7 +237,7 @@ export function AggregatePage() {
                       {event.versions.map((v, i) => (
                         <span
                           key={v.version}
-                          className="mono border px-1"
+                          className="mono rounded-[4px] border px-1"
                           style={{
                             borderColor:
                               i === event.versions.length - 1
@@ -257,7 +262,7 @@ export function AggregatePage() {
             )}
           </div>
 
-          <div className="mt-8 grid max-w-[900px] gap-6 grid-cols-2">
+          <div className="mt-8 grid max-w-prose gap-6 grid-cols-2">
             <div id={AGGREGATE_ANCHOR.commands}>
               <SectionTitle>Commands</SectionTitle>
               {commands.length === 0 ? <Empty>none</Empty> : null}
@@ -293,10 +298,12 @@ export function AggregatePage() {
 
         {outline.length > 0 ? (
           <nav
-            className="sticky top-0 hidden h-fit w-52 shrink-0 self-start border-l pl-3 lg:block border-line"
+            /* Pinned beside the page it indexes, translucent so the content
+               scrolling past it stays visible. */
+            className="sticky-bar sticky top-0 hidden h-fit w-52 shrink-0 self-start rounded-card border-l pl-4 lg:block border-line"
             aria-label="Readme outline"
           >
-            <div className="label mb-1.5">Outline</div>
+            <div className="label mb-2">Outline</div>
             <ul>
               {outline.map((heading) => (
                 <li

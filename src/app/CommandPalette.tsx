@@ -130,7 +130,7 @@ export function CommandPalette({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center pt-[12vh]"
+      className="overlay-in fixed inset-0 z-50 flex items-start justify-center pt-[12vh]"
       style={{ background: "color-mix(in srgb, #000 45%, transparent)" }}
       onMouseDown={onClose}
     >
@@ -138,10 +138,11 @@ export function CommandPalette({
         role="dialog"
         aria-modal="true"
         aria-label="Command palette"
-        className="flex max-h-[70vh] w-[min(680px,92vw)] flex-col border bg-canvas border-line-strong"
+        className="palette-in flex max-h-[70vh] w-[min(680px,92vw)] flex-col overflow-hidden rounded-modal border bg-canvas border-line-strong shadow-md"
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={onKeyDown}
       >
+        {/* The one accent glow the palette gets: 4%, radial, behind the input. */}
         <input
           ref={inputRef}
           value={query}
@@ -149,10 +150,10 @@ export function CommandPalette({
           placeholder="jump to anything — or narrow with e: vo: ent: agg: cmd: q:"
           spellCheck={false}
           aria-label="Search the catalog"
-          className="mono w-full border-b bg-transparent px-3 py-2.5 outline-none border-line placeholder:text-muted"
+          className="glow mono w-full border-b bg-transparent px-4 py-3 text-sm outline-none border-line placeholder:text-muted"
         />
 
-        <div className="mono flex flex-wrap items-center gap-x-2 gap-y-1 border-b px-3 py-1.5 border-line text-muted">
+        <div className="mono flex flex-wrap items-center gap-x-2 gap-y-1 border-b px-4 py-2 border-line text-muted">
           {result.kind ? (
             <>
               <span>only</span>
@@ -176,7 +177,7 @@ export function CommandPalette({
                     setQuery(`${canonicalPrefix(kind)}: `);
                     inputRef.current?.focus();
                   }}
-                  className="inline-flex items-center gap-1 hover:text-ink"
+                  className="inline-flex items-center gap-1 rounded-control px-0.5 t-micro transition-colors hover:text-ink"
                   title={`${KIND_PREFIXES[kind].join(" / ")} — ${KIND_LABEL[kind]}`}
                 >
                   <KindIcon kind={kind} />
@@ -188,7 +189,9 @@ export function CommandPalette({
         </div>
 
         {results.length === 0 ? (
-          <div className="mono px-3 py-3 text-muted">no match</div>
+          <div className="glow mono px-4 py-8 text-center text-muted">
+            no match
+          </div>
         ) : (
           <ul ref={listRef} className="min-h-0 flex-1 overflow-y-auto">
             {results.map((item, i) => {
@@ -199,7 +202,7 @@ export function CommandPalette({
                     type="button"
                     onMouseMove={() => setCursor(i)}
                     onClick={() => commit(item)}
-                    className="flex w-full items-center gap-2 px-3 py-1.5 text-left"
+                    className="flex w-full items-center gap-2 px-4 py-1.5 text-left t-micro transition-colors"
                     style={{
                       background: active ? "var(--surface-2)" : undefined,
                       borderLeft: `2px solid ${active ? "var(--accent)" : "transparent"}`,
@@ -216,6 +219,7 @@ export function CommandPalette({
                     </span>
                     <span
                       className="mono shrink-0"
+                      title={item.name}
                       style={
                         item.kind === "event"
                           ? { color: "var(--kind-event)" }
@@ -224,12 +228,12 @@ export function CommandPalette({
                     >
                       {item.name}
                     </span>
-                    <span className="mono truncate text-muted">
+                    <span className="mono truncate text-muted" title={item.detail}>
                       {item.detail}
                     </span>
                     <span className="mono ml-auto flex shrink-0 items-center gap-2 text-muted">
                       {item.badge ? (
-                        <span className="border px-1 border-line">
+                        <span className="rounded-[4px] border px-1 border-line">
                           {item.badge}
                         </span>
                       ) : null}
@@ -242,7 +246,7 @@ export function CommandPalette({
           </ul>
         )}
 
-        <div className="mono flex items-center gap-3 border-t px-3 py-1.5 border-line text-muted">
+        <div className="mono flex items-center gap-3 border-t px-4 py-2 border-line text-muted">
           <span>↑↓ move</span>
           <span>⏎ select</span>
           <span>esc close</span>

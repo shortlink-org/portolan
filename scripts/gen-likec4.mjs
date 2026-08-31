@@ -180,21 +180,33 @@ model.push("}");
 
 /**
  * LikeC4 dynamic views have `parallel` and `loop` but no `alt`. An alt branch is
- * therefore flattened into the sequence with its title carried on every step, so
- * the exclusivity is stated in words where it cannot be drawn as a frame.
+ * therefore flattened into the sequence with its condition carried on every
+ * step, so the exclusivity is stated in words where it cannot be drawn.
+ *
+ * That flattening is a real loss and this is where it is at its worst: a
+ * TERMINAL branch is followed, in the drawing, by the steps it never reaches.
+ * Every step of such a branch says so on its label and in its notes. The frame
+ * itself still cannot be drawn here — the rail on the flow page is what shows
+ * the structure, and the two are meant to be read together.
  */
-function emitSteps(nodes, out, indent, branchTitle) {
+function emitSteps(nodes, out, indent, branch) {
   for (const node of nodes) {
     if (node.type === "step") {
       const label = node.label ?? node.ref ?? node.kind;
-      const title = branchTitle ? `[${branchTitle}] ${label}` : label;
+      const title = branch ? `[${branch.title}] ${label}` : label;
       const attrs = [
         `color ${node.status}`,
         `line ${STATUS_LINE[node.status]}`,
         `head ${KIND_HEAD[node.kind]}`,
       ];
       const notes = [];
-      if (branchTitle) notes.push(`alt branch: ${branchTitle}`);
+      if (branch) {
+        notes.push(
+          branch.terminal
+            ? `alt branch: ${branch.title} — this branch ENDS the flow; the steps drawn after it do not follow from here`
+            : `alt branch: ${branch.title}`,
+        );
+      }
       if (node.note) notes.push(node.note);
       if (node.line) notes.push(node.line);
       out.push(
@@ -207,19 +219,19 @@ function emitSteps(nodes, out, indent, branchTitle) {
     }
     if (node.type === "parallel") {
       out.push(`${indent}parallel {`);
-      for (const branch of node.branches) emitSteps(branch, out, `${indent}  `, branchTitle);
+      for (const b of node.branches) emitSteps(b, out, `${indent}  `, branch);
       out.push(`${indent}}`);
       continue;
     }
     if (node.type === "loop") {
       out.push(`${indent}loop ${q(node.title)} {`);
-      emitSteps(node.steps, out, `${indent}  `, branchTitle);
+      emitSteps(node.steps, out, `${indent}  `, branch);
       out.push(`${indent}}`);
       continue;
     }
     if (node.type === "alt") {
-      for (const branch of node.branches) {
-        emitSteps(branch.steps, out, indent, branch.title);
+      for (const b of node.branches) {
+        emitSteps(b.steps, out, indent, b);
       }
     }
   }

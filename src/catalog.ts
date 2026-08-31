@@ -147,10 +147,26 @@ export interface Parallel {
   title?: string;
   branches: FlowNode[][];
 }
+/**
+ * A choice. Exactly one branch runs, so the branches are not a sequence and
+ * nothing that reads a flow may treat them as one.
+ *
+ * `terminal` marks a branch that ENDS the flow rather than rejoining it — the
+ * cancel arm of a risk check, say. Without it a reader has no way to tell that
+ * the steps drawn after the alt do not follow that branch, and the sequence
+ * reads as "the order was cancelled and then charged".
+ */
 export interface Alt {
   type: "alt";
   id: string;
-  branches: { title: string; steps: FlowNode[] }[];
+  branches: AltBranch[];
+}
+export interface AltBranch {
+  /** The condition under which this branch runs, in words. */
+  title: string;
+  steps: FlowNode[];
+  /** True when the flow stops here instead of continuing past the alt. */
+  terminal?: boolean;
 }
 export interface Loop {
   type: "loop";
@@ -215,6 +231,84 @@ export function walkSteps(nodes: FlowNode[]): Step[] {
   };
   visit(nodes);
   return out;
+}
+
+/**
+ * One frame enclosing a step: the alt, parallel or loop it sits inside.
+ *
+ * This is what the rail and the detail panel need in order to say *under what
+ * condition* a step runs. Without it a step is just a line in a sequence, and
+ * a reader cannot tell an alternative apart from a consequence.
+ */
+export interface StepFrame {
+  kind: "parallel" | "alt" | "loop";
+  /** Id of the Parallel / Alt / Loop node. */
+  id: string;
+  /** Loop or parallel title. An alt carries its condition on the branch. */
+  title?: string;
+  /** Alt: the branch condition. Parallel: the 1-based branch number. */
+  branch?: string;
+  /** Alt only: this branch ends the flow rather than rejoining it. */
+  terminal?: boolean;
+}
+
+/**
+ * The frames around every step, outermost first. Steps not inside any frame
+ * map to an empty list, so callers never have to special-case the flat case.
+ */
+export function stepFrames(nodes: FlowNode[]): Map<string, StepFrame[]> {
+  const out = new Map<string, StepFrame[]>();
+  const visit = (list: FlowNode[], stack: StepFrame[]): void => {
+    for (const node of list) {
+      switch (node.type) {
+        case "step":
+          out.set(node.id, stack);
+          break;
+        case "parallel":
+          node.branches.forEach((branch, i) =>
+            visit(branch, [
+              ...stack,
+              {
+                kind: "parallel",
+                id: node.id,
+                title: node.title,
+                branch: String(i + 1),
+              },
+            ]),
+          );
+          break;
+        case "alt":
+          for (const branch of node.branches) {
+            visit(branch.steps, [
+              ...stack,
+              {
+                kind: "alt",
+                id: node.id,
+                branch: branch.title,
+                terminal: branch.terminal,
+              },
+            ]);
+          }
+          break;
+        case "loop":
+          visit(node.steps, [
+            ...stack,
+            { kind: "loop", id: node.id, title: node.title },
+          ]);
+          break;
+      }
+    }
+  };
+  visit(nodes, []);
+  return out;
+}
+
+/**
+ * The conditions a step runs under, outermost first — the alt branches around
+ * it and nothing else. A step with none of these runs on every path.
+ */
+export function stepConditions(frames: readonly StepFrame[]): StepFrame[] {
+  return frames.filter((f) => f.kind === "alt");
 }
 
 export interface Coverage {
@@ -564,6 +658,8 @@ export function validateCatalog(catalog: Catalog): Catalog {
     if (lanes.size !== flow.participants.length) {
       fail(`flow "${flow.slug}" has duplicate participant ids`);
     }
+    validateFlowFrames(flow, flow.steps);
+
     const steps = walkSteps(flow.steps);
     const stepIds = new Set<string>();
     for (const step of steps) {
@@ -596,6 +692,61 @@ export function validateCatalog(catalog: Catalog): Catalog {
   validateAdrs(catalog, eventIds);
 
   return catalog;
+}
+
+/**
+ * Frames have to mean what they say. An alt with one branch is not a choice, an
+ * untitled branch states no condition, and steps written after an alt whose
+ * every branch is terminal can never run — each of those would be drawn as a
+ * perfectly ordinary sequence, which is exactly the reading we are trying to
+ * stop, so they fail the build instead.
+ */
+function validateFlowFrames(flow: Flow, nodes: FlowNode[]): void {
+  nodes.forEach((node, i) => {
+    switch (node.type) {
+      case "step":
+        break;
+      case "parallel":
+        for (const branch of node.branches) validateFlowFrames(flow, branch);
+        break;
+      case "loop":
+        if (!node.title) {
+          fail(
+            `flow "${flow.slug}" loop "${node.id}" has no title, so the diagram cannot say what it repeats until`,
+          );
+        }
+        validateFlowFrames(flow, node.steps);
+        break;
+      case "alt": {
+        if (node.branches.length < 2) {
+          fail(
+            `flow "${flow.slug}" alt "${node.id}" has ${node.branches.length} branch(es); an alt states a choice and needs at least two`,
+          );
+        }
+        const titles = new Set<string>();
+        for (const branch of node.branches) {
+          if (!branch.title) {
+            fail(
+              `flow "${flow.slug}" alt "${node.id}" has a branch with no title, so nothing says when it runs`,
+            );
+          }
+          if (titles.has(branch.title)) {
+            fail(
+              `flow "${flow.slug}" alt "${node.id}" has two branches titled "${branch.title}"`,
+            );
+          }
+          titles.add(branch.title);
+          validateFlowFrames(flow, branch.steps);
+        }
+        if (node.branches.every((b) => b.terminal) && i < nodes.length - 1) {
+          fail(
+            `flow "${flow.slug}" alt "${node.id}": every branch is terminal, so the ${nodes.length - 1 - i} node(s) after it can never run`,
+          );
+        }
+        break;
+      }
+    }
+  });
 }
 
 /**

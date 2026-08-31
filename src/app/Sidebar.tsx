@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, useLocation, useMatch } from "react-router";
-import { ChevronRight, Circle } from "lucide-react";
+import { ChevronRight, Circle, PanelLeftOpen } from "lucide-react";
 import { catalog } from "../data";
 import { coverageRatio, flowCoverage } from "../catalog";
 import type {
@@ -14,7 +14,7 @@ import type {
 import { adrNumber, newestAccepted, sortAdrs } from "../lib/adr";
 import { ctxStyle } from "../lib/context-color";
 import { KIND_CHIP, LEAF_KINDS } from "../lib/kinds";
-import type { LeafKind } from "../lib/kinds";
+import type { Kind, LeafKind } from "../lib/kinds";
 import { KindIcon } from "../components/kind";
 import { isStruck } from "../components/primitives";
 import { paths } from "../routes";
@@ -115,9 +115,9 @@ const indent = (depth: number) => 8 + depth * 12;
 function Chevron({ open }: { open: boolean }) {
   return (
     <ChevronRight
-      size={11}
+      size={14}
       aria-hidden
-      className="shrink-0 transition-transform"
+      className="block shrink-0 t-micro transition-transform"
       style={{
         transform: open ? "rotate(90deg)" : "none",
         color: "var(--fg-muted)",
@@ -175,9 +175,17 @@ function Leaf({
       style={({ isActive }) => ({
         paddingLeft: indent(depth),
         background: isActive || selected ? "var(--surface-2)" : undefined,
-        borderLeft: `2px solid ${isActive || selected ? "var(--accent)" : "transparent"}`,
+        borderLeftWidth: 2,
+        borderLeftStyle: "solid",
+        borderLeftColor:
+          isActive || selected ? "var(--accent)" : "transparent",
       })}
-      className="flex items-center gap-1.5 py-[3px] pr-2 hover:bg-surface"
+      /* The edge is always 2px, transparent when idle: lighting a row must not
+         shift the text beside it. `pulse-once` keys off `selected` so the
+         outline runs exactly once, on the row that just became the selection. */
+      className={`flex items-center gap-1.5 py-[3px] pr-2 t-micro transition-colors hover:bg-surface ${
+        selected ? "pulse-once" : ""
+      }`}
     >
       {children}
     </NavLink>
@@ -217,11 +225,15 @@ function Branch({
   return (
     <>
       <div
-        className="flex items-stretch hover:bg-surface"
+        className={`flex items-stretch t-micro transition-colors hover:bg-surface ${
+          selected ? "pulse-once" : ""
+        }`}
         style={{
           paddingLeft: indent(depth),
           background: active ? "var(--surface-2)" : undefined,
-          borderLeft: `2px solid ${active ? "var(--accent)" : "transparent"}`,
+          borderLeftWidth: 2,
+          borderLeftStyle: "solid",
+          borderLeftColor: active ? "var(--accent)" : "transparent",
         }}
       >
         <button
@@ -297,9 +309,59 @@ const KIND_GROUP_LABEL: Record<LeafKind, string> = {
   query: "queries",
 };
 
+/**
+ * What is left of the tree at 48px. Not a menu: every button here does the one
+ * thing the rail can honestly offer, which is to give the tree its width back
+ * and land the reader on the section they pointed at.
+ */
+function IconRail({ onExpand }: { onExpand: () => void }) {
+  const sections: { key: string; kind: Kind; label: string }[] = [
+    { key: "flows", kind: "flow", label: "Flows" },
+    { key: "domains", kind: "context", label: "Domains" },
+    { key: "adrs", kind: "adr", label: "Decisions" },
+  ];
+  return (
+    <nav
+      className="flex h-full flex-col items-center gap-1 border-r py-3 border-line bg-canvas"
+      aria-label="Catalog (collapsed)"
+    >
+      <button
+        type="button"
+        onClick={onExpand}
+        title="Expand the catalog"
+        aria-label="Expand the catalog"
+        aria-expanded={false}
+        className="flex size-8 items-center justify-center rounded-control text-muted t-micro transition-colors hover:bg-surface hover:text-ink"
+      >
+        <PanelLeftOpen size={16} aria-hidden />
+      </button>
+      <span aria-hidden className="my-1 h-px w-6 bg-line" />
+      {sections.map(({ key, kind, label }) => (
+        <button
+          key={key}
+          type="button"
+          onClick={onExpand}
+          title={`${label} — expand the catalog`}
+          aria-label={`${label} — expand the catalog`}
+          className="flex size-8 items-center justify-center rounded-control t-micro transition-colors hover:bg-surface"
+        >
+          <KindIcon kind={kind} size={16} />
+        </button>
+      ))}
+    </nav>
+  );
+}
+
 // ---------------------------------------------------------------------------
 
-export function Sidebar() {
+export function Sidebar({
+  railed = false,
+  onExpand,
+}: {
+  /** True once the shell panel has been collapsed to the 48px rail. */
+  railed?: boolean;
+  onExpand?: () => void;
+}) {
   const { query, setQuery, inputRef } = useSearch();
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [hidden, setHidden] = useState<Set<LeafKind>>(new Set());
@@ -409,12 +471,14 @@ export function Sidebar() {
     row.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }, [selection, collapsed, hidden]);
 
+  if (railed) return <IconRail onExpand={() => onExpand?.()} />;
+
   return (
     <nav
       className="flex h-full flex-col border-r border-line bg-canvas"
       aria-label="Catalog"
     >
-      <div className="border-b p-2 border-line">
+      <div className="border-b p-3 border-line">
         <input
           ref={inputRef}
           value={query}
@@ -427,14 +491,12 @@ export function Sidebar() {
           }}
           placeholder="filter"
           spellCheck={false}
-          className="mono w-full border bg-transparent px-2 py-1 outline-none placeholder:text-muted border-line"
+          className="mono w-full rounded-control border bg-transparent px-2 py-1.5 outline-none placeholder:text-muted border-line t-micro transition-colors hover:border-line-strong"
           aria-label="Filter catalog"
         />
-        <div
-          className="mt-2 flex flex-wrap gap-1"
-          role="group"
-          aria-label="Show kinds"
-        >
+        {/* Five switches over one tree: one border round the set, hairlines
+            between. Bordering each of them made the box read as five objects. */}
+        <div className="seg mt-3 w-full" role="group" aria-label="Show kinds">
           {LEAF_KINDS.map((kind) => {
             const on = shows(kind);
             return (
@@ -444,15 +506,15 @@ export function Sidebar() {
                 onClick={() => toggleKind(kind)}
                 aria-pressed={on}
                 title={`${on ? "Hide" : "Show"} ${KIND_GROUP_LABEL[kind]} across the tree`}
-                className="mono inline-flex items-center gap-1 border px-1.5 py-px leading-4"
-                style={{
-                  borderColor: on ? "var(--border-strong)" : "var(--border)",
-                  color: on ? "var(--fg)" : "var(--fg-muted)",
-                  opacity: on ? 1 : 0.55,
-                  background: on ? "var(--surface)" : "transparent",
-                }}
+                /* Label only, sized to its own word, but able to shrink: the
+                   sidebar is resizable now, so at 12% the five labels have to
+                   ellipsize rather than be clipped mid-word. Icon plus label
+                   never fits, and an equal-width split starves `entities`
+                   while leaving `VO` swimming. */
+                className={`min-w-0 flex-auto truncate text-center !px-1.5 ${
+                  on ? "is-on" : ""
+                }`}
               >
-                <KindIcon kind={kind} size={10} />
                 {KIND_CHIP[kind]}
               </button>
             );
@@ -461,7 +523,7 @@ export function Sidebar() {
       </div>
 
       <div ref={scrollerRef} className="flex-1 overflow-y-auto pb-8">
-        <div className="label px-2 pt-3 pb-1">Flows</div>
+        <div className="label sticky-bar sticky top-0 z-10 px-3 pt-4 pb-1.5">Flows</div>
         {flows.length === 0 ? (
           <div className="px-3 py-1 text-muted">no match</div>
         ) : null}
@@ -498,7 +560,7 @@ export function Sidebar() {
           );
         })}
 
-        <div className="label px-2 pt-4 pb-1">Domains</div>
+        <div className="label sticky-bar sticky top-0 z-10 px-3 pt-5 pb-1.5">Domains</div>
         {contexts.length === 0 ? (
           <div className="px-3 py-1 text-muted">no match</div>
         ) : null}
@@ -559,7 +621,7 @@ export function Sidebar() {
           );
         })}
 
-        <div className="label px-2 pt-4 pb-1">Decisions</div>
+        <div className="label sticky-bar sticky top-0 z-10 px-3 pt-5 pb-1.5">Decisions</div>
         {adrs.length === 0 ? (
           <div className="px-3 py-1 text-muted">no match</div>
         ) : null}

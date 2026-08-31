@@ -1,5 +1,18 @@
-import { useEffect, useState } from "react";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router";
+import { useCallback, useEffect, useState } from "react";
+import {
+  BrowserRouter,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+} from "react-router";
+import {
+  Panel,
+  ResizeHandle,
+  SavedGroup,
+  useCanvasResize,
+  usePanelRef,
+} from "./panels";
 import { FlowDetail } from "../pages/FlowDetail";
 import { FlowIndex } from "../pages/FlowIndex";
 import { AdrIndex } from "../pages/AdrIndex";
@@ -22,6 +35,34 @@ import { ThemeProvider } from "./theme";
 
 function Shell() {
   const [palette, setPalette] = useState(false);
+  const [railed, setRailed] = useState(false);
+  const { pathname } = useLocation();
+  const settle = useCanvasResize();
+  const sidebarRef = usePanelRef();
+
+  // Collapsed is a fact about pixels, not about who dragged: the rail appears
+  // whether the reader dragged past the minimum or pressed a rail button.
+  const onSidebarResize = useCallback(
+    (size: { inPixels: number }) => {
+      (window as any).__sidebarResizes = ((window as any).__sidebarResizes ?? 0) + 1;
+      setRailed(size.inPixels <= 56);
+    },
+    [],
+  );
+
+  // The rail's buttons ask the panel to expand; `railed` then follows from the
+  // resize that answers, so the flag can never disagree with the layout.
+  //
+  // `expand()` restores the width the panel had before it collapsed, which
+  // after a drag all the way to the edge is the minimum - a tree too narrow to
+  // read the names in. Anything at or under the minimum is treated as "no
+  // remembered width" and goes back to the default instead.
+  const expandSidebar = useCallback(() => {
+    const panel = sidebarRef.current;
+    if (!panel) return;
+    panel.expand();
+    if (panel.getSize().asPercentage <= 13) panel.resize("18");
+  }, [sidebarRef]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -38,11 +79,34 @@ function Shell() {
     <div className="flex h-full flex-col bg-canvas text-ink">
       <SelectionSync />
       <TopBar onOpenPalette={() => setPalette(true)} />
-      <div className="flex min-h-0 flex-1">
-        <div className="w-[248px] shrink-0">
-          <Sidebar />
-        </div>
-        <main className="min-w-0 flex-1 overflow-hidden">
+      <SavedGroup
+        id="portolan:shell"
+        orientation="horizontal"
+        className="min-h-0 flex-1"
+      >
+        <Panel
+          id="sidebar"
+          defaultSize="18"
+          minSize="12"
+          maxSize="28"
+          collapsible
+          collapsedSize="48px"
+          className="h-full text-sm"
+          panelRef={sidebarRef}
+          onResize={onSidebarResize}
+        >
+          <Sidebar railed={railed} onExpand={expandSidebar} />
+        </Panel>
+
+        <ResizeHandle id="shell" />
+
+        {/* The main pane owns a canvas on most routes, so a drag here has to
+            reach the diagram - debounced, once the reader lets go. */}
+        <Panel id="main" className="h-full min-w-0" onResize={settle}>
+          {/* `key` on the route content is what makes the page transition fire:
+              a new pathname is a new element, so the mount animation runs again.
+              There is no exit - the outgoing page is simply gone. */}
+          <main key={pathname} className="page-in h-full overflow-hidden">
           {/* The detail rail rides along with every page that draws a diagram,
               so a selection made anywhere has somewhere to be read. */}
           <Routes>
@@ -51,7 +115,7 @@ function Shell() {
             <Route
               path="/flows/:flow"
               element={
-                <WithDetail>
+                <WithDetail id="flow">
                   <FlowDetail />
                 </WithDetail>
               }
@@ -61,7 +125,7 @@ function Shell() {
             <Route
               path="/c/:context"
               element={
-                <WithDetail>
+                <WithDetail id="context">
                   <ContextPage />
                 </WithDetail>
               }
@@ -69,7 +133,7 @@ function Shell() {
             <Route
               path="/c/:context/:service"
               element={
-                <WithDetail>
+                <WithDetail id="service">
                   <ServicePage />
                 </WithDetail>
               }
@@ -91,7 +155,7 @@ function Shell() {
             <Route
               path="/c/:context/:service/:aggregate/:event"
               element={
-                <WithDetail>
+                <WithDetail id="event">
                   <EventPage />
                 </WithDetail>
               }
@@ -99,16 +163,17 @@ function Shell() {
             <Route
               path="/graph"
               element={
-                <WithDetail>
+                <WithDetail id="graph">
                   <GraphPage />
                 </WithDetail>
               }
             />
             <Route path="/index.html" element={<Navigate to="/" replace />} />
             <Route path="*" element={<NotFoundPage />} />
-          </Routes>
-        </main>
-      </div>
+            </Routes>
+          </main>
+        </Panel>
+      </SavedGroup>
       <CommandPalette open={palette} onClose={() => setPalette(false)} />
     </div>
   );

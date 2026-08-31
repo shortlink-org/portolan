@@ -42,12 +42,12 @@ function usagePath(usage: DefUsage): string | null {
 
 function ShapeTable({ fields }: { fields: Field[] }) {
   return (
-    <table className="w-full max-w-[900px]">
-      <thead>
+    <table className="w-full max-w-prose">
+      <thead className="sticky-bar sticky top-0 z-10">
         <tr className="label">
-          <th className="pb-1 text-left font-normal">name</th>
-          <th className="pb-1 text-left font-normal">type</th>
-          <th className="pb-1 text-left font-normal">doc</th>
+          <th className="pb-2 text-left font-normal">name</th>
+          <th className="pb-2 text-left font-normal">type</th>
+          <th className="pb-2 text-left font-normal">doc</th>
         </tr>
       </thead>
       <tbody>
@@ -129,7 +129,7 @@ export function BlockPage({ kind }: { kind: BlockKind }) {
           </span>
         }
       >
-        <p className="mt-1.5 max-w-[900px] text-muted">{block.doc}</p>
+        <p className="mt-2 max-w-prose text-muted">{block.doc}</p>
         <div className="mono mt-1.5 text-muted">
           {block.ref ? (
             <>
@@ -142,7 +142,7 @@ export function BlockPage({ kind }: { kind: BlockKind }) {
         </div>
       </PageHeader>
 
-      <div className="p-4">
+      <div className="p-gutter">
         <SectionTitle
           right={<span className="mono text-muted">{fields.length} fields</span>}
         >
@@ -154,7 +154,7 @@ export function BlockPage({ kind }: { kind: BlockKind }) {
           <ShapeTable fields={fields} />
         )}
 
-        <div className="mt-8 max-w-[900px]">
+        <div className="mt-section max-w-prose">
           <SectionTitle
             right={
               block.ref ? (
@@ -203,7 +203,7 @@ export function BlockPage({ kind }: { kind: BlockKind }) {
                         <span>same type</span>
                       )}
                       {usage.versions && usage.versions.length > 0 ? (
-                        <span className="border px-1 border-line">
+                        <span className="rounded-[4px] border px-1 border-line">
                           {usage.versions.join(" ")}
                         </span>
                       ) : null}
@@ -214,14 +214,14 @@ export function BlockPage({ kind }: { kind: BlockKind }) {
                   <Link
                     key={`${usage.kind}:${usage.id}`}
                     to={to}
-                    className="row gap-2 px-2 py-1.5"
+                    className="row gap-2 px-3 py-2"
                   >
                     {body}
                   </Link>
                 ) : (
                   <div
                     key={`${usage.kind}:${usage.id}`}
-                    className="flex items-center gap-2 border px-2 py-1.5 border-line"
+                    className="flex items-center gap-2 rounded-control border px-3 py-2 border-line"
                     title="shared type — no page of its own"
                   >
                     {body}
@@ -232,7 +232,7 @@ export function BlockPage({ kind }: { kind: BlockKind }) {
           )}
         </div>
 
-        <div className="mt-8 max-w-[900px]">
+        <div className="mt-section max-w-prose">
           <SectionTitle>Siblings</SectionTitle>
           <div className="flex flex-wrap gap-1.5">
             {list

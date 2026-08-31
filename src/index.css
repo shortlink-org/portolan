@@ -4,7 +4,11 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ---------------------------------------------------------------------------
-   Tokens. Defined once, here. Nothing else in the app hard-codes a colour.
+   Tokens. Defined once, here. Nothing else in the app hard-codes a colour,
+   a radius, a duration or a step of the spacing rhythm.
+
+   The rhythm is 4px. Every literal below is a multiple of it: page gutter 24,
+   card padding 20, section gap 32, grid gap 20, card gap 16.
    --------------------------------------------------------------------------- */
 :root {
   --bg: #ffffff;
@@ -15,6 +19,10 @@
   --fg: #14181c;
   --fg-muted: #61707d;
   --accent: #1f6feb;
+  /* The two stops of the one sanctioned accent gradient. Derived from --accent
+     rather than named, so a theme swap carries the gradient with it. */
+  --accent-lo: #1a5ec9;
+  --accent-hi: #3d86f5;
 
   --status-verified: #157f4a;
   --status-declared: #8a6d1f;
@@ -31,11 +39,38 @@
   --ctx-4: #4a5b8c;
   --ctx-5: #8c4a6b;
 
+  /* Scrollbar thumbs are their own pair: they must read on --surface, not on
+     --bg, or the thin ones vanish inside a raised pane. */
+  --scroll-thumb: #cbd2d8;
+  --scroll-thumb-hover: #aeb7bf;
+
+  /* One shadow scale. xs sits under cards at rest, md under overlays only. */
+  --shadow-xs: 0 1px 2px rgb(16 24 32 / 0.06), 0 0 0 1px rgb(16 24 32 / 0.03);
+  --shadow-md:
+    0 8px 24px -6px rgb(16 24 32 / 0.18), 0 2px 6px -2px rgb(16 24 32 / 0.08);
+
   --font-sans:
     ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
     sans-serif;
   --font-mono:
     ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+
+  /* Space. Named so a page cannot invent a seventh value for a gutter. */
+  --gutter: 24px;
+  --pad-card: 20px;
+  --gap-section: 32px;
+  --gap-grid: 20px;
+  --gap-card: 16px;
+  --w-prose: 900px;
+  --w-table: 1200px;
+
+  /* Motion. Three durations, two easings, nothing else. */
+  --dur-micro: 150ms;
+  --dur-panel: 250ms;
+  --dur-page: 250ms;
+  --dur-narrative: 400ms;
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .dark {
@@ -47,6 +82,8 @@
   --fg: #e3e8ee;
   --fg-muted: #8b97a4;
   --accent: #5b9dff;
+  --accent-lo: #3d7fe0;
+  --accent-hi: #7ab2ff;
 
   --status-verified: #3fbf7f;
   --status-declared: #d6a844;
@@ -60,6 +97,15 @@
   --ctx-3: #e0925f;
   --ctx-4: #8e9fd8;
   --ctx-5: #d98bab;
+
+  --scroll-thumb: #333b45;
+  --scroll-thumb-hover: #47515e;
+
+  /* Dark surfaces get no lift from a soft grey shadow, so the ambient pass is
+     near-black and the hairline that reads as elevation is carried by the ring. */
+  --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.4), 0 0 0 1px rgb(255 255 255 / 0.04);
+  --shadow-md:
+    0 12px 32px -8px rgb(0 0 0 / 0.7), 0 2px 8px -2px rgb(0 0 0 / 0.5);
 }
 
 @theme inline {
@@ -82,14 +128,55 @@
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
 
-  --radius-hair: 2px;
+  /* 12 / 13 / 14 / 16 / 20 / 28. Prose leads at 1.5, headings at 1.2. */
+  --text-xs: 12px;
+  --text-xs--line-height: 1.5;
+  --text-sm: 13px;
+  --text-sm--line-height: 1.5;
+  --text-base: 14px;
+  --text-base--line-height: 1.5;
+  --text-md: 16px;
+  --text-md--line-height: 1.5;
+  --text-lg: 20px;
+  --text-lg--line-height: 1.2;
+  --text-lg--letter-spacing: -0.01em;
+  --text-xl: 28px;
+  --text-xl--line-height: 1.2;
+  --text-xl--letter-spacing: -0.01em;
+
+  /* 6 controls, 10 cards, 14 modals and the palette. */
+  --radius-control: 6px;
+  --radius-card: 10px;
+  --radius-modal: 14px;
+
+  --shadow-xs: var(--shadow-xs);
+  --shadow-md: var(--shadow-md);
+
+  --spacing-gutter: var(--gutter);
+  --spacing-card: var(--pad-card);
+  --spacing-section: var(--gap-section);
+  --spacing-grid: var(--gap-grid);
+
+  --container-prose: var(--w-prose);
+  --container-table: var(--w-table);
 }
 
-/* Identifiers are always monospace; prose never is. */
+/* ---------------------------------------------------------------------------
+   Utilities
+   --------------------------------------------------------------------------- */
+
+/* Identifiers are always monospace; prose never is. Counts, versions and
+   coverage all pass through here, so they are tabular by construction. */
 @utility mono {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--text-xs);
   letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* For the digits that are *not* monospace - card stats, tab counts. */
+@utility tnum {
+  font-variant-numeric: tabular-nums;
 }
 
 /* Paints from a --ctx custom property set on the element, so one class covers
@@ -99,17 +186,61 @@
   border-color: var(--ctx);
 }
 
+/* Sanctioned gradient 1 - the page hero strip. A 120px wash of the entity's
+   own context colour behind the header; the content below it stays on solid
+   background, so nothing is ever read off a gradient. */
+@utility hero {
+  position: relative;
+  isolation: isolate;
+}
+@utility hero-wash {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 120px;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--ctx, var(--accent)) 6%, transparent),
+    transparent
+  );
+}
+
+/* Sanctioned gradient 3 - a soft accent glow behind an empty-state
+   illustration or the palette input. 4%, centred, never on a border. */
+@utility glow {
+  background-image: radial-gradient(
+    60% 120% at 50% 0%,
+    color-mix(in srgb, var(--accent) 4%, transparent),
+    transparent 70%
+  );
+}
+
+/* Custom scrollbars on inner panes only: the shell itself never scrolls. */
+@utility pane {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scroll-thumb) transparent;
+}
+
+/* Names that can overflow truncate, and carry the full string in `title`. */
+@utility trunc {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
 @layer components {
   /* The bordered monospace token used for status, contexts and provenance. */
   .chip {
-    @apply mono inline-flex items-center gap-1 border px-1.5 py-px leading-4;
+    @apply mono inline-flex items-center gap-1 rounded-control border px-1.5 py-px leading-4;
   }
   .chip-lg {
-    @apply mono inline-flex items-center gap-1.5 border px-1.5 py-0.5 leading-4;
+    @apply mono inline-flex items-center gap-1.5 rounded-control border px-2 py-0.5 leading-4;
   }
   /* Square marker that inherits the chip's colour. */
   .dot {
-    @apply inline-block size-1.5 shrink-0 bg-current;
+    @apply inline-block size-1.5 shrink-0 rounded-[1px] bg-current;
   }
 
   .status-verified {
@@ -130,20 +261,79 @@
     @apply mono uppercase text-muted;
   }
 
-  /* A bordered, hoverable block that is also a link. */
+  /* A bordered, hoverable block that is also a link. Padding is the card
+     token; the shadow is the only elevation a card ever gets. */
   .card {
-    @apply block border border-line p-3 hover:bg-surface;
+    @apply block rounded-card border border-line p-card shadow-xs;
+    transition:
+      background-color var(--dur-micro) var(--ease-out),
+      border-color var(--dur-micro) var(--ease-out);
+  }
+  .card:hover {
+    @apply bg-surface;
   }
   .row {
-    @apply flex items-center gap-3 border border-line px-3 py-2 hover:bg-surface;
+    @apply flex items-center gap-3 rounded-control border border-line px-3 py-2;
+    transition: background-color var(--dur-micro) var(--ease-out);
+  }
+  .row:hover {
+    @apply bg-surface;
   }
 
-  /* Toolbar and filter buttons. */
+  /* Toolbar and filter buttons. Border colour is the only thing that changes
+     on hover or press, so nothing reflows underneath. */
   .tbtn {
-    @apply mono flex items-center gap-1.5 border border-line px-2 py-1 text-muted hover:bg-surface;
+    @apply mono flex items-center gap-1.5 rounded-control border border-line px-2 py-1 text-muted;
+    transition:
+      background-color var(--dur-micro) var(--ease-out),
+      border-color var(--dur-micro) var(--ease-out),
+      color var(--dur-micro) var(--ease-out);
+  }
+  .tbtn:hover {
+    @apply bg-surface;
   }
   .tbtn-on {
     border-color: var(--accent);
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+  }
+
+  /* Sanctioned gradient 2 - the accent surface. Reserved for a primary button;
+     white on --accent-lo clears 4.5:1 in both themes. */
+  .btn-accent {
+    @apply mono flex items-center gap-1.5 rounded-control px-3 py-1.5;
+    color: #fff;
+    background-image: linear-gradient(
+      to bottom,
+      var(--accent-hi),
+      var(--accent-lo)
+    );
+    transition: filter var(--dur-micro) var(--ease-out);
+  }
+  .btn-accent:hover {
+    filter: brightness(1.06);
+  }
+
+  /* A group of related controls reads as one object: a single border around
+     the set, hairlines only between its members. */
+  .seg {
+    @apply flex items-center overflow-hidden rounded-control border border-line;
+  }
+  .seg > * + * {
+    border-left: 1px solid var(--border);
+  }
+  .seg > button,
+  .seg > a {
+    @apply mono px-2 py-1 text-muted;
+    transition:
+      background-color var(--dur-micro) var(--ease-out),
+      color var(--dur-micro) var(--ease-out);
+  }
+  .seg > button:hover,
+  .seg > a:hover {
+    @apply bg-surface;
+  }
+  .seg > .is-on {
     color: var(--accent);
     background: color-mix(in srgb, var(--accent) 10%, transparent);
   }
@@ -153,17 +343,137 @@
     @apply mono flex w-full items-center gap-1.5 py-[3px] pr-2 text-left text-muted hover:bg-surface;
   }
 
+  /* Anything that pins itself over scrolling content is translucent, not
+     opaque: the reader can see that there is more underneath. */
+  .sticky-bar {
+    background: color-mix(in srgb, var(--bg) 80%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
   /* The matching-steps pill rides above the rail and must survive the rail
      scrolling itself to a match, or it scrolls out of sight the moment it
      becomes useful. */
   .pill-rail {
-    @apply mono sticky top-0 z-10 flex items-center gap-1.5 border-b px-2 py-1.5 border-line bg-canvas;
+    @apply mono sticky top-0 z-10 flex items-center gap-1.5 border-b px-2 py-1.5 border-line;
+    background: color-mix(in srgb, var(--bg) 80%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
   }
 
   .empty {
-    @apply mono border border-dashed border-line-strong px-3 py-2 text-muted;
+    @apply mono glow rounded-card border border-dashed border-line-strong px-3 py-4 text-center text-muted;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Motion. One system: 150 micro, 250 panel and page, 400 narrative.
+   --------------------------------------------------------------------------- */
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}
+@keyframes palette-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes row-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+@keyframes bar-fill {
+  from {
+    transform: scaleX(0);
+  }
+}
+/* Once. 0 -> 2px -> settle; it never loops. */
+@keyframes pulse-once {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent);
+  }
+  45% {
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent);
+  }
+}
+
+/* Route content rises on mount. No exit: the outgoing route is simply gone. */
+@utility page-in {
+  animation: page-in var(--dur-page) var(--ease-out) both;
+}
+@utility panel-in {
+  animation: panel-in var(--dur-panel) var(--ease-out) both;
+}
+@utility palette-in {
+  animation: palette-in var(--dur-panel) var(--ease-out) both;
+}
+@utility overlay-in {
+  animation: fade-in var(--dur-panel) var(--ease-out) both;
+}
+/* 20ms per row, capped at ten rows by the --i the row sets. */
+@utility stagger-in {
+  animation: row-in var(--dur-panel) var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 20ms);
+}
+@utility bar-fill {
+  transform-origin: left center;
+  animation: bar-fill var(--dur-narrative) var(--ease-in-out) both;
+}
+@utility pulse-once {
+  animation: pulse-once var(--dur-narrative) var(--ease-in-out) 1;
+}
+
+/* Everything that moves, moves for 150ms unless it says otherwise. */
+@utility t-micro {
+  transition-duration: var(--dur-micro);
+  transition-timing-function: var(--ease-out);
+}
+/* Flow playback dims and undims the steps it is not on. */
+@utility t-narrative {
+  transition:
+    opacity var(--dur-narrative) var(--ease-in-out),
+    background-color var(--dur-narrative) var(--ease-in-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Opacity may still cross-fade; nothing is allowed to travel, scale, or
+     repeat. Anything mid-flight lands on its final frame immediately. */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-property: opacity, background-color, border-color, color, fill,
+      stroke !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Base
+   --------------------------------------------------------------------------- */
 
 html,
 body,
@@ -175,58 +485,89 @@ body {
   background: var(--bg);
   color: var(--fg);
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: var(--text-base);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
 
+h1,
+h2,
+h3 {
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
 ::selection {
-  background: color-mix(in srgb, var(--accent) 30%, transparent);
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
-*:focus-visible {
-  outline: 1px solid var(--accent);
-  outline-offset: 1px;
+/* Keyboard focus is a ring, not an outline hugging the glyphs, and it is
+   drawn on top of neighbouring rows rather than clipped by them. */
+:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  outline-offset: 2px;
+  border-radius: var(--radius-control);
+  position: relative;
+  z-index: 1;
 }
 
-/* Thin, unobtrusive scrollbars: the canvas scrolls constantly. */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--border-strong) transparent;
+/* Inner panes only - `html` and `body` never scroll in this shell. */
+.pane::-webkit-scrollbar,
+[class*="overflow-y-auto"]::-webkit-scrollbar,
+[class*="overflow-x-auto"]::-webkit-scrollbar,
+[class*="overflow-auto"]::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
-*::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+.pane::-webkit-scrollbar-thumb,
+[class*="overflow-y-auto"]::-webkit-scrollbar-thumb,
+[class*="overflow-x-auto"]::-webkit-scrollbar-thumb,
+[class*="overflow-auto"]::-webkit-scrollbar-thumb {
+  background: var(--scroll-thumb);
+  border-radius: 999px;
 }
-*::-webkit-scrollbar-thumb {
-  background: var(--border-strong);
-  border-radius: 0;
+.pane::-webkit-scrollbar-thumb:hover,
+[class*="overflow-y-auto"]::-webkit-scrollbar-thumb:hover,
+[class*="overflow-x-auto"]::-webkit-scrollbar-thumb:hover,
+[class*="overflow-auto"]::-webkit-scrollbar-thumb:hover {
+  background: var(--scroll-thumb-hover);
 }
-*::-webkit-scrollbar-track {
+.pane::-webkit-scrollbar-track,
+[class*="overflow-y-auto"]::-webkit-scrollbar-track,
+[class*="overflow-x-auto"]::-webkit-scrollbar-track,
+[class*="overflow-auto"]::-webkit-scrollbar-track {
   background: transparent;
+}
+[class*="overflow-y-auto"],
+[class*="overflow-x-auto"],
+[class*="overflow-auto"] {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scroll-thumb) transparent;
 }
 
 /* ---------------------------------------------------------------------------
-   Markdown prose. Capped near 900px; tables and canvases are not.
+   Markdown prose. Capped at the prose width; tables and canvases are not.
    --------------------------------------------------------------------------- */
 .prose {
-  max-width: 900px;
+  max-width: var(--w-prose);
   color: var(--fg);
+  font-size: var(--text-base);
+  line-height: 1.5;
 }
 .prose h1 {
-  font-size: 18px;
+  font-size: var(--text-lg);
   font-weight: 600;
   margin: 20px 0 8px;
 }
 .prose h2 {
-  font-size: 15px;
+  font-size: var(--text-md);
   font-weight: 600;
-  margin: 20px 0 6px;
+  margin: 24px 0 8px;
   padding-bottom: 4px;
   border-bottom: 1px solid var(--border);
 }
 .prose h3 {
-  font-size: 13px;
+  font-size: var(--text-base);
   font-weight: 600;
   margin: 16px 0 4px;
 }
@@ -244,7 +585,7 @@ body {
   list-style: decimal;
 }
 .prose li {
-  margin: 2px 0;
+  margin: 4px 0;
 }
 .prose a {
   color: var(--accent);
@@ -253,19 +594,21 @@ body {
 }
 .prose code {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--text-xs);
   background: var(--surface-2);
   border: 1px solid var(--border);
-  padding: 0 3px;
+  border-radius: 4px;
+  padding: 0 4px;
 }
 .prose pre {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--text-xs);
   background: var(--surface);
   border: 1px solid var(--border);
-  padding: 10px 12px;
+  border-radius: var(--radius-control);
+  padding: 12px;
   overflow-x: auto;
-  margin: 10px 0;
+  margin: 12px 0;
 }
 .prose pre code {
   background: none;
@@ -273,16 +616,23 @@ body {
   padding: 0;
 }
 .prose table {
-  border-collapse: collapse;
-  margin: 10px 0;
-  font-size: 12px;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 12px 0;
+  font-size: var(--text-xs);
   width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  overflow: hidden;
 }
 .prose th,
 .prose td {
-  border: 1px solid var(--border);
-  padding: 4px 8px;
+  border-bottom: 1px solid var(--border);
+  padding: 6px 8px;
   text-align: left;
+}
+.prose tr:last-child td {
+  border-bottom: 0;
 }
 .prose th {
   background: var(--surface);
@@ -290,7 +640,7 @@ body {
 }
 .prose blockquote {
   border-left: 2px solid var(--border-strong);
-  padding-left: 10px;
+  padding-left: 12px;
   color: var(--fg-muted);
-  margin: 10px 0;
+  margin: 12px 0;
 }

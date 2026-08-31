@@ -9,6 +9,7 @@ import {
   walkSteps,
 } from "../catalog";
 import { contextName, contextVar } from "../lib/context-color";
+import { staggerStyle } from "../lib/motion";
 import {
   ContextPill,
   CoverageBar,
@@ -66,15 +67,18 @@ export function FlowIndex() {
     });
 
   return (
-    <div className="p-4">
+    <div className="h-full overflow-y-auto p-gutter">
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-[15px] font-semibold">Flows</h1>
+        <h1 className="text-lg font-semibold">Flows</h1>
         <span className="mono text-muted">
           {rows.length} of {catalog.flows.length}
         </span>
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          <div className="flex flex-wrap gap-1">
+          {/* One filter over one list, so one border round it. A pressed
+              member keeps its own context colour - that is the thing being
+              filtered, and it must not collapse into a single accent. */}
+          <div className="seg" role="group" aria-label="Filter by context">
             {catalog.contexts.map((c) => {
               const on = active.has(c.id);
               return (
@@ -83,9 +87,8 @@ export function FlowIndex() {
                   type="button"
                   onClick={() => toggleContext(c.id)}
                   aria-pressed={on}
-                  className="mono flex items-center gap-1 border px-1.5 py-0.5"
+                  className="flex items-center gap-1.5"
                   style={{
-                    borderColor: on ? contextVar(c.id) : "var(--border)",
                     color: on ? contextVar(c.id) : "var(--fg-muted)",
                     background: on
                       ? `color-mix(in srgb, ${contextVar(c.id)} 12%, transparent)`
@@ -94,7 +97,7 @@ export function FlowIndex() {
                 >
                   <span
                     aria-hidden
-                    className="size-1.5"
+                    className="size-1.5 rounded-[1px]"
                     style={{ background: contextVar(c.id) }}
                   />
                   {c.id}
@@ -103,15 +106,17 @@ export function FlowIndex() {
             })}
           </div>
 
-          <div className="flex items-center gap-1 border px-1.5 py-0.5 border-line">
-            <ArrowUpDown size={11} aria-hidden className="text-muted" />
+          <div className="seg" role="group" aria-label="Sort flows">
+            <span className="flex items-center px-2 py-1">
+              <ArrowUpDown size={14} aria-hidden className="text-muted" />
+            </span>
             {SORTS.map((s) => (
               <button
                 key={s.key}
                 type="button"
                 onClick={() => setSort(s.key)}
                 aria-pressed={sort === s.key}
-                className={`mono px-1 ${sort === s.key ? "text-ink" : "text-muted"}`}
+                className={sort === s.key ? "is-on" : ""}
               >
                 {s.label}
               </button>
@@ -120,23 +125,32 @@ export function FlowIndex() {
         </div>
       </div>
 
-      <div className="mt-3 grid gap-2 grid-cols-[repeat(auto-fill,minmax(380px,1fr))]">
-        {rows.map(({ flow, coverage, contexts, steps }) => {
+      <div className="mt-section grid gap-grid grid-cols-[repeat(auto-fill,minmax(380px,1fr))]">
+        {rows.map(({ flow, coverage, contexts, steps }, i) => {
           const broken = coverage.unresolved > 0;
           return (
             <Link
               key={flow.slug}
               to={`/flows/${flow.slug}`}
-              className="card"
+              className="card stagger-in"
+              /* The left edge is 3px on every card, coloured only when the flow
+                 is broken: a card that grew its border when it went unresolved
+                 shifted every word inside it. */
               style={{
+                ...staggerStyle(i),
                 borderColor: broken
                   ? "var(--status-unresolved)"
                   : "var(--border)",
-                borderLeftWidth: broken ? 3 : 1,
+                borderLeftWidth: 3,
+                borderLeftColor: broken
+                  ? "var(--status-unresolved)"
+                  : "var(--border)",
               }}
             >
               <div className="flex items-baseline gap-2">
-                <span className="font-semibold">{flow.name}</span>
+                <span className="font-semibold" title={flow.name}>
+                  {flow.name}
+                </span>
                 <span className="mono text-muted">{flow.slug}</span>
                 {broken ? (
                   <span className="mono ml-auto flex items-center gap-1 text-unresolved">
@@ -146,20 +160,20 @@ export function FlowIndex() {
                 ) : null}
               </div>
 
-              <p className="mt-1 line-clamp-2 text-muted">{flow.summary}</p>
+              <p className="mt-2 line-clamp-2 text-muted">{flow.summary}</p>
 
-              <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+              <div className="mt-4 flex flex-wrap items-center gap-1.5">
                 {contexts.map((c) => (
                   <ContextPill key={c} id={c} name={contextName(c)} />
                 ))}
                 <span className="mono ml-auto text-muted">{steps} steps</span>
               </div>
 
-              <div className="mt-2">
+              <div className="mt-4">
                 <CoverageBar coverage={coverage} />
               </div>
 
-              <div className="mt-2">
+              <div className="mt-4">
                 <ProvenanceBadge
                   provenance={flow.provenance}
                   source={flow.source}

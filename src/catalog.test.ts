@@ -8,10 +8,12 @@ import {
   buildIndex,
   flowCoverage,
   rootEntity,
+  stepConditions,
+  stepFrames,
   validateCatalog,
   walkSteps,
 } from "./catalog";
-import type { Adr, Catalog, Flow } from "./catalog";
+import type { Adr, Alt, Catalog, Flow } from "./catalog";
 
 const catalog = raw as unknown as Catalog;
 
@@ -71,6 +73,101 @@ describe("validateCatalog", () => {
     expect(() => validateCatalog(bad)).toThrowError(
       /service slug .* is not unique/,
     );
+  });
+});
+
+describe("stepFrames", () => {
+  const checkout = catalog.flows.find((f) => f.slug === "checkout") as Flow;
+  const frames = stepFrames(checkout.steps);
+
+  it("gives a step outside every frame an empty stack", () => {
+    expect(frames.get("s3")).toEqual([]);
+  });
+
+  it("stacks the frames around a step, outermost first", () => {
+    expect(frames.get("s4")).toEqual([
+      {
+        kind: "alt",
+        id: "alt-risk",
+        branch: "risk score below threshold",
+        terminal: undefined,
+      },
+      {
+        kind: "parallel",
+        id: "par-authorise",
+        title: "authorise and announce",
+        branch: "1",
+      },
+    ]);
+  });
+
+  it("carries the terminal flag onto the steps of the branch that ends", () => {
+    const stack = frames.get("s7") ?? [];
+    expect(stack).toHaveLength(1);
+    expect(stack[0]?.terminal).toBe(true);
+    expect(stepConditions(stack).map((f) => f.branch)).toEqual([
+      "risk score above threshold",
+    ]);
+  });
+
+  it("reports a loop as a frame but not as a condition", () => {
+    const stack = frames.get("s8") ?? [];
+    expect(stack.map((f) => f.kind)).toEqual(["loop"]);
+    expect(stepConditions(stack)).toEqual([]);
+  });
+
+  it("covers every step of the flow", () => {
+    for (const step of walkSteps(checkout.steps)) {
+      expect(frames.has(step.id)).toBe(true);
+    }
+  });
+});
+
+describe("validateCatalog: flow frames", () => {
+  function alt(): { bad: Catalog; node: Alt } {
+    const bad = clone();
+    const checkout = bad.flows.find((f) => f.slug === "checkout") as Flow;
+    const node = checkout.steps.find((n) => n.type === "alt") as Alt;
+    return { bad, node };
+  }
+
+  it("rejects an alt with a single branch", () => {
+    const { bad, node } = alt();
+    node.branches = node.branches.slice(0, 1);
+    expect(() => validateCatalog(bad)).toThrowError(
+      /alt "alt-risk" has 1 branch\(es\); an alt states a choice/,
+    );
+  });
+
+  it("rejects a branch that states no condition", () => {
+    const { bad, node } = alt();
+    const branch = node.branches[0];
+    if (!branch) throw new Error("fixture has no branches");
+    branch.title = "";
+    expect(() => validateCatalog(bad)).toThrowError(
+      /alt "alt-risk" has a branch with no title/,
+    );
+  });
+
+  it("rejects two branches stating the same condition", () => {
+    const { bad, node } = alt();
+    const [first, second] = node.branches;
+    if (!first || !second) throw new Error("fixture has too few branches");
+    second.title = first.title;
+    expect(() => validateCatalog(bad)).toThrowError(/two branches titled/);
+  });
+
+  it("rejects steps written after an alt whose every branch ends the flow", () => {
+    const { bad, node } = alt();
+    for (const branch of node.branches) branch.terminal = true;
+    expect(() => validateCatalog(bad)).toThrowError(
+      /every branch is terminal, so the 5 node\(s\) after it can never run/,
+    );
+  });
+
+  it("accepts a terminal branch that other branches rejoin past", () => {
+    const { bad } = alt();
+    expect(() => validateCatalog(bad)).not.toThrow();
   });
 });
 

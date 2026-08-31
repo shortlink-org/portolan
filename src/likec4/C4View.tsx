@@ -36,7 +36,10 @@ export function C4View({
       : [];
 
   return (
-    <div className="w-full border border-line bg-canvas" style={{ height }}>
+    <div
+      className="w-full overflow-hidden rounded-card border border-line bg-canvas shadow-xs"
+      style={{ height }}
+    >
       <InteractiveView
         viewId={viewId}
         highlightNodes={marked}

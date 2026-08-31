@@ -66,10 +66,16 @@ export const KIND_MONO: Record<Kind, boolean> = {
   adr: true,
 };
 
+/**
+ * Icons are 16px wherever one stands on its own - a toolbar button, a page
+ * header, the panel's close. Inside a 12px mono row or chip the default drops
+ * to 14: the icon labels the identifier next to it, and a 16px glyph beside
+ * 12px type reads as the subject rather than the label.
+ */
 export function KindIcon({
   kind,
   contextId,
-  size = 11,
+  size = 14,
   className = "",
 }: {
   kind: Kind;
@@ -98,7 +104,9 @@ export function KindIcon({
     <Icon
       size={size}
       aria-hidden
-      className={`shrink-0 ${className}`}
+      /* `block` drops the inline baseline gap so the glyph centres on the
+         cap-height of the text beside it rather than sitting on its baseline. */
+      className={`block shrink-0 ${className}`}
       style={{ color: KIND_COLOR[kind], fill: filled ? "currentColor" : "none" }}
     />
   );

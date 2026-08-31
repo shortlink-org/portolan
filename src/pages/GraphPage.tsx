@@ -30,13 +30,13 @@ export function GraphPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex shrink-0 flex-wrap items-center gap-3 border-b px-4 py-2.5 border-line">
-        <h1 className="text-[15px] font-semibold">Dependency graph</h1>
+      <div className="flex shrink-0 flex-wrap items-center gap-3 border-b px-gutter py-3 border-line">
+        <h1 className="text-lg font-semibold">Dependency graph</h1>
         <span className="mono text-muted">
           {graph.nodes.length} services · {graph.edges.length} event edges
         </span>
 
-        <div className="flex flex-wrap gap-1">
+        <div className="seg" role="group" aria-label="Filter by context">
           {catalog.contexts.map((context) => {
             const on = active.has(context.id);
             return (
@@ -45,9 +45,11 @@ export function GraphPage() {
                 type="button"
                 onClick={() => toggle(context.id)}
                 aria-pressed={on}
-                className="mono flex items-center gap-1 border px-1.5 py-0.5"
+                className="flex items-center gap-1.5"
+                /* No border of its own - the group draws one. A pressed member
+                   keeps its context colour rather than collapsing to accent:
+                   the colour is the thing being filtered. */
                 style={{
-                  borderColor: on ? contextVar(context.id) : "var(--border)",
                   color: on ? contextVar(context.id) : "var(--fg-muted)",
                   background: on
                     ? `color-mix(in srgb, ${contextVar(context.id)} 12%, transparent)`
@@ -56,7 +58,7 @@ export function GraphPage() {
               >
                 <span
                   aria-hidden
-                  className="size-1.5"
+                  className="size-1.5 rounded-[1px]"
                   style={{ background: contextVar(context.id) }}
                 />
                 {context.id}

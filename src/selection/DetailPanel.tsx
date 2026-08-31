@@ -6,7 +6,14 @@
 
 import { Link } from "react-router";
 import { X } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
+import {
+  Panel,
+  ResizeHandle,
+  SavedGroup,
+  useCanvasResize,
+  usePanelRef,
+} from "../app/panels";
 import { catalog, index } from "../data";
 import { coverageRatio, flowCoverage } from "../catalog";
 import { usesOfDef } from "../lib/derive";
@@ -34,7 +41,8 @@ function SelectLink({ id, children }: { id: string; children: ReactNode }) {
     <button
       type="button"
       onClick={() => select(id, "panel")}
-      className="mono truncate text-left text-accent hover:underline"
+      title={id}
+      className="mono trunc rounded-control text-left text-accent hover:underline"
     >
       {children}
     </button>
@@ -57,7 +65,7 @@ function EventBody({ resolved }: { resolved: Extract<Resolved, { kind: "event" }
         {event.versions.map((v) => (
           <span
             key={v.version}
-            className="mono border px-1.5 py-px"
+            className="mono rounded-control border px-1.5 py-px"
             style={{
               borderColor: v === latest ? "var(--accent)" : "var(--border)",
               color: v === latest ? "var(--accent)" : "var(--fg-muted)",
@@ -406,10 +414,13 @@ export function DetailPanel() {
 
   return (
     <aside
-      className="flex h-full w-[360px] shrink-0 flex-col border-l border-line bg-canvas"
+      /* Slides 16px and fades in when the panel appears - not on every change
+         of selection, which would set the whole rail moving each time the
+         reader clicked a step. There is no exit: it unmounts on clear. */
+      className="panel-in pane flex h-full w-full flex-col border-l border-line bg-canvas"
       aria-label="Selection detail"
     >
-      <div className="flex shrink-0 items-center gap-2 border-b px-3 py-2 border-line">
+      <div className="sticky-bar flex shrink-0 items-center gap-2 border-b px-4 py-2.5 border-line">
         <span className="label">{kindLabel(selection, resolved)}</span>
         {resolved?.kind === "flow-step" ? (
           <StatusChip status={resolved.step.status} />
@@ -419,15 +430,15 @@ export function DetailPanel() {
           onClick={() => clear("panel")}
           aria-label="Close selection detail (Esc)"
           title="Esc"
-          className="ml-auto p-1 hover:bg-surface text-muted"
+          className="ml-auto rounded-control p-1 text-muted t-micro transition-colors hover:bg-surface hover:text-ink"
         >
-          <X size={13} aria-hidden />
+          <X size={16} aria-hidden />
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3">
+      <div className="flex-1 overflow-y-auto p-4">
         <div className="flex flex-wrap items-baseline gap-x-2">
-          <span className="mono break-all text-[13px] text-ink">
+          <span className="mono break-all text-sm text-ink">
             {resolved?.kind === "event"
               ? resolved.event.name
               : resolved?.kind === "flow-step"
@@ -452,7 +463,10 @@ export function DetailPanel() {
         ) : null}
 
         {page ? (
-          <Link to={page} className="mono mt-2 inline-block text-accent">
+          <Link
+            to={page}
+            className="mono mt-3 inline-block rounded-control text-accent hover:underline"
+          >
             open page →
           </Link>
         ) : null}
@@ -477,12 +491,58 @@ export function DetailPanel() {
   );
 }
 
-/** Page shell for the routes that embed a diagram. */
-export function WithDetail({ children }: { children: ReactNode }) {
+/**
+ * Page shell for the routes that embed a diagram: the page on the left, the
+ * selection detail on the right.
+ *
+ * The detail panel is not opened by dragging. It is collapsed to nothing while
+ * there is no selection and expanded the moment there is one, driven from the
+ * store rather than from the handle - the handle only decides how wide it is
+ * once open, and that width is what gets remembered.
+ */
+export function WithDetail({
+  id,
+  children,
+}: {
+  /** Page name for the persisted layout: "portolan:<page>". */
+  id: string;
+  children: ReactNode;
+}) {
+  const selection = useSelectionStore((s) => s.selection);
+  const detailRef = usePanelRef();
+  const settle = useCanvasResize();
+
+  useEffect(() => {
+    const panel = detailRef.current;
+    if (!panel) return;
+    if (selection) panel.expand();
+    else panel.collapse();
+  }, [selection, detailRef]);
+
   return (
-    <div className="flex h-full min-h-0">
-      <div className="min-w-0 flex-1">{children}</div>
-      <DetailPanel />
-    </div>
+    <SavedGroup
+      id={`portolan:${id}`}
+      orientation="horizontal"
+      className="h-full min-h-0"
+    >
+      <Panel id="content" className="h-full min-w-0" onResize={settle}>
+        {children}
+      </Panel>
+
+      <ResizeHandle id="detail" />
+
+      <Panel
+        id="detail"
+        defaultSize="24"
+        minSize="16"
+        collapsible
+        collapsedSize="0"
+        panelRef={detailRef}
+        className="h-full"
+        onResize={settle}
+      >
+        <DetailPanel />
+      </Panel>
+    </SavedGroup>
   );
 }

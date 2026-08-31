@@ -1,48 +1,40 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
-import { ChevronLeft, ChevronRight, Columns3, Filter, Rows3 } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Columns3,
+  Filter,
+  Rows3,
+} from "lucide-react";
 import { flowContexts, flowCoverage, walkSteps } from "../catalog";
-import type { Flow, FlowNode, Step } from "../catalog";
+import type { Flow, Step } from "../catalog";
 import { index } from "../data";
-import { contextName } from "../lib/context-color";
+import { contextName, ctxStyle } from "../lib/context-color";
+import { middleTruncate } from "../lib/format";
 import { hiddenStepIds } from "../flow/cross-context";
 import { StepRail } from "../flow/StepRail";
-import type { RailItem } from "../flow/StepRail";
+import { buildOutline, outlineSteps } from "../flow/outline";
 import { FlowView } from "../likec4/FlowView";
 import { flowCrossViewId, flowViewId } from "../likec4/ids";
 import { flowStepId, parseFlowStepId } from "../selection/model";
 import { useSelectionStore } from "../selection/store";
+import {
+  Panel,
+  ResizeHandle,
+  SavedGroup,
+  useCanvasResize,
+} from "../app/panels";
 import {
   ContextPill,
   CoverageBar,
   ProvenanceBadge,
 } from "../components/primitives";
 
-/** Depth of each step in the frame tree, for indenting the rail. */
-function stepDepths(nodes: FlowNode[]): Map<string, number> {
-  const out = new Map<string, number>();
-  const visit = (list: FlowNode[], depth: number): void => {
-    for (const node of list) {
-      switch (node.type) {
-        case "step":
-          out.set(node.id, depth);
-          break;
-        case "parallel":
-          for (const b of node.branches) visit(b, depth + 1);
-          break;
-        case "alt":
-          for (const b of node.branches) visit(b.steps, depth + 1);
-          break;
-        case "loop":
-          visit(node.steps, depth + 1);
-          break;
-      }
-    }
-  };
-  visit(nodes, 0);
-  return out;
-}
-
+/**
+ * A switch inside the view's segmented control. It carries no border of its
+ * own: the group draws one, and the hairline between members does the rest.
+ */
 function Toggle({
   on,
   onClick,
@@ -62,16 +54,9 @@ function Toggle({
       onClick={onClick}
       aria-pressed={on}
       title={title}
-      className="tbtn"
-      style={{
-        borderColor: on ? "var(--accent)" : "var(--border)",
-        color: on ? "var(--accent)" : "var(--fg-muted)",
-        background: on
-          ? "color-mix(in srgb, var(--accent) 10%, transparent)"
-          : undefined,
-      }}
+      className={`flex items-center gap-1.5 ${on ? "is-on" : ""}`}
     >
-      <Icon size={11} aria-hidden />
+      <Icon size={14} aria-hidden />
       {children}
     </button>
   );
@@ -86,13 +71,9 @@ export function FlowDetail() {
 
   const selection = useSelectionStore((s) => s.selection);
   const select = useSelectionStore((s) => s.select);
+  const settle = useCanvasResize();
 
   const allSteps = useMemo(() => (flow ? walkSteps(flow.steps) : []), [flow]);
-  const numberOf = useMemo(() => {
-    const m = new Map<string, number>();
-    allSteps.forEach((s, i) => m.set(s.id, i + 1));
-    return m;
-  }, [allSteps]);
   const stepById = useMemo(() => {
     const m = new Map<string, Step>();
     for (const s of allSteps) m.set(s.id, s);
@@ -103,23 +84,13 @@ export function FlowDetail() {
     () => (flow ? hiddenStepIds(flow) : new Set<string>()),
     [flow],
   );
-  const depths = useMemo(
-    () => (flow ? stepDepths(flow.steps) : new Map()),
-    [flow],
+  // Frames are part of the rail, not something flattened out of it, so the
+  // outline is what the rail draws and what the arrow keys step through.
+  const rows = useMemo(
+    () => (flow ? buildOutline(flow, { hidden, crossOnly }) : []),
+    [flow, hidden, crossOnly],
   );
-
-  const railItems: RailItem[] = useMemo(
-    () =>
-      allSteps
-        .filter((s) => !crossOnly || !hidden.has(s.id))
-        .map((s) => ({
-          step: s,
-          number: numberOf.get(s.id) ?? 0,
-          depth: depths.get(s.id) ?? 0,
-          hidden: hidden.has(s.id),
-        })),
-    [allSteps, crossOnly, hidden, numberOf, depths],
-  );
+  const walkable = useMemo(() => outlineSteps(rows), [rows]);
 
   // --- what the selection means to this page -------------------------------
 
@@ -166,26 +137,34 @@ export function FlowDetail() {
   // walkthrough, in the canvas, so there is only ever one animator.
   const move = useCallback(
     (delta: number) => {
-      if (railItems.length === 0) return;
-      const at = railItems.findIndex((item) => item.step.id === activeId);
+      if (walkable.length === 0) return;
+      const at = walkable.findIndex((item) => item.step.id === activeId);
       const nextIndex =
         at < 0
           ? delta > 0
             ? 0
-            : railItems.length - 1
-          : Math.min(railItems.length - 1, Math.max(0, at + delta));
-      const next = railItems[nextIndex];
+            : walkable.length - 1
+          : Math.min(walkable.length - 1, Math.max(0, at + delta));
+      const next = walkable[nextIndex];
       if (next) selectStep(next.step.id);
     },
-    [railItems, activeId, selectStep],
+    [walkable, activeId, selectStep],
   );
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Arrow keys walk the rail only when nothing else has a claim on them.
+      // A focused resize handle resizes with the same keys, and a text field
+      // moves its caret; stealing either would break the widget the reader is
+      // actually standing in.
       const target = e.target as HTMLElement | null;
       if (
         target &&
-        (target.tagName === "INPUT" || target.tagName === "TEXTAREA")
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable ||
+          target.closest('[role="separator"]') !== null)
       )
         return;
       if (e.key === "ArrowRight") {
@@ -226,9 +205,14 @@ export function FlowDetail() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="shrink-0 border-b px-4 py-3 border-line bg-canvas">
+      <div className="hero shrink-0 border-b px-gutter py-5 border-line bg-canvas">
+        {/* A flow belongs to no single context, so the wash takes the first one
+            it crosses - the context it starts in. */}
+        <div aria-hidden className="hero-wash" style={ctxStyle(contexts[0])} />
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <h1 className="text-[15px] font-semibold">{flow.name}</h1>
+          <h1 className="text-md font-semibold" title={flow.name}>
+            {flow.name}
+          </h1>
           <span className="mono text-muted">{flow.id}</span>
           <div className="ml-auto flex items-center gap-2">
             <ProvenanceBadge
@@ -238,15 +222,15 @@ export function FlowDetail() {
             />
             {flow.source ? (
               <span className="mono text-muted" title={flow.source}>
-                {flow.source}
+                {middleTruncate(flow.source)}
               </span>
             ) : null}
           </div>
         </div>
 
-        <p className="mt-1 max-w-[900px] text-muted">{flow.summary}</p>
+        <p className="mt-2 max-w-prose text-muted">{flow.summary}</p>
 
-        <div className="mt-2.5 flex flex-wrap items-center gap-3">
+        <div className="mt-4 flex flex-wrap items-center gap-3">
           <div className="flex flex-wrap gap-1">
             {contexts.map((c) => (
               <ContextPill key={c} id={c} name={contextName(c)} />
@@ -265,7 +249,7 @@ export function FlowDetail() {
             {viewId}
           </span>
 
-          <div className="ml-auto flex flex-wrap items-center gap-2">
+          <div className="seg ml-auto">
             <Toggle
               on={crossOnly}
               onClick={() => setCrossOnly((v) => !v)}
@@ -288,7 +272,7 @@ export function FlowDetail() {
 
       <div className="flex min-h-0 flex-1">
         {compact ? (
-          <div className="min-w-0 flex-1 overflow-y-auto">
+          <div className="pane min-w-0 flex-1 overflow-y-auto">
             <MatchPill
               selection={selection}
               matches={matches}
@@ -296,7 +280,7 @@ export function FlowDetail() {
               onCycle={cycle}
             />
             <StepRail
-              items={railItems}
+              rows={rows}
               activeId={activeId}
               matchIds={matchIds}
               onSelect={selectStep}
@@ -304,8 +288,21 @@ export function FlowDetail() {
             />
           </div>
         ) : (
-          <>
-            <div className="w-[280px] shrink-0 overflow-y-auto border-r border-line">
+          /* The rail and the picture are two readings of the same sequence, so
+             which one gets the room is the reader's call, and it is remembered
+             separately from the detail panel's width. */
+          <SavedGroup
+            id="portolan:flow-canvas"
+            orientation="horizontal"
+            className="h-full min-h-0 flex-1"
+          >
+            <Panel
+              id="rail"
+              defaultSize="280px"
+              minSize="180px"
+              maxSize="45"
+              className="pane h-full overflow-y-auto border-r border-line"
+            >
               <MatchPill
                 selection={selection}
                 matches={matches}
@@ -313,20 +310,24 @@ export function FlowDetail() {
                 onCycle={cycle}
               />
               <StepRail
-                items={railItems}
+                rows={rows}
                 activeId={activeId}
                 matchIds={matchIds}
                 onSelect={selectStep}
               />
-            </div>
-            <div className="min-w-0 flex-1">
-              <FlowView
-                flow={flow}
-                crossOnly={crossOnly}
-                litSteps={litSteps}
-              />
-            </div>
-          </>
+            </Panel>
+
+            <ResizeHandle id="rail" />
+
+            <Panel
+              id="canvas"
+              minSize="30"
+              className="h-full min-w-0"
+              onResize={settle}
+            >
+              <FlowView flow={flow} crossOnly={crossOnly} litSteps={litSteps} />
+            </Panel>
+          </SavedGroup>
         )}
       </div>
     </div>
@@ -367,22 +368,24 @@ function MatchPill({
       <span className="ml-auto text-muted">
         {Math.min(at, matches.length - 1) + 1}/{matches.length}
       </span>
-      <button
-        type="button"
-        onClick={() => onCycle(-1)}
-        aria-label="Previous matching step"
-        className="border px-1 border-line hover:bg-surface"
-      >
-        <ChevronLeft size={11} aria-hidden />
-      </button>
-      <button
-        type="button"
-        onClick={() => onCycle(1)}
-        aria-label="Next matching step"
-        className="border px-1 border-line hover:bg-surface"
-      >
-        <ChevronRight size={11} aria-hidden />
-      </button>
+      <span className="seg">
+        <button
+          type="button"
+          onClick={() => onCycle(-1)}
+          aria-label="Previous matching step"
+          className="!px-1"
+        >
+          <ChevronLeft size={14} aria-hidden />
+        </button>
+        <button
+          type="button"
+          onClick={() => onCycle(1)}
+          aria-label="Next matching step"
+          className="!px-1"
+        >
+          <ChevronRight size={14} aria-hidden />
+        </button>
+      </span>
     </div>
   );
 }

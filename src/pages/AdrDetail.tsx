@@ -34,7 +34,7 @@ function Banner({
   return (
     <Link
       to={paths.adr(adr.slug)}
-      className="flex flex-wrap items-center gap-2 border px-3 py-2 hover:bg-surface"
+      className="flex flex-wrap items-center gap-2 rounded-control border px-3 py-2 t-micro transition-colors hover:bg-surface"
       style={{
         borderColor: forward ? "var(--status-declared)" : "var(--border)",
         background: forward
@@ -72,16 +72,16 @@ function RelatedPanel({ adr }: { adr: Adr }) {
     services.length === 0 && events.length === 0 && flows.length === 0;
 
   return (
-    <section className="border border-line">
-      <h2 className="label border-b border-line bg-surface px-3 py-1.5">
+    <section className="overflow-hidden rounded-card border border-line shadow-xs">
+      <h2 className="label border-b border-line bg-surface px-4 py-2">
         Related
       </h2>
-      <div className="flex flex-col gap-3 p-3">
+      <div className="flex flex-col gap-4 p-4">
         {empty ? <Empty>this decision names nothing</Empty> : null}
 
         {services.length > 0 ? (
           <div>
-            <div className="label mb-1">Services</div>
+            <div className="label mb-2">Services</div>
             <Chips>
               {services.map((id) => {
                 const to = servicePath(id);
@@ -101,7 +101,7 @@ function RelatedPanel({ adr }: { adr: Adr }) {
 
         {events.length > 0 ? (
           <div>
-            <div className="label mb-1">Events</div>
+            <div className="label mb-2">Events</div>
             <Chips>
               {events.map((id) => {
                 const to = eventPath(id);
@@ -127,7 +127,7 @@ function RelatedPanel({ adr }: { adr: Adr }) {
 
         {flows.length > 0 ? (
           <div>
-            <div className="label mb-1">Flows</div>
+            <div className="label mb-2">Flows</div>
             <Chips>
               {flows.map((slug) => (
                 <Link
@@ -160,27 +160,29 @@ export function AdrDetail() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="border-b border-line px-4 py-3">
+      <div className="border-b border-line px-gutter py-5">
         <div className="label">decision record</div>
-        <div className="mt-0.5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <AdrNumber adr={adr} className="text-[15px]" />
-          <h1 className="text-[15px] font-semibold">{adr.title}</h1>
+        <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <AdrNumber adr={adr} className="text-md" />
+          <h1 className="text-md font-semibold" title={adr.title}>
+            {adr.title}
+          </h1>
           <div className="ml-auto flex items-center gap-2">
             <AdrStatusChip status={adr.status} />
             <AdrScopePill scope={adr.scope} />
           </div>
         </div>
-        <div className="mono mt-1.5 flex flex-wrap gap-x-4 text-muted">
+        <div className="mono mt-2 flex flex-wrap gap-x-4 text-muted">
           <span title="decision date">{adr.date}</span>
           <span title="source file">{adr.source}</span>
           <span>{adr.id}</span>
         </div>
       </div>
 
-      <div className="flex flex-wrap items-start gap-4 p-4">
+      <div className="flex flex-wrap items-start gap-section p-gutter">
         <div className="min-w-0 flex-1">
           {successor || predecessors.length > 0 ? (
-            <div className="mb-4 flex max-w-[900px] flex-col gap-1.5">
+            <div className="mb-section flex max-w-prose flex-col gap-1.5">
               {successor ? (
                 <Banner direction="forward" adr={successor} />
               ) : null}

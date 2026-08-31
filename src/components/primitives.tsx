@@ -12,7 +12,7 @@ import type {
 import { index } from "../data";
 import { adrNumber } from "../lib/adr";
 import { ctxStyle } from "../lib/context-color";
-import { absoluteTime } from "../lib/format";
+import { absoluteTime, middleTruncate } from "../lib/format";
 import { paths } from "../routes";
 
 export const STATUS_LABEL: Record<Status, string> = {
@@ -91,20 +91,24 @@ export function CoverageBar({
       className="flex items-center gap-2"
       style={width ? { width } : undefined}
     >
+      {/* The track fills once, on first paint. The segments keep the status
+          colours and their proportions; only the reveal is animated. */}
       <div
-        className="flex h-1.5 flex-1 overflow-hidden border border-line"
+        className="h-1.5 flex-1 overflow-hidden rounded-full border border-line"
         title={`${verified} verified / ${declared} declared / ${unresolved} unresolved`}
       >
-        {segments.map((s) =>
-          s.n === 0 ? null : (
-            <div
-              key={s.key}
-              className="h-full"
-              style={{ width: `${pct(s.n)}%`, background: statusVar(s.key) }}
-            />
-          ),
-        )}
-        {total === 0 ? <div className="h-full w-full bg-raised" /> : null}
+        <div className="bar-fill flex h-full w-full">
+          {segments.map((s) =>
+            s.n === 0 ? null : (
+              <div
+                key={s.key}
+                className="h-full"
+                style={{ width: `${pct(s.n)}%`, background: statusVar(s.key) }}
+              />
+            ),
+          )}
+          {total === 0 ? <div className="h-full w-full bg-raised" /> : null}
+        </div>
       </div>
       {showCounts ? (
         <div className="mono flex shrink-0 items-center gap-1.5">
@@ -165,13 +169,15 @@ export function ProvenanceBadge({
   const Icon = meta.icon;
   return (
     <span className={`chip-lg ${meta.className}`} title={meta.title}>
-      <Icon size={11} aria-hidden />
+      <Icon size={14} aria-hidden />
       {meta.label}
       {provenance === "derived-from-otel" && verifiedAt ? (
         <span className="text-muted">· {absoluteTime(verifiedAt)}</span>
       ) : null}
       {provenance === "derived-from-test" && source ? (
-        <span className="text-muted">· {source.split("/").pop()}</span>
+        <span className="text-muted" title={source}>
+          · {middleTruncate(source.split("/").pop() ?? source, 28)}
+        </span>
       ) : null}
     </span>
   );
@@ -309,11 +315,11 @@ export function Panel({
   children: ReactNode;
 }) {
   return (
-    <section className="border border-line">
-      <h2 className="label border-b border-line bg-surface px-3 py-1.5">
+    <section className="overflow-hidden rounded-card border border-line shadow-xs">
+      <h2 className="label border-b border-line bg-surface px-4 py-2">
         {title}
       </h2>
-      <div className="p-3">{children}</div>
+      <div className="p-4">{children}</div>
     </section>
   );
 }
@@ -326,7 +332,7 @@ export function ExternalLink({
   children: ReactNode;
 }) {
   return (
-    <Link to={to} className="mono text-accent hover:underline">
+    <Link to={to} className="mono rounded-control text-accent hover:underline">
       {children}
     </Link>
   );

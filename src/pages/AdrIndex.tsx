@@ -10,6 +10,7 @@ import {
 } from "../components/primitives";
 import { Empty } from "../components/PageHeader";
 import { paths } from "../routes";
+import { staggerStyle } from "../lib/motion";
 
 const STATUSES: AdrStatus[] = [
   "accepted",
@@ -36,10 +37,13 @@ function Facet({
       onClick={onClick}
       aria-pressed={on}
       disabled={count === 0}
-      className={`tbtn ${on ? "tbtn-on" : ""} ${count === 0 ? "opacity-40" : ""}`}
+      /* No border of its own: it is one member of the facet group. */
+      className={`flex items-center gap-1.5 ${on ? "is-on" : ""} ${
+        count === 0 ? "opacity-40" : ""
+      }`}
     >
       {children}
-      <span className="text-muted">{count}</span>
+      <span className="tnum text-muted">{count}</span>
     </button>
   );
 }
@@ -71,15 +75,15 @@ export function AdrIndex() {
   };
 
   return (
-    <div className="h-full overflow-y-auto p-4">
+    <div className="h-full overflow-y-auto p-gutter">
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-[15px] font-semibold">Decisions</h1>
+        <h1 className="text-lg font-semibold">Decisions</h1>
         <span className="mono text-muted">
           {rows.length} of {all.length}
         </span>
 
         <div className="ml-auto flex flex-wrap items-center gap-3">
-          <div className="flex flex-wrap gap-1">
+          <div className="seg" role="group" aria-label="Filter by status">
             {STATUSES.map((s) => (
               <Facet
                 key={s}
@@ -91,7 +95,7 @@ export function AdrIndex() {
               </Facet>
             ))}
           </div>
-          <div className="flex flex-wrap gap-1">
+          <div className="seg" role="group" aria-label="Filter by scope">
             {scopeOptions(catalog).map((label) => (
               <Facet
                 key={label}
@@ -107,47 +111,56 @@ export function AdrIndex() {
       </div>
 
       {rows.length === 0 ? (
-        <div className="mt-3">
+        <div className="mt-section">
           <Empty>no decision matches this filter</Empty>
         </div>
       ) : (
-        <table className="mt-3 w-full border border-line">
-          <thead>
-            <tr className="label border-b border-line bg-surface text-left">
-              <th className="px-3 py-1.5 font-normal">#</th>
-              <th className="px-3 py-1.5 font-normal">title</th>
-              <th className="px-3 py-1.5 font-normal">status</th>
-              <th className="px-3 py-1.5 font-normal">scope</th>
-              <th className="px-3 py-1.5 font-normal">date</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((adr) => (
-              <tr
-                key={adr.id}
-                className="border-b border-line last:border-b-0 hover:bg-surface"
-              >
-                <td className="px-3 py-1.5 align-top whitespace-nowrap">
-                  <AdrNumber adr={adr} />
-                </td>
-                <td className="px-3 py-1.5 align-top">
-                  <Link to={paths.adr(adr.slug)} className="hover:underline">
-                    {adr.title}
-                  </Link>
-                </td>
-                <td className="px-3 py-1.5 align-top">
-                  <AdrStatusChip status={adr.status} />
-                </td>
-                <td className="px-3 py-1.5 align-top">
-                  <AdrScopePill scope={adr.scope} />
-                </td>
-                <td className="mono px-3 py-1.5 align-top whitespace-nowrap text-muted">
-                  {adr.date}
-                </td>
+        <div className="mt-section max-w-table overflow-hidden rounded-card border border-line shadow-xs">
+          <table className="w-full">
+            {/* The header pins itself over the rows it names, translucent so
+                the reader can see the list still running underneath. */}
+            <thead className="sticky-bar sticky top-0 z-10">
+              <tr className="label border-b border-line text-left">
+                <th className="px-4 py-2 font-normal">#</th>
+                <th className="px-4 py-2 font-normal">title</th>
+                <th className="px-4 py-2 font-normal">status</th>
+                <th className="px-4 py-2 font-normal">scope</th>
+                <th className="px-4 py-2 font-normal">date</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {rows.map((adr, i) => (
+                <tr
+                  key={adr.id}
+                  className="stagger-in border-b border-line last:border-b-0 t-micro transition-colors hover:bg-surface"
+                  style={staggerStyle(i)}
+                >
+                  <td className="px-4 py-2 align-top whitespace-nowrap">
+                    <AdrNumber adr={adr} />
+                  </td>
+                  <td className="px-4 py-2 align-top">
+                    <Link
+                      to={paths.adr(adr.slug)}
+                      className="rounded-control hover:underline"
+                      title={adr.title}
+                    >
+                      {adr.title}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-2 align-top">
+                    <AdrStatusChip status={adr.status} />
+                  </td>
+                  <td className="px-4 py-2 align-top">
+                    <AdrScopePill scope={adr.scope} />
+                  </td>
+                  <td className="mono px-4 py-2 align-top whitespace-nowrap text-muted">
+                    {adr.date}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
