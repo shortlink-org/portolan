@@ -1,0 +1,10 @@
+# Config for oapi-codegen. Regenerate with the //go:generate line in
+# ../server.go, never by editing server.gen.go.
+package: gen
+output: server.gen.go
+generate:
+  chi-server: true
+  models: true
+  strict-server: true
+output-options:
+  skip-prune: true

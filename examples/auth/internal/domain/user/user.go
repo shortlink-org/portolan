@@ -1,0 +1,65 @@
+// Package user holds the User aggregate: a person, the address they log in
+// with, and the hash of the password they log in by.
+//
+// The aggregate is the transactional boundary. Every rule below is enforced
+// here and nowhere else, so a caller cannot reach past the root and leave a
+// User in a state the domain says is impossible.
+package user
+
+import (
+	"errors"
+	"time"
+
+	"github.com/shortlink-org/portolan/examples/auth/internal/domain/user/event"
+	"github.com/shortlink-org/portolan/examples/auth/internal/domain/user/vo/email"
+	"github.com/shortlink-org/portolan/examples/auth/internal/domain/user/vo/password"
+)
+
+var (
+	ErrInvalidCredentials = errors.New("user: invalid credentials")
+	ErrNotFound           = errors.New("user: not found")
+	ErrEmailTaken         = errors.New("user: email already registered")
+)
+
+// User is the aggregate root. Identity is ID, minted once at registration and
+// never reused - not the email, because people change addresses.
+type User struct {
+	ID        string
+	Email     email.Address
+	Password  password.Hash
+	CreatedAt time.Time
+}
+
+// Register builds a User with its password already hashed, and returns the fact
+// that it happened alongside it.
+//
+// The event is RETURNED rather than buffered on the aggregate. An aggregate
+// that quietly accumulates events carries hidden state and has to know the word
+// "committed"; here what happened is visible in the signature, and publishing
+// is the caller's business.
+func Register(id, rawEmail, plaintext string, now time.Time) (*User, event.UserRegistered, error) {
+	address, err := email.New(rawEmail)
+	if err != nil {
+		return nil, event.UserRegistered{}, err
+	}
+	hash, err := password.New(plaintext)
+	if err != nil {
+		return nil, event.UserRegistered{}, err
+	}
+	u := &User{
+		ID:        id,
+		Email:     address,
+		Password:  hash,
+		CreatedAt: now,
+	}
+	return u, event.NewUserRegistered(id, address.String(), now), nil
+}
+
+// Authenticate checks a password. It answers with one error for every failure,
+// so a caller cannot tell a wrong password from an unknown address.
+func (u *User) Authenticate(plaintext string) error {
+	if !u.Password.Matches(plaintext) {
+		return ErrInvalidCredentials
+	}
+	return nil
+}

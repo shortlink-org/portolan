@@ -1,0 +1,274 @@
+openapi: 3.0.3
+
+info:
+  title: auth
+  version: "1.0.0"
+  description: |
+    The auth service. It answers two questions and nothing else: who is this,
+    and are they still logged in.
+
+    There is deliberately no endpoint that checks a password without issuing a
+    session. Such a call is an oracle for guessing, and its only in-process
+    consumer is the login use case, which reaches it directly.
+
+servers:
+  - url: /
+
+tags:
+  - name: users
+  - name: sessions
+
+paths:
+  /v1/users:
+    post:
+      tags: [users]
+      operationId: registerUser
+      summary: Register a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: The user was created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          description: That address is already registered.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/Internal"
+
+  /v1/users/{userId}:
+    get:
+      tags: [users]
+      operationId: getUser
+      summary: Read a user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "404":
+          description: No such user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/Internal"
+
+  /v1/sessions:
+    post:
+      tags: [sessions]
+      operationId: login
+      summary: Exchange credentials for a session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "201":
+          description: The session was created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/Internal"
+
+  /v1/sessions/current:
+    get:
+      tags: [sessions]
+      operationId: validateSession
+      summary: Resolve the bearer token to a live session
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/BearerToken"
+      responses:
+        "200":
+          description: The session is live.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionInfo"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/Internal"
+
+    delete:
+      tags: [sessions]
+      operationId: logout
+      summary: End the session behind the bearer token
+      description: |
+        Idempotent. A token that is unknown, malformed or already revoked still
+        gets 204: the caller asked for there to be no session, and there is
+        none. Answering otherwise would say which tokens exist.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/BearerToken"
+      responses:
+        "204":
+          description: There is no session.
+        "500":
+          $ref: "#/components/responses/Internal"
+
+components:
+  parameters:
+    # Declared as a plain header as well as a security scheme, on purpose. The
+    # scheme is what documents the API and drives the auth button in Swagger UI;
+    # the parameter is what makes the token reach the handler, because the code
+    # generator builds request objects from parameters and not from schemes.
+    BearerToken:
+      name: Authorization
+      in: header
+      required: true
+      description: "`Bearer <token>`"
+      schema:
+        type: string
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+
+  responses:
+    BadRequest:
+      description: The request body does not parse.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unauthorized:
+      description: |
+        The credentials or the token are not good. Deliberately one answer for
+        every cause - unknown address, wrong password, expired token, revoked
+        token - so it says nothing about which.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Internal:
+      description: Something failed that the caller cannot do anything about.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          # Deliberately a plain Go string. The generator's email type parses
+          # and rewrites the value on unmarshal, which would take the decision
+          # away from the domain and quietly accept `Ada <ada@e.com>`.
+          x-go-type: string
+        password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 32
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          # Deliberately a plain Go string. The generator's email type parses
+          # and rewrites the value on unmarshal, which would take the decision
+          # away from the domain and quietly accept `Ada <ada@e.com>`.
+          x-go-type: string
+        password:
+          type: string
+          format: password
+
+    User:
+      type: object
+      required: [userId, email, createdAt]
+      properties:
+        userId:
+          type: string
+        email:
+          type: string
+          format: email
+          # Deliberately a plain Go string. The generator's email type parses
+          # and rewrites the value on unmarshal, which would take the decision
+          # away from the domain and quietly accept `Ada <ada@e.com>`.
+          x-go-type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    Session:
+      type: object
+      required: [token, expiresAt]
+      description: |
+        What a client needs for its next request. The session id is not here: it
+        names a row in auth's store, is of no use to a client, and putting it on
+        the wire would invite something to be built on it.
+      properties:
+        token:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+
+    SessionInfo:
+      type: object
+      required: [userId, expiresAt]
+      properties:
+        userId:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+
+    Error:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+          description: |
+            One sentence, always present. A client that shows the user a single
+            line shows this one.
+        reasons:
+          type: array
+          description: |
+            One entry per rule the request broke, present only where rules
+            apply - a 404 or a 500 has none. Each entry names its own field, so
+            it can be shown on its own without knowing what it referred to.
+          items:
+            type: string

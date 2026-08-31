@@ -1,0 +1,22 @@
+// Package event holds the domain events of the user domain: facts that have
+// already happened.
+//
+// An event is immutable. Its fields are private and set once by its
+// constructor, because a fact that can be edited after the fact is not a fact.
+package event
+
+import "time"
+
+// Event is what every domain event in this package answers.
+type Event interface {
+	// Name is the key the event travels under on the bus. Stable: renaming one
+	// is a breaking change for every consumer.
+	Name() string
+
+	// AggregateID says whose fact this is.
+	AggregateID() string
+
+	// OccurredAt is when it happened in the domain - not when it was published,
+	// which can be much later and is the bus's business.
+	OccurredAt() time.Time
+}
