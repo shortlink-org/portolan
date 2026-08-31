@@ -8,3 +8,16 @@ generate:
   strict-server: true
 output-options:
   skip-prune: true
+  # By default `format: email` is generated as openapi_types.Email, whose
+  # UnmarshalJSON runs mail.ParseAddress and stores the parsed address - so
+  # `Ada <ada@e.com>` would arrive at the domain silently rewritten, and the
+  # domain's own rule would be unreachable over HTTP.
+  #
+  # The mapping lives here rather than as x-go-type in the spec: which Go type
+  # a format becomes is a fact about this generator, not about the contract,
+  # and the spec is read by clients that are not written in Go.
+  type-mapping:
+    string:
+      formats:
+        email:
+          type: string

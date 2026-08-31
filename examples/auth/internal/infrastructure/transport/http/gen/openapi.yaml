@@ -189,10 +189,6 @@ components:
         email:
           type: string
           format: email
-          # Deliberately a plain Go string. The generator's email type parses
-          # and rewrites the value on unmarshal, which would take the decision
-          # away from the domain and quietly accept `Ada <ada@e.com>`.
-          x-go-type: string
         password:
           type: string
           format: password
@@ -206,10 +202,6 @@ components:
         email:
           type: string
           format: email
-          # Deliberately a plain Go string. The generator's email type parses
-          # and rewrites the value on unmarshal, which would take the decision
-          # away from the domain and quietly accept `Ada <ada@e.com>`.
-          x-go-type: string
         password:
           type: string
           format: password
@@ -223,10 +215,6 @@ components:
         email:
           type: string
           format: email
-          # Deliberately a plain Go string. The generator's email type parses
-          # and rewrites the value on unmarshal, which would take the decision
-          # away from the domain and quietly accept `Ada <ada@e.com>`.
-          x-go-type: string
         createdAt:
           type: string
           format: date-time

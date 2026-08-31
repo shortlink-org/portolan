@@ -4,6 +4,10 @@
 // gen/openapi.yaml is the source: it defines the routes, the shapes and the
 // status codes, and gen/server.gen.go is its output. Nothing in this package
 // decides a route or a shape - it only assembles.
+//
+// The go:generate directive lives in gen/, not here: it runs with the working
+// directory of the file that holds it, and from here it would write its output
+// beside this file instead of into gen/.
 package http
 
 import (
@@ -15,8 +19,6 @@ import (
 	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/transport/http/session"
 	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/transport/http/user"
 )
-
-//go:generate go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.4.1 -config gen/cfg.yaml gen/openapi.yaml
 
 // Server is the whole implementation of gen.StrictServerInterface, assembled
 // from two packages by embedding.
