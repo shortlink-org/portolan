@@ -4,8 +4,30 @@
     {
       "name": "portolan",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--", "--port", "5183", "--strictPort"],
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "5183",
+        "--strictPort"
+      ],
       "port": 5183
+    },
+    {
+      "name": "portolan-pages-preview",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "preview",
+        "--",
+        "--port",
+        "4183",
+        "--strictPort",
+        "--base",
+        "/portolan/"
+      ],
+      "port": 4183
     }
   ]
 }

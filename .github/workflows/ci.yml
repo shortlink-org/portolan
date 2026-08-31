@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Regenerates likec4/ from data/catalog.json, then checks the model
+      - run: npm run likec4:gen
+      - run: npm run likec4:validate
+
+      # `npm run build` re-runs likec4:gen and tsc --noEmit, then bundles
+      - run: npm run build
+
+      - run: npm test
