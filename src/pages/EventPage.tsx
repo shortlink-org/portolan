@@ -18,6 +18,7 @@ import {
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
 import { Select } from "../components/Select";
 import { Ident } from "../components/Ident";
+import { ShapeRows } from "../components/ShapeRows";
 import { RowActions } from "../components/RowActions";
 import { DataTable } from "../table/DataTable";
 import type { ColumnSpec } from "../table/types";
@@ -115,19 +116,7 @@ function TypeDefBody({ field }: { field: Field }) {
   return (
     <>
       <Ident block value={field.ref ?? ""} className="mb-1 text-muted" />
-      <table className="w-full">
-        <tbody>
-          {def.fields.map((sub) => (
-            <tr key={sub.name} className="align-top">
-              <td className="mono py-0.5 pr-3 whitespace-nowrap">{sub.name}</td>
-              <td className="mono py-0.5 pr-3 whitespace-nowrap text-muted">
-                {sub.ref ? `${sub.type} →` : sub.type}
-              </td>
-              <td className="py-0.5 text-muted">{sub.doc}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <ShapeRows fields={def.fields} />
     </>
   );
 }

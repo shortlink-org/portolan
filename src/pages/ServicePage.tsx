@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { catalog } from "../data";
@@ -10,6 +11,8 @@ import { Markdown } from "../components/Markdown";
 import { middleTruncate, plural } from "../lib/format";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
 import { Ident } from "../components/Ident";
+import { ShapeRows } from "../components/ShapeRows";
+import { ApiReference, hasSpec } from "../components/ApiReference";
 import { KindIcon } from "../components/kind";
 import { RowActions } from "../components/RowActions";
 import {
@@ -29,6 +32,11 @@ import { StoreHeader } from "../er/StoreHeader";
 const TABS = [
   "overview",
   "provides",
+  // The document beside the facts drawn from it. Always present rather than
+  // appearing only for services that have one, because every other tab on this
+  // page is too - a tab that comes and goes makes the page a different shape
+  // per service and the url stop meaning the same thing.
+  "spec",
   "consumes",
   "data",
   "flows",
@@ -47,6 +55,18 @@ export function ServicePage() {
   // Read-only stores are off by default: they belong to someone else, and the
   // question this tab opens with is what THIS service is responsible for.
   const [showReadOnly, setShowReadOnly] = useState(false);
+
+  // Which request and response shapes are open. Collapsed by default: the
+  // question the provides tab answers first is "what can I call", and a page
+  // that opens with six schemas answers a question nobody asked yet.
+  const [openShapes, setOpenShapes] = useState<ReadonlySet<string>>(new Set());
+  const toggleShape = (id: string) =>
+    setOpenShapes((open) => {
+      const next = new Set(open);
+      if (!next.delete(id)) next.add(id);
+
+      return next;
+    });
   const context = catalog.contexts.find((c) => c.id === contextId);
   const service = context?.services.find((s) => s.slug === serviceSlug);
 
@@ -63,9 +83,14 @@ export function ServicePage() {
   const adrs = adrsForService(catalog, service.id, context.id);
   const current = adrs.filter(isCurrent);
   const retired = adrs.filter((a) => !isCurrent(a));
+  // The first document this site actually holds. A service can be described by
+  // several interfaces and only some of their specs live in this repository.
+  const specSource = service.provides.map((p) => p.source).find(hasSpec);
+
   const counts: Record<Tab, number | null> = {
     overview: null,
     provides: service.provides.reduce((n, p) => n + p.methods.length, 0),
+    spec: null,
     consumes: service.consumes.length,
     data: stores.length,
     flows: flows.length,
@@ -305,9 +330,78 @@ export function ServicePage() {
                     </li>
                   ))}
                 </ul>
+
+                {/* The shapes these methods carry. They belong to the rpc
+                    service rather than to one method because that is all the
+                    catalog knows: a generator reading a proto or an OpenAPI
+                    document can say which messages an interface uses, not which
+                    of them each call sends back. */}
+                {provided.messages?.length ? (
+                  <div className="border-t border-line">
+                    <div className="mono px-3 py-1 text-muted">
+                      <span className="tnum">{provided.messages.length}</span>{" "}
+                      {plural(provided.messages.length, "message")}
+                    </div>
+                    {provided.messages.map((message) => {
+                      const id = `${provided.id}/${message.name}`;
+                      const open = openShapes.has(id);
+
+                      return (
+                        <div
+                          key={id}
+                          className="border-t border-line last:border-b-0"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => toggleShape(id)}
+                            aria-expanded={open}
+                            className="mono flex w-full items-center gap-1.5 px-3 py-1.5 text-left"
+                          >
+                            {open ? (
+                              <ChevronDown
+                                size={11}
+                                aria-hidden
+                                className="text-muted"
+                              />
+                            ) : (
+                              <ChevronRight
+                                size={11}
+                                aria-hidden
+                                className="text-muted"
+                              />
+                            )}
+                            {message.name}
+                            <span className="ml-auto text-muted">
+                              <span className="tnum">
+                                {message.fields.length}
+                              </span>{" "}
+                              {plural(message.fields.length, "field")}
+                            </span>
+                          </button>
+                          {open ? (
+                            <div className="px-3 pb-2 pl-8">
+                              <ShapeRows fields={message.fields} />
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : null}
               </div>
             ))}
           </div>
+        </TabPanel>
+
+        <TabPanel>
+          {specSource ? (
+            <ApiReference source={specSource} />
+          ) : (
+            <Empty>
+              no api document in this catalog — nothing under this service names
+              one
+            </Empty>
+          )}
         </TabPanel>
 
         <TabPanel>

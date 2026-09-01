@@ -75,4 +75,10 @@ export default defineConfig({
   base: env.BASE_PATH ?? "/",
   define: { __BUILD_INFO__: JSON.stringify(buildInfo) },
   plugins: [react(), tailwindcss()],
+  resolve: {
+    // One React, whatever a dependency asks for. The api reference ships its
+    // own React wrapper around a Vue app, and a second copy of React reaching
+    // the page turns every hook in it into "Invalid hook call".
+    dedupe: ["react", "react-dom"],
+  },
 });
