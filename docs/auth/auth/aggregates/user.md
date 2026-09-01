@@ -50,12 +50,12 @@ Hash is what the user domain stores in place of a password. The plaintext never 
 
 ## Operations
 
-| Operation | Kind | Doc |
-| --- | --- | --- |
-| `Authenticate` | query | Checks an address and a password, and says which user they belong to. |
-| `ChangePassword` | command | Replaces the password of a user, given the current one. |
-| `Get` | query | Reads a user by id. |
-| `Register` | command | Creates a user from an email address and a password. |
+| Operation | Kind | Exposed by | Doc |
+| --- | --- | --- | --- |
+| `Authenticate` | query | *internal* | Checks an address and a password, and says which user they belong to. |
+| `ChangePassword` | command | `changePassword` | Replaces the password of a user, given the current one. |
+| `Get` | query | `getUser` | Reads a user by id. |
+| `Register` | command | `registerUser` | Creates a user from an email address and a password. |
 
 ## Events
 

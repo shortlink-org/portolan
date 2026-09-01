@@ -6,13 +6,20 @@ import { catalog } from "../data";
 import { flowsForService } from "../lib/derive";
 import { adrsForService, isCurrent } from "../lib/adr";
 import { AdrRow } from "../components/AdrRow";
-import { EVENT_ANCHOR, SERVICE_ANCHOR, paths, servicePath } from "../routes";
+import {
+  EVENT_ANCHOR,
+  SERVICE_ANCHOR,
+  aggregatePath,
+  paths,
+  servicePath,
+} from "../routes";
 import { Markdown } from "../components/Markdown";
 import { middleTruncate, plural } from "../lib/format";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
 import { Ident } from "../components/Ident";
 import { ShapeRows } from "../components/ShapeRows";
 import { ApiReference, hasSpec } from "../components/ApiReference";
+import { operationsExposedBy } from "../lib/api";
 import { KindIcon } from "../components/kind";
 import { RowActions } from "../components/RowActions";
 import {
@@ -320,15 +327,46 @@ export function ServicePage() {
                   <Ident value={provided.source} className="ml-auto" />
                 </div>
                 <ul data-nav-list>
-                  {provided.methods.map((method) => (
-                    <li
-                      key={method}
-                      className="row rounded-none border-x-0 border-t-0 last:border-b-0"
-                    >
-                      <Ident value={`${provided.id}/${method}`} />
-                      <RowActions copy={`${provided.id}/${method}`} />
-                    </li>
-                  ))}
+                  {provided.methods.map((method) => {
+                    // What the endpoint actually runs. More than one is normal:
+                    // a handler that resolves a token before changing a
+                    // password has run two use cases, in two aggregates.
+                    const runs = operationsExposedBy(service, method);
+
+                    return (
+                      <li
+                        key={method}
+                        className="row rounded-none border-x-0 border-t-0 last:border-b-0"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <Ident value={`${provided.id}/${method}`} />
+                          {runs.length > 0 ? (
+                            <p className="mono mt-0.5 flex flex-wrap items-center gap-x-2 text-muted">
+                              <span>runs</span>
+                              {runs.map(({ aggregate, operation }) => {
+                                const to = aggregatePath(aggregate.id);
+                                const label = `${aggregate.slug}.${operation.id}`;
+
+                                return to ? (
+                                  <Link
+                                    key={label}
+                                    to={to}
+                                    className="rounded-control hover:text-ink"
+                                    title={`${operation.kind} of ${aggregate.name}`}
+                                  >
+                                    {label}
+                                  </Link>
+                                ) : (
+                                  <span key={label}>{label}</span>
+                                );
+                              })}
+                            </p>
+                          ) : null}
+                        </div>
+                        <RowActions copy={`${provided.id}/${method}`} />
+                      </li>
+                    );
+                  })}
                 </ul>
 
                 {/* The shapes these methods carry. They belong to the rpc

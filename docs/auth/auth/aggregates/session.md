@@ -41,12 +41,12 @@ Token is the opaque string a client presents instead of a password.
 
 ## Operations
 
-| Operation | Kind | Doc |
-| --- | --- | --- |
-| `EndAfterCredentialChange` | command | Ends the sessions a credential change invalidates. |
-| `Login` | command | Turns credentials into a session. |
-| `Logout` | command | Ends the session behind a token. |
-| `Validate` | query | Resolves a token to a live session: who is calling, and how long the answer stays good. |
+| Operation | Kind | Exposed by | Doc |
+| --- | --- | --- | --- |
+| `EndAfterCredentialChange` | command | *internal* | Ends the sessions a credential change invalidates. |
+| `Login` | command | `login` | Turns credentials into a session. |
+| `Logout` | command | `logout` | Ends the session behind a token. |
+| `Validate` | query | `changePassword`, `validateSession` | Resolves a token to a live session: who is calling, and how long the answer stays good. |
 
 ## Events
 

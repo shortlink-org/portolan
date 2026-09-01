@@ -2,7 +2,13 @@ import { useMemo } from "react";
 import { Link, useParams } from "react-router";
 import { catalog, index } from "../data";
 import { blockCounts, blockFields, rootEntity } from "../catalog";
-import type { Aggregate, Block, BlockKind, Operation } from "../catalog";
+import type {
+  Aggregate,
+  Block,
+  BlockKind,
+  Operation,
+  Service,
+} from "../catalog";
 import { markdownOutline } from "../lib/derive";
 import { tablesPersisting, viewsPresenting } from "../lib/data-model";
 import { plural } from "../lib/format";
@@ -15,9 +21,11 @@ import {
   EVENT_ANCHOR,
   LINKS_HERE,
   paths,
+  servicePath,
   tablePath,
   viewPath,
 } from "../routes";
+import { methodId } from "../lib/api";
 import { Markdown } from "../components/Markdown";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
 import { Ident } from "../components/Ident";
@@ -166,10 +174,20 @@ function BlockList({
 function OperationList({
   kind,
   operations,
+  service,
 }: {
   kind: "command" | "query";
   operations: Operation[];
+  service: Service;
 }) {
+  // Whether this service records what exposes an operation at all. A catalog
+  // written before anything read a transport layer says nothing either way,
+  // and answering "no endpoint runs it" from that silence would be inventing.
+  const recorded = service.aggregates.some((aggregate) =>
+    aggregate.operations.some((operation) => operation.exposedBy?.length),
+  );
+  const to = servicePath(service.id);
+
   return (
     <ul className="flex flex-col gap-1">
       {operations.map((op) => (
@@ -185,6 +203,32 @@ function OperationList({
           <div className="min-w-0">
             <Ident block value={op.id} />
             {op.doc ? <p className="mt-0.5 text-muted">{op.doc}</p> : null}
+            {op.exposedBy?.length ? (
+              <p className="mono mt-1 flex flex-wrap items-center gap-x-2 text-muted">
+                <span>exposed by</span>
+                {op.exposedBy.map((method) =>
+                  to ? (
+                    <Link
+                      key={method}
+                      to={`${to}?tab=provides`}
+                      className="rounded-control hover:text-ink"
+                      title="the interface method that runs this"
+                    >
+                      {methodId(service, method)}
+                    </Link>
+                  ) : (
+                    <span key={method}>{methodId(service, method)}</span>
+                  ),
+                )}
+              </p>
+            ) : recorded ? (
+              // Said out loud rather than left blank: an operation no endpoint
+              // runs is reachable only from inside, and here that is a design
+              // decision rather than an omission.
+              <p className="mono mt-1 text-muted">
+                no endpoint runs it — internal to the service
+              </p>
+            ) : null}
           </div>
         </li>
       ))}
@@ -388,7 +432,7 @@ export function AggregatePage() {
               {commands.length === 0 ? (
                 <Empty>nothing changes this aggregate from outside</Empty>
               ) : null}
-              <OperationList kind="command" operations={commands} />
+              <OperationList kind="command" operations={commands} service={service} />
             </div>
             <div id={AGGREGATE_ANCHOR.queries}>
               <SectionTitle
@@ -404,7 +448,7 @@ export function AggregatePage() {
               {queries.length === 0 ? (
                 <Empty>nothing reads this aggregate by name</Empty>
               ) : null}
-              <OperationList kind="query" operations={queries} />
+              <OperationList kind="query" operations={queries} service={service} />
             </div>
           </div>
 

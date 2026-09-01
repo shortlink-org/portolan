@@ -86,13 +86,38 @@ func (s *site) blocks(from string, blocks []catalog.Block, root string) string {
 }
 
 func (s *site) operationsTable(agg *catalog.Aggregate) string {
+	// Whether this service records what exposes an operation at all. A catalog
+	// written before anything read a transport layer says nothing either way,
+	// and printing "internal" from that silence would be inventing.
+	recorded := false
+	for i := range agg.Operations {
+		if len(agg.Operations[i].ExposedBy) > 0 {
+			recorded = true
+
+			break
+		}
+	}
+
 	rows := make([][]string, 0, len(agg.Operations))
 	for i := range agg.Operations {
 		op := &agg.Operations[i]
-		rows = append(rows, []string{code(op.ID), string(op.Kind), op.Doc})
+
+		exposed := ""
+		switch {
+		case len(op.ExposedBy) > 0:
+			methods := make([]string, 0, len(op.ExposedBy))
+			for _, method := range op.ExposedBy {
+				methods = append(methods, code(method))
+			}
+			exposed = strings.Join(methods, ", ")
+		case recorded:
+			exposed = "*internal*"
+		}
+
+		rows = append(rows, []string{code(op.ID), string(op.Kind), exposed, op.Doc})
 	}
 
-	return table([]string{"Operation", "Kind", "Doc"}, rows)
+	return table([]string{"Operation", "Kind", "Exposed by", "Doc"}, rows)
 }
 
 // eventsBlock renders every version of every event, oldest first.
