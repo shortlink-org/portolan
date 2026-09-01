@@ -16,7 +16,7 @@ import type {
 import { storeViews } from "../catalog";
 import { adrNumber, newestAccepted, sortAdrs } from "../lib/adr";
 import { ctxStyle } from "../lib/context-color";
-import { KIND_CHIP, LEAF_KINDS } from "../lib/kinds";
+import { KIND_CHIP, MODEL_LEAF_KINDS, STORE_LEAF_KINDS } from "../lib/kinds";
 import type { Kind, LeafKind } from "../lib/kinds";
 import { KindIcon } from "../components/kind";
 import { CompassRose, Wordmark } from "../components/logo";
@@ -572,31 +572,41 @@ export function Sidebar({
           className="mono w-full rounded-control border bg-transparent px-2 py-1.5 outline-none placeholder:text-muted border-line t-micro transition-colors hover:border-line-strong"
           aria-label="Filter catalog"
         />
-        {/* Five switches over one tree: one border round the set, hairlines
-            between. Bordering each of them made the box read as five objects. */}
-        <div className="seg mt-3 w-full" role="group" aria-label="Show kinds">
-          {LEAF_KINDS.map((kind) => {
-            const on = shows(kind);
-            return (
-              <button
-                key={kind}
-                type="button"
-                onClick={() => toggleKind(kind)}
-                aria-pressed={on}
-                title={`${on ? "Hide" : "Show"} ${KIND_GROUP_LABEL[kind]} across the tree`}
-                /* Label only, sized to its own word, but able to shrink: the
-                   sidebar is resizable now, so at 12% the five labels have to
-                   ellipsize rather than be clipped mid-word. Icon plus label
-                   never fits, and an equal-width split starves `entities`
-                   while leaving `VO` swimming. */
-                className={`min-w-0 flex-auto truncate text-center !px-1.5 ${
-                  on ? "is-on" : ""
-                }`}
-              >
-                {KIND_CHIP[kind]}
-              </button>
-            );
-          })}
+        {/* Seven switches over one tree: one border round the set, hairlines
+            between. Bordering each of them made the box read as seven objects.
+            Two rows because seven labels on one never fit - the aggregate's
+            kinds, then the store's. */}
+        <div
+          className="seg-stack mt-3 w-full"
+          role="group"
+          aria-label="Show kinds"
+        >
+          {[MODEL_LEAF_KINDS, STORE_LEAF_KINDS].map((row) => (
+            <div key={row[0]} className="seg">
+              {row.map((kind) => {
+                const on = shows(kind);
+                return (
+                  <button
+                    key={kind}
+                    type="button"
+                    onClick={() => toggleKind(kind)}
+                    aria-pressed={on}
+                    title={`${on ? "Hide" : "Show"} ${KIND_GROUP_LABEL[kind]} across the tree`}
+                    /* Label only, sized to its own word, but able to shrink:
+                       the sidebar is resizable, so at its narrowest the labels
+                       have to ellipsize rather than be clipped mid-word. Icon
+                       plus label never fits, and an equal-width split starves
+                       `entities` while leaving `VO` swimming. */
+                    className={`min-w-0 flex-auto truncate text-center !px-1.5 ${
+                      on ? "is-on" : ""
+                    }`}
+                  >
+                    {KIND_CHIP[kind]}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
         </div>
       </div>
 

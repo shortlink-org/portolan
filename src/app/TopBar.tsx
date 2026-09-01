@@ -32,7 +32,13 @@ export function TopBar({
   const compact = density === "compact";
 
   return (
-    <header className="flex h-12 shrink-0 items-center gap-4 border-b px-gutter border-line bg-canvas">
+    /* One row while there is room for one, and rows when there is not: the
+       shell degrades to a drawer at the narrow breakpoint, but the bar's own
+       contents have a width of their own and run out before that. Wrapping is
+       what keeps every control reachable - hiding them would take the theme
+       and the shortcuts sheet away from exactly the window that has the least
+       room to do without them. */
+    <header className="flex min-h-12 shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b py-1 px-gutter border-line bg-canvas">
       {narrow ? (
         <button
           type="button"
@@ -48,7 +54,7 @@ export function TopBar({
 
       <Breadcrumbs />
 
-      <div className="ml-auto flex items-center gap-3">
+      <div className="ml-auto flex flex-wrap items-center justify-end gap-3">
         {/* Opens the palette rather than filtering in place: the sidebar box
             narrows the tree, this one searches the whole catalog. */}
         <button

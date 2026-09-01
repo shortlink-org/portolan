@@ -437,6 +437,19 @@
     background: color-mix(in srgb, var(--accent) 10%, transparent);
   }
 
+  /* Rows of switches under one border. The box belongs to the stack, the
+     hairlines to what is inside it: the rows are the same object seen twice,
+     not two objects stacked. */
+  .seg-stack {
+    @apply overflow-hidden rounded-control border border-line;
+  }
+  .seg-stack > .seg {
+    @apply rounded-none border-0;
+  }
+  .seg-stack > .seg + .seg {
+    border-top: 1px solid var(--border);
+  }
+
   /* Non-navigable header for a group of leaves inside an aggregate. */
   .group-row {
     @apply mono flex w-full items-center gap-1.5 py-[3px] pr-2 text-left text-muted hover:bg-surface;

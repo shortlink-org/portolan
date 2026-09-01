@@ -18,15 +18,26 @@ export type Kind =
   | "flow"
   | "adr";
 
-/** The leaf kinds a filter chip can switch off. Order is the tree order. */
-export const LEAF_KINDS = [
+/**
+ * The leaf kinds a filter chip can switch off, in two groups because the tree
+ * has two: what an aggregate holds, then what a store holds. The sidebar draws
+ * a row per group - seven labels on one row ellipsized every one of them at
+ * every sidebar width, and the break has to land somewhere, so it lands where
+ * the meaning already breaks.
+ */
+export const MODEL_LEAF_KINDS = [
   "event",
   "vo",
   "entity",
   "command",
   "query",
-  "table",
-  "view",
+] as const;
+export const STORE_LEAF_KINDS = ["table", "view"] as const;
+
+/** Both groups, in tree order. */
+export const LEAF_KINDS = [
+  ...MODEL_LEAF_KINDS,
+  ...STORE_LEAF_KINDS,
 ] as const;
 export type LeafKind = (typeof LEAF_KINDS)[number];
 

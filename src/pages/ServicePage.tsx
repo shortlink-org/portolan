@@ -391,11 +391,7 @@ export function ServicePage() {
                         kind and owner only
                       </Empty>
                     ) : (
-                      <ErCanvas
-                        store={store}
-                        ghost={access === "reads"}
-                        height={360}
-                      />
+                      <ErCanvas store={store} ghost={access === "reads"} />
                     )}
                   </div>
                 </section>

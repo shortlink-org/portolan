@@ -49,6 +49,21 @@ const LINEAGE: LineageMaps = {
   into: index.lineageInto,
 };
 
+/**
+ * The height a canvas gets when it is one section of a longer page rather than
+ * the page itself - a share of the window, not a fixed box. 360px was 360px on
+ * a laptop and on a 27" display, which left the bottom half of the second one
+ * empty and gave an expanded table nowhere to grow into. Floored so a short
+ * window keeps a canvas worth drawing, capped so a tall one does not turn a
+ * service page into a single diagram.
+ *
+ * It does not make the schema any bigger. The opening fit is bound by the
+ * column's WIDTH, so a taller box buys room to pan and to expand into, not a
+ * larger scale - the store's own page, where the canvas has the whole pane, is
+ * where a schema is read at 1:1.
+ */
+export const CANVAS_SECTION_HEIGHT = "clamp(360px, 62vh, 720px)";
+
 interface CanvasProps {
   store: Store;
   /** A store this service reads but does not own. */
@@ -57,7 +72,11 @@ interface CanvasProps {
   height?: number | string;
 }
 
-function Canvas({ store, ghost = false, height = 340 }: CanvasProps) {
+function Canvas({
+  store,
+  ghost = false,
+  height = CANVAS_SECTION_HEIGHT,
+}: CanvasProps) {
   const [mode, setMode] = useState<ColumnMode>("keys");
   const [term, setTerm] = useState("");
   const [showViews, setShowViews] = useState(true);
