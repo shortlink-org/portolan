@@ -13,7 +13,11 @@ import { servicePath } from "../routes";
 import { ContextPill } from "../components/primitives";
 import { ErCanvas } from "../er/ErCanvas";
 import { StoreHeader } from "../er/StoreHeader";
-import { readersOfStore, storeColumnCount } from "../lib/data-model";
+import {
+  readersOfStore,
+  storeColumnCount,
+  storeViewCount,
+} from "../lib/data-model";
 import { plural } from "../lib/format";
 import { NotFound } from "./NotFound";
 
@@ -37,6 +41,7 @@ export function StorePage() {
   }
 
   const columns = storeColumnCount(store);
+  const views = storeViewCount(store);
   const readers = readersOfStore(catalog, store.id, store.owner);
 
   return (
@@ -56,6 +61,15 @@ export function StorePage() {
             <span className="tnum">{store.tables.length}</span>{" "}
             {plural(store.tables.length, "table")} ·{" "}
             <span className="tnum">{columns}</span> {plural(columns, "column")}
+            {/* Views are counted apart from the tables rather than added to
+                them: they hold no rows, and one number for both would answer
+                "how much is stored here" with the wrong figure. */}
+            {views > 0 ? (
+              <>
+                {" · "}
+                <span className="tnum">{views}</span> {plural(views, "view")}
+              </>
+            ) : null}
           </span>
           {/* Who else reads this schema. Not a warning — reading someone
               else's store is allowed, and it is the writers the Problems page

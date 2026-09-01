@@ -16,6 +16,7 @@ import type {
   Store,
   Table,
   TypeDef,
+  View,
 } from "../catalog";
 import { walkSteps } from "../catalog";
 import { catalog, index } from "../data";
@@ -26,6 +27,7 @@ export type SelectionKind =
   | "aggregate"
   | "store"
   | "table"
+  | "view"
   | "column"
   | "event"
   | "value-object"
@@ -112,11 +114,22 @@ export interface ResolvedTable {
   service: Service;
   context: BoundedContext;
 }
+export interface ResolvedView {
+  kind: "view";
+  id: string;
+  view: View;
+  store: Store;
+  service: Service;
+  context: BoundedContext;
+}
 export interface ResolvedColumn {
   kind: "column";
   id: string;
   column: Column;
-  table: Table;
+  /** The table holding it, or null when the column belongs to a view. */
+  table: Table | null;
+  /** The view declaring it, or null when the column belongs to a table. */
+  view: View | null;
   store: Store;
   service: Service;
   context: BoundedContext;
@@ -141,6 +154,7 @@ export type Resolved =
   | ResolvedAggregate
   | ResolvedStore
   | ResolvedTable
+  | ResolvedView
   | ResolvedColumn
   | ResolvedEvent
   | ResolvedValueObject
@@ -184,7 +198,9 @@ export function resolveSelection(id: string): Resolved | null {
   }
 
   // Column before table before store: the three ids are nested prefixes of one
-  // another, and the longest one is the thing that was actually clicked.
+  // another, and the longest one is the thing that was actually clicked. A
+  // view column is looked up in the same breath as a table column — a reader
+  // clicking a row does not know or care which of the two they are on.
   const column = index.columnById.get(id);
   if (column) {
     const owner = ownerOfStore(column.store);
@@ -194,7 +210,24 @@ export function resolveSelection(id: string): Resolved | null {
         id,
         column: column.column,
         table: column.table,
+        view: null,
         store: column.store,
+        ...owner,
+      };
+    }
+  }
+
+  const viewColumn = index.viewColumnById.get(id);
+  if (viewColumn) {
+    const owner = ownerOfStore(viewColumn.store);
+    if (owner) {
+      return {
+        kind: "column",
+        id,
+        column: viewColumn.column,
+        table: null,
+        view: viewColumn.view,
+        store: viewColumn.store,
         ...owner,
       };
     }
@@ -209,6 +242,20 @@ export function resolveSelection(id: string): Resolved | null {
         id,
         table: table.table,
         store: table.store,
+        ...owner,
+      };
+    }
+  }
+
+  const view = index.viewById.get(id);
+  if (view) {
+    const owner = ownerOfStore(view.store);
+    if (owner) {
+      return {
+        kind: "view",
+        id,
+        view: view.view,
+        store: view.store,
         ...owner,
       };
     }
@@ -309,12 +356,26 @@ export function selectionTrail(selection: Selection): Selection[] {
         { kind: "store", id: resolved.store.id },
         { kind: "table", id: resolved.table.id },
       ];
+    case "view":
+      return [
+        { kind: "context", id: resolved.context.id },
+        { kind: "service", id: resolved.service.id },
+        { kind: "store", id: resolved.store.id },
+        { kind: "view", id: resolved.view.id },
+      ];
+    // The relation the column belongs to sits in the trail whichever kind it
+    // is; a column of a view has a view where a table would be, and nothing
+    // else about the walk changes.
     case "column":
       return [
         { kind: "context", id: resolved.context.id },
         { kind: "service", id: resolved.service.id },
         { kind: "store", id: resolved.store.id },
-        { kind: "table", id: resolved.table.id },
+        ...(resolved.view
+          ? [{ kind: "view" as const, id: resolved.view.id }]
+          : resolved.table
+            ? [{ kind: "table" as const, id: resolved.table.id }]
+            : []),
         { kind: "column", id: resolved.id },
       ];
     case "flow-step":
@@ -340,8 +401,10 @@ export function selectionLabel(selection: Selection): string {
       return resolved.store.slug;
     case "table":
       return resolved.table.name;
+    case "view":
+      return resolved.view.name;
     case "column":
-      return `${resolved.table.name}.${resolved.column.name}`;
+      return `${resolved.view?.name ?? resolved.table?.name ?? resolved.store.slug}.${resolved.column.name}`;
     case "value-object":
       return resolved.id;
     case "flow-step":

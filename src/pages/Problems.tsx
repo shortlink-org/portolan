@@ -16,13 +16,20 @@ import { staggerStyle } from "../lib/motion";
 import { KindIcon } from "../components/kind";
 import { Ident } from "../components/Ident";
 import { SectionTitle } from "../components/PageHeader";
-import { eventPath, servicePath, storePath, tablePath } from "../routes";
+import {
+  eventPath,
+  servicePath,
+  storePath,
+  tablePath,
+  viewPath,
+} from "../routes";
 
 /** The icon a problem row carries: what the near end of the edge IS. */
 const KIND_OF: Record<Problem["kind"], "service" | "event" | "table"> = {
   rpc: "service",
   consumer: "event",
   "cross-service-fk": "table",
+  "cross-service-lineage": "table",
   "shared-store": "table",
   "persistence-drift": "table",
   "column-type": "table",
@@ -33,6 +40,7 @@ const KIND_NOTE: Record<Problem["kind"], string> = {
   rpc: "the provider of this call is not in the catalog",
   consumer: "this consumer of the event is not in the catalog",
   "cross-service-fk": "foreign key across a service boundary",
+  "cross-service-lineage": "a value copied from another service's schema",
   "shared-store": "a second service writes this database",
   "persistence-drift": "this table no longer carries the aggregate it claims",
   "column-type": "column type and domain type disagree",
@@ -202,12 +210,24 @@ function nearPath(problem: Problem): string | null {
     case "persistence-drift":
     case "outbox-payload":
       return tablePath(problem.id);
-    // The id is "<table>.<column>", so the table is its own id minus the last
-    // segment — and the table is what the canvas can actually show.
+    // The id is "<relation>.<column>", so the relation is its own id minus the
+    // last segment — and the relation is what the canvas can actually show.
     case "cross-service-fk":
     case "column-type":
-      return tablePath(problem.id.split(".").slice(0, -1).join("."));
+      return relationPath(problem.id.split(".").slice(0, -1).join("."));
+    // Lineage is stated on a column, except when a view states it whole, so
+    // the id is one or the other and both are looked up the same way.
+    case "cross-service-lineage":
+      return (
+        relationPath(problem.id) ??
+        relationPath(problem.id.split(".").slice(0, -1).join("."))
+      );
   }
+}
+
+/** A table or a view, whichever the id turns out to name. */
+function relationPath(id: string): string | null {
+  return tablePath(id) ?? viewPath(id);
 }
 
 /** Where the far end lives, when the catalog knows it. */
@@ -215,6 +235,11 @@ function peerPath(problem: Problem): string | null {
   switch (problem.kind) {
     case "cross-service-fk":
       return tablePath(problem.peer);
+    case "cross-service-lineage":
+      return (
+        relationPath(problem.peer) ??
+        relationPath(problem.peer.split(".").slice(0, -1).join("."))
+      );
     case "shared-store":
       return servicePath(problem.peer);
     case "outbox-payload":

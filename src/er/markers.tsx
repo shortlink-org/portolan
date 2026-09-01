@@ -11,6 +11,12 @@
 
 export const MARKER_MANY = "er-many";
 export const MARKER_ONE = "er-one";
+/**
+ * Lineage is not a cardinality, so it gets neither end of the crow's foot: a
+ * plain arrow, pointing the way the data travels. A reader who has learned
+ * that a fan means "many" is not asked to unlearn it here.
+ */
+export const MARKER_FLOW = "er-flow";
 
 export function ErMarkers() {
   return (
@@ -37,6 +43,18 @@ export function ErMarkers() {
             stroke="context-stroke"
             strokeWidth="1"
           />
+        </marker>
+        <marker
+          id={MARKER_FLOW}
+          viewBox="0 0 12 12"
+          markerWidth="9"
+          markerHeight="9"
+          refX="9"
+          refY="6"
+          orient="auto"
+          markerUnits="userSpaceOnUse"
+        >
+          <path d="M1 2 L9 6 L1 10 Z" fill="context-stroke" stroke="none" />
         </marker>
         <marker
           id={MARKER_ONE}

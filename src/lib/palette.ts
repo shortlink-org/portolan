@@ -14,7 +14,7 @@
 import type { Block, Catalog, Event, Field } from "../catalog";
 import { parseQuery } from "./kinds";
 import type { Kind, ParsedQuery } from "./kinds";
-import { paths, storePath, tablePath } from "../routes";
+import { paths, storePath, tablePath, viewPath } from "../routes";
 
 /**
  * Markdown, flattened to one line of searchable prose.
@@ -240,6 +240,26 @@ export function paletteItems(catalog: Catalog): PaletteItem[] {
         ),
       });
     }
+
+    // A view is searched by its SQL as well as by its columns: half the time
+    // the reader remembers the join, not the name the migration gave it.
+    for (const view of store.views ?? []) {
+      items.push({
+        kind: "view",
+        id: view.id,
+        selectId: view.id,
+        name: view.name,
+        detail: store.id,
+        path: viewPath(view.id),
+        context,
+        badge: view.materialized ? "matview" : "view",
+        text: flattenProse(
+          `${view.doc ?? ""} ${view.definition ?? ""} ${view.columns
+            .map((c) => c.name)
+            .join(" ")}`,
+        ),
+      });
+    }
   }
 
   for (const flow of catalog.flows) {
@@ -370,8 +390,10 @@ const KIND_RANK: Record<Kind, number> = {
   // "orders" wants the aggregate first and the table that holds it second.
   store: 9,
   table: 10,
-  flow: 11,
-  adr: 12,
+  // A view after the tables it is computed from, for the same reason.
+  view: 11,
+  flow: 12,
+  adr: 13,
 };
 
 /**

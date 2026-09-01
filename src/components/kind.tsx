@@ -3,6 +3,7 @@
 
 import {
   Database,
+  Eye,
   Hexagon,
   Route,
   ScrollText,
@@ -47,6 +48,9 @@ export const KIND_ICON: Record<Kind, IconComponent> = {
   // lucide's furniture rather than one of portolan's five domain marks.
   store: Database,
   table: Table2,
+  // A view is drawn as an eye rather than a second grid: what separates it
+  // from a table is that it is a way of LOOKING at rows, not a place they are.
+  view: Eye,
   event: EventIcon,
   vo: ValueObjectIcon,
   entity: EntityIcon,
@@ -68,6 +72,7 @@ export const KIND_COLOR: Record<Kind, string> = {
   aggregate: "var(--fg)",
   store: "var(--fg-muted)",
   table: "var(--fg-muted)",
+  view: "var(--fg-muted)",
   event: "var(--kind-event)",
   vo: "var(--fg-muted)",
   entity: "var(--fg-muted)",
@@ -85,6 +90,7 @@ export const KIND_MONO: Record<Kind, boolean> = {
   aggregate: true,
   store: true,
   table: true,
+  view: true,
   event: true,
   vo: true,
   entity: true,

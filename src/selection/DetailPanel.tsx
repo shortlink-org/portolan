@@ -18,10 +18,21 @@ import { SidePanel } from "../components/Overlay";
 import { useNarrow } from "../app/responsive";
 import { useUiStore } from "../app/ui-store";
 import { catalog, index } from "../data";
-import { blockFields, columnId, mapsBlockId, mapsFieldPath } from "../catalog";
+import {
+  blockFields,
+  columnId,
+  columnNameOfId,
+  mapsBlockId,
+  mapsFieldPath,
+  relationOfColumnId,
+  storeViews,
+  viewReads,
+} from "../catalog";
 import { usesOfDef } from "../lib/derive";
 import { typesDisagree } from "../lib/data-model";
 import { STORE_KIND_LABEL } from "../er/StoreHeader";
+import { upstreamOf } from "../er/lineage";
+import type { LineageMaps } from "../er/lineage";
 import { ctxStyle } from "../lib/context-color";
 import { Ident } from "../components/Ident";
 import { StatusChip } from "../components/primitives";
@@ -38,6 +49,12 @@ import type { Resolved, Selection } from "./model";
 import { resolveSelection } from "./model";
 import { selectionPath } from "./pages";
 import { useSelectionStore } from "./store";
+
+/** The catalog's lineage graph, read whenever a column is open. */
+const LINEAGE: LineageMaps = {
+  from: index.lineageFrom,
+  into: index.lineageInto,
+};
 
 function Label({ children }: { children: ReactNode }) {
   return <div className="label mt-3 mb-1">{children}</div>;
@@ -99,10 +116,152 @@ function StoreBody({
         </Row>
       ))}
 
+      {storeViews(store).length > 0 ? (
+        <>
+          <Label>Views</Label>
+          {storeViews(store).map((view) => (
+            <Row key={view.id}>
+              <SelectLink id={view.id}>{view.name}</SelectLink>
+              <span className="mono ml-auto shrink-0 text-muted">
+                {view.materialized ? "matview" : "view"}
+              </span>
+            </Row>
+          ))}
+        </>
+      ) : null}
+
       {store.source ? (
         <>
           <Label>Source</Label>
           <Ident block value={store.source} className="text-muted" />
+        </>
+      ) : null}
+    </>
+  );
+}
+
+/**
+ * Where a value goes and where it came from, as two lists of column links.
+ *
+ * Written once and used from both the table body and the column body, because
+ * "who reads this" is the same question at either zoom level and a reader who
+ * has learned to read it on a column should not have to learn it again.
+ */
+function LineageRows({ ids }: { ids: readonly string[] }) {
+  return (
+    <>
+      {ids.map((id) => (
+        <Row key={id}>
+          <SelectLink id={id}>
+            {relationOfColumnId(id).split(".").at(-1)}.{columnNameOfId(id)}
+          </SelectLink>
+        </Row>
+      ))}
+    </>
+  );
+}
+
+function ViewBody({
+  resolved,
+}: {
+  resolved: Extract<Resolved, { kind: "view" }>;
+}) {
+  const { view, store } = resolved;
+  const aggregateId = view.persists?.aggregate;
+  const reads = viewReads(view);
+  // Everything computed from this view's columns, wherever it lives: a view
+  // read by another view is the case the canvas cannot draw in one hop.
+  const feeds = [
+    ...new Set(
+      view.columns.flatMap(
+        (c) => index.lineageInto.get(columnId(view.id, c.name)) ?? [],
+      ),
+    ),
+  ];
+
+  return (
+    <>
+      {view.doc ? <p className="mt-2 text-muted">{view.doc}</p> : null}
+
+      <Label>Store</Label>
+      <SelectLink id={store.id}>{store.id}</SelectLink>
+
+      <Label>Kind</Label>
+      <div className="mono text-muted">
+        {view.materialized
+          ? "materialized view — the rows are kept, and can be stale"
+          : "view — the rows are computed on every read"}
+      </div>
+
+      {aggregateId ? (
+        <>
+          <Label>Presents</Label>
+          <SelectLink id={aggregateId}>{aggregateId}</SelectLink>
+        </>
+      ) : null}
+
+      <Label>Reads</Label>
+      {reads.length === 0 ? (
+        <div className="mono text-muted">
+          nothing says what this view is computed from
+        </div>
+      ) : null}
+      {reads.map((id) => (
+        <Row key={id}>
+          <SelectLink id={id}>{id.split(".").at(-1)}</SelectLink>
+          <span className="mono ml-auto shrink-0 text-muted">{id}</span>
+        </Row>
+      ))}
+
+      <Label>Columns</Label>
+      <table className="w-full">
+        <tbody>
+          {view.columns.map((column) => (
+            <tr key={column.name} className="align-top">
+              <td className="mono py-0.5 pr-2 whitespace-nowrap">
+                <SelectLink id={columnId(view.id, column.name)}>
+                  {column.name}
+                </SelectLink>
+              </td>
+              <td className="mono py-0.5 pr-2 text-muted">
+                {column.type}
+                {column.nullable ? "?" : ""}
+              </td>
+              <td className="mono py-0.5 text-muted">
+                {(column.from ?? []).length > 0 ? (
+                  <span className="trunc" title={column.from?.join("\n")}>
+                    ← {columnNameOfId(column.from?.[0] ?? "")}
+                    {(column.from?.length ?? 0) > 1
+                      ? ` +${(column.from?.length ?? 1) - 1}`
+                      : ""}
+                  </span>
+                ) : null}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {feeds.length > 0 ? (
+        <>
+          <Label>Feeds</Label>
+          <LineageRows ids={feeds} />
+        </>
+      ) : null}
+
+      {view.definition ? (
+        <>
+          <Label>Definition</Label>
+          <pre className="mono overflow-x-auto rounded-card border p-2 border-line bg-surface text-muted">
+            {view.definition}
+          </pre>
+        </>
+      ) : null}
+
+      {view.source ? (
+        <>
+          <Label>Source</Label>
+          <Ident block value={view.source} className="text-muted" />
         </>
       ) : null}
     </>
@@ -117,6 +276,14 @@ function TableBody({
   const { table, store } = resolved;
   const aggregateId = table.persists?.aggregate;
   const into = index.fkIntoTable.get(table.id) ?? [];
+  const readers = index.viewsReading.get(table.id) ?? [];
+  const feeds = [
+    ...new Set(
+      table.columns.flatMap(
+        (c) => index.lineageInto.get(columnId(table.id, c.name)) ?? [],
+      ),
+    ),
+  ];
 
   return (
     <>
@@ -206,6 +373,30 @@ function TableBody({
           </SelectLink>
         </Row>
       ))}
+
+      {/* A view over this table is not a reference — nothing constrains
+          anything — but it is the same worry in a different shape: rename a
+          column here and the view breaks with no error until it is read. */}
+      {readers.length > 0 ? (
+        <>
+          <Label>Read by</Label>
+          {readers.map((view) => (
+            <Row key={view.id}>
+              <SelectLink id={view.id}>{view.name}</SelectLink>
+              <span className="mono ml-auto shrink-0 text-muted">
+                {view.materialized ? "matview" : "view"}
+              </span>
+            </Row>
+          ))}
+        </>
+      ) : null}
+
+      {feeds.length > 0 ? (
+        <>
+          <Label>Feeds</Label>
+          <LineageRows ids={feeds} />
+        </>
+      ) : null}
     </>
   );
 }
@@ -215,11 +406,18 @@ function ColumnBody({
 }: {
   resolved: Extract<Resolved, { kind: "column" }>;
 }) {
-  const { column, table } = resolved;
-  const aggregateId = table.persists?.aggregate;
+  const { column, table, view } = resolved;
+  const aggregateId = (table ?? view)?.persists?.aggregate;
   const aggregate = aggregateId
     ? index.aggregateById.get(aggregateId)
     : undefined;
+  const from = index.lineageFrom.get(resolved.id) ?? [];
+  const into = index.lineageInto.get(resolved.id) ?? [];
+  // The far ends of the chain, not the next hop: a column three copies
+  // downstream of the truth is what a reader is trying to find out about.
+  const origins = [...upstreamOf(LINEAGE, resolved.id)].filter(
+    (id) => (index.lineageFrom.get(id)?.length ?? 0) === 0,
+  );
   const blockId = mapsBlockId(aggregate, column.maps);
   const block = blockId ? index.blockById.get(blockId) : undefined;
   const to = blockId ? blockPath(blockId) : null;
@@ -233,8 +431,12 @@ function ColumnBody({
     <>
       {column.doc ? <p className="mt-2 text-muted">{column.doc}</p> : null}
 
-      <Label>Table</Label>
-      <SelectLink id={table.id}>{table.name}</SelectLink>
+      <Label>{view ? "View" : "Table"}</Label>
+      {view ? (
+        <SelectLink id={view.id}>{view.name}</SelectLink>
+      ) : table ? (
+        <SelectLink id={table.id}>{table.name}</SelectLink>
+      ) : null}
 
       <Label>Type</Label>
       <div className="mono text-muted">
@@ -254,6 +456,29 @@ function ColumnBody({
               on delete {column.fk.onDelete}
             </div>
           ) : null}
+        </>
+      ) : null}
+
+      {from.length > 0 ? (
+        <>
+          <Label>Computed from</Label>
+          <LineageRows ids={from} />
+          {/* Only worth saying when the chain is longer than one hop: with a
+              single source, the origin IS the source and printing it twice
+              says nothing. */}
+          {origins.length > 0 && !origins.every((id) => from.includes(id)) ? (
+            <>
+              <div className="mono mt-2 text-muted">originally</div>
+              <LineageRows ids={origins} />
+            </>
+          ) : null}
+        </>
+      ) : null}
+
+      {into.length > 0 ? (
+        <>
+          <Label>Feeds</Label>
+          <LineageRows ids={into} />
         </>
       ) : null}
 
@@ -712,13 +937,15 @@ export function DetailPanel() {
               ? resolved.event.name
               : resolved?.kind === "table"
                 ? resolved.table.name
-                : resolved?.kind === "column"
-                  ? `${resolved.table.name}.${resolved.column.name}`
-                  : resolved?.kind === "flow-step"
+                : resolved?.kind === "view"
+                  ? resolved.view.name
+                  : resolved?.kind === "column"
+                    ? `${resolved.view?.name ?? resolved.table?.name ?? resolved.store.slug}.${resolved.column.name}`
+                    : resolved?.kind === "flow-step"
                     ? (resolved.step.label ??
                       resolved.step.ref ??
-                      resolved.step.kind)
-                    : selection.id}
+                        resolved.step.kind)
+                      : selection.id}
           </span>
           {resolved?.kind === "event" ||
           resolved?.kind === "service" ||
@@ -762,6 +989,8 @@ export function DetailPanel() {
           <StoreBody resolved={resolved} />
         ) : resolved.kind === "table" ? (
           <TableBody resolved={resolved} />
+        ) : resolved.kind === "view" ? (
+          <ViewBody resolved={resolved} />
         ) : resolved.kind === "column" ? (
           <ColumnBody resolved={resolved} />
         ) : (

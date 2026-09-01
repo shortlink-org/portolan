@@ -24,6 +24,7 @@ describe("palette index", () => {
         "query",
         "store",
         "table",
+        "view",
         "flow",
         "adr",
       ]),
@@ -62,6 +63,7 @@ describe("palette index", () => {
         "def",
         "store",
         "table",
+        "view",
       ]),
     );
     // A value object has a page but is not a selectable entity; it navigates.

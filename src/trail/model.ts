@@ -105,10 +105,12 @@ function subjectOfSelection(selection: Selection): VisitSubject | null {
     // the chip names the table either way; a column rides along in the label.
     case "table":
       return { kind: "table", label: resolved.table.name };
+    case "view":
+      return { kind: "view", label: resolved.view.name };
     case "column":
       return {
-        kind: "table",
-        label: `${resolved.table.name}.${resolved.column.name}`,
+        kind: resolved.view ? "view" : "table",
+        label: `${resolved.view?.name ?? resolved.table?.name ?? ""}.${resolved.column.name}`,
       };
     // The step number rides along in the label rather than in a chip of its
     // own: one flow, one slot, and the number says how far in they had got.

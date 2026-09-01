@@ -34,10 +34,11 @@ const KIND_RANK: Record<Kind, number> = {
   // the tables in it - the same order the palette ranks them in.
   store: 7,
   table: 8,
-  service: 9,
-  context: 10,
-  flow: 11,
-  adr: 12,
+  view: 9,
+  service: 10,
+  context: 11,
+  flow: 12,
+  adr: 13,
 };
 
 /** Case-insensitive, then case-sensitive, so the order is never arbitrary. */

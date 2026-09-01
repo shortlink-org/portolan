@@ -1,10 +1,16 @@
-// The ER canvas: one store, its tables, and the keys between them.
+// The ER canvas: one store, its tables and views, the keys between them and the
+// lineage through them.
 //
 // Everything structural was decided in spec.ts and layout.ts. What is left here
-// is the reading aids — hovering a column to see where it points, searching for
-// a table by a column nobody remembers the table for — and the wiring into the
-// app's one selection, so a table clicked here fills the same detail panel an
-// event clicked on the dependency graph does.
+// is the reading aids — hovering a column to see where it points and where its
+// value came from, searching for a table by a column nobody remembers the table
+// for — and the wiring into the app's one selection, so a table clicked here
+// fills the same detail panel an event clicked on the dependency graph does.
+//
+// Hovering a column lights the whole lineage chain, not just the neighbouring
+// hop. A copy of a copy is still a copy, and the question a reader has when
+// they hover a column of a report is "where did this ORIGINALLY come from",
+// which one hop cannot answer.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -15,20 +21,33 @@ import {
 } from "@xyflow/react";
 import type { Edge } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Columns3, Download, Maximize2, Search } from "lucide-react";
+import { Columns3, Download, Eye, Maximize2, Search, Waypoints } from "lucide-react";
 import type { Store } from "../catalog";
+import { storeViews } from "../catalog";
 import { index } from "../data";
 import { DiagramSkeleton } from "../components/DiagramSkeleton";
 import { useSelectionStore } from "../selection/store";
-import { erNodeTypes } from "./TableNode";
-import type { ErTableNode } from "./TableNode";
-import { ErMarkers, MARKER_MANY, MARKER_ONE } from "./markers";
+import { TableNodeCard } from "./TableNode";
+import { ViewNodeCard } from "./ViewNode";
+import type { ErFlowNode } from "./RelationCard";
+import { ErMarkers, MARKER_FLOW, MARKER_MANY, MARKER_ONE } from "./markers";
 import { layoutEr } from "./layout";
-import { erSpec, matchingTables } from "./spec";
+import { lineageChain } from "./lineage";
+import type { LineageMaps } from "./lineage";
+import { erSpec, matchingNodes } from "./spec";
 import type { ColumnMode, ErSpec } from "./spec";
 import { toPng } from "html-to-image";
 
+/** Stable across renders: React Flow re-mounts every node when this changes. */
+const erNodeTypes = { erTable: TableNodeCard, erView: ViewNodeCard };
+
 const DIM = 0.25;
+
+/** The catalog's lineage graph, walked on hover. Built once, with the index. */
+const LINEAGE: LineageMaps = {
+  from: index.lineageFrom,
+  into: index.lineageInto,
+};
 
 interface CanvasProps {
   store: Store;
@@ -41,6 +60,8 @@ interface CanvasProps {
 function Canvas({ store, ghost = false, height = 340 }: CanvasProps) {
   const [mode, setMode] = useState<ColumnMode>("keys");
   const [term, setTerm] = useState("");
+  const [showViews, setShowViews] = useState(true);
+  const [showLineage, setShowLineage] = useState(true);
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
   const wrapper = useRef<HTMLDivElement | null>(null);
   const [hoverColumn, setHoverColumn] = useState<string | null>(null);
@@ -55,11 +76,18 @@ function Canvas({ store, ghost = false, height = 340 }: CanvasProps) {
   const selectionId = useSelectionStore((s) => s.selection?.id ?? null);
 
   const spec: ErSpec = useMemo(
-    () => erSpec(index, store, { mode, expanded, ghost }),
-    [store, mode, expanded, ghost],
+    () =>
+      erSpec(index, store, {
+        mode,
+        expanded,
+        ghost,
+        views: showViews,
+        lineage: showLineage,
+      }),
+    [store, mode, expanded, ghost, showViews, showLineage],
   );
 
-  const matched = useMemo(() => matchingTables(spec, term), [spec, term]);
+  const matched = useMemo(() => matchingNodes(spec, term), [spec, term]);
 
   useEffect(() => {
     let cancelled = false;
@@ -83,8 +111,8 @@ function Canvas({ store, ghost = false, height = 340 }: CanvasProps) {
       out.set(tableId, set);
     };
     for (const edge of spec.edges) {
-      add(edge.from, edge.fromColumn);
-      add(edge.to, edge.toColumn);
+      if (edge.fromColumn) add(edge.from, edge.fromColumn);
+      if (edge.toColumn) add(edge.to, edge.toColumn);
     }
     return out;
   }, [spec]);
@@ -93,11 +121,25 @@ function Canvas({ store, ghost = false, height = 340 }: CanvasProps) {
   const { litColumns, litEdges } = useMemo(() => {
     const columns = new Set<string>();
     const edges = new Set<string>();
+    /** Both ends of an edge, when it has column ends at all. */
+    const ends = (edge: ErSpec["edges"][number]): string[] =>
+      edge.fromColumn && edge.toColumn
+        ? [`${edge.from}.${edge.fromColumn}`, `${edge.to}.${edge.toColumn}`]
+        : [];
+
     if (hoverColumn) {
       columns.add(hoverColumn);
+      // Lineage first, and transitively: the chain is the answer, one hop is
+      // an anecdote. Only edges this canvas actually drew are lit — a chain
+      // that leaves the store is read in the panel, not here.
+      if (showLineage) {
+        const chain = lineageChain(LINEAGE, hoverColumn);
+        for (const id of chain.columns) columns.add(id);
+        for (const id of chain.edges) edges.add(id);
+      }
       for (const edge of spec.edges) {
-        const from = `${edge.from}.${edge.fromColumn}`;
-        const to = `${edge.to}.${edge.toColumn}`;
+        const [from, to] = ends(edge);
+        if (!from || !to) continue;
         if (from === hoverColumn || to === hoverColumn) {
           edges.add(edge.id);
           columns.add(from);
@@ -108,12 +150,11 @@ function Canvas({ store, ghost = false, height = 340 }: CanvasProps) {
       const edge = spec.edges.find((e) => e.id === hoverEdge);
       if (edge) {
         edges.add(edge.id);
-        columns.add(`${edge.from}.${edge.fromColumn}`);
-        columns.add(`${edge.to}.${edge.toColumn}`);
+        for (const end of ends(edge)) columns.add(end);
       }
     }
     return { litColumns: columns, litEdges: edges };
-  }, [hoverColumn, hoverEdge, spec]);
+  }, [hoverColumn, hoverEdge, spec, showLineage]);
 
   // A canvas on the service page is mounted inside a tab that is not on screen
   // yet, so its first fit happens against a box of zero width and lands
@@ -149,16 +190,18 @@ function Canvas({ store, ghost = false, height = 340 }: CanvasProps) {
     [select],
   );
 
-  const selectedColumn = useMemo(
-    () => (index.columnById.has(selectionId ?? "") ? selectionId : null),
-    [selectionId],
-  );
+  const selectedColumn = useMemo(() => {
+    const id = selectionId ?? "";
+    return index.columnById.has(id) || index.viewColumnById.has(id)
+      ? selectionId
+      : null;
+  }, [selectionId]);
 
-  const nodes: ErTableNode[] = useMemo(
+  const nodes: ErFlowNode[] = useMemo(
     () =>
       spec.nodes.map((node) => ({
         id: node.id,
-        type: "erTable" as const,
+        type: node.kind === "view" ? ("erView" as const) : ("erTable" as const),
         position: layout.positions[node.id] ?? { x: 0, y: 0 },
         width: node.width,
         height: node.height,
@@ -195,19 +238,31 @@ function Canvas({ store, ghost = false, height = 340 }: CanvasProps) {
   const edges: Edge[] = useMemo(
     () =>
       spec.edges.map((edge) => {
-        // Which side each end uses is a question about where the two tables
+        // Which side each end uses is a question about where the two cards
         // actually landed, so it is answered here and not in the spec.
         const from = layout.positions[edge.from]?.x ?? 0;
         const to = layout.positions[edge.to]?.x ?? 0;
-        const parentIsLeft = to <= from;
+        const targetIsLeft = to <= from;
         const lit = litEdges.has(edge.id);
+        const lineage = edge.kind === "lineage";
         const colour = lit ? "var(--accent)" : "var(--border-strong)";
+        // A lineage edge that names no column joins the two cards rather than
+        // two rows: the catalog said "this view reads that table" and no more,
+        // and inventing a row for it would be drawing a fact nobody stated.
+        const source =
+          edge.fromColumn === null
+            ? "table-source"
+            : `${targetIsLeft ? "l" : "r"}:${edge.fromColumn}`;
+        const target =
+          edge.toColumn === null
+            ? "table"
+            : `${targetIsLeft ? "tr" : "tl"}:${edge.toColumn}`;
         return {
           id: edge.id,
           source: edge.from,
           target: edge.to,
-          sourceHandle: `${parentIsLeft ? "l" : "r"}:${edge.fromColumn}`,
-          targetHandle: `${parentIsLeft ? "tr" : "tl"}:${edge.toColumn}`,
+          sourceHandle: source,
+          targetHandle: target,
           type: "smoothstep",
           ...(edge.onDelete ? { label: `on delete ${edge.onDelete}` } : {}),
           labelStyle: {
@@ -222,11 +277,16 @@ function Canvas({ store, ghost = false, height = 340 }: CanvasProps) {
             stroke: colour,
             strokeWidth: lit ? 1.8 : 1,
             opacity: litEdges.size > 0 && !lit ? DIM : 1,
+            // Dashed for lineage, solid for a key: one is a copy the database
+            // performs, the other a constraint it enforces, and a reader
+            // should be able to tell which without following the line.
+            ...(lineage ? { strokeDasharray: "3 3" } : {}),
           },
           // React Flow builds the url(#…) wrapper itself; passing one here
           // produces url(#url(#…)) and no marker at all.
-          markerStart: MARKER_MANY,
-          markerEnd: MARKER_ONE,
+          ...(lineage
+            ? { markerEnd: MARKER_FLOW }
+            : { markerStart: MARKER_MANY, markerEnd: MARKER_ONE }),
           zIndex: lit ? 10 : 0,
         };
       }),
@@ -234,6 +294,7 @@ function Canvas({ store, ghost = false, height = 340 }: CanvasProps) {
   );
 
   const fitKey = layout.ready ? `fit-${nodes.length}-${mode}` : "pending";
+  const views = storeViews(store).length;
 
   return (
     /* The toolbar is a row above the canvas, not a panel floating over it: a
@@ -251,6 +312,11 @@ function Canvas({ store, ghost = false, height = 340 }: CanvasProps) {
         mode={mode}
         onMode={setMode}
         hits={matched.size}
+        views={views}
+        showViews={showViews}
+        onShowViews={setShowViews}
+        showLineage={showLineage}
+        onShowLineage={setShowLineage}
         wrapper={wrapper}
         name={store.id}
       />
@@ -289,6 +355,11 @@ function Toolbar({
   mode,
   onMode,
   hits,
+  views,
+  showViews,
+  onShowViews,
+  showLineage,
+  onShowLineage,
   wrapper,
   name,
 }: {
@@ -297,6 +368,12 @@ function Toolbar({
   mode: ColumnMode;
   onMode: (value: ColumnMode) => void;
   hits: number;
+  /** How many views this store has; with none, the toggle is not a choice. */
+  views: number;
+  showViews: boolean;
+  onShowViews: (value: boolean) => void;
+  showLineage: boolean;
+  onShowLineage: (value: boolean) => void;
   wrapper: React.RefObject<HTMLDivElement | null>;
   name: string;
 }) {
@@ -362,6 +439,38 @@ function Toolbar({
           <Columns3 size={11} aria-hidden className="inline" /> all
         </button>
       </div>
+
+      {/* Two toggles rather than one: a reader who wants the tables alone and a
+          reader who wants the views without the web of lines that joins them
+          are asking different questions, and answering both with one switch
+          means one of them has to look at a picture they did not ask for. */}
+      {views > 0 ? (
+        <button
+          type="button"
+          onClick={() => onShowViews(!showViews)}
+          aria-pressed={showViews}
+          title={`${showViews ? "Hide" : "Show"} the ${views} view${views === 1 ? "" : "s"} in this store`}
+          className={`mono flex items-center gap-1 rounded-control border px-1.5 py-1 border-line bg-canvas ${
+            showViews ? "text-ink" : "text-muted"
+          }`}
+        >
+          <Eye size={11} aria-hidden />
+          <span className="tnum">{views}</span>
+        </button>
+      ) : null}
+
+      <button
+        type="button"
+        onClick={() => onShowLineage(!showLineage)}
+        aria-pressed={showLineage}
+        title={`${showLineage ? "Hide" : "Show"} where each value is copied from`}
+        aria-label="Lineage"
+        className={`rounded-control border p-1.5 border-line bg-canvas ${
+          showLineage ? "text-ink" : "text-muted"
+        }`}
+      >
+        <Waypoints size={12} aria-hidden />
+      </button>
 
       <button
         type="button"

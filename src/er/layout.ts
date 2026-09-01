@@ -1,11 +1,16 @@
-// Where the tables go.
+// Where the cards go.
 //
-// One decision worth spelling out: the edges handed to elk run the OPPOSITE way
-// from the edges drawn. A foreign key points from the child to the parent, so a
-// layered pass over the real direction puts the aggregate root on the right,
-// at the end of every arrow. Readers do not read a schema that way — they start
-// at the root and follow what hangs off it — so the layout is fed parent → child
-// and the canvas draws child → parent over the top of it.
+// One decision worth spelling out: the FK edges handed to elk run the OPPOSITE
+// way from the edges drawn. A foreign key points from the child to the parent,
+// so a layered pass over the real direction puts the aggregate root on the
+// right, at the end of every arrow. Readers do not read a schema that way —
+// they start at the root and follow what hangs off it — so the layout is fed
+// parent → child and the canvas draws child → parent over the top of it.
+//
+// Lineage is fed exactly as it is drawn. It already points the way a reader
+// reads: source on the left, the view computed from it on the right. Reversing
+// it too would put every view before the tables it reads, which is the one
+// arrangement that makes a lineage picture unreadable.
 
 import { layoutWithElk } from "../graph/elk";
 import type { ErSpec } from "./spec";
@@ -34,10 +39,12 @@ export function layoutInput(spec: ErSpec): ErLayoutInput {
     // A self-reference constrains nothing and elk lays it out as a cycle of
     // one; the canvas still draws it.
     if (edge.from === edge.to) continue;
-    const pair = `${edge.to}->${edge.from}`;
+    const source = edge.kind === "fk" ? edge.to : edge.from;
+    const target = edge.kind === "fk" ? edge.from : edge.to;
+    const pair = `${source}->${target}`;
     if (seen.has(pair)) continue;
     seen.add(pair);
-    edges.push({ id: pair, source: edge.to, target: edge.from });
+    edges.push({ id: pair, source, target });
   }
 
   return {

@@ -18,8 +18,14 @@ import type {
   Service,
   Store,
   Table,
+  View,
 } from "../catalog";
-import { aggregateBlocks, blockFields, mapsFieldPath } from "../catalog";
+import {
+  aggregateBlocks,
+  blockFields,
+  mapsFieldPath,
+  storeViews,
+} from "../catalog";
 
 // ---------------------------------------------------------------------------
 // Stores and services
@@ -77,9 +83,40 @@ export function readersOfStore(
   return out;
 }
 
-/** How many columns a store holds, for the header line above an ER canvas. */
+/**
+ * How many columns a store holds, for the header line above an ER canvas.
+ * A view's columns are counted apart: they are not storage, and adding them to
+ * the total would inflate "how big is this schema" with rows that do not exist.
+ */
 export function storeColumnCount(store: Store): number {
   return store.tables.reduce((n, t) => n + t.columns.length, 0);
+}
+
+/** How many views a store declares. */
+export function storeViewCount(store: Store): number {
+  return storeViews(store).length;
+}
+
+/**
+ * The views presenting an aggregate, alongside the tables that hold it. A
+ * report a service reads its own aggregate through belongs on that aggregate's
+ * page: it is one of the ways the model is actually queried.
+ */
+export interface PresentedView {
+  view: View;
+  store: Store;
+}
+
+export function viewsPresenting(
+  index: CatalogIndex,
+  aggregateId: string,
+): PresentedView[] {
+  const out: PresentedView[] = [];
+  for (const view of index.viewsByAggregate.get(aggregateId) ?? []) {
+    const held = index.viewById.get(view.id);
+    if (held) out.push({ view, store: held.store });
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------

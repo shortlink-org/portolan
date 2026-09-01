@@ -12,6 +12,7 @@ const KINDS: SelectionKind[] = [
   "aggregate",
   "store",
   "table",
+  "view",
   "column",
   "event",
   "value-object",

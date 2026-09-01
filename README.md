@@ -20,6 +20,17 @@ lets the schema be read next to the model rather than beside it — and what let
 the Problems page name a foreign key that crosses a service boundary, a database
 with a second writer, or a column whose type has drifted from its field's.
 
+A store also holds views. A view is kept apart from a table rather than folded
+in behind a flag: it has no key, no constraints and no rows of its own, and what
+it has instead is what it reads. Any column — of a view, of a projection, of an
+outbox — may name the columns it is computed from in `from`, and that is the
+lineage the canvas draws: dashed, source on the left, arrow pointing the way the
+data travels, next to the solid crow's feet of the keys. Hovering a column lights
+the whole chain rather than the next hop, because the question is where a value
+originally came from. Lineage that leaves the store is a warning on the Problems
+page: copying is how a service stays out of someone else's database, but nothing
+on the far side records that the copy exists.
+
 Facts carry a status (`verified` / `declared` / `unresolved`) and a provenance
 (`authored` / `derived-from-test` / `derived-from-otel`), so a flow reconstructed
 from an integration test reads differently from one someone wrote down.

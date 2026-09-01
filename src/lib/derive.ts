@@ -394,6 +394,7 @@ export type ProblemKind =
   | "rpc"
   | "consumer"
   | "cross-service-fk"
+  | "cross-service-lineage"
   | "shared-store"
   | "persistence-drift"
   | "column-type"

@@ -4,7 +4,7 @@ import { catalog, index } from "../data";
 import { blockCounts, blockFields, rootEntity } from "../catalog";
 import type { Aggregate, Block, BlockKind, Operation } from "../catalog";
 import { markdownOutline } from "../lib/derive";
-import { tablesPersisting } from "../lib/data-model";
+import { tablesPersisting, viewsPresenting } from "../lib/data-model";
 import { plural } from "../lib/format";
 import { KIND_LABEL, KIND_PLURAL } from "../lib/kinds";
 import type { LeafKind } from "../lib/kinds";
@@ -16,6 +16,7 @@ import {
   LINKS_HERE,
   paths,
   tablePath,
+  viewPath,
 } from "../routes";
 import { Markdown } from "../components/Markdown";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
@@ -211,6 +212,7 @@ export function AggregatePage() {
   const queries = aggregate.operations.filter((o) => o.kind === "query");
   const root = rootEntity(aggregate);
   const persistence = tablesPersisting(index, aggregate.id);
+  const presented = viewsPresenting(index, aggregate.id);
 
   // The readme's own headings first, then the five sections the page adds
   // under it. One rail, in the order the page is actually written in.
@@ -415,6 +417,7 @@ export function AggregatePage() {
               right={
                 <span className="mono text-muted">
                   one row per table that holds it
+                  {presented.length > 0 ? ", then the views over it" : ""}
                 </span>
               }
             >
@@ -455,6 +458,41 @@ export function AggregatePage() {
                         copy={table.id}
                         reveal={table.id}
                         label={table.name}
+                      />
+                    </div>
+                  );
+                })}
+                {/* A view is not persistence — it holds nothing — but it is
+                    how this aggregate is actually read back, and a reader who
+                    has found the tables wants the reports over them next. */}
+                {presented.map(({ view, store }) => {
+                  const to = viewPath(view.id);
+                  return (
+                    <div key={view.id} className="row px-2 py-1.5">
+                      <KindIcon kind="view" />
+                      {to ? (
+                        <Link
+                          to={to}
+                          data-nav-item
+                          className="mono rounded-control"
+                        >
+                          {view.name}
+                        </Link>
+                      ) : (
+                        <span className="mono">{view.name}</span>
+                      )}
+                      <span className="chip">
+                        {view.materialized ? "matview" : "view"}
+                      </span>
+                      <span className="mono text-muted">{store.slug}</span>
+                      <span className="mono ml-auto text-muted">
+                        <span className="tnum">{view.columns.length}</span>{" "}
+                        {plural(view.columns.length, "column")}
+                      </span>
+                      <RowActions
+                        copy={view.id}
+                        reveal={view.id}
+                        label={view.name}
                       />
                     </div>
                   );

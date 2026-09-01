@@ -9,9 +9,11 @@ import {
   isRoutable,
   paths,
   servicePath,
+  tablePath,
+  viewPath,
 } from "./routes";
 import { parseSelectionHash } from "./selection/hash";
-import { allAggregates } from "./catalog";
+import { allAggregates, allStores, allViews } from "./catalog";
 
 describe("routes", () => {
   it("routes every URL the catalog can produce", () => {
@@ -99,6 +101,35 @@ describe("routes", () => {
         if (!id) continue;
         expect(adrPath(id), `${adr.id} -> ${id}`).not.toBeNull();
       }
+    }
+  });
+
+  it("opens a view on the canvas of the store that declares it", () => {
+    for (const view of allViews(catalog)) {
+      const path = viewPath(view.id);
+      expect(path, view.id).not.toBeNull();
+      expect(isRoutable(path as string), path as string).toBe(true);
+    }
+    expect(viewPath("shop.oms.pg.v_open_orders")).toBe(
+      "/c/shop/oms/data/pg#sel=view:shop.oms.pg.v_open_orders",
+    );
+    // A view is not a table and vice versa, so neither answers for the other.
+    expect(viewPath("shop.oms.pg.orders")).toBeNull();
+    expect(tablePath("shop.oms.pg.v_open_orders")).toBeNull();
+  });
+
+  it("carries a view through the hash as a view", () => {
+    const link = viewPath("shop.oms.pg.mv_orders_daily") as string;
+    expect(parseSelectionHash(link.slice(link.indexOf("#")))).toEqual({
+      kind: "view",
+      id: "shop.oms.pg.mv_orders_daily",
+    });
+  });
+
+  it("has a store for every view, so no view is orphaned", () => {
+    const stores = new Set(allStores(catalog).map((s) => s.id));
+    for (const view of allViews(catalog)) {
+      expect(stores.has(view.id.split(".").slice(0, -1).join("."))).toBe(true);
     }
   });
 

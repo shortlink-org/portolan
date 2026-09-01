@@ -189,6 +189,12 @@ export interface Store {
   /** Service id. Exactly one service owns a store; everyone else reads it. */
   owner: string;
   tables: Table[];
+  /**
+   * Views declared over those tables. Optional in the file for the same reason
+   * `stores` is: a catalog written before the extractor learned to read
+   * `CREATE VIEW` still loads, and every reader sees an empty list.
+   */
+  views?: View[];
   /** Migrations directory or config path, as a reader would open it. */
   source?: string;
 }
@@ -241,9 +247,54 @@ export interface Column {
   pk?: boolean;
   /** `table` is a Table.id, so a foreign key names its target unambiguously. */
   fk?: { table: string; column: string; onDelete?: string };
+  /**
+   * The columns this one is computed from, as "<table or view id>.<column>".
+   *
+   * A foreign key says which row this value points AT; lineage says where the
+   * value CAME FROM, which is a different question and the only one that can
+   * be asked of a view column or of a projection rebuilt from an event. It is
+   * declared on the derived end because that is the end that knows: a source
+   * table has no idea who reads it.
+   */
+  from?: string[];
   /** Domain field path, e.g. "Order.CustomerID". */
   maps?: string;
   doc?: string;
+}
+
+/**
+ * A view: a query the database has a name for.
+ *
+ * It is kept apart from Table rather than folded in behind a flag because the
+ * two answer different questions. A table is where rows live; a view is a
+ * reading of rows that live somewhere else, so it has no primary key, no
+ * foreign keys, and no migrations of its own — what it has instead is the list
+ * of things it reads, which is the only reason it is on the canvas at all.
+ */
+export interface View {
+  id: string; // "<store id>.<view name>"
+  name: string;
+  doc?: string;
+  /**
+   * True when the database keeps the rows rather than recomputing them. A
+   * matview can be stale, which is the one fact a reader has to have before
+   * believing a row, so it is drawn differently rather than noted in prose.
+   */
+  materialized?: boolean;
+  columns: Column[];
+  /**
+   * Tables and views this one is defined over, by id. Column lineage already
+   * implies most of them; this is what a view whose columns nobody has mapped
+   * still says out loud, and it is what the canvas draws when a column-level
+   * edge would be a guess.
+   */
+  reads?: string[];
+  /** The SELECT, as the migration declares it. Shown, never parsed. */
+  definition?: string;
+  /** The domain object this view presents, when it presents exactly one. */
+  persists?: { aggregate?: string; block?: string };
+  /** Migration or model file, as a reader would open it. */
+  source?: string;
 }
 
 export interface Flow {
@@ -480,6 +531,49 @@ export function allTables(catalog: Catalog): Table[] {
   return allStores(catalog).flatMap((s) => s.tables);
 }
 
+/** Every view in every store. Absent means none, exactly as with tables. */
+export function allViews(catalog: Catalog): View[] {
+  return allStores(catalog).flatMap((s) => s.views ?? []);
+}
+
+/** The views of one store, without the caller having to know the field is optional. */
+export function storeViews(store: Store): View[] {
+  return store.views ?? [];
+}
+
+/**
+ * What a view reads, table by table: what it declares, then everything its
+ * columns point at that it forgot to declare. A view is allowed to state only
+ * one of the two — the coarse list is easier to write by hand, the column
+ * lineage is what an extractor produces — and readers should not have to know
+ * which of the two the catalog happened to carry.
+ */
+export function viewReads(view: View): string[] {
+  const out: string[] = [];
+  const add = (id: string) => {
+    if (!out.includes(id)) out.push(id);
+  };
+  for (const id of view.reads ?? []) add(id);
+  for (const column of view.columns) {
+    for (const ref of column.from ?? []) add(relationOfColumnId(ref));
+  }
+  return out;
+}
+
+/**
+ * The relation half of a column id. Ids are dotted all the way down and only
+ * the last segment is the column name, so this is a right split, not a left
+ * one: "shop.oms.pg.orders.status" is the `status` column of `shop.oms.pg.orders`.
+ */
+export function relationOfColumnId(id: string): string {
+  return id.split(".").slice(0, -1).join(".");
+}
+
+/** The column half of a column id — everything after the last dot. */
+export function columnNameOfId(id: string): string {
+  return id.split(".").at(-1) ?? "";
+}
+
 /**
  * A column's id. Columns are not addressed in the JSON, but the selection layer
  * needs one identifier per selectable thing, and "<table id>.<column>" is the
@@ -567,6 +661,13 @@ export interface ColumnOwner {
   store: Store;
 }
 
+/** The same, for a column of a view. Kept apart so `owner.table` never lies. */
+export interface ViewColumnOwner {
+  column: Column;
+  view: View;
+  store: Store;
+}
+
 /**
  * The block a `maps` path points into, by name. A path is "<Type>.<Field>", and
  * the type is resolved inside the aggregate the table already says it persists
@@ -606,12 +707,24 @@ export interface CatalogIndex {
   storeById: Map<string, Store>;
   /** table id -> the table and the store holding it */
   tableById: Map<string, { table: Table; store: Store }>;
+  /** view id -> the view and the store declaring it */
+  viewById: Map<string, { view: View; store: Store }>;
   /** column id -> the column and everything that owns it */
   columnById: Map<string, ColumnOwner>;
+  /** column id -> the view column and everything that owns it */
+  viewColumnById: Map<string, ViewColumnOwner>;
+  /** table or view id -> the views reading it, in catalog order */
+  viewsReading: Map<string, View[]>;
+  /** column id -> the column ids it is computed from, in declaration order */
+  lineageFrom: Map<string, string[]>;
+  /** column id -> the column ids computed from it, in catalog order */
+  lineageInto: Map<string, string[]>;
   /** service id -> stores it owns, in catalog order */
   storesOwnedBy: Map<string, Store[]>;
   /** aggregate id -> tables naming it in `persists`, in catalog order */
   tablesByAggregate: Map<string, Table[]>;
+  /** aggregate id -> views naming it in `persists`, in catalog order */
+  viewsByAggregate: Map<string, View[]>;
   /** block id -> columns whose `maps` path lands in that block */
   columnsByBlock: Map<string, ColumnOwner[]>;
   /** table id -> the columns pointing at it through a foreign key */
@@ -646,9 +759,15 @@ export function buildIndex(catalog: Catalog): CatalogIndex {
   const adrsByEvent = new Map<string, Adr[]>();
   const storeById = new Map<string, Store>();
   const tableById = new Map<string, { table: Table; store: Store }>();
+  const viewById = new Map<string, { view: View; store: Store }>();
   const columnById = new Map<string, ColumnOwner>();
+  const viewColumnById = new Map<string, ViewColumnOwner>();
+  const viewsReading = new Map<string, View[]>();
+  const lineageFrom = new Map<string, string[]>();
+  const lineageInto = new Map<string, string[]>();
   const storesOwnedBy = new Map<string, Store[]>();
   const tablesByAggregate = new Map<string, Table[]>();
+  const viewsByAggregate = new Map<string, View[]>();
   const columnsByBlock = new Map<string, ColumnOwner[]>();
   const fkIntoTable = new Map<string, ColumnOwner[]>();
 
@@ -681,6 +800,21 @@ export function buildIndex(catalog: Catalog): CatalogIndex {
     }
   }
 
+  // Lineage is recorded from the derived end, which is the only end that
+  // declares it, and both directions are kept: "where did this come from" and
+  // "who reads this" are asked as often as each other, and answering the
+  // second by scanning every column in the catalog is what an index is for.
+  const recordLineage = (id: string, column: Column): void => {
+    const sources = column.from ?? [];
+    if (sources.length === 0) return;
+    lineageFrom.set(id, [...sources]);
+    for (const source of sources) {
+      const list = lineageInto.get(source) ?? [];
+      if (!list.includes(id)) list.push(id);
+      lineageInto.set(source, list);
+    }
+  };
+
   // Stores come after the domain tree because they point into it: a table says
   // which aggregate it persists, and a column which block it maps to, so both
   // are resolved against maps that are already full.
@@ -712,6 +846,7 @@ export function buildIndex(catalog: Catalog): CatalogIndex {
       for (const column of table.columns) {
         const owner: ColumnOwner = { column, table, store };
         columnById.set(columnId(table.id, column.name), owner);
+        recordLineage(columnId(table.id, column.name), column);
         if (column.fk) {
           const into = fkIntoTable.get(column.fk.table) ?? [];
           into.push(owner);
@@ -726,6 +861,32 @@ export function buildIndex(catalog: Catalog): CatalogIndex {
           list.push(owner);
           columnsByBlock.set(blockId, list);
         }
+      }
+    }
+
+    // Views after the tables of the same store: a view reads tables, and the
+    // ones it reads are usually its neighbours in the same file.
+    for (const view of storeViews(store)) {
+      viewById.set(view.id, { view, store });
+      const aggregateId =
+        view.persists?.aggregate ??
+        (view.persists?.block
+          ? blockById.get(view.persists.block)?.aggregate.id
+          : undefined);
+      if (aggregateId) {
+        const list = viewsByAggregate.get(aggregateId) ?? [];
+        list.push(view);
+        viewsByAggregate.set(aggregateId, list);
+      }
+      for (const readId of viewReads(view)) {
+        const list = viewsReading.get(readId) ?? [];
+        if (!list.includes(view)) list.push(view);
+        viewsReading.set(readId, list);
+      }
+      for (const column of view.columns) {
+        const id = columnId(view.id, column.name);
+        viewColumnById.set(id, { column, view, store });
+        recordLineage(id, column);
       }
     }
   }
@@ -770,9 +931,15 @@ export function buildIndex(catalog: Catalog): CatalogIndex {
     adrsByEvent,
     storeById,
     tableById,
+    viewById,
     columnById,
+    viewColumnById,
+    viewsReading,
+    lineageFrom,
+    lineageInto,
     storesOwnedBy,
     tablesByAggregate,
+    viewsByAggregate,
     columnsByBlock,
     fkIntoTable,
   };
@@ -1019,6 +1186,39 @@ function validateStores(catalog: Catalog): void {
     }
   }
 
+  // Views join the same namespace: a database will not let a view and a table
+  // share a name, and lineage points at both, so one map answers "does this id
+  // exist, and does it have that column" for either.
+  const columnsOfRelation = new Map(columnsOfTable);
+  for (const store of stores) {
+    for (const view of storeViews(store)) {
+      if (columnsOfRelation.has(view.id)) {
+        fail(
+          `view id "${view.id}" collides with another table or view`,
+          `store ${store.id}`,
+        );
+      }
+      columnsOfRelation.set(view.id, new Set(view.columns.map((c) => c.name)));
+    }
+  }
+
+  /** A column reference — "<relation id>.<column>" — that has to resolve. */
+  const checkColumnRef = (ref: string, where: string, what: string): void => {
+    const relation = relationOfColumnId(ref);
+    const columns = columnsOfRelation.get(relation);
+    if (!columns) {
+      fail(
+        `${what} names "${ref}", and "${relation}" is not a table or view in the catalog`,
+        where,
+      );
+    } else if (!columns.has(columnNameOfId(ref))) {
+      fail(
+        `${what} names "${ref}", and "${relation}" has no column "${columnNameOfId(ref)}"`,
+        where,
+      );
+    }
+  };
+
   for (const store of stores) {
     if (store.id !== `${store.owner}.${store.slug}`) {
       fail(
@@ -1096,6 +1296,20 @@ function validateStores(catalog: Catalog): void {
       }
 
       for (const column of table.columns) {
+        for (const ref of column.from ?? []) {
+          const self = `${table.id}.${column.name}`;
+          if (ref === self) {
+            fail(
+              `column "${self}" is declared as derived from itself`,
+              `${where} / column ${column.name}`,
+            );
+          }
+          checkColumnRef(
+            ref,
+            `${where} / column ${column.name}`,
+            `column "${column.name}" of table "${table.id}" is derived from a column that`,
+          );
+        }
         if (!column.fk) continue;
         const target = columnsOfTable.get(column.fk.table);
         if (!target) {
@@ -1107,6 +1321,73 @@ function validateStores(catalog: Catalog): void {
           fail(
             `column "${column.name}" of table "${table.id}" has a foreign key into "${column.fk.table}.${column.fk.column}", and that table has no such column`,
             `${where} / column ${column.name}`,
+          );
+        }
+      }
+    }
+
+    for (const view of storeViews(store)) {
+      const where = `store ${store.id} / view ${view.name}`;
+      if (view.id !== `${store.id}.${view.name}`) {
+        fail(
+          `view "${view.id}" in store "${store.id}" must have id "${store.id}.${view.name}"`,
+          where,
+        );
+      }
+
+      const own = columnsOfRelation.get(view.id) ?? new Set<string>();
+      if (own.size !== view.columns.length) {
+        fail(`view "${view.id}" has duplicate column names`, where);
+      }
+
+      const aggregateId = view.persists?.aggregate;
+      if (aggregateId && !aggregates.has(aggregateId)) {
+        fail(
+          `view "${view.id}" presents unknown aggregate "${aggregateId}"`,
+          where,
+        );
+      }
+
+      for (const readId of view.reads ?? []) {
+        if (readId === view.id) {
+          fail(`view "${view.id}" is declared as reading itself`, where);
+        }
+        if (!columnsOfRelation.has(readId)) {
+          fail(
+            `view "${view.id}" reads "${readId}", which is not a table or view in the catalog`,
+            where,
+          );
+        }
+      }
+
+      for (const column of view.columns) {
+        const at = `${where} / column ${column.name}`;
+        // A view has no rows of its own, so it has no key of its own either.
+        // Saying otherwise would put a key glyph on a card that cannot enforce
+        // one, which is the sort of small lie a schema browser exists to stop.
+        if (column.pk) {
+          fail(
+            `column "${column.name}" of view "${view.id}" is marked as a primary key; a view has no key of its own`,
+            at,
+          );
+        }
+        if (column.fk) {
+          fail(
+            `column "${column.name}" of view "${view.id}" declares a foreign key; a view states what it reads through lineage, not through constraints`,
+            at,
+          );
+        }
+        for (const ref of column.from ?? []) {
+          if (ref === `${view.id}.${column.name}`) {
+            fail(
+              `column "${view.id}.${column.name}" is declared as derived from itself`,
+              at,
+            );
+          }
+          checkColumnRef(
+            ref,
+            at,
+            `column "${column.name}" of view "${view.id}" is derived from a column that`,
           );
         }
       }

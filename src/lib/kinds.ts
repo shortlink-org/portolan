@@ -8,6 +8,7 @@ export type Kind =
   | "aggregate"
   | "store"
   | "table"
+  | "view"
   | "event"
   | "vo"
   | "entity"
@@ -25,6 +26,7 @@ export const LEAF_KINDS = [
   "command",
   "query",
   "table",
+  "view",
 ] as const;
 export type LeafKind = (typeof LEAF_KINDS)[number];
 
@@ -38,6 +40,7 @@ export const KIND_LABEL: Record<Kind, string> = {
   aggregate: "aggregate",
   store: "store",
   table: "table",
+  view: "view",
   event: "event",
   vo: "value object",
   entity: "entity",
@@ -54,6 +57,7 @@ export const KIND_PLURAL: Record<Kind, string> = {
   aggregate: "aggregates",
   store: "stores",
   table: "tables",
+  view: "views",
   event: "events",
   vo: "value objects",
   entity: "entities",
@@ -72,6 +76,7 @@ export const KIND_CHIP: Record<LeafKind, string> = {
   command: "cmd",
   query: "qry",
   table: "tables",
+  view: "views",
 };
 
 /**
@@ -92,6 +97,9 @@ export const KIND_PREFIXES: Record<Kind, string[]> = {
   // two never share a prefix: "db: pg" finds the store, "tbl: orders" the table.
   store: ["db", "store", "stores"],
   table: ["tbl", "table", "tables"],
+  // A view is a table the database computes, so it answers to its own prefix
+  // rather than to "tbl": a reader who types one is not asking for the other.
+  view: ["view", "views", "vw"],
   service: ["svc", "service", "services"],
   context: ["ctx", "context", "contexts"],
   flow: ["flow", "flows"],

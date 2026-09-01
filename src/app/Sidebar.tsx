@@ -11,7 +11,9 @@ import type {
   Service,
   Store,
   Table,
+  View,
 } from "../catalog";
+import { storeViews } from "../catalog";
 import { adrNumber, newestAccepted, sortAdrs } from "../lib/adr";
 import { ctxStyle } from "../lib/context-color";
 import { KIND_CHIP, LEAF_KINDS } from "../lib/kinds";
@@ -50,6 +52,7 @@ interface AggregateMatch {
 interface StoreMatch {
   store: Store;
   tables: Table[];
+  views: View[];
 }
 
 interface ServiceMatch {
@@ -59,10 +62,10 @@ interface ServiceMatch {
 }
 
 /**
- * The stores a service owns, filtered. A hit on the store keeps every table;
- * otherwise only the tables that matched survive, exactly like an aggregate.
- * Read-only stores are left out: the tree is a map of what each service is
- * responsible for, and a store it borrows belongs under its owner.
+ * The stores a service owns, filtered. A hit on the store keeps every table and
+ * view; otherwise only the ones that matched survive, exactly like an
+ * aggregate. Read-only stores are left out: the tree is a map of what each
+ * service is responsible for, and a store it borrows belongs under its owner.
  */
 function matchStores(
   service: Service,
@@ -78,7 +81,14 @@ function matchStores(
       : store.tables.filter((t) =>
           matches(q, t.id, t.name, t.persists?.aggregate ?? ""),
         );
-    if (hit || tables.length > 0) out.push({ store, tables });
+    const views = hit
+      ? storeViews(store)
+      : storeViews(store).filter((v) =>
+          matches(q, v.id, v.name, v.persists?.aggregate ?? ""),
+        );
+    if (hit || tables.length > 0 || views.length > 0) {
+      out.push({ store, tables, views });
+    }
   }
   return out;
 }
@@ -348,6 +358,7 @@ const KIND_GROUP_LABEL: Record<LeafKind, string> = {
   command: "commands",
   query: "queries",
   table: "tables",
+  view: "views",
 };
 
 /**
@@ -688,11 +699,12 @@ export function Sidebar({
                             open={filtering || isOpen(`${skey}:data`, false)}
                             onToggle={() => toggle(`${skey}:data`, false)}
                           >
-                            {stores.map(({ store, tables }) => (
+                            {stores.map(({ store, tables, views }) => (
                               <StoreNode
                                 key={store.id}
                                 store={store}
                                 tables={tables}
+                                views={shows("view") ? views : []}
                                 contextId={context.id}
                                 serviceSlug={service.slug}
                                 filtering={filtering}
@@ -765,6 +777,7 @@ function TreeNote({ children }: { children: React.ReactNode }) {
 function StoreNode({
   store,
   tables,
+  views,
   contextId,
   serviceSlug,
   filtering,
@@ -773,6 +786,7 @@ function StoreNode({
 }: {
   store: Store;
   tables: Table[];
+  views: View[];
   contextId: string;
   serviceSlug: string;
   filtering: boolean;
@@ -817,6 +831,26 @@ function StoreNode({
                   {table.role === "aggregate-root" ? "root" : table.role}
                 </span>
               ) : null}
+            </Leaf>
+          ))
+        : null}
+      {/* Views after the tables, always: they are computed from them, and a
+          tree that interleaved the two would put a reading of the rows above
+          the place the rows live. */}
+      {open
+        ? views.map((view) => (
+            <Leaf
+              key={view.id}
+              to={`${to}${selectionHash({ kind: "view", id: view.id })}`}
+              depth={4}
+              title={view.doc ?? view.id}
+              selId={view.id}
+            >
+              <KindIcon kind="view" />
+              <span className="mono truncate">{view.name}</span>
+              <span className="mono ml-auto shrink-0 text-muted">
+                {view.materialized ? "matview" : "view"}
+              </span>
             </Leaf>
           ))
         : null}

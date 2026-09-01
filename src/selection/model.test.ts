@@ -126,6 +126,42 @@ describe("selectionTrail", () => {
   });
 });
 
+describe("views and their columns", () => {
+  it("classifies a view and a view's column by id", () => {
+    expect(classify("shop.oms.pg.v_open_orders")).toBe("view");
+    expect(classify("shop.oms.pg.v_open_orders.total_minor")).toBe("column");
+  });
+
+  it("resolves a view column to its view, with no table pretending to hold it", () => {
+    const resolved = resolveSelection("shop.oms.pg.v_open_orders.total_minor");
+    expect(resolved?.kind).toBe("column");
+    if (resolved?.kind !== "column") throw new Error("expected a column");
+    expect(resolved.view?.name).toBe("v_open_orders");
+    expect(resolved.table).toBeNull();
+    expect(resolved.store.id).toBe("shop.oms.pg");
+  });
+
+  it("walks a view column back through its view rather than a table", () => {
+    const trail = selectionTrail(
+      selectionFor("shop.oms.pg.v_open_orders.total_minor"),
+    );
+    expect(trail.map((s) => s.id)).toEqual([
+      "shop",
+      "shop.oms",
+      "shop.oms.pg",
+      "shop.oms.pg.v_open_orders",
+      "shop.oms.pg.v_open_orders.total_minor",
+    ]);
+    expect(trail.map((s) => s.kind)).toEqual([
+      "context",
+      "service",
+      "store",
+      "view",
+      "column",
+    ]);
+  });
+});
+
 describe("sameSelection", () => {
   it("compares by value, and treats null as its own value", () => {
     expect(sameSelection(null, null)).toBe(true);

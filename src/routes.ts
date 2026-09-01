@@ -190,6 +190,18 @@ export function tablePath(tableId: string): string | null {
     : null;
 }
 
+/**
+ * Path to a view: its store's page, with the view already selected. Same as a
+ * table, and for the same reason — a view read away from the tables it reads is
+ * a list of column names with no answer to "computed from what".
+ */
+export function viewPath(viewId: string): string | null {
+  const held = index.viewById.get(viewId);
+  if (!held) return null;
+  const to = storePath(held.store.id);
+  return to ? `${to}${selectionHash({ kind: "view", id: viewId })}` : null;
+}
+
 /** Path to a service page, or null if the id is not a catalog service. */
 export function servicePath(serviceId: string): string | null {
   const service = index.serviceById.get(serviceId);
@@ -222,6 +234,8 @@ export function backlinkPath(link: Backlink): string | null {
       return storePath(link.id);
     case "table":
       return tablePath(link.id);
+    case "view":
+      return viewPath(link.id);
     case "flow":
       return index.flowBySlug.has(link.id)
         ? link.at

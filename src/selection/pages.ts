@@ -35,10 +35,12 @@ export function selectionPath(selection: Selection): string | null {
       );
     case "flow-step":
       return paths.flow(resolved.flow.slug);
-    // A table and a column are read on the canvas of the store holding them:
-    // a column's page is the picture of what it points at.
+    // A table, a view and a column are read on the canvas of the store holding
+    // them: a column's page is the picture of what it points at and where its
+    // value came from.
     case "store":
     case "table":
+    case "view":
     case "column":
       return paths.store(
         resolved.context.id,
@@ -151,13 +153,17 @@ export function pageContains(pathname: string, selection: Selection): boolean {
           case "store":
             return resolved.store.id === store.id;
           case "table":
+          case "view":
           case "column":
             return resolved.store.id === store.id;
           case "aggregate":
             // The canvas says which aggregate each table holds, so selecting
             // one from the sidebar lights the tables that persist it.
-            return store.tables.some(
-              (t) => t.persists?.aggregate === resolved.id,
+            return (
+              store.tables.some((t) => t.persists?.aggregate === resolved.id) ||
+              (store.views ?? []).some(
+                (v) => v.persists?.aggregate === resolved.id,
+              )
             );
           default:
             return false;

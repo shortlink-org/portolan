@@ -84,12 +84,12 @@
         {
           "name": "base",
           "type": "string",
-          "doc": "ISO 4217 code the rate converts from \u2014 the currency the customer was quoted in."
+          "doc": "ISO 4217 code the rate converts from — the currency the customer was quoted in."
         },
         {
           "name": "quote",
           "type": "string",
-          "doc": "ISO 4217 code the rate converts to \u2014 the currency the acquirer settles in."
+          "doc": "ISO 4217 code the rate converts to — the currency the acquirer settles in."
         },
         {
           "name": "rateMicros",
@@ -291,7 +291,7 @@
                     {
                       "name": "risk",
                       "type": "RiskDecision",
-                      "doc": "How the risk check answered \u2014 including the case where it did not answer at all."
+                      "doc": "How the risk check answered — including the case where it did not answer at all."
                     }
                   ]
                 },
@@ -356,7 +356,7 @@
                     {
                       "name": "score",
                       "type": "int32",
-                      "doc": "0\u2013100 as the model returned it. Absent when the decision was `review`."
+                      "doc": "0–100 as the model returned it. Absent when the decision was `review`."
                     },
                     {
                       "name": "decision",
@@ -400,7 +400,7 @@
                 {
                   "id": "ListOrdersForCustomer",
                   "kind": "query",
-                  "doc": "A customer's orders, newest first, paginated on the placement timestamp. Never joins payments \u2014 the caller resolves those itself."
+                  "doc": "A customer's orders, newest first, paginated on the placement timestamp. Never joins payments — the caller resolves those itself."
                 }
               ],
               "events": [
@@ -668,7 +668,7 @@
                 {
                   "id": "GetBasket",
                   "kind": "query",
-                  "doc": "The working basket for one session. An expired basket comes back empty rather than as a 404 \u2014 the storefront has nothing useful to do with the difference."
+                  "doc": "The working basket for one session. An expired basket comes back empty rather than as a 404 — the storefront has nothing useful to do with the difference."
                 }
               ],
               "events": [
@@ -722,7 +722,7 @@
           "name": "Pricing",
           "repo": "github.com/acme/shop",
           "path": "services/pricing",
-          "readme": "# Pricing Service\n\n`shop.pricing` answers one question: what should this basket cost for this\ncustomer, right now. It is a pure read model over price lists, promotions and\ncustomer agreements. It never writes order state.\n\n## Design\n\nQuotes are immutable and time-boxed. A quote is issued with an explicit\nexpiry; the OMS must re-quote rather than reuse an expired one. This keeps\npricing decisions auditable long after the price list has changed.\n\n```mermaid\nflowchart LR\n    A[GetQuote] --> B{customer agreement?}\n    B -- yes --> C[Contract price list]\n    B -- no --> D[Public price list]\n    C --> E[Apply promotions]\n    D --> E\n    E --> F[QuoteIssued]\n```\n\n## Price list precedence\n\n| Rank | Source              | Scope             | Overrides            |\n| ---- | ------------------- | ----------------- | -------------------- |\n| 1    | Contract price list | One customer      | Everything below     |\n| 2    | Regional list       | One country       | Public list          |\n| 3    | Public list         | Everyone          | Nothing              |\n\nPromotions are applied after precedence is resolved and are never stacked more\nthan two deep.\n\n## Aggregates\n\n- `quote` \u2014 an issued quote and its expiry. Emits `QuoteIssued` and\n  `QuoteExpired`.\n- `price-list` \u2014 the price list itself. It is edited through an internal admin\n  tool that writes directly to the store, so this aggregate currently publishes\n  no domain events. That is a known gap, not a design choice.\n\n## Caching\n\nQuotes are cached for 60 seconds keyed by basket hash and customer segment. The\ncache is deliberately short: a stale quote is worse than a slow one.\n",
+          "readme": "# Pricing Service\n\n`shop.pricing` answers one question: what should this basket cost for this\ncustomer, right now. It is a pure read model over price lists, promotions and\ncustomer agreements. It never writes order state.\n\n## Design\n\nQuotes are immutable and time-boxed. A quote is issued with an explicit\nexpiry; the OMS must re-quote rather than reuse an expired one. This keeps\npricing decisions auditable long after the price list has changed.\n\n```mermaid\nflowchart LR\n    A[GetQuote] --> B{customer agreement?}\n    B -- yes --> C[Contract price list]\n    B -- no --> D[Public price list]\n    C --> E[Apply promotions]\n    D --> E\n    E --> F[QuoteIssued]\n```\n\n## Price list precedence\n\n| Rank | Source              | Scope             | Overrides            |\n| ---- | ------------------- | ----------------- | -------------------- |\n| 1    | Contract price list | One customer      | Everything below     |\n| 2    | Regional list       | One country       | Public list          |\n| 3    | Public list         | Everyone          | Nothing              |\n\nPromotions are applied after precedence is resolved and are never stacked more\nthan two deep.\n\n## Aggregates\n\n- `quote` — an issued quote and its expiry. Emits `QuoteIssued` and\n  `QuoteExpired`.\n- `price-list` — the price list itself. It is edited through an internal admin\n  tool that writes directly to the store, so this aggregate currently publishes\n  no domain events. That is a known gap, not a design choice.\n\n## Caching\n\nQuotes are cached for 60 seconds keyed by basket hash and customer segment. The\ncache is deliberately short: a stale quote is worse than a slow one.\n",
           "provides": [
             {
               "id": "shop.v1.Pricing",
@@ -781,7 +781,7 @@
               "id": "shop.pricing.quote",
               "slug": "quote",
               "name": "Quote",
-              "readme": "# Quote\n\nAn immutable, time-boxed price for one basket and one customer.\n\n## Currency\n\nQuoting never converts. The customer's currency selects the price list, and a\ncurrency no active list covers is a refusal \u2014 an FX rate belongs to the\nmoment money moves, not to the moment a price is shown.\n\n## Why immutable\n\nA quote is a promise. Re-deriving it later would give a different answer once\nprice lists change, which makes disputes unwinnable. So the quote is stored\nwhole, including which price list won and which promotions applied.\n\n## Commands\n\n| Command      | Notes                                       |\n| ------------ | ------------------------------------------- |\n| `IssueQuote` | Computes precedence and applies promotions  |\n| `ExpireQuote`| Called by the sweeper, never by a customer  |\n\n## Queries\n\n`GetQuote` returns the stored quote verbatim, including expired ones, so\nsupport can explain what a customer was shown.",
+              "readme": "# Quote\n\nAn immutable, time-boxed price for one basket and one customer.\n\n## Currency\n\nQuoting never converts. The customer's currency selects the price list, and a\ncurrency no active list covers is a refusal — an FX rate belongs to the\nmoment money moves, not to the moment a price is shown.\n\n## Why immutable\n\nA quote is a promise. Re-deriving it later would give a different answer once\nprice lists change, which makes disputes unwinnable. So the quote is stored\nwhole, including which price list won and which promotions applied.\n\n## Commands\n\n| Command      | Notes                                       |\n| ------------ | ------------------------------------------- |\n| `IssueQuote` | Computes precedence and applies promotions  |\n| `ExpireQuote`| Called by the sweeper, never by a customer  |\n\n## Queries\n\n`GetQuote` returns the stored quote verbatim, including expired ones, so\nsupport can explain what a customer was shown.",
               "root": "Quote",
               "entities": [
                 {
@@ -1037,7 +1037,7 @@
                 {
                   "id": "ImportPriceList",
                   "kind": "command",
-                  "doc": "Replaces a list wholesale from the merchandising export. A partial import is rejected outright \u2014 half a price list is worse than a stale one."
+                  "doc": "Replaces a list wholesale from the merchandising export. A partial import is rejected outright — half a price list is worse than a stale one."
                 },
                 {
                   "id": "ArchivePriceList",
@@ -1073,7 +1073,7 @@
           "name": "Ledger",
           "repo": "github.com/acme/payments",
           "path": "services/ledger",
-          "readme": "# Payments Ledger\n\n`payments.ledger` is a double-entry ledger. Every movement of money is two\nbalanced postings, and nothing is ever deleted. Corrections are compensating\nentries.\n\n## Model\n\nAn authorisation reserves funds without moving them. A capture moves the\nreserved funds. A refund moves them back. Each of these is a separate posting\npair against the customer, merchant and settlement accounts.\n\n```mermaid\nsequenceDiagram\n    participant OMS as shop.oms\n    participant L as payments.ledger\n    participant PSP as psp (external)\n    OMS->>L: Authorize\n    L->>PSP: reserve funds\n    PSP-->>L: auth code\n    L-->>OMS: PaymentAuthorized\n    OMS->>L: Capture\n    L->>PSP: settle\n    L-->>OMS: PaymentCaptured\n```\n\n## Accounts\n\n| Account        | Type      | Increases on        | Decreases on       |\n| -------------- | --------- | ------------------- | ------------------ |\n| `customer`     | liability | refund              | capture            |\n| `merchant`     | asset     | capture             | refund             |\n| `settlement`   | asset     | payout received     | payout disbursed   |\n| `fees`         | expense   | capture             | refund             |\n\n## Guarantees\n\n- Postings are append only. There is no `UPDATE` on the postings table.\n- Every write is idempotent on `idempotency_key`, retained for 30 days.\n- The sum of all postings for a transaction is always zero; a nightly job\n  asserts this and pages on failure.\n\n## Aggregates\n\n- `payment` \u2014 authorisation, capture and decline.\n- `refund` \u2014 full and partial refunds against a captured payment.\n",
+          "readme": "# Payments Ledger\n\n`payments.ledger` is a double-entry ledger. Every movement of money is two\nbalanced postings, and nothing is ever deleted. Corrections are compensating\nentries.\n\n## Model\n\nAn authorisation reserves funds without moving them. A capture moves the\nreserved funds. A refund moves them back. Each of these is a separate posting\npair against the customer, merchant and settlement accounts.\n\n```mermaid\nsequenceDiagram\n    participant OMS as shop.oms\n    participant L as payments.ledger\n    participant PSP as psp (external)\n    OMS->>L: Authorize\n    L->>PSP: reserve funds\n    PSP-->>L: auth code\n    L-->>OMS: PaymentAuthorized\n    OMS->>L: Capture\n    L->>PSP: settle\n    L-->>OMS: PaymentCaptured\n```\n\n## Accounts\n\n| Account        | Type      | Increases on        | Decreases on       |\n| -------------- | --------- | ------------------- | ------------------ |\n| `customer`     | liability | refund              | capture            |\n| `merchant`     | asset     | capture             | refund             |\n| `settlement`   | asset     | payout received     | payout disbursed   |\n| `fees`         | expense   | capture             | refund             |\n\n## Guarantees\n\n- Postings are append only. There is no `UPDATE` on the postings table.\n- Every write is idempotent on `idempotency_key`, retained for 30 days.\n- The sum of all postings for a transaction is always zero; a nightly job\n  asserts this and pages on failure.\n\n## Aggregates\n\n- `payment` — authorisation, capture and decline.\n- `refund` — full and partial refunds against a captured payment.\n",
           "provides": [
             {
               "id": "payments.v1.Payments",
@@ -1145,7 +1145,7 @@
               "id": "payments.ledger.payment",
               "slug": "payment",
               "name": "Payment",
-              "readme": "# Payment\n\nOne authorisation and the captures made against it.\n\n## Postings\n\nEvery state change writes a balanced pair of postings. Nothing is updated in\nplace; a correction is a new pair with the opposite sign.\n\n| Transition   | Debit        | Credit       |\n| ------------ | ------------ | ------------ |\n| authorise    | (none)       | (none)       |\n| capture      | `merchant`   | `customer`   |\n| fee          | `fees`       | `merchant`   |\n| decline      | (none)       | (none)       |\n\nAuthorisations and declines write no postings: no money has moved.\n\n## Currency\n\nThe customer is charged in the currency they were quoted in. When that is not\nthe currency the acquirer settles in, the rate is taken from the acquirer at\nauthorisation and stored on the payment \u2014 the posting has to be reproducible\nyears later, and a rate re-fetched then would be a different number. A\ncurrency with no acquirer behind it is a `currency_unsupported` decline, not a\nconversion.\n\n## Failure\n\n| Outcome    | Postings | Retryable                        |\n| ---------- | -------- | -------------------------------- |\n| `soft`     | none     | yes, on another instrument       |\n| `hard`     | none     | no                               |\n| `system`   | none     | yes, same instrument, with backoff |\n| `timeout`  | none yet | the webhook decides, not us      |\n\nA timeout is the only outcome that is not yet an outcome: the charge may well\nhave succeeded at the gateway, and until the webhook arrives nothing here may\nassume either way.\n\n## Commands\n\n`Authorize`, `Capture` and `Decline` are all idempotent on\n`idempotency_key`, which is retained for 30 days.\n\n## Queries\n\n`GetPayment` returns the payment and its full posting history.",
+              "readme": "# Payment\n\nOne authorisation and the captures made against it.\n\n## Postings\n\nEvery state change writes a balanced pair of postings. Nothing is updated in\nplace; a correction is a new pair with the opposite sign.\n\n| Transition   | Debit        | Credit       |\n| ------------ | ------------ | ------------ |\n| authorise    | (none)       | (none)       |\n| capture      | `merchant`   | `customer`   |\n| fee          | `fees`       | `merchant`   |\n| decline      | (none)       | (none)       |\n\nAuthorisations and declines write no postings: no money has moved.\n\n## Currency\n\nThe customer is charged in the currency they were quoted in. When that is not\nthe currency the acquirer settles in, the rate is taken from the acquirer at\nauthorisation and stored on the payment — the posting has to be reproducible\nyears later, and a rate re-fetched then would be a different number. A\ncurrency with no acquirer behind it is a `currency_unsupported` decline, not a\nconversion.\n\n## Failure\n\n| Outcome    | Postings | Retryable                        |\n| ---------- | -------- | -------------------------------- |\n| `soft`     | none     | yes, on another instrument       |\n| `hard`     | none     | no                               |\n| `system`   | none     | yes, same instrument, with backoff |\n| `timeout`  | none yet | the webhook decides, not us      |\n\nA timeout is the only outcome that is not yet an outcome: the charge may well\nhave succeeded at the gateway, and until the webhook arrives nothing here may\nassume either way.\n\n## Commands\n\n`Authorize`, `Capture` and `Decline` are all idempotent on\n`idempotency_key`, which is retained for 30 days.\n\n## Queries\n\n`GetPayment` returns the payment and its full posting history.",
               "root": "Payment",
               "entities": [
                 {
@@ -1323,7 +1323,7 @@
                 {
                   "id": "Decline",
                   "kind": "command",
-                  "doc": "Records a refusal, the gateway's or ours, with its code and category. Writes no postings \u2014 no money moved."
+                  "doc": "Records a refusal, the gateway's or ours, with its code and category. Writes no postings — no money moved."
                 },
                 {
                   "id": "GetPayment",
@@ -1474,7 +1474,7 @@
               "id": "payments.ledger.refund",
               "slug": "refund",
               "name": "Refund",
-              "readme": "# Refund\n\nA compensating movement against a captured payment.\n\n## Rules\n\n- The sum of refunds against a payment may never exceed the captured amount.\n- A refund against an uncaptured payment is a void, handled by `Payment`, not\n  here.\n- Partial refunds are unlimited in count but each needs a distinct reason.\n\n## Settling\n\nA refund is not done when it is issued. It leaves here in `pending` and the\ngateway confirms it by webhook, usually in hours and sometimes in days. The\nhourly poll exists because that webhook is not guaranteed. A refund the\ngateway rejects is stored with its reason and published nowhere \u2014 the one\noutcome in this aggregate that no consumer can see.\n\n## Commands\n\n| Command        | Precondition                    |\n| -------------- | ------------------------------- |\n| `IssueRefund`  | Payment captured, headroom left |\n\n## Queries\n\n`ListRefunds` returns refunds for one payment, newest first.",
+              "readme": "# Refund\n\nA compensating movement against a captured payment.\n\n## Rules\n\n- The sum of refunds against a payment may never exceed the captured amount.\n- A refund against an uncaptured payment is a void, handled by `Payment`, not\n  here.\n- Partial refunds are unlimited in count but each needs a distinct reason.\n\n## Settling\n\nA refund is not done when it is issued. It leaves here in `pending` and the\ngateway confirms it by webhook, usually in hours and sometimes in days. The\nhourly poll exists because that webhook is not guaranteed. A refund the\ngateway rejects is stored with its reason and published nowhere — the one\noutcome in this aggregate that no consumer can see.\n\n## Commands\n\n| Command        | Precondition                    |\n| -------------- | ------------------------------- |\n| `IssueRefund`  | Payment captured, headroom left |\n\n## Queries\n\n`ListRefunds` returns refunds for one payment, newest first.",
               "root": "Refund",
               "entities": [
                 {
@@ -1563,7 +1563,7 @@
                   "id": "payments.ledger.refund.gateway-ref",
                   "slug": "gateway-ref",
                   "name": "GatewayRef",
-                  "doc": "The same shared reference the payment carries \u2014 a refund is written against the gateway's charge, not against ours.",
+                  "doc": "The same shared reference the payment carries — a refund is written against the gateway's charge, not against ours.",
                   "ref": "GatewayRef"
                 }
               ],
@@ -1647,7 +1647,7 @@
           "name": "Delivery Core",
           "repo": "github.com/acme/delivery",
           "path": "services/core",
-          "readme": "# Delivery Core\n\n`delivery.core` turns confirmed orders into physical movement: routes, parcels\nand proof of delivery. It is the only service in the `delivery` context and it\nowns every carrier integration.\n\n## Boundaries\n\nDelivery reacts to `PaymentCaptured` rather than to `OrderPlaced`. An order\nthat is placed but never paid must never reach a van. This is the single most\nimportant rule in the context.\n\n```mermaid\nflowchart TD\n    P[PaymentCaptured] --> R[Plan route]\n    R --> S[ShipmentDispatched]\n    S --> T{scan events}\n    T -- delivered --> D[ShipmentDelivered]\n    T -- failed --> F[Retry next window]\n    F --> R\n```\n\n## Carriers\n\n| Carrier   | Coverage      | Tracking      | Cutoff  |\n| --------- | ------------- | ------------- | ------- |\n| `inhouse` | Metro only    | Live GPS      | 18:00   |\n| `natpost` | National      | Scan events   | 15:30   |\n| `express` | International | Scan events   | 12:00   |\n\nCarrier choice is decided at route planning time and is not part of the order.\n\n## Aggregates\n\n- `shipment` \u2014 one parcel from dispatch to proof of delivery.\n- `route` \u2014 a planned sequence of stops for one vehicle and one window.\n\n## Retries\n\nA failed delivery attempt does not fail the shipment. The shipment stays open\nand is re-routed into the next available window, up to three attempts, after\nwhich it is returned to the depot and the order is flagged for support.\n\n## Observability\n\nEvery scan event carries the trace id of the originating `PaymentCaptured`\nmessage, which is how the shipment tracking flow was derived from traces.\n",
+          "readme": "# Delivery Core\n\n`delivery.core` turns confirmed orders into physical movement: routes, parcels\nand proof of delivery. It is the only service in the `delivery` context and it\nowns every carrier integration.\n\n## Boundaries\n\nDelivery reacts to `PaymentCaptured` rather than to `OrderPlaced`. An order\nthat is placed but never paid must never reach a van. This is the single most\nimportant rule in the context.\n\n```mermaid\nflowchart TD\n    P[PaymentCaptured] --> R[Plan route]\n    R --> S[ShipmentDispatched]\n    S --> T{scan events}\n    T -- delivered --> D[ShipmentDelivered]\n    T -- failed --> F[Retry next window]\n    F --> R\n```\n\n## Carriers\n\n| Carrier   | Coverage      | Tracking      | Cutoff  |\n| --------- | ------------- | ------------- | ------- |\n| `inhouse` | Metro only    | Live GPS      | 18:00   |\n| `natpost` | National      | Scan events   | 15:30   |\n| `express` | International | Scan events   | 12:00   |\n\nCarrier choice is decided at route planning time and is not part of the order.\n\n## Aggregates\n\n- `shipment` — one parcel from dispatch to proof of delivery.\n- `route` — a planned sequence of stops for one vehicle and one window.\n\n## Retries\n\nA failed delivery attempt does not fail the shipment. The shipment stays open\nand is re-routed into the next available window, up to three attempts, after\nwhich it is returned to the depot and the order is flagged for support.\n\n## Observability\n\nEvery scan event carries the trace id of the originating `PaymentCaptured`\nmessage, which is how the shipment tracking flow was derived from traces.\n",
           "provides": [
             {
               "id": "delivery.v1.Delivery",
@@ -1678,7 +1678,7 @@
               "id": "delivery.core.shipment",
               "slug": "shipment",
               "name": "Shipment",
-              "readme": "# Shipment\n\nOne parcel, from dispatch to proof of delivery.\n\n## Attempts\n\nA failed attempt does not fail the shipment. The shipment stays open and is\nre-routed into the next window, up to three attempts.\n\n| Attempt | Outcome            | Next                       |\n| ------- | ------------------ | -------------------------- |\n| 1       | no answer          | re-route, next window      |\n| 2       | no answer          | re-route, next window      |\n| 3       | no answer          | return to depot, flag order |\n\n## Exceptions\n\nAn `EXCEPTION` scan stops the shipment advancing and opens a delivery\nexception. What reads that queue is not in this catalog and emits no spans, so\nthe shipment-tracking flow ends there too \u2014 the gap is real, not a modelling\nomission.\n\n## Commands\n\n`Dispatch`, `RecordScan` and `RecordDelivery` are the only writes. Scans\narrive from carrier webhooks and are deduplicated on the carrier scan id.\n\n## Queries\n\n`TrackShipment` is public-facing and rate limited per tracking reference.",
+              "readme": "# Shipment\n\nOne parcel, from dispatch to proof of delivery.\n\n## Attempts\n\nA failed attempt does not fail the shipment. The shipment stays open and is\nre-routed into the next window, up to three attempts.\n\n| Attempt | Outcome            | Next                       |\n| ------- | ------------------ | -------------------------- |\n| 1       | no answer          | re-route, next window      |\n| 2       | no answer          | re-route, next window      |\n| 3       | no answer          | return to depot, flag order |\n\n## Exceptions\n\nAn `EXCEPTION` scan stops the shipment advancing and opens a delivery\nexception. What reads that queue is not in this catalog and emits no spans, so\nthe shipment-tracking flow ends there too — the gap is real, not a modelling\nomission.\n\n## Commands\n\n`Dispatch`, `RecordScan` and `RecordDelivery` are the only writes. Scans\narrive from carrier webhooks and are deduplicated on the carrier scan id.\n\n## Queries\n\n`TrackShipment` is public-facing and rate limited per tracking reference.",
               "root": "Shipment",
               "entities": [
                 {
@@ -2560,7 +2560,7 @@
           "status": "unresolved",
           "label": "Charges.Create (auth only)",
           "ref": "psp.v2.Charges/Create",
-          "note": "Third-party gateway; no service in the estate provides psp.v2.Charges. A timeout here leaves the charge in a state only the gateway knows \u2014 the gateway-webhook flow is what resolves it.",
+          "note": "Third-party gateway; no service in the estate provides psp.v2.Charges. A timeout here leaves the charge in a state only the gateway knows — the gateway-webhook flow is what resolves it.",
           "line": "internal/ledger/adapter/psp/client.go:64"
         },
         {
@@ -2811,7 +2811,7 @@
                   "status": "declared",
                   "label": "OrderCancelled",
                   "ref": "shop.oms.order.OrderCancelled",
-                  "note": "Drops the shipment that has been sitting in `held` since the order was confirmed. Nothing observed this hop \u2014 it is the failure path nobody has watched run.",
+                  "note": "Drops the shipment that has been sitting in `held` since the order was confirmed. Nothing observed this hop — it is the failure path nobody has watched run.",
                   "line": "internal/delivery/app/subscribe.go:62"
                 }
               ]
@@ -2879,7 +2879,7 @@
       "id": "flow.refund-requested",
       "slug": "refund-requested",
       "name": "Refund requested",
-      "summary": "How a support-initiated refund is meant to travel: the window is read off the shipment, an undispatched parcel is recalled first, and the money is returned through the ledger. Written by hand from the design doc \u2014 not one step has been observed in a test or a trace, which is why every hop on this page is declared.",
+      "summary": "How a support-initiated refund is meant to travel: the window is read off the shipment, an undispatched parcel is recalled first, and the money is returned through the ledger. Written by hand from the design doc — not one step has been observed in a test or a trace, which is why every hop on this page is declared.",
       "provenance": "authored",
       "source": "docs/flows/refund-requested.md",
       "participants": [
@@ -2942,7 +2942,7 @@
           "kind": "call",
           "status": "declared",
           "label": "checkRefundWindow",
-          "note": "30 days after delivery. Orders never delivered have no window at all \u2014 the doc leaves that case open.",
+          "note": "30 days after delivery. Orders never delivered have no window at all — the doc leaves that case open.",
           "line": "internal/oms/app/refund.go:52"
         },
         {
@@ -3124,7 +3124,7 @@
       "id": "flow.shipment-tracking",
       "slug": "shipment-tracking",
       "name": "Shipment tracking",
-      "summary": "Reconstructed from production traces over a 24 hour window: the tracking page, the carrier's scan webhook, and what each scan code sets off. Two things only the traces know about \u2014 a consumer no repository accounts for, and an exception path whose reader emits no spans at all.",
+      "summary": "Reconstructed from production traces over a 24 hour window: the tracking page, the carrier's scan webhook, and what each scan code sets off. Two things only the traces know about — a consumer no repository accounts for, and an exception path whose reader emits no spans at all.",
       "provenance": "derived-from-otel",
       "verifiedAt": "2026-08-28T02:11:00Z",
       "participants": [
@@ -3439,7 +3439,7 @@
                   "status": "declared",
                   "label": "PaymentAuthorized",
                   "ref": "payments.ledger.payment.PaymentAuthorized",
-                  "note": "Published late and out of order \u2014 consumers see the authorization after the charge already settled.",
+                  "note": "Published late and out of order — consumers see the authorization after the charge already settled.",
                   "line": "internal/ledger/app/webhook.go:168"
                 }
               ]
@@ -3742,7 +3742,7 @@
         ]
       },
       "source": "docs/adr/0007-cart-reads-via-repository.md",
-      "body": "# Cart reads go through CartRepository, not Temporal Queries\n\n## Context and Problem Statement\n\nA cart is owned by a long-running Temporal workflow for the whole of a checkout\nattempt. Reads of cart state come from three places: the storefront polling the\ncart page, the OMS API answering `GetCart`, and support tooling.\n\nADR-0003 chose to serve those reads with `QueryWorkflow` against the\nrunning workflow. That decision was never fully implemented, and the gap only\nbecame visible when the read path started failing in staging:\n\n- the cart workflow **registers no query handler at all** \u2014 `SetQueryHandler`\n  is absent from `cart_workflow.go`, so every `QueryWorkflow` call fails with\n  `unknown queryType`;\n- `EVENT_GET` is **reserved but unwired** in `proto/shop/v1/cart.proto`. The\n  enum value exists so the wire numbering stays stable, and nothing dispatches\n  on it;\n- reads therefore fall back to whatever the caller has locally, which for the\n  storefront meant a stale session copy.\n\nWe need one read path that is actually wired up, and we need it to survive a\ncompleted or archived workflow, which a query cannot.\n\n## Decision Drivers\n\n- A read must work after the workflow has closed. Carts are read for days\n  afterwards by support and by the returns flow.\n- Read load must not be answered by the workflow worker fleet.\n- The read path must be testable without a Temporal dev server.\n- Whatever we choose has to be the *only* path, so there is no second answer to\n  \"what is in this cart\".\n\n## Considered Options\n\n1. **`CartRepository` over the `cart_projection` table** \u2014 the workflow\n   publishes events, a projector writes rows, reads hit Postgres.\n2. **`QueryWorkflow` against the running workflow** \u2014 the option ADR-0003 took.\n3. **Both, with the query as a fast path** \u2014 query first, fall back to the\n   projection.\n\n## Decision Outcome\n\nChosen option: **`CartRepository` over the projection**.\n\nOption 2 cannot answer reads once the workflow closes, and pins read latency to\nworker availability. Option 3 gives two sources for one fact, which is how the\nstaging drift started; a cart read that sometimes comes from the workflow and\nsometimes from the projection is a cart read nobody can reason about.\n\nThe read path is now, in full:\n\n```mermaid\nsequenceDiagram\n    autonumber\n    participant SF as storefront\n    participant API as shop.oms API\n    participant Repo as CartRepository\n    participant PG as postgres \u00b7 cart_projection\n    participant WF as cart workflow\n\n    SF->>API: GetCart(cart_id)\n    API->>Repo: Load(ctx, cart_id)\n    Repo->>PG: SELECT * FROM cart_projection WHERE cart_id = $1\n    PG-->>Repo: row (or none)\n    Repo-->>API: Cart\n    API-->>SF: CartResponse\n\n    Note over WF,PG: writes only - the workflow never answers a read\n    WF-)PG: projector applies cart events\n```\n\n### Consequences\n\n- Good: reads keep working after the workflow closes, and can be served from a\n  read replica.\n- Good: `CartRepository` is an interface; unit tests use an in-memory\n  implementation and never start a Temporal test environment.\n- Bad: the projection is eventually consistent. A read issued in the same\n  millisecond as a write can miss it, so the checkout path reads its own writes\n  from the command result rather than re-reading the cart.\n- Bad: one more thing to run \u2014 the projector is now on the critical path for\n  correctness of reads, and needs its own lag alert.\n\n## More Information\n\n`EVENT_GET` stays reserved in `proto/shop/v1/cart.proto`. Removing it would\nrecycle the field number onto a different meaning for any client still holding\nan old descriptor. It is dead on purpose; do not wire it.\n"
+      "body": "# Cart reads go through CartRepository, not Temporal Queries\n\n## Context and Problem Statement\n\nA cart is owned by a long-running Temporal workflow for the whole of a checkout\nattempt. Reads of cart state come from three places: the storefront polling the\ncart page, the OMS API answering `GetCart`, and support tooling.\n\nADR-0003 chose to serve those reads with `QueryWorkflow` against the\nrunning workflow. That decision was never fully implemented, and the gap only\nbecame visible when the read path started failing in staging:\n\n- the cart workflow **registers no query handler at all** — `SetQueryHandler`\n  is absent from `cart_workflow.go`, so every `QueryWorkflow` call fails with\n  `unknown queryType`;\n- `EVENT_GET` is **reserved but unwired** in `proto/shop/v1/cart.proto`. The\n  enum value exists so the wire numbering stays stable, and nothing dispatches\n  on it;\n- reads therefore fall back to whatever the caller has locally, which for the\n  storefront meant a stale session copy.\n\nWe need one read path that is actually wired up, and we need it to survive a\ncompleted or archived workflow, which a query cannot.\n\n## Decision Drivers\n\n- A read must work after the workflow has closed. Carts are read for days\n  afterwards by support and by the returns flow.\n- Read load must not be answered by the workflow worker fleet.\n- The read path must be testable without a Temporal dev server.\n- Whatever we choose has to be the *only* path, so there is no second answer to\n  \"what is in this cart\".\n\n## Considered Options\n\n1. **`CartRepository` over the `cart_projection` table** — the workflow\n   publishes events, a projector writes rows, reads hit Postgres.\n2. **`QueryWorkflow` against the running workflow** — the option ADR-0003 took.\n3. **Both, with the query as a fast path** — query first, fall back to the\n   projection.\n\n## Decision Outcome\n\nChosen option: **`CartRepository` over the projection**.\n\nOption 2 cannot answer reads once the workflow closes, and pins read latency to\nworker availability. Option 3 gives two sources for one fact, which is how the\nstaging drift started; a cart read that sometimes comes from the workflow and\nsometimes from the projection is a cart read nobody can reason about.\n\nThe read path is now, in full:\n\n```mermaid\nsequenceDiagram\n    autonumber\n    participant SF as storefront\n    participant API as shop.oms API\n    participant Repo as CartRepository\n    participant PG as postgres · cart_projection\n    participant WF as cart workflow\n\n    SF->>API: GetCart(cart_id)\n    API->>Repo: Load(ctx, cart_id)\n    Repo->>PG: SELECT * FROM cart_projection WHERE cart_id = $1\n    PG-->>Repo: row (or none)\n    Repo-->>API: Cart\n    API-->>SF: CartResponse\n\n    Note over WF,PG: writes only - the workflow never answers a read\n    WF-)PG: projector applies cart events\n```\n\n### Consequences\n\n- Good: reads keep working after the workflow closes, and can be served from a\n  read replica.\n- Good: `CartRepository` is an interface; unit tests use an in-memory\n  implementation and never start a Temporal test environment.\n- Bad: the projection is eventually consistent. A read issued in the same\n  millisecond as a write can miss it, so the checkout path reads its own writes\n  from the command result rather than re-reading the cart.\n- Bad: one more thing to run — the projector is now on the critical path for\n  correctness of reads, and needs its own lag alert.\n\n## More Information\n\n`EVENT_GET` stays reserved in `proto/shop/v1/cart.proto`. Removing it would\nrecycle the field number onto a different meaning for any client still holding\nan old descriptor. It is dead on purpose; do not wire it.\n"
     },
     {
       "id": "shop.oms.0003",
@@ -3784,7 +3784,7 @@
         ]
       },
       "source": "docs/adr/0001-client-protos-in-consumer-infrastructure.md",
-      "body": "# Client proto copies live in the consumer's infrastructure layer\n\n## Context and Problem Statement\n\nWhen `shop.oms` calls `payments.v1.Payments/Authorize`, it needs the payments\n`.proto`. Where does that file come from at build time?\n\nA shared schema repository consumed by every service is the obvious answer, and\nit is the one that couples every release to every other release: a change to a\nmessage nobody in `shop` uses still forces `shop` to bump, regenerate and\nretest.\n\n## Decision Drivers\n\n- A team must be able to release without waiting on another team's schema bump.\n- The boundary between contexts should be explicit in the code, not implicit in\n  a shared package.\n- Drift between a producer's schema and a consumer's copy must be **detectable**,\n  not merely hoped against.\n\n## Considered Options\n\n1. **A vendored copy of the producer's `.proto` under the consumer's\n   `internal/infrastructure/<peer>/`**, an anti-corruption layer in the DDD\n   sense: the copy is the consumer's translation boundary.\n2. **A shared schema repo** published as one versioned artifact for everyone.\n3. **Runtime reflection** \u2014 resolve descriptors from the server at startup.\n\n## Decision Outcome\n\nChosen option: **vendored copies in the consumer's infrastructure layer**.\n\nThis is the ACL trade-off taken deliberately:\n\n| | compile-time independence | drift risk |\n|---|---|---|\n| vendored copy | full \u2014 a consumer builds and ships alone | real \u2014 the copy can fall behind |\n| shared repo | none \u2014 every bump is everyone's bump | none |\n| reflection | full | moved to runtime, where it fails in production instead of in CI |\n\nWe take the drift risk because we can *measure* it, and we cannot measure the\ncost of coordinated releases until it has already been paid.\n\nThe mitigation is mechanical: **the catalog merge compares descriptors.** Each\nproducer publishes the descriptor set for the services it provides; each\nconsumer's vendored copy is parsed at catalog build time; a field, method or\nenum value that differs between the two is reported against the consuming\nservice and shows on its page as an unresolved call rather than silently\ncompiling.\n\n### Consequences\n\n- Good: `shop` and `delivery` release on their own cadence.\n- Good: the copy is a real boundary \u2014 a consumer may narrow a message to the\n  fields it actually uses, and that narrowing is visible in review.\n- Bad: the same `.proto` exists in several repositories. Someone reading two of\n  them may reasonably wonder which is authoritative. The producer's is; the\n  header comment on every vendored copy says so.\n- Bad: drift is caught at catalog build, which is after merge. It is not caught\n  at compile time, and it never will be.\n"
+      "body": "# Client proto copies live in the consumer's infrastructure layer\n\n## Context and Problem Statement\n\nWhen `shop.oms` calls `payments.v1.Payments/Authorize`, it needs the payments\n`.proto`. Where does that file come from at build time?\n\nA shared schema repository consumed by every service is the obvious answer, and\nit is the one that couples every release to every other release: a change to a\nmessage nobody in `shop` uses still forces `shop` to bump, regenerate and\nretest.\n\n## Decision Drivers\n\n- A team must be able to release without waiting on another team's schema bump.\n- The boundary between contexts should be explicit in the code, not implicit in\n  a shared package.\n- Drift between a producer's schema and a consumer's copy must be **detectable**,\n  not merely hoped against.\n\n## Considered Options\n\n1. **A vendored copy of the producer's `.proto` under the consumer's\n   `internal/infrastructure/<peer>/`**, an anti-corruption layer in the DDD\n   sense: the copy is the consumer's translation boundary.\n2. **A shared schema repo** published as one versioned artifact for everyone.\n3. **Runtime reflection** — resolve descriptors from the server at startup.\n\n## Decision Outcome\n\nChosen option: **vendored copies in the consumer's infrastructure layer**.\n\nThis is the ACL trade-off taken deliberately:\n\n| | compile-time independence | drift risk |\n|---|---|---|\n| vendored copy | full — a consumer builds and ships alone | real — the copy can fall behind |\n| shared repo | none — every bump is everyone's bump | none |\n| reflection | full | moved to runtime, where it fails in production instead of in CI |\n\nWe take the drift risk because we can *measure* it, and we cannot measure the\ncost of coordinated releases until it has already been paid.\n\nThe mitigation is mechanical: **the catalog merge compares descriptors.** Each\nproducer publishes the descriptor set for the services it provides; each\nconsumer's vendored copy is parsed at catalog build time; a field, method or\nenum value that differs between the two is reported against the consuming\nservice and shows on its page as an unresolved call rather than silently\ncompiling.\n\n### Consequences\n\n- Good: `shop` and `delivery` release on their own cadence.\n- Good: the copy is a real boundary — a consumer may narrow a message to the\n  fields it actually uses, and that narrowing is visible in review.\n- Bad: the same `.proto` exists in several repositories. Someone reading two of\n  them may reasonably wonder which is authoritative. The producer's is; the\n  header comment on every vendored copy says so.\n- Bad: drift is caught at catalog build, which is after merge. It is not caught\n  at compile time, and it never will be.\n"
     },
     {
       "id": "org.0002",
@@ -3802,7 +3802,7 @@
         ]
       },
       "source": "docs/adr/0002-event-version-in-package-path.md",
-      "body": "# Domain event schema version is encoded in the package path (events/v1)\n\n## Context and Problem Statement\n\nA domain event outlives the code that published it. Consumers deserialize\nmessages written months earlier, and a consumer that is down for a day comes\nback to a backlog of the *old* shape. We need a versioning scheme that a\nconsumer can act on before it parses a single byte.\n\n## Decision Drivers\n\n- A consumer must be able to decide \"can I read this?\" from routing information\n  alone, without a registry lookup.\n- Two versions of one event must be publishable at the same time during a\n  migration.\n- The version must be visible in the source tree, in the topic name and in the\n  type URL \u2014 not only in a field.\n\n## Considered Options\n\n1. **Version in the package path**: `shop.events.v1.BasketCheckedOut`, file at\n   `proto/shop/events/v1/basket.proto`.\n2. **A `version` field inside the message.**\n3. **A schema registry** with subject-level compatibility rules.\n\n## Decision Outcome\n\nChosen option: **version in the package path**.\n\nThe version becomes part of the fully-qualified name, so it is part of the type\nURL, part of the generated Go package, and part of the topic name\n(`shop.events.v1.basket-checked-out`). A consumer subscribes to the versions it\nunderstands and is structurally incapable of receiving one it does not.\n\nOption 2 puts the version *inside* the payload, which means parsing an unknown\nshape to discover that it is unknown. Option 3 is the right answer at a\ndifferent scale; it adds an operational dependency on the publish path that we\nare not willing to take yet.\n\n### Consequences\n\n- Good: an unreadable version is never delivered \u2014 it is a different topic.\n- Good: v1 and v2 publish side by side during a migration; the producer emits\n  both until the v1 subscription drains.\n- Bad: a breaking change means a new package, a new topic and a period of dual\n  publishing. This is deliberate friction, and it is the point.\n- Bad: additive changes still land in v1. \"Is this additive?\" stays a judgement\n  call at review time, and the catalog's field diff per version is what makes\n  that call reviewable.\n"
+      "body": "# Domain event schema version is encoded in the package path (events/v1)\n\n## Context and Problem Statement\n\nA domain event outlives the code that published it. Consumers deserialize\nmessages written months earlier, and a consumer that is down for a day comes\nback to a backlog of the *old* shape. We need a versioning scheme that a\nconsumer can act on before it parses a single byte.\n\n## Decision Drivers\n\n- A consumer must be able to decide \"can I read this?\" from routing information\n  alone, without a registry lookup.\n- Two versions of one event must be publishable at the same time during a\n  migration.\n- The version must be visible in the source tree, in the topic name and in the\n  type URL — not only in a field.\n\n## Considered Options\n\n1. **Version in the package path**: `shop.events.v1.BasketCheckedOut`, file at\n   `proto/shop/events/v1/basket.proto`.\n2. **A `version` field inside the message.**\n3. **A schema registry** with subject-level compatibility rules.\n\n## Decision Outcome\n\nChosen option: **version in the package path**.\n\nThe version becomes part of the fully-qualified name, so it is part of the type\nURL, part of the generated Go package, and part of the topic name\n(`shop.events.v1.basket-checked-out`). A consumer subscribes to the versions it\nunderstands and is structurally incapable of receiving one it does not.\n\nOption 2 puts the version *inside* the payload, which means parsing an unknown\nshape to discover that it is unknown. Option 3 is the right answer at a\ndifferent scale; it adds an operational dependency on the publish path that we\nare not willing to take yet.\n\n### Consequences\n\n- Good: an unreadable version is never delivered — it is a different topic.\n- Good: v1 and v2 publish side by side during a migration; the producer emits\n  both until the v1 subscription drains.\n- Bad: a breaking change means a new package, a new topic and a period of dual\n  publishing. This is deliberate friction, and it is the point.\n- Bad: additive changes still land in v1. \"Is this additive?\" stays a judgement\n  call at review time, and the catalog's field diff per version is what makes\n  that call reviewable.\n"
     },
     {
       "id": "payments.0004",
@@ -3824,7 +3824,7 @@
         ]
       },
       "source": "docs/adr/0004-idempotent-journal-entries.md",
-      "body": "# Journal entries are idempotent by (order_id, attempt)\n\n## Context and Problem Statement\n\nThe ledger writes a journal entry when a capture succeeds. The capture path is\nat-least-once end to end: the PSP retries its webhook, our own consumer retries\non redelivery, and an operator can replay a partition. Today a replayed capture\nwrites a second journal entry, and the ledger has to be repaired by hand.\n\nThe natural key is not `order_id` alone: a declined authorization is followed by\na second, legitimate attempt on the same order, and that attempt must produce\nits own entry.\n\n## Decision Drivers\n\n- Replaying the capture consumer must be safe, always, with no operator\n  ceremony.\n- A genuine retry by the customer is a distinct financial fact and must not be\n  collapsed into the first one.\n- The guarantee should be enforced by the database, not by application code that\n  can be bypassed by the next caller.\n\n## Considered Options\n\n1. **A unique constraint on `(order_id, attempt)`**, with `attempt` carried on\n   the capture command and echoed on the event.\n2. **A dedup table keyed by the message id** of the inbound event.\n3. **Application-level \"does an entry exist?\" check** before insert.\n\n## Decision Outcome\n\nProposed: **unique constraint on `(order_id, attempt)`**, with the insert\nwritten as `INSERT ... ON CONFLICT (order_id, attempt) DO NOTHING`.\n\nOption 2 dedups the *transport*, not the *fact*: the same capture arriving via a\nwebhook and via the event bus has two message ids and would write twice. Option\n3 is a read-then-write race that fails exactly under the concurrency it is meant\nto protect against.\n\n### Consequences\n\n- Good: replay is a no-op at the storage layer, whatever the caller does.\n- Good: the key is a domain fact, so it holds across transports.\n- Bad: `attempt` has to be threaded through the capture command and onto\n  `PaymentCaptured`; a producer that omits it cannot be made idempotent.\n- Bad: existing rows have no `attempt`. The backfill assigns `attempt = 1` and\n  is only correct if no order in history was captured twice \u2014 which has to be\n  checked before this is accepted, not after.\n\n## Open Questions\n\n- Does the PSP guarantee a stable attempt identifier across its own retries, or\n  do we mint it ourselves at authorization time?\n- What is the correct behaviour when a capture arrives for an attempt that was\n  never authorized? Currently it would insert; it should probably reject.\n"
+      "body": "# Journal entries are idempotent by (order_id, attempt)\n\n## Context and Problem Statement\n\nThe ledger writes a journal entry when a capture succeeds. The capture path is\nat-least-once end to end: the PSP retries its webhook, our own consumer retries\non redelivery, and an operator can replay a partition. Today a replayed capture\nwrites a second journal entry, and the ledger has to be repaired by hand.\n\nThe natural key is not `order_id` alone: a declined authorization is followed by\na second, legitimate attempt on the same order, and that attempt must produce\nits own entry.\n\n## Decision Drivers\n\n- Replaying the capture consumer must be safe, always, with no operator\n  ceremony.\n- A genuine retry by the customer is a distinct financial fact and must not be\n  collapsed into the first one.\n- The guarantee should be enforced by the database, not by application code that\n  can be bypassed by the next caller.\n\n## Considered Options\n\n1. **A unique constraint on `(order_id, attempt)`**, with `attempt` carried on\n   the capture command and echoed on the event.\n2. **A dedup table keyed by the message id** of the inbound event.\n3. **Application-level \"does an entry exist?\" check** before insert.\n\n## Decision Outcome\n\nProposed: **unique constraint on `(order_id, attempt)`**, with the insert\nwritten as `INSERT ... ON CONFLICT (order_id, attempt) DO NOTHING`.\n\nOption 2 dedups the *transport*, not the *fact*: the same capture arriving via a\nwebhook and via the event bus has two message ids and would write twice. Option\n3 is a read-then-write race that fails exactly under the concurrency it is meant\nto protect against.\n\n### Consequences\n\n- Good: replay is a no-op at the storage layer, whatever the caller does.\n- Good: the key is a domain fact, so it holds across transports.\n- Bad: `attempt` has to be threaded through the capture command and onto\n  `PaymentCaptured`; a producer that omits it cannot be made idempotent.\n- Bad: existing rows have no `attempt`. The backfill assigns `attempt = 1` and\n  is only correct if no order in history was captured twice — which has to be\n  checked before this is accepted, not after.\n\n## Open Questions\n\n- Does the PSP guarantee a stable attempt identifier across its own retries, or\n  do we mint it ourselves at authorization time?\n- What is the correct behaviour when a capture arrives for an attempt that was\n  never authorized? Currently it would insert; it should probably reject.\n"
     }
   ],
   "stores": [
@@ -3981,12 +3981,17 @@
             {
               "name": "aggregate_id",
               "type": "uuid",
-              "nullable": false
+              "nullable": false,
+              "from": [
+                "shop.oms.pg.orders.id"
+              ],
+              "doc": "The order the event is about. Copied from orders.id in the same transaction."
             },
             {
               "name": "event_type",
               "type": "text",
-              "nullable": false
+              "nullable": false,
+              "doc": "The event name, as published."
             },
             {
               "name": "payload",
@@ -4081,6 +4086,115 @@
               "name": "captured_at",
               "type": "timestamptz",
               "nullable": false
+            }
+          ]
+        }
+      ],
+      "views": [
+        {
+          "id": "shop.oms.pg.v_open_orders",
+          "name": "v_open_orders",
+          "doc": "Orders not yet delivered, with their line count. What the ops console reads.",
+          "persists": {
+            "aggregate": "shop.oms.order"
+          },
+          "reads": [
+            "shop.oms.pg.orders",
+            "shop.oms.pg.order_items"
+          ],
+          "source": "shop/oms/db/migrations/0007_open_orders.sql",
+          "definition": "CREATE VIEW v_open_orders AS\nSELECT o.id AS order_id, o.status, o.customer_id, o.total_minor,\n       o.placed_at, count(i.line_no) AS line_count\n  FROM orders o\n  LEFT JOIN order_items i ON i.order_id = o.id\n WHERE o.status <> 'delivered'\n GROUP BY o.id;",
+          "columns": [
+            {
+              "name": "order_id",
+              "type": "uuid",
+              "nullable": false,
+              "from": [
+                "shop.oms.pg.orders.id"
+              ],
+              "maps": "Order.id"
+            },
+            {
+              "name": "status",
+              "type": "text",
+              "nullable": false,
+              "from": [
+                "shop.oms.pg.orders.status"
+              ],
+              "maps": "Order.status"
+            },
+            {
+              "name": "customer_id",
+              "type": "uuid",
+              "nullable": false,
+              "from": [
+                "shop.oms.pg.orders.customer_id"
+              ],
+              "maps": "Order.customer"
+            },
+            {
+              "name": "total_minor",
+              "type": "bigint",
+              "nullable": false,
+              "from": [
+                "shop.oms.pg.orders.total_minor"
+              ],
+              "maps": "Order.total"
+            },
+            {
+              "name": "placed_at",
+              "type": "timestamptz",
+              "nullable": false,
+              "from": [
+                "shop.oms.pg.orders.placed_at"
+              ]
+            },
+            {
+              "name": "line_count",
+              "type": "bigint",
+              "nullable": false,
+              "from": [
+                "shop.oms.pg.order_items.line_no"
+              ],
+              "doc": "count(*) over the order's lines, so it is a number where the source is a key."
+            }
+          ]
+        },
+        {
+          "id": "shop.oms.pg.mv_orders_daily",
+          "name": "mv_orders_daily",
+          "materialized": true,
+          "doc": "Yesterday's order volume, refreshed nightly. Stale by design between refreshes.",
+          "reads": [
+            "shop.oms.pg.v_open_orders"
+          ],
+          "source": "shop/oms/db/migrations/0009_orders_daily.sql",
+          "definition": "CREATE MATERIALIZED VIEW mv_orders_daily AS\nSELECT date_trunc('day', placed_at) AS day,\n       count(*) AS orders, sum(total_minor) AS gross_minor\n  FROM v_open_orders\n GROUP BY 1;",
+          "columns": [
+            {
+              "name": "day",
+              "type": "timestamptz",
+              "nullable": false,
+              "from": [
+                "shop.oms.pg.v_open_orders.placed_at"
+              ]
+            },
+            {
+              "name": "orders",
+              "type": "bigint",
+              "nullable": false,
+              "from": [
+                "shop.oms.pg.v_open_orders.order_id"
+              ]
+            },
+            {
+              "name": "gross_minor",
+              "type": "bigint",
+              "nullable": true,
+              "from": [
+                "shop.oms.pg.v_open_orders.total_minor"
+              ],
+              "doc": "Two hops from orders.total_minor, which is the column a discrepancy is chased back to."
             }
           ]
         }
@@ -4232,6 +4346,64 @@
             }
           ]
         }
+      ],
+      "views": [
+        {
+          "id": "payments.ledger.pg.v_payment_state",
+          "name": "v_payment_state",
+          "doc": "Every payment with what has been refunded against it. One row per journal entry.",
+          "persists": {
+            "aggregate": "payments.ledger.payment"
+          },
+          "source": "payments/ledger/db/migrations/0011_payment_state.sql",
+          "definition": "CREATE VIEW v_payment_state AS\nSELECT j.id AS payment_id, j.order_id, j.state,\n       j.amount_minor, coalesce(sum(r.amount_minor), 0) AS refunded_minor\n  FROM journal_entries j\n  LEFT JOIN refunds r ON r.payment_id = j.id\n GROUP BY j.id;",
+          "columns": [
+            {
+              "name": "payment_id",
+              "type": "text",
+              "nullable": false,
+              "from": [
+                "payments.ledger.pg.journal_entries.id"
+              ],
+              "maps": "Payment.id"
+            },
+            {
+              "name": "order_id",
+              "type": "text",
+              "nullable": false,
+              "from": [
+                "payments.ledger.pg.journal_entries.order_id"
+              ],
+              "maps": "Payment.orderId"
+            },
+            {
+              "name": "state",
+              "type": "text",
+              "nullable": false,
+              "from": [
+                "payments.ledger.pg.journal_entries.state"
+              ],
+              "maps": "Payment.state"
+            },
+            {
+              "name": "amount_minor",
+              "type": "bigint",
+              "nullable": false,
+              "from": [
+                "payments.ledger.pg.journal_entries.amount_minor"
+              ],
+              "maps": "Payment.amount"
+            },
+            {
+              "name": "refunded_minor",
+              "type": "bigint",
+              "nullable": false,
+              "from": [
+                "payments.ledger.pg.refunds.amount_minor"
+              ]
+            }
+          ]
+        }
       ]
     },
     {
@@ -4245,7 +4417,7 @@
         {
           "id": "delivery.core.pg.packages",
           "name": "packages",
-          "doc": "One row per shipment. order_id is a real foreign key into the OMS database \u2014 see Problems.",
+          "doc": "One row per shipment. order_id is a real foreign key into the OMS database — see Problems.",
           "role": "aggregate-root",
           "persists": {
             "aggregate": "delivery.core.shipment"
@@ -4279,7 +4451,11 @@
               "name": "ship_to",
               "type": "jsonb",
               "nullable": false,
-              "maps": "Shipment.shipTo"
+              "maps": "Shipment.shipTo",
+              "from": [
+                "shop.oms.pg.orders.ship_to"
+              ],
+              "doc": "Copied off the order when the shipment is created; never read back from OMS."
             },
             {
               "name": "dispatched_at",
@@ -4362,7 +4538,42 @@
             {
               "name": "address",
               "type": "jsonb",
+              "nullable": false,
+              "from": [
+                "delivery.core.pg.packages.ship_to"
+              ],
+              "doc": "Denormalised from the package, so a route can be printed without a join."
+            }
+          ]
+        }
+      ],
+      "views": [
+        {
+          "id": "delivery.core.pg.mv_route_load",
+          "name": "mv_route_load",
+          "materialized": true,
+          "doc": "Stops and weight per route, refreshed after each plan. The catalog knows what it reads, not which column feeds which.",
+          "reads": [
+            "delivery.core.pg.route_stops",
+            "delivery.core.pg.parcels"
+          ],
+          "source": "delivery/core/db/migrations/0005_route_load.sql",
+          "definition": "CREATE MATERIALIZED VIEW mv_route_load AS\nSELECT s.route_id, count(*) AS stops, sum(p.weight_grams) AS weight_grams\n  FROM route_stops s\n  LEFT JOIN parcels p ON p.package_id = s.package_id\n GROUP BY s.route_id;",
+          "columns": [
+            {
+              "name": "route_id",
+              "type": "text",
               "nullable": false
+            },
+            {
+              "name": "stops",
+              "type": "bigint",
+              "nullable": false
+            },
+            {
+              "name": "weight_grams",
+              "type": "bigint",
+              "nullable": true
             }
           ]
         }

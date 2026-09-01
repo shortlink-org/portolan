@@ -3,14 +3,15 @@
 import { describe, expect, it } from "vitest";
 import rawCatalog from "../../data/catalog.json";
 import { buildIndex, validateCatalog } from "../catalog";
-import type { Catalog, Store, Table } from "../catalog";
+import type { Catalog, Store, Table, View } from "../catalog";
 import { pathologicalCatalog } from "../lib/scenarios";
 import {
   MAX_ROWS,
   erSpec,
-  matchingTables,
+  matchingNodes,
   nodeHeight,
   outboundKeys,
+  outboundLineage,
   visibleColumns,
 } from "./spec";
 
@@ -28,6 +29,12 @@ function store(id: string): Store {
 function table(storeId: string, name: string): Table {
   const found = store(storeId).tables.find((t) => t.name === name);
   if (!found) throw new Error(`fixture has no table ${name}`);
+  return found;
+}
+
+function view(storeId: string, name: string): View {
+  const found = (store(storeId).views ?? []).find((v) => v.name === name);
+  if (!found) throw new Error(`fixture has no view ${name}`);
   return found;
 }
 
@@ -88,28 +95,29 @@ describe("erSpec", () => {
   const spec = erSpec(index, store("shop.oms.pg"), { mode: "keys" });
 
   it("makes one node per table, in catalog order", () => {
-    expect(spec.nodes.map((n) => n.table.name)).toEqual([
-      "orders",
-      "order_items",
-      "outbox",
-      "baskets",
-      "price_snapshots",
-    ]);
+    expect(spec.nodes.filter((n) => n.kind === "table").map((n) => n.name))
+      .toEqual([
+        "orders",
+        "order_items",
+        "outbox",
+        "baskets",
+        "price_snapshots",
+      ]);
   });
 
   it("counts what a collapsed card is not showing", () => {
-    const orders = spec.nodes.find((n) => n.table.name === "orders");
+    const orders = spec.nodes.find((n) => n.name === "orders");
     expect(orders?.hidden).toBe(
       table("shop.oms.pg", "orders").columns.length - 1,
     );
   });
 
   it("tints a table by the context that owns the aggregate it holds", () => {
-    const orders = spec.nodes.find((n) => n.table.name === "orders");
+    const orders = spec.nodes.find((n) => n.name === "orders");
     expect(orders?.context).toBe("shop");
     // The one table another service writes is tinted by THAT service's
     // context, which is the whole tell.
-    const snapshots = spec.nodes.find((n) => n.table.name === "price_snapshots");
+    const snapshots = spec.nodes.find((n) => n.name === "price_snapshots");
     expect(snapshots?.aggregate).toBe("shop.pricing.quote");
   });
 
@@ -128,10 +136,83 @@ describe("erSpec", () => {
     expect(into).toEqual([]);
   });
 
+  it("makes a card for every view, after the tables", () => {
+    expect(spec.nodes.filter((n) => n.kind === "view").map((n) => n.name)).toEqual(
+      ["v_open_orders", "mv_orders_daily"],
+    );
+    const daily = spec.nodes.find((n) => n.name === "mv_orders_daily");
+    expect(daily?.badge).toBe("matview");
+    expect(daily?.view?.materialized).toBe(true);
+  });
+
+  it("leaves the views out when the reader switches them off", () => {
+    const tablesOnly = erSpec(index, store("shop.oms.pg"), {
+      mode: "keys",
+      views: false,
+    });
+    expect(tablesOnly.nodes.every((n) => n.kind === "table")).toBe(true);
+    // And with them, the lineage that ran through them: an edge with one end
+    // missing is a line into nowhere.
+    expect(tablesOnly.edges.some((e) => e.to.includes("v_open_orders"))).toBe(
+      false,
+    );
+  });
+
+  it("draws lineage from the source column to the derived one", () => {
+    const edge = spec.edges.find(
+      (e) => e.id === "shop.oms.pg.orders.id~>shop.oms.pg.outbox.aggregate_id",
+    );
+    expect(edge?.kind).toBe("lineage");
+    expect(edge?.from).toBe("shop.oms.pg.orders");
+    expect(edge?.to).toBe("shop.oms.pg.outbox");
+  });
+
+  it("chains one view into the next", () => {
+    const chained = spec.edges.filter(
+      (e) =>
+        e.from === "shop.oms.pg.v_open_orders" &&
+        e.to === "shop.oms.pg.mv_orders_daily",
+    );
+    expect(chained).toHaveLength(3);
+    expect(chained.every((e) => e.kind === "lineage")).toBe(true);
+  });
+
+  it("drops lineage entirely when the reader switches it off", () => {
+    const keysOnly = erSpec(index, store("shop.oms.pg"), {
+      mode: "keys",
+      lineage: false,
+    });
+    expect(keysOnly.edges.every((e) => e.kind === "fk")).toBe(true);
+    // The views themselves stay: a card with no lines is still a schema fact.
+    expect(keysOnly.nodes.some((n) => n.kind === "view")).toBe(true);
+  });
+
+  it("joins card to card when a view says only what it reads", () => {
+    const delivery = erSpec(index, store("delivery.core.pg"), { mode: "keys" });
+    const coarse = delivery.edges.filter(
+      (e) => e.to === "delivery.core.pg.mv_route_load",
+    );
+    expect(coarse.map((e) => e.from)).toEqual([
+      "delivery.core.pg.route_stops",
+      "delivery.core.pg.parcels",
+    ]);
+    expect(coarse.every((e) => e.fromColumn === null && e.toColumn === null)).toBe(
+      true,
+    );
+  });
+
+  it("shows a view's derived columns on a collapsed card", () => {
+    const open = spec.nodes.find((n) => n.name === "v_open_orders");
+    // Every column of this view is computed from somewhere, so a collapsed
+    // card is the whole view rather than the first three rows.
+    expect(open?.rows).toHaveLength(view("shop.oms.pg", "v_open_orders").columns.length);
+    expect(open?.hidden).toBe(0);
+  });
+
   it("leaves the database's default off the label", () => {
     const delivery = erSpec(index, store("delivery.core.pg"), { mode: "keys" });
     const restricted = delivery.edges.find(
-      (e) => e.from === "delivery.core.pg.packages",
+      (e) => e.kind === "fk" && e.from === "delivery.core.pg.packages",
     );
     expect(restricted).toBeUndefined();
     const cascade = delivery.edges.find(
@@ -167,28 +248,52 @@ describe("outboundKeys", () => {
   });
 });
 
-describe("matchingTables", () => {
+describe("outboundLineage", () => {
+  it("lists the values copied in from another service's schema", () => {
+    expect(outboundLineage(index, store("delivery.core.pg"))).toEqual([
+      {
+        from: "delivery.core.pg.packages",
+        fromColumn: "ship_to",
+        to: "shop.oms.pg.orders.ship_to",
+        peer: "shop.oms",
+      },
+    ]);
+  });
+
+  it("says nothing about lineage that stays inside the store", () => {
+    expect(outboundLineage(index, store("shop.oms.pg"))).toEqual([]);
+  });
+});
+
+describe("matchingNodes", () => {
   const spec = erSpec(index, store("shop.oms.pg"), { mode: "keys" });
 
   it("matches a table by name", () => {
-    expect([...matchingTables(spec, "outbox")]).toEqual(["shop.oms.pg.outbox"]);
+    expect([...matchingNodes(spec, "outbox")]).toEqual(["shop.oms.pg.outbox"]);
   });
 
   it("matches a table by a column it holds, even a hidden one", () => {
-    expect([...matchingTables(spec, "published_at")]).toEqual([
+    expect([...matchingNodes(spec, "published_at")]).toEqual([
       "shop.oms.pg.outbox",
     ]);
   });
 
-  it("matches by the aggregate a table persists", () => {
-    expect([...matchingTables(spec, "shop.oms.order")]).toEqual([
+  it("matches a view by its SQL", () => {
+    expect([...matchingNodes(spec, "LEFT JOIN order_items")]).toEqual([
+      "shop.oms.pg.v_open_orders",
+    ]);
+  });
+
+  it("matches by the aggregate a relation persists", () => {
+    expect([...matchingNodes(spec, "shop.oms.order")]).toEqual([
       "shop.oms.pg.orders",
       "shop.oms.pg.order_items",
+      "shop.oms.pg.v_open_orders",
     ]);
   });
 
   it("matches nothing on an empty term", () => {
-    expect(matchingTables(spec, "  ").size).toBe(0);
+    expect(matchingNodes(spec, "  ").size).toBe(0);
   });
 });
 
@@ -201,16 +306,16 @@ describe("the pathological store", () => {
 
   it("caps the height of a 45-column table once every column is asked for", () => {
     const all = erSpec(badIndex, badStore, { mode: "all" });
-    const wide = all.nodes.find((n) => n.table.name === "wide");
+    const wide = all.nodes.find((n) => n.name === "wide");
     if (!wide) throw new Error("scenario has no wide table");
-    expect(wide.table.columns).toHaveLength(45);
+    expect(wide.columns).toHaveLength(45);
     expect(wide.rows).toHaveLength(45);
     expect(wide.scrolls).toBe(true);
     expect(wide.height).toBe(nodeHeight(MAX_ROWS, 0));
   });
 
   it("collapses that same table to its one key column", () => {
-    const wide = spec.nodes.find((n) => n.table.name === "wide");
+    const wide = spec.nodes.find((n) => n.name === "wide");
     expect(wide?.rows.map((c) => c.name)).toEqual(["id"]);
     expect(wide?.hidden).toBe(44);
     expect(wide?.scrolls).toBe(false);
@@ -222,7 +327,7 @@ describe("the pathological store", () => {
   });
 
   it("shows both halves of a composite key on a collapsed card", () => {
-    const composite = spec.nodes.find((n) => n.table.name === "composite");
+    const composite = spec.nodes.find((n) => n.name === "composite");
     expect(composite?.rows.map((c) => c.name)).toEqual([
       "tenant_id",
       "thing_id",

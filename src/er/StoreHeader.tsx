@@ -6,11 +6,12 @@
 
 import { Link } from "react-router";
 import type { Store, StoreKind } from "../catalog";
+import { storeViews } from "../catalog";
 import { index } from "../data";
 import { Ident } from "../components/Ident";
 import { KindIcon } from "../components/kind";
 import { plural } from "../lib/format";
-import { outboundKeys } from "./spec";
+import { outboundKeys, outboundLineage } from "./spec";
 import { servicePath, storePath } from "../routes";
 
 /**
@@ -43,6 +44,8 @@ export function StoreHeader({
   const to = linked ? storePath(store.id) : null;
   const ownerTo = servicePath(store.owner);
   const outbound = outboundKeys(index, store);
+  const copied = outboundLineage(index, store);
+  const views = storeViews(store);
 
   return (
     <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -92,6 +95,12 @@ export function StoreHeader({
             </>
           )}
         </span>
+        {views.length > 0 ? (
+          <span title={views.map((v) => v.name).join("\n")}>
+            <span className="tnum">{views.length}</span>{" "}
+            {plural(views.length, "view")}
+          </span>
+        ) : null}
         {outbound.length > 0 ? (
           <span
             className="text-unresolved"
@@ -101,6 +110,18 @@ export function StoreHeader({
           >
             <span className="tnum">{outbound.length}</span> key
             {outbound.length === 1 ? "" : "s"} out of this store
+          </span>
+        ) : null}
+        {/* A key out of the store is a constraint nobody enforces; a value
+            copied in from another store is a row that goes stale on its own.
+            Two different worries, so two different lines. */}
+        {copied.length > 0 ? (
+          <span
+            className="text-declared"
+            title={copied.map((o) => `${o.from}.${o.fromColumn} ← ${o.to} (${o.peer})`).join("\n")}
+          >
+            <span className="tnum">{copied.length}</span> column
+            {copied.length === 1 ? "" : "s"} copied in
           </span>
         ) : null}
         {store.source ? <Ident value={store.source} /> : null}

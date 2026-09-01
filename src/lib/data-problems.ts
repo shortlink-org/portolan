@@ -15,8 +15,21 @@
 // a column whose type has drifted from its field's — both are ordinary during a
 // migration, so they are reported and not enforced.
 
-import type { Catalog, CatalogIndex, Store, Table } from "../catalog";
-import { aggregateBlocks, blockFields, mapsFieldPath } from "../catalog";
+import type {
+  Catalog,
+  CatalogIndex,
+  Column,
+  Store,
+  Table,
+} from "../catalog";
+import {
+  aggregateBlocks,
+  blockFields,
+  mapsFieldPath,
+  relationOfColumnId,
+  storeViews,
+  viewReads,
+} from "../catalog";
 import type { Problem } from "./derive";
 import { payloadColumn, typesDisagree } from "./data-model";
 
@@ -44,6 +57,29 @@ export function dataProblems(
       warnings.push(...outboxWithoutPayload(index, store, table));
       warnings.push(...drift(catalog, index, store, table));
       warnings.push(...typeDrift(catalog, index, store, table));
+      warnings.push(
+        ...crossServiceLineage(index, store, table.id, table.columns),
+      );
+    }
+    for (const view of storeViews(store)) {
+      warnings.push(...crossServiceLineage(index, store, view.id, view.columns));
+      // A view is defined over what it reads, so a `reads` entry pointing into
+      // someone else's store is the same coupling stated one level up.
+      for (const readId of viewReads(view)) {
+        const target =
+          index.tableById.get(readId) ?? index.viewById.get(readId);
+        if (!target || target.store.owner === store.owner) continue;
+        warnings.push({
+          kind: "cross-service-lineage",
+          severity: "warning",
+          context: contextOf(index, store.owner),
+          service: store.owner,
+          id: view.id,
+          peer: readId,
+          note: `${view.id} is defined over ${readId}, which ${target.store.owner} owns; a rename over there breaks this view with no error until it is read.`,
+          source: view.source ?? store.source,
+        });
+      }
     }
   }
 
@@ -75,6 +111,46 @@ function crossServiceKeys(
       note: `${store.owner} holds a foreign key into a table owned by ${target.store.owner}; neither service can migrate that table alone.`,
       source: store.source,
     });
+  }
+  return out;
+}
+
+/**
+ * A column copied from another service's schema.
+ *
+ * Not an error: copying is how a projection is built, and the alternative — a
+ * foreign key — is worse. It is a warning because the coupling is invisible
+ * from the other side. Nothing in the source database records that someone
+ * else's column is a copy of it, so the rename that breaks this is a rename
+ * that looked safe.
+ */
+function crossServiceLineage(
+  index: CatalogIndex,
+  store: Store,
+  relationId: string,
+  columns: Column[],
+): Problem[] {
+  const out: Problem[] = [];
+  const seen = new Set<string>();
+  for (const column of columns) {
+    for (const ref of column.from ?? []) {
+      const source = relationOfColumnId(ref);
+      const target =
+        index.tableById.get(source) ?? index.viewById.get(source);
+      if (!target || target.store.owner === store.owner) continue;
+      if (seen.has(ref)) continue;
+      seen.add(ref);
+      out.push({
+        kind: "cross-service-lineage",
+        severity: "warning",
+        context: contextOf(index, store.owner),
+        service: store.owner,
+        id: `${relationId}.${column.name}`,
+        peer: ref,
+        note: `${store.owner} copies this value from ${ref}, which ${target.store.owner} owns; nothing on that side records that the copy exists.`,
+        source: store.source,
+      });
+    }
   }
   return out;
 }

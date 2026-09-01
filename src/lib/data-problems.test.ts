@@ -49,6 +49,27 @@ describe("the sample estate", () => {
     ]);
   });
 
+  it("reports the value delivery copies out of the OMS schema", () => {
+    const copied = problems.filter((p) => p.kind === "cross-service-lineage");
+    expect(copied.map((p) => p.id)).toEqual([
+      "delivery.core.pg.packages.ship_to",
+    ]);
+    expect(copied[0]?.peer).toBe("shop.oms.pg.orders.ship_to");
+    // A warning, not an error: copying is how a service stays out of someone
+    // else's database, and the alternative — a foreign key — is the error
+    // right above it.
+    expect(copied[0]?.severity).toBe("warning");
+  });
+
+  it("says nothing about lineage that stays inside one service", () => {
+    const inside = problems.filter(
+      (p) =>
+        p.kind === "cross-service-lineage" &&
+        p.id.startsWith("shop.oms.pg.outbox"),
+    );
+    expect(inside).toEqual([]);
+  });
+
   it("says nothing about the outbox, which has its payload", () => {
     expect(kinds(problems)).not.toContain("outbox-payload");
   });

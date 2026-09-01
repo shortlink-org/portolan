@@ -154,6 +154,87 @@ describe("store validation", () => {
   });
 });
 
+describe("view validation", () => {
+  /** The sample's two OMS views, which every case below starts from. */
+  function views(catalog: Catalog) {
+    const found = omsStore(catalog).views;
+    if (!found || found.length < 2) throw new Error("fixture has no views");
+    return found;
+  }
+
+  it("rejects a view whose id does not spell out its store and name", () => {
+    const bad = clone();
+    (views(bad)[0] as { id: string }).id = "shop.oms.pg.something_else";
+    expect(failureOf(bad).message).toContain("must have id");
+  });
+
+  it("rejects a view that collides with a table", () => {
+    const bad = clone();
+    const view = views(bad)[0];
+    if (!view) throw new Error("fixture has no view");
+    view.id = "shop.oms.pg.orders";
+    view.name = "orders";
+    expect(failureOf(bad).message).toContain("collides");
+  });
+
+  it("rejects a view reading something the catalog does not have", () => {
+    const bad = clone();
+    const view = views(bad)[0];
+    if (!view) throw new Error("fixture has no view");
+    view.reads = ["shop.oms.pg.nowhere"];
+    const error = failureOf(bad);
+    expect(error.message).toContain("shop.oms.pg.nowhere");
+    expect(error.path).toBe("store shop.oms.pg / view v_open_orders");
+  });
+
+  it("rejects a key on a view, which cannot enforce one", () => {
+    const bad = clone();
+    const column = views(bad)[0]?.columns[0];
+    if (!column) throw new Error("fixture has no view column");
+    column.pk = true;
+    expect(failureOf(bad).message).toContain("has no key of its own");
+  });
+
+  it("rejects a foreign key on a view", () => {
+    const bad = clone();
+    const column = views(bad)[0]?.columns[0];
+    if (!column) throw new Error("fixture has no view column");
+    column.fk = { table: "shop.oms.pg.orders", column: "id" };
+    expect(failureOf(bad).message).toContain("declares a foreign key");
+  });
+
+  it("rejects lineage into a column that is not there", () => {
+    const bad = clone();
+    const column = views(bad)[0]?.columns[0];
+    if (!column) throw new Error("fixture has no view column");
+    column.from = ["shop.oms.pg.orders.no_such_column"];
+    expect(failureOf(bad).message).toContain("has no column");
+  });
+
+  it("rejects lineage into a relation that is not there", () => {
+    const bad = clone();
+    const column = views(bad)[0]?.columns[0];
+    if (!column) throw new Error("fixture has no view column");
+    column.from = ["shop.oms.pg.nowhere.id"];
+    expect(failureOf(bad).message).toContain("is not a table or view");
+  });
+
+  it("rejects a column derived from itself", () => {
+    const bad = clone();
+    const table = omsStore(bad).tables.find((t) => t.name === "outbox");
+    const column = table?.columns.find((c) => c.name === "aggregate_id");
+    if (!column) throw new Error("fixture has no outbox column");
+    column.from = ["shop.oms.pg.outbox.aggregate_id"];
+    expect(failureOf(bad).message).toContain("derived from itself");
+  });
+
+  it("accepts a store with no views at all", () => {
+    const bare = clone();
+    for (const store of bare.stores ?? []) delete store.views;
+    expect(() => validateCatalog(bare)).not.toThrow();
+  });
+});
+
 describe("store indexes", () => {
   const catalog = validateCatalog(clone());
   const index = buildIndex(catalog);
@@ -201,6 +282,51 @@ describe("store indexes", () => {
     expect(columns.map((c) => c.column.name)).toContain("status");
     // A column with no `maps` is not a column that carries a field.
     expect(columns.map((c) => c.column.name)).not.toContain("placed_at");
+  });
+
+  it("resolves a view id to the store declaring it", () => {
+    expect(index.viewById.get("shop.oms.pg.v_open_orders")?.store.id).toBe(
+      "shop.oms.pg",
+    );
+  });
+
+  it("resolves a view's column apart from a table's", () => {
+    const id = columnId("shop.oms.pg.v_open_orders", "line_count");
+    expect(index.viewColumnById.get(id)?.column.type).toBe("bigint");
+    // The two namespaces do not leak into one another: a view column is not a
+    // table column, and a caller that wants either has to ask for both.
+    expect(index.columnById.has(id)).toBe(false);
+  });
+
+  it("lists the views reading a table, and a view read by another view", () => {
+    expect(
+      index.viewsReading.get("shop.oms.pg.orders")?.map((v) => v.name),
+    ).toEqual(["v_open_orders"]);
+    expect(
+      index.viewsReading.get("shop.oms.pg.v_open_orders")?.map((v) => v.name),
+    ).toEqual(["mv_orders_daily"]);
+  });
+
+  it("lists the views presenting an aggregate", () => {
+    expect(
+      index.viewsByAggregate.get("shop.oms.order")?.map((v) => v.name),
+    ).toEqual(["v_open_orders"]);
+  });
+
+  it("indexes lineage from both ends", () => {
+    const derived = columnId("shop.oms.pg.v_open_orders", "total_minor");
+    expect(index.lineageFrom.get(derived)).toEqual([
+      "shop.oms.pg.orders.total_minor",
+    ]);
+    expect(index.lineageInto.get("shop.oms.pg.orders.total_minor")).toEqual([
+      derived,
+    ]);
+  });
+
+  it("indexes lineage declared on a table, not only on a view", () => {
+    expect(index.lineageFrom.get("shop.oms.pg.outbox.aggregate_id")).toEqual([
+      "shop.oms.pg.orders.id",
+    ]);
   });
 
   it("indexes what points at a table", () => {
