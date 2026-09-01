@@ -11,6 +11,12 @@ const (
 	ReasonLogout Reason = "logout"
 	// ReasonRevoked - somebody else ended it, support or an admin.
 	ReasonRevoked Reason = "revoked"
+	// ReasonPasswordChanged - the credentials it was issued against are gone.
+	//
+	// Worth telling apart from the others: a client that shows "you were signed
+	// out because the password changed" is explaining something the person did,
+	// while "your session expired" would be a lie.
+	ReasonPasswordChanged Reason = "password-changed"
 )
 
 // SessionEnded is published when a session is deliberately ended.

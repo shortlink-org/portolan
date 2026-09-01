@@ -30,7 +30,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:              addr,
-		Handler:           di.New(),
+		Handler:           di.New().Handler,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

@@ -27,6 +27,11 @@ func status(err error) (code int, message string) {
 		return 400, "the request is not acceptable"
 	case errors.Is(err, user.ErrEmailTaken):
 		return 409, "that address is already registered"
+	case errors.Is(err, user.ErrConflict):
+		// Also a 409, and also the caller's move: read the user again, redo the
+		// change, send it again. Nothing on this side can resolve it, because
+		// only the caller knows what they meant to change.
+		return 409, "the user was changed by somebody else; read it again and retry"
 	case errors.Is(err, user.ErrInvalidCredentials):
 		return 401, "invalid credentials"
 	case errors.Is(err, user.ErrNotFound):

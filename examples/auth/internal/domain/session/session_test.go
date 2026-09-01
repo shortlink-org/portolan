@@ -132,6 +132,22 @@ func TestCloneSharesNothingMutable(t *testing.T) {
 	}
 }
 
+func TestCloneCarriesTheVersion(t *testing.T) {
+	s, _ := start(t)
+	s.Version = 7
+
+	if got := s.Clone().Version; got != 7 {
+		t.Errorf("clone is at version %d, want 7", got)
+	}
+}
+
+func TestNewSessionIsUnsaved(t *testing.T) {
+	s, _ := start(t)
+	if s.Version != 0 {
+		t.Errorf("a fresh session is at version %d, want 0", s.Version)
+	}
+}
+
 func TestCloneOfNil(t *testing.T) {
 	var s *session.Session
 	if s.Clone() != nil {

@@ -7,10 +7,13 @@
 package di
 
 import (
+	"github.com/shortlink-org/portolan/examples/auth/internal/application/policy"
+	"github.com/shortlink-org/portolan/examples/auth/internal/application/session/usecases/end_after_credential_change"
 	"github.com/shortlink-org/portolan/examples/auth/internal/application/session/usecases/login"
 	"github.com/shortlink-org/portolan/examples/auth/internal/application/session/usecases/logout"
 	"github.com/shortlink-org/portolan/examples/auth/internal/application/session/usecases/validate"
 	"github.com/shortlink-org/portolan/examples/auth/internal/application/user/usecases/authenticate"
+	"github.com/shortlink-org/portolan/examples/auth/internal/application/user/usecases/change_password"
 	"github.com/shortlink-org/portolan/examples/auth/internal/application/user/usecases/get"
 	"github.com/shortlink-org/portolan/examples/auth/internal/application/user/usecases/register"
 	"github.com/shortlink-org/portolan/examples/auth/internal/di/provider"
@@ -18,38 +21,44 @@ import (
 	user2 "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/bus/user"
 	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/session"
 	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/user"
-	http2 "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/transport/http"
+	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/transport/http"
 	session3 "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/transport/http/session"
 	user3 "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/transport/http/user"
-	"net/http"
 )
 
 // Injectors from wire.go:
 
-// New assembles the whole service and returns the HTTP handler at the top of
-// it.
+// New assembles the whole service.
 //
-// Everything below the handler - repositories, buses, use cases, the adapter
-// between the two domains - is reachable only through the graph wire builds
-// from these sets. A missing provider is a generation-time error rather than a
-// nil dereference on the first request.
-func New() http.Handler {
+// Everything below the handler - repositories, buses, use cases, policies, the
+// adapter between the two domains - is reachable only through the graph wire
+// builds from these sets. A missing provider is a generation-time error rather
+// than a nil dereference on the first request.
+func New() App {
 	memory := user.NewMemory()
 	inProc := user2.NewInProc()
 	v := provider.ProvideNow()
 	v2 := provider.ProvideNewID()
 	useCase := register.New(memory, inProc, v, v2)
 	getUseCase := get.New(memory)
-	users := user3.NewUsers(useCase, getUseCase)
+	change_passwordUseCase := change_password.New(memory, inProc, v)
 	sessionMemory := session.NewMemory()
+	validateUseCase := validate.New(sessionMemory, v)
+	users := user3.NewUsers(useCase, getUseCase, change_passwordUseCase, validateUseCase)
 	authenticateUseCase := authenticate.New(memory)
 	authenticator := provider.ProvideAuthenticator(authenticateUseCase)
 	sessionInProc := session2.NewInProc()
 	loginUseCase := login.New(sessionMemory, authenticator, sessionInProc, v, v2)
 	logoutUseCase := logout.New(sessionMemory, sessionInProc, v)
-	validateUseCase := validate.New(sessionMemory, v)
 	sessions := session3.NewSessions(loginUseCase, logoutUseCase, validateUseCase)
-	server := http2.NewServer(users, sessions)
-	handler := http2.Router(server)
-	return handler
+	server := http.NewServer(users, sessions)
+	handler := http.Router(server)
+	end_after_credential_changeUseCase := end_after_credential_change.New(sessionMemory, sessionInProc, v)
+	revokeSessionsOnPasswordChange := policy.New(end_after_credential_changeUseCase)
+	subscriptions := provider.ProvideSubscriptions(inProc, revokeSessionsOnPasswordChange)
+	app := App{
+		Handler:       handler,
+		Subscriptions: subscriptions,
+	}
+	return app
 }
