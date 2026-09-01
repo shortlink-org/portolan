@@ -91,6 +91,62 @@ shapes, status codes and the reasoning behind them are described there, and the
 server interface is generated from it - so it is the one place that can be
 wrong, and it cannot drift from this file because this file does not repeat it.
 
+## Caching
+
+`ByToken` is the hot path: every authenticated request in the estate ends
+there, asking the same question about the same token over and over. It is the
+one read in this service worth keeping an answer to, so there is a cache in
+front of it.
+
+The cache itself is `go-sdk/cache` — a byte-level port, its redis adapter and a
+noop. This service has no adapter of its own and no redis client in its imports:
+what lives here is `cached.go`, next to the store it decorates, and it decides
+only what to keep, for how long, and when to forget it. That is the part which
+is about sessions; opening a connection is not.
+
+Nothing above infrastructure knows. `session.Repository` did not change, the use
+cases did not change, and they could not have: they take the port and always
+did. Assembly binds the port to `Cached` wrapping `Postgres` instead of to
+`Postgres`, and that one function in `internal/di/provider/repository.go` is the
+whole of the change. A cache is a fact about how fast a deployment has to be,
+not a fact about what a session is, so the domain has no port for one.
+
+Only `ByToken` is cached. `ByID` is read by the code that is about to write, and
+`ByUserID` answers a question about a set — the kind of entry nothing can
+invalidate honestly, because a session started for that user changes the answer
+and the write that started it never knew the list existed.
+
+What makes it safe to read a session from somewhere other than the database:
+
+- **The version travels with it.** A cached copy is a copy taken at a version,
+  and a write made from a stale one is refused rather than applied. Caching a
+  read cannot cause a wrong write here, only a retried one.
+- **Nothing is read from the cache inside a transaction.** A use case reading
+  through it would be deciding on a copy its own transaction never saw and
+  cannot have locked.
+- **Revocation drops the entry** — before the write and again after it. The
+  first drop is what survives a process dying after the commit; the second is
+  what survives a reader repopulating the entry while the write was in flight.
+- **An entry never outlives its session.** The TTL is the shorter of
+  `CACHE_SESSION_TTL` and what is left of the session's own life. Expiry is the
+  one way a session changes with nothing running to notice.
+- **The key is a hash of the token, never the token.** The token is the
+  credential itself, and a `KEYS` scan, a slow-log line or a redis dump is not
+  treated like a password store.
+- **A cache that is down is not an outage.** Every cache failure on the read
+  path is swallowed and the database answers; a failed invalidation does not
+  fail the write that already committed. What that costs is a stale entry for
+  the rest of its TTL, which is what the TTL is for — a minute by default, and
+  it is not how long a logout takes to be seen, it is how long the estate stays
+  wrong when the invalidation is the thing that broke.
+
+`STORE_REDIS_CLIENT_CACHE_TTL` additionally keeps a copy inside each process for
+that long. It is off by default and safe to turn on: the SDK's local layer is
+redis client-side caching, which the server invalidates on every replica when a
+key changes. An in-process LRU could not be — nothing would tell it about a
+logout, and every replica but the one that handled it would keep saying the
+session is live.
+
 ## Running it
 
 ```bash
@@ -100,15 +156,37 @@ STORE_POSTGRES_URI=postgres://auth:auth@localhost:5432/auth?sslmode=disable \
   go run ./cmd/auth
 ```
 
+With the cache:
+
+```bash
+docker compose up -d
+STORE_TYPE=postgres \
+STORE_POSTGRES_URI=postgres://auth:auth@localhost:5432/auth?sslmode=disable \
+CACHE_TYPE=redis \
+STORE_REDIS_URI=localhost:6379 \
+  go run ./cmd/auth
+```
+
+`CACHE_TYPE` defaults to `none`, which wires a cache that keeps nothing and
+misses every read — so the uncached path is a different cache rather than a
+different code path, and it is the one that runs on a laptop. A `CACHE_TYPE`
+nobody recognises fails at assembly: that is somebody asking for a cache and
+getting silence.
+
 The schema is brought up to date at startup. Each aggregate owns its own
 migrations and its own `schema_migrations_*` table, numbered from 1 within its
 own package: `user` and `session` both have an `0001`, and neither waits for the
 other, because no table here refers to one in another aggregate.
 
-Tests start their own database through testcontainers, so a run cannot be
-affected by whatever state a local one is in. Without Docker the packages that
-need one are skipped and the domain tests - the majority, and the ones worth
-having - still run.
+Tests start their own database and their own redis through testcontainers, so a
+run cannot be affected by whatever state a local one is in. Without Docker the
+packages that need one are skipped and the domain tests - the majority, and the
+ones worth having - still run. Most of the decorator's tests need neither: when
+it asks the store and when it does not is a question a fake answers faster and
+no less honestly. One test does use a real redis, and only for what a fake
+cannot say - that a session survives the round trip through what is actually
+stored, and that revoking one removes it from a server rather than from a map
+that agrees with us.
 
 Regenerating after a change to the spec or the wire graph:
 
