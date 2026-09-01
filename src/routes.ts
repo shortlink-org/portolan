@@ -1,6 +1,7 @@
 // Every in-app URL is built here. Routes use slugs, never dotted ids.
 
 import type { Catalog } from "./catalog";
+import type { Backlink } from "./lib/backlinks";
 import { index } from "./data";
 import { selectionHash } from "./selection/hash";
 import { flowStepId } from "./selection/model";
@@ -63,16 +64,21 @@ export const EVENT_ANCHOR = {
   schema: "ev-schema",
   versions: "ev-versions",
   consumers: "ev-consumers",
-  flows: "ev-flows",
-  decisions: "ev-decisions",
 } as const;
 
 /** The section anchors on a value object or entity page. */
 export const BLOCK_ANCHOR = {
   shape: "bl-shape",
-  usedIn: "bl-used-in",
   siblings: "bl-siblings",
 } as const;
+
+/**
+ * The incoming-links section, and the one anchor that is the same on every
+ * entity page. A reader who has learned where "what links here" lives on one
+ * page has learned it for all of them, and `#links-here` is the same promise
+ * in a URL.
+ */
+export const LINKS_HERE = "links-here";
 
 /** The section anchors on a context page. */
 export const CONTEXT_ANCHOR = {
@@ -138,12 +144,56 @@ export function adrPath(adrId: string): string | null {
   return adr ? paths.adr(adr.slug) : null;
 }
 
+/** Path to an aggregate page, or null if the id is not a catalog aggregate. */
+export function aggregatePath(aggregateId: string): string | null {
+  const aggregate = index.aggregateById.get(aggregateId);
+  const service = index.aggregateOwner.get(aggregateId);
+  const context = service ? index.serviceContext.get(service.id) : undefined;
+  if (!aggregate || !service || !context) return null;
+  return paths.aggregate(context.id, service.slug, aggregate.slug);
+}
+
 /** Path to a service page, or null if the id is not a catalog service. */
 export function servicePath(serviceId: string): string | null {
   const service = index.serviceById.get(serviceId);
   const context = index.serviceContext.get(serviceId);
   if (!service || !context) return null;
   return paths.service(context.id, service.slug);
+}
+
+/**
+ * Where a backlink leads. A flow that points here through one of its steps
+ * leads to THAT step, not to the top of the flow: the reader clicked the
+ * reason, so the reason is what has to be on screen when they land.
+ */
+export function backlinkPath(link: Backlink): string | null {
+  switch (link.kind) {
+    case "context":
+      return index.catalog.contexts.some((c) => c.id === link.id)
+        ? paths.context(link.id)
+        : null;
+    case "service":
+      return servicePath(link.id);
+    case "aggregate":
+      return aggregatePath(link.id);
+    case "event":
+      return eventPath(link.id);
+    case "vo":
+    case "entity":
+      return blockPath(link.id);
+    case "flow":
+      return index.flowBySlug.has(link.id)
+        ? link.at
+          ? paths.flowStep(link.id, link.at)
+          : paths.flow(link.id)
+        : null;
+    case "adr":
+      return adrPath(link.id);
+    // A shared type is only ever seen through the blocks that name it, and a
+    // command or a query is a line on its aggregate's page.
+    default:
+      return null;
+  }
 }
 
 /** Route patterns declared in App.tsx, in the same order. */

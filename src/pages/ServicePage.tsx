@@ -17,6 +17,7 @@ import {
   ProvenanceBadge,
   StatusChip,
 } from "../components/primitives";
+import { WhatLinksHere } from "../components/WhatLinksHere";
 import { NotFound } from "./NotFound";
 import { C4View } from "../likec4/C4View";
 import { serviceViewId } from "../likec4/ids";
@@ -243,6 +244,18 @@ export function ServicePage() {
                 </div>
               )}
             </section>
+
+            {/* Who calls this service is nowhere else on the page: `provides`
+                and `consumes` both point outwards. Flows and decisions have
+                tabs of their own, so they are counted here, not repeated. */}
+            <WhatLinksHere
+              target={{ kind: "service", id: service.id }}
+              elsewhere={{
+                flow: { href: "?tab=flows", label: "the flows tab" },
+                adr: { href: "?tab=decisions", label: "the decisions tab" },
+              }}
+              empty="nothing in the catalog calls this service or listens to it"
+            />
           </>
         </TabPanel>
 

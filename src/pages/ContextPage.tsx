@@ -5,7 +5,7 @@ import { contextStats } from "../lib/derive";
 import { ctxStyle } from "../lib/context-color";
 import { middleTruncate } from "../lib/format";
 import { staggerStyle } from "../lib/motion";
-import { CONTEXT_ANCHOR, EVENT_ANCHOR, paths } from "../routes";
+import { CONTEXT_ANCHOR, EVENT_ANCHOR, LINKS_HERE, paths } from "../routes";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
 import { Ident } from "../components/Ident";
 import { ClassificationBadge } from "../components/primitives";
@@ -13,6 +13,7 @@ import { KindIcon } from "../components/kind";
 import { RowActions } from "../components/RowActions";
 import { Toc } from "../components/Toc";
 import type { TocItem } from "../components/Toc";
+import { WhatLinksHere } from "../components/WhatLinksHere";
 import { NotFound } from "./NotFound";
 import { C4View } from "../likec4/C4View";
 import { contextViewId } from "../likec4/ids";
@@ -21,6 +22,7 @@ const TOC: TocItem[] = [
   { id: CONTEXT_ANCHOR.services, label: "Services" },
   { id: CONTEXT_ANCHOR.aggregates, label: "Aggregates" },
   { id: CONTEXT_ANCHOR.events, label: "Events" },
+  { id: LINKS_HERE, label: "What links here" },
 ];
 
 export function ContextPage() {
@@ -270,6 +272,13 @@ export function ContextPage() {
               </div>
             )}
           </section>
+
+          {/* Traffic that starts outside. What its own services call each
+              other is wiring, not something the domain is depended on for. */}
+          <WhatLinksHere
+            target={{ kind: "context", id: context.id }}
+            empty="nothing outside this context names anything inside it"
+          />
         </div>
 
         <Toc items={TOC} label="Sections of this context" />
