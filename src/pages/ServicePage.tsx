@@ -92,6 +92,7 @@ export function ServicePage() {
         name={service.name}
         id={service.id}
         contextId={context.id}
+        pin={{ kind: "service", id: service.id }}
         right={<ContextPill id={context.id} name={context.name} />}
       >
         <div className="mono mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-muted">

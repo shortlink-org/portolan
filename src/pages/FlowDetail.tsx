@@ -23,6 +23,7 @@ import { flowCrossViewId, flowViewId } from "../likec4/ids";
 import { flowPairing } from "../likec4/view-index";
 import { flowStepId, parseFlowStepId } from "../selection/model";
 import { useSelectionStore } from "../selection/store";
+import { PinButton } from "../app/pins";
 import {
   Panel,
   ResizeHandle,
@@ -254,6 +255,7 @@ export function FlowDetail() {
           </h1>
           <Ident value={flow.id} className="text-muted" />
           <div className="ml-auto flex items-center gap-2">
+            <PinButton kind="flow" id={flow.id} label={flow.name} />
             <ProvenanceBadge
               provenance={flow.provenance}
               source={flow.source}

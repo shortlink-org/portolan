@@ -1,11 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { NavLink, useLocation, useMatch } from "react-router";
-import { ChevronRight, PanelLeftOpen } from "lucide-react";
-import { catalog } from "../data";
+import { Link, NavLink, useLocation, useMatch } from "react-router";
+import {
+  Popover,
+  PopoverButton,
+  PopoverPanel,
+} from "@headlessui/react";
+import {
+  Check,
+  ChevronRight,
+  Filter,
+  GripVertical,
+  PanelLeftOpen,
+  PinOff,
+  TriangleAlert,
+} from "lucide-react";
+import { catalog, index } from "../data";
 import type {
   Aggregate,
   Block,
   BoundedContext,
+  Classification,
   Event,
   Operation,
   Service,
@@ -15,16 +29,35 @@ import type {
 } from "../catalog";
 import { storeViews } from "../catalog";
 import { adrNumber, newestAccepted, sortAdrs } from "../lib/adr";
-import { ctxStyle } from "../lib/context-color";
+import { contextName, ctxStyle } from "../lib/context-color";
+import { contextStats, problems } from "../lib/derive";
+import { dataProblems } from "../lib/data-problems";
+import {
+  FLOW_HEALTH_NOTE,
+  groupFlowsByOwner,
+  reachDots,
+  visibleEntries,
+} from "../lib/flow-tree";
+import type { FlowEntry, FlowHealth, FlowGroup } from "../lib/flow-tree";
 import { KIND_CHIP, MODEL_LEAF_KINDS, STORE_LEAF_KINDS } from "../lib/kinds";
 import type { Kind, LeafKind } from "../lib/kinds";
+import { plural } from "../lib/format";
+import {
+  FLOW_GROUPS_KEY,
+  SECTIONS_KEY,
+  readFlags,
+  writeFlags,
+} from "../lib/sidebar-prefs";
+import type { Flags } from "../lib/sidebar-prefs";
 import { KindIcon } from "../components/kind";
 import { CompassRose, Wordmark } from "../components/logo";
-import { ClassificationBadge, isStruck } from "../components/primitives";
+import { isStruck } from "../components/primitives";
 import { paths } from "../routes";
 import { selectionHash } from "../selection/hash";
 import { STORE_KIND_LABEL } from "../er/StoreHeader";
 import { useSearch } from "./search";
+import { BuildStamp } from "./BuildStamp";
+import { resolvePin, usePinsStore } from "./pins";
 import { resolveSelection, selectionFor } from "../selection/model";
 import { selectsInPlace } from "../selection/pages";
 import { useSelectionStore } from "../selection/store";
@@ -152,6 +185,28 @@ function matchContext(
   return { context, services };
 }
 
+/**
+ * Contexts, in the order the reader should meet them: where the estate
+ * competes first, what holds it up next, what it bought last, and what it has
+ * not yet rated at the end. This is the ONE place classification orders
+ * anything - everywhere else it is a badge and nothing more.
+ */
+const CLASSIFICATION_ORDER: Record<Classification, number> = {
+  core: 0,
+  supporting: 1,
+  generic: 2,
+};
+
+function classificationRank(c: Classification | undefined): number {
+  return c === undefined ? 3 : CLASSIFICATION_ORDER[c];
+}
+
+const CLASSIFICATION_NOTE: Record<Classification, string> = {
+  core: "core domain - where this estate competes",
+  supporting: "supporting domain - needed here, but not a differentiator",
+  generic: "generic domain - a solved problem, bought or borrowed",
+};
+
 // ---------------------------------------------------------------------------
 // Rows
 // ---------------------------------------------------------------------------
@@ -241,6 +296,11 @@ function Leaf({
 /**
  * A branch: a disclosure triangle that only expands, next to a link that only
  * navigates. Keeping them separate means neither is nested inside the other.
+ *
+ * `end` is for controls that must be their own target - the unresolved-edge
+ * count on a context, which goes somewhere else entirely. It sits OUTSIDE the
+ * link, because an anchor may not contain another one, and the link gives up
+ * its claim on the rest of the row to make room for it.
  */
 function Branch({
   to,
@@ -250,6 +310,7 @@ function Branch({
   label,
   children,
   right,
+  end,
   under,
   selId,
 }: {
@@ -260,6 +321,7 @@ function Branch({
   label: string;
   children: React.ReactNode;
   right?: React.ReactNode;
+  end?: React.ReactNode;
   under?: React.ReactNode;
   selId?: string;
 }) {
@@ -271,7 +333,7 @@ function Branch({
   return (
     <>
       <div
-        className={`tree-row flex items-stretch t-micro transition-colors hover:bg-surface ${
+        className={`tree-row group flex items-stretch t-micro transition-colors hover:bg-surface ${
           selected ? "pulse-once" : ""
         }`}
         style={{
@@ -297,11 +359,19 @@ function Branch({
           data-sel={selId}
           data-nav-item
           onClick={onClick}
-          className="flex min-w-0 flex-1 items-center gap-1.5 py-[3px] pr-2"
+          className={`flex min-w-0 items-center gap-1.5 py-[3px] pr-2 ${
+            end ? "shrink" : "flex-1"
+          }`}
         >
           {children}
-          {right ? <span className="ml-auto shrink-0">{right}</span> : null}
+          {right && !end ? (
+            <span className="ml-auto shrink-0">{right}</span>
+          ) : null}
         </NavLink>
+        {end}
+        {right && end ? (
+          <span className="flex shrink-0 items-center pr-2">{right}</span>
+        ) : null}
       </div>
       {under}
     </>
@@ -360,6 +430,486 @@ const KIND_GROUP_LABEL: Record<LeafKind, string> = {
   table: "tables",
   view: "views",
 };
+
+// ---------------------------------------------------------------------------
+// Sections
+// ---------------------------------------------------------------------------
+
+/**
+ * A top-level band of the tree. Its header folds it and always states its size:
+ * a folded section that also hid its count would be indistinguishable from an
+ * empty one, and the reader would have to open it to find out which.
+ *
+ * 12px above the header and nothing else between sections. The tree is one
+ * continuous list; boxing each band would make a reader count boxes.
+ */
+function Section({
+  title,
+  count,
+  open,
+  onToggle,
+  first = false,
+  children,
+}: {
+  title: string;
+  count: number;
+  open: boolean;
+  onToggle: () => void;
+  /** The first section needs no air above it - the filter box is already there. */
+  first?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={first ? "" : "mt-3"}>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className="sb-section"
+      >
+        <Chevron open={open} />
+        {title}
+        <span className="sb-count">{count}</span>
+      </button>
+      {open ? children : null}
+    </div>
+  );
+}
+
+/**
+ * A section of the tree with nothing under it. "no match" is an answer to the
+ * filter box; before the filter box is touched it accuses the reader of
+ * hiding something they never hid, so the two silences say different things.
+ */
+function TreeNote({ children }: { children: React.ReactNode }) {
+  return <div className="px-3 py-1 text-muted">{children}</div>;
+}
+
+// ---------------------------------------------------------------------------
+// The kind filter. Seven switches that used to sit under the box permanently,
+// now behind the funnel beside it.
+//
+// They are hidden by default because they answer a question a reader asks once
+// a week - "stop showing me tables" - while costing two rows of the one pane
+// that is always on screen. What is NOT hidden is the consequence: the moment a
+// kind is off, the funnel carries a dot and a line under the box names what is
+// missing, because a tree quietly leaving rows out is a tree that lies.
+// ---------------------------------------------------------------------------
+
+function KindFilter({
+  hidden,
+  onToggle,
+  onReset,
+}: {
+  hidden: Set<LeafKind>;
+  onToggle: (kind: LeafKind) => void;
+  onReset: () => void;
+}) {
+  const any = hidden.size > 0;
+  return (
+    <Popover className="relative shrink-0">
+      <PopoverButton
+        aria-label={
+          any
+            ? `Kinds shown — ${hidden.size} hidden`
+            : "Kinds shown — all of them"
+        }
+        title={any ? "Kinds shown — some are hidden" : "Kinds shown"}
+        className={({ open }) =>
+          `relative flex size-8 items-center justify-center rounded-control border t-micro transition-colors border-line hover:bg-surface ${
+            open || any ? "text-accent" : "text-muted hover:text-ink"
+          }`
+        }
+      >
+        <Filter size={15} aria-hidden />
+        {any ? (
+          <span
+            aria-hidden
+            className="absolute top-1 right-1 size-1.5 rounded-full"
+            style={{ background: "var(--accent)" }}
+          />
+        ) : null}
+      </PopoverButton>
+      <PopoverPanel
+        anchor={{ to: "bottom end", gap: 4, padding: 8 }}
+        className="palette-in z-50 w-72 rounded-control border bg-canvas p-2 border-line-strong shadow-md focus:outline-none"
+      >
+        <div className="label mb-1.5 px-1">show kinds</div>
+        {/* Two rows because seven labels on one never fit - the aggregate's
+            kinds, then the store's. */}
+        <div className="seg-stack w-full" role="group" aria-label="Show kinds">
+          {[MODEL_LEAF_KINDS, STORE_LEAF_KINDS].map((row) => (
+            <div key={row[0]} className="seg">
+              {row.map((kind) => {
+                const on = !hidden.has(kind);
+                return (
+                  <button
+                    key={kind}
+                    type="button"
+                    onClick={() => onToggle(kind)}
+                    aria-pressed={on}
+                    title={`${on ? "Hide" : "Show"} ${KIND_GROUP_LABEL[kind]} across the tree`}
+                    className={`min-w-0 flex-auto truncate text-center !px-1.5 ${
+                      on ? "is-on" : ""
+                    }`}
+                  >
+                    {KIND_CHIP[kind]}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+        {any ? (
+          <button
+            type="button"
+            onClick={onReset}
+            className="mono mt-2 w-full rounded-control px-1 py-1 text-left text-accent hover:bg-surface"
+          >
+            show every kind
+          </button>
+        ) : null}
+      </PopoverPanel>
+    </Popover>
+  );
+}
+
+/** What the tree is leaving out, in words, with the way back beside it. */
+function HidingLine({
+  hidden,
+  onReset,
+}: {
+  hidden: Set<LeafKind>;
+  onReset: () => void;
+}) {
+  const names = [...MODEL_LEAF_KINDS, ...STORE_LEAF_KINDS]
+    .filter((k) => hidden.has(k))
+    .map((k) => KIND_GROUP_LABEL[k]);
+  if (names.length === 0) return null;
+  return (
+    <div className="mono mt-1.5 flex items-center gap-1.5 text-muted">
+      <span className="trunc" title={`hiding: ${names.join(", ")}`}>
+        hiding: {names.join(", ")}
+      </span>
+      <button
+        type="button"
+        onClick={onReset}
+        className="shrink-0 rounded-control text-accent hover:underline"
+      >
+        reset
+      </button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Flows
+// ---------------------------------------------------------------------------
+
+const HEALTH_COLOR: Record<FlowHealth, string> = {
+  verified: "var(--status-verified)",
+  mixed: "var(--status-declared)",
+  unresolved: "var(--status-unresolved)",
+  unverified: "var(--fg-faint)",
+};
+
+/**
+ * One flow. Its name is what the row is for; the two marks at the end answer
+ * the two questions a reader has before opening it - how far does it travel,
+ * and can I believe it.
+ */
+function FlowRow({ entry }: { entry: FlowEntry }) {
+  const { flow, health, reach } = entry;
+  const { dots, more } = reachDots(reach);
+  const crosses =
+    reach.length === 0
+      ? "stays inside its own context"
+      : `crosses into ${reach.join(", ")}`;
+  return (
+    <Leaf
+      to={paths.flow(flow.slug)}
+      depth={1}
+      title={`${flow.slug} — ${crosses}`}
+    >
+      <KindIcon kind="flow" />
+      <span className="truncate">{flow.name}</span>
+      <span className="ml-auto flex shrink-0 items-center gap-2 pl-2">
+        <span className="flex items-center gap-0.5" aria-hidden>
+          {dots.map((c) => (
+            <span key={c} className="sb-reach" style={ctxStyle(c)} />
+          ))}
+          {more > 0 ? (
+            <span className="mono" style={{ color: "var(--fg-faint)" }}>
+              +{more}
+            </span>
+          ) : null}
+        </span>
+        <span
+          className="sb-health"
+          title={FLOW_HEALTH_NOTE[health]}
+          style={{ background: HEALTH_COLOR[health] }}
+        />
+      </span>
+    </Leaf>
+  );
+}
+
+/**
+ * The flows one context owns. Grouping them by owner rather than listing them
+ * flat is what makes the section answer "whose flows are these" - and the
+ * unowned group is a defect report: with a valid catalog it is never drawn.
+ */
+function FlowGroupNode({
+  group,
+  open,
+  onToggle,
+}: {
+  group: FlowGroup;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const { shown, hidden } = visibleEntries(group.entries);
+  const owner = group.owner;
+  const label = owner === null ? "unowned" : contextName(owner);
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        style={{ paddingLeft: indent(0) }}
+        title={
+          owner === null
+            ? "these flows name no owner — a valid catalog has none of these"
+            : `flows owned by ${owner}`
+        }
+        className="tree-row flex w-full items-center gap-1.5 py-[3px] pr-2 text-left t-micro transition-colors hover:bg-surface"
+      >
+        <Chevron open={open} />
+        {owner === null ? (
+          <TriangleAlert
+            size={13}
+            aria-hidden
+            className="block shrink-0 text-unresolved"
+          />
+        ) : (
+          <KindIcon kind="context" contextId={owner} />
+        )}
+        <span
+          className="truncate"
+          style={owner === null ? { color: "var(--status-unresolved)" } : {}}
+        >
+          {label}
+        </span>
+        <span className="sb-count">{group.entries.length}</span>
+      </button>
+      {open ? (
+        <>
+          {shown.map((entry) => (
+            <FlowRow key={entry.flow.slug} entry={entry} />
+          ))}
+          {hidden > 0 && owner !== null ? (
+            <NavLink
+              to={`${paths.flows()}?owner=${encodeURIComponent(owner)}`}
+              data-nav-item
+              style={{ paddingLeft: indent(1) }}
+              className="tree-row mono flex items-center py-[3px] pr-2 text-accent hover:bg-surface"
+            >
+              view all {group.entries.length} →
+            </NavLink>
+          ) : null}
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Pins
+// ---------------------------------------------------------------------------
+
+/**
+ * The reader's own shortlist, above everything the catalog decided. It only
+ * exists while there is something on it: an empty band with a header would
+ * teach the feature by taking up room, which is the one thing the pane cannot
+ * spare.
+ */
+function PinnedSection({
+  open,
+  onToggle,
+}: {
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const pins = usePinsStore((s) => s.pins);
+  const toggle = usePinsStore((s) => s.toggle);
+  const reorder = usePinsStore((s) => s.reorder);
+  // Which row is under the cursor is a ref, not state: a drop fires in the same
+  // gesture that started the drag, and a state write scheduled by `dragstart`
+  // is not guaranteed to have landed by the time `drop` reads it. The state
+  // beside it only dims the row, so it is allowed to arrive late.
+  const dragFrom = useRef<number | null>(null);
+  const [dragging, setDragging] = useState<number | null>(null);
+
+  // Resolved at render, so a pin taken against a build that no longer has the
+  // event simply stops being drawn rather than pointing into nothing.
+  const rows = useMemo(
+    () =>
+      pins
+        .map((pin, at) => ({ at, resolved: resolvePin(pin) }))
+        .filter(
+          (r): r is { at: number; resolved: NonNullable<typeof r.resolved> } =>
+            r.resolved !== null,
+        ),
+    [pins],
+  );
+  if (rows.length === 0) return null;
+
+  return (
+    <Section
+      title="Pinned"
+      count={rows.length}
+      open={open}
+      onToggle={onToggle}
+      first
+    >
+      {rows.map(({ at, resolved }) => (
+        <div
+          key={`${resolved.pin.kind}:${resolved.pin.id}`}
+          draggable
+          onDragStart={(e) => {
+            dragFrom.current = at;
+            e.dataTransfer.effectAllowed = "move";
+            setDragging(at);
+          }}
+          onDragEnd={() => {
+            dragFrom.current = null;
+            setDragging(null);
+          }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            const from = dragFrom.current;
+            if (from !== null) reorder(from, at);
+            dragFrom.current = null;
+            setDragging(null);
+          }}
+          className={`group relative flex items-stretch ${
+            dragging === at ? "opacity-50" : ""
+          }`}
+        >
+          <NavLink
+            to={resolved.path}
+            end
+            draggable={false}
+            data-nav-item
+            title={resolved.title}
+            style={({ isActive }) => ({
+              paddingLeft: indent(0),
+              background: isActive ? "var(--surface-2)" : undefined,
+              borderLeftWidth: 2,
+              borderLeftStyle: "solid",
+              borderLeftColor: isActive ? "var(--accent)" : "transparent",
+            })}
+            className="tree-row flex min-w-0 flex-1 items-center gap-1.5 py-[3px] pr-2 t-micro transition-colors hover:bg-surface"
+          >
+            <GripVertical
+              size={12}
+              aria-hidden
+              className="block shrink-0 opacity-0 group-hover:opacity-100"
+              style={{ color: "var(--fg-faint)" }}
+            />
+            <KindIcon
+              kind={resolved.kind}
+              {...(resolved.contextId ? { contextId: resolved.contextId } : {})}
+            />
+            <span className="truncate">{resolved.name}</span>
+          </NavLink>
+          <button
+            type="button"
+            onClick={() => toggle(resolved.pin)}
+            aria-label={`Unpin ${resolved.name}`}
+            title={`Unpin ${resolved.name}`}
+            className="flex shrink-0 items-center px-2 text-muted opacity-0 t-micro transition-opacity hover:text-ink group-hover:opacity-100 focus-visible:opacity-100"
+          >
+            <PinOff size={13} aria-hidden />
+          </button>
+        </div>
+      ))}
+    </Section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// The bottom group. A sibling of the scroller rather than a row inside it, so
+// "pinned to the bottom" is a fact about the layout and not about how far the
+// tree happens to have been scrolled.
+// ---------------------------------------------------------------------------
+
+function BottomGroup() {
+  // Both halves of the Problems page, because that is what the row opens. The
+  // badge is red while anything on it is an error and amber when only the
+  // schema disagrees with itself - a page of warnings is not a clean estate,
+  // and a green tick over it would be the one lie the row can tell.
+  const found = useMemo(
+    () => [...problems(catalog), ...dataProblems(catalog, index)],
+    [],
+  );
+  const errors = found.filter((p) => p.severity === "error").length;
+  const colour = errors > 0 ? "var(--status-unresolved)" : "var(--status-declared)";
+
+  return (
+    <div className="shrink-0 border-t bg-canvas border-line">
+      <NavLink
+        to={paths.problems()}
+        end
+        data-nav-item
+        aria-keyshortcuts="g p"
+        title={
+          found.length === 0
+            ? "Problems — every edge in the catalog lands somewhere"
+            : `Problems — ${found.length} to look at`
+        }
+        style={({ isActive }) => ({
+          paddingLeft: indent(0),
+          background: isActive ? "var(--surface-2)" : undefined,
+          borderLeftWidth: 2,
+          borderLeftStyle: "solid",
+          borderLeftColor: isActive ? "var(--accent)" : "transparent",
+        })}
+        className="tree-row flex items-center gap-1.5 py-[3px] pr-2 t-micro transition-colors hover:bg-surface"
+      >
+        <TriangleAlert
+          size={14}
+          aria-hidden
+          className="block shrink-0"
+          style={{ color: found.length === 0 ? "var(--fg-muted)" : colour }}
+        />
+        <span className="truncate">Problems</span>
+        {found.length === 0 ? (
+          <Check
+            size={13}
+            aria-hidden
+            className="ml-auto block shrink-0 text-muted"
+          />
+        ) : (
+          <span
+            className="mono tnum ml-auto shrink-0"
+            style={{ color: colour }}
+          >
+            {found.length}
+          </span>
+        )}
+      </NavLink>
+      <div className="flex items-center px-2 pt-0.5 pb-1.5">
+        <BuildStamp bare />
+      </div>
+    </div>
+  );
+}
 
 /**
  * What is left of the tree at 48px. Not a menu: every button here does the one
@@ -421,6 +971,27 @@ export function Sidebar({
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [hidden, setHidden] = useState<Set<LeafKind>>(new Set());
 
+  // Which bands and which owner groups are folded. Both outlive the session:
+  // they are a reader's standing answer to "I do not work on that", unlike the
+  // branch state below, which follows whatever is selected.
+  const [sections, setSections] = useState<Flags>(() => readFlags(SECTIONS_KEY));
+  const [groups, setGroups] = useState<Flags>(() => readFlags(FLOW_GROUPS_KEY));
+
+  const sectionOpen = (key: string): boolean => sections[key] ?? true;
+  const toggleSection = (key: string) =>
+    setSections((prev) => {
+      const next = { ...prev, [key]: !(prev[key] ?? true) };
+      writeFlags(SECTIONS_KEY, next);
+      return next;
+    });
+  const groupOpen = (key: string): boolean => groups[key] ?? true;
+  const toggleGroup = (key: string) =>
+    setGroups((prev) => {
+      const next = { ...prev, [key]: !(prev[key] ?? true) };
+      writeFlags(FLOW_GROUPS_KEY, next);
+      return next;
+    });
+
   const isOpen = (key: string, def: boolean): boolean => collapsed[key] ?? def;
   const toggle = (key: string, def: boolean) =>
     setCollapsed((c) => ({ ...c, [key]: !(c[key] ?? def) }));
@@ -433,21 +1004,29 @@ export function Sidebar({
       return next;
     });
 
-  const flows = useMemo(
+  const flowGroups = useMemo(
     () =>
-      catalog.flows.filter((f) =>
-        matches(query, f.id, f.slug, f.name, f.summary),
+      groupFlowsByOwner(
+        catalog.flows.filter((f) =>
+          matches(query, f.id, f.slug, f.name, f.summary),
+        ),
+        index,
       ),
     [query],
   );
+  const flowCount = flowGroups.reduce((n, g) => n + g.entries.length, 0);
 
-  // Alphabetical, not catalog order: the tree is a place to find a name you
-  // already know. Classification is a badge and never touches this order -
-  // sorting the core domains to the top would make the sidebar an argument.
+  // Core first, then supporting, then generic, then the ones nobody has rated;
+  // alphabetical inside each. This is the only ordering classification does.
   const contexts = useMemo(
     () =>
       [...catalog.contexts]
-        .sort((a, b) => a.name.localeCompare(b.name))
+        .sort(
+          (a, b) =>
+            classificationRank(a.classification) -
+              classificationRank(b.classification) ||
+            a.name.localeCompare(b.name),
+        )
         .map((c) => matchContext(c, query))
         .filter(
           (x): x is { context: BoundedContext; services: ServiceMatch[] } =>
@@ -500,6 +1079,15 @@ export function Sidebar({
     }
     if (keys.length === 0) return;
 
+    // The band itself can be folded, and folding it hides every ancestor at
+    // once - so the section is opened first, then the branches inside it.
+    setSections((prev) => {
+      if (prev["contexts"] !== false) return prev;
+      const next = { ...prev, contexts: true };
+      writeFlags(SECTIONS_KEY, next);
+      return next;
+    });
+
     setCollapsed((c) => {
       // Only skip when every ancestor is *explicitly* open. An unset key means
       // "still on its default", which for an aggregate is closed.
@@ -509,7 +1097,7 @@ export function Sidebar({
       return next;
     });
 
-    // A kind switched off by a filter chip would swallow the row silently.
+    // A kind switched off behind the funnel would swallow the row silently.
     const chip: LeafKind | null =
       resolved.kind === "event"
         ? "event"
@@ -539,244 +1127,260 @@ export function Sidebar({
     const b = scroller.getBoundingClientRect();
     if (a.top >= b.top && a.bottom <= b.bottom) return;
     row.scrollIntoView({ block: "nearest", behavior: "smooth" });
-  }, [selection, collapsed, hidden]);
+  }, [selection, collapsed, hidden, sections, groups]);
 
   if (railed) return <IconRail onExpand={() => onExpand?.()} />;
+
+  const resetKinds = () => setHidden(new Set());
 
   return (
     <nav
       className="flex h-full flex-col border-r border-line bg-canvas"
       aria-label="Catalog"
     >
-      {/* The mark and the name, at the top of the one pane that is always on
-          screen. 16px beside a 13px wordmark: the same pairing every row of the
-          tree below uses, so the header reads as the first row of the tree
-          rather than as a banner sitting on top of one. */}
-      <div className="flex shrink-0 items-center border-b px-3 py-2.5 border-line">
+      {/* Two rows, and only two: the mark and the name, then the filter box
+          with the funnel beside it. Everything the funnel holds used to live
+          here as a third and fourth row, in the one pane that is always on
+          screen. */}
+      <div className="shrink-0 border-b px-3 pt-2.5 pb-2 border-line">
         <Wordmark />
-      </div>
-
-      <div className="border-b p-3 border-line">
-        <input
-          ref={inputRef}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              setQuery("");
-              e.currentTarget.blur();
-            }
-          }}
-          placeholder="filter"
-          spellCheck={false}
-          className="mono w-full rounded-control border bg-transparent px-2 py-1.5 outline-none placeholder:text-muted border-line t-micro transition-colors hover:border-line-strong"
-          aria-label="Filter catalog"
-        />
-        {/* Seven switches over one tree: one border round the set, hairlines
-            between. Bordering each of them made the box read as seven objects.
-            Two rows because seven labels on one never fit - the aggregate's
-            kinds, then the store's. */}
-        <div
-          className="seg-stack mt-3 w-full"
-          role="group"
-          aria-label="Show kinds"
-        >
-          {[MODEL_LEAF_KINDS, STORE_LEAF_KINDS].map((row) => (
-            <div key={row[0]} className="seg">
-              {row.map((kind) => {
-                const on = shows(kind);
-                return (
-                  <button
-                    key={kind}
-                    type="button"
-                    onClick={() => toggleKind(kind)}
-                    aria-pressed={on}
-                    title={`${on ? "Hide" : "Show"} ${KIND_GROUP_LABEL[kind]} across the tree`}
-                    /* Label only, sized to its own word, but able to shrink:
-                       the sidebar is resizable, so at its narrowest the labels
-                       have to ellipsize rather than be clipped mid-word. Icon
-                       plus label never fits, and an equal-width split starves
-                       `entities` while leaving `VO` swimming. */
-                    className={`min-w-0 flex-auto truncate text-center !px-1.5 ${
-                      on ? "is-on" : ""
-                    }`}
-                  >
-                    {KIND_CHIP[kind]}
-                  </button>
-                );
-              })}
-            </div>
-          ))}
+        <div className="mt-2 flex items-center gap-2">
+          <input
+            ref={inputRef}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                setQuery("");
+                e.currentTarget.blur();
+              }
+            }}
+            placeholder="filter"
+            spellCheck={false}
+            className="mono h-8 min-w-0 flex-1 rounded-control border bg-transparent px-2 outline-none placeholder:text-muted border-line t-micro transition-colors hover:border-line-strong"
+            aria-label="Filter catalog"
+          />
+          <KindFilter
+            hidden={hidden}
+            onToggle={toggleKind}
+            onReset={resetKinds}
+          />
         </div>
+        <HidingLine hidden={hidden} onReset={resetKinds} />
       </div>
 
       <div
         ref={scrollerRef}
         data-nav-list
-        className="flex-1 overflow-y-auto pb-8"
+        className="pane flex-1 overflow-y-auto pb-3"
       >
-        <div className="label sticky-bar sticky top-0 z-10 px-3 pt-4 pb-1.5">
-          Flows
-        </div>
-        {flows.length === 0 ? (
-          <TreeNote>
-            {filtering ? "no match" : "none charted yet"}
-          </TreeNote>
-        ) : null}
-        {flows.map((flow) => {
-          return (
-            <Leaf key={flow.slug} to={paths.flow(flow.slug)} depth={0}>
-              <KindIcon kind="flow" />
-              <span className="mono truncate">{flow.slug}</span>
-            </Leaf>
-          );
-        })}
+        <PinnedSection
+          open={sectionOpen("pinned")}
+          onToggle={() => toggleSection("pinned")}
+        />
 
-        <div className="label sticky-bar sticky top-0 z-10 px-3 pt-5 pb-1.5">
-          Contexts
-        </div>
-        {contexts.length === 0 ? (
-          <TreeNote>{filtering ? "no match" : "nothing extracted yet"}</TreeNote>
-        ) : null}
-        {contexts.map(({ context, services }) => {
-          const ckey = `c:${context.id}`;
-          const copen = filtering || isOpen(ckey, true);
-          return (
-            <div key={context.id}>
-              <Branch
-                to={paths.context(context.id)}
-                depth={0}
-                open={copen}
-                onToggle={() => toggle(ckey, true)}
-                label={`context ${context.id}`}
-                selId={context.id}
-                right={
-                  <ClassificationBadge
-                    classification={context.classification}
-                    tiny
-                  />
-                }
-              >
-                <KindIcon kind="context" contextId={context.id} />
-                <span
-                  className="mono truncate ctx"
-                  style={ctxStyle(context.id)}
-                >
-                  {context.id}
-                </span>
-              </Branch>
-              {copen
-                ? services.map(({ service, aggregates, stores }) => {
-                    const skey = `s:${service.id}`;
-                    const sopen = filtering || isOpen(skey, true);
-                    return (
-                      <div key={service.id}>
-                        <Branch
-                          to={paths.service(context.id, service.slug)}
-                          depth={1}
-                          open={sopen}
-                          onToggle={() => toggle(skey, true)}
-                          label={`service ${service.id}`}
-                          selId={service.id}
+        <Section
+          title="Flows"
+          count={flowCount}
+          open={filtering || sectionOpen("flows")}
+          onToggle={() => toggleSection("flows")}
+        >
+          {flowGroups.length === 0 ? (
+            <TreeNote>{filtering ? "no match" : "none charted yet"}</TreeNote>
+          ) : null}
+          {flowGroups.map((group) => {
+            const key = group.owner ?? "unowned";
+            return (
+              <FlowGroupNode
+                key={key}
+                group={group}
+                open={filtering || groupOpen(key)}
+                onToggle={() => toggleGroup(key)}
+              />
+            );
+          })}
+        </Section>
+
+        <Section
+          title="Contexts"
+          count={contexts.length}
+          open={filtering || sectionOpen("contexts")}
+          onToggle={() => toggleSection("contexts")}
+        >
+          {contexts.length === 0 ? (
+            <TreeNote>
+              {filtering ? "no match" : "nothing extracted yet"}
+            </TreeNote>
+          ) : null}
+          {contexts.map(({ context, services }) => {
+            const ckey = `c:${context.id}`;
+            const copen = filtering || isOpen(ckey, true);
+            const unresolved = contextStats(context).unresolved;
+            return (
+              <div key={context.id}>
+                <Branch
+                  to={paths.context(context.id)}
+                  depth={0}
+                  open={copen}
+                  onToggle={() => toggle(ckey, true)}
+                  label={`context ${context.id}`}
+                  selId={context.id}
+                  end={
+                    <>
+                      {/* Its own target, because it goes somewhere else: the
+                          reader clicked the count, and the count is a list. */}
+                      {unresolved > 0 ? (
+                        <Link
+                          to={`${paths.problems()}?context=${encodeURIComponent(context.id)}`}
+                          title={`${unresolved} unresolved ${plural(unresolved, "edge")} — open Problems`}
+                          className="mono tnum flex shrink-0 items-center px-1.5 text-unresolved hover:underline"
                         >
-                          <KindIcon kind="service" />
-                          <span className="mono truncate">{service.slug}</span>
-                        </Branch>
-                        {sopen
-                          ? aggregates.map((match) => (
-                              <AggregateNode
-                                key={match.aggregate.id}
-                                match={match}
-                                contextId={context.id}
-                                serviceSlug={service.slug}
-                                filtering={filtering}
-                                isOpen={isOpen}
-                                toggle={toggle}
-                                shows={shows}
-                              />
-                            ))
-                          : null}
-                        {/* After the aggregates, because the model comes
-                            before where it is kept. Closed by default: this is
-                            the answer to a question about deployment, not the
-                            one the tree is usually open for. */}
-                        {sopen && shows("table") ? (
-                          <Group
-                            kind="table"
-                            label="data"
-                            count={stores.length}
-                            depth={2}
-                            open={filtering || isOpen(`${skey}:data`, false)}
-                            onToggle={() => toggle(`${skey}:data`, false)}
+                          {unresolved}
+                        </Link>
+                      ) : null}
+                      <span className="ml-auto" />
+                      {/* Only worth saying while the services are not on
+                          screen; once the branch is open the reader can count
+                          them. */}
+                      {!copen ? (
+                        <span className="mono flex shrink-0 items-center pr-1.5 text-muted opacity-0 t-micro transition-opacity group-hover:opacity-100">
+                          {context.services.length}{" "}
+                          {plural(context.services.length, "service")}
+                        </span>
+                      ) : null}
+                    </>
+                  }
+                  right={
+                    context.classification ? (
+                      <span
+                        className="sb-class"
+                        title={CLASSIFICATION_NOTE[context.classification]}
+                      >
+                        {context.classification}
+                      </span>
+                    ) : null
+                  }
+                >
+                  <KindIcon kind="context" contextId={context.id} />
+                  <span className="truncate" title={context.id}>
+                    {context.name}
+                  </span>
+                </Branch>
+                {copen
+                  ? services.map(({ service, aggregates, stores }) => {
+                      const skey = `s:${service.id}`;
+                      const sopen = filtering || isOpen(skey, true);
+                      return (
+                        <div key={service.id}>
+                          <Branch
+                            to={paths.service(context.id, service.slug)}
+                            depth={1}
+                            open={sopen}
+                            onToggle={() => toggle(skey, true)}
+                            label={`service ${service.id}`}
+                            selId={service.id}
                           >
-                            {stores.map(({ store, tables, views }) => (
-                              <StoreNode
-                                key={store.id}
-                                store={store}
-                                tables={tables}
-                                views={shows("view") ? views : []}
-                                contextId={context.id}
-                                serviceSlug={service.slug}
-                                filtering={filtering}
-                                isOpen={isOpen}
-                                toggle={toggle}
-                              />
-                            ))}
-                          </Group>
-                        ) : null}
-                      </div>
-                    );
-                  })
-                : null}
-            </div>
-          );
-        })}
+                            <KindIcon kind="service" />
+                            <span className="truncate" title={service.id}>
+                              {service.name}
+                            </span>
+                          </Branch>
+                          {sopen
+                            ? aggregates.map((match) => (
+                                <AggregateNode
+                                  key={match.aggregate.id}
+                                  match={match}
+                                  contextId={context.id}
+                                  serviceSlug={service.slug}
+                                  filtering={filtering}
+                                  isOpen={isOpen}
+                                  toggle={toggle}
+                                  shows={shows}
+                                />
+                              ))
+                            : null}
+                          {/* After the aggregates, because the model comes
+                              before where it is kept. Closed by default: this
+                              is the answer to a question about deployment, not
+                              the one the tree is usually open for. */}
+                          {sopen && shows("table") ? (
+                            <Group
+                              kind="table"
+                              label="data"
+                              count={stores.length}
+                              depth={2}
+                              open={filtering || isOpen(`${skey}:data`, false)}
+                              onToggle={() => toggle(`${skey}:data`, false)}
+                            >
+                              {stores.map(({ store, tables, views }) => (
+                                <StoreNode
+                                  key={store.id}
+                                  store={store}
+                                  tables={tables}
+                                  views={shows("view") ? views : []}
+                                  contextId={context.id}
+                                  serviceSlug={service.slug}
+                                  filtering={filtering}
+                                  isOpen={isOpen}
+                                  toggle={toggle}
+                                />
+                              ))}
+                            </Group>
+                          ) : null}
+                        </div>
+                      );
+                    })
+                  : null}
+              </div>
+            );
+          })}
+        </Section>
 
-        <div className="label sticky-bar sticky top-0 z-10 px-3 pt-5 pb-1.5">
-          Decisions
-        </div>
-        {adrs.length === 0 ? (
-          <TreeNote>
-            {filtering ? "no match" : "nothing on the record yet"}
-          </TreeNote>
-        ) : null}
-        {adrs.map((adr) => (
-          <Leaf
-            key={adr.id}
-            to={paths.adr(adr.slug)}
-            depth={0}
-            title={adr.title}
-          >
-            <KindIcon kind="adr" />
-            <span
-              className={`mono shrink-0 ${isStruck(adr.status) ? "line-through text-muted" : ""}`}
+        <Section
+          title="Decisions"
+          count={adrs.length}
+          open={filtering || sectionOpen("decisions")}
+          onToggle={() => toggleSection("decisions")}
+        >
+          {adrs.length === 0 ? (
+            <TreeNote>
+              {filtering ? "no match" : "nothing on the record yet"}
+            </TreeNote>
+          ) : null}
+          {adrs.map((adr) => (
+            <Leaf
+              key={adr.id}
+              to={paths.adr(adr.slug)}
+              depth={0}
+              title={`${adr.id} — ${adr.title}`}
             >
-              {adrNumber(adr)}
-            </span>
-            <span className="truncate text-muted">{adr.title}</span>
-          </Leaf>
-        ))}
-        {catalog.adrs.length > 0 ? (
-          <NavLink
-            to={paths.adrs()}
-            data-nav-item
-            className="tree-row mono flex items-center py-[3px] pr-2 pl-[8px] text-accent hover:bg-surface"
-          >
-            view all {catalog.adrs.length} →
-          </NavLink>
-        ) : null}
+              <KindIcon kind="adr" />
+              {/* The number without its prefix: the header already said
+                  DECISIONS, and "ADR-" repeated down a column is a word the
+                  reader reads five times to get to the digits. */}
+              <span
+                className={`mono tnum shrink-0 ${isStruck(adr.status) ? "line-through text-muted" : ""}`}
+              >
+                {adrNumber(adr).replace(/^ADR-/, "")}
+              </span>
+              <span className="truncate">{adr.title}</span>
+            </Leaf>
+          ))}
+          {catalog.adrs.length > 0 ? (
+            <NavLink
+              to={paths.adrs()}
+              data-nav-item
+              className="tree-row mono flex items-center py-[3px] pr-2 pl-[8px] text-accent hover:bg-surface"
+            >
+              view all {catalog.adrs.length} →
+            </NavLink>
+          ) : null}
+        </Section>
       </div>
+
+      <BottomGroup />
     </nav>
   );
-}
-
-/**
- * A section of the tree with nothing under it. "no match" is an answer to the
- * filter box; before the filter box is touched it accuses the reader of
- * hiding something they never hid, so the two silences say different things.
- */
-function TreeNote({ children }: { children: React.ReactNode }) {
-  return <div className="px-3 py-1 text-muted">{children}</div>;
 }
 
 /**
@@ -823,8 +1427,13 @@ function StoreNode({
         }
       >
         <KindIcon kind="store" />
-        <span className="mono truncate">{store.slug}</span>
+        <span className="truncate" title={store.id}>
+          {store.name}
+        </span>
       </Branch>
+      {/* Tables and views keep the monospace: unlike everything above them
+          they are not human names but the identifiers a migration writes and a
+          query names, and reading one in prose type invites a typo. */}
       {open
         ? tables.map((table) => (
             <Leaf
@@ -904,7 +1513,7 @@ function AggregateNode({
         ? paths.valueObject(contextId, serviceSlug, aggregate.slug, block.slug)
         : paths.entity(contextId, serviceSlug, aggregate.slug, block.slug);
     return (
-      <Leaf key={block.id} to={path} depth={4} title={block.doc}>
+      <Leaf key={block.id} to={path} depth={4} title={block.doc ?? block.id}>
         <KindIcon kind={kind} />
         <span className="mono truncate">{block.name}</span>
         {kind === "entity" && block.name === aggregate.root ? (
@@ -944,7 +1553,9 @@ function AggregateNode({
         }
       >
         <KindIcon kind="aggregate" />
-        <span className="mono truncate font-medium">{aggregate.name}</span>
+        <span className="truncate font-medium" title={aggregate.id}>
+          {aggregate.name}
+        </span>
       </Branch>
 
       {aopen ? (
@@ -987,6 +1598,7 @@ function AggregateNode({
                       event.slug,
                     )}
                     depth={4}
+                    title={event.id}
                     selId={event.id}
                   >
                     <KindIcon kind="event" />
@@ -1014,7 +1626,7 @@ function AggregateNode({
               depth={3}
             >
               {match.commands.map((op) => (
-                <Leaf key={op.id} to={`${to}#bb-commands`} depth={4}>
+                <Leaf key={op.id} to={`${to}#bb-commands`} depth={4} title={op.id}>
                   <KindIcon kind="command" />
                   <span className="mono truncate text-muted">{op.id}</span>
                 </Leaf>
@@ -1029,7 +1641,7 @@ function AggregateNode({
               depth={3}
             >
               {match.queries.map((op) => (
-                <Leaf key={op.id} to={`${to}#bb-queries`} depth={4}>
+                <Leaf key={op.id} to={`${to}#bb-queries`} depth={4} title={op.id}>
                   <KindIcon kind="query" />
                   <span className="mono truncate text-muted">{op.id}</span>
                 </Leaf>

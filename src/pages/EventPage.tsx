@@ -224,6 +224,7 @@ export function EventPage() {
         name={event.name}
         id={event.id}
         contextId={context.id}
+        pin={{ kind: "event", id: event.id }}
         right={
           <span className="mono flex items-center gap-1.5 text-muted">
             version

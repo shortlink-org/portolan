@@ -239,6 +239,7 @@ export function AggregatePage() {
         name={aggregate.name}
         id={aggregate.id}
         contextId={context.id}
+        pin={{ kind: "aggregate", id: aggregate.id }}
       />
 
       <div className="flex gap-section p-gutter">
