@@ -89,23 +89,30 @@ function Row({ link }: { link: Backlink }) {
           {link.name}
         </span>
       )}
+      {/* One cell per column, empty ones included: the rows share a subgrid,
+          and a row that skips a field would slide every field after it into
+          the wrong column. */}
       {link.owner ? (
         <span className="min-w-0 truncate text-muted" title={link.owner}>
           {link.owner}
         </span>
-      ) : null}
-      <span className="mono ml-auto flex shrink-0 items-center gap-1.5 text-muted">
-        <span title="how it points here">{link.via}</span>
-        {link.versions && link.versions.length > 0 ? (
-          <span
-            className="rounded-[4px] border px-1 border-line"
-            title="event versions carrying it"
-          >
-            {link.versions.join(" ")}
-          </span>
-        ) : null}
-        {link.status ? <StatusChip status={link.status} /> : null}
+      ) : (
+        <span />
+      )}
+      <span className="mono shrink-0 text-muted" title="how it points here">
+        {link.via}
       </span>
+      {link.versions && link.versions.length > 0 ? (
+        <span
+          className="mono justify-self-start rounded-[4px] border px-1 border-line text-muted"
+          title="event versions carrying it"
+        >
+          {link.versions.join(" ")}
+        </span>
+      ) : (
+        <span />
+      )}
+      {link.status ? <StatusChip status={link.status} /> : <span />}
       <RowActions copy={id} {...(reveal ? { reveal } : {})} label={link.name} />
     </div>
   );
@@ -210,7 +217,13 @@ export function WhatLinksHere({
             {KIND_PLURAL[group.kind]}{" "}
             <span className="tnum">{group.links.length}</span>
           </div>
-          <div className="flex flex-col gap-1" data-nav-list>
+          {/* icon, name, owner, why it points here, the versions carrying
+              it, status, actions. The owner takes the slack, so the reason
+              and everything after it hold the same column down the group. */}
+          <div
+            className="rows grid-cols-[auto_auto_1fr_auto_auto_auto_auto]"
+            data-nav-list
+          >
             {group.links.map((link, i) => (
               <Row
                 key={`${link.kind}:${link.id}:${link.at ?? i}`}

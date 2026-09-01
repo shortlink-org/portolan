@@ -385,6 +385,27 @@
     @apply bg-surface;
   }
 
+  /* A list whose rows line up. The list owns the columns and each row is a
+     subgrid of them, so the same field starts at the same x on every line and
+     the eye reads down a column instead of hunting along each row. Rows keep
+     their own border and hover, which is why this is a subgrid rather than one
+     flat grid with the row chrome painted over it.
+
+     The list says what the columns are - `rows grid-cols-[auto_1fr_auto]` -
+     and every row emits one cell per column, empty ones included: a skipped
+     cell shifts everything after it one column to the left. */
+  .rows {
+    @apply grid gap-1;
+  }
+  .rows > * {
+    @apply col-span-full grid grid-cols-subgrid;
+  }
+  /* A chip is a badge, not a cell. It keeps the width of what it says rather
+     than stretching to the column the alignment handed it. */
+  .rows > * > .chip {
+    @apply justify-self-start;
+  }
+
   /* Toolbar and filter buttons. Border colour is the only thing that changes
      on hover or press, so nothing reflows underneath. */
   .tbtn {

@@ -189,7 +189,12 @@ export function ContextPage() {
             {aggregates.length === 0 ? (
               <Empty>this domain owns nothing yet — only services</Empty>
             ) : (
-              <div className="flex flex-col gap-1" data-nav-list>
+              /* icon, name, holder, root - one column each, so the eye
+                 reads a column instead of hunting along each line. */
+              <div
+                className="rows grid-cols-[auto_auto_auto_1fr_auto]"
+                data-nav-list
+              >
                 {aggregates.map(({ service, aggregate }) => (
                   <div key={aggregate.id} className="row gap-2">
                     <KindIcon kind="aggregate" />
@@ -235,7 +240,10 @@ export function ContextPage() {
             {events.length === 0 ? (
               <Empty>this domain announces nothing — it only listens</Empty>
             ) : (
-              <div className="flex flex-col gap-1" data-nav-list>
+              <div
+                className="rows grid-cols-[auto_auto_1fr_auto_auto]"
+                data-nav-list
+              >
                 {events.map(({ service, aggregate, event }) => {
                   const to = paths.event(
                     context.id,
@@ -257,7 +265,7 @@ export function ContextPage() {
                       <span className="mono text-muted">{aggregate.slug}</span>
                       <Link
                         to={`${to}#${EVENT_ANCHOR.consumers}`}
-                        className="mono ml-auto rounded-control text-muted hover:text-ink"
+                        className="mono rounded-control text-muted hover:text-ink"
                       >
                         <span className="tnum">{event.consumers.length}</span>{" "}
                         {event.consumers.length === 1
