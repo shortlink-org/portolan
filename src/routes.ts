@@ -48,6 +48,12 @@ export const paths = {
     aggregateSlug: string,
     entitySlug: string,
   ) => `/c/${contextId}/${serviceSlug}/${aggregateSlug}/entity/${entitySlug}`,
+  // A store hangs off its service, not off an aggregate: it is infrastructure
+  // the service owns, and several aggregates may share one. "data" is a
+  // literal for the same reason "vo" and "entity" are - a store slug can never
+  // be mistaken for an aggregate slug.
+  store: (contextId: string, serviceSlug: string, storeSlug: string) =>
+    `/c/${contextId}/${serviceSlug}/data/${storeSlug}`,
 } as const;
 
 /** The section anchors on an aggregate page, as used by the building-blocks strip. */
@@ -86,6 +92,14 @@ export const CONTEXT_ANCHOR = {
   aggregates: "ctx-aggregates",
   events: "ctx-events",
 } as const;
+
+/** The section anchors on an aggregate page, beyond the building-blocks strip. */
+export const AGGREGATE_SECTION = {
+  persistence: "agg-persistence",
+} as const;
+
+/** The section anchor for the columns that carry a block's fields. */
+export const BLOCK_STORED_AS = "bl-stored-as";
 
 /** The section anchors on a service page's overview tab. */
 export const SERVICE_ANCHOR = {
@@ -153,6 +167,29 @@ export function aggregatePath(aggregateId: string): string | null {
   return paths.aggregate(context.id, service.slug, aggregate.slug);
 }
 
+/** Path to a store's own ER page, or null if the id is not a catalog store. */
+export function storePath(storeId: string): string | null {
+  const store = index.storeById.get(storeId);
+  const service = store ? index.serviceById.get(store.owner) : undefined;
+  const context = store ? index.serviceContext.get(store.owner) : undefined;
+  if (!store || !service || !context) return null;
+  return paths.store(context.id, service.slug, store.slug);
+}
+
+/**
+ * Path to a table: its store's page, with the table already selected. A table
+ * has no page of its own - it is a node on a canvas, and the canvas is what
+ * makes it readable - so the deep link opens the canvas around it.
+ */
+export function tablePath(tableId: string): string | null {
+  const held = index.tableById.get(tableId);
+  if (!held) return null;
+  const to = storePath(held.store.id);
+  return to
+    ? `${to}${selectionHash({ kind: "table", id: tableId })}`
+    : null;
+}
+
 /** Path to a service page, or null if the id is not a catalog service. */
 export function servicePath(serviceId: string): string | null {
   const service = index.serviceById.get(serviceId);
@@ -181,6 +218,10 @@ export function backlinkPath(link: Backlink): string | null {
     case "vo":
     case "entity":
       return blockPath(link.id);
+    case "store":
+      return storePath(link.id);
+    case "table":
+      return tablePath(link.id);
     case "flow":
       return index.flowBySlug.has(link.id)
         ? link.at
@@ -211,6 +252,7 @@ const ROUTES: RegExp[] = [
   /^\/c\/[^/]+\/[^/]+\/[^/]+\/[^/]+$/,
   /^\/c\/[^/]+\/[^/]+\/[^/]+\/vo\/[^/]+$/,
   /^\/c\/[^/]+\/[^/]+\/[^/]+\/entity\/[^/]+$/,
+  /^\/c\/[^/]+\/[^/]+\/data\/[^/]+$/,
   /^\/graph$/,
 ];
 
@@ -236,6 +278,10 @@ export function allCatalogPaths(catalog: Catalog): string[] {
     out.push(paths.context(context.id));
     for (const service of context.services) {
       out.push(paths.service(context.id, service.slug));
+      for (const store of catalog.stores ?? []) {
+        if (store.owner !== service.id) continue;
+        out.push(paths.store(context.id, service.slug, store.slug));
+      }
       for (const aggregate of service.aggregates) {
         out.push(paths.aggregate(context.id, service.slug, aggregate.slug));
         for (const event of aggregate.events) {

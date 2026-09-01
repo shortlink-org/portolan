@@ -1,13 +1,22 @@
 import { useMemo } from "react";
 import { Link, useParams } from "react-router";
-import { catalog } from "../data";
+import { catalog, index } from "../data";
 import { blockCounts, blockFields, rootEntity } from "../catalog";
 import type { Aggregate, Block, BlockKind, Operation } from "../catalog";
 import { markdownOutline } from "../lib/derive";
+import { tablesPersisting } from "../lib/data-model";
+import { plural } from "../lib/format";
 import { KIND_LABEL, KIND_PLURAL } from "../lib/kinds";
 import type { LeafKind } from "../lib/kinds";
 import { KindIcon } from "../components/kind";
-import { AGGREGATE_ANCHOR, EVENT_ANCHOR, LINKS_HERE, paths } from "../routes";
+import {
+  AGGREGATE_ANCHOR,
+  AGGREGATE_SECTION,
+  EVENT_ANCHOR,
+  LINKS_HERE,
+  paths,
+  tablePath,
+} from "../routes";
 import { Markdown } from "../components/Markdown";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
 import { Ident } from "../components/Ident";
@@ -201,6 +210,7 @@ export function AggregatePage() {
   const commands = aggregate.operations.filter((o) => o.kind === "command");
   const queries = aggregate.operations.filter((o) => o.kind === "query");
   const root = rootEntity(aggregate);
+  const persistence = tablesPersisting(index, aggregate.id);
 
   // The readme's own headings first, then the five sections the page adds
   // under it. One rail, in the order the page is actually written in.
@@ -211,6 +221,7 @@ export function AggregatePage() {
     { id: AGGREGATE_ANCHOR.events, label: "Events" },
     { id: AGGREGATE_ANCHOR.commands, label: "Commands" },
     { id: AGGREGATE_ANCHOR.queries, label: "Queries" },
+    { id: AGGREGATE_SECTION.persistence, label: "Persistence" },
     { id: LINKS_HERE, label: "What links here" },
   ];
 
@@ -390,6 +401,66 @@ export function AggregatePage() {
               ) : null}
               <OperationList kind="query" operations={queries} />
             </div>
+          </div>
+
+          {/* Where this aggregate actually lives. It sits after the model and
+              before the backlinks because it answers a question about THIS
+              aggregate — one a reader asks once they believe the model. */}
+          <div
+            className="mt-section max-w-table"
+            id={AGGREGATE_SECTION.persistence}
+          >
+            <SectionTitle
+              anchor={AGGREGATE_SECTION.persistence}
+              right={
+                <span className="mono text-muted">
+                  one row per table that holds it
+                </span>
+              }
+            >
+              Persistence
+            </SectionTitle>
+            {persistence.length === 0 ? (
+              <Empty>
+                No persistence found for {aggregate.name} — the extractor maps
+                tables via `persists` in migrations metadata
+              </Empty>
+            ) : (
+              <div className="flex flex-col gap-1" data-nav-list>
+                {persistence.map(({ table, store }) => {
+                  const to = tablePath(table.id);
+                  return (
+                    <div key={table.id} className="row px-2 py-1.5">
+                      <KindIcon kind="table" />
+                      {to ? (
+                        <Link
+                          to={to}
+                          data-nav-item
+                          className="mono rounded-control"
+                        >
+                          {table.name}
+                        </Link>
+                      ) : (
+                        <span className="mono">{table.name}</span>
+                      )}
+                      {table.role ? (
+                        <span className="chip">{table.role}</span>
+                      ) : null}
+                      <span className="mono text-muted">{store.slug}</span>
+                      <span className="mono ml-auto text-muted">
+                        <span className="tnum">{table.columns.length}</span>{" "}
+                        {plural(table.columns.length, "column")}
+                      </span>
+                      <RowActions
+                        copy={table.id}
+                        reveal={table.id}
+                        label={table.name}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* An aggregate is reached through its events and nothing else, so

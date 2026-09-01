@@ -18,7 +18,10 @@ import { SidePanel } from "../components/Overlay";
 import { useNarrow } from "../app/responsive";
 import { useUiStore } from "../app/ui-store";
 import { catalog, index } from "../data";
+import { blockFields, columnId, mapsBlockId, mapsFieldPath } from "../catalog";
 import { usesOfDef } from "../lib/derive";
+import { typesDisagree } from "../lib/data-model";
+import { STORE_KIND_LABEL } from "../er/StoreHeader";
 import { ctxStyle } from "../lib/context-color";
 import { Ident } from "../components/Ident";
 import { StatusChip } from "../components/primitives";
@@ -28,6 +31,7 @@ import {
   EVENT_ANCHOR,
   SERVICE_ANCHOR,
   eventPath as eventPathOf,
+  blockPath,
   paths,
 } from "../routes";
 import type { Resolved, Selection } from "./model";
@@ -61,6 +65,230 @@ function SelectLink({ id, children }: { id: string; children: ReactNode }) {
 // ---------------------------------------------------------------------------
 // Bodies
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Persistence bodies. A store, a table and a column are three zoom levels on
+// one question — where does this live — so each one names the level above it
+// and lists the level below.
+// ---------------------------------------------------------------------------
+
+function StoreBody({
+  resolved,
+}: {
+  resolved: Extract<Resolved, { kind: "store" }>;
+}) {
+  const { store, service } = resolved;
+  return (
+    <>
+      <Label>Kind</Label>
+      <div className="mono text-muted">{STORE_KIND_LABEL[store.kind]}</div>
+
+      <Label>Owner</Label>
+      <SelectLink id={service.id}>{service.id}</SelectLink>
+
+      <Label>Tables</Label>
+      {store.tables.length === 0 ? (
+        <div className="mono text-muted">no schema extracted</div>
+      ) : null}
+      {store.tables.map((table) => (
+        <Row key={table.id}>
+          <SelectLink id={table.id}>{table.name}</SelectLink>
+          <span className="mono ml-auto shrink-0 text-muted">
+            {table.columns.length}
+          </span>
+        </Row>
+      ))}
+
+      {store.source ? (
+        <>
+          <Label>Source</Label>
+          <Ident block value={store.source} className="text-muted" />
+        </>
+      ) : null}
+    </>
+  );
+}
+
+function TableBody({
+  resolved,
+}: {
+  resolved: Extract<Resolved, { kind: "table" }>;
+}) {
+  const { table, store } = resolved;
+  const aggregateId = table.persists?.aggregate;
+  const into = index.fkIntoTable.get(table.id) ?? [];
+
+  return (
+    <>
+      {table.doc ? <p className="mt-2 text-muted">{table.doc}</p> : null}
+
+      <Label>Store</Label>
+      <SelectLink id={store.id}>{store.id}</SelectLink>
+
+      {table.role ? (
+        <>
+          <Label>Role</Label>
+          <div className="mono text-muted">{table.role}</div>
+        </>
+      ) : null}
+
+      {aggregateId ? (
+        <>
+          <Label>Persists</Label>
+          <SelectLink id={aggregateId}>{aggregateId}</SelectLink>
+        </>
+      ) : null}
+
+      <Label>Columns</Label>
+      <table className="w-full">
+        <tbody>
+          {table.columns.map((column) => {
+            // A column carrying a domain field links to the block that
+            // declares it: that is the whole point of the `maps` metadata.
+            const blockId = mapsBlockId(
+              aggregateId ? index.aggregateById.get(aggregateId) : undefined,
+              column.maps,
+            );
+            const to = blockId ? blockPath(blockId) : null;
+            return (
+              <tr key={column.name} className="align-top">
+                <td className="mono py-0.5 pr-2 whitespace-nowrap">
+                  <SelectLink id={columnId(table.id, column.name)}>
+                    {column.pk ? "· " : ""}
+                    {column.name}
+                  </SelectLink>
+                </td>
+                <td className="mono py-0.5 pr-2 text-muted">
+                  {column.type}
+                  {column.nullable ? "?" : ""}
+                </td>
+                <td className="mono py-0.5 text-muted">
+                  {column.maps ? (
+                    to ? (
+                      <Link to={to} className="trunc text-accent hover:underline">
+                        {column.maps}
+                      </Link>
+                    ) : (
+                      column.maps
+                    )
+                  ) : null}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+
+      {(table.indexes ?? []).length > 0 ? (
+        <>
+          <Label>Indexes</Label>
+          {(table.indexes ?? []).map((ix) => (
+            <Row key={ix.name}>
+              <span className="mono trunc" title={ix.name}>
+                {ix.columns.join(", ")}
+              </span>
+              {ix.unique ? (
+                <span className="chip ml-auto shrink-0">unique</span>
+              ) : null}
+            </Row>
+          ))}
+        </>
+      ) : null}
+
+      <Label>Referenced by</Label>
+      {into.length === 0 ? (
+        <div className="mono text-muted">nothing points at this table</div>
+      ) : null}
+      {into.map((owner) => (
+        <Row key={`${owner.table.id}.${owner.column.name}`}>
+          <SelectLink id={columnId(owner.table.id, owner.column.name)}>
+            {owner.table.name}.{owner.column.name}
+          </SelectLink>
+        </Row>
+      ))}
+    </>
+  );
+}
+
+function ColumnBody({
+  resolved,
+}: {
+  resolved: Extract<Resolved, { kind: "column" }>;
+}) {
+  const { column, table } = resolved;
+  const aggregateId = table.persists?.aggregate;
+  const aggregate = aggregateId
+    ? index.aggregateById.get(aggregateId)
+    : undefined;
+  const blockId = mapsBlockId(aggregate, column.maps);
+  const block = blockId ? index.blockById.get(blockId) : undefined;
+  const to = blockId ? blockPath(blockId) : null;
+  const field = block
+    ? blockFields(catalog, block.block).find(
+        (f) => f.name === (mapsFieldPath(column.maps ?? "").split(".")[0] ?? ""),
+      )
+    : undefined;
+
+  return (
+    <>
+      {column.doc ? <p className="mt-2 text-muted">{column.doc}</p> : null}
+
+      <Label>Table</Label>
+      <SelectLink id={table.id}>{table.name}</SelectLink>
+
+      <Label>Type</Label>
+      <div className="mono text-muted">
+        {column.type}
+        {column.nullable ? " · nullable" : " · not null"}
+        {column.pk ? " · primary key" : ""}
+      </div>
+
+      {column.fk ? (
+        <>
+          <Label>References</Label>
+          <SelectLink id={column.fk.table}>
+            {column.fk.table}.{column.fk.column}
+          </SelectLink>
+          {column.fk.onDelete ? (
+            <div className="mono mt-1 text-muted">
+              on delete {column.fk.onDelete}
+            </div>
+          ) : null}
+        </>
+      ) : null}
+
+      {column.maps ? (
+        <>
+          <Label>Carries</Label>
+          {to ? (
+            <Link
+              to={to}
+              className="mono rounded-control text-accent hover:underline"
+            >
+              {column.maps}
+            </Link>
+          ) : (
+            <div className="mono text-muted">{column.maps}</div>
+          )}
+          {field ? (
+            <div className="mono mt-1 text-muted">
+              {field.type}
+              {typesDisagree(column.type, field.type) ? (
+                <span className="ml-2 text-declared">
+                  · disagrees with {column.type}
+                </span>
+              ) : null}
+            </div>
+          ) : (
+            <div className="mono mt-1 text-unresolved">
+              no field of that name is declared
+            </div>
+          )}
+        </>
+      ) : null}
+    </>
+  );
+}
 
 function EventBody({
   resolved,
@@ -482,11 +710,15 @@ export function DetailPanel() {
           <span className="mono break-all text-sm text-ink">
             {resolved?.kind === "event"
               ? resolved.event.name
-              : resolved?.kind === "flow-step"
-                ? (resolved.step.label ??
-                  resolved.step.ref ??
-                  resolved.step.kind)
-                : selection.id}
+              : resolved?.kind === "table"
+                ? resolved.table.name
+                : resolved?.kind === "column"
+                  ? `${resolved.table.name}.${resolved.column.name}`
+                  : resolved?.kind === "flow-step"
+                    ? (resolved.step.label ??
+                      resolved.step.ref ??
+                      resolved.step.kind)
+                    : selection.id}
           </span>
           {resolved?.kind === "event" ||
           resolved?.kind === "service" ||
@@ -526,6 +758,12 @@ export function DetailPanel() {
           <ContextBody resolved={resolved} />
         ) : resolved.kind === "value-object" ? (
           <ValueObjectBody resolved={resolved} />
+        ) : resolved.kind === "store" ? (
+          <StoreBody resolved={resolved} />
+        ) : resolved.kind === "table" ? (
+          <TableBody resolved={resolved} />
+        ) : resolved.kind === "column" ? (
+          <ColumnBody resolved={resolved} />
         ) : (
           <FlowStepBody resolved={resolved} />
         )}

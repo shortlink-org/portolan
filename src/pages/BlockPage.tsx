@@ -3,10 +3,11 @@
 // them, so they share a page and are told apart by the header and the icon.
 
 import { Link, useParams } from "react-router";
-import { catalog } from "../data";
+import { catalog, index } from "../data";
 import { blockFields, rootEntity } from "../catalog";
 import type { Block, BlockKind, Field } from "../catalog";
 import { backlinkCount } from "../lib/backlinks";
+import { storedFields } from "../lib/data-model";
 import { plural } from "../lib/format";
 import { KIND_LABEL, KIND_PLURAL } from "../lib/kinds";
 import { KindIcon } from "../components/kind";
@@ -16,7 +17,14 @@ import { DataTable } from "../table/DataTable";
 import type { ColumnSpec } from "../table/types";
 import { Toc } from "../components/Toc";
 import type { TocItem } from "../components/Toc";
-import { BLOCK_ANCHOR, LINKS_HERE, blockPath, paths } from "../routes";
+import {
+  BLOCK_ANCHOR,
+  BLOCK_STORED_AS,
+  LINKS_HERE,
+  blockPath,
+  paths,
+  tablePath,
+} from "../routes";
 import { useBacklinks, WhatLinksHere } from "../components/WhatLinksHere";
 import { NotFound } from "./NotFound";
 
@@ -102,8 +110,12 @@ export function BlockPage({ kind }: { kind: BlockKind }) {
     return <NotFound kind={KIND_LABEL[kind]} id={blockSlug} />;
   }
 
+  const stored = storedFields(catalog, index, block.id);
   const toc: TocItem[] = [
     { id: BLOCK_ANCHOR.shape, label: "Shape" },
+    ...(stored.length > 0
+      ? [{ id: BLOCK_STORED_AS, label: "Stored as" }]
+      : []),
     { id: BLOCK_ANCHOR.siblings, label: "Siblings" },
     { id: LINKS_HERE, label: "What links here" },
   ];
@@ -183,6 +195,99 @@ export function BlockPage({ kind }: { kind: BlockKind }) {
               <ShapeTable id={block.id} fields={fields} />
             )}
           </section>
+
+          {/* The columns that carry these fields. Only drawn when there are
+              any: a block nothing persists is not missing a section, it is a
+              shape that lives inside another row. */}
+          {stored.length > 0 ? (
+            <section className="mt-section max-w-table" id={BLOCK_STORED_AS}>
+              <SectionTitle
+                anchor={BLOCK_STORED_AS}
+                right={
+                  <span className="mono text-muted">
+                    db type beside domain type
+                  </span>
+                }
+              >
+                Stored as
+              </SectionTitle>
+              <table className="w-full max-w-table">
+                <thead>
+                  <tr className="label border-b border-line text-left">
+                    <th className="py-1 pr-3 font-normal">column</th>
+                    <th className="py-1 pr-3 font-normal">db type</th>
+                    <th className="py-1 pr-3 font-normal">field</th>
+                    <th className="py-1 font-normal">domain type</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stored.map(({ owner, path, field, mismatch }) => {
+                    const to = tablePath(owner.table.id);
+                    const id = `${owner.table.id}.${owner.column.name}`;
+                    return (
+                      <tr key={id} className="border-b border-line align-top">
+                        <td className="mono py-1.5 pr-3 whitespace-nowrap">
+                          {to ? (
+                            <Link
+                              to={to}
+                              className="rounded-control hover:underline"
+                              title={id}
+                            >
+                              {owner.table.name}.{owner.column.name}
+                            </Link>
+                          ) : (
+                            <span title={id}>
+                              {owner.table.name}.{owner.column.name}
+                            </span>
+                          )}
+                        </td>
+                        <td className="mono py-1.5 pr-3 whitespace-nowrap text-muted">
+                          {owner.column.type}
+                          {owner.column.nullable ? "?" : ""}
+                        </td>
+                        <td className="mono py-1.5 pr-3 whitespace-nowrap">
+                          {path}
+                        </td>
+                        <td className="mono py-1.5 whitespace-nowrap">
+                          {field ? (
+                            <span className="flex items-center gap-1.5">
+                              {/* An amber dot, not a red one: neither side is
+                                  wrong on its own, and which one moved is the
+                                  reader's call. */}
+                              {mismatch ? (
+                                <span
+                                  aria-hidden
+                                  className="size-1.5 shrink-0 rounded-full"
+                                  style={{
+                                    background: "var(--status-declared)",
+                                  }}
+                                  title={`${owner.column.type} in the column, ${field.type} in the model`}
+                                />
+                              ) : null}
+                              <span
+                                className={
+                                  mismatch ? "text-declared" : "text-muted"
+                                }
+                              >
+                                {field.type}
+                              </span>
+                            </span>
+                          ) : (
+                            <span
+                              className="text-unresolved"
+                              title={`${block.name} declares no field "${path}"`}
+                            >
+                              no such field
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </section>
+          ) : null}
 
           <div className="mt-section max-w-prose" id={BLOCK_ANCHOR.siblings}>
             <SectionTitle anchor={BLOCK_ANCHOR.siblings}>Siblings</SectionTitle>

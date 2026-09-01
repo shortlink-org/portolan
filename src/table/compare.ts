@@ -30,10 +30,14 @@ const KIND_RANK: Record<Kind, number> = {
   vo: 4,
   def: 5,
   aggregate: 6,
-  service: 7,
-  context: 8,
-  flow: 9,
-  adr: 10,
+  // Where the model is kept comes after the model itself, and a store before
+  // the tables in it - the same order the palette ranks them in.
+  store: 7,
+  table: 8,
+  service: 9,
+  context: 10,
+  flow: 11,
+  adr: 12,
 };
 
 /** Case-insensitive, then case-sensitive, so the order is never arbitrary. */

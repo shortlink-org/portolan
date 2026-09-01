@@ -390,8 +390,26 @@ export function usesOfDef(catalog: Catalog, defId: string): DefUse {
  * the catalog, or an event names a consumer that is not either. Both mean the
  * chart draws an arrow into open water.
  */
+export type ProblemKind =
+  | "rpc"
+  | "consumer"
+  | "cross-service-fk"
+  | "shared-store"
+  | "persistence-drift"
+  | "column-type"
+  | "outbox-payload";
+
+/**
+ * How wrong a problem is. Two values, not five: an edge either lands somewhere
+ * the catalog knows about or it does not (an error), or the catalog holds two
+ * claims that do not quite agree and one of them is probably stale (a warning).
+ * Nothing in between is a distinction a reader could act on differently.
+ */
+export type Severity = "error" | "warning";
+
 export interface Problem {
-  kind: "rpc" | "consumer";
+  kind: ProblemKind;
+  severity: Severity;
   /** The context that owns the end we can see. */
   context: string;
   /** The service that owns the end we can see. */
@@ -439,6 +457,7 @@ export function problems(catalog: Catalog): Problem[] {
         if (call.status !== "unresolved") continue;
         out.push({
           kind: "rpc",
+          severity: "error",
           context: context.id,
           service: service.id,
           id: call.id,
@@ -453,6 +472,7 @@ export function problems(catalog: Catalog): Problem[] {
             if (consumer.status !== "unresolved") continue;
             out.push({
               kind: "consumer",
+              severity: "error",
               context: context.id,
               service: service.id,
               id: event.id,

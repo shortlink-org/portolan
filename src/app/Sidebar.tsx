@@ -9,6 +9,8 @@ import type {
   Event,
   Operation,
   Service,
+  Store,
+  Table,
 } from "../catalog";
 import { adrNumber, newestAccepted, sortAdrs } from "../lib/adr";
 import { ctxStyle } from "../lib/context-color";
@@ -18,6 +20,8 @@ import { KindIcon } from "../components/kind";
 import { CompassRose, Wordmark } from "../components/logo";
 import { ClassificationBadge, isStruck } from "../components/primitives";
 import { paths } from "../routes";
+import { selectionHash } from "../selection/hash";
+import { STORE_KIND_LABEL } from "../er/StoreHeader";
 import { useSearch } from "./search";
 import { resolveSelection, selectionFor } from "../selection/model";
 import { selectsInPlace } from "../selection/pages";
@@ -43,9 +47,40 @@ interface AggregateMatch {
   queries: Operation[];
 }
 
+interface StoreMatch {
+  store: Store;
+  tables: Table[];
+}
+
 interface ServiceMatch {
   service: Service;
   aggregates: AggregateMatch[];
+  stores: StoreMatch[];
+}
+
+/**
+ * The stores a service owns, filtered. A hit on the store keeps every table;
+ * otherwise only the tables that matched survive, exactly like an aggregate.
+ * Read-only stores are left out: the tree is a map of what each service is
+ * responsible for, and a store it borrows belongs under its owner.
+ */
+function matchStores(
+  service: Service,
+  q: string,
+  parentHit: boolean,
+): StoreMatch[] {
+  const out: StoreMatch[] = [];
+  for (const store of catalog.stores ?? []) {
+    if (store.owner !== service.id) continue;
+    const hit = parentHit || matches(q, store.id, store.name, store.slug);
+    const tables = hit
+      ? store.tables
+      : store.tables.filter((t) =>
+          matches(q, t.id, t.name, t.persists?.aggregate ?? ""),
+        );
+    if (hit || tables.length > 0) out.push({ store, tables });
+  }
+  return out;
 }
 
 function matchAggregate(
@@ -97,8 +132,9 @@ function matchContext(
     const aggregates = service.aggregates
       .map((a) => matchAggregate(a, q, serviceHit))
       .filter((a): a is AggregateMatch => a !== null);
-    if (serviceHit || aggregates.length > 0) {
-      services.push({ service, aggregates });
+    const stores = matchStores(service, q, serviceHit);
+    if (serviceHit || aggregates.length > 0 || stores.length > 0) {
+      services.push({ service, aggregates, stores });
     }
   }
 
@@ -268,6 +304,7 @@ function Branch({
  */
 function Group({
   kind,
+  label,
   count,
   open,
   onToggle,
@@ -275,6 +312,8 @@ function Group({
   children,
 }: {
   kind: LeafKind;
+  /** Overrides the kind's own plural — the stores group is "data", not "tables". */
+  label?: string;
   count: number;
   open: boolean;
   onToggle: () => void;
@@ -294,7 +333,7 @@ function Group({
         <Chevron open={open} />
         <KindIcon kind={kind} />
         <span>
-          {KIND_GROUP_LABEL[kind]} ({count})
+          {label ?? KIND_GROUP_LABEL[kind]} ({count})
         </span>
       </button>
       {open ? children : null}
@@ -308,6 +347,7 @@ const KIND_GROUP_LABEL: Record<LeafKind, string> = {
   event: "events",
   command: "commands",
   query: "queries",
+  table: "tables",
 };
 
 /**
@@ -442,6 +482,11 @@ export function Sidebar({
     if (resolved.kind === "event") {
       keys.push(`a:${resolved.aggregate.id}:event`);
     }
+    // A store sits behind two closed groups by default, and a table behind
+    // three; a row nobody can see is a selection nobody can follow.
+    if ("store" in resolved) {
+      keys.push(`s:${resolved.service.id}:data`, `st:${resolved.store.id}`);
+    }
     if (keys.length === 0) return;
 
     setCollapsed((c) => {
@@ -454,11 +499,17 @@ export function Sidebar({
     });
 
     // A kind switched off by a filter chip would swallow the row silently.
-    if (resolved.kind === "event") {
+    const chip: LeafKind | null =
+      resolved.kind === "event"
+        ? "event"
+        : "store" in resolved
+          ? "table"
+          : null;
+    if (chip) {
       setHidden((prev) => {
-        if (!prev.has("event")) return prev;
+        if (!prev.has(chip)) return prev;
         const next = new Set(prev);
-        next.delete("event");
+        next.delete(chip);
         return next;
       });
     }
@@ -594,7 +645,7 @@ export function Sidebar({
                 </span>
               </Branch>
               {copen
-                ? services.map(({ service, aggregates }) => {
+                ? services.map(({ service, aggregates, stores }) => {
                     const skey = `s:${service.id}`;
                     const sopen = filtering || isOpen(skey, true);
                     return (
@@ -624,6 +675,33 @@ export function Sidebar({
                               />
                             ))
                           : null}
+                        {/* After the aggregates, because the model comes
+                            before where it is kept. Closed by default: this is
+                            the answer to a question about deployment, not the
+                            one the tree is usually open for. */}
+                        {sopen && shows("table") ? (
+                          <Group
+                            kind="table"
+                            label="data"
+                            count={stores.length}
+                            depth={2}
+                            open={filtering || isOpen(`${skey}:data`, false)}
+                            onToggle={() => toggle(`${skey}:data`, false)}
+                          >
+                            {stores.map(({ store, tables }) => (
+                              <StoreNode
+                                key={store.id}
+                                store={store}
+                                tables={tables}
+                                contextId={context.id}
+                                serviceSlug={service.slug}
+                                filtering={filtering}
+                                isOpen={isOpen}
+                                toggle={toggle}
+                              />
+                            ))}
+                          </Group>
+                        ) : null}
                       </div>
                     );
                   })
@@ -677,6 +755,73 @@ export function Sidebar({
  */
 function TreeNote({ children }: { children: React.ReactNode }) {
   return <div className="px-3 py-1 text-muted">{children}</div>;
+}
+
+/**
+ * A store and the tables in it. The store row navigates to its own ER page; the
+ * table rows land on that page with the table already selected, because a table
+ * read outside the picture of what points at it is a list of column names.
+ */
+function StoreNode({
+  store,
+  tables,
+  contextId,
+  serviceSlug,
+  filtering,
+  isOpen,
+  toggle,
+}: {
+  store: Store;
+  tables: Table[];
+  contextId: string;
+  serviceSlug: string;
+  filtering: boolean;
+  isOpen: (key: string, def: boolean) => boolean;
+  toggle: (key: string, def: boolean) => void;
+}) {
+  const key = `st:${store.id}`;
+  const open = filtering || isOpen(key, false);
+  const to = paths.store(contextId, serviceSlug, store.slug);
+
+  return (
+    <div>
+      <Branch
+        to={to}
+        depth={3}
+        open={open}
+        onToggle={() => toggle(key, false)}
+        label={`store ${store.id}`}
+        selId={store.id}
+        right={
+          <span className="mono text-muted" title={STORE_KIND_LABEL[store.kind]}>
+            {store.kind}
+          </span>
+        }
+      >
+        <KindIcon kind="store" />
+        <span className="mono truncate">{store.slug}</span>
+      </Branch>
+      {open
+        ? tables.map((table) => (
+            <Leaf
+              key={table.id}
+              to={`${to}${selectionHash({ kind: "table", id: table.id })}`}
+              depth={4}
+              title={table.doc ?? table.id}
+              selId={table.id}
+            >
+              <KindIcon kind="table" />
+              <span className="mono truncate">{table.name}</span>
+              {table.role && table.role !== "other" ? (
+                <span className="mono ml-auto shrink-0 text-muted">
+                  {table.role === "aggregate-root" ? "root" : table.role}
+                </span>
+              ) : null}
+            </Leaf>
+          ))
+        : null}
+    </div>
+  );
 }
 
 function AggregateNode({

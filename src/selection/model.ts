@@ -8,10 +8,13 @@
 import type {
   Aggregate,
   BoundedContext,
+  Column,
   Event,
   Flow,
   Service,
   Step,
+  Store,
+  Table,
   TypeDef,
 } from "../catalog";
 import { walkSteps } from "../catalog";
@@ -21,6 +24,9 @@ export type SelectionKind =
   | "context"
   | "service"
   | "aggregate"
+  | "store"
+  | "table"
+  | "column"
   | "event"
   | "value-object"
   | "flow-step"
@@ -90,6 +96,31 @@ export interface ResolvedEvent {
   service: Service;
   context: BoundedContext;
 }
+export interface ResolvedStore {
+  kind: "store";
+  id: string;
+  store: Store;
+  /** The service that OWNS it. A reader of the store resolves to the owner too. */
+  service: Service;
+  context: BoundedContext;
+}
+export interface ResolvedTable {
+  kind: "table";
+  id: string;
+  table: Table;
+  store: Store;
+  service: Service;
+  context: BoundedContext;
+}
+export interface ResolvedColumn {
+  kind: "column";
+  id: string;
+  column: Column;
+  table: Table;
+  store: Store;
+  service: Service;
+  context: BoundedContext;
+}
 export interface ResolvedValueObject {
   kind: "value-object";
   id: string;
@@ -108,6 +139,9 @@ export type Resolved =
   | ResolvedContext
   | ResolvedService
   | ResolvedAggregate
+  | ResolvedStore
+  | ResolvedTable
+  | ResolvedColumn
   | ResolvedEvent
   | ResolvedValueObject
   | ResolvedFlowStep;
@@ -149,6 +183,43 @@ export function resolveSelection(id: string): Resolved | null {
     if (context) return { kind: "service", id, service, context };
   }
 
+  // Column before table before store: the three ids are nested prefixes of one
+  // another, and the longest one is the thing that was actually clicked.
+  const column = index.columnById.get(id);
+  if (column) {
+    const owner = ownerOfStore(column.store);
+    if (owner) {
+      return {
+        kind: "column",
+        id,
+        column: column.column,
+        table: column.table,
+        store: column.store,
+        ...owner,
+      };
+    }
+  }
+
+  const table = index.tableById.get(id);
+  if (table) {
+    const owner = ownerOfStore(table.store);
+    if (owner) {
+      return {
+        kind: "table",
+        id,
+        table: table.table,
+        store: table.store,
+        ...owner,
+      };
+    }
+  }
+
+  const store = index.storeById.get(id);
+  if (store) {
+    const owner = ownerOfStore(store);
+    if (owner) return { kind: "store", id, store, ...owner };
+  }
+
   const context = catalog.contexts.find((c) => c.id === id);
   if (context) return { kind: "context", id, context };
 
@@ -167,6 +238,15 @@ export function resolveSelection(id: string): Resolved | null {
   }
 
   return null;
+}
+
+/** The service that owns a store, and the context that owns the service. */
+function ownerOfStore(
+  store: Store,
+): { service: Service; context: BoundedContext } | null {
+  const service = index.serviceById.get(store.owner);
+  const context = index.serviceContext.get(store.owner);
+  return service && context ? { service, context } : null;
 }
 
 /** The kind an id resolves to, or "unknown" when nothing in the catalog owns it. */
@@ -216,6 +296,27 @@ export function selectionTrail(selection: Selection): Selection[] {
         { kind: "aggregate", id: resolved.aggregate.id },
         { kind: "event", id: resolved.event.id },
       ];
+    case "store":
+      return [
+        { kind: "context", id: resolved.context.id },
+        { kind: "service", id: resolved.service.id },
+        { kind: "store", id: resolved.store.id },
+      ];
+    case "table":
+      return [
+        { kind: "context", id: resolved.context.id },
+        { kind: "service", id: resolved.service.id },
+        { kind: "store", id: resolved.store.id },
+        { kind: "table", id: resolved.table.id },
+      ];
+    case "column":
+      return [
+        { kind: "context", id: resolved.context.id },
+        { kind: "service", id: resolved.service.id },
+        { kind: "store", id: resolved.store.id },
+        { kind: "table", id: resolved.table.id },
+        { kind: "column", id: resolved.id },
+      ];
     case "flow-step":
     case "value-object":
       return [selection];
@@ -235,6 +336,12 @@ export function selectionLabel(selection: Selection): string {
       return resolved.aggregate.slug;
     case "event":
       return resolved.event.name;
+    case "store":
+      return resolved.store.slug;
+    case "table":
+      return resolved.table.name;
+    case "column":
+      return `${resolved.table.name}.${resolved.column.name}`;
     case "value-object":
       return resolved.id;
     case "flow-step":

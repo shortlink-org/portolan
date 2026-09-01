@@ -6,6 +6,8 @@ export type Kind =
   | "context"
   | "service"
   | "aggregate"
+  | "store"
+  | "table"
   | "event"
   | "vo"
   | "entity"
@@ -15,13 +17,14 @@ export type Kind =
   | "flow"
   | "adr";
 
-/** The five leaf kinds a filter chip can switch off. Order is the tree order. */
+/** The leaf kinds a filter chip can switch off. Order is the tree order. */
 export const LEAF_KINDS = [
   "event",
   "vo",
   "entity",
   "command",
   "query",
+  "table",
 ] as const;
 export type LeafKind = (typeof LEAF_KINDS)[number];
 
@@ -33,6 +36,8 @@ export const KIND_LABEL: Record<Kind, string> = {
   context: "context",
   service: "service",
   aggregate: "aggregate",
+  store: "store",
+  table: "table",
   event: "event",
   vo: "value object",
   entity: "entity",
@@ -47,6 +52,8 @@ export const KIND_PLURAL: Record<Kind, string> = {
   context: "contexts",
   service: "services",
   aggregate: "aggregates",
+  store: "stores",
+  table: "tables",
   event: "events",
   vo: "value objects",
   entity: "entities",
@@ -64,6 +71,7 @@ export const KIND_CHIP: Record<LeafKind, string> = {
   entity: "entities",
   command: "cmd",
   query: "qry",
+  table: "tables",
 };
 
 /**
@@ -80,6 +88,10 @@ export const KIND_PREFIXES: Record<Kind, string[]> = {
   // itself: "type: money" finds the def, "vo: money" finds what names it.
   def: ["type", "def", "types"],
   aggregate: ["agg", "aggregate", "aggregates"],
+  // A store is where state lives and a table is one shape inside it, so the
+  // two never share a prefix: "db: pg" finds the store, "tbl: orders" the table.
+  store: ["db", "store", "stores"],
+  table: ["tbl", "table", "tables"],
   service: ["svc", "service", "services"],
   context: ["ctx", "context", "contexts"],
   flow: ["flow", "flows"],

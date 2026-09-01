@@ -99,6 +99,17 @@ function subjectOfSelection(selection: Selection): VisitSubject | null {
       return { kind: "event", label: resolved.event.name };
     case "value-object":
       return { kind: "def", label: resolved.id };
+    case "store":
+      return { kind: "store", label: resolved.store.slug };
+    // A table and a column both take the reader back to the same canvas, so
+    // the chip names the table either way; a column rides along in the label.
+    case "table":
+      return { kind: "table", label: resolved.table.name };
+    case "column":
+      return {
+        kind: "table",
+        label: `${resolved.table.name}.${resolved.column.name}`,
+      };
     // The step number rides along in the label rather than in a chip of its
     // own: one flow, one slot, and the number says how far in they had got.
     case "flow-step":

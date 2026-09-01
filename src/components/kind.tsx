@@ -1,7 +1,15 @@
 // The visual half of the taxonomy in src/lib/kinds.ts. One icon per kind,
 // painted from a token, so nothing downstream picks its own glyph or colour.
 
-import { Hexagon, Route, ScrollText, Server, Shapes } from "lucide-react";
+import {
+  Database,
+  Hexagon,
+  Route,
+  ScrollText,
+  Server,
+  Shapes,
+  Table2,
+} from "lucide-react";
 import type { Kind } from "../lib/kinds";
 import { KIND_LABEL } from "../lib/kinds";
 import { ctxStyle } from "../lib/context-color";
@@ -35,6 +43,10 @@ export const KIND_ICON: Record<Kind, IconComponent> = {
   context: Hexagon, // unused: contexts draw a coloured dot instead
   service: Server,
   aggregate: Hexagon,
+  // A store and a table are infrastructure, not domain objects, so they take
+  // lucide's furniture rather than one of portolan's five domain marks.
+  store: Database,
+  table: Table2,
   event: EventIcon,
   vo: ValueObjectIcon,
   entity: EntityIcon,
@@ -54,6 +66,8 @@ export const KIND_COLOR: Record<Kind, string> = {
   context: "var(--ctx)",
   service: "var(--fg-muted)",
   aggregate: "var(--fg)",
+  store: "var(--fg-muted)",
+  table: "var(--fg-muted)",
   event: "var(--kind-event)",
   vo: "var(--fg-muted)",
   entity: "var(--fg-muted)",
@@ -69,6 +83,8 @@ export const KIND_MONO: Record<Kind, boolean> = {
   context: true,
   service: true,
   aggregate: true,
+  store: true,
+  table: true,
   event: true,
   vo: true,
   entity: true,

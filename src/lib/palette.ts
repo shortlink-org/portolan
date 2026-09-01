@@ -14,7 +14,7 @@
 import type { Block, Catalog, Event, Field } from "../catalog";
 import { parseQuery } from "./kinds";
 import type { Kind, ParsedQuery } from "./kinds";
-import { paths } from "../routes";
+import { paths, storePath, tablePath } from "../routes";
 
 /**
  * Markdown, flattened to one line of searchable prose.
@@ -207,6 +207,41 @@ export function paletteItems(catalog: Catalog): PaletteItem[] {
     });
   }
 
+  // Stores and tables. A table is the one row here whose name a reader is
+  // likely to know exactly — they have just read it in a migration or a stack
+  // trace — so it is worth finding by name alone, without the store.
+  for (const store of catalog.stores ?? []) {
+    const to = storePath(store.id);
+    const context = store.owner.split(".")[0] ?? null;
+    items.push({
+      kind: "store",
+      id: store.id,
+      selectId: store.id,
+      name: store.slug,
+      detail: store.owner,
+      path: to,
+      context,
+      badge: store.kind,
+      text: flattenProse(`${store.name} ${store.source ?? ""}`),
+    });
+
+    for (const table of store.tables) {
+      items.push({
+        kind: "table",
+        id: table.id,
+        selectId: table.id,
+        name: table.name,
+        detail: store.id,
+        path: tablePath(table.id),
+        context,
+        ...(table.role ? { badge: table.role } : {}),
+        text: flattenProse(
+          `${table.doc ?? ""} ${table.columns.map((c) => c.name).join(" ")}`,
+        ),
+      });
+    }
+  }
+
   for (const flow of catalog.flows) {
     items.push({
       kind: "flow",
@@ -331,8 +366,12 @@ const KIND_RANK: Record<Kind, number> = {
   command: 6,
   query: 7,
   def: 8,
-  flow: 9,
-  adr: 10,
+  // Where the model is kept comes after the model itself: a reader looking for
+  // "orders" wants the aggregate first and the table that holds it second.
+  store: 9,
+  table: 10,
+  flow: 11,
+  adr: 12,
 };
 
 /**

@@ -11,6 +11,13 @@ export interface Catalog {
   defs: Record<string, TypeDef>; // shared type definitions by id
   flows: Flow[];
   adrs: Adr[];
+  /**
+   * Where the estate keeps its state. Optional in the file and never optional
+   * downstream: a catalog written before the extractor learned to read
+   * migrations still loads, and every reader sees an empty list rather than an
+   * undefined one.
+   */
+  stores?: Store[];
 }
 /**
  * A bounded context: the estate's top grouping level, and nothing more. It owns
@@ -51,6 +58,13 @@ export interface Service {
   provides: RpcService[];
   consumes: RpcCall[];
   aggregates: Aggregate[];
+  /**
+   * Stores this service touches, by id — the ones it owns and the ones it only
+   * reads. Ownership is not stated here: a store names its own owner, so a
+   * service listing a store it does not own is reading it, and the pages say
+   * so rather than guessing.
+   */
+  stores?: string[];
 }
 export interface RpcService {
   id: string;
@@ -132,6 +146,104 @@ export interface Field {
 } // ref -> defs key
 export interface TypeDef {
   fields: Field[];
+}
+
+// ---------------------------------------------------------------------------
+// Persistence. Where an aggregate actually lives when nothing is running.
+//
+// This axis is deliberately shallow: a store, its tables, their columns, and
+// the foreign keys between them. It says nothing about how the rows got there.
+// What it does say — through `persists` and `maps` — is which domain object a
+// table holds and which domain field a column carries, which is the only
+// question that makes a schema readable next to a model rather than beside it.
+// ---------------------------------------------------------------------------
+
+export type StoreKind =
+  | "postgres"
+  | "mysql"
+  | "sqlite"
+  | "redis"
+  | "mongodb"
+  | "clickhouse"
+  | "s3"
+  | "kafka-topic"
+  | "other";
+
+export const STORE_KINDS: readonly StoreKind[] = [
+  "postgres",
+  "mysql",
+  "sqlite",
+  "redis",
+  "mongodb",
+  "clickhouse",
+  "s3",
+  "kafka-topic",
+  "other",
+] as const;
+
+export interface Store {
+  id: string; // "shop.oms.pg"
+  slug: string;
+  name: string;
+  kind: StoreKind;
+  /** Service id. Exactly one service owns a store; everyone else reads it. */
+  owner: string;
+  tables: Table[];
+  /** Migrations directory or config path, as a reader would open it. */
+  source?: string;
+}
+
+/**
+ * What a table is FOR. The role is not decoration: an outbox and a projection
+ * are read completely differently from the table that holds the aggregate, and
+ * a canvas that draws all three the same way hides the only structural fact a
+ * reader came for.
+ */
+export type TableRole =
+  | "aggregate-root"
+  | "child"
+  | "outbox"
+  | "projection"
+  | "lookup"
+  | "other";
+
+export const TABLE_ROLES: readonly TableRole[] = [
+  "aggregate-root",
+  "child",
+  "outbox",
+  "projection",
+  "lookup",
+  "other",
+] as const;
+
+export interface Table {
+  id: string; // "<store id>.<table>"
+  name: string;
+  doc?: string;
+  columns: Column[];
+  indexes?: TableIndex[];
+  /** The domain object this table holds: an aggregate id, and optionally a block id. */
+  persists?: { aggregate?: string; block?: string };
+  role?: TableRole;
+}
+
+export interface TableIndex {
+  name: string;
+  columns: string[];
+  unique: boolean;
+}
+
+export interface Column {
+  name: string;
+  /** The db type as declared — uuid, timestamptz, jsonb — not a normalised one. */
+  type: string;
+  nullable: boolean;
+  pk?: boolean;
+  /** `table` is a Table.id, so a foreign key names its target unambiguously. */
+  fk?: { table: string; column: string; onDelete?: string };
+  /** Domain field path, e.g. "Order.CustomerID". */
+  maps?: string;
+  doc?: string;
 }
 
 export interface Flow {
@@ -359,6 +471,29 @@ export function allAggregates(catalog: Catalog): Aggregate[] {
   return allServices(catalog).flatMap((s) => s.aggregates);
 }
 
+/** Every store, whether or not any service lists it. Absent means none. */
+export function allStores(catalog: Catalog): Store[] {
+  return catalog.stores ?? [];
+}
+
+export function allTables(catalog: Catalog): Table[] {
+  return allStores(catalog).flatMap((s) => s.tables);
+}
+
+/**
+ * A column's id. Columns are not addressed in the JSON, but the selection layer
+ * needs one identifier per selectable thing, and "<table id>.<column>" is the
+ * spelling a reader would type.
+ */
+export function columnId(tableId: string, column: string): string {
+  return `${tableId}.${column}`;
+}
+
+/** The columns a collapsed table card shows: its key, then everything it points at. */
+export function keyColumns(table: Table): Column[] {
+  return table.columns.filter((c) => c.pk || c.fk);
+}
+
 /**
  * The fields a block actually has: its own when written inline, otherwise the
  * shared def it names. An empty list means the catalog knows the block by name
@@ -425,6 +560,35 @@ export interface BlockOwner {
   context: BoundedContext;
 }
 
+/** A column and everything holding it, so a row can be drawn without a lookup. */
+export interface ColumnOwner {
+  column: Column;
+  table: Table;
+  store: Store;
+}
+
+/**
+ * The block a `maps` path points into, by name. A path is "<Type>.<Field>", and
+ * the type is resolved inside the aggregate the table already says it persists
+ * — the only scope in which a bare type name is unambiguous.
+ */
+export function mapsBlockId(
+  aggregate: Aggregate | undefined,
+  maps: string | undefined,
+): string | null {
+  if (!aggregate || !maps) return null;
+  const head = maps.split(".")[0];
+  if (!head) return null;
+  const found = aggregateBlocks(aggregate).find((b) => b.block.name === head);
+  return found ? found.block.id : null;
+}
+
+/** The field half of a `maps` path — everything after the type name. */
+export function mapsFieldPath(maps: string): string {
+  const at = maps.indexOf(".");
+  return at < 0 ? maps : maps.slice(at + 1);
+}
+
 export interface CatalogIndex {
   catalog: Catalog;
   serviceById: Map<string, Service>;
@@ -439,6 +603,19 @@ export interface CatalogIndex {
   blocksByDef: Map<string, string[]>;
   rpcById: Map<string, RpcCall>;
   rpcProviderByMethod: Map<string, Service>;
+  storeById: Map<string, Store>;
+  /** table id -> the table and the store holding it */
+  tableById: Map<string, { table: Table; store: Store }>;
+  /** column id -> the column and everything that owns it */
+  columnById: Map<string, ColumnOwner>;
+  /** service id -> stores it owns, in catalog order */
+  storesOwnedBy: Map<string, Store[]>;
+  /** aggregate id -> tables naming it in `persists`, in catalog order */
+  tablesByAggregate: Map<string, Table[]>;
+  /** block id -> columns whose `maps` path lands in that block */
+  columnsByBlock: Map<string, ColumnOwner[]>;
+  /** table id -> the columns pointing at it through a foreign key */
+  fkIntoTable: Map<string, ColumnOwner[]>;
   flowBySlug: Map<string, Flow>;
   /** event id -> flow slugs that reference it in a step */
   flowsByEvent: Map<string, string[]>;
@@ -467,6 +644,13 @@ export function buildIndex(catalog: Catalog): CatalogIndex {
   const adrById = new Map<string, Adr>();
   const adrBySlug = new Map<string, Adr>();
   const adrsByEvent = new Map<string, Adr[]>();
+  const storeById = new Map<string, Store>();
+  const tableById = new Map<string, { table: Table; store: Store }>();
+  const columnById = new Map<string, ColumnOwner>();
+  const storesOwnedBy = new Map<string, Store[]>();
+  const tablesByAggregate = new Map<string, Table[]>();
+  const columnsByBlock = new Map<string, ColumnOwner[]>();
+  const fkIntoTable = new Map<string, ColumnOwner[]>();
 
   for (const context of catalog.contexts) {
     for (const service of context.services) {
@@ -492,6 +676,55 @@ export function buildIndex(catalog: Catalog): CatalogIndex {
             list.push(block.id);
             blocksByDef.set(block.ref, list);
           }
+        }
+      }
+    }
+  }
+
+  // Stores come after the domain tree because they point into it: a table says
+  // which aggregate it persists, and a column which block it maps to, so both
+  // are resolved against maps that are already full.
+  for (const store of allStores(catalog)) {
+    storeById.set(store.id, store);
+    const owned = storesOwnedBy.get(store.owner) ?? [];
+    owned.push(store);
+    storesOwnedBy.set(store.owner, owned);
+
+    for (const table of store.tables) {
+      tableById.set(table.id, { table, store });
+      // A table may name only the block it holds. That block belongs to an
+      // aggregate, and an aggregate's Persistence section has to list it, so
+      // the owner is filled in here rather than asked for twice in the JSON.
+      const aggregateId =
+        table.persists?.aggregate ??
+        (table.persists?.block
+          ? blockById.get(table.persists.block)?.aggregate.id
+          : undefined);
+      if (aggregateId) {
+        const list = tablesByAggregate.get(aggregateId) ?? [];
+        list.push(table);
+        tablesByAggregate.set(aggregateId, list);
+      }
+      const aggregate = aggregateId
+        ? aggregateById.get(aggregateId)
+        : undefined;
+
+      for (const column of table.columns) {
+        const owner: ColumnOwner = { column, table, store };
+        columnById.set(columnId(table.id, column.name), owner);
+        if (column.fk) {
+          const into = fkIntoTable.get(column.fk.table) ?? [];
+          into.push(owner);
+          fkIntoTable.set(column.fk.table, into);
+        }
+        // `persists.block` names the block outright; otherwise the head of the
+        // maps path is resolved inside the aggregate the table persists.
+        const blockId =
+          table.persists?.block ?? mapsBlockId(aggregate, column.maps);
+        if (blockId && column.maps) {
+          const list = columnsByBlock.get(blockId) ?? [];
+          list.push(owner);
+          columnsByBlock.set(blockId, list);
         }
       }
     }
@@ -535,6 +768,13 @@ export function buildIndex(catalog: Catalog): CatalogIndex {
     adrById,
     adrBySlug,
     adrsByEvent,
+    storeById,
+    tableById,
+    columnById,
+    storesOwnedBy,
+    tablesByAggregate,
+    columnsByBlock,
+    fkIntoTable,
   };
 }
 
@@ -736,9 +976,154 @@ export function validateCatalog(catalog: Catalog): Catalog {
     }
   }
 
+  validateStores(catalog);
   validateAdrs(catalog, eventIds);
 
   return catalog;
+}
+
+/**
+ * A schema may only point at things that exist. A foreign key into a table
+ * nobody declared, or a `persists` naming an aggregate that is not in the
+ * catalog, would draw an edge into open water on a canvas whose whole job is
+ * to show where the edges land — so both fail the build.
+ *
+ * What is NOT checked here: whether an outbox actually carries a payload, and
+ * whether a table's columns still match the aggregate it claims to persist.
+ * Those are judgements about a model that is allowed to be mid-migration, and
+ * they are reported on the Problems page as warnings rather than refusing to
+ * render the catalog at all.
+ */
+function validateStores(catalog: Catalog): void {
+  const stores = allStores(catalog);
+  if (stores.length === 0) return;
+
+  const serviceIds = new Set(allServices(catalog).map((s) => s.id));
+  const aggregates = new Map(allAggregates(catalog).map((a) => [a.id, a]));
+
+  assertUniqueSlugs(
+    stores.map((s) => s.id),
+    "catalog",
+    "store",
+  );
+
+  // Every table id first: a foreign key may point forwards, at a table in a
+  // store declared later in the file.
+  const columnsOfTable = new Map<string, Set<string>>();
+  for (const store of stores) {
+    for (const table of store.tables) {
+      if (columnsOfTable.has(table.id)) {
+        fail(`table id "${table.id}" is not unique`, `store ${store.id}`);
+      }
+      columnsOfTable.set(table.id, new Set(table.columns.map((c) => c.name)));
+    }
+  }
+
+  for (const store of stores) {
+    if (store.id !== `${store.owner}.${store.slug}`) {
+      fail(
+        `store "${store.id}" is owned by "${store.owner}", so its id must be "${store.owner}.${store.slug}"`,
+        `store ${store.id}`,
+      );
+    }
+    if (!serviceIds.has(store.owner)) {
+      fail(
+        `store "${store.id}" is owned by "${store.owner}", which is not a service in the catalog`,
+        `store ${store.id}`,
+      );
+    }
+    if (!STORE_KINDS.includes(store.kind)) {
+      fail(
+        `store "${store.id}" has kind "${store.kind}"; expected one of ${STORE_KINDS.join(", ")}`,
+        `store ${store.id}`,
+      );
+    }
+
+    for (const table of store.tables) {
+      const where = `store ${store.id} / table ${table.name}`;
+      if (table.id !== `${store.id}.${table.name}`) {
+        fail(
+          `table "${table.id}" in store "${store.id}" must have id "${store.id}.${table.name}"`,
+          where,
+        );
+      }
+      if (table.role !== undefined && !TABLE_ROLES.includes(table.role)) {
+        fail(
+          `table "${table.id}" has role "${table.role}"; expected one of ${TABLE_ROLES.join(", ")}`,
+          where,
+        );
+      }
+
+      const own = columnsOfTable.get(table.id) ?? new Set<string>();
+      if (own.size !== table.columns.length) {
+        fail(`table "${table.id}" has duplicate column names`, where);
+      }
+
+      const aggregateId = table.persists?.aggregate;
+      const aggregate = aggregateId ? aggregates.get(aggregateId) : undefined;
+      if (aggregateId && !aggregate) {
+        fail(
+          `table "${table.id}" persists unknown aggregate "${aggregateId}"`,
+          where,
+        );
+      }
+      const blockId = table.persists?.block;
+      if (blockId) {
+        // A block is named "<aggregate id>.<slug>", so a block belonging to
+        // another aggregate than the one the table persists is a contradiction
+        // the id itself spells out.
+        const owner = aggregate ?? aggregates.get(blockId.split(".").slice(0, -1).join("."));
+        const found = owner
+          ? aggregateBlocks(owner).some((b) => b.block.id === blockId)
+          : false;
+        if (!found) {
+          fail(
+            `table "${table.id}" persists block "${blockId}", which is not a block of ${aggregateId ? `aggregate "${aggregateId}"` : "any aggregate in the catalog"}`,
+            where,
+          );
+        }
+      }
+
+      for (const index of table.indexes ?? []) {
+        for (const column of index.columns) {
+          if (!own.has(column)) {
+            fail(
+              `index "${index.name}" on table "${table.id}" names column "${column}", which the table does not have`,
+              where,
+            );
+          }
+        }
+      }
+
+      for (const column of table.columns) {
+        if (!column.fk) continue;
+        const target = columnsOfTable.get(column.fk.table);
+        if (!target) {
+          fail(
+            `column "${column.name}" of table "${table.id}" has a foreign key into "${column.fk.table}", which is not a table in the catalog`,
+            `${where} / column ${column.name}`,
+          );
+        } else if (!target.has(column.fk.column)) {
+          fail(
+            `column "${column.name}" of table "${table.id}" has a foreign key into "${column.fk.table}.${column.fk.column}", and that table has no such column`,
+            `${where} / column ${column.name}`,
+          );
+        }
+      }
+    }
+  }
+
+  const storeIds = new Set(stores.map((s) => s.id));
+  for (const service of allServices(catalog)) {
+    for (const storeId of service.stores ?? []) {
+      if (!storeIds.has(storeId)) {
+        fail(
+          `service "${service.id}" lists unknown store "${storeId}"`,
+          `service ${service.id}`,
+        );
+      }
+    }
+  }
 }
 
 /**

@@ -6,25 +6,51 @@
 
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
-import { catalog } from "../data";
+import { catalog, index } from "../data";
 import { edgeCount, problems } from "../lib/derive";
 import type { Problem } from "../lib/derive";
+import { dataProblems } from "../lib/data-problems";
 import { contextVar, ctxStyle } from "../lib/context-color";
 import { absoluteTime, plural, relativeTime } from "../lib/format";
 import { staggerStyle } from "../lib/motion";
 import { KindIcon } from "../components/kind";
 import { Ident } from "../components/Ident";
 import { SectionTitle } from "../components/PageHeader";
-import { eventPath, servicePath } from "../routes";
+import { eventPath, servicePath, storePath, tablePath } from "../routes";
+
+/** The icon a problem row carries: what the near end of the edge IS. */
+const KIND_OF: Record<Problem["kind"], "service" | "event" | "table"> = {
+  rpc: "service",
+  consumer: "event",
+  "cross-service-fk": "table",
+  "shared-store": "table",
+  "persistence-drift": "table",
+  "column-type": "table",
+  "outbox-payload": "table",
+};
 
 const KIND_NOTE: Record<Problem["kind"], string> = {
   rpc: "the provider of this call is not in the catalog",
   consumer: "this consumer of the event is not in the catalog",
+  "cross-service-fk": "foreign key across a service boundary",
+  "shared-store": "a second service writes this database",
+  "persistence-drift": "this table no longer carries the aggregate it claims",
+  "column-type": "column type and domain type disagree",
+  "outbox-payload": "an outbox with no payload column",
 };
 
 export function Problems() {
   const [active, setActive] = useState<Set<string>>(new Set());
-  const all = useMemo(() => problems(catalog), []);
+  // Unresolved edges first, then everything the schema disagrees with. Within
+  // each, errors before warnings: a boundary leak is not the same kind of news
+  // as a column whose type has drifted, and mixing them buries the first.
+  const all = useMemo(() => {
+    const found = [...problems(catalog), ...dataProblems(catalog, index)];
+    return [
+      ...found.filter((p) => p.severity === "error"),
+      ...found.filter((p) => p.severity === "warning"),
+    ];
+  }, []);
   // How many edges there were to resolve at all. Zero problems out of zero
   // edges is not a clean bill of health - nothing crossed a boundary, so
   // nothing was checked, and saying "every edge resolved" there is a green
@@ -55,6 +81,30 @@ export function Problems() {
         {all.length > 0 ? (
           <span className="mono text-muted">
             {rows.length} of {all.length}
+          </span>
+        ) : null}
+        {/* Two counts, not a score. A reader triaging this page decides what
+            to open by which half it is in. */}
+        {all.length > 0 ? (
+          <span className="mono flex items-center gap-3">
+            <span className="text-unresolved">
+              <span className="tnum">
+                {all.filter((p) => p.severity === "error").length}
+              </span>{" "}
+              {plural(
+                all.filter((p) => p.severity === "error").length,
+                "error",
+              )}
+            </span>
+            <span className="text-declared">
+              <span className="tnum">
+                {all.filter((p) => p.severity === "warning").length}
+              </span>{" "}
+              {plural(
+                all.filter((p) => p.severity === "warning").length,
+                "warning",
+              )}
+            </span>
           </span>
         ) : null}
 
@@ -110,7 +160,7 @@ export function Problems() {
               </span>
             }
           >
-            Unresolved edges
+            Everything that does not line up
           </SectionTitle>
           <div className="flex flex-col gap-1" data-nav-list>
             {rows.map((problem, i) => (
@@ -141,21 +191,53 @@ function ClearSkies({ checked }: { checked: number }) {
   );
 }
 
+/** Where the near end of a problem lives, by what kind of edge it is. */
+function nearPath(problem: Problem): string | null {
+  switch (problem.kind) {
+    case "rpc":
+      return servicePath(problem.service);
+    case "consumer":
+      return eventPath(problem.id);
+    case "shared-store":
+    case "persistence-drift":
+    case "outbox-payload":
+      return tablePath(problem.id);
+    // The id is "<table>.<column>", so the table is its own id minus the last
+    // segment — and the table is what the canvas can actually show.
+    case "cross-service-fk":
+    case "column-type":
+      return tablePath(problem.id.split(".").slice(0, -1).join("."));
+  }
+}
+
+/** Where the far end lives, when the catalog knows it. */
+function peerPath(problem: Problem): string | null {
+  switch (problem.kind) {
+    case "cross-service-fk":
+      return tablePath(problem.peer);
+    case "shared-store":
+      return servicePath(problem.peer);
+    case "outbox-payload":
+      return storePath(problem.peer);
+    default:
+      return null;
+  }
+}
+
 function ProblemRow({ problem, index }: { problem: Problem; index: number }) {
-  const near =
-    problem.kind === "rpc"
-      ? servicePath(problem.service)
-      : eventPath(problem.id);
+  const near = nearPath(problem);
+  const peerTo = peerPath(problem);
+  const tone =
+    problem.severity === "error"
+      ? "var(--status-unresolved)"
+      : "var(--status-declared)";
 
   return (
     <div
       className="stagger-in flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-control border px-3 py-2"
-      style={{
-        ...staggerStyle(index),
-        borderColor: "var(--status-unresolved)",
-      }}
+      style={{ ...staggerStyle(index), borderColor: tone }}
     >
-      <KindIcon kind={problem.kind === "rpc" ? "service" : "event"} />
+      <KindIcon kind={KIND_OF[problem.kind]} />
       {near ? (
         <Link
           to={near}
@@ -171,11 +253,24 @@ function ProblemRow({ problem, index }: { problem: Problem; index: number }) {
       <span aria-hidden className="text-muted">
         →
       </span>
-      <Ident
-        value={problem.peer}
-        className="text-unresolved"
-        title={`${problem.peer} — ${KIND_NOTE[problem.kind]}. Click to copy.`}
-      />
+      {peerTo ? (
+        <Link
+          to={peerTo}
+          className="mono rounded-control hover:underline"
+          style={{ color: tone }}
+          title={problem.peer}
+        >
+          {problem.peer}
+        </Link>
+      ) : (
+        <Ident
+          value={problem.peer}
+          className={
+            problem.severity === "error" ? "text-unresolved" : "text-declared"
+          }
+          title={`${problem.peer} — ${KIND_NOTE[problem.kind]}. Click to copy.`}
+        />
+      )}
       <span className="chip ctx" style={ctxStyle(problem.context)}>
         <span aria-hidden className="dot" />
         {problem.context}
