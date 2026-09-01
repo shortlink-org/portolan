@@ -10,6 +10,7 @@ import {
   Server,
   Shapes,
   Table2,
+  Webhook,
 } from "lucide-react";
 import type { Kind } from "../lib/kinds";
 import { KIND_LABEL } from "../lib/kinds";
@@ -56,6 +57,9 @@ export const KIND_ICON: Record<Kind, IconComponent> = {
   entity: EntityIcon,
   command: CommandIcon,
   query: QueryIcon,
+  // An endpoint is a door in the wall of a service, not a domain object, so it
+  // takes furniture like the store and the table do.
+  endpoint: Webhook,
   def: Shapes,
   flow: Route,
   adr: ScrollText,
@@ -78,6 +82,7 @@ export const KIND_COLOR: Record<Kind, string> = {
   entity: "var(--fg-muted)",
   command: "var(--fg-muted)",
   query: "var(--fg-muted)",
+  endpoint: "var(--fg-muted)",
   def: "var(--fg-muted)",
   flow: "var(--fg-muted)",
   adr: "var(--fg-muted)",
@@ -96,6 +101,9 @@ export const KIND_MONO: Record<Kind, boolean> = {
   entity: true,
   command: true,
   query: true,
+  // An operationId is what a caller writes in code, and a verb-and-path is
+  // what they write in a request. Both are identifiers.
+  endpoint: true,
   def: true,
   flow: true,
   adr: true,

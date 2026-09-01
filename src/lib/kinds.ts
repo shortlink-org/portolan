@@ -14,6 +14,8 @@ export type Kind =
   | "entity"
   | "command"
   | "query"
+  /** One method of one interface: what the outside can actually call. */
+  | "endpoint"
   | "def"
   | "flow"
   | "adr";
@@ -34,9 +36,29 @@ export const MODEL_LEAF_KINDS = [
 ] as const;
 export const STORE_LEAF_KINDS = ["table", "view"] as const;
 
-/** Both groups, in tree order. */
+/**
+ * What a service ANSWERS, which is neither of the other two: an endpoint is not
+ * held by an aggregate and not held by a store, it is how the outside reaches
+ * the one and eventually moves the other. Its own group, and a row of its own.
+ */
+export const INTERFACE_LEAF_KINDS = ["endpoint"] as const;
+
+/**
+ * The groups as the filter draws them, one row each. Written once because the
+ * chip rows, the line that says what is hidden, and the test that holds every
+ * leaf to exactly one row all have to agree, and three copies of a list is how
+ * a kind ends up filterable nowhere.
+ */
+export const LEAF_KIND_ROWS = [
+  MODEL_LEAF_KINDS,
+  INTERFACE_LEAF_KINDS,
+  STORE_LEAF_KINDS,
+] as const;
+
+/** Every group, in tree order. */
 export const LEAF_KINDS = [
   ...MODEL_LEAF_KINDS,
+  ...INTERFACE_LEAF_KINDS,
   ...STORE_LEAF_KINDS,
 ] as const;
 export type LeafKind = (typeof LEAF_KINDS)[number];
@@ -57,6 +79,7 @@ export const KIND_LABEL: Record<Kind, string> = {
   entity: "entity",
   command: "command",
   query: "query",
+  endpoint: "endpoint",
   def: "shared type",
   flow: "flow",
   adr: "decision",
@@ -74,6 +97,7 @@ export const KIND_PLURAL: Record<Kind, string> = {
   entity: "entities",
   command: "commands",
   query: "queries",
+  endpoint: "endpoints",
   def: "shared types",
   flow: "flows",
   adr: "decisions",
@@ -86,6 +110,7 @@ export const KIND_CHIP: Record<LeafKind, string> = {
   entity: "entities",
   command: "cmd",
   query: "qry",
+  endpoint: "api",
   table: "tables",
   view: "views",
 };
@@ -100,6 +125,9 @@ export const KIND_PREFIXES: Record<Kind, string[]> = {
   entity: ["ent", "entity", "entities"],
   command: ["cmd", "command", "commands"],
   query: ["q", "query", "queries"],
+  // An endpoint is reached by the name the interface calls it, which is what
+  // a reader has in front of them when they are looking at a request.
+  endpoint: ["api", "endpoint", "endpoints"],
   // A shared type is the shape a value object NAMES, not the value object
   // itself: "type: money" finds the def, "vo: money" finds what names it.
   def: ["type", "def", "types"],

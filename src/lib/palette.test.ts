@@ -14,6 +14,7 @@ describe("palette index", () => {
     expect(new Set(items.map((i) => i.kind))).toEqual(
       new Set([
         "def",
+        "endpoint",
         "context",
         "service",
         "aggregate",
@@ -228,5 +229,16 @@ describe("excerptOf", () => {
 
   it("says nothing when the text does not hold the term", () => {
     expect(excerptOf("nothing here", "needle")).toBeNull();
+  });
+});
+
+// A prefix that finds nothing is a prefix that lies, so the entries it
+// restricts to have to exist.
+describe("endpoints", () => {
+  it("finds an interface method by name, under its own prefix", () => {
+    const found = rows("api: registerUser");
+    expect(found[0]?.kind).toBe("endpoint");
+    expect(found[0]?.id).toBe("auth.v1.Users/registerUser");
+    expect(found[0]?.detail).toBe("auth.v1.Users");
   });
 });

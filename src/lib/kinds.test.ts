@@ -5,8 +5,7 @@ import {
   KIND_PLURAL,
   KIND_PREFIXES,
   LEAF_KINDS,
-  MODEL_LEAF_KINDS,
-  STORE_LEAF_KINDS,
+  LEAF_KIND_ROWS,
   canonicalPrefix,
   isLeafKind,
   kindForPrefix,
@@ -52,7 +51,7 @@ describe("the taxonomy", () => {
   // The sidebar draws a row per group. A kind added to the taxonomy but to
   // neither group would vanish from the filter without failing anything else.
   it("puts every leaf kind in exactly one filter row", () => {
-    expect([...MODEL_LEAF_KINDS, ...STORE_LEAF_KINDS]).toEqual([...LEAF_KINDS]);
+    expect(LEAF_KIND_ROWS.flatMap((row) => [...row])).toEqual([...LEAF_KINDS]);
   });
 
   it("names only leaf kinds as leaves", () => {

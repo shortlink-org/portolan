@@ -22,6 +22,7 @@ import type {
   Classification,
   Event,
   Operation,
+  RpcService,
   Service,
   Store,
   Table,
@@ -39,7 +40,7 @@ import {
   visibleEntries,
 } from "../lib/flow-tree";
 import type { FlowEntry, FlowHealth, FlowGroup } from "../lib/flow-tree";
-import { KIND_CHIP, MODEL_LEAF_KINDS, STORE_LEAF_KINDS } from "../lib/kinds";
+import { KIND_CHIP, LEAF_KINDS, LEAF_KIND_ROWS } from "../lib/kinds";
 import type { Kind, LeafKind } from "../lib/kinds";
 import { plural } from "../lib/format";
 import {
@@ -90,7 +91,38 @@ interface StoreMatch {
 interface ServiceMatch {
   service: Service;
   aggregates: AggregateMatch[];
+  endpoints: EndpointMatch[];
   stores: StoreMatch[];
+}
+
+interface EndpointMatch {
+  provided: RpcService;
+  methods: string[];
+}
+
+/**
+ * What the service answers, filtered. A hit on the interface keeps every
+ * method it declares; otherwise only the methods that matched survive, exactly
+ * like an aggregate or a store.
+ */
+function matchEndpoints(
+  service: Service,
+  q: string,
+  parentHit: boolean,
+): EndpointMatch[] {
+  const out: EndpointMatch[] = [];
+
+  for (const provided of service.provides) {
+    const hit = parentHit || matches(q, provided.id, provided.source);
+    const methods = hit
+      ? provided.methods
+      : provided.methods.filter((method) =>
+          matches(q, method, `${provided.id}/${method}`),
+        );
+    if (hit || methods.length > 0) out.push({ provided, methods });
+  }
+
+  return out;
 }
 
 /**
@@ -174,9 +206,15 @@ function matchContext(
     const aggregates = service.aggregates
       .map((a) => matchAggregate(a, q, serviceHit))
       .filter((a): a is AggregateMatch => a !== null);
+    const endpoints = matchEndpoints(service, q, serviceHit);
     const stores = matchStores(service, q, serviceHit);
-    if (serviceHit || aggregates.length > 0 || stores.length > 0) {
-      services.push({ service, aggregates, stores });
+    if (
+      serviceHit ||
+      aggregates.length > 0 ||
+      endpoints.length > 0 ||
+      stores.length > 0
+    ) {
+      services.push({ service, aggregates, endpoints, stores });
     }
   }
 
@@ -426,6 +464,7 @@ const KIND_GROUP_LABEL: Record<LeafKind, string> = {
   event: "events",
   command: "commands",
   query: "queries",
+  endpoint: "api",
   table: "tables",
   view: "views",
 };
@@ -534,10 +573,11 @@ function KindFilter({
         className="palette-in z-50 w-72 rounded-control border bg-canvas p-2 border-line-strong shadow-md focus:outline-none"
       >
         <div className="label mb-1.5 px-1">show kinds</div>
-        {/* Two rows because seven labels on one never fit - the aggregate's
-            kinds, then the store's. */}
+        {/* A row per group: what an aggregate holds, what the service
+            answers, what a store holds. Seven labels on one row ellipsized
+            every one of them, and the break lands where the meaning does. */}
         <div className="seg-stack w-full" role="group" aria-label="Show kinds">
-          {[MODEL_LEAF_KINDS, STORE_LEAF_KINDS].map((row) => (
+          {LEAF_KIND_ROWS.map((row) => (
             <div key={row[0]} className="seg">
               {row.map((kind) => {
                 const on = !hidden.has(kind);
@@ -581,7 +621,7 @@ function HidingLine({
   hidden: Set<LeafKind>;
   onReset: () => void;
 }) {
-  const names = [...MODEL_LEAF_KINDS, ...STORE_LEAF_KINDS]
+  const names = [...LEAF_KINDS]
     .filter((k) => hidden.has(k))
     .map((k) => KIND_GROUP_LABEL[k]);
   if (names.length === 0) return null;
@@ -1263,7 +1303,7 @@ export function Sidebar({
                   </span>
                 </Branch>
                 {copen
-                  ? services.map(({ service, aggregates, stores }) => {
+                  ? services.map(({ service, aggregates, endpoints, stores }) => {
                       const skey = `s:${service.id}`;
                       const sopen = filtering || isOpen(skey, true);
                       return (
@@ -1295,6 +1335,43 @@ export function Sidebar({
                                 />
                               ))
                             : null}
+                          {/* Between the model and where it is kept: an
+                              endpoint is how the outside reaches the first and
+                              eventually moves the second. Methods are listed
+                              flat rather than nested under their interface -
+                              an operationId is unique across a document, so
+                              the extra level would carry no information and
+                              cost a line of indent in a narrow tree. */}
+                          {sopen && shows("endpoint") && endpoints.length > 0 ? (
+                            <Group
+                              kind="endpoint"
+                              label="api"
+                              count={endpoints.reduce(
+                                (n, e) => n + e.methods.length,
+                                0,
+                              )}
+                              depth={2}
+                              open={filtering || isOpen(`${skey}:api`, false)}
+                              onToggle={() => toggle(`${skey}:api`, false)}
+                            >
+                              {endpoints.flatMap(({ provided, methods }) =>
+                                methods.map((method) => (
+                                  <Leaf
+                                    key={`${provided.id}/${method}`}
+                                    to={`${paths.service(context.id, service.slug)}?tab=provides`}
+                                    depth={3}
+                                    title={`${provided.id}/${method} — ${provided.source}`}
+                                  >
+                                    <KindIcon kind="endpoint" />
+                                    <span className="mono truncate">
+                                      {method}
+                                    </span>
+                                  </Leaf>
+                                )),
+                              )}
+                            </Group>
+                          ) : null}
+
                           {/* After the aggregates, because the model comes
                               before where it is kept. Closed by default: this
                               is the answer to a question about deployment, not

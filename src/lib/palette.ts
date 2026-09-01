@@ -187,6 +187,22 @@ export function paletteItems(catalog: Catalog): PaletteItem[] {
           });
         }
       }
+
+      // Endpoints hang off the service rather than an aggregate: one of them
+      // can run use cases from two of them. They have no page of their own
+      // either, so they land on the tab that lists them.
+      for (const provided of service.provides) {
+        for (const method of provided.methods) {
+          items.push({
+            kind: "endpoint",
+            id: `${provided.id}/${method}`,
+            name: method,
+            detail: provided.id,
+            path: `${paths.service(context.id, service.slug)}?tab=provides`,
+            context: context.id,
+          });
+        }
+      }
     }
   }
 
@@ -385,15 +401,18 @@ const KIND_RANK: Record<Kind, number> = {
   context: 5,
   command: 6,
   query: 7,
-  def: 8,
+  // After the operation it exposes: a reader searching for "register" wants
+  // the command first and the door to it second.
+  endpoint: 8,
+  def: 9,
   // Where the model is kept comes after the model itself: a reader looking for
   // "orders" wants the aggregate first and the table that holds it second.
-  store: 9,
-  table: 10,
+  store: 10,
+  table: 11,
   // A view after the tables it is computed from, for the same reason.
-  view: 11,
-  flow: 12,
-  adr: 13,
+  view: 12,
+  flow: 13,
+  adr: 14,
 };
 
 /**

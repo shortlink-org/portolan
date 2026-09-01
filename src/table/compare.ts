@@ -30,15 +30,18 @@ const KIND_RANK: Record<Kind, number> = {
   vo: 4,
   def: 5,
   aggregate: 6,
+  // What the outside can call sits between the model and where it is kept: it
+  // is not one of the building blocks, and it is not infrastructure either.
+  endpoint: 7,
   // Where the model is kept comes after the model itself, and a store before
   // the tables in it - the same order the palette ranks them in.
-  store: 7,
-  table: 8,
-  view: 9,
-  service: 10,
-  context: 11,
-  flow: 12,
-  adr: 13,
+  store: 8,
+  table: 9,
+  view: 10,
+  service: 11,
+  context: 12,
+  flow: 13,
+  adr: 14,
 };
 
 /** Case-insensitive, then case-sensitive, so the order is never arbitrary. */
