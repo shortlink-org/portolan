@@ -28,6 +28,14 @@ views {
     title 'Delivery Core'
     include *, -> *, * ->
   }
+  view ctx_auth of auth {
+    title 'Authentication'
+    include *
+  }
+  view svc_auth_auth of auth.auth {
+    title 'Authentication & Sessions'
+    include *, -> *, * ->
+  }
 
   dynamic view flow_order_accepted {
     title 'Order accepted'

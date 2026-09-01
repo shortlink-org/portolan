@@ -1,0 +1,63 @@
+{
+  "$comment": "Where the facts come from, what produces them, and what turns them into something to read.",
+  "sources": [
+    "data/*.json",
+    "examples/*/portolan/*.json"
+  ],
+  "plugins": [
+    {
+      "name": "go-domain",
+      "process": {
+        "cmd": "go run ./plugins/extract-go"
+      }
+    },
+    {
+      "name": "openapi",
+      "process": {
+        "cmd": "go run ./plugins/extract-openapi"
+      }
+    },
+    {
+      "name": "markdown",
+      "wasm": {
+        "url": "file://plugins/gen-markdown.wasm"
+      }
+    }
+  ],
+  "extract": [
+    {
+      "plugin": "go-domain",
+      "in": "examples/auth",
+      "out": "examples/auth/portolan",
+      "options": {
+        "context": "auth",
+        "contextName": "Authentication",
+        "contextSummary": "Who someone is, and whether they are still logged in. The only service in the estate that stores credentials, and the only one allowed to mint or revoke a session.",
+        "classification": "core",
+        "service": "auth",
+        "repo": "github.com/shortlink-org/portolan",
+        "out": "domain.json"
+      }
+    },
+    {
+      "plugin": "openapi",
+      "in": "examples/auth",
+      "out": "examples/auth/portolan",
+      "options": {
+        "context": "auth",
+        "service": "auth",
+        "spec": "internal/infrastructure/transport/http/gen/openapi.yaml",
+        "out": "api.json"
+      }
+    }
+  ],
+  "generate": [
+    {
+      "plugin": "markdown",
+      "out": "docs",
+      "options": {
+        "title": "Example estate"
+      }
+    }
+  ]
+}

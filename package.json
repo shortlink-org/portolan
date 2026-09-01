@@ -8,14 +8,19 @@
     "build": "npm run likec4:gen && tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:go": "go test ./...",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "likec4:gen": "node scripts/gen-likec4.mjs && likec4 gen react likec4 -o src/likec4/generated.jsx",
     "likec4:validate": "likec4 validate likec4",
-    "predev": "npm run likec4:gen"
+    "predev": "npm run likec4:gen",
+    "plugins:build": "GOOS=wasip1 GOARCH=wasm go build -o plugins/gen-markdown.wasm ./plugins/gen-markdown",
+    "gen": "npm run plugins:build && node scripts/gen.mjs",
+    "gen:check": "npm run plugins:build && node scripts/gen.mjs --check"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.10",
+    "@scalar/api-reference-react": "^0.9.66",
     "@tanstack/react-table": "^9.2.4",
     "@tanstack/react-virtual": "^3.14.10",
     "@xyflow/react": "^12.11.5",

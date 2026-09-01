@@ -1,0 +1,285 @@
+{
+  "generatedAt": "2026-01-02T03:04:05Z",
+  "commit": "abc1234",
+  "defs": {
+    "Money": {
+      "fields": [
+        { "name": "amountMinor", "type": "int64", "doc": "Amount in the minor unit." },
+        { "name": "currency", "type": "string", "doc": "ISO 4217, upper case." }
+      ]
+    }
+  },
+  "contexts": [
+    {
+      "id": "billing",
+      "slug": "billing",
+      "name": "Billing",
+      "summary": "Money owed and money taken.",
+      "classification": "core",
+      "services": [
+        {
+          "id": "billing.invoices",
+          "slug": "invoices",
+          "name": "Invoices",
+          "repo": "github.com/example/billing",
+          "path": "services/invoices",
+          "readme": "# Invoices\n\nRaises invoices and chases them.\n\n## Not here\n\nNo dunning.",
+          "provides": [
+            {
+              "id": "billing.v1.Invoices",
+              "methods": ["Raise", "Get"],
+              "source": "api/invoices.proto",
+              "messages": [
+                {
+                  "name": "RaiseRequest",
+                  "fields": [{ "name": "total", "type": "Money", "doc": "What is owed.", "ref": "Money" }]
+                }
+              ]
+            }
+          ],
+          "consumes": [
+            {
+              "id": "psp.v1.Charges/Create",
+              "peer": "psp-gateway",
+              "status": "unresolved",
+              "source": "internal/psp/client.go:20",
+              "note": "Nothing in this catalog owns the gateway."
+            }
+          ],
+          "stores": ["billing.invoices.pg"],
+          "aggregates": [
+            {
+              "id": "billing.invoices.invoice",
+              "slug": "invoice",
+              "name": "Invoice",
+              "root": "Invoice",
+              "readme": "# Invoice\n\nOne invoice, one customer, one currency.",
+              "entities": [
+                {
+                  "id": "billing.invoices.invoice.invoice",
+                  "slug": "invoice",
+                  "name": "Invoice",
+                  "doc": "The invoice itself.",
+                  "fields": [
+                    { "name": "id", "type": "string", "doc": "Invoice id." },
+                    { "name": "total", "type": "Money", "doc": "What is owed.", "ref": "Money" }
+                  ]
+                }
+              ],
+              "valueObjects": [
+                {
+                  "id": "billing.invoices.invoice.money",
+                  "slug": "money",
+                  "name": "Money",
+                  "doc": "An amount in one currency.",
+                  "ref": "Money"
+                }
+              ],
+              "operations": [
+                { "id": "RaiseInvoice", "kind": "command", "doc": "Raises one." },
+                { "id": "GetInvoice", "kind": "query" }
+              ],
+              "events": [
+                {
+                  "id": "billing.invoices.invoice.InvoiceRaised",
+                  "slug": "invoice-raised",
+                  "name": "InvoiceRaised",
+                  "consumers": [
+                    { "service": "billing.ledger", "status": "declared", "note": "Not observed." }
+                  ],
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "The original.",
+                      "source": "api/events/v1/invoice_raised.proto",
+                      "fields": [{ "name": "invoiceId", "type": "string", "doc": "Which invoice." }]
+                    },
+                    {
+                      "version": "v2",
+                      "doc": "Adds the total.",
+                      "source": "api/events/v2/invoice_raised.proto",
+                      "fields": [
+                        { "name": "invoiceId", "type": "string", "doc": "Which invoice." },
+                        { "name": "total", "type": "Money", "doc": "What is owed.", "ref": "Money" }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "stores": [
+    {
+      "id": "billing.invoices.pg",
+      "slug": "pg",
+      "name": "Invoices Postgres",
+      "kind": "postgres",
+      "owner": "billing.invoices",
+      "source": "migrations/",
+      "tables": [
+        {
+          "id": "billing.invoices.pg.invoices",
+          "name": "invoices",
+          "role": "aggregate-root",
+          "persists": { "aggregate": "billing.invoices.invoice" },
+          "doc": "One row per invoice.",
+          "columns": [
+            { "name": "id", "type": "uuid", "nullable": false, "pk": true, "maps": "Invoice.ID" },
+            { "name": "total_minor", "type": "bigint", "nullable": false, "maps": "Invoice.Total.AmountMinor" }
+          ],
+          "indexes": [{ "name": "invoices_pkey", "columns": ["id"], "unique": true }]
+        },
+        {
+          "id": "billing.invoices.pg.invoice_lines",
+          "name": "invoice_lines",
+          "role": "child",
+          "columns": [
+            { "name": "id", "type": "uuid", "nullable": false, "pk": true },
+            {
+              "name": "invoice_id",
+              "type": "uuid",
+              "nullable": false,
+              "fk": { "table": "billing.invoices.pg.invoices", "column": "id", "onDelete": "cascade" }
+            }
+          ]
+        }
+      ],
+      "views": [
+        {
+          "id": "billing.invoices.pg.invoice_totals",
+          "name": "invoice_totals",
+          "materialized": true,
+          "doc": "Totals, refreshed nightly.",
+          "reads": ["billing.invoices.pg.invoices"],
+          "definition": "SELECT id, total_minor FROM invoices",
+          "columns": [
+            { "name": "id", "type": "uuid", "nullable": false, "from": ["billing.invoices.pg.invoices.id"] },
+            { "name": "total_minor", "type": "bigint", "nullable": true, "from": ["billing.invoices.pg.invoices.total_minor"] }
+          ]
+        }
+      ]
+    }
+  ],
+  "flows": [
+    {
+      "id": "flow.raise-invoice",
+      "slug": "raise-invoice",
+      "name": "Raise an invoice",
+      "summary": "An invoice is raised, and paid or written off.",
+      "provenance": "derived-from-test",
+      "source": "test/e2e/raise_test.go",
+      "participants": [
+        { "id": "operator", "kind": "actor", "context": null },
+        { "id": "billing.invoices", "kind": "service", "context": "billing" },
+        { "id": "bus", "kind": "broker", "context": null },
+        { "id": "psp-gateway", "kind": "external", "context": null, "label": "psp-gateway (external)" }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "operator",
+          "to": "billing.invoices",
+          "kind": "rpc",
+          "label": "RaiseInvoice",
+          "status": "verified",
+          "line": "raise_test.go:31"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "billing.invoices",
+          "to": "bus",
+          "kind": "event",
+          "ref": "billing.invoices.invoice.InvoiceRaised",
+          "status": "verified"
+        },
+        {
+          "type": "loop",
+          "id": "l1",
+          "title": "until paid or written off",
+          "steps": [
+            {
+              "type": "alt",
+              "id": "a1",
+              "branches": [
+                {
+                  "title": "customer pays",
+                  "steps": [
+                    {
+                      "type": "parallel",
+                      "id": "p1",
+                      "title": "settle and notify",
+                      "branches": [
+                        [
+                          {
+                            "type": "step",
+                            "id": "s3",
+                            "from": "billing.invoices",
+                            "to": "psp-gateway",
+                            "kind": "rpc",
+                            "ref": "psp.v1.Charges/Create",
+                            "status": "unresolved",
+                            "note": "The gateway is outside this catalog."
+                          }
+                        ],
+                        [
+                          {
+                            "type": "step",
+                            "id": "s4",
+                            "from": "billing.invoices",
+                            "to": "billing.invoices",
+                            "kind": "call",
+                            "label": "markPaid #1",
+                            "status": "verified"
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "title": "written off",
+                  "terminal": true,
+                  "steps": [
+                    {
+                      "type": "step",
+                      "id": "s5",
+                      "from": "billing.invoices",
+                      "to": "operator",
+                      "kind": "call",
+                      "label": "write-off notice",
+                      "status": "declared"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "adrs": [
+    {
+      "id": "billing.0001",
+      "slug": "one-currency-per-invoice",
+      "number": 1,
+      "title": "One currency per invoice",
+      "status": "accepted",
+      "date": "2026-01-01",
+      "scope": { "kind": "context", "context": "billing" },
+      "body": "# One currency per invoice\n\n## Decision\n\nAn invoice is in one currency.",
+      "relates": {
+        "services": ["billing.invoices"],
+        "events": ["billing.invoices.invoice.InvoiceRaised"],
+        "flows": ["flow.raise-invoice"]
+      },
+      "source": "docs/adr/0001.md"
+    }
+  ]
+}

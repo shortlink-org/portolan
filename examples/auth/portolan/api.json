@@ -1,0 +1,176 @@
+{
+  "generatedAt": "2026-09-01T22:34:17+08:00",
+  "commit": "d7a2c39",
+  "contexts": [
+    {
+      "id": "auth",
+      "slug": "auth",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "auth.auth",
+          "slug": "auth",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [
+            {
+              "id": "auth.v1.Users",
+              "methods": [
+                "registerUser",
+                "getUser",
+                "changePassword"
+              ],
+              "source": "examples/auth/internal/infrastructure/transport/http/gen/openapi.yaml",
+              "messages": [
+                {
+                  "name": "RegisterRequest",
+                  "fields": [
+                    {
+                      "name": "email",
+                      "type": "string (email)",
+                      "doc": ""
+                    },
+                    {
+                      "name": "password",
+                      "type": "string (password)",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "User",
+                  "fields": [
+                    {
+                      "name": "userId",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "email",
+                      "type": "string (email)",
+                      "doc": ""
+                    },
+                    {
+                      "name": "createdAt",
+                      "type": "string (date-time)",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "Error",
+                  "fields": [
+                    {
+                      "name": "message",
+                      "type": "string",
+                      "doc": "One sentence, always present. A client that shows the user a single\nline shows this one."
+                    },
+                    {
+                      "name": "reasons",
+                      "type": "[]string",
+                      "doc": "Optional. One entry per rule the request broke, present only where rules\napply - a 404 or a 500 has none. Each entry names its own field, so\nit can be shown on its own without knowing what it referred to."
+                    }
+                  ]
+                },
+                {
+                  "name": "ChangePasswordRequest",
+                  "fields": [
+                    {
+                      "name": "currentPassword",
+                      "type": "string (password)",
+                      "doc": ""
+                    },
+                    {
+                      "name": "newPassword",
+                      "type": "string (password)",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "auth.v1.Sessions",
+              "methods": [
+                "login",
+                "validateSession",
+                "logout"
+              ],
+              "source": "examples/auth/internal/infrastructure/transport/http/gen/openapi.yaml",
+              "messages": [
+                {
+                  "name": "LoginRequest",
+                  "fields": [
+                    {
+                      "name": "email",
+                      "type": "string (email)",
+                      "doc": ""
+                    },
+                    {
+                      "name": "password",
+                      "type": "string (password)",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "Session",
+                  "fields": [
+                    {
+                      "name": "token",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "expiresAt",
+                      "type": "string (date-time)",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "Error",
+                  "fields": [
+                    {
+                      "name": "message",
+                      "type": "string",
+                      "doc": "One sentence, always present. A client that shows the user a single\nline shows this one."
+                    },
+                    {
+                      "name": "reasons",
+                      "type": "[]string",
+                      "doc": "Optional. One entry per rule the request broke, present only where rules\napply - a 404 or a 500 has none. Each entry names its own field, so\nit can be shown on its own without knowing what it referred to."
+                    }
+                  ]
+                },
+                {
+                  "name": "SessionInfo",
+                  "fields": [
+                    {
+                      "name": "userId",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "expiresAt",
+                      "type": "string (date-time)",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "consumes": [],
+          "aggregates": []
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": []
+}

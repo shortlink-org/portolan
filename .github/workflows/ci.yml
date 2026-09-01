@@ -20,6 +20,11 @@ jobs:
           node-version: 24
           cache: npm
 
+      # The catalog mirror and the generator plugins are Go
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.27'
+
       - run: npm ci
 
       # Regenerates likec4/ from data/catalog.json, then checks the model
@@ -30,3 +35,8 @@ jobs:
       - run: npm run build
 
       - run: npm test
+      - run: npm run test:go
+
+      # Rebuilds the wasm plugins and refuses a commit whose docs/ no longer
+      # follows from the catalog
+      - run: npm run gen:check

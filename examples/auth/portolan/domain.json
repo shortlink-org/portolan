@@ -1,0 +1,360 @@
+{
+  "generatedAt": "2026-09-01T22:34:17+08:00",
+  "commit": "d7a2c39",
+  "contexts": [
+    {
+      "id": "auth",
+      "slug": "auth",
+      "name": "Authentication",
+      "summary": "Who someone is, and whether they are still logged in. The only service in the estate that stores credentials, and the only one allowed to mint or revoke a session.",
+      "classification": "core",
+      "services": [
+        {
+          "id": "auth.auth",
+          "slug": "auth",
+          "name": "Authentication \u0026 Sessions",
+          "repo": "github.com/shortlink-org/portolan",
+          "path": "examples/auth",
+          "readme": "# Authentication \u0026 Sessions\n\nService `auth` — bounded context **auth**.\n\nOwns *who someone is* and *whether they are still logged in*. It is the only\nservice in the estate that stores credentials, and the only one allowed to mint\nor revoke a session.\n\n## What it does\n\n- Registers a user: an email address and a password, hashed before it is stored.\n- Authenticates: checks a password and answers with a user id or a refusal.\n- Replaces a password, given the current one.\n- Starts a session on a successful login and hands back an opaque token.\n- Ends a session on logout.\n- Validates a token for everyone else — the hot path every authenticated\n  request in `shop` goes through.\n\n## What it does not do\n\nNo profile data, no addresses, no payment instruments, no roles or scopes.\nOther contexts hold their own view of a customer and reference it by opaque\nuser id; nothing outside `auth` ever sees a credential.\n\nNo MFA, no email verification, no lockout after repeated failures, no refresh\ntokens. Each of those is a real requirement somewhere, and none of them is here:\nthis service is deliberately the smallest thing that is still authentication.\n\n## Domain\n\nTwo aggregates, linked by user id and nothing else. They are separate because a\nsession is written far more often than a user and is revoked without the user\nchanging at all, so the two do not belong under one lock.\n\n| | Root | Value objects | Publishes |\n|---|---|---|---|\n| `user` | `User` — id, email, password hash | `email.Address`, `password.Hash` | `UserRegistered`, `PasswordChanged` |\n| `session` | `Session` — id, user id, token, expiry, revocation | `token.Token` | `SessionStarted`, `SessionEnded` |\n\nAggregates return their events rather than buffering them, so what happened is\nvisible in the signature and publishing is the caller's business.\n\nBoth carry a version. A write is refused if the aggregate was changed since it\nwas read, so two changes made from one read cannot both succeed with the first\none silently disappearing.\n\nExpiry publishes nothing. When a session runs out of time no code runs and\nnobody decides anything, and every consumer already knows the expiry from\n`SessionStarted`; an event there would be invented by whichever sweep noticed\nfirst.\n\n### Rules\n\nValidation lives in the value object constructors, so a value that exists is a\nvalue that passed. Each rule is a specification in a `rules/` package next to\nthe value object it governs, and the policy — which rules currently apply — is\nthe `composite.go` in that package.\n\n- **email** — required, at most 254 characters, parsable by `net/mail`, and not\n  in display form: `Ada \u003cada@example.com\u003e` is an address but not a login.\n- **password** — 8 to 32 characters, at least one digit, one lower-case and one\n  upper-case letter, no whitespace.\n- **token** — 32 random bytes, unpadded base64url.\n\nThe password policy applies when a password is *created*, never when one is\nchecked. Raising the minimum must not lock out everyone who registered under\nthe old one, whose stored hash is still perfectly good.\n\n### The one rule that spans both\n\nA password change ends the sessions issued against the old password. That rule\nbelongs to neither aggregate, so it is written into neither: the user aggregate\npublishes `PasswordChanged`, and a policy in `internal/application/policy` hears\nit and ends the sessions. `session` never imports `user`, `user` never imports\n`session`.\n\nWhat that means for a caller is in the use cases that carry it out - see\n`internal/application/user/usecases/change_password`.\n\n## HTTP\n\nThe API is `internal/infrastructure/transport/http/gen/openapi.yaml`. Routes,\nshapes, status codes and the reasoning behind them are described there, and the\nserver interface is generated from it - so it is the one place that can be\nwrong, and it cannot drift from this file because this file does not repeat it.\n\n## Running it\n\n```bash\ndocker compose up -d\nSTORE_TYPE=postgres \\\nSTORE_POSTGRES_URI=postgres://auth:auth@localhost:5432/auth?sslmode=disable \\\n  go run ./cmd/auth\n```\n\nThe schema is brought up to date at startup. Each aggregate owns its own\nmigrations and its own `schema_migrations_*` table, numbered from 1 within its\nown package: `user` and `session` both have an `0001`, and neither waits for the\nother, because no table here refers to one in another aggregate.\n\nTests start their own database through testcontainers, so a run cannot be\naffected by whatever state a local one is in. Without Docker the packages that\nneed one are skipped and the domain tests - the majority, and the ones worth\nhaving - still run.\n\nRegenerating after a change to the spec or the wire graph:\n\n```bash\ngo generate ./...\n```",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [
+            {
+              "id": "auth.auth.session",
+              "slug": "session",
+              "name": "Session",
+              "readme": "# Session\n\nHolds the Session aggregate: proof that a user logged in,\nhow long that proof is good for, and whether it has been taken away.\n\nIt is a separate aggregate from User on purpose. A session is written far\nmore often than a user, and it is revoked without the user changing at all,\nso the two do not belong under one lock. They are linked by UserID only.",
+              "root": "Session",
+              "entities": [
+                {
+                  "id": "auth.auth.session.session",
+                  "slug": "session",
+                  "name": "Session",
+                  "doc": "Session is the aggregate root. Its identity is ID; the Token is a secret it carries, not what it is called.",
+                  "fields": [
+                    {
+                      "name": "ID",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "UserID",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "Token",
+                      "type": "token.Token",
+                      "doc": ""
+                    },
+                    {
+                      "name": "IssuedAt",
+                      "type": "time.Time",
+                      "doc": ""
+                    },
+                    {
+                      "name": "ExpiresAt",
+                      "type": "time.Time",
+                      "doc": ""
+                    },
+                    {
+                      "name": "RevokedAt",
+                      "type": "time.Time",
+                      "doc": "zero while live"
+                    },
+                    {
+                      "name": "Version",
+                      "type": "int64",
+                      "doc": "Version is what the store compares against before writing; see the note on user.User.Version. Zero means the session has never been stored."
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [
+                {
+                  "id": "auth.auth.session.token",
+                  "slug": "token",
+                  "name": "Token",
+                  "doc": "Token is the opaque string a client presents instead of a password.",
+                  "fields": [
+                    {
+                      "name": "value",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "operations": [
+                {
+                  "id": "EndAfterCredentialChange",
+                  "kind": "command",
+                  "doc": "Ends the sessions a credential change invalidates."
+                },
+                {
+                  "id": "Login",
+                  "kind": "command",
+                  "doc": "Turns credentials into a session."
+                },
+                {
+                  "id": "Logout",
+                  "kind": "command",
+                  "doc": "Ends the session behind a token."
+                },
+                {
+                  "id": "Validate",
+                  "kind": "query",
+                  "doc": "Resolves a token to a live session: who is calling, and how long the answer stays good."
+                }
+              ],
+              "events": [
+                {
+                  "id": "auth.auth.session.SessionEnded",
+                  "slug": "session-ended",
+                  "name": "SessionEnded",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "SessionEnded is published when a session is deliberately ended.\n\nPublished on the bus as `auth.SessionEnded`.",
+                      "source": "examples/auth/internal/domain/session/event/session_ended.go",
+                      "fields": [
+                        {
+                          "name": "sessionID",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "userID",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "reason",
+                          "type": "Reason",
+                          "doc": ""
+                        },
+                        {
+                          "name": "occurredAt",
+                          "type": "time.Time",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": []
+                },
+                {
+                  "id": "auth.auth.session.SessionStarted",
+                  "slug": "session-started",
+                  "name": "SessionStarted",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "SessionStarted is published on a successful login. ExpiresAt is on the event so a consumer can reason about the session's lifetime without asking auth again on every check.\n\nPublished on the bus as `auth.SessionStarted`.",
+                      "source": "examples/auth/internal/domain/session/event/session_started.go",
+                      "fields": [
+                        {
+                          "name": "sessionID",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "userID",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "expiresAt",
+                          "type": "time.Time",
+                          "doc": ""
+                        },
+                        {
+                          "name": "occurredAt",
+                          "type": "time.Time",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": []
+                }
+              ]
+            },
+            {
+              "id": "auth.auth.user",
+              "slug": "user",
+              "name": "User",
+              "readme": "# User\n\nHolds the User aggregate: a person, the address they log in\nwith, and the hash of the password they log in by.\n\nThe aggregate is the transactional boundary. Every rule below is enforced\nhere and nowhere else, so a caller cannot reach past the root and leave a\nUser in a state the domain says is impossible.",
+              "root": "User",
+              "entities": [
+                {
+                  "id": "auth.auth.user.user",
+                  "slug": "user",
+                  "name": "User",
+                  "doc": "User is the aggregate root. Identity is ID, minted once at registration and never reused - not the email, because people change addresses.",
+                  "fields": [
+                    {
+                      "name": "ID",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "Email",
+                      "type": "email.Address",
+                      "doc": ""
+                    },
+                    {
+                      "name": "Password",
+                      "type": "password.Hash",
+                      "doc": ""
+                    },
+                    {
+                      "name": "CreatedAt",
+                      "type": "time.Time",
+                      "doc": ""
+                    },
+                    {
+                      "name": "Version",
+                      "type": "int64",
+                      "doc": "Version is what the store compares against before writing. It is carried on the aggregate rather than known only to the repository so that a copy which has gone stale can say so - without it, two changes made from two reads both succeed and the first one silently disappears."
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [
+                {
+                  "id": "auth.auth.user.email-address",
+                  "slug": "email-address",
+                  "name": "email.Address",
+                  "doc": "Address is a normalised email address.",
+                  "fields": [
+                    {
+                      "name": "value",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "id": "auth.auth.user.password-hash",
+                  "slug": "password-hash",
+                  "name": "password.Hash",
+                  "doc": "Hash is what the user domain stores in place of a password. The plaintext never lives on an aggregate and never leaves the function that hashed it.",
+                  "fields": [
+                    {
+                      "name": "algorithm",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "iterations",
+                      "type": "int",
+                      "doc": ""
+                    },
+                    {
+                      "name": "salt",
+                      "type": "[]byte",
+                      "doc": ""
+                    },
+                    {
+                      "name": "digest",
+                      "type": "[]byte",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "operations": [
+                {
+                  "id": "Authenticate",
+                  "kind": "query",
+                  "doc": "Checks an address and a password, and says which user they belong to."
+                },
+                {
+                  "id": "ChangePassword",
+                  "kind": "command",
+                  "doc": "Replaces the password of a user, given the current one."
+                },
+                {
+                  "id": "Get",
+                  "kind": "query",
+                  "doc": "Reads a user by id."
+                },
+                {
+                  "id": "Register",
+                  "kind": "command",
+                  "doc": "Creates a user from an email address and a password."
+                }
+              ],
+              "events": [
+                {
+                  "id": "auth.auth.user.PasswordChanged",
+                  "slug": "password-changed",
+                  "name": "PasswordChanged",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "PasswordChanged is published when a user's password is replaced. It says the password is different now; it does not carry the password, old or new, in any form.\n\nPublished on the bus as `auth.PasswordChanged`.",
+                      "source": "examples/auth/internal/domain/user/event/password_changed.go",
+                      "fields": [
+                        {
+                          "name": "userID",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "by",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "occurredAt",
+                          "type": "time.Time",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": []
+                },
+                {
+                  "id": "auth.auth.user.UserRegistered",
+                  "slug": "user-registered",
+                  "name": "UserRegistered",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "UserRegistered is published once per user, at registration. It carries the address because consumers routinely need to reach the person, and asking auth for it on every event would make the bus useless.\n\nPublished on the bus as `auth.UserRegistered`.",
+                      "source": "examples/auth/internal/domain/user/event/user_registered.go",
+                      "fields": [
+                        {
+                          "name": "userID",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "email",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "occurredAt",
+                          "type": "time.Time",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": []
+}

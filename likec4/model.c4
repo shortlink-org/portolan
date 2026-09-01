@@ -92,6 +92,38 @@ model {
       }
     }
   }
+  auth = context 'Authentication' {
+    description 'Who someone is, and whether they are still logged in. The only service in the estate that stores credentials, and the only one allowed to mint or revoke a session.'
+    style { color ctx3 }
+    auth = service 'Authentication & Sessions' {
+      description 'github.com/shortlink-org/portolan/examples/auth'
+      style { color ctx3 }
+      session = aggregate 'Session' {
+        SessionEnded = event 'SessionEnded' {
+          description 'SessionEnded is published when a session is deliberately ended.
+
+Published on the bus as `auth.SessionEnded`.'
+        }
+        SessionStarted = event 'SessionStarted' {
+          description 'SessionStarted is published on a successful login. ExpiresAt is on the event so a consumer can reason about the session\'s lifetime without asking auth again on every check.
+
+Published on the bus as `auth.SessionStarted`.'
+        }
+      }
+      user = aggregate 'User' {
+        PasswordChanged = event 'PasswordChanged' {
+          description 'PasswordChanged is published when a user\'s password is replaced. It says the password is different now; it does not carry the password, old or new, in any form.
+
+Published on the bus as `auth.PasswordChanged`.'
+        }
+        UserRegistered = event 'UserRegistered' {
+          description 'UserRegistered is published once per user, at registration. It carries the address because consumers routinely need to reach the person, and asking auth for it on every event would make the bus useless.
+
+Published on the bus as `auth.UserRegistered`.'
+        }
+      }
+    }
+  }
 
   shop.oms -> payments.ledger 'OrderPlaced' {
     style { color verified  line solid  head onormal }

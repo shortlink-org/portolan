@@ -1,15 +1,38 @@
-// Single entry point for catalog data. Validation happens here, at startup, so
-// a bad generator run is caught before anything is drawn.
+// Single entry point for catalog data.
 //
-// It is caught, not thrown: a validator that throws out of a module's top level
-// takes the whole bundle down and the reader gets a blank page and a line in a
-// console they are not looking at. So the failure is turned into a value, the
-// app falls back to an empty catalog so every module below still imports, and
-// the shell renders the error instead of the routes.
+// There is no master catalog. The app reads every source it can find, merges
+// them, and validates the union - in that order, because referential integrity
+// is a property of the whole estate and not of any one file. A service that
+// publishes facts about itself next to its own code is a source; so is a
+// hand-written file carrying the prose nobody can generate.
+//
+// Validation happens here, at startup, so a bad generator run is caught before
+// anything is drawn. It is caught, not thrown: a validator that throws out of a
+// module's top level takes the whole bundle down and the reader gets a blank
+// page and a line in a console they are not looking at. So the failure is
+// turned into a value, the app falls back to an empty catalog so every module
+// below still imports, and the shell renders the error instead of the routes.
 
-import raw from "../data/catalog.json";
 import { buildIndex, CatalogError, validateCatalog } from "./catalog";
 import type { Catalog, CatalogIndex } from "./catalog";
+import { mergeCatalogs } from "./merge";
+import type { CatalogSource, MergeConflict, SourceStamp } from "./merge";
+
+/**
+ * Where sources are looked for. The patterns are written out because
+ * import.meta.glob resolves at build time and needs literals - and because
+ * they are worth reading: the first is the estate's own files, the second is
+ * what each service publishes beside its code.
+ */
+const SOURCE_GLOBS = ["data/*.json", "examples/*/portolan/*.json"] as const;
+
+const modules: Record<string, unknown> = {
+  ...import.meta.glob("../data/*.json", { eager: true, import: "default" }),
+  ...import.meta.glob("../examples/*/portolan/*.json", {
+    eager: true,
+    import: "default",
+  }),
+};
 
 /** What the app draws when the catalog cannot be trusted: nothing. */
 const EMPTY: Catalog = {
@@ -21,22 +44,44 @@ const EMPTY: Catalog = {
   adrs: [],
 };
 
-function load(): { catalog: Catalog; error: CatalogError | null } {
+interface Loaded {
+  catalog: Catalog;
+  sources: SourceStamp[];
+  conflicts: MergeConflict[];
+  error: CatalogError | null;
+}
+
+function load(): Loaded {
+  const sources: CatalogSource[] = Object.entries(modules).map(
+    ([path, catalog]) => ({
+      // Vite keys a glob by its pattern-relative path; the leading ../ is an
+      // artefact of this file's location, not part of where anything lives.
+      path: path.replace(/^\.\.\//, ""),
+      catalog: catalog as Catalog,
+    }),
+  );
+
+  const merged = mergeCatalogs(sources);
+
   try {
     return {
-      catalog: validateCatalog(raw as unknown as Catalog),
+      catalog: validateCatalog(merged.catalog),
+      sources: merged.sources,
+      conflicts: merged.conflicts,
       error: null,
     };
   } catch (cause) {
-    if (cause instanceof CatalogError) return { catalog: EMPTY, error: cause };
-    // Anything else is a shape the validator never got far enough to name -
-    // a truncated file, a null where a list was expected. Same treatment.
-    return {
-      catalog: EMPTY,
-      error: new CatalogError(
-        cause instanceof Error ? cause.message : String(cause),
-      ),
-    };
+    const error =
+      cause instanceof CatalogError
+        ? cause
+        : // Anything else is a shape the validator never got far enough to
+          // name - a truncated file, a null where a list was expected. Same
+          // treatment.
+          new CatalogError(
+            cause instanceof Error ? cause.message : String(cause),
+          );
+
+    return { catalog: EMPTY, sources: merged.sources, conflicts: merged.conflicts, error };
   }
 }
 
@@ -46,10 +91,23 @@ export const catalog: Catalog = loaded.catalog;
 export const index: CatalogIndex = buildIndex(catalog);
 
 /**
+ * The sources the catalog was built from, newest first by nothing at all -
+ * they are in path order, which is the order the merge used.
+ */
+export const catalogSources: SourceStamp[] = loaded.sources;
+
+/**
+ * Sources disagreeing with each other. Not an error: two files both naming a
+ * context is normal, and both naming it differently is a fact about the estate
+ * that belongs on the Problems page rather than on a crash screen.
+ */
+export const catalogConflicts: MergeConflict[] = loaded.conflicts;
+
+/**
  * Where the catalog is read from, as a reader would type it. Empty states name
  * it, so it is written once here rather than spelled out on five pages.
  */
-export const CATALOG_PATH = "data/catalog.json";
+export const CATALOG_PATH = SOURCE_GLOBS.join(" · ");
 
 /** Non-null when the catalog failed validation; the shell renders it instead. */
 export const catalogError: CatalogError | null = loaded.error;

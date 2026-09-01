@@ -1,0 +1,67 @@
+openapi: 3.0.3
+
+info:
+  title: billing
+  version: "2.1.0"
+
+paths:
+  /v2/invoices:
+    post:
+      tags: [invoices]
+      operationId: raiseInvoice
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RaiseRequest"
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invoice"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /v2/health:
+    get:
+      responses:
+        "200":
+          description: fine
+
+components:
+  responses:
+    BadRequest:
+      description: The body does not parse.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+  schemas:
+    RaiseRequest:
+      type: object
+      required: [customerId]
+      properties:
+        customerId:
+          type: string
+          format: uuid
+          description: Who is being billed.
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/Line"
+    Line:
+      type: object
+      properties:
+        amountMinor:
+          type: integer
+          format: int64
+    Invoice:
+      type: object
+      properties:
+        id:
+          type: string
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
