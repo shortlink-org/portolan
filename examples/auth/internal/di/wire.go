@@ -25,6 +25,7 @@ func New() (App, error) {
 	wire.Build(
 		provider.Settings,
 		provider.Storage,
+		provider.Cache,
 		provider.Ambient,
 		provider.Repository,
 		provider.Outbox,

@@ -1,9 +1,12 @@
-# The database the service runs against locally.
+# The database the service runs against locally, and the cache it may use.
 #
 #   docker compose up -d
 #   AUTH_DATABASE_URL=postgres://auth:auth@localhost:5432/auth?sslmode=disable go run ./cmd/auth
 #
-# The tests do not use this: they start their own container through
+# The redis here is optional in the way the cache is: without CACHE_TYPE=redis
+# the service never opens it, and everything works, more slowly.
+#
+# The tests do not use either of these: they start their own containers through
 # testcontainers, so a test run cannot be affected by whatever state a local
 # database happens to be in.
 services:
@@ -27,6 +30,19 @@ services:
       # recommended mount point up one level so that pg_upgrade --link can work
       # across it; the image refuses to start against the old path.
       - pgdata:/var/lib/postgresql
+
+  redis:
+    image: redis:8-alpine
+    ports:
+      - "6379:6379"
+    # No volume, and that is the point rather than an omission: everything in
+    # here can be worked out again from the database, and a cache that survived
+    # a restart would be a cache nobody ever proves they can lose.
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
 
 volumes:
   pgdata:

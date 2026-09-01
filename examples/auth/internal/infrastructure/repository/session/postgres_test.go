@@ -12,6 +12,7 @@ import (
 	"github.com/shortlink-org/portolan/examples/auth/internal/domain/session/vo/token"
 	repo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/session"
 	"github.com/shortlink-org/portolan/examples/auth/internal/pkg/postgrestest"
+	"github.com/shortlink-org/portolan/examples/auth/internal/pkg/redistest"
 )
 
 var now = time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
@@ -19,6 +20,7 @@ var now = time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
 func TestMain(m *testing.M) {
 	code := m.Run()
 	postgrestest.Stop()
+	redistest.Stop()
 	os.Exit(code)
 }
 

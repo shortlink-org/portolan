@@ -69,12 +69,18 @@ func New() (App, error) {
 	change_passwordUseCase := change_password.New(postgres, v)
 	sessionPublisher := session.NewPublisher(publisher)
 	sessionPostgres := session.NewPostgres(router, unitOfWork, sessionPublisher)
-	validateUseCase := validate.New(sessionPostgres, v)
+	cache, err := provider.ProvideCache(config)
+	if err != nil {
+		return App{}, err
+	}
+	duration := provider.ProvideCacheTTL(config)
+	repository := provider.ProvideSessionRepository(sessionPostgres, cache, duration, v)
+	validateUseCase := validate.New(repository, v)
 	users := user2.NewUsers(useCase, getUseCase, change_passwordUseCase, validateUseCase)
 	authenticateUseCase := authenticate.New(postgres)
 	authenticator := provider.ProvideAuthenticator(authenticateUseCase)
-	loginUseCase := login.New(sessionPostgres, authenticator, v, v2)
-	logoutUseCase := logout.New(sessionPostgres, v)
+	loginUseCase := login.New(repository, authenticator, v, v2)
+	logoutUseCase := logout.New(repository, v)
 	sessions := session2.NewSessions(loginUseCase, logoutUseCase, validateUseCase)
 	server := http.NewServer(users, sessions)
 	handler := http.Router(server)
@@ -83,7 +89,7 @@ func New() (App, error) {
 	if err != nil {
 		return App{}, err
 	}
-	end_after_credential_changeUseCase := end_after_credential_change.New(sessionPostgres, v)
+	end_after_credential_changeUseCase := end_after_credential_change.New(repository, v)
 	revokeSessionsOnPasswordChange := policy.New(end_after_credential_changeUseCase)
 	relay, err := provider.ProvideRelay(store, logger, client, revokeSessionsOnPasswordChange)
 	if err != nil {
@@ -93,6 +99,7 @@ func New() (App, error) {
 		Handler: handler,
 		Driver:  postgresStore,
 		Relay:   relay,
+		Cache:   cache,
 	}
 	return app, nil
 }
