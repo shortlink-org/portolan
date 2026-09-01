@@ -1,13 +1,13 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { ArrowUpDown } from "lucide-react";
-import { catalog } from "../data";
+import { CATALOG_PATH, catalog } from "../data";
 import { flowContexts, walkSteps } from "../catalog";
 import { contextName, contextVar } from "../lib/context-color";
 import { staggerStyle } from "../lib/motion";
 import { Ident } from "../components/Ident";
 import { RowActions } from "../components/RowActions";
-import { Empty } from "../components/PageHeader";
+import { Blank, Empty } from "../components/PageHeader";
 import { ContextPill, ProvenanceBadge } from "../components/primitives";
 
 type Sort = "contexts" | "name" | "steps";
@@ -59,15 +59,25 @@ export function FlowIndex() {
       return next;
     });
 
+  // Nothing to filter and nothing to sort: on a first catalog the controls
+  // outnumber the rows, and a segmented control over an empty list reads as a
+  // page that has broken rather than one that has not been filled yet.
+  const bare = catalog.flows.length === 0;
+
   return (
     <div className="h-full overflow-y-auto p-gutter">
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-lg font-semibold">Flows</h1>
-        <span className="mono text-muted">
-          {rows.length} of {catalog.flows.length}
-        </span>
+        {bare ? null : (
+          <span className="mono text-muted">
+            {rows.length} of {catalog.flows.length}
+          </span>
+        )}
 
-        <div className="ml-auto flex flex-wrap items-center gap-2">
+        <div
+          className="ml-auto flex flex-wrap items-center gap-2"
+          hidden={bare}
+        >
           {/* One filter over one list, so one border round it. A pressed
               member keeps its own context colour - that is the thing being
               filtered, and it must not collapse into a single accent. */}
@@ -118,7 +128,15 @@ export function FlowIndex() {
         </div>
       </div>
 
-      {rows.length === 0 ? (
+      {bare ? (
+        <div className="mt-section">
+          <Blank where={CATALOG_PATH}>
+            No flows yet — a flow is one run across the estate, reconstructed
+            from an integration test or written down by hand. Either way it
+            arrives in <span className="text-ink">flows[]</span>.
+          </Blank>
+        </div>
+      ) : rows.length === 0 ? (
         <div className="mt-section">
           <Empty>no flow crosses every context you have picked</Empty>
         </div>

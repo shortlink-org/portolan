@@ -7,7 +7,7 @@ import { adrsForService, isCurrent } from "../lib/adr";
 import { AdrRow } from "../components/AdrRow";
 import { EVENT_ANCHOR, SERVICE_ANCHOR, paths, servicePath } from "../routes";
 import { Markdown } from "../components/Markdown";
-import { middleTruncate } from "../lib/format";
+import { middleTruncate, plural } from "../lib/format";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
 import { Ident } from "../components/Ident";
 import { KindIcon } from "../components/kind";
@@ -17,6 +17,7 @@ import {
   ProvenanceBadge,
   StatusChip,
 } from "../components/primitives";
+import { WhatLinksHere } from "../components/WhatLinksHere";
 import { NotFound } from "./NotFound";
 import { C4View } from "../likec4/C4View";
 import { serviceViewId } from "../likec4/ids";
@@ -93,13 +94,15 @@ export function ServicePage() {
             href={`#${SERVICE_ANCHOR.aggregates}`}
             className="rounded-control hover:text-ink"
           >
-            <span className="tnum">{service.aggregates.length}</span> aggregates
+            <span className="tnum">{service.aggregates.length}</span>{" "}
+            {plural(service.aggregates.length, "aggregate")}
           </a>
           <a
             href={`#${SERVICE_ANCHOR.events}`}
             className="rounded-control hover:text-ink"
           >
-            <span className="tnum">{events.length}</span> events
+            <span className="tnum">{events.length}</span>{" "}
+            {plural(events.length, "event")}
           </a>
         </div>
 
@@ -243,6 +246,18 @@ export function ServicePage() {
                 </div>
               )}
             </section>
+
+            {/* Who calls this service is nowhere else on the page: `provides`
+                and `consumes` both point outwards. Flows and decisions have
+                tabs of their own, so they are counted here, not repeated. */}
+            <WhatLinksHere
+              target={{ kind: "service", id: service.id }}
+              elsewhere={{
+                flow: { href: "?tab=flows", label: "the flows tab" },
+                adr: { href: "?tab=decisions", label: "the decisions tab" },
+              }}
+              empty="nothing in the catalog calls this service or listens to it"
+            />
           </>
         </TabPanel>
 

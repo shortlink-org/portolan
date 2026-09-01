@@ -75,6 +75,43 @@ paths:
         "500":
           $ref: "#/components/responses/Internal"
 
+  /v1/users/me/password:
+    post:
+      tags: [users]
+      operationId: changePassword
+      summary: Replace the password of the signed-in user
+      description: |
+        The current password is required even though the caller is already
+        signed in. Without it a stolen token is a stolen account.
+
+        Every other session of the user ends. The one this call was made from
+        does not, so the person is not signed out of the device in their hand.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/BearerToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordRequest"
+      responses:
+        "204":
+          description: The password was replaced.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: The user was changed by somebody else; read it again and retry.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/Internal"
+
   /v1/sessions:
     post:
       tags: [sessions]
@@ -190,6 +227,19 @@ components:
           type: string
           format: email
         password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 32
+
+    ChangePasswordRequest:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+          format: password
+        newPassword:
           type: string
           format: password
           minLength: 8

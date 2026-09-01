@@ -41,5 +41,6 @@ func (uc *UseCase) Handle(ctx context.Context, in dto.Input) (dto.Output, error)
 	return dto.Output{
 		UserID:    sess.UserID,
 		ExpiresAt: sess.ExpiresAt,
+		SessionID: sess.ID,
 	}, nil
 }

@@ -29,6 +29,12 @@ func status(err error) (code int, message string) {
 		// here at all. Saying which rule a token broke would let an attacker
 		// sort real tokens from invented ones.
 		return 401, "unauthorized"
+	case errors.Is(err, session.ErrConflict):
+		// The first answer here that is not 401. It says nothing about whether
+		// the session exists - a conflict is only reached after the session was
+		// found and its token accepted, so admitting it discloses nothing that
+		// the 200 on the way in did not.
+		return 409, "the session was changed by somebody else; retry"
 	default:
 		return 500, "internal error"
 	}

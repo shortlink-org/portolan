@@ -15,6 +15,7 @@ import { useMemo } from "react";
 import { Link } from "react-router";
 import { ArrowRight, ArrowLeftRight, Boxes, Minus } from "lucide-react";
 import { catalog } from "../data";
+import { plural } from "../lib/format";
 import { PATTERN_LABEL, PATTERN_MEANING, contextMap } from "../lib/context-map";
 import type {
   ContextDependency,
@@ -328,8 +329,8 @@ export function ContextMap() {
       <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b px-gutter py-3 border-line">
         <h1 className="text-lg font-semibold">Context map</h1>
         <span className="mono text-muted">
-          {catalog.contexts.length} domains · {wired} of {relations.length}{" "}
-          pairs joined
+          {catalog.contexts.length} {plural(catalog.contexts.length, "domain")} ·{" "}
+          {wired} of {relations.length} {plural(relations.length, "pair")} joined
         </span>
 
         {/* Two legends, and they answer different questions: what the arrow

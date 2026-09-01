@@ -7,13 +7,14 @@ import { markdownOutline } from "../lib/derive";
 import { KIND_LABEL, KIND_PLURAL } from "../lib/kinds";
 import type { LeafKind } from "../lib/kinds";
 import { KindIcon } from "../components/kind";
-import { AGGREGATE_ANCHOR, EVENT_ANCHOR, paths } from "../routes";
+import { AGGREGATE_ANCHOR, EVENT_ANCHOR, LINKS_HERE, paths } from "../routes";
 import { Markdown } from "../components/Markdown";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
 import { Ident } from "../components/Ident";
 import { RowActions } from "../components/RowActions";
 import { Toc } from "../components/Toc";
 import type { TocItem } from "../components/Toc";
+import { WhatLinksHere } from "../components/WhatLinksHere";
 import { NotFound } from "./NotFound";
 
 /**
@@ -210,6 +211,7 @@ export function AggregatePage() {
     { id: AGGREGATE_ANCHOR.events, label: "Events" },
     { id: AGGREGATE_ANCHOR.commands, label: "Commands" },
     { id: AGGREGATE_ANCHOR.queries, label: "Queries" },
+    { id: LINKS_HERE, label: "What links here" },
   ];
 
   const voPath = (block: Block) =>
@@ -389,6 +391,13 @@ export function AggregatePage() {
               <OperationList kind="query" operations={queries} />
             </div>
           </div>
+
+          {/* An aggregate is reached through its events and nothing else, so
+              every row here arrived by way of one, and says which. */}
+          <WhatLinksHere
+            target={{ kind: "aggregate", id: aggregate.id }}
+            empty="nothing outside this aggregate names one of its events"
+          />
         </div>
 
         <Toc items={toc} label="Sections of this aggregate" title="Outline" />

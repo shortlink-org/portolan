@@ -9,30 +9,27 @@
 package di
 
 import (
-	"net/http"
-
 	"github.com/google/wire"
 
 	"github.com/shortlink-org/portolan/examples/auth/internal/di/provider"
 )
 
-//go:generate go run github.com/google/wire/cmd/wire@v0.7.0 ./...
-
-// New assembles the whole service and returns the HTTP handler at the top of
-// it.
+// New assembles the whole service.
 //
-// Everything below the handler - repositories, buses, use cases, the adapter
-// between the two domains - is reachable only through the graph wire builds
-// from these sets. A missing provider is a generation-time error rather than a
-// nil dereference on the first request.
-func New() http.Handler {
+// Everything below the handler - repositories, buses, use cases, policies, the
+// adapter between the two domains - is reachable only through the graph wire
+// builds from these sets. A missing provider is a generation-time error rather
+// than a nil dereference on the first request.
+func New() App {
 	wire.Build(
 		provider.Ambient,
 		provider.Repository,
 		provider.Bus,
 		provider.UseCase,
 		provider.Authenticator,
+		provider.Policy,
 		provider.Transport,
+		wire.Struct(new(App), "*"),
 	)
-	return nil
+	return App{}
 }

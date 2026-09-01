@@ -1,11 +1,13 @@
 import { useCallback, useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
 import { ChevronDown, ChevronRight, Plus } from "lucide-react";
-import { catalog, index } from "../data";
+import { catalog } from "../data";
+import { plural } from "../lib/format";
 import type { Field } from "../catalog";
-import { addedFields, stepsReferencing } from "../lib/derive";
+import { addedFields } from "../lib/derive";
+import { backlinkCount } from "../lib/backlinks";
 import { ctxStyle } from "../lib/context-color";
-import { EVENT_ANCHOR, paths, servicePath } from "../routes";
+import { EVENT_ANCHOR, LINKS_HERE, paths, servicePath } from "../routes";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
 import { Select } from "../components/Select";
 import { Ident } from "../components/Ident";
@@ -15,6 +17,7 @@ import type { ColumnSpec } from "../table/types";
 import { Toc } from "../components/Toc";
 import type { TocItem } from "../components/Toc";
 import { StatusChip } from "../components/primitives";
+import { useBacklinks, WhatLinksHere } from "../components/WhatLinksHere";
 import { NotFound } from "./NotFound";
 import { FocusedEventGraphPane } from "../graph/FocusedEventGraph";
 
@@ -150,10 +153,9 @@ export function EventPage() {
         : new Set<string>(),
     [event, selected],
   );
-  const appearances = useMemo(
-    () => (event ? stepsReferencing(catalog, event.id) : []),
-    [event],
-  );
+  // Flows, decisions and consumers all point AT this event, so they are one
+  // question with one answer; the section at the bottom is where it is given.
+  const links = useBacklinks({ kind: "event", id: event?.id ?? "" });
 
   const toggle = useCallback(
     (name: string) =>
@@ -176,17 +178,14 @@ export function EventPage() {
     return <NotFound kind="Event" id={eventSlug} />;
   }
 
-  const decisions = index.adrsByEvent.get(event.id) ?? [];
-
-  // The five things there are to know about an event, in the order a reader
-  // asks them: what shape is it, how did it get that shape, who listens, where
-  // does it happen, and what was decided about it.
+  // The four things there are to know about an event, in the order a reader
+  // asks them: what shape is it, how did it get that shape, who listens, and
+  // what else in the estate names it.
   const toc: TocItem[] = [
     { id: EVENT_ANCHOR.schema, label: "Schema" },
     { id: EVENT_ANCHOR.versions, label: "Versions" },
     { id: EVENT_ANCHOR.consumers, label: "Consumers" },
-    { id: EVENT_ANCHOR.flows, label: "Flows" },
-    { id: EVENT_ANCHOR.decisions, label: "Decisions" },
+    { id: LINKS_HERE, label: "What links here" },
   ];
 
   /** Every count on this page opens the section that holds what it counted. */
@@ -241,27 +240,22 @@ export function EventPage() {
           <Count
             n={selected.fields.length}
             anchor={EVENT_ANCHOR.schema}
-            unit="fields"
+            unit={plural(selected.fields.length, "field")}
           />
           <Count
             n={event.versions.length}
             anchor={EVENT_ANCHOR.versions}
-            unit={event.versions.length === 1 ? "version" : "versions"}
+            unit={plural(event.versions.length, "version")}
           />
           <Count
             n={event.consumers.length}
             anchor={EVENT_ANCHOR.consumers}
-            unit={event.consumers.length === 1 ? "consumer" : "consumers"}
+            unit={plural(event.consumers.length, "consumer")}
           />
           <Count
-            n={appearances.length}
-            anchor={EVENT_ANCHOR.flows}
-            unit={appearances.length === 1 ? "flow step" : "flow steps"}
-          />
-          <Count
-            n={decisions.length}
-            anchor={EVENT_ANCHOR.decisions}
-            unit={decisions.length === 1 ? "decision" : "decisions"}
+            n={backlinkCount(links)}
+            anchor={LINKS_HERE}
+            unit={plural(backlinkCount(links), "link here", "links here")}
           />
         </div>
       </PageHeader>
@@ -274,7 +268,8 @@ export function EventPage() {
               anchor={EVENT_ANCHOR.schema}
               right={
                 <span className="mono text-muted">
-                  {selected.fields.length} fields · {selected.version}
+                  {selected.fields.length}{" "}
+                  {plural(selected.fields.length, "field")} · {selected.version}
                 </span>
               }
             >
@@ -436,65 +431,19 @@ export function EventPage() {
             </div>
           </section>
 
-          {/* --- Flows -------------------------------------------------- */}
-          <section id={EVENT_ANCHOR.flows} className="mt-section max-w-table">
-            <SectionTitle anchor={EVENT_ANCHOR.flows}>Flows</SectionTitle>
-            {appearances.length === 0 ? (
-              <Empty>no flow has been charted through this event</Empty>
-            ) : (
-              <div className="flex flex-col gap-1" data-nav-list>
-                {appearances.map((ref) => (
-                  <div
-                    key={`${ref.flow.slug}-${ref.stepId}`}
-                    className="row mono gap-2"
-                  >
-                    <Link
-                      to={paths.flowStep(ref.flow.slug, ref.stepId)}
-                      data-nav-item
-                      className="rounded-control text-accent"
-                    >
-                      {ref.flow.slug}
-                    </Link>
-                    <span className="text-muted">
-                      step {ref.number} · #{ref.stepId}
-                    </span>
-                    <RowActions copy={`${ref.flow.slug}/${ref.stepId}`} />
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-
-          {/* --- Decisions ---------------------------------------------- */}
-          <section
-            id={EVENT_ANCHOR.decisions}
-            className="mt-section max-w-table"
-          >
-            <SectionTitle anchor={EVENT_ANCHOR.decisions}>
-              Decisions
-            </SectionTitle>
-            {decisions.length === 0 ? (
-              <Empty>
-                nothing has been decided about this event on the record
-              </Empty>
-            ) : (
-              <div className="flex flex-col gap-1" data-nav-list>
-                {decisions.map((adr) => (
-                  <div key={adr.id} className="row gap-2">
-                    <span className="mono shrink-0 text-muted">{adr.id}</span>
-                    <Link
-                      to={paths.adr(adr.slug)}
-                      data-nav-item
-                      className="min-w-0 truncate rounded-control"
-                    >
-                      {adr.title}
-                    </Link>
-                    <RowActions copy={adr.id} />
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
+          {/* --- What links here -------------------------------------- */}
+          {/* Consumers keep their own section: a row can carry the name and
+              the status, but not the note or the picture beside them. */}
+          <WhatLinksHere
+            target={{ kind: "event", id: event.id }}
+            elsewhere={{
+              service: {
+                href: `#${EVENT_ANCHOR.consumers}`,
+                label: "Consumers",
+              },
+            }}
+            empty="nothing in the catalog names this event — no flow, no decision, nobody listening"
+          />
         </div>
 
         <Toc items={toc} label="Sections of this event" />

@@ -7,10 +7,10 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { catalog } from "../data";
-import { problems } from "../lib/derive";
+import { edgeCount, problems } from "../lib/derive";
 import type { Problem } from "../lib/derive";
 import { contextVar, ctxStyle } from "../lib/context-color";
-import { absoluteTime, relativeTime } from "../lib/format";
+import { absoluteTime, plural, relativeTime } from "../lib/format";
 import { staggerStyle } from "../lib/motion";
 import { KindIcon } from "../components/kind";
 import { Ident } from "../components/Ident";
@@ -25,6 +25,11 @@ const KIND_NOTE: Record<Problem["kind"], string> = {
 export function Problems() {
   const [active, setActive] = useState<Set<string>>(new Set());
   const all = useMemo(() => problems(catalog), []);
+  // How many edges there were to resolve at all. Zero problems out of zero
+  // edges is not a clean bill of health - nothing crossed a boundary, so
+  // nothing was checked, and saying "every edge resolved" there is a green
+  // tick the catalog has not earned.
+  const edges = useMemo(() => edgeCount(catalog), []);
   const rows = useMemo(
     () => (active.size === 0 ? all : all.filter((p) => active.has(p.context))),
     [all, active],
@@ -45,9 +50,13 @@ export function Problems() {
     <div className="h-full overflow-y-auto p-gutter">
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-lg font-semibold">Problems</h1>
-        <span className="mono text-muted">
-          {rows.length} of {all.length}
-        </span>
+        {/* "0 of 0" is a ratio of nothing to nothing; the line below says it
+            in words. */}
+        {all.length > 0 ? (
+          <span className="mono text-muted">
+            {rows.length} of {all.length}
+          </span>
+        ) : null}
 
         {all.length > 0 ? (
           <div
@@ -88,7 +97,7 @@ export function Problems() {
       </div>
 
       {all.length === 0 ? (
-        <ClearSkies />
+        <ClearSkies checked={edges} />
       ) : (
         <div className="mt-section max-w-table">
           <SectionTitle
@@ -119,10 +128,12 @@ export function Problems() {
 }
 
 /** The one line the reader wants to see. Nothing else earns the space. */
-function ClearSkies() {
+function ClearSkies({ checked }: { checked: number }) {
   return (
     <div className="empty mt-section max-w-table">
-      Clear skies — every edge resolved.
+      {checked === 0
+        ? "Nothing to resolve yet — no service calls another, and no event has a consumer."
+        : `Clear skies — all ${checked} ${plural(checked, "edge")} resolved.`}
       <span className="ml-2" title={absoluteTime(catalog.generatedAt)}>
         last checked {relativeTime(catalog.generatedAt)}
       </span>

@@ -32,6 +32,7 @@ import {
 import { Ident } from "../components/Ident";
 import { Select } from "../components/Select";
 import { ContextPill, ProvenanceBadge } from "../components/primitives";
+import { WhatLinksHere } from "../components/WhatLinksHere";
 
 /**
  * A switch inside the view's segmented control. It carries no border of its
@@ -267,6 +268,14 @@ export function FlowDetail() {
         </div>
 
         <p className="mt-2 max-w-prose text-muted">{flow.summary}</p>
+
+        {/* The same incoming links every other entity ends with, as one row:
+            the rail and the canvas below take the whole height, so there is no
+            bottom of the page to put a section on. */}
+        <WhatLinksHere
+          target={{ kind: "flow", id: flow.slug }}
+          variant="line"
+        />
 
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <div className="flex flex-wrap gap-1">

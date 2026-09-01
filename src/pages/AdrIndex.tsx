@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { catalog } from "../data";
+import { CATALOG_PATH, catalog } from "../data";
 import type { Adr } from "../catalog";
 import { scopeLabel, sortAdrs } from "../lib/adr";
 import {
@@ -7,7 +7,7 @@ import {
   AdrScopePill,
   AdrStatusChip,
 } from "../components/primitives";
-import { Empty } from "../components/PageHeader";
+import { Blank, Empty } from "../components/PageHeader";
 import { RowActions } from "../components/RowActions";
 import { DataTable } from "../table/DataTable";
 import type { ColumnSpec } from "../table/types";
@@ -70,28 +70,43 @@ const COLUMNS: ColumnSpec<Adr>[] = [
 export function AdrIndex() {
   const rows = useMemo(() => sortAdrs(catalog.adrs), []);
 
+  // An empty table with a header row is a table that looks broken. Before the
+  // first ADR is written there is nothing here to narrow, so the page says so
+  // and says where the records would be read from.
+  const bare = rows.length === 0;
+
   return (
     <div className="h-full overflow-y-auto p-gutter">
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-lg font-semibold">Decisions</h1>
       </div>
 
-      <div className="mt-section max-w-table">
-        <DataTable
-          tableId="adrs"
-          caption="Decision records"
-          columns={COLUMNS}
-          rows={rows}
-          rowId={(adr) => adr.id}
-          /* The newest decision is the one being looked for; the rest is
-             history, and history reads backwards. */
-          defaultSort={[{ id: "number", desc: true }]}
-          sortInUrl
-          rowLink={(adr) => paths.adr(adr.slug)}
-          rowActions={(adr) => <RowActions copy={adr.id} label={adr.id} />}
-          empty={<Empty>nothing on the record matches this filter</Empty>}
-        />
-      </div>
+      {bare ? (
+        <div className="mt-section">
+          <Blank where={CATALOG_PATH}>
+            Nothing on the record yet — an ADR is a decision as it was made,
+            frozen. They are read from the repositories’ markdown and land in{" "}
+            <span className="text-ink">adrs[]</span>.
+          </Blank>
+        </div>
+      ) : (
+        <div className="mt-section max-w-table">
+          <DataTable
+            tableId="adrs"
+            caption="Decision records"
+            columns={COLUMNS}
+            rows={rows}
+            rowId={(adr) => adr.id}
+            /* The newest decision is the one being looked for; the rest is
+               history, and history reads backwards. */
+            defaultSort={[{ id: "number", desc: true }]}
+            sortInUrl
+            rowLink={(adr) => paths.adr(adr.slug)}
+            rowActions={(adr) => <RowActions copy={adr.id} label={adr.id} />}
+            empty={<Empty>nothing on the record matches this filter</Empty>}
+          />
+        </div>
+      )}
     </div>
   );
 }

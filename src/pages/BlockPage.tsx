@@ -2,15 +2,13 @@
 // object differ in whether identity matters, not in what there is to say about
 // them, so they share a page and are told apart by the header and the icon.
 
-import { useMemo } from "react";
 import { Link, useParams } from "react-router";
 import { catalog } from "../data";
 import { blockFields, rootEntity } from "../catalog";
 import type { Block, BlockKind, Field } from "../catalog";
-import { usagesOfDef } from "../lib/derive";
-import type { DefUsage } from "../lib/derive";
+import { backlinkCount } from "../lib/backlinks";
+import { plural } from "../lib/format";
 import { KIND_LABEL, KIND_PLURAL } from "../lib/kinds";
-import type { Kind } from "../lib/kinds";
 import { KindIcon } from "../components/kind";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
 import { Ident } from "../components/Ident";
@@ -18,38 +16,9 @@ import { DataTable } from "../table/DataTable";
 import type { ColumnSpec } from "../table/types";
 import { Toc } from "../components/Toc";
 import type { TocItem } from "../components/Toc";
-import {
-  BLOCK_ANCHOR,
-  blockPath,
-  eventPath,
-  paths,
-  servicePath,
-} from "../routes";
+import { BLOCK_ANCHOR, LINKS_HERE, blockPath, paths } from "../routes";
+import { useBacklinks, WhatLinksHere } from "../components/WhatLinksHere";
 import { NotFound } from "./NotFound";
-
-const USAGE_KIND: Record<DefUsage["kind"], Kind | null> = {
-  event: "event",
-  entity: "entity",
-  vo: "vo",
-  rpc: "service",
-  def: null,
-};
-
-function usagePath(usage: DefUsage): string | null {
-  switch (usage.kind) {
-    case "event":
-      return eventPath(usage.id);
-    case "entity":
-    case "vo":
-      return blockPath(usage.id);
-    case "rpc":
-      return servicePath(usage.owner);
-    case "def":
-      // Shared types have no page of their own; they are only ever seen
-      // through the blocks that name them.
-      return null;
-  }
-}
 
 /**
  * The shape of a value object or an entity. Three columns and usually few
@@ -125,13 +94,9 @@ export function BlockPage({ kind }: { kind: BlockKind }) {
     (kind === "vo" ? aggregate?.valueObjects : aggregate?.entities) ?? [];
   const block = list.find((b) => b.slug === blockSlug);
 
-  const usages = useMemo(
-    () =>
-      block?.ref
-        ? usagesOfDef(catalog, block.ref, block.id)
-        : ([] as DefUsage[]),
-    [block],
-  );
+  // "Used in" was this page's own answer to a question every page has; it is
+  // the shared section now, and the block's shape is what it walks.
+  const links = useBacklinks({ kind, id: block?.id ?? "" });
 
   if (!context || !service || !aggregate || !block) {
     return <NotFound kind={KIND_LABEL[kind]} id={blockSlug} />;
@@ -139,8 +104,8 @@ export function BlockPage({ kind }: { kind: BlockKind }) {
 
   const toc: TocItem[] = [
     { id: BLOCK_ANCHOR.shape, label: "Shape" },
-    { id: BLOCK_ANCHOR.usedIn, label: "Used in" },
     { id: BLOCK_ANCHOR.siblings, label: "Siblings" },
+    { id: LINKS_HERE, label: "What links here" },
   ];
 
   const fields = blockFields(catalog, block);
@@ -191,11 +156,11 @@ export function BlockPage({ kind }: { kind: BlockKind }) {
           </a>
           {block.ref ? (
             <a
-              href={`#${BLOCK_ANCHOR.usedIn}`}
+              href={`#${LINKS_HERE}`}
               className="rounded-control hover:text-ink"
             >
-              <span className="tnum">{usages.length}</span>{" "}
-              {usages.length === 1 ? "reference" : "references"}
+              <span className="tnum">{backlinkCount(links)}</span>{" "}
+              {plural(backlinkCount(links), "reference")}
             </a>
           ) : null}
         </div>
@@ -218,86 +183,6 @@ export function BlockPage({ kind }: { kind: BlockKind }) {
               <ShapeTable id={block.id} fields={fields} />
             )}
           </section>
-
-          <div className="mt-section max-w-prose" id={BLOCK_ANCHOR.usedIn}>
-            <SectionTitle
-              anchor={BLOCK_ANCHOR.usedIn}
-              right={
-                block.ref ? (
-                  <span className="mono text-muted">
-                    {usages.length} references
-                  </span>
-                ) : null
-              }
-            >
-              Used in
-            </SectionTitle>
-            {!block.ref ? (
-              <Empty>
-                an inline shape is used only here — give it a shared type to
-                track it across the catalog
-              </Empty>
-            ) : usages.length === 0 ? (
-              <Empty>nothing else names {block.ref}</Empty>
-            ) : (
-              <div className="flex flex-col gap-1" data-nav-list>
-                {usages.map((usage) => {
-                  const to = usagePath(usage);
-                  const icon = USAGE_KIND[usage.kind];
-                  const body = (
-                    <>
-                      {icon ? <KindIcon kind={icon} /> : null}
-                      <span
-                        className="mono"
-                        style={
-                          usage.kind === "event"
-                            ? { color: "var(--kind-event)" }
-                            : undefined
-                        }
-                      >
-                        {usage.name}
-                      </span>
-                      <span className="mono truncate text-muted">
-                        {usage.owner}
-                      </span>
-                      <span className="mono ml-auto flex shrink-0 gap-1.5 text-muted">
-                        {usage.fields.length > 0 ? (
-                          <span title="fields that carry this type">
-                            {usage.fields.join(", ")}
-                          </span>
-                        ) : (
-                          <span>same type</span>
-                        )}
-                        {usage.versions && usage.versions.length > 0 ? (
-                          <span className="rounded-[4px] border px-1 border-line">
-                            {usage.versions.join(" ")}
-                          </span>
-                        ) : null}
-                      </span>
-                    </>
-                  );
-                  return to ? (
-                    <Link
-                      key={`${usage.kind}:${usage.id}`}
-                      to={to}
-                      data-nav-item
-                      className="row gap-2 px-3 py-2"
-                    >
-                      {body}
-                    </Link>
-                  ) : (
-                    <div
-                      key={`${usage.kind}:${usage.id}`}
-                      className="flex items-center gap-2 rounded-control border px-3 py-2 border-line"
-                      title="shared type — no page of its own"
-                    >
-                      {body}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
 
           <div className="mt-section max-w-prose" id={BLOCK_ANCHOR.siblings}>
             <SectionTitle anchor={BLOCK_ANCHOR.siblings}>Siblings</SectionTitle>
@@ -327,6 +212,19 @@ export function BlockPage({ kind }: { kind: BlockKind }) {
               {KIND_PLURAL[kind]} of {aggregate.id}
             </div>
           </div>
+
+          {/* Two blocks are the same type only if they name the same def, so
+              this walks the shared type rather than the name: a Money here and
+              a Money there are one thing or they are two, and the catalog has
+              already said which. */}
+          <WhatLinksHere
+            target={{ kind, id: block.id }}
+            empty={
+              block.ref
+                ? `nothing else names ${block.ref}`
+                : "an inline shape is used only here — give it a shared type to track it across the catalog"
+            }
+          />
         </div>
 
         <Toc items={toc} label={`Sections of this ${KIND_LABEL[kind]}`} />
