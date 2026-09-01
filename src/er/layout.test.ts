@@ -94,7 +94,7 @@ describe("the wide estate", () => {
   });
 
   it("is the size it claims to be", () => {
-    expect(wide.stores).toHaveLength(30);
+    expect(wide.stores).toHaveLength(40);
     const tables = (wide.stores ?? []).reduce(
       (n, s) => n + s.tables.length,
       0,

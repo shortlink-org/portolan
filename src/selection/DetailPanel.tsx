@@ -835,6 +835,48 @@ function FlowStepBody({
 }
 
 /**
+ * One bundled edge, opened.
+ *
+ * Compact mode trades every event label for a number, and this is where the
+ * number is spent: the count on the line is the length of this list, and the
+ * list is the only place the reader can find out which events it stood for.
+ */
+function BundleBody({
+  resolved,
+}: {
+  resolved: Extract<Resolved, { kind: "bundle" }>;
+}) {
+  const { bundle } = resolved;
+  return (
+    <>
+      <Label>Publisher</Label>
+      <SelectLink id={bundle.from}>{bundle.from}</SelectLink>
+
+      <Label>Consumer</Label>
+      {resolved.to ? (
+        <SelectLink id={bundle.to}>{bundle.to}</SelectLink>
+      ) : (
+        <div className="mono text-muted" title="not in the catalog">
+          {bundle.to} — not in catalog
+        </div>
+      )}
+
+      <Label>
+        {bundle.events.length} {bundle.events.length === 1 ? "event" : "events"}
+      </Label>
+      {bundle.events.map((event) => (
+        <Row key={event.id}>
+          <SelectLink id={event.id}>{event.name}</SelectLink>
+          <span className="ml-auto shrink-0">
+            <StatusChip status={event.status} />
+          </span>
+        </Row>
+      ))}
+    </>
+  );
+}
+
+/**
  * A node the model draws but the catalog has never heard of — an external
  * participant, most often. Saying so beats saying nothing.
  */
@@ -977,7 +1019,9 @@ export function DetailPanel() {
                     ? (resolved.step.label ??
                       resolved.step.ref ??
                         resolved.step.kind)
-                      : selection.id}
+                      : resolved?.kind === "bundle"
+                        ? `${resolved.bundle.from} → ${resolved.bundle.to}`
+                        : selection.id}
           </span>
           {resolved?.kind === "event" ||
           resolved?.kind === "service" ||
@@ -992,7 +1036,11 @@ export function DetailPanel() {
             </span>
           ) : null}
         </div>
-        {resolved?.kind !== "flow-step" && resolved !== null ? (
+        {/* A synthetic id is not something a reader can paste anywhere, so a
+            step and a bundle keep theirs to themselves. */}
+        {resolved !== null &&
+        resolved.kind !== "flow-step" &&
+        resolved.kind !== "bundle" ? (
           <Ident block value={selection.id} className="mt-0.5 text-muted" />
         ) : null}
 
@@ -1025,6 +1073,8 @@ export function DetailPanel() {
           <ViewBody resolved={resolved} />
         ) : resolved.kind === "column" ? (
           <ColumnBody resolved={resolved} />
+        ) : resolved.kind === "bundle" ? (
+          <BundleBody resolved={resolved} />
         ) : (
           <FlowStepBody resolved={resolved} />
         )}

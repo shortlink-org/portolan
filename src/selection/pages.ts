@@ -48,8 +48,10 @@ export function selectionPath(selection: Selection): string | null {
         resolved.store.slug,
       );
     // A shared type has no page. It is only ever read inside the event that
-    // carries it, so selecting one opens the panel and moves nobody.
+    // carries it, so selecting one opens the panel and moves nobody. Nor does
+    // a bundle: it is a fact about the graph, and the graph is where it is.
     case "value-object":
+    case "bundle":
       return null;
   }
 }
@@ -105,8 +107,13 @@ export function pageContains(pathname: string, selection: Selection): boolean {
 
   switch (route.kind) {
     case "graph": {
-      // Services are nodes; events are the edge labels between them.
-      return resolved.kind === "service" || resolved.kind === "event";
+      // Services and events are both nodes; a bundle is a line between two
+      // services, drawn in compact mode.
+      return (
+        resolved.kind === "service" ||
+        resolved.kind === "event" ||
+        resolved.kind === "bundle"
+      );
     }
 
     case "flow": {

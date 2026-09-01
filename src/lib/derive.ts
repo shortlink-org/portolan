@@ -8,8 +8,6 @@ import type {
   Event,
   Field,
   Flow,
-  Service,
-  Status,
 } from "../catalog";
 import { aggregateBlocks, flowContexts, walkSteps } from "../catalog";
 
@@ -78,103 +76,6 @@ export function stepsReferencing(catalog: Catalog, eventId: string): StepRef[] {
     });
   }
   return out;
-}
-
-// ---------------------------------------------------------------------------
-// Service dependency graph: services as nodes, events as labelled edges.
-// ---------------------------------------------------------------------------
-
-export interface GraphNode {
-  id: string;
-  label: string;
-  context: string | null;
-  /** a consumer named by an event but absent from the catalog */
-  ghost: boolean;
-}
-
-export interface GraphEdge {
-  from: string;
-  to: string;
-  label: string;
-  eventId: string;
-  status: Status;
-}
-
-export interface ServiceGraph {
-  nodes: GraphNode[];
-  edges: GraphEdge[];
-}
-
-export function serviceGraph(catalog: Catalog): ServiceGraph {
-  const nodes = new Map<string, GraphNode>();
-  const edges: GraphEdge[] = [];
-
-  const owner = new Map<string, { service: Service; context: BoundedContext }>();
-  for (const context of catalog.contexts) {
-    for (const service of context.services) {
-      nodes.set(service.id, {
-        id: service.id,
-        label: service.id,
-        context: context.id,
-        ghost: false,
-      });
-      for (const aggregate of service.aggregates) {
-        for (const event of aggregate.events)
-          owner.set(event.id, { service, context });
-      }
-    }
-  }
-
-  for (const context of catalog.contexts) {
-    for (const service of context.services) {
-      for (const aggregate of service.aggregates) {
-        for (const event of aggregate.events) {
-          for (const consumer of event.consumers) {
-            // A consumer with no service of its own is still a real dependency.
-            // Drawing it as a ghost keeps the gap visible instead of hiding it.
-            if (!nodes.has(consumer.service)) {
-              nodes.set(consumer.service, {
-                id: consumer.service,
-                label: consumer.service,
-                context: null,
-                ghost: true,
-              });
-            }
-            edges.push({
-              from: service.id,
-              to: consumer.service,
-              label: event.name,
-              eventId: event.id,
-              status: consumer.status,
-            });
-          }
-        }
-      }
-    }
-  }
-
-  return { nodes: [...nodes.values()], edges };
-}
-
-/** Restricts the graph to the given contexts; ghosts survive if still connected. */
-export function filterGraph(
-  graph: ServiceGraph,
-  contexts: Set<string>,
-): ServiceGraph {
-  if (contexts.size === 0) return graph;
-  const keep = new Set(
-    graph.nodes
-      .filter((n) => n.context !== null && contexts.has(n.context))
-      .map((n) => n.id),
-  );
-  const edges = graph.edges.filter((e) => keep.has(e.from) || keep.has(e.to));
-  const touched = new Set<string>();
-  for (const e of edges) {
-    touched.add(e.from);
-    touched.add(e.to);
-  }
-  for (const id of keep) touched.add(id);
-  return { nodes: graph.nodes.filter((n) => touched.has(n.id)), edges };
 }
 
 // ---------------------------------------------------------------------------

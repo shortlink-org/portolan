@@ -3,12 +3,10 @@ import { catalog } from "../data";
 import {
   addedFields,
   contextStats,
-  filterGraph,
   flowsByReach,
   flowsForService,
   headingSlug,
   markdownOutline,
-  serviceGraph,
   stepsReferencing,
   usagesOfDef,
 } from "./derive";
@@ -73,50 +71,6 @@ describe("stepsReferencing", () => {
     ]);
     // The number is the step's place in the whole flow, frames included.
     expect(refs[2]?.number).toBe(12);
-  });
-});
-
-describe("serviceGraph", () => {
-  it("makes services nodes and event consumption edges", () => {
-    const graph = serviceGraph(catalog);
-    const real = graph.nodes.filter((n) => !n.ghost).map((n) => n.id);
-    expect(real).toEqual([
-      "shop.oms",
-      "shop.pricing",
-      "payments.ledger",
-      "delivery.core",
-    ]);
-    const edge = graph.edges.find(
-      (e) =>
-        e.from === "payments.ledger" &&
-        e.to === "delivery.core" &&
-        e.label === "PaymentCaptured",
-    );
-    expect(edge?.status).toBe("verified");
-  });
-
-  it("keeps consumers with no service as ghost nodes", () => {
-    const ghosts = serviceGraph(catalog)
-      .nodes.filter((n) => n.ghost)
-      .map((n) => n.id);
-    expect(ghosts).toEqual(["analytics-sink"]);
-  });
-
-  it("filters to the chosen contexts and keeps their ghosts", () => {
-    const filtered = filterGraph(serviceGraph(catalog), new Set(["delivery"]));
-    const ids = filtered.nodes.map((n) => n.id).sort();
-    expect(ids).toContain("delivery.core");
-    expect(ids).toContain("analytics-sink");
-    expect(
-      filtered.edges.every(
-        (e) => e.from === "delivery.core" || e.to === "delivery.core",
-      ),
-    ).toBe(true);
-  });
-
-  it("returns the whole graph when no context is selected", () => {
-    const graph = serviceGraph(catalog);
-    expect(filterGraph(graph, new Set())).toBe(graph);
   });
 });
 

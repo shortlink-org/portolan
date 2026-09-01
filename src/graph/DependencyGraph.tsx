@@ -1,118 +1,197 @@
-import { useCallback, useMemo, useState } from "react";
+// The dependency graph, drawn.
+//
+// Events are nodes here, not edge labels. The old canvas wrote an event's name
+// once per consumer and hung it on a line, so the sample's nine events became
+// twenty-one pieces of text lying across the densest part of the picture. A
+// pill written once, with bare lines into and out of it, says the same thing
+// with a third of the ink and gives the reader something to click.
+//
+// Everything geometric is elk's: the positions AND the routes. Nothing here
+// invents a curve.
+
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import { Background, ReactFlow, ReactFlowProvider } from "@xyflow/react";
+import {
+  Background,
+  MiniMap,
+  ReactFlow,
+  ReactFlowProvider,
+  useStore,
+} from "@xyflow/react";
 import type { Edge, Node } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import type { ServiceGraph } from "../lib/derive";
 import { DiagramSkeleton } from "../components/DiagramSkeleton";
+import { contextVar } from "../lib/context-color";
+import type { EventGraph } from "../lib/event-graph";
+import { bundles } from "../lib/event-graph";
 import { servicePath } from "../routes";
 import { useSelectionStore } from "../selection/store";
-import { nodeTypes } from "./nodes";
-import { useElkFlow } from "./useElkFlow";
-import type { FlowSpec } from "./useElkFlow";
+import { dependencyNodeTypes, TinyZoom } from "./DependencyNodes";
+import type { DependencyNode } from "./DependencyNodes";
+import { catalogIdOf, EVENT_NODE, layoutDependencyGraph } from "./dependency-layout";
+import type { GraphMode, Layout } from "./dependency-layout";
+import { dependencyEdgeTypes } from "./RoutedEdge";
+import { FIT_OPTIONS, GraphToolbar } from "./GraphToolbar";
+import { LEGIBLE_ZOOM } from "./theme";
 
-const DIM = 0.12;
+/** How far out of the way everything more than one hop from the subject goes. */
+const DIM_EDGE = 0.1;
+const DIM_NODE = 0.2;
 
-export function DependencyGraph({ graph }: { graph: ServiceGraph }) {
+/** Past this many boxes the canvas is bigger than the frame; below it, it is not. */
+const MINIMAP_FROM = 12;
+
+export interface DependencyGraphProps {
+  graph: EventGraph;
+  mode: GraphMode;
+  onMode: (mode: GraphMode) => void;
+  /**
+   * Changes whenever the filters do. Remounting the flow on a new value is
+   * what makes fitView measure the layout that just arrived rather than the
+   * one it replaced.
+   */
+  fitKey: string;
+}
+
+export function DependencyGraph({
+  graph,
+  mode,
+  onMode,
+  fitKey,
+}: DependencyGraphProps) {
   const navigate = useNavigate();
-  const [hovered, setHovered] = useState<string | null>(null);
+  const [layout, setLayout] = useState<Layout | null>(null);
+  const [focusing, setFocusing] = useState(false);
+  const [focused, setFocused] = useState<string | null>(null);
 
-  // Hover is local and never reaches the store; selection is the opposite.
   const selectionId = useSelectionStore((s) => s.selection?.id ?? null);
-  const selectionKind = useSelectionStore((s) => s.selection?.kind ?? null);
   const select = useSelectionStore((s) => s.select);
   const clear = useSelectionStore((s) => s.clear);
 
-  const spec: FlowSpec = useMemo(
-    () => ({
-      nodes: graph.nodes.map((n) => ({
-        id: n.id,
-        data: {
-          label: n.label,
-          context: n.context,
-          ghost: n.ghost,
-          kind: "service" as const,
-        },
-      })),
-      edges: graph.edges.map((e, i) => ({
-        id: `${e.from}->${e.to}#${e.eventId}#${i}`,
-        source: e.from,
-        target: e.to,
-        label: e.label,
-        status: e.status,
-        eventId: e.eventId,
-      })),
-      direction: "RIGHT",
-    }),
-    [graph],
-  );
+  // Below the legible zoom an 11px label is a smudge, so pills give up their
+  // name and keep their icon. A boolean, not the zoom: a pinch that stays on
+  // one side of the threshold re-renders nothing.
+  const tiny = useStore((s) => s.transform[2] < LEGIBLE_ZOOM);
 
-  const { nodes, edges, ready } = useElkFlow(spec);
-  // Remounting once elk has produced positions is what actually makes fitView
-  // measure the real layout; fitting before that races the measurement.
-  const fitKey = ready ? `fit-${nodes.length}-${edges.length}` : "pending";
+  useEffect(() => {
+    let cancelled = false;
+    setLayout(null);
+    void layoutDependencyGraph(graph, mode).then((next) => {
+      if (!cancelled) setLayout(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [graph, mode]);
 
-  // Twenty-one labelled edges over five services is dense on purpose: the
-  // catalog really is that connected. Hovering isolates one service's traffic
-  // instead of hiding the density behind an aggregate edge.
-  const shownEdges: Edge[] = useMemo(
-    () =>
-      edges.map((edge) => {
-        // A selected event is carried by exactly the edges that deliver it.
-        if (selectionKind === "event") {
-          const lit = edge.data?.["eventId"] === selectionId;
-          return {
-            ...edge,
-            style: {
-              ...edge.style,
-              opacity: lit ? 1 : DIM,
-              strokeWidth: lit ? 2 : 1.2,
-            },
-            labelStyle: { ...edge.labelStyle, opacity: lit ? 1 : 0 },
-            labelBgStyle: { ...edge.labelBgStyle, opacity: lit ? 1 : 0 },
-            zIndex: lit ? 10 : 0,
-          };
-        }
-        if (!hovered) return edge;
-        const lit = edge.source === hovered || edge.target === hovered;
-        return {
-          ...edge,
-          style: {
-            ...edge.style,
-            opacity: lit ? 1 : DIM,
-            strokeWidth: lit ? 2 : 1.2,
-          },
-          labelStyle: { ...edge.labelStyle, opacity: lit ? 1 : 0 },
-          labelBgStyle: { ...edge.labelBgStyle, opacity: lit ? 1 : 0 },
-          zIndex: lit ? 10 : 0,
-        };
-      }),
-    [edges, hovered, selectionKind, selectionId],
-  );
+  // --- focus -------------------------------------------------------------
 
-  const shownNodes = useMemo(
-    () =>
-      nodes.map((node) => ({
-        ...node,
-        selected: node.id === selectionId,
+  // Esc unwinds the innermost thing first. It is caught on the way DOWN so it
+  // gets ahead of the shell's "Esc clears the selection": a reader who has
+  // dimmed the canvas means the dimming when they press it.
+  useEffect(() => {
+    if (!focused) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      e.preventDefault();
+      setFocused(null);
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [focused]);
+
+  /**
+   * One hop, in the sense a reader means it.
+   *
+   * In events mode the graph is literally bipartite, so one hop from a service
+   * reaches only pills - focusing would dim every other service to nothing and
+   * answer no question at all. The hop that is being counted is the dependency:
+   * this service, the events on either side of it, and whoever is at the far
+   * end of those events.
+   */
+  const neighbourhood = useMemo(() => {
+    if (!focused) return null;
+    const nodes = new Set<string>([focused]);
+    const edges = new Set<string>();
+    if (mode === "compact") {
+      for (const bundle of bundles(graph)) {
+        if (bundle.from !== focused && bundle.to !== focused) continue;
+        nodes.add(bundle.from);
+        nodes.add(bundle.to);
+        edges.add(bundle.id);
+      }
+      return { nodes, edges };
+    }
+    for (const event of graph.events) {
+      const touches =
+        event.publisher === focused ||
+        event.consumers.some((c) => c.service === focused);
+      if (!touches) continue;
+      nodes.add(EVENT_NODE(event.id));
+      nodes.add(event.publisher);
+      edges.add(`pub:${event.id}`);
+      for (const consumer of event.consumers) {
+        if (consumer.self) continue;
+        nodes.add(consumer.service);
+        edges.add(`con:${event.id}->${consumer.service}`);
+      }
+    }
+    return { nodes, edges };
+  }, [focused, graph, mode]);
+
+  // --- what actually gets handed to React Flow ---------------------------
+
+  const nodes: DependencyNode[] = useMemo(() => {
+    const built = layout?.nodes ?? [];
+    return built.map((node) => ({
+      ...node,
+      selected:
+        node.id === selectionId ||
+        (node.type === "event" && node.id === EVENT_NODE(selectionId ?? "")),
+      style: {
+        ...node.style,
+        opacity:
+          neighbourhood && !neighbourhood.nodes.has(node.id) ? DIM_NODE : 1,
+      },
+    }));
+  }, [layout, selectionId, neighbourhood]);
+
+  const edges: Edge[] = useMemo(() => {
+    const built = layout?.edges ?? [];
+    return built.map((edge) => {
+      const dimmed = neighbourhood ? !neighbourhood.edges.has(edge.id) : false;
+      // A selected event lights the lines that carry it. Selection thickens;
+      // focus dims. They are different questions and they read differently.
+      const lit =
+        selectionId !== null &&
+        (edge.data?.["eventId"] === selectionId ||
+          edge.data?.["bundleId"] === selectionId);
+      return {
+        ...edge,
+        selected: edge.id === selectionId,
         style: {
-          ...node.style,
-          opacity: hovered && hovered !== node.id ? 0.45 : 1,
+          ...edge.style,
+          opacity: dimmed ? DIM_EDGE : 1,
+          strokeWidth: lit ? 2.2 : (edge.style?.strokeWidth ?? 1.3),
         },
-      })),
-    [nodes, hovered, selectionId],
-  );
+        zIndex: lit ? 10 : 0,
+      };
+    });
+  }, [layout, neighbourhood, selectionId]);
 
-  // A click selects; the page it belongs to is a double-click away. Selecting
-  // in place is what lets the detail rail answer "what is this?" without
-  // losing the picture that raised the question.
+  // --- interaction -------------------------------------------------------
+
   const onNodeClick = useCallback(
-    (_: React.MouseEvent, node: Node) => select(node.id, "diagram"),
-    [select],
+    (_: React.MouseEvent, node: Node) => {
+      if (focusing && node.type === "service") setFocused(node.id);
+      select(catalogIdOf(node.id), "diagram");
+    },
+    [focusing, select],
   );
 
   const onNodeDoubleClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
+      if (node.type !== "service") return;
       const to = servicePath(node.id);
       if (to) navigate(to);
     },
@@ -121,47 +200,88 @@ export function DependencyGraph({ graph }: { graph: ServiceGraph }) {
 
   const onEdgeClick = useCallback(
     (_: React.MouseEvent, edge: Edge) => {
+      const bundleId = edge.data?.["bundleId"];
+      if (typeof bundleId === "string") {
+        select(bundleId, "diagram");
+        return;
+      }
       const eventId = edge.data?.["eventId"];
       if (typeof eventId === "string") select(eventId, "diagram");
     },
     [select],
   );
 
+  const ready = layout !== null;
+  const minimap = nodes.length > MINIMAP_FROM;
+
   return (
     /* The box is the box whether elk has answered or not: the skeleton is
        laid over it, never in place of it, so nothing reflows on arrival. */
     <div className="relative h-full w-full">
       {ready ? null : <DiagramSkeleton />}
-      <ReactFlow
-        nodes={shownNodes}
-        edges={shownEdges}
-        nodeTypes={nodeTypes}
-        onNodeClick={onNodeClick}
-        onNodeDoubleClick={onNodeDoubleClick}
-        onEdgeClick={onEdgeClick}
-        onPaneClick={() => clear("diagram")}
-        onNodeMouseEnter={(_, node) => setHovered(node.id)}
-        onNodeMouseLeave={() => setHovered(null)}
-        nodesDraggable={false}
-        nodesConnectable={false}
-        elementsSelectable
-        proOptions={{ hideAttribution: true }}
-        fitView
-        fitViewOptions={{ padding: 0.12 }}
-        minZoom={0.15}
-        maxZoom={2}
-        key={fitKey}
-      >
-        <Background gap={22} size={1} color="var(--border)" />
-      </ReactFlow>
+      <TinyZoom.Provider value={tiny}>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          nodeTypes={dependencyNodeTypes}
+          edgeTypes={dependencyEdgeTypes}
+          onNodeClick={onNodeClick}
+          onNodeDoubleClick={onNodeDoubleClick}
+          onEdgeClick={onEdgeClick}
+          onPaneClick={() => {
+            setFocused(null);
+            clear("diagram");
+          }}
+          nodesDraggable={false}
+          nodesConnectable={false}
+          elementsSelectable
+          proOptions={{ hideAttribution: true }}
+          fitView
+          fitViewOptions={FIT_OPTIONS}
+          minZoom={0.08}
+          maxZoom={2}
+          key={ready ? `fit-${fitKey}-${nodes.length}-${edges.length}` : "pending"}
+        >
+          <Background gap={22} size={1} color="var(--border)" />
+          <GraphToolbar
+            mode={mode}
+            onMode={onMode}
+            focusing={focusing}
+            onFocusing={(on) => {
+              setFocusing(on);
+              if (!on) setFocused(null);
+            }}
+            focused={focused}
+          />
+          {minimap ? (
+            <MiniMap
+              position="bottom-right"
+              pannable
+              zoomable
+              ariaLabel="Graph overview"
+              maskColor="color-mix(in srgb, var(--bg) 72%, transparent)"
+              style={{
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+              }}
+              nodeColor={(node) =>
+                contextVar(
+                  (node.data as { context?: string | null }).context ?? null,
+                )
+              }
+              nodeStrokeWidth={0}
+            />
+          ) : null}
+        </ReactFlow>
+      </TinyZoom.Provider>
     </div>
   );
 }
 
-export function DependencyGraphPane({ graph }: { graph: ServiceGraph }) {
+export function DependencyGraphPane(props: DependencyGraphProps) {
   return (
     <ReactFlowProvider>
-      <DependencyGraph graph={graph} />
+      <DependencyGraph {...props} />
     </ReactFlowProvider>
   );
 }

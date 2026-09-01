@@ -20,6 +20,8 @@ import type {
 } from "../catalog";
 import { walkSteps } from "../catalog";
 import { catalog, index } from "../data";
+import { bundleById, eventGraph, parseBundleId } from "../lib/event-graph";
+import type { Bundle } from "../lib/event-graph";
 
 export type SelectionKind =
   | "context"
@@ -32,6 +34,7 @@ export type SelectionKind =
   | "event"
   | "value-object"
   | "flow-step"
+  | "bundle"
   | "unknown";
 
 export interface Selection {
@@ -139,6 +142,22 @@ export interface ResolvedValueObject {
   id: string;
   def: TypeDef;
 }
+/**
+ * Every event one service publishes to another, as one thing.
+ *
+ * Compact mode draws that as a single line with a count on it, and a line
+ * standing for three events has to be selectable or the count is a number the
+ * reader cannot open. Like a flow step, it has no entity of its own in the
+ * catalog: its id is synthetic and it is resolved by re-deriving the graph.
+ */
+export interface ResolvedBundle {
+  kind: "bundle";
+  id: string;
+  bundle: Bundle;
+  /** null when the far end is a consumer the catalog has never heard of */
+  from: Service | null;
+  to: Service | null;
+}
 export interface ResolvedFlowStep {
   kind: "flow-step";
   id: string;
@@ -158,7 +177,8 @@ export type Resolved =
   | ResolvedColumn
   | ResolvedEvent
   | ResolvedValueObject
-  | ResolvedFlowStep;
+  | ResolvedFlowStep
+  | ResolvedBundle;
 
 /**
  * The whole mapping layer: a catalog id in, a catalog entity out. Anything the
@@ -166,6 +186,20 @@ export type Resolved =
  * carry on with a selection of kind "unknown" rather than to drop the click.
  */
 export function resolveSelection(id: string): Resolved | null {
+  // First, because it is the only id with a literal prefix: nothing in the
+  // catalog is spelled "bundle:...", so there is nothing for it to shadow.
+  if (parseBundleId(id)) {
+    const bundle = bundleById(eventGraph(catalog), id);
+    if (!bundle) return null;
+    return {
+      kind: "bundle",
+      id,
+      bundle,
+      from: index.serviceById.get(bundle.from) ?? null,
+      to: index.serviceById.get(bundle.to) ?? null,
+    };
+  }
+
   const event = index.eventById.get(id);
   if (event) {
     const owner = index.eventOwner.get(id);
@@ -380,6 +414,7 @@ export function selectionTrail(selection: Selection): Selection[] {
       ];
     case "flow-step":
     case "value-object":
+    case "bundle":
       return [selection];
   }
 }
@@ -409,5 +444,7 @@ export function selectionLabel(selection: Selection): string {
       return resolved.id;
     case "flow-step":
       return `${resolved.flow.slug} · step ${resolved.number}`;
+    case "bundle":
+      return `${resolved.bundle.from} → ${resolved.bundle.to}`;
   }
 }

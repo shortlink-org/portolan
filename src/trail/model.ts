@@ -119,6 +119,10 @@ function subjectOfSelection(selection: Selection): VisitSubject | null {
         kind: "flow",
         label: `${resolved.flow.slug} · ${resolved.number}`,
       };
+    // A bundle is a line on one canvas and nothing anywhere else. There is no
+    // route that puts a reader back in front of it, so it earns no chip.
+    case "bundle":
+      return null;
   }
 }
 

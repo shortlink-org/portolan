@@ -17,6 +17,7 @@ const KINDS: SelectionKind[] = [
   "event",
   "value-object",
   "flow-step",
+  "bundle",
   "unknown",
 ];
 
