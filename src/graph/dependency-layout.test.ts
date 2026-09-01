@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 import { catalog } from "../data";
 import { eventGraph, filterEventGraph } from "../lib/event-graph";
 import { thinCatalog, wideCatalog } from "../lib/scenarios";
-import { layoutDependencyGraph } from "./dependency-layout";
+import { SIMPLEX_BUDGET, budgeted, layoutDependencyGraph } from "./dependency-layout";
 import type { Layout } from "./dependency-layout";
 import { midpoint, offsetInterior, roundedPath } from "./elk";
 import type { Point } from "./elk";
@@ -82,10 +82,8 @@ function key(points: readonly Point[]): string {
  * The frame budget below is a claim about elk, and a single wall-clock reading
  * taken inside a suite running fifty files across every core is not: a run
  * that happens to land while the other workers are busy measures the
- * scheduler. Timing it more than once and keeping the best cancels that, and
- * cancels nothing real - the regression this guards is NETWORK_SIMPLEX being
- * let loose on a graph this size, and that costs seconds on every run, not on
- * one in three.
+ * scheduler. Timing it more than once and keeping the best cancels some of
+ * that, and cancels nothing real.
  */
 async function fastest(
   runs: number,
@@ -235,6 +233,48 @@ describe("the thin estate, laid out", () => {
   });
 });
 
+/**
+ * How long the wide estate may take, in milliseconds.
+ *
+ * Laid warm on an idle machine it takes 116-161ms bipartite and 62-91ms
+ * compact, so 300 looked like ample headroom and is not: this suite runs fifty
+ * files across every core, and a laptop that is also building something else
+ * puts the same work at 300-380ms with elk doing nothing differently. Timing
+ * the best of three runs does not fix that, because under load every run is
+ * slow. Measured here at twenty-four busy cores, the reading is 384ms.
+ *
+ * So the ceiling is set where only the cliff can cross it. The regression this
+ * ever guarded is NETWORK_SIMPLEX let loose at this size, and that is 2.2
+ * SECONDS on an idle machine - it does not squeak past 1000ms on a busy one,
+ * it misses by five times over. Which side of the cliff this graph falls on is
+ * asserted exactly, without a stopwatch, in "the budget that keeps elk
+ * affordable" below; this number is only here to catch a slow path that
+ * `budgeted` cannot see.
+ */
+const FRAME_BUDGET_MS = 1000;
+
+describe("the budget that keeps elk affordable", () => {
+  it("puts the wide estate on the heuristic side of the cliff", async () => {
+    const layout = await layoutDependencyGraph(eventGraph(wideCatalog()), "bipartite");
+    const size = layout.nodes.length + layout.edges.length;
+    expect(size).toBeGreaterThan(SIMPLEX_BUDGET);
+    expect(budgeted(layout.nodes.length, layout.edges.length)).toMatchObject({
+      nodePlacement: "BRANDES_KOEPF",
+      considerModelOrder: false,
+    });
+  });
+
+  it("leaves the sample on the exact side", async () => {
+    const layout = await layoutDependencyGraph(sample, "bipartite");
+    const size = layout.nodes.length + layout.edges.length;
+    expect(size).toBeLessThanOrEqual(SIMPLEX_BUDGET);
+    expect(budgeted(layout.nodes.length, layout.edges.length)).toMatchObject({
+      nodePlacement: "NETWORK_SIMPLEX",
+      considerModelOrder: true,
+    });
+  });
+});
+
 describe("the wide estate, laid out", () => {
   it("lays 120 nodes out inside the frame budget", async () => {
     const graph = eventGraph(wideCatalog());
@@ -242,7 +282,7 @@ describe("the wide estate, laid out", () => {
       layoutDependencyGraph(graph, "bipartite"),
     );
     expect(layout.nodes.length).toBeGreaterThan(120);
-    expect(elapsed).toBeLessThan(300);
+    expect(elapsed).toBeLessThan(FRAME_BUDGET_MS);
   });
 
   it("lays its compact form out too", async () => {
@@ -250,7 +290,7 @@ describe("the wide estate, laid out", () => {
     const { layout, elapsed } = await fastest(3, () =>
       layoutDependencyGraph(graph, "compact"),
     );
-    expect(elapsed).toBeLessThan(300);
+    expect(elapsed).toBeLessThan(FRAME_BUDGET_MS);
     const seen = new Set(layout.edges.map((e) => key(e.data?.points ?? [])));
     expect(seen.size).toBe(layout.edges.length);
   });

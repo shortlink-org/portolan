@@ -85,10 +85,16 @@ const PAIR_OFFSET = 12;
  * Above the line, then: BRANDES_KOEPF, less crossing work, no model order.
  * Everything else - ports, spacing, routing - is identical either side of it.
  */
-const SIMPLEX_BUDGET = 120;
+export const SIMPLEX_BUDGET = 120;
 
-/** The layout options a graph of this size can pay for. */
-function budgeted(
+/**
+ * The layout options a graph of this size can pay for.
+ *
+ * Exported because this, and not a stopwatch, is where the cliff above is
+ * guarded: which side of the budget a graph falls on is a decision, and a
+ * decision can be asserted on any machine at any load.
+ */
+export function budgeted(
   nodes: number,
   edges: number,
 ): Pick<
