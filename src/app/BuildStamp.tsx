@@ -13,13 +13,11 @@ const BOX =
 
 /**
  * What is deployed, and where to go to see it: the run that built this bundle,
- * or the commit it was built from when nobody built it but you.
- *
- * `bare` drops the box. In the top bar the stamp is one control among five and
- * needs an edge to be one of them; pinned to the foot of the sidebar it is the
- * last line of a list, and a bordered pill there reads as a button.
+ * or the commit it was built from when nobody built it but you. It is stamped
+ * once, in the top bar, where it is one control among five and its border
+ * makes it one of them; a second copy in the sidebar said nothing new.
  */
-export function BuildStamp({ bare = false }: { bare?: boolean }) {
+export function BuildStamp() {
   const [, force] = useState(0);
 
   // The stamp reads as relative time; nudge it once a minute.
@@ -31,16 +29,9 @@ export function BuildStamp({ bare = false }: { bare?: boolean }) {
   // The stamp names a commit, so it opens the commit; the run that built it
   // is one click further, in the checks on that page.
   const href = buildHref();
-  const box = bare
-    ? "mono flex min-w-0 items-center gap-1.5 rounded-control px-1 py-0.5 text-muted"
-    : BOX;
   const body = (
     <>
-      <GitCommitHorizontal
-        size={bare ? 14 : 16}
-        aria-hidden
-        className="shrink-0"
-      />
+      <GitCommitHorizontal size={16} aria-hidden className="shrink-0" />
       {buildLabel()}
       {buildInfo.builtAt && (
         <>
@@ -55,7 +46,7 @@ export function BuildStamp({ bare = false }: { bare?: boolean }) {
 
   if (!href)
     return (
-      <span className={box} title={buildTitle()}>
+      <span className={BOX} title={buildTitle()}>
         {body}
       </span>
     );
@@ -65,7 +56,7 @@ export function BuildStamp({ bare = false }: { bare?: boolean }) {
       target="_blank"
       rel="noreferrer"
       title={buildTitle()}
-      className={`${box} transition-colors hover:bg-surface ${bare ? "hover:text-ink" : "hover:border-line-strong hover:text-ink"}`}
+      className={`${BOX} transition-colors hover:border-line-strong hover:bg-surface hover:text-ink`}
     >
       {body}
     </a>

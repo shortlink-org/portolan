@@ -56,7 +56,6 @@ import { paths } from "../routes";
 import { selectionHash } from "../selection/hash";
 import { STORE_KIND_LABEL } from "../er/StoreHeader";
 import { useSearch } from "./search";
-import { BuildStamp } from "./BuildStamp";
 import { resolvePin, usePinsStore } from "./pins";
 import { resolveSelection, selectionFor } from "../selection/model";
 import { selectsInPlace } from "../selection/pages";
@@ -862,7 +861,7 @@ function BottomGroup() {
   const colour = errors > 0 ? "var(--status-unresolved)" : "var(--status-declared)";
 
   return (
-    <div className="shrink-0 border-t bg-canvas border-line">
+    <div className="shrink-0 border-t bg-canvas border-line py-0.5">
       <NavLink
         to={paths.problems()}
         end
@@ -904,9 +903,6 @@ function BottomGroup() {
           </span>
         )}
       </NavLink>
-      <div className="flex items-center px-2 pt-0.5 pb-1.5">
-        <BuildStamp bare />
-      </div>
     </div>
   );
 }
