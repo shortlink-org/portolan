@@ -18,6 +18,12 @@
       }
     },
     {
+      "name": "sql",
+      "process": {
+        "cmd": "go run ./plugins/extract-sql"
+      }
+    },
+    {
       "name": "markdown",
       "wasm": {
         "url": "file://plugins/gen-markdown.wasm"
@@ -48,6 +54,18 @@
         "service": "auth",
         "spec": "internal/infrastructure/transport/http/gen/openapi.yaml",
         "out": "api.json"
+      }
+    },
+    {
+      "plugin": "sql",
+      "in": "examples/auth",
+      "out": "examples/auth/portolan",
+      "options": {
+        "context": "auth",
+        "service": "auth",
+        "store": "pg",
+        "name": "Auth database",
+        "out": "stores.json"
       }
     }
   ],

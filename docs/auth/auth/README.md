@@ -296,3 +296,9 @@ go generate ./...
 | [SessionStarted](aggregates/session.md) | v1 |
 | [PasswordChanged](aggregates/user.md) | v1 |
 | [UserRegistered](aggregates/user.md) | v1 |
+
+## Stores
+
+| Store | Kind | Access | Tables |
+| --- | --- | --- | --- |
+| [Auth database](stores/pg.md) | postgres | owns | 2 tables |

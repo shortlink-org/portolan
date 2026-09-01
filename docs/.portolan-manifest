@@ -11,6 +11,7 @@
     "auth/auth/README.md",
     "auth/auth/aggregates/session.md",
     "auth/auth/aggregates/user.md",
+    "auth/auth/stores/pg.md",
     "delivery/README.md",
     "delivery/core/README.md",
     "delivery/core/aggregates/route.md",

@@ -4,5 +4,8 @@
   ],
   "openapi": [
     "api.json"
+  ],
+  "sql": [
+    "stores.json"
   ]
 }

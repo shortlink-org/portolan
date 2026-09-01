@@ -1,0 +1,151 @@
+{
+  "generatedAt": "2026-09-01T23:36:34+08:00",
+  "commit": "1e38b7f",
+  "contexts": [
+    {
+      "id": "auth",
+      "slug": "auth",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "auth.auth",
+          "slug": "auth",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "stores": [
+            "auth.auth.pg"
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": [],
+  "stores": [
+    {
+      "id": "auth.auth.pg",
+      "slug": "pg",
+      "name": "Auth database",
+      "kind": "postgres",
+      "owner": "auth.auth",
+      "tables": [
+        {
+          "id": "auth.auth.pg.sessions",
+          "name": "sessions",
+          "columns": [
+            {
+              "name": "id",
+              "type": "text",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "user_id",
+              "type": "text",
+              "nullable": false
+            },
+            {
+              "name": "token",
+              "type": "text",
+              "nullable": false
+            },
+            {
+              "name": "issued_at",
+              "type": "timestamptz",
+              "nullable": false
+            },
+            {
+              "name": "expires_at",
+              "type": "timestamptz",
+              "nullable": false
+            },
+            {
+              "name": "revoked_at",
+              "type": "timestamptz",
+              "nullable": true
+            },
+            {
+              "name": "version",
+              "type": "bigint",
+              "nullable": false
+            }
+          ],
+          "indexes": [
+            {
+              "name": "sessions_token_key",
+              "columns": [
+                "token"
+              ],
+              "unique": true
+            },
+            {
+              "name": "sessions_user_id_idx",
+              "columns": [
+                "user_id",
+                "issued_at"
+              ],
+              "unique": false
+            }
+          ],
+          "persists": {
+            "aggregate": "auth.auth.session"
+          },
+          "role": "aggregate-root"
+        },
+        {
+          "id": "auth.auth.pg.users",
+          "name": "users",
+          "columns": [
+            {
+              "name": "id",
+              "type": "text",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "email",
+              "type": "text",
+              "nullable": false
+            },
+            {
+              "name": "password_hash",
+              "type": "text",
+              "nullable": false
+            },
+            {
+              "name": "created_at",
+              "type": "timestamptz",
+              "nullable": false
+            },
+            {
+              "name": "version",
+              "type": "bigint",
+              "nullable": false
+            }
+          ],
+          "indexes": [
+            {
+              "name": "users_email_key",
+              "columns": [
+                "email"
+              ],
+              "unique": true
+            }
+          ],
+          "persists": {
+            "aggregate": "auth.auth.user"
+          },
+          "role": "aggregate-root"
+        }
+      ],
+      "source": "examples/auth/internal/infrastructure/repository"
+    }
+  ]
+}
