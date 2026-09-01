@@ -40,6 +40,46 @@ export function pairEdgesToSteps(
   return { stepOf, edgeOf };
 }
 
+/**
+ * The frames an edge sits inside, outermost first.
+ *
+ * LikeC4 names an edge by the path that reaches it — "step-07:alt.02:else.01:
+ * break.01" is the first message of the break inside the second branch of the
+ * alt at step 7 — and every frame on the way has a node of its own under the
+ * prefix that names it. So the containment the app needs is already written in
+ * the id, and reading it back out beats pairing a second pair of trees.
+ */
+export function frameAncestors(edgeId: string): string[] {
+  const parts = edgeId.split(".");
+  const out: string[] = [];
+  for (let i = 1; i < parts.length; i += 1) {
+    out.push(parts.slice(0, i).join("."));
+  }
+  return out;
+}
+
+/**
+ * Frames none of whose edges are on the chosen path.
+ *
+ * A frame with even one live edge inside it stays lit: the alt itself still
+ * happens on this path, it is the arms not taken that do not. Only a frame
+ * that contributes nothing at all recedes.
+ */
+export function offPathFrameIds(
+  edgeIds: readonly string[],
+  onPath: ReadonlySet<string>,
+): string[] {
+  const live = new Set<string>();
+  const seen: string[] = [];
+  for (const edgeId of edgeIds) {
+    for (const frame of frameAncestors(edgeId)) {
+      if (!seen.includes(frame)) seen.push(frame);
+      if (onPath.has(edgeId)) live.add(frame);
+    }
+  }
+  return seen.filter((frame) => !live.has(frame));
+}
+
 /** The step ids a flow view draws, in the order its edges are emitted. */
 export function drawnStepIds(flow: Flow, crossOnly: boolean): string[] {
   const steps = walkSteps(flow.steps);

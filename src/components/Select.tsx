@@ -69,7 +69,7 @@ export function Select({
       >
         {({ open }) => (
           <>
-            <span className="truncate">{selected?.label ?? value}</span>
+            <span className="min-w-0 truncate">{selected?.label ?? value}</span>
             <ChevronDown
               size={13}
               aria-hidden

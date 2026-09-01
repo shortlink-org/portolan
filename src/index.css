@@ -550,6 +550,25 @@
     -webkit-backdrop-filter: blur(8px);
   }
 
+  /* The flow page's one bar. Wraps rather than scrolls: a control that has
+     gone off the right-hand edge of a toolbar is a control nobody finds. */
+  .flow-toolbar {
+    @apply mt-2 flex flex-wrap items-center gap-2;
+  }
+
+  /* A chapter header on the step rail. Sticky, because a chapter is how the
+     reader knows where they are in a forty-step sequence, and a heading that
+     scrolls away stops answering that at exactly the point it is asked. */
+  .chapter-row {
+    @apply sticky top-0 z-10 flex w-full items-center gap-1.5 border-y px-2 py-1 text-left border-line;
+    background: color-mix(in srgb, var(--surface) 92%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .chapter-row:hover {
+    background: var(--surface-2);
+  }
+
   /* The matching-steps pill rides above the rail and must survive the rail
      scrolling itself to a match, or it scrolls out of sight the moment it
      becomes useful. */
