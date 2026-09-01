@@ -409,6 +409,28 @@ export interface Problem {
  * nothing is ranked: an unresolved consumer is exactly as broken as an
  * unresolved call, and sorting them by badness would invent a fact.
  */
+/**
+ * How many edges there were to resolve at all - every rpc call a service makes
+ * and every consumer an event names, whatever their status.
+ *
+ * The Problems page needs this to tell two silences apart. Zero problems out
+ * of two hundred edges is a clean estate; zero out of zero is a catalog whose
+ * services have not been wired together yet, and calling that "every edge
+ * resolved" hands the reader a green tick for work nobody has done.
+ */
+export function edgeCount(catalog: Catalog): number {
+  let n = 0;
+  for (const context of catalog.contexts) {
+    for (const service of context.services) {
+      n += service.consumes.length;
+      for (const aggregate of service.aggregates) {
+        for (const event of aggregate.events) n += event.consumers.length;
+      }
+    }
+  }
+  return n;
+}
+
 export function problems(catalog: Catalog): Problem[] {
   const out: Problem[] = [];
   for (const context of catalog.contexts) {

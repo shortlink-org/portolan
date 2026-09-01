@@ -45,5 +45,11 @@ const loaded = load();
 export const catalog: Catalog = loaded.catalog;
 export const index: CatalogIndex = buildIndex(catalog);
 
+/**
+ * Where the catalog is read from, as a reader would type it. Empty states name
+ * it, so it is written once here rather than spelled out on five pages.
+ */
+export const CATALOG_PATH = "data/catalog.json";
+
 /** Non-null when the catalog failed validation; the shell renders it instead. */
 export const catalogError: CatalogError | null = loaded.error;

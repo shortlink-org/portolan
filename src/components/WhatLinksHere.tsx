@@ -16,7 +16,8 @@ import { Link } from "react-router";
 import { catalog, index } from "../data";
 import { backlinkCount, backlinksFor } from "../lib/backlinks";
 import type { Backlink, BacklinkGroup, BacklinkTarget } from "../lib/backlinks";
-import { KIND_PLURAL } from "../lib/kinds";
+import { plural } from "../lib/format";
+import { KIND_LABEL, KIND_PLURAL } from "../lib/kinds";
 import type { Kind } from "../lib/kinds";
 import { LINKS_HERE, backlinkPath } from "../routes";
 import { KIND_COLOR, KindIcon } from "./kind";
@@ -225,7 +226,11 @@ export function WhatLinksHere({
           <>
             <KindIcon kind={group.kind} />
             <span className="tnum">{group.links.length}</span>
-            {KIND_PLURAL[group.kind]}
+            {plural(
+              group.links.length,
+              KIND_LABEL[group.kind],
+              KIND_PLURAL[group.kind],
+            )}
             <span className="ml-auto">listed under {at.label}</span>
           </>
         );

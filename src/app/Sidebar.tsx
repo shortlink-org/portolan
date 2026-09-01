@@ -547,7 +547,9 @@ export function Sidebar({
           Flows
         </div>
         {flows.length === 0 ? (
-          <div className="px-3 py-1 text-muted">no match</div>
+          <TreeNote>
+            {filtering ? "no match" : "none charted yet"}
+          </TreeNote>
         ) : null}
         {flows.map((flow) => {
           return (
@@ -562,7 +564,7 @@ export function Sidebar({
           Contexts
         </div>
         {contexts.length === 0 ? (
-          <div className="px-3 py-1 text-muted">no match</div>
+          <TreeNote>{filtering ? "no match" : "nothing extracted yet"}</TreeNote>
         ) : null}
         {contexts.map(({ context, services }) => {
           const ckey = `c:${context.id}`;
@@ -634,7 +636,9 @@ export function Sidebar({
           Decisions
         </div>
         {adrs.length === 0 ? (
-          <div className="px-3 py-1 text-muted">no match</div>
+          <TreeNote>
+            {filtering ? "no match" : "nothing on the record yet"}
+          </TreeNote>
         ) : null}
         {adrs.map((adr) => (
           <Leaf
@@ -652,16 +656,27 @@ export function Sidebar({
             <span className="truncate text-muted">{adr.title}</span>
           </Leaf>
         ))}
-        <NavLink
-          to={paths.adrs()}
-          data-nav-item
-          className="tree-row mono flex items-center py-[3px] pr-2 pl-[8px] text-accent hover:bg-surface"
-        >
-          view all {catalog.adrs.length} →
-        </NavLink>
+        {catalog.adrs.length > 0 ? (
+          <NavLink
+            to={paths.adrs()}
+            data-nav-item
+            className="tree-row mono flex items-center py-[3px] pr-2 pl-[8px] text-accent hover:bg-surface"
+          >
+            view all {catalog.adrs.length} →
+          </NavLink>
+        ) : null}
       </div>
     </nav>
   );
+}
+
+/**
+ * A section of the tree with nothing under it. "no match" is an answer to the
+ * filter box; before the filter box is touched it accuses the reader of
+ * hiding something they never hid, so the two silences say different things.
+ */
+function TreeNote({ children }: { children: React.ReactNode }) {
+  return <div className="px-3 py-1 text-muted">{children}</div>;
 }
 
 function AggregateNode({

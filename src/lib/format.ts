@@ -53,3 +53,12 @@ export function middleTruncate(value: string, max = 44): string {
   const tail = Math.floor(keep / 2);
   return `${value.slice(0, head)}…${value.slice(value.length - tail)}`;
 }
+
+/**
+ * The noun that goes with a count. A first catalog is full of ones - one
+ * context, one service, one aggregate - and "1 services" is the first thing
+ * that makes the page look generated rather than written.
+ */
+export function plural(n: number, one: string, many = `${one}s`): string {
+  return n === 1 ? one : many;
+}

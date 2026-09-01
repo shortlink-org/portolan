@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
 import { ChevronDown, ChevronRight, Plus } from "lucide-react";
 import { catalog } from "../data";
+import { plural } from "../lib/format";
 import type { Field } from "../catalog";
 import { addedFields } from "../lib/derive";
 import { backlinkCount } from "../lib/backlinks";
@@ -212,22 +213,22 @@ export function EventPage() {
           <Count
             n={selected.fields.length}
             anchor={EVENT_ANCHOR.schema}
-            unit="fields"
+            unit={plural(selected.fields.length, "field")}
           />
           <Count
             n={event.versions.length}
             anchor={EVENT_ANCHOR.versions}
-            unit={event.versions.length === 1 ? "version" : "versions"}
+            unit={plural(event.versions.length, "version")}
           />
           <Count
             n={event.consumers.length}
             anchor={EVENT_ANCHOR.consumers}
-            unit={event.consumers.length === 1 ? "consumer" : "consumers"}
+            unit={plural(event.consumers.length, "consumer")}
           />
           <Count
             n={backlinkCount(links)}
             anchor={LINKS_HERE}
-            unit="links here"
+            unit={plural(backlinkCount(links), "link here", "links here")}
           />
         </div>
       </PageHeader>
@@ -240,7 +241,8 @@ export function EventPage() {
               anchor={EVENT_ANCHOR.schema}
               right={
                 <span className="mono text-muted">
-                  {selected.fields.length} fields · {selected.version}
+                  {selected.fields.length}{" "}
+                  {plural(selected.fields.length, "field")} · {selected.version}
                 </span>
               }
             >

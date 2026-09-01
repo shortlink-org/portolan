@@ -1,12 +1,12 @@
 import { Link } from "react-router";
 import { AlertTriangle } from "lucide-react";
-import { catalog } from "../data";
+import { CATALOG_PATH, catalog } from "../data";
 import { contextStats, flowsByReach } from "../lib/derive";
 import { ctxStyle } from "../lib/context-color";
-import { absoluteTime, relativeTime } from "../lib/format";
+import { absoluteTime, plural, relativeTime } from "../lib/format";
 import { useCountUp, staggerStyle } from "../lib/motion";
 import { CONTEXT_ANCHOR, OVERVIEW_ANCHOR, paths } from "../routes";
-import { SectionTitle } from "../components/PageHeader";
+import { Blank, SectionTitle } from "../components/PageHeader";
 import { Ident } from "../components/Ident";
 import { RowActions } from "../components/RowActions";
 import {
@@ -26,13 +26,14 @@ function Count({
   to,
 }: {
   value: number;
+  /** Singular. A first catalog is mostly ones, and "1 services" reads wrong. */
   unit: string;
   to: string;
 }) {
   const shown = useCountUp(value);
   return (
     <Link to={to} className="rounded-control hover:text-ink">
-      <span className="tnum">{shown}</span> {unit}
+      <span className="tnum">{shown}</span> {plural(value, unit)}
     </Link>
   );
 }
@@ -117,17 +118,17 @@ export function Overview() {
                 <div className="mono mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 whitespace-nowrap text-muted">
                   <Count
                     value={stats.services}
-                    unit="services"
+                    unit="service"
                     to={`${paths.context(context.id)}#${CONTEXT_ANCHOR.services}`}
                   />
                   <Count
                     value={stats.aggregates}
-                    unit="aggregates"
+                    unit="aggregate"
                     to={`${paths.context(context.id)}#${CONTEXT_ANCHOR.aggregates}`}
                   />
                   <Count
                     value={stats.events}
-                    unit="events"
+                    unit="event"
                     to={`${paths.context(context.id)}#${CONTEXT_ANCHOR.events}`}
                   />
                 </div>
@@ -141,16 +142,28 @@ export function Overview() {
         <SectionTitle
           anchor={OVERVIEW_ANCHOR.flows}
           right={
-            <Link
-              to={paths.flows()}
-              className="mono rounded-control px-1 text-accent hover:underline"
-            >
-              all flows →
-            </Link>
+            /* With no flows the link leads to a page that says the same thing
+               again, which is how a first catalog teaches a reader that this
+               app is full of dead ends. */
+            reach.length > 0 ? (
+              <Link
+                to={paths.flows()}
+                className="mono rounded-control px-1 text-accent hover:underline"
+              >
+                all flows →
+              </Link>
+            ) : null
           }
         >
           Flows by reach
         </SectionTitle>
+        {reach.length === 0 ? (
+          <Blank where={CATALOG_PATH}>
+            No flows yet — a flow is one run across the estate, reconstructed
+            from an integration test or written down by hand. Either way it
+            arrives in <span className="text-ink">flows[]</span>.
+          </Blank>
+        ) : null}
         <div className="flex flex-col gap-2" data-nav-list>
           {reach.map(({ flow, contexts }, i) => {
             return (

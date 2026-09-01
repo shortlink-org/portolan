@@ -7,6 +7,7 @@ import { catalog } from "../data";
 import { blockFields, rootEntity } from "../catalog";
 import type { Block, BlockKind, Field } from "../catalog";
 import { backlinkCount } from "../lib/backlinks";
+import { plural } from "../lib/format";
 import { KIND_LABEL, KIND_PLURAL } from "../lib/kinds";
 import { KindIcon } from "../components/kind";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
@@ -137,7 +138,7 @@ export function BlockPage({ kind }: { kind: BlockKind }) {
               className="rounded-control hover:text-ink"
             >
               <span className="tnum">{backlinkCount(links)}</span>{" "}
-              {backlinkCount(links) === 1 ? "reference" : "references"}
+              {plural(backlinkCount(links), "reference")}
             </a>
           ) : null}
         </div>
