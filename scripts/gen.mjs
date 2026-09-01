@@ -144,6 +144,20 @@ function summarise(label, files, changes) {
  * clean two runs in a row.
  */
 function stampFor(root, out) {
+  // A shallow clone has no history to read: the one commit that was fetched has
+  // no parent, so every path looks as though it changed there and every fragment
+  // is stamped with the checkout rather than with its subject. That is wrong
+  // quietly - the fragments regenerate, `--check` reports drift, and nothing
+  // says why - so it is refused here instead.
+  if (shallow()) {
+    fail(
+      "this is a shallow clone, where every path looks as though it changed in " +
+        "the single commit that was fetched, so a fragment cannot be stamped " +
+        "with the commit it describes. Fetch the full history first " +
+        "(git fetch --unshallow, or actions/checkout with fetch-depth: 0).",
+    );
+  }
+
   const exclude = out ? [`:(exclude)${out}`] : [];
 
   for (const args of [
@@ -159,6 +173,18 @@ function stampFor(root, out) {
   }
 
   return { commit: "uncommitted", generatedAt: new Date().toISOString() };
+}
+
+/** Whether the history this runs against is truncated. */
+function shallow() {
+  try {
+    return execFileSync("git", ["rev-parse", "--is-shallow-repository"], {
+      encoding: "utf8",
+    }).trim() === "true";
+  } catch {
+    // Not a repository at all, which stampFor already falls back for.
+    return false;
+  }
 }
 
 /** Reads, merges and validates every source the manifest names. */
