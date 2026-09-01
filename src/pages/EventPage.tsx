@@ -1,13 +1,20 @@
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
 import { ChevronDown, ChevronRight, Plus } from "lucide-react";
-import { catalog } from "../data";
+import { catalog, index } from "../data";
 import { plural } from "../lib/format";
 import type { Field } from "../catalog";
 import { addedFields } from "../lib/derive";
 import { backlinkCount } from "../lib/backlinks";
+import { outboxOfService } from "../lib/data-model";
 import { ctxStyle } from "../lib/context-color";
-import { EVENT_ANCHOR, LINKS_HERE, paths, servicePath } from "../routes";
+import {
+  EVENT_ANCHOR,
+  LINKS_HERE,
+  paths,
+  servicePath,
+  tablePath,
+} from "../routes";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
 import { Select } from "../components/Select";
 import { Ident } from "../components/Ident";
@@ -143,6 +150,9 @@ export function EventPage() {
     return <NotFound kind="Event" id={eventSlug} />;
   }
 
+  const outbox = outboxOfService(index, service.id);
+  const outboxTo = outbox ? tablePath(outbox.table.id) : null;
+
   const toggle = (name: string) =>
     setExpanded((prev) => {
       const next = new Set(prev);
@@ -231,6 +241,23 @@ export function EventPage() {
             unit={plural(backlinkCount(links), "link here", "links here")}
           />
         </div>
+        {/* How this event actually leaves the service. It is a fact about the
+            publisher, not about the schema, but it belongs here: a consumer
+            reading this page wants to know whether the event is committed with
+            the state change or published on a best effort after it. */}
+        {outbox ? (
+          <div className="mono mt-2 text-muted">
+            Delivery: transactional outbox via{" "}
+            {outboxTo ? (
+              <Link to={outboxTo} className="rounded-control text-accent hover:underline">
+                {outbox.table.name}
+              </Link>
+            ) : (
+              <span className="text-ink">{outbox.table.name}</span>
+            )}{" "}
+            in {outbox.store.slug}
+          </div>
+        ) : null}
       </PageHeader>
 
       <div className="flex gap-section p-gutter">

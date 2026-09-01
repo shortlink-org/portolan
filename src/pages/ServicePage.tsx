@@ -21,11 +21,16 @@ import { WhatLinksHere } from "../components/WhatLinksHere";
 import { NotFound } from "./NotFound";
 import { C4View } from "../likec4/C4View";
 import { serviceViewId } from "../likec4/ids";
+import { index } from "../data";
+import { storesOfService } from "../lib/data-model";
+import { ErCanvas } from "../er/ErCanvas";
+import { StoreHeader } from "../er/StoreHeader";
 
 const TABS = [
   "overview",
   "provides",
   "consumes",
+  "data",
   "flows",
   "decisions",
 ] as const;
@@ -39,6 +44,9 @@ export function ServicePage() {
   const { context: contextId, service: serviceSlug } = useParams();
   const [params, setParams] = useSearchParams();
   const [showRetired, setShowRetired] = useState(false);
+  // Read-only stores are off by default: they belong to someone else, and the
+  // question this tab opens with is what THIS service is responsible for.
+  const [showReadOnly, setShowReadOnly] = useState(false);
   const context = catalog.contexts.find((c) => c.id === contextId);
   const service = context?.services.find((s) => s.slug === serviceSlug);
 
@@ -50,6 +58,7 @@ export function ServicePage() {
   const events = service.aggregates.flatMap((aggregate) =>
     aggregate.events.map((event) => ({ aggregate, event })),
   );
+  const stores = storesOfService(index, service.id);
   const flows = flowsForService(catalog, service.id);
   const adrs = adrsForService(catalog, service.id, context.id);
   const current = adrs.filter(isCurrent);
@@ -58,6 +67,7 @@ export function ServicePage() {
     overview: null,
     provides: service.provides.reduce((n, p) => n + p.methods.length, 0),
     consumes: service.consumes.length,
+    data: stores.length,
     flows: flows.length,
     decisions: adrs.length,
   };
@@ -337,6 +347,59 @@ export function ServicePage() {
                 </div>
               );
             })}
+          </div>
+        </TabPanel>
+
+        <TabPanel>
+          {stores.length === 0 ? (
+            <Empty>
+              nothing says where this service keeps its state — stores are read
+              from migrations, and none were found for this repository
+            </Empty>
+          ) : null}
+
+          {stores.some((s) => s.access === "reads") ? (
+            <button
+              type="button"
+              onClick={() => setShowReadOnly((v) => !v)}
+              aria-pressed={showReadOnly}
+              className="mono mb-4 rounded-control border border-dashed px-2 py-1 border-line-strong text-muted hover:bg-surface"
+            >
+              {showReadOnly ? "hide" : "show"}{" "}
+              {stores.filter((s) => s.access === "reads").length} read-only
+              {" "}
+              {plural(
+                stores.filter((s) => s.access === "reads").length,
+                "store",
+              )}
+            </button>
+          ) : null}
+
+          <div className="flex flex-col gap-8">
+            {stores
+              .filter((s) => showReadOnly || s.access === "owns")
+              .map(({ store, access }) => (
+                <section key={store.id}>
+                  <StoreHeader store={store} access={access} />
+                  <div className="mt-3">
+                    {store.tables.length === 0 ? (
+                      /* A store whose schema nobody has read is still a fact
+                         worth drawing — a cache IS part of the picture — but an
+                         empty canvas would say the opposite. */
+                      <Empty>
+                        no schema extracted — {store.name} is in the catalog by
+                        kind and owner only
+                      </Empty>
+                    ) : (
+                      <ErCanvas
+                        store={store}
+                        ghost={access === "reads"}
+                        height={360}
+                      />
+                    )}
+                  </div>
+                </section>
+              ))}
           </div>
         </TabPanel>
 

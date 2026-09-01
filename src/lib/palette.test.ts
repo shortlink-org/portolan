@@ -22,6 +22,8 @@ describe("palette index", () => {
         "entity",
         "command",
         "query",
+        "store",
+        "table",
         "flow",
         "adr",
       ]),
@@ -52,7 +54,15 @@ describe("palette index", () => {
       items.filter((i) => i.selectId).map((i) => i.kind),
     );
     expect(selectable).toEqual(
-      new Set(["context", "service", "aggregate", "event", "def"]),
+      new Set([
+        "context",
+        "service",
+        "aggregate",
+        "event",
+        "def",
+        "store",
+        "table",
+      ]),
     );
     // A value object has a page but is not a selectable entity; it navigates.
     const money = items.find((i) => i.id === "shop.oms.order.money");

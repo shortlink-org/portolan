@@ -35,6 +35,16 @@ export function selectionPath(selection: Selection): string | null {
       );
     case "flow-step":
       return paths.flow(resolved.flow.slug);
+    // A table and a column are read on the canvas of the store holding them:
+    // a column's page is the picture of what it points at.
+    case "store":
+    case "table":
+    case "column":
+      return paths.store(
+        resolved.context.id,
+        resolved.service.slug,
+        resolved.store.slug,
+      );
     // A shared type has no page. It is only ever read inside the event that
     // carries it, so selecting one opens the panel and moves nobody.
     case "value-object":
@@ -128,6 +138,30 @@ export function pageContains(pathname: string, selection: Selection): boolean {
         (eventSlug === "vo" || eventSlug === "entity")
       ) {
         return false;
+      }
+
+      // A store page is "/c/<ctx>/<svc>/data/<store>": the literal sits where
+      // an aggregate slug would, so it is read before anything else tries to.
+      if (route.segments.length === 5 && aggregateSlug === "data") {
+        const store = (catalog.stores ?? []).find(
+          (s) => s.slug === eventSlug && s.owner === `${contextId}.${serviceSlug}`,
+        );
+        if (!store) return false;
+        switch (resolved.kind) {
+          case "store":
+            return resolved.store.id === store.id;
+          case "table":
+          case "column":
+            return resolved.store.id === store.id;
+          case "aggregate":
+            // The canvas says which aggregate each table holds, so selecting
+            // one from the sidebar lights the tables that persist it.
+            return store.tables.some(
+              (t) => t.persists?.aggregate === resolved.id,
+            );
+          default:
+            return false;
+        }
       }
       const context = catalog.contexts.find((c) => c.id === contextId);
       if (!context) return false;

@@ -24,6 +24,7 @@ import { ServicePage } from "../pages/ServicePage";
 import { AggregatePage } from "../pages/AggregatePage";
 import { BlockPage } from "../pages/BlockPage";
 import { EventPage } from "../pages/EventPage";
+import { StorePage } from "../pages/StorePage";
 import { GraphPage } from "../pages/GraphPage";
 import { Problems } from "../pages/Problems";
 import { NotFoundPage } from "../pages/NotFound";
@@ -83,6 +84,17 @@ function AppRoutes() {
         element={
           <WithDetail id="service">
             <ServicePage />
+          </WithDetail>
+        }
+      />
+      {/* Before the aggregate routes: "data" is a literal sitting where an
+          aggregate slug would, and "/c/x/y/data/z" would otherwise be read as
+          the event "z" of an aggregate called "data". */}
+      <Route
+        path="/c/:context/:service/data/:store"
+        element={
+          <WithDetail id="store">
+            <StorePage />
           </WithDetail>
         }
       />
