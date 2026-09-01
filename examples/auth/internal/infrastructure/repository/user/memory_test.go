@@ -85,8 +85,53 @@ func TestEmailIsUnique(t *testing.T) {
 	}
 }
 
-// Saving the same user again is not a uniqueness violation with itself.
-func TestSaveIsIdempotentForOneUser(t *testing.T) {
+// A first write starts the version at 1; every later one moves it on.
+func TestSaveAdvancesTheVersion(t *testing.T) {
+	ctx := context.Background()
+	store := repo.NewMemory()
+	u := newUser(t, "u1", address)
+
+	if u.Version != 0 {
+		t.Fatalf("an unsaved user is at version %d, want 0", u.Version)
+	}
+	if err := store.Save(ctx, u); err != nil {
+		t.Fatal(err)
+	}
+
+	stored, _ := store.ByID(ctx, "u1")
+	if stored.Version != 1 {
+		t.Errorf("stored version = %d, want 1", stored.Version)
+	}
+	// The aggregate that was handed in is untouched, version included: Save
+	// writes, it does not reach back.
+	if u.Version != 0 {
+		t.Errorf("Save moved the caller's version to %d", u.Version)
+	}
+}
+
+// The point of the version. Two changes made from one read must not both
+// succeed, or the first one disappears without anyone being told.
+func TestStaleWriteIsRefused(t *testing.T) {
+	ctx := context.Background()
+	store := repo.NewMemory()
+	if err := store.Save(ctx, newUser(t, "u1", address)); err != nil {
+		t.Fatal(err)
+	}
+
+	first, _ := store.ByID(ctx, "u1")
+	second, _ := store.ByID(ctx, "u1")
+
+	if err := store.Save(ctx, first); err != nil {
+		t.Fatalf("the first writer should win: %v", err)
+	}
+	if err := store.Save(ctx, second); !errors.Is(err, domain.ErrConflict) {
+		t.Fatalf("the second writer = %v, want ErrConflict", err)
+	}
+}
+
+// Saving the same object twice is the same fault seen from one goroutine: after
+// the first write the copy in hand is stale.
+func TestSavingTheSameObjectTwiceConflicts(t *testing.T) {
 	ctx := context.Background()
 	store := repo.NewMemory()
 	u := newUser(t, "u1", address)
@@ -94,8 +139,29 @@ func TestSaveIsIdempotentForOneUser(t *testing.T) {
 	if err := store.Save(ctx, u); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Save(ctx, u); err != nil {
-		t.Fatalf("re-saving the same user: %v", err)
+	if err := store.Save(ctx, u); !errors.Is(err, domain.ErrConflict) {
+		t.Fatalf("the second Save = %v, want ErrConflict", err)
+	}
+
+	// And the way out is the only one there is: read it again.
+	fresh, err := store.ByID(ctx, "u1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Save(ctx, fresh); err != nil {
+		t.Fatalf("saving a freshly read user: %v", err)
+	}
+}
+
+// A version on something the store has never seen did not come from this store.
+func TestUnknownUserWithAVersionIsRefused(t *testing.T) {
+	ctx := context.Background()
+	store := repo.NewMemory()
+	u := newUser(t, "u1", address)
+	u.Version = 7
+
+	if err := store.Save(ctx, u); !errors.Is(err, domain.ErrConflict) {
+		t.Fatalf("= %v, want ErrConflict", err)
 	}
 }
 

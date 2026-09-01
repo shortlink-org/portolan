@@ -86,6 +86,68 @@ func TestAuthenticate(t *testing.T) {
 	}
 }
 
+func TestChangePassword(t *testing.T) {
+	u, _, err := user.Register("u1", address, plaintext, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	const next = "NewPassw0rd"
+	ev, err := u.ChangePassword(plaintext, next, "s1", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if u.Password.Matches(plaintext) {
+		t.Error("the old password still works")
+	}
+	if !u.Password.Matches(next) {
+		t.Error("the new password does not")
+	}
+	if ev.UserID() != "u1" || ev.By() != "s1" || !ev.OccurredAt().Equal(now) {
+		t.Errorf("event = %+v, want it to name the user, the actor and the time", ev)
+	}
+	if ev.Name() != "auth.PasswordChanged" {
+		t.Errorf("name = %q", ev.Name())
+	}
+}
+
+// The current password is required even though the caller got this far.
+// Without it a stolen session is a stolen account.
+func TestChangePasswordNeedsTheCurrentOne(t *testing.T) {
+	u, _, err := user.Register("u1", address, plaintext, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = u.ChangePassword("Wr0ngGuess", "NewPassw0rd", "s1", now)
+	if !errors.Is(err, user.ErrInvalidCredentials) {
+		t.Fatalf("= %v, want ErrInvalidCredentials", err)
+	}
+	if !u.Password.Matches(plaintext) {
+		t.Error("a refused change altered the password anyway")
+	}
+}
+
+// A refusal leaves the aggregate exactly as it was, event included.
+func TestChangePasswordRefusesAWeakNewOne(t *testing.T) {
+	u, _, err := user.Register("u1", address, plaintext, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ev, err := u.ChangePassword(plaintext, "abc", "s1", now)
+	if !errors.Is(err, password.ErrInvalid) {
+		t.Fatalf("= %v, want the password policy", err)
+	}
+	if ev.UserID() != "" {
+		t.Error("a refused change produced an event")
+	}
+	if !u.Password.Matches(plaintext) {
+		t.Error("a refused change altered the password anyway")
+	}
+}
+
 // The repositories rely on this: what they hand out must share nothing a caller
 // can change under them.
 func TestCloneSharesNothingMutable(t *testing.T) {
@@ -104,6 +166,30 @@ func TestCloneSharesNothingMutable(t *testing.T) {
 	}
 	if !clone.Password.Matches(plaintext) {
 		t.Error("the clone should carry a working hash")
+	}
+}
+
+// A clone is as fresh, or as stale, as what it was taken from. A copy that lost
+// its version would look unsaved and would overwrite whatever it landed on.
+func TestCloneCarriesTheVersion(t *testing.T) {
+	u, _, err := user.Register("u1", address, plaintext, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	u.Version = 7
+
+	if got := u.Clone().Version; got != 7 {
+		t.Errorf("clone is at version %d, want 7", got)
+	}
+}
+
+func TestNewUserIsUnsaved(t *testing.T) {
+	u, _, err := user.Register("u1", address, plaintext, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if u.Version != 0 {
+		t.Errorf("a fresh user is at version %d, want 0 - it has never been stored", u.Version)
 	}
 }
 

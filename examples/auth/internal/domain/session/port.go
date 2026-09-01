@@ -13,6 +13,12 @@ type Repository interface {
 	Save(ctx context.Context, s *Session) error
 	ByID(ctx context.Context, id string) (*Session, error)
 	ByToken(ctx context.Context, presented token.Token) (*Session, error)
+
+	// ByUserID returns every session of a user, live or not. Not the hot path:
+	// it exists so that a credential change can find what it has to end, and
+	// the dead ones are included because the decision about them belongs to the
+	// domain service, not to the store.
+	ByUserID(ctx context.Context, userID string) ([]*Session, error)
 }
 
 // Publisher carries events that already happened. The domain does not care

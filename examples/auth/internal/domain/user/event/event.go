@@ -20,3 +20,11 @@ type Event interface {
 	// which can be much later and is the bus's business.
 	OccurredAt() time.Time
 }
+
+// The names events travel under on the bus. They are constants because a
+// subscriber and a publisher have to agree on them, and a typo in a string
+// literal is a subscription that silently never fires.
+const (
+	TopicUserRegistered  = "auth.UserRegistered"
+	TopicPasswordChanged = "auth.PasswordChanged"
+)

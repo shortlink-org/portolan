@@ -18,6 +18,11 @@ var (
 	ErrNotFound = errors.New("session: not found")
 	ErrExpired  = errors.New("session: expired")
 	ErrRevoked  = errors.New("session: revoked")
+
+	// ErrConflict means the session was changed by somebody else since this copy
+	// was read - two devices logging out at once, say. Read it again and redo
+	// the change.
+	ErrConflict = errors.New("session: changed by somebody else")
 )
 
 // TTL is how long a session is good for. One value, no per-user override.
@@ -32,6 +37,10 @@ type Session struct {
 	IssuedAt  time.Time
 	ExpiresAt time.Time
 	RevokedAt time.Time // zero while live
+
+	// Version is what the store compares against before writing; see the note
+	// on user.User.Version. Zero means the session has never been stored.
+	Version int64
 }
 
 // Start mints a session for a user who has already been authenticated, and
