@@ -121,10 +121,13 @@ function Row({ link }: { link: Backlink }) {
 export function WhatLinksHere({
   target,
   variant = "section",
+  className = "",
   elsewhere,
   empty,
 }: {
   target: BacklinkTarget;
+  /** `line` only: what the row it is folded into wants of its spacing. */
+  className?: string;
   /**
    * `section` is the block every scrolling page ends with. `line` is the same
    * facts as one row of chips, for a page with no bottom to put a section on -
@@ -155,7 +158,9 @@ export function WhatLinksHere({
     // empty state, and "linked from —" is worse than silence.
     if (total === 0) return null;
     return (
-      <span className="mono mt-2 flex flex-wrap items-center gap-1.5 text-muted">
+      <span
+        className={`mono flex flex-wrap items-center gap-1.5 text-muted ${className || "mt-2"}`}
+      >
         linked from
         {groups
           .flatMap((g) => g.links)

@@ -1,8 +1,11 @@
-import { useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
+import type { ReactNode } from "react";
+import type { DiagramApi } from "likec4/react";
 import { ReactLikeC4, isLikeC4ViewId } from "./generated";
 import { useTheme } from "../app/theme";
 import { Ident } from "../components/Ident";
 import { buildHighlightCss } from "./highlight-css";
+import type { Size } from "./canvas-viewport";
 
 export interface InteractiveViewProps {
   viewId: string;
@@ -14,9 +17,26 @@ export interface InteractiveViewProps {
   highlightNodes?: readonly string[];
   /** LikeC4 edge ids to mark; the other edges are dimmed. */
   highlightEdges?: readonly string[];
+  /**
+   * More rules for the same stylesheet — retuned theme tokens, dimmed frames.
+   * Anything that paints rather than lays out belongs here rather than in a
+   * prop the layout would have to be recomputed for.
+   */
+  extraCss?: string;
   onNode?: (likec4Id: string) => void;
   onEdge?: (edgeId: string) => void;
   onCanvas?: () => void;
+  /**
+   * Once the canvas is live, with the diagram's API and the size of the box it
+   * was given. The size is measured here because this is the component that
+   * owns the box; nothing inside LikeC4 will say how big it was made.
+   */
+  onReady?: (params: { diagram: DiagramApi; canvas: Size }) => void;
+  /**
+   * Rendered inside the canvas, where LikeC4's own hooks work. For bridges,
+   * not for decoration: anything drawn over the picture belongs beside it.
+   */
+  children?: ReactNode;
 }
 
 /**
@@ -54,34 +74,48 @@ export function InteractiveView({
   walkthrough = false,
   highlightNodes = [],
   highlightEdges = [],
+  extraCss = "",
   onNode,
   onEdge,
   onCanvas,
+  onReady,
+  children,
 }: InteractiveViewProps) {
   const { theme } = useTheme();
+  const boxRef = useRef<HTMLDivElement | null>(null);
 
   // Keyed on contents rather than array identity: callers build these lists
   // inline, so comparing by reference would rebuild the sheet every render.
   const nodeKey = highlightNodes.join(" ");
   const edgeKey = highlightEdges.join(" ");
-  const css = useMemo(
-    () =>
-      buildHighlightCss(
-        nodeKey ? nodeKey.split(" ") : [],
-        edgeKey ? edgeKey.split(" ") : [],
-      ),
-    [nodeKey, edgeKey],
+  const css = useMemo(() => {
+    const rules = buildHighlightCss(
+      nodeKey ? nodeKey.split(" ") : [],
+      edgeKey ? edgeKey.split(" ") : [],
+    );
+    return [extraCss, rules].filter(Boolean).join("\n");
+  }, [nodeKey, edgeKey, extraCss]);
+
+  const onInitialized = useCallback(
+    ({ diagram }: { diagram: DiagramApi }) => {
+      const box = boxRef.current?.getBoundingClientRect();
+      if (!box) return;
+      onReady?.({ diagram, canvas: { width: box.width, height: box.height } });
+    },
+    [onReady],
   );
 
   if (!isLikeC4ViewId(viewId)) return <Missing viewId={viewId} />;
 
   return (
-    <div className="h-full w-full bg-canvas">
+    <div ref={boxRef} className="h-full w-full bg-canvas">
       <ReactLikeC4
         // Remounting on viewId keeps LikeC4's own walkthrough state from
-        // leaking across a filter or variant switch. The selection is
-        // deliberately absent from this key: re-keying would re-layout.
-        key={`${viewId}:${theme}`}
+        // leaking across a filter or variant switch. The variant is in the key
+        // for a second reason: it is an initial value inside LikeC4, so the
+        // only honest way to change it is to start the canvas again. The
+        // selection is deliberately absent: re-keying would re-layout.
+        key={`${viewId}:${variant}:${theme}`}
         viewId={viewId}
         dynamicViewVariant={variant}
         colorScheme={theme}
@@ -99,9 +133,11 @@ export function InteractiveView({
         onNodeClick={(node) => onNode?.(String(node.id))}
         onEdgeClick={(edge) => onEdge?.(String(edge.id))}
         onCanvasClick={() => onCanvas?.()}
+        onInitialized={onInitialized}
         style={{ width: "100%", height: "100%" }}
       >
         {css ? <style>{css}</style> : null}
+        {children}
       </ReactLikeC4>
     </div>
   );
