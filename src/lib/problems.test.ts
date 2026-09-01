@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { catalog } from "../data";
-import { contextStats, problems } from "./derive";
+import { contextStats, edgeCount, problems } from "./derive";
 import type { Catalog } from "../catalog";
 
 describe("problems", () => {
@@ -66,5 +66,47 @@ describe("problems", () => {
       })),
     };
     expect(problems(clean)).toEqual([]);
+  });
+});
+
+describe("edgeCount", () => {
+  it("counts every call and consumer, resolved or not", () => {
+    const byHand = catalog.contexts
+      .flatMap((c) => c.services)
+      .reduce(
+        (n, s) =>
+          n +
+          s.consumes.length +
+          s.aggregates.reduce(
+            (m, a) =>
+              m + a.events.reduce((k, e) => k + e.consumers.length, 0),
+            0,
+          ),
+        0,
+      );
+    expect(edgeCount(catalog)).toBe(byHand);
+    expect(edgeCount(catalog)).toBeGreaterThanOrEqual(problems(catalog).length);
+  });
+
+  it("is zero for a catalog whose services are not wired together", () => {
+    const bare: Catalog = {
+      ...catalog,
+      contexts: catalog.contexts.map((context) => ({
+        ...context,
+        services: context.services.map((service) => ({
+          ...service,
+          consumes: [],
+          aggregates: service.aggregates.map((aggregate) => ({
+            ...aggregate,
+            events: aggregate.events.map((event) => ({
+              ...event,
+              consumers: [],
+            })),
+          })),
+        })),
+      })),
+    };
+    expect(edgeCount(bare)).toBe(0);
+    expect(problems(bare)).toEqual([]);
   });
 });

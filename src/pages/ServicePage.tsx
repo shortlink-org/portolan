@@ -7,7 +7,7 @@ import { adrsForService, isCurrent } from "../lib/adr";
 import { AdrRow } from "../components/AdrRow";
 import { EVENT_ANCHOR, SERVICE_ANCHOR, paths, servicePath } from "../routes";
 import { Markdown } from "../components/Markdown";
-import { middleTruncate } from "../lib/format";
+import { middleTruncate, plural } from "../lib/format";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
 import { Ident } from "../components/Ident";
 import { KindIcon } from "../components/kind";
@@ -93,13 +93,15 @@ export function ServicePage() {
             href={`#${SERVICE_ANCHOR.aggregates}`}
             className="rounded-control hover:text-ink"
           >
-            <span className="tnum">{service.aggregates.length}</span> aggregates
+            <span className="tnum">{service.aggregates.length}</span>{" "}
+            {plural(service.aggregates.length, "aggregate")}
           </a>
           <a
             href={`#${SERVICE_ANCHOR.events}`}
             className="rounded-control hover:text-ink"
           >
-            <span className="tnum">{events.length}</span> events
+            <span className="tnum">{events.length}</span>{" "}
+            {plural(events.length, "event")}
           </a>
         </div>
 

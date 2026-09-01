@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { catalog } from "../data";
+import { plural } from "../lib/format";
 import { filterGraph, serviceGraph } from "../lib/derive";
 import { contextVar } from "../lib/context-color";
 import { statusColor, statusDash } from "../graph/theme";
@@ -33,7 +34,8 @@ export function GraphPage() {
       <div className="flex shrink-0 flex-wrap items-center gap-3 border-b px-gutter py-3 border-line">
         <h1 className="text-lg font-semibold">Dependency graph</h1>
         <span className="mono text-muted">
-          {graph.nodes.length} services · {graph.edges.length} event edges
+          {graph.nodes.length} {plural(graph.nodes.length, "service")} ·{" "}
+          {graph.edges.length} {plural(graph.edges.length, "event edge")}
         </span>
 
         <div className="seg" role="group" aria-label="Filter by context">

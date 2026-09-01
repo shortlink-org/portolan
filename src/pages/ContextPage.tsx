@@ -3,7 +3,7 @@ import { AlertTriangle } from "lucide-react";
 import { catalog } from "../data";
 import { contextStats } from "../lib/derive";
 import { ctxStyle } from "../lib/context-color";
-import { middleTruncate } from "../lib/format";
+import { middleTruncate, plural } from "../lib/format";
 import { staggerStyle } from "../lib/motion";
 import { CONTEXT_ANCHOR, EVENT_ANCHOR, paths } from "../routes";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
@@ -68,19 +68,22 @@ export function ContextPage() {
             href={`#${CONTEXT_ANCHOR.services}`}
             className="rounded-control hover:text-ink"
           >
-            <span className="tnum">{stats.services}</span> services
+            <span className="tnum">{stats.services}</span>{" "}
+            {plural(stats.services, "service")}
           </a>
           <a
             href={`#${CONTEXT_ANCHOR.aggregates}`}
             className="rounded-control hover:text-ink"
           >
-            <span className="tnum">{stats.aggregates}</span> aggregates
+            <span className="tnum">{stats.aggregates}</span>{" "}
+            {plural(stats.aggregates, "aggregate")}
           </a>
           <a
             href={`#${CONTEXT_ANCHOR.events}`}
             className="rounded-control hover:text-ink"
           >
-            <span className="tnum">{stats.events}</span> events
+            <span className="tnum">{stats.events}</span>{" "}
+            {plural(stats.events, "event")}
           </a>
         </div>
       </PageHeader>
@@ -133,7 +136,7 @@ export function ContextPage() {
                       className="rounded-control hover:text-ink"
                     >
                       <span className="tnum">{service.aggregates.length}</span>{" "}
-                      aggregates
+                      {plural(service.aggregates.length, "aggregate")}
                     </Link>
                     <Link
                       to={`${paths.service(context.id, service.slug)}#svc-events`}

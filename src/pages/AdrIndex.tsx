@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
-import { catalog } from "../data";
+import { CATALOG_PATH, catalog } from "../data";
 import type { AdrStatus } from "../catalog";
 import { filterAdrs, scopeLabel, scopeOptions, sortAdrs } from "../lib/adr";
 import {
@@ -8,7 +8,7 @@ import {
   AdrScopePill,
   AdrStatusChip,
 } from "../components/primitives";
-import { Empty } from "../components/PageHeader";
+import { Blank, Empty } from "../components/PageHeader";
 import { RowActions } from "../components/RowActions";
 import { paths } from "../routes";
 import { staggerStyle } from "../lib/motion";
@@ -75,15 +75,22 @@ export function AdrIndex() {
     return next;
   };
 
+  // Ten facets, every one of them zero, over an empty table: the page looks
+  // like a filter the reader has already over-tightened. Before the first ADR
+  // is written there is nothing here to narrow.
+  const bare = all.length === 0;
+
   return (
     <div className="h-full overflow-y-auto p-gutter">
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-lg font-semibold">Decisions</h1>
-        <span className="mono text-muted">
-          {rows.length} of {all.length}
-        </span>
+        {bare ? null : (
+          <span className="mono text-muted">
+            {rows.length} of {all.length}
+          </span>
+        )}
 
-        <div className="ml-auto flex flex-wrap items-center gap-3">
+        <div className="ml-auto flex flex-wrap items-center gap-3" hidden={bare}>
           <div className="seg" role="group" aria-label="Filter by status">
             {STATUSES.map((s) => (
               <Facet
@@ -111,7 +118,15 @@ export function AdrIndex() {
         </div>
       </div>
 
-      {rows.length === 0 ? (
+      {bare ? (
+        <div className="mt-section">
+          <Blank where={CATALOG_PATH}>
+            Nothing on the record yet — an ADR is a decision as it was made,
+            frozen. They are read from the repositories’ markdown and land in{" "}
+            <span className="text-ink">adrs[]</span>.
+          </Blank>
+        </div>
+      ) : rows.length === 0 ? (
         <div className="mt-section">
           <Empty>nothing on the record matches this filter</Empty>
         </div>

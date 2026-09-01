@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
 import { ChevronDown, ChevronRight, Plus } from "lucide-react";
 import { catalog, index } from "../data";
+import { plural } from "../lib/format";
 import type { Field } from "../catalog";
 import { addedFields, stepsReferencing } from "../lib/derive";
 import { ctxStyle } from "../lib/context-color";
@@ -214,27 +215,27 @@ export function EventPage() {
           <Count
             n={selected.fields.length}
             anchor={EVENT_ANCHOR.schema}
-            unit="fields"
+            unit={plural(selected.fields.length, "field")}
           />
           <Count
             n={event.versions.length}
             anchor={EVENT_ANCHOR.versions}
-            unit={event.versions.length === 1 ? "version" : "versions"}
+            unit={plural(event.versions.length, "version")}
           />
           <Count
             n={event.consumers.length}
             anchor={EVENT_ANCHOR.consumers}
-            unit={event.consumers.length === 1 ? "consumer" : "consumers"}
+            unit={plural(event.consumers.length, "consumer")}
           />
           <Count
             n={appearances.length}
             anchor={EVENT_ANCHOR.flows}
-            unit={appearances.length === 1 ? "flow step" : "flow steps"}
+            unit={plural(appearances.length, "flow step")}
           />
           <Count
             n={decisions.length}
             anchor={EVENT_ANCHOR.decisions}
-            unit={decisions.length === 1 ? "decision" : "decisions"}
+            unit={plural(decisions.length, "decision")}
           />
         </div>
       </PageHeader>
@@ -247,7 +248,8 @@ export function EventPage() {
               anchor={EVENT_ANCHOR.schema}
               right={
                 <span className="mono text-muted">
-                  {selected.fields.length} fields · {selected.version}
+                  {selected.fields.length} {plural(selected.fields.length, "field")} ·{" "}
+                  {selected.version}
                 </span>
               }
             >

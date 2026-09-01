@@ -74,3 +74,36 @@ export function SectionTitle({
 export function Empty({ children }: { children: ReactNode }) {
   return <div className="empty">{children}</div>;
 }
+
+/**
+ * What a page says before the catalog has anything to put on it.
+ *
+ * `Empty` answers a question the reader asked - a filter, a lookup - with
+ * "nothing". This answers one they have not asked yet: the first catalog off a
+ * real repository is one context and a handful of events, and the sections it
+ * cannot fill must read as the start of something rather than as a dashboard
+ * with its wires cut. So it says where the missing facts come from, and names
+ * the file they land in - the one thing a reader can act on today.
+ */
+export function Blank({
+  children,
+  where,
+}: {
+  children: ReactNode;
+  /** Path in the repository the absent facts are read from. */
+  where?: string;
+}) {
+  return (
+    <div className="empty">
+      {/* The box is as wide as the list it stands in for, but a sentence is
+          not: capped at prose width and centred, so it does not run the full
+          bleed of a wide window. */}
+      <div className="mx-auto max-w-prose">{children}</div>
+      {where ? (
+        <div className="mt-2">
+          <Ident value={where} />
+        </div>
+      ) : null}
+    </div>
+  );
+}
