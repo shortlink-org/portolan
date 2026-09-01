@@ -94,17 +94,27 @@
                 {
                   "id": "Login",
                   "kind": "command",
-                  "doc": "Turns credentials into a session."
+                  "doc": "Turns credentials into a session.",
+                  "exposedBy": [
+                    "login"
+                  ]
                 },
                 {
                   "id": "Logout",
                   "kind": "command",
-                  "doc": "Ends the session behind a token."
+                  "doc": "Ends the session behind a token.",
+                  "exposedBy": [
+                    "logout"
+                  ]
                 },
                 {
                   "id": "Validate",
                   "kind": "query",
-                  "doc": "Resolves a token to a live session: who is calling, and how long the answer stays good."
+                  "doc": "Resolves a token to a live session: who is calling, and how long the answer stays good.",
+                  "exposedBy": [
+                    "changePassword",
+                    "validateSession"
+                  ]
                 }
               ],
               "events": [
@@ -273,17 +283,26 @@
                 {
                   "id": "ChangePassword",
                   "kind": "command",
-                  "doc": "Replaces the password of a user, given the current one."
+                  "doc": "Replaces the password of a user, given the current one.",
+                  "exposedBy": [
+                    "changePassword"
+                  ]
                 },
                 {
                   "id": "Get",
                   "kind": "query",
-                  "doc": "Reads a user by id."
+                  "doc": "Reads a user by id.",
+                  "exposedBy": [
+                    "getUser"
+                  ]
                 },
                 {
                   "id": "Register",
                   "kind": "command",
-                  "doc": "Creates a user from an email address and a password."
+                  "doc": "Creates a user from an email address and a password.",
+                  "exposedBy": [
+                    "registerUser"
+                  ]
                 }
               ],
               "events": [

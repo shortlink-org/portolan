@@ -17,7 +17,7 @@ import (
 // aggregate's own methods are the mechanics of one - Register, ChangePassword -
 // but a use case is the whole operation, it already has a name a reader would
 // recognise, and in this codebase it has a README of its own.
-func extractOperations(root string, b *plugin.Builder) map[string][]catalog.Operation {
+func extractOperations(root string, exposures map[string][]string, b *plugin.Builder) map[string][]catalog.Operation {
 	out := map[string][]catalog.Operation{}
 
 	for _, aggregate := range subdirs(root, "internal/application") {
@@ -40,6 +40,11 @@ func extractOperations(root string, b *plugin.Builder) map[string][]catalog.Oper
 				ID:   camel(name),
 				Kind: operationKind(pkg),
 				Doc:  operationDoc(root, path.Join(base, name), pkg),
+				// Which endpoints run it, read from the transport layer. Absent
+				// is the honest answer for a use case nothing outside can
+				// reach - and in this service that is a deliberate design, not
+				// an oversight.
+				ExposedBy: exposures[aggregate+"/"+name],
 			})
 		}
 	}

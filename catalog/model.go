@@ -121,6 +121,10 @@ type Operation struct {
 	ID   string        `json:"id"`
 	Kind OperationKind `json:"kind"`
 	Doc  string        `json:"doc,omitempty"`
+	// ExposedBy names the interface methods that run this operation, as they
+	// appear in RpcService.Methods. Empty means nothing outside the service can
+	// reach it, which is a fact worth having rather than a gap.
+	ExposedBy []string `json:"exposedBy,omitempty"`
 }
 
 // Block is an entity or a value object. The two are told apart by the list

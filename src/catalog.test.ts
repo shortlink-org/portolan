@@ -25,6 +25,30 @@ describe("validateCatalog", () => {
     expect(() => validateCatalog(catalog)).not.toThrow();
   });
 
+  it("rejects an operation exposed by a method no interface declares", () => {
+    const bad = clone();
+    const aggregate = bad.contexts[0]?.services[0]?.aggregates[0];
+    if (!aggregate) throw new Error("no aggregate to hang the operation on");
+    const operation = aggregate.operations[0];
+    if (!operation) throw new Error("no operation");
+    operation.exposedBy = ["notAMethod"];
+
+    expect(() => validateCatalog(bad)).toThrow(/exposed by "notAMethod"/);
+  });
+
+  // The pairing is the whole point of the field, so the shipped catalog is
+  // held to it rather than only the hand-made counterexample above.
+  it("accepts an operation exposed by a method its service really declares", () => {
+    const good = clone();
+    const service = good.contexts[0]?.services[0];
+    const method = service?.provides[0]?.methods[0];
+    const operation = service?.aggregates[0]?.operations[0];
+    if (!service || !method || !operation) throw new Error("nothing to pair");
+    operation.exposedBy = [method];
+
+    expect(() => validateCatalog(good)).not.toThrow();
+  });
+
   it("rejects a step whose participant was never declared, naming flow and step", () => {
     const bad = clone();
     const checkout = bad.flows.find((f) => f.slug === "checkout") as Flow;

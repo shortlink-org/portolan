@@ -103,6 +103,20 @@ export interface Operation {
   id: string;
   kind: "command" | "query";
   doc?: string;
+  /**
+   * The interface methods that expose this operation, by the name they carry
+   * in `RpcService.methods` - an OpenAPI `operationId`, a proto method.
+   *
+   * A method rather than a full `<service>/<method>` id, because the two ends
+   * are read by different generators out of different files: one reads the
+   * handlers and knows which use case an endpoint runs, the other reads the
+   * document and knows what the interface is called. Neither can state the
+   * other's half, and the pairing resolves once they are merged.
+   *
+   * Empty is a fact, not an omission: an operation nothing exposes is one the
+   * estate can only reach from inside, which is sometimes exactly the point.
+   */
+  exposedBy?: string[];
 }
 
 /**
@@ -1054,12 +1068,29 @@ export function validateCatalog(catalog: Catalog): Catalog {
         }
       }
 
+      // Every method this service answers on, whichever interface declares it.
+      // An operation says which of them expose it, and a name that matches none
+      // of them is a link into nothing.
+      const methods = new Set(
+        service.provides.flatMap((provided) => provided.methods),
+      );
+
       assertUniqueSlugs(
         service.aggregates.map((a) => a.slug),
         `service "${service.id}"`,
         "aggregate",
       );
       for (const aggregate of service.aggregates) {
+        for (const operation of aggregate.operations) {
+          for (const method of operation.exposedBy ?? []) {
+            if (!methods.has(method)) {
+              fail(
+                `operation "${operation.id}" of aggregate "${aggregate.id}" says it is exposed by "${method}", which no interface of service "${service.id}" declares`,
+                `aggregate ${aggregate.id} / operation ${operation.id}`,
+              );
+            }
+          }
+        }
         validateBlocks(catalog, aggregate);
         assertUniqueSlugs(
           aggregate.events.map((e) => e.slug),

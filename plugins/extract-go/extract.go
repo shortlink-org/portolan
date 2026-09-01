@@ -44,7 +44,8 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 
 	// Operations live in the application layer and belong to the aggregate the
 	// use case sits under, so they are gathered first and handed out below.
-	operations := extractOperations(root, b)
+	// What exposes each one is read from the transport layer beside it.
+	operations := extractOperations(root, extractTransport(root, b), b)
 
 	for _, dir := range subdirs(root, "internal/domain") {
 		aggregate, ok := extractAggregate(root, dir, svcID, b)
