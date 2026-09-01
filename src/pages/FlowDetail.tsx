@@ -1,24 +1,22 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Columns3,
-  Filter,
-  Rows3,
-  Split,
-  TriangleAlert,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { flowContexts, walkSteps } from "../catalog";
 import type { Flow, Step } from "../catalog";
-import { index } from "../data";
+import { catalog, index } from "../data";
 import { contextName, ctxStyle } from "../lib/context-color";
 import { middleTruncate } from "../lib/format";
-import { hiddenStepIds } from "../flow/cross-context";
+import { contextResolver, hiddenStepIds, isCrossContext } from "../flow/cross-context";
 import { StepRail } from "../flow/StepRail";
+import { FlowTable } from "../flow/FlowTable";
+import { FlowToolbar } from "../flow/FlowToolbar";
+import { buildChapters, groupRows } from "../flow/chapters";
+import { continuationIndex } from "../flow/continues";
+import { useFlowPrefs } from "../flow/prefs";
 import { buildOutline, outlineSteps } from "../flow/outline";
 import { findPath, flowPaths } from "../flow/paths";
 import { FlowView } from "../likec4/FlowView";
+import type { CanvasHandle } from "../likec4/CanvasBridge";
 import { flowCrossViewId, flowViewId } from "../likec4/ids";
 import { flowPairing } from "../likec4/view-index";
 import { flowStepId, parseFlowStepId } from "../selection/model";
@@ -31,38 +29,57 @@ import {
   useCanvasResize,
 } from "../app/panels";
 import { Ident } from "../components/Ident";
-import { Select } from "../components/Select";
 import { ContextPill, ProvenanceBadge } from "../components/primitives";
 import { WhatLinksHere } from "../components/WhatLinksHere";
 
 /**
- * A switch inside the view's segmented control. It carries no border of its
- * own: the group draws one, and the hairline between members does the rest.
+ * The summary, clamped to two lines.
+ *
+ * The header's whole job on this page is to be short: every row it keeps is a
+ * row of canvas the reader does not get. Two lines is enough to say what a
+ * flow is; the rest is one word away, and the word is remembered per flow
+ * because whether a summary is worth ten lines is a fact about that summary.
  */
-function Toggle({
-  on,
-  onClick,
-  icon: Icon,
-  children,
-  title,
+function Summary({
+  text,
+  expanded,
+  onToggle,
 }: {
-  on: boolean;
-  onClick: () => void;
-  icon: typeof Filter;
-  children: React.ReactNode;
-  title?: string;
+  text: string;
+  expanded: boolean;
+  onToggle: () => void;
 }) {
+  const ref = useRef<HTMLParagraphElement | null>(null);
+  const [clipped, setClipped] = useState(false);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = (): void => {
+      // Measured while clamped, which is the only state the question makes
+      // sense in: an expanded paragraph never overflows itself.
+      if (!expanded) setClipped(el.scrollHeight > el.clientHeight + 1);
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [text, expanded]);
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={on}
-      title={title}
-      className={`flex items-center gap-1.5 ${on ? "is-on" : ""}`}
-    >
-      <Icon size={14} aria-hidden />
-      {children}
-    </button>
+    <p className="mt-1.5 flex max-w-prose items-baseline gap-1.5 text-muted">
+      <span ref={ref} className={expanded ? "min-w-0" : "min-w-0 line-clamp-2"}>
+        {text}
+      </span>
+      {clipped || expanded ? (
+        <button
+          type="button"
+          onClick={onToggle}
+          className="mono shrink-0 rounded-control text-accent hover:underline"
+        >
+          {expanded ? "less" : "more"}
+        </button>
+      ) : null}
+    </p>
   );
 }
 
@@ -74,8 +91,16 @@ export function FlowDetail() {
   const [compact, setCompact] = useState(false);
   /** Empty means every branch at once — the union, not a run. */
   const [pathId, setPathId] = useState("");
+  /** Chapters the reader has folded away. Empty means the whole flow is open. */
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
+  const [hoverStep, setHoverStep] = useState<string | null>(null);
+  /** The step LikeC4's walkthrough is on, when it is running. */
+  const [walkStep, setWalkStep] = useState<string | null>(null);
+
+  const canvas = useRef<CanvasHandle | null>(null);
 
   const selection = useSelectionStore((s) => s.selection);
+  const source = useSelectionStore((s) => s.source);
   const select = useSelectionStore((s) => s.select);
   const settle = useCanvasResize();
 
@@ -86,6 +111,12 @@ export function FlowDetail() {
     return m;
   }, [allSteps]);
 
+  const [prefs, setPrefs] = useFlowPrefs(slug ?? "", allSteps.length);
+
+  const contextOf = useMemo(
+    () => (flow ? contextResolver(flow) : () => null),
+    [flow],
+  );
   const hidden = useMemo(
     () => (flow ? hiddenStepIds(flow) : new Set<string>()),
     [flow],
@@ -114,6 +145,29 @@ export function FlowDetail() {
   );
   const walkable = useMemo(() => outlineSteps(rows), [rows]);
 
+  // Chapters come from the flow rather than from the filtered rail, so the
+  // cross-context switch cannot rename or renumber them.
+  const chapters = useMemo(() => (flow ? buildChapters(flow) : []), [flow]);
+  const groups = useMemo(() => groupRows(rows, chapters), [rows, chapters]);
+  const chapterOfStep = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const chapter of chapters) {
+      for (const stepId of chapter.stepIds) m.set(stepId, chapter.id);
+    }
+    return m;
+  }, [chapters]);
+
+  const continuations = useMemo(
+    () => (flow ? continuationIndex(flow, catalog.flows) : new Map()),
+    [flow],
+  );
+
+  const crossContextOf = useCallback(
+    (step: Step) =>
+      isCrossContext(step, contextOf) ? contextOf(step.to) : undefined,
+    [contextOf],
+  );
+
   // --- what the selection means to this page -------------------------------
 
   /** The step selected on this flow, if the selection is one. */
@@ -141,21 +195,54 @@ export function FlowDetail() {
     [matches],
   );
   const focusedMatch = matches[Math.min(matchAt, matches.length - 1)] ?? null;
-  const activeId = selectedStepId ?? focusedMatch;
+  // Playback outranks the selection while it is running: it is the reader
+  // watching rather than pointing, and the rail's job is to follow.
+  const activeId = walkStep ?? selectedStepId ?? focusedMatch;
 
   const litSteps = useMemo(
-    () => (selectedStepId ? [selectedStepId] : matches),
-    [selectedStepId, matches],
+    () =>
+      walkStep
+        ? [walkStep]
+        : selectedStepId
+          ? [selectedStepId]
+          : hoverStep
+            ? [hoverStep]
+            : matches,
+    [walkStep, selectedStepId, hoverStep, matches],
   );
 
   useEffect(() => {
     // Choosing a path that does not contain the selected step would leave the
-    // rail marking nothing. The selection is the newer intent, so the filter
-    // yields to it rather than the other way round.
+    // rail marking a step it has greyed out. The selection is the newer
+    // intent, so the filter yields to it rather than the other way round.
     if (path && selectedStepId && !path.stepIds.has(selectedStepId)) {
       setPathId("");
     }
   }, [path, selectedStepId]);
+
+  useEffect(() => {
+    // A step the reader is being sent to must be visible when they arrive, so
+    // its chapter opens itself. Folding is a reading aid, not a filter, and it
+    // never gets to hide the one row the page is pointing at.
+    if (!activeId) return;
+    const chapterId = chapterOfStep.get(activeId);
+    if (!chapterId) return;
+    setCollapsed((current) => {
+      if (!current.has(chapterId)) return current;
+      const next = new Set(current);
+      next.delete(chapterId);
+      return next;
+    });
+  }, [activeId, chapterOfStep]);
+
+  const toggleChapter = useCallback((chapterId: string) => {
+    setCollapsed((current) => {
+      const next = new Set(current);
+      if (next.has(chapterId)) next.delete(chapterId);
+      else next.add(chapterId);
+      return next;
+    });
+  }, []);
 
   const selectStep = useCallback(
     (stepId: string) => {
@@ -243,9 +330,31 @@ export function FlowDetail() {
     setMatchAt((n) => (n + delta + matches.length) % matches.length);
   };
 
+  const rail = (
+    <>
+      <MatchPill
+        selection={selection}
+        matches={matches}
+        at={matchAt}
+        onCycle={cycle}
+      />
+      <StepRail
+        groups={groups}
+        activeId={activeId}
+        matchIds={matchIds}
+        collapsed={collapsed}
+        onToggleChapter={toggleChapter}
+        onSelect={selectStep}
+        onHover={setHoverStep}
+        crossContextOf={crossContextOf}
+        continuations={continuations}
+      />
+    </>
+  );
+
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="hero shrink-0 border-b px-gutter py-5 border-line bg-canvas">
+      <div className="hero shrink-0 border-b px-gutter py-2.5 border-line bg-canvas">
         {/* A flow belongs to no single context, so the wash takes the first one
             it crosses - the context it starts in. */}
         <div aria-hidden className="hero-wash" style={ctxStyle(contexts[0])} />
@@ -256,122 +365,77 @@ export function FlowDetail() {
           <Ident value={flow.id} className="text-muted" />
           <div className="ml-auto flex items-center gap-2">
             <PinButton kind="flow" id={flow.id} label={flow.name} />
-            <ProvenanceBadge
-              provenance={flow.provenance}
-              source={flow.source}
-              verifiedAt={flow.verifiedAt}
-            />
-            {flow.source ? (
-              <Ident value={flow.source} className="text-muted">
-                {middleTruncate(flow.source)}
-              </Ident>
-            ) : null}
           </div>
         </div>
 
-        <p className="mt-2 max-w-prose text-muted">{flow.summary}</p>
-
-        {/* The same incoming links every other entity ends with, as one row:
-            the rail and the canvas below take the whole height, so there is no
-            bottom of the page to put a section on. */}
-        <WhatLinksHere
-          target={{ kind: "flow", id: flow.slug }}
-          variant="line"
+        <Summary
+          text={flow.summary}
+          expanded={prefs.expanded}
+          onToggle={() => setPrefs({ expanded: !prefs.expanded })}
         />
 
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <div className="flex flex-wrap gap-1">
-            {contexts.map((c) => (
-              <ContextPill key={c} id={c} name={contextName(c)} />
-            ))}
-          </div>
-          {/* The count of what is not on screen is the one control that can
-              put it back, so it is the button that does. */}
-          {hiddenCount > 0 ? (
-            <button
-              type="button"
-              onClick={() => setCrossOnly(false)}
-              title="Show the steps this view is leaving out"
-              className="mono rounded-control text-muted hover:text-ink"
-            >
-              <span className="tnum">{hiddenCount}</span> step
-              {hiddenCount === 1 ? "" : "s"} hidden — show them
-            </button>
-          ) : null}
-          <Ident
-            value={viewId}
-            className="text-muted"
-            title={`LikeC4 view ${viewId} — click to copy`}
+        {/* Everything the reader might want to know ABOUT this flow, as one
+            wrapping row. Four separate rows of one chip each is four rows of
+            canvas spent on decoration — and on this page every row of header
+            is a row the picture does not get.
+
+            What the row does NOT carry is anything about the picture: the view
+            id and the filter's own count are facts about what is on the canvas
+            right now, and they live with the controls that changed them. */}
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+          {/* The badge is given no source: it would print the file name, which
+              is the tail of the path standing right next to it. One of the two
+              has to go, and the one that goes is the one you cannot copy. */}
+          <ProvenanceBadge
+            provenance={flow.provenance}
+            verifiedAt={flow.verifiedAt}
           />
-          {pairingBroken ? (
-            <span
-              className="mono flex items-center gap-1 status-unresolved"
-              title="The generated view and the catalog disagree on how many steps this flow has, so a step cannot be matched to its arrow. Re-run `npm run likec4:gen`."
-            >
-              <TriangleAlert size={11} aria-hidden />
-              diagram highlighting unavailable
-            </span>
+          {flow.source ? (
+            <Ident value={flow.source} className="text-muted">
+              {middleTruncate(flow.source, 40)}
+            </Ident>
           ) : null}
-
-          {/* Only a flow that actually forks gets a path picker; for the other
-              three there is one path and naming it would be noise. */}
-          {paths.paths.length > 1 ? (
-            <div className="ml-auto flex items-center gap-1.5 text-muted">
-              <Split size={14} aria-hidden />
-              <Select
-                value={pathId}
-                onChange={setPathId}
-                label="Path through this flow"
-                title="Show only the steps that run on one path through this flow"
-                menuWidth={320}
-                options={[
-                  { value: "", label: "all branches" },
-                  ...paths.paths.map((p) => ({
-                    value: p.id,
-                    label: p.label,
-                    ...(p.terminal ? { note: "ends the flow" } : {}),
-                  })),
-                ]}
-              />
-            </div>
-          ) : null}
-
-          <div className={`seg ${paths.paths.length > 1 ? "" : "ml-auto"}`}>
-            <Toggle
-              on={crossOnly}
-              onClick={() => setCrossOnly((v) => !v)}
-              icon={Filter}
-              title="Switch to the declared crossings-only view"
-            >
-              cross-context only
-            </Toggle>
-            <Toggle
-              on={compact}
-              onClick={() => setCompact((v) => !v)}
-              icon={compact ? Rows3 : Columns3}
-              title="Replace the view with the numbered step list"
-            >
-              compact
-            </Toggle>
-          </div>
+          <WhatLinksHere
+            target={{ kind: "flow", id: flow.slug }}
+            variant="line"
+            className="mt-0"
+          />
+          {contexts.map((c) => (
+            <ContextPill key={c} id={c} name={contextName(c)} />
+          ))}
         </div>
+
+        <FlowToolbar
+          variant={prefs.variant}
+          onVariant={(variant) => setPrefs({ variant })}
+          playing={walkStep !== null}
+          onPlay={() => canvas.current?.start()}
+          onStep={(delta) => canvas.current?.step(delta)}
+          onStop={() => canvas.current?.stop()}
+          onFit={() => canvas.current?.fit()}
+          paths={paths.paths}
+          pathId={pathId}
+          onPath={setPathId}
+          pathSteps={path ? path.stepIds.size : null}
+          totalSteps={allSteps.length}
+          crossOnly={crossOnly}
+          onCrossOnly={setCrossOnly}
+          compact={compact}
+          onCompact={setCompact}
+          viewId={viewId}
+          hiddenCount={hiddenCount}
+          pairingBroken={pairingBroken}
+        />
       </div>
 
       <div className="flex min-h-0 flex-1">
         {compact ? (
           <div className="pane min-w-0 flex-1 overflow-y-auto">
-            <MatchPill
-              selection={selection}
-              matches={matches}
-              at={matchAt}
-              onCycle={cycle}
-            />
-            <StepRail
-              rows={rows}
-              activeId={activeId}
-              matchIds={matchIds}
-              onSelect={selectStep}
-              full
+            <FlowTable
+              flow={flow}
+              rows={walkable}
+              chapters={chapters}
+              contextOf={contextOf}
             />
           </div>
         ) : (
@@ -385,23 +449,12 @@ export function FlowDetail() {
           >
             <Panel
               id="rail"
-              defaultSize="280px"
-              minSize="180px"
+              defaultSize="320px"
+              minSize="200px"
               maxSize="45"
               className="pane h-full overflow-y-auto border-r border-line"
             >
-              <MatchPill
-                selection={selection}
-                matches={matches}
-                at={matchAt}
-                onCycle={cycle}
-              />
-              <StepRail
-                rows={rows}
-                activeId={activeId}
-                matchIds={matchIds}
-                onSelect={selectStep}
-              />
+              {rail}
             </Panel>
 
             <ResizeHandle id="rail" />
@@ -415,8 +468,21 @@ export function FlowDetail() {
               <FlowView
                 flow={flow}
                 crossOnly={crossOnly}
+                variant={prefs.variant}
                 litSteps={litSteps}
                 pathSteps={path ? [...path.stepIds] : null}
+                /* What the READER is pointing at, which is not the same thing
+                   as what the rail is marking: during playback the rail marks
+                   the step being played, and feeding that back to the canvas
+                   would have the page and the walkthrough each insisting on a
+                   different step forever. A step clicked ON the canvas is left
+                   out too — it is already in view, and re-centring would move
+                   the picture out from under the pointer. */
+                focusStep={
+                  source === "diagram" ? null : (selectedStepId ?? focusedMatch)
+                }
+                canvas={canvas}
+                onWalkthroughStep={setWalkStep}
               />
             </Panel>
           </SavedGroup>
