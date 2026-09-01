@@ -47,7 +47,7 @@ let drifted = false;
 // somebody put it in a list.
 for (const step of manifest.extract ?? []) {
   const plugin = pluginNamed(step.plugin);
-  const stamp = stampFor(step.in);
+  const stamp = stampFor(step.in, step.out);
 
   const { files, diagnostics } = await runPlugin(plugin, {
     portolanVersion: PORTOLAN_VERSION,
@@ -136,10 +136,18 @@ function summarise(label, files, changes) {
  * be committed and cannot be checked; and a plugin that shells out to git is a
  * plugin that can never be sandboxed. Stamped from the last commit to touch the
  * directory, a fragment changes exactly when its subject does.
+ *
+ * The output is excluded from that history, and it has to be: a fragment
+ * written beside the code it describes is inside the directory it is stamped
+ * from, so committing one would move the stamp, which would make the fragment
+ * out of date, which would rewrite it - and `--check` would never come back
+ * clean two runs in a row.
  */
-function stampFor(root) {
+function stampFor(root, out) {
+  const exclude = out ? [`:(exclude)${out}`] : [];
+
   for (const args of [
-    ["log", "-1", "--format=%h %cI", "--", root],
+    ["log", "-1", "--format=%h %cI", "--", root, ...exclude],
     ["log", "-1", "--format=%h %cI"],
   ]) {
     try {

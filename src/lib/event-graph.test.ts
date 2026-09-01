@@ -20,6 +20,9 @@ describe("eventGraph", () => {
       "shop.pricing",
       "payments.ledger",
       "delivery.core",
+      // Merge order is source path order, so what examples/auth publishes
+      // comes after the hand-written estate.
+      "auth.auth",
     ]);
     expect(sample.events.map((e) => e.name)).toContain("PaymentCaptured");
     // One node per event, whatever the consumer count: PaymentCaptured has two
