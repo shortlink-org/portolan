@@ -12,6 +12,7 @@ import {
   AdrStatusChip,
 } from "../components/primitives";
 import { eventPath, paths, servicePath } from "../routes";
+import { PinButton } from "../app/pins";
 import { NotFound } from "./NotFound";
 
 /**
@@ -169,6 +170,7 @@ export function AdrDetail() {
             {adr.title}
           </h1>
           <div className="ml-auto flex items-center gap-2">
+            <PinButton kind="adr" id={adr.id} label={adr.title} />
             <AdrStatusChip status={adr.status} />
             <AdrScopePill scope={adr.scope} />
           </div>

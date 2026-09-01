@@ -305,6 +305,14 @@ export interface Flow {
   provenance: Provenance;
   source?: string; // test file for derived-from-test, doc file for authored
   verifiedAt?: string;
+  /**
+   * The bounded context this flow belongs to, when nothing in the flow says so
+   * on its own. A derived flow already names its owner - the service whose test
+   * produced it, or the first service the trace passed through - so this is
+   * required for `authored` flows only, and the validator holds it to that:
+   * a hand-written flow with no owner has nowhere to sit in the tree.
+   */
+  owner?: string;
   participants: Participant[]; // order is significant - it is the lane order
   steps: FlowNode[];
 }
@@ -1098,11 +1106,28 @@ export function validateCatalog(catalog: Catalog): Catalog {
     "flow",
   );
 
+  const flowContextIds = new Set(catalog.contexts.map((c) => c.id));
+
   for (const flow of catalog.flows) {
     const lanes = new Set(flow.participants.map((p) => p.id));
     if (lanes.size !== flow.participants.length) {
       fail(
         `flow "${flow.slug}" has duplicate participant ids`,
+        `flow ${flow.id}`,
+      );
+    }
+    // A derived flow carries its owner in what derived it; an authored one
+    // carries nothing at all, so the file has to say. Without it the flow has
+    // no group to sit under and the tree files it as a defect.
+    if (flow.provenance === "authored" && flow.owner === undefined) {
+      fail(
+        `flow "${flow.slug}" is authored and names no owner; an authored flow must state the context it belongs to`,
+        `flow ${flow.id}`,
+      );
+    }
+    if (flow.owner !== undefined && !flowContextIds.has(flow.owner)) {
+      fail(
+        `flow "${flow.slug}" names owner "${flow.owner}", which is not a bounded context`,
         `flow ${flow.id}`,
       );
     }

@@ -18,6 +18,10 @@
   --border-strong: #b9c0c7;
   --fg: #14181c;
   --fg-muted: #61707d;
+  /* A step below muted, and the last grey that is still text. Section counts
+     live here: a count annotates the header it sits on, and at --fg-muted it
+     competes with the header for the same glance. */
+  --fg-faint: #96a1ac;
   --accent: #1f6feb;
   /* The two stops of the one sanctioned accent gradient. Derived from --accent
      rather than named, so a theme swap carries the gradient with it. */
@@ -77,7 +81,7 @@
      it is a label for the column, not another row of it. */
   --row-h: 40px;
   --row-h-head: 36px;
-  --row-h-tree: 22px;
+  --row-h-tree: 32px;
   --text-meta: 13px;
 
   /* Motion. Three durations, two easings, nothing else. */
@@ -92,7 +96,7 @@
 [data-density="compact"] {
   --row-h: 30px;
   --row-h-head: 28px;
-  --row-h-tree: 18px;
+  --row-h-tree: 26px;
   --text-meta: 12px;
 }
 
@@ -104,6 +108,7 @@
   --border-strong: #3a424c;
   --fg: #e3e8ee;
   --fg-muted: #8b97a4;
+  --fg-faint: #626e7b;
   --accent: #5b9dff;
   --accent-lo: #3d7fe0;
   --accent-hi: #7ab2ff;
@@ -144,6 +149,7 @@
   --color-line-strong: var(--border-strong);
   --color-ink: var(--fg);
   --color-muted: var(--fg-muted);
+  --color-faint: var(--fg-faint);
   --color-accent: var(--accent);
   --color-verified: var(--status-verified);
   --color-declared: var(--status-declared);
@@ -377,6 +383,27 @@
   }
   .row:hover {
     @apply bg-surface;
+  }
+
+  /* A list whose rows line up. The list owns the columns and each row is a
+     subgrid of them, so the same field starts at the same x on every line and
+     the eye reads down a column instead of hunting along each row. Rows keep
+     their own border and hover, which is why this is a subgrid rather than one
+     flat grid with the row chrome painted over it.
+
+     The list says what the columns are - `rows grid-cols-[auto_1fr_auto]` -
+     and every row emits one cell per column, empty ones included: a skipped
+     cell shifts everything after it one column to the left. */
+  .rows {
+    @apply grid gap-1;
+  }
+  .rows > * {
+    @apply col-span-full grid grid-cols-subgrid;
+  }
+  /* A chip is a badge, not a cell. It keeps the width of what it says rather
+     than stretching to the column the alignment handed it. */
+  .rows > * > .chip {
+    @apply justify-self-start;
   }
 
   /* Toolbar and filter buttons. Border colour is the only thing that changes
@@ -733,6 +760,53 @@
   /* The sidebar tree obeys the same density switch as the tables. */
   .tree-row {
     min-height: var(--row-h-tree);
+  }
+
+  /* ---------------------------------------------------------------------
+     The sidebar's own furniture. The tree is ONE list: sections are told
+     apart by 12px of air and a label, never by a border or a card. Anything
+     here that looks like a box would make the reader count boxes instead of
+     reading names.
+     --------------------------------------------------------------------- */
+
+  /* A section header. It is a button because every section folds, and it keeps
+     its count when folded - a closed section that also hid its size would be
+     indistinguishable from an empty one. */
+  .sb-section {
+    @apply mono sticky top-0 z-10 flex w-full items-center gap-1.5 px-3 py-1.5 text-left uppercase text-muted;
+    background: color-mix(in srgb, var(--bg) 80%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  /* The count that rides at the end of a header or a group row. Faint and
+     tabular: it annotates the name, it is not another word in it. */
+  .sb-count {
+    @apply mono tnum ml-auto shrink-0;
+    color: var(--fg-faint);
+  }
+
+  /* A context this flow reaches, in that context's own colour. Square, like
+     every other context marker in the app. */
+  .sb-reach {
+    @apply inline-block size-1.5 shrink-0 rounded-[1px];
+    background: var(--ctx);
+  }
+
+  /* How far a flow has been made good on. Round, so it can never be read as a
+     seventh context beside the square reach marks. */
+  .sb-health {
+    @apply inline-block size-2 shrink-0 rounded-full;
+  }
+
+  /* How a bounded context is rated, at the end of its row. Ten pixels, no
+     border, no background: at this size the badge is a footnote on the name,
+     and a bordered chip here reads as a control the reader can press. */
+  .sb-class {
+    @apply shrink-0 lowercase;
+    font-size: 10px;
+    line-height: 14px;
+    color: var(--fg-muted);
   }
 
   /* Secondary text inside a row: 13px comfortable, 12px compact. */

@@ -113,7 +113,9 @@ function BlockList({
     );
   }
   return (
-    <div className="flex flex-col gap-1" data-nav-list>
+    /* icon, the block itself, where its shape comes from, actions - one
+       column each, so the provenance holds the same column down the list. */
+    <div className="rows grid-cols-[auto_1fr_auto_auto]" data-nav-list>
       {/* A div holding a link, not a link holding buttons: the shared-type id
           copies itself and the row carries actions, and neither of those can
           live inside an anchor. */}
@@ -140,7 +142,7 @@ function BlockList({
                 {block.doc}
               </span>
             </span>
-            <span className="mono ml-auto flex shrink-0 items-center gap-2 text-muted">
+            <span className="mono flex shrink-0 items-center gap-2 text-muted">
               {block.ref ? (
                 <Ident value={block.ref} title={`shared type ${block.ref}`} />
               ) : (
@@ -239,6 +241,7 @@ export function AggregatePage() {
         name={aggregate.name}
         id={aggregate.id}
         contextId={context.id}
+        pin={{ kind: "aggregate", id: aggregate.id }}
       />
 
       <div className="flex gap-section p-gutter">
@@ -303,7 +306,10 @@ export function AggregatePage() {
               /* The row is a div rather than a link so the consumer count can
                  be a link of its own: a count that says "4 consumers" and does
                  not take you to them is a count that lied. */
-              <div className="flex flex-col gap-1" data-nav-list>
+              <div
+                className="rows grid-cols-[auto_auto_1fr_auto_auto]"
+                data-nav-list
+              >
                 {aggregate.events.map((event) => {
                   const to = paths.event(
                     context.id,
@@ -312,10 +318,7 @@ export function AggregatePage() {
                     event.slug,
                   );
                   return (
-                    <div
-                      key={event.id}
-                      className="row flex-wrap gap-2 px-3 py-2"
-                    >
+                    <div key={event.id} className="row gap-2 px-3 py-2">
                       <KindIcon kind="event" />
                       <Link
                         to={to}
@@ -347,7 +350,7 @@ export function AggregatePage() {
                       </span>
                       <Link
                         to={`${to}#${EVENT_ANCHOR.consumers}`}
-                        className="mono ml-auto rounded-control text-muted hover:text-ink"
+                        className="mono rounded-control text-muted hover:text-ink"
                         title="open the consumers of this event"
                       >
                         <span className="tnum">{event.consumers.length}</span>{" "}
@@ -429,7 +432,14 @@ export function AggregatePage() {
                 tables via `persists` in migrations metadata
               </Empty>
             ) : (
-              <div className="flex flex-col gap-1" data-nav-list>
+              /* icon, name, what it is, store, width, actions. Tables and
+                 views share the columns because a reader reads them as one
+                 list - which is why a table with no role still emits the
+                 cell the views put their kind in. */
+              <div
+                className="rows grid-cols-[auto_auto_auto_1fr_auto_auto]"
+                data-nav-list
+              >
                 {persistence.map(({ table, store }) => {
                   const to = tablePath(table.id);
                   return (
@@ -448,9 +458,11 @@ export function AggregatePage() {
                       )}
                       {table.role ? (
                         <span className="chip">{table.role}</span>
-                      ) : null}
+                      ) : (
+                        <span />
+                      )}
                       <span className="mono text-muted">{store.slug}</span>
-                      <span className="mono ml-auto text-muted">
+                      <span className="mono text-muted">
                         <span className="tnum">{table.columns.length}</span>{" "}
                         {plural(table.columns.length, "column")}
                       </span>
@@ -485,7 +497,7 @@ export function AggregatePage() {
                         {view.materialized ? "matview" : "view"}
                       </span>
                       <span className="mono text-muted">{store.slug}</span>
-                      <span className="mono ml-auto text-muted">
+                      <span className="mono text-muted">
                         <span className="tnum">{view.columns.length}</span>{" "}
                         {plural(view.columns.length, "column")}
                       </span>

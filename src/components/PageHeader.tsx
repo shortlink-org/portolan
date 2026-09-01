@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import { ctxStyle } from "../lib/context-color";
+import { PinButton } from "../app/pins";
+import type { PinKind } from "../lib/pins";
 import { AnchorLink } from "./AnchorLink";
 import { Ident } from "./Ident";
 
@@ -8,12 +10,18 @@ import { Ident } from "./Ident";
  * wash - 120px of that context's colour at 6%, fading to nothing. The header's
  * own content sits above it on solid background, so no text is ever read off
  * a gradient.
+ *
+ * `pin` puts the pin control at the head of the right-hand group, before
+ * whatever else the page puts there. It is first because it is the only
+ * control on the strip that is about the reader rather than about the entity,
+ * and a reader looking for it should find it in the same place on every page.
  */
 export function PageHeader({
   kind,
   name,
   id,
   contextId,
+  pin,
   right,
   children,
 }: {
@@ -21,6 +29,8 @@ export function PageHeader({
   name: string;
   id?: string;
   contextId?: string | null;
+  /** What pinning this page pins. Omitted on pages that are not pinnable. */
+  pin?: { kind: PinKind; id: string };
   right?: ReactNode;
   children?: ReactNode;
 }) {
@@ -35,8 +45,13 @@ export function PageHeader({
         {/* The id under a page's own name is the single most-copied string in
             the app - it is what a reader takes to a grep or a ticket. */}
         {id ? <Ident value={id} className="text-muted" /> : null}
-        {right ? (
-          <div className="ml-auto flex items-center gap-2">{right}</div>
+        {pin || right ? (
+          <div className="ml-auto flex items-center gap-2">
+            {pin ? (
+              <PinButton kind={pin.kind} id={pin.id} label={name} />
+            ) : null}
+            {right}
+          </div>
         ) : null}
       </div>
       {children}

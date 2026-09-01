@@ -5,7 +5,7 @@
 // the reader can act on: by the service that owns the near end.
 
 import { useMemo, useState } from "react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { catalog, index } from "../data";
 import { edgeCount, problems } from "../lib/derive";
 import type { Problem } from "../lib/derive";
@@ -48,7 +48,19 @@ const KIND_NOTE: Record<Problem["kind"], string> = {
 };
 
 export function Problems() {
-  const [active, setActive] = useState<Set<string>>(new Set());
+  // `?context=` is how the sidebar's unresolved-edge count arrives here: the
+  // reader clicked a number against one context, so that context is what the
+  // page opens filtered to. It seeds the chips rather than replacing them -
+  // once here, the filter is theirs to widen.
+  const [params] = useSearchParams();
+  const [active, setActive] = useState<Set<string>>(
+    () =>
+      new Set(
+        params
+          .getAll("context")
+          .filter((id) => catalog.contexts.some((c) => c.id === id)),
+      ),
+  );
   // Unresolved edges first, then everything the schema disagrees with. Within
   // each, errors before warnings: a boundary leak is not the same kind of news
   // as a column whose type has drifted, and mixing them buries the first.

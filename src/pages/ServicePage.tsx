@@ -92,6 +92,7 @@ export function ServicePage() {
         name={service.name}
         id={service.id}
         contextId={context.id}
+        pin={{ kind: "service", id: service.id }}
         right={<ContextPill id={context.id} name={context.name} />}
       >
         <div className="mono mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-muted">
@@ -155,7 +156,12 @@ export function ServicePage() {
               <SectionTitle anchor={SERVICE_ANCHOR.aggregates}>
                 Aggregates
               </SectionTitle>
-              <div className="flex flex-col gap-1" data-nav-list>
+              {/* icon, slug, name, event count, actions - one column each,
+                  so the counts stack up instead of drifting with the name. */}
+              <div
+                className="rows grid-cols-[auto_auto_1fr_auto_auto]"
+                data-nav-list
+              >
                 {service.aggregates.map((aggregate) => {
                   const to = paths.aggregate(
                     context.id,
@@ -175,7 +181,7 @@ export function ServicePage() {
                       <span className="meta">{aggregate.name}</span>
                       <Link
                         to={`${to}#bb-events`}
-                        className="mono ml-auto rounded-control hover:underline"
+                        className="mono rounded-control hover:underline"
                         style={{
                           color:
                             aggregate.events.length === 0
@@ -214,7 +220,10 @@ export function ServicePage() {
               {events.length === 0 ? (
                 <Empty>this service announces nothing — it only answers</Empty>
               ) : (
-                <div className="flex flex-col gap-1" data-nav-list>
+                <div
+                  className="rows grid-cols-[auto_auto_1fr_auto_auto]"
+                  data-nav-list
+                >
                   {events.map(({ aggregate, event }) => {
                     const to = paths.event(
                       context.id,
@@ -238,7 +247,7 @@ export function ServicePage() {
                         </span>
                         <Link
                           to={`${to}#${EVENT_ANCHOR.consumers}`}
-                          className="mono ml-auto rounded-control text-muted hover:text-ink"
+                          className="mono rounded-control text-muted hover:text-ink"
                         >
                           <span className="tnum">{event.consumers.length}</span>{" "}
                           {event.consumers.length === 1
@@ -366,8 +375,7 @@ export function ServicePage() {
               className="mono mb-4 rounded-control border border-dashed px-2 py-1 border-line-strong text-muted hover:bg-surface"
             >
               {showReadOnly ? "hide" : "show"}{" "}
-              {stores.filter((s) => s.access === "reads").length} read-only
-              {" "}
+              {stores.filter((s) => s.access === "reads").length} read-only{" "}
               {plural(
                 stores.filter((s) => s.access === "reads").length,
                 "store",

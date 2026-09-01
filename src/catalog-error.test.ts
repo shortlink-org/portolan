@@ -75,4 +75,31 @@ describe("CatalogError.path", () => {
   it("passes the real catalog, path and all", () => {
     expect(() => validateCatalog(clone())).not.toThrow();
   });
+
+  it("refuses an authored flow that names no owner", () => {
+    // A derived flow carries its owner in what derived it. An authored one
+    // carries nothing, so the file has to say - otherwise the tree has to
+    // guess, and a guessed owner is a fact nobody wrote down.
+    const bad = clone();
+    const flow = bad.flows.find((f) => f.provenance === "authored");
+    if (!flow) throw new Error("fixture has no authored flow");
+    delete flow.owner;
+
+    const error = failureOf(bad);
+    expect(error.message).toContain("authored and names no owner");
+    expect(error.path).toBe(`flow ${flow.id}`);
+  });
+
+  it("refuses an owner that is not a bounded context", () => {
+    const bad = clone();
+    const flow = bad.flows[0];
+    if (!flow) throw new Error("fixture has no flows");
+    flow.owner = "not-a-context";
+
+    const error = failureOf(bad);
+    expect(error.message).toContain(
+      'names owner "not-a-context", which is not a bounded context',
+    );
+    expect(error.path).toBe(`flow ${flow.id}`);
+  });
 });

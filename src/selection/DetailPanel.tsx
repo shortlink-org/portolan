@@ -45,6 +45,8 @@ import {
   blockPath,
   paths,
 } from "../routes";
+import { PinButton } from "../app/pins";
+import type { PinKind } from "../lib/pins";
 import type { Resolved, Selection } from "./model";
 import { resolveSelection } from "./model";
 import { selectionPath } from "./pages";
@@ -898,6 +900,28 @@ function kindLabel(selection: Selection, resolved: Resolved | null): string {
   return selection.kind;
 }
 
+/**
+ * What pinning the open selection would pin, or null when the selection is not
+ * a thing a reader can come back to. A column, a view and a store are read
+ * inside the canvas that holds them; a step is read inside its flow. Pinning
+ * one of those would bookmark a scroll position rather than an entity.
+ */
+function pinFor(resolved: Resolved | null): { kind: PinKind; id: string } | null {
+  if (!resolved) return null;
+  switch (resolved.kind) {
+    case "event":
+      return { kind: "event", id: resolved.event.id };
+    case "service":
+      return { kind: "service", id: resolved.service.id };
+    case "aggregate":
+      return { kind: "aggregate", id: resolved.aggregate.id };
+    case "table":
+      return { kind: "table", id: resolved.table.id };
+    default:
+      return null;
+  }
+}
+
 export function DetailPanel() {
   const selection = useSelectionStore((s) => s.selection);
   const clear = useSelectionStore((s) => s.clear);
@@ -905,6 +929,7 @@ export function DetailPanel() {
 
   const resolved = resolveSelection(selection.id);
   const page = selectionPath(selection);
+  const pin = pinFor(resolved);
 
   return (
     <aside
@@ -918,6 +943,13 @@ export function DetailPanel() {
         <span className="label">{kindLabel(selection, resolved)}</span>
         {resolved?.kind === "flow-step" ? (
           <StatusChip status={resolved.step.status} />
+        ) : null}
+        {/* Right-aligned beside the close: both are about the panel rather
+            than about what is in it. */}
+        {pin ? (
+          <span className="ml-auto flex items-center">
+            <PinButton kind={pin.kind} id={pin.id} size={14} />
+          </span>
         ) : null}
         <button
           type="button"

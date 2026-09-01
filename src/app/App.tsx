@@ -44,6 +44,7 @@ import { ThemeProvider } from "./theme";
 import { DensityProvider } from "./density";
 import { useNarrow } from "./responsive";
 import { ShortcutsSheet, useShortcuts } from "./shortcuts";
+import { Toaster } from "./toast";
 import { useUiStore } from "./ui-store";
 
 /** Every route, once. Rendered inside a pane on wide layouts and alone below. */
@@ -299,6 +300,10 @@ function Shell() {
 
       <CommandPalette open={palette} onClose={() => setPalette(false)} />
       <ShortcutsSheet open={help} onClose={() => setHelp(false)} />
+      {/* The one thing the app says out loud, and it says it here rather than
+          in the sidebar: a pin can be taken from a page whose tree is folded
+          away to a 48px rail. */}
+      <Toaster />
     </div>
   );
 }

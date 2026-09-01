@@ -2882,6 +2882,7 @@
       "summary": "How a support-initiated refund is meant to travel: the window is read off the shipment, an undispatched parcel is recalled first, and the money is returned through the ledger. Written by hand from the design doc — not one step has been observed in a test or a trace, which is why every hop on this page is declared.",
       "provenance": "authored",
       "source": "docs/flows/refund-requested.md",
+      "owner": "shop",
       "participants": [
         {
           "id": "agent",

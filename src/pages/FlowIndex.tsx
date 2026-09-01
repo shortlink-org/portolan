@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router";
-import { ArrowUpDown } from "lucide-react";
-import { CATALOG_PATH, catalog } from "../data";
+import { Link, useSearchParams } from "react-router";
+import { ArrowUpDown, X } from "lucide-react";
+import { CATALOG_PATH, catalog, index } from "../data";
 import { flowContexts, walkSteps } from "../catalog";
-import { contextName, contextVar } from "../lib/context-color";
+import { flowOwner } from "../lib/flow-tree";
+import { contextName, contextVar, ctxStyle } from "../lib/context-color";
 import { staggerStyle } from "../lib/motion";
 import { Ident } from "../components/Ident";
 import { RowActions } from "../components/RowActions";
@@ -21,13 +22,24 @@ const SORTS: { key: Sort; label: string }[] = [
 export function FlowIndex() {
   const [sort, setSort] = useState<Sort>("contexts");
   const [active, setActive] = useState<Set<string>>(new Set());
+  // `?owner=` is how the sidebar's "view all n" arrives: the reader asked for
+  // one context's flows, which is a different question from "flows that touch
+  // this context" - the chips below answer that one - so it gets its own line
+  // rather than pressing a chip that would mean something else.
+  const [params] = useSearchParams();
+  const asked = params.get("owner");
+  const [owner, setOwner] = useState<string | null>(
+    catalog.contexts.some((c) => c.id === asked) ? asked : null,
+  );
 
   const rows = useMemo(() => {
-    const built = catalog.flows.map((flow) => ({
-      flow,
-      contexts: flowContexts(flow),
-      steps: walkSteps(flow.steps).length,
-    }));
+    const built = catalog.flows
+      .filter((flow) => owner === null || flowOwner(flow, index) === owner)
+      .map((flow) => ({
+        flow,
+        contexts: flowContexts(flow),
+        steps: walkSteps(flow.steps).length,
+      }));
     const filtered =
       active.size === 0
         ? built
@@ -49,7 +61,7 @@ export function FlowIndex() {
       );
     }
     return sorted;
-  }, [sort, active]);
+  }, [sort, active, owner]);
 
   const toggleContext = (id: string) =>
     setActive((prev) => {
@@ -127,6 +139,26 @@ export function FlowIndex() {
           </div>
         </div>
       </div>
+
+      {owner ? (
+        <div className="mono mt-3 flex items-center gap-2 text-muted">
+          <span>
+            owned by{" "}
+            <span className="ctx" style={ctxStyle(owner)}>
+              {contextName(owner)}
+            </span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setOwner(null)}
+            title="Show every flow again"
+            className="flex items-center gap-1 rounded-control text-accent hover:underline"
+          >
+            <X size={12} aria-hidden />
+            show all
+          </button>
+        </div>
+      ) : null}
 
       {bare ? (
         <div className="mt-section">
