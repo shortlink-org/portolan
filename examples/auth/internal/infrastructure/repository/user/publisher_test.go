@@ -1,9 +1,8 @@
-package outbox_test
+package user_test
 
 import (
 	"context"
 	"errors"
-	"os"
 	"testing"
 	"time"
 
@@ -14,39 +13,29 @@ import (
 	sdkwatermill "github.com/shortlink-org/go-sdk/watermill"
 	"go.opentelemetry.io/otel"
 
-	sessionevent "github.com/shortlink-org/portolan/examples/auth/internal/domain/session/event"
 	userevent "github.com/shortlink-org/portolan/examples/auth/internal/domain/user/event"
-	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/outbox"
-	userrepo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/user"
-	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/storage/postgrestest"
-	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/storage/uow"
+	repo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/user"
+	"github.com/shortlink-org/portolan/examples/auth/internal/pkg/messaging"
+	"github.com/shortlink-org/portolan/examples/auth/internal/pkg/postgrestest"
+	"github.com/shortlink-org/portolan/examples/auth/internal/pkg/uow"
 )
 
-var now = time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
-
-func TestMain(m *testing.M) {
-	code := m.Run()
-	postgrestest.Stop()
-	os.Exit(code)
+type outboxHarness struct {
+	uow       *uow.UnitOfWork
+	publisher *repo.Publisher
+	relay     *sdkoutbox.Relay
 }
 
-type harness struct {
-	uow      *uow.UnitOfWork
-	users    *outbox.UserPublisher
-	sessions *outbox.SessionPublisher
-	relay    *sdkoutbox.Relay
-}
-
-func setup(t *testing.T) *harness {
+func outboxSetup(t *testing.T) *outboxHarness {
 	t.Helper()
 	ctx := t.Context()
 
 	store, _, unit := postgrestest.StoreWithDB(t,
-		postgrestest.Source{FS: userrepo.Migrations, Name: userrepo.Name},
+		postgrestest.Source{FS: repo.Migrations, Name: repo.Name},
 		postgrestest.Source{FS: sdkoutbox.Migrations, Name: "outbox"},
 	)
 
-	publisher, err := sdkoutbox.NewPublisher(sdkuow.FromContext)
+	appended, err := sdkoutbox.NewPublisher(sdkuow.FromContext)
 	if err != nil {
 		t.Fatalf("publisher: %v", err)
 	}
@@ -60,10 +49,10 @@ func setup(t *testing.T) *harness {
 		t.Fatalf("logger: %v", err)
 	}
 
-	backend := outbox.NewBackend(publisher, unit)
+	backend := messaging.NewBackend(appended, unit)
 	client, err := sdkwatermill.New(ctx, log, cfg, backend,
 		otel.GetMeterProvider(), otel.GetTracerProvider(),
-		sdkwatermill.WithPoisonQueue(backend.Publisher(), outbox.TopicDLQ),
+		sdkwatermill.WithPoisonQueue(backend.Publisher(), messaging.TopicDLQ),
 	)
 	if err != nil {
 		t.Fatalf("watermill: %v", err)
@@ -75,17 +64,16 @@ func setup(t *testing.T) *harness {
 		t.Fatalf("relay: %v", err)
 	}
 
-	return &harness{uow: unit, users: outbox.NewUserPublisher(publisher),
-		sessions: outbox.NewSessionPublisher(publisher), relay: relay}
+	return &outboxHarness{uow: unit, publisher: repo.NewPublisher(appended), relay: relay}
 }
 
 // Publishing outside a unit of work would put the message on its own
 // connection: the aggregate could roll back while the fact stayed, which is the
 // failure the outbox exists to prevent.
 func TestPublishOutsideAUnitOfWorkIsRefused(t *testing.T) {
-	h := setup(t)
+	h := outboxSetup(t)
 
-	err := h.users.Publish(context.Background(),
+	err := h.publisher.Publish(context.Background(),
 		[]userevent.Event{userevent.NewUserRegistered("u1", "ada@example.com", now)})
 
 	if !errors.Is(err, sdkoutbox.ErrNoTransaction) {
@@ -93,15 +81,15 @@ func TestPublishOutsideAUnitOfWorkIsRefused(t *testing.T) {
 	}
 }
 
-// The whole point: the event and whatever else the unit did commit together, so
-// a rollback takes the fact with it.
+// The event and whatever else the unit did commit together, so a rollback takes
+// the fact with it.
 func TestRollbackTakesTheEvent(t *testing.T) {
 	ctx := context.Background()
-	h := setup(t)
+	h := outboxSetup(t)
 	boom := errors.New("boom")
 
 	err := h.uow.Do(ctx, func(ctx context.Context) error {
-		if err := h.users.Publish(ctx, []userevent.Event{
+		if err := h.publisher.Publish(ctx, []userevent.Event{
 			userevent.NewUserRegistered("u1", "ada@example.com", now),
 		}); err != nil {
 			return err
@@ -112,19 +100,19 @@ func TestRollbackTakesTheEvent(t *testing.T) {
 		t.Fatalf("= %v, want boom", err)
 	}
 
-	if got := deliver(t, h, 0); len(got) != 0 {
+	if got := delivered(t, h, 0); len(got) != 0 {
 		t.Errorf("%d events delivered after a rollback, want none", len(got))
 	}
 }
 
-// A committed event comes back out, through the same constructors the domain
+// A committed event comes back out through the same constructors the domain
 // uses, with everything it went in with.
 func TestRoundTrip(t *testing.T) {
 	ctx := context.Background()
-	h := setup(t)
+	h := outboxSetup(t)
 
 	err := h.uow.Do(ctx, func(ctx context.Context) error {
-		return h.users.Publish(ctx, []userevent.Event{
+		return h.publisher.Publish(ctx, []userevent.Event{
 			userevent.NewPasswordChanged("u1", "s1", now),
 		})
 	})
@@ -132,7 +120,7 @@ func TestRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got := deliver(t, h, 1)
+	got := delivered(t, h, 1)
 	if len(got) != 1 {
 		t.Fatalf("%d events, want 1", len(got))
 	}
@@ -151,34 +139,27 @@ func TestRoundTrip(t *testing.T) {
 	}
 }
 
-// A topic nobody handles is still writable, and waits rather than blocking the
-// topics that do have handlers.
-func TestSessionTopicIsWritable(t *testing.T) {
-	ctx := context.Background()
-	h := setup(t)
-
-	err := h.uow.Do(ctx, func(ctx context.Context) error {
-		return h.sessions.Publish(ctx, []sessionevent.Event{
-			sessionevent.NewSessionEnded("s1", "u1", sessionevent.ReasonLogout, now),
-		})
-	})
-	if err != nil {
-		t.Fatalf("= %v, want the session topic to accept a write", err)
-	}
-}
-
-// deliver runs the relay until it has seen want events, or briefly if none are
-// expected.
-func deliver(t *testing.T, h *harness, want int) []userevent.Event {
+// delivered runs the relay until it has seen want events, or briefly if none
+// are expected.
+func delivered(t *testing.T, h *outboxHarness, want int) []userevent.Event {
 	t.Helper()
 
 	var got []userevent.Event
 	done := make(chan struct{})
 	closed := false
 
-	err := outbox.HandleUser(h.relay, map[string]outbox.UserHandler{
-		userevent.TopicUserRegistered:  collect(&got, &closed, done, want),
-		userevent.TopicPasswordChanged: collect(&got, &closed, done, want),
+	collect := func(_ context.Context, e userevent.Event) error {
+		got = append(got, e)
+		if len(got) >= want && !closed {
+			closed = true
+			close(done)
+		}
+		return nil
+	}
+
+	err := repo.Handle(h.relay, map[string]repo.Handler{
+		userevent.TopicUserRegistered:  collect,
+		userevent.TopicPasswordChanged: collect,
 	})
 	if err != nil {
 		t.Fatalf("handle: %v", err)
@@ -200,15 +181,4 @@ func deliver(t *testing.T, h *harness, want int) []userevent.Event {
 		t.Fatalf("only %d of %d events arrived", len(got), want)
 	}
 	return got
-}
-
-func collect(into *[]userevent.Event, closed *bool, done chan struct{}, want int) outbox.UserHandler {
-	return func(_ context.Context, e userevent.Event) error {
-		*into = append(*into, e)
-		if len(*into) >= want && !*closed {
-			*closed = true
-			close(done)
-		}
-		return nil
-	}
 }

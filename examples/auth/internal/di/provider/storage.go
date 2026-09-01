@@ -19,7 +19,7 @@ import (
 
 	sessionrepo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/session"
 	userrepo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/user"
-	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/storage/uow"
+	"github.com/shortlink-org/portolan/examples/auth/internal/pkg/uow"
 )
 
 // Storage opens the database, brings its schema up to date, and produces the

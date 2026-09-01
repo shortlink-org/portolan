@@ -21,7 +21,7 @@ import (
 	"github.com/shortlink-org/portolan/examples/auth/internal/domain/user/event"
 	"github.com/shortlink-org/portolan/examples/auth/internal/domain/user/vo/email"
 	"github.com/shortlink-org/portolan/examples/auth/internal/domain/user/vo/password"
-	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/storage/uow"
+	"github.com/shortlink-org/portolan/examples/auth/internal/pkg/uow"
 )
 
 // uniqueViolation is what Postgres answers when a unique index is broken.

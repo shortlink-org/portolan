@@ -17,13 +17,13 @@ import (
 	"github.com/shortlink-org/portolan/examples/auth/internal/application/user/usecases/get"
 	"github.com/shortlink-org/portolan/examples/auth/internal/application/user/usecases/register"
 	"github.com/shortlink-org/portolan/examples/auth/internal/di/provider"
-	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/outbox"
 	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/session"
 	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/user"
-	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/storage/uow"
 	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/transport/http"
 	session2 "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/transport/http/session"
 	user2 "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/transport/http/user"
+	"github.com/shortlink-org/portolan/examples/auth/internal/pkg/messaging"
+	"github.com/shortlink-org/portolan/examples/auth/internal/pkg/uow"
 )
 
 // Injectors from wire.go:
@@ -60,14 +60,14 @@ func New() (App, error) {
 	if err != nil {
 		return App{}, err
 	}
-	userPublisher := outbox.NewUserPublisher(publisher)
+	userPublisher := user.NewPublisher(publisher)
 	postgres := user.NewPostgres(router, unitOfWork, userPublisher)
 	v := provider.ProvideNow()
 	v2 := provider.ProvideNewID()
 	useCase := register.New(postgres, v, v2)
 	getUseCase := get.New(postgres)
 	change_passwordUseCase := change_password.New(postgres, v)
-	sessionPublisher := outbox.NewSessionPublisher(publisher)
+	sessionPublisher := session.NewPublisher(publisher)
 	sessionPostgres := session.NewPostgres(router, unitOfWork, sessionPublisher)
 	validateUseCase := validate.New(sessionPostgres, v)
 	users := user2.NewUsers(useCase, getUseCase, change_passwordUseCase, validateUseCase)
@@ -78,7 +78,7 @@ func New() (App, error) {
 	sessions := session2.NewSessions(loginUseCase, logoutUseCase, validateUseCase)
 	server := http.NewServer(users, sessions)
 	handler := http.Router(server)
-	backend := outbox.NewBackend(publisher, unitOfWork)
+	backend := messaging.NewBackend(publisher, unitOfWork)
 	client, err := provider.ProvideWatermill(config, logger, backend)
 	if err != nil {
 		return App{}, err

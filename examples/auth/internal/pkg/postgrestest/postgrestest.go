@@ -36,7 +36,7 @@ import (
 	"github.com/shortlink-org/go-sdk/logger"
 	sdkuow "github.com/shortlink-org/go-sdk/uow"
 
-	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/storage/uow"
+	"github.com/shortlink-org/portolan/examples/auth/internal/pkg/uow"
 )
 
 // Source is one aggregate's migrations, as its repository package exports them.

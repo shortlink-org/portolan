@@ -18,7 +18,9 @@ import (
 	sessiondomain "github.com/shortlink-org/portolan/examples/auth/internal/domain/session"
 	userdomain "github.com/shortlink-org/portolan/examples/auth/internal/domain/user"
 	userevent "github.com/shortlink-org/portolan/examples/auth/internal/domain/user/event"
-	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/outbox"
+	sessionrepo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/session"
+	userrepo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/user"
+	"github.com/shortlink-org/portolan/examples/auth/internal/pkg/messaging"
 )
 
 // Outbox binds the Publisher ports to the outbox and builds the relay that
@@ -29,11 +31,11 @@ import (
 // it is lost - and nothing above this line had to be told.
 var Outbox = wire.NewSet(
 	ProvideOutboxPublisher,
-	outbox.NewBackend,
-	outbox.NewUserPublisher,
-	wire.Bind(new(userdomain.Publisher), new(*outbox.UserPublisher)),
-	outbox.NewSessionPublisher,
-	wire.Bind(new(sessiondomain.Publisher), new(*outbox.SessionPublisher)),
+	messaging.NewBackend,
+	userrepo.NewPublisher,
+	wire.Bind(new(userdomain.Publisher), new(*userrepo.Publisher)),
+	sessionrepo.NewPublisher,
+	wire.Bind(new(sessiondomain.Publisher), new(*sessionrepo.Publisher)),
 	ProvideWatermill,
 	ProvideRelay,
 )
@@ -59,12 +61,12 @@ func ProvideOutboxPublisher() (*sdkoutbox.Publisher, error) {
 func ProvideWatermill(
 	cfg *sdkconfig.Config,
 	log sdklogger.Logger,
-	backend *outbox.Backend,
+	backend *messaging.Backend,
 ) (*sdkwatermill.Client, error) {
 	client, err := sdkwatermill.New(
 		context.Background(), log, cfg, backend,
 		otel.GetMeterProvider(), otel.GetTracerProvider(),
-		sdkwatermill.WithPoisonQueue(backend.Publisher(), outbox.TopicDLQ),
+		sdkwatermill.WithPoisonQueue(backend.Publisher(), messaging.TopicDLQ),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("provider: watermill: %w", err)
@@ -92,7 +94,7 @@ func ProvideRelay(
 	// Which rule listens to which fact. This is the whole answer to "what does
 	// this service react to", and it is one map rather than a Subscribe call
 	// hidden in each policy.
-	err = outbox.HandleUser(relay, map[string]outbox.UserHandler{
+	err = userrepo.Handle(relay, map[string]userrepo.Handler{
 		userevent.TopicPasswordChanged: revokeSessions.Handle,
 	})
 	if err != nil {

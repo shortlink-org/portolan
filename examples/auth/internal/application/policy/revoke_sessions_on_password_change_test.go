@@ -13,7 +13,7 @@ import (
 	userevent "github.com/shortlink-org/portolan/examples/auth/internal/domain/user/event"
 	bus "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/bus/session"
 	repo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/session"
-	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/storage/postgrestest"
+	"github.com/shortlink-org/portolan/examples/auth/internal/pkg/postgrestest"
 )
 
 var change = time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)

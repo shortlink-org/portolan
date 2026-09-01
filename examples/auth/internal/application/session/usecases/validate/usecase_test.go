@@ -11,7 +11,7 @@ import (
 	"github.com/shortlink-org/portolan/examples/auth/internal/domain/session"
 	"github.com/shortlink-org/portolan/examples/auth/internal/domain/session/event"
 	repo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/session"
-	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/storage/postgrestest"
+	"github.com/shortlink-org/portolan/examples/auth/internal/pkg/postgrestest"
 )
 
 var now = time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)

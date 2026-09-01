@@ -1,4 +1,11 @@
-package outbox
+// Package messaging holds what this service needs to talk over a message
+// router, and that no single domain owns.
+//
+// There is no broker here. Events reach their handlers through the outbox, and
+// the only reason a router needs a publisher at all is the poison queue - so
+// that is what this package supplies, and it writes dead letters back into the
+// outbox rather than into a broker that does not exist.
+package messaging
 
 import (
 	"context"
@@ -7,24 +14,28 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 	sdkoutbox "github.com/shortlink-org/go-sdk/outbox"
 
-	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/storage/uow"
+	"github.com/shortlink-org/portolan/examples/auth/internal/pkg/uow"
 )
+
+// MetadataEventName is where a message says which event it carries, so a
+// subscriber can tell without unmarshalling it first.
+//
+// It lives here because both domains write it and the dispatcher reads it: a
+// constant agreed on by three packages belongs to none of them.
+const MetadataEventName = "event_name"
 
 // TopicDLQ is where a message that has exhausted its retries ends up.
 //
 // Nothing subscribes to it, and that is the point: an undelivered message waits
 // in the outbox table to be looked at, rather than disappearing into a broker
-// this service does not have. `SELECT ... WHERE topic = 'auth_dlq'` is the
-// whole tooling.
+// this service does not have. `SELECT ... WHERE topic = 'auth_dlq'` is the whole
+// tooling.
 const TopicDLQ = "auth_dlq"
 
 // Backend is what watermill.New asks for so that it can build a router.
 //
-// This service has no broker. Its only subscriber is the outbox relay, which
-// brings its own; the only thing the router needs a publisher for is the poison
-// queue, and that goes back into the outbox table. So this is not a message
-// transport in any general sense - it is the two halves watermill.New insists
-// on, one real and one deliberately inert.
+// It is not a message transport in any general sense - it is the two halves
+// watermill.New insists on, one real and one deliberately inert.
 type Backend struct {
 	publisher *dlqPublisher
 }
@@ -37,9 +48,9 @@ func (b *Backend) Publisher() message.Publisher { return b.publisher }
 
 // Subscriber never delivers anything.
 //
-// Reading is the relay's job, and it does not go through here. A backend that
-// returned a working subscriber would offer a second way to consume, and the
-// two would disagree about what had been read.
+// Reading is the outbox relay's job, and it does not go through here. A backend
+// that returned a working subscriber would offer a second way to consume, and
+// the two would disagree about what had been read.
 func (b *Backend) Subscriber() message.Subscriber { return inertSubscriber{} }
 
 func (b *Backend) Close() error { return nil }
@@ -69,7 +80,7 @@ func (p *dlqPublisher) Publish(topic string, messages ...*message.Message) error
 
 	return p.uow.Do(ctx, func(ctx context.Context) error {
 		if err := p.outbox.Publish(ctx, topic, messages...); err != nil {
-			return fmt.Errorf("outbox: dead letter to %s: %w", topic, err)
+			return fmt.Errorf("messaging: dead letter to %s: %w", topic, err)
 		}
 		return nil
 	})

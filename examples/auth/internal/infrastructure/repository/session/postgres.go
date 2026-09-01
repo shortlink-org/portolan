@@ -14,7 +14,7 @@ import (
 	"github.com/shortlink-org/portolan/examples/auth/internal/domain/session"
 	"github.com/shortlink-org/portolan/examples/auth/internal/domain/session/event"
 	"github.com/shortlink-org/portolan/examples/auth/internal/domain/session/vo/token"
-	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/storage/uow"
+	"github.com/shortlink-org/portolan/examples/auth/internal/pkg/uow"
 )
 
 const columns = `id, user_id, token, issued_at, expires_at, revoked_at, version`
