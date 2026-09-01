@@ -2,6 +2,7 @@ package policy_test
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 
@@ -12,20 +13,35 @@ import (
 	userevent "github.com/shortlink-org/portolan/examples/auth/internal/domain/user/event"
 	bus "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/bus/session"
 	repo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/session"
+	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/storage/postgrestest"
 )
 
 var change = time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
 
+func TestMain(m *testing.M) {
+	code := m.Run()
+	postgrestest.Stop()
+	os.Exit(code)
+}
+
 type harness struct {
 	policy *policy.RevokeSessionsOnPasswordChange
-	store  *repo.Memory
+	store  *repo.Postgres
 	events []sessionevent.Event
 }
 
 func newHarness(t *testing.T, sessions map[string]time.Time) *harness {
 	t.Helper()
-	h := &harness{store: repo.NewMemory()}
+	h := &harness{}
 	ctx := context.Background()
+
+	b := bus.NewInProc()
+	b.Subscribe("", func(_ context.Context, e sessionevent.Event) error {
+		h.events = append(h.events, e)
+		return nil
+	})
+	router, unit := postgrestest.Store(t, postgrestest.Source{FS: repo.Migrations, Name: repo.Name})
+	h.store = repo.NewPostgres(router, unit, b)
 
 	for id, issued := range sessions {
 		s, _, err := session.Start(id, "u1", issued)
@@ -36,14 +52,11 @@ func newHarness(t *testing.T, sessions map[string]time.Time) *harness {
 			t.Fatal(err)
 		}
 	}
+	// Starting the sessions is the setup; the events these tests are about are
+	// the ones the policy causes.
+	h.events = nil
 
-	b := bus.NewInProc()
-	b.Subscribe("", func(_ context.Context, e sessionevent.Event) error {
-		h.events = append(h.events, e)
-		return nil
-	})
-
-	h.policy = policy.New(end_after_credential_change.New(h.store, b, func() time.Time { return change }))
+	h.policy = policy.New(end_after_credential_change.New(h.store, func() time.Time { return change }))
 	return h
 }
 

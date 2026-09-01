@@ -1,0 +1,32 @@
+# The database the service runs against locally.
+#
+#   docker compose up -d
+#   AUTH_DATABASE_URL=postgres://auth:auth@localhost:5432/auth?sslmode=disable go run ./cmd/auth
+#
+# The tests do not use this: they start their own container through
+# testcontainers, so a test run cannot be affected by whatever state a local
+# database happens to be in.
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: auth
+      POSTGRES_PASSWORD: auth
+      POSTGRES_DB: auth
+    ports:
+      - "5432:5432"
+    healthcheck:
+      # Without this, `docker compose up -d` returns while the server is still
+      # starting and the first connection is refused.
+      test: ["CMD-SHELL", "pg_isready -U auth -d auth"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+    volumes:
+      # Mounted at /var/lib/postgresql, not .../data. Postgres 18 moved the
+      # recommended mount point up one level so that pg_upgrade --link can work
+      # across it; the image refuses to start against the old path.
+      - pgdata:/var/lib/postgresql
+
+volumes:
+  pgdata:

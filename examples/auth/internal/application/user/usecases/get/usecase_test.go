@@ -3,6 +3,7 @@ package get_test
 import (
 	"context"
 	"errors"
+	"os"
 	"testing"
 	"time"
 
@@ -10,22 +11,36 @@ import (
 	"github.com/shortlink-org/portolan/examples/auth/internal/application/user/usecases/get/dto"
 	"github.com/shortlink-org/portolan/examples/auth/internal/domain/user"
 	repo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/user"
+	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/storage/postgrestest"
 )
 
 var now = time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
 
+func TestMain(m *testing.M) {
+	code := m.Run()
+	postgrestest.Stop()
+	os.Exit(code)
+}
+
+func store(t *testing.T) *repo.Postgres {
+	t.Helper()
+	router, unit := postgrestest.Store(t, postgrestest.Source{FS: repo.Migrations, Name: repo.Name})
+
+	return repo.NewPostgres(router, unit, nil)
+}
+
 func TestGet(t *testing.T) {
 	ctx := context.Background()
-	store := repo.NewMemory()
+	s := store(t)
 	u, _, err := user.Register("u1", "Ada@Example.com", "Passw0rdish", now)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Save(ctx, u); err != nil {
+	if err := s.Save(ctx, u); err != nil {
 		t.Fatal(err)
 	}
 
-	out, err := get.New(store).Handle(ctx, dto.Input{UserID: "u1"})
+	out, err := get.New(s).Handle(ctx, dto.Input{UserID: "u1"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +52,7 @@ func TestGet(t *testing.T) {
 // Unlike authenticate, this one may admit that a user does not exist: the
 // caller already knows the id, so nothing is disclosed by saying so.
 func TestMissingIsSaidPlainly(t *testing.T) {
-	_, err := get.New(repo.NewMemory()).Handle(context.Background(), dto.Input{UserID: "nobody"})
+	_, err := get.New(store(t)).Handle(context.Background(), dto.Input{UserID: "nobody"})
 	if !errors.Is(err, user.ErrNotFound) {
 		t.Fatalf("= %v, want ErrNotFound", err)
 	}

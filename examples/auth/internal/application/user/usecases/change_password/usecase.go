@@ -12,17 +12,15 @@ import (
 
 	"github.com/shortlink-org/portolan/examples/auth/internal/application/user/usecases/change_password/dto"
 	"github.com/shortlink-org/portolan/examples/auth/internal/domain/user"
-	"github.com/shortlink-org/portolan/examples/auth/internal/domain/user/event"
 )
 
 type UseCase struct {
 	repo user.Repository
-	bus  user.Publisher
 	now  func() time.Time
 }
 
-func New(repo user.Repository, bus user.Publisher, now func() time.Time) *UseCase {
-	return &UseCase{repo: repo, bus: bus, now: now}
+func New(repo user.Repository, now func() time.Time) *UseCase {
+	return &UseCase{repo: repo, now: now}
 }
 
 // Handle changes the password. A wrong current password comes back as
@@ -39,8 +37,5 @@ func (uc *UseCase) Handle(ctx context.Context, in dto.Input) error {
 	if err != nil {
 		return err
 	}
-	if err := uc.repo.Save(ctx, u); err != nil {
-		return err
-	}
-	return uc.bus.Publish(ctx, []event.Event{ev})
+	return uc.repo.Save(ctx, u, ev)
 }

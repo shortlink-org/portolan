@@ -17,48 +17,79 @@ import (
 	"github.com/shortlink-org/portolan/examples/auth/internal/application/user/usecases/get"
 	"github.com/shortlink-org/portolan/examples/auth/internal/application/user/usecases/register"
 	"github.com/shortlink-org/portolan/examples/auth/internal/di/provider"
-	session2 "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/bus/session"
-	user2 "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/bus/user"
+	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/outbox"
 	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/session"
 	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/user"
+	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/storage/uow"
 	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/transport/http"
-	session3 "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/transport/http/session"
-	user3 "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/transport/http/user"
+	session2 "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/transport/http/session"
+	user2 "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/transport/http/user"
 )
 
 // Injectors from wire.go:
 
 // New assembles the whole service.
 //
-// Everything below the handler - repositories, buses, use cases, policies, the
-// adapter between the two domains - is reachable only through the graph wire
-// builds from these sets. A missing provider is a generation-time error rather
-// than a nil dereference on the first request.
-func New() App {
-	memory := user.NewMemory()
-	inProc := user2.NewInProc()
+// Everything below the handler - the database, repositories, buses, use cases,
+// policies, the adapter between the two domains - is reachable only through the
+// graph wire builds from these sets. A missing provider is a generation-time
+// error rather than a nil dereference on the first request.
+func New() (App, error) {
+	config, err := provider.ProvideConfig()
+	if err != nil {
+		return App{}, err
+	}
+	logger, err := provider.ProvideLogger(config)
+	if err != nil {
+		return App{}, err
+	}
+	store, err := provider.ProvideStore(config, logger)
+	if err != nil {
+		return App{}, err
+	}
+	postgresStore, err := provider.ProvideDriver(store)
+	if err != nil {
+		return App{}, err
+	}
+	router, err := provider.ProvideRouter(postgresStore)
+	if err != nil {
+		return App{}, err
+	}
+	unitOfWork := uow.New(router)
+	loggerAdapter := provider.ProvideWatermillLogger(logger)
+	messages := outbox.NewMessages(loggerAdapter)
+	userPublisher := outbox.NewUserPublisher(messages)
+	postgres := user.NewPostgres(router, unitOfWork, userPublisher)
 	v := provider.ProvideNow()
 	v2 := provider.ProvideNewID()
-	useCase := register.New(memory, inProc, v, v2)
-	getUseCase := get.New(memory)
-	change_passwordUseCase := change_password.New(memory, inProc, v)
-	sessionMemory := session.NewMemory()
-	validateUseCase := validate.New(sessionMemory, v)
-	users := user3.NewUsers(useCase, getUseCase, change_passwordUseCase, validateUseCase)
-	authenticateUseCase := authenticate.New(memory)
+	useCase := register.New(postgres, v, v2)
+	getUseCase := get.New(postgres)
+	change_passwordUseCase := change_password.New(postgres, v)
+	sessionPublisher := outbox.NewSessionPublisher(messages)
+	sessionPostgres := session.NewPostgres(router, unitOfWork, sessionPublisher)
+	validateUseCase := validate.New(sessionPostgres, v)
+	users := user2.NewUsers(useCase, getUseCase, change_passwordUseCase, validateUseCase)
+	authenticateUseCase := authenticate.New(postgres)
 	authenticator := provider.ProvideAuthenticator(authenticateUseCase)
-	sessionInProc := session2.NewInProc()
-	loginUseCase := login.New(sessionMemory, authenticator, sessionInProc, v, v2)
-	logoutUseCase := logout.New(sessionMemory, sessionInProc, v)
-	sessions := session3.NewSessions(loginUseCase, logoutUseCase, validateUseCase)
+	loginUseCase := login.New(sessionPostgres, authenticator, v, v2)
+	logoutUseCase := logout.New(sessionPostgres, v)
+	sessions := session2.NewSessions(loginUseCase, logoutUseCase, validateUseCase)
 	server := http.NewServer(users, sessions)
 	handler := http.Router(server)
-	end_after_credential_changeUseCase := end_after_credential_change.New(sessionMemory, sessionInProc, v)
-	revokeSessionsOnPasswordChange := policy.New(end_after_credential_changeUseCase)
-	subscriptions := provider.ProvideSubscriptions(inProc, revokeSessionsOnPasswordChange)
-	app := App{
-		Handler:       handler,
-		Subscriptions: subscriptions,
+	pool, err := provider.ProvidePool(store)
+	if err != nil {
+		return App{}, err
 	}
-	return app
+	end_after_credential_changeUseCase := end_after_credential_change.New(sessionPostgres, v)
+	revokeSessionsOnPasswordChange := policy.New(end_after_credential_changeUseCase)
+	relay, err := provider.ProvideRelay(pool, loggerAdapter, revokeSessionsOnPasswordChange)
+	if err != nil {
+		return App{}, err
+	}
+	app := App{
+		Handler: handler,
+		Driver:  postgresStore,
+		Relay:   relay,
+	}
+	return app, nil
 }

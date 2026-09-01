@@ -28,9 +28,15 @@ func main() {
 		addr = defaultAddr
 	}
 
+	app, err := di.New()
+	if err != nil {
+		log.Fatalf("auth: %v", err)
+	}
+	defer app.Close()
+
 	srv := &http.Server{
 		Addr:              addr,
-		Handler:           di.New().Handler,
+		Handler:           app.Handler,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
@@ -43,6 +49,17 @@ func main() {
 		log.Printf("auth: listening on %s", addr)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Printf("auth: serve: %v", err)
+			stop()
+		}
+	}()
+
+	// The second process: reading the outbox and handing what is in it to the
+	// policies. It runs for as long as the service does, and its failure is as
+	// fatal as the listener's - a service that serves but never delivers what
+	// it recorded is worse than one that is plainly down.
+	go func() {
+		if err := app.Run(ctx); err != nil {
+			log.Printf("auth: outbox: %v", err)
 			stop()
 		}
 	}()

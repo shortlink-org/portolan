@@ -9,7 +9,6 @@ import (
 
 	"github.com/shortlink-org/portolan/examples/auth/internal/application/user/usecases/register/dto"
 	"github.com/shortlink-org/portolan/examples/auth/internal/domain/user"
-	"github.com/shortlink-org/portolan/examples/auth/internal/domain/user/event"
 	"github.com/shortlink-org/portolan/examples/auth/internal/domain/user/vo/email"
 )
 
@@ -18,13 +17,12 @@ import (
 // instance, read a session.
 type UseCase struct {
 	repo  user.Repository
-	bus   user.Publisher
 	now   func() time.Time
 	newID func() string
 }
 
-func New(repo user.Repository, bus user.Publisher, now func() time.Time, newID func() string) *UseCase {
-	return &UseCase{repo: repo, bus: bus, now: now, newID: newID}
+func New(repo user.Repository, now func() time.Time, newID func() string) *UseCase {
+	return &UseCase{repo: repo, now: now, newID: newID}
 }
 
 // Handle registers a user. A second registration of the same address is refused
@@ -45,12 +43,10 @@ func (uc *UseCase) Handle(ctx context.Context, in dto.Input) (dto.Output, error)
 	if err != nil {
 		return dto.Output{}, err
 	}
-	if err := uc.repo.Save(ctx, u); err != nil {
-		return dto.Output{}, err
-	}
-	// Published after the write, deliberately: an event announcing a user that
-	// failed to save would be a lie no consumer could detect.
-	if err := uc.bus.Publish(ctx, []event.Event{ev}); err != nil {
+	// The event goes in with the write. Announcing a user that failed to save
+	// would be a lie no consumer could detect, so the two are one call and the
+	// repository is left to make them one act.
+	if err := uc.repo.Save(ctx, u, ev); err != nil {
 		return dto.Output{}, err
 	}
 

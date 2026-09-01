@@ -3,6 +3,7 @@ package authenticate_test
 import (
 	"context"
 	"errors"
+	"os"
 	"testing"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/shortlink-org/portolan/examples/auth/internal/application/user/usecases/authenticate/dto"
 	"github.com/shortlink-org/portolan/examples/auth/internal/domain/user"
 	repo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/user"
+	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/storage/postgrestest"
 )
 
 const (
@@ -17,9 +19,16 @@ const (
 	plaintext = "Passw0rdish"
 )
 
+func TestMain(m *testing.M) {
+	code := m.Run()
+	postgrestest.Stop()
+	os.Exit(code)
+}
+
 func newUseCase(t *testing.T) *authenticate.UseCase {
 	t.Helper()
-	store := repo.NewMemory()
+	router, unit := postgrestest.Store(t, postgrestest.Source{FS: repo.Migrations, Name: repo.Name})
+	store := repo.NewPostgres(router, unit, nil)
 	u, _, err := user.Register("u1", address, plaintext, time.Now())
 	if err != nil {
 		t.Fatal(err)

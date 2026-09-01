@@ -68,27 +68,14 @@ the old one, whose stored hash is still perfectly good.
 
 ### The one rule that spans both
 
-A password change ends the sessions issued against the old password - all of
-them except the one the change was made from, so nobody is signed out of the
-device in their hand.
+A password change ends the sessions issued against the old password. That rule
+belongs to neither aggregate, so it is written into neither: the user aggregate
+publishes `PasswordChanged`, and a policy in `internal/application/policy` hears
+it and ends the sessions. `session` never imports `user`, `user` never imports
+`session`.
 
-That rule belongs to neither aggregate, so it is not written into either. The
-user aggregate publishes `PasswordChanged`; a policy in
-`internal/application/policy` hears it and ends the sessions. `session` never
-imports `user`, `user` never imports `session`, and any other way a password
-comes to change - a support reset, an import - gets the same behaviour without
-asking for it.
-
-Which sessions actually die is a decision, not a loop, so it is a domain service
-in `internal/domain/session/services`: sessions started *after* the change
-survive, because they were issued against the new password; already revoked or
-expired ones are left alone, because ending them again would publish an event
-that reports nothing.
-
-The rule is eventually consistent by construction. The bus here is synchronous
-and in-process, so the window is nil; behind a real broker it would not be, and
-that is why the moment of the change travels on the event rather than being read
-off the clock at the far end.
+What that means for a caller is in the use cases that carry it out - see
+`internal/application/user/usecases/change_password`.
 
 ## HTTP
 
@@ -100,10 +87,21 @@ wrong, and it cannot drift from this file because this file does not repeat it.
 ## Running it
 
 ```bash
-AUTH_ADDR=:8080 go run ./cmd/auth
+docker compose up -d
+STORE_TYPE=postgres \
+STORE_POSTGRES_URI=postgres://auth:auth@localhost:5432/auth?sslmode=disable \
+  go run ./cmd/auth
 ```
 
-Storage is in memory, so a restart is a clean slate.
+The schema is brought up to date at startup. Each aggregate owns its own
+migrations and its own `schema_migrations_*` table, numbered from 1 within its
+own package: `user` and `session` both have an `0001`, and neither waits for the
+other, because no table here refers to one in another aggregate.
+
+Tests start their own database through testcontainers, so a run cannot be
+affected by whatever state a local one is in. Without Docker the packages that
+need one are skipped and the domain tests - the majority, and the ones worth
+having - still run.
 
 Regenerating after a change to the spec or the wire graph:
 

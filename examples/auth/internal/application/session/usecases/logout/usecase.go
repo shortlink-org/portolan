@@ -14,12 +14,11 @@ import (
 
 type UseCase struct {
 	repo session.Repository
-	bus  session.Publisher
 	now  func() time.Time
 }
 
-func New(repo session.Repository, bus session.Publisher, now func() time.Time) *UseCase {
-	return &UseCase{repo: repo, bus: bus, now: now}
+func New(repo session.Repository, now func() time.Time) *UseCase {
+	return &UseCase{repo: repo, now: now}
 }
 
 // Handle revokes the session behind a token.
@@ -47,8 +46,5 @@ func (uc *UseCase) Handle(ctx context.Context, in dto.Input) error {
 		// is announced.
 		return nil
 	}
-	if err := uc.repo.Save(ctx, sess); err != nil {
-		return err
-	}
-	return uc.bus.Publish(ctx, []event.Event{ev})
+	return uc.repo.Save(ctx, sess, ev)
 }

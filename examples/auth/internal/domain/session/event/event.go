@@ -19,3 +19,11 @@ type Event interface {
 	// OccurredAt is when it happened in the domain, not when it was published.
 	OccurredAt() time.Time
 }
+
+// The names events travel under on the bus. They are constants because a
+// subscriber and a publisher have to agree on them, and a typo in a string
+// literal is a subscription that silently never fires.
+const (
+	TopicSessionStarted = "auth.SessionStarted"
+	TopicSessionEnded   = "auth.SessionEnded"
+)

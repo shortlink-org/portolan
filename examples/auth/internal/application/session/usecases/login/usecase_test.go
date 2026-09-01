@@ -3,6 +3,7 @@ package login_test
 import (
 	"context"
 	"errors"
+	"os"
 	"testing"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/shortlink-org/portolan/examples/auth/internal/domain/user"
 	bus "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/bus/session"
 	repo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/session"
+	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/storage/postgrestest"
 )
 
 var now = time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
@@ -27,23 +29,31 @@ func (f authFunc) Authenticate(ctx context.Context, email, password string) (str
 	return f(ctx, email, password)
 }
 
+func TestMain(m *testing.M) {
+	code := m.Run()
+	postgrestest.Stop()
+	os.Exit(code)
+}
+
 type harness struct {
 	uc     *login.UseCase
-	store  *repo.Memory
+	store  *repo.Postgres
 	events []event.Event
 }
 
 func newHarness(t *testing.T, auth login.Authenticator) *harness {
 	t.Helper()
-	h := &harness{store: repo.NewMemory()}
+	h := &harness{}
 
 	b := bus.NewInProc()
 	b.Subscribe("", func(_ context.Context, e event.Event) error {
 		h.events = append(h.events, e)
 		return nil
 	})
+	router, unit := postgrestest.Store(t, postgrestest.Source{FS: repo.Migrations, Name: repo.Name})
+	h.store = repo.NewPostgres(router, unit, b)
 
-	h.uc = login.New(h.store, auth, b, func() time.Time { return now }, func() string { return "s1" })
+	h.uc = login.New(h.store, auth, func() time.Time { return now }, func() string { return "s1" })
 	return h
 }
 
@@ -123,11 +133,11 @@ func TestAuthenticatorFailureIsNotRewritten(t *testing.T) {
 // logged you out everywhere.
 func TestEachLoginIsItsOwnSession(t *testing.T) {
 	ctx := context.Background()
-	store := repo.NewMemory()
-	b := bus.NewInProc()
+	router, unit := postgrestest.Store(t, postgrestest.Source{FS: repo.Migrations, Name: repo.Name})
+	store := repo.NewPostgres(router, unit, bus.NewInProc())
 
 	ids := 0
-	uc := login.New(store, vouches("u1"), b, func() time.Time { return now }, func() string {
+	uc := login.New(store, vouches("u1"), func() time.Time { return now }, func() string {
 		ids++
 		return "s" + string(rune('0'+ids))
 	})

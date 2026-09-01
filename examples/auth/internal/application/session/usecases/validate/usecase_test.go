@@ -2,6 +2,7 @@ package validate_test
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 
@@ -10,13 +11,21 @@ import (
 	"github.com/shortlink-org/portolan/examples/auth/internal/domain/session"
 	"github.com/shortlink-org/portolan/examples/auth/internal/domain/session/event"
 	repo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/session"
+	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/storage/postgrestest"
 )
 
 var now = time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
 
-func newHarness(t *testing.T, at func() time.Time) (*validate.UseCase, *session.Session, *repo.Memory) {
+func TestMain(m *testing.M) {
+	code := m.Run()
+	postgrestest.Stop()
+	os.Exit(code)
+}
+
+func newHarness(t *testing.T, at func() time.Time) (*validate.UseCase, *session.Session, *repo.Postgres) {
 	t.Helper()
-	store := repo.NewMemory()
+	router, unit := postgrestest.Store(t, postgrestest.Source{FS: repo.Migrations, Name: repo.Name})
+	store := repo.NewPostgres(router, unit, nil)
 	s, _, err := session.Start("s1", "u1", now)
 	if err != nil {
 		t.Fatal(err)
@@ -89,7 +98,7 @@ func TestValidateDoesNotWrite(t *testing.T) {
 	}
 	after, _ := store.ByID(ctx, "s1")
 
-	if *before != *after {
+	if before.Version != after.Version || before.RevokedAt != after.RevokedAt {
 		t.Error("validating a session changed it")
 	}
 }

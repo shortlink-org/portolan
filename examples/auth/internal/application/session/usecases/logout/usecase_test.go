@@ -2,6 +2,7 @@ package logout_test
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 
@@ -11,20 +12,35 @@ import (
 	"github.com/shortlink-org/portolan/examples/auth/internal/domain/session/event"
 	bus "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/bus/session"
 	repo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/session"
+	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/storage/postgrestest"
 )
 
 var now = time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
 
+func TestMain(m *testing.M) {
+	code := m.Run()
+	postgrestest.Stop()
+	os.Exit(code)
+}
+
 type harness struct {
 	uc      *logout.UseCase
-	store   *repo.Memory
+	store   *repo.Postgres
 	session *session.Session
 	events  []event.Event
 }
 
 func newHarness(t *testing.T) *harness {
 	t.Helper()
-	h := &harness{store: repo.NewMemory()}
+	h := &harness{}
+
+	b := bus.NewInProc()
+	b.Subscribe("", func(_ context.Context, e event.Event) error {
+		h.events = append(h.events, e)
+		return nil
+	})
+	router, unit := postgrestest.Store(t, postgrestest.Source{FS: repo.Migrations, Name: repo.Name})
+	h.store = repo.NewPostgres(router, unit, b)
 
 	s, _, err := session.Start("s1", "u1", now)
 	if err != nil {
@@ -35,13 +51,7 @@ func newHarness(t *testing.T) *harness {
 	}
 	h.session = s
 
-	b := bus.NewInProc()
-	b.Subscribe("", func(_ context.Context, e event.Event) error {
-		h.events = append(h.events, e)
-		return nil
-	})
-
-	h.uc = logout.New(h.store, b, func() time.Time { return now })
+	h.uc = logout.New(h.store, func() time.Time { return now })
 	return h
 }
 

@@ -20,12 +20,11 @@ const retries = 3
 
 type UseCase struct {
 	repo session.Repository
-	bus  session.Publisher
 	now  func() time.Time
 }
 
-func New(repo session.Repository, bus session.Publisher, now func() time.Time) *UseCase {
-	return &UseCase{repo: repo, bus: bus, now: now}
+func New(repo session.Repository, now func() time.Time) *UseCase {
+	return &UseCase{repo: repo, now: now}
 }
 
 // Handle asks the domain service which sessions the change ends, and ends them.
@@ -75,9 +74,9 @@ func (uc *UseCase) end(ctx context.Context, id string) error {
 			return nil
 		}
 
-		switch err := uc.repo.Save(ctx, current); {
+		switch err := uc.repo.Save(ctx, current, ev); {
 		case err == nil:
-			return uc.bus.Publish(ctx, []event.Event{ev})
+			return nil
 		case errors.Is(err, session.ErrConflict):
 			_ = attempt // read it again
 		default:

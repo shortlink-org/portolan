@@ -2,6 +2,7 @@ package end_after_credential_change_test
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 
@@ -11,13 +12,21 @@ import (
 	"github.com/shortlink-org/portolan/examples/auth/internal/domain/session/event"
 	bus "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/bus/session"
 	repo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/session"
+	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/storage/postgrestest"
 )
 
 var change = time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
 
-func store(t *testing.T, issued map[string]time.Time) *repo.Memory {
+func TestMain(m *testing.M) {
+	code := m.Run()
+	postgrestest.Stop()
+	os.Exit(code)
+}
+
+func store(t *testing.T, issued map[string]time.Time, b session.Publisher) *repo.Postgres {
 	t.Helper()
-	s := repo.NewMemory()
+	router, unit := postgrestest.Store(t, postgrestest.Source{FS: repo.Migrations, Name: repo.Name})
+	s := repo.NewPostgres(router, unit, b)
 	for id, at := range issued {
 		sess, _, err := session.Start(id, "u1", at)
 		if err != nil {
@@ -36,8 +45,8 @@ func TestEndsWhatTheServiceSelected(t *testing.T) {
 		"laptop": change.Add(-time.Hour),
 		"phone":  change.Add(-time.Hour),
 		"fresh":  change.Add(time.Minute),
-	})
-	uc := end_after_credential_change.New(st, bus.NewInProc(), func() time.Time { return change.Add(time.Hour) })
+	}, nil)
+	uc := end_after_credential_change.New(st, func() time.Time { return change.Add(time.Hour) })
 
 	err := uc.Handle(ctx, dto.Input{UserID: "u1", ChangedAt: change, Keep: "laptop"})
 	if err != nil {
@@ -62,8 +71,8 @@ func TestEachSessionIsSavedOnItsOwn(t *testing.T) {
 	st := store(t, map[string]time.Time{
 		"a": change.Add(-time.Hour),
 		"b": change.Add(-time.Hour),
-	})
-	uc := end_after_credential_change.New(st, bus.NewInProc(), func() time.Time { return change })
+	}, nil)
+	uc := end_after_credential_change.New(st, func() time.Time { return change })
 
 	if err := uc.Handle(ctx, dto.Input{UserID: "u1", ChangedAt: change}); err != nil {
 		t.Fatal(err)
@@ -80,12 +89,6 @@ func TestEachSessionIsSavedOnItsOwn(t *testing.T) {
 // can explain the sign-out instead of blaming an expiry that did not happen.
 func TestOneEventPerSessionEnded(t *testing.T) {
 	ctx := context.Background()
-	st := store(t, map[string]time.Time{
-		"a": change.Add(-time.Hour),
-		"b": change.Add(-time.Hour),
-		"c": change.Add(-time.Hour),
-	})
-
 	var got []event.Event
 	b := bus.NewInProc()
 	b.Subscribe("", func(_ context.Context, e event.Event) error {
@@ -93,7 +96,14 @@ func TestOneEventPerSessionEnded(t *testing.T) {
 		return nil
 	})
 
-	uc := end_after_credential_change.New(st, b, func() time.Time { return change })
+	st := store(t, map[string]time.Time{
+		"a": change.Add(-time.Hour),
+		"b": change.Add(-time.Hour),
+		"c": change.Add(-time.Hour),
+	}, b)
+	got = nil // the sessions being set up are not what this test is about
+
+	uc := end_after_credential_change.New(st, func() time.Time { return change })
 	if err := uc.Handle(ctx, dto.Input{UserID: "u1", ChangedAt: change, Keep: "c"}); err != nil {
 		t.Fatal(err)
 	}
@@ -112,14 +122,6 @@ func TestOneEventPerSessionEnded(t *testing.T) {
 // already said it ended, and a second one would report it twice.
 func TestSessionEndedBysomebodyElse(t *testing.T) {
 	ctx := context.Background()
-	st := store(t, map[string]time.Time{"phone": change.Add(-time.Hour)})
-
-	loaded, _ := st.ByID(ctx, "phone")
-	loaded.Revoke(event.ReasonLogout, change.Add(-time.Minute))
-	if err := st.Save(ctx, loaded); err != nil {
-		t.Fatal(err)
-	}
-
 	var got []event.Event
 	b := bus.NewInProc()
 	b.Subscribe("", func(_ context.Context, e event.Event) error {
@@ -127,7 +129,16 @@ func TestSessionEndedBysomebodyElse(t *testing.T) {
 		return nil
 	})
 
-	uc := end_after_credential_change.New(st, b, func() time.Time { return change })
+	st := store(t, map[string]time.Time{"phone": change.Add(-time.Hour)}, b)
+
+	loaded, _ := st.ByID(ctx, "phone")
+	loaded.Revoke(event.ReasonLogout, change.Add(-time.Minute))
+	if err := st.Save(ctx, loaded); err != nil {
+		t.Fatal(err)
+	}
+	got = nil // the logout above is the setup, not the subject
+
+	uc := end_after_credential_change.New(st, func() time.Time { return change })
 	if err := uc.Handle(ctx, dto.Input{UserID: "u1", ChangedAt: change}); err != nil {
 		t.Fatal(err)
 	}
@@ -137,7 +148,7 @@ func TestSessionEndedBysomebodyElse(t *testing.T) {
 }
 
 func TestUserWithNothingOpen(t *testing.T) {
-	uc := end_after_credential_change.New(repo.NewMemory(), bus.NewInProc(), func() time.Time { return change })
+	uc := end_after_credential_change.New(store(t, nil, nil), func() time.Time { return change })
 	if err := uc.Handle(context.Background(), dto.Input{UserID: "nobody", ChangedAt: change}); err != nil {
 		t.Fatalf("= %v, want no error", err)
 	}

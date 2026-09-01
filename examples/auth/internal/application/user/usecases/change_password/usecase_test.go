@@ -3,6 +3,7 @@ package change_password_test
 import (
 	"context"
 	"errors"
+	"os"
 	"testing"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/shortlink-org/portolan/examples/auth/internal/domain/user/vo/password"
 	bus "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/bus/user"
 	repo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/user"
+	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/storage/postgrestest"
 )
 
 var now = time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
@@ -23,16 +25,30 @@ const (
 	next    = "NewPassw0rd"
 )
 
+func TestMain(m *testing.M) {
+	code := m.Run()
+	postgrestest.Stop()
+	os.Exit(code)
+}
+
 type harness struct {
 	uc     *change_password.UseCase
-	store  *repo.Memory
+	store  *repo.Postgres
 	events []event.Event
 }
 
 func newHarness(t *testing.T) *harness {
 	t.Helper()
-	h := &harness{store: repo.NewMemory()}
+	h := &harness{}
 	ctx := context.Background()
+
+	b := bus.NewInProc()
+	b.Subscribe("", func(_ context.Context, e event.Event) error {
+		h.events = append(h.events, e)
+		return nil
+	})
+	router, unit := postgrestest.Store(t, postgrestest.Source{FS: repo.Migrations, Name: repo.Name})
+	h.store = repo.NewPostgres(router, unit, b)
 
 	u, _, err := user.Register("u1", address, current, now)
 	if err != nil {
@@ -41,14 +57,10 @@ func newHarness(t *testing.T) *harness {
 	if err := h.store.Save(ctx, u); err != nil {
 		t.Fatal(err)
 	}
+	// The registration event is not what these tests are about.
+	h.events = nil
 
-	b := bus.NewInProc()
-	b.Subscribe("", func(_ context.Context, e event.Event) error {
-		h.events = append(h.events, e)
-		return nil
-	})
-
-	h.uc = change_password.New(h.store, b, func() time.Time { return now })
+	h.uc = change_password.New(h.store, func() time.Time { return now })
 	return h
 }
 

@@ -3,6 +3,7 @@ package register_test
 import (
 	"context"
 	"errors"
+	"os"
 	"testing"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/shortlink-org/portolan/examples/auth/internal/domain/user/vo/password"
 	bus "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/bus/user"
 	repo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/user"
+	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/storage/postgrestest"
 )
 
 var now = time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
@@ -23,24 +25,35 @@ const (
 	plaintext = "Passw0rdish"
 )
 
+func TestMain(m *testing.M) {
+	code := m.Run()
+	postgrestest.Stop()
+	os.Exit(code)
+}
+
 type harness struct {
 	uc     *register.UseCase
-	store  *repo.Memory
+	store  *repo.Postgres
 	events []event.Event
 }
 
+// The use case runs against a real database and a real bus. There are no
+// doubles here at all: what is being checked is the sequence of a scenario, and
+// a scenario that only holds against a fake is not evidence of anything.
 func newHarness(t *testing.T) *harness {
 	t.Helper()
-	h := &harness{store: repo.NewMemory()}
+	h := &harness{}
 
 	b := bus.NewInProc()
 	b.Subscribe("", func(_ context.Context, e event.Event) error {
 		h.events = append(h.events, e)
 		return nil
 	})
+	router, unit := postgrestest.Store(t, postgrestest.Source{FS: repo.Migrations, Name: repo.Name})
+	h.store = repo.NewPostgres(router, unit, b)
 
 	ids := 0
-	h.uc = register.New(h.store, b, func() time.Time { return now }, func() string {
+	h.uc = register.New(h.store, func() time.Time { return now }, func() string {
 		ids++
 		return "u" + string(rune('0'+ids))
 	})

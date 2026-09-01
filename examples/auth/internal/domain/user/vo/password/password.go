@@ -9,6 +9,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/shortlink-org/portolan/examples/auth/internal/domain/user/vo/password/rules"
 )
@@ -54,6 +56,44 @@ func New(plaintext string) (Hash, error) {
 
 	return Hash{
 		algorithm:  algorithm,
+		iterations: iterations,
+		salt:       salt,
+		digest:     digest,
+	}, nil
+}
+
+// ParseHash rebuilds a Hash from its stored form.
+//
+// It is the inverse of String and the reason that form carries its parameters:
+// a hash written under an older cost has to stay verifiable, which means the
+// cost has to be read back rather than assumed to be today's.
+//
+// The policy is not applied. Whatever was accepted when the password was set
+// stays acceptable; this is the reading of a fact, not the making of one.
+func ParseHash(stored string) (Hash, error) {
+	parts := strings.Split(stored, "$")
+	if len(parts) != 4 {
+		return Hash{}, fmt.Errorf("password: %q is not a stored hash", stored)
+	}
+
+	iterations, err := strconv.Atoi(parts[1])
+	if err != nil || iterations <= 0 {
+		return Hash{}, fmt.Errorf("password: %q has no cost", stored)
+	}
+	salt, err := hex.DecodeString(parts[2])
+	if err != nil {
+		return Hash{}, fmt.Errorf("password: salt is not hex: %w", err)
+	}
+	digest, err := hex.DecodeString(parts[3])
+	if err != nil {
+		return Hash{}, fmt.Errorf("password: digest is not hex: %w", err)
+	}
+	if len(digest) == 0 {
+		return Hash{}, fmt.Errorf("password: %q has no digest", stored)
+	}
+
+	return Hash{
+		algorithm:  parts[0],
 		iterations: iterations,
 		salt:       salt,
 		digest:     digest,

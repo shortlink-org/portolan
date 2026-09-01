@@ -9,14 +9,19 @@ import (
 	userrepo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/user"
 )
 
-// Repository binds the in-memory adapters to the storage ports.
+// Repository binds the Postgres adapters to the storage ports.
 //
-// The wire.Bind lines are the seam: swapping to postgres is two edits here and
-// nothing anywhere else, which is the whole point of the ports being interfaces.
+// The wire.Bind lines are the seam. They are the only place in the tree that
+// names a database at all: everything above them speaks to an interface, and
+// swapping what is behind it is these two lines and nothing else.
+//
+// Both adapters take the router and the unit of work rather than a connection.
+// Neither of them opens a transaction of its own choosing, and neither can be
+// told which one it is in - that is the point.
 var Repository = wire.NewSet(
-	userrepo.NewMemory,
-	wire.Bind(new(user.Repository), new(*userrepo.Memory)),
+	userrepo.NewPostgres,
+	wire.Bind(new(user.Repository), new(*userrepo.Postgres)),
 
-	sessionrepo.NewMemory,
-	wire.Bind(new(session.Repository), new(*sessionrepo.Memory)),
+	sessionrepo.NewPostgres,
+	wire.Bind(new(session.Repository), new(*sessionrepo.Postgres)),
 )

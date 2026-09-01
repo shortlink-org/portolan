@@ -10,10 +10,13 @@ import (
 // domain, because it states what the domain NEEDS - not what any particular
 // database offers. The adapters live in internal/infrastructure.
 //
-// Save is the only place a User and its events reach durable storage, and it
-// does both or neither.
+// The events a change produced are handed to Save rather than published
+// separately, because a fact about a change that did not commit is worse than
+// no fact at all. Making them an argument is what stops the two ever being done
+// apart: there is no way to store the aggregate without offering its events,
+// and no way to hand over events without storing.
 type Repository interface {
-	Save(ctx context.Context, u *User) error
+	Save(ctx context.Context, u *User, events ...event.Event) error
 	ByID(ctx context.Context, id string) (*User, error)
 	ByEmail(ctx context.Context, email string) (*User, error)
 }
