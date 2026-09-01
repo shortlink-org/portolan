@@ -214,7 +214,7 @@ export function FlowDetail() {
     return (
       <div className="p-6">
         <h1 className="text-lg font-semibold">Flow not found</h1>
-        <p className="mono mt-2 text-muted">
+        <p className="meta mt-2">
           no flow with slug “{slug}” in the catalog
         </p>
         <Link to="/flows" className="mono mt-4 inline-block text-accent">

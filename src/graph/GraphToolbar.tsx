@@ -25,8 +25,6 @@ export function GraphToolbar({
   /** The service currently focused, or null. */
   focused: string | null;
 }) {
-  const flow = useReactFlow();
-
   return (
     <Panel position="top-left" className="flex flex-wrap items-center gap-2">
       <div className="seg bg-canvas" role="group" aria-label="Graph mode">
@@ -50,32 +48,7 @@ export function GraphToolbar({
         </button>
       </div>
 
-      <div className="seg bg-canvas" role="group" aria-label="Viewport">
-        <button
-          type="button"
-          onClick={() => void flow.fitView(FIT_OPTIONS)}
-          title="Fit to view"
-          aria-label="Fit to view"
-        >
-          <Maximize2 size={13} aria-hidden />
-        </button>
-        <button
-          type="button"
-          onClick={() => void flow.zoomOut()}
-          title="Zoom out"
-          aria-label="Zoom out"
-        >
-          <Minus size={13} aria-hidden />
-        </button>
-        <button
-          type="button"
-          onClick={() => void flow.zoomIn()}
-          title="Zoom in"
-          aria-label="Zoom in"
-        >
-          <Plus size={13} aria-hidden />
-        </button>
-      </div>
+      <ViewportSeg />
 
       <div className="seg bg-canvas">
         <button
@@ -92,6 +65,47 @@ export function GraphToolbar({
         </button>
       </div>
     </Panel>
+  );
+}
+
+/**
+ * Fit, out, in - the three viewport controls, as one segment.
+ *
+ * It lives apart from the toolbar because it is the only part of it that is
+ * about the canvas rather than about the graph, and every canvas has a
+ * viewport: the focused event graph wears this on its own, with none of the
+ * mode switches around it.
+ */
+export function ViewportSeg() {
+  const flow = useReactFlow();
+
+  return (
+    <div className="seg bg-canvas shadow-xs" role="group" aria-label="Viewport">
+      <button
+        type="button"
+        onClick={() => void flow.fitView(FIT_OPTIONS)}
+        title="Fit to view"
+        aria-label="Fit to view"
+      >
+        <Maximize2 size={13} aria-hidden />
+      </button>
+      <button
+        type="button"
+        onClick={() => void flow.zoomOut()}
+        title="Zoom out"
+        aria-label="Zoom out"
+      >
+        <Minus size={13} aria-hidden />
+      </button>
+      <button
+        type="button"
+        onClick={() => void flow.zoomIn()}
+        title="Zoom in"
+        aria-label="Zoom in"
+      >
+        <Plus size={13} aria-hidden />
+      </button>
+    </div>
   );
 }
 

@@ -172,10 +172,7 @@ export function Problems() {
         <div className="mt-section max-w-table">
           <SectionTitle
             right={
-              <span
-                className="mono text-muted"
-                title={absoluteTime(catalog.generatedAt)}
-              >
+              <span title={absoluteTime(catalog.generatedAt)}>
                 last checked {relativeTime(catalog.generatedAt)}
               </span>
             }

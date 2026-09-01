@@ -307,6 +307,29 @@
     @apply mono uppercase text-muted;
   }
 
+  /* The heading of a page section, and whatever the section puts opposite it.
+
+     They were both `.label`: the same 12px muted grey, so "Consumers" and
+     "published by auth.auth" carried the same weight and the eye had no
+     reason to read one before the other. The title keeps the mono eyebrow -
+     it is this app's signature - but takes a step up into ink, and the aside
+     takes a step down into faint, which is what the token was defined for.
+
+     The aside is sans, because most of them are sentences rather than counts:
+     "identity matters - these are tracked over time" is prose, and prose set
+     in 12px monospace reads as a log line. Digits are tabular anyway, so a
+     count loses nothing; an identifier in there still asks for `.mono`. */
+  .section-title {
+    @apply mono uppercase text-ink;
+    font-size: var(--text-sm);
+    font-weight: 500;
+  }
+  .section-aside {
+    @apply text-faint;
+    font-size: var(--text-meta);
+    font-variant-numeric: tabular-nums;
+  }
+
   /* A bordered, hoverable block that is also a link. Padding is the card
      token; the shadow is the only elevation a card ever gets - a card does not
      rise on hover, because md is the overlay tier and a grid of twelve cards
@@ -561,9 +584,15 @@
   }
 
   /* One line with a bit of character, never an illustration block. The dashed
-     border and the 4% glow are the whole of the decoration. */
+     border and the 4% glow are the whole of the decoration.
+
+     It is a sentence, so it is set like one: sans, ranged left, at the size of
+     the rows it stands in for. Centred monospace made the best lines in the
+     app - "nobody is listening - this event falls silent" - read as debug
+     output, which is the opposite of what they are for. */
   .empty {
-    @apply mono glow rounded-card border border-dashed border-line-strong px-3 py-4 text-center text-muted;
+    @apply glow rounded-card border border-dashed border-line-strong px-4 py-3 text-muted;
+    font-size: var(--text-meta);
   }
 
   /* ---------------------------------------------------------------------

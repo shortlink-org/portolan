@@ -148,7 +148,7 @@ export function Overview() {
             reach.length > 0 ? (
               <Link
                 to={paths.flows()}
-                className="mono rounded-control px-1 text-accent hover:underline"
+                className="rounded-control px-1 text-accent hover:underline"
               >
                 all flows →
               </Link>

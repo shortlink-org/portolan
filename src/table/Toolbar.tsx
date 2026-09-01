@@ -50,7 +50,7 @@ function ExportMenu({ actions, note }: { actions: ExportActions; note: string })
         anchor={{ to: "bottom end", gap: 4, padding: 8 }}
         className="palette-in z-50 min-w-48 rounded-control border bg-canvas py-1 border-line-strong shadow-md focus:outline-none"
       >
-        <p className="mono px-2 py-1 text-muted">{note}</p>
+        <p className="meta px-2 py-1">{note}</p>
         {items.map(([label, run, trailing]) => (
           <MenuItem key={label}>
             {({ focus }) => (

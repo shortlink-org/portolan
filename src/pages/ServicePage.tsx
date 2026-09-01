@@ -210,7 +210,7 @@ export function ServicePage() {
               <SectionTitle
                 anchor={SERVICE_ANCHOR.events}
                 right={
-                  <span className="mono text-muted">
+                  <span>
                     everything this service announces
                   </span>
                 }

@@ -92,8 +92,16 @@ export function useElkFlow(spec: FlowSpec): FlowState {
             fontSize: 10,
             fontFamily: "var(--font-mono)",
           },
-          labelBgStyle: { fill: "var(--bg)" },
-          labelBgPadding: [3, 1] as [number, number],
+          // A word printed straight onto a line is a word with a line through
+          // it. The label carries the canvas background and a hairline of its
+          // own, which is the same pill the bundled edges wear.
+          labelBgStyle: {
+            fill: "var(--bg)",
+            stroke: "var(--border)",
+            strokeWidth: 1,
+          },
+          labelBgPadding: [6, 3] as [number, number],
+          labelBgBorderRadius: 4,
           labelShowBg: true,
           markerEnd: {
             type: MarkerType.ArrowClosed,

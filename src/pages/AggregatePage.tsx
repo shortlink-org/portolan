@@ -260,7 +260,7 @@ export function AggregatePage() {
             <SectionTitle
               anchor={AGGREGATE_ANCHOR.entities}
               right={
-                <span className="mono text-muted">
+                <span>
                   identity matters — these are tracked over time
                 </span>
               }
@@ -282,7 +282,7 @@ export function AggregatePage() {
             <SectionTitle
               anchor={AGGREGATE_ANCHOR.valueObjects}
               right={
-                <span className="mono text-muted">
+                <span>
                   no identity — equal values are the same value
                 </span>
               }
@@ -378,7 +378,7 @@ export function AggregatePage() {
               <SectionTitle
                 anchor={AGGREGATE_ANCHOR.commands}
                 right={
-                  <span className="mono text-muted">
+                  <span>
                     they change the aggregate — one row lock each
                   </span>
                 }
@@ -394,7 +394,7 @@ export function AggregatePage() {
               <SectionTitle
                 anchor={AGGREGATE_ANCHOR.queries}
                 right={
-                  <span className="mono text-muted">
+                  <span>
                     they change nothing — and may be behind
                   </span>
                 }
@@ -418,7 +418,7 @@ export function AggregatePage() {
             <SectionTitle
               anchor={AGGREGATE_SECTION.persistence}
               right={
-                <span className="mono text-muted">
+                <span>
                   one row per table that holds it
                   {presented.length > 0 ? ", then the views over it" : ""}
                 </span>

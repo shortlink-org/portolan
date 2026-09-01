@@ -74,14 +74,14 @@ export function SectionTitle({
 }) {
   return (
     <div className={`mb-3 flex items-center gap-2 ${anchor ? "anchored" : ""}`}>
-      <h2 className="label">{children}</h2>
+      <h2 className="section-title">{children}</h2>
       {anchor ? (
         <AnchorLink
           id={anchor}
           {...(typeof children === "string" ? { label: children } : {})}
         />
       ) : null}
-      {right ? <div className="ml-auto">{right}</div> : null}
+      {right ? <div className="section-aside ml-auto">{right}</div> : null}
     </div>
   );
 }

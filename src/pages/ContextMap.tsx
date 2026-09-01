@@ -366,7 +366,7 @@ export function ContextMap() {
             <SectionTitle
               anchor={MAP_ANCHOR.model}
               right={
-                <span className="mono text-muted">
+                <span>
                   click a domain to light what it is on · double-click to open
                   it
                 </span>
@@ -383,7 +383,7 @@ export function ContextMap() {
             <SectionTitle
               anchor={MAP_ANCHOR.relations}
               right={
-                <span className="mono text-muted">
+                <span>
                   the pairs that are wired together first
                 </span>
               }

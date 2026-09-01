@@ -896,7 +896,7 @@ function UnknownBody({ selection }: { selection: Selection }) {
 
   return (
     <>
-      <p className="mono mt-1.5 text-unresolved">
+      <p className="meta mt-1.5 text-unresolved">
         nothing in the catalog owns this id
       </p>
       {consumers.length > 0 ? (
@@ -924,7 +924,7 @@ function UnknownBody({ selection }: { selection: Selection }) {
         </>
       ) : null}
       {consumers.length === 0 && flows.length === 0 ? (
-        <p className="mono mt-3 text-muted">
+        <p className="meta mt-3">
           it is not referenced anywhere else either
         </p>
       ) : null}

@@ -256,7 +256,7 @@ export function ShortcutsSheet({
               </ul>
             </section>
           ))}
-          <p className="mono border-t pt-3 border-line text-muted">
+          <p className="meta border-t pt-3 border-line">
             none of these fire while a text field has focus — ⌘K is the one
             exception, because that is what a field is for
           </p>

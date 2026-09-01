@@ -179,7 +179,7 @@ export function ContextPage() {
             <SectionTitle
               anchor={CONTEXT_ANCHOR.aggregates}
               right={
-                <span className="mono text-muted">
+                <span>
                   every aggregate this domain owns, whichever service holds it
                 </span>
               }
@@ -230,7 +230,7 @@ export function ContextPage() {
             <SectionTitle
               anchor={CONTEXT_ANCHOR.events}
               right={
-                <span className="mono text-muted">
+                <span>
                   what the rest of the estate hears from here
                 </span>
               }

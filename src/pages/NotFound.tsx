@@ -4,7 +4,7 @@ export function NotFound({ kind, id }: { kind: string; id?: string }) {
   return (
     <div className="glow p-gutter">
       <h1 className="text-lg font-semibold">{kind} not found</h1>
-      <p className="mono mt-3 text-muted">
+      <p className="mt-3 text-muted">
         nothing in the catalog answers to “{id ?? ""}” — it may have been
         renamed since this chart was drawn
       </p>
@@ -22,7 +22,7 @@ export function NotFoundPage() {
   return (
     <div className="glow p-gutter">
       <h1 className="text-lg font-semibold">Not found</h1>
-      <p className="mono mt-3 text-muted">
+      <p className="mt-3 text-muted">
         off the edge of the chart — no route runs through here
       </p>
       <Link

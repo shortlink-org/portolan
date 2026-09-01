@@ -184,7 +184,7 @@ export function BlockPage({ kind }: { kind: BlockKind }) {
             <SectionTitle
               anchor={BLOCK_ANCHOR.shape}
               right={
-                <span className="mono text-muted">{fields.length} fields</span>
+                <span>{fields.length} fields</span>
               }
             >
               Shape
@@ -204,7 +204,7 @@ export function BlockPage({ kind }: { kind: BlockKind }) {
               <SectionTitle
                 anchor={BLOCK_STORED_AS}
                 right={
-                  <span className="mono text-muted">
+                  <span>
                     db type beside domain type
                   </span>
                 }

@@ -33,7 +33,7 @@ function Missing({ viewId }: { viewId: string }) {
     <div className="flex h-full items-center justify-center p-6">
       <div className="max-w-prose rounded-card border border-dashed px-4 py-3 text-center border-line-strong">
         <Ident value={viewId} className="text-ink" />
-        <p className="mono mt-1.5 text-muted">
+        <p className="meta mt-1.5">
           no such view in the generated bundle — it was renamed, or the bundle
           is older than the model
         </p>

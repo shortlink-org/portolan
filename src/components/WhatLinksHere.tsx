@@ -199,7 +199,7 @@ export function WhatLinksHere({
       <SectionTitle
         anchor={LINKS_HERE}
         right={
-          <span className="mono text-muted">
+          <span>
             <span className="tnum">{total}</span> incoming
           </span>
         }

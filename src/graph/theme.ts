@@ -5,9 +5,14 @@ import type { Status } from "../catalog";
 
 /** Radii used by LikeC4's own nodes; React Flow nodes match them. */
 export const NODE_RADIUS = 2;
-export const NODE_W = 168;
-export const NODE_H = 34;
-export const EVENT_W = 190;
+
+/**
+ * The focused event graph's boxes - the only nodes elk sizes from these
+ * defaults. Two lines tall: an eyebrow naming the role and the name under it.
+ */
+export const NODE_W = 176;
+export const NODE_H = 48;
+export const EVENT_W = 204;
 
 // ---------------------------------------------------------------------------
 // The dependency graph's two node kinds.

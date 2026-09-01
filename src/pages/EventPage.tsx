@@ -274,16 +274,19 @@ export function EventPage() {
             reading this page wants to know whether the event is committed with
             the state change or published on a best effort after it. */}
         {outbox ? (
-          <div className="mono mt-2 text-muted">
+          <div className="meta mt-2">
             Delivery: transactional outbox via{" "}
             {outboxTo ? (
-              <Link to={outboxTo} className="rounded-control text-accent hover:underline">
+              <Link
+                to={outboxTo}
+                className="mono rounded-control text-accent hover:underline"
+              >
                 {outbox.table.name}
               </Link>
             ) : (
-              <span className="text-ink">{outbox.table.name}</span>
+              <span className="mono text-ink">{outbox.table.name}</span>
             )}{" "}
-            in {outbox.store.slug}
+            in <span className="mono">{outbox.store.slug}</span>
           </div>
         ) : null}
       </PageHeader>
@@ -295,9 +298,10 @@ export function EventPage() {
             <SectionTitle
               anchor={EVENT_ANCHOR.schema}
               right={
-                <span className="mono text-muted">
+                <span>
                   {selected.fields.length}{" "}
-                  {plural(selected.fields.length, "field")} · {selected.version}
+                  {plural(selected.fields.length, "field")} ·{" "}
+                  <span className="mono">{selected.version}</span>
                 </span>
               }
             >
@@ -315,7 +319,9 @@ export function EventPage() {
                 rows={selected.fields}
                 rowId={(field) => field.name}
                 subRow={(field) =>
-                  expanded.has(field.name) ? <TypeDefBody field={field} /> : null
+                  expanded.has(field.name) ? (
+                    <TypeDefBody field={field} />
+                  ) : null
                 }
                 rowActions={(field) => (
                   <RowActions
@@ -332,10 +338,7 @@ export function EventPage() {
             id={EVENT_ANCHOR.versions}
             className="mt-section max-w-table"
           >
-            <SectionTitle
-              anchor={EVENT_ANCHOR.versions}
-              right={<span className="mono text-muted">oldest first</span>}
-            >
+            <SectionTitle anchor={EVENT_ANCHOR.versions} right="oldest first">
               Versions
             </SectionTitle>
             {/* The row is a div holding a button, not a button holding
@@ -389,11 +392,14 @@ export function EventPage() {
           </section>
 
           {/* --- Consumers ---------------------------------------------- */}
-          <section id={EVENT_ANCHOR.consumers} className="mt-section">
+          <section
+            id={EVENT_ANCHOR.consumers}
+            className="mt-section max-w-table"
+          >
             <SectionTitle
               anchor={EVENT_ANCHOR.consumers}
               right={
-                <span className="mono text-muted">
+                <span>
                   published by{" "}
                   <Link
                     to={paths.service(context.id, service.slug)}
@@ -409,54 +415,59 @@ export function EventPage() {
               Consumers
             </SectionTitle>
 
-            <div className="flex flex-col gap-3 lg:flex-row">
-              <div
-                className="flex min-w-0 flex-1 flex-col gap-1.5"
-                data-nav-list
-              >
-                {event.consumers.length === 0 ? (
-                  <Empty>nobody is listening — this event falls silent</Empty>
-                ) : null}
-                {event.consumers.map((consumer) => {
-                  const to = servicePath(consumer.service);
-                  return (
-                    <div
-                      key={consumer.service}
-                      className="row items-start gap-2"
-                    >
-                      <div className="min-w-0 flex-1">
-                        {to ? (
-                          <Link
-                            to={to}
-                            data-nav-item
-                            className="mono rounded-control text-accent"
-                          >
-                            {consumer.service}
-                          </Link>
-                        ) : (
-                          <span className="mono text-unresolved">
-                            {consumer.service}
-                          </span>
-                        )}
-                        {consumer.note ? (
-                          <p className="mt-0.5 text-muted">{consumer.note}</p>
-                        ) : null}
+            {/* With nobody listening there is no picture to draw: publisher
+                and event are already the two lines above, and half a section
+                of empty canvas beside one sentence says only that the layout
+                expected something else. */}
+            {event.consumers.length === 0 ? (
+              <Empty>nobody is listening — this event falls silent</Empty>
+            ) : (
+              /* The list and the picture stack rather than sit side by side.
+                 The picture runs left to right - publisher, event, consumers -
+                 and half a column is not enough width for three layers of it:
+                 it fits by zooming out, and a node zoomed out is a grey mark
+                 where a name was. */
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-1.5" data-nav-list>
+                  {event.consumers.map((consumer) => {
+                    const to = servicePath(consumer.service);
+                    return (
+                      <div
+                        key={consumer.service}
+                        className="row items-start gap-2"
+                      >
+                        <div className="min-w-0 flex-1">
+                          {to ? (
+                            <Link
+                              to={to}
+                              data-nav-item
+                              className="mono rounded-control text-accent"
+                            >
+                              {consumer.service}
+                            </Link>
+                          ) : (
+                            <span className="mono text-unresolved">
+                              {consumer.service}
+                            </span>
+                          )}
+                          {consumer.note ? (
+                            <p className="mt-0.5 text-muted">{consumer.note}</p>
+                          ) : null}
+                        </div>
+                        <StatusChip status={consumer.status} />
+                        <RowActions
+                          copy={consumer.service}
+                          {...(to ? { reveal: consumer.service } : {})}
+                        />
                       </div>
-                      <StatusChip status={consumer.status} />
-                      <RowActions
-                        copy={consumer.service}
-                        {...(to ? { reveal: consumer.service } : {})}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
 
-              {/* producer -> event -> consumers, the same fact as a picture */}
-              <div className="min-w-0 flex-1">
-                <FocusedEventGraphPane event={event} height={230} />
+                {/* producer -> event -> consumers, the same fact as a picture */}
+                <FocusedEventGraphPane event={event} />
               </div>
-            </div>
+            )}
           </section>
 
           {/* --- What links here -------------------------------------- */}
