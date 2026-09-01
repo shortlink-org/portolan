@@ -15,6 +15,11 @@ import (
 
 // Memory keeps users in a map. It is the adapter the tests and
 // `cmd/auth -store=memory` run on; it is not a cache in front of anything.
+//
+// Everything crossing its edge is cloned, in both directions. A store that
+// handed out the object it holds would let a caller change stored state without
+// saving - something no real database does, which is exactly why an in-memory
+// adapter that allows it makes tests pass where production would not.
 type Memory struct {
 	mu     sync.RWMutex
 	byID   map[string]*user.User
@@ -48,7 +53,7 @@ func (m *Memory) Save(_ context.Context, u *user.User) error {
 	if id, taken := m.byMail[email]; taken && id != u.ID {
 		return user.ErrEmailTaken
 	}
-	m.byID[u.ID] = u
+	m.byID[u.ID] = u.Clone()
 	m.byMail[email] = u.ID
 	return nil
 }
@@ -61,7 +66,7 @@ func (m *Memory) ByID(_ context.Context, id string) (*user.User, error) {
 	if !ok {
 		return nil, user.ErrNotFound
 	}
-	return u, nil
+	return u.Clone(), nil
 }
 
 func (m *Memory) ByEmail(_ context.Context, email string) (*user.User, error) {
@@ -72,5 +77,5 @@ func (m *Memory) ByEmail(_ context.Context, email string) (*user.User, error) {
 	if !ok {
 		return nil, user.ErrNotFound
 	}
-	return m.byID[id], nil
+	return m.byID[id].Clone(), nil
 }

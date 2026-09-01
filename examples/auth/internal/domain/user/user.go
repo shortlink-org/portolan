@@ -63,3 +63,21 @@ func (u *User) Authenticate(plaintext string) error {
 	}
 	return nil
 }
+
+// Clone returns a copy that shares nothing a caller can change.
+//
+// It exists for the repositories. Handing out the stored object would put the
+// aggregate boundary in the caller's hands: a mutation would reach storage
+// without a Save, and a Save that failed would leave the change visible anyway.
+//
+// The copy is shallow because every field is either a value or a value object
+// whose contents cannot be changed after construction. A mutable field added to
+// User has to be copied here explicitly, which is the reason this method lives
+// on the aggregate rather than in the adapters.
+func (u *User) Clone() *User {
+	if u == nil {
+		return nil
+	}
+	copied := *u
+	return &copied
+}

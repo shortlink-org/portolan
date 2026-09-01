@@ -12,6 +12,9 @@ import (
 // Memory keeps sessions in a map, indexed twice: by id, and by token for the
 // read path every authenticated request goes through.
 //
+// Everything crossing its edge is cloned, in both directions - see the note on
+// the user adapter.
+//
 // Nothing here evicts expired sessions. Expiry is a property of the aggregate,
 // answered by Session.Validate at read time, so a session that has run out of
 // time is refused whether or not anything got round to deleting it. A sweeper
@@ -35,7 +38,7 @@ func (m *Memory) Save(_ context.Context, s *session.Session) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.byID[s.ID] = s
+	m.byID[s.ID] = s.Clone()
 	m.byToken[s.Token.String()] = s.ID
 	return nil
 }
@@ -48,7 +51,7 @@ func (m *Memory) ByID(_ context.Context, id string) (*session.Session, error) {
 	if !ok {
 		return nil, session.ErrNotFound
 	}
-	return s, nil
+	return s.Clone(), nil
 }
 
 func (m *Memory) ByToken(_ context.Context, presented token.Token) (*session.Session, error) {
@@ -59,5 +62,5 @@ func (m *Memory) ByToken(_ context.Context, presented token.Token) (*session.Ses
 	if !ok {
 		return nil, session.ErrNotFound
 	}
-	return m.byID[id], nil
+	return m.byID[id].Clone(), nil
 }

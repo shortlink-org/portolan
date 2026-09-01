@@ -80,3 +80,13 @@ func (s *Session) Revoke(reason event.Reason, now time.Time) (event.SessionEnded
 	s.RevokedAt = now
 	return event.NewSessionEnded(s.ID, s.UserID, reason, now), true
 }
+
+// Clone returns a copy that shares nothing a caller can change. See the note on
+// User.Clone for why the repositories need it.
+func (s *Session) Clone() *Session {
+	if s == nil {
+		return nil
+	}
+	copied := *s
+	return &copied
+}
