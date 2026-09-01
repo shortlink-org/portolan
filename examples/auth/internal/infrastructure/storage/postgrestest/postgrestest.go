@@ -34,6 +34,7 @@ import (
 	"github.com/shortlink-org/go-sdk/db/drivers/postgres/migrate"
 	"github.com/shortlink-org/go-sdk/db/drivers/postgres/replica"
 	"github.com/shortlink-org/go-sdk/logger"
+	sdkuow "github.com/shortlink-org/go-sdk/uow"
 
 	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/storage/uow"
 )
@@ -89,6 +90,17 @@ func Stop() {
 // not secretly need somebody else's.
 func Store(t *testing.T, sources ...Source) (*replica.Router, *uow.UnitOfWork) {
 	t.Helper()
+
+	_, router, unit := StoreWithDB(t, sources...)
+
+	return router, unit
+}
+
+// StoreWithDB is Store, and also hands back the SDK store itself - which the
+// outbox relay wants, because it reads on its own rather than through the
+// router.
+func StoreWithDB(t *testing.T, sources ...Source) (*db.Store, *replica.Router, *uow.UnitOfWork) {
+	t.Helper()
 	ctx := t.Context()
 
 	admin, err := container(ctx)
@@ -118,7 +130,7 @@ func Store(t *testing.T, sources ...Source) (*replica.Router, *uow.UnitOfWork) {
 	}
 
 	store, err := db.New(ctx, log, otel.GetTracerProvider(), &metric.MeterProvider{}, cfg,
-		postgres.With(postgres.WithTxLookup(uow.FromContext)),
+		postgres.With(postgres.WithTxLookup(sdkuow.FromContext)),
 	)
 	if err != nil {
 		t.Fatalf("postgrestest: store: %v", err)
@@ -137,7 +149,7 @@ func Store(t *testing.T, sources ...Source) (*replica.Router, *uow.UnitOfWork) {
 
 	router := driver.Router()
 
-	return router, uow.New(router)
+	return store, router, uow.New(router)
 }
 
 func createDatabase(ctx context.Context, admin, name string) error {

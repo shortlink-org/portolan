@@ -19,6 +19,7 @@ import (
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
+	sdkoutbox "github.com/shortlink-org/go-sdk/outbox"
 
 	"github.com/shortlink-org/portolan/examples/auth/internal/domain/user"
 	"github.com/shortlink-org/portolan/examples/auth/internal/domain/user/event"
@@ -40,20 +41,20 @@ const metadataEventName = "event_name"
 
 // UserPublisher writes the user domain's events into the transaction in flight.
 type UserPublisher struct {
-	messages *Messages
+	messages *sdkoutbox.Publisher
 }
 
 var _ user.Publisher = (*UserPublisher)(nil)
 
-func NewUserPublisher(messages *Messages) *UserPublisher {
+func NewUserPublisher(messages *sdkoutbox.Publisher) *UserPublisher {
 	return &UserPublisher{messages: messages}
 }
 
 // Publish turns each event into a message and writes it.
 //
 // It must be called inside a unit of work. Outside one there is no transaction
-// to join, and the whole point would be lost - so this refuses rather than
-// quietly writing on its own.
+// to join and the whole point would be lost, so the outbox refuses rather than
+// quietly writing on its own connection.
 func (p *UserPublisher) Publish(ctx context.Context, events []event.Event) error {
 	messages := make([]*message.Message, 0, len(events))
 

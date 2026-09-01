@@ -1,14 +1,18 @@
 package provider
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/ThreeDotsLabs/watermill"
 	"github.com/google/wire"
-	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/shortlink-org/go-sdk/db"
+	sdkconfig "github.com/shortlink-org/go-sdk/config"
+	sdkdb "github.com/shortlink-org/go-sdk/db"
 	sdklogger "github.com/shortlink-org/go-sdk/logger"
+	sdkoutbox "github.com/shortlink-org/go-sdk/outbox"
+	sdkuow "github.com/shortlink-org/go-sdk/uow"
+	sdkwatermill "github.com/shortlink-org/go-sdk/watermill"
+	"go.opentelemetry.io/otel"
 
 	"github.com/shortlink-org/portolan/examples/auth/internal/application/policy"
 	sessiondomain "github.com/shortlink-org/portolan/examples/auth/internal/domain/session"
@@ -20,33 +24,52 @@ import (
 // Outbox binds the Publisher ports to the outbox and builds the relay that
 // reads it back.
 //
-// This is where the last gap closes. An event now reaches durable storage
-// inside the transaction that produced it, so a change cannot commit while the
-// fact of it is lost - and nothing above this line had to be told.
+// This is where the last gap closes. An event reaches durable storage inside
+// the transaction that produced it, so a change cannot commit while the fact of
+// it is lost - and nothing above this line had to be told.
 var Outbox = wire.NewSet(
-	ProvideWatermillLogger,
-	outbox.NewMessages,
+	ProvideOutboxPublisher,
+	outbox.NewBackend,
 	outbox.NewUserPublisher,
 	wire.Bind(new(userdomain.Publisher), new(*outbox.UserPublisher)),
 	outbox.NewSessionPublisher,
 	wire.Bind(new(sessiondomain.Publisher), new(*outbox.SessionPublisher)),
-	ProvidePool,
+	ProvideWatermill,
 	ProvideRelay,
 )
 
-// ProvideWatermillLogger bridges watermill's logging onto the SDK's.
-func ProvideWatermillLogger(log sdklogger.Logger) watermill.LoggerAdapter {
-	return watermill.NewSlogLogger(nil)
+// ProvideOutboxPublisher hands the outbox the same transaction lookup the
+// database driver was given. Both find the transaction in the same place, which
+// is why a write and the event describing it end up in the same one.
+func ProvideOutboxPublisher() (*sdkoutbox.Publisher, error) {
+	publisher, err := sdkoutbox.NewPublisher(sdkuow.FromContext)
+	if err != nil {
+		return nil, fmt.Errorf("provider: outbox publisher: %w", err)
+	}
+	return publisher, nil
 }
 
-// ProvidePool hands the relay the pool. It reads on its own, long after
-// whatever wrote the row, so it does not want a transaction.
-func ProvidePool(store *db.Store) (*pgxpool.Pool, error) {
-	pool, err := db.Conn[*pgxpool.Pool](store)
+// ProvideWatermill builds the router and its middleware.
+//
+// The poison queue is configured here rather than added afterwards: the SDK
+// places it outside retry, and a middleware added after New would land inside
+// retry instead. Poison publishes the dead letter and then reports success, so
+// underneath retry it would report success on the first failure and nothing
+// would ever be retried.
+func ProvideWatermill(
+	cfg *sdkconfig.Config,
+	log sdklogger.Logger,
+	backend *outbox.Backend,
+) (*sdkwatermill.Client, error) {
+	client, err := sdkwatermill.New(
+		context.Background(), log, cfg, backend,
+		otel.GetMeterProvider(), otel.GetTracerProvider(),
+		sdkwatermill.WithPoisonQueue(backend.Publisher(), outbox.TopicDLQ),
+	)
 	if err != nil {
-		return nil, fmt.Errorf("provider: pool: %w", err)
+		return nil, fmt.Errorf("provider: watermill: %w", err)
 	}
-	return pool, nil
+	return client, nil
 }
 
 // ProvideRelay builds the reader and subscribes the policies to it.
@@ -56,16 +79,25 @@ func ProvidePool(store *db.Store) (*pgxpool.Pool, error) {
 // a rule that switches itself on, and no one place to look to find out what
 // this service reacts to.
 func ProvideRelay(
-	pool *pgxpool.Pool,
-	logger watermill.LoggerAdapter,
+	store *sdkdb.Store,
+	log sdklogger.Logger,
+	client *sdkwatermill.Client,
 	revokeSessions *policy.RevokeSessionsOnPasswordChange,
-) (*outbox.Relay, error) {
-	relay, err := outbox.NewRelay(pool, logger)
+) (*sdkoutbox.Relay, error) {
+	relay, err := sdkoutbox.NewRelay(store, log, client.Router)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("provider: relay: %w", err)
 	}
 
-	relay.OnUser("revoke-sessions-on-password-change", userevent.TopicPasswordChanged, revokeSessions.Handle)
+	// Which rule listens to which fact. This is the whole answer to "what does
+	// this service react to", and it is one map rather than a Subscribe call
+	// hidden in each policy.
+	err = outbox.HandleUser(relay, map[string]outbox.UserHandler{
+		userevent.TopicPasswordChanged: revokeSessions.Handle,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("provider: subscribing: %w", err)
+	}
 
 	return relay, nil
 }

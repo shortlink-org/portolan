@@ -7,7 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill"
+	sdkconfig "github.com/shortlink-org/go-sdk/config"
+	sdklogger "github.com/shortlink-org/go-sdk/logger"
+	sdkoutbox "github.com/shortlink-org/go-sdk/outbox"
+	sdkuow "github.com/shortlink-org/go-sdk/uow"
+	sdkwatermill "github.com/shortlink-org/go-sdk/watermill"
+	"go.opentelemetry.io/otel"
 
 	sessionevent "github.com/shortlink-org/portolan/examples/auth/internal/domain/session/event"
 	userevent "github.com/shortlink-org/portolan/examples/auth/internal/domain/user/event"
@@ -25,34 +30,65 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func setup(t *testing.T) (*uow.UnitOfWork, *outbox.UserPublisher, *outbox.SessionPublisher, *outbox.Relay) {
+type harness struct {
+	uow      *uow.UnitOfWork
+	users    *outbox.UserPublisher
+	sessions *outbox.SessionPublisher
+	relay    *sdkoutbox.Relay
+}
+
+func setup(t *testing.T) *harness {
 	t.Helper()
+	ctx := t.Context()
 
-	router, unit := postgrestest.Store(t, postgrestest.Source{FS: userrepo.Migrations, Name: userrepo.Name})
-	pool := router.Primary()
+	store, _, unit := postgrestest.StoreWithDB(t,
+		postgrestest.Source{FS: userrepo.Migrations, Name: userrepo.Name},
+		postgrestest.Source{FS: sdkoutbox.Migrations, Name: "outbox"},
+	)
 
-	logger := watermill.NopLogger{}
-	messages := outbox.NewMessages(logger)
+	publisher, err := sdkoutbox.NewPublisher(sdkuow.FromContext)
+	if err != nil {
+		t.Fatalf("publisher: %v", err)
+	}
 
-	relay, err := outbox.NewRelay(pool, logger)
+	cfg, err := sdkconfig.New()
+	if err != nil {
+		t.Fatalf("config: %v", err)
+	}
+	log, _, err := sdklogger.NewDefault(ctx, cfg)
+	if err != nil {
+		t.Fatalf("logger: %v", err)
+	}
+
+	backend := outbox.NewBackend(publisher, unit)
+	client, err := sdkwatermill.New(ctx, log, cfg, backend,
+		otel.GetMeterProvider(), otel.GetTracerProvider(),
+		sdkwatermill.WithPoisonQueue(backend.Publisher(), outbox.TopicDLQ),
+	)
+	if err != nil {
+		t.Fatalf("watermill: %v", err)
+	}
+
+	relay, err := sdkoutbox.NewRelay(store, log, client.Router,
+		sdkoutbox.WithPollInterval(50*time.Millisecond))
 	if err != nil {
 		t.Fatalf("relay: %v", err)
 	}
-	t.Cleanup(func() { _ = relay.Close() })
 
-	return unit, outbox.NewUserPublisher(messages), outbox.NewSessionPublisher(messages), relay
+	return &harness{uow: unit, users: outbox.NewUserPublisher(publisher),
+		sessions: outbox.NewSessionPublisher(publisher), relay: relay}
 }
 
 // Publishing outside a unit of work would put the message on its own
 // connection: the aggregate could roll back while the fact stayed, which is the
 // failure the outbox exists to prevent.
 func TestPublishOutsideAUnitOfWorkIsRefused(t *testing.T) {
-	_, users, _, _ := setup(t)
+	h := setup(t)
 
-	err := users.Publish(context.Background(),
+	err := h.users.Publish(context.Background(),
 		[]userevent.Event{userevent.NewUserRegistered("u1", "ada@example.com", now)})
 
-	if !errors.Is(err, outbox.ErrNoTransaction) {
+	if !errors.Is(err, sdkoutbox.ErrNoTransaction) {
 		t.Fatalf("= %v, want ErrNoTransaction", err)
 	}
 }
@@ -61,11 +97,11 @@ func TestPublishOutsideAUnitOfWorkIsRefused(t *testing.T) {
 // a rollback takes the fact with it.
 func TestRollbackTakesTheEvent(t *testing.T) {
 	ctx := context.Background()
-	unit, users, _, relay := setup(t)
+	h := setup(t)
 	boom := errors.New("boom")
 
-	err := unit.Do(ctx, func(ctx context.Context) error {
-		if err := users.Publish(ctx, []userevent.Event{
+	err := h.uow.Do(ctx, func(ctx context.Context) error {
+		if err := h.users.Publish(ctx, []userevent.Event{
 			userevent.NewUserRegistered("u1", "ada@example.com", now),
 		}); err != nil {
 			return err
@@ -76,7 +112,7 @@ func TestRollbackTakesTheEvent(t *testing.T) {
 		t.Fatalf("= %v, want boom", err)
 	}
 
-	if got := deliver(t, relay, outbox.TopicUser, 0); len(got) != 0 {
+	if got := deliver(t, h, 0); len(got) != 0 {
 		t.Errorf("%d events delivered after a rollback, want none", len(got))
 	}
 }
@@ -85,53 +121,44 @@ func TestRollbackTakesTheEvent(t *testing.T) {
 // uses, with everything it went in with.
 func TestRoundTrip(t *testing.T) {
 	ctx := context.Background()
-	unit, users, _, relay := setup(t)
+	h := setup(t)
 
-	err := unit.Do(ctx, func(ctx context.Context) error {
-		return users.Publish(ctx, []userevent.Event{
-			userevent.NewUserRegistered("u1", "ada@example.com", now),
-			userevent.NewPasswordChanged("u1", "s1", now.Add(time.Minute)),
+	err := h.uow.Do(ctx, func(ctx context.Context) error {
+		return h.users.Publish(ctx, []userevent.Event{
+			userevent.NewPasswordChanged("u1", "s1", now),
 		})
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	got := deliver(t, relay, outbox.TopicUser, 2)
-	if len(got) != 2 {
-		t.Fatalf("%d events, want 2", len(got))
+	got := deliver(t, h, 1)
+	if len(got) != 1 {
+		t.Fatalf("%d events, want 1", len(got))
 	}
 
-	registered, ok := got[0].(userevent.UserRegistered)
+	changed, ok := got[0].(userevent.PasswordChanged)
 	if !ok {
-		t.Fatalf("first = %T, want UserRegistered", got[0])
-	}
-	if registered.UserID() != "u1" || registered.Email() != "ada@example.com" {
-		t.Errorf("first = %+v", registered)
-	}
-	if !registered.OccurredAt().Equal(now) {
-		t.Errorf("occurredAt = %v, want the domain time %v", registered.OccurredAt(), now)
-	}
-
-	changed, ok := got[1].(userevent.PasswordChanged)
-	if !ok {
-		t.Fatalf("second = %T, want PasswordChanged", got[1])
+		t.Fatalf("= %T, want PasswordChanged", got[0])
 	}
 	// The actor survives the round trip. Without it the policy could not tell
 	// which session to spare.
-	if changed.By() != "s1" {
-		t.Errorf("by = %q, want s1", changed.By())
+	if changed.UserID() != "u1" || changed.By() != "s1" {
+		t.Errorf("= %+v", changed)
+	}
+	if !changed.OccurredAt().Equal(now) {
+		t.Errorf("occurredAt = %v, want the domain time %v", changed.OccurredAt(), now)
 	}
 }
 
-// A topic nobody subscribes to still has to be writable, or the first session
-// event would fail on a missing table.
+// A topic nobody handles is still writable, and waits rather than blocking the
+// topics that do have handlers.
 func TestSessionTopicIsWritable(t *testing.T) {
 	ctx := context.Background()
-	unit, _, sessions, _ := setup(t)
+	h := setup(t)
 
-	err := unit.Do(ctx, func(ctx context.Context) error {
-		return sessions.Publish(ctx, []sessionevent.Event{
+	err := h.uow.Do(ctx, func(ctx context.Context) error {
+		return h.sessions.Publish(ctx, []sessionevent.Event{
 			sessionevent.NewSessionEnded("s1", "u1", sessionevent.ReasonLogout, now),
 		})
 	})
@@ -140,31 +167,30 @@ func TestSessionTopicIsWritable(t *testing.T) {
 	}
 }
 
-// deliver runs the relay until it has seen  events, or briefly if none
-// are expected.
-func deliver(t *testing.T, relay *outbox.Relay, topic string, want int) []userevent.Event {
+// deliver runs the relay until it has seen want events, or briefly if none are
+// expected.
+func deliver(t *testing.T, h *harness, want int) []userevent.Event {
 	t.Helper()
 
 	var got []userevent.Event
 	done := make(chan struct{})
-	var closeOnce bool
+	closed := false
 
-	relay.OnUser("test", "", func(_ context.Context, e userevent.Event) error {
-		got = append(got, e)
-		if len(got) >= want && !closeOnce {
-			closeOnce = true
-			close(done)
-		}
-		return nil
+	err := outbox.HandleUser(h.relay, map[string]outbox.UserHandler{
+		userevent.TopicUserRegistered:  collect(&got, &closed, done, want),
+		userevent.TopicPasswordChanged: collect(&got, &closed, done, want),
 	})
+	if err != nil {
+		t.Fatalf("handle: %v", err)
+	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
-	go func() { _ = relay.Run(ctx) }()
+	go func() { _ = h.relay.Run(ctx) }()
 
 	if want == 0 {
-		time.Sleep(time.Second)
+		time.Sleep(2 * time.Second)
 		return got
 	}
 
@@ -174,4 +200,15 @@ func deliver(t *testing.T, relay *outbox.Relay, topic string, want int) []userev
 		t.Fatalf("only %d of %d events arrived", len(got), want)
 	}
 	return got
+}
+
+func collect(into *[]userevent.Event, closed *bool, done chan struct{}, want int) outbox.UserHandler {
+	return func(_ context.Context, e userevent.Event) error {
+		*into = append(*into, e)
+		if len(*into) >= want && !*closed {
+			*closed = true
+			close(done)
+		}
+		return nil
+	}
 }

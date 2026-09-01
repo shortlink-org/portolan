@@ -8,8 +8,10 @@ import (
 
 	"github.com/shortlink-org/go-sdk/db/drivers/postgres/replica"
 
+	sdkuow "github.com/shortlink-org/go-sdk/uow"
 	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/user"
 	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/storage/postgrestest"
+
 	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/storage/uow"
 )
 
@@ -138,13 +140,13 @@ func TestFromContext(t *testing.T) {
 	ctx := context.Background()
 	_, unit := setup(t)
 
-	if uow.FromContext(ctx) != nil {
+	if sdkuow.FromContext(ctx) != nil {
 		t.Error("there is no transaction before one is opened")
 	}
 
 	var inside bool
 	if err := unit.Do(ctx, func(ctx context.Context) error {
-		inside = uow.FromContext(ctx) != nil
+		inside = sdkuow.FromContext(ctx) != nil
 		return nil
 	}); err != nil {
 		t.Fatal(err)
@@ -153,7 +155,7 @@ func TestFromContext(t *testing.T) {
 		t.Error("the transaction should be findable inside the unit - the router looks for it exactly this way")
 	}
 
-	if uow.FromContext(ctx) != nil {
+	if sdkuow.FromContext(ctx) != nil {
 		t.Error("and gone again afterwards")
 	}
 }

@@ -1,10 +1,9 @@
 module github.com/shortlink-org/portolan/examples/auth
 
-go 1.27
+go 1.27.0
 
 require (
 	github.com/ThreeDotsLabs/watermill v1.5.3
-	github.com/ThreeDotsLabs/watermill-sql/v4 v4.1.5
 	github.com/go-chi/chi/v5 v5.3.2
 	github.com/google/uuid v1.6.0
 	github.com/google/wire v0.7.0
@@ -13,7 +12,10 @@ require (
 	github.com/shortlink-org/go-sdk/config v0.0.0-20260829181537-766b3331c5e3
 	github.com/shortlink-org/go-sdk/db v0.0.0-20260829181537-766b3331c5e3
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20260829181537-766b3331c5e3
+	github.com/shortlink-org/go-sdk/outbox v0.0.0-20260901121657-d7eab0200634
 	github.com/shortlink-org/go-sdk/specification v0.0.0-20260829181537-766b3331c5e3
+	github.com/shortlink-org/go-sdk/uow v0.0.0-20260901121657-d7eab0200634
+	github.com/shortlink-org/go-sdk/watermill v0.0.0-20260901121657-d7eab0200634
 	github.com/testcontainers/testcontainers-go v0.44.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.44.0
 	go.opentelemetry.io/otel v1.46.0
@@ -47,6 +49,8 @@ require (
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/golang-migrate/migrate/v4 v4.19.1 // indirect
+	github.com/hashicorp/errwrap v1.1.0 // indirect
+	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/jackc/pgerrcode v0.0.0-20250907135507-afb5586c32a6 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect

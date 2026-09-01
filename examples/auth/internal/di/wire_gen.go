@@ -56,16 +56,18 @@ func New() (App, error) {
 		return App{}, err
 	}
 	unitOfWork := uow.New(router)
-	loggerAdapter := provider.ProvideWatermillLogger(logger)
-	messages := outbox.NewMessages(loggerAdapter)
-	userPublisher := outbox.NewUserPublisher(messages)
+	publisher, err := provider.ProvideOutboxPublisher()
+	if err != nil {
+		return App{}, err
+	}
+	userPublisher := outbox.NewUserPublisher(publisher)
 	postgres := user.NewPostgres(router, unitOfWork, userPublisher)
 	v := provider.ProvideNow()
 	v2 := provider.ProvideNewID()
 	useCase := register.New(postgres, v, v2)
 	getUseCase := get.New(postgres)
 	change_passwordUseCase := change_password.New(postgres, v)
-	sessionPublisher := outbox.NewSessionPublisher(messages)
+	sessionPublisher := outbox.NewSessionPublisher(publisher)
 	sessionPostgres := session.NewPostgres(router, unitOfWork, sessionPublisher)
 	validateUseCase := validate.New(sessionPostgres, v)
 	users := user2.NewUsers(useCase, getUseCase, change_passwordUseCase, validateUseCase)
@@ -76,13 +78,14 @@ func New() (App, error) {
 	sessions := session2.NewSessions(loginUseCase, logoutUseCase, validateUseCase)
 	server := http.NewServer(users, sessions)
 	handler := http.Router(server)
-	pool, err := provider.ProvidePool(store)
+	backend := outbox.NewBackend(publisher, unitOfWork)
+	client, err := provider.ProvideWatermill(config, logger, backend)
 	if err != nil {
 		return App{}, err
 	}
 	end_after_credential_changeUseCase := end_after_credential_change.New(sessionPostgres, v)
 	revokeSessionsOnPasswordChange := policy.New(end_after_credential_changeUseCase)
-	relay, err := provider.ProvideRelay(pool, loggerAdapter, revokeSessionsOnPasswordChange)
+	relay, err := provider.ProvideRelay(store, logger, client, revokeSessionsOnPasswordChange)
 	if err != nil {
 		return App{}, err
 	}

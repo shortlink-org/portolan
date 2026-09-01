@@ -5,8 +5,7 @@ import (
 	"net/http"
 
 	"github.com/shortlink-org/go-sdk/db/drivers/postgres"
-
-	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/outbox"
+	sdkoutbox "github.com/shortlink-org/go-sdk/outbox"
 )
 
 // App is the assembled service.
@@ -22,11 +21,14 @@ import (
 type App struct {
 	Handler http.Handler
 	Driver  *postgres.Store
-	Relay   *outbox.Relay
+	Relay   *sdkoutbox.Relay
 }
 
 // Run reads the outbox until the context is cancelled. It blocks, and it is the
 // only part of the App that does.
+//
+// It runs the router too: the relay's handlers and anything else on that router
+// share one Run, and the reaper that clears delivered rows lives inside it.
 func (a App) Run(ctx context.Context) error {
 	if a.Relay == nil {
 		return nil

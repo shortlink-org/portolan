@@ -7,6 +7,7 @@ import (
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
+	sdkoutbox "github.com/shortlink-org/go-sdk/outbox"
 
 	"github.com/shortlink-org/portolan/examples/auth/internal/domain/session"
 	"github.com/shortlink-org/portolan/examples/auth/internal/domain/session/event"
@@ -19,12 +20,12 @@ const TopicSession = "auth_session"
 // SessionPublisher writes the session domain's events into the transaction in
 // flight.
 type SessionPublisher struct {
-	messages *Messages
+	messages *sdkoutbox.Publisher
 }
 
 var _ session.Publisher = (*SessionPublisher)(nil)
 
-func NewSessionPublisher(messages *Messages) *SessionPublisher {
+func NewSessionPublisher(messages *sdkoutbox.Publisher) *SessionPublisher {
 	return &SessionPublisher{messages: messages}
 }
 

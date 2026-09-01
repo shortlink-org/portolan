@@ -14,6 +14,8 @@ import (
 	"github.com/shortlink-org/go-sdk/db/drivers/postgres/migrate"
 	"github.com/shortlink-org/go-sdk/db/drivers/postgres/replica"
 	"github.com/shortlink-org/go-sdk/logger"
+	sdkoutbox "github.com/shortlink-org/go-sdk/outbox"
+	sdkuow "github.com/shortlink-org/go-sdk/uow"
 
 	sessionrepo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/session"
 	userrepo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/user"
@@ -54,7 +56,7 @@ func ProvideStore(cfg *sdkconfig.Config, log logger.Logger) (*db.Store, error) {
 	ctx := context.Background()
 
 	store, err := db.New(ctx, log, otel.GetTracerProvider(), &metric.MeterProvider{}, cfg,
-		postgres.With(postgres.WithTxLookup(uow.FromContext)),
+		postgres.With(postgres.WithTxLookup(sdkuow.FromContext)),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("provider: store: %w", err)
@@ -68,6 +70,12 @@ func ProvideStore(cfg *sdkconfig.Config, log logger.Logger) (*db.Store, error) {
 	}
 	if err := migrate.Migration(ctx, store, sessionrepo.Migrations, sessionrepo.Name); err != nil {
 		return nil, fmt.Errorf("provider: migrating %s: %w", sessionrepo.Name, err)
+	}
+	// The outbox table is migrated like any other. Nothing creates it at
+	// start-up behind the migration's back, which is what every other table in
+	// this service can also say.
+	if err := migrate.Migration(ctx, store, sdkoutbox.Migrations, "outbox"); err != nil {
+		return nil, fmt.Errorf("provider: migrating outbox: %w", err)
 	}
 
 	return store, nil
