@@ -32,6 +32,8 @@ import { catalogError } from "../data";
 import { SidePanel } from "../components/Overlay";
 import { WithDetail } from "../selection/DetailPanel";
 import { SelectionSync } from "../selection/sync";
+import { Trail } from "../trail/Trail";
+import { TrailRecorder } from "../trail/record";
 import { HashScroll } from "./HashScroll";
 import { CommandPalette } from "./CommandPalette";
 import { Sidebar } from "./Sidebar";
@@ -225,6 +227,7 @@ function Shell() {
   return (
     <div className="flex h-full flex-col bg-canvas text-ink">
       <SelectionSync />
+      <TrailRecorder />
       <HashScroll />
       <TopBar
         onOpenPalette={() => setPalette(true)}
@@ -232,6 +235,9 @@ function Shell() {
         onToggleSidebar={toggleSidebar}
         narrow={narrow}
       />
+      {/* Under the bar, above everything: the trail is about the whole shell,
+          not about the page inside it. */}
+      <Trail />
 
       {narrow ? (
         <>

@@ -19,7 +19,7 @@ export interface SelectionState {
   clear: (source: SelectionSource) => void;
 }
 
-export const useSelectionStore = create<SelectionState>((set) => ({
+export const useSelectionStore = create<SelectionState>()((set) => ({
   selection: null,
   source: null,
   select: (id, source) => set(next(selectionFor(id), source)),

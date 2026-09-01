@@ -19,15 +19,15 @@
     "@xyflow/react": "^12.11.5",
     "elkjs": "^0.12.0",
     "likec4": "^1.59.2",
-    "lucide-react": "^0.454.0",
+    "lucide-react": "^1.38.0",
     "mermaid": "^11.17.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-markdown": "^9.0.1",
+    "react-markdown": "^10.1.0",
     "react-resizable-panels": "^4.12.3",
-    "react-router": "^7.1.1",
+    "react-router": "^8.3.1",
     "remark-gfm": "^4.0.0",
-    "zustand": "^4.5.7"
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",
@@ -36,7 +36,7 @@
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^6.1.1",
     "tailwindcss": "^4.0.0",
-    "typescript": "^5.7.2",
+    "typescript": "^7.0.2",
     "vite": "^8.2.2",
     "vitest": "^4.1.11"
   }

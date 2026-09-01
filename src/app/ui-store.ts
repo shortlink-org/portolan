@@ -26,7 +26,7 @@ interface UiState {
   requestReveal: () => void;
 }
 
-export const useUiStore = create<UiState>((set) => ({
+export const useUiStore = create<UiState>()((set) => ({
   detailHidden: false,
   toggleDetail: () => set((s) => ({ detailHidden: !s.detailHidden })),
   setDetailHidden: (hidden) => set({ detailHidden: hidden }),
