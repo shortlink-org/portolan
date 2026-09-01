@@ -15,6 +15,8 @@ import { AnchorLink } from "./AnchorLink";
 import type { AdmonitionKind } from "../lib/admonition";
 import { headingSlug } from "../lib/derive";
 import { Mermaid } from "./Mermaid";
+import { MarkdownTable } from "./MarkdownTable";
+import { remarkTableDirective } from "../lib/table-directive";
 
 function textOf(node: React.ReactNode): string {
   if (typeof node === "string" || typeof node === "number") return String(node);
@@ -150,12 +152,16 @@ export function Markdown({
   return (
     <div className="prose">
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={[remarkGfm, remarkTableDirective]}
         components={{
           h1: heading(1),
           h2: heading(2),
           h3: heading(3),
           blockquote: Blockquote,
+          // Every GFM table in the app is the app's table, on the same terms
+          // as an index page's - unless it is small enough, or the author
+          // said not to.
+          table: MarkdownTable,
           ...(mermaid ? { pre: Pre } : {}),
         }}
       >

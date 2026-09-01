@@ -5,14 +5,11 @@ import {
   adrCoversService,
   adrNumber,
   adrsForService,
-  filterAdrs,
   isCurrent,
   newestAccepted,
-  scopeLabel,
-  scopeOptions,
   sortAdrs,
 } from "./adr";
-import type { Adr, AdrStatus } from "../catalog";
+import type { Adr } from "../catalog";
 
 function byId(id: string): Adr {
   const adr = catalog.adrs.find((a) => a.id === id);
@@ -121,53 +118,6 @@ describe("newestAccepted", () => {
     expect(newestAccepted(catalog, 1).map((a) => a.id)).toEqual([
       "shop.oms.0007",
     ]);
-  });
-});
-
-describe("filterAdrs", () => {
-  const all = sortAdrs(catalog.adrs);
-  const empty = { statuses: new Set<AdrStatus>(), scopes: new Set<string>() };
-
-  it("treats an empty facet as no filter", () => {
-    expect(filterAdrs(all, empty)).toHaveLength(all.length);
-  });
-
-  it("filters by status", () => {
-    expect(
-      filterAdrs(all, {
-        ...empty,
-        statuses: new Set<AdrStatus>(["proposed"]),
-      }).map((a) => a.id),
-    ).toEqual(["payments.0004"]);
-  });
-
-  it("filters by scope label", () => {
-    expect(
-      filterAdrs(all, { ...empty, scopes: new Set(["shop.oms"]) }).map(
-        (a) => a.id,
-      ),
-    ).toEqual(["shop.oms.0007", "shop.oms.0003"]);
-  });
-
-  it("ands the two facets together", () => {
-    expect(
-      filterAdrs(all, {
-        statuses: new Set<AdrStatus>(["accepted"]),
-        scopes: new Set(["shop.oms"]),
-      }).map((a) => a.id),
-    ).toEqual(["shop.oms.0007"]);
-  });
-});
-
-describe("scopeOptions", () => {
-  it("puts org first and the rest in order", () => {
-    expect(scopeOptions(catalog)).toEqual(["org", "payments", "shop.oms"]);
-  });
-
-  it("labels each scope kind by what it names", () => {
-    expect(scopeLabel(byId("org.0001").scope)).toBe("org");
-    expect(scopeLabel(byId("payments.0004").scope)).toBe("payments");
-    expect(scopeLabel(byId("shop.oms.0007").scope)).toBe("shop.oms");
   });
 });
 

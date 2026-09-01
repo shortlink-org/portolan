@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
 import { ChevronDown, ChevronRight, Plus } from "lucide-react";
 import { catalog, index } from "../data";
@@ -10,96 +10,114 @@ import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
 import { Select } from "../components/Select";
 import { Ident } from "../components/Ident";
 import { RowActions } from "../components/RowActions";
+import { DataTable } from "../table/DataTable";
+import type { ColumnSpec } from "../table/types";
 import { Toc } from "../components/Toc";
 import type { TocItem } from "../components/Toc";
 import { StatusChip } from "../components/primitives";
 import { NotFound } from "./NotFound";
 import { FocusedEventGraphPane } from "../graph/FocusedEventGraph";
 
+/**
+ * The schema, as columns the table knows how to sort and filter. Field order
+ * in a proto is meaningful, so nothing is sorted until the reader asks; what
+ * the table adds is the ability to ask - "which fields are strings", "which
+ * one was the timestamp" - over a schema too long to scan.
+ */
+function schemaColumns(
+  added: Set<string>,
+  expanded: Set<string>,
+  onToggle: (name: string) => void,
+): ColumnSpec<Field>[] {
+  const columns: ColumnSpec<Field>[] = [
+    {
+      id: "name",
+      header: "name",
+      type: "mono",
+      value: (field) => field.name,
+      primary: true,
+      cell: (field) =>
+        // Only a field whose type is a shared type has anything to open.
+        field.ref && catalog.defs[field.ref] ? (
+          <button
+            type="button"
+            onClick={() => onToggle(field.name)}
+            className="mono flex items-center gap-1"
+            aria-expanded={expanded.has(field.name)}
+          >
+            {expanded.has(field.name) ? (
+              <ChevronDown size={11} aria-hidden className="text-muted" />
+            ) : (
+              <ChevronRight size={11} aria-hidden className="text-muted" />
+            )}
+            {field.name}
+          </button>
+        ) : (
+          <span className="mono pl-4">{field.name}</span>
+        ),
+    },
+    {
+      id: "type",
+      header: "type",
+      type: "mono",
+      value: (field) => field.type,
+      cell: (field) => (
+        <Ident value={field.ref ?? field.type} className="text-muted">
+          {field.type}
+        </Ident>
+      ),
+    },
+    {
+      id: "doc",
+      header: "doc",
+      type: "text",
+      value: (field) => field.doc,
+      cell: (field) => <span className="meta">{field.doc}</span>,
+    },
+    {
+      id: "new",
+      header: "",
+      type: "text",
+      // Sortable and filterable like any other column: "show me what this
+      // version added" is a question about the schema, not a decoration.
+      value: (field) => (added.has(field.name) ? "new" : undefined),
+      cell: (field) =>
+        added.has(field.name) ? (
+          <span
+            className="mono inline-flex items-center gap-1 text-verified"
+            title="added in this version"
+          >
+            <Plus size={10} aria-hidden />
+            new
+          </span>
+        ) : null,
+      enableHiding: false,
+      size: 60,
+    },
+  ];
+  return columns;
+}
+
 /** One level deep only: a ref inside an expanded TypeDef is shown, not expanded. */
-function FieldRow({
-  field,
-  added,
-  expanded,
-  onToggle,
-  owner,
-}: {
-  field: Field;
-  added: boolean;
-  expanded: boolean;
-  onToggle: () => void;
-  /** The event and version the field belongs to, for what "copy id" copies. */
-  owner: string;
-}) {
+function TypeDefBody({ field }: { field: Field }) {
   const def = field.ref ? catalog.defs[field.ref] : undefined;
+  if (!def) return null;
   return (
     <>
-      <tr className="align-top">
-        <td className="py-1 pr-2">
-          {def ? (
-            <button
-              type="button"
-              onClick={onToggle}
-              className="mono flex items-center gap-1"
-              aria-expanded={expanded}
-            >
-              {expanded ? (
-                <ChevronDown size={11} aria-hidden className="text-muted" />
-              ) : (
-                <ChevronRight size={11} aria-hidden className="text-muted" />
-              )}
-              {field.name}
-            </button>
-          ) : (
-            <span className="mono pl-4">{field.name}</span>
-          )}
-        </td>
-        <td className="py-1 pr-3 whitespace-nowrap">
-          <Ident value={field.ref ?? field.type} className="text-muted">
-            {field.type}
-          </Ident>
-        </td>
-        <td className="meta py-1 pr-3">{field.doc}</td>
-        <td className="py-1 whitespace-nowrap">
-          <span className="flex items-center gap-2">
-            {added ? (
-              <span
-                className="mono inline-flex items-center gap-1 text-verified"
-                title="added in this version"
-              >
-                <Plus size={10} aria-hidden />
-                new
-              </span>
-            ) : null}
-            <RowActions
-              copy={`${owner}.${field.name}`}
-              label={`${field.name}`}
-            />
-          </span>
-        </td>
-      </tr>
-      {expanded && def ? (
-        <tr className="bg-surface">
-          <td colSpan={4} className="px-4 py-2">
-            <Ident block value={field.ref ?? ""} className="mb-1 text-muted" />
-            <table className="w-full">
-              <tbody>
-                {def.fields.map((sub) => (
-                  <tr key={sub.name} className="align-top">
-                    <td className="mono py-0.5 pr-3 whitespace-nowrap">
-                      {sub.name}
-                    </td>
-                    <td className="mono py-0.5 pr-3 whitespace-nowrap text-muted">
-                      {sub.ref ? `${sub.type} →` : sub.type}
-                    </td>
-                    <td className="py-0.5 text-muted">{sub.doc}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </td>
-        </tr>
-      ) : null}
+      <Ident block value={field.ref ?? ""} className="mb-1 text-muted" />
+      <table className="w-full">
+        <tbody>
+          {def.fields.map((sub) => (
+            <tr key={sub.name} className="align-top">
+              <td className="mono py-0.5 pr-3 whitespace-nowrap">{sub.name}</td>
+              <td className="mono py-0.5 pr-3 whitespace-nowrap text-muted">
+                {sub.ref ? `${sub.type} →` : sub.type}
+              </td>
+              <td className="py-0.5 text-muted">{sub.doc}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </>
   );
 }
@@ -137,19 +155,28 @@ export function EventPage() {
     [event],
   );
 
+  const toggle = useCallback(
+    (name: string) =>
+      setExpanded((prev) => {
+        const next = new Set(prev);
+        if (next.has(name)) next.delete(name);
+        else next.add(name);
+        return next;
+      }),
+    [],
+  );
+  // Above the not-found return, with every other hook: the columns are built
+  // once per render of a schema, and a hook cannot sit behind a branch.
+  const schema = useMemo(
+    () => schemaColumns(added, expanded, toggle),
+    [added, expanded, toggle],
+  );
+
   if (!context || !service || !aggregate || !event || !selected) {
     return <NotFound kind="Event" id={eventSlug} />;
   }
 
   const decisions = index.adrsByEvent.get(event.id) ?? [];
-
-  const toggle = (name: string) =>
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(name)) next.delete(name);
-      else next.add(name);
-      return next;
-    });
 
   // The five things there are to know about an event, in the order a reader
   // asks them: what shape is it, how did it get that shape, who listens, where
@@ -255,29 +282,25 @@ export function EventPage() {
             </SectionTitle>
             {/* The field list is the widest thing on the page. Its header and
                 its first column stay put while the rest scrolls under them. */}
-            <div className="max-w-table overflow-x-auto">
-              <table className="tbl tbl-sticky">
-                <thead>
-                  <tr className="label text-left">
-                    <th className="pb-2 font-normal">name</th>
-                    <th className="pb-2 font-normal">type</th>
-                    <th className="pb-2 font-normal">doc</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {selected.fields.map((field) => (
-                    <FieldRow
-                      key={field.name}
-                      field={field}
-                      added={added.has(field.name)}
-                      expanded={expanded.has(field.name)}
-                      onToggle={() => toggle(field.name)}
-                      owner={`${event.id}@${selected.version}`}
-                    />
-                  ))}
-                </tbody>
-              </table>
+            <div className="max-w-table">
+              <DataTable
+                /* Per version: the schema a reader widened is the schema they
+                   were reading, and v1 and v3 are not the same schema. */
+                tableId={`event-schema.${event.id}`}
+                caption={`Schema of ${event.id} ${selected.version}`}
+                columns={schema}
+                rows={selected.fields}
+                rowId={(field) => field.name}
+                subRow={(field) =>
+                  expanded.has(field.name) ? <TypeDefBody field={field} /> : null
+                }
+                rowActions={(field) => (
+                  <RowActions
+                    copy={`${event.id}@${selected.version}.${field.name}`}
+                    label={field.name}
+                  />
+                )}
+              />
             </div>
           </section>
 

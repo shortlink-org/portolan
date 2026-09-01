@@ -1,8 +1,7 @@
-import { useMemo, useState } from "react";
-import { Link } from "react-router";
+import { useMemo } from "react";
 import { catalog } from "../data";
-import type { AdrStatus } from "../catalog";
-import { filterAdrs, scopeLabel, scopeOptions, sortAdrs } from "../lib/adr";
+import type { Adr } from "../catalog";
+import { scopeLabel, sortAdrs } from "../lib/adr";
 import {
   AdrNumber,
   AdrScopePill,
@@ -10,161 +9,89 @@ import {
 } from "../components/primitives";
 import { Empty } from "../components/PageHeader";
 import { RowActions } from "../components/RowActions";
+import { DataTable } from "../table/DataTable";
+import type { ColumnSpec } from "../table/types";
 import { paths } from "../routes";
-import { staggerStyle } from "../lib/motion";
-
-const STATUSES: AdrStatus[] = [
-  "accepted",
-  "proposed",
-  "superseded",
-  "deprecated",
-  "rejected",
-];
-
-function Facet({
-  on,
-  onClick,
-  children,
-  count,
-}: {
-  on: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-  count: number;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={on}
-      disabled={count === 0}
-      /* No border of its own: it is one member of the facet group. */
-      className={`flex items-center gap-1.5 ${on ? "is-on" : ""} ${
-        count === 0 ? "opacity-40" : ""
-      }`}
-    >
-      {children}
-      <span className="tnum text-muted">{count}</span>
-    </button>
-  );
-}
 
 /**
  * A table, not cards: the number, the status and the date are the whole point,
  * and they only read as a column when they are in one.
+ *
+ * Everything the page used to do by hand - the status and scope facets, the
+ * count, the sort - is now the table's, declared rather than written. What is
+ * left here is what only this page knows: that a decision has a number, that
+ * the number is padded, and that the newest decision is the one to show first.
  */
+const COLUMNS: ColumnSpec<Adr>[] = [
+  {
+    id: "number",
+    header: "#",
+    type: "number",
+    value: (adr) => adr.number,
+    // The padded form, struck through when the decision is no longer in force.
+    cell: (adr) => <AdrNumber adr={adr} />,
+    align: "left",
+  },
+  {
+    id: "title",
+    header: "title",
+    type: "text",
+    value: (adr) => adr.title,
+    primary: true,
+    title: (adr) => adr.title,
+  },
+  {
+    id: "status",
+    header: "status",
+    type: "status",
+    value: (adr) => adr.status,
+    // A decision's statuses are its own vocabulary - accepted, superseded -
+    // rather than the catalog's verified/declared/unresolved.
+    cell: (adr) => <AdrStatusChip status={adr.status} />,
+    facet: true,
+  },
+  {
+    id: "scope",
+    header: "scope",
+    type: "text",
+    value: (adr) => scopeLabel(adr.scope),
+    // Not a link inside the row: an anchor cannot contain another one.
+    cell: (adr) => <AdrScopePill scope={adr.scope} link={false} />,
+    facet: true,
+  },
+  {
+    id: "date",
+    header: "date",
+    type: "date",
+    value: (adr) => adr.date,
+  },
+];
+
 export function AdrIndex() {
-  const [statuses, setStatuses] = useState<Set<AdrStatus>>(new Set());
-  const [scopes, setScopes] = useState<Set<string>>(new Set());
-
-  const all = useMemo(() => sortAdrs(catalog.adrs), []);
-  const rows = useMemo(
-    () => filterAdrs(all, { statuses, scopes }),
-    [all, statuses, scopes],
-  );
-
-  const statusCount = (s: AdrStatus) =>
-    all.filter((a) => a.status === s).length;
-  const scopeCount = (label: string) =>
-    all.filter((a) => scopeLabel(a.scope) === label).length;
-
-  const toggle = <T,>(set: Set<T>, value: T): Set<T> => {
-    const next = new Set(set);
-    if (next.has(value)) next.delete(value);
-    else next.add(value);
-    return next;
-  };
+  const rows = useMemo(() => sortAdrs(catalog.adrs), []);
 
   return (
     <div className="h-full overflow-y-auto p-gutter">
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-lg font-semibold">Decisions</h1>
-        <span className="mono text-muted">
-          {rows.length} of {all.length}
-        </span>
-
-        <div className="ml-auto flex flex-wrap items-center gap-3">
-          <div className="seg" role="group" aria-label="Filter by status">
-            {STATUSES.map((s) => (
-              <Facet
-                key={s}
-                on={statuses.has(s)}
-                count={statusCount(s)}
-                onClick={() => setStatuses((prev) => toggle(prev, s))}
-              >
-                {s}
-              </Facet>
-            ))}
-          </div>
-          <div className="seg" role="group" aria-label="Filter by scope">
-            {scopeOptions(catalog).map((label) => (
-              <Facet
-                key={label}
-                on={scopes.has(label)}
-                count={scopeCount(label)}
-                onClick={() => setScopes((prev) => toggle(prev, label))}
-              >
-                {label}
-              </Facet>
-            ))}
-          </div>
-        </div>
       </div>
 
-      {rows.length === 0 ? (
-        <div className="mt-section">
-          <Empty>nothing on the record matches this filter</Empty>
-        </div>
-      ) : (
-        <div className="mt-section max-w-table overflow-x-auto rounded-card border border-line shadow-xs">
-          {/* The header pins itself over the rows it names, and the number
-              column pins itself to the left: at any width, a reader can still
-              say which decision a row is. */}
-          <table className="tbl tbl-sticky" data-nav-list>
-            <thead>
-              <tr className="label text-left">
-                <th className="px-4 py-2 font-normal">#</th>
-                <th className="px-4 py-2 font-normal">title</th>
-                <th className="px-4 py-2 font-normal">status</th>
-                <th className="px-4 py-2 font-normal">scope</th>
-                <th className="px-4 py-2 font-normal">date</th>
-                <th className="px-4 py-2 font-normal" />
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((adr, i) => (
-                <tr key={adr.id} className="stagger-in" style={staggerStyle(i)}>
-                  <td className="px-4 py-2 align-top whitespace-nowrap">
-                    <AdrNumber adr={adr} />
-                  </td>
-                  <td className="px-4 py-2 align-top">
-                    <Link
-                      to={paths.adr(adr.slug)}
-                      data-nav-item
-                      className="rounded-control hover:underline"
-                      title={adr.title}
-                    >
-                      {adr.title}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-2 align-top">
-                    <AdrStatusChip status={adr.status} />
-                  </td>
-                  <td className="px-4 py-2 align-top">
-                    <AdrScopePill scope={adr.scope} />
-                  </td>
-                  <td className="meta px-4 py-2 align-top whitespace-nowrap tabular-nums">
-                    {adr.date}
-                  </td>
-                  <td className="px-4 py-2 align-top whitespace-nowrap">
-                    <RowActions copy={adr.id} label={adr.id} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <div className="mt-section max-w-table">
+        <DataTable
+          tableId="adrs"
+          caption="Decision records"
+          columns={COLUMNS}
+          rows={rows}
+          rowId={(adr) => adr.id}
+          /* The newest decision is the one being looked for; the rest is
+             history, and history reads backwards. */
+          defaultSort={[{ id: "number", desc: true }]}
+          sortInUrl
+          rowLink={(adr) => paths.adr(adr.slug)}
+          rowActions={(adr) => <RowActions copy={adr.id} label={adr.id} />}
+          empty={<Empty>nothing on the record matches this filter</Empty>}
+        />
+      </div>
     </div>
   );
 }

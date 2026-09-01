@@ -7,6 +7,7 @@
 // overlay rather than a pane.
 
 import { create } from "zustand";
+import { readZebra, writeZebra } from "../table/persist";
 
 interface UiState {
   /** True while "]" has folded the detail rail away. Selection is untouched. */
@@ -24,6 +25,13 @@ interface UiState {
    */
   revealNonce: number;
   requestReveal: () => void;
+  /**
+   * Zebra striping, for every table at once. It is a statement about how the
+   * reader wants rows separated, not about the table they happen to be
+   * looking at, so it is one flag and it outlives the session.
+   */
+  zebra: boolean;
+  toggleZebra: () => void;
 }
 
 export const useUiStore = create<UiState>()((set) => ({
@@ -35,4 +43,10 @@ export const useUiStore = create<UiState>()((set) => ({
   toggleDrawer: () => set((s) => ({ drawer: !s.drawer })),
   revealNonce: 0,
   requestReveal: () => set((s) => ({ revealNonce: s.revealNonce + 1 })),
+  zebra: readZebra(),
+  toggleZebra: () =>
+    set((s) => {
+      writeZebra(!s.zebra);
+      return { zebra: !s.zebra };
+    }),
 }));

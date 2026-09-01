@@ -14,6 +14,8 @@ import type { Kind } from "../lib/kinds";
 import { KindIcon } from "../components/kind";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
 import { Ident } from "../components/Ident";
+import { DataTable } from "../table/DataTable";
+import type { ColumnSpec } from "../table/types";
 import { Toc } from "../components/Toc";
 import type { TocItem } from "../components/Toc";
 import {
@@ -49,42 +51,62 @@ function usagePath(usage: DefUsage): string | null {
   }
 }
 
-function ShapeTable({ fields }: { fields: Field[] }) {
+/**
+ * The shape of a value object or an entity. Three columns and usually few
+ * rows, so the toolbar stays out of the way until there is enough here to
+ * need one.
+ */
+const SHAPE_COLUMNS: ColumnSpec<Field>[] = [
+  {
+    id: "name",
+    header: "name",
+    type: "mono",
+    value: (field) => field.name,
+    primary: true,
+    // Plain, not an <Ident>: the name is a field of this block, not an id
+    // anything else refers to. The type beside it is the copyable one.
+    cell: (field) => <span className="mono">{field.name}</span>,
+  },
+  {
+    id: "type",
+    header: "type",
+    type: "mono",
+    value: (field) => field.ref ?? field.type,
+    cell: (field) => (
+      <Ident
+        value={field.ref ?? field.type}
+        className="text-muted"
+        title={
+          field.ref
+            ? `shared type ${field.ref} — click to copy`
+            : `${field.type} — click to copy`
+        }
+      >
+        {field.type}
+        {field.ref ? <span className="ml-1.5">↗</span> : null}
+      </Ident>
+    ),
+  },
+  {
+    id: "doc",
+    header: "doc",
+    type: "text",
+    value: (field) => field.doc,
+    cell: (field) => <span className="meta">{field.doc}</span>,
+  },
+];
+
+function ShapeTable({ id, fields }: { id: string; fields: Field[] }) {
   return (
-    <table className="tbl tbl-sticky max-w-prose">
-      <thead>
-        <tr className="label">
-          <th className="pb-2 text-left font-normal">name</th>
-          <th className="pb-2 text-left font-normal">type</th>
-          <th className="pb-2 text-left font-normal">doc</th>
-        </tr>
-      </thead>
-      <tbody>
-        {fields.map((field) => {
-          const ref = field.ref;
-          return (
-            <tr key={field.name} className="align-top">
-              <td className="mono py-1 pr-3 whitespace-nowrap">{field.name}</td>
-              <td className="py-1 pr-3 whitespace-nowrap">
-                <Ident
-                  value={ref ?? field.type}
-                  className="text-muted"
-                  title={
-                    ref
-                      ? `shared type ${ref} — click to copy`
-                      : `${field.type} — click to copy`
-                  }
-                >
-                  {field.type}
-                  {ref ? <span className="ml-1.5">↗</span> : null}
-                </Ident>
-              </td>
-              <td className="meta py-1">{field.doc}</td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+    <div className="max-w-prose">
+      <DataTable
+        tableId={`block-shape.${id}`}
+        caption={`Shape of ${id}`}
+        columns={SHAPE_COLUMNS}
+        rows={fields}
+        rowId={(field) => field.name}
+      />
+    </div>
   );
 }
 
@@ -193,7 +215,7 @@ export function BlockPage({ kind }: { kind: BlockKind }) {
             {fields.length === 0 ? (
               <Empty>the catalog knows this block by name only</Empty>
             ) : (
-              <ShapeTable fields={fields} />
+              <ShapeTable id={block.id} fields={fields} />
             )}
           </section>
 

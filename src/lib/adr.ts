@@ -1,7 +1,7 @@
 // Pure derivations over the decision records. Same rule as derive.ts: nothing
 // here reads the DOM or the router, so every list an ADR page shows is testable.
 
-import type { Adr, AdrScope, AdrStatus, Catalog } from "../catalog";
+import type { Adr, AdrScope, Catalog } from "../catalog";
 import { byDateDesc } from "../catalog";
 
 /** "ADR-0007". The padded number is the name people use in prose and commits. */
@@ -66,26 +66,3 @@ export function newestAccepted(catalog: Catalog, n: number): Adr[] {
   );
 }
 
-export interface AdrFilter {
-  statuses: Set<AdrStatus>;
-  /** scope labels, as produced by scopeLabel */
-  scopes: Set<string>;
-}
-
-/** Index filtering. An empty facet means "no filter", not "nothing". */
-export function filterAdrs(adrs: Adr[], filter: AdrFilter): Adr[] {
-  return adrs.filter((a) => {
-    if (filter.statuses.size > 0 && !filter.statuses.has(a.status))
-      return false;
-    if (filter.scopes.size > 0 && !filter.scopes.has(scopeLabel(a.scope)))
-      return false;
-    return true;
-  });
-}
-
-/** Every scope label present in the catalog, org first, then alphabetical. */
-export function scopeOptions(catalog: Catalog): string[] {
-  const labels = new Set(catalog.adrs.map((a) => scopeLabel(a.scope)));
-  const rest = [...labels].filter((l) => l !== "org").sort();
-  return labels.has("org") ? ["org", ...rest] : rest;
-}

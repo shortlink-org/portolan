@@ -70,11 +70,13 @@
   --w-prose: 900px;
   --w-table: 1200px;
 
-  /* Density. Two settings, three tokens, set on <html data-density>. The
+  /* Density. Two settings, four tokens, set on <html data-density>. The
      comfortable row is 40px because that is a row you read; the compact one is
      30px because that is a row you scan. Nothing else changes: no font swap,
-     no border loss, no second layout. */
+     no border loss, no second layout. The header sits a step below its rows:
+     it is a label for the column, not another row of it. */
   --row-h: 40px;
+  --row-h-head: 36px;
   --row-h-tree: 22px;
   --text-meta: 13px;
 
@@ -89,6 +91,7 @@
 
 [data-density="compact"] {
   --row-h: 30px;
+  --row-h-head: 28px;
   --row-h-tree: 18px;
   --text-meta: 12px;
 }
@@ -557,9 +560,11 @@
     border-collapse: separate;
     border-spacing: 0;
   }
-  .tbl td,
-  .tbl th {
+  .tbl td {
     height: var(--row-h);
+  }
+  .tbl th {
+    height: var(--row-h-head);
   }
   /* The row rule is drawn on the cells, not on the row: `border-collapse:
      separate` is what makes a sticky column possible, and a separated table
@@ -595,6 +600,77 @@
   }
   .tbl-sticky tbody tr:hover td:first-child {
     background: var(--surface);
+  }
+
+  /* Striping is off by default and a toolbar toggle away, because a table of
+     six rows does not need help being read and a table of six hundred does.
+     The stripe is painted on the cells for the same reason the row rule is:
+     a separated table never paints a background set on <tr> under a sticky
+     column. Parity comes from the row's display position rather than from
+     nth-child, so a virtualized body's spacer rows cannot invert it. */
+  .tbl-zebra tbody tr[data-even="false"] td {
+    background: var(--surface-2);
+  }
+  .tbl-zebra tbody tr:hover td {
+    background: var(--surface);
+  }
+
+  /* A column edge you can take hold of. Four pixels wide and invisible until
+     the pointer is on the header, so the header is not a row of handles. */
+  .col-resize {
+    @apply absolute top-0 right-0 z-10 h-full w-1 cursor-col-resize touch-none opacity-0 select-none;
+    background: var(--accent);
+    transition: opacity var(--dur-micro) var(--ease-out);
+  }
+  th:hover > .col-resize,
+  .col-resize-on {
+    @apply opacity-100;
+  }
+
+  /* The header's own button. The chevron is in the DOM at every width and
+     shown only where it means something - the column under the pointer, or
+     the column the table is actually sorted by - so a header row is a row of
+     words rather than a row of arrows. */
+  .th-sort {
+    @apply mono flex w-full items-center gap-1 rounded-[4px] text-left uppercase text-muted;
+    transition: color var(--dur-micro) var(--ease-out);
+  }
+  .th-sort:hover {
+    color: var(--fg);
+  }
+  .th-sort > .sort-mark {
+    @apply shrink-0 opacity-0;
+    transition: opacity var(--dur-micro) var(--ease-out);
+  }
+  .th-sort:hover > .sort-mark,
+  .th-sort:focus-visible > .sort-mark,
+  .th-sort[data-sorted="true"] > .sort-mark {
+    @apply opacity-100;
+  }
+  .th-sort[data-sorted="true"] {
+    color: var(--accent);
+  }
+  /* The rank of a secondary sort key. Only ever drawn when there are two. */
+  .sort-rank {
+    @apply tnum shrink-0 text-[9px] leading-none;
+  }
+
+  /* Cell content is a box of its own so a resized column clips its contents
+     rather than refusing to narrow, and so auto-fit has something whose
+     natural width it can measure. */
+  .cell-body {
+    @apply block min-w-0 overflow-hidden;
+  }
+  .cell-body-nowrap {
+    @apply truncate;
+  }
+  /* Set while a column is being measured for auto-fit: every cell in it is
+     briefly allowed its natural width, and read back in the same frame. */
+  .cell-measure .cell-body {
+    width: max-content;
+    max-width: none;
+    overflow: visible;
+    white-space: nowrap;
   }
 
   /* A row's actions: present in the DOM, invisible until the row is under the
@@ -928,7 +1004,11 @@ h3 {
   border: none;
   padding: 0;
 }
-.prose table {
+/* A markdown table that stayed a markdown table - three rows or fewer, or an
+   author who asked for it. The `:not(.tbl)` is what keeps these element-level
+   rules off the enhanced ones: an element selector outranks a utility class,
+   so without it a README's table would quietly repaint the app's. */
+.prose table:not(.tbl) {
   border-collapse: separate;
   border-spacing: 0;
   margin: 12px 0;
@@ -938,16 +1018,16 @@ h3 {
   border-radius: var(--radius-control);
   overflow: hidden;
 }
-.prose th,
-.prose td {
+.prose table:not(.tbl) th,
+.prose table:not(.tbl) td {
   border-bottom: 1px solid var(--border);
   padding: 6px 8px;
   text-align: left;
 }
-.prose tr:last-child td {
+.prose table:not(.tbl) tr:last-child td {
   border-bottom: 0;
 }
-.prose th {
+.prose table:not(.tbl) th {
   background: var(--surface);
   font-weight: 600;
 }
