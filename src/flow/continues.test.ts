@@ -23,7 +23,6 @@ function makeFlow(slug: string, steps: Step[]): Flow {
     slug,
     name: slug.replace(/-/g, " "),
     summary: "",
-    provenance: "authored",
     owner: "shop",
     participants: [],
     steps,

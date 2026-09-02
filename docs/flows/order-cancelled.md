@@ -3,7 +3,7 @@
 *Generated from the portolan catalog · commit `2 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.order-cancelled`
-- **Provenance:** derived-from-test
+- **Owner:** [shop](../shop/README.md)
 - **Source:** `services/oms/test/e2e/cancel_test.go`
 
 A customer cancels before the parcel moves, and two compensations run side by side: the money is unwound at the gateway, and the stop is taken off the route. Whether the money is voided or refunded depends on how far payment got, and the delivery half is declared everywhere and observed nowhere.

@@ -27,12 +27,11 @@ func (s *site) renderFlows() {
 		}
 		rows = append(rows, []string{
 			s.ref(self, flow.ID, flow.Name),
-			string(flow.Provenance),
 			owner,
 			firstLine(flow.Summary),
 		})
 	}
-	b.WriteString(table([]string{"Flow", "Provenance", "Owner", "Summary"}, rows))
+	b.WriteString(table([]string{"Flow", "Owner", "Summary"}, rows))
 
 	s.b.file(self, b.String())
 
@@ -58,19 +57,14 @@ func (s *site) renderFlow(flow *catalog.Flow) {
 
 	meta := [][]string{
 		{"Id", code(flow.ID)},
-		// Provenance is the first thing a reader needs: a flow reconstructed
-		// from an integration test is a different kind of claim from one
-		// somebody wrote down.
-		{"Provenance", string(flow.Provenance)},
 	}
 	if flow.Owner != "" {
 		meta = append(meta, []string{"Owner", s.ref(self, flow.Owner, flow.Owner)})
 	}
+	// Source is the file the flow was read out of, which is the only thing a
+	// reader can go and check for themselves.
 	if flow.Source != "" {
 		meta = append(meta, []string{"Source", code(flow.Source)})
-	}
-	if flow.VerifiedAt != "" {
-		meta = append(meta, []string{"Verified", flow.VerifiedAt})
 	}
 	b.WriteString(defList(meta))
 

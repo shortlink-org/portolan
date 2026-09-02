@@ -90,7 +90,7 @@ export function resolvePin(pin: Pin): ResolvedPin | null {
         name: flow.name,
         title: flow.slug,
         path: paths.flow(flow.slug),
-        contextId: flowOwner(flow, index),
+        contextId: flowOwner(flow),
       };
     }
     case "event": {

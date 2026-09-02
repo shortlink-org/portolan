@@ -1,18 +1,15 @@
 import { Link } from "react-router";
-import { AlertTriangle, Activity, FlaskConical } from "lucide-react";
 import type { ReactNode } from "react";
 import type {
   Adr,
   AdrScope,
   AdrStatus,
   Classification,
-  Provenance,
   Status,
 } from "../catalog";
 import { index } from "../data";
 import { adrNumber } from "../lib/adr";
 import { ctxStyle } from "../lib/context-color";
-import { absoluteTime, middleTruncate } from "../lib/format";
 import { paths } from "../routes";
 
 export const STATUS_LABEL: Record<Status, string> = {
@@ -117,62 +114,6 @@ export function ClassificationBadge({
       title={meta.title}
     >
       {classification}
-    </span>
-  );
-}
-
-const PROVENANCE_META: Record<
-  Provenance,
-  {
-    label: string;
-    className: string;
-    icon: typeof AlertTriangle;
-    title: string;
-  }
-> = {
-  authored: {
-    label: "authored",
-    className: "border-line-strong text-muted",
-    icon: AlertTriangle,
-    title: "Written by hand. No step here has been observed running.",
-  },
-  "derived-from-test": {
-    label: "derived from test",
-    className: "status-verified",
-    icon: FlaskConical,
-    title: "Reconstructed from a test run.",
-  },
-  "derived-from-otel": {
-    label: "derived from otel",
-    className: "border-accent text-accent",
-    icon: Activity,
-    title: "Reconstructed from production traces.",
-  },
-};
-
-export function ProvenanceBadge({
-  provenance,
-  source,
-  verifiedAt,
-}: {
-  provenance: Provenance;
-  source?: string;
-  verifiedAt?: string;
-}) {
-  const meta = PROVENANCE_META[provenance];
-  const Icon = meta.icon;
-  return (
-    <span className={`chip-lg ${meta.className}`} title={meta.title}>
-      <Icon size={14} aria-hidden />
-      {meta.label}
-      {provenance === "derived-from-otel" && verifiedAt ? (
-        <span className="text-muted">· {absoluteTime(verifiedAt)}</span>
-      ) : null}
-      {provenance === "derived-from-test" && source ? (
-        <span className="text-muted" title={source}>
-          · {middleTruncate(source.split("/").pop() ?? source, 28)}
-        </span>
-      ) : null}
     </span>
   );
 }

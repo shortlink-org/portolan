@@ -180,7 +180,7 @@ describe("mergeCatalogs", () => {
       slug: "checkout",
       name: "Checkout",
       summary: "",
-      provenance: "authored" as const,
+      owner: "shop",
       participants: [],
       steps: [],
     };

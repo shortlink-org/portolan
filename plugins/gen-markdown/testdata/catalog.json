@@ -170,8 +170,8 @@
       "slug": "raise-invoice",
       "name": "Raise an invoice",
       "summary": "An invoice is raised, and paid or written off.",
-      "provenance": "derived-from-test",
       "source": "test/e2e/raise_test.go",
+      "owner": "billing",
       "participants": [
         { "id": "operator", "kind": "actor", "context": null },
         { "id": "billing.invoices", "kind": "service", "context": "billing" },

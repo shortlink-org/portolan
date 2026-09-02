@@ -3,7 +3,7 @@
 *Generated from the portolan catalog · commit `2 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.checkout`
-- **Provenance:** derived-from-test
+- **Owner:** [shop](../shop/README.md)
 - **Source:** `services/oms/test/e2e/checkout_test.go`
 
 Basket to dispatch, as the e2e suite drives it: a priced basket, a risk call whose peer is not in the catalog, an outbox publish, an authorization at the gateway, a capture retried with backoff, and a shipment held until the money lands. Three branches and two hops are read from the code rather than observed.

@@ -11,9 +11,9 @@
 
 ## Flows
 
-| Flow | Provenance | Summary |
+| Flow | Owner | Summary |
 | --- | --- | --- |
-| [Raise an invoice](flows/raise-invoice.md) | derived-from-test | An invoice is raised, and paid or written off. |
+| [Raise an invoice](flows/raise-invoice.md) | [billing](billing/README.md) | An invoice is raised, and paid or written off. |
 
 ## Decisions
 

@@ -3,7 +3,7 @@
 *Generated from the portolan catalog · commit `2 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.order-accepted`
-- **Provenance:** derived-from-test
+- **Owner:** [shop](../shop/README.md)
 - **Source:** `services/oms/test/integration/order_accepted_test.go`
 
 The narrow slice one integration test pins end to end: an order commits with its outbox row, the relay publishes it, the ledger picks it up and the authorization comes back. Every hop here is asserted, which is why this is the only flow with no gaps in it.

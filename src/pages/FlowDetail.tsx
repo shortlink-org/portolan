@@ -29,7 +29,7 @@ import {
   useCanvasResize,
 } from "../app/panels";
 import { Ident } from "../components/Ident";
-import { ContextPill, ProvenanceBadge } from "../components/primitives";
+import { ContextPill } from "../components/primitives";
 import { WhatLinksHere } from "../components/WhatLinksHere";
 
 /**
@@ -383,13 +383,9 @@ export function FlowDetail() {
             id and the filter's own count are facts about what is on the canvas
             right now, and they live with the controls that changed them. */}
         <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
-          {/* The badge is given no source: it would print the file name, which
-              is the tail of the path standing right next to it. One of the two
-              has to go, and the one that goes is the one you cannot copy. */}
-          <ProvenanceBadge
-            provenance={flow.provenance}
-            verifiedAt={flow.verifiedAt}
-          />
+          {/* The file the flow was read out of, spelled in full rather than
+              named: the point of putting it here is that a reader can copy it
+              and go and look. */}
           {flow.source ? (
             <Ident value={flow.source} className="text-muted">
               {middleTruncate(flow.source, 40)}

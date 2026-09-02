@@ -646,10 +646,8 @@ function HidingLine({
 // ---------------------------------------------------------------------------
 
 const HEALTH_COLOR: Record<FlowHealth, string> = {
-  verified: "var(--status-verified)",
-  mixed: "var(--status-declared)",
   unresolved: "var(--status-unresolved)",
-  unverified: "var(--fg-faint)",
+  declared: "var(--fg-faint)",
 };
 
 /**
@@ -1046,7 +1044,6 @@ export function Sidebar({
         catalog.flows.filter((f) =>
           matches(query, f.id, f.slug, f.name, f.summary),
         ),
-        index,
       ),
     [query],
   );

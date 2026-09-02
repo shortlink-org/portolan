@@ -3,7 +3,6 @@
 *Generated from the portolan catalog · commit `2 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.refund-requested`
-- **Provenance:** authored
 - **Owner:** [shop](../shop/README.md)
 - **Source:** `docs/flows/refund-requested.md`
 

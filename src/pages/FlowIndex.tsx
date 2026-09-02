@@ -1,15 +1,16 @@
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { ArrowUpDown, X } from "lucide-react";
-import { CATALOG_PATH, catalog, index } from "../data";
+import { CATALOG_PATH, catalog } from "../data";
 import { flowContexts, walkSteps } from "../catalog";
 import { flowOwner } from "../lib/flow-tree";
 import { contextName, contextVar, ctxStyle } from "../lib/context-color";
+import { middleTruncate } from "../lib/format";
 import { staggerStyle } from "../lib/motion";
 import { Ident } from "../components/Ident";
 import { RowActions } from "../components/RowActions";
 import { Blank, Empty } from "../components/PageHeader";
-import { ContextPill, ProvenanceBadge } from "../components/primitives";
+import { ContextPill } from "../components/primitives";
 
 type Sort = "contexts" | "name" | "steps";
 
@@ -34,7 +35,7 @@ export function FlowIndex() {
 
   const rows = useMemo(() => {
     const built = catalog.flows
-      .filter((flow) => owner === null || flowOwner(flow, index) === owner)
+      .filter((flow) => owner === null || flowOwner(flow) === owner)
       .map((flow) => ({
         flow,
         contexts: flowContexts(flow),
@@ -218,13 +219,16 @@ export function FlowIndex() {
                   </Link>
                 </div>
 
-                <div className="mt-4">
-                  <ProvenanceBadge
-                    provenance={flow.provenance}
-                    source={flow.source}
-                    verifiedAt={flow.verifiedAt}
-                  />
-                </div>
+                {/* The file it was read out of. Every flow here is derived the
+                    same way, so the only thing worth printing is WHICH source
+                    said so. */}
+                {flow.source ? (
+                  <div className="mt-4">
+                    <Ident value={flow.source} className="text-muted">
+                      {middleTruncate(flow.source, 44)}
+                    </Ident>
+                  </div>
+                ) : null}
               </div>
             );
           })}

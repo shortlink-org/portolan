@@ -31,6 +31,8 @@ originally came from. Lineage that leaves the store is a warning on the Problems
 page: copying is how a service stays out of someone else's database, but nothing
 on the far side records that the copy exists.
 
-Facts carry a status (`verified` / `declared` / `unresolved`) and a provenance
-(`authored` / `derived-from-test` / `derived-from-otel`), so a flow reconstructed
-from an integration test reads differently from one someone wrote down.
+Facts carry a status (`verified` / `declared` / `unresolved`), so a reference
+that resolves reads differently from one nothing in the catalog answers. Flows
+carry no such mark about where they came from: every one of them is read out of
+source the same way, and a field with one possible value is not a fact. What a
+flow does say is the file it was read out of, and which context owns it.

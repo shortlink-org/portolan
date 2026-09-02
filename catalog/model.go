@@ -24,14 +24,6 @@ const (
 	StatusUnresolved Status = "unresolved"
 )
 
-type Provenance string
-
-const (
-	ProvenanceAuthored        Provenance = "authored"
-	ProvenanceDerivedFromTest Provenance = "derived-from-test"
-	ProvenanceDerivedFromOTel Provenance = "derived-from-otel"
-)
-
 // Catalog is one source of facts. The estate a reader sees is the merge of
 // several of these, so nothing in a plugin may assume it holds all of them.
 type Catalog struct {
@@ -268,15 +260,19 @@ type View struct {
 	Source       string    `json:"source,omitempty"`
 }
 
+// Flow is a sequence read out of source. Every one of them is derived the same
+// way, which is why nothing here says where it came from: a field whose value
+// is the same on every record answers a question nobody can ask.
 type Flow struct {
-	ID         string     `json:"id"`
-	Slug       string     `json:"slug"`
-	Name       string     `json:"name"`
-	Summary    string     `json:"summary"`
-	Provenance Provenance `json:"provenance"`
-	Source     string     `json:"source,omitempty"`
-	VerifiedAt string     `json:"verifiedAt,omitempty"`
-	Owner      string     `json:"owner,omitempty"`
+	ID      string `json:"id"`
+	Slug    string `json:"slug"`
+	Name    string `json:"name"`
+	Summary string `json:"summary"`
+	Source  string `json:"source,omitempty"`
+	// Owner is the bounded context the flow belongs to. The extractor knows it
+	// - it read the service's own tree to find the flow - so it says so rather
+	// than leaving a reader to work it back out of a path.
+	Owner string `json:"owner"`
 	// Participants order is significant: it is the lane order.
 	Participants []Participant `json:"participants"`
 	Steps        FlowNodes     `json:"steps"`

@@ -12,7 +12,6 @@ import { RowActions } from "../components/RowActions";
 import {
   ClassificationBadge,
   ContextPill,
-  ProvenanceBadge,
 } from "../components/primitives";
 
 /**
@@ -188,13 +187,6 @@ export function Overview() {
                     <ContextPill key={c} id={c} />
                   ))}
                 </div>
-                <span className="ml-auto shrink-0">
-                  <ProvenanceBadge
-                    provenance={flow.provenance}
-                    source={flow.source}
-                    verifiedAt={flow.verifiedAt}
-                  />
-                </span>
               </Link>
             );
           })}
