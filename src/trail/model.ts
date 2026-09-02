@@ -123,6 +123,8 @@ function subjectOfSelection(selection: Selection): VisitSubject | null {
     // route that puts a reader back in front of it, so it earns no chip.
     case "bundle":
       return null;
+    case "module":
+      return { kind: "module", label: resolved.module.name };
   }
 }
 
@@ -145,6 +147,14 @@ function subjectOfPath(pathname: string): VisitSubject | null {
     const slug = parts[1];
     const adr = slug ? index.adrBySlug.get(slug) : undefined;
     return adr ? { kind: "adr", label: adrNumber(adr) } : null;
+  }
+
+  if (head === "registry") {
+    const slug = parts[1];
+    // The index itself is chrome, not an entity: a reader gets back to it from
+    // the sidebar, which is the rule the whole trail is built on.
+    const module = slug ? index.moduleBySlug.get(slug) : undefined;
+    return module ? { kind: "module", label: module.name } : null;
   }
 
   if (head !== "c") return null;

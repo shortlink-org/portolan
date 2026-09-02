@@ -44,7 +44,7 @@ describe("validateCatalog", () => {
     const method = service?.provides[0]?.methods[0];
     const operation = service?.aggregates[0]?.operations[0];
     if (!service || !method || !operation) throw new Error("nothing to pair");
-    operation.exposedBy = [method];
+    operation.exposedBy = [method.name];
 
     expect(() => validateCatalog(good)).not.toThrow();
   });
@@ -576,3 +576,142 @@ describe("sample data shape", () => {
     expect(index.rpcProviderByMethod.has("fraud.v2.Scoring/Score")).toBe(false);
   });
 });
+
+describe("validateCatalog: interfaces and modules", () => {
+  it("rejects two methods of one interface sharing a name", () => {
+    const bad = clone();
+    const provided = bad.contexts[0]?.services[0]?.provides[0];
+    if (!provided) throw new Error("nothing to break");
+    provided.methods = [{ name: "Same" }, { name: "Same" }];
+
+    // `exposedBy` names a method by name alone and `rpcProviderByMethod` is
+    // keyed by it, so a duplicate makes one of the two unreachable.
+    expect(() => validateCatalog(bad)).toThrow(CatalogError);
+  });
+
+  it("rejects a method that streams in a way nothing means", () => {
+    const bad = clone();
+    const provided = bad.contexts[0]?.services[0]?.provides[0];
+    const method = provided?.methods[0];
+    if (!method) throw new Error("nothing to break");
+    method.streaming = "sideways" as never;
+
+    expect(() => validateCatalog(bad)).toThrow(/expected one of/);
+  });
+
+  it("accepts a method that carries shapes and streams", () => {
+    const good = clone();
+    const method = good.contexts[0]?.services[0]?.provides[0]?.methods[0];
+    if (!method) throw new Error("nothing to change");
+    method.request = "PlaceOrderRequest";
+    method.response = "PlaceOrderResponse";
+    method.streaming = "server";
+    method.deprecated = true;
+
+    expect(() => validateCatalog(good)).not.toThrow();
+  });
+
+  it("accepts a catalog with no modules at all", () => {
+    const none = clone();
+    delete none.modules;
+
+    expect(() => validateCatalog(none)).not.toThrow();
+  });
+
+  it("rejects a service naming a module that is not in the catalog", () => {
+    const bad = clone();
+    const service = bad.contexts[0]?.services[0];
+    if (!service) throw new Error("nothing to break");
+    service.modules = ["buf.build/acme/nowhere"];
+
+    expect(() => validateCatalog(bad)).toThrow(/not in this catalog/);
+  });
+
+  it("rejects an interface declaring itself part of a module nobody declared", () => {
+    const bad = clone();
+    const provided = bad.contexts[0]?.services[0]?.provides[0];
+    if (!provided) throw new Error("nothing to break");
+    provided.module = "buf.build/acme/nowhere";
+
+    expect(() => validateCatalog(bad)).toThrow(/not in this catalog/);
+  });
+
+  it("rejects a module owned by something that is not a service", () => {
+    const bad = withModule(clone());
+    const module = bad.modules?.[0];
+    if (!module) throw new Error("nothing to break");
+    module.owner = "shop.nobody";
+
+    expect(() => validateCatalog(bad)).toThrow(/not a service/);
+  });
+
+  // A module published by a team, or by a repository outside the estate, is
+  // the ordinary case - not a defect.
+  it("accepts a module nobody in the catalog owns", () => {
+    const good = withModule(clone());
+    delete good.modules?.[0]?.owner;
+
+    expect(() => validateCatalog(good)).not.toThrow();
+  });
+
+  it("rejects two modules sharing a slug, which is what the URL uses", () => {
+    const bad = withModule(clone());
+    bad.modules?.push({
+      ...bad.modules[0]!,
+      id: "buf.build/other/shop",
+      name: "other/shop",
+    });
+
+    expect(() => validateCatalog(bad)).toThrow(/slug/);
+  });
+
+  // A module's deps come from its own lock and routinely name modules this
+  // estate never vendored - the same kind of fact as a call to a peer outside
+  // the catalog. Requiring them to resolve would mean a module could only be
+  // recorded once everything it depends on had been vendored too.
+  it("accepts a module depending on one the estate never vendored", () => {
+    const good = withModule(clone());
+    if (!good.modules?.[0]) throw new Error("nothing to change");
+    good.modules[0].deps = ["buf.build/acme/never-vendored"];
+
+    expect(() => validateCatalog(good)).not.toThrow();
+  });
+
+  it("indexes a module by id and by slug, and finds who uses it", () => {
+    const withOne = withModule(clone());
+    const service = withOne.contexts[0]?.services[0];
+    const provided = service?.provides[0];
+    if (!service || !provided) throw new Error("nothing to link");
+    provided.module = "buf.build/acme/shop";
+
+    const index = buildIndex(validateCatalog(withOne));
+
+    expect(index.moduleById.get("buf.build/acme/shop")?.slug).toBe("acme-shop");
+    expect(index.moduleBySlug.get("acme-shop")?.id).toBe("buf.build/acme/shop");
+    expect(
+      index.interfacesByModule.get("buf.build/acme/shop")?.[0]?.provided.id,
+    ).toBe(provided.id);
+    expect(
+      index.servicesUsingModule.get("buf.build/acme/shop")?.map((s) => s.id),
+    ).toEqual([service.id]);
+  });
+});
+
+/** The shipped catalog plus one module, owned by its first service. */
+function withModule(catalog: Catalog): Catalog {
+  const owner = catalog.contexts[0]?.services[0]?.id;
+  catalog.modules = [
+    {
+      id: "buf.build/acme/shop",
+      slug: "acme-shop",
+      name: "acme/shop",
+      registry: "buf.build",
+      owner,
+      packages: ["shop.v1"],
+      files: ["shop/v1/orders.proto"],
+      source: "proto",
+    },
+  ];
+
+  return catalog;
+}

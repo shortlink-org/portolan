@@ -18,6 +18,22 @@ export const paths = {
     })}`,
   adrs: () => "/adrs",
   problems: () => "/problems",
+  registry: () => "/registry",
+  /**
+   * A schema module sits at the estate level, not under a service.
+   *
+   * A store hangs off its service because `Store.owner` is one service the
+   * validator enforces. A module has no such owner: it is published by one
+   * service, vendored by four, and depended on by other modules. Hanging it off
+   * a service would put one entity at four URLs - and `allCatalogPaths` would
+   * emit all four, so the route test would bless the duplication rather than
+   * catch it.
+   *
+   * One slug segment rather than `/registry/:owner/:name` because a module that
+   * was never published has no owner, and because every other entity here is
+   * addressed by a slug.
+   */
+  module: (slug: string) => `/registry/${slug}`,
   adr: (slug: string) => `/adrs/${slug}`,
   graph: () => "/graph",
   map: () => "/map",
@@ -71,6 +87,26 @@ export const EVENT_ANCHOR = {
   versions: "ev-versions",
   consumers: "ev-consumers",
 } as const;
+
+/**
+ * The section anchors on a module page.
+ *
+ * Packages, interfaces and messages are anchors rather than routes: they are
+ * already addressable as part of the catalog - an interface has a service page,
+ * a message a shared type - and giving them a second URL here would mean the
+ * same thing had two addresses.
+ */
+export const MODULE_ANCHOR = {
+  packages: "mod-packages",
+  interfaces: "mod-interfaces",
+  types: "mod-types",
+  deps: "mod-deps",
+  used: "mod-used",
+} as const;
+
+export function packageAnchor(name: string): string {
+  return `pkg-${name}`;
+}
 
 /** The section anchors on a value object or entity page. */
 export const BLOCK_ANCHOR = {
@@ -185,9 +221,7 @@ export function tablePath(tableId: string): string | null {
   const held = index.tableById.get(tableId);
   if (!held) return null;
   const to = storePath(held.store.id);
-  return to
-    ? `${to}${selectionHash({ kind: "table", id: tableId })}`
-    : null;
+  return to ? `${to}${selectionHash({ kind: "table", id: tableId })}` : null;
 }
 
 /**
@@ -200,6 +234,15 @@ export function viewPath(viewId: string): string | null {
   if (!held) return null;
   const to = storePath(held.store.id);
   return to ? `${to}${selectionHash({ kind: "view", id: viewId })}` : null;
+}
+
+/** Path to a module page, or null if the id names no module in the catalog. */
+export function modulePath(moduleId: string): string | null {
+  const module = index.moduleById.get(moduleId);
+
+  // Null rather than a guessed path: a module's `deps` may name one the estate
+  // never vendored, and that renders as text rather than as a broken link.
+  return module ? paths.module(module.slug) : null;
 }
 
 /** Path to a service page, or null if the id is not a catalog service. */
@@ -268,6 +311,8 @@ const ROUTES: RegExp[] = [
   /^\/c\/[^/]+\/[^/]+\/[^/]+\/entity\/[^/]+$/,
   /^\/c\/[^/]+\/[^/]+\/data\/[^/]+$/,
   /^\/graph$/,
+  /^\/registry$/,
+  /^\/registry\/[^/]+$/,
 ];
 
 /** True when a path is matched by a declared route (query and hash ignored). */
@@ -285,7 +330,11 @@ export function allCatalogPaths(catalog: Catalog): string[] {
     paths.map(),
     paths.adrs(),
     paths.problems(),
+    paths.registry(),
   ];
+  for (const module of catalog.modules ?? []) {
+    out.push(paths.module(module.slug));
+  }
   for (const flow of catalog.flows) out.push(paths.flow(flow.slug));
   for (const adr of catalog.adrs) out.push(paths.adr(adr.slug));
   for (const context of catalog.contexts) {

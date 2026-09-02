@@ -1,0 +1,86 @@
+// Orders: what the shop promises about placing and tracking an order.
+syntax = "proto3";
+
+package shop.v1;
+
+import "shop/v1/money.proto";
+import public "shop/v1/common.proto";
+
+option go_package = "github.com/acme/shop/gen/shop/v1;shopv1";
+
+/**
+ * The order interface.
+ *
+ * Everything a caller outside the shop can do to an order.
+ */
+service Orders {
+  // Place a new order. The response carries the id the shop assigned.
+  rpc PlaceOrder(PlaceOrderRequest) returns (PlaceOrderResponse);
+
+  rpc GetOrder(GetOrderRequest) returns (Order); // Read one order back.
+
+  // Follow an order as it moves.
+  rpc WatchOrder(GetOrderRequest) returns (stream OrderEvent);
+
+  rpc ImportOrders(stream Order) returns (ImportSummary);
+
+  rpc Sync(stream Order) returns (stream OrderEvent);
+
+  rpc CancelOrder(CancelOrderRequest) returns (Order) {
+    option deprecated = true;
+  }
+}
+
+message PlaceOrderRequest {
+  // Who is buying.
+  string customer_id = 1;
+  repeated LineItem items = 2;
+  optional string coupon = 3;
+  map<string, string> metadata = 4;
+  Money total = 5;
+
+  reserved 6, 7;
+  reserved "discount";
+}
+
+message PlaceOrderResponse {
+  string order_id = 1;
+  Status status = 2;
+}
+
+message Order {
+  string id = 1;
+  Status status = 2;
+
+  // A nested shape, local to the order.
+  message Address {
+    string city = 1;
+    string postcode = 2 [deprecated = true];
+  }
+
+  Address ship_to = 3;
+
+  oneof settlement {
+    Money paid = 4;
+    string invoice_ref = 5;
+  }
+
+  enum Channel {
+    CHANNEL_UNKNOWN = 0;
+    CHANNEL_WEB = 1;
+  }
+
+  Channel channel = 6;
+}
+
+message GetOrderRequest { string id = 1; }
+message CancelOrderRequest { string id = 1; }
+message ImportSummary { int32 accepted = 1; }
+message OrderEvent { string kind = 1; }
+message LineItem { string sku = 1; }
+
+// How far along an order is.
+enum Status {
+  STATUS_UNKNOWN = 0;
+  STATUS_PLACED = 1; // The shop has it.
+}

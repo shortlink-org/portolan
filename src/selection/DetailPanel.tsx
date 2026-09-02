@@ -29,6 +29,13 @@ import {
   viewReads,
 } from "../catalog";
 import { usesOfDef } from "../lib/derive";
+import { methodCount } from "../lib/api";
+import {
+  consumersOf,
+  countsOf,
+  dependenciesOf,
+  registryUrl,
+} from "../lib/registry";
 import { typesDisagree } from "../lib/data-model";
 import { STORE_KIND_LABEL } from "../er/StoreHeader";
 import { upstreamOf } from "../er/lineage";
@@ -43,6 +50,7 @@ import {
   SERVICE_ANCHOR,
   eventPath as eventPathOf,
   blockPath,
+  modulePath,
   paths,
 } from "../routes";
 import { PinButton } from "../app/pins";
@@ -334,7 +342,10 @@ function TableBody({
                 <td className="mono py-0.5 text-muted">
                   {column.maps ? (
                     to ? (
-                      <Link to={to} className="trunc text-accent hover:underline">
+                      <Link
+                        to={to}
+                        className="trunc text-accent hover:underline"
+                      >
                         {column.maps}
                       </Link>
                     ) : (
@@ -425,7 +436,8 @@ function ColumnBody({
   const to = blockId ? blockPath(blockId) : null;
   const field = block
     ? blockFields(catalog, block.block).find(
-        (f) => f.name === (mapsFieldPath(column.maps ?? "").split(".")[0] ?? ""),
+        (f) =>
+          f.name === (mapsFieldPath(column.maps ?? "").split(".")[0] ?? ""),
       )
     : undefined;
 
@@ -615,13 +627,161 @@ function EventBody({
   );
 }
 
+/**
+ * What the panel calls the thing it is showing.
+ *
+ * Most kinds are their id, which the line underneath already prints. These are
+ * the ones with a name a reader would say out loud instead - and it is a
+ * function rather than a ternary chain because it was nine levels deep before
+ * a tenth kind existed.
+ */
+function titleOf(resolved: Resolved | null, selection: Selection): string {
+  if (!resolved) return selection.id;
+
+  switch (resolved.kind) {
+    case "event":
+      return resolved.event.name;
+    case "table":
+      return resolved.table.name;
+    case "view":
+      return resolved.view.name;
+    case "column":
+      return `${resolved.view?.name ?? resolved.table?.name ?? resolved.store.slug}.${resolved.column.name}`;
+    case "flow-step":
+      return resolved.step.label ?? resolved.step.ref ?? resolved.step.kind;
+    case "bundle":
+      return `${resolved.bundle.from} → ${resolved.bundle.to}`;
+    // `acme/shop`, not the registry host as well: the host is the same for
+    // every module in almost every estate.
+    case "module":
+      return resolved.module.name;
+    default:
+      return selection.id;
+  }
+}
+
+function ModuleBody({
+  resolved,
+}: {
+  resolved: Extract<Resolved, { kind: "module" }>;
+}) {
+  const { module } = resolved;
+  const counts = countsOf(index, module);
+  const consumers = consumersOf(index, module);
+  const deps = dependenciesOf(index, module);
+  const owner = module.owner ? index.serviceById.get(module.owner) : undefined;
+  const url = registryUrl(module);
+  const to = modulePath(module.id);
+
+  return (
+    <>
+      {module.registry ? <Label>{module.registry}</Label> : null}
+      <Label>commit</Label>
+      <Row>
+        {module.commit ? (
+          <Ident value={module.commit.slice(0, 12)} />
+        ) : (
+          /* Not pinned is a fact worth saying: it means two builds a day apart
+             can describe two different modules under one name. */
+          <span className="text-muted">not pinned</span>
+        )}
+      </Row>
+
+      <Label>holds</Label>
+      <div className="rows">
+        <div className="row">
+          <span className="flex-1">packages</span>
+          <span className="tnum text-muted">{counts.packages}</span>
+        </div>
+        <div className="row">
+          <span className="flex-1">interfaces</span>
+          <span className="tnum text-muted">{counts.interfaces}</span>
+        </div>
+        <div className="row">
+          <span className="flex-1">methods</span>
+          <span className="tnum text-muted">{counts.methods}</span>
+        </div>
+        <div className="row">
+          <span className="flex-1">messages</span>
+          <span className="tnum text-muted">{counts.messages}</span>
+        </div>
+      </div>
+
+      {/* Who publishes it, and - the more interesting half - who else reads it. */}
+      <Label>published by</Label>
+      {owner ? (
+        <SelectLink id={owner.id}>{owner.id}</SelectLink>
+      ) : (
+        <p className="text-muted">
+          nobody in this catalog — the module is published elsewhere
+        </p>
+      )}
+
+      {consumers.length > 0 ? (
+        <>
+          <Label>read by</Label>
+          <div className="rows">
+            {consumers.map((service) => (
+              <SelectLink key={service.id} id={service.id}>
+                {service.id}
+              </SelectLink>
+            ))}
+          </div>
+        </>
+      ) : null}
+
+      {deps.length > 0 ? (
+        <>
+          <Label>depends on</Label>
+          <div className="rows">
+            {deps.map((dep) =>
+              dep.module ? (
+                <Link
+                  key={dep.id}
+                  to={paths.module(dep.module.slug)}
+                  className="row mono hover:text-ink"
+                >
+                  {dep.module.name}
+                </Link>
+              ) : (
+                /* A module may depend on one the estate never vendored. Naming
+                   it and saying so beats a link into nothing. */
+                <div key={dep.id} className="row mono text-muted">
+                  {dep.id}
+                  <span className="ml-auto">not in this catalog</span>
+                </div>
+              ),
+            )}
+          </div>
+        </>
+      ) : null}
+
+      {to ? (
+        <Link to={to} className="mt-3 block text-muted hover:text-ink">
+          open the module →
+        </Link>
+      ) : null}
+      {url ? (
+        <a
+          href={url}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-1 block text-muted hover:text-ink"
+        >
+          {module.name} on {module.registry} ↗
+        </a>
+      ) : null}
+    </>
+  );
+}
+
 function ServiceBody({
   resolved,
 }: {
   resolved: Extract<Resolved, { kind: "service" }>;
 }) {
   const { service, context } = resolved;
-  const methods = service.provides.reduce((n, p) => n + p.methods.length, 0);
+  const methods = methodCount(service);
   const events = service.aggregates.flatMap((a) => a.events);
   const unresolved = service.consumes.filter((c) => c.status === "unresolved");
 
@@ -924,9 +1084,7 @@ function UnknownBody({ selection }: { selection: Selection }) {
         </>
       ) : null}
       {consumers.length === 0 && flows.length === 0 ? (
-        <p className="meta mt-3">
-          it is not referenced anywhere else either
-        </p>
+        <p className="meta mt-3">it is not referenced anywhere else either</p>
       ) : null}
     </>
   );
@@ -948,7 +1106,9 @@ function kindLabel(selection: Selection, resolved: Resolved | null): string {
  * inside the canvas that holds them; a step is read inside its flow. Pinning
  * one of those would bookmark a scroll position rather than an entity.
  */
-function pinFor(resolved: Resolved | null): { kind: PinKind; id: string } | null {
+function pinFor(
+  resolved: Resolved | null,
+): { kind: PinKind; id: string } | null {
   if (!resolved) return null;
   switch (resolved.kind) {
     case "event":
@@ -1007,21 +1167,7 @@ export function DetailPanel() {
       <div className="flex-1 overflow-y-auto p-4">
         <div className="flex flex-wrap items-baseline gap-x-2">
           <span className="mono break-all text-sm text-ink">
-            {resolved?.kind === "event"
-              ? resolved.event.name
-              : resolved?.kind === "table"
-                ? resolved.table.name
-                : resolved?.kind === "view"
-                  ? resolved.view.name
-                  : resolved?.kind === "column"
-                    ? `${resolved.view?.name ?? resolved.table?.name ?? resolved.store.slug}.${resolved.column.name}`
-                    : resolved?.kind === "flow-step"
-                    ? (resolved.step.label ??
-                      resolved.step.ref ??
-                        resolved.step.kind)
-                      : resolved?.kind === "bundle"
-                        ? `${resolved.bundle.from} → ${resolved.bundle.to}`
-                        : selection.id}
+            {titleOf(resolved, selection)}
           </span>
           {resolved?.kind === "event" ||
           resolved?.kind === "service" ||
@@ -1075,6 +1221,8 @@ export function DetailPanel() {
           <ColumnBody resolved={resolved} />
         ) : resolved.kind === "bundle" ? (
           <BundleBody resolved={resolved} />
+        ) : resolved.kind === "module" ? (
+          <ModuleBody resolved={resolved} />
         ) : (
           <FlowStepBody resolved={resolved} />
         )}

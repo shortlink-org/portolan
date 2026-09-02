@@ -81,7 +81,7 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 // under the api id itself rather than into a group called "other".
 func rpcServices(doc *document, api, source string, b *plugin.Builder) []catalog.RpcService {
 	type group struct {
-		methods []string
+		methods []catalog.RpcMethod
 		schemas []string
 		seen    map[string]bool
 		visited map[string]bool
@@ -123,7 +123,10 @@ func rpcServices(doc *document, api, source string, b *plugin.Builder) []catalog
 				groups[id] = g
 				order = append(order, id)
 			}
-			g.methods = append(g.methods, method)
+			// Only the name: this document says what the interface is called
+			// and what it answers on, and it does not say which message goes
+			// out or comes back in a form this extractor reads.
+			g.methods = append(g.methods, catalog.RpcMethod{Name: method})
 			doc.schemaRefs(operation, &g.schemas, g.seen, g.visited)
 		}
 	}

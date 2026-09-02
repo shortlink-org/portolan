@@ -73,7 +73,7 @@ func (s *site) providesBlock(from string, svc *catalog.Service) string {
 		rpc := &svc.Provides[i]
 		b.WriteString("**" + code(rpc.ID) + "** — " + code(rpc.Source) + "\n\n")
 		for _, method := range rpc.Methods {
-			b.WriteString("- " + code(method) + "\n")
+			b.WriteString("- " + code(method.Name) + "\n")
 		}
 
 		for j := range rpc.Messages {

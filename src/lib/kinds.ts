@@ -16,6 +16,12 @@ export type Kind =
   | "query"
   /** One method of one interface: what the outside can actually call. */
   | "endpoint"
+  /**
+   * A schema module: the .proto files an interface was declared in, named and
+   * versioned by a registry. A branch, not a leaf - it holds interfaces the
+   * tree already draws elsewhere, so it is not something a filter chip hides.
+   */
+  | "module"
   | "def"
   | "flow"
   | "adr";
@@ -80,6 +86,7 @@ export const KIND_LABEL: Record<Kind, string> = {
   command: "command",
   query: "query",
   endpoint: "endpoint",
+  module: "buf module",
   def: "shared type",
   flow: "flow",
   adr: "decision",
@@ -98,6 +105,7 @@ export const KIND_PLURAL: Record<Kind, string> = {
   command: "commands",
   query: "queries",
   endpoint: "endpoints",
+  module: "buf modules",
   def: "shared types",
   flow: "flows",
   adr: "decisions",
@@ -128,6 +136,10 @@ export const KIND_PREFIXES: Record<Kind, string[]> = {
   // An endpoint is reached by the name the interface calls it, which is what
   // a reader has in front of them when they are looking at a request.
   endpoint: ["api", "endpoint", "endpoints"],
+  // A module is the schema a service publishes, which is not the same question
+  // as what it answers: "api: place" finds the endpoint, "mod: shop" the module
+  // it was declared in.
+  module: ["mod", "module", "modules", "buf"],
   // A shared type is the shape a value object NAMES, not the value object
   // itself: "type: money" finds the def, "vo: money" finds what names it.
   def: ["type", "def", "types"],

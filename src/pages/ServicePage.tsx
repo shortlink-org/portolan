@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { catalog } from "../data";
@@ -17,9 +16,11 @@ import { Markdown } from "../components/Markdown";
 import { middleTruncate, plural } from "../lib/format";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
 import { Ident } from "../components/Ident";
-import { ShapeRows } from "../components/ShapeRows";
+import { MessageList, MethodRows } from "../components/MethodRows";
+import { docPathOf, pickSpec } from "../lib/source-doc";
 import { ApiReference, hasSpec } from "../components/ApiReference";
-import { operationsExposedBy } from "../lib/api";
+import { ModuleSpec } from "../components/SourceDoc";
+import { methodCount, operationsExposedBy } from "../lib/api";
 import { KindIcon } from "../components/kind";
 import { RowActions } from "../components/RowActions";
 import {
@@ -90,13 +91,13 @@ export function ServicePage() {
   const adrs = adrsForService(catalog, service.id, context.id);
   const current = adrs.filter(isCurrent);
   const retired = adrs.filter((a) => !isCurrent(a));
-  // The first document this site actually holds. A service can be described by
-  // several interfaces and only some of their specs live in this repository.
-  const specSource = service.provides.map((p) => p.source).find(hasSpec);
+  // What the spec tab has to show: a document this repository holds, else the
+  // schema module the interfaces were declared in, else nothing.
+  const spec = pickSpec(service, hasSpec);
 
   const counts: Record<Tab, number | null> = {
     overview: null,
-    provides: service.provides.reduce((n, p) => n + p.methods.length, 0),
+    provides: methodCount(service),
     spec: null,
     consumes: service.consumes.length,
     data: stores.length,
@@ -241,11 +242,7 @@ export function ServicePage() {
             >
               <SectionTitle
                 anchor={SERVICE_ANCHOR.events}
-                right={
-                  <span>
-                    everything this service announces
-                  </span>
-                }
+                right={<span>everything this service announces</span>}
               >
                 Events
               </SectionTitle>
@@ -317,128 +314,100 @@ export function ServicePage() {
             {service.provides.length === 0 ? (
               <Empty>this service answers nothing — it only listens</Empty>
             ) : null}
-            {service.provides.map((provided) => (
-              <div
-                key={provided.id}
-                className="rounded-card border border-line"
-              >
-                <div className="mono flex flex-wrap items-center gap-x-3 border-b px-3 py-1.5 border-line bg-surface">
-                  <Ident value={provided.id} className="text-ink" />
-                  <Ident value={provided.source} className="ml-auto" />
-                </div>
-                <ul data-nav-list>
-                  {provided.methods.map((method) => {
-                    // What the endpoint actually runs. More than one is normal:
-                    // a handler that resolves a token before changing a
-                    // password has run two use cases, in two aggregates.
-                    const runs = operationsExposedBy(service, method);
+            {service.provides.map((provided) => {
+              const module = provided.module
+                ? index.moduleById.get(provided.module)
+                : undefined;
 
-                    return (
-                      <li
-                        key={method}
-                        className="row rounded-none border-x-0 border-t-0 last:border-b-0"
+              return (
+                <div
+                  key={provided.id}
+                  className="rounded-card border border-line"
+                >
+                  <div className="mono flex flex-wrap items-center gap-x-3 border-b px-3 py-1.5 border-line bg-surface">
+                    <Ident value={provided.id} className="text-ink" />
+                    {/* The schema this interface was declared in. A link
+                        rather than a chip that only names it: the module page
+                        is where "who else reads this" is answered. */}
+                    {module ? (
+                      <Link
+                        to={paths.module(module.slug)}
+                        className="chip hover:text-ink"
+                        title={module.id}
                       >
-                        <div className="min-w-0 flex-1">
-                          <Ident value={`${provided.id}/${method}`} />
-                          {runs.length > 0 ? (
-                            <p className="mono mt-0.5 flex flex-wrap items-center gap-x-2 text-muted">
-                              <span>runs</span>
-                              {runs.map(({ aggregate, operation }) => {
-                                const to = aggregatePath(aggregate.id);
-                                const label = `${aggregate.slug}.${operation.id}`;
-
-                                return to ? (
-                                  <Link
-                                    key={label}
-                                    to={to}
-                                    className="rounded-control hover:text-ink"
-                                    title={`${operation.kind} of ${aggregate.name}`}
-                                  >
-                                    {label}
-                                  </Link>
-                                ) : (
-                                  <span key={label}>{label}</span>
-                                );
-                              })}
-                            </p>
-                          ) : null}
-                        </div>
-                        <RowActions copy={`${provided.id}/${method}`} />
-                      </li>
-                    );
-                  })}
-                </ul>
-
-                {/* The shapes these methods carry. They belong to the rpc
-                    service rather than to one method because that is all the
-                    catalog knows: a generator reading a proto or an OpenAPI
-                    document can say which messages an interface uses, not which
-                    of them each call sends back. */}
-                {provided.messages?.length ? (
-                  <div className="border-t border-line">
-                    <div className="mono px-3 py-1 text-muted">
-                      <span className="tnum">{provided.messages.length}</span>{" "}
-                      {plural(provided.messages.length, "message")}
-                    </div>
-                    {provided.messages.map((message) => {
-                      const id = `${provided.id}/${message.name}`;
-                      const open = openShapes.has(id);
+                        <KindIcon kind="module" />
+                        {module.name}
+                      </Link>
+                    ) : null}
+                    <Ident
+                      value={docPathOf(provided.source)}
+                      className="ml-auto"
+                      title={provided.source}
+                    />
+                  </div>
+                  {/* Drawn by the same component the module page uses, so a
+                      method reads identically in both places. */}
+                  <MethodRows
+                    provided={provided}
+                    open={openShapes}
+                    onToggle={toggleShape}
+                    runs={(method) => {
+                      // What the endpoint actually runs. More than one is
+                      // normal: a handler that resolves a token before changing
+                      // a password has run two use cases, in two aggregates.
+                      const runs = operationsExposedBy(service, method.name);
+                      if (runs.length === 0) return null;
 
                       return (
-                        <div
-                          key={id}
-                          className="border-t border-line last:border-b-0"
-                        >
-                          <button
-                            type="button"
-                            onClick={() => toggleShape(id)}
-                            aria-expanded={open}
-                            className="mono flex w-full items-center gap-1.5 px-3 py-1.5 text-left"
-                          >
-                            {open ? (
-                              <ChevronDown
-                                size={11}
-                                aria-hidden
-                                className="text-muted"
-                              />
+                        <p className="mono mt-0.5 flex flex-wrap items-center gap-x-2 text-muted">
+                          <span>runs</span>
+                          {runs.map(({ aggregate, operation }) => {
+                            const to = aggregatePath(aggregate.id);
+                            const label = `${aggregate.slug}.${operation.id}`;
+
+                            return to ? (
+                              <Link
+                                key={label}
+                                to={to}
+                                className="rounded-control hover:text-ink"
+                                title={`${operation.kind} of ${aggregate.name}`}
+                              >
+                                {label}
+                              </Link>
                             ) : (
-                              <ChevronRight
-                                size={11}
-                                aria-hidden
-                                className="text-muted"
-                              />
-                            )}
-                            {message.name}
-                            <span className="ml-auto text-muted">
-                              <span className="tnum">
-                                {message.fields.length}
-                              </span>{" "}
-                              {plural(message.fields.length, "field")}
-                            </span>
-                          </button>
-                          {open ? (
-                            <div className="px-3 pb-2 pl-8">
-                              <ShapeRows fields={message.fields} />
-                            </div>
-                          ) : null}
-                        </div>
+                              <span key={label}>{label}</span>
+                            );
+                          })}
+                        </p>
                       );
-                    })}
-                  </div>
-                ) : null}
-              </div>
-            ))}
+                    }}
+                  />
+                  <MessageList
+                    provided={provided}
+                    open={openShapes}
+                    onToggle={toggleShape}
+                  />
+                </div>
+              );
+            })}
           </div>
         </TabPanel>
 
         <TabPanel>
-          {specSource ? (
-            <ApiReference source={specSource} />
-          ) : (
+          {spec === null ? (
             <Empty>
               no api document in this catalog — nothing under this service names
               one
             </Empty>
+          ) : spec.kind === "openapi" ? (
+            <ApiReference source={spec.source} />
+          ) : (
+            /* A proto is drawn from the catalog rather than as raw text. The
+               rule ApiReference states - draw the document because the catalog
+               cannot carry its shape - does not hold here: the extractor read
+               exactly that shape, and a <pre> could not link a field to the
+               shared type it refs. */
+            <ModuleSpec moduleId={spec.moduleId} />
           )}
         </TabPanel>
 

@@ -19,9 +19,15 @@
             {
               "id": "auth.v1.Users",
               "methods": [
-                "registerUser",
-                "getUser",
-                "changePassword"
+                {
+                  "name": "registerUser"
+                },
+                {
+                  "name": "getUser"
+                },
+                {
+                  "name": "changePassword"
+                }
               ],
               "source": "examples/auth/internal/infrastructure/transport/http/gen/openapi.yaml",
               "messages": [
@@ -95,9 +101,15 @@
             {
               "id": "auth.v1.Sessions",
               "methods": [
-                "login",
-                "validateSession",
-                "logout"
+                {
+                  "name": "login"
+                },
+                {
+                  "name": "validateSession"
+                },
+                {
+                  "name": "logout"
+                }
               ],
               "source": "examples/auth/internal/infrastructure/transport/http/gen/openapi.yaml",
               "messages": [

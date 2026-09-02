@@ -14,6 +14,7 @@ import {
 } from "./routes";
 import { parseSelectionHash } from "./selection/hash";
 import { allAggregates, allStores, allViews } from "./catalog";
+import { registryCatalog } from "./lib/scenarios";
 
 describe("routes", () => {
   it("routes every URL the catalog can produce", () => {
@@ -146,5 +147,40 @@ describe("routes", () => {
       kind: "flow-step",
       id: "checkout/s6",
     });
+  });
+});
+
+describe("registry routes", () => {
+  const registry = registryCatalog();
+
+  it("routes every module path the catalog can produce", () => {
+    const unroutable = allCatalogPaths(registry).filter((p) => !isRoutable(p));
+
+    expect(unroutable).toEqual([]);
+  });
+
+  it("puts a module at one URL, keyed by its slug", () => {
+    expect(paths.module("acme-shop")).toBe("/registry/acme-shop");
+    expect(paths.registry()).toBe("/registry");
+  });
+
+  // A module slug is one segment. A dotted or slashed one would break the
+  // assertion above about URL segments, and would make `/registry/:module`
+  // stop matching.
+  it("never lets a module slug carry a dot or a slash", () => {
+    for (const module of registry.modules ?? []) {
+      expect(module.slug, module.id).not.toContain(".");
+      expect(module.slug, module.id).not.toContain("/");
+    }
+  });
+
+  it("refuses a path with too few or too many segments", () => {
+    expect(isRoutable("/registry")).toBe(true);
+    expect(isRoutable("/registry/acme-shop")).toBe(true);
+    expect(isRoutable("/registry/acme-shop/extra")).toBe(false);
+  });
+
+  it("lists /registry even for an estate that has published nothing", () => {
+    expect(allCatalogPaths(catalog)).toContain("/registry");
   });
 });

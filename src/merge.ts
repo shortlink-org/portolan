@@ -70,7 +70,8 @@ export function mergeCatalogs(sources: CatalogSource[]): MergeResult {
   const flows: Catalog["flows"] = [];
   const adrs: Catalog["adrs"] = [];
   const stores: NonNullable<Catalog["stores"]> = [];
-  const seen = new Map<string, string>(); // flow/adr/store id -> source path
+  const modules: NonNullable<Catalog["modules"]> = [];
+  const seen = new Map<string, string>(); // flow/adr/store/module id -> source path
 
   const stamps: SourceStamp[] = ordered.map((source) => ({
     path: source.path,
@@ -161,6 +162,14 @@ export function mergeCatalogs(sources: CatalogSource[]): MergeResult {
     for (const store of catalog.stores ?? []) {
       if (claim(seen, store.id, path, conflicts, "store")) stores.push(store);
     }
+    // Claimed by id like everything else at this level, and that is exactly why
+    // a module's id is its registry-global name rather than one derived from an
+    // owner: the producer and each consumer describe the same module from
+    // different repositories, and only a shared id makes them one entry here.
+    for (const module of catalog.modules ?? []) {
+      if (claim(seen, module.id, path, conflicts, "module"))
+        modules.push(module);
+    }
   }
 
   // Services go back into their contexts once every source has been read, in
@@ -182,6 +191,7 @@ export function mergeCatalogs(sources: CatalogSource[]): MergeResult {
     adrs,
   };
   if (stores.length > 0) merged.stores = stores;
+  if (modules.length > 0) merged.modules = modules;
 
   return { catalog: merged, sources: stamps, conflicts };
 }
@@ -211,6 +221,7 @@ function mergeService(
       consumes: [...incoming.consumes],
       aggregates: [...incoming.aggregates],
       ...(incoming.stores ? { stores: [...incoming.stores] } : {}),
+      ...(incoming.modules ? { modules: [...incoming.modules] } : {}),
     });
     origin.set(incoming.id, path);
 
@@ -243,6 +254,13 @@ function mergeService(
     const stores = existing.stores ?? [];
     for (const id of incoming.stores) if (!stores.includes(id)) stores.push(id);
     existing.stores = stores;
+  }
+
+  if (incoming.modules?.length) {
+    const modules = existing.modules ?? [];
+    for (const id of incoming.modules)
+      if (!modules.includes(id)) modules.push(id);
+    existing.modules = modules;
   }
 }
 

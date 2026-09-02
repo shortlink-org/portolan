@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package shop.v1;
+
+// An amount and what it is denominated in.
+message Money {
+  string currency = 1;
+  int64 amount_minor = 2;
+}

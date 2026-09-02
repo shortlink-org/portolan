@@ -19,6 +19,7 @@ import {
   adrPath,
   aggregatePath,
   eventPath,
+  modulePath,
   paths,
   servicePath,
   tablePath,
@@ -116,6 +117,20 @@ export function resolvePin(pin: Pin): ResolvedPin | null {
         name: `${adrNumber(adr).replace(/^ADR-/, "")}  ${adr.title}`,
         path: to,
         contextId: adr.scope.kind === "context" ? adr.scope.context : null,
+      };
+    }
+    case "module": {
+      const module = index.moduleById.get(pin.id);
+      const to = modulePath(pin.id);
+      if (!module || !to) return null;
+      return {
+        ...base,
+        kind: "module",
+        name: module.name,
+        path: to,
+        // A module belongs to no single context: it is published by one
+        // service and read by four, which is why it has no context colour.
+        contextId: null,
       };
     }
     case "service": {

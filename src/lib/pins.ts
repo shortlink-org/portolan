@@ -20,7 +20,9 @@ export type PinKind =
   | "adr"
   | "service"
   | "aggregate"
-  | "table";
+  | "table"
+  /** A module has a page of its own, so it can be kept at the top like one. */
+  | "module";
 
 const PIN_KINDS: readonly PinKind[] = [
   "flow",
@@ -29,6 +31,7 @@ const PIN_KINDS: readonly PinKind[] = [
   "service",
   "aggregate",
   "table",
+  "module",
 ] as const;
 
 export function isPinKind(value: string): value is PinKind {

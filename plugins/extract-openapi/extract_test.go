@@ -37,6 +37,16 @@ func provided(t *testing.T) []catalog.RpcService {
 	return fragment(t).Contexts[0].Services[0].Provides
 }
 
+// A method is an object now, and every assertion below is about the names.
+func names(methods []catalog.RpcMethod) []string {
+	out := make([]string, 0, len(methods))
+	for _, method := range methods {
+		out = append(out, method.Name)
+	}
+
+	return out
+}
+
 // A tag says "these endpoints belong together", which is what a proto service
 // says too - so tags become rpc services and operation ids become methods.
 func TestTagsBecomeServices(t *testing.T) {
@@ -44,7 +54,7 @@ func TestTagsBecomeServices(t *testing.T) {
 
 	got := map[string][]string{}
 	for _, p := range provides {
-		got[p.ID] = p.Methods
+		got[p.ID] = names(p.Methods)
 	}
 
 	if methods := got["billing.v2.Invoices"]; strings.Join(methods, ",") != "raiseInvoice" {

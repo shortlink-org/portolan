@@ -10,6 +10,7 @@ import { catalog, index } from "../data";
 import { edgeCount, problems } from "../lib/derive";
 import type { Problem } from "../lib/derive";
 import { dataProblems } from "../lib/data-problems";
+import { protoProblems } from "../lib/proto-problems";
 import { contextVar, ctxStyle } from "../lib/context-color";
 import { absoluteTime, plural, relativeTime } from "../lib/format";
 import { staggerStyle } from "../lib/motion";
@@ -34,6 +35,7 @@ const KIND_OF: Record<Problem["kind"], "service" | "event" | "table"> = {
   "persistence-drift": "table",
   "column-type": "table",
   "outbox-payload": "table",
+  "proto-missing": "service",
 };
 
 const KIND_NOTE: Record<Problem["kind"], string> = {
@@ -45,6 +47,8 @@ const KIND_NOTE: Record<Problem["kind"], string> = {
   "persistence-drift": "this table no longer carries the aggregate it claims",
   "column-type": "column type and domain type disagree",
   "outbox-payload": "an outbox with no payload column",
+  "proto-missing":
+    "the provider is in the catalog but answers on no such method",
 };
 
 export function Problems() {
@@ -65,7 +69,11 @@ export function Problems() {
   // each, errors before warnings: a boundary leak is not the same kind of news
   // as a column whose type has drifted, and mixing them buries the first.
   const all = useMemo(() => {
-    const found = [...problems(catalog), ...dataProblems(catalog, index)];
+    const found = [
+      ...problems(catalog),
+      ...protoProblems(catalog, index),
+      ...dataProblems(catalog, index),
+    ];
     return [
       ...found.filter((p) => p.severity === "error"),
       ...found.filter((p) => p.severity === "warning"),
@@ -212,6 +220,10 @@ function ClearSkies({ checked }: { checked: number }) {
 function nearPath(problem: Problem): string | null {
   switch (problem.kind) {
     case "rpc":
+    // The near end is the CALLING service either way. `rpc` is a call whose
+    // peer is nobody; this is a call whose peer is known and whose method is
+    // not - and in both the thing to go and look at is the caller.
+    case "proto-missing":
       return servicePath(problem.service);
     case "consumer":
       return eventPath(problem.id);

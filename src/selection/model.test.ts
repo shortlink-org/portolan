@@ -11,6 +11,7 @@ import {
   selectionLabel,
   selectionTrail,
 } from "./model";
+import { parseSelectionHash, selectionHash } from "./hash";
 
 describe("classify", () => {
   it("derives the kind from the id, for every id the catalog holds", () => {
@@ -172,5 +173,27 @@ describe("sameSelection", () => {
     expect(sameSelection(selectionFor("shop"), selectionFor("shop.oms"))).toBe(
       false,
     );
+  });
+});
+
+describe("selecting a module", () => {
+  // The scenario's ids have to be resolvable through the app's own index, and
+  // the app's index is built from data/catalog.json - which has no modules.
+  // So this asserts the shape of the rule rather than the sample.
+  it("classifies an id the catalog does not hold as unknown", () => {
+    expect(classify("buf.build/acme/nowhere")).toBe("unknown");
+  });
+
+  // The kind in a hash is only a hint - it is always re-derived from the id -
+  // but the kind must still be one `parseSelectionHash` recognises. Leaving
+  // "module" out of its list would make every module deep link return null and
+  // die silently, which is the failure mode worth a test.
+  it("is a kind a selection hash can carry, slash and all", () => {
+    const id = "buf.build/acme/shop";
+    const hash = selectionHash({ kind: "module", id });
+
+    // The slashes in a module id are escaped; the separator is not.
+    expect(hash).toBe("#sel=module:buf.build%2Facme%2Fshop");
+    expect(parseSelectionHash(hash)?.id).toBe(id);
   });
 });

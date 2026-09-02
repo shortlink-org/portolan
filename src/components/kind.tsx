@@ -5,6 +5,7 @@ import {
   Database,
   Eye,
   Hexagon,
+  Package,
   Route,
   ScrollText,
   Server,
@@ -60,6 +61,9 @@ export const KIND_ICON: Record<Kind, IconComponent> = {
   // An endpoint is a door in the wall of a service, not a domain object, so it
   // takes furniture like the store and the table do.
   endpoint: Webhook,
+  // A module is a package of schema someone published - infrastructure again,
+  // and a box is what a registry hands you.
+  module: Package,
   def: Shapes,
   flow: Route,
   adr: ScrollText,
@@ -83,6 +87,7 @@ export const KIND_COLOR: Record<Kind, string> = {
   command: "var(--fg-muted)",
   query: "var(--fg-muted)",
   endpoint: "var(--fg-muted)",
+  module: "var(--fg-muted)",
   def: "var(--fg-muted)",
   flow: "var(--fg-muted)",
   adr: "var(--fg-muted)",
@@ -104,6 +109,8 @@ export const KIND_MONO: Record<Kind, boolean> = {
   // An operationId is what a caller writes in code, and a verb-and-path is
   // what they write in a request. Both are identifiers.
   endpoint: true,
+  // `acme/shop` is what a reader pastes into a buf.yaml.
+  module: true,
   def: true,
   flow: true,
   adr: true,

@@ -147,10 +147,10 @@
             {
               "id": "shop.v1.Orders",
               "methods": [
-                "PlaceOrder",
-                "GetOrder",
-                "CancelOrder",
-                "ConfirmOrder"
+                { "name": "PlaceOrder" },
+                { "name": "GetOrder" },
+                { "name": "CancelOrder" },
+                { "name": "ConfirmOrder" }
               ],
               "source": "proto/shop/v1/orders.proto:12",
               "messages": [
@@ -727,8 +727,8 @@
             {
               "id": "shop.v1.Pricing",
               "methods": [
-                "GetQuote",
-                "ListPriceLists"
+                { "name": "GetQuote" },
+                { "name": "ListPriceLists" }
               ],
               "source": "proto/shop/v1/pricing.proto:9",
               "messages": [
@@ -1078,10 +1078,10 @@
             {
               "id": "payments.v1.Payments",
               "methods": [
-                "Authorize",
-                "Capture",
-                "Refund",
-                "GetPayment"
+                { "name": "Authorize" },
+                { "name": "Capture" },
+                { "name": "Refund" },
+                { "name": "GetPayment" }
               ],
               "source": "proto/payments/v1/payments.proto:14",
               "messages": [
@@ -1652,9 +1652,9 @@
             {
               "id": "delivery.v1.Delivery",
               "methods": [
-                "PlanRoute",
-                "TrackShipment",
-                "GetShipment"
+                { "name": "PlanRoute" },
+                { "name": "TrackShipment" },
+                { "name": "GetShipment" }
               ],
               "source": "proto/delivery/v1/delivery.proto:11"
             }

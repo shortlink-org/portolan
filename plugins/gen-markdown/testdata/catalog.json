@@ -27,7 +27,7 @@
           "provides": [
             {
               "id": "billing.v1.Invoices",
-              "methods": ["Raise", "Get"],
+              "methods": [{ "name": "Raise" }, { "name": "Get" }],
               "source": "api/invoices.proto",
               "messages": [
                 {
