@@ -18,6 +18,7 @@ const KINDS: SelectionKind[] = [
   "value-object",
   "flow-step",
   "bundle",
+  "module",
   "unknown",
 ];
 

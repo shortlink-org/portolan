@@ -42,6 +42,7 @@ type Catalog struct {
 	Flows       []Flow             `json:"flows"`
 	Adrs        []Adr              `json:"adrs"`
 	Stores      []Store            `json:"stores,omitempty"`
+	Modules     []ProtoModule      `json:"modules,omitempty"`
 }
 
 type Classification string
@@ -76,14 +77,59 @@ type Service struct {
 	// store names its own owner, so an id in this list that the store does not
 	// call its owner is a read.
 	Stores []string `json:"stores,omitempty"`
+
+	// Modules this service publishes or vendors, by id. Same rule as Stores: a
+	// module names its own owner, so an id here that does not call this service
+	// its owner is one the service reads.
+	Modules []string `json:"modules,omitempty"`
 }
 
 type RpcService struct {
 	ID       string       `json:"id"`
-	Methods  []string     `json:"methods"`
+	Methods  []RpcMethod  `json:"methods"`
 	Source   string       `json:"source"`
 	Messages []RpcMessage `json:"messages,omitempty"`
+
+	// Module is the schema module declaring this interface, by ProtoModule.ID.
+	Module string `json:"module,omitempty"`
 }
+
+// RpcMethod is one method of one interface.
+//
+// A string would have done for the name, and did until protos were read. What
+// a string could not carry is the shapes on either side: an endpoint whose
+// request and response are named is one a reader can follow without opening
+// the source, and a streaming method drawn as a unary call is a lie about how
+// the two ends are coupled.
+//
+// Only Name is required. An interface read from an OpenAPI document supplies
+// nothing else, and must keep reading the way it always did.
+type RpcMethod struct {
+	// Name is what the interface declares - a proto method, an OpenAPI
+	// operationId. This is what Operation.ExposedBy names.
+	Name string `json:"name"`
+	Doc  string `json:"doc,omitempty"`
+
+	// Request and Response name messages in RpcService.Messages; the Ref forms
+	// key Catalog.Defs when the shape is shared. The same pairing, for the same
+	// reason, as Field.Type and Field.Ref.
+	Request     string `json:"request,omitempty"`
+	RequestRef  string `json:"requestRef,omitempty"`
+	Response    string `json:"response,omitempty"`
+	ResponseRef string `json:"responseRef,omitempty"`
+
+	// Streaming is empty for a unary method, which is most of them.
+	Streaming  Streaming `json:"streaming,omitempty"`
+	Deprecated bool      `json:"deprecated,omitempty"`
+}
+
+type Streaming string
+
+const (
+	StreamingClient Streaming = "client"
+	StreamingServer Streaming = "server"
+	StreamingBidi   Streaming = "bidi"
+)
 
 type RpcMessage struct {
 	Name   string  `json:"name"`
@@ -96,6 +142,50 @@ type RpcCall struct {
 	Status Status `json:"status"`
 	Source string `json:"source"`
 	Note   string `json:"note,omitempty"`
+
+	// Module is the module the vendored copy this call was read from belongs to.
+	Module string `json:"module,omitempty"`
+}
+
+// ProtoModule is a schema module: a set of .proto files with a name, a version
+// and a publisher - "buf.build/acme/shop".
+//
+// It sits at the top level rather than inside the service that publishes it,
+// because the interesting fact about a module is usually who ELSE reads it.
+//
+// Its ID is the module's own registry-global name and NOT "<owner>.<slug>" the
+// way a Store's is. A store is declared by exactly one source. A module is
+// declared by several that do not know each other - the producer, and each
+// consumer reading a vendored copy in another repository - and since the merge
+// unions top-level entities BY ID, an owner-derived id would grow one module
+// per consumer.
+//
+// What it carries is identity and inventory, not schema: the interfaces are
+// found through RpcService.Module and the shapes live in RpcService.Messages.
+type ProtoModule struct {
+	// ID is "buf.build/acme/shop", or "local:proto/shop" for a set never
+	// published to a registry.
+	ID string `json:"id"`
+
+	// Slug is unique across the catalog, and what the URL uses: "acme-shop".
+	Slug string `json:"slug"`
+	Name string `json:"name"`
+
+	// Registry is "buf.build", empty when the module was never published.
+	Registry string `json:"registry,omitempty"`
+
+	// Owner is the service that publishes it, when the estate knows. Empty is
+	// an honest answer rather than a defect: a module published by a team, or
+	// by a repository outside the estate, is the ordinary case.
+	Owner string `json:"owner,omitempty"`
+
+	Commit string `json:"commit,omitempty"`
+	Digest string `json:"digest,omitempty"`
+
+	Packages []string `json:"packages"`
+	Files    []string `json:"files"`
+	Deps     []string `json:"deps,omitempty"`
+	Source   string   `json:"source"`
 }
 
 type Aggregate struct {

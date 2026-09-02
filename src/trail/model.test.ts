@@ -21,7 +21,14 @@ describe("visitFor", () => {
    * its slots on them has fewer left for the leaves nobody can get back to.
    */
   it("ignores the pages the chrome already reaches", () => {
-    for (const path of ["/", "/flows", "/adrs", "/graph", "/map", "/problems"]) {
+    for (const path of [
+      "/",
+      "/flows",
+      "/adrs",
+      "/graph",
+      "/map",
+      "/problems",
+    ]) {
       expect(visitFor(path, null)).toBeNull();
     }
   });
@@ -117,8 +124,9 @@ describe("identity", () => {
       selection: { kind: "flow-step" as const, id: "checkout/a1" },
     };
     expect(sameVisit(a, b)).toBe(true);
-    expect(sameVisit(a, { path: "/flows/refund-requested", selection: null }))
-      .toBe(false);
+    expect(
+      sameVisit(a, { path: "/flows/refund-requested", selection: null }),
+    ).toBe(false);
   });
 
   it("goes back to the selection it was left on", () => {
@@ -131,5 +139,19 @@ describe("identity", () => {
     expect(visitTo({ path: "/c/shop/oms", selection: null })).toBe(
       "/c/shop/oms",
     );
+  });
+});
+
+describe("a module in the trail", () => {
+  // The registry index is chrome, not an entity: a reader gets back to it from
+  // the sidebar, which is the rule the whole trail is built on.
+  it("does not record the registry index as a visit", () => {
+    expect(visitFor("/registry", null)).toBeNull();
+  });
+
+  // Every lookup goes to the catalog, so a slug it does not hold is null
+  // rather than a chip labelled with a URL fragment.
+  it("does not record a module page for a slug the catalog does not hold", () => {
+    expect(visitFor("/registry/acme-shop", null)).toBeNull();
   });
 });

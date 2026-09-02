@@ -1,0 +1,24 @@
+syntax = "proto2";
+
+package legacy;
+
+extend Base {
+  optional string extra = 100;
+}
+
+message Old {
+  required string name = 1;
+  optional int32 count = 2 [default = 3];
+
+  group Inline = 4 {
+    optional string a = 5;
+  }
+
+  optional string kept = 6;
+
+  extensions 100 to 199;
+}
+
+service Legacy {
+  rpc Ping(Old) returns (Old);
+}

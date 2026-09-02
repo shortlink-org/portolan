@@ -18,6 +18,12 @@ export interface Catalog {
    * undefined one.
    */
   stores?: Store[];
+  /**
+   * The schema modules the estate publishes and vendors. Optional in the file
+   * and never optional downstream, exactly like `stores`: a catalog written
+   * before anything read a proto still loads.
+   */
+  modules?: ProtoModule[];
 }
 /**
  * A bounded context: the estate's top grouping level, and nothing more. It owns
@@ -65,17 +71,70 @@ export interface Service {
    * so rather than guessing.
    */
   stores?: string[];
+  /**
+   * Schema modules this service publishes or vendors, by id. Which of the two
+   * is not stated here: a module names its own owner, so a module in this list
+   * that does not call this service its owner is one the service reads.
+   */
+  modules?: string[];
 }
 export interface RpcService {
   id: string;
-  methods: string[];
+  methods: RpcMethod[];
   source: string;
   /**
    * Request and response shapes, when the generator could read them. Optional:
    * a service whose protos were not parsed still lists its methods.
    */
   messages?: RpcMessage[];
+  /** The schema module declaring this interface, by `ProtoModule.id`. */
+  module?: string;
 }
+
+/**
+ * One method of one interface.
+ *
+ * A string would have done for the name, and did until protos were read. What
+ * a string could not carry is the shapes on either side: an endpoint whose
+ * request and response are named is one a reader can follow without opening
+ * the source, and a streaming method drawn as a unary call is a lie about how
+ * the two ends are coupled.
+ *
+ * Only `name` is required. An interface read from an OpenAPI document supplies
+ * nothing else, and must keep reading the way it always did.
+ *
+ * There is no id here. `<rpcServiceId>/<name>` is already how the app spells
+ * one, everywhere it needs one, and a stored copy would be a second place for
+ * it to be wrong.
+ */
+export interface RpcMethod {
+  /**
+   * The name as the interface declares it - a proto method, an OpenAPI
+   * `operationId`. This is what `Operation.exposedBy` names.
+   */
+  name: string;
+  doc?: string;
+  /**
+   * The request and response messages, by the name they carry in
+   * `RpcService.messages`. `ref` keys `catalog.defs` when the shape is shared -
+   * the same pairing, for the same reason, as `Field.type` and `Field.ref`.
+   */
+  request?: string;
+  requestRef?: string;
+  response?: string;
+  responseRef?: string;
+  /** How the method streams. Absent is unary, which is most of them. */
+  streaming?: Streaming;
+  deprecated?: boolean;
+}
+
+export type Streaming = "client" | "server" | "bidi";
+
+export const STREAMING: readonly Streaming[] = [
+  "client",
+  "server",
+  "bidi",
+] as const;
 export interface RpcMessage {
   name: string; // "PlaceOrderRequest"
   fields: Field[];
@@ -86,6 +145,58 @@ export interface RpcCall {
   status: Status;
   source: string;
   note?: string;
+  /** The module the vendored copy this call was read from belongs to. */
+  module?: string;
+}
+
+/**
+ * A schema module: a set of .proto files with a name, a version and a
+ * publisher - `buf.build/acme/shop`.
+ *
+ * It sits at the top level rather than inside the service that publishes it,
+ * because the interesting fact about a module is usually who ELSE reads it.
+ *
+ * Its id is the module's own registry-global name and NOT `<owner>.<slug>` the
+ * way a store's is. A store is declared by exactly one source - the service
+ * that owns it - so deriving its id from its owner is safe. A module is
+ * declared by several sources that do not know each other: the producer's
+ * extractor knows which service publishes it, and the consumer's extractor,
+ * reading a vendored copy in another repository, knows only the module name.
+ * Since the merge unions top-level entities BY ID, an owner-derived id would
+ * grow one module per consumer.
+ *
+ * What it carries is identity and inventory, not schema. The interfaces are
+ * found through `RpcService.module` and the shapes live in `RpcService.messages`
+ * and `catalog.defs`, in one place rather than two that can disagree.
+ */
+export interface ProtoModule {
+  /** "buf.build/acme/shop", or "local:proto/shop" for a set never published. */
+  id: string;
+  /** Unique across the catalog, and what the URL uses: "acme-shop". */
+  slug: string;
+  name: string; // "acme/shop"
+  /** "buf.build". Absent when the module was never published to one. */
+  registry?: string;
+  /**
+   * The service that publishes it, by id, when the estate knows.
+   *
+   * Optional on purpose, and the first entity where "nobody here owns this" is
+   * an honest answer rather than a defect: a module published by a team, or by
+   * a repository outside the estate, is the ordinary case.
+   */
+  owner?: string;
+  /** The commit this catalog was built from. */
+  commit?: string;
+  /** The registry's content digest of that commit - what makes a copy checkable. */
+  digest?: string;
+  /** Proto packages declared inside it, sorted. */
+  packages: string[];
+  /** Files, module-relative and sorted. */
+  files: string[];
+  /** Modules it depends on, by id. */
+  deps?: string[];
+  /** Where the copy in this repository lives, as a reader would type it. */
+  source: string;
 }
 export interface Aggregate {
   id: string;
@@ -220,12 +331,7 @@ export interface Store {
  * reader came for.
  */
 export type TableRole =
-  | "aggregate-root"
-  | "child"
-  | "outbox"
-  | "projection"
-  | "lookup"
-  | "other";
+  "aggregate-root" | "child" | "outbox" | "projection" | "lookup" | "other";
 
 export const TABLE_ROLES: readonly TableRole[] = [
   "aggregate-root",
@@ -549,6 +655,10 @@ export function allStores(catalog: Catalog): Store[] {
   return catalog.stores ?? [];
 }
 
+export function allModules(catalog: Catalog): ProtoModule[] {
+  return catalog.modules ?? [];
+}
+
 export function allTables(catalog: Catalog): Table[] {
   return allStores(catalog).flatMap((s) => s.tables);
 }
@@ -754,15 +864,37 @@ export interface CatalogIndex {
   flowBySlug: Map<string, Flow>;
   /** event id -> flow slugs that reference it in a step */
   flowsByEvent: Map<string, string[]>;
+  moduleById: Map<string, ProtoModule>;
+  moduleBySlug: Map<string, ProtoModule>;
+  /** module id -> the interfaces declaring themselves part of it, with their service */
+  interfacesByModule: Map<string, InterfaceOwner[]>;
+  /**
+   * module id -> services that publish it, vendor it, or name it on a call.
+   *
+   * The interesting fact about a module is usually who ELSE reads it, and no
+   * single field says so: a producer names it on an interface, a consumer on a
+   * call, and either may list it under `Service.modules`. One map answers it.
+   */
+  servicesUsingModule: Map<string, Service[]>;
   adrById: Map<string, Adr>;
   adrBySlug: Map<string, Adr>;
   /** event id -> ADRs that name it in relates.events, newest first */
   adrsByEvent: Map<string, Adr[]>;
 }
 
+/** An interface and the service that answers on it. */
+export interface InterfaceOwner {
+  service: Service;
+  provided: RpcService;
+}
+
 export function buildIndex(catalog: Catalog): CatalogIndex {
   const serviceById = new Map<string, Service>();
   const serviceContext = new Map<string, BoundedContext>();
+  const moduleById = new Map<string, ProtoModule>();
+  const moduleBySlug = new Map<string, ProtoModule>();
+  const interfacesByModule = new Map<string, InterfaceOwner[]>();
+  const servicesUsingModule = new Map<string, Service[]>();
   const aggregateById = new Map<string, Aggregate>();
   const aggregateOwner = new Map<string, Service>();
   const eventById = new Map<string, Event>();
@@ -800,7 +932,7 @@ export function buildIndex(catalog: Catalog): CatalogIndex {
       for (const call of service.consumes) rpcById.set(call.id, call);
       for (const provided of service.provides) {
         for (const method of provided.methods) {
-          rpcProviderByMethod.set(`${provided.id}/${method}`, service);
+          rpcProviderByMethod.set(`${provided.id}/${method.name}`, service);
         }
       }
       for (const aggregate of service.aggregates) {
@@ -836,6 +968,37 @@ export function buildIndex(catalog: Catalog): CatalogIndex {
       lineageInto.set(source, list);
     }
   };
+
+  // Modules are collected from both ends: the top-level list says what exists,
+  // and the services say who touches it. A module named by a service the
+  // catalog has no entry for is refused by the validator, so nothing here has
+  // to guess.
+  for (const module of allModules(catalog)) {
+    moduleById.set(module.id, module);
+    moduleBySlug.set(module.slug, module);
+  }
+
+  const uses = (moduleId: string, service: Service) => {
+    const list = servicesUsingModule.get(moduleId) ?? [];
+    if (!list.includes(service)) list.push(service);
+    servicesUsingModule.set(moduleId, list);
+  };
+
+  for (const context of catalog.contexts) {
+    for (const service of context.services) {
+      for (const moduleId of service.modules ?? []) uses(moduleId, service);
+      for (const provided of service.provides) {
+        if (provided.module === undefined) continue;
+        const list = interfacesByModule.get(provided.module) ?? [];
+        list.push({ service, provided });
+        interfacesByModule.set(provided.module, list);
+        uses(provided.module, service);
+      }
+      for (const call of service.consumes) {
+        if (call.module !== undefined) uses(call.module, service);
+      }
+    }
+  }
 
   // Stores come after the domain tree because they point into it: a table says
   // which aggregate it persists, and a column which block it maps to, so both
@@ -960,6 +1123,10 @@ export function buildIndex(catalog: Catalog): CatalogIndex {
     lineageFrom,
     lineageInto,
     storesOwnedBy,
+    moduleById,
+    moduleBySlug,
+    interfacesByModule,
+    servicesUsingModule,
     tablesByAggregate,
     viewsByAggregate,
     columnsByBlock,
@@ -1056,6 +1223,25 @@ export function validateCatalog(catalog: Catalog): Catalog {
       }
       for (const call of service.consumes) rpcIds.add(call.id);
       for (const provided of service.provides) {
+        // A duplicate method name is not a cosmetic problem: `exposedBy` names
+        // a method by name alone, and `rpcProviderByMethod` is keyed by it, so
+        // two methods called the same thing make one of them unreachable.
+        assertUniqueSlugs(
+          provided.methods.map((method) => method.name),
+          `interface "${provided.id}"`,
+          "method",
+        );
+        for (const method of provided.methods) {
+          if (
+            method.streaming !== undefined &&
+            !STREAMING.includes(method.streaming)
+          ) {
+            fail(
+              `method "${provided.id}/${method.name}" streams "${method.streaming}"; expected one of ${STREAMING.join(", ")}`,
+              `service ${service.id}`,
+            );
+          }
+        }
         for (const message of provided.messages ?? []) {
           for (const field of message.fields) {
             if (field.ref !== undefined && !(field.ref in catalog.defs)) {
@@ -1072,7 +1258,9 @@ export function validateCatalog(catalog: Catalog): Catalog {
       // An operation says which of them expose it, and a name that matches none
       // of them is a link into nothing.
       const methods = new Set(
-        service.provides.flatMap((provided) => provided.methods),
+        service.provides.flatMap((provided) =>
+          provided.methods.map((method) => method.name),
+        ),
       );
 
       assertUniqueSlugs(
@@ -1200,9 +1388,85 @@ export function validateCatalog(catalog: Catalog): Catalog {
   }
 
   validateStores(catalog);
+  validateModules(catalog);
   validateAdrs(catalog, eventIds);
 
   return catalog;
+}
+
+/**
+ * A module reference may only point at a module that exists.
+ *
+ * `deps` are the exception, and deliberately NOT checked. A module's
+ * dependencies come from its own lock file and routinely name modules this
+ * estate never vendored - the same kind of fact as an `RpcCall` to a peer
+ * outside the catalog. Requiring them to resolve would mean a module could only
+ * be recorded once everything it transitively depends on had been vendored too,
+ * which is a rule about the estate's homework rather than about the catalog
+ * being coherent. A dangling dep is shown as a name the catalog does not hold.
+ *
+ * Also NOT checked: whether a method's `request` names a message the interface
+ * actually lists, and whether a module is pinned to a commit. Both are
+ * legitimate mid-migration states - a copy vendored before the producer
+ * published, a module tracked by label - and refusing to render the catalog
+ * over either would be refusing to describe the estate as it is. They belong on
+ * the Problems page, which is where the rest of that judgement already lives.
+ */
+function validateModules(catalog: Catalog): void {
+  const modules = allModules(catalog);
+  const ids = new Set(modules.map((m) => m.id));
+  const serviceIds = new Set(allServices(catalog).map((s) => s.id));
+
+  assertUniqueSlugs(
+    modules.map((m) => m.id),
+    "catalog",
+    "module",
+  );
+  // Slugs are what the URL uses, so two modules sharing one would put two
+  // entities at the same address.
+  assertUniqueSlugs(
+    modules.map((m) => m.slug),
+    "catalog",
+    "module slug",
+  );
+
+  for (const module of modules) {
+    if (module.owner !== undefined && !serviceIds.has(module.owner)) {
+      fail(
+        `module "${module.id}" is owned by "${module.owner}", which is not a service in this catalog`,
+        `module ${module.id}`,
+      );
+    }
+  }
+
+  const refers = (module: string, where: string, path: string) => {
+    if (!ids.has(module)) {
+      fail(
+        `${where} names module "${module}", which is not in this catalog`,
+        path,
+      );
+    }
+  };
+
+  for (const service of allServices(catalog)) {
+    for (const module of service.modules ?? []) {
+      refers(module, `service "${service.id}"`, `service ${service.id}`);
+    }
+    for (const provided of service.provides) {
+      if (provided.module !== undefined) {
+        refers(
+          provided.module,
+          `interface "${provided.id}"`,
+          `service ${service.id}`,
+        );
+      }
+    }
+    for (const call of service.consumes) {
+      if (call.module !== undefined) {
+        refers(call.module, `call "${call.id}"`, `service ${service.id}`);
+      }
+    }
+  }
 }
 
 /**
@@ -1328,7 +1592,9 @@ function validateStores(catalog: Catalog): void {
         // A block is named "<aggregate id>.<slug>", so a block belonging to
         // another aggregate than the one the table persists is a contradiction
         // the id itself spells out.
-        const owner = aggregate ?? aggregates.get(blockId.split(".").slice(0, -1).join("."));
+        const owner =
+          aggregate ??
+          aggregates.get(blockId.split(".").slice(0, -1).join("."));
         const found = owner
           ? aggregateBlocks(owner).some((b) => b.block.id === blockId)
           : false;

@@ -93,3 +93,23 @@ describe("pageContains across pages", () => {
     expect(pageContains("/c/shop/oms#sel=service:shop.oms", oms)).toBe(true);
   });
 });
+
+describe("the registry pages", () => {
+  // A module page draws one module. It LINKS to the services that read it, and
+  // a page contains what it draws rather than everything it points at.
+  it("contains only the module whose page it is", () => {
+    const mine = { kind: "module" as const, id: "buf.build/acme/shop" };
+
+    // Resolution goes through the app's own catalog, which has no modules -
+    // so an id it cannot resolve is contained by nothing, anywhere.
+    expect(pageContains("/registry/acme-shop", mine)).toBe(false);
+    expect(pageContains("/c/shop/oms", mine)).toBe(false);
+  });
+
+  it("does not think a service page is a registry page", () => {
+    const service = { kind: "service" as const, id: "shop.oms" };
+
+    expect(pageContains("/registry", service)).toBe(false);
+    expect(pageContains("/registry/acme-shop", service)).toBe(false);
+  });
+});

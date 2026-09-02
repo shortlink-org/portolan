@@ -1,0 +1,14 @@
+{
+  "modules": [
+    {
+      "module": "buf.build/acme/shop",
+      "commit": "c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6",
+      "digest": "b5:5f0e0d0c0b0a09080706050403020100",
+      "deps": [],
+      "files": [
+        { "path": "shop/v1/money.proto" },
+        { "path": "shop/v1/orders.proto" }
+      ]
+    }
+  ]
+}

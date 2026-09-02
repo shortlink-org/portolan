@@ -53,11 +53,22 @@ export function selectionPath(selection: Selection): string | null {
     case "value-object":
     case "bundle":
       return null;
+    case "module":
+      return paths.module(resolved.module.slug);
   }
 }
 
 interface Route {
-  kind: "overview" | "flows" | "flow" | "adrs" | "adr" | "graph" | "c" | "none";
+  kind:
+    | "overview"
+    | "flows"
+    | "flow"
+    | "adrs"
+    | "adr"
+    | "graph"
+    | "c"
+    | "registry"
+    | "none";
   segments: string[];
 }
 
@@ -74,6 +85,7 @@ function parseRoute(pathname: string): Route {
     return { kind: segments.length > 1 ? "adr" : "adrs", segments };
   }
   if (head === "graph") return { kind: "graph", segments };
+  if (head === "registry") return { kind: "registry", segments };
   if (head === "c") return { kind: "c", segments };
   return { kind: "none", segments };
 }
@@ -216,6 +228,17 @@ export function pageContains(pathname: string, selection: Selection): boolean {
       if (resolved.kind === "service")
         return context.services.some((s) => s.id === resolved.id);
       return false;
+    }
+
+    // A module page draws one module, its packages and its interfaces. It is
+    // deliberately narrow: it LINKS to the services that use it, and a page
+    // contains what it draws rather than everything it points at.
+    case "registry": {
+      if (resolved.kind !== "module") return false;
+      const slug = route.segments[1];
+
+      // The index lists every module, so it contains all of them.
+      return slug === undefined || slug === resolved.module.slug;
     }
 
     case "overview":

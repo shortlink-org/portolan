@@ -1,0 +1,23 @@
+// A narrowed copy of buf.build/acme/pricing, kept here because the OMS calls
+// it. Only the fields this service reads are carried; see docs/adr/org.0001.md.
+syntax = "proto3";
+
+package pricing.v1;
+
+import "pricing/v1/money.proto";
+
+service Pricing {
+  rpc GetQuote(GetQuoteRequest) returns (Quote);
+  rpc WatchPrices(GetQuoteRequest) returns (stream Quote);
+}
+
+message GetQuoteRequest {
+  string sku = 1;
+}
+
+message Quote {
+  string sku = 1;
+  // Money is declared in a file nobody vendored beside this copy, which is
+  // exactly the case a compiler cannot read and this parser can.
+  Money total = 2;
+}

@@ -11,6 +11,7 @@ import type {
   Column,
   Event,
   Flow,
+  ProtoModule,
   Service,
   Step,
   Store,
@@ -35,6 +36,7 @@ export type SelectionKind =
   | "value-object"
   | "flow-step"
   | "bundle"
+  | "module"
   | "unknown";
 
 export interface Selection {
@@ -109,6 +111,11 @@ export interface ResolvedStore {
   service: Service;
   context: BoundedContext;
 }
+export interface ResolvedModule {
+  kind: "module";
+  id: string;
+  module: ProtoModule;
+}
 export interface ResolvedTable {
   kind: "table";
   id: string;
@@ -178,7 +185,8 @@ export type Resolved =
   | ResolvedEvent
   | ResolvedValueObject
   | ResolvedFlowStep
-  | ResolvedBundle;
+  | ResolvedBundle
+  | ResolvedModule;
 
 /**
  * The whole mapping layer: a catalog id in, a catalog entity out. Anything the
@@ -301,6 +309,12 @@ export function resolveSelection(id: string): Resolved | null {
     if (owner) return { kind: "store", id, store, ...owner };
   }
 
+  // A module id carries a slash - `buf.build/acme/shop` - so it can shadow
+  // nothing above it, but it is looked up late all the same: the domain tree is
+  // what a reader is usually pointing at.
+  const module = index.moduleById.get(id);
+  if (module) return { kind: "module", id, module };
+
   const context = catalog.contexts.find((c) => c.id === id);
   if (context) return { kind: "context", id, context };
 
@@ -415,6 +429,10 @@ export function selectionTrail(selection: Selection): Selection[] {
     case "flow-step":
     case "value-object":
     case "bundle":
+    // A module has no ancestor in the catalog. That is the point of it sitting
+    // at the estate level: it is published by one service and read by four, so
+    // there is no single parent a breadcrumb could honestly walk back through.
+    case "module":
       return [selection];
   }
 }
@@ -446,5 +464,10 @@ export function selectionLabel(selection: Selection): string {
       return `${resolved.flow.slug} · step ${resolved.number}`;
     case "bundle":
       return `${resolved.bundle.from} → ${resolved.bundle.to}`;
+    // `acme/shop` rather than `buf.build/acme/shop`: the registry host is the
+    // same for every module in almost every estate, and repeating it in a chip
+    // spends the width on the half that says nothing.
+    case "module":
+      return resolved.module.name;
   }
 }

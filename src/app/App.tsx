@@ -27,6 +27,8 @@ import { EventPage } from "../pages/EventPage";
 import { StorePage } from "../pages/StorePage";
 import { GraphPage } from "../pages/GraphPage";
 import { Problems } from "../pages/Problems";
+import { RegistryIndex } from "../pages/RegistryIndex";
+import { ModulePage } from "../pages/ModulePage";
 import { NotFoundPage } from "../pages/NotFound";
 import { CatalogFailure } from "../pages/CatalogFailure";
 import { catalogError } from "../data";
@@ -64,6 +66,18 @@ function AppRoutes() {
       <Route path="/adrs" element={<AdrIndex />} />
       <Route path="/adrs/:adr" element={<AdrDetail />} />
       <Route path="/problems" element={<Problems />} />
+      {/* A module sits at the estate level, not under a service: it is
+          published by one and read by four, so hanging it off a service would
+          put one entity at four URLs. */}
+      <Route path="/registry" element={<RegistryIndex />} />
+      <Route
+        path="/registry/:module"
+        element={
+          <WithDetail id="module">
+            <ModulePage />
+          </WithDetail>
+        }
+      />
       <Route
         path="/map"
         element={

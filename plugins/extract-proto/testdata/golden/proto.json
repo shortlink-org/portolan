@@ -1,0 +1,304 @@
+{
+  "generatedAt": "2024-01-01T00:00:00Z",
+  "commit": "abc1234",
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.oms",
+          "slug": "oms",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [
+            {
+              "id": "shop.v1.Orders",
+              "methods": [
+                {
+                  "name": "PlaceOrder",
+                  "doc": "Place a new order. The response carries the id the shop assigned.",
+                  "request": "PlaceOrderRequest",
+                  "response": "PlaceOrderResponse"
+                },
+                {
+                  "name": "GetOrder",
+                  "doc": "Read one order back.",
+                  "request": "GetOrderRequest",
+                  "response": "Order"
+                },
+                {
+                  "name": "WatchOrder",
+                  "doc": "Follow an order as it moves.",
+                  "request": "GetOrderRequest",
+                  "response": "OrderEvent",
+                  "streaming": "server"
+                },
+                {
+                  "name": "ImportOrders",
+                  "request": "Order",
+                  "response": "ImportSummary",
+                  "streaming": "client"
+                },
+                {
+                  "name": "Sync",
+                  "request": "Order",
+                  "response": "OrderEvent",
+                  "streaming": "bidi"
+                },
+                {
+                  "name": "CancelOrder",
+                  "request": "CancelOrderRequest",
+                  "response": "Order",
+                  "deprecated": true
+                }
+              ],
+              "source": "testdata/estate/proto/shop/v1/orders.proto:16",
+              "messages": [
+                {
+                  "name": "PlaceOrderRequest",
+                  "fields": [
+                    {
+                      "name": "customer_id",
+                      "type": "string",
+                      "doc": "Who is buying."
+                    },
+                    {
+                      "name": "items",
+                      "type": "[]LineItem",
+                      "doc": ""
+                    },
+                    {
+                      "name": "coupon",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "metadata",
+                      "type": "map[string]string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "total",
+                      "type": "Money",
+                      "doc": "",
+                      "ref": "Money"
+                    }
+                  ]
+                },
+                {
+                  "name": "PlaceOrderResponse",
+                  "fields": [
+                    {
+                      "name": "order_id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "status",
+                      "type": "Status",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "GetOrderRequest",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "Order",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "status",
+                      "type": "Status",
+                      "doc": ""
+                    },
+                    {
+                      "name": "ship_to",
+                      "type": "Address",
+                      "doc": ""
+                    },
+                    {
+                      "name": "paid",
+                      "type": "Money",
+                      "doc": "",
+                      "ref": "Money"
+                    },
+                    {
+                      "name": "invoice_ref",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "channel",
+                      "type": "Channel",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "OrderEvent",
+                  "fields": [
+                    {
+                      "name": "kind",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "ImportSummary",
+                  "fields": [
+                    {
+                      "name": "accepted",
+                      "type": "int32",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "CancelOrderRequest",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "LineItem",
+                  "fields": [
+                    {
+                      "name": "sku",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "Money",
+                  "fields": [
+                    {
+                      "name": "currency",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "amount_minor",
+                      "type": "int64",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "Address",
+                  "fields": [
+                    {
+                      "name": "city",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "postcode",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "module": "buf.build/acme/shop"
+            }
+          ],
+          "consumes": [
+            {
+              "id": "pricing.v1.Pricing/GetQuote",
+              "peer": "shop.pricing",
+              "status": "declared",
+              "source": "testdata/estate/internal/infrastructure/pricing/pricing.proto:10",
+              "note": "A narrowed copy of buf.build/acme/pricing, kept here because the OMS calls\nit. Only the fields this service reads are carried; see docs/adr/org.0001.md.",
+              "module": "local:internal/infrastructure/pricing"
+            },
+            {
+              "id": "pricing.v1.Pricing/WatchPrices",
+              "peer": "shop.pricing",
+              "status": "declared",
+              "source": "testdata/estate/internal/infrastructure/pricing/pricing.proto:11",
+              "note": "A narrowed copy of buf.build/acme/pricing, kept here because the OMS calls\nit. Only the fields this service reads are carried; see docs/adr/org.0001.md.",
+              "module": "local:internal/infrastructure/pricing"
+            }
+          ],
+          "aggregates": [],
+          "modules": [
+            "buf.build/acme/shop",
+            "local:internal/infrastructure/pricing"
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {
+    "Money": {
+      "fields": [
+        {
+          "name": "currency",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "amount_minor",
+          "type": "int64",
+          "doc": ""
+        }
+      ]
+    }
+  },
+  "flows": [],
+  "adrs": [],
+  "modules": [
+    {
+      "id": "buf.build/acme/shop",
+      "slug": "acme-shop",
+      "name": "acme/shop",
+      "registry": "buf.build",
+      "owner": "shop.oms",
+      "commit": "c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6",
+      "digest": "b5:5f0e0d0c0b0a09080706050403020100",
+      "packages": [
+        "shop.v1"
+      ],
+      "files": [
+        "shop/v1/money.proto",
+        "shop/v1/orders.proto"
+      ],
+      "source": "testdata/estate/proto"
+    },
+    {
+      "id": "local:internal/infrastructure/pricing",
+      "slug": "internal-infrastructure-pricing",
+      "name": "internal/infrastructure/pricing",
+      "packages": [
+        "pricing.v1"
+      ],
+      "files": [
+        "pricing.proto"
+      ],
+      "source": "testdata/estate/internal/infrastructure/pricing"
+    }
+  ]
+}

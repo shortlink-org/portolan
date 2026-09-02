@@ -43,5 +43,14 @@ jobs:
       - run: npm run test:go
 
       # Rebuilds the wasm plugins and refuses a commit whose docs/ no longer
-      # follows from the catalog
+      # follows from the catalog.
+      #
+      # PORTOLAN_OFFLINE keeps this from opening a socket: fetch-bsr replays the
+      # .proto files committed to this repository, checks them against their
+      # locks and emits an identical file list. So a fork's pull request needs
+      # no secret, and a registry being down cannot turn the tree red. Refreshing
+      # a pin is a deliberate `npm run gen` on a developer's machine, and arrives
+      # as one reviewable diff.
       - run: npm run gen:check
+        env:
+          PORTOLAN_OFFLINE: "1"

@@ -6,7 +6,13 @@
 // document says what is offered - and they meet here, after the merge, which is
 // the first place both are present.
 
-import type { Aggregate, Operation, RpcService, Service } from "../catalog";
+import type {
+  Aggregate,
+  Operation,
+  RpcMethod,
+  RpcService,
+  Service,
+} from "../catalog";
 
 /**
  * The interface that declares a method. Undefined when nothing this service
@@ -17,7 +23,60 @@ export function interfaceDeclaring(
   service: Service,
   method: string,
 ): RpcService | undefined {
-  return service.provides.find((provided) => provided.methods.includes(method));
+  return service.provides.find((provided) =>
+    provided.methods.some((declared) => declared.name === method),
+  );
+}
+
+/**
+ * A method by name, within one interface.
+ *
+ * By name rather than by index, because a name is what every other half of the
+ * catalog holds: `Operation.exposedBy` names one, a flow step's ref ends in
+ * one, and `rpcProviderByMethod` is keyed by one.
+ */
+export function methodNamed(
+  provided: RpcService,
+  name: string,
+): RpcMethod | undefined {
+  return provided.methods.find((method) => method.name === name);
+}
+
+export interface DeclaredMethod {
+  provided: RpcService;
+  method: RpcMethod;
+}
+
+/**
+ * Every method the service answers on, flat, in catalog order.
+ *
+ * Written once because the sidebar, the palette and three separate counts all
+ * want the same list, and four copies of one flatMap is how they drift.
+ */
+export function declaredMethods(service: Service): DeclaredMethod[] {
+  return service.provides.flatMap((provided) =>
+    provided.methods.map((method) => ({ provided, method })),
+  );
+}
+
+/** How many methods the service answers on, across every interface. */
+export function methodCount(service: Service): number {
+  return service.provides.reduce(
+    (n, provided) => n + provided.methods.length,
+    0,
+  );
+}
+
+/**
+ * How a method streams, as a value rather than as an absence.
+ *
+ * `undefined` is unary in the catalog because that is the case not worth
+ * writing down; a reader deciding what to draw wants the four cases named.
+ */
+export function streamingKind(
+  method: RpcMethod,
+): "unary" | "client" | "server" | "bidi" {
+  return method.streaming ?? "unary";
 }
 
 /** The interface method, written the way the rest of the app writes one. */

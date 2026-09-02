@@ -299,7 +299,8 @@ export type ProblemKind =
   | "shared-store"
   | "persistence-drift"
   | "column-type"
-  | "outbox-payload";
+  | "outbox-payload"
+  | "proto-missing";
 
 /**
  * How wrong a problem is. Two values, not five: an edge either lands somewhere

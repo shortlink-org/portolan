@@ -3,6 +3,7 @@ import { catalog } from "../data";
 import { excerptOf, flattenProse, paletteItems, search } from "./palette";
 import { isRoutable } from "../routes";
 import { allEvents } from "../catalog";
+import { registryCatalog } from "./scenarios";
 
 const items = paletteItems(catalog);
 const rows = (raw: string, limit?: number) =>
@@ -240,5 +241,44 @@ describe("endpoints", () => {
     expect(found[0]?.kind).toBe("endpoint");
     expect(found[0]?.id).toBe("auth.v1.Users/registerUser");
     expect(found[0]?.detail).toBe("auth.v1.Users");
+  });
+});
+
+describe("modules in the palette", () => {
+  const registry = paletteItems(registryCatalog());
+  const modules = registry.filter((item) => item.kind === "module");
+
+  it("lists one row per module, named the way a reader says it", () => {
+    expect(modules.map((m) => m.name).sort()).toEqual([
+      "acme/huge",
+      "acme/shop",
+    ]);
+  });
+
+  const hits = (raw: string) =>
+    search(registry, raw, 20).hits.map((h) => h.item);
+
+  it("finds a module by the name pasted into a buf.yaml", () => {
+    expect(hits("acme/shop").some((i) => i.kind === "module")).toBe(true);
+  });
+
+  // "which module declares shop.v1?" is a question people arrive with, and
+  // the module page is the only thing that answers it.
+  it("finds a module by a package inside it", () => {
+    expect(hits("shop.events.v1").find((i) => i.kind === "module")?.name).toBe(
+      "acme/shop",
+    );
+  });
+
+  it("points a module row at its page", () => {
+    for (const module of modules) {
+      expect(isRoutable(module.path ?? ""), module.name).toBe(true);
+    }
+  });
+
+  // The app's own catalog has published nothing, and must show no module rows
+  // at all rather than an empty group.
+  it("adds no rows for an estate that has published nothing", () => {
+    expect(items.filter((i) => i.kind === "module")).toEqual([]);
   });
 });

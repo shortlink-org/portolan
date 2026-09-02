@@ -195,8 +195,8 @@ export function paletteItems(catalog: Catalog): PaletteItem[] {
         for (const method of provided.methods) {
           items.push({
             kind: "endpoint",
-            id: `${provided.id}/${method}`,
-            name: method,
+            id: `${provided.id}/${method.name}`,
+            name: method.name,
             detail: provided.id,
             path: `${paths.service(context.id, service.slug)}?tab=provides`,
             context: context.id,
@@ -220,6 +220,23 @@ export function paletteItems(catalog: Catalog): PaletteItem[] {
       context: null,
       badge: `${def.fields.length}f`,
       text: flattenProse(fieldProse(def.fields)),
+    });
+  }
+
+  // Schema modules. Found by the name a reader pastes into a buf.yaml, and by
+  // the packages inside them — "which module declares shop.v1?" is a question
+  // people arrive with, and the module page is the only thing that answers it.
+  for (const module of catalog.modules ?? []) {
+    items.push({
+      kind: "module",
+      id: module.id,
+      selectId: module.id,
+      name: module.name,
+      detail: module.registry ?? "not published",
+      path: paths.module(module.slug),
+      context: null,
+      badge: module.commit ? module.commit.slice(0, 7) : undefined,
+      text: flattenProse(module.packages.join(" ")),
     });
   }
 
@@ -405,14 +422,17 @@ const KIND_RANK: Record<Kind, number> = {
   // the command first and the door to it second.
   endpoint: 8,
   def: 9,
+  // A module is a contract, so it sits with the shared types rather than with
+  // the infrastructure: what it holds is shapes other services are promised.
+  module: 10,
   // Where the model is kept comes after the model itself: a reader looking for
   // "orders" wants the aggregate first and the table that holds it second.
-  store: 10,
-  table: 11,
+  store: 11,
+  table: 12,
   // A view after the tables it is computed from, for the same reason.
-  view: 12,
-  flow: 13,
-  adr: 14,
+  view: 13,
+  flow: 14,
+  adr: 15,
 };
 
 /**
