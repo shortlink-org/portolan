@@ -42,6 +42,7 @@
         "classification": "core",
         "service": "auth",
         "repo": "github.com/shortlink-org/portolan",
+        "store": "pg",
         "out": "domain.json"
       }
     },

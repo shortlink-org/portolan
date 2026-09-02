@@ -22,6 +22,13 @@
 | [Shipment tracking](flows/shipment-tracking.md) | [delivery](delivery/README.md) | Reconstructed from production traces over a 24 hour window: the tracking page, the carrier's scan webhook, and what each scan code sets off. Two things only the traces know about — a consumer no repository accounts for, and an exception path whose reader emits no spans at all. |
 | [Gateway webhook](flows/gateway-webhook.md) | [payments](payments/README.md) | The gateway's side of the story, arriving after the fact. One signed callback, four ways to read it: a replay to ignore, a capture to record, a charge with no local payment to adopt, and a failure to pass on. The adopt branch is the only repair for a checkout that timed out mid-authorization, and it is the one branch no test covers. |
 | [Order cancelled](flows/order-cancelled.md) | [shop](shop/README.md) | A customer cancels before the parcel moves, and two compensations run side by side: the money is unwound at the gateway, and the stop is taken off the route. Whether the money is voided or refunded depends on how far payment got, and the delivery half is declared everywhere and observed nowhere. |
+| [Change password](flows/auth-change-password.md) | [auth](auth/README.md) | Replaces the password of a user, given the current one. |
+| [Get user](flows/auth-get-user.md) | [auth](auth/README.md) | Reads a user by id. |
+| [Login](flows/auth-login.md) | [auth](auth/README.md) | Turns credentials into a session. |
+| [Logout](flows/auth-logout.md) | [auth](auth/README.md) | Ends the session behind a token. |
+| [Register user](flows/auth-register-user.md) | [auth](auth/README.md) | Creates a user from an email address and a password. |
+| [Validate session](flows/auth-validate-session.md) | [auth](auth/README.md) | Resolves a token to a live session: who is calling, and how long the answer stays good. |
+| [Revoke sessions on password change](flows/auth-revoke-sessions-on-password-change.md) | [auth](auth/README.md) | Ends the sessions issued against a password that has just been replaced. |
 
 ## Decisions
 

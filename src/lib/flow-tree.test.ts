@@ -72,6 +72,7 @@ describe("groupFlowsByOwner", () => {
     expect(
       groups.map((g) => [g.owner, g.entries.length] as const),
     ).toEqual([
+      ["auth", 7],
       ["shop", 4],
       ["delivery", 1],
       ["payments", 1],

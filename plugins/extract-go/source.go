@@ -84,6 +84,15 @@ func (p *pkg) doc() string {
 	return ""
 }
 
+// position is where a node sits, as a reader would write it down: the file
+// path relative to the repository, and the line. It is what a flow step points
+// at, and it is read from the file set rather than remembered per declaration.
+func (p *pkg) position(pos token.Pos) (string, int) {
+	at := p.fset.Position(pos)
+
+	return filepath.ToSlash(at.Filename), at.Line
+}
+
 // structDecl is a named struct type with the comment above it.
 type structDecl struct {
 	name   string

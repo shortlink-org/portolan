@@ -49,8 +49,10 @@ func exposures(t *testing.T, source string) map[string][]string {
 	b := &plugin.Builder{}
 	out := map[string][]string{}
 	for name, fields := range handlerFields(pkg) {
-		for _, e := range operationsRunning(pkg, name, fields, b) {
-			out[e.useCase] = appendOnce(out[e.useCase], e.id)
+		for _, endpoint := range operationsRunning(pkg, name, fields, b) {
+			for _, useCase := range endpoint.useCases {
+				out[useCase] = appendOnce(out[useCase], endpoint.id)
+			}
 		}
 	}
 

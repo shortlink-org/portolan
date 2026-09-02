@@ -8,6 +8,8 @@ model {
   agent = actor 'support agent'
   carrier_api = external 'carrier-api (external)'
   analytics_sink = unknown 'analytics-sink (unknown)'
+  client = actor 'client'
+  auth_pg = store 'auth-pg'
 
   shop = context 'Shop' {
     description 'Everything the customer touches before money moves: baskets, orders and prices.'

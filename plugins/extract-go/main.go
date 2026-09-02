@@ -32,6 +32,11 @@ type Options struct {
 	ServiceName string `json:"serviceName,omitempty"`
 	Repo        string `json:"repo,omitempty"`
 
+	// Store is the slug of the database this service keeps its state in - the
+	// same one the SQL extractor is given. It is here for the flows: a call on
+	// a repository lands somewhere, and only the manifest knows where.
+	Store string `json:"store,omitempty"`
+
 	// Out names the fragment file. One extractor, one file, so that a fragment
 	// carries the provenance of the run that produced it.
 	Out string `json:"out,omitempty"`
