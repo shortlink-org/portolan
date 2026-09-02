@@ -44,32 +44,38 @@
               "name": "id",
               "type": "text",
               "nullable": false,
-              "pk": true
+              "pk": true,
+              "maps": "Session.ID"
             },
             {
               "name": "user_id",
               "type": "text",
-              "nullable": false
+              "nullable": false,
+              "maps": "Session.UserID"
             },
             {
               "name": "token",
               "type": "text",
-              "nullable": false
+              "nullable": false,
+              "maps": "Session.Token"
             },
             {
               "name": "issued_at",
               "type": "timestamptz",
-              "nullable": false
+              "nullable": false,
+              "maps": "Session.IssuedAt"
             },
             {
               "name": "expires_at",
               "type": "timestamptz",
-              "nullable": false
+              "nullable": false,
+              "maps": "Session.ExpiresAt"
             },
             {
               "name": "revoked_at",
               "type": "timestamptz",
-              "nullable": true
+              "nullable": true,
+              "maps": "Session.RevokedAt"
             },
             {
               "name": "version",
@@ -107,22 +113,26 @@
               "name": "id",
               "type": "text",
               "nullable": false,
-              "pk": true
+              "pk": true,
+              "maps": "User.ID"
             },
             {
               "name": "email",
               "type": "text",
-              "nullable": false
+              "nullable": false,
+              "maps": "User.Email"
             },
             {
               "name": "password_hash",
               "type": "text",
-              "nullable": false
+              "nullable": false,
+              "maps": "User.Password"
             },
             {
               "name": "created_at",
               "type": "timestamptz",
-              "nullable": false
+              "nullable": false,
+              "maps": "User.CreatedAt"
             },
             {
               "name": "version",

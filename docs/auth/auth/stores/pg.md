@@ -13,15 +13,15 @@
 
 aggregate-root · persists [auth.auth.session](../aggregates/session.md)
 
-| Column | Type | Null | Key |
-| --- | --- | --- | --- |
-| `id` | `text` | not null | PK |
-| `user_id` | `text` | not null | — |
-| `token` | `text` | not null | — |
-| `issued_at` | `timestamptz` | not null | — |
-| `expires_at` | `timestamptz` | not null | — |
-| `revoked_at` | `timestamptz` | null | — |
-| `version` | `bigint` | not null | — |
+| Column | Type | Null | Key | Maps |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | not null | PK | Session.ID |
+| `user_id` | `text` | not null | — | Session.UserID |
+| `token` | `text` | not null | — | Session.Token |
+| `issued_at` | `timestamptz` | not null | — | Session.IssuedAt |
+| `expires_at` | `timestamptz` | not null | — | Session.ExpiresAt |
+| `revoked_at` | `timestamptz` | null | — | Session.RevokedAt |
+| `version` | `bigint` | not null | — | — |
 
 | Index | Columns | Kind |
 | --- | --- | --- |
@@ -32,13 +32,13 @@ aggregate-root · persists [auth.auth.session](../aggregates/session.md)
 
 aggregate-root · persists [auth.auth.user](../aggregates/user.md)
 
-| Column | Type | Null | Key |
-| --- | --- | --- | --- |
-| `id` | `text` | not null | PK |
-| `email` | `text` | not null | — |
-| `password_hash` | `text` | not null | — |
-| `created_at` | `timestamptz` | not null | — |
-| `version` | `bigint` | not null | — |
+| Column | Type | Null | Key | Maps |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | not null | PK | User.ID |
+| `email` | `text` | not null | — | User.Email |
+| `password_hash` | `text` | not null | — | User.Password |
+| `created_at` | `timestamptz` | not null | — | User.CreatedAt |
+| `version` | `bigint` | not null | — | — |
 
 | Index | Columns | Kind |
 | --- | --- | --- |

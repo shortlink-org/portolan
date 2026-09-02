@@ -46,6 +46,9 @@ func readStore(root, repositories, storeID, owner string, b *plugin.Builder) []c
 		sort.Strings(names)
 
 		aggregateID := owner + "." + aggregate
+		// Which column carries which field, read from the statements that
+		// write the rows rather than from the column names.
+		mapped := readMaps(root, repositories, aggregate, b)
 		first := true
 
 		for _, name := range names {
@@ -76,6 +79,12 @@ func readStore(root, repositories, storeID, owner string, b *plugin.Builder) []c
 				// aggregate exists, and its schema lives beside the code that
 				// reads it.
 				table.Persists = &catalog.Persists{Aggregate: aggregateID}
+
+				for i := range table.Columns {
+					if field, ok := mapped[table.Name][table.Columns[i].Name]; ok {
+						table.Columns[i].Maps = field
+					}
+				}
 
 				// The first table an aggregate creates holds the aggregate
 				// itself; anything it creates afterwards hangs off it.
