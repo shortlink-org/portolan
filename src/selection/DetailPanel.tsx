@@ -28,7 +28,9 @@ import {
   storeViews,
   viewReads,
 } from "../catalog";
-import { usesOfDef } from "../lib/derive";
+import { flowsForService, usesOfDef } from "../lib/derive";
+import { stepsInto } from "../lib/backlinks";
+import { walkSteps } from "../catalog";
 import { methodCount } from "../lib/api";
 import {
   consumersOf,
@@ -536,7 +538,10 @@ function EventBody({
 }) {
   const { event, service } = resolved;
   const latest = event.versions[event.versions.length - 1];
-  const flows = index.flowsByEvent.get(event.id) ?? [];
+  // The steps that carry this event, not just the flows: a panel that says
+  // "checkout" sends the reader to the top of a forty-step rail, and one that
+  // says "checkout · step 14" opens on the step.
+  const steps = stepsInto(catalog, new Set([event.id]));
   const decisions = index.adrsByEvent.get(event.id) ?? [];
 
   return (
@@ -580,6 +585,15 @@ function EventBody({
       {event.consumers.map((c) => (
         <Row key={c.service}>
           <SelectLink id={c.service}>{c.service}</SelectLink>
+          {c.via ? (
+            <Link
+              to={paths.flowStep(c.via.flow, c.via.step)}
+              className="mono shrink-0 text-muted hover:text-ink hover:underline"
+              title={`read from flow ${c.via.flow}, step ${c.via.step}; no source declares this consumer`}
+            >
+              via flow
+            </Link>
+          ) : null}
           <span className="ml-auto shrink-0">
             <StatusChip status={c.status} title={c.note} />
           </span>
@@ -587,13 +601,17 @@ function EventBody({
       ))}
 
       <Label>Appears in flows</Label>
-      {flows.length === 0 ? (
+      {steps.length === 0 ? (
         <div className="mono text-muted">no flow references this event</div>
       ) : (
         <div className="flex flex-col gap-1">
-          {flows.map((slug) => (
-            <Link key={slug} to={paths.flow(slug)} className="mono text-accent">
-              {slug} →
+          {steps.map((s) => (
+            <Link
+              key={`${s.flow.slug}:${s.stepId}`}
+              to={paths.flowStep(s.flow.slug, s.stepId)}
+              className="mono text-accent"
+            >
+              {s.flow.slug} · step {s.number} →
             </Link>
           ))}
         </div>
@@ -784,6 +802,13 @@ function ServiceBody({
   const methods = methodCount(service);
   const events = service.aggregates.flatMap((a) => a.events);
   const unresolved = service.consumes.filter((c) => c.status === "unresolved");
+  // Each flow this service takes part in, opened on the first step it is
+  // on either end of - where it enters the story, not the top of the rail.
+  const appearances = flowsForService(catalog, service.id).map((flow) => {
+    const steps = walkSteps(flow.steps);
+    const at = steps.findIndex((s) => s.from === service.id || s.to === service.id);
+    return { flow, step: at >= 0 ? steps[at] : undefined, number: at + 1 };
+  });
 
   return (
     <>
@@ -847,6 +872,25 @@ function ServiceBody({
           </Link>
         </Row>
       ))}
+
+      <Label>Appears in flows</Label>
+      {appearances.length === 0 ? (
+        <div className="mono text-muted">appears in no flow</div>
+      ) : (
+        <div className="flex flex-col gap-1">
+          {appearances.map(({ flow, step, number }) => (
+            <Link
+              key={flow.slug}
+              to={step ? paths.flowStep(flow.slug, step.id) : paths.flow(flow.slug)}
+              className="mono text-accent"
+              title={step ? `${flow.name}, from step ${number}` : flow.name}
+            >
+              {flow.slug}
+              {step ? ` · step ${number}` : ""} →
+            </Link>
+          ))}
+        </div>
+      )}
 
       <Label>Context</Label>
       <SelectLink id={context.id}>{context.id}</SelectLink>
