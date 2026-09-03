@@ -86,6 +86,7 @@ export const EVENT_ANCHOR = {
   schema: "ev-schema",
   versions: "ev-versions",
   consumers: "ev-consumers",
+  then: "ev-then",
 } as const;
 
 /**

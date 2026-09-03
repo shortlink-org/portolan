@@ -236,6 +236,82 @@ describe("eventChain", () => {
     expect(receipt?.children).toEqual([]);
   });
 
+  it("leaves out a publish from another arm of an alt the receipt sits in", () => {
+    const c = estate([
+      flow("alt", [
+        {
+          type: "alt",
+          id: "alt1",
+          branches: [
+            {
+              title: "accepted",
+              steps: [
+                step("bus", "payments.ledger", "event", { ref: PLACED }),
+                step("payments.ledger", "bus", "event", { ref: AUTHORIZED }),
+              ],
+            },
+            {
+              title: "declined",
+              steps: [step("payments.ledger", "bus", "event", { ref: AUTHORIZED, status: "verified" })],
+            },
+          ],
+        },
+        // Outside the alt: follows from either arm.
+        step("payments.ledger", "bus", "event", { ref: CONFIRMED }),
+      ]),
+    ]);
+    const receipt = eventChain(c, PLACED).nodes[0]?.children[0];
+    expect(receipt?.children.map((e) => (e.kind === "event" ? [e.name, e.number] : null))).toEqual([
+      ["PaymentAuthorized", 2],
+    ]);
+  });
+
+  it("keeps a publish inside an alt the receipt is outside of: it is one of the things that can happen", () => {
+    const c = estate([
+      flow("cond", [
+        step("bus", "payments.ledger", "event", { ref: PLACED }),
+        {
+          type: "alt",
+          id: "alt1",
+          branches: [
+            { title: "ok", steps: [step("payments.ledger", "bus", "event", { ref: AUTHORIZED })] },
+            { title: "no", steps: [step("payments.ledger", "payments.ledger", "call")] },
+          ],
+        },
+      ]),
+    ]);
+    const receipt = eventChain(c, PLACED).nodes[0]?.children[0];
+    expect(receipt?.children.map((e) => (e.kind === "event" ? e.name : null))).toEqual([
+      "PaymentAuthorized",
+    ]);
+  });
+
+  it("expands an event once in the whole tree, and says so the second time", () => {
+    // Two consumers of OrderPlaced each publish PaymentAuthorized.
+    const c = estate(
+      [
+        flow("one", [
+          step("bus", "payments.ledger", "event", { ref: PLACED }),
+          step("payments.ledger", "bus", "event", { ref: AUTHORIZED }),
+          step("bus", "shop.oms", "event", { ref: AUTHORIZED }),
+        ]),
+        flow("two", [
+          step("bus", "payments.ledger", "event", { ref: PLACED }),
+          step("payments.ledger", "bus", "event", { ref: AUTHORIZED }),
+        ]),
+      ],
+    );
+    expect(outline(eventChain(c, PLACED).nodes)).toEqual([
+      "payments.ledger (declared)",
+      "  in one · step 1 (declared)",
+      "    PaymentAuthorized · step 2 (declared)",
+      "      shop.oms (verified)",
+      "        in one · step 3 (declared)",
+      "  in two · step 1 (declared)",
+      "    PaymentAuthorized · step 2 (declared) [seen 1]",
+    ]);
+  });
+
   it("cuts a cycle where the chain would come back to an event already on the path", () => {
     const c = estate(
       [

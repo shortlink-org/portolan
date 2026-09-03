@@ -5,7 +5,7 @@ import { catalog, index } from "../data";
 import { plural } from "../lib/format";
 import type { Field } from "../catalog";
 import { addedFields } from "../lib/derive";
-import { backlinkCount } from "../lib/backlinks";
+import { backlinkCount, stepsInto } from "../lib/backlinks";
 import { outboxOfService } from "../lib/data-model";
 import { ctxStyle } from "../lib/context-color";
 import {
@@ -28,6 +28,8 @@ import { StatusChip } from "../components/primitives";
 import { useBacklinks, WhatLinksHere } from "../components/WhatLinksHere";
 import { NotFound } from "./NotFound";
 import { FocusedEventGraphPane } from "../graph/FocusedEventGraph";
+import { eventChain } from "../flow/chain";
+import { ChainList } from "../flow/ChainList";
 
 /**
  * The schema, as columns the table knows how to sort and filter. Field order
@@ -169,6 +171,20 @@ export function EventPage() {
     () => schemaColumns(added, expanded, toggle),
     [added, expanded, toggle],
   );
+  // What follows this event, as far as the flows say; and, for a consumer no
+  // source declared, the number of the step it was read from.
+  const eventId = event?.id ?? "";
+  const chain = useMemo(() => eventChain(catalog, eventId), [eventId]);
+  const stepNumber = useMemo(
+    () =>
+      new Map(
+        stepsInto(catalog, new Set([eventId])).map((s) => [
+          `${s.flow.slug}|${s.stepId}`,
+          s.number,
+        ]),
+      ),
+    [eventId],
+  );
 
   if (!context || !service || !aggregate || !event || !selected) {
     return <NotFound kind="Event" id={eventSlug} />;
@@ -184,6 +200,7 @@ export function EventPage() {
     { id: EVENT_ANCHOR.schema, label: "Schema" },
     { id: EVENT_ANCHOR.versions, label: "Versions" },
     { id: EVENT_ANCHOR.consumers, label: "Consumers" },
+    { id: EVENT_ANCHOR.then, label: "Then what" },
     { id: LINKS_HERE, label: "What links here" },
   ];
 
@@ -442,6 +459,21 @@ export function EventPage() {
                           {consumer.note ? (
                             <p className="mt-0.5 text-muted">{consumer.note}</p>
                           ) : null}
+                          {/* No source declared this consumer: a flow showed
+                              the service hearing the event, and this says
+                              which step, so the claim can be checked. */}
+                          {consumer.via ? (
+                            <Link
+                              to={paths.flowStep(consumer.via.flow, consumer.via.step)}
+                              className="chip mt-1 text-muted hover:text-ink"
+                              title="derived from a flow step, not declared by any source"
+                            >
+                              from flow {consumer.via.flow}
+                              {stepNumber.has(`${consumer.via.flow}|${consumer.via.step}`)
+                                ? ` · step ${stepNumber.get(`${consumer.via.flow}|${consumer.via.step}`)}`
+                                : ""}
+                            </Link>
+                          ) : null}
                         </div>
                         <StatusChip status={consumer.status} />
                         <RowActions
@@ -456,6 +488,20 @@ export function EventPage() {
                 {/* producer -> event -> consumers, the same fact as a picture */}
                 <FocusedEventGraphPane event={event} />
               </div>
+            )}
+          </section>
+
+          {/* --- Then what -------------------------------------------- */}
+          {/* The consumers say who hears it; this says what they do next,
+              read off the flow step where each is shown hearing it. Nothing
+              here is a new fact, and every row links to the step it came
+              from. */}
+          <section id={EVENT_ANCHOR.then} className="mt-section max-w-table">
+            <SectionTitle anchor={EVENT_ANCHOR.then}>Then what</SectionTitle>
+            {chain.nodes.length === 0 ? (
+              <Empty>nothing follows an event nobody hears</Empty>
+            ) : (
+              <ChainList chain={chain} />
             )}
           </section>
 

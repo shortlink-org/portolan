@@ -14,18 +14,36 @@
 // step 3 of one flow and step 14 of another.
 //
 // What a consumer publishes "after" hearing an event is read in walk order
-// within the same flow. Walk order unions the branches of an alt, so a
-// publish from a branch the receiving step is not on can appear here. That is
-// the same approximation the flow tree makes when it asks "what does this flow
-// touch", and the honest fix - restricting to one path - is a later question.
+// within the same flow, minus the branches the receiving step is not on: a
+// publish inside another arm of an alt that encloses the receipt did not
+// follow from it. A publish inside an alt the receipt is outside of is kept -
+// it is conditional, but it is one of the things that can happen next.
+//
+// An event is expanded once in the whole tree. The estate's flows fan out and
+// fold back - a cancellation is reachable from three different declines - and
+// drawing the same subtree under each arrival would make the page a wall
+// without adding a fact. The second arrival says the event is shown above.
 
-import type { Catalog, EdgeVia, Flow, Participant, Status, Step } from "../catalog";
-import { walkSteps } from "../catalog";
+import type {
+  Catalog,
+  EdgeVia,
+  Flow,
+  FlowNode,
+  Participant,
+  Status,
+  Step,
+} from "../catalog";
 import { worstStatus } from "../lib/event-graph";
 
 /** Why a branch stops short, and how much is not shown. */
 export interface ChainCut {
-  reason: "depth" | "cycle" | "budget";
+  /**
+   * `cycle`: the event is already on the path above this node.
+   * `seen`: the event is expanded elsewhere in the tree, earlier.
+   * `depth`: past the number of hops the page follows.
+   * `budget`: the tree hit its size limit.
+   */
+  reason: "depth" | "cycle" | "seen" | "budget";
   hidden: number;
 }
 
@@ -89,9 +107,57 @@ export interface ChainOptions {
 export const CHAIN_DEPTH = 4;
 export const CHAIN_BUDGET = 200;
 
+/** Which arm of which alt a step sits in, innermost last. */
+type Arms = readonly { alt: string; arm: number }[];
+
+interface Walked {
+  steps: Step[];
+  arms: Arms[];
+}
+
+/**
+ * The steps of a flow in walk order - the order `walkSteps` uses, so step
+ * numbers agree with the rail - each with the alt arms enclosing it.
+ */
+function walk(nodes: FlowNode[]): Walked {
+  const steps: Step[] = [];
+  const arms: Arms[] = [];
+  const visit = (list: FlowNode[], enclosing: Arms): void => {
+    for (const node of list) {
+      switch (node.type) {
+        case "step":
+          steps.push(node);
+          arms.push(enclosing);
+          break;
+        case "parallel":
+          for (const branch of node.branches) visit(branch, enclosing);
+          break;
+        case "alt":
+          node.branches.forEach((branch, arm) =>
+            visit(branch.steps, [...enclosing, { alt: node.id, arm }]),
+          );
+          break;
+        case "loop":
+          visit(node.steps, enclosing);
+          break;
+      }
+    }
+  };
+  visit(nodes, []);
+  return { steps, arms };
+}
+
+/** True unless `later` sits in another arm of an alt that encloses `earlier`. */
+function sameSide(earlier: Arms, later: Arms): boolean {
+  return earlier.every((frame) => {
+    const other = later.find((f) => f.alt === frame.alt);
+    return other === undefined || other.arm === frame.arm;
+  });
+}
+
 interface Receipt {
   flow: Flow;
-  steps: Step[];
+  walked: Walked;
   lanes: Map<string, Participant>;
   index: number;
 }
@@ -127,20 +193,21 @@ export function eventChain(
   // Every step where a service is shown hearing an event, by event.
   const receipts = new Map<string, Receipt[]>();
   for (const flow of catalog.flows) {
-    const steps = walkSteps(flow.steps);
+    const walked = walk(flow.steps);
     const lanes = new Map(flow.participants.map((p) => [p.id, p]));
-    steps.forEach((step, index) => {
+    walked.steps.forEach((step, index) => {
       if (step.kind !== "event" || !step.ref || !events.has(step.ref)) return;
       if (step.from === step.to) return;
       if (lanes.get(step.to)?.kind !== "service") return;
       const list = receipts.get(step.ref) ?? [];
-      list.push({ flow, steps, lanes, index });
+      list.push({ flow, walked, lanes, index });
       receipts.set(step.ref, list);
     });
   }
 
   let count = 0;
   let truncated = false;
+  const expanded = new Set<string>([eventId]);
 
   /** True when there is room for one more node; marks the cut otherwise. */
   const room = (parent: ChainBase | null, remaining: number): boolean => {
@@ -184,11 +251,11 @@ export function eventChain(
       out.push(node);
 
       const heard = (receipts.get(id) ?? []).filter(
-        (r) => r.steps[r.index]?.to === consumer.service,
+        (r) => r.walked.steps[r.index]?.to === consumer.service,
       );
       heard.forEach((receipt, j) => {
         if (!room(node, heard.length - j)) return;
-        const step = receipt.steps[receipt.index]!;
+        const step = receipt.walked.steps[receipt.index]!;
         const rnode: ChainNode = {
           kind: "receipt",
           flow: receipt.flow.slug,
@@ -225,10 +292,14 @@ export function eventChain(
 
           if (ancestors.has(ref)) {
             enode.cut = { reason: "cycle", hidden: next.consumers.length };
+          } else if (expanded.has(ref)) {
+            if (next.consumers.length > 0)
+              enode.cut = { reason: "seen", hidden: next.consumers.length };
           } else if (hop + 1 >= maxDepth) {
             if (next.consumers.length > 0)
               enode.cut = { reason: "depth", hidden: next.consumers.length };
           } else {
+            expanded.add(ref);
             enode.children = visit(
               ref,
               new Set([...ancestors, ref]),
@@ -255,8 +326,9 @@ type ChainConsumer = { service: string; status: Status; via?: EdgeVia };
 
 /**
  * The events a service publishes after a given step of a flow, in walk order,
- * first occurrence of each. Only the publisher's own events count: a service
- * relaying somebody else's event is a broker, and a broker is not a "then".
+ * first occurrence of each, leaving out the arms of an alt the step is not
+ * on. Only the publisher's own events count: a service relaying somebody
+ * else's event is a broker, and a broker is not a "then".
  */
 function publishedAfter(
   receipt: Receipt,
@@ -265,11 +337,14 @@ function publishedAfter(
 ): { step: Step; index: number }[] {
   const out: { step: Step; index: number }[] = [];
   const seen = new Set<string>();
-  for (let i = receipt.index + 1; i < receipt.steps.length; i += 1) {
-    const step = receipt.steps[i]!;
+  const { steps, arms } = receipt.walked;
+  const here = arms[receipt.index]!;
+  for (let i = receipt.index + 1; i < steps.length; i += 1) {
+    const step = steps[i]!;
     if (step.kind !== "event" || !step.ref || step.from !== service) continue;
     if (step.to === step.from) continue;
     if (events.get(step.ref)?.publisher !== service) continue;
+    if (!sameSide(here, arms[i]!)) continue;
     if (seen.has(step.ref)) continue;
     seen.add(step.ref);
     out.push({ step, index: i });
