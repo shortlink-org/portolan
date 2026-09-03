@@ -93,6 +93,67 @@ func useCaseParam(expr ast.Expr, useCases map[string]string) (string, bool) {
 	return useCase, known
 }
 
+// adapterDecl is a provider whose result is a port of a use case and whose
+// parameters are not another use case: whatever it builds the port out of,
+// the flow reader will have to follow.
+type adapterDecl struct {
+	pkg     *pkg
+	fn      *ast.FuncDecl
+	imports map[string]string
+}
+
+// adapterBindings reads the same directory for the other kind of binding: a
+// port filled by an adapter over something that is not a use case - a
+// generated client, say. What that something is, and what the adapter does
+// with it, is left to the reader that follows it; here the declaration is
+// enough to know which provider to follow.
+func adapterBindings(root string) map[string]adapterDecl {
+	out := map[string]adapterDecl{}
+	pkg, err := parsePkg(root, "internal/di/provider")
+	if err != nil {
+		return out
+	}
+
+	for _, file := range pkg.files {
+		useCases := useCaseImports(file)
+		if len(useCases) == 0 {
+			continue
+		}
+		imports := map[string]string{}
+		for _, spec := range file.Imports {
+			importPath := strings.Trim(spec.Path.Value, `"`)
+			name := importPath[strings.LastIndex(importPath, "/")+1:]
+			if spec.Name != nil {
+				name = spec.Name.Name
+			}
+			imports[name] = importPath
+		}
+
+		for _, decl := range file.Decls {
+			fn, ok := decl.(*ast.FuncDecl)
+			if !ok || fn.Recv != nil || fn.Type.Results == nil || len(fn.Type.Results.List) != 1 {
+				continue
+			}
+			port, ok := portName(fn.Type.Results.List[0].Type, useCases)
+			if !ok {
+				continue
+			}
+			bound := false
+			for _, param := range params(fn) {
+				if _, ok := useCaseParam(param, useCases); ok {
+					bound = true
+				}
+			}
+			if bound {
+				continue
+			}
+			out[port] = adapterDecl{pkg: pkg, fn: fn, imports: imports}
+		}
+	}
+
+	return out
+}
+
 func params(fn *ast.FuncDecl) []ast.Expr {
 	if fn.Type.Params == nil {
 		return nil

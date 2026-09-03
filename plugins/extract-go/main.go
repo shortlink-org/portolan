@@ -37,6 +37,12 @@ type Options struct {
 	// a repository lands somewhere, and only the manifest knows where.
 	Store string `json:"store,omitempty"`
 
+	// Peers says which service answers to a proto package this service calls:
+	// {"risk.v1": "shop.risk"}. The generated client in the tree names the
+	// package and the rpc; only the manifest knows whose it is. A package
+	// with no line here is called as `unknown`, and the steps are unresolved.
+	Peers map[string]string `json:"peers,omitempty"`
+
 	// Out names the fragment file. One extractor, one file, so that a fragment
 	// carries the provenance of the run that produced it.
 	Out string `json:"out,omitempty"`

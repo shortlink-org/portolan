@@ -22,12 +22,15 @@ import (
 // is a hop, and a domain call whose signature returns an event is what puts the
 // event on the bus.
 //
-// What this cannot do it does not pretend to. There are no branches here - an
-// `if` that returns early is not an alternative path, it is the end of this one
-// - and a step inside a loop carries a note saying so rather than a frame the
-// reader would have to trust. Nothing is observed running, so every step is
-// declared: this reads code, and code is a claim about behaviour, not a record
-// of it.
+// What this cannot do it does not pretend to. An `if` becomes an alt only when
+// something happens inside it - a hop, a publish - and its branch is terminal
+// when the block ends in a return; an `if err != nil { return err }` with
+// nothing in it is not an alternative path, it is the end of this one, and
+// forty empty frames would say less than none. A step inside a loop carries a
+// note saying so rather than a frame the reader would have to trust. Nothing
+// is observed running, so every step is declared: this reads code, and code is
+// a claim about behaviour, not a record of it. The one exception is a call
+// whose far end the manifest does not name, which is unresolved.
 
 const (
 	laneClient = "client"
@@ -48,6 +51,8 @@ type flowOptions struct {
 	// there is no lane to put persistence on, and the calls stay on the
 	// service's own.
 	store string
+	// peers maps a proto package to the service that answers to it.
+	peers map[string]string
 }
 
 type flowReader struct {
@@ -61,20 +66,22 @@ type flowReader struct {
 	// here could follow can be reported rather than silently left out.
 	referenced  map[string]bool
 	warnedStore bool
+	// module is the module path of go.mod, which is how an import path is
+	// read back to a directory in the tree.
+	module string
+	// adapters are the ports assembly fills with something other than a use
+	// case; clients are the generated clients already read, by import path.
+	adapters map[string]adapterDecl
+	clients  map[string]map[string]grpcClient
+	// calls are the rpcs some step made, by id, for the service's consumes.
+	calls      map[string]catalog.RpcCall
+	warnedPeer map[string]bool
 }
 
 // extractFlows reads every sequence the service runs, in a fixed order:
 // endpoints by operation id, then policies by type name.
-func extractFlows(root string, opts flowOptions, endpoints []endpointDecl, events []string, b *plugin.Builder) []catalog.Flow {
-	r := &flowReader{
-		root:       root,
-		opts:       opts,
-		b:          b,
-		bindings:   portBindings(root),
-		useCases:   map[string]*pkg{},
-		domains:    map[string]*pkg{},
-		referenced: map[string]bool{},
-	}
+func extractFlows(root string, opts flowOptions, endpoints []endpointDecl, events []string, b *plugin.Builder) ([]catalog.Flow, []catalog.RpcCall) {
+	r := newFlowReader(root, opts, b)
 
 	out := []catalog.Flow{}
 	for _, endpoint := range endpoints {
@@ -90,6 +97,35 @@ func extractFlows(root string, opts flowOptions, endpoints []endpointDecl, event
 		}
 	}
 
+	return out, r.consumes()
+}
+
+func newFlowReader(root string, opts flowOptions, b *plugin.Builder) *flowReader {
+	return &flowReader{
+		root:       root,
+		opts:       opts,
+		b:          b,
+		bindings:   portBindings(root),
+		adapters:   adapterBindings(root),
+		module:     modulePath(root),
+		useCases:   map[string]*pkg{},
+		domains:    map[string]*pkg{},
+		clients:    map[string]map[string]grpcClient{},
+		calls:      map[string]catalog.RpcCall{},
+		referenced: map[string]bool{},
+		warnedPeer: map[string]bool{},
+	}
+}
+
+// consumes is every rpc the flows made, in id order, so the fragment is the
+// same however the use cases happened to be read.
+func (r *flowReader) consumes() []catalog.RpcCall {
+	out := make([]catalog.RpcCall, 0, len(r.calls))
+	for _, call := range r.calls {
+		out = append(out, call)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
+
 	return out
 }
 
@@ -101,7 +137,7 @@ func extractFlows(root string, opts flowOptions, endpoints []endpointDecl, event
 // prose comes from the last of them, which is the one the endpoint is FOR - the
 // others authorized it.
 func (r *flowReader) endpointFlow(endpoint endpointDecl) (catalog.Flow, bool) {
-	d := &flowDraft{seen: map[string]bool{}}
+	d := newDraft()
 	d.lane(catalog.Participant{ID: laneClient, Kind: catalog.ParticipantActor})
 	d.lane(r.serviceLane())
 
@@ -176,20 +212,37 @@ func (r *flowReader) policyFlows() []catalog.Flow {
 			continue
 		}
 
-		d := &flowDraft{seen: map[string]bool{}}
+		d := newDraft()
 		d.lane(catalog.Participant{ID: laneBus, Kind: catalog.ParticipantBroker})
 		d.lane(r.serviceLane())
 
 		source, line := pkg.position(handle.Pos())
-		d.add(catalog.Step{
-			From:  laneBus,
-			To:    r.opts.svcID,
-			Kind:  catalog.StepEvent,
-			Ref:   event.id,
-			Label: event.name,
-			Line:  at(source, line),
-		})
-		r.referenced[event.id] = true
+		if event.foreign != "" {
+			// Another repository's event. Its id is <service>.<aggregate>.<Name>
+			// and this tree knows neither half, so the step names what it
+			// asserts on and says it resolves to nothing here; the merge is
+			// where the other side may turn up.
+			r.b.Warn(name, pkg.dir+": "+name+".Handle asserts on "+event.foreign+"."+event.name+", an event this repository does not declare; the step is unresolved")
+			d.add(catalog.Step{
+				From:   laneBus,
+				To:     r.opts.svcID,
+				Kind:   catalog.StepEvent,
+				Label:  event.name,
+				Status: catalog.StatusUnresolved,
+				Note:   "Reacts to `" + event.name + "` from `" + event.foreign + "`, which is not an event this repository declares.",
+				Line:   at(source, line),
+			})
+		} else {
+			d.add(catalog.Step{
+				From:  laneBus,
+				To:    r.opts.svcID,
+				Kind:  catalog.StepEvent,
+				Ref:   event.id,
+				Label: event.name,
+				Line:  at(source, line),
+			})
+			r.referenced[event.id] = true
+		}
 
 		r.walkBody(d, &scope{
 			pkg:      pkg,
@@ -217,7 +270,9 @@ func (r *flowReader) policyFlows() []catalog.Flow {
 }
 
 // assertedEvent reads `changed, ok := e.(userevent.PasswordChanged)`: the type
-// a policy asserts on is the fact it reacts to.
+// a policy asserts on is the fact it reacts to. A type from outside this
+// module is somebody else's event; it is returned with `foreign` set to where
+// it came from, because the policy exists whether or not its trigger does.
 func (r *flowReader) assertedEvent(fn *ast.FuncDecl, imports map[string]string) (eventRef, bool) {
 	var out eventRef
 	found := false
@@ -232,23 +287,39 @@ func (r *flowReader) assertedEvent(fn *ast.FuncDecl, imports map[string]string) 
 		if !cut {
 			return true
 		}
-		aggregate, isEvent := eventPackage(imports[selector])
-		if !isEvent {
-			return true
+		importPath := imports[selector]
+		if aggregate, isEvent := eventPackage(importPath); isEvent {
+			out = eventRef{id: eventID(aggregateID(r.opts.svcID, aggregate), name), name: name}
+			found = true
+
+			return false
+		}
+		if importPath != "" && r.module != "" && !strings.HasPrefix(importPath, r.module+"/") && !isStandard(importPath) {
+			out = eventRef{name: name, foreign: importPath}
+			found = true
+
+			return false
 		}
 
-		out = eventRef{id: eventID(aggregateID(r.opts.svcID, aggregate), name), name: name}
-		found = true
-
-		return false
+		return true
 	})
 
 	return out, found
 }
 
+// isStandard is the one thing an import path says about itself: a standard
+// library path has no dot in its first segment.
+func isStandard(importPath string) bool {
+	first, _, _ := strings.Cut(importPath, "/")
+
+	return !strings.Contains(first, ".")
+}
+
 type eventRef struct {
-	id   string
-	name string
+	// foreign is the import path of an event another repository declares.
+	foreign string
+	id      string
+	name    string
 }
 
 // ---------------------------------------------------------------------------
@@ -308,9 +379,183 @@ func (r *flowReader) walkUseCase(d *flowDraft, key string, depth int) {
 }
 
 func (r *flowReader) walkBody(d *flowDraft, s *scope, fn *ast.FuncDecl, depth int) {
-	for _, site := range callSites(fn) {
+	if fn == nil || fn.Body == nil {
+		return
+	}
+	r.walkStmts(d, s, fn.Body.List, depth)
+}
+
+func (r *flowReader) walkStmts(d *flowDraft, s *scope, list []ast.Stmt, depth int) {
+	for _, stmt := range list {
+		r.walkStmt(d, s, stmt, depth)
+	}
+}
+
+// walkStmt reads one statement in source order. An `if` may become a frame, a
+// loop becomes a note on what it encloses, and everything else contributes
+// its calls, in the order they are written, and no frame: a switch is a
+// choice too, but its arms are values rather than conditions in words, and
+// reading it as an alt is a later question.
+func (r *flowReader) walkStmt(d *flowDraft, s *scope, stmt ast.Stmt, depth int) {
+	switch x := stmt.(type) {
+	case *ast.IfStmt:
+		r.walkIf(d, s, x, depth)
+	case *ast.ForStmt:
+		if x.Init != nil {
+			r.walkStmt(d, s, x.Init, depth)
+		}
+		if x.Cond != nil {
+			r.callsIn(d, s, x.Cond, depth)
+		}
+		d.enter(loopTitle(x))
+		r.walkStmts(d, s, x.Body.List, depth)
+		d.leave()
+	case *ast.RangeStmt:
+		r.callsIn(d, s, x.X, depth)
+		d.enter(loopTitle(x))
+		r.walkStmts(d, s, x.Body.List, depth)
+		d.leave()
+	case *ast.BlockStmt:
+		r.walkStmts(d, s, x.List, depth)
+	case *ast.LabeledStmt:
+		r.walkStmt(d, s, x.Stmt, depth)
+	case *ast.SwitchStmt:
+		if x.Init != nil {
+			r.walkStmt(d, s, x.Init, depth)
+		}
+		if x.Tag != nil {
+			r.callsIn(d, s, x.Tag, depth)
+		}
+		r.walkStmts(d, s, x.Body.List, depth)
+	case *ast.TypeSwitchStmt:
+		if x.Init != nil {
+			r.walkStmt(d, s, x.Init, depth)
+		}
+		r.walkStmt(d, s, x.Assign, depth)
+		r.walkStmts(d, s, x.Body.List, depth)
+	case *ast.SelectStmt:
+		r.walkStmts(d, s, x.Body.List, depth)
+	case *ast.CaseClause:
+		for _, expr := range x.List {
+			r.callsIn(d, s, expr, depth)
+		}
+		r.walkStmts(d, s, x.Body, depth)
+	case *ast.CommClause:
+		if x.Comm != nil {
+			r.walkStmt(d, s, x.Comm, depth)
+		}
+		r.walkStmts(d, s, x.Body, depth)
+	default:
+		r.callsIn(d, s, stmt, depth)
+	}
+}
+
+// walkIf reads an `if`, and its `else if` chain, as one choice. Each arm is
+// read into its own list; the choice is kept only if some arm produced a
+// step, because a frame around nothing tells the reader nothing. An arm that
+// ends in a return is terminal - the flow does not continue past the alt on
+// that path - and a chain with no final else gets an empty "otherwise" arm,
+// which is the arm the steps after the alt follow.
+func (r *flowReader) walkIf(d *flowDraft, s *scope, stmt *ast.IfStmt, depth int) {
+	var branches []catalog.AltBranch
+	titles := map[string]bool{}
+	drew := false
+
+	current := stmt
+	for {
+		if current.Init != nil {
+			r.walkStmt(d, s, current.Init, depth)
+		}
+		r.callsIn(d, s, current.Cond, depth)
+
+		d.push()
+		r.walkStmts(d, s, current.Body.List, depth)
+		steps := d.pop()
+		drew = drew || len(steps) > 0
+		branches = append(branches, catalog.AltBranch{
+			Title:    uniqueTitle(types.ExprString(current.Cond), titles),
+			Steps:    steps,
+			Terminal: endsWithReturn(current.Body),
+		})
+
+		if current.Else == nil {
+			branches = append(branches, catalog.AltBranch{Title: uniqueTitle("otherwise", titles), Steps: catalog.FlowNodes{}})
+
+			break
+		}
+		if next, ok := current.Else.(*ast.IfStmt); ok {
+			current = next
+
+			continue
+		}
+		block, ok := current.Else.(*ast.BlockStmt)
+		if !ok {
+			break
+		}
+		d.push()
+		r.walkStmts(d, s, block.List, depth)
+		steps = d.pop()
+		drew = drew || len(steps) > 0
+		branches = append(branches, catalog.AltBranch{
+			Title:    uniqueTitle("otherwise", titles),
+			Steps:    steps,
+			Terminal: endsWithReturn(block),
+		})
+
+		break
+	}
+
+	if !drew {
+		return
+	}
+
+	// A choice every arm of which ends the flow is not a choice about what
+	// comes next: nothing does, and the catalog refuses to draw an alt whose
+	// branches all leave. The arms stay; the mark comes off.
+	all := true
+	for _, branch := range branches {
+		if !branch.Terminal {
+			all = false
+		}
+	}
+	if all {
+		for i := range branches {
+			branches[i].Terminal = false
+		}
+	}
+
+	d.addAlt(branches)
+}
+
+// callsIn contributes the calls of one node, in the order they are written.
+func (r *flowReader) callsIn(d *flowDraft, s *scope, node ast.Node, depth int) {
+	if node == nil {
+		return
+	}
+	for _, site := range callSitesIn(node) {
 		r.call(d, s, site, depth)
 	}
+}
+
+func uniqueTitle(title string, seen map[string]bool) string {
+	out := title
+	for n := 2; seen[out]; n++ {
+		out = title + " (" + strconv.Itoa(n) + ")"
+	}
+	seen[out] = true
+
+	return out
+}
+
+// endsWithReturn is what makes a branch terminal: control leaves the function
+// at the end of the block, so nothing written after the `if` runs on it.
+func endsWithReturn(block *ast.BlockStmt) bool {
+	if block == nil || len(block.List) == 0 {
+		return false
+	}
+	_, ok := block.List[len(block.List)-1].(*ast.ReturnStmt)
+
+	return ok
 }
 
 func (r *flowReader) call(d *flowDraft, s *scope, site callSite, depth int) {
@@ -335,9 +580,6 @@ func (r *flowReader) call(d *flowDraft, s *scope, site callSite, depth int) {
 			// uc.<helper>(...): still this use case, in another method. The
 			// writing a use case does in a helper is writing it does.
 			if helper := s.pkg.methods(s.recvType)[method]; helper != nil {
-				d.enter(site.note)
-				defer d.leave()
-
 				r.walkBody(d, &scope{
 					pkg:      s.pkg,
 					key:      s.key,
@@ -375,8 +617,14 @@ func (r *flowReader) portCall(d *flowDraft, s *scope, field, method string, site
 
 	source, line := s.pkg.position(site.call.Pos())
 
-	d.enter(site.note)
-	defer d.leave()
+	// A port that is, or is adapted over, another service's generated client.
+	if hops := r.clientCalls(s, declared, method); len(hops) > 0 {
+		for _, hop := range hops {
+			r.rpcHop(d, hop, at(source, line))
+		}
+
+		return
+	}
 
 	// A port this use case declares, bound in assembly to another use case.
 	if target, ok := r.bindings[s.key+"."+declared]; ok {
@@ -435,6 +683,29 @@ func (r *flowReader) portCall(d *flowDraft, s *scope, field, method string, site
 	}
 
 	bind(s, site, r.resultsOfPortMethod(aggregate, name, method))
+}
+
+// rpcHop is a call to another service, on the lane the manifest gives its
+// package. The call is also recorded for the service's consumes, sourced from
+// the generated client it was read off, so the step's ref resolves without
+// anybody vendoring the proto twice.
+func (r *flowReader) rpcHop(d *flowDraft, hop rpcHop, line string) {
+	id := hop.client.methods[hop.method]
+	lane, peer, status := r.peerLane(d, hop.client)
+
+	d.add(catalog.Step{
+		From:   r.opts.svcID,
+		To:     lane,
+		Kind:   catalog.StepRPC,
+		Ref:    id,
+		Label:  hop.method,
+		Status: status,
+		Line:   line,
+	})
+
+	if _, seen := r.calls[id]; !seen {
+		r.calls[id] = catalog.RpcCall{ID: id, Peer: peer, Status: status, Source: hop.client.source}
+	}
 }
 
 // useCaseHop is a call into another use case of the same service: a message to
@@ -596,7 +867,13 @@ func bind(s *scope, site callSite, results []domainRef) {
 type flowDraft struct {
 	lanes []catalog.Participant
 	steps catalog.FlowNodes
-	seen  map[string]bool
+	// sinks is where the next node goes: the arm of an alt being read, or,
+	// with nothing pushed, the flow's own list.
+	sinks []*catalog.FlowNodes
+	// n numbers every node, step or frame, so an id is unique wherever the
+	// node sits.
+	n    int
+	seen map[string]bool
 	// loops is the loops enclosing whatever is being read right now, outermost
 	// first. A use case called once per session is read once, and every step it
 	// contributes happens once per session; the fact belongs to the steps, not
@@ -650,14 +927,43 @@ func (d *flowDraft) lane(p catalog.Participant) string {
 
 func (d *flowDraft) laneID(p catalog.Participant) string { return d.lane(p) }
 
+func newDraft() *flowDraft { return &flowDraft{seen: map[string]bool{}} }
+
+func (d *flowDraft) sink() *catalog.FlowNodes {
+	if len(d.sinks) == 0 {
+		return &d.steps
+	}
+
+	return d.sinks[len(d.sinks)-1]
+}
+
+func (d *flowDraft) push() { d.sinks = append(d.sinks, &catalog.FlowNodes{}) }
+
+func (d *flowDraft) pop() catalog.FlowNodes {
+	top := d.sinks[len(d.sinks)-1]
+	d.sinks = d.sinks[:len(d.sinks)-1]
+
+	return *top
+}
+
 func (d *flowDraft) add(step catalog.Step) {
+	d.n++
 	step.Type = "step"
-	step.ID = "s" + strconv.Itoa(len(d.steps)+1)
+	step.ID = "s" + strconv.Itoa(d.n)
 	step.Note = d.note(step.Note)
 	// Nothing here has been watched running. `declared` is the whole of what
-	// reading source can claim.
-	step.Status = catalog.StatusDeclared
-	d.steps = append(d.steps, &step)
+	// reading source can claim - unless the step already says less.
+	if step.Status == "" {
+		step.Status = catalog.StatusDeclared
+	}
+	sink := d.sink()
+	*sink = append(*sink, &step)
+}
+
+func (d *flowDraft) addAlt(branches []catalog.AltBranch) {
+	d.n++
+	sink := d.sink()
+	*sink = append(*sink, &catalog.Alt{Type: "alt", ID: "alt" + strconv.Itoa(d.n), Branches: branches})
 }
 
 func (r *flowReader) serviceLane() catalog.Participant {
@@ -702,12 +1008,10 @@ func (r *flowReader) storeLane(d *flowDraft) string {
 // syntax helpers
 // ---------------------------------------------------------------------------
 
-// callSite is one call, the names it was assigned to, and whether it sits
-// inside a loop.
+// callSite is one call and the names it was assigned to.
 type callSite struct {
 	call *ast.CallExpr
 	lhs  []ast.Expr
-	note string
 }
 
 // callSites lists the calls of a body in source order.
@@ -720,9 +1024,14 @@ func callSites(fn *ast.FuncDecl) []callSite {
 		return nil
 	}
 
+	return callSitesIn(fn.Body)
+}
+
+// callSitesIn lists the calls under one node, in source order.
+func callSitesIn(node ast.Node) []callSite {
 	assigned := map[*ast.CallExpr][]ast.Expr{}
-	ast.Inspect(fn.Body, func(node ast.Node) bool {
-		assign, ok := node.(*ast.AssignStmt)
+	ast.Inspect(node, func(n ast.Node) bool {
+		assign, ok := n.(*ast.AssignStmt)
 		if !ok || len(assign.Rhs) != 1 {
 			return true
 		}
@@ -734,18 +1043,10 @@ func callSites(fn *ast.FuncDecl) []callSite {
 	})
 
 	var out []callSite
-	var stack []ast.Node
-
-	ast.Inspect(fn.Body, func(node ast.Node) bool {
-		if node == nil {
-			stack = stack[:len(stack)-1]
-
-			return true
+	ast.Inspect(node, func(n ast.Node) bool {
+		if call, ok := n.(*ast.CallExpr); ok {
+			out = append(out, callSite{call: call, lhs: assigned[call]})
 		}
-		if call, ok := node.(*ast.CallExpr); ok {
-			out = append(out, callSite{call: call, lhs: assigned[call], note: loopNote(stack)})
-		}
-		stack = append(stack, node)
 
 		return true
 	})
@@ -753,23 +1054,21 @@ func callSites(fn *ast.FuncDecl) []callSite {
 	return out
 }
 
-// loopNote says that a step repeats, for the innermost loop it sits in.
+// loopTitle says that a step repeats, for the loop it sits in.
 //
 // A loop is a frame the catalog can hold, and this deliberately does not build
 // one: the frame would have to say what it repeats until, and the condition is
 // written for a compiler rather than for a reader. A note says the true part.
-func loopNote(stack []ast.Node) string {
-	for i := len(stack) - 1; i >= 0; i-- {
-		switch node := stack[i].(type) {
-		case *ast.RangeStmt:
-			return "inside a loop over `" + types.ExprString(node.X) + "`"
-		case *ast.ForStmt:
-			if node.Cond != nil {
-				return "inside a loop, while `" + types.ExprString(node.Cond) + "`"
-			}
-
-			return "inside a loop"
+func loopTitle(stmt ast.Stmt) string {
+	switch node := stmt.(type) {
+	case *ast.RangeStmt:
+		return "inside a loop over `" + types.ExprString(node.X) + "`"
+	case *ast.ForStmt:
+		if node.Cond != nil {
+			return "inside a loop, while `" + types.ExprString(node.Cond) + "`"
 		}
+
+		return "inside a loop"
 	}
 
 	return ""

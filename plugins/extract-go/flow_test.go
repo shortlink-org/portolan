@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/shortlink-org/portolan/catalog"
+	"github.com/shortlink-org/portolan/plugin"
 )
 
 // The flows themselves are checked where every other fragment is: the committed
@@ -103,23 +104,191 @@ func TestCallSitesAreInSourceOrder(t *testing.T) {
 
 // A step inside a loop says so. The frame is deliberately not built - the
 // condition is written for a compiler - but a reader who is not told that Save
-// runs once per session has been told something false.
-func TestCallSitesCarryTheLoopTheySitIn(t *testing.T) {
-	_, end := handleOf(t, useCaseSource, "end")
+// runs once per session has been told something false. The note travels from
+// the loop in Handle, through the helper it calls, onto the step.
+func TestAStepInsideALoopSaysSo(t *testing.T) {
+	d, _ := walkSource(t, useCaseSource, nil)
 
-	for _, site := range callSites(end) {
-		selector, ok := site.call.Fun.(*ast.SelectorExpr)
-		if !ok || selector.Sel.Name != "Save" {
-			continue
-		}
-		if site.note != "inside a loop over `retries`" {
-			t.Fatalf("Save note = %q", site.note)
-		}
+	save := stepLabelled(t, d.steps, "Save")
+	want := "inside a loop over `change.Ends(sessions, uc.now())`, inside a loop over `retries`."
+	if save.Note != want {
+		t.Fatalf("Save note = %q, want %q", save.Note, want)
+	}
+}
 
-		return
+// walkSource reads Handle of an in-memory use case the way extractFlows would,
+// with the store on its own lane and the given peers.
+func walkSource(t *testing.T, source string, peers map[string]string) (*flowDraft, *flowReader) {
+	t.Helper()
+
+	pkg, handle := handleOf(t, source, "Handle")
+	r := newFlowReader(t.TempDir(), flowOptions{context: "auth", svcID: "auth.auth", service: "auth", store: "pg", peers: peers}, &plugin.Builder{})
+	r.module = "github.com/example/auth"
+
+	d := newDraft()
+	d.lane(r.serviceLane())
+	r.walkBody(d, &scope{
+		pkg:      pkg,
+		key:      "session/login",
+		fields:   useCaseFields(pkg),
+		imports:  importsOf(pkg),
+		vars:     map[string]domainRef{},
+		recv:     receiverIdent(handle),
+		recvType: "UseCase",
+	}, handle, 0)
+
+	return d, r
+}
+
+func stepLabelled(t *testing.T, nodes catalog.FlowNodes, label string) *catalog.Step {
+	t.Helper()
+	for _, node := range nodes {
+		switch x := node.(type) {
+		case *catalog.Step:
+			if x.Label == label {
+				return x
+			}
+		case *catalog.Alt:
+			for _, branch := range x.Branches {
+				for _, inner := range branch.Steps {
+					if step, ok := inner.(*catalog.Step); ok && step.Label == label {
+						return step
+					}
+				}
+			}
+		}
+	}
+	t.Fatalf("no step labelled %s", label)
+
+	return nil
+}
+
+const branchingSource = `package login
+
+import (
+	"context"
+
+	"github.com/example/auth/internal/domain/session"
+)
+
+type UseCase struct {
+	repo session.Repository
+}
+
+func (uc *UseCase) Handle(ctx context.Context, in dto.Input) error {
+	u, err := uc.repo.ByID(ctx, in.ID)
+	if err != nil {
+		return err
 	}
 
-	t.Fatal("no Save call found")
+	if in.Force {
+		if err := uc.repo.Save(ctx, u); err != nil {
+			return err
+		}
+		return nil
+	} else if in.Dry {
+		uc.repo.ByToken(ctx, in.Token)
+	}
+
+	return uc.repo.Save(ctx, u)
+}
+`
+
+// An if with a hop inside it is a choice the reader has to see, and an arm
+// that returns is one the flow does not continue past. The if with nothing in
+// it - the error check - is not drawn at all.
+func TestAnIfWithAHopInsideItIsAnAlt(t *testing.T) {
+	d, _ := walkSource(t, branchingSource, nil)
+
+	if len(d.steps) != 3 {
+		t.Fatalf("top-level nodes = %d, want 3 (ByID, alt, Save): %s", len(d.steps), dump(d.steps))
+	}
+	alt, ok := d.steps[1].(*catalog.Alt)
+	if !ok {
+		t.Fatalf("second node is %T, want alt", d.steps[1])
+	}
+	if alt.ID != "alt4" {
+		t.Errorf("alt id = %q; ids number every node, frames included", alt.ID)
+	}
+
+	type arm struct {
+		title    string
+		steps    int
+		terminal bool
+	}
+	var got []arm
+	for _, b := range alt.Branches {
+		got = append(got, arm{b.Title, len(b.Steps), b.Terminal})
+	}
+	want := []arm{{"in.Force", 1, true}, {"in.Dry", 1, false}, {"otherwise", 0, false}}
+	if len(got) != len(want) {
+		t.Fatalf("arms = %+v, want %+v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("arm %d = %+v, want %+v", i, got[i], want[i])
+		}
+	}
+
+	last, ok := d.steps[2].(*catalog.Step)
+	if !ok || last.Label != "Save" || last.ID != "s5" {
+		t.Errorf("last node = %+v, want the Save after the alt as s5", d.steps[2])
+	}
+}
+
+// Two arms that both end the flow are not a choice about what comes next, and
+// the catalog refuses an alt whose every arm leaves. The arms stay drawn; the
+// mark comes off.
+func TestArmsThatAllLeaveLoseTheMark(t *testing.T) {
+	const source = `package login
+
+import "github.com/example/auth/internal/domain/session"
+
+type UseCase struct {
+	repo session.Repository
+}
+
+func (uc *UseCase) Handle(ctx context.Context, in dto.Input) error {
+	if in.A {
+		return uc.repo.Save(ctx, nil)
+	} else {
+		return uc.repo.ByID(ctx, in.ID)
+	}
+}
+`
+	d, _ := walkSource(t, source, nil)
+	alt, ok := d.steps[0].(*catalog.Alt)
+	if !ok {
+		t.Fatalf("node = %T", d.steps[0])
+	}
+	for _, branch := range alt.Branches {
+		if branch.Terminal {
+			t.Errorf("arm %q is terminal", branch.Title)
+		}
+	}
+}
+
+func dump(nodes catalog.FlowNodes) string {
+	out := ""
+	for _, node := range nodes {
+		switch x := node.(type) {
+		case *catalog.Step:
+			out += x.ID + ":" + x.Label + " "
+		case *catalog.Alt:
+			out += x.ID + "{" + dump(altSteps(x)) + "} "
+		}
+	}
+
+	return out
+}
+
+func altSteps(alt *catalog.Alt) catalog.FlowNodes {
+	var out catalog.FlowNodes
+	for _, b := range alt.Branches {
+		out = append(out, b.Steps...)
+	}
+
+	return out
 }
 
 // The loops enclosing a call travel into the body it reaches: a use case run
