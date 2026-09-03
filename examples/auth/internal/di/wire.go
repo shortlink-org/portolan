@@ -31,6 +31,7 @@ func New() (App, error) {
 		provider.Outbox,
 		provider.UseCase,
 		provider.Authenticator,
+		provider.Risk,
 		policy.New,
 		provider.Transport,
 		wire.Struct(new(App), "*"),

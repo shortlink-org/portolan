@@ -29,6 +29,21 @@ func (f authFunc) Authenticate(ctx context.Context, email, password string) (str
 	return f(ctx, email, password)
 }
 
+// riskFunc is the other port, satisfied inline the same way.
+type riskFunc func(ctx context.Context, attempt login.Attempt) (login.Verdict, error)
+
+func (f riskFunc) Assess(ctx context.Context, attempt login.Attempt) (login.Verdict, error) {
+	return f(ctx, attempt)
+}
+
+func allows() login.Risk {
+	return riskFunc(func(context.Context, login.Attempt) (login.Verdict, error) { return login.VerdictAllow, nil })
+}
+
+func blocks() login.Risk {
+	return riskFunc(func(context.Context, login.Attempt) (login.Verdict, error) { return login.VerdictBlock, nil })
+}
+
 func TestMain(m *testing.M) {
 	code := m.Run()
 	postgrestest.Stop()
@@ -42,6 +57,10 @@ type harness struct {
 }
 
 func newHarness(t *testing.T, auth login.Authenticator) *harness {
+	return newHarnessWith(t, auth, allows())
+}
+
+func newHarnessWith(t *testing.T, auth login.Authenticator, risk login.Risk) *harness {
 	t.Helper()
 	h := &harness{}
 
@@ -53,7 +72,7 @@ func newHarness(t *testing.T, auth login.Authenticator) *harness {
 	router, unit := postgrestest.Store(t, postgrestest.Source{FS: repo.Migrations, Name: repo.Name})
 	h.store = repo.NewPostgres(router, unit, b)
 
-	h.uc = login.New(h.store, auth, func() time.Time { return now }, func() string { return "s1" })
+	h.uc = login.New(h.store, auth, risk, func() time.Time { return now }, func() string { return "s1" })
 	return h
 }
 
@@ -137,7 +156,7 @@ func TestEachLoginIsItsOwnSession(t *testing.T) {
 	store := repo.NewPostgres(router, unit, bus.NewInProc())
 
 	ids := 0
-	uc := login.New(store, vouches("u1"), func() time.Time { return now }, func() string {
+	uc := login.New(store, vouches("u1"), allows(), func() time.Time { return now }, func() string {
 		ids++
 		return "s" + string(rune('0'+ids))
 	})
@@ -152,5 +171,64 @@ func TestEachLoginIsItsOwnSession(t *testing.T) {
 	}
 	if first.Token == second.Token {
 		t.Fatal("two logins shared a token")
+	}
+}
+
+// A blocked attempt is treated as the account being compromised: the sessions
+// it already has are ended, with a reason a client can act on, and only then
+// is the attempt refused.
+func TestABlockedAttemptEndsEverySessionFirst(t *testing.T) {
+	ctx := context.Background()
+	h := newHarnessWith(t, vouches("u1"), allows())
+
+	if _, err := h.uc.Handle(ctx, dto.Input{Email: "ada@example.com", Password: "Passw0rdish"}); err != nil {
+		t.Fatal(err)
+	}
+	h.events = nil
+
+	ids := 0
+	blocked := login.New(h.store, vouches("u1"), blocks(), func() time.Time { return now.Add(time.Minute) }, func() string {
+		ids++
+		return "s9"
+	})
+	out, err := blocked.Handle(ctx, dto.Input{Email: "ada@example.com", Password: "Passw0rdish"})
+	if !errors.Is(err, login.ErrBlocked) {
+		t.Fatalf("= %v, want ErrBlocked", err)
+	}
+	if out.Token != "" {
+		t.Error("a blocked login handed out a token")
+	}
+
+	if len(h.events) != 1 {
+		t.Fatalf("events = %v, want the one session ended", h.events)
+	}
+	ended, ok := h.events[0].(event.SessionEnded)
+	if !ok || ended.Reason() != event.ReasonRiskBlocked || ended.SessionID() != "s1" {
+		t.Errorf("event = %#v, want SessionEnded(s1, risk-blocked)", h.events[0])
+	}
+
+	stored, err := h.store.ByID(ctx, "s1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.Live(now.Add(time.Minute)) {
+		t.Error("the earlier session is still live after a blocked attempt")
+	}
+}
+
+// Risk being unreachable is not a verdict. No session is issued, nothing is
+// ended, and the error goes back as it came.
+func TestRiskBeingDownIssuesNothing(t *testing.T) {
+	ctx := context.Background()
+	boom := errors.New("risk is down")
+	h := newHarnessWith(t, vouches("u1"), riskFunc(func(context.Context, login.Attempt) (login.Verdict, error) {
+		return "", boom
+	}))
+
+	if _, err := h.uc.Handle(ctx, dto.Input{Email: "a@b.co", Password: "x"}); !errors.Is(err, boom) {
+		t.Fatalf("= %v, want %v", err, boom)
+	}
+	if len(h.events) != 0 {
+		t.Errorf("%d events, want none", len(h.events))
 	}
 }

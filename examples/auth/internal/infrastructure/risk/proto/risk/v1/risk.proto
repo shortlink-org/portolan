@@ -1,0 +1,34 @@
+// A narrowed copy of the risk service's contract, kept here because this is
+// the service that calls it (see ADR org.0001 in the estate's decisions): the
+// consumer vendors what it uses and nothing else. Assess is the one rpc auth
+// runs; the rest of risk.v1 is not this service's business and is not here.
+syntax = "proto3";
+
+package risk.v1;
+
+option go_package = "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/risk/gen/riskpb;riskpb";
+
+// RiskService scores an attempt to do something before it is allowed.
+service RiskService {
+  // Assess says whether a login attempt should go ahead.
+  rpc Assess(AssessRequest) returns (AssessResponse);
+}
+
+message AssessRequest {
+  // The user the attempt is for. Auth has already checked the credentials by
+  // the time it asks; risk decides whether that is enough today.
+  string user_id = 1;
+}
+
+// Verdict is closed on purpose: a caller switches on it, and a new value is a
+// contract change rather than a string somebody starts sending.
+enum Verdict {
+  VERDICT_UNSPECIFIED = 0;
+  VERDICT_ALLOW = 1;
+  // Refuse the attempt and treat the account as compromised.
+  VERDICT_BLOCK = 2;
+}
+
+message AssessResponse {
+  Verdict verdict = 1;
+}

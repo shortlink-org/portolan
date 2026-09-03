@@ -17,6 +17,10 @@ const (
 	// out because the password changed" is explaining something the person did,
 	// while "your session expired" would be a lie.
 	ReasonPasswordChanged Reason = "password-changed"
+	// ReasonRiskBlocked - a login attempt was judged hostile, and every session
+	// the account had is treated as the attacker's. Told apart from the rest
+	// so that a client can say "sign in again" rather than "you signed out".
+	ReasonRiskBlocked Reason = "risk-blocked"
 )
 
 // SessionEnded is published when a session is deliberately ended.

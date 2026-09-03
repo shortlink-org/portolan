@@ -81,11 +81,11 @@ func TestThePeerIsTheManifestsToName(t *testing.T) {
 	unnamed.rpcHop(d, rpcHop{client: client, method: "Assess"}, "")
 
 	step = d.steps[0].(*catalog.Step)
-	if step.To != "risk.v1" || step.Status != catalog.StatusUnresolved {
+	if step.To != "risk-v1" || step.Status != catalog.StatusUnresolved {
 		t.Errorf("step = %+v", step)
 	}
-	if lane := d.lanes[0]; lane.Kind != catalog.ParticipantUnknown {
-		t.Errorf("lane = %+v", lane)
+	if lane := d.lanes[0]; lane.Kind != catalog.ParticipantUnknown || lane.ID != "risk-v1" || lane.Label != "risk.v1" {
+		t.Errorf("lane = %+v, want a bare id with the package on the label", lane)
 	}
 	if calls := unnamed.consumes(); len(calls) != 1 || calls[0].Status != catalog.StatusUnresolved || calls[0].Peer != "risk.v1" {
 		t.Errorf("consumes = %+v", calls)

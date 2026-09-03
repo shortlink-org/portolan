@@ -412,6 +412,16 @@ func (r *flowReader) walkStmt(d *flowDraft, s *scope, stmt ast.Stmt, depth int) 
 		d.leave()
 	case *ast.RangeStmt:
 		r.callsIn(d, s, x.X, depth)
+		// `for _, s := range sessions`: the element is what the list holds.
+		// A list came back from a port as `[]*Session`, so its element is a
+		// Session, and what is called on it can be read the same way.
+		if list, ok := x.X.(*ast.Ident); ok {
+			if ref, tracked := s.vars[list.Name]; tracked {
+				if value, ok := x.Value.(*ast.Ident); ok && value.Name != "_" {
+					s.vars[value.Name] = ref
+				}
+			}
+		}
 		d.enter(loopTitle(x))
 		r.walkStmts(d, s, x.Body.List, depth)
 		d.leave()

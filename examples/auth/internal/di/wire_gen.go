@@ -79,7 +79,12 @@ func New() (App, error) {
 	users := user2.NewUsers(useCase, getUseCase, change_passwordUseCase, validateUseCase)
 	authenticateUseCase := authenticate.New(postgres)
 	authenticator := provider.ProvideAuthenticator(authenticateUseCase)
-	loginUseCase := login.New(repository, authenticator, v, v2)
+	riskServiceClient, err := provider.ProvideRiskClient(config)
+	if err != nil {
+		return App{}, err
+	}
+	loginRisk := provider.ProvideRisk(riskServiceClient)
+	loginUseCase := login.New(repository, authenticator, loginRisk, v, v2)
 	logoutUseCase := logout.New(repository, v)
 	sessions := session2.NewSessions(loginUseCase, logoutUseCase, validateUseCase)
 	server := http.NewServer(users, sessions)

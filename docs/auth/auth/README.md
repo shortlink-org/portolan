@@ -91,6 +91,26 @@ shapes, status codes and the reasoning behind them are described there, and the
 server interface is generated from it - so it is the one place that can be
 wrong, and it cannot drift from this file because this file does not repeat it.
 
+## Risk
+
+Login asks a risk service before it issues anything. The contract is a narrowed
+copy of `risk.v1` under `internal/infrastructure/risk/proto`, the generated
+client beside it, and `RISK_ADDR` says where the service is; unset, every
+attempt is allowed, so a laptop does not need one.
+
+The use case does not know any of that. It declares `login.Risk` - an attempt
+in, a verdict out - and assembly hands it the adapter in
+`internal/infrastructure/risk`, which is the one package that speaks both. That
+is the same shape as the Authenticator, and for the same reason: the knowledge
+that another service exists lives in one place, and it is not the domain.
+
+A blocked attempt is treated as the account being compromised. Whoever is
+trying has the right password, so every live session the account has is ended
+first - `SessionEnded` with reason `risk-blocked`, one transaction each - and
+only then is the attempt refused, with the same 401 as a wrong password. A 403
+would say the account exists and is worth attacking, which is the one thing
+the attacker came to learn.
+
 ## Caching
 
 `ByToken` is the hot path: every authenticated request in the estate ends
@@ -287,6 +307,12 @@ go generate ./...
 | `expiresAt` | `string (date-time)` |
 
 </details>
+
+## Consumes
+
+| Call | Peer | Status | Source |
+| --- | --- | --- | --- |
+| `risk.v1.RiskService/Assess` | `risk.v1` | unresolved | `examples/auth/internal/infrastructure/risk/gen/riskpb/risk_grpc.pb.go` |
 
 ## Publishes
 

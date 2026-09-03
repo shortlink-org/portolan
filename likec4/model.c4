@@ -10,6 +10,7 @@ model {
   analytics_sink = unknown 'analytics-sink (unknown)'
   client = actor 'client'
   auth_pg = store 'auth-pg'
+  risk_v1 = unknown 'risk.v1'
 
   shop = context 'Shop' {
     description 'Everything the customer touches before money moves: baskets, orders and prices.'

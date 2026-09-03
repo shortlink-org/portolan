@@ -1024,19 +1024,43 @@ views {
     }
     auth.auth -> auth.auth 'Authenticate' {
       color declared  line dashed  head none
-      notes 'Port `Authenticator`, bound at assembly to the Authenticate use case. — examples/auth/internal/application/session/usecases/login/usecase.go:49'
+      notes 'Port `Authenticator`, bound at assembly to the Authenticate use case. — examples/auth/internal/application/session/usecases/login/usecase.go:58'
     }
     auth.auth -> auth_pg 'ByEmail' {
       color declared  line dashed  head none
       notes 'examples/auth/internal/application/user/usecases/authenticate/usecase.go:33'
     }
+    auth.auth -> risk_v1 'Assess' {
+      color unresolved  line dotted  head normal
+      notes 'examples/auth/internal/application/session/usecases/login/usecase.go:63'
+    }
+    alt {
+      when 'verdict == VerdictBlock' {
+        break 'ends the flow' {
+          auth.auth -> auth_pg 'ByUserID' {
+            color declared  line dashed  head none
+            notes 'examples/auth/internal/application/session/usecases/login/usecase.go:92'
+          }
+          auth.auth -> auth_pg 'Save' {
+            color declared  line dashed  head none
+            notes 'inside a loop over `sessions`. — examples/auth/internal/application/session/usecases/login/usecase.go:102'
+          }
+          auth.auth -> bus 'SessionEnded' {
+            color declared  line dashed  head onormal
+            notes 'inside a loop over `sessions`. — examples/auth/internal/application/session/usecases/login/usecase.go:102'
+          }
+        }
+      }
+      else 'otherwise' {
+      }
+    }
     auth.auth -> auth_pg 'Save' {
       color declared  line dashed  head none
-      notes 'examples/auth/internal/application/session/usecases/login/usecase.go:58'
+      notes 'examples/auth/internal/application/session/usecases/login/usecase.go:78'
     }
     auth.auth -> bus 'SessionStarted' {
       color declared  line dashed  head onormal
-      notes 'examples/auth/internal/application/session/usecases/login/usecase.go:58'
+      notes 'examples/auth/internal/application/session/usecases/login/usecase.go:78'
     }
   }
 
@@ -1046,9 +1070,23 @@ views {
       color declared  line dashed  head normal
       notes 'examples/auth/internal/infrastructure/transport/http/session/login.go:11'
     }
+    auth.auth -> risk_v1 'Assess' {
+      color unresolved  line dotted  head normal
+      notes 'examples/auth/internal/application/session/usecases/login/usecase.go:63'
+    }
+    alt {
+      when 'verdict == VerdictBlock' {
+        break 'ends the flow' {
+          auth.auth -> bus 'SessionEnded' {
+            color declared  line dashed  head onormal
+            notes 'inside a loop over `sessions`. — examples/auth/internal/application/session/usecases/login/usecase.go:102'
+          }
+        }
+      }
+    }
     auth.auth -> bus 'SessionStarted' {
       color declared  line dashed  head onormal
-      notes 'examples/auth/internal/application/session/usecases/login/usecase.go:58'
+      notes 'examples/auth/internal/application/session/usecases/login/usecase.go:78'
     }
   }
 

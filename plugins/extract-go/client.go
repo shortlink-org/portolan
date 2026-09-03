@@ -361,5 +361,14 @@ func (r *flowReader) peerLane(d *flowDraft, client grpcClient) (lane, peer strin
 		r.warnedPeer[client.pkg] = true
 	}
 
-	return d.lane(catalog.Participant{ID: client.pkg, Kind: catalog.ParticipantUnknown}), client.pkg, catalog.StatusUnresolved
+	// A bare name for the lane, as for the store: a participant that is not
+	// a service must not carry a dot, which the diagram model reads as
+	// containment. The package stays on the label, and on the call.
+	lane = d.lane(catalog.Participant{
+		ID:    strings.ReplaceAll(client.pkg, ".", "-"),
+		Kind:  catalog.ParticipantUnknown,
+		Label: client.pkg,
+	})
+
+	return lane, client.pkg, catalog.StatusUnresolved
 }
