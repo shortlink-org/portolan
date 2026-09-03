@@ -15,7 +15,13 @@
 //    context's name is a fact about the estate that belongs on the Problems
 //    page, next to the other things that are true and unfortunate.
 
-import type { BoundedContext, Catalog, Service, TypeDef } from "./catalog";
+import type {
+  Aggregate,
+  BoundedContext,
+  Catalog,
+  Service,
+  TypeDef,
+} from "./catalog";
 
 /** One file, parsed. */
 export interface CatalogSource {
@@ -219,7 +225,7 @@ function mergeService(
       ...incoming,
       provides: [...incoming.provides],
       consumes: [...incoming.consumes],
-      aggregates: [...incoming.aggregates],
+      aggregates: incoming.aggregates.map(copyAggregate),
       ...(incoming.stores ? { stores: [...incoming.stores] } : {}),
       ...(incoming.modules ? { modules: [...incoming.modules] } : {}),
     });
@@ -248,7 +254,7 @@ function mergeService(
 
   appendNew(existing.provides, incoming.provides, (p) => p.id);
   appendNew(existing.consumes, incoming.consumes, (c) => c.id);
-  appendNew(existing.aggregates, incoming.aggregates, (a) => a.id);
+  mergeAggregates(existing.aggregates, incoming.aggregates);
 
   if (incoming.stores?.length) {
     const stores = existing.stores ?? [];
@@ -262,6 +268,54 @@ function mergeService(
       if (!modules.includes(id)) modules.push(id);
     existing.modules = modules;
   }
+}
+
+/**
+ * Unions aggregates by id, and inside a shared aggregate unions events by id,
+ * and inside a shared event unions consumers by service.
+ *
+ * Union stops one level short of the scalars on purpose. Two sources both
+ * describing `shop.oms.order` are the domain extractor and something that
+ * knows one more thing about it - typically who listens to its events, which
+ * is a fact the producer's repository cannot hold. The fields they both fill
+ * in keep the first value like everything else here; what the second one adds
+ * is kept rather than thrown away with the whole aggregate.
+ */
+function mergeAggregates(
+  into: Aggregate[],
+  from: Aggregate[],
+): void {
+  const byId = new Map(into.map((a) => [a.id, a]));
+  for (const incoming of from) {
+    const existing = byId.get(incoming.id);
+    if (!existing) {
+      const copy = copyAggregate(incoming);
+      into.push(copy);
+      byId.set(copy.id, copy);
+
+      continue;
+    }
+    const events = new Map(existing.events.map((e) => [e.id, e]));
+    for (const event of incoming.events) {
+      const known = events.get(event.id);
+      if (!known) {
+        const copy = { ...event, consumers: [...event.consumers] };
+        existing.events.push(copy);
+        events.set(copy.id, copy);
+
+        continue;
+      }
+      appendNew(known.consumers, event.consumers, (c) => c.service);
+    }
+  }
+}
+
+/** A copy deep enough that unioning into it never writes into a source. */
+function copyAggregate(aggregate: Aggregate): Aggregate {
+  return {
+    ...aggregate,
+    events: aggregate.events.map((e) => ({ ...e, consumers: [...e.consumers] })),
+  };
 }
 
 /** Appends the entries whose id is not already present. */

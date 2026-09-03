@@ -158,6 +158,61 @@ describe("mergeCatalogs", () => {
     expect(service?.provides.map((p) => p.id)).toEqual(["auth.v1.Users"]);
   });
 
+  it("lets a second source add an event, and a consumer, to an aggregate it did not declare", () => {
+    const aggregate = (events: Catalog["contexts"][0]["services"][0]["aggregates"][0]["events"]) => ({
+      id: "shop.oms.order",
+      slug: "order",
+      name: "Order",
+      readme: "",
+      root: "Order",
+      entities: [],
+      valueObjects: [],
+      operations: [],
+      events,
+    });
+    const event = (name: string, consumers: { service: string; status: "declared" | "verified"; note?: string }[]) => ({
+      id: `shop.oms.order.${name}`,
+      slug: name.toLowerCase(),
+      name,
+      versions: [{ version: "v1", doc: "", source: "x", fields: [] }],
+      consumers,
+    });
+
+    const producer = context("shop", ["shop.oms"]);
+    producer.services[0]!.aggregates = [
+      aggregate([event("OrderPlaced", [{ service: "payments.ledger", status: "declared", note: "first" }])]),
+    ];
+    const overlay = context("shop", ["shop.oms"]);
+    overlay.services[0]!.aggregates = [
+      aggregate([
+        event("OrderPlaced", [
+          { service: "payments.ledger", status: "verified", note: "second" },
+          { service: "delivery.core", status: "declared" },
+        ]),
+        event("OrderCancelled", []),
+      ]),
+    ];
+
+    const before = JSON.stringify([producer, overlay]);
+    const merged = mergeCatalogs([
+      source("a.json", { contexts: [producer] }),
+      source("b.json", { contexts: [overlay] }),
+    ]);
+
+    expect(merged.conflicts).toEqual([]);
+    const events = merged.catalog.contexts[0]?.services[0]?.aggregates[0]?.events;
+    expect(events?.map((e) => e.id)).toEqual([
+      "shop.oms.order.OrderPlaced",
+      "shop.oms.order.OrderCancelled",
+    ]);
+    expect(events?.[0]?.consumers).toEqual([
+      { service: "payments.ledger", status: "declared", note: "first" },
+      { service: "delivery.core", status: "declared" },
+    ]);
+    // The union never writes into a source.
+    expect(JSON.stringify([producer, overlay])).toBe(before);
+  });
+
   it("reports two sources disagreeing about a service's repo", () => {
     const a = context("auth", ["auth.auth"]);
     a.services = a.services.map((s) => ({ ...s, repo: "github.com/one" }));
