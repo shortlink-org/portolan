@@ -15,6 +15,8 @@
 
 import { buildIndex, CatalogError, validateCatalog } from "./catalog";
 import type { Catalog, CatalogIndex } from "./catalog";
+import { enrichCatalog } from "./enrich";
+import type { DerivedEdge } from "./enrich";
 import { mergeCatalogs } from "./merge";
 import type { CatalogSource, MergeConflict, SourceStamp } from "./merge";
 
@@ -48,6 +50,7 @@ interface Loaded {
   catalog: Catalog;
   sources: SourceStamp[];
   conflicts: MergeConflict[];
+  derived: DerivedEdge[];
   error: CatalogError | null;
 }
 
@@ -62,12 +65,17 @@ function load(): Loaded {
   );
 
   const merged = mergeCatalogs(sources);
+  // Enriched before it is validated: the edges the flows imply are part of
+  // the union the way a peer named by another source is, and the validator
+  // resolves a step's call against them.
+  const enriched = enrichCatalog(merged.catalog);
 
   try {
     return {
-      catalog: validateCatalog(merged.catalog),
+      catalog: validateCatalog(enriched.catalog),
       sources: merged.sources,
       conflicts: merged.conflicts,
+      derived: enriched.derived,
       error: null,
     };
   } catch (cause) {
@@ -81,7 +89,13 @@ function load(): Loaded {
             cause instanceof Error ? cause.message : String(cause),
           );
 
-    return { catalog: EMPTY, sources: merged.sources, conflicts: merged.conflicts, error };
+    return {
+      catalog: EMPTY,
+      sources: merged.sources,
+      conflicts: merged.conflicts,
+      derived: [],
+      error,
+    };
   }
 }
 
@@ -102,6 +116,13 @@ export const catalogSources: SourceStamp[] = loaded.sources;
  * that belongs on the Problems page rather than on a crash screen.
  */
 export const catalogConflicts: MergeConflict[] = loaded.conflicts;
+
+/**
+ * Consumers and calls no source declared: what the flows said, written onto
+ * the events and services after the merge. Each one names the step it was
+ * read from, and the catalog above already contains it.
+ */
+export const derivedEdges: DerivedEdge[] = loaded.derived;
 
 /**
  * Where the catalog is read from, as a reader would type it. Empty states name

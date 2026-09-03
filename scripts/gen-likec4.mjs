@@ -157,6 +157,10 @@ for (const context of catalog.contexts) {
     for (const aggregate of service.aggregates) {
       for (const event of aggregate.events) {
         for (const consumer of event.consumers) {
+          // A service hearing its own event is a fact about the event, not
+          // an arrow between two boxes; the app's graph keeps it on the
+          // event for the same reason.
+          if (consumer.service === service.id) continue;
           relations.push(
             `  ${fqn(service.id)} -> ${fqn(consumer.service)} ${q(event.name)} {\n` +
               `    style { color ${consumer.status}  line ${STATUS_LINE[consumer.status]}  head onormal }\n` +

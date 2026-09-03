@@ -290,12 +290,12 @@ go generate ./...
 
 ## Publishes
 
-| Event | Latest |
-| --- | --- |
-| [SessionEnded](aggregates/session.md) | v1 |
-| [SessionStarted](aggregates/session.md) | v1 |
-| [PasswordChanged](aggregates/user.md) | v1 |
-| [UserRegistered](aggregates/user.md) | v1 |
+| Event | Latest | Consumers |
+| --- | --- | --- |
+| [SessionEnded](aggregates/session.md) | v1 | — |
+| [SessionStarted](aggregates/session.md) | v1 | — |
+| [PasswordChanged](aggregates/user.md) | v1 | [auth.auth (declared)](README.md) |
+| [UserRegistered](aggregates/user.md) | v1 | — |
 
 ## Stores
 

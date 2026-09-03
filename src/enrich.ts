@@ -25,7 +25,9 @@ import type {
   Service,
   Status,
 } from "./catalog";
-import { walkSteps } from "./catalog";
+// With the extension: scripts/catalog-sources.mjs runs this file under Node
+// without a bundler, and Node resolves nothing it is not told.
+import { walkSteps } from "./catalog.ts";
 
 export interface DerivedEdge {
   kind: "consumer" | "rpc";

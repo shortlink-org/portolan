@@ -52,6 +52,17 @@ describe("eventGraph", () => {
     expect(ledger?.consumes).toBe(2);
   });
 
+  it("carries the consumer the flows implied: auth hears its own PasswordChanged", () => {
+    // No source declares it. The revoke-sessions flow opens with the event
+    // arriving at auth.auth, and the enrichment pass wrote that onto the event.
+    const auth = sample.services.find((s) => s.id === "auth.auth");
+    expect(auth?.consumes).toBe(1);
+    const changed = sample.events.find((e) => e.name === "PasswordChanged");
+    expect(changed?.consumers).toMatchObject([
+      { service: "auth.auth", status: "declared", self: true },
+    ]);
+  });
+
   it("marks self-consumption on the event rather than as an edge", () => {
     const selfConsumed = eventGraph({
       ...catalog,

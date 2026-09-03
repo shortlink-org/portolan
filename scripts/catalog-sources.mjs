@@ -10,6 +10,7 @@ import { readFileSync } from "node:fs";
 import { glob } from "node:fs/promises";
 
 import { validateCatalog } from "../src/catalog.ts";
+import { enrichCatalog } from "../src/enrich.ts";
 import { mergeCatalogs } from "../src/merge.ts";
 
 export async function loadCatalog(manifestPath = "portolan.json") {
@@ -31,11 +32,15 @@ export async function loadCatalog(manifestPath = "portolan.json") {
     })),
   );
 
+  // The edges the flows imply are added before validation, the same way the
+  // app does it, so a generator draws the same estate the reader sees.
+  const enriched = enrichCatalog(merged.catalog);
+
   try {
-    validateCatalog(merged.catalog);
+    validateCatalog(enriched.catalog);
   } catch (cause) {
     throw new Error(`the merged catalog is not valid: ${cause.message}`);
   }
 
-  return { manifest, ...merged };
+  return { manifest, ...merged, catalog: enriched.catalog, derived: enriched.derived };
 }

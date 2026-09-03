@@ -63,6 +63,10 @@ Hash is what the user domain stores in place of a password. The plaintext never 
 
 `auth.auth.user.PasswordChanged`
 
+| Consumer | Status |
+| --- | --- |
+| [auth.auth](../README.md) | declared |
+
 #### v1 — current
 
 PasswordChanged is published when a user's password is replaced. It says the password is different now; it does not carry the password, old or new, in any form.
