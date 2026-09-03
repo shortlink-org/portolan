@@ -137,6 +137,17 @@ type RpcCall struct {
 
 	// Module is the module the vendored copy this call was read from belongs to.
 	Module string `json:"module,omitempty"`
+
+	// Via is set when the call was derived from a flow step rather than declared.
+	Via *EdgeVia `json:"via,omitempty"`
+}
+
+// EdgeVia names the flow step a derived consumer or call was read from. A
+// plugin never writes one: the host derives edges from flows after the merge,
+// and this is how the generated output can say where an arrow came from.
+type EdgeVia struct {
+	Flow string `json:"flow"`
+	Step string `json:"step"`
 }
 
 // ProtoModule is a schema module: a set of .proto files with a name, a version
@@ -235,6 +246,9 @@ type EventConsumer struct {
 	Service string `json:"service"`
 	Status  Status `json:"status"`
 	Note    string `json:"note,omitempty"`
+
+	// Via is set when the consumer was derived from a flow step rather than declared.
+	Via *EdgeVia `json:"via,omitempty"`
 }
 
 type EventVersion struct {

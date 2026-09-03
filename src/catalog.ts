@@ -138,6 +138,16 @@ export interface RpcMessage {
   name: string; // "PlaceOrderRequest"
   fields: Field[];
 }
+/**
+ * Where a derived edge was read from: the flow step that implies it. A
+ * consumer or a call carrying `via` was not declared by any source; it is
+ * what a flow already said, written where the graph can read it. It is kept
+ * as a field rather than a note because the UI links back to the step.
+ */
+export interface EdgeVia {
+  flow: string; // Flow.slug
+  step: string; // Step.id
+}
 export interface RpcCall {
   id: string; // "<proto.package.Service>/<Method>"
   peer: string; // service id if resolved, else raw name
@@ -146,6 +156,8 @@ export interface RpcCall {
   note?: string;
   /** The module the vendored copy this call was read from belongs to. */
   module?: string;
+  /** Set when the call was derived from a flow step rather than declared. */
+  via?: EdgeVia;
 }
 
 /**
@@ -254,7 +266,14 @@ export interface Event {
   slug: string;
   name: string;
   versions: EventVersion[]; // >=1, oldest first
-  consumers: { service: string; status: Status; note?: string }[];
+  consumers: EventConsumer[];
+}
+export interface EventConsumer {
+  service: string;
+  status: Status;
+  note?: string;
+  /** Set when the consumer was derived from a flow step rather than declared. */
+  via?: EdgeVia;
 }
 export interface EventVersion {
   version: string;
