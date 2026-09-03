@@ -2,7 +2,6 @@
 // and every Catalog value is validated before the app is allowed to draw it.
 
 export type Status = "verified" | "declared" | "unresolved";
-export type Provenance = "authored" | "derived-from-test" | "derived-from-otel";
 
 export interface Catalog {
   generatedAt: string; // ISO 8601
@@ -417,22 +416,27 @@ export interface View {
   source?: string;
 }
 
+/**
+ * A sequence read out of source.
+ *
+ * Every flow in the catalog is derived the same way, so none of them carries a
+ * note about where it came from: a field with one possible value tells a reader
+ * nothing they did not already know.
+ */
 export interface Flow {
   id: string;
   slug: string;
   name: string;
   summary: string;
-  provenance: Provenance;
-  source?: string; // test file for derived-from-test, doc file for authored
-  verifiedAt?: string;
+  source?: string; // the file the flow was read out of
   /**
-   * The bounded context this flow belongs to, when nothing in the flow says so
-   * on its own. A derived flow already names its owner - the service whose test
-   * produced it, or the first service the trace passed through - so this is
-   * required for `authored` flows only, and the validator holds it to that:
-   * a hand-written flow with no owner has nowhere to sit in the tree.
+   * The bounded context this flow belongs to. Whatever derived the flow read
+   * one service's tree to find it and therefore knows the answer, so the flow
+   * states it instead of leaving a reader to recover it from `source` - and the
+   * validator holds every flow to it, because a flow with no owner has nowhere
+   * to sit in the tree.
    */
-  owner?: string;
+  owner: string;
   participants: Participant[]; // order is significant - it is the lane order
   steps: FlowNode[];
 }
@@ -523,10 +527,10 @@ export interface Adr {
 // the JSON.
 //
 // There is deliberately no flow-level score. How far a flow can be trusted is
-// said by its `provenance` and, step by step, by each `Step.status`; a ratio
-// over those averaged claims that are not comparable, hid the only actionable
-// one (`unresolved`), and — once alt branches are counted — divided by a number
-// no single execution ever reaches.
+// said step by step, by each `Step.status`; a ratio over those averaged claims
+// that are not comparable, hid the only actionable one (`unresolved`), and —
+// once alt branches are counted — divided by a number no single execution ever
+// reaches.
 // ---------------------------------------------------------------------------
 
 /** Depth-first walk over every Step in a node list, in numbering order. */
@@ -1335,12 +1339,12 @@ export function validateCatalog(catalog: Catalog): Catalog {
         `flow ${flow.id}`,
       );
     }
-    // A derived flow carries its owner in what derived it; an authored one
-    // carries nothing at all, so the file has to say. Without it the flow has
+    // Whatever derived the flow knew which service's tree it was reading, so
+    // there is no case where the owner is unknowable. Without it the flow has
     // no group to sit under and the tree files it as a defect.
-    if (flow.provenance === "authored" && flow.owner === undefined) {
+    if (flow.owner === undefined) {
       fail(
-        `flow "${flow.slug}" is authored and names no owner; an authored flow must state the context it belongs to`,
+        `flow "${flow.slug}" names no owner; a flow must state the context it belongs to`,
         `flow ${flow.id}`,
       );
     }

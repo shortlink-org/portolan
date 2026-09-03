@@ -3,7 +3,7 @@
 *Generated from the portolan catalog · commit `2 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.gateway-webhook`
-- **Provenance:** derived-from-test
+- **Owner:** [payments](../payments/README.md)
 - **Source:** `services/ledger/test/integration/webhook_test.go`
 
 The gateway's side of the story, arriving after the fact. One signed callback, four ways to read it: a replay to ignore, a capture to record, a charge with no local payment to adopt, and a failure to pass on. The adopt branch is the only repair for a checkout that timed out mid-authorization, and it is the one branch no test covers.

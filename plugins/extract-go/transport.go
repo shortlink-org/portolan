@@ -25,8 +25,9 @@ import (
 // which aggregate's use case that is. None of it needs a type checker, and
 // none of it needs the OpenAPI document - which is the point, because the
 // document is read by a different extractor that knows nothing about Go.
-func extractTransport(root string, b *plugin.Builder) map[string][]string {
+func extractTransport(root string, b *plugin.Builder) (map[string][]string, []endpointDecl) {
 	out := map[string][]string{}
+	var endpoints []endpointDecl
 
 	base := "internal/infrastructure/transport/http"
 	for _, dir := range subdirs(root, base) {
@@ -43,8 +44,11 @@ func extractTransport(root string, b *plugin.Builder) map[string][]string {
 		}
 
 		for name, useCase := range handlerFields(pkg) {
-			for _, operation := range operationsRunning(pkg, name, useCase, b) {
-				out[operation.useCase] = appendOnce(out[operation.useCase], operation.id)
+			for _, endpoint := range operationsRunning(pkg, name, useCase, b) {
+				endpoints = append(endpoints, endpoint)
+				for _, useCase := range endpoint.useCases {
+					out[useCase] = appendOnce(out[useCase], endpoint.id)
+				}
 			}
 		}
 	}
@@ -55,8 +59,9 @@ func extractTransport(root string, b *plugin.Builder) map[string][]string {
 	for useCase := range out {
 		sort.Strings(out[useCase])
 	}
+	sort.Slice(endpoints, func(i, j int) bool { return endpoints[i].id < endpoints[j].id })
 
-	return out
+	return out, endpoints
 }
 
 // handlerFields maps each handler struct to the use case behind each of its
@@ -148,15 +153,25 @@ func useCaseImports(file *ast.File) map[string]string {
 	return out
 }
 
-type exposure struct {
-	id      string
-	useCase string
+// endpointDecl is one operation of the generated server: what it is called in
+// the document, the use cases it runs in the order it runs them, and where the
+// method that does it can be read.
+//
+// The order matters twice over. It is what pairs an operation with the use
+// cases the catalog says it exposes, and it is the opening of a flow: an
+// endpoint that validates a token and then changes a password does those two
+// things in that order, and a picture that swapped them would be wrong.
+type endpointDecl struct {
+	id       string
+	useCases []string
+	source   string
+	line     int
 }
 
 // operationsRunning finds the handler methods on a struct and the use cases
 // each one reaches.
-func operationsRunning(pkg *pkg, structName string, fields map[string]string, b *plugin.Builder) []exposure {
-	var out []exposure
+func operationsRunning(pkg *pkg, structName string, fields map[string]string, b *plugin.Builder) []endpointDecl {
+	var out []endpointDecl
 
 	for name, fn := range pkg.methods(structName) {
 		if !isHandler(fn) {
@@ -174,9 +189,8 @@ func operationsRunning(pkg *pkg, structName string, fields map[string]string, b 
 			continue
 		}
 
-		for _, useCase := range used {
-			out = append(out, exposure{id: operation, useCase: useCase})
-		}
+		source, line := pkg.position(fn.Pos())
+		out = append(out, endpointDecl{id: operation, useCases: used, source: source, line: line})
 	}
 
 	return out

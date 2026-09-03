@@ -170,7 +170,13 @@ func readme(pkgName, name, doc string) string {
 // clause. On a page headed "User" it reads as a leftover from somewhere else,
 // and the sentence works perfectly well without it.
 func withoutPackagePrefix(pkgName, doc string) string {
-	rest, ok := strings.CutPrefix(doc, "Package "+pkgName+" ")
+	return withoutLeading("Package "+pkgName+" ", doc)
+}
+
+// withoutLeading is the same for anything else Go doc convention names before
+// it says anything: a type comment opens with the type.
+func withoutLeading(prefix, doc string) string {
+	rest, ok := strings.CutPrefix(doc, prefix)
 	if !ok {
 		return doc
 	}

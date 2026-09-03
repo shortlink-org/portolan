@@ -76,17 +76,17 @@ describe("CatalogError.path", () => {
     expect(() => validateCatalog(clone())).not.toThrow();
   });
 
-  it("refuses an authored flow that names no owner", () => {
-    // A derived flow carries its owner in what derived it. An authored one
-    // carries nothing, so the file has to say - otherwise the tree has to
-    // guess, and a guessed owner is a fact nobody wrote down.
+  it("refuses a flow that names no owner", () => {
+    // Whatever derived the flow knew whose tree it was reading, so a missing
+    // owner is a broken extraction - and without it the tree has to guess,
+    // which is a fact nobody wrote down.
     const bad = clone();
-    const flow = bad.flows.find((f) => f.provenance === "authored");
-    if (!flow) throw new Error("fixture has no authored flow");
-    delete flow.owner;
+    const flow = bad.flows[0];
+    if (!flow) throw new Error("fixture has no flows");
+    delete (flow as { owner?: string }).owner;
 
     const error = failureOf(bad);
-    expect(error.message).toContain("authored and names no owner");
+    expect(error.message).toContain("names no owner");
     expect(error.path).toBe(`flow ${flow.id}`);
   });
 

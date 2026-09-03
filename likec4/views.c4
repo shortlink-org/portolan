@@ -957,4 +957,227 @@ views {
     }
   }
 
+  dynamic view flow_auth_change_password {
+    title 'Change password'
+    description 'Replaces the password of a user, given the current one.'
+    client -> auth.auth 'changePassword' {
+      color declared  line dashed  head normal
+      notes 'examples/auth/internal/infrastructure/transport/http/user/change_password.go:20'
+    }
+    auth.auth -> auth_pg 'ByToken' {
+      color declared  line dashed  head none
+      notes 'examples/auth/internal/application/session/usecases/validate/usecase.go:34'
+    }
+    auth.auth -> auth_pg 'ByID' {
+      color declared  line dashed  head none
+      notes 'examples/auth/internal/application/user/usecases/change_password/usecase.go:31'
+    }
+    auth.auth -> auth_pg 'Save' {
+      color declared  line dashed  head none
+      notes 'examples/auth/internal/application/user/usecases/change_password/usecase.go:40'
+    }
+    auth.auth -> bus 'PasswordChanged' {
+      color declared  line dashed  head onormal
+      notes 'examples/auth/internal/application/user/usecases/change_password/usecase.go:40'
+    }
+  }
+
+  dynamic view flow_auth_change_password_cross {
+    title 'Change password — crossings only'
+    client -> auth.auth 'changePassword' {
+      color declared  line dashed  head normal
+      notes 'examples/auth/internal/infrastructure/transport/http/user/change_password.go:20'
+    }
+    auth.auth -> bus 'PasswordChanged' {
+      color declared  line dashed  head onormal
+      notes 'examples/auth/internal/application/user/usecases/change_password/usecase.go:40'
+    }
+  }
+
+  dynamic view flow_auth_get_user {
+    title 'Get user'
+    description 'Reads a user by id.'
+    client -> auth.auth 'getUser' {
+      color declared  line dashed  head normal
+      notes 'examples/auth/internal/infrastructure/transport/http/user/get.go:11'
+    }
+    auth.auth -> auth_pg 'ByID' {
+      color declared  line dashed  head none
+      notes 'examples/auth/internal/application/user/usecases/get/usecase.go:23'
+    }
+  }
+
+  dynamic view flow_auth_get_user_cross {
+    title 'Get user — crossings only'
+    client -> auth.auth 'getUser' {
+      color declared  line dashed  head normal
+      notes 'examples/auth/internal/infrastructure/transport/http/user/get.go:11'
+    }
+  }
+
+  dynamic view flow_auth_login {
+    title 'Login'
+    description 'Turns credentials into a session.'
+    client -> auth.auth 'login' {
+      color declared  line dashed  head normal
+      notes 'examples/auth/internal/infrastructure/transport/http/session/login.go:11'
+    }
+    auth.auth -> auth.auth 'Authenticate' {
+      color declared  line dashed  head none
+      notes 'Port `Authenticator`, bound at assembly to the Authenticate use case. — examples/auth/internal/application/session/usecases/login/usecase.go:49'
+    }
+    auth.auth -> auth_pg 'ByEmail' {
+      color declared  line dashed  head none
+      notes 'examples/auth/internal/application/user/usecases/authenticate/usecase.go:33'
+    }
+    auth.auth -> auth_pg 'Save' {
+      color declared  line dashed  head none
+      notes 'examples/auth/internal/application/session/usecases/login/usecase.go:58'
+    }
+    auth.auth -> bus 'SessionStarted' {
+      color declared  line dashed  head onormal
+      notes 'examples/auth/internal/application/session/usecases/login/usecase.go:58'
+    }
+  }
+
+  dynamic view flow_auth_login_cross {
+    title 'Login — crossings only'
+    client -> auth.auth 'login' {
+      color declared  line dashed  head normal
+      notes 'examples/auth/internal/infrastructure/transport/http/session/login.go:11'
+    }
+    auth.auth -> bus 'SessionStarted' {
+      color declared  line dashed  head onormal
+      notes 'examples/auth/internal/application/session/usecases/login/usecase.go:58'
+    }
+  }
+
+  dynamic view flow_auth_logout {
+    title 'Logout'
+    description 'Ends the session behind a token.'
+    client -> auth.auth 'logout' {
+      color declared  line dashed  head normal
+      notes 'examples/auth/internal/infrastructure/transport/http/session/logout.go:15'
+    }
+    auth.auth -> auth_pg 'ByToken' {
+      color declared  line dashed  head none
+      notes 'examples/auth/internal/application/session/usecases/logout/usecase.go:35'
+    }
+    auth.auth -> auth_pg 'Save' {
+      color declared  line dashed  head none
+      notes 'examples/auth/internal/application/session/usecases/logout/usecase.go:49'
+    }
+    auth.auth -> bus 'SessionEnded' {
+      color declared  line dashed  head onormal
+      notes 'examples/auth/internal/application/session/usecases/logout/usecase.go:49'
+    }
+  }
+
+  dynamic view flow_auth_logout_cross {
+    title 'Logout — crossings only'
+    client -> auth.auth 'logout' {
+      color declared  line dashed  head normal
+      notes 'examples/auth/internal/infrastructure/transport/http/session/logout.go:15'
+    }
+    auth.auth -> bus 'SessionEnded' {
+      color declared  line dashed  head onormal
+      notes 'examples/auth/internal/application/session/usecases/logout/usecase.go:49'
+    }
+  }
+
+  dynamic view flow_auth_register_user {
+    title 'Register user'
+    description 'Creates a user from an email address and a password.'
+    client -> auth.auth 'registerUser' {
+      color declared  line dashed  head normal
+      notes 'examples/auth/internal/infrastructure/transport/http/user/register.go:16'
+    }
+    auth.auth -> auth_pg 'ByEmail' {
+      color declared  line dashed  head none
+      notes 'examples/auth/internal/application/user/usecases/register/usecase.go:36'
+    }
+    auth.auth -> auth_pg 'Save' {
+      color declared  line dashed  head none
+      notes 'examples/auth/internal/application/user/usecases/register/usecase.go:49'
+    }
+    auth.auth -> bus 'UserRegistered' {
+      color declared  line dashed  head onormal
+      notes 'examples/auth/internal/application/user/usecases/register/usecase.go:49'
+    }
+  }
+
+  dynamic view flow_auth_register_user_cross {
+    title 'Register user — crossings only'
+    client -> auth.auth 'registerUser' {
+      color declared  line dashed  head normal
+      notes 'examples/auth/internal/infrastructure/transport/http/user/register.go:16'
+    }
+    auth.auth -> bus 'UserRegistered' {
+      color declared  line dashed  head onormal
+      notes 'examples/auth/internal/application/user/usecases/register/usecase.go:49'
+    }
+  }
+
+  dynamic view flow_auth_validate_session {
+    title 'Validate session'
+    description 'Resolves a token to a live session: who is calling, and how long the answer stays good.'
+    client -> auth.auth 'validateSession' {
+      color declared  line dashed  head normal
+      notes 'examples/auth/internal/infrastructure/transport/http/session/validate.go:12'
+    }
+    auth.auth -> auth_pg 'ByToken' {
+      color declared  line dashed  head none
+      notes 'examples/auth/internal/application/session/usecases/validate/usecase.go:34'
+    }
+  }
+
+  dynamic view flow_auth_validate_session_cross {
+    title 'Validate session — crossings only'
+    client -> auth.auth 'validateSession' {
+      color declared  line dashed  head normal
+      notes 'examples/auth/internal/infrastructure/transport/http/session/validate.go:12'
+    }
+  }
+
+  dynamic view flow_auth_revoke_sessions_on_password_change {
+    title 'Revoke sessions on password change'
+    description 'Ends the sessions issued against a password that has just been replaced.'
+    bus -> auth.auth 'PasswordChanged' {
+      color declared  line dashed  head onormal
+      notes 'examples/auth/internal/application/policy/revoke_sessions_on_password_change.go:41'
+    }
+    auth.auth -> auth.auth 'EndAfterCredentialChange' {
+      color declared  line dashed  head none
+      notes 'examples/auth/internal/application/policy/revoke_sessions_on_password_change.go:47'
+    }
+    auth.auth -> auth_pg 'ByUserID' {
+      color declared  line dashed  head none
+      notes 'examples/auth/internal/application/session/usecases/end_after_credential_change/usecase.go:40'
+    }
+    auth.auth -> auth_pg 'ByID' {
+      color declared  line dashed  head none
+      notes 'inside a loop over `change.Ends(sessions, uc.now())`, inside a loop over `retries`. — examples/auth/internal/application/session/usecases/end_after_credential_change/usecase.go:62'
+    }
+    auth.auth -> auth_pg 'Save' {
+      color declared  line dashed  head none
+      notes 'inside a loop over `change.Ends(sessions, uc.now())`, inside a loop over `retries`. — examples/auth/internal/application/session/usecases/end_after_credential_change/usecase.go:77'
+    }
+    auth.auth -> bus 'SessionEnded' {
+      color declared  line dashed  head onormal
+      notes 'inside a loop over `change.Ends(sessions, uc.now())`, inside a loop over `retries`. — examples/auth/internal/application/session/usecases/end_after_credential_change/usecase.go:77'
+    }
+  }
+
+  dynamic view flow_auth_revoke_sessions_on_password_change_cross {
+    title 'Revoke sessions on password change — crossings only'
+    bus -> auth.auth 'PasswordChanged' {
+      color declared  line dashed  head onormal
+      notes 'examples/auth/internal/application/policy/revoke_sessions_on_password_change.go:41'
+    }
+    auth.auth -> bus 'SessionEnded' {
+      color declared  line dashed  head onormal
+      notes 'inside a loop over `change.Ends(sessions, uc.now())`, inside a loop over `retries`. — examples/auth/internal/application/session/usecases/end_after_credential_change/usecase.go:77'
+    }
+  }
+
 }

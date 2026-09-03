@@ -180,13 +180,17 @@ func (s *site) renderIndex() {
 	flows := make([][]string, 0, len(s.cat.Flows))
 	for i := range s.cat.Flows {
 		flow := &s.cat.Flows[i]
+		owner := "—"
+		if flow.Owner != "" {
+			owner = s.ref(self, flow.Owner, flow.Owner)
+		}
 		flows = append(flows, []string{
 			s.ref(self, flow.ID, flow.Name),
-			string(flow.Provenance),
+			owner,
 			firstLine(flow.Summary),
 		})
 	}
-	section(&b, "Flows", table([]string{"Flow", "Provenance", "Summary"}, flows))
+	section(&b, "Flows", table([]string{"Flow", "Owner", "Summary"}, flows))
 
 	adrs := make([][]string, 0, len(s.cat.Adrs))
 	for i := range s.cat.Adrs {

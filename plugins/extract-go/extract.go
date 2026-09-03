@@ -44,8 +44,10 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 
 	// Operations live in the application layer and belong to the aggregate the
 	// use case sits under, so they are gathered first and handed out below.
-	// What exposes each one is read from the transport layer beside it.
-	operations := extractOperations(root, extractTransport(root, b), b)
+	// What exposes each one is read from the transport layer beside it, and the
+	// endpoints that came back are where the flows start.
+	exposures, endpoints := extractTransport(root, b)
+	operations := extractOperations(root, exposures, b)
 
 	for _, dir := range subdirs(root, "internal/domain") {
 		aggregate, ok := extractAggregate(root, dir, svcID, b)
@@ -71,6 +73,15 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 		}
 	}
 
+	// Flows are read last, because a flow names the events the aggregates
+	// declare and an event nothing reaches is worth reporting.
+	flows := extractFlows(root, flowOptions{
+		context: opts.Context,
+		svcID:   svcID,
+		service: opts.Service,
+		store:   opts.Store,
+	}, endpoints, eventIDs(service.Aggregates), b)
+
 	fragment := catalog.Catalog{
 		GeneratedAt: in.GeneratedAt,
 		Commit:      in.Commit,
@@ -83,7 +94,7 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 			Services:       []catalog.Service{service},
 		}},
 		Defs:  map[string]catalog.TypeDef{},
-		Flows: []catalog.Flow{},
+		Flows: flows,
 		Adrs:  []catalog.Adr{},
 	}
 
@@ -95,6 +106,20 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	b.File(firstNonEmpty(opts.Out, "domain.json"), string(encoded)+"\n")
 
 	return b.Response(), nil
+}
+
+// eventIDs is every fact the service publishes, which is what a flow reader is
+// held to: an event no flow reaches is an event whose publisher this could not
+// follow.
+func eventIDs(aggregates []catalog.Aggregate) []string {
+	var out []string
+	for i := range aggregates {
+		for j := range aggregates[i].Events {
+			out = append(out, aggregates[i].Events[j].ID)
+		}
+	}
+
+	return out
 }
 
 func hasAggregate(aggregates []catalog.Aggregate, id string) bool {

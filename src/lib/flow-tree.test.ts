@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { catalog, index } from "../data";
+import { catalog } from "../data";
 import type { Flow } from "../catalog";
 import {
   GROUP_SHOW_HEAD,
@@ -18,85 +18,49 @@ const bySlug = (slug: string): Flow => {
 };
 
 describe("flowOwner", () => {
-  it("reads a derived-from-test flow's owner off the service its source sits under", () => {
-    // services/oms/test/e2e/checkout_test.go is shop.oms's tree.
-    expect(flowOwner(bySlug("checkout"), index)).toBe("shop");
-    expect(flowOwner(bySlug("order-accepted"), index)).toBe("shop");
-    // services/ledger/... belongs to payments.
-    expect(flowOwner(bySlug("gateway-webhook"), index)).toBe("payments");
+  it("reads the owner off the flow rather than working it out", () => {
+    // Every flow states the context it belongs to, because whatever derived it
+    // read that context's tree to find it. Nothing here infers.
+    expect(flowOwner(bySlug("checkout"))).toBe("shop");
+    expect(flowOwner(bySlug("gateway-webhook"))).toBe("payments");
+    expect(flowOwner(bySlug("shipment-tracking"))).toBe("delivery");
   });
 
-  it("takes an authored flow's owner from the field, not from its participants", () => {
-    const refund = bySlug("refund-requested");
-    expect(refund.provenance).toBe("authored");
-    // Its first service participant is shop.oms and its owner happens to agree,
-    // so state the mechanism rather than the coincidence.
-    expect(flowOwner({ ...refund, owner: "delivery" }, index)).toBe("delivery");
-    expect(flowOwner(refund, index)).toBe("shop");
-  });
-
-  it("takes a traced flow's owner from the first service lane, skipping actors and externals", () => {
-    // shipment-tracking opens on a customer and a carrier API before it
-    // reaches delivery.core.
-    expect(flowOwner(bySlug("shipment-tracking"), index)).toBe("delivery");
-  });
-
-  it("owns nothing when the rule for that provenance cannot be applied", () => {
-    const orphan: Flow = {
-      ...bySlug("checkout"),
-      source: "some/other/repo/thing_test.go",
-    };
-    expect(flowOwner(orphan, index)).toBeNull();
-
-    const sourceless: Flow = { ...bySlug("checkout") };
-    delete sourceless.source;
-    expect(flowOwner(sourceless, index)).toBeNull();
-  });
-
-  it("does not fall back between provenances", () => {
-    // An authored flow with no owner stays unowned even though its lanes would
-    // happily supply one. Guessing here is what the validator exists to stop.
-    const authored: Flow = {
-      ...bySlug("checkout"),
-      provenance: "authored",
-    };
-    delete authored.owner;
-    expect(flowOwner(authored, index)).toBeNull();
+  it("does not fall back to the lanes when a flow names no owner", () => {
+    // The first service lane would happily supply one. Guessing here is what
+    // the validator exists to stop, so the flow comes back unowned and the
+    // tree files it as a defect.
+    const unowned = { ...bySlug("checkout"), owner: undefined } as unknown as Flow;
+    expect(flowOwner(unowned)).toBeNull();
   });
 });
 
 describe("flowHealth", () => {
-  it("is red the moment any step is unresolved, however much else is verified", () => {
+  it("is red the moment any step is unresolved", () => {
     expect(flowHealth(bySlug("checkout"))).toBe("unresolved");
     expect(flowHealth(bySlug("order-cancelled"))).toBe("unresolved");
     expect(flowHealth(bySlug("shipment-tracking"))).toBe("unresolved");
   });
 
-  it("is green only when every step has been observed", () => {
-    expect(flowHealth(bySlug("order-accepted"))).toBe("verified");
-  });
-
-  it("is amber when verified and declared steps sit side by side", () => {
-    expect(flowHealth(bySlug("gateway-webhook"))).toBe("mixed");
-  });
-
-  it("separates 'nothing verified' from 'partly verified'", () => {
-    // Every step declared and none observed is not the same claim as a flow
-    // half of which has been watched running.
-    expect(flowHealth(bySlug("refund-requested"))).toBe("unverified");
+  it("is otherwise declared - there is no better state to reach", () => {
+    // A flow is not evidence that anything ran, so every hop landing where it
+    // said it would is as good as it gets.
+    expect(flowHealth(bySlug("order-accepted"))).toBe("declared");
+    expect(flowHealth(bySlug("refund-requested"))).toBe("declared");
+    expect(flowHealth(bySlug("gateway-webhook"))).toBe("declared");
   });
 });
 
 describe("flowEntry", () => {
   it("excludes the owner from the reach, so the dots say where else it goes", () => {
-    const entry = flowEntry(bySlug("checkout"), index);
+    const entry = flowEntry(bySlug("checkout"));
     expect(entry.reach).not.toContain("shop");
     expect(entry.reach).toEqual(["payments", "delivery"]);
   });
 });
 
 describe("groupFlowsByOwner", () => {
-  const groups = groupFlowsByOwner(catalog.flows, index);
+  const groups = groupFlowsByOwner(catalog.flows);
 
   it("files every flow under a context and leaves none unowned", () => {
     expect(groups.map((g) => g.owner)).not.toContain(null);
@@ -108,6 +72,7 @@ describe("groupFlowsByOwner", () => {
     expect(
       groups.map((g) => [g.owner, g.entries.length] as const),
     ).toEqual([
+      ["auth", 7],
       ["shop", 4],
       ["delivery", 1],
       ["payments", 1],
@@ -120,8 +85,8 @@ describe("groupFlowsByOwner", () => {
     expect(shop.entries.map((e) => e.health)).toEqual([
       "unresolved",
       "unresolved",
-      "unverified",
-      "verified",
+      "declared",
+      "declared",
     ]);
     // Red first, then name: the two unresolved flows are alphabetical.
     expect(shop.entries.slice(0, 2).map((e) => e.flow.name)).toEqual([
@@ -131,13 +96,13 @@ describe("groupFlowsByOwner", () => {
   });
 
   it("sends the unowned group to the end, where it reads as a defect", () => {
-    const orphan: Flow = {
+    const orphan = {
       ...bySlug("checkout"),
       id: "flow.orphan",
       slug: "orphan",
-      source: "nowhere/at/all_test.go",
-    };
-    const withOrphan = groupFlowsByOwner([orphan, ...catalog.flows], index);
+      owner: undefined,
+    } as unknown as Flow;
+    const withOrphan = groupFlowsByOwner([orphan, ...catalog.flows]);
     expect(withOrphan[withOrphan.length - 1]?.owner).toBeNull();
   });
 });
@@ -145,7 +110,7 @@ describe("groupFlowsByOwner", () => {
 describe("visibleEntries", () => {
   const entries = (n: number) =>
     Array.from({ length: n }, (_, i) => ({
-      ...flowEntry(bySlug("checkout"), index),
+      ...flowEntry(bySlug("checkout")),
       flow: { ...bySlug("checkout"), slug: `f${i}` },
     }));
 

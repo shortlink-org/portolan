@@ -495,7 +495,7 @@ describe("sample data shape", () => {
     for (const call of unresolved) expect(call.note, call.id).toBeTruthy();
   });
 
-  it("covers all three provenance shapes, and both ends of coverage", () => {
+  it("gives every flow an owner, and covers both ends of step status", () => {
     const flows = catalog.flows;
     expect(flows.map((f) => f.slug)).toEqual([
       "order-accepted",
@@ -505,20 +505,18 @@ describe("sample data shape", () => {
       "gateway-webhook",
       "order-cancelled",
     ]);
+    // Nothing in the tree has to guess where a flow belongs.
+    for (const flow of flows) expect(flow.owner, flow.slug).toBeTruthy();
+
     const a = flows[0];
     const c = flows[2];
-    const d = flows[3];
-    if (!a || !c || !d) throw new Error("missing flows");
-    // One flow a test pins hop by hop, and one nothing has ever run: the
-    // coverage bar has to have both ends of its range in the fixture.
-    expect(walkSteps(a.steps).every((s) => s.status === "verified")).toBe(true);
-    expect(walkSteps(c.steps).every((s) => s.status === "declared")).toBe(true);
-    expect(c.provenance).toBe("authored");
-    expect(d.provenance).toBe("derived-from-otel");
-    expect(d.verifiedAt).toBeTruthy();
-    expect(new Set(flows.map((f) => f.provenance))).toEqual(
-      new Set(["derived-from-test", "authored", "derived-from-otel"]),
+    if (!a || !c) throw new Error("missing flows");
+    // One flow whose every hop lands on something the catalog has, and one
+    // with a hop that does not: both ends of the range are in the fixture.
+    expect(walkSteps(a.steps).some((s) => s.status === "unresolved")).toBe(
+      false,
     );
+    expect(walkSteps(c.steps).every((s) => s.status === "declared")).toBe(true);
   });
 
   it("gives checkout mixed statuses, and a note on every unresolved hop", () => {

@@ -25,7 +25,6 @@ import { KindIcon } from "../components/kind";
 import { RowActions } from "../components/RowActions";
 import {
   ContextPill,
-  ProvenanceBadge,
   StatusChip,
 } from "../components/primitives";
 import { WhatLinksHere } from "../components/WhatLinksHere";
@@ -523,16 +522,6 @@ export function ServicePage() {
                 >
                   <span className="font-semibold">{flow.name}</span>
                   <span className="mono text-muted">{flow.slug}</span>
-                  {/* How far this flow can be trusted, in one word. There is
-                      no score beside it: the per-step statuses on the flow
-                      page are where that question is actually answered. */}
-                  <span className="ml-auto shrink-0">
-                    <ProvenanceBadge
-                      provenance={flow.provenance}
-                      source={flow.source}
-                      verifiedAt={flow.verifiedAt}
-                    />
-                  </span>
                 </Link>
               );
             })}
