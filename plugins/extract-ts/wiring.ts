@@ -28,9 +28,16 @@ export interface Binding {
  * `bind<Port>(token).to(Impl)`. Both say the same thing - this port, filled
  * by that - and both are read into the same map.
  */
-export function readBindings(diDir: string): Map<string, Binding> {
-  const out = new Map<string, Binding>();
+export function readBindings(diDir: string): Map<string, Binding[]> {
+  const out = new Map<string, Binding[]>();
   if (!existsSync(diDir)) return out;
+  // One port, several bindings, is assembly choosing by a setting: the
+  // adapter over a real peer when the peer is named, a stand-in when it is
+  // not. Every one is kept, and the flow reader picks the one that goes
+  // somewhere.
+  const add = (binding: Binding): void => {
+    out.set(binding.port, [...(out.get(binding.port) ?? []), binding]);
+  };
   const walk = (dir: string): void => {
     for (const name of readdirSync(dir).sort()) {
       const path = join(dir, name);
@@ -43,9 +50,9 @@ export function readBindings(diDir: string): Map<string, Binding> {
       if (!src) continue;
       for (const fn of src.functions.values()) {
         const binding = bindingOf(src, fn);
-        if (binding) out.set(binding.port, binding);
+        if (binding) add(binding);
       }
-      for (const binding of containerBindings(src)) out.set(binding.port, binding);
+      for (const binding of containerBindings(src)) add(binding);
     }
   };
   walk(diDir);
@@ -56,15 +63,18 @@ export function readBindings(diDir: string): Map<string, Binding> {
  * `container.bind<Sessions>(TOKENS.Sessions).to(AuthSessions)`: the type
  * argument names the port, the import of that type says which use case
  * declares it, and `.to(...)` says what fills it - a use case or an adapter.
- * `.toSelf()` and `.toDynamicValue(...)` bind a class to itself or to a
- * factory, which is a binding of a different kind and not one that pairs a
- * port with a service; those are left alone.
+ * `.toConstantValue(new AuthSessions(url))` says the same with the instance
+ * made on the spot, and is read the same. `.toSelf()` and
+ * `.toDynamicValue(...)` bind a class to itself or to a factory, which is a
+ * binding of a different kind and not one that pairs a port with a service;
+ * those are left alone.
  */
 function containerBindings(src: Source): Binding[] {
   const out: Binding[] = [];
   const visit = (node: TSNS.Node): void => {
-    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "to") {
-      const target = node.arguments[0];
+    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && (node.expression.name.text === "to" || node.expression.name.text === "toConstantValue")) {
+      const arg = node.arguments[0];
+      const target = arg && ts.isNewExpression(arg) ? arg.expression : arg;
       const bindCall = bindOf(node.expression.expression);
       if (bindCall && target && ts.isIdentifier(target)) {
         const binding = containerBinding(src, bindCall, target.text);

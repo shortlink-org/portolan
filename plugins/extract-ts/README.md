@@ -41,8 +41,11 @@ src/
   infrastructure/repository/<aggregate>/
     migrations/*.sql      read by extract-sql, with `repositories` pointed at the directory above
   di/**/*.ts              which adapter or use case fills a port: `export function provideX(deps): Port`,
-                          or an Inversify container's `bind<Port>(TOKENS.X).to(Impl)`; a use case's
-                          constructor may carry `@inject(TOKENS.X)`, the type beside it is still the port
+                          or an Inversify container's `bind<Port>(TOKENS.X).to(Impl)` or
+                          `.toConstantValue(new Impl(...))`; a port bound more than once - the adapter
+                          behind a setting, a stand-in without - shows as the binding that reaches a
+                          peer; a use case's constructor may carry `@inject(TOKENS.X)`, the type
+                          beside it is still the port
 ```
 
 ## What becomes what
@@ -80,6 +83,7 @@ class. What it is decides what a call on it becomes:
 | another `UseCase` | a `call` to the service itself, and that use case's own steps, inlined two deep at most |
 | an interface bound in `di/` to a use case | the same |
 | an interface bound in `di/` to an adapter over a generated client | an `rpc` to the peer, read through the adapter's method to the client's call |
+| an interface another use case declares, imported from its `usecase.ts` | whatever that use case's binding says: the port is looked up under the use case that declares it |
 | the generated client itself | an `rpc` to the peer |
 | a function type, `() => Date` | nothing: a clock is a port with nobody at the other end |
 
@@ -102,6 +106,17 @@ is terminal; `for`, `for … of`, `while` become a note on the steps inside;
 is `declared`: this reads code, and code is a claim about behaviour, not a
 record of it. A call whose peer the manifest does not name is `unresolved`.
 
+**What a name holds.** A value is followed back to its type by name, without a
+checker: what a domain constructor, a domain method or a port method hands
+back, as its return type is written - `Promise<[Basket, BasketCreated]>` binds
+both by position - and what a helper function anywhere under `src/` returns
+when its return type names something of an aggregate (`holderOf(repo, id,
+token): Promise<Basket>`). `for (const basket of idle)` holds one of what
+`idle` holds; `into = created` holds what `created` held; `events.push(x)`
+collects what `x` holds, and `...events` handed to a port is each event
+collected, once. An event handed to a domain port is the event leaving for the
+bus; a field read off one is not.
+
 **HTTP peer.** A generated `openapi-fetch` client is called with the verb and
 the path in the code - `client.GET("/v1/sessions/current", …)` - and the
 document vendored beside `gen/types.ts` says which operation answers on that
@@ -110,7 +125,9 @@ call and the method on the other side share one id: `auth.v1.Sessions/validateSe
 **gRPC peer.** A Connect-ES client is created from a service descriptor whose
 `typeName` is the proto service, `shop.v1.Pricing`, and a call on it is the
 method in the descriptor's own case: `client.getQuote(…)` is
-`shop.v1.Pricing/GetQuote`. Either way the peer is the manifest's `peers`
+`shop.v1.Pricing/GetQuote`. The descriptor is imported from under `gen/`,
+however deep its package path put it, and the service is looked up in the
+`.proto` files vendored under `proto/` beside that `gen/`. Either way the peer is the manifest's `peers`
 entry for the api id or the proto package; without one the lane is `unknown`
 and the step unresolved, and the call is recorded on the service's `consumes`
 with the vendored document as its source.

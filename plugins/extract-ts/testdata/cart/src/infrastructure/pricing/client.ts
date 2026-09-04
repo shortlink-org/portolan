@@ -1,5 +1,5 @@
 import { createClient, type Client } from "@connectrpc/connect";
-import { Pricing } from "./gen/pricing_pb.ts";
+import { Pricing } from "./gen/shop/v1/pricing_pb.ts";
 import { Money } from "../../domain/basket/vo/money.ts";
 import type { Pricing as PricingPort } from "../../application/basket/usecases/checkout/usecase.ts";
 

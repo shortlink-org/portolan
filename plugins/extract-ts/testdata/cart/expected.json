@@ -51,7 +51,7 @@
                     },
                     {
                       "name": "status",
-                      "type": "\"open\" | \"checked-out\"",
+                      "type": "\"open\" | \"checked-out\" | \"abandoned\"",
                       "doc": ""
                     },
                     {
@@ -136,9 +136,45 @@
                   "exposedBy": [
                     "checkout"
                   ]
+                },
+                {
+                  "id": "Expire",
+                  "kind": "command",
+                  "doc": "Abandons every basket nobody has touched for a day.",
+                  "exposedBy": [
+                    "expireIdleBaskets"
+                  ]
+                },
+                {
+                  "id": "Merge",
+                  "kind": "command",
+                  "doc": "Folds a visitor's basket into the customer's own, making one if there is none.",
+                  "exposedBy": [
+                    "mergeBaskets"
+                  ]
                 }
               ],
               "events": [
+                {
+                  "id": "shop.cart.basket.BasketAbandoned",
+                  "slug": "basket-abandoned",
+                  "name": "BasketAbandoned",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "Nobody touched the basket for long enough that it is no longer anybody's.\n\nPublished on the bus as `cart.BasketAbandoned`.",
+                      "source": "plugins/extract-ts/testdata/cart/src/domain/basket/events/basket-abandoned.ts",
+                      "fields": [
+                        {
+                          "name": "basketId",
+                          "type": "string",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": []
+                },
                 {
                   "id": "shop.cart.basket.BasketCheckedOut",
                   "slug": "basket-checked-out",
@@ -162,6 +198,31 @@
                         {
                           "name": "quoteId",
                           "type": "string",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": []
+                },
+                {
+                  "id": "shop.cart.basket.BasketCreated",
+                  "slug": "basket-created",
+                  "name": "BasketCreated",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "A basket came into being, for a visitor or for a customer.\n\nPublished on the bus as `cart.BasketCreated`.",
+                      "source": "plugins/extract-ts/testdata/cart/src/domain/basket/events/basket-created.ts",
+                      "fields": [
+                        {
+                          "name": "basketId",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "customerId",
+                          "type": "string | undefined",
                           "doc": ""
                         }
                       ]
@@ -251,7 +312,7 @@
           "kind": "rpc",
           "label": "addItem",
           "status": "declared",
-          "line": "plugins/extract-ts/testdata/cart/src/infrastructure/transport/http/basket/handlers.ts:10"
+          "line": "plugins/extract-ts/testdata/cart/src/infrastructure/transport/http/basket/handlers.ts:14"
         },
         {
           "type": "step",
@@ -334,7 +395,7 @@
           "kind": "rpc",
           "label": "checkout",
           "status": "declared",
-          "line": "plugins/extract-ts/testdata/cart/src/infrastructure/transport/http/basket/handlers.ts:14"
+          "line": "plugins/extract-ts/testdata/cart/src/infrastructure/transport/http/basket/handlers.ts:18"
         },
         {
           "type": "step",
@@ -388,6 +449,191 @@
           "status": "declared",
           "ref": "shop.cart.basket.BasketCheckedOut",
           "line": "plugins/extract-ts/testdata/cart/src/application/basket/usecases/checkout/usecase.ts:40"
+        }
+      ]
+    },
+    {
+      "id": "flow.cart-expire-idle-baskets",
+      "slug": "cart-expire-idle-baskets",
+      "name": "Expire idle baskets",
+      "summary": "Abandons every basket nobody has touched for a day.",
+      "source": "plugins/extract-ts/testdata/cart/src/infrastructure/transport/http/basket/handlers.ts",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.cart",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "cart-pg",
+          "kind": "store",
+          "context": "shop"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.cart",
+          "kind": "rpc",
+          "label": "expireIdleBaskets",
+          "status": "declared",
+          "line": "plugins/extract-ts/testdata/cart/src/infrastructure/transport/http/basket/handlers.ts:26"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.cart",
+          "to": "cart-pg",
+          "kind": "call",
+          "label": "idleSince",
+          "status": "declared",
+          "line": "plugins/extract-ts/testdata/cart/src/application/basket/usecases/expire/usecase.ts:11"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "shop.cart",
+          "to": "cart-pg",
+          "kind": "call",
+          "label": "save",
+          "status": "declared",
+          "note": "inside a loop over `idle`.",
+          "line": "plugins/extract-ts/testdata/cart/src/application/basket/usecases/expire/usecase.ts:15"
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "shop.cart",
+          "to": "bus",
+          "kind": "event",
+          "label": "BasketAbandoned",
+          "status": "declared",
+          "ref": "shop.cart.basket.BasketAbandoned",
+          "note": "inside a loop over `idle`.",
+          "line": "plugins/extract-ts/testdata/cart/src/application/basket/usecases/expire/usecase.ts:15"
+        }
+      ]
+    },
+    {
+      "id": "flow.cart-merge-baskets",
+      "slug": "cart-merge-baskets",
+      "name": "Merge baskets",
+      "summary": "Folds a visitor's basket into the customer's own, making one if there is none.",
+      "source": "plugins/extract-ts/testdata/cart/src/infrastructure/transport/http/basket/handlers.ts",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.cart",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "auth.auth",
+          "kind": "service",
+          "context": "auth"
+        },
+        {
+          "id": "cart-pg",
+          "kind": "store",
+          "context": "shop"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.cart",
+          "kind": "rpc",
+          "label": "mergeBaskets",
+          "status": "declared",
+          "line": "plugins/extract-ts/testdata/cart/src/infrastructure/transport/http/basket/handlers.ts:22"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.cart",
+          "to": "auth.auth",
+          "kind": "rpc",
+          "label": "validateSession",
+          "status": "declared",
+          "ref": "auth.v1.Sessions/validateSession",
+          "line": "plugins/extract-ts/testdata/cart/src/application/basket/usecases/merge/usecase.ts:24"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "shop.cart",
+          "to": "cart-pg",
+          "kind": "call",
+          "label": "openFor",
+          "status": "declared",
+          "line": "plugins/extract-ts/testdata/cart/src/application/basket/usecases/merge/usecase.ts:30"
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "shop.cart",
+          "to": "cart-pg",
+          "kind": "call",
+          "label": "save",
+          "status": "declared",
+          "line": "plugins/extract-ts/testdata/cart/src/application/basket/usecases/merge/usecase.ts:39"
+        },
+        {
+          "type": "step",
+          "id": "s5",
+          "from": "shop.cart",
+          "to": "bus",
+          "kind": "event",
+          "label": "BasketCreated",
+          "status": "declared",
+          "ref": "shop.cart.basket.BasketCreated",
+          "line": "plugins/extract-ts/testdata/cart/src/application/basket/usecases/merge/usecase.ts:39"
+        },
+        {
+          "type": "step",
+          "id": "s6",
+          "from": "shop.cart",
+          "to": "bus",
+          "kind": "event",
+          "label": "BasketItemAdded",
+          "status": "declared",
+          "ref": "shop.cart.basket.BasketItemAdded",
+          "line": "plugins/extract-ts/testdata/cart/src/application/basket/usecases/merge/usecase.ts:39"
+        },
+        {
+          "type": "step",
+          "id": "s7",
+          "from": "shop.cart",
+          "to": "cart-pg",
+          "kind": "call",
+          "label": "save",
+          "status": "declared",
+          "line": "plugins/extract-ts/testdata/cart/src/application/basket/usecases/merge/usecase.ts:40"
         }
       ]
     },
@@ -495,4 +741,3 @@
   ],
   "adrs": []
 }
-

@@ -57,6 +57,8 @@ interface DomainRef {
   event?: string;
   /** The aggregate it belongs to, for a domain object whose methods hand back events. */
   aggregate?: AggregateRead;
+  /** What a list the use case is collecting has been given, for `events.push(...)` handed on as `...events`. */
+  items?: DomainRef[];
 }
 
 class Draft {
@@ -114,12 +116,12 @@ export class FlowReader {
   private readonly warnedPeer = new Set<string>();
   readonly opts: FlowOptions;
   readonly useCases: Map<string, UseCase>;
-  readonly bindings: Map<string, Binding>;
+  readonly bindings: Map<string, Binding[]>;
   readonly aggregates: AggregateRead[];
   readonly rel: (abs: string) => string;
   readonly b: Diagnostics;
 
-  constructor(opts: FlowOptions, useCases: Map<string, UseCase>, bindings: Map<string, Binding>, aggregates: AggregateRead[], rel: (abs: string) => string, b: Diagnostics) {
+  constructor(opts: FlowOptions, useCases: Map<string, UseCase>, bindings: Map<string, Binding[]>, aggregates: AggregateRead[], rel: (abs: string) => string, b: Diagnostics) {
     this.opts = opts;
     this.useCases = useCases;
     this.bindings = bindings;
@@ -403,6 +405,11 @@ export class FlowReader {
     collect(node);
     const visit = (n: TSNS.Node): void => {
       if (ts.isCallExpression(n)) this.call(d, s, n, assigned.get(n), depth);
+      // `into = created`: a later assignment carries what the right side held.
+      if (ts.isBinaryExpression(n) && n.operatorToken.kind === ts.SyntaxKind.EqualsToken && ts.isIdentifier(n.left)) {
+        const r = this.resultsOfExpr(s, n.right)[0];
+        if (r?.name) s.vars.set(n.left.text, r);
+      }
       ts.forEachChild(n, visit);
     };
     visit(node);
@@ -417,6 +424,15 @@ export class FlowReader {
     }
     const method = callee.name.text;
     const target = callee.expression;
+
+    // events.push(into.addItem(...)) — a list the use case collects, to hand to a port later as `...events`.
+    if (method === "push" && ts.isIdentifier(target)) {
+      const list = s.vars.get(target.text) ?? { name: target.text };
+      list.items ??= [];
+      for (const arg of call.arguments) for (const r of this.resultsOfExpr(s, arg)) if (r.event) list.items.push(r);
+      s.vars.set(target.text, list);
+      return;
+    }
 
     // this.<port>.<method>(...) — a hop.
     if (ts.isPropertyAccessExpression(target) && target.expression.kind === ts.SyntaxKind.ThisKeyword) {
@@ -449,19 +465,29 @@ export class FlowReader {
     const line = at(src.sf, call, this.rel);
     const bare = bareType(declared);
 
-    // A port bound in assembly to another use case, or to an adapter over a client.
-    const binding = this.bindings.get(`${s.key}.${bare}`);
-    if (binding?.useCase) {
-      this.useCaseHop(d, binding.useCase, `Port \`${bare}\`, bound at assembly to the ${camel(binding.useCase.split("/")[1] ?? "")} use case.`, line, depth);
+    // A port bound in assembly to another use case, or to an adapter over a
+    // client. It is looked up under the use case that declares it, which is
+    // not always this one: a use case may take a port another declared rather
+    // than say the same thing twice. And assembly may bind it more than once -
+    // the adapter over a peer when the peer is named, a stand-in when it is
+    // not - so the binding shown is the first that reaches a peer.
+    const bound = this.bindings.get(`${this.portOwner(src, bare) ?? s.key}.${bare}`) ?? [];
+    const toUseCase = bound.find((b) => b.useCase)?.useCase;
+    if (toUseCase) {
+      this.useCaseHop(d, toUseCase, `Port \`${bare}\`, bound at assembly to the ${camel(toUseCase.split("/")[1] ?? "")} use case.`, line, depth);
       return;
     }
-    if (binding?.adapter) {
-      const adapterSrc = readSource(binding.adapter.file);
-      if (adapterSrc) {
-        const hops = adapterCalls(adapterSrc, binding.adapter.cls, method, this.rel, this.b);
-        if (hops.length === 0) this.b.warn(s.key, `port \`${bare}\` is adapted by ${binding.adapter.cls}.${method}, which calls no peer; the call is left out of the flow`);
+    const adapters = bound.flatMap((b) => (b.adapter ? [b.adapter] : []));
+    if (adapters.length > 0) {
+      for (const adapter of adapters) {
+        const adapterSrc = readSource(adapter.file);
+        if (!adapterSrc) continue;
+        const hops = adapterCalls(adapterSrc, adapter.cls, method, this.rel, this.b);
+        if (hops.length === 0) continue;
         for (const hop of hops) this.rpcHop(d, hop, line);
+        return;
       }
+      this.b.warn(s.key, `port \`${bare}\` is adapted by ${adapters.map((a) => `${a.cls}.${method}`).join(" and by ")}, which calls no peer; the call is left out of the flow`);
       return;
     }
 
@@ -492,13 +518,17 @@ export class FlowReader {
     // one - is the event leaving for the bus. What carries it there, an
     // outbox, a relay, is the adapter's business and not a step the source
     // can show.
+    const handed = new Set<string>();
     for (const arg of call.arguments) {
       const inner = ts.isSpreadElement(arg) ? arg.expression : arg;
       if (!ts.isIdentifier(inner)) continue;
       const held = s.vars.get(inner.text);
-      if (held?.event) {
-        d.add({ from: this.opts.svcID, to: d.lane(this.busLane()), kind: "event", ref: held.event, label: held.name, line });
-        this.referenced.add(held.event);
+      for (const item of held?.items ?? (held ? [held] : [])) {
+        // A list handed over says which events leave, not how many times.
+        if (!item.event || handed.has(item.event)) continue;
+        handed.add(item.event);
+        d.add({ from: this.opts.svcID, to: d.lane(this.busLane()), kind: "event", ref: item.event, label: item.name, line });
+        this.referenced.add(item.event);
       }
     }
 
@@ -518,6 +548,30 @@ export class FlowReader {
   }
 
   // --- following a value back to its type ---------------------------------------
+
+  /** The use case whose file declares the port `bare`, when this one imports it from there. */
+  private portOwner(src: Source, bare: string): string | undefined {
+    const imp = src.imports.find((i) => i.local === bare);
+    return imp?.file ? useCaseKeyFromFile(imp.file) : undefined;
+  }
+
+  /** What an expression holds, for a value read somewhere other than a declaration. */
+  private resultsOfExpr(s: Scope, expr: TSNS.Expression): DomainRef[] {
+    const e = unwrapAwait(expr);
+    if (ts.isIdentifier(e)) {
+      const held = s.vars.get(e.text);
+      return held ? [held] : [];
+    }
+    if (!ts.isCallExpression(e)) return [];
+    const callee = e.expression;
+    if (ts.isIdentifier(callee)) return this.resultsOfFunction(s, callee.text);
+    if (ts.isPropertyAccessExpression(callee) && ts.isIdentifier(callee.expression)) {
+      const held = s.vars.get(callee.expression.text);
+      if (held?.aggregate) return this.resultsOfMethod(held, callee.name.text);
+      return this.resultsOfStatic(s, callee.expression.text, callee.name.text);
+    }
+    return [];
+  }
 
   /** The aggregate whose port.ts declares `bare`, when the use case imports it from there. */
   private domainPortAggregate(src: Source, bare: string): AggregateRead | undefined {
@@ -543,11 +597,18 @@ export class FlowReader {
   private resultsOfFunction(s: Scope, name: string): DomainRef[] {
     const imp = s.src.imports.find((i) => i.local === name);
     if (!imp?.file) return [];
-    const agg = this.aggregates.find((a) => imp.file!.startsWith(a.dir));
-    const fnSrc = readSource(imp.file);
-    const fn = fnSrc?.functions.get(imp.imported);
-    if (!agg || !fn) return [];
-    return this.refsOfType(agg, fn.type?.getText() ?? "");
+    const fn = readSource(imp.file)?.functions.get(imp.imported);
+    if (!fn) return [];
+    // A domain constructor is read against its own aggregate; a helper kept
+    // elsewhere - `holderOf(repo, id, token)` under application/ - against
+    // whichever aggregate its return type names.
+    const own = this.aggregates.find((a) => imp.file!.startsWith(a.dir));
+    const type = fn.type?.getText() ?? "";
+    for (const agg of own ? [own] : this.aggregates) {
+      const refs = this.refsOfType(agg, type);
+      if (refs.some((r) => r.name)) return refs;
+    }
+    return [];
   }
 
   private resultsOfStatic(s: Scope, cls: string, method: string): DomainRef[] {
@@ -600,8 +661,13 @@ export class FlowReader {
     }
   }
 
-  /** `for (const item of basket.items)`: nothing to say yet; a later reading may follow the element. */
-  private bindElement(_s: Scope, _stmt: TSNS.ForOfStatement | TSNS.ForInStatement): void {}
+  /** `for (const basket of idle)`: the element holds what the list was read as holding. */
+  private bindElement(s: Scope, stmt: TSNS.ForOfStatement | TSNS.ForInStatement): void {
+    if (!ts.isForOfStatement(stmt) || !ts.isIdentifier(stmt.expression) || !ts.isVariableDeclarationList(stmt.initializer)) return;
+    const held = s.vars.get(stmt.expression.text);
+    const decl = stmt.initializer.declarations[0];
+    if (held && !held.items && decl && ts.isIdentifier(decl.name)) s.vars.set(decl.name.text, held);
+  }
 }
 
 function useCaseKeyFromFile(file: string): string | undefined {

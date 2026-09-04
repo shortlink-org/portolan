@@ -11,7 +11,7 @@
 
 import type * as TSNS from "ts-api";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { callID, findOperation, readSpec, type Spec } from "./openapi.ts";
 import { ts, type Source } from "./source.ts";
 import type { Diagnostics } from "./domain.ts";
@@ -60,10 +60,10 @@ function peerOf(src: Source, rel: (abs: string) => string, b: Diagnostics): Peer
       const found = specBeside(dirname(imp.file));
       if (found) spec = readSpec(found);
     }
-    // gen/<x>_pb.ts of Connect-ES → proto/**/*.proto beside gen/
+    // gen/**/<x>_pb.ts of Connect-ES → proto/**/*.proto beside gen/
     if (/_pb\.ts$/.test(imp.file)) {
-      const peerDir = dirname(dirname(imp.file));
-      protos.push(...readProtos(join(peerDir, "proto"), rel));
+      const gen = genDirAbove(imp.file);
+      if (gen) protos.push(...readProtos(join(dirname(gen), "proto"), rel));
     }
   }
   if (!spec && src.imports.some((i) => i.specifier === "openapi-fetch")) {
@@ -75,6 +75,16 @@ function peerOf(src: Source, rel: (abs: string) => string, b: Diagnostics): Peer
   const peer = new Peer(spec, protos);
   peers.set(src.path, peer);
   return peer;
+}
+
+/** The gen/ a generated file sits under, however deep its package path put it. */
+function genDirAbove(file: string): string | undefined {
+  let dir = dirname(file);
+  for (let i = 0; i < 8 && dir !== dirname(dir); i++) {
+    if (basename(dir) === "gen") return dir;
+    dir = dirname(dir);
+  }
+  return undefined;
 }
 
 function specBeside(dir: string): string | undefined {

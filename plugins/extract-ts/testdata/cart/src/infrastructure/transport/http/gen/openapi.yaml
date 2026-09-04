@@ -15,3 +15,11 @@ paths:
     get:
       operationId: getBasket
       tags: [baskets]
+  /v1/baskets/{basketId}/merge:
+    post:
+      operationId: mergeBaskets
+      tags: [baskets]
+  /v1/baskets/expire-idle:
+    post:
+      operationId: expireIdleBaskets
+      tags: [baskets]

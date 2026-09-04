@@ -46,8 +46,13 @@ describe("the service", () => {
     expect(basket.root).toBe("Basket");
     expect(basket.entities.map((e: { name: string }) => e.name)).toEqual(["Basket", "BasketItem"]);
     expect(basket.valueObjects.map((v: { name: string }) => v.name)).toEqual(["Money"]);
-    expect(basket.events.map((e: { id: string }) => e.id)).toEqual(["shop.cart.basket.BasketCheckedOut", "shop.cart.basket.BasketItemAdded"]);
-    const added = basket.events[1].versions[0];
+    expect(basket.events.map((e: { id: string }) => e.id)).toEqual([
+      "shop.cart.basket.BasketAbandoned",
+      "shop.cart.basket.BasketCheckedOut",
+      "shop.cart.basket.BasketCreated",
+      "shop.cart.basket.BasketItemAdded",
+    ]);
+    const added = basket.events[3].versions[0];
     expect(added.fields.map((f: { name: string; type: string }) => `${f.name}:${f.type}`)).toEqual(["basketId:string", "sku:string", "quantity:number", "unitPrice:Money"]);
     expect(added.doc).toContain("Published on the bus as `cart.BasketItemAdded`");
   });
@@ -62,8 +67,36 @@ describe("the service", () => {
     expect(ops.map((o: { id: string; kind: string; exposedBy?: string[] }) => `${o.id}:${o.kind}:${(o.exposedBy ?? []).join(",")}`)).toEqual([
       "AddItem:command:addItem",
       "Checkout:command:checkout",
+      "Expire:command:expireIdleBaskets",
+      "Merge:command:mergeBaskets",
     ]);
     expect(ops[1].doc).toContain("Freezes the basket");
+  });
+
+  it("follows a value through a helper, a loop, a list and a port declared elsewhere", () => {
+    const flows = fragment().flows as { slug: string; steps: (Step | Alt)[] }[];
+    const line = (s: Step | Alt) => (s.type === "step" ? `${s.from}->${s.to} ${s.kind} ${s.label}` : `alt ${s.id}`);
+    // The port `Sessions` is checkout's, bound twice in assembly - to the
+    // adapter over auth when auth is named, to a stand-in when it is not -
+    // and the flow shows the binding that reaches a peer. `holderOf` hands
+    // back a Basket; `events.push(into.addItem(...))` inside a loop collects
+    // what `...events` then hands to the store.
+    expect(flows.find((f) => f.slug === "cart-merge-baskets")!.steps.map(line)).toEqual([
+      "client->shop.cart rpc mergeBaskets",
+      "shop.cart->auth.auth rpc validateSession",
+      "shop.cart->cart-pg call openFor",
+      "shop.cart->cart-pg call save",
+      "shop.cart->bus event BasketCreated",
+      "shop.cart->bus event BasketItemAdded",
+      "shop.cart->cart-pg call save",
+    ]);
+    // `for (const basket of idle)` holds one of what `idleSince` handed back.
+    expect(flows.find((f) => f.slug === "cart-expire-idle-baskets")!.steps.map(line)).toEqual([
+      "client->shop.cart rpc expireIdleBaskets",
+      "shop.cart->cart-pg call idleSince",
+      "shop.cart->cart-pg call save",
+      "shop.cart->bus event BasketAbandoned",
+    ]);
   });
 
   it("records what it calls, named the way the callee names the method", () => {
