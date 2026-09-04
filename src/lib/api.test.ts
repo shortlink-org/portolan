@@ -62,7 +62,15 @@ describe("unexposed", () => {
       unexposed(auth())
         .map((r) => r.operation.id)
         .sort(),
-    ).toEqual(["Authenticate", "EndAfterCredentialChange"]);
+    ).toEqual([
+      // The lockout's three are asked by authenticate through a port, and
+      // authenticate itself by login: none of the four has a route of its own.
+      "Authenticate",
+      "Check",
+      "EndAfterCredentialChange",
+      "RecordFailure",
+      "RecordSuccess",
+    ]);
   });
 });
 

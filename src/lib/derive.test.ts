@@ -180,7 +180,9 @@ describe("flowRoles", () => {
 
   it("counts the steps the service is on and the events it moves", () => {
     const login = roles("auth.auth").get("auth-login");
-    expect(login?.steps).toBe(9);
+    // Login runs authenticate, which asks the lockout before and after the
+    // password check, so the service is on most of the flow's steps.
+    expect(login?.steps).toBe(17);
     expect(login?.firstStepId).toBe("s1");
     expect(login?.publishes).toEqual(["SessionEnded", "SessionStarted"]);
     expect(login?.consumes).toEqual([]);
