@@ -9,6 +9,7 @@
     "adr/shop.oms.0007.md",
     "auth/README.md",
     "auth/auth/README.md",
+    "auth/auth/aggregates/lockout.md",
     "auth/auth/aggregates/session.md",
     "auth/auth/aggregates/user.md",
     "auth/auth/stores/pg.md",

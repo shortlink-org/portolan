@@ -15,7 +15,7 @@
           "name": "Authentication \u0026 Sessions",
           "repo": "github.com/shortlink-org/portolan",
           "path": "examples/auth",
-          "readme": "# Authentication \u0026 Sessions\n\nService `auth` — bounded context **auth**.\n\nOwns *who someone is* and *whether they are still logged in*. It is the only\nservice in the estate that stores credentials, and the only one allowed to mint\nor revoke a session.\n\n## What it does\n\n- Registers a user: an email address and a password, hashed before it is stored.\n- Authenticates: checks a password and answers with a user id or a refusal.\n- Replaces a password, given the current one.\n- Starts a session on a successful login and hands back an opaque token.\n- Ends a session on logout.\n- Validates a token for everyone else — the hot path every authenticated\n  request in `shop` goes through.\n\n## What it does not do\n\nNo profile data, no addresses, no payment instruments, no roles or scopes.\nOther contexts hold their own view of a customer and reference it by opaque\nuser id; nothing outside `auth` ever sees a credential.\n\nNo MFA, no email verification, no lockout after repeated failures, no refresh\ntokens. Each of those is a real requirement somewhere, and none of them is here:\nthis service is deliberately the smallest thing that is still authentication.\n\n## Domain\n\nTwo aggregates, linked by user id and nothing else. They are separate because a\nsession is written far more often than a user and is revoked without the user\nchanging at all, so the two do not belong under one lock.\n\n| | Root | Value objects | Publishes |\n|---|---|---|---|\n| `user` | `User` — id, email, password hash | `email.Address`, `password.Hash` | `UserRegistered`, `PasswordChanged` |\n| `session` | `Session` — id, user id, token, expiry, revocation | `token.Token` | `SessionStarted`, `SessionEnded` |\n\nAggregates return their events rather than buffering them, so what happened is\nvisible in the signature and publishing is the caller's business.\n\nBoth carry a version. A write is refused if the aggregate was changed since it\nwas read, so two changes made from one read cannot both succeed with the first\none silently disappearing.\n\nExpiry publishes nothing. When a session runs out of time no code runs and\nnobody decides anything, and every consumer already knows the expiry from\n`SessionStarted`; an event there would be invented by whichever sweep noticed\nfirst.\n\n### Rules\n\nValidation lives in the value object constructors, so a value that exists is a\nvalue that passed. Each rule is a specification in a `rules/` package next to\nthe value object it governs, and the policy — which rules currently apply — is\nthe `composite.go` in that package.\n\n- **email** — required, at most 254 characters, parsable by `net/mail`, and not\n  in display form: `Ada \u003cada@example.com\u003e` is an address but not a login.\n- **password** — 8 to 32 characters, at least one digit, one lower-case and one\n  upper-case letter, no whitespace.\n- **token** — 32 random bytes, unpadded base64url.\n\nThe password policy applies when a password is *created*, never when one is\nchecked. Raising the minimum must not lock out everyone who registered under\nthe old one, whose stored hash is still perfectly good.\n\n### The one rule that spans both\n\nA password change ends the sessions issued against the old password. That rule\nbelongs to neither aggregate, so it is written into neither: the user aggregate\npublishes `PasswordChanged`, and a policy in `internal/application/policy` hears\nit and ends the sessions. `session` never imports `user`, `user` never imports\n`session`.\n\nWhat that means for a caller is in the use cases that carry it out - see\n`internal/application/user/usecases/change_password`.\n\n## HTTP\n\nThe API is `internal/infrastructure/transport/http/gen/openapi.yaml`. Routes,\nshapes, status codes and the reasoning behind them are described there, and the\nserver interface is generated from it - so it is the one place that can be\nwrong, and it cannot drift from this file because this file does not repeat it.\n\n## Risk\n\nLogin asks a risk service before it issues anything. The contract is a narrowed\ncopy of `risk.v1` under `internal/infrastructure/risk/proto`, the generated\nclient beside it, and `RISK_ADDR` says where the service is; unset, every\nattempt is allowed, so a laptop does not need one.\n\nThe use case does not know any of that. It declares `login.Risk` - an attempt\nin, a verdict out - and assembly hands it the adapter in\n`internal/infrastructure/risk`, which is the one package that speaks both. That\nis the same shape as the Authenticator, and for the same reason: the knowledge\nthat another service exists lives in one place, and it is not the domain.\n\nA blocked attempt is treated as the account being compromised. Whoever is\ntrying has the right password, so every live session the account has is ended\nfirst - `SessionEnded` with reason `risk-blocked`, one transaction each - and\nonly then is the attempt refused, with the same 401 as a wrong password. A 403\nwould say the account exists and is worth attacking, which is the one thing\nthe attacker came to learn.\n\n## Tracing\n\n`TRACER_URI` names an OTLP collector and switches tracing on; without it the\nprovider is the no-op one and every span costs nothing. Requests are traced by\nroute, database calls by the SDK's pgx tracer, and each domain event twice:\nwhere it is written to the outbox and where a policy takes it off the bus, with\nthe event's name on both spans and the trace carried across the table so the\ntwo are one trace. `telemetry/` holds the collector config, a script that\nrecords the service doing everything it does, and the recording itself, which\nis what the catalog is verified against: see `telemetry/README.md`.\n\n## Caching\n\n`ByToken` is the hot path: every authenticated request in the estate ends\nthere, asking the same question about the same token over and over. It is the\none read in this service worth keeping an answer to, so there is a cache in\nfront of it.\n\nThe cache itself is `go-sdk/cache` — a byte-level port, its redis adapter and a\nnoop. This service has no adapter of its own and no redis client in its imports:\nwhat lives here is `cached.go`, next to the store it decorates, and it decides\nonly what to keep, for how long, and when to forget it. That is the part which\nis about sessions; opening a connection is not.\n\nNothing above infrastructure knows. `session.Repository` did not change, the use\ncases did not change, and they could not have: they take the port and always\ndid. Assembly binds the port to `Cached` wrapping `Postgres` instead of to\n`Postgres`, and that one function in `internal/di/provider/repository.go` is the\nwhole of the change. A cache is a fact about how fast a deployment has to be,\nnot a fact about what a session is, so the domain has no port for one.\n\nOnly `ByToken` is cached. `ByID` is read by the code that is about to write, and\n`ByUserID` answers a question about a set — the kind of entry nothing can\ninvalidate honestly, because a session started for that user changes the answer\nand the write that started it never knew the list existed.\n\nWhat makes it safe to read a session from somewhere other than the database:\n\n- **The version travels with it.** A cached copy is a copy taken at a version,\n  and a write made from a stale one is refused rather than applied. Caching a\n  read cannot cause a wrong write here, only a retried one.\n- **Nothing is read from the cache inside a transaction.** A use case reading\n  through it would be deciding on a copy its own transaction never saw and\n  cannot have locked.\n- **Revocation drops the entry** — before the write and again after it. The\n  first drop is what survives a process dying after the commit; the second is\n  what survives a reader repopulating the entry while the write was in flight.\n- **An entry never outlives its session.** The TTL is the shorter of\n  `CACHE_SESSION_TTL` and what is left of the session's own life. Expiry is the\n  one way a session changes with nothing running to notice.\n- **The key is a hash of the token, never the token.** The token is the\n  credential itself, and a `KEYS` scan, a slow-log line or a redis dump is not\n  treated like a password store.\n- **A cache that is down is not an outage.** Every cache failure on the read\n  path is swallowed and the database answers; a failed invalidation does not\n  fail the write that already committed. What that costs is a stale entry for\n  the rest of its TTL, which is what the TTL is for — a minute by default, and\n  it is not how long a logout takes to be seen, it is how long the estate stays\n  wrong when the invalidation is the thing that broke.\n\n`STORE_REDIS_CLIENT_CACHE_TTL` additionally keeps a copy inside each process for\nthat long. It is off by default and safe to turn on: the SDK's local layer is\nredis client-side caching, which the server invalidates on every replica when a\nkey changes. An in-process LRU could not be — nothing would tell it about a\nlogout, and every replica but the one that handled it would keep saying the\nsession is live.\n\n## Running it\n\n```bash\ndocker compose up -d\nSTORE_TYPE=postgres \\\nSTORE_POSTGRES_URI=postgres://auth:auth@localhost:5432/auth?sslmode=disable \\\n  go run ./cmd/auth\n```\n\nWith the cache:\n\n```bash\ndocker compose up -d\nSTORE_TYPE=postgres \\\nSTORE_POSTGRES_URI=postgres://auth:auth@localhost:5432/auth?sslmode=disable \\\nCACHE_TYPE=redis \\\nSTORE_REDIS_URI=localhost:6379 \\\n  go run ./cmd/auth\n```\n\n`CACHE_TYPE` defaults to `none`, which wires a cache that keeps nothing and\nmisses every read — so the uncached path is a different cache rather than a\ndifferent code path, and it is the one that runs on a laptop. A `CACHE_TYPE`\nnobody recognises fails at assembly: that is somebody asking for a cache and\ngetting silence.\n\nThe schema is brought up to date at startup. Each aggregate owns its own\nmigrations and its own `schema_migrations_*` table, numbered from 1 within its\nown package: `user` and `session` both have an `0001`, and neither waits for the\nother, because no table here refers to one in another aggregate.\n\nTests start their own database and their own redis through testcontainers, so a\nrun cannot be affected by whatever state a local one is in. Without Docker the\npackages that need one are skipped and the domain tests - the majority, and the\nones worth having - still run. Most of the decorator's tests need neither: when\nit asks the store and when it does not is a question a fake answers faster and\nno less honestly. One test does use a real redis, and only for what a fake\ncannot say - that a session survives the round trip through what is actually\nstored, and that revoking one removes it from a server rather than from a map\nthat agrees with us.\n\nRegenerating after a change to the spec or the wire graph:\n\n```bash\ngo generate ./...\n```",
+          "readme": "# Authentication \u0026 Sessions\n\nService `auth` — bounded context **auth**.\n\nOwns *who someone is* and *whether they are still logged in*. It is the only\nservice in the estate that stores credentials, and the only one allowed to mint\nor revoke a session.\n\n## What it does\n\n- Registers a user: an email address and a password, hashed before it is stored.\n- Authenticates: checks a password and answers with a user id or a refusal.\n- Replaces a password, given the current one.\n- Starts a session on a successful login and hands back an opaque token.\n- Ends a session on logout.\n- Validates a token for everyone else — the hot path every authenticated\n  request in `shop` goes through.\n- Locks an account after five wrong passwords in a row, for fifteen minutes,\n  and says so with an event.\n\n## What it does not do\n\nNo profile data, no addresses, no payment instruments, no roles or scopes.\nOther contexts hold their own view of a customer and reference it by opaque\nuser id; nothing outside `auth` ever sees a credential.\n\nNo MFA, no email verification, no refresh tokens, no way for support to lift a\nlock early. Each of those is a real requirement somewhere, and none of them is\nhere: this service is deliberately the smallest thing that is still\nauthentication.\n\n## Domain\n\nThree aggregates, linked by user id and nothing else. They are separate because\na session is written far more often than a user and is revoked without the user\nchanging at all, and a wrong password is written more often still without the\nuser changing either, so none of the three belongs under another's lock.\n\n| | Root | Value objects | Publishes |\n|---|---|---|---|\n| `user` | `User` — id, email, password hash | `email.Address`, `password.Hash` | `UserRegistered`, `PasswordChanged` |\n| `session` | `Session` — id, user id, token, expiry, revocation | `token.Token` | `SessionStarted`, `SessionEnded` |\n| `lockout` | `Lockout` — user id, wrong passwords in a row, locked until | — | `AccountLocked` |\n\nAggregates return their events rather than buffering them, so what happened is\nvisible in the signature and publishing is the caller's business.\n\nBoth carry a version. A write is refused if the aggregate was changed since it\nwas read, so two changes made from one read cannot both succeed with the first\none silently disappearing.\n\nExpiry publishes nothing. When a session runs out of time no code runs and\nnobody decides anything, and every consumer already knows the expiry from\n`SessionStarted`; an event there would be invented by whichever sweep noticed\nfirst.\n\n### Rules\n\nValidation lives in the value object constructors, so a value that exists is a\nvalue that passed. Each rule is a specification in a `rules/` package next to\nthe value object it governs, and the policy — which rules currently apply — is\nthe `composite.go` in that package.\n\n- **email** — required, at most 254 characters, parsable by `net/mail`, and not\n  in display form: `Ada \u003cada@example.com\u003e` is an address but not a login.\n- **password** — 8 to 32 characters, at least one digit, one lower-case and one\n  upper-case letter, no whitespace.\n- **token** — 32 random bytes, unpadded base64url.\n\nThe password policy applies when a password is *created*, never when one is\nchecked. Raising the minimum must not lock out everyone who registered under\nthe old one, whose stored hash is still perfectly good.\n\n### Lockout\n\nThe fifth wrong password in a row locks the account for fifteen minutes. While\nlocked, a password is refused *unchecked*, with exactly the answer a wrong one\ngets, so a lock discloses nothing a wrong password would not. The lock ends by\ntime and nothing runs when it does; the next wrong password starts the count\nat one, and a right one clears it.\n\nThe count is per account. An unknown address is refused before anything is\ncounted, so guessing at addresses locks nobody, and nobody can lock somebody\nelse by typing their address with junk. A lock does not end the account's\nsessions: unlike a risk block, it means somebody has *not* got the password,\nand the sessions are the owner's.\n\n`authenticate` asks the lockout before it checks a password and tells it how\nthe check went afterwards, through a port it declares; the lockout domain does\nnot know who asks. Read `internal/domain/lockout/README.md` for the states and\n`docs/adr/0004-lockout-is-its-own-aggregate.md` for why it is not a counter on\nthe user.\n\n### The one rule that spans both\n\nA password change ends the sessions issued against the old password. That rule\nbelongs to neither aggregate, so it is written into neither: the user aggregate\npublishes `PasswordChanged`, and a policy in `internal/application/policy` hears\nit and ends the sessions. `session` never imports `user`, `user` never imports\n`session`.\n\nWhat that means for a caller is in the use cases that carry it out - see\n`internal/application/user/usecases/change_password`.\n\n## HTTP\n\nThe API is `internal/infrastructure/transport/http/gen/openapi.yaml`. Routes,\nshapes, status codes and the reasoning behind them are described there, and the\nserver interface is generated from it - so it is the one place that can be\nwrong, and it cannot drift from this file because this file does not repeat it.\n\n## Risk\n\nLogin asks a risk service before it issues anything. The contract is a narrowed\ncopy of `risk.v1` under `internal/infrastructure/risk/proto`, the generated\nclient beside it, and `RISK_ADDR` says where the service is; unset, every\nattempt is allowed, so a laptop does not need one.\n\nThe use case does not know any of that. It declares `login.Risk` - an attempt\nin, a verdict out - and assembly hands it the adapter in\n`internal/infrastructure/risk`, which is the one package that speaks both. That\nis the same shape as the Authenticator, and for the same reason: the knowledge\nthat another service exists lives in one place, and it is not the domain.\n\nA blocked attempt is treated as the account being compromised. Whoever is\ntrying has the right password, so every live session the account has is ended\nfirst - `SessionEnded` with reason `risk-blocked`, one transaction each - and\nonly then is the attempt refused, with the same 401 as a wrong password. A 403\nwould say the account exists and is worth attacking, which is the one thing\nthe attacker came to learn.\n\n## Tracing\n\n`TRACER_URI` names an OTLP collector and switches tracing on; without it the\nprovider is the no-op one and every span costs nothing. Requests are traced by\nroute, database calls by the SDK's pgx tracer, and each domain event twice:\nwhere it is written to the outbox and where a policy takes it off the bus, with\nthe event's name on both spans and the trace carried across the table so the\ntwo are one trace. `telemetry/` holds the collector config, a script that\nrecords the service doing everything it does, and the recording itself, which\nis what the catalog is verified against: see `telemetry/README.md`.\n\n## Caching\n\n`ByToken` is the hot path: every authenticated request in the estate ends\nthere, asking the same question about the same token over and over. It is the\none read in this service worth keeping an answer to, so there is a cache in\nfront of it.\n\nThe cache itself is `go-sdk/cache` — a byte-level port, its redis adapter and a\nnoop. This service has no adapter of its own and no redis client in its imports:\nwhat lives here is `cached.go`, next to the store it decorates, and it decides\nonly what to keep, for how long, and when to forget it. That is the part which\nis about sessions; opening a connection is not.\n\nNothing above infrastructure knows. `session.Repository` did not change, the use\ncases did not change, and they could not have: they take the port and always\ndid. Assembly binds the port to `Cached` wrapping `Postgres` instead of to\n`Postgres`, and that one function in `internal/di/provider/repository.go` is the\nwhole of the change. A cache is a fact about how fast a deployment has to be,\nnot a fact about what a session is, so the domain has no port for one.\n\nOnly `ByToken` is cached. `ByID` is read by the code that is about to write, and\n`ByUserID` answers a question about a set — the kind of entry nothing can\ninvalidate honestly, because a session started for that user changes the answer\nand the write that started it never knew the list existed.\n\nWhat makes it safe to read a session from somewhere other than the database:\n\n- **The version travels with it.** A cached copy is a copy taken at a version,\n  and a write made from a stale one is refused rather than applied. Caching a\n  read cannot cause a wrong write here, only a retried one.\n- **Nothing is read from the cache inside a transaction.** A use case reading\n  through it would be deciding on a copy its own transaction never saw and\n  cannot have locked.\n- **Revocation drops the entry** — before the write and again after it. The\n  first drop is what survives a process dying after the commit; the second is\n  what survives a reader repopulating the entry while the write was in flight.\n- **An entry never outlives its session.** The TTL is the shorter of\n  `CACHE_SESSION_TTL` and what is left of the session's own life. Expiry is the\n  one way a session changes with nothing running to notice.\n- **The key is a hash of the token, never the token.** The token is the\n  credential itself, and a `KEYS` scan, a slow-log line or a redis dump is not\n  treated like a password store.\n- **A cache that is down is not an outage.** Every cache failure on the read\n  path is swallowed and the database answers; a failed invalidation does not\n  fail the write that already committed. What that costs is a stale entry for\n  the rest of its TTL, which is what the TTL is for — a minute by default, and\n  it is not how long a logout takes to be seen, it is how long the estate stays\n  wrong when the invalidation is the thing that broke.\n\n`STORE_REDIS_CLIENT_CACHE_TTL` additionally keeps a copy inside each process for\nthat long. It is off by default and safe to turn on: the SDK's local layer is\nredis client-side caching, which the server invalidates on every replica when a\nkey changes. An in-process LRU could not be — nothing would tell it about a\nlogout, and every replica but the one that handled it would keep saying the\nsession is live.\n\n## Running it\n\n```bash\ndocker compose up -d\nSTORE_TYPE=postgres \\\nSTORE_POSTGRES_URI=postgres://auth:auth@localhost:5432/auth?sslmode=disable \\\n  go run ./cmd/auth\n```\n\nWith the cache:\n\n```bash\ndocker compose up -d\nSTORE_TYPE=postgres \\\nSTORE_POSTGRES_URI=postgres://auth:auth@localhost:5432/auth?sslmode=disable \\\nCACHE_TYPE=redis \\\nSTORE_REDIS_URI=localhost:6379 \\\n  go run ./cmd/auth\n```\n\n`CACHE_TYPE` defaults to `none`, which wires a cache that keeps nothing and\nmisses every read — so the uncached path is a different cache rather than a\ndifferent code path, and it is the one that runs on a laptop. A `CACHE_TYPE`\nnobody recognises fails at assembly: that is somebody asking for a cache and\ngetting silence.\n\nThe schema is brought up to date at startup. Each aggregate owns its own\nmigrations and its own `schema_migrations_*` table, numbered from 1 within its\nown package: `user` and `session` both have an `0001`, and neither waits for the\nother, because no table here refers to one in another aggregate.\n\nTests start their own database and their own redis through testcontainers, so a\nrun cannot be affected by whatever state a local one is in. Without Docker the\npackages that need one are skipped and the domain tests - the majority, and the\nones worth having - still run. Most of the decorator's tests need neither: when\nit asks the store and when it does not is a question a fake answers faster and\nno less honestly. One test does use a real redis, and only for what a fake\ncannot say - that a session survives the round trip through what is actually\nstored, and that revoking one removes it from a server rather than from a map\nthat agrees with us.\n\nRegenerating after a change to the spec or the wire graph:\n\n```bash\ngo generate ./...\n```",
           "provides": [],
           "consumes": [
             {
@@ -26,6 +26,62 @@
             }
           ],
           "aggregates": [
+            {
+              "id": "auth.auth.lockout",
+              "slug": "lockout",
+              "name": "Lockout",
+              "readme": "# Lockout\n\nHow many wrong passwords in a row an account has taken, and whether it is\nrefusing logins because of them. One per user, identified by the user id,\nexisting from the first wrong password on. A separate aggregate from `User`:\na failed attempt is written on every wrong password and the user does not\nchange when one arrives, so the two do not share a lock.\n\n## States\n\n- **Open** — counting. `Failures` is the number of wrong passwords in a row;\n  the account accepts a password. The only state a password is checked in.\n- **Locked** — until `LockedUntil`. The account refuses a password without\n  checking it, with the same answer a wrong one gets. Not terminal: it ends\n  by time.\n- A lock that has run out is **Open** again. Derived from time when the next\n  attempt arrives; no command, no event, nothing runs. The next wrong\n  password starts the count at one.\n\nThe state is read off `LockedUntil` with `now`; there is no stored flag to\ndrift from it.\n\n```mermaid\nstateDiagram-v2\n    [*] --\u003e Open : first wrong password (no event)\n    Open --\u003e Open : Fail, count \u003c Threshold (no event)\n    Open --\u003e Locked : Fail, count = Threshold / AccountLocked\n    Open --\u003e Open : Succeed, count := 0 (no event)\n    Locked --\u003e Locked : Fail, not counted (no event)\n    Locked --\u003e Open : now ≥ LockedUntil (no event)\n```\n\n## Commands\n\n| Command | From | To | Event |\n|---|---|---|---|\n| `New` | — | Open, zero failures | none; nothing has happened yet |\n| `Fail` | Open, count \u003c Threshold − 1 | Open, count + 1 | none |\n| `Fail` | Open, count = Threshold − 1 | Locked | `AccountLocked` |\n| `Fail` | Locked | unchanged | none; reports \"locked nothing\" |\n| `Succeed` | Open | Open, count 0 | none; reports whether anything changed |\n| `Succeed` | Locked | unchanged | none; the lock stands |\n\n`Allows(now)` and `Locked(now)` are the read, for the caller that asks\nbefore checking a password.\n\nOne event for the whole aggregate. A wrong password that locked nothing is a\ncount, not a fact anybody consumes; a count going back to zero is\nbookkeeping; the lock running out is time passing. `AccountLocked` carries\n`Until`, so a consumer who wants to know when the account is usable again\ndoes not have to be told twice.",
+              "root": "Lockout",
+              "entities": [
+                {
+                  "id": "auth.auth.lockout.lockout",
+                  "slug": "lockout",
+                  "name": "Lockout",
+                  "doc": "Lockout is the aggregate root. Its identity is the user id: there is one per account, and it exists from the first wrong password on.",
+                  "fields": [
+                    {
+                      "name": "UserID",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "Failures",
+                      "type": "int",
+                      "doc": "Failures is the number of wrong passwords in a row. It is reset by a right one and by the count starting again after a lock has run out."
+                    },
+                    {
+                      "name": "LockedUntil",
+                      "type": "time.Time",
+                      "doc": "LockedUntil is when the lock ends; zero while the account has never been locked. A time in the past is a lock that ran out: the state is read off it with `now`, and nothing runs when it passes."
+                    },
+                    {
+                      "name": "Version",
+                      "type": "int64",
+                      "doc": "Version is what the store compares against before writing; see the note on user.User.Version. Zero means the lockout has never been stored."
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [],
+              "operations": [
+                {
+                  "id": "Check",
+                  "kind": "query",
+                  "doc": "Answers whether an account accepts a password right now."
+                },
+                {
+                  "id": "RecordFailure",
+                  "kind": "command",
+                  "doc": "Counts a wrong password against an account, and locks the account when the count reaches the threshold."
+                },
+                {
+                  "id": "RecordSuccess",
+                  "kind": "command",
+                  "doc": "Clears the count of wrong passwords after a right one."
+                }
+              ],
+              "events": []
+            },
             {
               "id": "auth.auth.session",
               "slug": "session",
@@ -577,11 +633,70 @@
           "kind": "call",
           "label": "ByEmail",
           "status": "declared",
-          "line": "examples/auth/internal/application/user/usecases/authenticate/usecase.go:33"
+          "line": "examples/auth/internal/application/user/usecases/authenticate/usecase.go:41"
         },
         {
           "type": "step",
           "id": "s4",
+          "from": "auth.auth",
+          "to": "auth.auth",
+          "kind": "call",
+          "label": "Check",
+          "status": "declared",
+          "note": "Port `Lockout`, bound at assembly to the Check use case.",
+          "line": "examples/auth/internal/application/user/usecases/authenticate/usecase.go:49"
+        },
+        {
+          "type": "step",
+          "id": "s5",
+          "from": "auth.auth",
+          "to": "auth-pg",
+          "kind": "call",
+          "label": "ByUserID",
+          "status": "declared",
+          "line": "examples/auth/internal/application/lockout/usecases/check/usecase.go:27"
+        },
+        {
+          "type": "alt",
+          "id": "alt7",
+          "branches": [
+            {
+              "title": "err != nil",
+              "steps": [
+                {
+                  "type": "step",
+                  "id": "s6",
+                  "from": "auth.auth",
+                  "to": "auth.auth",
+                  "kind": "call",
+                  "label": "Check",
+                  "status": "declared",
+                  "note": "Port `Lockout`, bound at assembly to the Check use case.",
+                  "line": "examples/auth/internal/application/user/usecases/authenticate/usecase.go:58"
+                }
+              ],
+              "terminal": true
+            },
+            {
+              "title": "otherwise",
+              "steps": []
+            }
+          ]
+        },
+        {
+          "type": "step",
+          "id": "s8",
+          "from": "auth.auth",
+          "to": "auth.auth",
+          "kind": "call",
+          "label": "Check",
+          "status": "declared",
+          "note": "Port `Lockout`, bound at assembly to the Check use case.",
+          "line": "examples/auth/internal/application/user/usecases/authenticate/usecase.go:67"
+        },
+        {
+          "type": "step",
+          "id": "s9",
           "from": "auth.auth",
           "to": "risk-v1",
           "kind": "rpc",
@@ -592,14 +707,14 @@
         },
         {
           "type": "alt",
-          "id": "alt8",
+          "id": "alt13",
           "branches": [
             {
               "title": "verdict == VerdictBlock",
               "steps": [
                 {
                   "type": "step",
-                  "id": "s5",
+                  "id": "s10",
                   "from": "auth.auth",
                   "to": "auth-pg",
                   "kind": "call",
@@ -609,7 +724,7 @@
                 },
                 {
                   "type": "step",
-                  "id": "s6",
+                  "id": "s11",
                   "from": "auth.auth",
                   "to": "auth-pg",
                   "kind": "call",
@@ -620,7 +735,7 @@
                 },
                 {
                   "type": "step",
-                  "id": "s7",
+                  "id": "s12",
                   "from": "auth.auth",
                   "to": "bus",
                   "kind": "event",
@@ -641,7 +756,7 @@
         },
         {
           "type": "step",
-          "id": "s9",
+          "id": "s14",
           "from": "auth.auth",
           "to": "auth-pg",
           "kind": "call",
@@ -651,7 +766,7 @@
         },
         {
           "type": "step",
-          "id": "s10",
+          "id": "s15",
           "from": "auth.auth",
           "to": "bus",
           "kind": "event",

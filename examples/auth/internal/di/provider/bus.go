@@ -3,8 +3,10 @@ package provider
 import (
 	"github.com/google/wire"
 
+	"github.com/shortlink-org/portolan/examples/auth/internal/domain/lockout"
 	"github.com/shortlink-org/portolan/examples/auth/internal/domain/session"
 	"github.com/shortlink-org/portolan/examples/auth/internal/domain/user"
+	lockoutbus "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/bus/lockout"
 	sessionbus "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/bus/session"
 	userbus "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/bus/user"
 )
@@ -20,4 +22,7 @@ var Bus = wire.NewSet(
 
 	sessionbus.NewInProc,
 	wire.Bind(new(session.Publisher), new(*sessionbus.InProc)),
+
+	lockoutbus.NewInProc,
+	wire.Bind(new(lockout.Publisher), new(*lockoutbus.InProc)),
 )

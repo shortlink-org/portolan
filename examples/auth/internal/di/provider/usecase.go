@@ -3,6 +3,9 @@ package provider
 import (
 	"github.com/google/wire"
 
+	"github.com/shortlink-org/portolan/examples/auth/internal/application/lockout/usecases/check"
+	"github.com/shortlink-org/portolan/examples/auth/internal/application/lockout/usecases/record_failure"
+	"github.com/shortlink-org/portolan/examples/auth/internal/application/lockout/usecases/record_success"
 	"github.com/shortlink-org/portolan/examples/auth/internal/application/session/usecases/end_after_credential_change"
 	"github.com/shortlink-org/portolan/examples/auth/internal/application/session/usecases/login"
 	"github.com/shortlink-org/portolan/examples/auth/internal/application/session/usecases/logout"
@@ -13,10 +16,11 @@ import (
 	"github.com/shortlink-org/portolan/examples/auth/internal/application/user/usecases/register"
 )
 
-// UseCase provides all six scenarios.
+// UseCase provides every scenario.
 //
 // authenticate is in the set although no endpoint serves it: login needs it,
-// through the adapter in authenticator.go.
+// through the adapter in authenticator.go. The three lockout scenarios are the
+// same: nothing serves them, authenticate needs them through lockout.go.
 var UseCase = wire.NewSet(
 	register.New,
 	authenticate.New,
@@ -27,4 +31,8 @@ var UseCase = wire.NewSet(
 	logout.New,
 	validate.New,
 	end_after_credential_change.New,
+
+	check.New,
+	record_failure.New,
+	record_success.New,
 )

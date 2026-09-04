@@ -65,6 +65,7 @@ reason is a preference.
 
 - Each implements one port; nothing else exported for a use case to reach for.
 - No transaction handling in statements; unit of work re-entrant, one lookup shared by driver, outbox and cache; `Save` writes aggregate and events in one transaction.
+- No second `Save` on a copy that was already saved; the caller re-reads.
 - Independent aggregates in a loop: one transaction each, conflict retried per item; two aggregates in one unit only with a stated reason.
 - Migrations inside the store package, numbered per aggregate, no cross-aggregate references, no down files.
 - Update compares version; zero rows is conflict; storage errors mapped by constraint, rest wrapped with package and operation.

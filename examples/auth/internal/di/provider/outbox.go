@@ -15,9 +15,11 @@ import (
 	"go.opentelemetry.io/otel"
 
 	"github.com/shortlink-org/portolan/examples/auth/internal/application/policy"
+	lockoutdomain "github.com/shortlink-org/portolan/examples/auth/internal/domain/lockout"
 	sessiondomain "github.com/shortlink-org/portolan/examples/auth/internal/domain/session"
 	userdomain "github.com/shortlink-org/portolan/examples/auth/internal/domain/user"
 	userevent "github.com/shortlink-org/portolan/examples/auth/internal/domain/user/event"
+	lockoutrepo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/lockout"
 	sessionrepo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/session"
 	userrepo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/user"
 	"github.com/shortlink-org/portolan/examples/auth/internal/pkg/messaging"
@@ -36,6 +38,8 @@ var Outbox = wire.NewSet(
 	wire.Bind(new(userdomain.Publisher), new(*userrepo.Publisher)),
 	sessionrepo.NewPublisher,
 	wire.Bind(new(sessiondomain.Publisher), new(*sessionrepo.Publisher)),
+	lockoutrepo.NewPublisher,
+	wire.Bind(new(lockoutdomain.Publisher), new(*lockoutrepo.Publisher)),
 	ProvideWatermill,
 	ProvideRelay,
 )

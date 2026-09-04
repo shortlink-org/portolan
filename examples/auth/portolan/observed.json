@@ -272,11 +272,70 @@
           "kind": "call",
           "label": "ByEmail",
           "status": "declared",
-          "line": "examples/auth/internal/application/user/usecases/authenticate/usecase.go:33"
+          "line": "examples/auth/internal/application/user/usecases/authenticate/usecase.go:41"
         },
         {
           "type": "step",
           "id": "s4",
+          "from": "auth.auth",
+          "to": "auth.auth",
+          "kind": "call",
+          "label": "Check",
+          "status": "declared",
+          "note": "Port `Lockout`, bound at assembly to the Check use case.",
+          "line": "examples/auth/internal/application/user/usecases/authenticate/usecase.go:49"
+        },
+        {
+          "type": "step",
+          "id": "s5",
+          "from": "auth.auth",
+          "to": "auth-pg",
+          "kind": "call",
+          "label": "ByUserID",
+          "status": "declared",
+          "line": "examples/auth/internal/application/lockout/usecases/check/usecase.go:27"
+        },
+        {
+          "type": "alt",
+          "id": "alt7",
+          "branches": [
+            {
+              "title": "err != nil",
+              "steps": [
+                {
+                  "type": "step",
+                  "id": "s6",
+                  "from": "auth.auth",
+                  "to": "auth.auth",
+                  "kind": "call",
+                  "label": "Check",
+                  "status": "declared",
+                  "note": "Port `Lockout`, bound at assembly to the Check use case.",
+                  "line": "examples/auth/internal/application/user/usecases/authenticate/usecase.go:58"
+                }
+              ],
+              "terminal": true
+            },
+            {
+              "title": "otherwise",
+              "steps": []
+            }
+          ]
+        },
+        {
+          "type": "step",
+          "id": "s8",
+          "from": "auth.auth",
+          "to": "auth.auth",
+          "kind": "call",
+          "label": "Check",
+          "status": "declared",
+          "note": "Port `Lockout`, bound at assembly to the Check use case.",
+          "line": "examples/auth/internal/application/user/usecases/authenticate/usecase.go:67"
+        },
+        {
+          "type": "step",
+          "id": "s9",
           "from": "auth.auth",
           "to": "risk-v1",
           "kind": "rpc",
@@ -287,14 +346,14 @@
         },
         {
           "type": "alt",
-          "id": "alt8",
+          "id": "alt13",
           "branches": [
             {
               "title": "verdict == VerdictBlock",
               "steps": [
                 {
                   "type": "step",
-                  "id": "s5",
+                  "id": "s10",
                   "from": "auth.auth",
                   "to": "auth-pg",
                   "kind": "call",
@@ -304,7 +363,7 @@
                 },
                 {
                   "type": "step",
-                  "id": "s6",
+                  "id": "s11",
                   "from": "auth.auth",
                   "to": "auth-pg",
                   "kind": "call",
@@ -315,7 +374,7 @@
                 },
                 {
                   "type": "step",
-                  "id": "s7",
+                  "id": "s12",
                   "from": "auth.auth",
                   "to": "bus",
                   "kind": "event",
@@ -336,7 +395,7 @@
         },
         {
           "type": "step",
-          "id": "s9",
+          "id": "s14",
           "from": "auth.auth",
           "to": "auth-pg",
           "kind": "call",
@@ -346,7 +405,7 @@
         },
         {
           "type": "step",
-          "id": "s10",
+          "id": "s15",
           "from": "auth.auth",
           "to": "bus",
           "kind": "event",

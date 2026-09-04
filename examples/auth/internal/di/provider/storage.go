@@ -17,6 +17,7 @@ import (
 	sdkoutbox "github.com/shortlink-org/go-sdk/outbox"
 	sdkuow "github.com/shortlink-org/go-sdk/uow"
 
+	lockoutrepo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/lockout"
 	sessionrepo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/session"
 	userrepo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/user"
 	"github.com/shortlink-org/portolan/examples/auth/internal/pkg/uow"
@@ -70,6 +71,9 @@ func ProvideStore(cfg *sdkconfig.Config, log logger.Logger) (*db.Store, error) {
 	}
 	if err := migrate.Migration(ctx, store, sessionrepo.Migrations, sessionrepo.Name); err != nil {
 		return nil, fmt.Errorf("provider: migrating %s: %w", sessionrepo.Name, err)
+	}
+	if err := migrate.Migration(ctx, store, lockoutrepo.Migrations, lockoutrepo.Name); err != nil {
+		return nil, fmt.Errorf("provider: migrating %s: %w", lockoutrepo.Name, err)
 	}
 	// The outbox table is migrated like any other. Nothing creates it at
 	// start-up behind the migration's back, which is what every other table in

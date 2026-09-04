@@ -31,6 +31,11 @@ opened a wider one.
 outside one.** A fact about a change that did not commit is worse than no
 fact; a change nobody was told about is the other half of the same bug.
 
+**A saved copy is not refreshed by the save.** `Save` writes the version it
+was handed and does not bump the copy in memory; whoever wants to write
+again reads again. A second `Save` on the same copy is a conflict, by design:
+the read is what tells the caller whether anybody else got there first.
+
 **Not one repository statement mentions the transaction.** The same code is
 correct alone and inside a wider unit; the context carries the difference.
 
@@ -71,7 +76,7 @@ thing most worth not getting wrong.
 
 - One lookup, handed to driver, outbox and cache at assembly.
 - Re-entrant `Do`; repositories never handle transactions in statements.
-- `Save` = aggregate + events, one unit.
+- `Save` = aggregate + events, one unit; a saved copy is stale, re-read before writing again.
 - Loops over independent aggregates: one unit each, conflicts retried per item.
 - Cache bypassed when a transaction is in flight.
 - Test harness uses the same lookup.

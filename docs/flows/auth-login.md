@@ -31,6 +31,14 @@ sequenceDiagram
     p0->>p1: login
     p1->>p1: Authenticate
     p1->>p2: ByEmail
+    p1->>p1: Check
+    p1->>p2: ByUserID
+    alt err != nil
+        p1->>p1: Check
+        Note over p1: flow ends here
+    else otherwise
+    end
+    p1->>p1: Check
     p1->>p3: Assess
     alt verdict == VerdictBlock
         p1->>p2: ByUserID
@@ -50,24 +58,40 @@ sequenceDiagram
 2. **auth.auth** ↺ **auth.auth** — Authenticate
    status: declared · `examples/auth/internal/application/session/usecases/login/usecase.go:58` · Port `Authenticator`, bound at assembly to the Authenticate use case.
 3. **auth.auth** → **auth-pg** — ByEmail
-   status: declared · `examples/auth/internal/application/user/usecases/authenticate/usecase.go:33`
-4. **auth.auth** → **risk-v1** — Assess
+   status: declared · `examples/auth/internal/application/user/usecases/authenticate/usecase.go:41`
+4. **auth.auth** ↺ **auth.auth** — Check
+   status: declared · `examples/auth/internal/application/user/usecases/authenticate/usecase.go:49` · Port `Lockout`, bound at assembly to the Check use case.
+5. **auth.auth** → **auth-pg** — ByUserID
+   status: declared · `examples/auth/internal/application/lockout/usecases/check/usecase.go:27`
+
+> **One of**
+>
+> *err != nil — *ends the flow**
+>
+> 6. **auth.auth** ↺ **auth.auth** — Check
+>    status: declared · `examples/auth/internal/application/user/usecases/authenticate/usecase.go:58` · Port `Lockout`, bound at assembly to the Check use case.
+>
+> *otherwise*
+
+7. **auth.auth** ↺ **auth.auth** — Check
+   status: declared · `examples/auth/internal/application/user/usecases/authenticate/usecase.go:67` · Port `Lockout`, bound at assembly to the Check use case.
+8. **auth.auth** → **risk-v1** — Assess
    `risk.v1.RiskService/Assess` · status: unresolved · `examples/auth/internal/application/session/usecases/login/usecase.go:63`
 
 > **One of**
 >
 > *verdict == VerdictBlock — *ends the flow**
 >
-> 5. **auth.auth** → **auth-pg** — ByUserID
+> 9. **auth.auth** → **auth-pg** — ByUserID
 >    status: declared · `examples/auth/internal/application/session/usecases/login/usecase.go:92`
-> 6. **auth.auth** → **auth-pg** — Save
+> 10. **auth.auth** → **auth-pg** — Save
 >    status: declared · `examples/auth/internal/application/session/usecases/login/usecase.go:102` · inside a loop over `sessions`.
-> 7. **auth.auth** → **bus** — SessionEnded
+> 11. **auth.auth** → **bus** — SessionEnded
 >    [auth.auth.session.SessionEnded](../auth/auth/aggregates/session.md) · status: declared · `examples/auth/internal/application/session/usecases/login/usecase.go:102` · inside a loop over `sessions`.
 >
 > *otherwise*
 
-8. **auth.auth** → **auth-pg** — Save
+12. **auth.auth** → **auth-pg** — Save
    status: declared · `examples/auth/internal/application/session/usecases/login/usecase.go:78`
-9. **auth.auth** → **bus** — SessionStarted
+13. **auth.auth** → **bus** — SessionStarted
    [auth.auth.session.SessionStarted](../auth/auth/aggregates/session.md) · `examples/auth/internal/application/session/usecases/login/usecase.go:78` · Seen running in telemetry/traces.jsonl (2 traces).

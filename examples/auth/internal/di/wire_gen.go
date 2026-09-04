@@ -7,6 +7,9 @@
 package di
 
 import (
+	"github.com/shortlink-org/portolan/examples/auth/internal/application/lockout/usecases/check"
+	"github.com/shortlink-org/portolan/examples/auth/internal/application/lockout/usecases/record_failure"
+	"github.com/shortlink-org/portolan/examples/auth/internal/application/lockout/usecases/record_success"
 	"github.com/shortlink-org/portolan/examples/auth/internal/application/policy"
 	"github.com/shortlink-org/portolan/examples/auth/internal/application/session/usecases/end_after_credential_change"
 	"github.com/shortlink-org/portolan/examples/auth/internal/application/session/usecases/login"
@@ -17,6 +20,7 @@ import (
 	"github.com/shortlink-org/portolan/examples/auth/internal/application/user/usecases/get"
 	"github.com/shortlink-org/portolan/examples/auth/internal/application/user/usecases/register"
 	"github.com/shortlink-org/portolan/examples/auth/internal/di/provider"
+	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/lockout"
 	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/session"
 	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/user"
 	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/transport/http"
@@ -77,14 +81,20 @@ func New() (App, error) {
 	repository := provider.ProvideSessionRepository(sessionPostgres, cache, duration, v)
 	validateUseCase := validate.New(repository, v)
 	users := user2.NewUsers(useCase, getUseCase, change_passwordUseCase, validateUseCase)
-	authenticateUseCase := authenticate.New(postgres)
+	lockoutPublisher := lockout.NewPublisher(publisher)
+	lockoutPostgres := lockout.NewPostgres(router, unitOfWork, lockoutPublisher)
+	checkUseCase := check.New(lockoutPostgres, v)
+	record_failureUseCase := record_failure.New(lockoutPostgres, v)
+	record_successUseCase := record_success.New(lockoutPostgres, v)
+	authenticateLockout := provider.ProvideLockout(checkUseCase, record_failureUseCase, record_successUseCase)
+	authenticateUseCase := authenticate.New(postgres, authenticateLockout)
 	authenticator := provider.ProvideAuthenticator(authenticateUseCase)
 	riskServiceClient, err := provider.ProvideRiskClient(config)
 	if err != nil {
 		return App{}, err
 	}
-	loginRisk := provider.ProvideRisk(riskServiceClient)
-	loginUseCase := login.New(repository, authenticator, loginRisk, v, v2)
+	risk := provider.ProvideRisk(riskServiceClient)
+	loginUseCase := login.New(repository, authenticator, risk, v, v2)
 	logoutUseCase := logout.New(repository, v)
 	sessions := session2.NewSessions(loginUseCase, logoutUseCase, validateUseCase)
 	server := http.NewServer(users, sessions)

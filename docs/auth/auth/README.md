@@ -22,6 +22,8 @@ or revoke a session.
 - Ends a session on logout.
 - Validates a token for everyone else — the hot path every authenticated
   request in `shop` goes through.
+- Locks an account after five wrong passwords in a row, for fifteen minutes,
+  and says so with an event.
 
 ## What it does not do
 
@@ -29,20 +31,23 @@ No profile data, no addresses, no payment instruments, no roles or scopes.
 Other contexts hold their own view of a customer and reference it by opaque
 user id; nothing outside `auth` ever sees a credential.
 
-No MFA, no email verification, no lockout after repeated failures, no refresh
-tokens. Each of those is a real requirement somewhere, and none of them is here:
-this service is deliberately the smallest thing that is still authentication.
+No MFA, no email verification, no refresh tokens, no way for support to lift a
+lock early. Each of those is a real requirement somewhere, and none of them is
+here: this service is deliberately the smallest thing that is still
+authentication.
 
 ## Domain
 
-Two aggregates, linked by user id and nothing else. They are separate because a
-session is written far more often than a user and is revoked without the user
-changing at all, so the two do not belong under one lock.
+Three aggregates, linked by user id and nothing else. They are separate because
+a session is written far more often than a user and is revoked without the user
+changing at all, and a wrong password is written more often still without the
+user changing either, so none of the three belongs under another's lock.
 
 | | Root | Value objects | Publishes |
 |---|---|---|---|
 | `user` | `User` — id, email, password hash | `email.Address`, `password.Hash` | `UserRegistered`, `PasswordChanged` |
 | `session` | `Session` — id, user id, token, expiry, revocation | `token.Token` | `SessionStarted`, `SessionEnded` |
+| `lockout` | `Lockout` — user id, wrong passwords in a row, locked until | — | `AccountLocked` |
 
 Aggregates return their events rather than buffering them, so what happened is
 visible in the signature and publishing is the caller's business.
@@ -72,6 +77,26 @@ the `composite.go` in that package.
 The password policy applies when a password is *created*, never when one is
 checked. Raising the minimum must not lock out everyone who registered under
 the old one, whose stored hash is still perfectly good.
+
+### Lockout
+
+The fifth wrong password in a row locks the account for fifteen minutes. While
+locked, a password is refused *unchecked*, with exactly the answer a wrong one
+gets, so a lock discloses nothing a wrong password would not. The lock ends by
+time and nothing runs when it does; the next wrong password starts the count
+at one, and a right one clears it.
+
+The count is per account. An unknown address is refused before anything is
+counted, so guessing at addresses locks nobody, and nobody can lock somebody
+else by typing their address with junk. A lock does not end the account's
+sessions: unlike a risk block, it means somebody has *not* got the password,
+and the sessions are the owner's.
+
+`authenticate` asks the lockout before it checks a password and tells it how
+the check went afterwards, through a port it declares; the lockout domain does
+not know who asks. Read `internal/domain/lockout/README.md` for the states and
+`docs/adr/0004-lockout-is-its-own-aggregate.md` for why it is not a counter on
+the user.
 
 ### The one rule that spans both
 
@@ -229,6 +254,7 @@ go generate ./...
 
 | Aggregate | Root | Commands | Queries | Events |
 | --- | --- | --- | --- | --- |
+| [Lockout](aggregates/lockout.md) | `Lockout` | 2 commands | 1 query | 0 events |
 | [Session](aggregates/session.md) | `Session` | 3 commands | 1 query | 2 events |
 | [User](aggregates/user.md) | `User` | 2 commands | 2 queries | 2 events |
 
@@ -338,4 +364,4 @@ go generate ./...
 
 | Store | Kind | Access | Tables |
 | --- | --- | --- | --- |
-| [Auth database](stores/pg.md) | postgres | owns | 2 tables |
+| [Auth database](stores/pg.md) | postgres | owns | 3 tables |

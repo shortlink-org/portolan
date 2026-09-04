@@ -11,4 +11,4 @@ Who someone is, and whether they are still logged in. The only service in the es
 
 | Service | Path | Aggregates |
 | --- | --- | --- |
-| [Authentication & Sessions](auth/README.md) | `examples/auth` | Session, User |
+| [Authentication & Sessions](auth/README.md) | `examples/auth` | Lockout, Session, User |

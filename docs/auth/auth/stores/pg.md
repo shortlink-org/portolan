@@ -9,6 +9,17 @@
 
 ## Tables
 
+### lockouts
+
+aggregate-root · persists [auth.auth.lockout](../aggregates/lockout.md)
+
+| Column | Type | Null | Key | Maps |
+| --- | --- | --- | --- | --- |
+| `user_id` | `text` | not null | PK | Lockout.UserID |
+| `failures` | `integer` | not null | — | Lockout.Failures |
+| `locked_until` | `timestamptz` | null | — | Lockout.LockedUntil |
+| `version` | `bigint` | not null | — | — |
+
 ### sessions
 
 aggregate-root · persists [auth.auth.session](../aggregates/session.md)

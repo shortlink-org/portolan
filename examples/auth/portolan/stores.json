@@ -37,6 +37,40 @@
       "owner": "auth.auth",
       "tables": [
         {
+          "id": "auth.auth.pg.lockouts",
+          "name": "lockouts",
+          "columns": [
+            {
+              "name": "user_id",
+              "type": "text",
+              "nullable": false,
+              "pk": true,
+              "maps": "Lockout.UserID"
+            },
+            {
+              "name": "failures",
+              "type": "integer",
+              "nullable": false,
+              "maps": "Lockout.Failures"
+            },
+            {
+              "name": "locked_until",
+              "type": "timestamptz",
+              "nullable": true,
+              "maps": "Lockout.LockedUntil"
+            },
+            {
+              "name": "version",
+              "type": "bigint",
+              "nullable": false
+            }
+          ],
+          "persists": {
+            "aggregate": "auth.auth.lockout"
+          },
+          "role": "aggregate-root"
+        },
+        {
           "id": "auth.auth.pg.sessions",
           "name": "sessions",
           "columns": [

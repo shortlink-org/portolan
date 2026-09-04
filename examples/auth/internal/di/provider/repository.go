@@ -7,8 +7,10 @@ import (
 
 	sdkcache "github.com/shortlink-org/go-sdk/cache"
 
+	"github.com/shortlink-org/portolan/examples/auth/internal/domain/lockout"
 	"github.com/shortlink-org/portolan/examples/auth/internal/domain/session"
 	"github.com/shortlink-org/portolan/examples/auth/internal/domain/user"
+	lockoutrepo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/lockout"
 	sessionrepo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/session"
 	userrepo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/user"
 )
@@ -19,7 +21,7 @@ import (
 // database or a cache at all: everything above them speaks to an interface, and
 // swapping what is behind it is here and nowhere else.
 //
-// Both Postgres adapters take the router and the unit of work rather than a
+// The Postgres adapters take the router and the unit of work rather than a
 // connection. Neither of them opens a transaction of its own choosing, and
 // neither can be told which one it is in - that is the point.
 var Repository = wire.NewSet(
@@ -28,6 +30,12 @@ var Repository = wire.NewSet(
 
 	sessionrepo.NewPostgres,
 	ProvideSessionRepository,
+
+	// No cache in front of lockouts. The read happens once per login, not
+	// once per request, and it is immediately followed by a write on a wrong
+	// password - the kind of read a cache would only make stale.
+	lockoutrepo.NewPostgres,
+	wire.Bind(new(lockout.Repository), new(*lockoutrepo.Postgres)),
 )
 
 // ProvideSessionRepository puts the cache in front of the session store.
