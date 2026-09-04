@@ -1,0 +1,34 @@
+// A narrowed copy of the order service's contract (ADR org.0001), kept beside
+// the client generated from it: the one rpc delivery calls, and the fields it
+// reads off the answer. What is left out is left out, not renamed - a reader
+// comparing this with the published module sees a subset and nothing else.
+syntax = "proto3";
+
+package shop.v1;
+
+// OrderService reads and cancels orders. Delivery only reads.
+service OrderService {
+  // GetOrder answers with the order as it is now. NOT_FOUND for an id the
+  // service has never seen; a cancelled order is still found.
+  rpc GetOrder(GetOrderRequest) returns (GetOrderResponse);
+}
+
+message GetOrderRequest {
+  string order_id = 1;
+}
+
+message GetOrderResponse {
+  Order order = 1;
+}
+
+message Order {
+  string id = 1;
+  OrderStatus status = 4;
+}
+
+enum OrderStatus {
+  ORDER_STATUS_UNSPECIFIED = 0;
+  ORDER_STATUS_PLACED = 1;
+  ORDER_STATUS_CONFIRMED = 2;
+  ORDER_STATUS_CANCELLED = 3;
+}

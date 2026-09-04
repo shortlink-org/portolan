@@ -1,0 +1,417 @@
+{
+  "generatedAt": "2026-09-05T05:58:23+07:00",
+  "commit": "065dbaa",
+  "contexts": [
+    {
+      "id": "delivery",
+      "slug": "delivery",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "delivery.core",
+          "slug": "core",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [
+            {
+              "id": "delivery.v1.Delivery",
+              "methods": [
+                {
+                  "name": "Dispatch",
+                  "doc": "Hand a planned shipment to the carrier.",
+                  "request": "DispatchRequest",
+                  "response": "DispatchResponse"
+                },
+                {
+                  "name": "RecordScan",
+                  "doc": "Write down that a parcel was seen somewhere.",
+                  "request": "RecordScanRequest",
+                  "response": "RecordScanResponse"
+                },
+                {
+                  "name": "RecordDelivery",
+                  "doc": "End a shipment at the door.",
+                  "request": "RecordDeliveryRequest",
+                  "response": "RecordDeliveryResponse"
+                },
+                {
+                  "name": "TrackShipment",
+                  "doc": "What the customer sees when they paste a tracking code.",
+                  "request": "TrackShipmentRequest",
+                  "response": "TrackShipmentResponse"
+                },
+                {
+                  "name": "GetShipment",
+                  "doc": "One shipment, for whoever is asking about an order.",
+                  "request": "GetShipmentRequest",
+                  "response": "GetShipmentResponse"
+                }
+              ],
+              "source": "examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/proto/delivery/v1/delivery.proto:9",
+              "messages": [
+                {
+                  "name": "DispatchRequest",
+                  "fields": [
+                    {
+                      "name": "shipment_id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "tracking",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "DispatchResponse",
+                  "fields": [
+                    {
+                      "name": "shipment_id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "status",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "RecordScanRequest",
+                  "fields": [
+                    {
+                      "name": "shipment_id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "parcel_id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "location",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "RecordScanResponse",
+                  "fields": [
+                    {
+                      "name": "shipment_id",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "RecordDeliveryRequest",
+                  "fields": [
+                    {
+                      "name": "shipment_id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "signed_by",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "RecordDeliveryResponse",
+                  "fields": [
+                    {
+                      "name": "shipment_id",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "TrackShipmentRequest",
+                  "fields": [
+                    {
+                      "name": "tracking",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "TrackShipmentResponse",
+                  "fields": [
+                    {
+                      "name": "shipment_id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "status",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "scans",
+                      "type": "[]ScanView",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "GetShipmentRequest",
+                  "fields": [
+                    {
+                      "name": "shipment_id",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "GetShipmentResponse",
+                  "fields": [
+                    {
+                      "name": "shipment_id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "order_id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "status",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "tracking",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "parcels",
+                      "type": "int32",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "ScanView",
+                  "fields": [
+                    {
+                      "name": "parcel_id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "location",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "scanned_at",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "module": "local:delivery/shipment"
+            },
+            {
+              "id": "delivery.v1.RouteService",
+              "methods": [
+                {
+                  "name": "PlanRoute",
+                  "doc": "Build a day out of the shipments waiting to go out.",
+                  "request": "PlanRouteRequest",
+                  "response": "PlanRouteResponse"
+                },
+                {
+                  "name": "CloseRoute",
+                  "doc": "End the day, whatever is left undone.",
+                  "request": "CloseRouteRequest",
+                  "response": "CloseRouteResponse"
+                },
+                {
+                  "name": "GetRoute",
+                  "doc": "One route, in the order it is driven.",
+                  "request": "GetRouteRequest",
+                  "response": "GetRouteResponse"
+                }
+              ],
+              "source": "examples/shop/delivery/core/src/infrastructure/transport/grpc/route/proto/delivery/v1/routes.proto:6",
+              "messages": [
+                {
+                  "name": "PlanRouteRequest",
+                  "fields": [
+                    {
+                      "name": "vehicle",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "planned_for",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "shipment_ids",
+                      "type": "[]string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "PlanRouteResponse",
+                  "fields": [
+                    {
+                      "name": "route_id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "stops",
+                      "type": "int32",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "CloseRouteRequest",
+                  "fields": [
+                    {
+                      "name": "route_id",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "CloseRouteResponse",
+                  "fields": [
+                    {
+                      "name": "route_id",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "GetRouteRequest",
+                  "fields": [
+                    {
+                      "name": "route_id",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "GetRouteResponse",
+                  "fields": [
+                    {
+                      "name": "route_id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "vehicle",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "status",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "stops",
+                      "type": "[]StopView",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "StopView",
+                  "fields": [
+                    {
+                      "name": "seq",
+                      "type": "int32",
+                      "doc": ""
+                    },
+                    {
+                      "name": "shipment_id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "address",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "done",
+                      "type": "bool",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "module": "local:delivery/route"
+            }
+          ],
+          "consumes": [],
+          "aggregates": [],
+          "modules": [
+            "local:delivery/route",
+            "local:delivery/shipment"
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": [],
+  "modules": [
+    {
+      "id": "local:delivery/route",
+      "slug": "delivery-route",
+      "name": "delivery/route",
+      "owner": "delivery.core",
+      "packages": [
+        "delivery.v1"
+      ],
+      "files": [
+        "delivery/v1/routes.proto"
+      ],
+      "source": "examples/shop/delivery/core/src/infrastructure/transport/grpc/route/proto"
+    },
+    {
+      "id": "local:delivery/shipment",
+      "slug": "delivery-shipment",
+      "name": "delivery/shipment",
+      "owner": "delivery.core",
+      "packages": [
+        "delivery.v1"
+      ],
+      "files": [
+        "delivery/v1/delivery.proto"
+      ],
+      "source": "examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/proto"
+    }
+  ]
+}

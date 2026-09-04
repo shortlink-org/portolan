@@ -12,39 +12,16 @@ model {
   ledger_pg = store 'ledger-pg'
   billing_pg = store 'billing-pg'
   cart_pg = store 'cart-pg'
+  core_pg = store 'core-pg'
   oms_pg = store 'oms-pg'
   pricing_pg = store 'pricing-pg'
 
-  delivery = context 'Delivery' {
-    description 'Routes, parcels and proof of delivery. Reacts to captured payments, never to placed orders.'
-    style { color ctx0 }
-    core = service 'Delivery Core' {
-      description 'github.com/acme/delivery/services/core'
-      style { color ctx0 }
-      shipment = aggregate 'Shipment' {
-        ShipmentDispatched = event 'ShipmentDispatched' {
-          description 'A parcel physically left the depot.'
-        }
-        ShipmentDelivered = event 'ShipmentDelivered' {
-          description 'Proof of delivery recorded. Terminal for the shipment.'
-        }
-      }
-      route = aggregate 'Route' {
-        RoutePlanned = event 'RoutePlanned' {
-          description 'A vehicle and window were assigned a stop sequence.'
-        }
-      }
-      pg = store 'Delivery database' {
-        description 'postgres'
-      }
-    }
-  }
   auth = context 'Authentication' {
     description 'Who someone is, and whether they are still logged in. The only service in the estate that stores credentials, and the only one allowed to mint or revoke a session.'
-    style { color ctx1 }
+    style { color ctx0 }
     auth = service 'Authentication & Sessions' {
       description 'github.com/shortlink-org/portolan/examples/auth'
-      style { color ctx1 }
+      style { color ctx0 }
       lockout = aggregate 'Lockout' {
         AccountLocked = event 'AccountLocked' {
           description 'AccountLocked is published when an account starts refusing logins because of too many wrong passwords in a row. Until says when it stops.'
@@ -73,10 +50,10 @@ model {
   }
   payments = context 'Payments' {
     description 'Money, and the record of every movement of it. Nothing here decides whether to charge - it is asked, and it writes down what happened either way.'
-    style { color ctx2 }
+    style { color ctx1 }
     ledger = service 'Ledger' {
       description 'github.com/shortlink-org/portolan/examples/payments/ledger'
-      style { color ctx2 }
+      style { color ctx1 }
       payment = aggregate 'Payment' {
         PaymentAuthorized = event 'PaymentAuthorized' {
           description 'The gateway agreed to hold the money. Nothing has moved yet.'
@@ -100,10 +77,10 @@ model {
   }
   shop = context 'Shop' {
     description ''
-    style { color ctx3 }
+    style { color ctx2 }
     billing = service 'Billing' {
       description 'github.com/shortlink-org/portolan/examples/shop/billing'
-      style { color ctx3 }
+      style { color ctx2 }
       invoice = aggregate 'Invoice' {
         InvoiceIssued = event 'InvoiceIssued' {
           description 'The invoice is final and the customer has been asked to pay it.'
@@ -121,7 +98,7 @@ model {
     }
     cart = service 'Shopping Cart' {
       description 'github.com/shortlink-org/portolan/examples/shop/cart'
-      style { color ctx3 }
+      style { color ctx2 }
       basket = aggregate 'Basket' {
         BasketAbandoned = event 'BasketAbandoned' {
           description 'Nobody touched the basket for a day, and the sweep said so (cart.0006).'
@@ -151,7 +128,7 @@ that now holds everything.'
     }
     oms = service 'Order Management' {
       description 'github.com/shortlink-org/portolan/examples/shop/oms'
-      style { color ctx3 }
+      style { color ctx2 }
       _order = aggregate 'Order' {
         OrderCancelled = event 'OrderCancelled' {
           description 'The order will not be fulfilled. The reason says whether the customer
@@ -173,7 +150,7 @@ for: whoever moves money listens for this.'
     }
     pricing = service 'Pricing' {
       description 'github.com/shortlink-org/portolan/examples/shop/pricing'
-      style { color ctx3 }
+      style { color ctx2 }
       price_list = aggregate 'Price List' {
       }
       quote = aggregate 'Quote' {
@@ -189,26 +166,42 @@ for: whoever moves money listens for this.'
       }
     }
   }
+  delivery = context 'Delivery' {
+    description 'Parcels, vans and the day they are driven. Told what to carry and asked where it got to; it decides neither.'
+    style { color ctx3 }
+    core = service 'Delivery Core' {
+      description 'github.com/shortlink-org/portolan/examples/shop/delivery/core'
+      style { color ctx3 }
+      route = aggregate 'Route' {
+        RoutePlanned = event 'RoutePlanned' {
+          description 'A van has a day\'s work. The stops are not on the event: whoever cares reads
+the route, and a list that long on the bus would go stale in flight.'
+        }
+      }
+      shipment = aggregate 'Shipment' {
+        ShipmentDelivered = event 'ShipmentDelivered' {
+          description 'It arrived, and who signed. The order is finished from this service\'s side;
+whether the money is settled is somebody else\'s question.'
+        }
+        ShipmentDispatched = event 'ShipmentDispatched' {
+          description 'The parcels are with the carrier. Whoever is waiting on the order hears this
+and stops asking; the tracking code is on the event because the customer is
+shown it and nobody should have to come back for it.'
+        }
+      }
+      pg = store 'Delivery database' {
+        description 'postgres'
+      }
+    }
+  }
 
-  delivery.core -> analytics_sink 'ShipmentDispatched' {
-    style { color declared  line dashed  head onormal }
-  }
-  delivery.core -> analytics_sink 'ShipmentDelivered' {
-    style { color unresolved  line dotted  head onormal }
-  }
-  delivery.core -> shop.oms 'ShipmentDelivered' {
-    style { color declared  line dashed  head onormal }
-  }
-  delivery.core -> shop.oms 'GetOrder' {
-    style { color verified  line solid  head normal }
-  }
-  delivery.core -> payments.ledger 'GetPayment' {
-    style { color declared  line dashed  head normal }
-  }
   payments.ledger -> shop.oms 'PaymentAuthorized' {
     style { color declared  line dashed  head onormal }
   }
   payments.ledger -> shop.billing 'PaymentCaptured' {
+    style { color declared  line dashed  head onormal }
+  }
+  payments.ledger -> delivery.core 'PaymentCaptured' {
     style { color declared  line dashed  head onormal }
   }
   payments.ledger -> shop.oms 'PaymentDeclined' {
@@ -250,10 +243,13 @@ for: whoever moves money listens for this.'
   shop.oms -> payments.ledger 'Authorize' {
     style { color declared  line dashed  head normal }
   }
-  delivery.core.shipment -> delivery.core.pg 'packages, parcels' {
-    style { color declared  line dashed  head normal }
+  delivery.core -> shop.oms 'ShipmentDelivered' {
+    style { color declared  line dashed  head onormal }
   }
-  delivery.core.route -> delivery.core.pg 'route_stops' {
+  delivery.core -> analytics_sink 'ShipmentDelivered' {
+    style { color unresolved  line dotted  head onormal }
+  }
+  delivery.core -> shop.oms 'GetOrder' {
     style { color declared  line dashed  head normal }
   }
   auth.auth.lockout -> auth.auth.pg 'lockouts' {
@@ -275,6 +271,12 @@ for: whoever moves money listens for this.'
     style { color declared  line dashed  head normal }
   }
   shop.cart.basket -> shop.cart.pg 'baskets, basket_items' {
+    style { color declared  line dashed  head normal }
+  }
+  delivery.core.route -> delivery.core.pg 'routes, route_stops' {
+    style { color declared  line dashed  head normal }
+  }
+  delivery.core.shipment -> delivery.core.pg 'packages, parcels, scans' {
     style { color declared  line dashed  head normal }
   }
   shop.oms._order -> shop.oms.pg 'orders, order_lines' {
@@ -300,6 +302,9 @@ for: whoever moves money listens for this.'
   }
   client -> shop.cart '6 flows' {
     style { color verified  line solid  head normal }
+  }
+  client -> delivery.core '8 flows' {
+    style { color declared  line dashed  head normal }
   }
   client -> shop.oms '2 flows' {
     style { color verified  line solid  head normal }

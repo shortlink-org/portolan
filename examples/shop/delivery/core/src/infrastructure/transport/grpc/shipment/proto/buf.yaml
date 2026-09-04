@@ -1,0 +1,16 @@
+# The contract of the shipment aggregate. One module per aggregate; pushed by
+# hand, and until it is the estate lists it as local.
+version: v2
+modules:
+  - path: .
+    name: buf.build/shortlink-org/portolan-delivery-shipment
+lint:
+  use:
+    - STANDARD
+  except:
+    # `Delivery` is the name shop.oms has been calling since before this
+    # service existed; a naming rule is not worth breaking a consumer over.
+    - SERVICE_SUFFIX
+breaking:
+  use:
+    - FILE

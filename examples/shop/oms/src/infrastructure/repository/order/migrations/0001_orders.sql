@@ -4,6 +4,9 @@
 CREATE TABLE orders (
     id          TEXT PRIMARY KEY,
     customer_id TEXT NOT NULL,
+    -- The basket this order was placed from: the id is copied off the event
+    -- cart published, and cart stays the only writer of the row it names.
+    -- from: shop.cart.pg.baskets.id
     basket_id   TEXT NOT NULL UNIQUE,
     status      TEXT NOT NULL,
     total_minor BIGINT NOT NULL,

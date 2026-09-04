@@ -1,90 +1,269 @@
 # Delivery Core
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `8 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `delivery.core`
 - **Context:** [Delivery](../README.md)
-- **Repo:** `github.com/acme/delivery`
-- **Path:** `services/core`
+- **Repo:** `github.com/shortlink-org/portolan`
+- **Path:** `examples/shop/delivery/core`
 
-`delivery.core` turns confirmed orders into physical movement: routes, parcels
-and proof of delivery. It is the only service in the `delivery` context and it
-owns every carrier integration.
+Service `core` — bounded context **delivery**. TypeScript on Node.
 
-## Boundaries
+Owns the parcel: what is being carried, where it is, and which van is taking it
+there. It is told what to ship and asked where it got to; it never decides
+whether something should ship at all.
 
-Delivery reacts to `PaymentCaptured` rather than to `OrderPlaced`. An order
-that is placed but never paid must never reach a van. This is the single most
-important rule in the context.
+## What it does
 
-```mermaid
-flowchart TD
-    P[PaymentCaptured] --> R[Plan route]
-    R --> S[ShipmentDispatched]
-    S --> T{scan events}
-    T -- delivered --> D[ShipmentDelivered]
-    T -- failed --> F[Retry next window]
-    F --> R
+- Dispatches a planned shipment, with the tracking code the carrier gave, and
+  says `ShipmentDispatched`.
+- Records every sighting of every parcel, append-only.
+- Ends a shipment at the door with who signed for it — `ShipmentDelivered`.
+- Plans a van's day out of the shipments waiting to go out, and closes it.
+- Waits for the money: nothing leaves the warehouse before the ledger says a
+  payment was captured.
+
+## What it does not do
+
+Does not price anything, does not charge anything and does not decide what to
+send. A cancelled order is asked about, not argued with: the shipment is
+written off.
+
+## Publishes
+
+`ShipmentDispatched`, `ShipmentDelivered` on `delivery.core.shipment`;
+`RoutePlanned` on `delivery.core.route`.
+
+## Provides
+
+`delivery.v1.Delivery` — TrackShipment, GetShipment — and
+`delivery.v1.RouteService` — PlanRoute, CloseRoute, GetRoute.
+
+## Two things the store says out loud
+
+- `packages.order_id` is a foreign key into `shop.oms.pg.orders`, another
+  service's table. It crosses a boundary knowingly — neither service can
+  migrate that table alone — and the catalog reports it rather than hiding it.
+- `route_stops.address` is a **copy** of `packages.ship_to`, which is itself the
+  address handed over with the dispatch. A parcel on a van does not move because
+  somebody edited their profile, which is why the value is copied and not looked
+  up. The migration declares where the copy came from, in a `-- from:` line
+  beside the column, because a table cannot show it the way a view shows a
+  select. The order service is asked about the order's state and nothing else:
+  it holds no address, and asking it for one would be asking the wrong service.
+
+## Running it
+
+```bash
+docker compose up -d db
+npm install && npm run gen && npm run build
 ```
-
-## Carriers
-
-| Carrier   | Coverage      | Tracking      | Cutoff  |
-| --------- | ------------- | ------------- | ------- |
-| `inhouse` | Metro only    | Live GPS      | 18:00   |
-| `natpost` | National      | Scan events   | 15:30   |
-| `express` | International | Scan events   | 12:00   |
-
-Carrier choice is decided at route planning time and is not part of the order.
-
-## Aggregates
-
-- `shipment` — one parcel from dispatch to proof of delivery.
-- `route` — a planned sequence of stops for one vehicle and one window.
-
-## Retries
-
-A failed delivery attempt does not fail the shipment. The shipment stays open
-and is re-routed into the next available window, up to three attempts, after
-which it is returned to the depot and the order is flagged for support.
-
-## Observability
-
-Every scan event carries the trace id of the originating `PaymentCaptured`
-message, which is how the shipment tracking flow was derived from traces.
 
 ## Aggregates
 
 | Aggregate | Root | Commands | Queries | Events |
 | --- | --- | --- | --- | --- |
-| [Shipment](aggregates/shipment.md) | `Shipment` | 3 commands | 2 queries | 2 events |
 | [Route](aggregates/route.md) | `Route` | 2 commands | 1 query | 1 event |
+| [Shipment](aggregates/shipment.md) | `Shipment` | 3 commands | 2 queries | 2 events |
 
 ## Provides
 
-**`delivery.v1.Delivery`** — `proto/delivery/v1/delivery.proto:11`
+**`delivery.v1.Delivery`** — `examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/proto/delivery/v1/delivery.proto:9`
 
-- `PlanRoute`
+- `Dispatch`
+- `RecordScan`
+- `RecordDelivery`
 - `TrackShipment`
 - `GetShipment`
+
+<details><summary>DispatchRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `shipment_id` | `string` |
+| `tracking` | `string` |
+
+</details>
+
+<details><summary>DispatchResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `shipment_id` | `string` |
+| `status` | `string` |
+
+</details>
+
+<details><summary>RecordScanRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `shipment_id` | `string` |
+| `parcel_id` | `string` |
+| `location` | `string` |
+
+</details>
+
+<details><summary>RecordScanResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `shipment_id` | `string` |
+
+</details>
+
+<details><summary>RecordDeliveryRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `shipment_id` | `string` |
+| `signed_by` | `string` |
+
+</details>
+
+<details><summary>RecordDeliveryResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `shipment_id` | `string` |
+
+</details>
+
+<details><summary>TrackShipmentRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `tracking` | `string` |
+
+</details>
+
+<details><summary>TrackShipmentResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `shipment_id` | `string` |
+| `status` | `string` |
+| `scans` | `[]ScanView` |
+
+</details>
+
+<details><summary>GetShipmentRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `shipment_id` | `string` |
+
+</details>
+
+<details><summary>GetShipmentResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `shipment_id` | `string` |
+| `order_id` | `string` |
+| `status` | `string` |
+| `tracking` | `string` |
+| `parcels` | `int32` |
+
+</details>
+
+<details><summary>ScanView</summary>
+
+| Field | Type |
+| --- | --- |
+| `parcel_id` | `string` |
+| `location` | `string` |
+| `scanned_at` | `string` |
+
+</details>
+
+**`delivery.v1.RouteService`** — `examples/shop/delivery/core/src/infrastructure/transport/grpc/route/proto/delivery/v1/routes.proto:6`
+
+- `PlanRoute`
+- `CloseRoute`
+- `GetRoute`
+
+<details><summary>PlanRouteRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `vehicle` | `string` |
+| `planned_for` | `string` |
+| `shipment_ids` | `[]string` |
+
+</details>
+
+<details><summary>PlanRouteResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `route_id` | `string` |
+| `stops` | `int32` |
+
+</details>
+
+<details><summary>CloseRouteRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `route_id` | `string` |
+
+</details>
+
+<details><summary>CloseRouteResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `route_id` | `string` |
+
+</details>
+
+<details><summary>GetRouteRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `route_id` | `string` |
+
+</details>
+
+<details><summary>GetRouteResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `route_id` | `string` |
+| `vehicle` | `string` |
+| `status` | `string` |
+| `stops` | `[]StopView` |
+
+</details>
+
+<details><summary>StopView</summary>
+
+| Field | Type |
+| --- | --- |
+| `seq` | `int32` |
+| `shipment_id` | `string` |
+| `address` | `string` |
+| `done` | `bool` |
+
+</details>
 
 ## Consumes
 
 | Call | Peer | Status | Source |
 | --- | --- | --- | --- |
-| `shop.v1.OrderService/GetOrder` | [shop.oms](../../shop/oms/README.md) | verified | `internal/delivery/client/orders.go:31` |
-| `payments.v1.PaymentService/GetPayment` | [payments.ledger](../../payments/ledger/README.md) | declared | `internal/delivery/client/payments.go:18` |
+| `shop.v1.OrderService/GetOrder` | [shop.oms](../../shop/oms/README.md) | declared | `examples/shop/delivery/core/src/infrastructure/oms/proto/shop/v1/orders.proto` |
 
 ## Publishes
 
 | Event | Latest | Consumers |
 | --- | --- | --- |
-| [ShipmentDispatched](aggregates/shipment.md) | v1 | `analytics-sink (declared)` |
-| [ShipmentDelivered](aggregates/shipment.md) | v1 | `analytics-sink (unresolved)`, [shop.oms (declared)](../../shop/oms/README.md) |
 | [RoutePlanned](aggregates/route.md) | v1 | — |
+| [ShipmentDelivered](aggregates/shipment.md) | v1 | [shop.oms (declared)](../../shop/oms/README.md), `analytics-sink (unresolved)` |
+| [ShipmentDispatched](aggregates/shipment.md) | v1 | — |
 
 ## Stores
 
 | Store | Kind | Access | Tables |
 | --- | --- | --- | --- |
-| [Delivery database](stores/pg.md) | postgres | owns | 3 tables |
+| [Delivery database](stores/pg.md) | postgres | owns | 5 tables |

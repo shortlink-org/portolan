@@ -1,153 +1,178 @@
 # Shipment
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `8 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `delivery.core.shipment`
 - **Service:** [Delivery Core](../README.md)
 - **Root:** `Shipment`
 
-One parcel, from dispatch to proof of delivery.
+What is being carried to one address for one order.
 
-## Attempts
-
-A failed attempt does not fail the shipment. The shipment stays open and is
-re-routed into the next window, up to three attempts.
-
-| Attempt | Outcome            | Next                       |
-| ------- | ------------------ | -------------------------- |
-| 1       | no answer          | re-route, next window      |
-| 2       | no answer          | re-route, next window      |
-| 3       | no answer          | return to depot, flag order |
-
-## Exceptions
-
-An `EXCEPTION` scan stops the shipment advancing and opens a delivery
-exception. What reads that queue is not in this catalog and emits no spans, so
-the shipment-tracking flow ends there too — the gap is real, not a modelling
-omission.
-
-## Commands
-
-`Dispatch`, `RecordScan` and `RecordDelivery` are the only writes. Scans
-arrive from carrier webhooks and are deduplicated on the carrier scan id.
-
-## Queries
-
-`TrackShipment` is public-facing and rate limited per tracking reference.
+A shipment is planned, dispatched with a tracking code, seen a few times on the
+way, and then either delivered or written off. The address is a copy taken from
+the order at dispatch, not a reference: a parcel already on a van does not move
+because somebody edited their profile - and that copy is the one thing here
+that another service's schema can be seen in.
 
 ## Entities
 
 ### Shipment — aggregate root
 
-Goods on their way to one address. The unit carriers scan.
+What is being carried to one address for one order.
 
-| Field | Type | Doc |
-| --- | --- | --- |
-| `id` | `string` | Shipment id. |
-| `orderId` | `string` | Order the goods belong to. |
-| `parcels` | `[]Parcel` | Physical parcels in this shipment. |
-| `shipTo` | [`Address`](../../../types.md#address) | Destination. |
-| `state` | `string` | held \| planned \| dispatched \| delivered \| exception. A shipment sits in `held` from order confirmation until the money is actually captured. |
-| `scans` | `[]Scan` | Every carrier scan, oldest first. Append-only: a corrected scan is a new one. |
+The address is copied from the order at dispatch and never refreshed: a
+parcel on a van does not move because somebody edited their profile. The
+status only ever moves the way `TRANSITIONS` allows, and `moveTo` is the one
+way through it.
+
+| Field | Type |
+| --- | --- |
+| `id` | `string` |
+| `orderId` | `string` |
+| `shipTo` | `Address` |
+| `parcels` | `Parcel[]` |
+| `scans` | `Scan[]` |
+| `status` | `ShipmentStatus` |
+| `tracking` | `TrackingCode \| undefined` |
+| `routeId` | `string \| undefined` |
 
 ### Parcel
 
-One box. Has its own tracking code and is scanned independently of its shipment.
+One box. A shipment is one or more of them, and each is scanned on its own -
+which is why a parcel is an entity: it is followed over time, not compared.
 
-| Field | Type | Doc |
-| --- | --- | --- |
-| `id` | `string` | Parcel id. |
-| `weightGrams` | `int32` | Gross weight at dispatch. |
-| `tracking` | `TrackingCode` | Carrier tracking code. |
+| Field | Type |
+| --- | --- |
+| `id` | `string` |
+| `weightG` | `number` |
+| `contents` | `string` |
 
 ### Scan
 
-One reading of a parcel by a carrier. Has identity because the carrier's scan id is what a retried webhook is deduplicated on.
+One sighting of one parcel: where it was and when.
 
-| Field | Type | Doc |
-| --- | --- | --- |
-| `carrierEventId` | `string` | The carrier's id for the scan. Deduplication is on this alone; a retried webhook carries the same one. |
-| `code` | `string` | IN_TRANSIT \| DELIVERED \| EXCEPTION. The carrier's vocabulary, stored unmapped so a new code is visible rather than swallowed. |
-| `scannedAt` | `time.Time` | When the carrier says it happened, which is not when we heard about it. |
-| `location` | `string` | Depot or delivery point as the carrier names it. Free text; no two carriers agree. |
+Append-only. A scan is never corrected - a wrong one is followed by a right
+one, and the pair is the history.
+
+| Field | Type |
+| --- | --- |
+| `parcelId` | `string` |
+| `location` | `string` |
+| `scannedAt` | `Date` |
 
 ## Value objects
 
 ### Address
 
-A postal address, unvalidated.
+Where a parcel is going, as the warehouse needs it.
 
-Shared type [`Address`](../../../types.md#address).
+A value: two addresses with the same lines are the same address. It is a copy
+of what the order said at dispatch and is never refreshed - a parcel already
+on a van does not move because somebody edited their profile.
 
-| Field | Type | Doc |
-| --- | --- | --- |
-| `line1` | `string` | Street and number. |
-| `line2` | `string` | Optional second line. |
-| `city` | `string` | City or locality. |
-| `postcode` | `string` | Postal code, unvalidated. |
-| `country` | `string` | ISO 3166-1 alpha-2. |
+| Field | Type |
+| --- | --- |
+| `line1` | `string` |
+| `line2` | `string` |
+| `city` | `string` |
+| `postcode` | `string` |
+| `country` | `string` |
 
 ### TrackingCode
 
-A carrier and the code it issued. Meaningless without the carrier, so the two travel together.
+What the customer types into a carrier's site.
 
-| Field | Type | Doc |
-| --- | --- | --- |
-| `carrier` | `string` | Carrier code, e.g. DHL. |
-| `code` | `string` | Tracking code as issued by the carrier. |
+The carrier owns the format; this only refuses what obviously cannot be one,
+so that a typo is caught here rather than by a scan that never arrives.
+
+| Field | Type |
+| --- | --- |
+| `value` | `string` |
+
+## Lifecycle
+
+```mermaid
+stateDiagram-v2
+    state "in-transit" as in_transit
+    [*] --> planned
+    planned --> dispatched: dispatch · ShipmentDispatched
+    planned --> lost: lose
+    dispatched --> in_transit: record
+    dispatched --> delivered: deliver · ShipmentDelivered
+    dispatched --> lost: lose
+    in_transit --> delivered: deliver · ShipmentDelivered
+    in_transit --> lost: lose
+    delivered --> [*]
+    lost --> [*]
+```
+
+| From | To | On | Emits | Source |
+| --- | --- | --- | --- | --- |
+| `planned` | `dispatched` | `dispatch` | `ShipmentDispatched` | `examples/shop/delivery/core/src/domain/shipment/shipment.ts:46` |
+| `planned` | `lost` | `lose` | — | `examples/shop/delivery/core/src/domain/shipment/shipment.ts:71` |
+| `dispatched` | `in-transit` | `record` | — | `examples/shop/delivery/core/src/domain/shipment/shipment.ts:58` |
+| `dispatched` | `delivered` | `deliver` | `ShipmentDelivered` | `examples/shop/delivery/core/src/domain/shipment/shipment.ts:64` |
+| `dispatched` | `lost` | `lose` | — | `examples/shop/delivery/core/src/domain/shipment/shipment.ts:71` |
+| `in-transit` | `delivered` | `deliver` | `ShipmentDelivered` | `examples/shop/delivery/core/src/domain/shipment/shipment.ts:64` |
+| `in-transit` | `lost` | `lose` | — | `examples/shop/delivery/core/src/domain/shipment/shipment.ts:71` |
 
 ## Operations
 
-| Operation | Kind | Doc |
-| --- | --- | --- |
-| `Dispatch` | command | Releases a held shipment to a carrier and mints its tracking codes. Refused unless the payment is captured. |
-| `RecordScan` | command | Appends a carrier scan, deduplicated on the carrier's scan id. An EXCEPTION scan stops the shipment advancing and opens a delivery exception. |
-| `RecordDelivery` | command | Records proof of delivery and closes the shipment. Terminal: a scan arriving afterwards is stored and changes nothing. |
-| `TrackShipment` | query | The public tracking view for one reference. Rate limited per reference, and returns scans rather than internal state. |
-| `GetShipment` | query | The whole shipment, for callers inside the estate. This is what OMS reads before it will allow a cancellation. |
+| Operation | Kind | Exposed by | Doc |
+| --- | --- | --- | --- |
+| `Dispatch` | command | `Dispatch` | Hands a planned shipment to the carrier and says so. |
+| `GetShipment` | query | `Dispatch`, `GetShipment` | One shipment, for whoever is asking about an order. |
+| `RecordDelivery` | command | `RecordDelivery` | Ends a shipment at the door. |
+| `RecordScan` | command | `RecordScan` | Writes down that a parcel was seen somewhere. |
+| `TrackShipment` | query | `TrackShipment` | What the customer sees when they paste a tracking code. |
 
 ## Events
-
-### ShipmentDispatched
-
-`delivery.core.shipment.ShipmentDispatched`
-
-| Consumer | Status | Note |
-| --- | --- | --- |
-| `analytics-sink` | declared | Registered in the traces exporter, not in any Go repo. |
-
-#### v1 — current
-
-A parcel physically left the depot.
-
-Source: `internal/delivery/domain/shipment/events.go:52`
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `shipmentId` | `string` | Identifier of the shipment. |
-| `orderId` | `string` | Order being fulfilled. |
-| `carrier` | `string` | One of inhouse, natpost, express. |
-| `trackingRef` | `string` | Carrier tracking reference. |
-| `shipTo` | [`Address`](../../../types.md#address) | Address the parcel is routed to. |
 
 ### ShipmentDelivered
 
 `delivery.core.shipment.ShipmentDelivered`
 
-| Consumer | Status | Note |
-| --- | --- | --- |
-| `analytics-sink` | unresolved | Observed downstream of the bus in OTel traces; owner unknown. |
-| [shop.oms](../../../shop/oms/README.md) | declared | — |
+On the wire as `delivery.ShipmentDelivered`, on `delivery.core.shipment`.
+
+| Consumer | Status |
+| --- | --- |
+| [shop.oms](../../../shop/oms/README.md) | declared |
+| `analytics-sink` | unresolved |
 
 #### v1 — current
 
-Proof of delivery recorded. Terminal for the shipment.
+It arrived, and who signed. The order is finished from this service's side;
+whether the money is settled is somebody else's question.
 
-Source: `internal/delivery/domain/shipment/events.go:97`
+Source: `examples/shop/delivery/core/src/domain/shipment/events/shipment-delivered.ts`
 
-| Field | Type | Doc |
-| --- | --- | --- |
-| `shipmentId` | `string` | Identifier of the shipment. |
-| `orderId` | `string` | Order that is now fulfilled. |
-| `signedBy` | `string` | Name captured at the door, empty for contactless. |
-| `deliveredAt` | `time.Time` | Instant of the delivery scan. |
+| Field | Type |
+| --- | --- |
+| `channel` | `string` |
+| `shipmentId` | `string` |
+| `orderId` | `string` |
+| `signedBy` | `string` |
+| `occurredAt` | `Date` |
+
+### ShipmentDispatched
+
+`delivery.core.shipment.ShipmentDispatched`
+
+On the wire as `delivery.ShipmentDispatched`, on `delivery.core.shipment`.
+
+#### v1 — current
+
+The parcels are with the carrier. Whoever is waiting on the order hears this
+and stops asking; the tracking code is on the event because the customer is
+shown it and nobody should have to come back for it.
+
+Source: `examples/shop/delivery/core/src/domain/shipment/events/shipment-dispatched.ts`
+
+| Field | Type |
+| --- | --- |
+| `channel` | `string` |
+| `shipmentId` | `string` |
+| `orderId` | `string` |
+| `tracking` | `TrackingCode` |
+| `parcels` | `number` |
+| `occurredAt` | `Date` |

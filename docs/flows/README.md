@@ -1,6 +1,6 @@
 # Flows
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `8 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 | Flow | Owner | Summary |
 | --- | --- | --- |
@@ -30,6 +30,15 @@
 | [Get basket](cart-get-basket.md) | [shop](../shop/README.md) | — |
 | [Merge baskets](cart-merge-baskets.md) | [shop](../shop/README.md) | — |
 | [Remove item](cart-remove-item.md) | [shop](../shop/README.md) | — |
+| [Close route](core-close-route.md) | [delivery](../delivery/README.md) | Ends the day, whatever is left undone. |
+| [Dispatch](core-dispatch.md) | [delivery](../delivery/README.md) | One shipment, for whoever is asking about an order. |
+| [Get route](core-get-route.md) | [delivery](../delivery/README.md) | One route, as the depot reads it. |
+| [Get shipment](core-get-shipment.md) | [delivery](../delivery/README.md) | One shipment, for whoever is asking about an order. |
+| [Plan route](core-plan-route.md) | [delivery](../delivery/README.md) | Builds a van's day out of the shipments waiting to go out. |
+| [Record delivery](core-record-delivery.md) | [delivery](../delivery/README.md) | Ends a shipment at the door. |
+| [Record scan](core-record-scan.md) | [delivery](../delivery/README.md) | Writes down that a parcel was seen somewhere. |
+| [Track shipment](core-track-shipment.md) | [delivery](../delivery/README.md) | What the customer sees when they paste a tracking code. |
+| [Plan shipment on payment captured](core-plan-shipment-on-payment-captured.md) | [delivery](../delivery/README.md) | Nothing leaves the warehouse before the money has moved. |
 | [Cancel order](oms-cancel-order.md) | [shop](../shop/README.md) | Answers with the order as it is now; a cancelled order is still found. |
 | [Get order](oms-get-order.md) | [shop](../shop/README.md) | Answers with the order as it is now; a cancelled order is still found. |
 | [Confirm order on payment authorized](oms-confirm-order-on-payment-authorized.md) | [shop](../shop/README.md) | Confirms the order once the payment for it is authorised (ADR oms.0005). The publisher is `payments.ledger`, and the name is the one it puts on the message: every service on this bus names its events after itself. |

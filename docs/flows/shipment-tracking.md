@@ -1,6 +1,6 @@
 # Shipment tracking
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `8 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.shipment-tracking`
 - **Owner:** [delivery](../delivery/README.md)
@@ -30,7 +30,7 @@ sequenceDiagram
     participant p3 as shop.oms
     participant p4 as bus
     participant p5 as analytics-sink (unknown)
-    p0->>p2: TrackShipment
+    p0->>p2: TrackShipment → TrackShipmentResponse
     p2->>p3: GetOrder → GetOrderResponse
     loop one iteration per carrier scan, 4 scans per shipment at p50 over the window
         p1->>p2: POST /webhooks/carrier/scan
@@ -53,7 +53,7 @@ sequenceDiagram
 
 ## Steps
 
-1. **customer** → **delivery.core** — TrackShipment
+1. **customer** → **delivery.core** — TrackShipment → TrackShipmentResponse
    `trace 9f2c1a../span 04` · Storefront tracking page. 41k calls in the window, p95 180 ms.
 2. **delivery.core** → **shop.oms** — GetOrder → GetOrderResponse
    `shop.v1.OrderService/GetOrder` · status: declared · `trace 9f2c1a../span 06` · Resolves the order reference shown beside the parcel. Present in 96% of the traces; the rest are served from the tracking cache.

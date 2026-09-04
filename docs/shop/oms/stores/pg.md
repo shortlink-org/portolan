@@ -1,6 +1,6 @@
 # Order database
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `8 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.oms.pg`
 - **Kind:** postgres
@@ -13,16 +13,16 @@
 
 aggregate-root · persists [shop.oms.order](../aggregates/order.md)
 
-| Column | Type | Null | Key | Maps |
-| --- | --- | --- | --- | --- |
-| `id` | `text` | not null | PK | Order.id |
-| `customer_id` | `text` | not null | — | Order.customer_id |
-| `basket_id` | `text` | not null | — | Order.basket_id |
-| `status` | `text` | not null | — | Order.status |
-| `total_minor` | `bigint` | not null | — | Order.total.amount_minor |
-| `currency` | `text` | not null | — | Order.total.currency |
-| `placed_at` | `timestamptz` | not null | — | Order.placed_at |
-| `version` | `integer` | not null | — | — |
+| Column | Type | Null | Key | Maps | From |
+| --- | --- | --- | --- | --- | --- |
+| `id` | `text` | not null | PK | Order.id | — |
+| `customer_id` | `text` | not null | — | Order.customer_id | — |
+| `basket_id` | `text` | not null | — | Order.basket_id | `shop.cart.pg.baskets.id` |
+| `status` | `text` | not null | — | Order.status | — |
+| `total_minor` | `bigint` | not null | — | Order.total.amount_minor | — |
+| `currency` | `text` | not null | — | Order.total.currency | — |
+| `placed_at` | `timestamptz` | not null | — | Order.placed_at | — |
+| `version` | `integer` | not null | — | — | — |
 
 ### order_lines
 

@@ -1,16 +1,16 @@
 # Example estate
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `8 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 
 ## Contexts
 
 | Context | Class | Services | Summary |
 | --- | --- | --- | --- |
-| [Delivery](delivery/README.md) | supporting | [Delivery Core](delivery/core/README.md) | Routes, parcels and proof of delivery. Reacts to captured payments, never to placed orders. |
 | [Authentication](auth/README.md) | core | [Authentication & Sessions](auth/auth/README.md) | Who someone is, and whether they are still logged in. The only service in the estate that stores credentials, and the only one allowed to mint or revoke a session. |
 | [Payments](payments/README.md) | core | [Ledger](payments/ledger/README.md) | Money, and the record of every movement of it. Nothing here decides whether to charge - it is asked, and it writes down what happened either way. |
 | [Shop](shop/README.md) | — | [Billing](shop/billing/README.md), [Shopping Cart](shop/cart/README.md), [Order Management](shop/oms/README.md), [Pricing](shop/pricing/README.md) | — |
+| [Delivery](delivery/README.md) | supporting | [Delivery Core](delivery/core/README.md) | Parcels, vans and the day they are driven. Told what to carry and asked where it got to; it decides neither. |
 
 ## Flows
 
@@ -42,6 +42,15 @@
 | [Get basket](flows/cart-get-basket.md) | [shop](shop/README.md) | — |
 | [Merge baskets](flows/cart-merge-baskets.md) | [shop](shop/README.md) | — |
 | [Remove item](flows/cart-remove-item.md) | [shop](shop/README.md) | — |
+| [Close route](flows/core-close-route.md) | [delivery](delivery/README.md) | Ends the day, whatever is left undone. |
+| [Dispatch](flows/core-dispatch.md) | [delivery](delivery/README.md) | One shipment, for whoever is asking about an order. |
+| [Get route](flows/core-get-route.md) | [delivery](delivery/README.md) | One route, as the depot reads it. |
+| [Get shipment](flows/core-get-shipment.md) | [delivery](delivery/README.md) | One shipment, for whoever is asking about an order. |
+| [Plan route](flows/core-plan-route.md) | [delivery](delivery/README.md) | Builds a van's day out of the shipments waiting to go out. |
+| [Record delivery](flows/core-record-delivery.md) | [delivery](delivery/README.md) | Ends a shipment at the door. |
+| [Record scan](flows/core-record-scan.md) | [delivery](delivery/README.md) | Writes down that a parcel was seen somewhere. |
+| [Track shipment](flows/core-track-shipment.md) | [delivery](delivery/README.md) | What the customer sees when they paste a tracking code. |
+| [Plan shipment on payment captured](flows/core-plan-shipment-on-payment-captured.md) | [delivery](delivery/README.md) | Nothing leaves the warehouse before the money has moved. |
 | [Cancel order](flows/oms-cancel-order.md) | [shop](shop/README.md) | Answers with the order as it is now; a cancelled order is still found. |
 | [Get order](flows/oms-get-order.md) | [shop](shop/README.md) | Answers with the order as it is now; a cancelled order is still found. |
 | [Confirm order on payment authorized](flows/oms-confirm-order-on-payment-authorized.md) | [shop](shop/README.md) | Confirms the order once the payment for it is authorised (ADR oms.0005). The publisher is `payments.ledger`, and the name is the one it puts on the message: every service on this bus names its events after itself. |

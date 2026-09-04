@@ -1,0 +1,11 @@
+{
+  "ts-domain": [
+    "domain.json"
+  ],
+  "proto": [
+    "proto.json"
+  ],
+  "sql": [
+    "stores.json"
+  ]
+}

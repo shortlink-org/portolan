@@ -4,7 +4,8 @@
   "sources": [
     "data/*.json",
     "examples/*/portolan/*.json",
-    "examples/*/*/portolan/*.json"
+    "examples/*/*/portolan/*.json",
+    "examples/*/*/*/portolan/*.json"
   ],
   "plugins": [
     {
@@ -270,6 +271,59 @@
         "service": "pricing",
         "store": "pg",
         "name": "Pricing database",
+        "out": "stores.json"
+      }
+    },
+    {
+      "plugin": "ts-domain",
+      "in": "examples/shop/delivery/core",
+      "out": "examples/shop/delivery/core/portolan",
+      "options": {
+        "context": "delivery",
+        "contextName": "Delivery",
+        "contextSummary": "Parcels, vans and the day they are driven. Told what to carry and asked where it got to; it decides neither.",
+        "classification": "supporting",
+        "service": "core",
+        "serviceName": "Delivery Core",
+        "repo": "github.com/shortlink-org/portolan",
+        "store": "pg",
+        "peers": {
+          "shop.v1": "shop.oms"
+        },
+        "events": {
+          "../../infrastructure/ledger/events.ts": "payments.ledger.payment"
+        },
+        "out": "domain.json"
+      }
+    },
+    {
+      "plugin": "proto",
+      "in": "examples/shop/delivery/core",
+      "out": "examples/shop/delivery/core/portolan",
+      "options": {
+        "context": "delivery",
+        "service": "core",
+        "paths": [
+          "src/infrastructure/transport/grpc/shipment/proto",
+          "src/infrastructure/transport/grpc/route/proto"
+        ],
+        "modules": {
+          "src/infrastructure/transport/grpc/shipment/proto": "local:delivery/shipment",
+          "src/infrastructure/transport/grpc/route/proto": "local:delivery/route"
+        },
+        "out": "proto.json"
+      }
+    },
+    {
+      "plugin": "sql",
+      "in": "examples/shop/delivery/core",
+      "out": "examples/shop/delivery/core/portolan",
+      "options": {
+        "context": "delivery",
+        "service": "core",
+        "store": "pg",
+        "name": "Delivery database",
+        "repositories": "src/infrastructure/repository",
         "out": "stores.json"
       }
     },

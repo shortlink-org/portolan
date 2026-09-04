@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package delivery.v1;
+
+// A van's day, as the depot plans and closes it.
+service RouteService {
+  // Build a day out of the shipments waiting to go out.
+  rpc PlanRoute(PlanRouteRequest) returns (PlanRouteResponse);
+
+  // End the day, whatever is left undone.
+  rpc CloseRoute(CloseRouteRequest) returns (CloseRouteResponse);
+
+  // One route, in the order it is driven.
+  rpc GetRoute(GetRouteRequest) returns (GetRouteResponse);
+}
+
+message PlanRouteRequest {
+  string vehicle = 1;
+  string planned_for = 2;
+  repeated string shipment_ids = 3;
+}
+
+message PlanRouteResponse {
+  string route_id = 1;
+  int32 stops = 2;
+}
+
+message CloseRouteRequest {
+  string route_id = 1;
+}
+
+message CloseRouteResponse {
+  string route_id = 1;
+}
+
+message GetRouteRequest {
+  string route_id = 1;
+}
+
+message GetRouteResponse {
+  string route_id = 1;
+  string vehicle = 2;
+  string status = 3;
+  repeated StopView stops = 4;
+}
+
+message StopView {
+  int32 seq = 1;
+  string shipment_id = 2;
+  string address = 3;
+  bool done = 4;
+}

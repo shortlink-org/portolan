@@ -1,0 +1,25 @@
+{
+  "name": "@portolan/delivery-core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Shipments and routes for the portolan example estate.",
+  "repository": "https://github.com/shortlink-org/portolan",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "gen": "buf generate src/infrastructure/transport/grpc/shipment/proto -o src/infrastructure/transport/grpc/shipment/gen && buf generate src/infrastructure/transport/grpc/route/proto -o src/infrastructure/transport/grpc/route/gen && buf generate src/infrastructure/oms/proto -o src/infrastructure/oms/gen"
+  },
+  "dependencies": {
+    "@bufbuild/protobuf": "^2.9.0",
+    "@connectrpc/connect": "^2.1.0",
+    "@connectrpc/connect-node": "^2.1.0",
+    "nats": "^2.29.3",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.0",
+    "@types/pg": "^8.15.6",
+    "typescript": "^7.0.2"
+  }
+}

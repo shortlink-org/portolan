@@ -1,0 +1,1184 @@
+{
+  "generatedAt": "2026-09-05T05:58:23+07:00",
+  "commit": "065dbaa",
+  "contexts": [
+    {
+      "id": "delivery",
+      "slug": "delivery",
+      "name": "Delivery",
+      "summary": "Parcels, vans and the day they are driven. Told what to carry and asked where it got to; it decides neither.",
+      "classification": "supporting",
+      "services": [
+        {
+          "id": "delivery.core",
+          "slug": "core",
+          "name": "Delivery Core",
+          "repo": "github.com/shortlink-org/portolan",
+          "path": "examples/shop/delivery/core",
+          "readme": "# Delivery Core\n\nService `core` — bounded context **delivery**. TypeScript on Node.\n\nOwns the parcel: what is being carried, where it is, and which van is taking it\nthere. It is told what to ship and asked where it got to; it never decides\nwhether something should ship at all.\n\n## What it does\n\n- Dispatches a planned shipment, with the tracking code the carrier gave, and\n  says `ShipmentDispatched`.\n- Records every sighting of every parcel, append-only.\n- Ends a shipment at the door with who signed for it — `ShipmentDelivered`.\n- Plans a van's day out of the shipments waiting to go out, and closes it.\n- Waits for the money: nothing leaves the warehouse before the ledger says a\n  payment was captured.\n\n## What it does not do\n\nDoes not price anything, does not charge anything and does not decide what to\nsend. A cancelled order is asked about, not argued with: the shipment is\nwritten off.\n\n## Publishes\n\n`ShipmentDispatched`, `ShipmentDelivered` on `delivery.core.shipment`;\n`RoutePlanned` on `delivery.core.route`.\n\n## Provides\n\n`delivery.v1.Delivery` — TrackShipment, GetShipment — and\n`delivery.v1.RouteService` — PlanRoute, CloseRoute, GetRoute.\n\n## Two things the store says out loud\n\n- `packages.order_id` is a foreign key into `shop.oms.pg.orders`, another\n  service's table. It crosses a boundary knowingly — neither service can\n  migrate that table alone — and the catalog reports it rather than hiding it.\n- `route_stops.address` is a **copy** of `packages.ship_to`, which is itself the\n  address handed over with the dispatch. A parcel on a van does not move because\n  somebody edited their profile, which is why the value is copied and not looked\n  up. The migration declares where the copy came from, in a `-- from:` line\n  beside the column, because a table cannot show it the way a view shows a\n  select. The order service is asked about the order's state and nothing else:\n  it holds no address, and asking it for one would be asking the wrong service.\n\n## Running it\n\n```bash\ndocker compose up -d db\nnpm install && npm run gen && npm run build\n```",
+          "provides": [],
+          "consumes": [
+            {
+              "id": "shop.v1.OrderService/GetOrder",
+              "peer": "shop.oms",
+              "status": "declared",
+              "source": "examples/shop/delivery/core/src/infrastructure/oms/proto/shop/v1/orders.proto"
+            }
+          ],
+          "aggregates": [
+            {
+              "id": "delivery.core.route",
+              "slug": "route",
+              "name": "Route",
+              "readme": "One van, one day, in the order the stops are driven.\n\nThe order is the route: changing it is planning another one rather than editing\nthis. A stop knows which shipment it is dropping, and carries the address it\nwas planned against - a copy of the shipment's, which is itself a copy of the\norder's.",
+              "root": "Route",
+              "entities": [
+                {
+                  "id": "delivery.core.route.route",
+                  "slug": "route",
+                  "name": "Route",
+                  "doc": "One van, one day, in the order the stops are driven.\n\nThe order of the stops is the route: changing it is planning a new one, not\nediting this. A closed route is history.",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "vehicle",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "plannedFor",
+                      "type": "Date",
+                      "doc": ""
+                    },
+                    {
+                      "name": "stops",
+                      "type": "Stop[]",
+                      "doc": ""
+                    },
+                    {
+                      "name": "status",
+                      "type": "RouteStatus",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "id": "delivery.core.route.stop",
+                  "slug": "stop",
+                  "name": "Stop",
+                  "doc": "One place a van stops, and what it drops there.\n\nAn entity: the stop is followed through the day - planned, then arrived at,\nthen done - which is what makes it more than a pair of values.",
+                  "fields": [
+                    {
+                      "name": "seq",
+                      "type": "number",
+                      "doc": ""
+                    },
+                    {
+                      "name": "shipmentId",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "address",
+                      "type": "Address",
+                      "doc": ""
+                    },
+                    {
+                      "name": "window",
+                      "type": "Window",
+                      "doc": ""
+                    },
+                    {
+                      "name": "done",
+                      "type": "boolean",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [
+                {
+                  "id": "delivery.core.route.window",
+                  "slug": "window",
+                  "name": "Window",
+                  "doc": "When a van is expected somewhere, as the two ends of a promise to a person.",
+                  "fields": [
+                    {
+                      "name": "from",
+                      "type": "Date",
+                      "doc": ""
+                    },
+                    {
+                      "name": "to",
+                      "type": "Date",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "operations": [
+                {
+                  "id": "CloseRoute",
+                  "kind": "command",
+                  "doc": "Ends the day, whatever is left undone.",
+                  "exposedBy": [
+                    "CloseRoute"
+                  ]
+                },
+                {
+                  "id": "GetRoute",
+                  "kind": "query",
+                  "doc": "One route, as the depot reads it.",
+                  "exposedBy": [
+                    "GetRoute"
+                  ]
+                },
+                {
+                  "id": "PlanRoute",
+                  "kind": "command",
+                  "doc": "Builds a van's day out of the shipments waiting to go out.",
+                  "exposedBy": [
+                    "PlanRoute"
+                  ]
+                }
+              ],
+              "events": [
+                {
+                  "id": "delivery.core.route.RoutePlanned",
+                  "slug": "route-planned",
+                  "name": "RoutePlanned",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "A van has a day's work. The stops are not on the event: whoever cares reads\nthe route, and a list that long on the bus would go stale in flight.",
+                      "source": "examples/shop/delivery/core/src/domain/route/events/route-planned.ts",
+                      "fields": [
+                        {
+                          "name": "channel",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "routeId",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "vehicle",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "stops",
+                          "type": "number",
+                          "doc": ""
+                        },
+                        {
+                          "name": "occurredAt",
+                          "type": "Date",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [],
+                  "wire": {
+                    "name": "delivery.RoutePlanned",
+                    "channel": "delivery.core.route"
+                  }
+                }
+              ],
+              "lifecycle": {
+                "states": [
+                  "planned",
+                  "driving",
+                  "closed"
+                ],
+                "transitions": [
+                  {
+                    "from": "planned",
+                    "to": "driving",
+                    "on": "start",
+                    "source": "examples/shop/delivery/core/src/domain/route/route.ts:50"
+                  },
+                  {
+                    "from": "planned",
+                    "to": "closed",
+                    "on": "close",
+                    "source": "examples/shop/delivery/core/src/domain/route/route.ts:55"
+                  },
+                  {
+                    "from": "driving",
+                    "to": "closed",
+                    "on": "close",
+                    "source": "examples/shop/delivery/core/src/domain/route/route.ts:55"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "delivery.core.shipment",
+              "slug": "shipment",
+              "name": "Shipment",
+              "readme": "What is being carried to one address for one order.\n\nA shipment is planned, dispatched with a tracking code, seen a few times on the\nway, and then either delivered or written off. The address is a copy taken from\nthe order at dispatch, not a reference: a parcel already on a van does not move\nbecause somebody edited their profile - and that copy is the one thing here\nthat another service's schema can be seen in.",
+              "root": "Shipment",
+              "entities": [
+                {
+                  "id": "delivery.core.shipment.shipment",
+                  "slug": "shipment",
+                  "name": "Shipment",
+                  "doc": "What is being carried to one address for one order.\n\nThe address is copied from the order at dispatch and never refreshed: a\nparcel on a van does not move because somebody edited their profile. The\nstatus only ever moves the way `TRANSITIONS` allows, and `moveTo` is the one\nway through it.",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "orderId",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "shipTo",
+                      "type": "Address",
+                      "doc": ""
+                    },
+                    {
+                      "name": "parcels",
+                      "type": "Parcel[]",
+                      "doc": ""
+                    },
+                    {
+                      "name": "scans",
+                      "type": "Scan[]",
+                      "doc": ""
+                    },
+                    {
+                      "name": "status",
+                      "type": "ShipmentStatus",
+                      "doc": ""
+                    },
+                    {
+                      "name": "tracking",
+                      "type": "TrackingCode | undefined",
+                      "doc": ""
+                    },
+                    {
+                      "name": "routeId",
+                      "type": "string | undefined",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "id": "delivery.core.shipment.parcel",
+                  "slug": "parcel",
+                  "name": "Parcel",
+                  "doc": "One box. A shipment is one or more of them, and each is scanned on its own -\nwhich is why a parcel is an entity: it is followed over time, not compared.",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "weightG",
+                      "type": "number",
+                      "doc": ""
+                    },
+                    {
+                      "name": "contents",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "id": "delivery.core.shipment.scan",
+                  "slug": "scan",
+                  "name": "Scan",
+                  "doc": "One sighting of one parcel: where it was and when.\n\nAppend-only. A scan is never corrected - a wrong one is followed by a right\none, and the pair is the history.",
+                  "fields": [
+                    {
+                      "name": "parcelId",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "location",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "scannedAt",
+                      "type": "Date",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [
+                {
+                  "id": "delivery.core.shipment.address",
+                  "slug": "address",
+                  "name": "Address",
+                  "doc": "Where a parcel is going, as the warehouse needs it.\n\nA value: two addresses with the same lines are the same address. It is a copy\nof what the order said at dispatch and is never refreshed - a parcel already\non a van does not move because somebody edited their profile.",
+                  "fields": [
+                    {
+                      "name": "line1",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "line2",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "city",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "postcode",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "country",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "id": "delivery.core.shipment.tracking-code",
+                  "slug": "tracking-code",
+                  "name": "TrackingCode",
+                  "doc": "What the customer types into a carrier's site.\n\nThe carrier owns the format; this only refuses what obviously cannot be one,\nso that a typo is caught here rather than by a scan that never arrives.",
+                  "fields": [
+                    {
+                      "name": "value",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "operations": [
+                {
+                  "id": "Dispatch",
+                  "kind": "command",
+                  "doc": "Hands a planned shipment to the carrier and says so.",
+                  "exposedBy": [
+                    "Dispatch"
+                  ]
+                },
+                {
+                  "id": "GetShipment",
+                  "kind": "query",
+                  "doc": "One shipment, for whoever is asking about an order.",
+                  "exposedBy": [
+                    "Dispatch",
+                    "GetShipment"
+                  ]
+                },
+                {
+                  "id": "RecordDelivery",
+                  "kind": "command",
+                  "doc": "Ends a shipment at the door.",
+                  "exposedBy": [
+                    "RecordDelivery"
+                  ]
+                },
+                {
+                  "id": "RecordScan",
+                  "kind": "command",
+                  "doc": "Writes down that a parcel was seen somewhere.",
+                  "exposedBy": [
+                    "RecordScan"
+                  ]
+                },
+                {
+                  "id": "TrackShipment",
+                  "kind": "query",
+                  "doc": "What the customer sees when they paste a tracking code.",
+                  "exposedBy": [
+                    "TrackShipment"
+                  ]
+                }
+              ],
+              "events": [
+                {
+                  "id": "delivery.core.shipment.ShipmentDelivered",
+                  "slug": "shipment-delivered",
+                  "name": "ShipmentDelivered",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "It arrived, and who signed. The order is finished from this service's side;\nwhether the money is settled is somebody else's question.",
+                      "source": "examples/shop/delivery/core/src/domain/shipment/events/shipment-delivered.ts",
+                      "fields": [
+                        {
+                          "name": "channel",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "shipmentId",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "orderId",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "signedBy",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "occurredAt",
+                          "type": "Date",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [],
+                  "wire": {
+                    "name": "delivery.ShipmentDelivered",
+                    "channel": "delivery.core.shipment"
+                  }
+                },
+                {
+                  "id": "delivery.core.shipment.ShipmentDispatched",
+                  "slug": "shipment-dispatched",
+                  "name": "ShipmentDispatched",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "The parcels are with the carrier. Whoever is waiting on the order hears this\nand stops asking; the tracking code is on the event because the customer is\nshown it and nobody should have to come back for it.",
+                      "source": "examples/shop/delivery/core/src/domain/shipment/events/shipment-dispatched.ts",
+                      "fields": [
+                        {
+                          "name": "channel",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "shipmentId",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "orderId",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "tracking",
+                          "type": "TrackingCode",
+                          "doc": ""
+                        },
+                        {
+                          "name": "parcels",
+                          "type": "number",
+                          "doc": ""
+                        },
+                        {
+                          "name": "occurredAt",
+                          "type": "Date",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [],
+                  "wire": {
+                    "name": "delivery.ShipmentDispatched",
+                    "channel": "delivery.core.shipment"
+                  }
+                }
+              ],
+              "lifecycle": {
+                "states": [
+                  "planned",
+                  "dispatched",
+                  "in-transit",
+                  "delivered",
+                  "lost"
+                ],
+                "transitions": [
+                  {
+                    "from": "planned",
+                    "to": "dispatched",
+                    "on": "dispatch",
+                    "source": "examples/shop/delivery/core/src/domain/shipment/shipment.ts:46",
+                    "emits": "delivery.core.shipment.ShipmentDispatched"
+                  },
+                  {
+                    "from": "planned",
+                    "to": "lost",
+                    "on": "lose",
+                    "source": "examples/shop/delivery/core/src/domain/shipment/shipment.ts:71"
+                  },
+                  {
+                    "from": "dispatched",
+                    "to": "in-transit",
+                    "on": "record",
+                    "source": "examples/shop/delivery/core/src/domain/shipment/shipment.ts:58"
+                  },
+                  {
+                    "from": "dispatched",
+                    "to": "delivered",
+                    "on": "deliver",
+                    "source": "examples/shop/delivery/core/src/domain/shipment/shipment.ts:64",
+                    "emits": "delivery.core.shipment.ShipmentDelivered"
+                  },
+                  {
+                    "from": "dispatched",
+                    "to": "lost",
+                    "on": "lose",
+                    "source": "examples/shop/delivery/core/src/domain/shipment/shipment.ts:71"
+                  },
+                  {
+                    "from": "in-transit",
+                    "to": "delivered",
+                    "on": "deliver",
+                    "source": "examples/shop/delivery/core/src/domain/shipment/shipment.ts:64",
+                    "emits": "delivery.core.shipment.ShipmentDelivered"
+                  },
+                  {
+                    "from": "in-transit",
+                    "to": "lost",
+                    "on": "lose",
+                    "source": "examples/shop/delivery/core/src/domain/shipment/shipment.ts:71"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [
+    {
+      "id": "flow.core-close-route",
+      "slug": "core-close-route",
+      "name": "Close route",
+      "summary": "Ends the day, whatever is left undone.",
+      "source": "examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts",
+      "owner": "delivery",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "delivery.core",
+          "kind": "service",
+          "context": "delivery"
+        },
+        {
+          "id": "core-pg",
+          "kind": "store",
+          "context": "delivery"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "delivery.core",
+          "kind": "rpc",
+          "label": "CloseRoute",
+          "status": "declared",
+          "line": "examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:21"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "delivery.core",
+          "to": "core-pg",
+          "kind": "call",
+          "label": "byId",
+          "status": "declared",
+          "line": "examples/shop/delivery/core/src/application/route/usecases/close_route/usecase.ts:8"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "delivery.core",
+          "to": "core-pg",
+          "kind": "call",
+          "label": "save",
+          "status": "declared",
+          "line": "examples/shop/delivery/core/src/application/route/usecases/close_route/usecase.ts:10"
+        }
+      ]
+    },
+    {
+      "id": "flow.core-dispatch",
+      "slug": "core-dispatch",
+      "name": "Dispatch",
+      "summary": "One shipment, for whoever is asking about an order.",
+      "source": "examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts",
+      "owner": "delivery",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "delivery.core",
+          "kind": "service",
+          "context": "delivery"
+        },
+        {
+          "id": "core-pg",
+          "kind": "store",
+          "context": "delivery"
+        },
+        {
+          "id": "shop.oms",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "delivery.core",
+          "kind": "rpc",
+          "label": "Dispatch",
+          "status": "declared",
+          "line": "examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:21"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "delivery.core",
+          "to": "core-pg",
+          "kind": "call",
+          "label": "byId",
+          "status": "declared",
+          "line": "examples/shop/delivery/core/src/application/shipment/usecases/dispatch/usecase.ts:27"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "delivery.core",
+          "to": "shop.oms",
+          "kind": "rpc",
+          "label": "GetOrder",
+          "status": "declared",
+          "ref": "shop.v1.OrderService/GetOrder",
+          "line": "examples/shop/delivery/core/src/application/shipment/usecases/dispatch/usecase.ts:28"
+        },
+        {
+          "type": "alt",
+          "id": "alt5",
+          "branches": [
+            {
+              "title": "order.status === \"cancelled\"",
+              "steps": [
+                {
+                  "type": "step",
+                  "id": "s4",
+                  "from": "delivery.core",
+                  "to": "core-pg",
+                  "kind": "call",
+                  "label": "save",
+                  "status": "declared",
+                  "line": "examples/shop/delivery/core/src/application/shipment/usecases/dispatch/usecase.ts:32"
+                }
+              ],
+              "terminal": true
+            },
+            {
+              "title": "otherwise",
+              "steps": []
+            }
+          ]
+        },
+        {
+          "type": "step",
+          "id": "s6",
+          "from": "delivery.core",
+          "to": "core-pg",
+          "kind": "call",
+          "label": "save",
+          "status": "declared",
+          "line": "examples/shop/delivery/core/src/application/shipment/usecases/dispatch/usecase.ts:37"
+        },
+        {
+          "type": "step",
+          "id": "s7",
+          "from": "delivery.core",
+          "to": "bus",
+          "kind": "event",
+          "label": "ShipmentDispatched",
+          "status": "declared",
+          "ref": "delivery.core.shipment.ShipmentDispatched",
+          "line": "examples/shop/delivery/core/src/application/shipment/usecases/dispatch/usecase.ts:37"
+        },
+        {
+          "type": "step",
+          "id": "s8",
+          "from": "delivery.core",
+          "to": "core-pg",
+          "kind": "call",
+          "label": "byId",
+          "status": "declared",
+          "line": "examples/shop/delivery/core/src/application/shipment/usecases/get_shipment/usecase.ts:9"
+        }
+      ]
+    },
+    {
+      "id": "flow.core-get-route",
+      "slug": "core-get-route",
+      "name": "Get route",
+      "summary": "One route, as the depot reads it.",
+      "source": "examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts",
+      "owner": "delivery",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "delivery.core",
+          "kind": "service",
+          "context": "delivery"
+        },
+        {
+          "id": "core-pg",
+          "kind": "store",
+          "context": "delivery"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "delivery.core",
+          "kind": "rpc",
+          "label": "GetRoute",
+          "status": "declared",
+          "line": "examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:28"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "delivery.core",
+          "to": "core-pg",
+          "kind": "call",
+          "label": "byId",
+          "status": "declared",
+          "line": "examples/shop/delivery/core/src/application/route/usecases/get_route/usecase.ts:9"
+        }
+      ]
+    },
+    {
+      "id": "flow.core-get-shipment",
+      "slug": "core-get-shipment",
+      "name": "Get shipment",
+      "summary": "One shipment, for whoever is asking about an order.",
+      "source": "examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts",
+      "owner": "delivery",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "delivery.core",
+          "kind": "service",
+          "context": "delivery"
+        },
+        {
+          "id": "core-pg",
+          "kind": "store",
+          "context": "delivery"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "delivery.core",
+          "kind": "rpc",
+          "label": "GetShipment",
+          "status": "declared",
+          "line": "examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:58"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "delivery.core",
+          "to": "core-pg",
+          "kind": "call",
+          "label": "byId",
+          "status": "declared",
+          "line": "examples/shop/delivery/core/src/application/shipment/usecases/get_shipment/usecase.ts:9"
+        }
+      ]
+    },
+    {
+      "id": "flow.core-plan-route",
+      "slug": "core-plan-route",
+      "name": "Plan route",
+      "summary": "Builds a van's day out of the shipments waiting to go out.",
+      "source": "examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts",
+      "owner": "delivery",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "delivery.core",
+          "kind": "service",
+          "context": "delivery"
+        },
+        {
+          "id": "core-pg",
+          "kind": "store",
+          "context": "delivery"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "delivery.core",
+          "kind": "rpc",
+          "label": "PlanRoute",
+          "status": "declared",
+          "line": "examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:14"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "delivery.core",
+          "to": "core-pg",
+          "kind": "call",
+          "label": "byId",
+          "status": "declared",
+          "note": "inside a loop over `shipmentIds`.",
+          "line": "examples/shop/delivery/core/src/application/route/usecases/plan_route/usecase.ts:27"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "delivery.core",
+          "to": "core-pg",
+          "kind": "call",
+          "label": "save",
+          "status": "declared",
+          "line": "examples/shop/delivery/core/src/application/route/usecases/plan_route/usecase.ts:34"
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "delivery.core",
+          "to": "bus",
+          "kind": "event",
+          "label": "RoutePlanned",
+          "status": "declared",
+          "ref": "delivery.core.route.RoutePlanned",
+          "line": "examples/shop/delivery/core/src/application/route/usecases/plan_route/usecase.ts:34"
+        },
+        {
+          "type": "step",
+          "id": "s5",
+          "from": "delivery.core",
+          "to": "core-pg",
+          "kind": "call",
+          "label": "byId",
+          "status": "declared",
+          "note": "inside a loop over `shipmentIds`.",
+          "line": "examples/shop/delivery/core/src/application/route/usecases/plan_route/usecase.ts:37"
+        },
+        {
+          "type": "step",
+          "id": "s6",
+          "from": "delivery.core",
+          "to": "core-pg",
+          "kind": "call",
+          "label": "save",
+          "status": "declared",
+          "note": "inside a loop over `shipmentIds`.",
+          "line": "examples/shop/delivery/core/src/application/route/usecases/plan_route/usecase.ts:39"
+        }
+      ]
+    },
+    {
+      "id": "flow.core-record-delivery",
+      "slug": "core-record-delivery",
+      "name": "Record delivery",
+      "summary": "Ends a shipment at the door.",
+      "source": "examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts",
+      "owner": "delivery",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "delivery.core",
+          "kind": "service",
+          "context": "delivery"
+        },
+        {
+          "id": "core-pg",
+          "kind": "store",
+          "context": "delivery"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "delivery.core",
+          "kind": "rpc",
+          "label": "RecordDelivery",
+          "status": "declared",
+          "line": "examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:36"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "delivery.core",
+          "to": "core-pg",
+          "kind": "call",
+          "label": "byId",
+          "status": "declared",
+          "line": "examples/shop/delivery/core/src/application/shipment/usecases/record_delivery/usecase.ts:11"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "delivery.core",
+          "to": "core-pg",
+          "kind": "call",
+          "label": "save",
+          "status": "declared",
+          "line": "examples/shop/delivery/core/src/application/shipment/usecases/record_delivery/usecase.ts:13"
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "delivery.core",
+          "to": "bus",
+          "kind": "event",
+          "label": "ShipmentDelivered",
+          "status": "declared",
+          "ref": "delivery.core.shipment.ShipmentDelivered",
+          "line": "examples/shop/delivery/core/src/application/shipment/usecases/record_delivery/usecase.ts:13"
+        }
+      ]
+    },
+    {
+      "id": "flow.core-record-scan",
+      "slug": "core-record-scan",
+      "name": "Record scan",
+      "summary": "Writes down that a parcel was seen somewhere.",
+      "source": "examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts",
+      "owner": "delivery",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "delivery.core",
+          "kind": "service",
+          "context": "delivery"
+        },
+        {
+          "id": "core-pg",
+          "kind": "store",
+          "context": "delivery"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "delivery.core",
+          "kind": "rpc",
+          "label": "RecordScan",
+          "status": "declared",
+          "line": "examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:29"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "delivery.core",
+          "to": "core-pg",
+          "kind": "call",
+          "label": "byId",
+          "status": "declared",
+          "line": "examples/shop/delivery/core/src/application/shipment/usecases/record_scan/usecase.ts:16"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "delivery.core",
+          "to": "core-pg",
+          "kind": "call",
+          "label": "save",
+          "status": "declared",
+          "line": "examples/shop/delivery/core/src/application/shipment/usecases/record_scan/usecase.ts:18"
+        }
+      ]
+    },
+    {
+      "id": "flow.core-track-shipment",
+      "slug": "core-track-shipment",
+      "name": "Track shipment",
+      "summary": "What the customer sees when they paste a tracking code.",
+      "source": "examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts",
+      "owner": "delivery",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "delivery.core",
+          "kind": "service",
+          "context": "delivery"
+        },
+        {
+          "id": "core-pg",
+          "kind": "store",
+          "context": "delivery"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "delivery.core",
+          "kind": "rpc",
+          "label": "TrackShipment",
+          "status": "declared",
+          "line": "examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:43"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "delivery.core",
+          "to": "core-pg",
+          "kind": "call",
+          "label": "byTracking",
+          "status": "declared",
+          "line": "examples/shop/delivery/core/src/application/shipment/usecases/track_shipment/usecase.ts:9"
+        }
+      ]
+    },
+    {
+      "id": "flow.core-plan-shipment-on-payment-captured",
+      "slug": "core-plan-shipment-on-payment-captured",
+      "name": "Plan shipment on payment captured",
+      "summary": "Nothing leaves the warehouse before the money has moved.",
+      "source": "examples/shop/delivery/core/src/application/policy/plan-shipment-on-payment-captured.ts",
+      "owner": "delivery",
+      "participants": [
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        },
+        {
+          "id": "delivery.core",
+          "kind": "service",
+          "context": "delivery"
+        },
+        {
+          "id": "core-pg",
+          "kind": "store",
+          "context": "delivery"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "bus",
+          "to": "delivery.core",
+          "kind": "event",
+          "label": "PaymentCaptured",
+          "status": "declared",
+          "ref": "payments.ledger.payment.PaymentCaptured",
+          "line": "examples/shop/delivery/core/src/application/policy/plan-shipment-on-payment-captured.ts:17"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "delivery.core",
+          "to": "core-pg",
+          "kind": "call",
+          "label": "byOrder",
+          "status": "declared",
+          "line": "examples/shop/delivery/core/src/application/policy/plan-shipment-on-payment-captured.ts:20"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "delivery.core",
+          "to": "core-pg",
+          "kind": "call",
+          "label": "save",
+          "status": "declared",
+          "line": "examples/shop/delivery/core/src/application/policy/plan-shipment-on-payment-captured.ts:22"
+        }
+      ]
+    }
+  ],
+  "adrs": []
+}

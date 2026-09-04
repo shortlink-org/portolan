@@ -1,0 +1,351 @@
+{
+  "generatedAt": "2026-09-05T05:58:23+07:00",
+  "commit": "065dbaa",
+  "contexts": [
+    {
+      "id": "delivery",
+      "slug": "delivery",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "delivery.core",
+          "slug": "core",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "stores": [
+            "delivery.core.pg"
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": [],
+  "stores": [
+    {
+      "id": "delivery.core.pg",
+      "slug": "pg",
+      "name": "Delivery database",
+      "kind": "postgres",
+      "owner": "delivery.core",
+      "tables": [
+        {
+          "id": "delivery.core.pg.routes",
+          "name": "routes",
+          "columns": [
+            {
+              "name": "id",
+              "type": "text",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "vehicle",
+              "type": "text",
+              "nullable": false
+            },
+            {
+              "name": "planned_for",
+              "type": "date",
+              "nullable": false
+            },
+            {
+              "name": "status",
+              "type": "text",
+              "nullable": false
+            }
+          ],
+          "indexes": [
+            {
+              "name": "routes_by_day",
+              "columns": [
+                "planned_for",
+                "status"
+              ],
+              "unique": false
+            }
+          ],
+          "persists": {
+            "aggregate": "delivery.core.route"
+          },
+          "role": "aggregate-root"
+        },
+        {
+          "id": "delivery.core.pg.route_stops",
+          "name": "route_stops",
+          "columns": [
+            {
+              "name": "route_id",
+              "type": "text",
+              "nullable": false,
+              "pk": true,
+              "fk": {
+                "table": "delivery.core.pg.routes",
+                "column": "id",
+                "onDelete": "cascade"
+              }
+            },
+            {
+              "name": "seq",
+              "type": "integer",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "shipment_id",
+              "type": "text",
+              "nullable": false,
+              "fk": {
+                "table": "delivery.core.pg.packages",
+                "column": "id",
+                "onDelete": "restrict"
+              }
+            },
+            {
+              "name": "address",
+              "type": "text",
+              "nullable": false,
+              "from": [
+                "delivery.core.pg.packages.ship_to"
+              ]
+            },
+            {
+              "name": "window_from",
+              "type": "timestamptz",
+              "nullable": false
+            },
+            {
+              "name": "window_to",
+              "type": "timestamptz",
+              "nullable": false
+            },
+            {
+              "name": "done",
+              "type": "boolean",
+              "nullable": false
+            }
+          ],
+          "persists": {
+            "aggregate": "delivery.core.route"
+          },
+          "role": "child"
+        },
+        {
+          "id": "delivery.core.pg.packages",
+          "name": "packages",
+          "columns": [
+            {
+              "name": "id",
+              "type": "text",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "order_id",
+              "type": "text",
+              "nullable": false,
+              "fk": {
+                "table": "orders",
+                "column": "id",
+                "onDelete": "restrict"
+              }
+            },
+            {
+              "name": "ship_to",
+              "type": "text",
+              "nullable": false
+            },
+            {
+              "name": "status",
+              "type": "text",
+              "nullable": false
+            },
+            {
+              "name": "tracking",
+              "type": "text",
+              "nullable": true
+            },
+            {
+              "name": "route_id",
+              "type": "text",
+              "nullable": true
+            },
+            {
+              "name": "dispatched_at",
+              "type": "timestamptz",
+              "nullable": true
+            }
+          ],
+          "indexes": [
+            {
+              "name": "packages_by_order",
+              "columns": [
+                "order_id"
+              ],
+              "unique": false
+            },
+            {
+              "name": "packages_by_tracking",
+              "columns": [
+                "tracking"
+              ],
+              "unique": true
+            }
+          ],
+          "persists": {
+            "aggregate": "delivery.core.shipment"
+          },
+          "role": "aggregate-root"
+        },
+        {
+          "id": "delivery.core.pg.parcels",
+          "name": "parcels",
+          "columns": [
+            {
+              "name": "id",
+              "type": "text",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "package_id",
+              "type": "text",
+              "nullable": false,
+              "fk": {
+                "table": "delivery.core.pg.packages",
+                "column": "id",
+                "onDelete": "cascade"
+              }
+            },
+            {
+              "name": "weight_g",
+              "type": "integer",
+              "nullable": false
+            },
+            {
+              "name": "contents",
+              "type": "text",
+              "nullable": false
+            }
+          ],
+          "persists": {
+            "aggregate": "delivery.core.shipment"
+          },
+          "role": "child"
+        },
+        {
+          "id": "delivery.core.pg.scans",
+          "name": "scans",
+          "columns": [
+            {
+              "name": "id",
+              "type": "bigserial",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "parcel_id",
+              "type": "text",
+              "nullable": false,
+              "fk": {
+                "table": "delivery.core.pg.parcels",
+                "column": "id",
+                "onDelete": "cascade"
+              }
+            },
+            {
+              "name": "location",
+              "type": "text",
+              "nullable": false
+            },
+            {
+              "name": "scanned_at",
+              "type": "timestamptz",
+              "nullable": false
+            }
+          ],
+          "indexes": [
+            {
+              "name": "scans_by_parcel",
+              "columns": [
+                "parcel_id",
+                "scanned_at"
+              ],
+              "unique": false
+            }
+          ],
+          "persists": {
+            "aggregate": "delivery.core.shipment"
+          },
+          "role": "child"
+        }
+      ],
+      "views": [
+        {
+          "id": "delivery.core.pg.mv_route_load",
+          "name": "mv_route_load",
+          "materialized": true,
+          "columns": [
+            {
+              "name": "route_id",
+              "type": "text",
+              "nullable": false,
+              "from": [
+                "delivery.core.pg.routes.id"
+              ]
+            },
+            {
+              "name": "vehicle",
+              "type": "text",
+              "nullable": false,
+              "from": [
+                "delivery.core.pg.routes.vehicle"
+              ]
+            },
+            {
+              "name": "planned_for",
+              "type": "date",
+              "nullable": false,
+              "from": [
+                "delivery.core.pg.routes.planned_for"
+              ]
+            },
+            {
+              "name": "stops",
+              "type": "integer",
+              "nullable": false,
+              "from": [
+                "delivery.core.pg.route_stops.seq"
+              ]
+            },
+            {
+              "name": "done",
+              "type": "integer",
+              "nullable": false,
+              "from": [
+                "delivery.core.pg.route_stops.seq"
+              ]
+            }
+          ],
+          "reads": [
+            "delivery.core.pg.routes",
+            "delivery.core.pg.route_stops"
+          ],
+          "definition": "CREATE MATERIALIZED VIEW mv_route_load AS\nSELECT r.id          AS route_id,\n       r.vehicle     AS vehicle,\n       r.planned_for AS planned_for,\n       count(s.seq)  AS stops,\n       count(s.seq) FILTER (WHERE s.done) AS done\n  FROM routes r\n  LEFT JOIN route_stops s ON s.route_id = r.id\n GROUP BY r.id;",
+          "persists": {
+            "aggregate": "delivery.core.route"
+          },
+          "source": "src/infrastructure/repository/route/migrations/0002_route_load.sql"
+        }
+      ],
+      "source": "examples/shop/delivery/core/src/infrastructure/repository"
+    }
+  ]
+}

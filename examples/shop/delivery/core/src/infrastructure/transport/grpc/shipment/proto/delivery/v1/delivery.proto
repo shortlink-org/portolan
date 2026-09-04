@@ -1,0 +1,81 @@
+syntax = "proto3";
+
+package delivery.v1;
+
+// What the estate may ask about a parcel on its way.
+//
+// Delivery is told what to carry and asked where it is. It never decides
+// whether something should ship - that is the order's business, and the money's.
+service Delivery {
+  // Hand a planned shipment to the carrier.
+  rpc Dispatch(DispatchRequest) returns (DispatchResponse);
+
+  // Write down that a parcel was seen somewhere.
+  rpc RecordScan(RecordScanRequest) returns (RecordScanResponse);
+
+  // End a shipment at the door.
+  rpc RecordDelivery(RecordDeliveryRequest) returns (RecordDeliveryResponse);
+
+  // What the customer sees when they paste a tracking code.
+  rpc TrackShipment(TrackShipmentRequest) returns (TrackShipmentResponse);
+
+  // One shipment, for whoever is asking about an order.
+  rpc GetShipment(GetShipmentRequest) returns (GetShipmentResponse);
+}
+
+message DispatchRequest {
+  string shipment_id = 1;
+  string tracking = 2;
+}
+
+message DispatchResponse {
+  string shipment_id = 1;
+  string status = 2;
+}
+
+message RecordScanRequest {
+  string shipment_id = 1;
+  string parcel_id = 2;
+  string location = 3;
+}
+
+message RecordScanResponse {
+  string shipment_id = 1;
+}
+
+message RecordDeliveryRequest {
+  string shipment_id = 1;
+  string signed_by = 2;
+}
+
+message RecordDeliveryResponse {
+  string shipment_id = 1;
+}
+
+message TrackShipmentRequest {
+  string tracking = 1;
+}
+
+message TrackShipmentResponse {
+  string shipment_id = 1;
+  string status = 2;
+  repeated ScanView scans = 3;
+}
+
+message ScanView {
+  string parcel_id = 1;
+  string location = 2;
+  string scanned_at = 3;
+}
+
+message GetShipmentRequest {
+  string shipment_id = 1;
+}
+
+message GetShipmentResponse {
+  string shipment_id = 1;
+  string order_id = 2;
+  string status = 3;
+  string tracking = 4;
+  int32 parcels = 5;
+}

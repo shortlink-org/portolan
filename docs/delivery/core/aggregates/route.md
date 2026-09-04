@@ -1,76 +1,85 @@
 # Route
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `8 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `delivery.core.route`
 - **Service:** [Delivery Core](../README.md)
 - **Root:** `Route`
 
-A planned sequence of stops for one vehicle and one delivery window.
+One van, one day, in the order the stops are driven.
 
-## Planning
-
-Routes are planned once per window, ninety minutes before the window opens.
-Shipments that miss the cut-off wait for the next window rather than forcing a
-re-plan; re-planning a live route is not supported.
-
-## Commands
-
-| Command       | Notes                                   |
-| ------------- | --------------------------------------- |
-| `PlanRoute`   | Assigns vehicle and stop order          |
-| `CloseRoute`  | Terminal; unfinished stops are re-queued |
-
-## Queries
-
-`GetRoute` returns stops in planned order, not in scan order.
+The order is the route: changing it is planning another one rather than editing
+this. A stop knows which shipment it is dropping, and carries the address it
+was planned against - a copy of the shipment's, which is itself a copy of the
+order's.
 
 ## Entities
 
 ### Route — aggregate root
 
-A day's driving for one vehicle, as planned the night before.
+One van, one day, in the order the stops are driven.
 
-| Field | Type | Doc |
-| --- | --- | --- |
-| `id` | `string` | Route id. |
-| `date` | `string` | Delivery date, ISO. |
-| `vehicleId` | `string` | Vehicle assigned. |
-| `stops` | `[]Stop` | Stops in driving order. |
+The order of the stops is the route: changing it is planning a new one, not
+editing this. A closed route is history.
+
+| Field | Type |
+| --- | --- |
+| `id` | `string` |
+| `vehicle` | `string` |
+| `plannedFor` | `Date` |
+| `stops` | `Stop[]` |
+| `status` | `RouteStatus` |
 
 ### Stop
 
-One address on a route. Identified by its position, which is what the driver's app shows.
+One place a van stops, and what it drops there.
 
-| Field | Type | Doc |
-| --- | --- | --- |
-| `sequence` | `int32` | Position on the route, 1-based. |
-| `address` | [`Address`](../../../types.md#address) | Where to stop. |
-| `shipmentId` | `string` | Shipment dropped here. |
+An entity: the stop is followed through the day - planned, then arrived at,
+then done - which is what makes it more than a pair of values.
+
+| Field | Type |
+| --- | --- |
+| `seq` | `number` |
+| `shipmentId` | `string` |
+| `address` | `Address` |
+| `window` | `Window` |
+| `done` | `boolean` |
 
 ## Value objects
 
-### Address
+### Window
 
-A postal address, unvalidated.
+When a van is expected somewhere, as the two ends of a promise to a person.
 
-Shared type [`Address`](../../../types.md#address).
+| Field | Type |
+| --- | --- |
+| `from` | `Date` |
+| `to` | `Date` |
 
-| Field | Type | Doc |
-| --- | --- | --- |
-| `line1` | `string` | Street and number. |
-| `line2` | `string` | Optional second line. |
-| `city` | `string` | City or locality. |
-| `postcode` | `string` | Postal code, unvalidated. |
-| `country` | `string` | ISO 3166-1 alpha-2. |
+## Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> planned
+    planned --> driving: start
+    planned --> closed: close
+    driving --> closed: close
+    closed --> [*]
+```
+
+| From | To | On | Source |
+| --- | --- | --- | --- |
+| `planned` | `driving` | `start` | `examples/shop/delivery/core/src/domain/route/route.ts:50` |
+| `planned` | `closed` | `close` | `examples/shop/delivery/core/src/domain/route/route.ts:55` |
+| `driving` | `closed` | `close` | `examples/shop/delivery/core/src/domain/route/route.ts:55` |
 
 ## Operations
 
-| Operation | Kind | Doc |
-| --- | --- | --- |
-| `PlanRoute` | command | Sequences one window's shipments for one vehicle. Runs 90 minutes before the window opens; anything missing the cut-off waits for the next one. |
-| `CloseRoute` | command | Ends a route once every stop is recorded. A route with unrecorded stops cannot be closed. |
-| `GetRoute` | query | One route with its stops in driving order. |
+| Operation | Kind | Exposed by | Doc |
+| --- | --- | --- | --- |
+| `CloseRoute` | command | `CloseRoute` | Ends the day, whatever is left undone. |
+| `GetRoute` | query | `GetRoute` | One route, as the depot reads it. |
+| `PlanRoute` | command | `PlanRoute` | Builds a van's day out of the shipments waiting to go out. |
 
 ## Events
 
@@ -78,15 +87,19 @@ Shared type [`Address`](../../../types.md#address).
 
 `delivery.core.route.RoutePlanned`
 
+On the wire as `delivery.RoutePlanned`, on `delivery.core.route`.
+
 #### v1 — current
 
-A vehicle and window were assigned a stop sequence.
+A van has a day's work. The stops are not on the event: whoever cares reads
+the route, and a list that long on the bus would go stale in flight.
 
-Source: `internal/delivery/domain/route/events.go:38`
+Source: `examples/shop/delivery/core/src/domain/route/events/route-planned.ts`
 
-| Field | Type | Doc |
-| --- | --- | --- |
-| `routeId` | `string` | Identifier of the route. |
-| `vehicleId` | `string` | Vehicle assigned to the route. |
-| `stopCount` | `int32` | Number of stops on the route. |
-| `windowStart` | `time.Time` | Start of the delivery window. |
+| Field | Type |
+| --- | --- |
+| `channel` | `string` |
+| `routeId` | `string` |
+| `vehicle` | `string` |
+| `stops` | `number` |
+| `occurredAt` | `Date` |

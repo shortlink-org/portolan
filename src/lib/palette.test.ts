@@ -289,6 +289,8 @@ describe("modules in the palette", () => {
     expect(paletteItems(shipped).filter((i) => i.kind === "module").map((i) => i.id)).toEqual([
       "local:payments/payment",
       "local:payments/refund",
+      "local:delivery/route",
+      "local:delivery/shipment",
       "buf.build/shortlink-org/portolan-shop-order",
       "local:shop/price-list",
       "local:shop/quote",

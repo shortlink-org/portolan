@@ -1,0 +1,11 @@
+# The contract of the route aggregate.
+version: v2
+modules:
+  - path: .
+    name: buf.build/shortlink-org/portolan-delivery-route
+lint:
+  use:
+    - STANDARD
+breaking:
+  use:
+    - FILE

@@ -57,6 +57,9 @@
               "name": "basket_id",
               "type": "text",
               "nullable": false,
+              "from": [
+                "shop.cart.pg.baskets.id"
+              ],
               "maps": "Order.basket_id"
             },
             {

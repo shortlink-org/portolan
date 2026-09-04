@@ -1,0 +1,7 @@
+# The Connect-ES stubs, generated from the contracts vendored in this tree: the
+# two this service answers, and the one it calls.
+version: v2
+plugins:
+  - remote: buf.build/bufbuild/es
+    out: .
+    opt: target=ts,import_extension=.ts
