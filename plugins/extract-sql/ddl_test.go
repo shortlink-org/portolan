@@ -10,7 +10,7 @@ import (
 func read(t *testing.T, sql string) ([]relation, []string) {
 	t.Helper()
 
-	relations, unread, err := readDDL(sql, "test.sql")
+	relations, _, unread, err := readDDL(sql, "test.sql")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,5 +149,57 @@ CREATE INDEX elsewhere_idx ON other_table (id);`)
 	}
 	if !strings.Contains(strings.Join(unread, " "), "other_table") {
 		t.Errorf("an index on a table from another file should be named: %v", unread)
+	}
+}
+
+// A view is the other half of what a migration builds, and the half a table
+// cannot express: no key, no constraints, and what it reads instead.
+func TestReadsAViewAndWhereItsColumnsComeFrom(t *testing.T) {
+	sql := `
+CREATE TABLE payments (id text PRIMARY KEY, order_id text NOT NULL, amount_minor bigint NOT NULL);
+CREATE TABLE refunds (id text PRIMARY KEY, payment_id text NOT NULL, amount_minor bigint NOT NULL);
+CREATE VIEW v_payment_state AS
+SELECT p.id AS payment_id, p.order_id, coalesce(sum(r.amount_minor), 0) AS refunded_minor
+  FROM payments p
+  LEFT JOIN refunds r ON r.payment_id = p.id
+ GROUP BY p.id;
+`
+
+	_, views, unread, err := readDDL(sql, "test.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(unread) != 0 {
+		t.Fatalf("nothing should be left unread: %v", unread)
+	}
+	if len(views) != 1 {
+		t.Fatalf("want one view, got %d", len(views))
+	}
+
+	view := views[0]
+	if view.name != "v_payment_state" {
+		t.Errorf("name %q", view.name)
+	}
+	if strings.Join(view.reads, ",") != "payments,refunds" {
+		t.Errorf("reads %v", view.reads)
+	}
+
+	want := map[string]string{
+		"payment_id":     "payments.id",
+		"order_id":       "payments.order_id",
+		"refunded_minor": "refunds.amount_minor",
+	}
+	if len(view.columns) != len(want) {
+		t.Fatalf("columns %v", view.columns)
+	}
+	for _, column := range view.columns {
+		if strings.Join(column.from, ",") != want[column.name] {
+			t.Errorf("%s comes from %v, want %q", column.name, column.from, want[column.name])
+		}
+	}
+
+	// The definition is the SQL somebody wrote, not the tree printed back.
+	if !strings.HasPrefix(view.definition, "CREATE VIEW v_payment_state AS") || !strings.HasSuffix(view.definition, ";") {
+		t.Errorf("definition %q", view.definition)
 	}
 }

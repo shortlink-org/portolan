@@ -1,6 +1,6 @@
 # Flows
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 | Flow | Owner | Summary |
 | --- | --- | --- |
@@ -14,6 +14,12 @@
 | [Register user](auth-register-user.md) | [auth](../auth/README.md) | Creates a user from an email address and a password. |
 | [Validate session](auth-validate-session.md) | [auth](../auth/README.md) | Resolves a token to a live session: who is calling, and how long the answer stays good. |
 | [Revoke sessions on password change](auth-revoke-sessions-on-password-change.md) | [auth](../auth/README.md) | Ends the sessions issued against a password that has just been replaced. |
+| [Authorize](ledger-authorize.md) | [payments](../payments/README.md) | Asks the gateway to hold the money for an order, and records either that it agreed or that it refused. |
+| [Capture](ledger-capture.md) | [payments](../payments/README.md) | Moves the money the gateway was holding, writes the pair of postings for it, and says so on the bus. |
+| [Get payment](ledger-get-payment.md) | [payments](../payments/README.md) | Reads one payment, for whoever is asking what happened to the money. |
+| [Issue refund](ledger-issue-refund.md) | [payments](../payments/README.md) | Sends money back against a captured payment, in full or in part. |
+| [List refunds](ledger-list-refunds.md) | [payments](../payments/README.md) | Every refund against one payment, newest first. |
+| [Void payment on order cancelled](ledger-void-payment-on-order-cancelled.md) | [payments](../payments/README.md) | Gives back what was held once the order it was held for is gone. |
 | [Invoice create](billing-invoice-create.md) | [shop](../shop/README.md) | Draws up a draft invoice for an order, with a line for each thing sold. |
 | [Invoice destroy](billing-invoice-destroy.md) | [shop](../shop/README.md) | Ends an invoice nobody is going to pay. |
 | [Invoice issue](billing-invoice-issue.md) | [shop](../shop/README.md) | Confirms the session, freezes the invoice and asks the customer to pay. |
@@ -27,5 +33,5 @@
 | [Remove item](cart-remove-item.md) | [shop](../shop/README.md) | — |
 | [Cancel order](oms-cancel-order.md) | [shop](../shop/README.md) | Answers with the order as it is now; a cancelled order is still found. |
 | [Get order](oms-get-order.md) | [shop](../shop/README.md) | Answers with the order as it is now; a cancelled order is still found. |
-| [Confirm order on payment authorized](oms-confirm-order-on-payment-authorized.md) | [shop](../shop/README.md) | Confirms the order once the payment for it is authorised (ADR oms.0005). Declared ahead of its publisher: nothing in the estate says `payments.PaymentAuthorized` yet, and the catalog says so. |
+| [Confirm order on payment authorized](oms-confirm-order-on-payment-authorized.md) | [shop](../shop/README.md) | Confirms the order once the payment for it is authorised (ADR oms.0005). The publisher is `payments.ledger`, and the name is the one it puts on the message: every service on this bus names its events after itself. |
 | [Place order on basket checked out](oms-place-order-on-basket-checked-out.md) | [shop](../shop/README.md) | Places the order the basket was checked out for (ADR oms.0002). The order takes the basket's id, so the same checkout heard twice places one order. |

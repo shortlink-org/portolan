@@ -19,8 +19,8 @@
           "consumes": [
             {
               "id": "payments.v1.PaymentService/Authorize",
-              "peer": "payments.v1",
-              "status": "unresolved",
+              "peer": "payments.ledger",
+              "status": "declared",
               "source": "examples/shop/oms/src/infrastructure/payments/proto/payments/v1/payments.proto"
             }
           ],
@@ -456,7 +456,7 @@
       "id": "flow.oms-confirm-order-on-payment-authorized",
       "slug": "oms-confirm-order-on-payment-authorized",
       "name": "Confirm order on payment authorized",
-      "summary": "Confirms the order once the payment for it is authorised (ADR oms.0005). Declared ahead of its publisher: nothing in the estate says `payments.PaymentAuthorized` yet, and the catalog says so.",
+      "summary": "Confirms the order once the payment for it is authorised (ADR oms.0005). The publisher is `payments.ledger`, and the name is the one it puts on the message: every service on this bus names its events after itself.",
       "source": "examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs",
       "owner": "shop",
       "participants": [
@@ -476,10 +476,9 @@
           "context": "shop"
         },
         {
-          "id": "payments-v1",
-          "kind": "unknown",
-          "context": null,
-          "label": "payments.v1"
+          "id": "payments.ledger",
+          "kind": "service",
+          "context": "payments"
         }
       ],
       "steps": [
@@ -491,7 +490,7 @@
           "kind": "event",
           "label": "PaymentAuthorized",
           "status": "unresolved",
-          "note": "Reacts to the message named `payments.PaymentAuthorized`, which is not an event this repository declares.",
+          "note": "Reacts to the message named `ledger.PaymentAuthorized`, which is not an event this repository declares.",
           "line": "examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs:20"
         },
         {
@@ -518,10 +517,10 @@
           "type": "step",
           "id": "s4",
           "from": "shop.oms",
-          "to": "payments-v1",
+          "to": "payments.ledger",
           "kind": "rpc",
           "label": "Authorize",
-          "status": "unresolved",
+          "status": "declared",
           "ref": "payments.v1.PaymentService/Authorize",
           "line": "examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:32"
         },

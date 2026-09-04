@@ -282,10 +282,13 @@ describe("modules in the palette", () => {
     }
   });
 
-  // The app's own catalog has published exactly one module, and shows exactly
-  // one row for it: a row per module, never an empty group.
-  it("adds one row per module the estate has published", () => {
+  // A row per module the estate holds, published or not: the ledger's two are
+  // local until somebody pushes them, and a reader still has to be able to find
+  // the contract they hold.
+  it("adds one row per module the estate holds", () => {
     expect(paletteItems(shipped).filter((i) => i.kind === "module").map((i) => i.id)).toEqual([
+      "local:payments/payment",
+      "local:payments/refund",
       "buf.build/shortlink-org/portolan-shop-order",
     ]);
   });

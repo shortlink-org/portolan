@@ -226,6 +226,57 @@
       }
     },
     {
+      "plugin": "java-domain",
+      "in": "examples/payments/ledger",
+      "out": "examples/payments/ledger/portolan",
+      "options": {
+        "context": "payments",
+        "contextName": "Payments",
+        "contextSummary": "Money, and the record of every movement of it. Nothing here decides whether to charge - it is asked, and it writes down what happened either way.",
+        "classification": "core",
+        "service": "ledger",
+        "store": "pg",
+        "peers": {
+          "shop.v1": "shop.oms"
+        },
+        "events": {
+          "org.portolan.payments.ledger.infrastructure.oms.event": "shop.oms.order"
+        },
+        "out": "domain.json"
+      }
+    },
+    {
+      "plugin": "proto",
+      "in": "examples/payments/ledger",
+      "out": "examples/payments/ledger/portolan",
+      "options": {
+        "context": "payments",
+        "service": "ledger",
+        "paths": [
+          "src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/proto",
+          "src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/proto"
+        ],
+        "modules": {
+          "src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/proto": "local:payments/payment",
+          "src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/proto": "local:payments/refund"
+        },
+        "out": "proto.json"
+      }
+    },
+    {
+      "plugin": "sql",
+      "in": "examples/payments/ledger",
+      "out": "examples/payments/ledger/portolan",
+      "options": {
+        "context": "payments",
+        "service": "ledger",
+        "store": "pg",
+        "name": "Ledger database",
+        "repositories": "src/main/java/org/portolan/payments/ledger/infrastructure/repository",
+        "out": "stores.json"
+      }
+    },
+    {
       "plugin": "bsr",
       "in": "examples/shop/oms",
       "out": "examples/shop/oms/vendor/proto",
@@ -261,9 +312,12 @@
         "service": "oms",
         "repo": "github.com/shortlink-org/portolan",
         "store": "pg",
-        "peers": {},
+        "peers": {
+          "payments.v1": "payments.ledger"
+        },
         "events": {
-          "crate::infrastructure::cart": "shop.cart.basket"
+          "crate::infrastructure::cart": "shop.cart.basket",
+          "crate::infrastructure::ledger": "payments.ledger.payment"
         },
         "out": "domain.json"
       }

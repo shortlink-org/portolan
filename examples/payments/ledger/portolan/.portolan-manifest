@@ -1,0 +1,11 @@
+{
+  "java-domain": [
+    "domain.json"
+  ],
+  "proto": [
+    "proto.json"
+  ],
+  "sql": [
+    "stores.json"
+  ]
+}

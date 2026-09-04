@@ -1,12 +1,12 @@
 *llms-full.txt: every page of Example estate, one after another. A page begins with a comment naming its file, and the links inside it are relative to that file's directory.*
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 <!-- README.md -->
 
 # Example estate
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 
 ## Contexts
@@ -14,9 +14,9 @@
 | Context | Class | Services | Summary |
 | --- | --- | --- | --- |
 | [Shop](shop/README.md) | core | [Pricing](shop/pricing/README.md), [Billing](shop/billing/README.md), [Shopping Cart](shop/cart/README.md), [Order Management](shop/oms/README.md) | Everything the customer touches before money moves: baskets, orders and prices. |
-| [Payments](payments/README.md) | core | [Ledger](payments/ledger/README.md) | A double-entry ledger and the PSP integrations that feed it. Nothing here knows what an order is for. |
 | [Delivery](delivery/README.md) | supporting | [Delivery Core](delivery/core/README.md) | Routes, parcels and proof of delivery. Reacts to captured payments, never to placed orders. |
 | [Authentication](auth/README.md) | core | [Authentication & Sessions](auth/auth/README.md) | Who someone is, and whether they are still logged in. The only service in the estate that stores credentials, and the only one allowed to mint or revoke a session. |
+| [Payments](payments/README.md) | core | [Ledger](payments/ledger/README.md) | Money, and the record of every movement of it. Nothing here decides whether to charge - it is asked, and it writes down what happened either way. |
 
 ## Flows
 
@@ -32,6 +32,12 @@
 | [Register user](flows/auth-register-user.md) | [auth](auth/README.md) | Creates a user from an email address and a password. |
 | [Validate session](flows/auth-validate-session.md) | [auth](auth/README.md) | Resolves a token to a live session: who is calling, and how long the answer stays good. |
 | [Revoke sessions on password change](flows/auth-revoke-sessions-on-password-change.md) | [auth](auth/README.md) | Ends the sessions issued against a password that has just been replaced. |
+| [Authorize](flows/ledger-authorize.md) | [payments](payments/README.md) | Asks the gateway to hold the money for an order, and records either that it agreed or that it refused. |
+| [Capture](flows/ledger-capture.md) | [payments](payments/README.md) | Moves the money the gateway was holding, writes the pair of postings for it, and says so on the bus. |
+| [Get payment](flows/ledger-get-payment.md) | [payments](payments/README.md) | Reads one payment, for whoever is asking what happened to the money. |
+| [Issue refund](flows/ledger-issue-refund.md) | [payments](payments/README.md) | Sends money back against a captured payment, in full or in part. |
+| [List refunds](flows/ledger-list-refunds.md) | [payments](payments/README.md) | Every refund against one payment, newest first. |
+| [Void payment on order cancelled](flows/ledger-void-payment-on-order-cancelled.md) | [payments](payments/README.md) | Gives back what was held once the order it was held for is gone. |
 | [Invoice create](flows/billing-invoice-create.md) | [shop](shop/README.md) | Draws up a draft invoice for an order, with a line for each thing sold. |
 | [Invoice destroy](flows/billing-invoice-destroy.md) | [shop](shop/README.md) | Ends an invoice nobody is going to pay. |
 | [Invoice issue](flows/billing-invoice-issue.md) | [shop](shop/README.md) | Confirms the session, freezes the invoice and asks the customer to pay. |
@@ -45,7 +51,7 @@
 | [Remove item](flows/cart-remove-item.md) | [shop](shop/README.md) | — |
 | [Cancel order](flows/oms-cancel-order.md) | [shop](shop/README.md) | Answers with the order as it is now; a cancelled order is still found. |
 | [Get order](flows/oms-get-order.md) | [shop](shop/README.md) | Answers with the order as it is now; a cancelled order is still found. |
-| [Confirm order on payment authorized](flows/oms-confirm-order-on-payment-authorized.md) | [shop](shop/README.md) | Confirms the order once the payment for it is authorised (ADR oms.0005). Declared ahead of its publisher: nothing in the estate says `payments.PaymentAuthorized` yet, and the catalog says so. |
+| [Confirm order on payment authorized](flows/oms-confirm-order-on-payment-authorized.md) | [shop](shop/README.md) | Confirms the order once the payment for it is authorised (ADR oms.0005). The publisher is `payments.ledger`, and the name is the one it puts on the message: every service on this bus names its events after itself. |
 | [Place order on basket checked out](flows/oms-place-order-on-basket-checked-out.md) | [shop](shop/README.md) | Places the order the basket was checked out for (ADR oms.0002). The order takes the basket's id, so the same checkout heard twice places one order. |
 
 ## Decisions
@@ -60,7 +66,7 @@
 
 # Shared types
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 Types named by more than one aggregate, event or message. A field that
 refers to one of these is knowably the same shape everywhere it appears.
@@ -119,7 +125,7 @@ refers to one of these is knowably the same shape everywhere it appears.
 
 # Shop
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop`
 - **Classification:** core
@@ -139,7 +145,7 @@ Everything the customer touches before money moves: baskets, orders and prices.
 
 # Pricing
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.pricing`
 - **Context:** [Shop](../README.md)
@@ -247,7 +253,7 @@ cache is deliberately short: a stale quote is worse than a slow one.
 
 # Quote
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.pricing.quote`
 - **Service:** [Pricing](../README.md)
@@ -366,7 +372,7 @@ Source: `internal/pricing/domain/quote/events.go:61`
 
 # PriceList
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.pricing.price-list`
 - **Service:** [Pricing](../README.md)
@@ -444,7 +450,7 @@ Shared type [`Money`](../../../types.md#money).
 
 # Billing
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.billing`
 - **Context:** [Shop](../README.md)
@@ -576,7 +582,7 @@ python manage.py migrate && python manage.py runserver
 
 # Invoice
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.billing.invoice`
 - **Service:** [Billing](../README.md)
@@ -724,7 +730,7 @@ Source: `examples/shop/billing/invoices/events.py`
 
 # Shopping Cart
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.cart`
 - **Context:** [Shop](../README.md)
@@ -902,7 +908,7 @@ Docker the tests that need Postgres or NATS are skipped.
 
 # Basket
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.cart.basket`
 - **Service:** [Shopping Cart](../README.md)
@@ -1157,7 +1163,7 @@ Source: `examples/shop/cart/src/domain/basket/events/basket-merged.ts`
 
 # Order Management
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.oms`
 - **Context:** [Shop](../README.md)
@@ -1291,15 +1297,15 @@ skipped.
 
 | Call | Peer | Status | Source |
 | --- | --- | --- | --- |
-| `payments.v1.PaymentService/Authorize` | `payments.v1` | unresolved | `examples/shop/oms/src/infrastructure/payments/proto/payments/v1/payments.proto` |
+| `payments.v1.PaymentService/Authorize` | [payments.ledger](../../payments/ledger/README.md) | declared | `examples/shop/oms/src/infrastructure/payments/proto/payments/v1/payments.proto` |
 
 ## Publishes
 
-| Event | Latest |
-| --- | --- |
-| [OrderCancelled](aggregates/order.md) | v1 |
-| [OrderConfirmed](aggregates/order.md) | v1 |
-| [OrderPlaced](aggregates/order.md) | v1 |
+| Event | Latest | Consumers |
+| --- | --- | --- |
+| [OrderCancelled](aggregates/order.md) | v1 | [payments.ledger (declared)](../../payments/ledger/README.md) |
+| [OrderConfirmed](aggregates/order.md) | v1 | — |
+| [OrderPlaced](aggregates/order.md) | v1 | — |
 
 ## Stores
 
@@ -1311,7 +1317,7 @@ skipped.
 
 # Order
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.oms.order`
 - **Service:** [Order Management](../README.md)
@@ -1414,6 +1420,10 @@ stateDiagram-v2
 
 On the wire as `oms.OrderCancelled`, on `shop.oms.order`.
 
+| Consumer | Status |
+| --- | --- |
+| [payments.ledger](../../../payments/ledger/README.md) | declared |
+
 #### v1 — current
 
 The order will not be fulfilled. The reason says whether the customer
@@ -1468,483 +1478,11 @@ Source: `examples/shop/oms/src/domain/order/event/order_placed.rs`
 | `total` | `Money` |
 | `occurred_at` | `DateTime<Utc>` |
 
-<!-- payments/README.md -->
-
-# Payments
-
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
-
-- **Id:** `payments`
-- **Classification:** core
-
-A double-entry ledger and the PSP integrations that feed it. Nothing here knows what an order is for.
-
-## Services
-
-| Service | Path | Aggregates |
-| --- | --- | --- |
-| [Ledger](ledger/README.md) | `services/ledger` | Payment, Refund |
-
-## Decisions
-
-| ADR | Title | Status | Date |
-| --- | --- | --- | --- |
-| [payments.0004](../adr/payments.0004.md) | Journal entries are idempotent by (order_id, attempt) | proposed | 2026-02-09 |
-
-<!-- payments/ledger/README.md -->
-
-# Ledger
-
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
-
-- **Id:** `payments.ledger`
-- **Context:** [Payments](../README.md)
-- **Repo:** `github.com/acme/payments`
-- **Path:** `services/ledger`
-
-## Payments Ledger
-
-`payments.ledger` is a double-entry ledger. Every movement of money is two
-balanced postings, and nothing is ever deleted. Corrections are compensating
-entries.
-
-### Model
-
-An authorisation reserves funds without moving them. A capture moves the
-reserved funds. A refund moves them back. Each of these is a separate posting
-pair against the customer, merchant and settlement accounts.
-
-```mermaid
-sequenceDiagram
-    participant OMS as shop.oms
-    participant L as payments.ledger
-    participant PSP as psp (external)
-    OMS->>L: Authorize
-    L->>PSP: reserve funds
-    PSP-->>L: auth code
-    L-->>OMS: PaymentAuthorized
-    OMS->>L: Capture
-    L->>PSP: settle
-    L-->>OMS: PaymentCaptured
-```
-
-### Accounts
-
-| Account        | Type      | Increases on        | Decreases on       |
-| -------------- | --------- | ------------------- | ------------------ |
-| `customer`     | liability | refund              | capture            |
-| `merchant`     | asset     | capture             | refund             |
-| `settlement`   | asset     | payout received     | payout disbursed   |
-| `fees`         | expense   | capture             | refund             |
-
-### Guarantees
-
-- Postings are append only. There is no `UPDATE` on the postings table.
-- Every write is idempotent on `idempotency_key`, retained for 30 days.
-- The sum of all postings for a transaction is always zero; a nightly job
-  asserts this and pages on failure.
-
-### Aggregates
-
-- `payment` — authorisation, capture and decline.
-- `refund` — full and partial refunds against a captured payment.
-
-## Aggregates
-
-| Aggregate | Root | Commands | Queries | Events |
-| --- | --- | --- | --- | --- |
-| [Payment](aggregates/payment.md) | `Payment` | 3 commands | 1 query | 3 events |
-| [Refund](aggregates/refund.md) | `Refund` | 1 command | 1 query | 1 event |
-
-## Provides
-
-**`payments.v1.Payments`** — `proto/payments/v1/payments.proto:14`
-
-- `Authorize`
-- `Capture`
-- `Refund`
-- `GetPayment`
-
-<details><summary>AuthorizeRequest</summary>
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `orderId` | `string` | Order to authorize against. |
-| `amount` | [`Money`](../../types.md#money) | Amount to hold. |
-
-</details>
-
-## Consumes
-
-| Call | Peer | Status | Source | Note |
-| --- | --- | --- | --- | --- |
-| `shop.v1.OrderService/GetOrder` | [shop.oms](../../shop/oms/README.md) | verified | `internal/ledger/client/orders.go:27` | — |
-| `psp.v2.Charges/Create` | `psp-gateway` | unresolved | `internal/ledger/adapter/psp/client.go:64` | Authorization. The peer is a third party; no service in the estate provides psp.v2.Charges, so the call cannot be resolved to anything the catalog knows. |
-| `psp.v2.Charges/Capture` | `psp-gateway` | unresolved | `internal/ledger/adapter/psp/client.go:102` | Settlement of an existing authorization. Same unresolvable peer as the rest of psp.v2.Charges. |
-| `psp.v2.Charges/Refund` | `psp-gateway` | unresolved | `internal/ledger/adapter/psp/client.go:138` | Returns money on a settled charge. Same unresolvable peer as the rest of psp.v2.Charges. |
-| `psp.v2.Charges/Void` | `psp-gateway` | unresolved | `internal/ledger/adapter/psp/client.go:171` | Cancels an authorization that was never captured. Same unresolvable peer as the rest of psp.v2.Charges. |
-
-## Publishes
-
-| Event | Latest | Consumers |
-| --- | --- | --- |
-| [PaymentAuthorized](aggregates/payment.md) | v1 | [delivery.core (declared)](../../delivery/core/README.md) |
-| [PaymentCaptured](aggregates/payment.md) | v1 | [delivery.core](../../delivery/core/README.md), [shop.billing (declared)](../../shop/billing/README.md) |
-| [PaymentDeclined](aggregates/payment.md) | v1 | [shop.oms (declared)](../../shop/oms/README.md) |
-| [RefundIssued](aggregates/refund.md) | v1 | [delivery.core (declared)](../../delivery/core/README.md) |
-
-## Stores
-
-| Store | Kind | Access | Tables |
-| --- | --- | --- | --- |
-| [Ledger database](stores/pg.md) | postgres | owns | 2 tables |
-
-<!-- payments/ledger/aggregates/payment.md -->
-
-# Payment
-
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
-
-- **Id:** `payments.ledger.payment`
-- **Service:** [Ledger](../README.md)
-- **Root:** `Payment`
-
-One authorisation and the captures made against it.
-
-## Postings
-
-Every state change writes a balanced pair of postings. Nothing is updated in
-place; a correction is a new pair with the opposite sign.
-
-| Transition   | Debit        | Credit       |
-| ------------ | ------------ | ------------ |
-| authorise    | (none)       | (none)       |
-| capture      | `merchant`   | `customer`   |
-| fee          | `fees`       | `merchant`   |
-| decline      | (none)       | (none)       |
-
-Authorisations and declines write no postings: no money has moved.
-
-## Currency
-
-The customer is charged in the currency they were quoted in. When that is not
-the currency the acquirer settles in, the rate is taken from the acquirer at
-authorisation and stored on the payment — the posting has to be reproducible
-years later, and a rate re-fetched then would be a different number. A
-currency with no acquirer behind it is a `currency_unsupported` decline, not a
-conversion.
-
-## Failure
-
-| Outcome    | Postings | Retryable                        |
-| ---------- | -------- | -------------------------------- |
-| `soft`     | none     | yes, on another instrument       |
-| `hard`     | none     | no                               |
-| `system`   | none     | yes, same instrument, with backoff |
-| `timeout`  | none yet | the webhook decides, not us      |
-
-A timeout is the only outcome that is not yet an outcome: the charge may well
-have succeeded at the gateway, and until the webhook arrives nothing here may
-assume either way.
-
-## Commands
-
-`Authorize`, `Capture` and `Decline` are all idempotent on
-`idempotency_key`, which is retained for 30 days.
-
-## Queries
-
-`GetPayment` returns the payment and its full posting history.
-
-## Entities
-
-### Payment — aggregate root
-
-One attempt to take money for an order, from authorization through to capture or decline.
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `id` | `string` | Payment id. |
-| `orderId` | `string` | Order being paid for. |
-| `amount` | [`Money`](../../../types.md#money) | Amount authorized. |
-| `state` | `string` | authorized \| captured \| declined \| voided \| settled. `voided` is a cancellation before capture and costs nothing; `declined` is a refusal. |
-| `card` | `CardRef` | Instrument used, tokenized. |
-| `settlement` | [`Money`](../../../types.md#money) | What the acquirer will actually settle, after any conversion. Equal to `amount` whenever the two currencies match. |
-| `fx` | [`FxRate`](../../../types.md#fxrate) | The rate that produced `settlement`. Absent when no conversion happened, which is the common case. |
-| `attempts` | `[]CaptureAttempt` | Every capture attempt, in order. The retry loop appends; nothing is ever overwritten. |
-| `gateway` | [`GatewayRef`](../../../types.md#gatewayref) | The charge as the gateway knows it. |
-
-### CaptureAttempt
-
-One try at settling an authorization. Has identity inside the payment because the attempt number is what makes a retry safe.
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `attempt` | `int32` | 1-based. Together with the order id this is the key ADR payments.0004 makes the journal idempotent on. |
-| `requestedAt` | `time.Time` | When the attempt left for the gateway, not when it came back. |
-| `outcome` | `string` | pending \| captured \| declined \| timeout. A `timeout` is not a failure: only the gateway's webhook can say which it was. |
-| `gateway` | [`GatewayRef`](../../../types.md#gatewayref) | The gateway's ids for this attempt. A retry gets a new event id and keeps the charge id. |
-
-## Value objects
-
-### Money
-
-An amount in a single currency.
-
-Shared type [`Money`](../../../types.md#money).
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `amountMinor` | `int64` | Amount in the minor unit of the currency. |
-| `currency` | `string` | ISO 4217 code, upper case. |
-
-### CardRef
-
-A tokenized instrument. Never holds a PAN; the token is the identity as far as the ledger is concerned.
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `brand` | `string` | visa \| mastercard \| amex. |
-| `last4` | `string` | Last four digits, for display only. |
-| `token` | `string` | Vault token; the only thing the ledger stores. |
-
-### GatewayRef
-
-How the gateway refers to a charge. Ours to store, never ours to mint.
-
-Shared type [`GatewayRef`](../../../types.md#gatewayref).
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `provider` | `string` | Which gateway owns the id. Only `psp` today; the column exists because a second acquirer is already scheduled. |
-| `chargeId` | `string` | The gateway's own id for the charge. The one handle that survives a restore of our database. |
-| `eventId` | `string` | Id of the webhook event that last touched this charge. This is what the dedup table is keyed on. |
-
-### FxRate
-
-The rate applied when the customer's currency is not the one we settle in.
-
-Shared type [`FxRate`](../../../types.md#fxrate).
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `base` | `string` | ISO 4217 code the rate converts from — the currency the customer was quoted in. |
-| `quote` | `string` | ISO 4217 code the rate converts to — the currency the acquirer settles in. |
-| `rateMicros` | `int64` | Rate scaled by 1e6. An integer on purpose: a float rate cannot be reproduced exactly from a stored posting. |
-| `quotedAt` | `time.Time` | When the rate was taken. A rate older than 60 seconds is refused rather than used. |
-| `source` | `string` | `acquirer` for anything that moves money, `ecb-daily` for reporting only. The two disagree by a spread and must never be mixed. |
-
-### DeclineReason
-
-Why a payment was refused, in enough detail to decide whether trying again is worth anything.
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `code` | `string` | The gateway's code, verbatim: `insufficient_funds`, `do_not_honor`, `currency_unsupported`, `expired_card`. |
-| `category` | `string` | soft \| hard \| system. `soft` may be retried on another instrument, `hard` may not, `system` is ours to fix. |
-| `retryable` | `bool` | Derived from the category, stored anyway so a consumer does not have to know the mapping. |
-| `gatewayMessage` | `string` | The gateway's own words. Kept for support and never shown to a customer. |
-
-## Operations
-
-| Operation | Kind | Doc |
-| --- | --- | --- |
-| `Authorize` | command | Reserves funds at the gateway and fixes the settlement currency. Idempotent on the caller's key for 30 days: a repeat returns the first answer instead of reserving twice. |
-| `Capture` | command | Settles a held authorization, wholly or in part. Appends a CaptureAttempt and posts the journal pair; the attempt number is what makes a retry safe. |
-| `Decline` | command | Records a refusal, the gateway's or ours, with its code and category. Writes no postings — no money moved. |
-| `GetPayment` | query | The payment with its capture attempts, its FX rate if there was one, and the full posting history. |
-
-## Events
-
-### PaymentAuthorized
-
-`payments.ledger.payment.PaymentAuthorized`
-
-| Consumer | Status | Note |
-| --- | --- | --- |
-| [delivery.core](../../../delivery/core/README.md) | declared | Used only to pre-warm route planning. |
-
-#### v1 — current
-
-Funds reserved with the PSP. No money has moved yet.
-
-Source: `internal/ledger/domain/payment/events.go:44`
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `paymentId` | `string` | Ledger identifier for this payment. |
-| `orderId` | `string` | Order the authorisation belongs to. |
-| `amount` | [`Money`](../../../types.md#money) | Amount reserved. |
-| `authCode` | `string` | Opaque PSP authorisation code. |
-| `expiresAt` | `time.Time` | Authorisations lapse after seven days. |
-
-### PaymentCaptured
-
-`payments.ledger.payment.PaymentCaptured`
-
-| Consumer | Status |
-| --- | --- |
-| [delivery.core](../../../delivery/core/README.md) | verified |
-| [shop.billing](../../../shop/billing/README.md) | declared |
-
-#### v1 — current
-
-Reserved funds settled. This is the event fulfilment reacts to.
-
-Source: `internal/ledger/domain/payment/events.go:88`
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `paymentId` | `string` | Ledger identifier for this payment. |
-| `orderId` | `string` | Order the capture belongs to. |
-| `amount` | [`Money`](../../../types.md#money) | Amount actually captured; may be less than authorised. |
-| `capturedAt` | `time.Time` | Instant the PSP confirmed settlement. |
-
-### PaymentDeclined
-
-`payments.ledger.payment.PaymentDeclined`
-
-| Consumer | Status |
-| --- | --- |
-| [shop.oms](../../../shop/oms/README.md) | declared |
-
-#### v1 — current
-
-The PSP refused the authorisation or the capture.
-
-Source: `internal/ledger/domain/payment/events.go:126`
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `paymentId` | `string` | Ledger identifier for the attempted payment. |
-| `orderId` | `string` | Order that failed to pay. |
-| `code` | `string` | Normalised decline code, not the raw PSP string. |
-| `retryable` | `bool` | Whether another attempt is worth making. |
-
-<!-- payments/ledger/aggregates/refund.md -->
-
-# Refund
-
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
-
-- **Id:** `payments.ledger.refund`
-- **Service:** [Ledger](../README.md)
-- **Root:** `Refund`
-
-A compensating movement against a captured payment.
-
-## Rules
-
-- The sum of refunds against a payment may never exceed the captured amount.
-- A refund against an uncaptured payment is a void, handled by `Payment`, not
-  here.
-- Partial refunds are unlimited in count but each needs a distinct reason.
-
-## Settling
-
-A refund is not done when it is issued. It leaves here in `pending` and the
-gateway confirms it by webhook, usually in hours and sometimes in days. The
-hourly poll exists because that webhook is not guaranteed. A refund the
-gateway rejects is stored with its reason and published nowhere — the one
-outcome in this aggregate that no consumer can see.
-
-## Commands
-
-| Command        | Precondition                    |
-| -------------- | ------------------------------- |
-| `IssueRefund`  | Payment captured, headroom left |
-
-## Queries
-
-`ListRefunds` returns refunds for one payment, newest first.
-
-## Entities
-
-### Refund — aggregate root
-
-Money returned against a captured payment.
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `id` | `string` | Refund id. |
-| `paymentId` | `string` | Payment being refunded. |
-| `amount` | [`Money`](../../../types.md#money) | Amount returned; never exceeds the capture. |
-| `reason` | `string` | Free text, taken from the support tool. |
-| `state` | `string` | requested \| pending \| settled \| rejected. `pending` belongs to the gateway, not to us, and it can sit there for days. |
-| `settlement` | `Settlement` | Where the gateway has got to with it. |
-| `gateway` | [`GatewayRef`](../../../types.md#gatewayref) | The charge the refund is written against. |
-
-## Value objects
-
-### Money
-
-An amount in a single currency.
-
-Shared type [`Money`](../../../types.md#money).
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `amountMinor` | `int64` | Amount in the minor unit of the currency. |
-| `currency` | `string` | ISO 4217 code, upper case. |
-
-### Settlement
-
-The gateway's progress on a refund. Ours to record, not to decide.
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `state` | `string` | pending \| settled \| rejected, as last reported. |
-| `requestedAt` | `time.Time` | When the refund was sent to the gateway. |
-| `settledAt` | `time.Time` | When the gateway confirmed. Absent while pending, and absent forever if rejected. |
-| `polls` | `int32` | How many times we asked. The poll is the fallback for a webhook that never came. |
-
-### GatewayRef
-
-The same shared reference the payment carries — a refund is written against the gateway's charge, not against ours.
-
-Shared type [`GatewayRef`](../../../types.md#gatewayref).
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `provider` | `string` | Which gateway owns the id. Only `psp` today; the column exists because a second acquirer is already scheduled. |
-| `chargeId` | `string` | The gateway's own id for the charge. The one handle that survives a restore of our database. |
-| `eventId` | `string` | Id of the webhook event that last touched this charge. This is what the dedup table is keyed on. |
-
-## Operations
-
-| Operation | Kind | Doc |
-| --- | --- | --- |
-| `IssueRefund` | command | Returns money against a captured payment, up to the headroom left on it. Lands in `pending` and stays there until the gateway settles or refuses it. |
-| `ListRefunds` | query | Refunds against one payment, newest first, including the ones the gateway rejected. |
-
-## Events
-
-### RefundIssued
-
-`payments.ledger.refund.RefundIssued`
-
-| Consumer | Status |
-| --- | --- |
-| [delivery.core](../../../delivery/core/README.md) | declared |
-
-#### v1 — current
-
-A compensating posting pair against a captured payment.
-
-Source: `internal/ledger/domain/refund/events.go:30`
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `refundId` | `string` | Identifier of the refund. |
-| `paymentId` | `string` | Payment being refunded. |
-| `amount` | [`Money`](../../../types.md#money) | Amount refunded; may be partial. |
-| `reason` | `string` | Free text, surfaced to support tooling. |
-
 <!-- delivery/README.md -->
 
 # Delivery
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `delivery`
 - **Classification:** supporting
@@ -1961,7 +1499,7 @@ Routes, parcels and proof of delivery. Reacts to captured payments, never to pla
 
 # Delivery Core
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `delivery.core`
 - **Context:** [Delivery](../README.md)
@@ -2034,7 +1572,7 @@ message, which is how the shipment tracking flow was derived from traces.
 | Call | Peer | Status | Source |
 | --- | --- | --- | --- |
 | `shop.v1.OrderService/GetOrder` | [shop.oms](../../shop/oms/README.md) | verified | `internal/delivery/client/orders.go:31` |
-| `payments.v1.Payments/GetPayment` | [payments.ledger](../../payments/ledger/README.md) | declared | `internal/delivery/client/payments.go:18` |
+| `payments.v1.PaymentService/GetPayment` | [payments.ledger](../../payments/ledger/README.md) | declared | `internal/delivery/client/payments.go:18` |
 
 ## Publishes
 
@@ -2054,7 +1592,7 @@ message, which is how the shipment tracking flow was derived from traces.
 
 # Shipment
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `delivery.core.shipment`
 - **Service:** [Delivery Core](../README.md)
@@ -2210,7 +1748,7 @@ Source: `internal/delivery/domain/shipment/events.go:97`
 
 # Route
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `delivery.core.route`
 - **Service:** [Delivery Core](../README.md)
@@ -2305,7 +1843,7 @@ Source: `internal/delivery/domain/route/events.go:38`
 
 # Authentication
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `auth`
 - **Classification:** core
@@ -2322,7 +1860,7 @@ Who someone is, and whether they are still logged in. The only service in the es
 
 # Authentication & Sessions
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `auth.auth`
 - **Context:** [Authentication](../README.md)
@@ -2509,7 +2047,7 @@ without Docker the packages that need Postgres or redis are skipped.
 
 # Lockout
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `auth.auth.lockout`
 - **Service:** [Authentication & Sessions](../README.md)
@@ -2629,7 +2167,7 @@ Source: `examples/auth/internal/domain/lockout/event/account_locked.go`
 
 # Session
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `auth.auth.session`
 - **Service:** [Authentication & Sessions](../README.md)
@@ -2773,7 +2311,7 @@ Source: `examples/auth/internal/domain/session/event/session_started.go`
 
 # User
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `auth.auth.user`
 - **Service:** [Authentication & Sessions](../README.md)
@@ -2894,99 +2432,496 @@ Source: `examples/auth/internal/domain/user/event/user_registered.go`
 | `email` | `string` |
 | `occurredAt` | `time.Time` |
 
+<!-- payments/README.md -->
+
+# Payments
+
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `payments`
+- **Classification:** core
+
+Money, and the record of every movement of it. Nothing here decides whether to charge - it is asked, and it writes down what happened either way.
+
+## Services
+
+| Service | Path | Aggregates |
+| --- | --- | --- |
+| [Ledger](ledger/README.md) | `examples/payments/ledger` | Payment, Refund |
+
+## Decisions
+
+| ADR | Title | Status | Date |
+| --- | --- | --- | --- |
+| [payments.0004](../adr/payments.0004.md) | Journal entries are idempotent by (order_id, attempt) | proposed | 2026-02-09 |
+
+<!-- payments/ledger/README.md -->
+
+# Ledger
+
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `payments.ledger`
+- **Context:** [Payments](../README.md)
+- **Repo:** `github.com/shortlink-org/portolan`
+- **Path:** `examples/payments/ledger`
+
+Service `ledger` — bounded context **payments**. Java on Spring Boot.
+
+Owns money. Every authorisation, capture and refund against an order passes
+through here, and what it writes is the record the business is audited on.
+Nothing it holds is updated in place: a movement of money is a pair of postings
+that sum to zero, and a correction is another pair.
+
+## What it does
+
+- Asks the gateway to hold the money for an order, and records either the hold
+  or the refusal — `PaymentAuthorized` or `PaymentDeclined`.
+- Captures what was held, writes the pair of postings for it, and says
+  `PaymentCaptured`. That is the message anything waiting to be paid listens for.
+- Sends money back against a captured payment, in full or in part, and says
+  `RefundIssued`.
+- Gives back a hold nobody will be charged for, when the order it was held for
+  is cancelled.
+
+## What it does not do
+
+Does not decide *whether* to charge — that is the order's business, and the
+ledger is asked. Does not issue invoices: what a customer is *asked* to pay is
+`shop.billing`'s aggregate, and this one only says what happened to the money.
+Does not store card data; the gateway holds the instrument and this holds a
+token for it.
+
+## Publishes
+
+`PaymentAuthorized`, `PaymentCaptured`, `PaymentDeclined` on
+`payments.ledger.payment`; `RefundIssued` on `payments.ledger.refund`.
+
+## Provides
+
+`payments.v1.PaymentService` — Authorize, Capture, GetPayment — and
+`payments.v1.RefundService` — IssueRefund, ListRefunds. One contract per
+aggregate, vendored under the transport package that answers it.
+
+## How the catalog reads it
+
+Nothing here is annotated for the catalog, but plenty is annotated for the
+model: `@AggregateRoot`, `@Entity`, `@ValueObject`, `@Repository`,
+`@SecondaryPort` and `@DomainEvent` are jMolecules, and `extract-java` reads
+what they say rather than guessing from the layout. The rules are in
+[plugins/extract-java/README.md](../../../plugins/extract-java/README.md).
+
+Two things follow from that and are worth knowing when reading the pages:
+
+- A `@Repository` is the store, and any other port goes wherever its adapter
+  reaches. `PaymentGateway` is filled by `PspGateway`, which has no vendored
+  contract because the far end is a third party — so those calls are recorded
+  and left **unresolved**, which is the true answer to "who answers this".
+- The lifecycle is `PaymentStatus.TRANSITIONS`, not the branches of the methods.
+  A move the table does not allow is a diagnostic, not a new arrow.
+
+## Running it
+
+```bash
+docker compose up -d db
+mvn -q spring-boot:run
+```
+
+`NATS_URL` picks the bus: with a server named, events leave on their channel
+with their wire name in the headers; without one they are written to the log and
+nothing leaves. `OMS_ADDRESS` is where `shop.v1.OrderService` answers.
+
+## Decisions
+
+- [payments.0004](../../../docs/adr/payments.0004.md) — journal rows are
+  idempotent by `(order_id, attempt)`, which is why `payments` carries an
+  `attempt` and a unique key over the pair.
+
+## Aggregates
+
+| Aggregate | Root | Commands | Queries | Events |
+| --- | --- | --- | --- | --- |
+| [Payment](aggregates/payment.md) | `Payment` | 2 commands | 1 query | 3 events |
+| [Refund](aggregates/refund.md) | `Refund` | 1 command | 1 query | 1 event |
+
+## Provides
+
+**`payments.v1.PaymentService`** — `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/proto/payments/v1/payment.proto:12`
+
+- `Authorize`
+- `Capture`
+- `GetPayment`
+
+<details><summary>AuthorizeRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `payment_id` | `string` |
+| `order_id` | `string` |
+| `amount_minor` | `int64` |
+| `currency` | `string` |
+
+</details>
+
+<details><summary>AuthorizeResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `payment_id` | `string` |
+| `auth_code` | `string` |
+| `authorized` | `bool` |
+
+</details>
+
+<details><summary>CaptureRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `payment_id` | `string` |
+
+</details>
+
+<details><summary>CaptureResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `payment_id` | `string` |
+| `captured_at` | `string` |
+
+</details>
+
+<details><summary>GetPaymentRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `payment_id` | `string` |
+
+</details>
+
+<details><summary>GetPaymentResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `payment_id` | `string` |
+| `order_id` | `string` |
+| `status` | `string` |
+| `amount_minor` | `int64` |
+| `currency` | `string` |
+
+</details>
+
+**`payments.v1.RefundService`** — `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/proto/payments/v1/refund.proto:10`
+
+- `IssueRefund`
+- `ListRefunds`
+
+<details><summary>IssueRefundRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `refund_id` | `string` |
+| `payment_id` | `string` |
+| `amount_minor` | `int64` |
+| `currency` | `string` |
+| `reason` | `string` |
+
+</details>
+
+<details><summary>IssueRefundResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `refund_id` | `string` |
+| `issued` | `bool` |
+
+</details>
+
+<details><summary>ListRefundsRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `payment_id` | `string` |
+
+</details>
+
+<details><summary>ListRefundsResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `refunds` | `[]RefundView` |
+
+</details>
+
+<details><summary>RefundView</summary>
+
+| Field | Type |
+| --- | --- |
+| `refund_id` | `string` |
+| `amount_minor` | `int64` |
+| `currency` | `string` |
+| `status` | `string` |
+
+</details>
+
+## Consumes
+
+| Call | Peer | Status | Source |
+| --- | --- | --- | --- |
+| `psp/giveBack` | `psp` | unresolved | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java` |
+| `psp/release` | `psp` | unresolved | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java` |
+| `psp/reserve` | `psp` | unresolved | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java` |
+| `psp/settle` | `psp` | unresolved | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java` |
+| `shop.v1.OrderService/GetOrder` | [shop.oms](../../shop/oms/README.md) | declared | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/oms/proto/shop/v1/order.proto` |
+
+## Publishes
+
+| Event | Latest | Consumers |
+| --- | --- | --- |
+| [PaymentAuthorized](aggregates/payment.md) | v1 | — |
+| [PaymentCaptured](aggregates/payment.md) | v1 | [shop.billing (declared)](../../shop/billing/README.md) |
+| [PaymentDeclined](aggregates/payment.md) | v1 | [shop.oms (declared)](../../shop/oms/README.md) |
+| [RefundIssued](aggregates/refund.md) | v1 | — |
+
+## Stores
+
+| Store | Kind | Access | Tables |
+| --- | --- | --- | --- |
+| [Ledger database](stores/pg.md) | postgres | owns | 3 tables |
+
+<!-- payments/ledger/aggregates/payment.md -->
+
+# Payment
+
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `payments.ledger.payment`
+- **Service:** [Ledger](../README.md)
+- **Root:** `Payment`
+
+What one order owes, and everything that has happened to that money.
+
+## Entities
+
+### Payment — aggregate root
+
+What one order owes, and everything that has happened to that money.
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `id` | `String` | — |
+| `orderId` | `String` | The order this payment is for. Another context owns it, so this is its id and not its shape. |
+| `amount` | `Money` | — |
+| `attempt` | `int` | Which try at charging this order it is. payments.0004 keys the row on it. |
+| `createdAt` | `Instant` | — |
+| `postings` | `List<Posting>` | — |
+| `status` | `PaymentStatus` | — |
+| `authCode` | `String` | — |
+
+### Posting
+
+One side of one movement of money.
+
+| Field | Type |
+| --- | --- |
+| `account` | `String` |
+| `amount` | `Money` |
+| `writtenAt` | `String` |
+
+## Value objects
+
+### Money
+
+An amount in the minor unit of a currency: 1250 GBP is £12.50.
+
+| Field | Type |
+| --- | --- |
+| `amountMinor` | `long` |
+| `currency` | `String` |
+
+## Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> PENDING
+    PENDING --> AUTHORIZED: authorize · PaymentAuthorized
+    AUTHORIZED --> CAPTURED: capture · PaymentCaptured
+    PENDING --> DECLINED: decline · PaymentDeclined
+    AUTHORIZED --> VOIDED: voidAuthorization
+    CAPTURED --> [*]
+    DECLINED --> [*]
+    VOIDED --> [*]
+```
+
+| From | To | On | Emits | Source |
+| --- | --- | --- | --- | --- |
+| `PENDING` | `AUTHORIZED` | `authorize` | `PaymentAuthorized` | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:61` |
+| `AUTHORIZED` | `CAPTURED` | `capture` | `PaymentCaptured` | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:72` |
+| `PENDING` | `DECLINED` | `decline` | `PaymentDeclined` | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:78` |
+| `AUTHORIZED` | `VOIDED` | `voidAuthorization` | — | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:84` |
+
+## Operations
+
+| Operation | Kind | Exposed by | Doc |
+| --- | --- | --- | --- |
+| `AuthorizePayment` | command | `Authorize` | Asks the gateway to hold the money for an order, and records either that it agreed or that it refused. |
+| `CapturePayment` | command | `Capture` | Moves the money the gateway was holding, writes the pair of postings for it, and says so on the bus. |
+| `GetPayment` | query | `GetPayment` | Reads one payment, for whoever is asking what happened to the money. |
+
+## Events
+
+### PaymentAuthorized
+
+`payments.ledger.payment.PaymentAuthorized`
+
+On the wire as `ledger.PaymentAuthorized`, on `payments.ledger.payment`.
+
+#### v1 — current
+
+The gateway agreed to hold the money. Nothing has moved yet.
+
+Source: `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/event/PaymentAuthorized.java`
+
+| Field | Type |
+| --- | --- |
+| `paymentId` | `String` |
+| `orderId` | `String` |
+| `amount` | `Money` |
+| `authCode` | `String` |
+
+### PaymentCaptured
+
+`payments.ledger.payment.PaymentCaptured`
+
+On the wire as `ledger.PaymentCaptured`, on `payments.ledger.payment`.
+
+| Consumer | Status |
+| --- | --- |
+| [shop.billing](../../../shop/billing/README.md) | declared |
+
+#### v1 — current
+
+The money moved. Whoever is owed something for this order - the invoice, the warehouse - waits for this one and nothing earlier.
+
+Source: `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/event/PaymentCaptured.java`
+
+| Field | Type |
+| --- | --- |
+| `paymentId` | `String` |
+| `orderId` | `String` |
+| `amount` | `Money` |
+| `capturedAt` | `String` |
+
+### PaymentDeclined
+
+`payments.ledger.payment.PaymentDeclined`
+
+On the wire as `ledger.PaymentDeclined`, on `payments.ledger.payment`.
+
+| Consumer | Status |
+| --- | --- |
+| [shop.oms](../../../shop/oms/README.md) | declared |
+
+#### v1 — current
+
+The gateway refused, and it says why in its own words rather than ours.
+
+Source: `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/event/PaymentDeclined.java`
+
+| Field | Type |
+| --- | --- |
+| `paymentId` | `String` |
+| `orderId` | `String` |
+| `reason` | `String` |
+
+<!-- payments/ledger/aggregates/refund.md -->
+
+# Refund
+
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `payments.ledger.refund`
+- **Service:** [Ledger](../README.md)
+- **Root:** `Refund`
+
+Money going back, against a payment that was captured.
+
+## Entities
+
+### Refund — aggregate root
+
+Money going back, against a payment that was captured.
+
+| Field | Type |
+| --- | --- |
+| `id` | `String` |
+| `paymentId` | `String` |
+| `orderId` | `String` |
+| `amount` | `Money` |
+| `reason` | `String` |
+| `status` | `RefundStatus` |
+| `settledAt` | `Instant` |
+
+## Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> REQUESTED
+    REQUESTED --> ISSUED: issue · RefundIssued
+    REQUESTED --> REJECTED: reject
+    ISSUED --> [*]
+    REJECTED --> [*]
+```
+
+| From | To | On | Emits | Source |
+| --- | --- | --- | --- | --- |
+| `REQUESTED` | `ISSUED` | `issue` | `RefundIssued` | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/refund/Refund.java:41` |
+| `REQUESTED` | `REJECTED` | `reject` | — | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/refund/Refund.java:47` |
+
+## Operations
+
+| Operation | Kind | Exposed by | Doc |
+| --- | --- | --- | --- |
+| `IssueRefund` | command | `IssueRefund` | Sends money back against a captured payment, in full or in part. |
+| `ListRefunds` | query | `ListRefunds` | Every refund against one payment, newest first. |
+
+## Events
+
+### RefundIssued
+
+`payments.ledger.refund.RefundIssued`
+
+On the wire as `ledger.RefundIssued`, on `payments.ledger.refund`.
+
+#### v1 — current
+
+Money went back to the customer, against a payment that had been captured.
+
+Source: `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/refund/event/RefundIssued.java`
+
+| Field | Type |
+| --- | --- |
+| `refundId` | `String` |
+| `paymentId` | `String` |
+| `orderId` | `String` |
+| `amount` | `Money` |
+| `reason` | `String` |
+
 <!-- shop/pricing/stores/cache.md -->
 
 # Price list cache
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.pricing.cache`
 - **Kind:** redis
 - **Owner:** [shop.pricing](../README.md)
 - **Source:** `shop/pricing/internal/cache`
 
-<!-- payments/ledger/stores/pg.md -->
-
-# Ledger database
-
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
-
-- **Id:** `payments.ledger.pg`
-- **Kind:** postgres
-- **Owner:** [payments.ledger](../README.md)
-- **Source:** `payments/ledger/db/migrations`
-
-## Tables
-
-### journal_entries
-
-aggregate-root · persists [payments.ledger.payment](../aggregates/payment.md)
-
-Append-only. One row per capture attempt, unique on (order_id, attempt) per ADR payments.0004.
-
-| Column | Type | Null | Key | Maps |
-| --- | --- | --- | --- | --- |
-| `id` | `text` | not null | PK | Payment.id |
-| `order_id` | `text` | not null | — | Payment.orderId |
-| `attempt` | `integer` | not null | — | CaptureAttempt.attempt |
-| `amount_minor` | `bigint` | not null | — | Payment.amount |
-| `currency` | `char(3)` | not null | — | — |
-| `state` | `text` | not null | — | Payment.state |
-| `gateway_charge_id` | `text` | null | — | Payment.gateway |
-| `requested_at` | `timestamptz` | not null | — | CaptureAttempt.requestedAt |
-
-| Index | Columns | Kind |
-| --- | --- | --- |
-| `journal_entries_order_attempt_key` | order_id, attempt | unique |
-| `journal_entries_state_idx` | state | index |
-
-### refunds
-
-child · persists [payments.ledger.refund](../aggregates/refund.md)
-
-Refunds against a captured payment.
-
-| Column | Type | Null | Key | Maps |
-| --- | --- | --- | --- | --- |
-| `id` | `text` | not null | PK | Refund.id |
-| `payment_id` | `text` | not null | → [`payments.ledger.pg.journal_entries`](pg.md#journal_entries).id (restrict) | Refund.paymentId |
-| `amount_minor` | `bigint` | not null | — | Refund.amount |
-| `reason` | `text` | not null | — | Refund.reason |
-| `state` | `text` | not null | — | Refund.state |
-| `settled_at` | `timestamptz` | null | — | Settlement.settledAt |
-
-## Views
-
-### v_payment_state
-
-computed on read
-
-Every payment with what has been refunded against it. One row per journal entry.
-
-| Column | Type | Null | Maps | From |
-| --- | --- | --- | --- | --- |
-| `payment_id` | `text` | not null | Payment.id | `payments.ledger.pg.journal_entries.id` |
-| `order_id` | `text` | not null | Payment.orderId | `payments.ledger.pg.journal_entries.order_id` |
-| `state` | `text` | not null | Payment.state | `payments.ledger.pg.journal_entries.state` |
-| `amount_minor` | `bigint` | not null | Payment.amount | `payments.ledger.pg.journal_entries.amount_minor` |
-| `refunded_minor` | `bigint` | not null | — | `payments.ledger.pg.refunds.amount_minor` |
-
-```sql
-CREATE VIEW v_payment_state AS
-SELECT j.id AS payment_id, j.order_id, j.state,
-       j.amount_minor, coalesce(sum(r.amount_minor), 0) AS refunded_minor
-  FROM journal_entries j
-  LEFT JOIN refunds r ON r.payment_id = j.id
- GROUP BY j.id;
-```
-
-Source: `payments/ledger/db/migrations/0011_payment_state.sql`
-
 <!-- delivery/core/stores/pg.md -->
 
 # Delivery database
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `delivery.core.pg`
 - **Kind:** postgres
@@ -3063,7 +2998,7 @@ Source: `delivery/core/db/migrations/0005_route_load.sql`
 
 # Auth database
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `auth.auth.pg`
 - **Kind:** postgres
@@ -3118,11 +3053,107 @@ aggregate-root · persists [auth.auth.user](../aggregates/user.md)
 | --- | --- | --- |
 | `users_email_key` | email | unique |
 
+<!-- payments/ledger/stores/pg.md -->
+
+# Ledger database
+
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `payments.ledger.pg`
+- **Kind:** postgres
+- **Owner:** [payments.ledger](../README.md)
+- **Source:** `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/repository`
+
+## Tables
+
+### payments
+
+aggregate-root · persists [payments.ledger.payment](../aggregates/payment.md)
+
+| Column | Type | Null | Key | Maps |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | not null | PK | Payment.id |
+| `order_id` | `text` | not null | — | Payment.orderId |
+| `attempt` | `integer` | not null | — | Payment.attempt |
+| `amount_minor` | `bigint` | not null | — | Payment.amountMinor |
+| `currency` | `char(3)` | not null | — | Payment.currency |
+| `status` | `text` | not null | — | Payment.status |
+| `auth_code` | `text` | null | — | Payment.authCode |
+| `created_at` | `timestamptz` | not null | — | Payment.createdAt |
+
+| Index | Columns | Kind |
+| --- | --- | --- |
+| `payments_status_idx` | status | index |
+
+### postings
+
+child · persists [payments.ledger.payment](../aggregates/payment.md)
+
+| Column | Type | Null | Key | Maps |
+| --- | --- | --- | --- | --- |
+| `id` | `bigserial` | not null | PK | Posting.id |
+| `payment_id` | `text` | not null | → [`payments.ledger.pg.payments`](pg.md#payments).id (restrict) | Posting.paymentId |
+| `account` | `text` | not null | — | Posting.account |
+| `amount_minor` | `bigint` | not null | — | Posting.amountMinor |
+| `currency` | `char(3)` | not null | — | Posting.currency |
+| `written_at` | `timestamptz` | not null | — | Posting.writtenAt |
+
+| Index | Columns | Kind |
+| --- | --- | --- |
+| `postings_by_payment` | payment_id | index |
+
+### refunds
+
+aggregate-root · persists [payments.ledger.refund](../aggregates/refund.md)
+
+| Column | Type | Null | Key | Maps |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | not null | PK | Refund.id |
+| `payment_id` | `text` | not null | → [`payments.ledger.pg.payments`](pg.md#payments).id (restrict) | Refund.paymentId |
+| `order_id` | `text` | not null | — | Refund.orderId |
+| `amount_minor` | `bigint` | not null | — | Refund.amountMinor |
+| `currency` | `char(3)` | not null | — | Refund.currency |
+| `reason` | `text` | not null | — | Refund.reason |
+| `status` | `text` | not null | — | Refund.status |
+| `settled_at` | `timestamptz` | null | — | Refund.settledAt |
+
+| Index | Columns | Kind |
+| --- | --- | --- |
+| `refunds_by_payment` | payment_id | index |
+
+## Views
+
+### v_payment_state
+
+computed on read · reads [`payments.ledger.pg.payments`](pg.md#payments), [`payments.ledger.pg.refunds`](pg.md#refunds)
+
+| Column | Type | Null | Maps | From |
+| --- | --- | --- | --- | --- |
+| `payment_id` | `text` | not null | Payment.id | `payments.ledger.pg.payments.id` |
+| `order_id` | `text` | not null | Payment.orderId | `payments.ledger.pg.payments.order_id` |
+| `status` | `text` | not null | Payment.status | `payments.ledger.pg.payments.status` |
+| `amount_minor` | `bigint` | not null | Payment.amountMinor | `payments.ledger.pg.payments.amount_minor` |
+| `refunded_minor` | `bigint` | not null | Refund.amountMinor | `payments.ledger.pg.refunds.amount_minor` |
+
+```sql
+CREATE VIEW v_payment_state AS
+SELECT p.id           AS payment_id,
+       p.order_id     AS order_id,
+       p.status       AS status,
+       p.amount_minor AS amount_minor,
+       coalesce(sum(r.amount_minor), 0) AS refunded_minor
+  FROM payments p
+  LEFT JOIN refunds r ON r.payment_id = p.id AND r.status = 'ISSUED'
+ GROUP BY p.id;
+```
+
+Source: `src/main/java/org/portolan/payments/ledger/infrastructure/repository/refund/migrations/0002_payment_state.sql`
+
 <!-- shop/billing/stores/pg.md -->
 
 # Billing database
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.billing.pg`
 - **Kind:** postgres
@@ -3175,7 +3206,7 @@ child · persists [shop.billing.invoice](../aggregates/invoice.md) · block `sho
 
 # Cart database
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.cart.pg`
 - **Kind:** postgres
@@ -3237,7 +3268,7 @@ outbox
 
 # Order database
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.oms.pg`
 - **Kind:** postgres
@@ -3295,7 +3326,7 @@ outbox
 
 # Flows
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 | Flow | Owner | Summary |
 | --- | --- | --- |
@@ -3309,6 +3340,12 @@ outbox
 | [Register user](auth-register-user.md) | [auth](../auth/README.md) | Creates a user from an email address and a password. |
 | [Validate session](auth-validate-session.md) | [auth](../auth/README.md) | Resolves a token to a live session: who is calling, and how long the answer stays good. |
 | [Revoke sessions on password change](auth-revoke-sessions-on-password-change.md) | [auth](../auth/README.md) | Ends the sessions issued against a password that has just been replaced. |
+| [Authorize](ledger-authorize.md) | [payments](../payments/README.md) | Asks the gateway to hold the money for an order, and records either that it agreed or that it refused. |
+| [Capture](ledger-capture.md) | [payments](../payments/README.md) | Moves the money the gateway was holding, writes the pair of postings for it, and says so on the bus. |
+| [Get payment](ledger-get-payment.md) | [payments](../payments/README.md) | Reads one payment, for whoever is asking what happened to the money. |
+| [Issue refund](ledger-issue-refund.md) | [payments](../payments/README.md) | Sends money back against a captured payment, in full or in part. |
+| [List refunds](ledger-list-refunds.md) | [payments](../payments/README.md) | Every refund against one payment, newest first. |
+| [Void payment on order cancelled](ledger-void-payment-on-order-cancelled.md) | [payments](../payments/README.md) | Gives back what was held once the order it was held for is gone. |
 | [Invoice create](billing-invoice-create.md) | [shop](../shop/README.md) | Draws up a draft invoice for an order, with a line for each thing sold. |
 | [Invoice destroy](billing-invoice-destroy.md) | [shop](../shop/README.md) | Ends an invoice nobody is going to pay. |
 | [Invoice issue](billing-invoice-issue.md) | [shop](../shop/README.md) | Confirms the session, freezes the invoice and asks the customer to pay. |
@@ -3322,14 +3359,14 @@ outbox
 | [Remove item](cart-remove-item.md) | [shop](../shop/README.md) | — |
 | [Cancel order](oms-cancel-order.md) | [shop](../shop/README.md) | Answers with the order as it is now; a cancelled order is still found. |
 | [Get order](oms-get-order.md) | [shop](../shop/README.md) | Answers with the order as it is now; a cancelled order is still found. |
-| [Confirm order on payment authorized](oms-confirm-order-on-payment-authorized.md) | [shop](../shop/README.md) | Confirms the order once the payment for it is authorised (ADR oms.0005). Declared ahead of its publisher: nothing in the estate says `payments.PaymentAuthorized` yet, and the catalog says so. |
+| [Confirm order on payment authorized](oms-confirm-order-on-payment-authorized.md) | [shop](../shop/README.md) | Confirms the order once the payment for it is authorised (ADR oms.0005). The publisher is `payments.ledger`, and the name is the one it puts on the message: every service on this bus names its events after itself. |
 | [Place order on basket checked out](oms-place-order-on-basket-checked-out.md) | [shop](../shop/README.md) | Places the order the basket was checked out for (ADR oms.0002). The order takes the basket's id, so the same checkout heard twice places one order. |
 
 <!-- flows/gateway-webhook.md -->
 
 # Gateway webhook
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.gateway-webhook`
 - **Owner:** [payments](../payments/README.md)
@@ -3417,7 +3454,7 @@ sequenceDiagram
 
 # Quote expired on checkout
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.quote-expired-on-checkout`
 - **Owner:** [shop](../shop/README.md)
@@ -3459,7 +3496,7 @@ sequenceDiagram
 
 # Shipment tracking
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.shipment-tracking`
 - **Owner:** [delivery](../delivery/README.md)
@@ -3559,7 +3596,7 @@ sequenceDiagram
 
 # Change password
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.auth-change-password`
 - **Owner:** [auth](../auth/README.md)
@@ -3609,7 +3646,7 @@ sequenceDiagram
 
 # Get user
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.auth-get-user`
 - **Owner:** [auth](../auth/README.md)
@@ -3648,7 +3685,7 @@ sequenceDiagram
 
 # Login
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.auth-login`
 - **Owner:** [auth](../auth/README.md)
@@ -3760,7 +3797,7 @@ sequenceDiagram
 
 # Logout
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.auth-logout`
 - **Owner:** [auth](../auth/README.md)
@@ -3807,7 +3844,7 @@ sequenceDiagram
 
 # Register user
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.auth-register-user`
 - **Owner:** [auth](../auth/README.md)
@@ -3854,7 +3891,7 @@ sequenceDiagram
 
 # Validate session
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.auth-validate-session`
 - **Owner:** [auth](../auth/README.md)
@@ -3893,7 +3930,7 @@ sequenceDiagram
 
 # Revoke sessions on password change
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.auth-revoke-sessions-on-password-change`
 - **Owner:** [auth](../auth/README.md)
@@ -3940,11 +3977,327 @@ sequenceDiagram
 6. **auth.auth** → **bus** — SessionEnded
    [auth.auth.session.SessionEnded](../auth/auth/aggregates/session.md) · `examples/auth/internal/application/session/usecases/end_after_credential_change/usecase.go:77` · inside a loop over `change.Ends(sessions, uc.now())`, inside a loop over `retries`.
 
+<!-- flows/ledger-authorize.md -->
+
+# Authorize
+
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `flow.ledger-authorize`
+- **Owner:** [payments](../payments/README.md)
+- **Source:** `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java`
+
+Asks the gateway to hold the money for an order, and records either that it agreed or that it refused.
+
+## Participants
+
+| Participant | Kind | Context | Label |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `payments.ledger` | service | [payments](../payments/README.md) | — |
+| `shop.oms` | service | [shop](../shop/README.md) | — |
+| `psp` | unknown | — | psp |
+| `ledger-pg` | store | [payments](../payments/README.md) | — |
+| `bus` | broker | — | — |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor p0 as client
+    participant p1 as payments.ledger
+    participant p2 as shop.oms
+    participant p3 as psp
+    participant p4 as ledger-pg
+    participant p5 as bus
+    p0->>p1: Authorize → AuthorizeResponse
+    p1->>p2: GetOrder → GetOrderResponse
+    p1->>p3: reserve
+    alt authCode.isEmpty()
+        p1->>p4: save
+        p1-)p5: PaymentDeclined
+        Note over p5: flow ends here
+    else otherwise
+    end
+    p1->>p4: save
+    p1-)p5: PaymentAuthorized
+```
+
+## Steps
+
+1. **client** → **payments.ledger** — Authorize → AuthorizeResponse
+   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:33`
+2. **payments.ledger** → **shop.oms** — GetOrder → GetOrderResponse
+   `shop.v1.OrderService/GetOrder` · status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:37`
+3. **payments.ledger** → **psp** — reserve
+   status: unresolved · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:39`
+
+> **One of**
+>
+> *authCode.isEmpty() — *ends the flow**
+>
+> 4. **payments.ledger** → **ledger-pg** — save
+>    status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:43`
+> 5. **payments.ledger** → **bus** — PaymentDeclined
+>    [payments.ledger.payment.PaymentDeclined](../payments/ledger/aggregates/payment.md) · status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:44`
+>
+> *otherwise*
+
+6. **payments.ledger** → **ledger-pg** — save
+   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:49`
+7. **payments.ledger** → **bus** — PaymentAuthorized
+   [payments.ledger.payment.PaymentAuthorized](../payments/ledger/aggregates/payment.md) · status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:50`
+
+<!-- flows/ledger-capture.md -->
+
+# Capture
+
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `flow.ledger-capture`
+- **Owner:** [payments](../payments/README.md)
+- **Source:** `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java`
+
+Moves the money the gateway was holding, writes the pair of postings for it, and says so on the bus.
+
+## Participants
+
+| Participant | Kind | Context | Label |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `payments.ledger` | service | [payments](../payments/README.md) | — |
+| `ledger-pg` | store | [payments](../payments/README.md) | — |
+| `psp` | unknown | — | psp |
+| `bus` | broker | — | — |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor p0 as client
+    participant p1 as payments.ledger
+    participant p2 as ledger-pg
+    participant p3 as psp
+    participant p4 as bus
+    p0->>p1: Capture → CaptureResponse
+    p1->>p2: byId
+    p1->>p3: settle
+    p1->>p2: save
+    p1-)p4: PaymentCaptured
+```
+
+## Steps
+
+1. **client** → **payments.ledger** — Capture → CaptureResponse
+   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:48`
+2. **payments.ledger** → **ledger-pg** — byId
+   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:32`
+3. **payments.ledger** → **psp** — settle
+   status: unresolved · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:33`
+4. **payments.ledger** → **ledger-pg** — save
+   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:35`
+5. **payments.ledger** → **bus** — PaymentCaptured
+   [payments.ledger.payment.PaymentCaptured](../payments/ledger/aggregates/payment.md) · status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:36`
+
+<!-- flows/ledger-get-payment.md -->
+
+# Get payment
+
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `flow.ledger-get-payment`
+- **Owner:** [payments](../payments/README.md)
+- **Source:** `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java`
+
+Reads one payment, for whoever is asking what happened to the money.
+
+## Participants
+
+| Participant | Kind | Context |
+| --- | --- | --- |
+| `client` | actor | — |
+| `payments.ledger` | service | [payments](../payments/README.md) |
+| `ledger-pg` | store | [payments](../payments/README.md) |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor p0 as client
+    participant p1 as payments.ledger
+    participant p2 as ledger-pg
+    p0->>p1: GetPayment → GetPaymentResponse
+    p1->>p2: byId
+```
+
+## Steps
+
+1. **client** → **payments.ledger** — GetPayment → GetPaymentResponse
+   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:59`
+2. **payments.ledger** → **ledger-pg** — byId
+   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/GetPayment.java:20`
+
+<!-- flows/ledger-issue-refund.md -->
+
+# Issue refund
+
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `flow.ledger-issue-refund`
+- **Owner:** [payments](../payments/README.md)
+- **Source:** `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/RefundGrpcService.java`
+
+Sends money back against a captured payment, in full or in part.
+
+## Participants
+
+| Participant | Kind | Context | Label |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `payments.ledger` | service | [payments](../payments/README.md) | — |
+| `ledger-pg` | store | [payments](../payments/README.md) | — |
+| `psp` | unknown | — | psp |
+| `bus` | broker | — | — |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor p0 as client
+    participant p1 as payments.ledger
+    participant p2 as ledger-pg
+    participant p3 as psp
+    participant p4 as bus
+    p0->>p1: IssueRefund → IssueRefundResponse
+    p1->>p2: byId
+    p1->>p3: giveBack
+    alt reference.isEmpty()
+        p1->>p2: save
+        Note over p2: flow ends here
+    else otherwise
+    end
+    p1->>p2: save
+    p1-)p4: RefundIssued
+```
+
+## Steps
+
+1. **client** → **payments.ledger** — IssueRefund → IssueRefundResponse
+   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/RefundGrpcService.java:29`
+2. **payments.ledger** → **ledger-pg** — byId
+   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:34`
+3. **payments.ledger** → **psp** — giveBack
+   status: unresolved · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:36`
+
+> **One of**
+>
+> *reference.isEmpty() — *ends the flow**
+>
+> 4. **payments.ledger** → **ledger-pg** — save
+>    status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:40`
+>
+> *otherwise*
+
+5. **payments.ledger** → **ledger-pg** — save
+   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:45`
+6. **payments.ledger** → **bus** — RefundIssued
+   [payments.ledger.refund.RefundIssued](../payments/ledger/aggregates/refund.md) · status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:46`
+
+<!-- flows/ledger-list-refunds.md -->
+
+# List refunds
+
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `flow.ledger-list-refunds`
+- **Owner:** [payments](../payments/README.md)
+- **Source:** `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/RefundGrpcService.java`
+
+Every refund against one payment, newest first.
+
+## Participants
+
+| Participant | Kind | Context |
+| --- | --- | --- |
+| `client` | actor | — |
+| `payments.ledger` | service | [payments](../payments/README.md) |
+| `ledger-pg` | store | [payments](../payments/README.md) |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor p0 as client
+    participant p1 as payments.ledger
+    participant p2 as ledger-pg
+    p0->>p1: ListRefunds → ListRefundsResponse
+    p1->>p2: byPayment
+```
+
+## Steps
+
+1. **client** → **payments.ledger** — ListRefunds → ListRefundsResponse
+   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/RefundGrpcService.java:44`
+2. **payments.ledger** → **ledger-pg** — byPayment
+   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/ListRefunds.java:20`
+
+<!-- flows/ledger-void-payment-on-order-cancelled.md -->
+
+# Void payment on order cancelled
+
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `flow.ledger-void-payment-on-order-cancelled`
+- **Owner:** [payments](../payments/README.md)
+- **Source:** `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/VoidPaymentOnOrderCancelled.java`
+
+Gives back what was held once the order it was held for is gone.
+
+## Participants
+
+| Participant | Kind | Context | Label |
+| --- | --- | --- | --- |
+| `bus` | broker | — | — |
+| `payments.ledger` | service | [payments](../payments/README.md) | — |
+| `ledger-pg` | store | [payments](../payments/README.md) | — |
+| `psp` | unknown | — | psp |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant p0 as bus
+    participant p1 as payments.ledger
+    participant p2 as ledger-pg
+    participant p3 as psp
+    p0-)p1: OrderCancelled
+    p1->>p2: byOrder
+    p1->>p3: release
+    p1->>p2: save
+```
+
+## Steps
+
+1. **bus** → **payments.ledger** — OrderCancelled
+   [shop.oms.order.OrderCancelled](../shop/oms/aggregates/order.md) · status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/VoidPaymentOnOrderCancelled.java:25`
+2. **payments.ledger** → **ledger-pg** — byOrder
+   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/VoidPaymentOnOrderCancelled.java:27`
+3. **payments.ledger** → **psp** — release
+   status: unresolved · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/VoidPaymentOnOrderCancelled.java:28`
+4. **payments.ledger** → **ledger-pg** — save
+   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/VoidPaymentOnOrderCancelled.java:30`
+
 <!-- flows/billing-invoice-create.md -->
 
 # Invoice create
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.billing-invoice-create`
 - **Owner:** [shop](../shop/README.md)
@@ -3986,7 +4339,7 @@ sequenceDiagram
 
 # Invoice destroy
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.billing-invoice-destroy`
 - **Owner:** [shop](../shop/README.md)
@@ -4033,7 +4386,7 @@ sequenceDiagram
 
 # Invoice issue
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.billing-invoice-issue`
 - **Owner:** [shop](../shop/README.md)
@@ -4085,7 +4438,7 @@ sequenceDiagram
 
 # Invoice retrieve
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.billing-invoice-retrieve`
 - **Owner:** [shop](../shop/README.md)
@@ -4124,7 +4477,7 @@ sequenceDiagram
 
 # Close invoice on payment
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.billing-close-invoice-on-payment`
 - **Owner:** [shop](../shop/README.md)
@@ -4169,7 +4522,7 @@ sequenceDiagram
 
 # Add item
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.cart-add-item`
 - **Owner:** [shop](../shop/README.md)
@@ -4211,7 +4564,7 @@ sequenceDiagram
 
 # Checkout
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.cart-checkout`
 - **Owner:** [shop](../shop/README.md)
@@ -4266,7 +4619,7 @@ sequenceDiagram
 
 # Create basket
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.cart-create-basket`
 - **Owner:** [shop](../shop/README.md)
@@ -4308,7 +4661,7 @@ sequenceDiagram
 
 # Get basket
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.cart-get-basket`
 - **Owner:** [shop](../shop/README.md)
@@ -4340,7 +4693,7 @@ sequenceDiagram
 
 # Merge baskets
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.cart-merge-baskets`
 - **Owner:** [shop](../shop/README.md)
@@ -4399,7 +4752,7 @@ sequenceDiagram
 
 # Remove item
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.cart-remove-item`
 - **Owner:** [shop](../shop/README.md)
@@ -4441,7 +4794,7 @@ sequenceDiagram
 
 # Cancel order
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.oms-cancel-order`
 - **Owner:** [shop](../shop/README.md)
@@ -4503,7 +4856,7 @@ sequenceDiagram
 
 # Get order
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.oms-get-order`
 - **Owner:** [shop](../shop/README.md)
@@ -4542,22 +4895,22 @@ sequenceDiagram
 
 # Confirm order on payment authorized
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.oms-confirm-order-on-payment-authorized`
 - **Owner:** [shop](../shop/README.md)
 - **Source:** `examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs`
 
-Confirms the order once the payment for it is authorised (ADR oms.0005). Declared ahead of its publisher: nothing in the estate says `payments.PaymentAuthorized` yet, and the catalog says so.
+Confirms the order once the payment for it is authorised (ADR oms.0005). The publisher is `payments.ledger`, and the name is the one it puts on the message: every service on this bus names its events after itself.
 
 ## Participants
 
-| Participant | Kind | Context | Label |
-| --- | --- | --- | --- |
-| `bus` | broker | — | — |
-| `shop.oms` | service | [shop](../shop/README.md) | — |
-| `oms-pg` | store | [shop](../shop/README.md) | — |
-| `payments-v1` | unknown | — | payments.v1 |
+| Participant | Kind | Context |
+| --- | --- | --- |
+| `bus` | broker | — |
+| `shop.oms` | service | [shop](../shop/README.md) |
+| `oms-pg` | store | [shop](../shop/README.md) |
+| `payments.ledger` | service | [payments](../payments/README.md) |
 
 ## Sequence
 
@@ -4567,11 +4920,11 @@ sequenceDiagram
     participant p0 as bus
     participant p1 as shop.oms
     participant p2 as oms-pg
-    participant p3 as payments.v1
+    participant p3 as payments.ledger
     p0-)p1: PaymentAuthorized
     p1->>p1: ConfirmOrder
     p1->>p2: by_id
-    p1->>p3: Authorize
+    p1->>p3: Authorize → AuthorizeResponse
     p1->>p2: save
     p1-)p0: OrderConfirmed
 ```
@@ -4579,13 +4932,13 @@ sequenceDiagram
 ## Steps
 
 1. **bus** → **shop.oms** — PaymentAuthorized
-   status: unresolved · `examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs:20` · Reacts to the message named `payments.PaymentAuthorized`, which is not an event this repository declares.
+   status: unresolved · `examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs:20` · Reacts to the message named `ledger.PaymentAuthorized`, which is not an event this repository declares.
 2. **shop.oms** ↺ **shop.oms** — ConfirmOrder
    status: declared · `examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs:27`
 3. **shop.oms** → **oms-pg** — by_id
    status: declared · `examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:31`
-4. **shop.oms** → **payments-v1** — Authorize
-   `payments.v1.PaymentService/Authorize` · status: unresolved · `examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:32`
+4. **shop.oms** → **payments.ledger** — Authorize → AuthorizeResponse
+   `payments.v1.PaymentService/Authorize` · status: declared · `examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:32`
 5. **shop.oms** → **oms-pg** — save
    status: declared · `examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:34`
 6. **shop.oms** → **bus** — OrderConfirmed
@@ -4595,7 +4948,7 @@ sequenceDiagram
 
 # Place order on basket checked out
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.oms-place-order-on-basket-checked-out`
 - **Owner:** [shop](../shop/README.md)
@@ -4643,7 +4996,7 @@ sequenceDiagram
 
 # Decision records
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 | ADR | Title | Status | Date | Scope |
 | --- | --- | --- | --- | --- |
@@ -4655,7 +5008,7 @@ sequenceDiagram
 
 # org.0001 — Client proto copies live in the consumer's infrastructure layer
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2025-03-11
@@ -4729,7 +5082,7 @@ compiling.
 
 # org.0002 — Domain event schema version is encoded in the package path (events/v1)
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2025-05-02
@@ -4792,7 +5145,7 @@ are not willing to take yet.
 
 # payments.0004 — Journal entries are idempotent by (order_id, attempt)
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Status:** proposed
 - **Date:** 2026-02-09

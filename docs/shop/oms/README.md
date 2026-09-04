@@ -1,6 +1,6 @@
 # Order Management
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.oms`
 - **Context:** [Shop](../README.md)
@@ -134,15 +134,15 @@ skipped.
 
 | Call | Peer | Status | Source |
 | --- | --- | --- | --- |
-| `payments.v1.PaymentService/Authorize` | `payments.v1` | unresolved | `examples/shop/oms/src/infrastructure/payments/proto/payments/v1/payments.proto` |
+| `payments.v1.PaymentService/Authorize` | [payments.ledger](../../payments/ledger/README.md) | declared | `examples/shop/oms/src/infrastructure/payments/proto/payments/v1/payments.proto` |
 
 ## Publishes
 
-| Event | Latest |
-| --- | --- |
-| [OrderCancelled](aggregates/order.md) | v1 |
-| [OrderConfirmed](aggregates/order.md) | v1 |
-| [OrderPlaced](aggregates/order.md) | v1 |
+| Event | Latest | Consumers |
+| --- | --- | --- |
+| [OrderCancelled](aggregates/order.md) | v1 | [payments.ledger (declared)](../../payments/ledger/README.md) |
+| [OrderConfirmed](aggregates/order.md) | v1 | — |
+| [OrderPlaced](aggregates/order.md) | v1 | — |
 
 ## Stores
 

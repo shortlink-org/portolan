@@ -1,105 +1,230 @@
 # Ledger
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `payments.ledger`
 - **Context:** [Payments](../README.md)
-- **Repo:** `github.com/acme/payments`
-- **Path:** `services/ledger`
+- **Repo:** `github.com/shortlink-org/portolan`
+- **Path:** `examples/payments/ledger`
 
-## Payments Ledger
+Service `ledger` — bounded context **payments**. Java on Spring Boot.
 
-`payments.ledger` is a double-entry ledger. Every movement of money is two
-balanced postings, and nothing is ever deleted. Corrections are compensating
-entries.
+Owns money. Every authorisation, capture and refund against an order passes
+through here, and what it writes is the record the business is audited on.
+Nothing it holds is updated in place: a movement of money is a pair of postings
+that sum to zero, and a correction is another pair.
 
-### Model
+## What it does
 
-An authorisation reserves funds without moving them. A capture moves the
-reserved funds. A refund moves them back. Each of these is a separate posting
-pair against the customer, merchant and settlement accounts.
+- Asks the gateway to hold the money for an order, and records either the hold
+  or the refusal — `PaymentAuthorized` or `PaymentDeclined`.
+- Captures what was held, writes the pair of postings for it, and says
+  `PaymentCaptured`. That is the message anything waiting to be paid listens for.
+- Sends money back against a captured payment, in full or in part, and says
+  `RefundIssued`.
+- Gives back a hold nobody will be charged for, when the order it was held for
+  is cancelled.
 
-```mermaid
-sequenceDiagram
-    participant OMS as shop.oms
-    participant L as payments.ledger
-    participant PSP as psp (external)
-    OMS->>L: Authorize
-    L->>PSP: reserve funds
-    PSP-->>L: auth code
-    L-->>OMS: PaymentAuthorized
-    OMS->>L: Capture
-    L->>PSP: settle
-    L-->>OMS: PaymentCaptured
+## What it does not do
+
+Does not decide *whether* to charge — that is the order's business, and the
+ledger is asked. Does not issue invoices: what a customer is *asked* to pay is
+`shop.billing`'s aggregate, and this one only says what happened to the money.
+Does not store card data; the gateway holds the instrument and this holds a
+token for it.
+
+## Publishes
+
+`PaymentAuthorized`, `PaymentCaptured`, `PaymentDeclined` on
+`payments.ledger.payment`; `RefundIssued` on `payments.ledger.refund`.
+
+## Provides
+
+`payments.v1.PaymentService` — Authorize, Capture, GetPayment — and
+`payments.v1.RefundService` — IssueRefund, ListRefunds. One contract per
+aggregate, vendored under the transport package that answers it.
+
+## How the catalog reads it
+
+Nothing here is annotated for the catalog, but plenty is annotated for the
+model: `@AggregateRoot`, `@Entity`, `@ValueObject`, `@Repository`,
+`@SecondaryPort` and `@DomainEvent` are jMolecules, and `extract-java` reads
+what they say rather than guessing from the layout. The rules are in
+[plugins/extract-java/README.md](../../../plugins/extract-java/README.md).
+
+Two things follow from that and are worth knowing when reading the pages:
+
+- A `@Repository` is the store, and any other port goes wherever its adapter
+  reaches. `PaymentGateway` is filled by `PspGateway`, which has no vendored
+  contract because the far end is a third party — so those calls are recorded
+  and left **unresolved**, which is the true answer to "who answers this".
+- The lifecycle is `PaymentStatus.TRANSITIONS`, not the branches of the methods.
+  A move the table does not allow is a diagnostic, not a new arrow.
+
+## Running it
+
+```bash
+docker compose up -d db
+mvn -q spring-boot:run
 ```
 
-### Accounts
+`NATS_URL` picks the bus: with a server named, events leave on their channel
+with their wire name in the headers; without one they are written to the log and
+nothing leaves. `OMS_ADDRESS` is where `shop.v1.OrderService` answers.
 
-| Account        | Type      | Increases on        | Decreases on       |
-| -------------- | --------- | ------------------- | ------------------ |
-| `customer`     | liability | refund              | capture            |
-| `merchant`     | asset     | capture             | refund             |
-| `settlement`   | asset     | payout received     | payout disbursed   |
-| `fees`         | expense   | capture             | refund             |
+## Decisions
 
-### Guarantees
-
-- Postings are append only. There is no `UPDATE` on the postings table.
-- Every write is idempotent on `idempotency_key`, retained for 30 days.
-- The sum of all postings for a transaction is always zero; a nightly job
-  asserts this and pages on failure.
-
-### Aggregates
-
-- `payment` — authorisation, capture and decline.
-- `refund` — full and partial refunds against a captured payment.
+- [payments.0004](../../../docs/adr/payments.0004.md) — journal rows are
+  idempotent by `(order_id, attempt)`, which is why `payments` carries an
+  `attempt` and a unique key over the pair.
 
 ## Aggregates
 
 | Aggregate | Root | Commands | Queries | Events |
 | --- | --- | --- | --- | --- |
-| [Payment](aggregates/payment.md) | `Payment` | 3 commands | 1 query | 3 events |
+| [Payment](aggregates/payment.md) | `Payment` | 2 commands | 1 query | 3 events |
 | [Refund](aggregates/refund.md) | `Refund` | 1 command | 1 query | 1 event |
 
 ## Provides
 
-**`payments.v1.Payments`** — `proto/payments/v1/payments.proto:14`
+**`payments.v1.PaymentService`** — `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/proto/payments/v1/payment.proto:12`
 
 - `Authorize`
 - `Capture`
-- `Refund`
 - `GetPayment`
 
 <details><summary>AuthorizeRequest</summary>
 
-| Field | Type | Doc |
-| --- | --- | --- |
-| `orderId` | `string` | Order to authorize against. |
-| `amount` | [`Money`](../../types.md#money) | Amount to hold. |
+| Field | Type |
+| --- | --- |
+| `payment_id` | `string` |
+| `order_id` | `string` |
+| `amount_minor` | `int64` |
+| `currency` | `string` |
+
+</details>
+
+<details><summary>AuthorizeResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `payment_id` | `string` |
+| `auth_code` | `string` |
+| `authorized` | `bool` |
+
+</details>
+
+<details><summary>CaptureRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `payment_id` | `string` |
+
+</details>
+
+<details><summary>CaptureResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `payment_id` | `string` |
+| `captured_at` | `string` |
+
+</details>
+
+<details><summary>GetPaymentRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `payment_id` | `string` |
+
+</details>
+
+<details><summary>GetPaymentResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `payment_id` | `string` |
+| `order_id` | `string` |
+| `status` | `string` |
+| `amount_minor` | `int64` |
+| `currency` | `string` |
+
+</details>
+
+**`payments.v1.RefundService`** — `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/proto/payments/v1/refund.proto:10`
+
+- `IssueRefund`
+- `ListRefunds`
+
+<details><summary>IssueRefundRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `refund_id` | `string` |
+| `payment_id` | `string` |
+| `amount_minor` | `int64` |
+| `currency` | `string` |
+| `reason` | `string` |
+
+</details>
+
+<details><summary>IssueRefundResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `refund_id` | `string` |
+| `issued` | `bool` |
+
+</details>
+
+<details><summary>ListRefundsRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `payment_id` | `string` |
+
+</details>
+
+<details><summary>ListRefundsResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `refunds` | `[]RefundView` |
+
+</details>
+
+<details><summary>RefundView</summary>
+
+| Field | Type |
+| --- | --- |
+| `refund_id` | `string` |
+| `amount_minor` | `int64` |
+| `currency` | `string` |
+| `status` | `string` |
 
 </details>
 
 ## Consumes
 
-| Call | Peer | Status | Source | Note |
-| --- | --- | --- | --- | --- |
-| `shop.v1.OrderService/GetOrder` | [shop.oms](../../shop/oms/README.md) | verified | `internal/ledger/client/orders.go:27` | — |
-| `psp.v2.Charges/Create` | `psp-gateway` | unresolved | `internal/ledger/adapter/psp/client.go:64` | Authorization. The peer is a third party; no service in the estate provides psp.v2.Charges, so the call cannot be resolved to anything the catalog knows. |
-| `psp.v2.Charges/Capture` | `psp-gateway` | unresolved | `internal/ledger/adapter/psp/client.go:102` | Settlement of an existing authorization. Same unresolvable peer as the rest of psp.v2.Charges. |
-| `psp.v2.Charges/Refund` | `psp-gateway` | unresolved | `internal/ledger/adapter/psp/client.go:138` | Returns money on a settled charge. Same unresolvable peer as the rest of psp.v2.Charges. |
-| `psp.v2.Charges/Void` | `psp-gateway` | unresolved | `internal/ledger/adapter/psp/client.go:171` | Cancels an authorization that was never captured. Same unresolvable peer as the rest of psp.v2.Charges. |
+| Call | Peer | Status | Source |
+| --- | --- | --- | --- |
+| `psp/giveBack` | `psp` | unresolved | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java` |
+| `psp/release` | `psp` | unresolved | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java` |
+| `psp/reserve` | `psp` | unresolved | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java` |
+| `psp/settle` | `psp` | unresolved | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java` |
+| `shop.v1.OrderService/GetOrder` | [shop.oms](../../shop/oms/README.md) | declared | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/oms/proto/shop/v1/order.proto` |
 
 ## Publishes
 
 | Event | Latest | Consumers |
 | --- | --- | --- |
-| [PaymentAuthorized](aggregates/payment.md) | v1 | [delivery.core (declared)](../../delivery/core/README.md) |
-| [PaymentCaptured](aggregates/payment.md) | v1 | [delivery.core](../../delivery/core/README.md), [shop.billing (declared)](../../shop/billing/README.md) |
+| [PaymentAuthorized](aggregates/payment.md) | v1 | — |
+| [PaymentCaptured](aggregates/payment.md) | v1 | [shop.billing (declared)](../../shop/billing/README.md) |
 | [PaymentDeclined](aggregates/payment.md) | v1 | [shop.oms (declared)](../../shop/oms/README.md) |
-| [RefundIssued](aggregates/refund.md) | v1 | [delivery.core (declared)](../../delivery/core/README.md) |
+| [RefundIssued](aggregates/refund.md) | v1 | — |
 
 ## Stores
 
 | Store | Kind | Access | Tables |
 | --- | --- | --- | --- |
-| [Ledger database](stores/pg.md) | postgres | owns | 2 tables |
+| [Ledger database](stores/pg.md) | postgres | owns | 3 tables |

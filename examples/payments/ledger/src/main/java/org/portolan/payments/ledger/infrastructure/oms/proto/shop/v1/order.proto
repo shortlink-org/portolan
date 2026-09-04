@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package shop.v1;
+
+option java_package = "org.portolan.payments.ledger.infrastructure.oms.gen";
+option java_multiple_files = true;
+
+// A narrowed vendored copy of the order service's contract: the one rpc the
+// ledger calls, and nothing else (org.0001).
+service OrderService {
+  rpc GetOrder(GetOrderRequest) returns (GetOrderResponse);
+}
+
+message GetOrderRequest {
+  string order_id = 1;
+}
+
+message GetOrderResponse {
+  string order_id = 1;
+  string status = 2;
+  int64 total_minor = 3;
+  string currency = 4;
+}

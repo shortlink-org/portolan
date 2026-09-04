@@ -3,7 +3,7 @@ views {
   view landscape {
     title 'Estate'
     description 'Every bounded context, and everything outside the estate that touches one.'
-    include shop, payments, delivery, auth, psp_gateway, customer, carrier_api, analytics_sink, client, risk_v1, payments_v1
+    include shop, delivery, auth, payments, psp_gateway, customer, carrier_api, analytics_sink, client, risk_v1, psp
   }
 
   view ctx_shop of shop {
@@ -46,19 +46,6 @@ views {
     title 'Order Management — inside'
     include *
   }
-  view ctx_payments of payments {
-    title 'Payments'
-    include *, payments.ledger.pg
-  }
-  view svc_payments_ledger of payments.ledger {
-    title 'Ledger — neighbours'
-    include *, -> *, * ->
-    exclude payment, refund, pg
-  }
-  view svc_payments_ledger_inside of payments.ledger {
-    title 'Ledger — inside'
-    include *
-  }
   view ctx_delivery of delivery {
     title 'Delivery'
     include *, delivery.core.pg
@@ -83,6 +70,19 @@ views {
   }
   view svc_auth_auth_inside of auth.auth {
     title 'Authentication & Sessions — inside'
+    include *
+  }
+  view ctx_payments of payments {
+    title 'Payments'
+    include *, payments.ledger.pg
+  }
+  view svc_payments_ledger of payments.ledger {
+    title 'Ledger — neighbours'
+    include *, -> *, * ->
+    exclude payment, refund, pg
+  }
+  view svc_payments_ledger_inside of payments.ledger {
+    title 'Ledger — inside'
     include *
   }
 
@@ -606,6 +606,246 @@ views {
     }
   }
 
+  dynamic view flow_ledger_authorize {
+    title 'Authorize'
+    description 'Asks the gateway to hold the money for an order, and records either that it agreed or that it refused.'
+    client -> payments.ledger 'Authorize → AuthorizeResponse' {
+      color declared  line dashed  head normal
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:33'
+    }
+    payments.ledger -> shop.oms 'GetOrder → GetOrderResponse' {
+      color declared  line dashed  head normal
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:37'
+    }
+    payments.ledger -> psp 'reserve' {
+      color unresolved  line dotted  head normal
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:39'
+    }
+    alt {
+      when 'authCode.isEmpty()' {
+        break 'ends the flow' {
+          payments.ledger -> ledger_pg 'save' {
+            color declared  line dashed  head none
+            notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:43'
+          }
+          payments.ledger -> bus 'PaymentDeclined' {
+            color declared  line dashed  head onormal
+            notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:44'
+          }
+        }
+      }
+      else 'otherwise' {
+      }
+    }
+    payments.ledger -> ledger_pg 'save' {
+      color declared  line dashed  head none
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:49'
+    }
+    payments.ledger -> bus 'PaymentAuthorized' {
+      color declared  line dashed  head onormal
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:50'
+    }
+  }
+
+  dynamic view flow_ledger_authorize_cross {
+    title 'Authorize — crossings only'
+    client -> payments.ledger 'Authorize → AuthorizeResponse' {
+      color declared  line dashed  head normal
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:33'
+    }
+    payments.ledger -> shop.oms 'GetOrder → GetOrderResponse' {
+      color declared  line dashed  head normal
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:37'
+    }
+    payments.ledger -> psp 'reserve' {
+      color unresolved  line dotted  head normal
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:39'
+    }
+    alt {
+      when 'authCode.isEmpty()' {
+        break 'ends the flow' {
+          payments.ledger -> bus 'PaymentDeclined' {
+            color declared  line dashed  head onormal
+            notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:44'
+          }
+        }
+      }
+    }
+    payments.ledger -> bus 'PaymentAuthorized' {
+      color declared  line dashed  head onormal
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:50'
+    }
+  }
+
+  dynamic view flow_ledger_capture {
+    title 'Capture'
+    description 'Moves the money the gateway was holding, writes the pair of postings for it, and says so on the bus.'
+    client -> payments.ledger 'Capture → CaptureResponse' {
+      color declared  line dashed  head normal
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:48'
+    }
+    payments.ledger -> ledger_pg 'byId' {
+      color declared  line dashed  head none
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:32'
+    }
+    payments.ledger -> psp 'settle' {
+      color unresolved  line dotted  head normal
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:33'
+    }
+    payments.ledger -> ledger_pg 'save' {
+      color declared  line dashed  head none
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:35'
+    }
+    payments.ledger -> bus 'PaymentCaptured' {
+      color declared  line dashed  head onormal
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:36'
+    }
+  }
+
+  dynamic view flow_ledger_capture_cross {
+    title 'Capture — crossings only'
+    client -> payments.ledger 'Capture → CaptureResponse' {
+      color declared  line dashed  head normal
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:48'
+    }
+    payments.ledger -> psp 'settle' {
+      color unresolved  line dotted  head normal
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:33'
+    }
+    payments.ledger -> bus 'PaymentCaptured' {
+      color declared  line dashed  head onormal
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:36'
+    }
+  }
+
+  dynamic view flow_ledger_get_payment {
+    title 'Get payment'
+    description 'Reads one payment, for whoever is asking what happened to the money.'
+    client -> payments.ledger 'GetPayment → GetPaymentResponse' {
+      color declared  line dashed  head normal
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:59'
+    }
+    payments.ledger -> ledger_pg 'byId' {
+      color declared  line dashed  head none
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/GetPayment.java:20'
+    }
+  }
+
+  dynamic view flow_ledger_get_payment_cross {
+    title 'Get payment — crossings only'
+    client -> payments.ledger 'GetPayment → GetPaymentResponse' {
+      color declared  line dashed  head normal
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:59'
+    }
+  }
+
+  dynamic view flow_ledger_issue_refund {
+    title 'Issue refund'
+    description 'Sends money back against a captured payment, in full or in part.'
+    client -> payments.ledger 'IssueRefund → IssueRefundResponse' {
+      color declared  line dashed  head normal
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/RefundGrpcService.java:29'
+    }
+    payments.ledger -> ledger_pg 'byId' {
+      color declared  line dashed  head none
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:34'
+    }
+    payments.ledger -> psp 'giveBack' {
+      color unresolved  line dotted  head normal
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:36'
+    }
+    alt {
+      when 'reference.isEmpty()' {
+        break 'ends the flow' {
+          payments.ledger -> ledger_pg 'save' {
+            color declared  line dashed  head none
+            notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:40'
+          }
+        }
+      }
+      else 'otherwise' {
+      }
+    }
+    payments.ledger -> ledger_pg 'save' {
+      color declared  line dashed  head none
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:45'
+    }
+    payments.ledger -> bus 'RefundIssued' {
+      color declared  line dashed  head onormal
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:46'
+    }
+  }
+
+  dynamic view flow_ledger_issue_refund_cross {
+    title 'Issue refund — crossings only'
+    client -> payments.ledger 'IssueRefund → IssueRefundResponse' {
+      color declared  line dashed  head normal
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/RefundGrpcService.java:29'
+    }
+    payments.ledger -> psp 'giveBack' {
+      color unresolved  line dotted  head normal
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:36'
+    }
+    payments.ledger -> bus 'RefundIssued' {
+      color declared  line dashed  head onormal
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:46'
+    }
+  }
+
+  dynamic view flow_ledger_list_refunds {
+    title 'List refunds'
+    description 'Every refund against one payment, newest first.'
+    client -> payments.ledger 'ListRefunds → ListRefundsResponse' {
+      color declared  line dashed  head normal
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/RefundGrpcService.java:44'
+    }
+    payments.ledger -> ledger_pg 'byPayment' {
+      color declared  line dashed  head none
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/ListRefunds.java:20'
+    }
+  }
+
+  dynamic view flow_ledger_list_refunds_cross {
+    title 'List refunds — crossings only'
+    client -> payments.ledger 'ListRefunds → ListRefundsResponse' {
+      color declared  line dashed  head normal
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/RefundGrpcService.java:44'
+    }
+  }
+
+  dynamic view flow_ledger_void_payment_on_order_cancelled {
+    title 'Void payment on order cancelled'
+    description 'Gives back what was held once the order it was held for is gone.'
+    bus -> payments.ledger 'OrderCancelled' {
+      color declared  line dashed  head onormal
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/VoidPaymentOnOrderCancelled.java:25'
+    }
+    payments.ledger -> ledger_pg 'byOrder' {
+      color declared  line dashed  head none
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/VoidPaymentOnOrderCancelled.java:27'
+    }
+    payments.ledger -> psp 'release' {
+      color unresolved  line dotted  head normal
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/VoidPaymentOnOrderCancelled.java:28'
+    }
+    payments.ledger -> ledger_pg 'save' {
+      color declared  line dashed  head none
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/VoidPaymentOnOrderCancelled.java:30'
+    }
+  }
+
+  dynamic view flow_ledger_void_payment_on_order_cancelled_cross {
+    title 'Void payment on order cancelled — crossings only'
+    bus -> payments.ledger 'OrderCancelled' {
+      color declared  line dashed  head onormal
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/VoidPaymentOnOrderCancelled.java:25'
+    }
+    payments.ledger -> psp 'release' {
+      color unresolved  line dotted  head normal
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/VoidPaymentOnOrderCancelled.java:28'
+    }
+  }
+
   dynamic view flow_billing_invoice_create {
     title 'Invoice create'
     description 'Draws up a draft invoice for an order, with a line for each thing sold.'
@@ -1041,10 +1281,10 @@ views {
 
   dynamic view flow_oms_confirm_order_on_payment_authorized {
     title 'Confirm order on payment authorized'
-    description 'Confirms the order once the payment for it is authorised (ADR oms.0005). Declared ahead of its publisher: nothing in the estate says `payments.PaymentAuthorized` yet, and the catalog says so.'
+    description 'Confirms the order once the payment for it is authorised (ADR oms.0005). The publisher is `payments.ledger`, and the name is the one it puts on the message: every service on this bus names its events after itself.'
     bus -> shop.oms 'PaymentAuthorized' {
       color unresolved  line dotted  head onormal
-      notes 'Reacts to the message named `payments.PaymentAuthorized`, which is not an event this repository declares. — examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs:20'
+      notes 'Reacts to the message named `ledger.PaymentAuthorized`, which is not an event this repository declares. — examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs:20'
     }
     shop.oms -> shop.oms 'ConfirmOrder' {
       color declared  line dashed  head none
@@ -1054,8 +1294,8 @@ views {
       color declared  line dashed  head none
       notes 'examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:31'
     }
-    shop.oms -> payments_v1 'Authorize' {
-      color unresolved  line dotted  head normal
+    shop.oms -> payments.ledger 'Authorize → AuthorizeResponse' {
+      color declared  line dashed  head normal
       notes 'examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:32'
     }
     shop.oms -> oms_pg 'save' {
@@ -1072,10 +1312,10 @@ views {
     title 'Confirm order on payment authorized — crossings only'
     bus -> shop.oms 'PaymentAuthorized' {
       color unresolved  line dotted  head onormal
-      notes 'Reacts to the message named `payments.PaymentAuthorized`, which is not an event this repository declares. — examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs:20'
+      notes 'Reacts to the message named `ledger.PaymentAuthorized`, which is not an event this repository declares. — examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs:20'
     }
-    shop.oms -> payments_v1 'Authorize' {
-      color unresolved  line dotted  head normal
+    shop.oms -> payments.ledger 'Authorize → AuthorizeResponse' {
+      color declared  line dashed  head normal
       notes 'examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:32'
     }
     shop.oms -> bus 'OrderConfirmed' {

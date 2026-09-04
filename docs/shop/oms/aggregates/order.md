@@ -1,6 +1,6 @@
 # Order
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.oms.order`
 - **Service:** [Order Management](../README.md)
@@ -102,6 +102,10 @@ stateDiagram-v2
 `shop.oms.order.OrderCancelled`
 
 On the wire as `oms.OrderCancelled`, on `shop.oms.order`.
+
+| Consumer | Status |
+| --- | --- |
+| [payments.ledger](../../../payments/ledger/README.md) | declared |
 
 #### v1 — current
 

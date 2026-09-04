@@ -1,6 +1,6 @@
 # Example estate
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 
 ## Contexts
@@ -8,9 +8,9 @@
 | Context | Class | Services | Summary |
 | --- | --- | --- | --- |
 | [Shop](shop/README.md) | core | [Pricing](shop/pricing/README.md), [Billing](shop/billing/README.md), [Shopping Cart](shop/cart/README.md), [Order Management](shop/oms/README.md) | Everything the customer touches before money moves: baskets, orders and prices. |
-| [Payments](payments/README.md) | core | [Ledger](payments/ledger/README.md) | A double-entry ledger and the PSP integrations that feed it. Nothing here knows what an order is for. |
 | [Delivery](delivery/README.md) | supporting | [Delivery Core](delivery/core/README.md) | Routes, parcels and proof of delivery. Reacts to captured payments, never to placed orders. |
 | [Authentication](auth/README.md) | core | [Authentication & Sessions](auth/auth/README.md) | Who someone is, and whether they are still logged in. The only service in the estate that stores credentials, and the only one allowed to mint or revoke a session. |
+| [Payments](payments/README.md) | core | [Ledger](payments/ledger/README.md) | Money, and the record of every movement of it. Nothing here decides whether to charge - it is asked, and it writes down what happened either way. |
 
 ## Flows
 
@@ -26,6 +26,12 @@
 | [Register user](flows/auth-register-user.md) | [auth](auth/README.md) | Creates a user from an email address and a password. |
 | [Validate session](flows/auth-validate-session.md) | [auth](auth/README.md) | Resolves a token to a live session: who is calling, and how long the answer stays good. |
 | [Revoke sessions on password change](flows/auth-revoke-sessions-on-password-change.md) | [auth](auth/README.md) | Ends the sessions issued against a password that has just been replaced. |
+| [Authorize](flows/ledger-authorize.md) | [payments](payments/README.md) | Asks the gateway to hold the money for an order, and records either that it agreed or that it refused. |
+| [Capture](flows/ledger-capture.md) | [payments](payments/README.md) | Moves the money the gateway was holding, writes the pair of postings for it, and says so on the bus. |
+| [Get payment](flows/ledger-get-payment.md) | [payments](payments/README.md) | Reads one payment, for whoever is asking what happened to the money. |
+| [Issue refund](flows/ledger-issue-refund.md) | [payments](payments/README.md) | Sends money back against a captured payment, in full or in part. |
+| [List refunds](flows/ledger-list-refunds.md) | [payments](payments/README.md) | Every refund against one payment, newest first. |
+| [Void payment on order cancelled](flows/ledger-void-payment-on-order-cancelled.md) | [payments](payments/README.md) | Gives back what was held once the order it was held for is gone. |
 | [Invoice create](flows/billing-invoice-create.md) | [shop](shop/README.md) | Draws up a draft invoice for an order, with a line for each thing sold. |
 | [Invoice destroy](flows/billing-invoice-destroy.md) | [shop](shop/README.md) | Ends an invoice nobody is going to pay. |
 | [Invoice issue](flows/billing-invoice-issue.md) | [shop](shop/README.md) | Confirms the session, freezes the invoice and asks the customer to pay. |
@@ -39,7 +45,7 @@
 | [Remove item](flows/cart-remove-item.md) | [shop](shop/README.md) | — |
 | [Cancel order](flows/oms-cancel-order.md) | [shop](shop/README.md) | Answers with the order as it is now; a cancelled order is still found. |
 | [Get order](flows/oms-get-order.md) | [shop](shop/README.md) | Answers with the order as it is now; a cancelled order is still found. |
-| [Confirm order on payment authorized](flows/oms-confirm-order-on-payment-authorized.md) | [shop](shop/README.md) | Confirms the order once the payment for it is authorised (ADR oms.0005). Declared ahead of its publisher: nothing in the estate says `payments.PaymentAuthorized` yet, and the catalog says so. |
+| [Confirm order on payment authorized](flows/oms-confirm-order-on-payment-authorized.md) | [shop](shop/README.md) | Confirms the order once the payment for it is authorised (ADR oms.0005). The publisher is `payments.ledger`, and the name is the one it puts on the message: every service on this bus names its events after itself. |
 | [Place order on basket checked out](flows/oms-place-order-on-basket-checked-out.md) | [shop](shop/README.md) | Places the order the basket was checked out for (ADR oms.0002). The order takes the basket's id, so the same checkout heard twice places one order. |
 
 ## Decisions

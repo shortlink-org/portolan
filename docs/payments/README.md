@@ -1,17 +1,17 @@
 # Payments
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `payments`
 - **Classification:** core
 
-A double-entry ledger and the PSP integrations that feed it. Nothing here knows what an order is for.
+Money, and the record of every movement of it. Nothing here decides whether to charge - it is asked, and it writes down what happened either way.
 
 ## Services
 
 | Service | Path | Aggregates |
 | --- | --- | --- |
-| [Ledger](ledger/README.md) | `services/ledger` | Payment, Refund |
+| [Ledger](ledger/README.md) | `examples/payments/ledger` | Payment, Refund |
 
 ## Decisions
 

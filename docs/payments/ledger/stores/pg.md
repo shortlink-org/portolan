@@ -1,74 +1,93 @@
 # Ledger database
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `payments.ledger.pg`
 - **Kind:** postgres
 - **Owner:** [payments.ledger](../README.md)
-- **Source:** `payments/ledger/db/migrations`
+- **Source:** `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/repository`
 
 ## Tables
 
-### journal_entries
+### payments
 
 aggregate-root · persists [payments.ledger.payment](../aggregates/payment.md)
-
-Append-only. One row per capture attempt, unique on (order_id, attempt) per ADR payments.0004.
 
 | Column | Type | Null | Key | Maps |
 | --- | --- | --- | --- | --- |
 | `id` | `text` | not null | PK | Payment.id |
 | `order_id` | `text` | not null | — | Payment.orderId |
-| `attempt` | `integer` | not null | — | CaptureAttempt.attempt |
-| `amount_minor` | `bigint` | not null | — | Payment.amount |
-| `currency` | `char(3)` | not null | — | — |
-| `state` | `text` | not null | — | Payment.state |
-| `gateway_charge_id` | `text` | null | — | Payment.gateway |
-| `requested_at` | `timestamptz` | not null | — | CaptureAttempt.requestedAt |
+| `attempt` | `integer` | not null | — | Payment.attempt |
+| `amount_minor` | `bigint` | not null | — | Payment.amountMinor |
+| `currency` | `char(3)` | not null | — | Payment.currency |
+| `status` | `text` | not null | — | Payment.status |
+| `auth_code` | `text` | null | — | Payment.authCode |
+| `created_at` | `timestamptz` | not null | — | Payment.createdAt |
 
 | Index | Columns | Kind |
 | --- | --- | --- |
-| `journal_entries_order_attempt_key` | order_id, attempt | unique |
-| `journal_entries_state_idx` | state | index |
+| `payments_status_idx` | status | index |
+
+### postings
+
+child · persists [payments.ledger.payment](../aggregates/payment.md)
+
+| Column | Type | Null | Key | Maps |
+| --- | --- | --- | --- | --- |
+| `id` | `bigserial` | not null | PK | Posting.id |
+| `payment_id` | `text` | not null | → [`payments.ledger.pg.payments`](pg.md#payments).id (restrict) | Posting.paymentId |
+| `account` | `text` | not null | — | Posting.account |
+| `amount_minor` | `bigint` | not null | — | Posting.amountMinor |
+| `currency` | `char(3)` | not null | — | Posting.currency |
+| `written_at` | `timestamptz` | not null | — | Posting.writtenAt |
+
+| Index | Columns | Kind |
+| --- | --- | --- |
+| `postings_by_payment` | payment_id | index |
 
 ### refunds
 
-child · persists [payments.ledger.refund](../aggregates/refund.md)
-
-Refunds against a captured payment.
+aggregate-root · persists [payments.ledger.refund](../aggregates/refund.md)
 
 | Column | Type | Null | Key | Maps |
 | --- | --- | --- | --- | --- |
 | `id` | `text` | not null | PK | Refund.id |
-| `payment_id` | `text` | not null | → [`payments.ledger.pg.journal_entries`](pg.md#journal_entries).id (restrict) | Refund.paymentId |
-| `amount_minor` | `bigint` | not null | — | Refund.amount |
+| `payment_id` | `text` | not null | → [`payments.ledger.pg.payments`](pg.md#payments).id (restrict) | Refund.paymentId |
+| `order_id` | `text` | not null | — | Refund.orderId |
+| `amount_minor` | `bigint` | not null | — | Refund.amountMinor |
+| `currency` | `char(3)` | not null | — | Refund.currency |
 | `reason` | `text` | not null | — | Refund.reason |
-| `state` | `text` | not null | — | Refund.state |
-| `settled_at` | `timestamptz` | null | — | Settlement.settledAt |
+| `status` | `text` | not null | — | Refund.status |
+| `settled_at` | `timestamptz` | null | — | Refund.settledAt |
+
+| Index | Columns | Kind |
+| --- | --- | --- |
+| `refunds_by_payment` | payment_id | index |
 
 ## Views
 
 ### v_payment_state
 
-computed on read
-
-Every payment with what has been refunded against it. One row per journal entry.
+computed on read · reads [`payments.ledger.pg.payments`](pg.md#payments), [`payments.ledger.pg.refunds`](pg.md#refunds)
 
 | Column | Type | Null | Maps | From |
 | --- | --- | --- | --- | --- |
-| `payment_id` | `text` | not null | Payment.id | `payments.ledger.pg.journal_entries.id` |
-| `order_id` | `text` | not null | Payment.orderId | `payments.ledger.pg.journal_entries.order_id` |
-| `state` | `text` | not null | Payment.state | `payments.ledger.pg.journal_entries.state` |
-| `amount_minor` | `bigint` | not null | Payment.amount | `payments.ledger.pg.journal_entries.amount_minor` |
-| `refunded_minor` | `bigint` | not null | — | `payments.ledger.pg.refunds.amount_minor` |
+| `payment_id` | `text` | not null | Payment.id | `payments.ledger.pg.payments.id` |
+| `order_id` | `text` | not null | Payment.orderId | `payments.ledger.pg.payments.order_id` |
+| `status` | `text` | not null | Payment.status | `payments.ledger.pg.payments.status` |
+| `amount_minor` | `bigint` | not null | Payment.amountMinor | `payments.ledger.pg.payments.amount_minor` |
+| `refunded_minor` | `bigint` | not null | Refund.amountMinor | `payments.ledger.pg.refunds.amount_minor` |
 
 ```sql
 CREATE VIEW v_payment_state AS
-SELECT j.id AS payment_id, j.order_id, j.state,
-       j.amount_minor, coalesce(sum(r.amount_minor), 0) AS refunded_minor
-  FROM journal_entries j
-  LEFT JOIN refunds r ON r.payment_id = j.id
- GROUP BY j.id;
+SELECT p.id           AS payment_id,
+       p.order_id     AS order_id,
+       p.status       AS status,
+       p.amount_minor AS amount_minor,
+       coalesce(sum(r.amount_minor), 0) AS refunded_minor
+  FROM payments p
+  LEFT JOIN refunds r ON r.payment_id = p.id AND r.status = 'ISSUED'
+ GROUP BY p.id;
 ```
 
-Source: `payments/ledger/db/migrations/0011_payment_state.sql`
+Source: `src/main/java/org/portolan/payments/ledger/infrastructure/repository/refund/migrations/0002_payment_state.sql`

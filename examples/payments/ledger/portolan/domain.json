@@ -1,0 +1,983 @@
+{
+  "generatedAt": "2026-09-05T05:17:52+07:00",
+  "commit": "ed2b42f",
+  "contexts": [
+    {
+      "id": "payments",
+      "slug": "payments",
+      "name": "Payments",
+      "summary": "Money, and the record of every movement of it. Nothing here decides whether to charge - it is asked, and it writes down what happened either way.",
+      "classification": "core",
+      "services": [
+        {
+          "id": "payments.ledger",
+          "slug": "ledger",
+          "name": "Ledger",
+          "repo": "github.com/shortlink-org/portolan",
+          "path": "examples/payments/ledger",
+          "readme": "# Ledger\n\nService `ledger` — bounded context **payments**. Java on Spring Boot.\n\nOwns money. Every authorisation, capture and refund against an order passes\nthrough here, and what it writes is the record the business is audited on.\nNothing it holds is updated in place: a movement of money is a pair of postings\nthat sum to zero, and a correction is another pair.\n\n## What it does\n\n- Asks the gateway to hold the money for an order, and records either the hold\n  or the refusal — `PaymentAuthorized` or `PaymentDeclined`.\n- Captures what was held, writes the pair of postings for it, and says\n  `PaymentCaptured`. That is the message anything waiting to be paid listens for.\n- Sends money back against a captured payment, in full or in part, and says\n  `RefundIssued`.\n- Gives back a hold nobody will be charged for, when the order it was held for\n  is cancelled.\n\n## What it does not do\n\nDoes not decide *whether* to charge — that is the order's business, and the\nledger is asked. Does not issue invoices: what a customer is *asked* to pay is\n`shop.billing`'s aggregate, and this one only says what happened to the money.\nDoes not store card data; the gateway holds the instrument and this holds a\ntoken for it.\n\n## Publishes\n\n`PaymentAuthorized`, `PaymentCaptured`, `PaymentDeclined` on\n`payments.ledger.payment`; `RefundIssued` on `payments.ledger.refund`.\n\n## Provides\n\n`payments.v1.PaymentService` — Authorize, Capture, GetPayment — and\n`payments.v1.RefundService` — IssueRefund, ListRefunds. One contract per\naggregate, vendored under the transport package that answers it.\n\n## How the catalog reads it\n\nNothing here is annotated for the catalog, but plenty is annotated for the\nmodel: `@AggregateRoot`, `@Entity`, `@ValueObject`, `@Repository`,\n`@SecondaryPort` and `@DomainEvent` are jMolecules, and `extract-java` reads\nwhat they say rather than guessing from the layout. The rules are in\n[plugins/extract-java/README.md](../../../plugins/extract-java/README.md).\n\nTwo things follow from that and are worth knowing when reading the pages:\n\n- A `@Repository` is the store, and any other port goes wherever its adapter\n  reaches. `PaymentGateway` is filled by `PspGateway`, which has no vendored\n  contract because the far end is a third party — so those calls are recorded\n  and left **unresolved**, which is the true answer to \"who answers this\".\n- The lifecycle is `PaymentStatus.TRANSITIONS`, not the branches of the methods.\n  A move the table does not allow is a diagnostic, not a new arrow.\n\n## Running it\n\n```bash\ndocker compose up -d db\nmvn -q spring-boot:run\n```\n\n`NATS_URL` picks the bus: with a server named, events leave on their channel\nwith their wire name in the headers; without one they are written to the log and\nnothing leaves. `OMS_ADDRESS` is where `shop.v1.OrderService` answers.\n\n## Decisions\n\n- [payments.0004](../../../docs/adr/payments.0004.md) — journal rows are\n  idempotent by `(order_id, attempt)`, which is why `payments` carries an\n  `attempt` and a unique key over the pair.",
+          "provides": [],
+          "consumes": [
+            {
+              "id": "psp/giveBack",
+              "peer": "psp",
+              "status": "unresolved",
+              "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java"
+            },
+            {
+              "id": "psp/release",
+              "peer": "psp",
+              "status": "unresolved",
+              "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java"
+            },
+            {
+              "id": "psp/reserve",
+              "peer": "psp",
+              "status": "unresolved",
+              "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java"
+            },
+            {
+              "id": "psp/settle",
+              "peer": "psp",
+              "status": "unresolved",
+              "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java"
+            },
+            {
+              "id": "shop.v1.OrderService/GetOrder",
+              "peer": "shop.oms",
+              "status": "declared",
+              "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/oms/proto/shop/v1/order.proto"
+            }
+          ],
+          "aggregates": [
+            {
+              "id": "payments.ledger.payment",
+              "slug": "payment",
+              "name": "Payment",
+              "readme": "What one order owes, and everything that has happened to that money.",
+              "root": "Payment",
+              "entities": [
+                {
+                  "id": "payments.ledger.payment.payment",
+                  "slug": "payment",
+                  "name": "Payment",
+                  "doc": "What one order owes, and everything that has happened to that money.",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "String",
+                      "doc": ""
+                    },
+                    {
+                      "name": "orderId",
+                      "type": "String",
+                      "doc": "The order this payment is for. Another context owns it, so this is its id and not its shape."
+                    },
+                    {
+                      "name": "amount",
+                      "type": "Money",
+                      "doc": ""
+                    },
+                    {
+                      "name": "attempt",
+                      "type": "int",
+                      "doc": "Which try at charging this order it is. payments.0004 keys the row on it."
+                    },
+                    {
+                      "name": "createdAt",
+                      "type": "Instant",
+                      "doc": ""
+                    },
+                    {
+                      "name": "postings",
+                      "type": "List<Posting>",
+                      "doc": ""
+                    },
+                    {
+                      "name": "status",
+                      "type": "PaymentStatus",
+                      "doc": ""
+                    },
+                    {
+                      "name": "authCode",
+                      "type": "String",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "id": "payments.ledger.payment.posting",
+                  "slug": "posting",
+                  "name": "Posting",
+                  "doc": "One side of one movement of money.",
+                  "fields": [
+                    {
+                      "name": "account",
+                      "type": "String",
+                      "doc": ""
+                    },
+                    {
+                      "name": "amount",
+                      "type": "Money",
+                      "doc": ""
+                    },
+                    {
+                      "name": "writtenAt",
+                      "type": "String",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [
+                {
+                  "id": "payments.ledger.payment.money",
+                  "slug": "money",
+                  "name": "Money",
+                  "doc": "An amount in the minor unit of a currency: 1250 GBP is £12.50.",
+                  "fields": [
+                    {
+                      "name": "amountMinor",
+                      "type": "long",
+                      "doc": ""
+                    },
+                    {
+                      "name": "currency",
+                      "type": "String",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "operations": [
+                {
+                  "id": "AuthorizePayment",
+                  "kind": "command",
+                  "doc": "Asks the gateway to hold the money for an order, and records either that it agreed or that it refused.",
+                  "exposedBy": [
+                    "Authorize"
+                  ]
+                },
+                {
+                  "id": "CapturePayment",
+                  "kind": "command",
+                  "doc": "Moves the money the gateway was holding, writes the pair of postings for it, and says so on the bus.",
+                  "exposedBy": [
+                    "Capture"
+                  ]
+                },
+                {
+                  "id": "GetPayment",
+                  "kind": "query",
+                  "doc": "Reads one payment, for whoever is asking what happened to the money.",
+                  "exposedBy": [
+                    "GetPayment"
+                  ]
+                }
+              ],
+              "events": [
+                {
+                  "id": "payments.ledger.payment.PaymentAuthorized",
+                  "slug": "payment-authorized",
+                  "name": "PaymentAuthorized",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "The gateway agreed to hold the money. Nothing has moved yet.",
+                      "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/event/PaymentAuthorized.java",
+                      "fields": [
+                        {
+                          "name": "paymentId",
+                          "type": "String",
+                          "doc": ""
+                        },
+                        {
+                          "name": "orderId",
+                          "type": "String",
+                          "doc": ""
+                        },
+                        {
+                          "name": "amount",
+                          "type": "Money",
+                          "doc": ""
+                        },
+                        {
+                          "name": "authCode",
+                          "type": "String",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [],
+                  "wire": {
+                    "name": "ledger.PaymentAuthorized",
+                    "channel": "payments.ledger.payment"
+                  }
+                },
+                {
+                  "id": "payments.ledger.payment.PaymentCaptured",
+                  "slug": "payment-captured",
+                  "name": "PaymentCaptured",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "The money moved. Whoever is owed something for this order - the invoice, the warehouse - waits for this one and nothing earlier.",
+                      "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/event/PaymentCaptured.java",
+                      "fields": [
+                        {
+                          "name": "paymentId",
+                          "type": "String",
+                          "doc": ""
+                        },
+                        {
+                          "name": "orderId",
+                          "type": "String",
+                          "doc": ""
+                        },
+                        {
+                          "name": "amount",
+                          "type": "Money",
+                          "doc": ""
+                        },
+                        {
+                          "name": "capturedAt",
+                          "type": "String",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [],
+                  "wire": {
+                    "name": "ledger.PaymentCaptured",
+                    "channel": "payments.ledger.payment"
+                  }
+                },
+                {
+                  "id": "payments.ledger.payment.PaymentDeclined",
+                  "slug": "payment-declined",
+                  "name": "PaymentDeclined",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "The gateway refused, and it says why in its own words rather than ours.",
+                      "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/event/PaymentDeclined.java",
+                      "fields": [
+                        {
+                          "name": "paymentId",
+                          "type": "String",
+                          "doc": ""
+                        },
+                        {
+                          "name": "orderId",
+                          "type": "String",
+                          "doc": ""
+                        },
+                        {
+                          "name": "reason",
+                          "type": "String",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [],
+                  "wire": {
+                    "name": "ledger.PaymentDeclined",
+                    "channel": "payments.ledger.payment"
+                  }
+                }
+              ],
+              "lifecycle": {
+                "states": [
+                  "PENDING",
+                  "AUTHORIZED",
+                  "CAPTURED",
+                  "DECLINED",
+                  "VOIDED"
+                ],
+                "transitions": [
+                  {
+                    "from": "PENDING",
+                    "to": "AUTHORIZED",
+                    "on": "authorize",
+                    "emits": "payments.ledger.payment.PaymentAuthorized",
+                    "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:61"
+                  },
+                  {
+                    "from": "AUTHORIZED",
+                    "to": "CAPTURED",
+                    "on": "capture",
+                    "emits": "payments.ledger.payment.PaymentCaptured",
+                    "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:72"
+                  },
+                  {
+                    "from": "PENDING",
+                    "to": "DECLINED",
+                    "on": "decline",
+                    "emits": "payments.ledger.payment.PaymentDeclined",
+                    "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:78"
+                  },
+                  {
+                    "from": "AUTHORIZED",
+                    "to": "VOIDED",
+                    "on": "voidAuthorization",
+                    "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:84"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "payments.ledger.refund",
+              "slug": "refund",
+              "name": "Refund",
+              "readme": "Money going back, against a payment that was captured.",
+              "root": "Refund",
+              "entities": [
+                {
+                  "id": "payments.ledger.refund.refund",
+                  "slug": "refund",
+                  "name": "Refund",
+                  "doc": "Money going back, against a payment that was captured.",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "String",
+                      "doc": ""
+                    },
+                    {
+                      "name": "paymentId",
+                      "type": "String",
+                      "doc": ""
+                    },
+                    {
+                      "name": "orderId",
+                      "type": "String",
+                      "doc": ""
+                    },
+                    {
+                      "name": "amount",
+                      "type": "Money",
+                      "doc": ""
+                    },
+                    {
+                      "name": "reason",
+                      "type": "String",
+                      "doc": ""
+                    },
+                    {
+                      "name": "status",
+                      "type": "RefundStatus",
+                      "doc": ""
+                    },
+                    {
+                      "name": "settledAt",
+                      "type": "Instant",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [],
+              "operations": [
+                {
+                  "id": "IssueRefund",
+                  "kind": "command",
+                  "doc": "Sends money back against a captured payment, in full or in part.",
+                  "exposedBy": [
+                    "IssueRefund"
+                  ]
+                },
+                {
+                  "id": "ListRefunds",
+                  "kind": "query",
+                  "doc": "Every refund against one payment, newest first.",
+                  "exposedBy": [
+                    "ListRefunds"
+                  ]
+                }
+              ],
+              "events": [
+                {
+                  "id": "payments.ledger.refund.RefundIssued",
+                  "slug": "refund-issued",
+                  "name": "RefundIssued",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "Money went back to the customer, against a payment that had been captured.",
+                      "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/refund/event/RefundIssued.java",
+                      "fields": [
+                        {
+                          "name": "refundId",
+                          "type": "String",
+                          "doc": ""
+                        },
+                        {
+                          "name": "paymentId",
+                          "type": "String",
+                          "doc": ""
+                        },
+                        {
+                          "name": "orderId",
+                          "type": "String",
+                          "doc": ""
+                        },
+                        {
+                          "name": "amount",
+                          "type": "Money",
+                          "doc": ""
+                        },
+                        {
+                          "name": "reason",
+                          "type": "String",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [],
+                  "wire": {
+                    "name": "ledger.RefundIssued",
+                    "channel": "payments.ledger.refund"
+                  }
+                }
+              ],
+              "lifecycle": {
+                "states": [
+                  "REQUESTED",
+                  "ISSUED",
+                  "REJECTED"
+                ],
+                "transitions": [
+                  {
+                    "from": "REQUESTED",
+                    "to": "ISSUED",
+                    "on": "issue",
+                    "emits": "payments.ledger.refund.RefundIssued",
+                    "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/refund/Refund.java:41"
+                  },
+                  {
+                    "from": "REQUESTED",
+                    "to": "REJECTED",
+                    "on": "reject",
+                    "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/refund/Refund.java:47"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [
+    {
+      "id": "flow.ledger-authorize",
+      "slug": "ledger-authorize",
+      "name": "Authorize",
+      "summary": "Asks the gateway to hold the money for an order, and records either that it agreed or that it refused.",
+      "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java",
+      "owner": "payments",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "payments.ledger",
+          "kind": "service",
+          "context": "payments"
+        },
+        {
+          "id": "shop.oms",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "psp",
+          "kind": "unknown",
+          "context": null,
+          "label": "psp"
+        },
+        {
+          "id": "ledger-pg",
+          "kind": "store",
+          "context": "payments"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "payments.ledger",
+          "kind": "rpc",
+          "label": "Authorize",
+          "status": "declared",
+          "line": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:33"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "payments.ledger",
+          "to": "shop.oms",
+          "kind": "rpc",
+          "label": "GetOrder",
+          "status": "declared",
+          "ref": "shop.v1.OrderService/GetOrder",
+          "line": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:37"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "payments.ledger",
+          "to": "psp",
+          "kind": "rpc",
+          "label": "reserve",
+          "status": "unresolved",
+          "line": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:39"
+        },
+        {
+          "type": "alt",
+          "id": "alt6",
+          "branches": [
+            {
+              "title": "authCode.isEmpty()",
+              "steps": [
+                {
+                  "type": "step",
+                  "id": "s4",
+                  "from": "payments.ledger",
+                  "to": "ledger-pg",
+                  "kind": "call",
+                  "label": "save",
+                  "status": "declared",
+                  "line": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:43"
+                },
+                {
+                  "type": "step",
+                  "id": "s5",
+                  "from": "payments.ledger",
+                  "to": "bus",
+                  "kind": "event",
+                  "label": "PaymentDeclined",
+                  "status": "declared",
+                  "ref": "payments.ledger.payment.PaymentDeclined",
+                  "line": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:44"
+                }
+              ],
+              "terminal": true
+            },
+            {
+              "title": "otherwise",
+              "steps": []
+            }
+          ]
+        },
+        {
+          "type": "step",
+          "id": "s7",
+          "from": "payments.ledger",
+          "to": "ledger-pg",
+          "kind": "call",
+          "label": "save",
+          "status": "declared",
+          "line": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:49"
+        },
+        {
+          "type": "step",
+          "id": "s8",
+          "from": "payments.ledger",
+          "to": "bus",
+          "kind": "event",
+          "label": "PaymentAuthorized",
+          "status": "declared",
+          "ref": "payments.ledger.payment.PaymentAuthorized",
+          "line": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:50"
+        }
+      ]
+    },
+    {
+      "id": "flow.ledger-capture",
+      "slug": "ledger-capture",
+      "name": "Capture",
+      "summary": "Moves the money the gateway was holding, writes the pair of postings for it, and says so on the bus.",
+      "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java",
+      "owner": "payments",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "payments.ledger",
+          "kind": "service",
+          "context": "payments"
+        },
+        {
+          "id": "ledger-pg",
+          "kind": "store",
+          "context": "payments"
+        },
+        {
+          "id": "psp",
+          "kind": "unknown",
+          "context": null,
+          "label": "psp"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "payments.ledger",
+          "kind": "rpc",
+          "label": "Capture",
+          "status": "declared",
+          "line": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:48"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "payments.ledger",
+          "to": "ledger-pg",
+          "kind": "call",
+          "label": "byId",
+          "status": "declared",
+          "line": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:32"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "payments.ledger",
+          "to": "psp",
+          "kind": "rpc",
+          "label": "settle",
+          "status": "unresolved",
+          "line": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:33"
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "payments.ledger",
+          "to": "ledger-pg",
+          "kind": "call",
+          "label": "save",
+          "status": "declared",
+          "line": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:35"
+        },
+        {
+          "type": "step",
+          "id": "s5",
+          "from": "payments.ledger",
+          "to": "bus",
+          "kind": "event",
+          "label": "PaymentCaptured",
+          "status": "declared",
+          "ref": "payments.ledger.payment.PaymentCaptured",
+          "line": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:36"
+        }
+      ]
+    },
+    {
+      "id": "flow.ledger-get-payment",
+      "slug": "ledger-get-payment",
+      "name": "Get payment",
+      "summary": "Reads one payment, for whoever is asking what happened to the money.",
+      "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java",
+      "owner": "payments",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "payments.ledger",
+          "kind": "service",
+          "context": "payments"
+        },
+        {
+          "id": "ledger-pg",
+          "kind": "store",
+          "context": "payments"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "payments.ledger",
+          "kind": "rpc",
+          "label": "GetPayment",
+          "status": "declared",
+          "line": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:59"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "payments.ledger",
+          "to": "ledger-pg",
+          "kind": "call",
+          "label": "byId",
+          "status": "declared",
+          "line": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/GetPayment.java:20"
+        }
+      ]
+    },
+    {
+      "id": "flow.ledger-issue-refund",
+      "slug": "ledger-issue-refund",
+      "name": "Issue refund",
+      "summary": "Sends money back against a captured payment, in full or in part.",
+      "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/RefundGrpcService.java",
+      "owner": "payments",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "payments.ledger",
+          "kind": "service",
+          "context": "payments"
+        },
+        {
+          "id": "ledger-pg",
+          "kind": "store",
+          "context": "payments"
+        },
+        {
+          "id": "psp",
+          "kind": "unknown",
+          "context": null,
+          "label": "psp"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "payments.ledger",
+          "kind": "rpc",
+          "label": "IssueRefund",
+          "status": "declared",
+          "line": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/RefundGrpcService.java:29"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "payments.ledger",
+          "to": "ledger-pg",
+          "kind": "call",
+          "label": "byId",
+          "status": "declared",
+          "line": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:34"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "payments.ledger",
+          "to": "psp",
+          "kind": "rpc",
+          "label": "giveBack",
+          "status": "unresolved",
+          "line": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:36"
+        },
+        {
+          "type": "alt",
+          "id": "alt5",
+          "branches": [
+            {
+              "title": "reference.isEmpty()",
+              "steps": [
+                {
+                  "type": "step",
+                  "id": "s4",
+                  "from": "payments.ledger",
+                  "to": "ledger-pg",
+                  "kind": "call",
+                  "label": "save",
+                  "status": "declared",
+                  "line": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:40"
+                }
+              ],
+              "terminal": true
+            },
+            {
+              "title": "otherwise",
+              "steps": []
+            }
+          ]
+        },
+        {
+          "type": "step",
+          "id": "s6",
+          "from": "payments.ledger",
+          "to": "ledger-pg",
+          "kind": "call",
+          "label": "save",
+          "status": "declared",
+          "line": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:45"
+        },
+        {
+          "type": "step",
+          "id": "s7",
+          "from": "payments.ledger",
+          "to": "bus",
+          "kind": "event",
+          "label": "RefundIssued",
+          "status": "declared",
+          "ref": "payments.ledger.refund.RefundIssued",
+          "line": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:46"
+        }
+      ]
+    },
+    {
+      "id": "flow.ledger-list-refunds",
+      "slug": "ledger-list-refunds",
+      "name": "List refunds",
+      "summary": "Every refund against one payment, newest first.",
+      "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/RefundGrpcService.java",
+      "owner": "payments",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "payments.ledger",
+          "kind": "service",
+          "context": "payments"
+        },
+        {
+          "id": "ledger-pg",
+          "kind": "store",
+          "context": "payments"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "payments.ledger",
+          "kind": "rpc",
+          "label": "ListRefunds",
+          "status": "declared",
+          "line": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/RefundGrpcService.java:44"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "payments.ledger",
+          "to": "ledger-pg",
+          "kind": "call",
+          "label": "byPayment",
+          "status": "declared",
+          "line": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/ListRefunds.java:20"
+        }
+      ]
+    },
+    {
+      "id": "flow.ledger-void-payment-on-order-cancelled",
+      "slug": "ledger-void-payment-on-order-cancelled",
+      "name": "Void payment on order cancelled",
+      "summary": "Gives back what was held once the order it was held for is gone.",
+      "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/VoidPaymentOnOrderCancelled.java",
+      "owner": "payments",
+      "participants": [
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        },
+        {
+          "id": "payments.ledger",
+          "kind": "service",
+          "context": "payments"
+        },
+        {
+          "id": "ledger-pg",
+          "kind": "store",
+          "context": "payments"
+        },
+        {
+          "id": "psp",
+          "kind": "unknown",
+          "context": null,
+          "label": "psp"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "bus",
+          "to": "payments.ledger",
+          "kind": "event",
+          "label": "OrderCancelled",
+          "status": "declared",
+          "ref": "shop.oms.order.OrderCancelled",
+          "line": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/VoidPaymentOnOrderCancelled.java:25"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "payments.ledger",
+          "to": "ledger-pg",
+          "kind": "call",
+          "label": "byOrder",
+          "status": "declared",
+          "line": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/VoidPaymentOnOrderCancelled.java:27"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "payments.ledger",
+          "to": "psp",
+          "kind": "rpc",
+          "label": "release",
+          "status": "unresolved",
+          "line": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/VoidPaymentOnOrderCancelled.java:28"
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "payments.ledger",
+          "to": "ledger-pg",
+          "kind": "call",
+          "label": "save",
+          "status": "declared",
+          "line": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/VoidPaymentOnOrderCancelled.java:30"
+        }
+      ]
+    }
+  ],
+  "adrs": []
+}

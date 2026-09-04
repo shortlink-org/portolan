@@ -1,0 +1,29 @@
+spring:
+  application:
+    name: ledger
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5437/ledger}
+    username: ${DATABASE_USER:ledger}
+    password: ${DATABASE_PASSWORD:ledger}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+    # One package per aggregate, its migrations beside the adapter that uses
+    # them; the build copies them onto the classpath from there.
+    locations:
+      - classpath:org/portolan/payments/ledger/infrastructure/repository/payment/migrations
+      - classpath:org/portolan/payments/ledger/infrastructure/repository/refund/migrations
+    sql-migration-prefix: ""
+    sql-migration-separator: _
+
+grpc:
+  server:
+    port: ${GRPC_PORT:9092}
+
+ledger:
+  psp-url: ${PSP_URL:http://psp:8080}
+  oms-address: ${OMS_ADDRESS:oms:9090}
+  nats-url: ${NATS_URL:}

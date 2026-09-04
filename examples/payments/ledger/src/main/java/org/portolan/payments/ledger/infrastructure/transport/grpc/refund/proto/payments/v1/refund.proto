@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package payments.v1;
+
+option java_package = "org.portolan.payments.ledger.infrastructure.transport.grpc.refund.gen";
+option java_multiple_files = true;
+
+// Money going back. Its own service because it is its own aggregate: asked for
+// by somebody else, at another time, and there may be several per payment.
+service RefundService {
+  // Send money back against a captured payment, in full or in part.
+  rpc IssueRefund(IssueRefundRequest) returns (IssueRefundResponse);
+
+  // Every refund against one payment.
+  rpc ListRefunds(ListRefundsRequest) returns (ListRefundsResponse);
+}
+
+message IssueRefundRequest {
+  string refund_id = 1;
+  string payment_id = 2;
+  int64 amount_minor = 3;
+  string currency = 4;
+  string reason = 5;
+}
+
+message IssueRefundResponse {
+  string refund_id = 1;
+  bool issued = 2;
+}
+
+message ListRefundsRequest {
+  string payment_id = 1;
+}
+
+message ListRefundsResponse {
+  repeated RefundView refunds = 1;
+}
+
+message RefundView {
+  string refund_id = 1;
+  int64 amount_minor = 2;
+  string currency = 3;
+  string status = 4;
+}

@@ -28,16 +28,17 @@ type relation struct {
 	indexes []catalog.TableIndex
 }
 
-// readDDL turns one migration into the tables it creates, in the order it
-// creates them.
-func readDDL(sql, source string) ([]relation, []string, error) {
+// readDDL turns one migration into the tables and views it creates, in the
+// order it creates them.
+func readDDL(sql, source string) ([]relation, []view, []string, error) {
 	tree, err := parser.Parse(sql)
 	if err != nil {
-		return nil, nil, fmt.Errorf("%s: %w", source, err)
+		return nil, nil, nil, fmt.Errorf("%s: %w", source, err)
 	}
 
 	var (
 		out    []relation
+		views  []view
 		byName = map[string]int{}
 		unread []string
 	)
@@ -47,6 +48,9 @@ func readDDL(sql, source string) ([]relation, []string, error) {
 		case *nodes.CreateStmt:
 			byName[stmt.Relation.Relname] = len(out)
 			out = append(out, relation{table: readTable(stmt)})
+
+		case *nodes.ViewStmt:
+			views = append(views, readView(stmt, sql))
 
 		case *nodes.IndexStmt:
 			at, known := byName[stmt.Relation.Relname]
@@ -65,7 +69,7 @@ func readDDL(sql, source string) ([]relation, []string, error) {
 		}
 	}
 
-	return out, unread, nil
+	return out, views, unread, nil
 }
 
 func readTable(stmt *nodes.CreateStmt) catalog.Table {

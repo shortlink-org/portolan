@@ -1,0 +1,304 @@
+{
+  "generatedAt": "2026-09-05T05:17:52+07:00",
+  "commit": "ed2b42f",
+  "contexts": [
+    {
+      "id": "payments",
+      "slug": "payments",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "payments.ledger",
+          "slug": "ledger",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "stores": [
+            "payments.ledger.pg"
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": [],
+  "stores": [
+    {
+      "id": "payments.ledger.pg",
+      "slug": "pg",
+      "name": "Ledger database",
+      "kind": "postgres",
+      "owner": "payments.ledger",
+      "tables": [
+        {
+          "id": "payments.ledger.pg.payments",
+          "name": "payments",
+          "columns": [
+            {
+              "name": "id",
+              "type": "text",
+              "nullable": false,
+              "pk": true,
+              "maps": "Payment.id"
+            },
+            {
+              "name": "order_id",
+              "type": "text",
+              "nullable": false,
+              "maps": "Payment.orderId"
+            },
+            {
+              "name": "attempt",
+              "type": "integer",
+              "nullable": false,
+              "maps": "Payment.attempt"
+            },
+            {
+              "name": "amount_minor",
+              "type": "bigint",
+              "nullable": false,
+              "maps": "Payment.amountMinor"
+            },
+            {
+              "name": "currency",
+              "type": "char(3)",
+              "nullable": false,
+              "maps": "Payment.currency"
+            },
+            {
+              "name": "status",
+              "type": "text",
+              "nullable": false,
+              "maps": "Payment.status"
+            },
+            {
+              "name": "auth_code",
+              "type": "text",
+              "nullable": true,
+              "maps": "Payment.authCode"
+            },
+            {
+              "name": "created_at",
+              "type": "timestamptz",
+              "nullable": false,
+              "maps": "Payment.createdAt"
+            }
+          ],
+          "indexes": [
+            {
+              "name": "payments_status_idx",
+              "columns": [
+                "status"
+              ],
+              "unique": false
+            }
+          ],
+          "persists": {
+            "aggregate": "payments.ledger.payment"
+          },
+          "role": "aggregate-root"
+        },
+        {
+          "id": "payments.ledger.pg.postings",
+          "name": "postings",
+          "columns": [
+            {
+              "name": "id",
+              "type": "bigserial",
+              "nullable": false,
+              "pk": true,
+              "maps": "Posting.id"
+            },
+            {
+              "name": "payment_id",
+              "type": "text",
+              "nullable": false,
+              "fk": {
+                "table": "payments.ledger.pg.payments",
+                "column": "id",
+                "onDelete": "restrict"
+              },
+              "maps": "Posting.paymentId"
+            },
+            {
+              "name": "account",
+              "type": "text",
+              "nullable": false,
+              "maps": "Posting.account"
+            },
+            {
+              "name": "amount_minor",
+              "type": "bigint",
+              "nullable": false,
+              "maps": "Posting.amountMinor"
+            },
+            {
+              "name": "currency",
+              "type": "char(3)",
+              "nullable": false,
+              "maps": "Posting.currency"
+            },
+            {
+              "name": "written_at",
+              "type": "timestamptz",
+              "nullable": false,
+              "maps": "Posting.writtenAt"
+            }
+          ],
+          "indexes": [
+            {
+              "name": "postings_by_payment",
+              "columns": [
+                "payment_id"
+              ],
+              "unique": false
+            }
+          ],
+          "persists": {
+            "aggregate": "payments.ledger.payment"
+          },
+          "role": "child"
+        },
+        {
+          "id": "payments.ledger.pg.refunds",
+          "name": "refunds",
+          "columns": [
+            {
+              "name": "id",
+              "type": "text",
+              "nullable": false,
+              "pk": true,
+              "maps": "Refund.id"
+            },
+            {
+              "name": "payment_id",
+              "type": "text",
+              "nullable": false,
+              "fk": {
+                "table": "payments.ledger.pg.payments",
+                "column": "id",
+                "onDelete": "restrict"
+              },
+              "maps": "Refund.paymentId"
+            },
+            {
+              "name": "order_id",
+              "type": "text",
+              "nullable": false,
+              "maps": "Refund.orderId"
+            },
+            {
+              "name": "amount_minor",
+              "type": "bigint",
+              "nullable": false,
+              "maps": "Refund.amountMinor"
+            },
+            {
+              "name": "currency",
+              "type": "char(3)",
+              "nullable": false,
+              "maps": "Refund.currency"
+            },
+            {
+              "name": "reason",
+              "type": "text",
+              "nullable": false,
+              "maps": "Refund.reason"
+            },
+            {
+              "name": "status",
+              "type": "text",
+              "nullable": false,
+              "maps": "Refund.status"
+            },
+            {
+              "name": "settled_at",
+              "type": "timestamptz",
+              "nullable": true,
+              "maps": "Refund.settledAt"
+            }
+          ],
+          "indexes": [
+            {
+              "name": "refunds_by_payment",
+              "columns": [
+                "payment_id"
+              ],
+              "unique": false
+            }
+          ],
+          "persists": {
+            "aggregate": "payments.ledger.refund"
+          },
+          "role": "aggregate-root"
+        }
+      ],
+      "views": [
+        {
+          "id": "payments.ledger.pg.v_payment_state",
+          "name": "v_payment_state",
+          "columns": [
+            {
+              "name": "payment_id",
+              "type": "text",
+              "nullable": false,
+              "from": [
+                "payments.ledger.pg.payments.id"
+              ],
+              "maps": "Payment.id"
+            },
+            {
+              "name": "order_id",
+              "type": "text",
+              "nullable": false,
+              "from": [
+                "payments.ledger.pg.payments.order_id"
+              ],
+              "maps": "Payment.orderId"
+            },
+            {
+              "name": "status",
+              "type": "text",
+              "nullable": false,
+              "from": [
+                "payments.ledger.pg.payments.status"
+              ],
+              "maps": "Payment.status"
+            },
+            {
+              "name": "amount_minor",
+              "type": "bigint",
+              "nullable": false,
+              "from": [
+                "payments.ledger.pg.payments.amount_minor"
+              ],
+              "maps": "Payment.amountMinor"
+            },
+            {
+              "name": "refunded_minor",
+              "type": "bigint",
+              "nullable": false,
+              "from": [
+                "payments.ledger.pg.refunds.amount_minor"
+              ],
+              "maps": "Refund.amountMinor"
+            }
+          ],
+          "reads": [
+            "payments.ledger.pg.payments",
+            "payments.ledger.pg.refunds"
+          ],
+          "definition": "CREATE VIEW v_payment_state AS\nSELECT p.id           AS payment_id,\n       p.order_id     AS order_id,\n       p.status       AS status,\n       p.amount_minor AS amount_minor,\n       coalesce(sum(r.amount_minor), 0) AS refunded_minor\n  FROM payments p\n  LEFT JOIN refunds r ON r.payment_id = p.id AND r.status = 'ISSUED'\n GROUP BY p.id;",
+          "source": "src/main/java/org/portolan/payments/ledger/infrastructure/repository/refund/migrations/0002_payment_state.sql"
+        }
+      ],
+      "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/repository"
+    }
+  ]
+}

@@ -31,9 +31,9 @@ describe("catalogIdOf", () => {
   });
 
   it("undoes the substitution LikeC4 identifiers force", () => {
-    // "payments-v1" cannot be a LikeC4 identifier; "payments_v1" can.
-    expect(fqn("payments-v1")).toBe("payments_v1");
-    expect(catalogIdOf("payments_v1")).toBe("payments-v1");
+    // "psp-gateway" cannot be a LikeC4 identifier; "psp_gateway" can.
+    expect(fqn("psp-gateway")).toBe("psp_gateway");
+    expect(catalogIdOf("psp_gateway")).toBe("psp-gateway");
     expect(catalogIdOf("shop.pricing.price_list")).toBe(
       "shop.pricing.price-list",
     );

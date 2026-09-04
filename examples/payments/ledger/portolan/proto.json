@@ -1,0 +1,309 @@
+{
+  "generatedAt": "2026-09-05T05:17:52+07:00",
+  "commit": "ed2b42f",
+  "contexts": [
+    {
+      "id": "payments",
+      "slug": "payments",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "payments.ledger",
+          "slug": "ledger",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [
+            {
+              "id": "payments.v1.PaymentService",
+              "methods": [
+                {
+                  "name": "Authorize",
+                  "doc": "Ask the gateway to hold the money for an order.",
+                  "request": "AuthorizeRequest",
+                  "response": "AuthorizeResponse"
+                },
+                {
+                  "name": "Capture",
+                  "doc": "Move what is being held. Only an authorized payment can be captured.",
+                  "request": "CaptureRequest",
+                  "response": "CaptureResponse"
+                },
+                {
+                  "name": "GetPayment",
+                  "doc": "What happened to the money for one payment.",
+                  "request": "GetPaymentRequest",
+                  "response": "GetPaymentResponse"
+                }
+              ],
+              "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/proto/payments/v1/payment.proto:12",
+              "messages": [
+                {
+                  "name": "AuthorizeRequest",
+                  "fields": [
+                    {
+                      "name": "payment_id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "order_id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "amount_minor",
+                      "type": "int64",
+                      "doc": ""
+                    },
+                    {
+                      "name": "currency",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "AuthorizeResponse",
+                  "fields": [
+                    {
+                      "name": "payment_id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "auth_code",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "authorized",
+                      "type": "bool",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "CaptureRequest",
+                  "fields": [
+                    {
+                      "name": "payment_id",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "CaptureResponse",
+                  "fields": [
+                    {
+                      "name": "payment_id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "captured_at",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "GetPaymentRequest",
+                  "fields": [
+                    {
+                      "name": "payment_id",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "GetPaymentResponse",
+                  "fields": [
+                    {
+                      "name": "payment_id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "order_id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "status",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "amount_minor",
+                      "type": "int64",
+                      "doc": ""
+                    },
+                    {
+                      "name": "currency",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "module": "local:payments/payment"
+            },
+            {
+              "id": "payments.v1.RefundService",
+              "methods": [
+                {
+                  "name": "IssueRefund",
+                  "doc": "Send money back against a captured payment, in full or in part.",
+                  "request": "IssueRefundRequest",
+                  "response": "IssueRefundResponse"
+                },
+                {
+                  "name": "ListRefunds",
+                  "doc": "Every refund against one payment.",
+                  "request": "ListRefundsRequest",
+                  "response": "ListRefundsResponse"
+                }
+              ],
+              "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/proto/payments/v1/refund.proto:10",
+              "messages": [
+                {
+                  "name": "IssueRefundRequest",
+                  "fields": [
+                    {
+                      "name": "refund_id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "payment_id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "amount_minor",
+                      "type": "int64",
+                      "doc": ""
+                    },
+                    {
+                      "name": "currency",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "reason",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "IssueRefundResponse",
+                  "fields": [
+                    {
+                      "name": "refund_id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "issued",
+                      "type": "bool",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "ListRefundsRequest",
+                  "fields": [
+                    {
+                      "name": "payment_id",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "ListRefundsResponse",
+                  "fields": [
+                    {
+                      "name": "refunds",
+                      "type": "[]RefundView",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "RefundView",
+                  "fields": [
+                    {
+                      "name": "refund_id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "amount_minor",
+                      "type": "int64",
+                      "doc": ""
+                    },
+                    {
+                      "name": "currency",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "status",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "module": "local:payments/refund"
+            }
+          ],
+          "consumes": [],
+          "aggregates": [],
+          "modules": [
+            "local:payments/payment",
+            "local:payments/refund"
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": [],
+  "modules": [
+    {
+      "id": "local:payments/payment",
+      "slug": "payments-payment",
+      "name": "payments/payment",
+      "owner": "payments.ledger",
+      "packages": [
+        "payments.v1"
+      ],
+      "files": [
+        "payments/v1/payment.proto"
+      ],
+      "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/proto"
+    },
+    {
+      "id": "local:payments/refund",
+      "slug": "payments-refund",
+      "name": "payments/refund",
+      "owner": "payments.ledger",
+      "packages": [
+        "payments.v1"
+      ],
+      "files": [
+        "payments/v1/refund.proto"
+      ],
+      "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/proto"
+    }
+  ]
+}

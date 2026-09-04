@@ -414,6 +414,10 @@
                 }
               ],
               "terminal": true
+            },
+            {
+              "title": "otherwise",
+              "steps": []
             }
           ]
         },

@@ -76,7 +76,7 @@ func extract(in plugin.Input, opts Options) plugin.Response {
 	owner := opts.Context + "." + opts.Service
 	storeID := owner + "." + opts.Store
 
-	tables := readStore(root, opts.Repositories, storeID, owner, b)
+	tables, views := readStore(root, opts.Repositories, storeID, owner, b)
 	resolveForeignKeys(storeID, tables, b)
 	foreignSchemas(root, modulePath(root), b, storeID)
 
@@ -114,6 +114,7 @@ func extract(in plugin.Input, opts Options) plugin.Response {
 			Owner:  owner,
 			Source: filepath.ToSlash(filepath.Join(root, opts.Repositories)),
 			Tables: tables,
+			Views:  views,
 		}}
 	}
 

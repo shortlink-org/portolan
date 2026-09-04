@@ -20,8 +20,9 @@ import (
 // own package and each keeps its own schema_migrations table, but they are all
 // applied to the same database. The numbering is about who waits for whom, not
 // about where the rows live.
-func readStore(root, repositories, storeID, owner string, b *plugin.Builder) []catalog.Table {
+func readStore(root, repositories, storeID, owner string, b *plugin.Builder) ([]catalog.Table, []catalog.View) {
 	tables := []catalog.Table{}
+	views := []catalog.View{}
 
 	for _, aggregate := range subdirs(root, repositories) {
 		dir := path.Join(repositories, aggregate, "migrations")
@@ -53,6 +54,7 @@ func readStore(root, repositories, storeID, owner string, b *plugin.Builder) []c
 		for _, more := range []map[string]map[string]string{
 			readMapsTS(root, repositories, aggregate, b),
 			readMapsRust(root, repositories, aggregate, b),
+			readMapsJava(root, repositories, aggregate, b),
 		} {
 			for table, columns := range more {
 				if _, ok := mapped[table]; !ok {
@@ -72,7 +74,7 @@ func readStore(root, repositories, storeID, owner string, b *plugin.Builder) []c
 				continue
 			}
 
-			relations, unread, err := readDDL(string(sql), source)
+			relations, declared, unread, err := readDDL(string(sql), source)
 			if err != nil {
 				b.Warn(storeID, "could not parse "+source+": "+err.Error())
 
@@ -80,6 +82,10 @@ func readStore(root, repositories, storeID, owner string, b *plugin.Builder) []c
 			}
 			for _, note := range unread {
 				b.Warn(storeID, source+": "+note)
+			}
+
+			for _, declaredView := range declared {
+				views = append(views, declaredView.asCatalog(storeID, source, tables))
 			}
 
 			for _, relation := range relations {
@@ -122,7 +128,58 @@ func readStore(root, repositories, storeID, owner string, b *plugin.Builder) []c
 		}
 	}
 
-	return tables
+	// A view is read where it is written, which may be before the tables it
+	// reads are: the second pass is what lets a column take its type from the
+	// column it comes from wherever that was created.
+	for i := range views {
+		views[i] = resolveView(views[i], storeID, tables)
+	}
+
+	return tables, views
+}
+
+// resolveView fills in what a view could not know when it was read: the type,
+// nullability and mapping of every column that comes from exactly one place.
+func resolveView(held catalog.View, storeID string, tables []catalog.Table) catalog.View {
+	for i := range held.Columns {
+		column := &held.Columns[i]
+		if column.Type != "" || len(column.From) != 1 {
+			continue
+		}
+		at := strings.LastIndex(column.From[0], ".")
+		if at < 0 {
+			continue
+		}
+		if source := columnOf(tables, column.From[0][:at], column.From[0][at+1:]); source != nil {
+			column.Type = source.Type
+			column.Nullable = source.Nullable
+			column.Maps = source.Maps
+		}
+	}
+	if held.Persists == nil {
+		persists := ""
+		for _, read := range held.Reads {
+			table := tableOf(tables, read)
+			if table == nil || table.Persists == nil {
+				continue
+			}
+			if persists == "" {
+				persists = table.Persists.Aggregate
+
+				continue
+			}
+			if persists != table.Persists.Aggregate {
+				persists = ""
+
+				break
+			}
+		}
+		if persists != "" {
+			held.Persists = &catalog.Persists{Aggregate: persists}
+		}
+	}
+
+	return held
 }
 
 // isOutbox says whether a table is the outbox by its name, which is the one

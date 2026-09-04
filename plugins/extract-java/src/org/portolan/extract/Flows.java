@@ -356,12 +356,20 @@ final class Flows {
             }
             current = null;
         }
+        boolean holdsAHop = false;
         for (Object arm : branches) {
-            if (!((List<?>) ((Map<?, ?>) arm).get("steps")).isEmpty()) {
-                d.addAlt(branches);
-                return;
-            }
+            holdsAHop |= !((List<?>) ((Map<?, ?>) arm).get("steps")).isEmpty();
         }
+        if (!holdsAHop) {
+            return;
+        }
+        // An alt states a choice, and a choice has at least two outcomes. An
+        // `if` with no `else` has a second one - nothing happens - and saying
+        // so is what keeps the diagram from reading as "this always runs".
+        if (branches.size() == 1) {
+            branches.add(Catalog.branch("otherwise", List.of(), false));
+        }
+        d.addAlt(branches);
     }
 
     private static Tree block(StatementTree statement) {

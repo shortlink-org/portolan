@@ -1,6 +1,6 @@
 # Delivery Core
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `delivery.core`
 - **Context:** [Delivery](../README.md)
@@ -73,7 +73,7 @@ message, which is how the shipment tracking flow was derived from traces.
 | Call | Peer | Status | Source |
 | --- | --- | --- | --- |
 | `shop.v1.OrderService/GetOrder` | [shop.oms](../../shop/oms/README.md) | verified | `internal/delivery/client/orders.go:31` |
-| `payments.v1.Payments/GetPayment` | [payments.ledger](../../payments/ledger/README.md) | declared | `internal/delivery/client/payments.go:18` |
+| `payments.v1.PaymentService/GetPayment` | [payments.ledger](../../payments/ledger/README.md) | declared | `internal/delivery/client/payments.go:18` |
 
 ## Publishes
 

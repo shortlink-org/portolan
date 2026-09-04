@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package payments.v1;
+
+option java_package = "org.portolan.payments.ledger.infrastructure.transport.grpc.payment.gen";
+option java_multiple_files = true;
+
+// What the rest of the estate may ask the ledger to do with money for an order.
+//
+// Nothing here decides *whether* to charge - that is the order's business. The
+// ledger is asked, and it records what happened either way.
+service PaymentService {
+  // Ask the gateway to hold the money for an order.
+  rpc Authorize(AuthorizeRequest) returns (AuthorizeResponse);
+
+  // Move what is being held. Only an authorized payment can be captured.
+  rpc Capture(CaptureRequest) returns (CaptureResponse);
+
+  // What happened to the money for one payment.
+  rpc GetPayment(GetPaymentRequest) returns (GetPaymentResponse);
+}
+
+message AuthorizeRequest {
+  string payment_id = 1;
+  string order_id = 2;
+  int64 amount_minor = 3;
+  string currency = 4;
+}
+
+message AuthorizeResponse {
+  string payment_id = 1;
+  string auth_code = 2;
+  bool authorized = 3;
+}
+
+message CaptureRequest {
+  string payment_id = 1;
+}
+
+message CaptureResponse {
+  string payment_id = 1;
+  string captured_at = 2;
+}
+
+message GetPaymentRequest {
+  string payment_id = 1;
+}
+
+message GetPaymentResponse {
+  string payment_id = 1;
+  string order_id = 2;
+  string status = 3;
+  int64 amount_minor = 4;
+  string currency = 5;
+}

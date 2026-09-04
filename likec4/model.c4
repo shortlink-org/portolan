@@ -9,10 +9,11 @@ model {
   client = actor 'client'
   auth_pg = store 'auth-pg'
   risk_v1 = unknown 'risk.v1'
+  psp = unknown 'psp'
+  ledger_pg = store 'ledger-pg'
   billing_pg = store 'billing-pg'
   cart_pg = store 'cart-pg'
   oms_pg = store 'oms-pg'
-  payments_v1 = unknown 'payments.v1'
 
   shop = context 'Shop' {
     description 'Everything the customer touches before money moves: baskets, orders and prices.'
@@ -105,39 +106,12 @@ for: whoever moves money listens for this.'
       }
     }
   }
-  payments = context 'Payments' {
-    description 'A double-entry ledger and the PSP integrations that feed it. Nothing here knows what an order is for.'
-    style { color ctx1 }
-    ledger = service 'Ledger' {
-      description 'github.com/acme/payments/services/ledger'
-      style { color ctx1 }
-      payment = aggregate 'Payment' {
-        PaymentAuthorized = event 'PaymentAuthorized' {
-          description 'Funds reserved with the PSP. No money has moved yet.'
-        }
-        PaymentCaptured = event 'PaymentCaptured' {
-          description 'Reserved funds settled. This is the event fulfilment reacts to.'
-        }
-        PaymentDeclined = event 'PaymentDeclined' {
-          description 'The PSP refused the authorisation or the capture.'
-        }
-      }
-      refund = aggregate 'Refund' {
-        RefundIssued = event 'RefundIssued' {
-          description 'A compensating posting pair against a captured payment.'
-        }
-      }
-      pg = store 'Ledger database' {
-        description 'postgres'
-      }
-    }
-  }
   delivery = context 'Delivery' {
     description 'Routes, parcels and proof of delivery. Reacts to captured payments, never to placed orders.'
-    style { color ctx2 }
+    style { color ctx1 }
     core = service 'Delivery Core' {
       description 'github.com/acme/delivery/services/core'
-      style { color ctx2 }
+      style { color ctx1 }
       shipment = aggregate 'Shipment' {
         ShipmentDispatched = event 'ShipmentDispatched' {
           description 'A parcel physically left the depot.'
@@ -158,10 +132,10 @@ for: whoever moves money listens for this.'
   }
   auth = context 'Authentication' {
     description 'Who someone is, and whether they are still logged in. The only service in the estate that stores credentials, and the only one allowed to mint or revoke a session.'
-    style { color ctx3 }
+    style { color ctx2 }
     auth = service 'Authentication & Sessions' {
       description 'github.com/shortlink-org/portolan/examples/auth'
-      style { color ctx3 }
+      style { color ctx2 }
       lockout = aggregate 'Lockout' {
         AccountLocked = event 'AccountLocked' {
           description 'AccountLocked is published when an account starts refusing logins because of too many wrong passwords in a row. Until says when it stops.'
@@ -188,6 +162,33 @@ for: whoever moves money listens for this.'
       }
     }
   }
+  payments = context 'Payments' {
+    description 'Money, and the record of every movement of it. Nothing here decides whether to charge - it is asked, and it writes down what happened either way.'
+    style { color ctx3 }
+    ledger = service 'Ledger' {
+      description 'github.com/shortlink-org/portolan/examples/payments/ledger'
+      style { color ctx3 }
+      payment = aggregate 'Payment' {
+        PaymentAuthorized = event 'PaymentAuthorized' {
+          description 'The gateway agreed to hold the money. Nothing has moved yet.'
+        }
+        PaymentCaptured = event 'PaymentCaptured' {
+          description 'The money moved. Whoever is owed something for this order - the invoice, the warehouse - waits for this one and nothing earlier.'
+        }
+        PaymentDeclined = event 'PaymentDeclined' {
+          description 'The gateway refused, and it says why in its own words rather than ours.'
+        }
+      }
+      refund = aggregate 'Refund' {
+        RefundIssued = event 'RefundIssued' {
+          description 'Money went back to the customer, against a payment that had been captured.'
+        }
+      }
+      pg = store 'Ledger database' {
+        description 'postgres'
+      }
+    }
+  }
 
   shop.pricing -> shop.oms 'GetOrder' {
     style { color verified  line solid  head normal }
@@ -207,35 +208,11 @@ for: whoever moves money listens for this.'
   shop.cart -> shop.pricing 'GetQuote' {
     style { color declared  line dashed  head normal }
   }
-  payments.ledger -> delivery.core 'PaymentAuthorized' {
+  shop.oms -> payments.ledger 'OrderCancelled' {
     style { color declared  line dashed  head onormal }
   }
-  payments.ledger -> delivery.core 'PaymentCaptured' {
-    style { color verified  line solid  head onormal }
-  }
-  payments.ledger -> shop.billing 'PaymentCaptured' {
-    style { color declared  line dashed  head onormal }
-  }
-  payments.ledger -> shop.oms 'PaymentDeclined' {
-    style { color declared  line dashed  head onormal }
-  }
-  payments.ledger -> delivery.core 'RefundIssued' {
-    style { color declared  line dashed  head onormal }
-  }
-  payments.ledger -> shop.oms 'GetOrder' {
-    style { color verified  line solid  head normal }
-  }
-  payments.ledger -> psp_gateway 'Create' {
-    style { color unresolved  line dotted  head normal }
-  }
-  payments.ledger -> psp_gateway 'Capture' {
-    style { color unresolved  line dotted  head normal }
-  }
-  payments.ledger -> psp_gateway 'Refund' {
-    style { color unresolved  line dotted  head normal }
-  }
-  payments.ledger -> psp_gateway 'Void' {
-    style { color unresolved  line dotted  head normal }
+  shop.oms -> payments.ledger 'Authorize' {
+    style { color declared  line dashed  head normal }
   }
   delivery.core -> analytics_sink 'ShipmentDispatched' {
     style { color declared  line dashed  head onormal }
@@ -252,10 +229,25 @@ for: whoever moves money listens for this.'
   delivery.core -> payments.ledger 'GetPayment' {
     style { color declared  line dashed  head normal }
   }
-  payments.ledger.payment -> payments.ledger.pg 'journal_entries' {
-    style { color declared  line dashed  head normal }
+  payments.ledger -> shop.billing 'PaymentCaptured' {
+    style { color declared  line dashed  head onormal }
   }
-  payments.ledger.refund -> payments.ledger.pg 'refunds' {
+  payments.ledger -> shop.oms 'PaymentDeclined' {
+    style { color declared  line dashed  head onormal }
+  }
+  payments.ledger -> psp 'giveBack' {
+    style { color unresolved  line dotted  head normal }
+  }
+  payments.ledger -> psp 'release' {
+    style { color unresolved  line dotted  head normal }
+  }
+  payments.ledger -> psp 'reserve' {
+    style { color unresolved  line dotted  head normal }
+  }
+  payments.ledger -> psp 'settle' {
+    style { color unresolved  line dotted  head normal }
+  }
+  payments.ledger -> shop.oms 'GetOrder' {
     style { color declared  line dashed  head normal }
   }
   delivery.core.shipment -> delivery.core.pg 'packages, parcels' {
@@ -273,6 +265,12 @@ for: whoever moves money listens for this.'
   auth.auth.user -> auth.auth.pg 'users' {
     style { color declared  line dashed  head normal }
   }
+  payments.ledger.payment -> payments.ledger.pg 'payments, postings' {
+    style { color declared  line dashed  head normal }
+  }
+  payments.ledger.refund -> payments.ledger.pg 'refunds' {
+    style { color declared  line dashed  head normal }
+  }
   shop.billing.invoice -> shop.billing.pg 'invoices, invoice_lines' {
     style { color declared  line dashed  head normal }
   }
@@ -287,6 +285,9 @@ for: whoever moves money listens for this.'
   }
   client -> auth.auth '6 flows' {
     style { color verified  line solid  head normal }
+  }
+  client -> payments.ledger '5 flows' {
+    style { color declared  line dashed  head normal }
   }
   client -> shop.billing '4 flows' {
     style { color declared  line dashed  head normal }
