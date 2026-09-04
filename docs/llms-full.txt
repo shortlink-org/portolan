@@ -1,0 +1,4858 @@
+*llms-full.txt: every page of Example estate, one after another. A page begins with a comment naming its file, and the links inside it are relative to that file's directory.*
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+<!-- README.md -->
+
+# Example estate
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+
+## Contexts
+
+| Context | Class | Services | Summary |
+| --- | --- | --- | --- |
+| [Shop](shop/README.md) | core | [Pricing](shop/pricing/README.md), [Billing](shop/billing/README.md), [Shopping Cart](shop/cart/README.md), [Order Management](shop/oms/README.md) | Everything the customer touches before money moves: baskets, orders and prices. |
+| [Payments](payments/README.md) | core | [Ledger](payments/ledger/README.md) | A double-entry ledger and the PSP integrations that feed it. Nothing here knows what an order is for. |
+| [Delivery](delivery/README.md) | supporting | [Delivery Core](delivery/core/README.md) | Routes, parcels and proof of delivery. Reacts to captured payments, never to placed orders. |
+| [Authentication](auth/README.md) | core | [Authentication & Sessions](auth/auth/README.md) | Who someone is, and whether they are still logged in. The only service in the estate that stores credentials, and the only one allowed to mint or revoke a session. |
+
+## Flows
+
+| Flow | Owner | Summary |
+| --- | --- | --- |
+| [Gateway webhook](flows/gateway-webhook.md) | [payments](payments/README.md) | The gateway's side of the story, arriving after the fact. One signed callback, four ways to read it: a replay to ignore, a capture to record, a charge with no local payment to adopt, and a failure to pass on. The adopt branch is the only repair for a checkout that timed out mid-authorization, and it is the one branch no test covers. |
+| [Quote expired on checkout](flows/quote-expired-on-checkout.md) | [shop](shop/README.md) | A basket that has been checked out is a basket whose quote is spent. Pricing hears the event the cart publishes and expires the quote it issued for that basket, so a second checkout of the same basket has to be priced again rather than reuse a number the price list may have moved on from. |
+| [Shipment tracking](flows/shipment-tracking.md) | [delivery](delivery/README.md) | Reconstructed from production traces over a 24 hour window: the tracking page, the carrier's scan webhook, and what each scan code sets off. Two things only the traces know about — a consumer no repository accounts for, and an exception path whose reader emits no spans at all. |
+| [Change password](flows/auth-change-password.md) | [auth](auth/README.md) | Replaces the password of a user, given the current one. |
+| [Get user](flows/auth-get-user.md) | [auth](auth/README.md) | Reads a user by id. |
+| [Login](flows/auth-login.md) | [auth](auth/README.md) | Turns credentials into a session. |
+| [Logout](flows/auth-logout.md) | [auth](auth/README.md) | Ends the session behind a token. |
+| [Register user](flows/auth-register-user.md) | [auth](auth/README.md) | Creates a user from an email address and a password. |
+| [Validate session](flows/auth-validate-session.md) | [auth](auth/README.md) | Resolves a token to a live session: who is calling, and how long the answer stays good. |
+| [Revoke sessions on password change](flows/auth-revoke-sessions-on-password-change.md) | [auth](auth/README.md) | Ends the sessions issued against a password that has just been replaced. |
+| [Invoice create](flows/billing-invoice-create.md) | [shop](shop/README.md) | Draws up a draft invoice for an order, with a line for each thing sold. |
+| [Invoice destroy](flows/billing-invoice-destroy.md) | [shop](shop/README.md) | Ends an invoice nobody is going to pay. |
+| [Invoice issue](flows/billing-invoice-issue.md) | [shop](shop/README.md) | Confirms the session, freezes the invoice and asks the customer to pay. |
+| [Invoice retrieve](flows/billing-invoice-retrieve.md) | [shop](shop/README.md) | Reads one invoice and the lines it is made of. |
+| [Close invoice on payment](flows/billing-close-invoice-on-payment.md) | [shop](shop/README.md) | Closes the invoice for an order once the ledger says the money arrived. |
+| [Add item](flows/cart-add-item.md) | [shop](shop/README.md) | — |
+| [Checkout](flows/cart-checkout.md) | [shop](shop/README.md) | — |
+| [Create basket](flows/cart-create-basket.md) | [shop](shop/README.md) | — |
+| [Get basket](flows/cart-get-basket.md) | [shop](shop/README.md) | — |
+| [Merge baskets](flows/cart-merge-baskets.md) | [shop](shop/README.md) | — |
+| [Remove item](flows/cart-remove-item.md) | [shop](shop/README.md) | — |
+| [Cancel order](flows/oms-cancel-order.md) | [shop](shop/README.md) | Answers with the order as it is now; a cancelled order is still found. |
+| [Get order](flows/oms-get-order.md) | [shop](shop/README.md) | Answers with the order as it is now; a cancelled order is still found. |
+| [Confirm order on payment authorized](flows/oms-confirm-order-on-payment-authorized.md) | [shop](shop/README.md) | Confirms the order once the payment for it is authorised (ADR oms.0005). Declared ahead of its publisher: nothing in the estate says `payments.PaymentAuthorized` yet, and the catalog says so. |
+| [Place order on basket checked out](flows/oms-place-order-on-basket-checked-out.md) | [shop](shop/README.md) | Places the order the basket was checked out for (ADR oms.0002). The order takes the basket's id, so the same checkout heard twice places one order. |
+
+## Decisions
+
+| ADR | Title | Status | Date |
+| --- | --- | --- | --- |
+| [org.0001](adr/org.0001.md) | Client proto copies live in the consumer's infrastructure layer | accepted | 2025-03-11 |
+| [org.0002](adr/org.0002.md) | Domain event schema version is encoded in the package path (events/v1) | accepted | 2025-05-02 |
+| [payments.0004](adr/payments.0004.md) | Journal entries are idempotent by (order_id, attempt) | proposed | 2026-02-09 |
+
+<!-- types.md -->
+
+# Shared types
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+Types named by more than one aggregate, event or message. A field that
+refers to one of these is knowably the same shape everywhere it appears.
+
+## Address
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `line1` | `string` | Street and number. |
+| `line2` | `string` | Optional second line. |
+| `city` | `string` | City or locality. |
+| `postcode` | `string` | Postal code, unvalidated. |
+| `country` | `string` | ISO 3166-1 alpha-2. |
+
+## CustomerRef
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `id` | `string` | Stable customer identifier. |
+| `segment` | `string` | Pricing segment at time of capture. |
+
+## FxRate
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `base` | `string` | ISO 4217 code the rate converts from — the currency the customer was quoted in. |
+| `quote` | `string` | ISO 4217 code the rate converts to — the currency the acquirer settles in. |
+| `rateMicros` | `int64` | Rate scaled by 1e6. An integer on purpose: a float rate cannot be reproduced exactly from a stored posting. |
+| `quotedAt` | `time.Time` | When the rate was taken. A rate older than 60 seconds is refused rather than used. |
+| `source` | `string` | `acquirer` for anything that moves money, `ecb-daily` for reporting only. The two disagree by a spread and must never be mixed. |
+
+## GatewayRef
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `provider` | `string` | Which gateway owns the id. Only `psp` today; the column exists because a second acquirer is already scheduled. |
+| `chargeId` | `string` | The gateway's own id for the charge. The one handle that survives a restore of our database. |
+| `eventId` | `string` | Id of the webhook event that last touched this charge. This is what the dedup table is keyed on. |
+
+## LineItem
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `sku` | `string` | Catalog SKU at the time of ordering. |
+| `quantity` | `int32` | Units ordered; always positive. |
+| `unitPrice` | [`Money`](types.md#money) | Price per unit, net of tax. |
+
+## Money
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `amountMinor` | `int64` | Amount in the minor unit of the currency. |
+| `currency` | `string` | ISO 4217 code, upper case. |
+
+<!-- shop/README.md -->
+
+# Shop
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `shop`
+- **Classification:** core
+
+Everything the customer touches before money moves: baskets, orders and prices.
+
+## Services
+
+| Service | Path | Aggregates |
+| --- | --- | --- |
+| [Pricing](pricing/README.md) | `services/pricing` | Quote, PriceList |
+| [Billing](billing/README.md) | `examples/shop/billing` | Invoice |
+| [Shopping Cart](cart/README.md) | `examples/shop/cart` | Basket |
+| [Order Management](oms/README.md) | `examples/shop/oms` | Order |
+
+<!-- shop/pricing/README.md -->
+
+# Pricing
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `shop.pricing`
+- **Context:** [Shop](../README.md)
+- **Repo:** `github.com/acme/shop`
+- **Path:** `services/pricing`
+
+## Pricing Service
+
+`shop.pricing` answers one question: what should this basket cost for this
+customer, right now. It is a pure read model over price lists, promotions and
+customer agreements. It never writes order state.
+
+### Design
+
+Quotes are immutable and time-boxed. A quote is issued with an explicit
+expiry; the OMS must re-quote rather than reuse an expired one. This keeps
+pricing decisions auditable long after the price list has changed.
+
+```mermaid
+flowchart LR
+    A[GetQuote] --> B{customer agreement?}
+    B -- yes --> C[Contract price list]
+    B -- no --> D[Public price list]
+    C --> E[Apply promotions]
+    D --> E
+    E --> F[QuoteIssued]
+```
+
+### Price list precedence
+
+| Rank | Source              | Scope             | Overrides            |
+| ---- | ------------------- | ----------------- | -------------------- |
+| 1    | Contract price list | One customer      | Everything below     |
+| 2    | Regional list       | One country       | Public list          |
+| 3    | Public list         | Everyone          | Nothing              |
+
+Promotions are applied after precedence is resolved and are never stacked more
+than two deep.
+
+### Aggregates
+
+- `quote` — an issued quote and its expiry. Emits `QuoteIssued` and
+  `QuoteExpired`.
+- `price-list` — the price list itself. It is edited through an internal admin
+  tool that writes directly to the store, so this aggregate currently publishes
+  no domain events. That is a known gap, not a design choice.
+
+### Caching
+
+Quotes are cached for 60 seconds keyed by basket hash and customer segment. The
+cache is deliberately short: a stale quote is worse than a slow one.
+
+## Aggregates
+
+| Aggregate | Root | Commands | Queries | Events |
+| --- | --- | --- | --- | --- |
+| [Quote](aggregates/quote.md) | `Quote` | 2 commands | 1 query | 2 events |
+| [PriceList](aggregates/price-list.md) | `PriceList` | 2 commands | 1 query | 0 events |
+
+## Provides
+
+**`shop.v1.Pricing`** — `proto/shop/v1/pricing.proto:9`
+
+- `GetQuote`
+- `ListPriceLists`
+
+<details><summary>GetQuoteRequest</summary>
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `items` | [`LineItem`](../../types.md#lineitem) | Lines to price. |
+| `customer` | [`CustomerRef`](../../types.md#customerref) | Segment drives the discount. |
+
+</details>
+
+<details><summary>GetQuoteResponse</summary>
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `quoteId` | `string` | Quote id, to be echoed at checkout. |
+| `total` | [`Money`](../../types.md#money) | Quoted total. |
+
+</details>
+
+## Consumes
+
+| Call | Peer | Status | Source |
+| --- | --- | --- | --- |
+| `shop.v1.OrderService/GetOrder` | [shop.oms](../oms/README.md) | verified | `internal/pricing/client/orders.go:19` |
+
+## Publishes
+
+| Event | Latest |
+| --- | --- |
+| [QuoteIssued](aggregates/quote.md) | v1 |
+| [QuoteExpired](aggregates/quote.md) | v1 |
+
+## Stores
+
+| Store | Kind | Access | Tables |
+| --- | --- | --- | --- |
+| [Price list cache](stores/cache.md) | redis | owns | 0 tables |
+
+<!-- shop/pricing/aggregates/quote.md -->
+
+# Quote
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `shop.pricing.quote`
+- **Service:** [Pricing](../README.md)
+- **Root:** `Quote`
+
+An immutable, time-boxed price for one basket and one customer.
+
+## Currency
+
+Quoting never converts. The customer's currency selects the price list, and a
+currency no active list covers is a refusal — an FX rate belongs to the
+moment money moves, not to the moment a price is shown.
+
+## Why immutable
+
+A quote is a promise. Re-deriving it later would give a different answer once
+price lists change, which makes disputes unwinnable. So the quote is stored
+whole, including which price list won and which promotions applied.
+
+## Commands
+
+| Command      | Notes                                       |
+| ------------ | ------------------------------------------- |
+| `IssueQuote` | Computes precedence and applies promotions  |
+| `ExpireQuote`| Called by the sweeper, never by a customer  |
+
+## Queries
+
+`GetQuote` returns the stored quote verbatim, including expired ones, so
+support can explain what a customer was shown.
+
+## Entities
+
+### Quote — aggregate root
+
+A price offered for a basket, valid until it expires.
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `id` | `string` | Quote id. |
+| `basketId` | `string` | Basket the quote was calculated for. |
+| `lines` | `[]QuotedLine` | Per-SKU pricing. |
+| `total` | [`Money`](../../../types.md#money) | Quoted total. |
+| `expiresAt` | `time.Time` | After this, the quote is void. |
+| `currency` | `string` | ISO 4217, taken from the price list that won. A basket in a currency no active list covers is refused, not converted. |
+| `priceListId` | `string` | Which list produced these prices. Stored so a disputed quote can be re-read against the list as it was. |
+
+## Value objects
+
+### Money
+
+An amount in a single currency.
+
+Shared type [`Money`](../../../types.md#money).
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `amountMinor` | `int64` | Amount in the minor unit of the currency. |
+| `currency` | `string` | ISO 4217 code, upper case. |
+
+### QuotedLine
+
+The price arrived at for one SKU, with the discount that produced it. Local to pricing; nothing outside quotes uses this shape.
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `sku` | `string` | SKU priced. |
+| `unitPrice` | [`Money`](../../../types.md#money) | Price per unit after discount. |
+| `discountMinor` | `int64` | Discount applied, in the minor unit. |
+| `rule` | `string` | Id of the pricing rule that fired. |
+
+## Operations
+
+| Operation | Kind | Doc |
+| --- | --- | --- |
+| `IssueQuote` | command | Prices a basket against the list matching the customer's segment and currency. A basket in a currency no active list covers is refused rather than converted. |
+| `ExpireQuote` | command | Marks a quote past its validity. Runs on a sweep rather than on read, so an expired quote is briefly still readable. |
+| `GetQuote` | query | One quote, whole: the lines, which price list won, and which rule produced each discount. |
+
+## Events
+
+### QuoteIssued
+
+`shop.pricing.quote.QuoteIssued`
+
+#### v1 — current
+
+A priced, time-boxed answer for one basket and one customer.
+
+Source: `internal/pricing/domain/quote/events.go:27`
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `quoteId` | `string` | Identifier of the issued quote. |
+| `basketId` | `string` | Basket the quote was computed for. |
+| `total` | [`Money`](../../../types.md#money) | Quoted total including promotions. |
+| `priceListId` | `string` | Price list that won precedence. |
+| `expiresAt` | `time.Time` | After this instant the quote must not be used. |
+
+### QuoteExpired
+
+`shop.pricing.quote.QuoteExpired`
+
+#### v1 — current
+
+A quote passed its expiry without being consumed.
+
+Source: `internal/pricing/domain/quote/events.go:61`
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `quoteId` | `string` | Quote that expired. |
+| `expiredAt` | `time.Time` | Instant the sweeper observed the expiry. |
+
+<!-- shop/pricing/aggregates/price-list.md -->
+
+# PriceList
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `shop.pricing.price-list`
+- **Service:** [Pricing](../README.md)
+- **Root:** `PriceList`
+
+The set of prices that quoting reads from. Contract, regional and public lists
+share this aggregate and differ only by scope.
+
+## No events
+
+This aggregate publishes no domain events. Price lists are edited through an
+internal admin tool that writes to the store directly, bypassing the domain
+layer entirely.
+
+That is a gap, not a decision. Anything that wants to react to a price change
+currently polls. Emitting `PriceListPublished` is tracked as work, and until it
+exists this page will keep showing an empty event list.
+
+## Commands
+
+| Command             | Notes                                    |
+| ------------------- | ---------------------------------------- |
+| `ImportPriceList`   | Bulk CSV import, validated then swapped  |
+| `ArchivePriceList`  | Soft delete; quoting stops selecting it  |
+
+## Queries
+
+`ListPriceLists` is the only read path and is heavily cached.
+
+## Entities
+
+### PriceList — aggregate root
+
+A dated set of prices, imported wholesale from the merchandising system.
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `id` | `string` | Price list id. |
+| `name` | `string` | Human name, as given by merchandising. |
+| `validFrom` | `time.Time` | First day the list applies. |
+| `rows` | `[]PriceRow` | One row per SKU. |
+| `currency` | `string` | ISO 4217. A list prices in exactly one currency; a second currency is a second list, not a conversion. |
+
+### PriceRow
+
+One SKU's price inside a list. Identified by SKU within its list.
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `sku` | `string` | SKU priced. |
+| `price` | [`Money`](../../../types.md#money) | List price, net of tax. |
+
+## Value objects
+
+### Money
+
+An amount in a single currency.
+
+Shared type [`Money`](../../../types.md#money).
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `amountMinor` | `int64` | Amount in the minor unit of the currency. |
+| `currency` | `string` | ISO 4217 code, upper case. |
+
+## Operations
+
+| Operation | Kind | Doc |
+| --- | --- | --- |
+| `ImportPriceList` | command | Replaces a list wholesale from the merchandising export. A partial import is rejected outright — half a price list is worse than a stale one. |
+| `ArchivePriceList` | command | Takes a list out of quoting without deleting it. Quotes already issued from it stay valid until they expire. |
+| `ListPriceLists` | query | Active lists with their currency and validity window. The only pricing query the storefront may reach directly. |
+
+<!-- shop/billing/README.md -->
+
+# Billing
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `shop.billing`
+- **Context:** [Shop](../README.md)
+- **Repo:** `github.com/shortlink-org/portolan`
+- **Path:** `examples/shop/billing`
+
+Service `billing` — bounded context **shop**. Python on Django.
+
+Owns the invoice: what a customer is asked to pay for one order, and what
+happens to it between being drawn up and being closed. It does not move money.
+`payments.ledger` does that; billing records what was owed, what it was for,
+and when it was settled.
+
+## What it does
+
+- Draws up a draft invoice, with its lines, against an order.
+- Issues it: confirms the session with `auth`, freezes the lines, gives the
+  invoice the number the customer will quote, and says `InvoiceIssued`.
+- Closes it when the ledger says the money arrived — it listens for
+  `PaymentCaptured` and answers with `InvoicePaid`.
+- Voids an invoice nobody is going to pay.
+
+## What it does not do
+
+Does not authorise, capture or refund anything: money is `payments.ledger`'s,
+and billing only hears about it. Does not price anything — a line arrives with
+the amount it was sold at. Does not hold card data, or know who a customer is
+beyond an opaque id `auth` vouched for.
+
+## Publishes
+
+`InvoiceIssued`, `InvoicePaid`, `InvoiceVoided`, on `shop.billing.invoice`.
+
+## How the catalog reads it
+
+Nothing here is annotated for the catalog: `extract-django` reads the
+applications, and the applications are the claim — `invoices/models.py` is the
+aggregate and the schema, `events.py` is what leaves, `services.py` is what can
+be asked for, the DRF view and `urls.py` are the way in, and `handlers.py` is
+what runs when somebody else's event arrives. The rules are in
+[plugins/extract-django/README.md](../../../plugins/extract-django/README.md).
+
+```bash
+docker compose up -d db
+python manage.py migrate && python manage.py runserver
+```
+
+## Aggregates
+
+| Aggregate | Root | Commands | Queries | Events |
+| --- | --- | --- | --- | --- |
+| [Invoice](aggregates/invoice.md) | `Invoice` | 4 commands | 1 query | 3 events |
+
+## Provides
+
+**`billing.v1.Invoices`** — `examples/shop/billing/invoices/schema/openapi.yaml`
+
+- `invoice_create`
+- `invoice_retrieve`
+- `invoice_destroy`
+- `invoice_issue`
+
+<details><summary>DrawUpRequest</summary>
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `orderId` | `string (uuid)` | — |
+| `customerId` | `string (uuid)` | — |
+| `currency` | `string` | ISO 4217. |
+| `taxRate` | `string` | A decimal, as a string, so nothing rounds on the way in. |
+| `lines` | `[]Line` | — |
+
+</details>
+
+<details><summary>InvoiceId</summary>
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `invoiceId` | `string (uuid)` | Optional. |
+| `number` | `string` | Optional. |
+
+</details>
+
+<details><summary>Invoice</summary>
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `invoiceId` | `string (uuid)` | Optional. |
+| `orderId` | `string (uuid)` | Optional. |
+| `number` | `string` | Optional. |
+| `currency` | `string` | Optional. |
+| `totalMinor` | `integer (int64)` | Optional. |
+| `status` | `string` | Optional. |
+| `lines` | `[]Line` | Optional. |
+
+</details>
+
+<details><summary>Line</summary>
+
+| Field | Type |
+| --- | --- |
+| `sku` | `string` |
+| `quantity` | `integer` |
+| `unitPriceMinor` | `integer (int64)` |
+
+</details>
+
+## Consumes
+
+| Call | Peer | Status | Source |
+| --- | --- | --- | --- |
+| `auth.v1.Sessions/validateSession` | [auth.auth](../../auth/auth/README.md) | declared | `examples/shop/billing/invoices/clients/auth/openapi.yaml` |
+
+## Publishes
+
+| Event | Latest |
+| --- | --- |
+| [InvoiceIssued](aggregates/invoice.md) | v1 |
+| [InvoicePaid](aggregates/invoice.md) | v1 |
+| [InvoiceVoided](aggregates/invoice.md) | v1 |
+
+## Stores
+
+| Store | Kind | Access | Tables |
+| --- | --- | --- | --- |
+| [Billing database](stores/pg.md) | postgres | owns | 2 tables |
+
+<!-- shop/billing/aggregates/invoice.md -->
+
+# Invoice
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `shop.billing.invoice`
+- **Service:** [Billing](../README.md)
+- **Root:** `Invoice`
+
+What a customer owes for one order, and what happens to it between being drawn
+up and being closed.
+
+An invoice is drawn up as a draft with its lines, issued once somebody with a
+live session asks for it, and closed when the ledger says the money arrived.
+Nothing about it is updated in place after it is paid or voided: those are the
+two ends of its life, and a correction is a new invoice.
+
+## Entities
+
+### Invoice — aggregate root
+
+What a customer owes for one order, and where it is in its life.
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `id` | `UUIDField` | — |
+| `order_id` | `UUIDField` | The order this invoice is drawn up for. |
+| `customer_id` | `UUIDField` | Opaque, and only ever as good as the session auth vouched for. |
+| `number` | `CharField` | What the customer quotes. A draft has none. |
+| `currency` | `CharField` | ISO 4217, frozen when the first line is drawn up. |
+| `total_minor` | `BigIntegerField` | The sum of the lines, in the minor unit of the currency. |
+| `tax_rate` | `DecimalField` | The rate the total was taxed at. |
+| `status` | `CharField` | — |
+| `drawn_up_at` | `DateTimeField` | — |
+| `issued_at` | `DateTimeField` | — |
+| `settled_at` | `DateTimeField` | When it was paid or voided; null while it is neither. |
+
+### InvoiceLine
+
+One line of an invoice: what was bought, and what it was sold at.
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `invoice` | `ForeignKey[Invoice]` | — |
+| `sku` | `CharField` | — |
+| `quantity` | `PositiveIntegerField` | — |
+| `unit_price_minor` | `BigIntegerField` | Captured when the line is drawn up, never recomputed. |
+
+## Value objects
+
+### Money
+
+An amount in the minor unit of a currency: 1250 GBP is £12.50.
+
+| Field | Type |
+| --- | --- |
+| `amount_minor` | `int` |
+| `currency` | `str` |
+
+## Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> draft
+    draft --> issued: issue · InvoiceIssued
+    issued --> paid: pay · InvoicePaid
+    draft --> void: void · InvoiceVoided
+    issued --> void: void · InvoiceVoided
+    paid --> [*]
+    void --> [*]
+```
+
+| From | To | On | Emits | Source |
+| --- | --- | --- | --- | --- |
+| `draft` | `issued` | `issue` | `InvoiceIssued` | `examples/shop/billing/invoices/models.py:48` |
+| `issued` | `paid` | `pay` | `InvoicePaid` | `examples/shop/billing/invoices/models.py:54` |
+| `draft` | `void` | `void` | `InvoiceVoided` | `examples/shop/billing/invoices/models.py:60` |
+| `issued` | `void` | `void` | `InvoiceVoided` | `examples/shop/billing/invoices/models.py:60` |
+
+## Operations
+
+| Operation | Kind | Exposed by | Doc |
+| --- | --- | --- | --- |
+| `DrawUpInvoice` | command | `invoice_create` | Draws up a draft invoice for an order, with a line for each thing sold. |
+| `GetInvoice` | query | `invoice_retrieve` | Reads one invoice and the lines it is made of. |
+| `IssueInvoice` | command | `invoice_issue` | Confirms the session, freezes the invoice and asks the customer to pay. |
+| `PayInvoice` | command | *internal* | Closes an issued invoice against the money the ledger says arrived. |
+| `VoidInvoice` | command | `invoice_destroy` | Ends an invoice nobody is going to pay. |
+
+## Events
+
+### InvoiceIssued
+
+`shop.billing.invoice.InvoiceIssued`
+
+On the wire as `billing.InvoiceIssued`, on `shop.billing.invoice`.
+
+#### v1 — current
+
+The invoice is final and the customer has been asked to pay it.
+
+Source: `examples/shop/billing/invoices/events.py`
+
+| Field | Type |
+| --- | --- |
+| `invoice_id` | `str` |
+| `order_id` | `str` |
+| `number` | `str` |
+| `total_minor` | `int` |
+| `currency` | `str` |
+
+### InvoicePaid
+
+`shop.billing.invoice.InvoicePaid`
+
+On the wire as `billing.InvoicePaid`, on `shop.billing.invoice`.
+
+#### v1 — current
+
+The money arrived and the invoice is closed. Nothing is owed on the order.
+
+Source: `examples/shop/billing/invoices/events.py`
+
+| Field | Type |
+| --- | --- |
+| `invoice_id` | `str` |
+| `order_id` | `str` |
+| `paid_at` | `str` |
+
+### InvoiceVoided
+
+`shop.billing.invoice.InvoiceVoided`
+
+On the wire as `billing.InvoiceVoided`, on `shop.billing.invoice`.
+
+#### v1 — current
+
+The invoice was ended without payment, and nobody will be asked again.
+
+Source: `examples/shop/billing/invoices/events.py`
+
+| Field | Type |
+| --- | --- |
+| `invoice_id` | `str` |
+| `order_id` | `str` |
+| `reason` | `str` |
+
+<!-- shop/cart/README.md -->
+
+# Shopping Cart
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `shop.cart`
+- **Context:** [Shop](../README.md)
+- **Repo:** `github.com/shortlink-org/portolan`
+- **Path:** `examples/shop/cart`
+
+Service `cart` — bounded context **shop**. TypeScript on Node.js.
+
+Owns the basket: the one mutable thing between a customer arriving and an
+order existing. A basket belongs to a visitor's token or to a signed-in
+customer, changes as items go in and out, and stops changing the moment it is
+checked out — from then on the order is somebody else's aggregate and the
+basket is a record of what was bought.
+
+## What it does
+
+- Creates a basket for a visitor and lets items go in and out of it.
+- Merges a visitor's basket into a customer's after login.
+- Checks out: confirms the session with `auth`, takes a quote from `pricing`,
+  freezes the basket and says so with `BasketCheckedOut`.
+- Abandons baskets nobody has touched for a day, and says so.
+
+## What it does not do
+
+Does not place the order, charge anything or reserve stock: `BasketCheckedOut`
+is where its job ends. Does not hold a catalogue - a SKU is a string it was
+given, with the price it was given. Does not know who a customer is beyond an
+opaque id `auth` vouched for.
+
+## Decisions
+
+- [cart.0001](docs/adr/0001-typescript-on-node.md) — TypeScript on Node.js, and the stack around it
+- [cart.0002](docs/adr/0002-currency-frozen-at-the-first-item.md) — A basket freezes its currency at the first item
+- [cart.0003](docs/adr/0003-prices-captured-never-recomputed.md) — Line prices are captured when added, never recomputed
+- [cart.0004](docs/adr/0004-checkout-confirms-with-auth-and-pricing.md) — Checkout confirms the session with `auth` and the total with `pricing`
+- [cart.0005](docs/adr/0005-a-merge-moves-every-line-or-none.md) — A merge moves every line or none
+- [cart.0006](docs/adr/0006-abandonment-is-a-sweep-that-publishes.md) — Abandonment is a sweep inside the service, and it publishes
+- [cart.0007](docs/adr/0007-an-anonymous-basket-is-owned-by-its-token.md) — An anonymous basket is owned by whoever holds its token
+- [cart.0008](docs/adr/0008-events-leave-over-nats-jetstream.md) — Events leave the service over NATS JetStream, and the outbox stays
+
+## Running it
+
+```bash
+docker compose up -d
+npm start
+```
+
+`AUTH_URL` and `PRICING_ADDR` point checkout at running peers; without them
+every session is live and the quote is the sum of the lines. `NATS_URL` is
+where events leave the service; without it the bus is in process and nothing
+does. `TRACER_URI` switches tracing on. `npm test` runs everything; without
+Docker the tests that need Postgres or NATS are skipped.
+
+## Aggregates
+
+| Aggregate | Root | Commands | Queries | Events |
+| --- | --- | --- | --- | --- |
+| [Basket](aggregates/basket.md) | `Basket` | 6 commands | 1 query | 6 events |
+
+## Provides
+
+**`cart.v1.Baskets`** — `examples/shop/cart/src/infrastructure/transport/http/gen/openapi.yaml`
+
+- `createBasket`
+- `getBasket`
+- `addItem`
+- `removeItem`
+- `mergeBaskets`
+- `checkout`
+
+<details><summary>BasketCreated</summary>
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `basketId` | `string (uuid)` | — |
+| `token` | `string` | The capability to change this basket; sent back as X-Basket-Token. |
+
+</details>
+
+<details><summary>Basket</summary>
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `basketId` | `string (uuid)` | — |
+| `customerId` | `string` | Optional. Present once the basket belongs to a signed-in customer. |
+| `currency` | `string` | Optional. Set by the first line; absent while the basket is empty. |
+| `status` | `string` | — |
+| `items` | `[]LineItem` | — |
+| `subtotal` | `Money` | Optional. |
+| `touchedAt` | `string (date-time)` | — |
+
+</details>
+
+<details><summary>Error</summary>
+
+| Field | Type |
+| --- | --- |
+| `message` | `string` |
+
+</details>
+
+<details><summary>AddItemRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `sku` | `string` |
+| `quantity` | `integer` |
+| `unitPrice` | `Money` |
+
+</details>
+
+<details><summary>MergeRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `fromBasketId` | `string (uuid)` |
+| `fromToken` | `string` |
+
+</details>
+
+<details><summary>CheckedOut</summary>
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `basketId` | `string (uuid)` | — |
+| `quoteId` | `string` | The quote pricing issued; the order is placed against it. |
+| `total` | `Money` | — |
+
+</details>
+
+<details><summary>LineItem</summary>
+
+| Field | Type |
+| --- | --- |
+| `sku` | `string` |
+| `quantity` | `integer` |
+| `unitPrice` | `Money` |
+
+</details>
+
+<details><summary>Money</summary>
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `amountMinor` | `integer (int64)` | Amount in the minor unit of the currency. |
+| `currency` | `string` | ISO 4217 code |
+
+</details>
+
+## Consumes
+
+| Call | Peer | Status | Source |
+| --- | --- | --- | --- |
+| `auth.v1.Sessions/validateSession` | [auth.auth](../../auth/auth/README.md) | verified | `examples/shop/cart/src/infrastructure/auth/gen/openapi.yaml` |
+| `shop.v1.Pricing/GetQuote` | [shop.pricing](../pricing/README.md) | declared | `examples/shop/cart/src/infrastructure/pricing/proto/shop/v1/pricing.proto` |
+
+## Publishes
+
+| Event | Latest | Consumers |
+| --- | --- | --- |
+| [BasketAbandoned](aggregates/basket.md) | v1 | — |
+| [BasketCheckedOut](aggregates/basket.md) | v1 | [shop.oms](../oms/README.md), [shop.pricing (declared)](../pricing/README.md) |
+| [BasketCreated](aggregates/basket.md) | v1 | — |
+| [BasketItemAdded](aggregates/basket.md) | v1 | — |
+| [BasketItemRemoved](aggregates/basket.md) | v1 | — |
+| [BasketMerged](aggregates/basket.md) | v1 | — |
+
+## Stores
+
+| Store | Kind | Access | Tables |
+| --- | --- | --- | --- |
+| [Cart database](stores/pg.md) | postgres | owns | 3 tables |
+
+<!-- shop/cart/aggregates/basket.md -->
+
+# Basket
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `shop.cart.basket`
+- **Service:** [Shopping Cart](../README.md)
+- **Root:** `Basket`
+
+The one mutable thing between a customer arriving and an order existing: a
+visitor's or a customer's lines, under one lock. It changes as items go in and
+out and stops changing the moment it is checked out; from then on the order is
+somebody else's aggregate and the basket is a record of what was bought.
+
+## States
+
+`open` → `checked-out` | `abandoned` | `merged`, and nothing leads back. The
+table is `status.ts`, and `moveTo` is the only way through it; lines go in
+and out only while the basket is `open`. Each way out publishes: checkout
+`BasketCheckedOut`, the sweep `BasketAbandoned`, a merge `BasketMerged` from
+the basket that emptied.
+
+## Invariants
+
+- One currency, set by the first line and never changed (cart.0002).
+- A line's price is what it was given when added, never recomputed (cart.0003).
+- One to 99 of a SKU per line; at most 50 distinct SKUs.
+- A version travels with every write; a write from a stale read is refused.
+
+## Entities
+
+### Basket — aggregate root
+
+Basket is the aggregate root: a visitor's or a customer's lines, their
+currency and their state, decided under one lock. Every method that changes
+it answers with the fact, and publishing is the caller's business. Where
+it can go from where it is, `status.ts` says in one table; `moveTo` is the
+only way through it.
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `id` | `string` | — |
+| `token` | `string` | The capability to change an anonymous basket (cart.0007). |
+| `customerId` | `string \| undefined` | — |
+| `currency` | `Currency \| undefined` | Set by the first line, never changed (cart.0002). |
+| `status` | `BasketStatus` | — |
+| `items` | `BasketItem[]` | — |
+| `touchedAt` | `Date` | — |
+| `version` | `number` | Bumped by every write; a write from a stale read is refused. |
+
+### BasketError
+
+What the basket refuses, and why, in a word a caller can switch on.
+
+| Field | Type |
+| --- | --- |
+| `code` | `BasketErrorCode` |
+
+### BasketItem
+
+One line: a SKU, how many, and what each one cost when it went in.
+
+| Field | Type |
+| --- | --- |
+| `sku` | `string` |
+| `quantity` | `number` |
+| `unitPrice` | `Money` |
+
+## Value objects
+
+### Currency
+
+ISO 4217, upper case. A basket has one, set by its first line.
+
+| Field | Type |
+| --- | --- |
+| `code` | `string` |
+
+### LineItem
+
+What the caller asks to put in: the estate's shared shape for a line.
+
+| Field | Type |
+| --- | --- |
+| `sku` | `string` |
+| `quantity` | `number` |
+| `unitPrice` | `Money` |
+
+### Money
+
+An amount in the minor unit of the currency: an integer, never a float.
+
+| Field | Type |
+| --- | --- |
+| `amountMinor` | `number` |
+| `currency` | `Currency` |
+
+## Lifecycle
+
+```mermaid
+stateDiagram-v2
+    state "checked-out" as checked_out
+    [*] --> open
+    open --> checked_out: checkout · BasketCheckedOut
+    open --> abandoned: abandon · BasketAbandoned
+    open --> merged: mergeInto · BasketMerged
+    checked_out --> [*]
+    abandoned --> [*]
+    merged --> [*]
+```
+
+| From | To | On | Emits | Source |
+| --- | --- | --- | --- | --- |
+| `open` | `checked-out` | `checkout` | `BasketCheckedOut` | `examples/shop/cart/src/domain/basket/basket.ts:92` |
+| `open` | `abandoned` | `abandon` | `BasketAbandoned` | `examples/shop/cart/src/domain/basket/basket.ts:100` |
+| `open` | `merged` | `mergeInto` | `BasketMerged` | `examples/shop/cart/src/domain/basket/basket.ts:111` |
+
+## Operations
+
+| Operation | Kind | Exposed by | Doc |
+| --- | --- | --- | --- |
+| `AddItem` | command | `addItem` | Puts a line into a basket, or grows the one already there. The price is captured as sent (cart.0003); the first line sets the currency (cart.0002). |
+| `Checkout` | command | `checkout` | Freezes the basket and hands it on: the session is confirmed with `auth`, the total with `pricing`, then the basket is frozen and `BasketCheckedOut` written in the same transaction (cart.0004). |
+| `CreateBasket` | command | `createBasket` | Creates an empty basket for a visitor and hands back its id and the token that owns it (cart.0007). |
+| `ExpireIdleBaskets` | command | *internal* | The sweep (cart.0006): marks every open basket untouched for a day as abandoned and publishes `BasketAbandoned` for each. Nothing calls it from outside; the service runs it once a minute. |
+| `GetBasket` | query | `getBasket` | The basket as it stands, for whoever holds its token. |
+| `MergeBaskets` | command | `mergeBaskets` | Moves a visitor's lines into the signed-in customer's open basket - creating one when there is none - every line or none (cart.0005), and marks the visitor's basket merged. |
+| `RemoveItem` | command | `removeItem` | Takes a line out of a basket outright. |
+
+## Events
+
+### BasketAbandoned
+
+`shop.cart.basket.BasketAbandoned`
+
+On the wire as `cart.BasketAbandoned`, on `shop.cart.basket`.
+
+#### v1 — current
+
+Nobody touched the basket for a day, and the sweep said so (cart.0006).
+
+Source: `examples/shop/cart/src/domain/basket/events/basket-abandoned.ts`
+
+| Field | Type |
+| --- | --- |
+| `basketId` | `string` |
+| `customerId` | `string \| undefined` |
+| `idleSince` | `Date` |
+| `occurredAt` | `Date` |
+
+### BasketCheckedOut
+
+`shop.cart.basket.BasketCheckedOut`
+
+On the wire as `cart.BasketCheckedOut`, on `shop.cart.basket`.
+
+| Consumer | Status | Note |
+| --- | --- | --- |
+| [shop.oms](../../oms/README.md) | verified | Seen consuming it in telemetry/traces.jsonl. |
+| [shop.pricing](../../pricing/README.md) | declared | — |
+
+#### v1 — current
+
+The basket is frozen. This is the handoff: whoever places the order listens
+for it, and pricing expires the quote it issued.
+
+Source: `examples/shop/cart/src/domain/basket/events/basket-checked-out.ts`
+
+| Field | Type |
+| --- | --- |
+| `basketId` | `string` |
+| `customerId` | `string` |
+| `items` | `LineItem[]` |
+| `total` | `Money` |
+| `quoteId` | `string` |
+| `occurredAt` | `Date` |
+
+### BasketCreated
+
+`shop.cart.basket.BasketCreated`
+
+On the wire as `cart.BasketCreated`, on `shop.cart.basket`.
+
+#### v1 — current
+
+A basket exists, for a visitor or for a customer.
+
+Source: `examples/shop/cart/src/domain/basket/events/basket-created.ts`
+
+| Field | Type |
+| --- | --- |
+| `basketId` | `string` |
+| `customerId` | `string \| undefined` |
+| `occurredAt` | `Date` |
+
+### BasketItemAdded
+
+`shop.cart.basket.BasketItemAdded`
+
+On the wire as `cart.BasketItemAdded`, on `shop.cart.basket`.
+
+#### v1 — current
+
+A line went in, or grew; `quantity` is the line's after the add.
+
+Source: `examples/shop/cart/src/domain/basket/events/basket-item-added.ts`
+
+| Field | Type |
+| --- | --- |
+| `basketId` | `string` |
+| `sku` | `string` |
+| `quantity` | `number` |
+| `unitPrice` | `Money` |
+| `occurredAt` | `Date` |
+
+### BasketItemRemoved
+
+`shop.cart.basket.BasketItemRemoved`
+
+On the wire as `cart.BasketItemRemoved`, on `shop.cart.basket`.
+
+#### v1 — current
+
+A line went out.
+
+Source: `examples/shop/cart/src/domain/basket/events/basket-item-removed.ts`
+
+| Field | Type |
+| --- | --- |
+| `basketId` | `string` |
+| `sku` | `string` |
+| `occurredAt` | `Date` |
+
+### BasketMerged
+
+`shop.cart.basket.BasketMerged`
+
+On the wire as `cart.BasketMerged`, on `shop.cart.basket`.
+
+#### v1 — current
+
+The visitor's basket has given its lines to the customer's and is done
+(cart.0005). `basketId` is the one that emptied; `intoBasketId` the one
+that now holds everything.
+
+Source: `examples/shop/cart/src/domain/basket/events/basket-merged.ts`
+
+| Field | Type |
+| --- | --- |
+| `basketId` | `string` |
+| `intoBasketId` | `string` |
+| `customerId` | `string` |
+| `occurredAt` | `Date` |
+
+<!-- shop/oms/README.md -->
+
+# Order Management
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `shop.oms`
+- **Context:** [Shop](../README.md)
+- **Repo:** `github.com/shortlink-org/portolan`
+- **Path:** `examples/shop/oms`
+
+Service `oms` — bounded context **shop**. Rust on Tokio.
+
+Owns the order: what a basket became at checkout, from the moment the cart
+says `BasketCheckedOut` until the order is confirmed or cancelled. It is the
+only writer of order state; every other service holds a copy of what it was
+told.
+
+## What it does
+
+- Places an order from a checked-out basket, once per basket, copying the
+  lines and the total the customer agreed to.
+- Answers `GetOrder` and `CancelOrder` over gRPC, `shop.v1.OrderService`.
+- Confirms an order once its total is authorised with payments, and says so.
+- Publishes `OrderPlaced`, `OrderConfirmed` and `OrderCancelled` through an
+  outbox, over NATS JetStream.
+
+## What it does not do
+
+Does not price anything, move money or ship: the lines and the total are the
+basket's, the money is `payments`' and the parcel is `delivery`'s. Does not
+hold a catalogue or know who a customer is beyond the id the cart passed on.
+Nothing in the estate provides `payments.v1` yet, so the authorisation is a
+stand-in until something does, and the catalog says so.
+
+## Decisions
+
+- [oms.0001](docs/adr/0001-rust-on-tokio.md) — Rust on Tokio, and the stack around it
+- [oms.0002](docs/adr/0002-an-order-is-placed-from-a-checked-out-basket.md) — An order is placed from a checked-out basket, not by a call
+- [oms.0003](docs/adr/0003-lines-are-copied-never-repriced.md) — Lines and the total are copied from the basket, never repriced
+- [oms.0004](docs/adr/0004-cancel-is-allowed-until-dispatch.md) — Cancelling is allowed until the parcel moves
+- [oms.0005](docs/adr/0005-confirmation-waits-for-a-payment-that-does-not-exist-yet.md) — Confirmation waits for a payment service that does not exist yet
+
+## Running it
+
+```bash
+docker compose up -d
+cargo run
+```
+
+`NATS_URL` is where events arrive and leave; without it the bus is in process
+and nothing does. `PAYMENTS_ADDR` points confirmation at a ledger; without it
+every authorisation is granted. `TRACER_URI` switches tracing on. `cargo test`
+runs everything; without Docker the tests that need Postgres or NATS are
+skipped.
+
+## Aggregates
+
+| Aggregate | Root | Commands | Queries | Events |
+| --- | --- | --- | --- | --- |
+| [Order](aggregates/order.md) | `Order` | 3 commands | 1 query | 3 events |
+
+## Provides
+
+**`shop.v1.OrderService`** — `examples/shop/oms/vendor/proto/shortlink-org/portolan-shop-order/shop/v1/orders.proto:14`
+
+- `GetOrder`
+- `CancelOrder`
+
+<details><summary>GetOrderRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `order_id` | `string` |
+
+</details>
+
+<details><summary>GetOrderResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `order` | `Order` |
+
+</details>
+
+<details><summary>CancelOrderRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `order_id` | `string` |
+
+</details>
+
+<details><summary>CancelOrderResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `order` | `Order` |
+
+</details>
+
+<details><summary>Order</summary>
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `id` | `string` | — |
+| `customer_id` | `string` | The customer auth vouched for at checkout. Opaque here, as everywhere. |
+| `basket_id` | `string` | The basket this order was placed from, so a reader can walk back to it. |
+| `status` | `OrderStatus` | — |
+| `lines` | `[]Line` | — |
+| `total` | `Money` | The quoted total, tax and promotions included. |
+| `placed_at` | `Timestamp` | — |
+
+</details>
+
+<details><summary>Line</summary>
+
+| Field | Type |
+| --- | --- |
+| `sku` | `string` |
+| `quantity` | `int32` |
+| `unit_price` | `Money` |
+
+</details>
+
+<details><summary>Money</summary>
+
+| Field | Type |
+| --- | --- |
+| `amount_minor` | `int64` |
+| `currency` | `string` |
+
+</details>
+
+## Consumes
+
+| Call | Peer | Status | Source |
+| --- | --- | --- | --- |
+| `payments.v1.PaymentService/Authorize` | `payments.v1` | unresolved | `examples/shop/oms/src/infrastructure/payments/proto/payments/v1/payments.proto` |
+
+## Publishes
+
+| Event | Latest |
+| --- | --- |
+| [OrderCancelled](aggregates/order.md) | v1 |
+| [OrderConfirmed](aggregates/order.md) | v1 |
+| [OrderPlaced](aggregates/order.md) | v1 |
+
+## Stores
+
+| Store | Kind | Access | Tables |
+| --- | --- | --- | --- |
+| [Order database](stores/pg.md) | postgres | owns | 3 tables |
+
+<!-- shop/oms/aggregates/order.md -->
+
+# Order
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `shop.oms.order`
+- **Service:** [Order Management](../README.md)
+- **Root:** `Order`
+
+What a basket became at checkout: the lines and the total the customer agreed
+to, copied and never repriced, under one lock. An order is placed from a
+`BasketCheckedOut`, not by anyone calling in; it is confirmed when the payment
+is authorised, and cancelled by the customer while the parcel has not moved,
+or by a declined payment.
+
+```mermaid
+stateDiagram-v2
+    [*] --> placed
+    placed --> confirmed: confirm · OrderConfirmed
+    placed --> cancelled: cancel · OrderCancelled
+    confirmed --> cancelled: cancel · OrderCancelled
+```
+
+The moves are one table, `TRANSITIONS` in `status.rs`, and one method makes
+them, `move_to`: an edge the table lacks is refused before anything else
+happens. Fulfilled is not a state yet - nothing in the estate delivers - and
+will arrive with the service that does.
+
+## Entities
+
+### Order — aggregate root
+
+The root. Everything about an order changes through a method here, and
+every method that changes something hands back the event that says so:
+the caller records both in one transaction, or neither.
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `id` | `String` | — |
+| `customer_id` | `String` | — |
+| `basket_id` | `String` | — |
+| `lines` | `Vec<Line>` | — |
+| `total` | `Money` | — |
+| `status` | `Status` | — |
+| `placed_at` | `DateTime<Utc>` | — |
+| `version` | `u32` | Bumped on every save; a save from a stale read is refused (Error::Conflict). |
+
+### Line
+
+One line of the order: a SKU, how many, and the price it was added to the
+basket at. The price is copied from the basket and never recomputed (ADR
+oms.0003); the customer agreed to this number.
+
+| Field | Type |
+| --- | --- |
+| `sku` | `String` |
+| `quantity` | `u32` |
+| `unit_price` | `Money` |
+
+## Value objects
+
+### Money
+
+An amount in the minor unit of a currency: 1999 EUR is 19.99. The currency
+is three upper-case letters and nothing checks it further; the order only
+requires every line to agree with the total on it.
+
+| Field | Type |
+| --- | --- |
+| `amount_minor` | `i64` |
+| `currency` | `String` |
+
+## Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> placed
+    placed --> confirmed: confirm · OrderConfirmed
+    placed --> cancelled: cancel · OrderCancelled
+    confirmed --> cancelled: cancel · OrderCancelled
+    cancelled --> [*]
+```
+
+| From | To | On | Emits | Source |
+| --- | --- | --- | --- | --- |
+| `placed` | `confirmed` | `confirm` | `OrderConfirmed` | `examples/shop/oms/src/domain/order/order.rs:65` |
+| `placed` | `cancelled` | `cancel` | `OrderCancelled` | `examples/shop/oms/src/domain/order/order.rs:76` |
+| `confirmed` | `cancelled` | `cancel` | `OrderCancelled` | `examples/shop/oms/src/domain/order/order.rs:76` |
+
+## Operations
+
+| Operation | Kind | Exposed by | Doc |
+| --- | --- | --- | --- |
+| `CancelOrder` | command | `CancelOrder` | Cancels an order that has not been dispatched, and says so with `OrderCancelled`. Cancelling twice is not an error: the second call finds a cancelled order and changes nothing. |
+| `ConfirmOrder` | command | *internal* | Confirms a placed order once its total is authorised with payments, and says so with `OrderConfirmed`. Payments is asked synchronously, because the answer is what decides; no service in the estate provides `payments.v1` yet, so the call is a stand-in until one does (ADR oms.0005). |
+| `GetOrder` | query | `CancelOrder`, `GetOrder` | Answers with the order as it is now; a cancelled order is still found. |
+| `PlaceOrder` | command | *internal* | Places an order from a checked-out basket, once: a second `BasketCheckedOut` for the same basket places nothing and answers with the order already there. The lines and the total are the basket's, copied and never repriced. |
+
+## Events
+
+### OrderCancelled
+
+`shop.oms.order.OrderCancelled`
+
+On the wire as `oms.OrderCancelled`, on `shop.oms.order`.
+
+#### v1 — current
+
+The order will not be fulfilled. The reason says whether the customer
+asked or the payment was declined, because a consumer unwinds them
+differently: a hold is voided, a capture is refunded.
+
+Source: `examples/shop/oms/src/domain/order/event/order_cancelled.rs`
+
+| Field | Type |
+| --- | --- |
+| `order_id` | `String` |
+| `reason` | `String` |
+| `occurred_at` | `DateTime<Utc>` |
+
+### OrderConfirmed
+
+`shop.oms.order.OrderConfirmed`
+
+On the wire as `oms.OrderConfirmed`, on `shop.oms.order`.
+
+#### v1 — current
+
+The payment is authorised and the order may be fulfilled. Whoever ships
+listens for this.
+
+Source: `examples/shop/oms/src/domain/order/event/order_confirmed.rs`
+
+| Field | Type |
+| --- | --- |
+| `order_id` | `String` |
+| `authorization_id` | `String` |
+| `occurred_at` | `DateTime<Utc>` |
+
+### OrderPlaced
+
+`shop.oms.order.OrderPlaced`
+
+On the wire as `oms.OrderPlaced`, on `shop.oms.order`.
+
+#### v1 — current
+
+An order came into being from a checked-out basket. Placed, not yet paid
+for: whoever moves money listens for this.
+
+Source: `examples/shop/oms/src/domain/order/event/order_placed.rs`
+
+| Field | Type |
+| --- | --- |
+| `order_id` | `String` |
+| `basket_id` | `String` |
+| `customer_id` | `String` |
+| `total` | `Money` |
+| `occurred_at` | `DateTime<Utc>` |
+
+<!-- payments/README.md -->
+
+# Payments
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `payments`
+- **Classification:** core
+
+A double-entry ledger and the PSP integrations that feed it. Nothing here knows what an order is for.
+
+## Services
+
+| Service | Path | Aggregates |
+| --- | --- | --- |
+| [Ledger](ledger/README.md) | `services/ledger` | Payment, Refund |
+
+## Decisions
+
+| ADR | Title | Status | Date |
+| --- | --- | --- | --- |
+| [payments.0004](../adr/payments.0004.md) | Journal entries are idempotent by (order_id, attempt) | proposed | 2026-02-09 |
+
+<!-- payments/ledger/README.md -->
+
+# Ledger
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `payments.ledger`
+- **Context:** [Payments](../README.md)
+- **Repo:** `github.com/acme/payments`
+- **Path:** `services/ledger`
+
+## Payments Ledger
+
+`payments.ledger` is a double-entry ledger. Every movement of money is two
+balanced postings, and nothing is ever deleted. Corrections are compensating
+entries.
+
+### Model
+
+An authorisation reserves funds without moving them. A capture moves the
+reserved funds. A refund moves them back. Each of these is a separate posting
+pair against the customer, merchant and settlement accounts.
+
+```mermaid
+sequenceDiagram
+    participant OMS as shop.oms
+    participant L as payments.ledger
+    participant PSP as psp (external)
+    OMS->>L: Authorize
+    L->>PSP: reserve funds
+    PSP-->>L: auth code
+    L-->>OMS: PaymentAuthorized
+    OMS->>L: Capture
+    L->>PSP: settle
+    L-->>OMS: PaymentCaptured
+```
+
+### Accounts
+
+| Account        | Type      | Increases on        | Decreases on       |
+| -------------- | --------- | ------------------- | ------------------ |
+| `customer`     | liability | refund              | capture            |
+| `merchant`     | asset     | capture             | refund             |
+| `settlement`   | asset     | payout received     | payout disbursed   |
+| `fees`         | expense   | capture             | refund             |
+
+### Guarantees
+
+- Postings are append only. There is no `UPDATE` on the postings table.
+- Every write is idempotent on `idempotency_key`, retained for 30 days.
+- The sum of all postings for a transaction is always zero; a nightly job
+  asserts this and pages on failure.
+
+### Aggregates
+
+- `payment` — authorisation, capture and decline.
+- `refund` — full and partial refunds against a captured payment.
+
+## Aggregates
+
+| Aggregate | Root | Commands | Queries | Events |
+| --- | --- | --- | --- | --- |
+| [Payment](aggregates/payment.md) | `Payment` | 3 commands | 1 query | 3 events |
+| [Refund](aggregates/refund.md) | `Refund` | 1 command | 1 query | 1 event |
+
+## Provides
+
+**`payments.v1.Payments`** — `proto/payments/v1/payments.proto:14`
+
+- `Authorize`
+- `Capture`
+- `Refund`
+- `GetPayment`
+
+<details><summary>AuthorizeRequest</summary>
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `orderId` | `string` | Order to authorize against. |
+| `amount` | [`Money`](../../types.md#money) | Amount to hold. |
+
+</details>
+
+## Consumes
+
+| Call | Peer | Status | Source | Note |
+| --- | --- | --- | --- | --- |
+| `shop.v1.OrderService/GetOrder` | [shop.oms](../../shop/oms/README.md) | verified | `internal/ledger/client/orders.go:27` | — |
+| `psp.v2.Charges/Create` | `psp-gateway` | unresolved | `internal/ledger/adapter/psp/client.go:64` | Authorization. The peer is a third party; no service in the estate provides psp.v2.Charges, so the call cannot be resolved to anything the catalog knows. |
+| `psp.v2.Charges/Capture` | `psp-gateway` | unresolved | `internal/ledger/adapter/psp/client.go:102` | Settlement of an existing authorization. Same unresolvable peer as the rest of psp.v2.Charges. |
+| `psp.v2.Charges/Refund` | `psp-gateway` | unresolved | `internal/ledger/adapter/psp/client.go:138` | Returns money on a settled charge. Same unresolvable peer as the rest of psp.v2.Charges. |
+| `psp.v2.Charges/Void` | `psp-gateway` | unresolved | `internal/ledger/adapter/psp/client.go:171` | Cancels an authorization that was never captured. Same unresolvable peer as the rest of psp.v2.Charges. |
+
+## Publishes
+
+| Event | Latest | Consumers |
+| --- | --- | --- |
+| [PaymentAuthorized](aggregates/payment.md) | v1 | [delivery.core (declared)](../../delivery/core/README.md) |
+| [PaymentCaptured](aggregates/payment.md) | v1 | [delivery.core](../../delivery/core/README.md), [shop.billing (declared)](../../shop/billing/README.md) |
+| [PaymentDeclined](aggregates/payment.md) | v1 | [shop.oms (declared)](../../shop/oms/README.md) |
+| [RefundIssued](aggregates/refund.md) | v1 | [delivery.core (declared)](../../delivery/core/README.md) |
+
+## Stores
+
+| Store | Kind | Access | Tables |
+| --- | --- | --- | --- |
+| [Ledger database](stores/pg.md) | postgres | owns | 2 tables |
+
+<!-- payments/ledger/aggregates/payment.md -->
+
+# Payment
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `payments.ledger.payment`
+- **Service:** [Ledger](../README.md)
+- **Root:** `Payment`
+
+One authorisation and the captures made against it.
+
+## Postings
+
+Every state change writes a balanced pair of postings. Nothing is updated in
+place; a correction is a new pair with the opposite sign.
+
+| Transition   | Debit        | Credit       |
+| ------------ | ------------ | ------------ |
+| authorise    | (none)       | (none)       |
+| capture      | `merchant`   | `customer`   |
+| fee          | `fees`       | `merchant`   |
+| decline      | (none)       | (none)       |
+
+Authorisations and declines write no postings: no money has moved.
+
+## Currency
+
+The customer is charged in the currency they were quoted in. When that is not
+the currency the acquirer settles in, the rate is taken from the acquirer at
+authorisation and stored on the payment — the posting has to be reproducible
+years later, and a rate re-fetched then would be a different number. A
+currency with no acquirer behind it is a `currency_unsupported` decline, not a
+conversion.
+
+## Failure
+
+| Outcome    | Postings | Retryable                        |
+| ---------- | -------- | -------------------------------- |
+| `soft`     | none     | yes, on another instrument       |
+| `hard`     | none     | no                               |
+| `system`   | none     | yes, same instrument, with backoff |
+| `timeout`  | none yet | the webhook decides, not us      |
+
+A timeout is the only outcome that is not yet an outcome: the charge may well
+have succeeded at the gateway, and until the webhook arrives nothing here may
+assume either way.
+
+## Commands
+
+`Authorize`, `Capture` and `Decline` are all idempotent on
+`idempotency_key`, which is retained for 30 days.
+
+## Queries
+
+`GetPayment` returns the payment and its full posting history.
+
+## Entities
+
+### Payment — aggregate root
+
+One attempt to take money for an order, from authorization through to capture or decline.
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `id` | `string` | Payment id. |
+| `orderId` | `string` | Order being paid for. |
+| `amount` | [`Money`](../../../types.md#money) | Amount authorized. |
+| `state` | `string` | authorized \| captured \| declined \| voided \| settled. `voided` is a cancellation before capture and costs nothing; `declined` is a refusal. |
+| `card` | `CardRef` | Instrument used, tokenized. |
+| `settlement` | [`Money`](../../../types.md#money) | What the acquirer will actually settle, after any conversion. Equal to `amount` whenever the two currencies match. |
+| `fx` | [`FxRate`](../../../types.md#fxrate) | The rate that produced `settlement`. Absent when no conversion happened, which is the common case. |
+| `attempts` | `[]CaptureAttempt` | Every capture attempt, in order. The retry loop appends; nothing is ever overwritten. |
+| `gateway` | [`GatewayRef`](../../../types.md#gatewayref) | The charge as the gateway knows it. |
+
+### CaptureAttempt
+
+One try at settling an authorization. Has identity inside the payment because the attempt number is what makes a retry safe.
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `attempt` | `int32` | 1-based. Together with the order id this is the key ADR payments.0004 makes the journal idempotent on. |
+| `requestedAt` | `time.Time` | When the attempt left for the gateway, not when it came back. |
+| `outcome` | `string` | pending \| captured \| declined \| timeout. A `timeout` is not a failure: only the gateway's webhook can say which it was. |
+| `gateway` | [`GatewayRef`](../../../types.md#gatewayref) | The gateway's ids for this attempt. A retry gets a new event id and keeps the charge id. |
+
+## Value objects
+
+### Money
+
+An amount in a single currency.
+
+Shared type [`Money`](../../../types.md#money).
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `amountMinor` | `int64` | Amount in the minor unit of the currency. |
+| `currency` | `string` | ISO 4217 code, upper case. |
+
+### CardRef
+
+A tokenized instrument. Never holds a PAN; the token is the identity as far as the ledger is concerned.
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `brand` | `string` | visa \| mastercard \| amex. |
+| `last4` | `string` | Last four digits, for display only. |
+| `token` | `string` | Vault token; the only thing the ledger stores. |
+
+### GatewayRef
+
+How the gateway refers to a charge. Ours to store, never ours to mint.
+
+Shared type [`GatewayRef`](../../../types.md#gatewayref).
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `provider` | `string` | Which gateway owns the id. Only `psp` today; the column exists because a second acquirer is already scheduled. |
+| `chargeId` | `string` | The gateway's own id for the charge. The one handle that survives a restore of our database. |
+| `eventId` | `string` | Id of the webhook event that last touched this charge. This is what the dedup table is keyed on. |
+
+### FxRate
+
+The rate applied when the customer's currency is not the one we settle in.
+
+Shared type [`FxRate`](../../../types.md#fxrate).
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `base` | `string` | ISO 4217 code the rate converts from — the currency the customer was quoted in. |
+| `quote` | `string` | ISO 4217 code the rate converts to — the currency the acquirer settles in. |
+| `rateMicros` | `int64` | Rate scaled by 1e6. An integer on purpose: a float rate cannot be reproduced exactly from a stored posting. |
+| `quotedAt` | `time.Time` | When the rate was taken. A rate older than 60 seconds is refused rather than used. |
+| `source` | `string` | `acquirer` for anything that moves money, `ecb-daily` for reporting only. The two disagree by a spread and must never be mixed. |
+
+### DeclineReason
+
+Why a payment was refused, in enough detail to decide whether trying again is worth anything.
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `code` | `string` | The gateway's code, verbatim: `insufficient_funds`, `do_not_honor`, `currency_unsupported`, `expired_card`. |
+| `category` | `string` | soft \| hard \| system. `soft` may be retried on another instrument, `hard` may not, `system` is ours to fix. |
+| `retryable` | `bool` | Derived from the category, stored anyway so a consumer does not have to know the mapping. |
+| `gatewayMessage` | `string` | The gateway's own words. Kept for support and never shown to a customer. |
+
+## Operations
+
+| Operation | Kind | Doc |
+| --- | --- | --- |
+| `Authorize` | command | Reserves funds at the gateway and fixes the settlement currency. Idempotent on the caller's key for 30 days: a repeat returns the first answer instead of reserving twice. |
+| `Capture` | command | Settles a held authorization, wholly or in part. Appends a CaptureAttempt and posts the journal pair; the attempt number is what makes a retry safe. |
+| `Decline` | command | Records a refusal, the gateway's or ours, with its code and category. Writes no postings — no money moved. |
+| `GetPayment` | query | The payment with its capture attempts, its FX rate if there was one, and the full posting history. |
+
+## Events
+
+### PaymentAuthorized
+
+`payments.ledger.payment.PaymentAuthorized`
+
+| Consumer | Status | Note |
+| --- | --- | --- |
+| [delivery.core](../../../delivery/core/README.md) | declared | Used only to pre-warm route planning. |
+
+#### v1 — current
+
+Funds reserved with the PSP. No money has moved yet.
+
+Source: `internal/ledger/domain/payment/events.go:44`
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `paymentId` | `string` | Ledger identifier for this payment. |
+| `orderId` | `string` | Order the authorisation belongs to. |
+| `amount` | [`Money`](../../../types.md#money) | Amount reserved. |
+| `authCode` | `string` | Opaque PSP authorisation code. |
+| `expiresAt` | `time.Time` | Authorisations lapse after seven days. |
+
+### PaymentCaptured
+
+`payments.ledger.payment.PaymentCaptured`
+
+| Consumer | Status |
+| --- | --- |
+| [delivery.core](../../../delivery/core/README.md) | verified |
+| [shop.billing](../../../shop/billing/README.md) | declared |
+
+#### v1 — current
+
+Reserved funds settled. This is the event fulfilment reacts to.
+
+Source: `internal/ledger/domain/payment/events.go:88`
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `paymentId` | `string` | Ledger identifier for this payment. |
+| `orderId` | `string` | Order the capture belongs to. |
+| `amount` | [`Money`](../../../types.md#money) | Amount actually captured; may be less than authorised. |
+| `capturedAt` | `time.Time` | Instant the PSP confirmed settlement. |
+
+### PaymentDeclined
+
+`payments.ledger.payment.PaymentDeclined`
+
+| Consumer | Status |
+| --- | --- |
+| [shop.oms](../../../shop/oms/README.md) | declared |
+
+#### v1 — current
+
+The PSP refused the authorisation or the capture.
+
+Source: `internal/ledger/domain/payment/events.go:126`
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `paymentId` | `string` | Ledger identifier for the attempted payment. |
+| `orderId` | `string` | Order that failed to pay. |
+| `code` | `string` | Normalised decline code, not the raw PSP string. |
+| `retryable` | `bool` | Whether another attempt is worth making. |
+
+<!-- payments/ledger/aggregates/refund.md -->
+
+# Refund
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `payments.ledger.refund`
+- **Service:** [Ledger](../README.md)
+- **Root:** `Refund`
+
+A compensating movement against a captured payment.
+
+## Rules
+
+- The sum of refunds against a payment may never exceed the captured amount.
+- A refund against an uncaptured payment is a void, handled by `Payment`, not
+  here.
+- Partial refunds are unlimited in count but each needs a distinct reason.
+
+## Settling
+
+A refund is not done when it is issued. It leaves here in `pending` and the
+gateway confirms it by webhook, usually in hours and sometimes in days. The
+hourly poll exists because that webhook is not guaranteed. A refund the
+gateway rejects is stored with its reason and published nowhere — the one
+outcome in this aggregate that no consumer can see.
+
+## Commands
+
+| Command        | Precondition                    |
+| -------------- | ------------------------------- |
+| `IssueRefund`  | Payment captured, headroom left |
+
+## Queries
+
+`ListRefunds` returns refunds for one payment, newest first.
+
+## Entities
+
+### Refund — aggregate root
+
+Money returned against a captured payment.
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `id` | `string` | Refund id. |
+| `paymentId` | `string` | Payment being refunded. |
+| `amount` | [`Money`](../../../types.md#money) | Amount returned; never exceeds the capture. |
+| `reason` | `string` | Free text, taken from the support tool. |
+| `state` | `string` | requested \| pending \| settled \| rejected. `pending` belongs to the gateway, not to us, and it can sit there for days. |
+| `settlement` | `Settlement` | Where the gateway has got to with it. |
+| `gateway` | [`GatewayRef`](../../../types.md#gatewayref) | The charge the refund is written against. |
+
+## Value objects
+
+### Money
+
+An amount in a single currency.
+
+Shared type [`Money`](../../../types.md#money).
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `amountMinor` | `int64` | Amount in the minor unit of the currency. |
+| `currency` | `string` | ISO 4217 code, upper case. |
+
+### Settlement
+
+The gateway's progress on a refund. Ours to record, not to decide.
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `state` | `string` | pending \| settled \| rejected, as last reported. |
+| `requestedAt` | `time.Time` | When the refund was sent to the gateway. |
+| `settledAt` | `time.Time` | When the gateway confirmed. Absent while pending, and absent forever if rejected. |
+| `polls` | `int32` | How many times we asked. The poll is the fallback for a webhook that never came. |
+
+### GatewayRef
+
+The same shared reference the payment carries — a refund is written against the gateway's charge, not against ours.
+
+Shared type [`GatewayRef`](../../../types.md#gatewayref).
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `provider` | `string` | Which gateway owns the id. Only `psp` today; the column exists because a second acquirer is already scheduled. |
+| `chargeId` | `string` | The gateway's own id for the charge. The one handle that survives a restore of our database. |
+| `eventId` | `string` | Id of the webhook event that last touched this charge. This is what the dedup table is keyed on. |
+
+## Operations
+
+| Operation | Kind | Doc |
+| --- | --- | --- |
+| `IssueRefund` | command | Returns money against a captured payment, up to the headroom left on it. Lands in `pending` and stays there until the gateway settles or refuses it. |
+| `ListRefunds` | query | Refunds against one payment, newest first, including the ones the gateway rejected. |
+
+## Events
+
+### RefundIssued
+
+`payments.ledger.refund.RefundIssued`
+
+| Consumer | Status |
+| --- | --- |
+| [delivery.core](../../../delivery/core/README.md) | declared |
+
+#### v1 — current
+
+A compensating posting pair against a captured payment.
+
+Source: `internal/ledger/domain/refund/events.go:30`
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `refundId` | `string` | Identifier of the refund. |
+| `paymentId` | `string` | Payment being refunded. |
+| `amount` | [`Money`](../../../types.md#money) | Amount refunded; may be partial. |
+| `reason` | `string` | Free text, surfaced to support tooling. |
+
+<!-- delivery/README.md -->
+
+# Delivery
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `delivery`
+- **Classification:** supporting
+
+Routes, parcels and proof of delivery. Reacts to captured payments, never to placed orders.
+
+## Services
+
+| Service | Path | Aggregates |
+| --- | --- | --- |
+| [Delivery Core](core/README.md) | `services/core` | Shipment, Route |
+
+<!-- delivery/core/README.md -->
+
+# Delivery Core
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `delivery.core`
+- **Context:** [Delivery](../README.md)
+- **Repo:** `github.com/acme/delivery`
+- **Path:** `services/core`
+
+`delivery.core` turns confirmed orders into physical movement: routes, parcels
+and proof of delivery. It is the only service in the `delivery` context and it
+owns every carrier integration.
+
+## Boundaries
+
+Delivery reacts to `PaymentCaptured` rather than to `OrderPlaced`. An order
+that is placed but never paid must never reach a van. This is the single most
+important rule in the context.
+
+```mermaid
+flowchart TD
+    P[PaymentCaptured] --> R[Plan route]
+    R --> S[ShipmentDispatched]
+    S --> T{scan events}
+    T -- delivered --> D[ShipmentDelivered]
+    T -- failed --> F[Retry next window]
+    F --> R
+```
+
+## Carriers
+
+| Carrier   | Coverage      | Tracking      | Cutoff  |
+| --------- | ------------- | ------------- | ------- |
+| `inhouse` | Metro only    | Live GPS      | 18:00   |
+| `natpost` | National      | Scan events   | 15:30   |
+| `express` | International | Scan events   | 12:00   |
+
+Carrier choice is decided at route planning time and is not part of the order.
+
+## Aggregates
+
+- `shipment` — one parcel from dispatch to proof of delivery.
+- `route` — a planned sequence of stops for one vehicle and one window.
+
+## Retries
+
+A failed delivery attempt does not fail the shipment. The shipment stays open
+and is re-routed into the next available window, up to three attempts, after
+which it is returned to the depot and the order is flagged for support.
+
+## Observability
+
+Every scan event carries the trace id of the originating `PaymentCaptured`
+message, which is how the shipment tracking flow was derived from traces.
+
+## Aggregates
+
+| Aggregate | Root | Commands | Queries | Events |
+| --- | --- | --- | --- | --- |
+| [Shipment](aggregates/shipment.md) | `Shipment` | 3 commands | 2 queries | 2 events |
+| [Route](aggregates/route.md) | `Route` | 2 commands | 1 query | 1 event |
+
+## Provides
+
+**`delivery.v1.Delivery`** — `proto/delivery/v1/delivery.proto:11`
+
+- `PlanRoute`
+- `TrackShipment`
+- `GetShipment`
+
+## Consumes
+
+| Call | Peer | Status | Source |
+| --- | --- | --- | --- |
+| `shop.v1.OrderService/GetOrder` | [shop.oms](../../shop/oms/README.md) | verified | `internal/delivery/client/orders.go:31` |
+| `payments.v1.Payments/GetPayment` | [payments.ledger](../../payments/ledger/README.md) | declared | `internal/delivery/client/payments.go:18` |
+
+## Publishes
+
+| Event | Latest | Consumers |
+| --- | --- | --- |
+| [ShipmentDispatched](aggregates/shipment.md) | v1 | `analytics-sink (declared)` |
+| [ShipmentDelivered](aggregates/shipment.md) | v1 | `analytics-sink (unresolved)`, [shop.oms (declared)](../../shop/oms/README.md) |
+| [RoutePlanned](aggregates/route.md) | v1 | — |
+
+## Stores
+
+| Store | Kind | Access | Tables |
+| --- | --- | --- | --- |
+| [Delivery database](stores/pg.md) | postgres | owns | 3 tables |
+
+<!-- delivery/core/aggregates/shipment.md -->
+
+# Shipment
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `delivery.core.shipment`
+- **Service:** [Delivery Core](../README.md)
+- **Root:** `Shipment`
+
+One parcel, from dispatch to proof of delivery.
+
+## Attempts
+
+A failed attempt does not fail the shipment. The shipment stays open and is
+re-routed into the next window, up to three attempts.
+
+| Attempt | Outcome            | Next                       |
+| ------- | ------------------ | -------------------------- |
+| 1       | no answer          | re-route, next window      |
+| 2       | no answer          | re-route, next window      |
+| 3       | no answer          | return to depot, flag order |
+
+## Exceptions
+
+An `EXCEPTION` scan stops the shipment advancing and opens a delivery
+exception. What reads that queue is not in this catalog and emits no spans, so
+the shipment-tracking flow ends there too — the gap is real, not a modelling
+omission.
+
+## Commands
+
+`Dispatch`, `RecordScan` and `RecordDelivery` are the only writes. Scans
+arrive from carrier webhooks and are deduplicated on the carrier scan id.
+
+## Queries
+
+`TrackShipment` is public-facing and rate limited per tracking reference.
+
+## Entities
+
+### Shipment — aggregate root
+
+Goods on their way to one address. The unit carriers scan.
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `id` | `string` | Shipment id. |
+| `orderId` | `string` | Order the goods belong to. |
+| `parcels` | `[]Parcel` | Physical parcels in this shipment. |
+| `shipTo` | [`Address`](../../../types.md#address) | Destination. |
+| `state` | `string` | held \| planned \| dispatched \| delivered \| exception. A shipment sits in `held` from order confirmation until the money is actually captured. |
+| `scans` | `[]Scan` | Every carrier scan, oldest first. Append-only: a corrected scan is a new one. |
+
+### Parcel
+
+One box. Has its own tracking code and is scanned independently of its shipment.
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `id` | `string` | Parcel id. |
+| `weightGrams` | `int32` | Gross weight at dispatch. |
+| `tracking` | `TrackingCode` | Carrier tracking code. |
+
+### Scan
+
+One reading of a parcel by a carrier. Has identity because the carrier's scan id is what a retried webhook is deduplicated on.
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `carrierEventId` | `string` | The carrier's id for the scan. Deduplication is on this alone; a retried webhook carries the same one. |
+| `code` | `string` | IN_TRANSIT \| DELIVERED \| EXCEPTION. The carrier's vocabulary, stored unmapped so a new code is visible rather than swallowed. |
+| `scannedAt` | `time.Time` | When the carrier says it happened, which is not when we heard about it. |
+| `location` | `string` | Depot or delivery point as the carrier names it. Free text; no two carriers agree. |
+
+## Value objects
+
+### Address
+
+A postal address, unvalidated.
+
+Shared type [`Address`](../../../types.md#address).
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `line1` | `string` | Street and number. |
+| `line2` | `string` | Optional second line. |
+| `city` | `string` | City or locality. |
+| `postcode` | `string` | Postal code, unvalidated. |
+| `country` | `string` | ISO 3166-1 alpha-2. |
+
+### TrackingCode
+
+A carrier and the code it issued. Meaningless without the carrier, so the two travel together.
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `carrier` | `string` | Carrier code, e.g. DHL. |
+| `code` | `string` | Tracking code as issued by the carrier. |
+
+## Operations
+
+| Operation | Kind | Doc |
+| --- | --- | --- |
+| `Dispatch` | command | Releases a held shipment to a carrier and mints its tracking codes. Refused unless the payment is captured. |
+| `RecordScan` | command | Appends a carrier scan, deduplicated on the carrier's scan id. An EXCEPTION scan stops the shipment advancing and opens a delivery exception. |
+| `RecordDelivery` | command | Records proof of delivery and closes the shipment. Terminal: a scan arriving afterwards is stored and changes nothing. |
+| `TrackShipment` | query | The public tracking view for one reference. Rate limited per reference, and returns scans rather than internal state. |
+| `GetShipment` | query | The whole shipment, for callers inside the estate. This is what OMS reads before it will allow a cancellation. |
+
+## Events
+
+### ShipmentDispatched
+
+`delivery.core.shipment.ShipmentDispatched`
+
+| Consumer | Status | Note |
+| --- | --- | --- |
+| `analytics-sink` | declared | Registered in the traces exporter, not in any Go repo. |
+
+#### v1 — current
+
+A parcel physically left the depot.
+
+Source: `internal/delivery/domain/shipment/events.go:52`
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `shipmentId` | `string` | Identifier of the shipment. |
+| `orderId` | `string` | Order being fulfilled. |
+| `carrier` | `string` | One of inhouse, natpost, express. |
+| `trackingRef` | `string` | Carrier tracking reference. |
+| `shipTo` | [`Address`](../../../types.md#address) | Address the parcel is routed to. |
+
+### ShipmentDelivered
+
+`delivery.core.shipment.ShipmentDelivered`
+
+| Consumer | Status | Note |
+| --- | --- | --- |
+| `analytics-sink` | unresolved | Observed downstream of the bus in OTel traces; owner unknown. |
+| [shop.oms](../../../shop/oms/README.md) | declared | — |
+
+#### v1 — current
+
+Proof of delivery recorded. Terminal for the shipment.
+
+Source: `internal/delivery/domain/shipment/events.go:97`
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `shipmentId` | `string` | Identifier of the shipment. |
+| `orderId` | `string` | Order that is now fulfilled. |
+| `signedBy` | `string` | Name captured at the door, empty for contactless. |
+| `deliveredAt` | `time.Time` | Instant of the delivery scan. |
+
+<!-- delivery/core/aggregates/route.md -->
+
+# Route
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `delivery.core.route`
+- **Service:** [Delivery Core](../README.md)
+- **Root:** `Route`
+
+A planned sequence of stops for one vehicle and one delivery window.
+
+## Planning
+
+Routes are planned once per window, ninety minutes before the window opens.
+Shipments that miss the cut-off wait for the next window rather than forcing a
+re-plan; re-planning a live route is not supported.
+
+## Commands
+
+| Command       | Notes                                   |
+| ------------- | --------------------------------------- |
+| `PlanRoute`   | Assigns vehicle and stop order          |
+| `CloseRoute`  | Terminal; unfinished stops are re-queued |
+
+## Queries
+
+`GetRoute` returns stops in planned order, not in scan order.
+
+## Entities
+
+### Route — aggregate root
+
+A day's driving for one vehicle, as planned the night before.
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `id` | `string` | Route id. |
+| `date` | `string` | Delivery date, ISO. |
+| `vehicleId` | `string` | Vehicle assigned. |
+| `stops` | `[]Stop` | Stops in driving order. |
+
+### Stop
+
+One address on a route. Identified by its position, which is what the driver's app shows.
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `sequence` | `int32` | Position on the route, 1-based. |
+| `address` | [`Address`](../../../types.md#address) | Where to stop. |
+| `shipmentId` | `string` | Shipment dropped here. |
+
+## Value objects
+
+### Address
+
+A postal address, unvalidated.
+
+Shared type [`Address`](../../../types.md#address).
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `line1` | `string` | Street and number. |
+| `line2` | `string` | Optional second line. |
+| `city` | `string` | City or locality. |
+| `postcode` | `string` | Postal code, unvalidated. |
+| `country` | `string` | ISO 3166-1 alpha-2. |
+
+## Operations
+
+| Operation | Kind | Doc |
+| --- | --- | --- |
+| `PlanRoute` | command | Sequences one window's shipments for one vehicle. Runs 90 minutes before the window opens; anything missing the cut-off waits for the next one. |
+| `CloseRoute` | command | Ends a route once every stop is recorded. A route with unrecorded stops cannot be closed. |
+| `GetRoute` | query | One route with its stops in driving order. |
+
+## Events
+
+### RoutePlanned
+
+`delivery.core.route.RoutePlanned`
+
+#### v1 — current
+
+A vehicle and window were assigned a stop sequence.
+
+Source: `internal/delivery/domain/route/events.go:38`
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `routeId` | `string` | Identifier of the route. |
+| `vehicleId` | `string` | Vehicle assigned to the route. |
+| `stopCount` | `int32` | Number of stops on the route. |
+| `windowStart` | `time.Time` | Start of the delivery window. |
+
+<!-- auth/README.md -->
+
+# Authentication
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `auth`
+- **Classification:** core
+
+Who someone is, and whether they are still logged in. The only service in the estate that stores credentials, and the only one allowed to mint or revoke a session.
+
+## Services
+
+| Service | Path | Aggregates |
+| --- | --- | --- |
+| [Authentication & Sessions](auth/README.md) | `examples/auth` | Lockout, Session, User |
+
+<!-- auth/auth/README.md -->
+
+# Authentication & Sessions
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `auth.auth`
+- **Context:** [Authentication](../README.md)
+- **Repo:** `github.com/shortlink-org/portolan`
+- **Path:** `examples/auth`
+
+Service `auth` — bounded context **auth**.
+
+Owns *who someone is* and *whether they are still logged in*. It is the only
+service in the estate that stores credentials, and the only one allowed to mint
+or revoke a session.
+
+## What it does
+
+- Registers a user: an email address and a password, hashed before it is stored.
+- Authenticates: checks a password and answers with a user id or a refusal.
+- Replaces a password, given the current one, and ends the sessions the old one
+  was issued against.
+- Starts a session on a successful login, once a risk service has allowed it,
+  and hands back an opaque token.
+- Ends a session on logout.
+- Validates a token for everyone else — the hot path every authenticated
+  request in `shop` goes through.
+- Locks an account after five wrong passwords in a row, for fifteen minutes,
+  and says so with an event.
+
+## What it does not do
+
+No profile data, no addresses, no payment instruments, no roles or scopes.
+Other contexts hold their own view of a customer and reference it by opaque
+user id; nothing outside `auth` ever sees a credential.
+
+No MFA, no email verification, no refresh tokens, no way for support to lift a
+lock early. Each of those is a real requirement somewhere, and none of them is
+here: this service is deliberately the smallest thing that is still
+authentication.
+
+## Decisions
+
+- [auth.0001](docs/adr/0001-events-returned-not-buffered.md) — Aggregates return their events; they do not buffer them
+- [auth.0002](docs/adr/0002-session-is-its-own-aggregate.md) — Session is its own aggregate, linked to User by id
+- [auth.0003](docs/adr/0003-expiry-publishes-nothing.md) — Session expiry publishes no event
+- [auth.0004](docs/adr/0004-lockout-is-its-own-aggregate.md) — Lockout is its own aggregate, keyed by user id
+- [auth.0005](docs/adr/0005-rules-are-specifications-at-construction.md) — Validation lives in constructors, as specifications, and applies when a value is made
+- [auth.0006](docs/adr/0006-a-password-change-ends-sessions-through-a-policy.md) — A password change ends sessions through a policy, and the domains never import each other
+- [auth.0007](docs/adr/0007-login-asks-risk-and-a-block-is-a-compromise.md) — Login asks a risk service, and a blocked attempt is treated as a compromise
+- [auth.0008](docs/adr/0008-a-cache-in-front-of-bytoken-only.md) — A cache in front of the token lookup, and nothing else
+- [auth.0009](docs/adr/0009-a-lock-answers-like-a-wrong-password.md) — A locked account answers exactly like a wrong password
+
+## Running it
+
+```bash
+docker compose up -d
+STORE_TYPE=postgres \
+STORE_POSTGRES_URI=postgres://auth:auth@localhost:5432/auth?sslmode=disable \
+  go run ./cmd/auth
+```
+
+`CACHE_TYPE=redis` with `STORE_REDIS_URI` turns the cache on; `RISK_ADDR`
+points login at a risk service; `TRACER_URI` switches tracing on. Unset, each
+is a stand-in that keeps nothing, allows everything, or costs nothing. The
+schema is brought up to date at startup. `go test ./...` runs everything;
+without Docker the packages that need Postgres or redis are skipped.
+`go generate ./...` regenerates the server from the spec and the wire graph.
+
+## Aggregates
+
+| Aggregate | Root | Commands | Queries | Events |
+| --- | --- | --- | --- | --- |
+| [Lockout](aggregates/lockout.md) | `Lockout` | 2 commands | 1 query | 1 event |
+| [Session](aggregates/session.md) | `Session` | 3 commands | 1 query | 2 events |
+| [User](aggregates/user.md) | `User` | 2 commands | 2 queries | 2 events |
+
+## Provides
+
+**`auth.v1.Users`** — `examples/auth/internal/infrastructure/transport/http/gen/openapi.yaml`
+
+- `registerUser`
+- `getUser`
+- `changePassword`
+
+<details><summary>RegisterRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `email` | `string (email)` |
+| `password` | `string (password)` |
+
+</details>
+
+<details><summary>User</summary>
+
+| Field | Type |
+| --- | --- |
+| `userId` | `string` |
+| `email` | `string (email)` |
+| `createdAt` | `string (date-time)` |
+
+</details>
+
+<details><summary>Error</summary>
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `message` | `string` | One sentence, always present. A client that shows the user a single line shows this one. |
+| `reasons` | `[]string` | Optional. One entry per rule the request broke, present only where rules apply - a 404 or a 500 has none. Each entry names its own field, so it can be shown on its own without knowing what it referred to. |
+
+</details>
+
+<details><summary>ChangePasswordRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `currentPassword` | `string (password)` |
+| `newPassword` | `string (password)` |
+
+</details>
+
+**`auth.v1.Sessions`** — `examples/auth/internal/infrastructure/transport/http/gen/openapi.yaml`
+
+- `login`
+- `validateSession`
+- `logout`
+
+<details><summary>LoginRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `email` | `string (email)` |
+| `password` | `string (password)` |
+
+</details>
+
+<details><summary>Session</summary>
+
+| Field | Type |
+| --- | --- |
+| `token` | `string` |
+| `expiresAt` | `string (date-time)` |
+
+</details>
+
+<details><summary>Error</summary>
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `message` | `string` | One sentence, always present. A client that shows the user a single line shows this one. |
+| `reasons` | `[]string` | Optional. One entry per rule the request broke, present only where rules apply - a 404 or a 500 has none. Each entry names its own field, so it can be shown on its own without knowing what it referred to. |
+
+</details>
+
+<details><summary>SessionInfo</summary>
+
+| Field | Type |
+| --- | --- |
+| `userId` | `string` |
+| `expiresAt` | `string (date-time)` |
+
+</details>
+
+## Consumes
+
+| Call | Peer | Status | Source |
+| --- | --- | --- | --- |
+| `risk.v1.RiskService/Assess` | `risk.v1` | unresolved | `examples/auth/internal/infrastructure/risk/gen/riskpb/risk_grpc.pb.go` |
+
+## Publishes
+
+| Event | Latest | Consumers |
+| --- | --- | --- |
+| [AccountLocked](aggregates/lockout.md) | v1 | — |
+| [SessionEnded](aggregates/session.md) | v1 | — |
+| [SessionStarted](aggregates/session.md) | v1 | — |
+| [PasswordChanged](aggregates/user.md) | v1 | [auth.auth](README.md) |
+| [UserRegistered](aggregates/user.md) | v1 | — |
+
+## Stores
+
+| Store | Kind | Access | Tables |
+| --- | --- | --- | --- |
+| [Auth database](stores/pg.md) | postgres | owns | 3 tables |
+
+<!-- auth/auth/aggregates/lockout.md -->
+
+# Lockout
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `auth.auth.lockout`
+- **Service:** [Authentication & Sessions](../README.md)
+- **Root:** `Lockout`
+
+How many wrong passwords in a row an account has taken, and whether it is
+refusing logins because of them. One per user, identified by the user id,
+existing from the first wrong password on. A separate aggregate from `User`:
+a failed attempt is written on every wrong password and the user does not
+change when one arrives, so the two do not share a lock.
+
+## States
+
+- **Open** — counting. `Failures` is the number of wrong passwords in a row;
+  the account accepts a password. The only state a password is checked in.
+- **Locked** — until `LockedUntil`. The account refuses a password without
+  checking it, with the same answer a wrong one gets. Not terminal: it ends
+  by time.
+- A lock that has run out is **Open** again. Derived from time when the next
+  attempt arrives; no command, no event, nothing runs. The next wrong
+  password starts the count at one.
+
+The state is read off `LockedUntil` with `now`; there is no stored flag to
+drift from it. The moves are one table, `Rules` in `rules.go`, run through
+`go-sdk/fsm` by `trigger`: `lock` on the failure that reaches the threshold,
+`lapse` on the first attempt after a lock has run out, which is when the code
+notices it. The run-out itself is not a move; nothing runs when it happens.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Open : first wrong password (no event)
+    Open --> Open : Fail, count < Threshold (no event)
+    Open --> Locked : Fail, count = Threshold / AccountLocked
+    Open --> Open : Succeed, count := 0 (no event)
+    Locked --> Locked : Fail, not counted (no event)
+    Locked --> Open : now ≥ LockedUntil (no event)
+```
+
+## Commands
+
+| Command | From | To | Event |
+|---|---|---|---|
+| `New` | — | Open, zero failures | none; nothing has happened yet |
+| `Fail` | Open, count < Threshold − 1 | Open, count + 1 | none |
+| `Fail` | Open, count = Threshold − 1 | Locked | `AccountLocked` |
+| `Fail` | Locked | unchanged | none; reports "locked nothing" |
+| `Succeed` | Open | Open, count 0 | none; reports whether anything changed |
+| `Succeed` | Locked | unchanged | none; the lock stands |
+
+`Allows(now)` and `Locked(now)` are the read, for the caller that asks
+before checking a password.
+
+One event for the whole aggregate. A wrong password that locked nothing is a
+count, not a fact anybody consumes; a count going back to zero is
+bookkeeping; the lock running out is time passing. `AccountLocked` carries
+`Until`, so a consumer who wants to know when the account is usable again
+does not have to be told twice.
+
+## Entities
+
+### Lockout — aggregate root
+
+Lockout is the aggregate root. Its identity is the user id: there is one per account, and it exists from the first wrong password on.
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `UserID` | `string` | — |
+| `Failures` | `int` | Failures is the number of wrong passwords in a row. It is reset by a right one and by the count starting again after a lock has run out. |
+| `LockedUntil` | `time.Time` | LockedUntil is when the lock ends; zero while the account has never been locked. A time in the past is a lock that ran out: the state is read off it with `now`, and nothing runs when it passes. |
+| `Version` | `int64` | Version is what the store compares against before writing; see the note on user.User.Version. Zero means the lockout has never been stored. |
+
+## Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> open
+    open --> locked: Fail · AccountLocked
+    locked --> open: Fail
+    locked --> open: Succeed
+```
+
+| From | To | On | Emits | Source |
+| --- | --- | --- | --- | --- |
+| `open` | `locked` | `Fail` | `AccountLocked` | `examples/auth/internal/domain/lockout/lockout.go:95` |
+| `locked` | `open` | `Fail` | — | `examples/auth/internal/domain/lockout/lockout.go:88` |
+| `locked` | `open` | `Succeed` | — | `examples/auth/internal/domain/lockout/lockout.go:121` |
+
+## Operations
+
+| Operation | Kind | Doc |
+| --- | --- | --- |
+| `Check` | query | Answers whether an account accepts a password right now. |
+| `RecordFailure` | command | Counts a wrong password against an account, and locks the account when the count reaches the threshold. |
+| `RecordSuccess` | command | Clears the count of wrong passwords after a right one. |
+
+## Events
+
+### AccountLocked
+
+`auth.auth.lockout.AccountLocked`
+
+On the wire as `auth.AccountLocked`, on `auth_lockout`.
+
+#### v1 — current
+
+AccountLocked is published when an account starts refusing logins because of too many wrong passwords in a row. Until says when it stops.
+
+Source: `examples/auth/internal/domain/lockout/event/account_locked.go`
+
+| Field | Type |
+| --- | --- |
+| `userID` | `string` |
+| `until` | `time.Time` |
+| `occurredAt` | `time.Time` |
+
+<!-- auth/auth/aggregates/session.md -->
+
+# Session
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `auth.auth.session`
+- **Service:** [Authentication & Sessions](../README.md)
+- **Root:** `Session`
+
+Proof that a user logged in, how long that proof is good for, and whether it
+has been taken away. A separate aggregate from `User`: it is written far more
+often and revoked without the user changing, so the two do not share a lock.
+They are linked by user id and nothing else.
+
+## States
+
+- **Live** — issued, not revoked, not past expiry. The only state a token is
+  accepted in.
+- **Revoked** — ended by a command, with a reason. Terminal: a revoked session
+  never comes back, logging in again produces a new one.
+- **Expired** — past `ExpiresAt`. Derived from time when the token is
+  presented; no command, no event, nothing runs. Every consumer already knows
+  the expiry from `SessionStarted`.
+
+The state is not stored as a field. It is read off `RevokedAt` and
+`ExpiresAt` with `now`, so there is no second copy to drift. The moves are
+one table, `Rules` in `rules.go`, run through `go-sdk/fsm` by `trigger`; a
+command that would move the session somewhere the table does not allow is
+refused there, which is what makes `Revoke` idempotent. Expiry is not in the
+table: it is not a move, nothing runs when it happens.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Live : Start / SessionStarted
+    Live --> Revoked : Revoke(reason) / SessionEnded
+    Live --> Expired : now ≥ ExpiresAt (no event)
+    Revoked --> [*]
+    Expired --> [*]
+```
+
+## Commands
+
+| Command | From | To | Event |
+|---|---|---|---|
+| `Start` | — | Live | `SessionStarted` |
+| `Revoke(reason)` | Live | Revoked | `SessionEnded` |
+| `Revoke(reason)` | Revoked, Expired | unchanged | none; reports "nothing to do" |
+
+`Validate(now)` is the read: it says which state forbids use (`ErrRevoked`,
+`ErrExpired`) or nothing. `Live(now)` is the same question as a boolean.
+
+Revoking twice is the "nothing to do" answer, not a refusal: the caller asked
+for something already true. Ending it again would publish a `SessionEnded`
+for an ending that did not happen.
+
+## Entities
+
+### Session — aggregate root
+
+Session is the aggregate root. Its identity is ID; the Token is a secret it carries, not what it is called.
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `ID` | `string` | — |
+| `UserID` | `string` | — |
+| `Token` | `token.Token` | — |
+| `IssuedAt` | `time.Time` | — |
+| `ExpiresAt` | `time.Time` | — |
+| `RevokedAt` | `time.Time` | zero while live |
+| `Version` | `int64` | Version is what the store compares against before writing; see the note on user.User.Version. Zero means the session has never been stored. |
+
+## Value objects
+
+### Token
+
+Token is the opaque string a client presents instead of a password.
+
+| Field | Type |
+| --- | --- |
+| `value` | `string` |
+
+## Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> live
+    live --> revoked: Revoke · SessionEnded
+    revoked --> [*]
+```
+
+| From | To | On | Emits | Source |
+| --- | --- | --- | --- | --- |
+| `live` | `revoked` | `Revoke` | `SessionEnded` | `examples/auth/internal/domain/session/session.go:88` |
+
+## Operations
+
+| Operation | Kind | Exposed by | Doc |
+| --- | --- | --- | --- |
+| `EndAfterCredentialChange` | command | *internal* | Ends the sessions a credential change invalidates. |
+| `Login` | command | `login` | Turns credentials into a session. |
+| `Logout` | command | `logout` | Ends the session behind a token. |
+| `Validate` | query | `changePassword`, `validateSession` | Resolves a token to a live session: who is calling, and how long the answer stays good. |
+
+## Events
+
+### SessionEnded
+
+`auth.auth.session.SessionEnded`
+
+On the wire as `auth.SessionEnded`, on `auth_session`.
+
+#### v1 — current
+
+SessionEnded is published when a session is deliberately ended.
+
+Source: `examples/auth/internal/domain/session/event/session_ended.go`
+
+| Field | Type |
+| --- | --- |
+| `sessionID` | `string` |
+| `userID` | `string` |
+| `reason` | `Reason` |
+| `occurredAt` | `time.Time` |
+
+### SessionStarted
+
+`auth.auth.session.SessionStarted`
+
+On the wire as `auth.SessionStarted`, on `auth_session`.
+
+#### v1 — current
+
+SessionStarted is published on a successful login. ExpiresAt is on the event so a consumer can reason about the session's lifetime without asking auth again on every check.
+
+Source: `examples/auth/internal/domain/session/event/session_started.go`
+
+| Field | Type |
+| --- | --- |
+| `sessionID` | `string` |
+| `userID` | `string` |
+| `expiresAt` | `time.Time` |
+| `occurredAt` | `time.Time` |
+
+<!-- auth/auth/aggregates/user.md -->
+
+# User
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `auth.auth.user`
+- **Service:** [Authentication & Sessions](../README.md)
+- **Root:** `User`
+
+A person, the address they log in with, and the hash of the password they log
+in by. Identity is the id, minted at registration; the address can change.
+
+## States
+
+One state. A user that exists is registered, and nothing here ends that:
+there is no deletion, no suspension, no lockout. Each of those is a real
+requirement somewhere and none of them is here.
+
+`ChangePassword` changes a value, not a state. It is a command with a guard
+(the current password) and an event, and the user is the same user afterwards.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Registered : Register / UserRegistered
+    Registered --> Registered : ChangePassword(current, next) / PasswordChanged
+```
+
+## Commands
+
+| Command | Guard | Event |
+|---|---|---|
+| `Register` | address and password pass their policies | `UserRegistered` |
+| `ChangePassword` | the current password matches; the new one passes the policy | `PasswordChanged` |
+| `Authenticate` | — | none; a read that answers one refusal for every failure |
+
+No command here touches a session. That a password change ends sessions is a
+rule about sessions, applied by the policy in `internal/application/policy`.
+
+## Entities
+
+### User — aggregate root
+
+User is the aggregate root. Identity is ID, minted once at registration and never reused - not the email, because people change addresses.
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `ID` | `string` | — |
+| `Email` | `email.Address` | — |
+| `Password` | `password.Hash` | — |
+| `CreatedAt` | `time.Time` | — |
+| `Version` | `int64` | Version is what the store compares against before writing. It is carried on the aggregate rather than known only to the repository so that a copy which has gone stale can say so - without it, two changes made from two reads both succeed and the first one silently disappears. |
+
+## Value objects
+
+### email.Address
+
+Address is a normalised email address.
+
+| Field | Type |
+| --- | --- |
+| `value` | `string` |
+
+### password.Hash
+
+Hash is what the user domain stores in place of a password. The plaintext never lives on an aggregate and never leaves the function that hashed it.
+
+| Field | Type |
+| --- | --- |
+| `algorithm` | `string` |
+| `iterations` | `int` |
+| `salt` | `[]byte` |
+| `digest` | `[]byte` |
+
+## Operations
+
+| Operation | Kind | Exposed by | Doc |
+| --- | --- | --- | --- |
+| `Authenticate` | query | *internal* | Checks an address and a password, and says which user they belong to. |
+| `ChangePassword` | command | `changePassword` | Replaces the password of a user, given the current one. |
+| `Get` | query | `getUser` | Reads a user by id. |
+| `Register` | command | `registerUser` | Creates a user from an email address and a password. |
+
+## Events
+
+### PasswordChanged
+
+`auth.auth.user.PasswordChanged`
+
+On the wire as `auth.PasswordChanged`, on `auth_user`.
+
+| Consumer | Status | Note |
+| --- | --- | --- |
+| [auth.auth](../README.md) | verified | Seen consuming it in telemetry/traces.jsonl. |
+
+#### v1 — current
+
+PasswordChanged is published when a user's password is replaced. It says the password is different now; it does not carry the password, old or new, in any form.
+
+Source: `examples/auth/internal/domain/user/event/password_changed.go`
+
+| Field | Type |
+| --- | --- |
+| `userID` | `string` |
+| `by` | `string` |
+| `occurredAt` | `time.Time` |
+
+### UserRegistered
+
+`auth.auth.user.UserRegistered`
+
+On the wire as `auth.UserRegistered`, on `auth_user`.
+
+#### v1 — current
+
+UserRegistered is published once per user, at registration. It carries the address because consumers routinely need to reach the person, and asking auth for it on every event would make the bus useless.
+
+Source: `examples/auth/internal/domain/user/event/user_registered.go`
+
+| Field | Type |
+| --- | --- |
+| `userID` | `string` |
+| `email` | `string` |
+| `occurredAt` | `time.Time` |
+
+<!-- shop/pricing/stores/cache.md -->
+
+# Price list cache
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `shop.pricing.cache`
+- **Kind:** redis
+- **Owner:** [shop.pricing](../README.md)
+- **Source:** `shop/pricing/internal/cache`
+
+<!-- payments/ledger/stores/pg.md -->
+
+# Ledger database
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `payments.ledger.pg`
+- **Kind:** postgres
+- **Owner:** [payments.ledger](../README.md)
+- **Source:** `payments/ledger/db/migrations`
+
+## Tables
+
+### journal_entries
+
+aggregate-root · persists [payments.ledger.payment](../aggregates/payment.md)
+
+Append-only. One row per capture attempt, unique on (order_id, attempt) per ADR payments.0004.
+
+| Column | Type | Null | Key | Maps |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | not null | PK | Payment.id |
+| `order_id` | `text` | not null | — | Payment.orderId |
+| `attempt` | `integer` | not null | — | CaptureAttempt.attempt |
+| `amount_minor` | `bigint` | not null | — | Payment.amount |
+| `currency` | `char(3)` | not null | — | — |
+| `state` | `text` | not null | — | Payment.state |
+| `gateway_charge_id` | `text` | null | — | Payment.gateway |
+| `requested_at` | `timestamptz` | not null | — | CaptureAttempt.requestedAt |
+
+| Index | Columns | Kind |
+| --- | --- | --- |
+| `journal_entries_order_attempt_key` | order_id, attempt | unique |
+| `journal_entries_state_idx` | state | index |
+
+### refunds
+
+child · persists [payments.ledger.refund](../aggregates/refund.md)
+
+Refunds against a captured payment.
+
+| Column | Type | Null | Key | Maps |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | not null | PK | Refund.id |
+| `payment_id` | `text` | not null | → [`payments.ledger.pg.journal_entries`](pg.md#journal_entries).id (restrict) | Refund.paymentId |
+| `amount_minor` | `bigint` | not null | — | Refund.amount |
+| `reason` | `text` | not null | — | Refund.reason |
+| `state` | `text` | not null | — | Refund.state |
+| `settled_at` | `timestamptz` | null | — | Settlement.settledAt |
+
+## Views
+
+### v_payment_state
+
+computed on read
+
+Every payment with what has been refunded against it. One row per journal entry.
+
+| Column | Type | Null | Maps | From |
+| --- | --- | --- | --- | --- |
+| `payment_id` | `text` | not null | Payment.id | `payments.ledger.pg.journal_entries.id` |
+| `order_id` | `text` | not null | Payment.orderId | `payments.ledger.pg.journal_entries.order_id` |
+| `state` | `text` | not null | Payment.state | `payments.ledger.pg.journal_entries.state` |
+| `amount_minor` | `bigint` | not null | Payment.amount | `payments.ledger.pg.journal_entries.amount_minor` |
+| `refunded_minor` | `bigint` | not null | — | `payments.ledger.pg.refunds.amount_minor` |
+
+```sql
+CREATE VIEW v_payment_state AS
+SELECT j.id AS payment_id, j.order_id, j.state,
+       j.amount_minor, coalesce(sum(r.amount_minor), 0) AS refunded_minor
+  FROM journal_entries j
+  LEFT JOIN refunds r ON r.payment_id = j.id
+ GROUP BY j.id;
+```
+
+Source: `payments/ledger/db/migrations/0011_payment_state.sql`
+
+<!-- delivery/core/stores/pg.md -->
+
+# Delivery database
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `delivery.core.pg`
+- **Kind:** postgres
+- **Owner:** [delivery.core](../README.md)
+- **Source:** `delivery/core/db/migrations`
+
+## Tables
+
+### packages
+
+aggregate-root · persists [delivery.core.shipment](../aggregates/shipment.md)
+
+One row per shipment. order_id is a real foreign key into the OMS database — see Problems.
+
+| Column | Type | Null | Key | Maps | Doc |
+| --- | --- | --- | --- | --- | --- |
+| `id` | `text` | not null | PK | Shipment.id | — |
+| `order_id` | `uuid` | not null | → [`shop.oms.pg.orders`](../../../shop/oms/stores/pg.md#orders).id (restrict) | Shipment.orderId | — |
+| `state` | `text` | not null | — | Shipment.state | — |
+| `ship_to` | `jsonb` | not null | — | Shipment.shipTo | Copied off the order when the shipment is created; the real order carries no address yet, so nothing says where this comes from. |
+| `dispatched_at` | `timestamptz` | null | — | — | — |
+
+### parcels
+
+child · persists [delivery.core.shipment](../aggregates/shipment.md) · block `delivery.core.shipment.parcel`
+
+Parcels inside a shipment.
+
+| Column | Type | Null | Key | Maps |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | not null | PK | Parcel.id |
+| `package_id` | `text` | not null | → [`delivery.core.pg.packages`](pg.md#packages).id (cascade) | — |
+| `weight_grams` | `integer` | not null | — | Parcel.weightGrams |
+| `tracking` | `text` | not null | — | Parcel.tracking |
+
+### route_stops
+
+projection · persists [delivery.core.route](../aggregates/route.md)
+
+Planned stops, rebuilt from RoutePlanned. Derived, not a source of truth.
+
+| Column | Type | Null | Key | From | Doc |
+| --- | --- | --- | --- | --- | --- |
+| `route_id` | `text` | not null | PK | — | — |
+| `seq` | `integer` | not null | PK | — | — |
+| `package_id` | `text` | null | → [`delivery.core.pg.packages`](pg.md#packages).id | — | — |
+| `address` | `jsonb` | not null | — | `delivery.core.pg.packages.ship_to` | Denormalised from the package, so a route can be printed without a join. |
+
+## Views
+
+### mv_route_load
+
+**materialized** — rows are stored, and can be stale · reads [`delivery.core.pg.route_stops`](pg.md#route_stops), [`delivery.core.pg.parcels`](pg.md#parcels)
+
+Stops and weight per route, refreshed after each plan. The catalog knows what it reads, not which column feeds which.
+
+| Column | Type | Null |
+| --- | --- | --- |
+| `route_id` | `text` | not null |
+| `stops` | `bigint` | not null |
+| `weight_grams` | `bigint` | null |
+
+```sql
+CREATE MATERIALIZED VIEW mv_route_load AS
+SELECT s.route_id, count(*) AS stops, sum(p.weight_grams) AS weight_grams
+  FROM route_stops s
+  LEFT JOIN parcels p ON p.package_id = s.package_id
+ GROUP BY s.route_id;
+```
+
+Source: `delivery/core/db/migrations/0005_route_load.sql`
+
+<!-- auth/auth/stores/pg.md -->
+
+# Auth database
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `auth.auth.pg`
+- **Kind:** postgres
+- **Owner:** [auth.auth](../README.md)
+- **Source:** `examples/auth/internal/infrastructure/repository`
+
+## Tables
+
+### lockouts
+
+aggregate-root · persists [auth.auth.lockout](../aggregates/lockout.md)
+
+| Column | Type | Null | Key | Maps |
+| --- | --- | --- | --- | --- |
+| `user_id` | `text` | not null | PK | Lockout.UserID |
+| `failures` | `integer` | not null | — | Lockout.Failures |
+| `locked_until` | `timestamptz` | null | — | Lockout.LockedUntil |
+| `version` | `bigint` | not null | — | — |
+
+### sessions
+
+aggregate-root · persists [auth.auth.session](../aggregates/session.md)
+
+| Column | Type | Null | Key | Maps |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | not null | PK | Session.ID |
+| `user_id` | `text` | not null | — | Session.UserID |
+| `token` | `text` | not null | — | Session.Token |
+| `issued_at` | `timestamptz` | not null | — | Session.IssuedAt |
+| `expires_at` | `timestamptz` | not null | — | Session.ExpiresAt |
+| `revoked_at` | `timestamptz` | null | — | Session.RevokedAt |
+| `version` | `bigint` | not null | — | — |
+
+| Index | Columns | Kind |
+| --- | --- | --- |
+| `sessions_token_key` | token | unique |
+| `sessions_user_id_idx` | user_id, issued_at | index |
+
+### users
+
+aggregate-root · persists [auth.auth.user](../aggregates/user.md)
+
+| Column | Type | Null | Key | Maps |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | not null | PK | User.ID |
+| `email` | `text` | not null | — | User.Email |
+| `password_hash` | `text` | not null | — | User.Password |
+| `created_at` | `timestamptz` | not null | — | User.CreatedAt |
+| `version` | `bigint` | not null | — | — |
+
+| Index | Columns | Kind |
+| --- | --- | --- |
+| `users_email_key` | email | unique |
+
+<!-- shop/billing/stores/pg.md -->
+
+# Billing database
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `shop.billing.pg`
+- **Kind:** postgres
+- **Owner:** [shop.billing](../README.md)
+- **Source:** `examples/shop/billing`
+
+## Tables
+
+### invoices
+
+aggregate-root · persists [shop.billing.invoice](../aggregates/invoice.md) · block `shop.billing.invoice.invoice`
+
+| Column | Type | Null | Key | Maps | Doc |
+| --- | --- | --- | --- | --- | --- |
+| `id` | `uuid` | not null | PK | Invoice.id | — |
+| `order_id` | `uuid` | not null | — | Invoice.order_id | The order this invoice is drawn up for. |
+| `customer_id` | `uuid` | not null | — | Invoice.customer_id | Opaque, and only ever as good as the session auth vouched for. |
+| `number` | `varchar(32)` | null | — | Invoice.number | What the customer quotes. A draft has none. |
+| `currency` | `varchar(3)` | not null | — | Invoice.currency | ISO 4217, frozen when the first line is drawn up. |
+| `total_minor` | `bigint` | not null | — | Invoice.total_minor | The sum of the lines, in the minor unit of the currency. |
+| `tax_rate` | `numeric(5,4)` | not null | — | Invoice.tax_rate | The rate the total was taxed at. |
+| `status` | `varchar(16)` | not null | — | Invoice.status | — |
+| `drawn_up_at` | `timestamptz` | not null | — | Invoice.drawn_up_at | — |
+| `issued_at` | `timestamptz` | null | — | Invoice.issued_at | — |
+| `settled_at` | `timestamptz` | null | — | Invoice.settled_at | When it was paid or voided; null while it is neither. |
+
+| Index | Columns | Kind |
+| --- | --- | --- |
+| `invoices_order_id` | order_id | index |
+| `invoices_number_key` | number | unique |
+| `invoices_by_customer` | customer_id, status | index |
+
+### invoice_lines
+
+child · persists [shop.billing.invoice](../aggregates/invoice.md) · block `shop.billing.invoice.invoice-line`
+
+| Column | Type | Null | Key | Maps | Doc |
+| --- | --- | --- | --- | --- | --- |
+| `id` | `bigserial` | not null | PK | — | — |
+| `invoice_id` | `uuid` | not null | → [`shop.billing.pg.invoices`](pg.md#invoices).id (cascade) | Invoice.id | — |
+| `sku` | `varchar(64)` | not null | — | InvoiceLine.sku | — |
+| `quantity` | `integer` | not null | — | InvoiceLine.quantity | — |
+| `unit_price` | `bigint` | not null | — | InvoiceLine.unit_price_minor | Captured when the line is drawn up, never recomputed. |
+
+| Index | Columns | Kind |
+| --- | --- | --- |
+| `invoice_lines_invoice_id_sku_key` | invoice_id, sku | unique |
+
+<!-- shop/cart/stores/pg.md -->
+
+# Cart database
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `shop.cart.pg`
+- **Kind:** postgres
+- **Owner:** [shop.cart](../README.md)
+- **Source:** `examples/shop/cart/src/infrastructure/repository`
+
+## Tables
+
+### baskets
+
+aggregate-root · persists [shop.cart.basket](../aggregates/basket.md)
+
+| Column | Type | Null | Key | Maps |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | not null | PK | Basket.id |
+| `token` | `text` | not null | — | Basket.token |
+| `customer_id` | `text` | null | — | — |
+| `currency` | `char(3)` | null | — | — |
+| `status` | `text` | not null | — | Basket.status |
+| `touched_at` | `timestamptz` | not null | — | Basket.touchedAt |
+| `version` | `integer` | not null | — | — |
+
+| Index | Columns | Kind |
+| --- | --- | --- |
+| `baskets_open_by_customer` | customer_id | index |
+| `baskets_idle` | touched_at | index |
+
+### basket_items
+
+child · persists [shop.cart.basket](../aggregates/basket.md)
+
+| Column | Type | Null | Key | Maps |
+| --- | --- | --- | --- | --- |
+| `basket_id` | `uuid` | not null | PK | Basket.id |
+| `sku` | `text` | not null | PK | Basket.sku |
+| `quantity` | `integer` | not null | — | Basket.quantity |
+| `unit_price_minor` | `bigint` | not null | — | Basket.unitPrice.amountMinor |
+| `currency` | `char(3)` | not null | — | Basket.unitPrice.currency.code |
+
+### outbox
+
+outbox
+
+| Column | Type | Null | Key |
+| --- | --- | --- | --- |
+| `id` | `bigserial` | not null | PK |
+| `uuid` | `uuid` | not null | — |
+| `topic` | `text` | not null | — |
+| `payload` | `jsonb` | not null | — |
+| `metadata` | `jsonb` | not null | — |
+| `created_at` | `timestamptz` | not null | — |
+| `published_at` | `timestamptz` | null | — |
+
+| Index | Columns | Kind |
+| --- | --- | --- |
+| `outbox_unpublished` | id | index |
+
+<!-- shop/oms/stores/pg.md -->
+
+# Order database
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `shop.oms.pg`
+- **Kind:** postgres
+- **Owner:** [shop.oms](../README.md)
+- **Source:** `examples/shop/oms/src/infrastructure/repository`
+
+## Tables
+
+### orders
+
+aggregate-root · persists [shop.oms.order](../aggregates/order.md)
+
+| Column | Type | Null | Key | Maps |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | not null | PK | Order.id |
+| `customer_id` | `text` | not null | — | Order.customer_id |
+| `basket_id` | `text` | not null | — | Order.basket_id |
+| `status` | `text` | not null | — | Order.status |
+| `total_minor` | `bigint` | not null | — | Order.total.amount_minor |
+| `currency` | `text` | not null | — | Order.total.currency |
+| `placed_at` | `timestamptz` | not null | — | Order.placed_at |
+| `version` | `integer` | not null | — | — |
+
+### order_lines
+
+child · persists [shop.oms.order](../aggregates/order.md)
+
+| Column | Type | Null | Key | Maps |
+| --- | --- | --- | --- | --- |
+| `order_id` | `text` | not null | PK | Order.id |
+| `sku` | `text` | not null | PK | Order.sku |
+| `quantity` | `integer` | not null | — | — |
+| `unit_price_minor` | `bigint` | not null | — | Order.unit_price.amount_minor |
+| `currency` | `text` | not null | — | Order.unit_price.currency |
+
+### outbox
+
+outbox
+
+| Column | Type | Null | Key |
+| --- | --- | --- | --- |
+| `id` | `bigserial` | not null | PK |
+| `uuid` | `text` | not null | — |
+| `topic` | `text` | not null | — |
+| `payload` | `jsonb` | not null | — |
+| `metadata` | `jsonb` | not null | — |
+| `created_at` | `timestamptz` | not null | — |
+| `published_at` | `timestamptz` | null | — |
+
+| Index | Columns | Kind |
+| --- | --- | --- |
+| `outbox_unpublished` | id | index |
+
+<!-- flows/README.md -->
+
+# Flows
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+| Flow | Owner | Summary |
+| --- | --- | --- |
+| [Gateway webhook](gateway-webhook.md) | [payments](../payments/README.md) | The gateway's side of the story, arriving after the fact. One signed callback, four ways to read it: a replay to ignore, a capture to record, a charge with no local payment to adopt, and a failure to pass on. The adopt branch is the only repair for a checkout that timed out mid-authorization, and it is the one branch no test covers. |
+| [Quote expired on checkout](quote-expired-on-checkout.md) | [shop](../shop/README.md) | A basket that has been checked out is a basket whose quote is spent. Pricing hears the event the cart publishes and expires the quote it issued for that basket, so a second checkout of the same basket has to be priced again rather than reuse a number the price list may have moved on from. |
+| [Shipment tracking](shipment-tracking.md) | [delivery](../delivery/README.md) | Reconstructed from production traces over a 24 hour window: the tracking page, the carrier's scan webhook, and what each scan code sets off. Two things only the traces know about — a consumer no repository accounts for, and an exception path whose reader emits no spans at all. |
+| [Change password](auth-change-password.md) | [auth](../auth/README.md) | Replaces the password of a user, given the current one. |
+| [Get user](auth-get-user.md) | [auth](../auth/README.md) | Reads a user by id. |
+| [Login](auth-login.md) | [auth](../auth/README.md) | Turns credentials into a session. |
+| [Logout](auth-logout.md) | [auth](../auth/README.md) | Ends the session behind a token. |
+| [Register user](auth-register-user.md) | [auth](../auth/README.md) | Creates a user from an email address and a password. |
+| [Validate session](auth-validate-session.md) | [auth](../auth/README.md) | Resolves a token to a live session: who is calling, and how long the answer stays good. |
+| [Revoke sessions on password change](auth-revoke-sessions-on-password-change.md) | [auth](../auth/README.md) | Ends the sessions issued against a password that has just been replaced. |
+| [Invoice create](billing-invoice-create.md) | [shop](../shop/README.md) | Draws up a draft invoice for an order, with a line for each thing sold. |
+| [Invoice destroy](billing-invoice-destroy.md) | [shop](../shop/README.md) | Ends an invoice nobody is going to pay. |
+| [Invoice issue](billing-invoice-issue.md) | [shop](../shop/README.md) | Confirms the session, freezes the invoice and asks the customer to pay. |
+| [Invoice retrieve](billing-invoice-retrieve.md) | [shop](../shop/README.md) | Reads one invoice and the lines it is made of. |
+| [Close invoice on payment](billing-close-invoice-on-payment.md) | [shop](../shop/README.md) | Closes the invoice for an order once the ledger says the money arrived. |
+| [Add item](cart-add-item.md) | [shop](../shop/README.md) | — |
+| [Checkout](cart-checkout.md) | [shop](../shop/README.md) | — |
+| [Create basket](cart-create-basket.md) | [shop](../shop/README.md) | — |
+| [Get basket](cart-get-basket.md) | [shop](../shop/README.md) | — |
+| [Merge baskets](cart-merge-baskets.md) | [shop](../shop/README.md) | — |
+| [Remove item](cart-remove-item.md) | [shop](../shop/README.md) | — |
+| [Cancel order](oms-cancel-order.md) | [shop](../shop/README.md) | Answers with the order as it is now; a cancelled order is still found. |
+| [Get order](oms-get-order.md) | [shop](../shop/README.md) | Answers with the order as it is now; a cancelled order is still found. |
+| [Confirm order on payment authorized](oms-confirm-order-on-payment-authorized.md) | [shop](../shop/README.md) | Confirms the order once the payment for it is authorised (ADR oms.0005). Declared ahead of its publisher: nothing in the estate says `payments.PaymentAuthorized` yet, and the catalog says so. |
+| [Place order on basket checked out](oms-place-order-on-basket-checked-out.md) | [shop](../shop/README.md) | Places the order the basket was checked out for (ADR oms.0002). The order takes the basket's id, so the same checkout heard twice places one order. |
+
+<!-- flows/gateway-webhook.md -->
+
+# Gateway webhook
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `flow.gateway-webhook`
+- **Owner:** [payments](../payments/README.md)
+- **Source:** `services/ledger/test/integration/webhook_test.go`
+
+The gateway's side of the story, arriving after the fact. One signed callback, four ways to read it: a replay to ignore, a capture to record, a charge with no local payment to adopt, and a failure to pass on. The adopt branch is the only repair for a checkout that timed out mid-authorization, and it is the one branch no test covers.
+
+## Participants
+
+| Participant | Kind | Context | Label |
+| --- | --- | --- | --- |
+| `psp-gateway` | external | — | psp-gateway (external) |
+| `payments.ledger` | service | [payments](../payments/README.md) | — |
+| `bus` | broker | — | — |
+| `shop.oms` | service | [shop](../shop/README.md) | — |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant p0 as psp-gateway (external)
+    participant p1 as payments.ledger
+    participant p2 as bus
+    participant p3 as shop.oms
+    p0->>p1: POST /webhooks/psp/v2
+    p1->>p1: verifySignatureAndParse
+    alt event id already applied
+        p1->>p1: dropDuplicate
+    else charge.succeeded, matching a local authorization
+        p1->>p1: markCaptured
+        p1-)p2: PaymentCaptured
+    else charge.succeeded, no local payment
+        p1->>p3: GetOrder → GetOrderResponse
+        p1->>p1: adoptOrphanCharge
+        p1-)p2: PaymentAuthorized
+    else charge.failed
+        p1-)p2: PaymentDeclined
+        p2-)p3: PaymentDeclined
+    end
+    p1->>p0: ack 200
+```
+
+## Steps
+
+1. **psp-gateway** → **payments.ledger** — POST /webhooks/psp/v2
+   `webhook_test.go:38` · HMAC-signed body. The gateway retries for three days with backoff until it gets a 2xx, so every branch below has to tolerate being run twice.
+2. **payments.ledger** ↺ **payments.ledger** — verifySignatureAndParse
+   `internal/ledger/adapter/psp/webhook.go:44` · A bad signature is answered 401 and never reaches the dedup table. The test drives a tampered body for this.
+
+> **One of**
+>
+> *event id already applied*
+>
+> 3. **payments.ledger** ↺ **payments.ledger** — dropDuplicate
+>    `webhook_test.go:71` · Dedup table keyed by the gateway's event id, rows kept 30 days. A replay older than that would be applied again; nothing guards it.
+>
+> *charge.succeeded, matching a local authorization*
+>
+> 4. **payments.ledger** ↺ **payments.ledger** — markCaptured
+>    `internal/ledger/app/webhook.go:96`
+> 5. **payments.ledger** → **bus** — PaymentCaptured
+>    [payments.ledger.payment.PaymentCaptured](../payments/ledger/aggregates/payment.md) · `webhook_test.go:104`
+>
+> *charge.succeeded, no local payment*
+>
+> 6. **payments.ledger** → **shop.oms** — GetOrder → GetOrderResponse
+>    `shop.v1.OrderService/GetOrder` · status: declared · `internal/ledger/app/webhook.go:132` · The order reference travels in the gateway's metadata. The ledger reads the order back to decide whether the charge belongs to this estate at all.
+> 7. **payments.ledger** ↺ **payments.ledger** — adoptOrphanCharge
+>    status: declared · `internal/ledger/app/webhook.go:151` · Closes the gap left when the synchronous Authorize in checkout timed out after the gateway had already charged. Read from the code; the integration suite has no fixture for it, and it is the only path that keeps a customer from being charged for an order the estate never opened.
+> 8. **payments.ledger** → **bus** — PaymentAuthorized
+>    [payments.ledger.payment.PaymentAuthorized](../payments/ledger/aggregates/payment.md) · status: declared · `internal/ledger/app/webhook.go:168` · Published late and out of order — consumers see the authorization after the charge already settled.
+>
+> *charge.failed*
+>
+> 9. **payments.ledger** → **bus** — PaymentDeclined
+>    [payments.ledger.payment.PaymentDeclined](../payments/ledger/aggregates/payment.md) · `webhook_test.go:126`
+> 10. **bus** → **shop.oms** — PaymentDeclined
+>    [payments.ledger.payment.PaymentDeclined](../payments/ledger/aggregates/payment.md) · status: declared · `webhook_test.go:131`
+
+11. **payments.ledger** → **psp-gateway** — ack 200
+   `webhook_test.go:142` · Acked only after the branch above has committed. Anything else and the gateway replays, which is what makes the dedup table load-bearing.
+
+<!-- flows/quote-expired-on-checkout.md -->
+
+# Quote expired on checkout
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `flow.quote-expired-on-checkout`
+- **Owner:** [shop](../shop/README.md)
+- **Source:** `services/pricing/internal/policy/expire_quote.go`
+
+A basket that has been checked out is a basket whose quote is spent. Pricing hears the event the cart publishes and expires the quote it issued for that basket, so a second checkout of the same basket has to be priced again rather than reuse a number the price list may have moved on from.
+
+## Participants
+
+| Participant | Kind | Context | Label |
+| --- | --- | --- | --- |
+| `bus` | broker | — | — |
+| `shop.pricing` | service | [shop](../shop/README.md) | — |
+| `pricing-db` | store | [shop](../shop/README.md) | pricing-db (postgres) |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant p0 as bus
+    participant p1 as shop.pricing
+    participant p2 as pricing-db (postgres)
+    p0-)p1: BasketCheckedOut
+    p1->>p2: expireQuote
+    p1-)p0: QuoteExpired
+```
+
+## Steps
+
+1. **bus** → **shop.pricing** — BasketCheckedOut
+   [shop.cart.basket.BasketCheckedOut](../shop/cart/aggregates/basket.md) · status: declared · `internal/policy/expire_quote.go:24` · One consumer group, the basket id as the routing key. A basket with no quote on file is ignored, not an error: not every basket was priced.
+2. **shop.pricing** → **pricing-db** — expireQuote
+   status: declared · `internal/adapter/postgres/quotes.go:71`
+3. **shop.pricing** → **bus** — QuoteExpired
+   [shop.pricing.quote.QuoteExpired](../shop/pricing/aggregates/quote.md) · status: declared · `internal/policy/expire_quote.go:31` · Published for the audit trail; nothing in the estate acts on it yet.
+
+<!-- flows/shipment-tracking.md -->
+
+# Shipment tracking
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `flow.shipment-tracking`
+- **Owner:** [delivery](../delivery/README.md)
+- **Source:** `data/flows/shipment-tracking.flow.md`
+
+Reconstructed from production traces over a 24 hour window: the tracking page, the carrier's scan webhook, and what each scan code sets off. Two things only the traces know about — a consumer no repository accounts for, and an exception path whose reader emits no spans at all.
+
+## Participants
+
+| Participant | Kind | Context | Label |
+| --- | --- | --- | --- |
+| `customer` | actor | — | — |
+| `carrier-api` | external | — | carrier-api (external) |
+| `delivery.core` | service | [delivery](../delivery/README.md) | — |
+| `shop.oms` | service | [shop](../shop/README.md) | — |
+| `bus` | broker | — | — |
+| `analytics-sink` | unknown | — | analytics-sink (unknown) |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor p0 as customer
+    participant p1 as carrier-api (external)
+    participant p2 as delivery.core
+    participant p3 as shop.oms
+    participant p4 as bus
+    participant p5 as analytics-sink (unknown)
+    p0->>p2: TrackShipment
+    p2->>p3: GetOrder → GetOrderResponse
+    loop one iteration per carrier scan, 4 scans per shipment at p50 over the window
+        p1->>p2: POST /webhooks/carrier/scan
+        p2->>p2: RecordScan
+    end
+    alt scan code DELIVERED
+        p2-)p4: ShipmentDelivered
+        par ShipmentDelivered fan-out
+            p4-)p3: ShipmentDelivered
+        and
+            p4-)p5: ShipmentDelivered
+        end
+    else scan code EXCEPTION
+        p2->>p2: openDeliveryException
+        Note over p2: flow ends here
+    else scan code IN_TRANSIT
+        p2->>p2: updateEta
+    end
+```
+
+## Steps
+
+1. **customer** → **delivery.core** — TrackShipment
+   `trace 9f2c1a../span 04` · Storefront tracking page. 41k calls in the window, p95 180 ms.
+2. **delivery.core** → **shop.oms** — GetOrder → GetOrderResponse
+   `shop.v1.OrderService/GetOrder` · status: declared · `trace 9f2c1a../span 06` · Resolves the order reference shown beside the parcel. Present in 96% of the traces; the rest are served from the tracking cache.
+
+> **Repeats** — one iteration per carrier scan; 4 scans per shipment at p50 over the window
+>
+> 3. **carrier-api** → **delivery.core** — POST /webhooks/carrier/scan
+>    `trace 7be40d../span 01` · Signed with the carrier's shared secret. 1.3% of scans in the window are retries after a 5xx, and the traces show the retry landing on the same shipment without a second state change.
+> 4. **delivery.core** ↺ **delivery.core** — RecordScan
+>    `trace 7be40d../span 03`
+
+
+> **One of**
+>
+> *scan code DELIVERED*
+>
+> 5. **delivery.core** → **bus** — ShipmentDelivered
+>    [delivery.core.shipment.ShipmentDelivered](../delivery/core/aggregates/shipment.md) · `trace 7be40d../span 27`
+>
+> > **In parallel** — ShipmentDelivered fan-out
+> >
+> > *Branch 1*
+> >
+> > 6. **bus** → **shop.oms** — ShipmentDelivered
+> >    [delivery.core.shipment.ShipmentDelivered](../delivery/core/aggregates/shipment.md) · status: declared · `trace 7be40d../span 29` · Closes the order and starts the 30-day refund window the refund flow reads.
+> >
+> > *Branch 2*
+> >
+> > 7. **bus** → **analytics-sink** — ShipmentDelivered
+> >    [delivery.core.shipment.ShipmentDelivered](../delivery/core/aggregates/shipment.md) · status: unresolved · `trace 7be40d../span 31` · Seen in traces only, under client id `analytics-sink-2`. No subscription registration exists in any indexed repository, so the owning team is unknown and nobody can be told before this topic changes shape.
+>
+>
+> *scan code EXCEPTION — *ends the flow**
+>
+> 8. **delivery.core** ↺ **delivery.core** — openDeliveryException
+>    `trace 4c81f3../span 09` · The trace ends here. Whatever reads the exception queue emits no spans, so the catalog cannot say what happens to the parcel next.
+>
+> *scan code IN_TRANSIT*
+>
+> 9. **delivery.core** ↺ **delivery.core** — updateEta
+>    `trace 7be40d../span 12` · No event is published for an in-transit scan; the tracking page reads the shipment directly. 83% of the scans in the window end here.
+
+<!-- flows/auth-change-password.md -->
+
+# Change password
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `flow.auth-change-password`
+- **Owner:** [auth](../auth/README.md)
+- **Source:** `examples/auth/internal/infrastructure/transport/http/user/change_password.go`
+
+Replaces the password of a user, given the current one.
+
+## Participants
+
+| Participant | Kind | Context |
+| --- | --- | --- |
+| `client` | actor | — |
+| `auth.auth` | service | [auth](../auth/README.md) |
+| `auth-pg` | store | [auth](../auth/README.md) |
+| `bus` | broker | — |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor p0 as client
+    participant p1 as auth.auth
+    participant p2 as auth-pg
+    participant p3 as bus
+    p0->>p1: changePassword → 204
+    p1->>p2: ByToken
+    p1->>p2: ByID
+    p1->>p2: Save
+    p1-)p3: PasswordChanged
+```
+
+## Steps
+
+1. **client** → **auth.auth** — changePassword → 204
+   `examples/auth/internal/infrastructure/transport/http/user/change_password.go:20` · Seen running in telemetry/traces.jsonl (1 trace).
+2. **auth.auth** → **auth-pg** — ByToken
+   status: declared · `examples/auth/internal/application/session/usecases/validate/usecase.go:34`
+3. **auth.auth** → **auth-pg** — ByID
+   status: declared · `examples/auth/internal/application/user/usecases/change_password/usecase.go:31`
+4. **auth.auth** → **auth-pg** — Save
+   status: declared · `examples/auth/internal/application/user/usecases/change_password/usecase.go:40`
+5. **auth.auth** → **bus** — PasswordChanged
+   [auth.auth.user.PasswordChanged](../auth/auth/aggregates/user.md) · `examples/auth/internal/application/user/usecases/change_password/usecase.go:40` · Seen running in telemetry/traces.jsonl (1 trace).
+
+<!-- flows/auth-get-user.md -->
+
+# Get user
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `flow.auth-get-user`
+- **Owner:** [auth](../auth/README.md)
+- **Source:** `examples/auth/internal/infrastructure/transport/http/user/get.go`
+
+Reads a user by id.
+
+## Participants
+
+| Participant | Kind | Context |
+| --- | --- | --- |
+| `client` | actor | — |
+| `auth.auth` | service | [auth](../auth/README.md) |
+| `auth-pg` | store | [auth](../auth/README.md) |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor p0 as client
+    participant p1 as auth.auth
+    participant p2 as auth-pg
+    p0->>p1: getUser → User
+    p1->>p2: ByID
+```
+
+## Steps
+
+1. **client** → **auth.auth** — getUser → User
+   `examples/auth/internal/infrastructure/transport/http/user/get.go:11` · Seen running in telemetry/traces.jsonl (2 traces).
+2. **auth.auth** → **auth-pg** — ByID
+   status: declared · `examples/auth/internal/application/user/usecases/get/usecase.go:23`
+
+<!-- flows/auth-login.md -->
+
+# Login
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `flow.auth-login`
+- **Owner:** [auth](../auth/README.md)
+- **Source:** `examples/auth/internal/infrastructure/transport/http/session/login.go`
+
+Turns credentials into a session.
+
+## Participants
+
+| Participant | Kind | Context | Label |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `auth.auth` | service | [auth](../auth/README.md) | — |
+| `auth-pg` | store | [auth](../auth/README.md) | — |
+| `risk-v1` | unknown | — | risk.v1 |
+| `bus` | broker | — | — |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor p0 as client
+    participant p1 as auth.auth
+    participant p2 as auth-pg
+    participant p3 as risk.v1
+    participant p4 as bus
+    p0->>p1: login → Session
+    p1->>p1: Authenticate
+    p1->>p2: ByEmail
+    p1->>p1: Check
+    p1->>p2: ByUserID
+    alt err != nil
+        p1->>p1: RecordFailure
+        p1->>p2: ByUserID
+        p1->>p2: Save
+        Note over p2: flow ends here
+    else otherwise
+    end
+    p1->>p1: RecordSuccess
+    p1->>p2: ByUserID
+    p1->>p2: Save
+    p1->>p3: Assess
+    alt verdict == VerdictBlock
+        p1->>p2: ByUserID
+        p1->>p2: Save
+        p1-)p4: SessionEnded
+        Note over p4: flow ends here
+    else otherwise
+    end
+    p1->>p2: Save
+    p1-)p4: SessionStarted
+```
+
+## Steps
+
+1. **client** → **auth.auth** — login → Session
+   `examples/auth/internal/infrastructure/transport/http/session/login.go:11` · Seen running in telemetry/traces.jsonl (2 traces).
+2. **auth.auth** ↺ **auth.auth** — Authenticate
+   status: declared · `examples/auth/internal/application/session/usecases/login/usecase.go:58` · Port `Authenticator`, bound at assembly to the Authenticate use case.
+3. **auth.auth** → **auth-pg** — ByEmail
+   status: declared · `examples/auth/internal/application/user/usecases/authenticate/usecase.go:41`
+4. **auth.auth** ↺ **auth.auth** — Check
+   status: declared · `examples/auth/internal/application/user/usecases/authenticate/usecase.go:49` · Port `Lockout`, bound at assembly to the Check use case.
+5. **auth.auth** → **auth-pg** — ByUserID
+   status: declared · `examples/auth/internal/application/lockout/usecases/check/usecase.go:27`
+
+> **One of**
+>
+> *err != nil — *ends the flow**
+>
+> 6. **auth.auth** ↺ **auth.auth** — RecordFailure
+>    status: declared · `examples/auth/internal/application/user/usecases/authenticate/usecase.go:58` · Port `Lockout`, bound at assembly to the RecordFailure use case.
+> 7. **auth.auth** → **auth-pg** — ByUserID
+>    status: declared · `examples/auth/internal/application/lockout/usecases/record_failure/usecase.go:37` · inside a loop over `retries`.
+> 8. **auth.auth** → **auth-pg** — Save
+>    status: declared · `examples/auth/internal/application/lockout/usecases/record_failure/usecase.go:54` · inside a loop over `retries`.
+>
+> *otherwise*
+
+9. **auth.auth** ↺ **auth.auth** — RecordSuccess
+   status: declared · `examples/auth/internal/application/user/usecases/authenticate/usecase.go:67` · Port `Lockout`, bound at assembly to the RecordSuccess use case.
+10. **auth.auth** → **auth-pg** — ByUserID
+   status: declared · `examples/auth/internal/application/lockout/usecases/record_success/usecase.go:32` · inside a loop over `retries`.
+11. **auth.auth** → **auth-pg** — Save
+   status: declared · `examples/auth/internal/application/lockout/usecases/record_success/usecase.go:44` · inside a loop over `retries`.
+12. **auth.auth** → **risk-v1** — Assess
+   `risk.v1.RiskService/Assess` · status: unresolved · `examples/auth/internal/application/session/usecases/login/usecase.go:63`
+
+> **One of**
+>
+> *verdict == VerdictBlock — *ends the flow**
+>
+> 13. **auth.auth** → **auth-pg** — ByUserID
+>    status: declared · `examples/auth/internal/application/session/usecases/login/usecase.go:92`
+> 14. **auth.auth** → **auth-pg** — Save
+>    status: declared · `examples/auth/internal/application/session/usecases/login/usecase.go:102` · inside a loop over `sessions`.
+> 15. **auth.auth** → **bus** — SessionEnded
+>    [auth.auth.session.SessionEnded](../auth/auth/aggregates/session.md) · status: declared · `examples/auth/internal/application/session/usecases/login/usecase.go:102` · inside a loop over `sessions`.
+>
+> *otherwise*
+
+16. **auth.auth** → **auth-pg** — Save
+   status: declared · `examples/auth/internal/application/session/usecases/login/usecase.go:78`
+17. **auth.auth** → **bus** — SessionStarted
+   [auth.auth.session.SessionStarted](../auth/auth/aggregates/session.md) · `examples/auth/internal/application/session/usecases/login/usecase.go:78` · Seen running in telemetry/traces.jsonl (2 traces).
+
+<!-- flows/auth-logout.md -->
+
+# Logout
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `flow.auth-logout`
+- **Owner:** [auth](../auth/README.md)
+- **Source:** `examples/auth/internal/infrastructure/transport/http/session/logout.go`
+
+Ends the session behind a token.
+
+## Participants
+
+| Participant | Kind | Context |
+| --- | --- | --- |
+| `client` | actor | — |
+| `auth.auth` | service | [auth](../auth/README.md) |
+| `auth-pg` | store | [auth](../auth/README.md) |
+| `bus` | broker | — |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor p0 as client
+    participant p1 as auth.auth
+    participant p2 as auth-pg
+    participant p3 as bus
+    p0->>p1: logout → 204
+    p1->>p2: ByToken
+    p1->>p2: Save
+    p1-)p3: SessionEnded
+```
+
+## Steps
+
+1. **client** → **auth.auth** — logout → 204
+   `examples/auth/internal/infrastructure/transport/http/session/logout.go:15` · Seen running in telemetry/traces.jsonl (1 trace).
+2. **auth.auth** → **auth-pg** — ByToken
+   status: declared · `examples/auth/internal/application/session/usecases/logout/usecase.go:35`
+3. **auth.auth** → **auth-pg** — Save
+   status: declared · `examples/auth/internal/application/session/usecases/logout/usecase.go:49`
+4. **auth.auth** → **bus** — SessionEnded
+   [auth.auth.session.SessionEnded](../auth/auth/aggregates/session.md) · `examples/auth/internal/application/session/usecases/logout/usecase.go:49` · Seen running in telemetry/traces.jsonl (1 trace).
+
+<!-- flows/auth-register-user.md -->
+
+# Register user
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `flow.auth-register-user`
+- **Owner:** [auth](../auth/README.md)
+- **Source:** `examples/auth/internal/infrastructure/transport/http/user/register.go`
+
+Creates a user from an email address and a password.
+
+## Participants
+
+| Participant | Kind | Context |
+| --- | --- | --- |
+| `client` | actor | — |
+| `auth.auth` | service | [auth](../auth/README.md) |
+| `auth-pg` | store | [auth](../auth/README.md) |
+| `bus` | broker | — |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor p0 as client
+    participant p1 as auth.auth
+    participant p2 as auth-pg
+    participant p3 as bus
+    p0->>p1: registerUser → User
+    p1->>p2: ByEmail
+    p1->>p2: Save
+    p1-)p3: UserRegistered
+```
+
+## Steps
+
+1. **client** → **auth.auth** — registerUser → User
+   `examples/auth/internal/infrastructure/transport/http/user/register.go:16` · Seen running in telemetry/traces.jsonl (2 traces).
+2. **auth.auth** → **auth-pg** — ByEmail
+   status: declared · `examples/auth/internal/application/user/usecases/register/usecase.go:36`
+3. **auth.auth** → **auth-pg** — Save
+   status: declared · `examples/auth/internal/application/user/usecases/register/usecase.go:49`
+4. **auth.auth** → **bus** — UserRegistered
+   [auth.auth.user.UserRegistered](../auth/auth/aggregates/user.md) · `examples/auth/internal/application/user/usecases/register/usecase.go:49` · Seen running in telemetry/traces.jsonl (2 traces).
+
+<!-- flows/auth-validate-session.md -->
+
+# Validate session
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `flow.auth-validate-session`
+- **Owner:** [auth](../auth/README.md)
+- **Source:** `examples/auth/internal/infrastructure/transport/http/session/validate.go`
+
+Resolves a token to a live session: who is calling, and how long the answer stays good.
+
+## Participants
+
+| Participant | Kind | Context |
+| --- | --- | --- |
+| `client` | actor | — |
+| `auth.auth` | service | [auth](../auth/README.md) |
+| `auth-pg` | store | [auth](../auth/README.md) |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor p0 as client
+    participant p1 as auth.auth
+    participant p2 as auth-pg
+    p0->>p1: validateSession → SessionInfo
+    p1->>p2: ByToken
+```
+
+## Steps
+
+1. **client** → **auth.auth** — validateSession → SessionInfo
+   `examples/auth/internal/infrastructure/transport/http/session/validate.go:12` · Seen running in telemetry/traces.jsonl (2 traces).
+2. **auth.auth** → **auth-pg** — ByToken
+   status: declared · `examples/auth/internal/application/session/usecases/validate/usecase.go:34`
+
+<!-- flows/auth-revoke-sessions-on-password-change.md -->
+
+# Revoke sessions on password change
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `flow.auth-revoke-sessions-on-password-change`
+- **Owner:** [auth](../auth/README.md)
+- **Source:** `examples/auth/internal/application/policy/revoke_sessions_on_password_change.go`
+
+Ends the sessions issued against a password that has just been replaced.
+
+## Participants
+
+| Participant | Kind | Context |
+| --- | --- | --- |
+| `bus` | broker | — |
+| `auth.auth` | service | [auth](../auth/README.md) |
+| `auth-pg` | store | [auth](../auth/README.md) |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant p0 as bus
+    participant p1 as auth.auth
+    participant p2 as auth-pg
+    p0-)p1: PasswordChanged
+    p1->>p1: EndAfterCredentialChange
+    p1->>p2: ByUserID
+    p1->>p2: ByID
+    p1->>p2: Save
+    p1-)p0: SessionEnded
+```
+
+## Steps
+
+1. **bus** → **auth.auth** — PasswordChanged
+   [auth.auth.user.PasswordChanged](../auth/auth/aggregates/user.md) · `examples/auth/internal/application/policy/revoke_sessions_on_password_change.go:41` · Seen running in telemetry/traces.jsonl (1 trace).
+2. **auth.auth** ↺ **auth.auth** — EndAfterCredentialChange
+   status: declared · `examples/auth/internal/application/policy/revoke_sessions_on_password_change.go:47`
+3. **auth.auth** → **auth-pg** — ByUserID
+   status: declared · `examples/auth/internal/application/session/usecases/end_after_credential_change/usecase.go:40`
+4. **auth.auth** → **auth-pg** — ByID
+   status: declared · `examples/auth/internal/application/session/usecases/end_after_credential_change/usecase.go:62` · inside a loop over `change.Ends(sessions, uc.now())`, inside a loop over `retries`.
+5. **auth.auth** → **auth-pg** — Save
+   status: declared · `examples/auth/internal/application/session/usecases/end_after_credential_change/usecase.go:77` · inside a loop over `change.Ends(sessions, uc.now())`, inside a loop over `retries`.
+6. **auth.auth** → **bus** — SessionEnded
+   [auth.auth.session.SessionEnded](../auth/auth/aggregates/session.md) · `examples/auth/internal/application/session/usecases/end_after_credential_change/usecase.go:77` · inside a loop over `change.Ends(sessions, uc.now())`, inside a loop over `retries`.
+
+<!-- flows/billing-invoice-create.md -->
+
+# Invoice create
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `flow.billing-invoice-create`
+- **Owner:** [shop](../shop/README.md)
+- **Source:** `examples/shop/billing/invoices/views.py`
+
+Draws up a draft invoice for an order, with a line for each thing sold.
+
+## Participants
+
+| Participant | Kind | Context |
+| --- | --- | --- |
+| `client` | actor | — |
+| `shop.billing` | service | [shop](../shop/README.md) |
+| `billing-pg` | store | [shop](../shop/README.md) |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor p0 as client
+    participant p1 as shop.billing
+    participant p2 as billing-pg
+    p0->>p1: invoice_create → InvoiceId
+    p1->>p2: Invoice.objects.create
+    p1->>p2: InvoiceLine.objects.create
+```
+
+## Steps
+
+1. **client** → **shop.billing** — invoice_create → InvoiceId
+   status: declared · `examples/shop/billing/invoices/views.py:13`
+2. **shop.billing** → **billing-pg** — Invoice.objects.create
+   status: declared · `examples/shop/billing/invoices/services.py:16` · in one transaction.
+3. **shop.billing** → **billing-pg** — InvoiceLine.objects.create
+   status: declared · `examples/shop/billing/invoices/services.py:25` · in one transaction, for each line.
+
+<!-- flows/billing-invoice-destroy.md -->
+
+# Invoice destroy
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `flow.billing-invoice-destroy`
+- **Owner:** [shop](../shop/README.md)
+- **Source:** `examples/shop/billing/invoices/views.py`
+
+Ends an invoice nobody is going to pay.
+
+## Participants
+
+| Participant | Kind | Context |
+| --- | --- | --- |
+| `client` | actor | — |
+| `shop.billing` | service | [shop](../shop/README.md) |
+| `billing-pg` | store | [shop](../shop/README.md) |
+| `bus` | broker | — |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor p0 as client
+    participant p1 as shop.billing
+    participant p2 as billing-pg
+    participant p3 as bus
+    p0->>p1: invoice_destroy → 204
+    p1->>p2: Invoice.objects.get
+    p1->>p2: Invoice.save
+    p1-)p3: InvoiceVoided
+```
+
+## Steps
+
+1. **client** → **shop.billing** — invoice_destroy → 204
+   status: declared · `examples/shop/billing/invoices/views.py:34`
+2. **shop.billing** → **billing-pg** — Invoice.objects.get
+   status: declared · `examples/shop/billing/invoices/services.py:59`
+3. **shop.billing** → **billing-pg** — Invoice.save
+   status: declared · `examples/shop/billing/invoices/services.py:61`
+4. **shop.billing** → **bus** — InvoiceVoided
+   [shop.billing.invoice.InvoiceVoided](../shop/billing/aggregates/invoice.md) · status: declared · `examples/shop/billing/invoices/services.py:62`
+
+<!-- flows/billing-invoice-issue.md -->
+
+# Invoice issue
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `flow.billing-invoice-issue`
+- **Owner:** [shop](../shop/README.md)
+- **Source:** `examples/shop/billing/invoices/views.py`
+
+Confirms the session, freezes the invoice and asks the customer to pay.
+
+## Participants
+
+| Participant | Kind | Context |
+| --- | --- | --- |
+| `client` | actor | — |
+| `shop.billing` | service | [shop](../shop/README.md) |
+| `auth.auth` | service | [auth](../auth/README.md) |
+| `billing-pg` | store | [shop](../shop/README.md) |
+| `bus` | broker | — |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor p0 as client
+    participant p1 as shop.billing
+    participant p2 as auth.auth
+    participant p3 as billing-pg
+    participant p4 as bus
+    p0->>p1: invoice_issue → InvoiceId
+    p1->>p2: validateSession → SessionInfo
+    p1->>p3: Invoice.objects.get
+    p1->>p3: Invoice.save
+    p1-)p4: InvoiceIssued
+```
+
+## Steps
+
+1. **client** → **shop.billing** — invoice_issue → InvoiceId
+   status: declared · `examples/shop/billing/invoices/views.py:29`
+2. **shop.billing** → **auth.auth** — validateSession → SessionInfo
+   `auth.v1.Sessions/validateSession` · status: declared · `examples/shop/billing/invoices/services.py:36`
+3. **shop.billing** → **billing-pg** — Invoice.objects.get
+   status: declared · `examples/shop/billing/invoices/services.py:37`
+4. **shop.billing** → **billing-pg** — Invoice.save
+   status: declared · `examples/shop/billing/invoices/services.py:41`
+5. **shop.billing** → **bus** — InvoiceIssued
+   [shop.billing.invoice.InvoiceIssued](../shop/billing/aggregates/invoice.md) · status: declared · `examples/shop/billing/invoices/services.py:42`
+
+<!-- flows/billing-invoice-retrieve.md -->
+
+# Invoice retrieve
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `flow.billing-invoice-retrieve`
+- **Owner:** [shop](../shop/README.md)
+- **Source:** `examples/shop/billing/invoices/views.py`
+
+Reads one invoice and the lines it is made of.
+
+## Participants
+
+| Participant | Kind | Context |
+| --- | --- | --- |
+| `client` | actor | — |
+| `shop.billing` | service | [shop](../shop/README.md) |
+| `billing-pg` | store | [shop](../shop/README.md) |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor p0 as client
+    participant p1 as shop.billing
+    participant p2 as billing-pg
+    p0->>p1: invoice_retrieve → Invoice
+    p1->>p2: Invoice.objects.get
+```
+
+## Steps
+
+1. **client** → **shop.billing** — invoice_retrieve → Invoice
+   status: declared · `examples/shop/billing/invoices/views.py:24`
+2. **shop.billing** → **billing-pg** — Invoice.objects.get
+   status: declared · `examples/shop/billing/invoices/services.py:68`
+
+<!-- flows/billing-close-invoice-on-payment.md -->
+
+# Close invoice on payment
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `flow.billing-close-invoice-on-payment`
+- **Owner:** [shop](../shop/README.md)
+- **Source:** `examples/shop/billing/invoices/handlers.py`
+
+Closes the invoice for an order once the ledger says the money arrived.
+
+## Participants
+
+| Participant | Kind | Context |
+| --- | --- | --- |
+| `bus` | broker | — |
+| `shop.billing` | service | [shop](../shop/README.md) |
+| `billing-pg` | store | [shop](../shop/README.md) |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant p0 as bus
+    participant p1 as shop.billing
+    participant p2 as billing-pg
+    p0-)p1: PaymentCaptured
+    p1->>p2: Invoice.objects.filter
+    p1->>p2: Invoice.save
+    p1-)p0: InvoicePaid
+```
+
+## Steps
+
+1. **bus** → **shop.billing** — PaymentCaptured
+   [payments.ledger.payment.PaymentCaptured](../payments/ledger/aggregates/payment.md) · status: declared · `examples/shop/billing/invoices/handlers.py:10`
+2. **shop.billing** → **billing-pg** — Invoice.objects.filter
+   status: declared · `examples/shop/billing/invoices/services.py:48`
+3. **shop.billing** → **billing-pg** — Invoice.save
+   status: declared · `examples/shop/billing/invoices/services.py:52`
+4. **shop.billing** → **bus** — InvoicePaid
+   [shop.billing.invoice.InvoicePaid](../shop/billing/aggregates/invoice.md) · status: declared · `examples/shop/billing/invoices/services.py:53`
+
+<!-- flows/cart-add-item.md -->
+
+# Add item
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `flow.cart-add-item`
+- **Owner:** [shop](../shop/README.md)
+- **Source:** `examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts`
+
+## Participants
+
+| Participant | Kind | Context |
+| --- | --- | --- |
+| `client` | actor | — |
+| `shop.cart` | service | [shop](../shop/README.md) |
+| `cart-pg` | store | [shop](../shop/README.md) |
+| `bus` | broker | — |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor p0 as client
+    participant p1 as shop.cart
+    participant p2 as cart-pg
+    participant p3 as bus
+    p0->>p1: addItem → Basket
+    p1->>p2: save
+    p1-)p3: BasketItemAdded
+```
+
+## Steps
+
+1. **client** → **shop.cart** — addItem → Basket
+   `examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:43` · Seen running in telemetry/traces.jsonl (3 traces).
+2. **shop.cart** → **cart-pg** — save
+   status: declared · `examples/shop/cart/src/application/basket/usecases/add_item/usecase.ts:27`
+3. **shop.cart** → **bus** — BasketItemAdded
+   [shop.cart.basket.BasketItemAdded](../shop/cart/aggregates/basket.md) · `examples/shop/cart/src/application/basket/usecases/add_item/usecase.ts:27` · Seen running in telemetry/traces.jsonl (3 traces).
+
+<!-- flows/cart-checkout.md -->
+
+# Checkout
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `flow.cart-checkout`
+- **Owner:** [shop](../shop/README.md)
+- **Source:** `examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts`
+
+## Participants
+
+| Participant | Kind | Context |
+| --- | --- | --- |
+| `client` | actor | — |
+| `shop.cart` | service | [shop](../shop/README.md) |
+| `auth.auth` | service | [auth](../auth/README.md) |
+| `cart-pg` | store | [shop](../shop/README.md) |
+| `shop.pricing` | service | [shop](../shop/README.md) |
+| `bus` | broker | — |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor p0 as client
+    participant p1 as shop.cart
+    participant p2 as auth.auth
+    participant p3 as cart-pg
+    participant p4 as shop.pricing
+    participant p5 as bus
+    p0->>p1: checkout → CheckedOut
+    p1->>p2: validateSession → SessionInfo
+    p1->>p3: byId
+    p1->>p4: GetQuote
+    p1->>p3: save
+    p1-)p5: BasketCheckedOut
+```
+
+## Steps
+
+1. **client** → **shop.cart** — checkout → CheckedOut
+   `examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:60` · Seen running in telemetry/traces.jsonl (1 trace).
+2. **shop.cart** → **auth.auth** — validateSession → SessionInfo
+   `auth.v1.Sessions/validateSession` · `examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:44` · Seen running in telemetry/traces.jsonl (1 trace).
+3. **shop.cart** → **cart-pg** — byId
+   status: declared · `examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:48`
+4. **shop.cart** → **shop.pricing** — GetQuote
+   `shop.v1.Pricing/GetQuote` · status: declared · `examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:55`
+5. **shop.cart** → **cart-pg** — save
+   status: declared · `examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:57`
+6. **shop.cart** → **bus** — BasketCheckedOut
+   [shop.cart.basket.BasketCheckedOut](../shop/cart/aggregates/basket.md) · `examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:57` · Seen running in telemetry/traces.jsonl (1 trace).
+
+<!-- flows/cart-create-basket.md -->
+
+# Create basket
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `flow.cart-create-basket`
+- **Owner:** [shop](../shop/README.md)
+- **Source:** `examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts`
+
+## Participants
+
+| Participant | Kind | Context |
+| --- | --- | --- |
+| `client` | actor | — |
+| `shop.cart` | service | [shop](../shop/README.md) |
+| `cart-pg` | store | [shop](../shop/README.md) |
+| `bus` | broker | — |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor p0 as client
+    participant p1 as shop.cart
+    participant p2 as cart-pg
+    participant p3 as bus
+    p0->>p1: createBasket → BasketCreated
+    p1->>p2: save
+    p1-)p3: BasketCreated
+```
+
+## Steps
+
+1. **client** → **shop.cart** — createBasket → BasketCreated
+   `examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:33` · Seen running in telemetry/traces.jsonl (2 traces).
+2. **shop.cart** → **cart-pg** — save
+   status: declared · `examples/shop/cart/src/application/basket/usecases/create_basket/usecase.ts:22`
+3. **shop.cart** → **bus** — BasketCreated
+   [shop.cart.basket.BasketCreated](../shop/cart/aggregates/basket.md) · `examples/shop/cart/src/application/basket/usecases/create_basket/usecase.ts:22` · Seen running in telemetry/traces.jsonl (2 traces).
+
+<!-- flows/cart-get-basket.md -->
+
+# Get basket
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `flow.cart-get-basket`
+- **Owner:** [shop](../shop/README.md)
+- **Source:** `examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts`
+
+## Participants
+
+| Participant | Kind | Context |
+| --- | --- | --- |
+| `client` | actor | — |
+| `shop.cart` | service | [shop](../shop/README.md) |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor p0 as client
+    participant p1 as shop.cart
+    p0->>p1: getBasket → Basket
+```
+
+## Steps
+
+1. **client** → **shop.cart** — getBasket → Basket
+   `examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:38` · Seen running in telemetry/traces.jsonl (2 traces).
+
+<!-- flows/cart-merge-baskets.md -->
+
+# Merge baskets
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `flow.cart-merge-baskets`
+- **Owner:** [shop](../shop/README.md)
+- **Source:** `examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts`
+
+## Participants
+
+| Participant | Kind | Context |
+| --- | --- | --- |
+| `client` | actor | — |
+| `shop.cart` | service | [shop](../shop/README.md) |
+| `auth.auth` | service | [auth](../auth/README.md) |
+| `cart-pg` | store | [shop](../shop/README.md) |
+| `bus` | broker | — |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor p0 as client
+    participant p1 as shop.cart
+    participant p2 as auth.auth
+    participant p3 as cart-pg
+    participant p4 as bus
+    p0->>p1: mergeBaskets → Basket
+    p1->>p2: validateSession → SessionInfo
+    p1->>p3: openFor
+    p1->>p3: save
+    p1-)p4: BasketCreated
+    p1-)p4: BasketItemAdded
+    p1->>p3: save
+    p1-)p4: BasketMerged
+```
+
+## Steps
+
+1. **client** → **shop.cart** — mergeBaskets → Basket
+   `examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:54` · Seen running in telemetry/traces.jsonl (1 trace).
+2. **shop.cart** → **auth.auth** — validateSession → SessionInfo
+   `auth.v1.Sessions/validateSession` · `examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:28` · Seen running in telemetry/traces.jsonl (1 trace).
+3. **shop.cart** → **cart-pg** — openFor
+   status: declared · `examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:35`
+4. **shop.cart** → **cart-pg** — save
+   status: declared · `examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46`
+5. **shop.cart** → **bus** — BasketCreated
+   [shop.cart.basket.BasketCreated](../shop/cart/aggregates/basket.md) · `examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46` · Seen running in telemetry/traces.jsonl (1 trace).
+6. **shop.cart** → **bus** — BasketItemAdded
+   [shop.cart.basket.BasketItemAdded](../shop/cart/aggregates/basket.md) · `examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46` · Seen running in telemetry/traces.jsonl (1 trace).
+7. **shop.cart** → **cart-pg** — save
+   status: declared · `examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:47`
+8. **shop.cart** → **bus** — BasketMerged
+   [shop.cart.basket.BasketMerged](../shop/cart/aggregates/basket.md) · `examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:47` · Seen running in telemetry/traces.jsonl (1 trace).
+
+<!-- flows/cart-remove-item.md -->
+
+# Remove item
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `flow.cart-remove-item`
+- **Owner:** [shop](../shop/README.md)
+- **Source:** `examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts`
+
+## Participants
+
+| Participant | Kind | Context |
+| --- | --- | --- |
+| `client` | actor | — |
+| `shop.cart` | service | [shop](../shop/README.md) |
+| `cart-pg` | store | [shop](../shop/README.md) |
+| `bus` | broker | — |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor p0 as client
+    participant p1 as shop.cart
+    participant p2 as cart-pg
+    participant p3 as bus
+    p0->>p1: removeItem → Basket
+    p1->>p2: save
+    p1-)p3: BasketItemRemoved
+```
+
+## Steps
+
+1. **client** → **shop.cart** — removeItem → Basket
+   `examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:49` · Seen running in telemetry/traces.jsonl (1 trace).
+2. **shop.cart** → **cart-pg** — save
+   status: declared · `examples/shop/cart/src/application/basket/usecases/remove_item/usecase.ts:22`
+3. **shop.cart** → **bus** — BasketItemRemoved
+   [shop.cart.basket.BasketItemRemoved](../shop/cart/aggregates/basket.md) · `examples/shop/cart/src/application/basket/usecases/remove_item/usecase.ts:22` · Seen running in telemetry/traces.jsonl (1 trace).
+
+<!-- flows/oms-cancel-order.md -->
+
+# Cancel order
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `flow.oms-cancel-order`
+- **Owner:** [shop](../shop/README.md)
+- **Source:** `examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs`
+
+Answers with the order as it is now; a cancelled order is still found.
+
+## Participants
+
+| Participant | Kind | Context |
+| --- | --- | --- |
+| `client` | actor | — |
+| `shop.oms` | service | [shop](../shop/README.md) |
+| `oms-pg` | store | [shop](../shop/README.md) |
+| `bus` | broker | — |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor p0 as client
+    participant p1 as shop.oms
+    participant p2 as oms-pg
+    participant p3 as bus
+    p0->>p1: CancelOrder → CancelOrderResponse
+    p1->>p2: by_id
+    alt order.status is Status::Cancelled
+    else otherwise
+        p1->>p2: save
+        p1-)p3: OrderCancelled
+    end
+    p1->>p2: by_id
+```
+
+## Steps
+
+1. **client** → **shop.oms** — CancelOrder → CancelOrderResponse
+   `examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:41` · Seen running in telemetry/traces.jsonl (1 trace).
+2. **shop.oms** → **oms-pg** — by_id
+   status: declared · `examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:21`
+
+> **One of**
+>
+> *order.status is Status::Cancelled — *ends the flow**
+>
+>
+> *otherwise*
+>
+> 3. **shop.oms** → **oms-pg** — save
+>    status: declared · `examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:26`
+> 4. **shop.oms** → **bus** — OrderCancelled
+>    [shop.oms.order.OrderCancelled](../shop/oms/aggregates/order.md) · `examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:26` · Seen running in telemetry/traces.jsonl (1 trace).
+
+5. **shop.oms** → **oms-pg** — by_id
+   status: declared · `examples/shop/oms/src/application/order/usecases/get_order/mod.rs:14`
+
+<!-- flows/oms-get-order.md -->
+
+# Get order
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `flow.oms-get-order`
+- **Owner:** [shop](../shop/README.md)
+- **Source:** `examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs`
+
+Answers with the order as it is now; a cancelled order is still found.
+
+## Participants
+
+| Participant | Kind | Context |
+| --- | --- | --- |
+| `client` | actor | — |
+| `shop.oms` | service | [shop](../shop/README.md) |
+| `oms-pg` | store | [shop](../shop/README.md) |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor p0 as client
+    participant p1 as shop.oms
+    participant p2 as oms-pg
+    p0->>p1: GetOrder → GetOrderResponse
+    p1->>p2: by_id
+```
+
+## Steps
+
+1. **client** → **shop.oms** — GetOrder → GetOrderResponse
+   `examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:31` · Seen running in telemetry/traces.jsonl (2 traces).
+2. **shop.oms** → **oms-pg** — by_id
+   status: declared · `examples/shop/oms/src/application/order/usecases/get_order/mod.rs:14`
+
+<!-- flows/oms-confirm-order-on-payment-authorized.md -->
+
+# Confirm order on payment authorized
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `flow.oms-confirm-order-on-payment-authorized`
+- **Owner:** [shop](../shop/README.md)
+- **Source:** `examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs`
+
+Confirms the order once the payment for it is authorised (ADR oms.0005). Declared ahead of its publisher: nothing in the estate says `payments.PaymentAuthorized` yet, and the catalog says so.
+
+## Participants
+
+| Participant | Kind | Context | Label |
+| --- | --- | --- | --- |
+| `bus` | broker | — | — |
+| `shop.oms` | service | [shop](../shop/README.md) | — |
+| `oms-pg` | store | [shop](../shop/README.md) | — |
+| `payments-v1` | unknown | — | payments.v1 |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant p0 as bus
+    participant p1 as shop.oms
+    participant p2 as oms-pg
+    participant p3 as payments.v1
+    p0-)p1: PaymentAuthorized
+    p1->>p1: ConfirmOrder
+    p1->>p2: by_id
+    p1->>p3: Authorize
+    p1->>p2: save
+    p1-)p0: OrderConfirmed
+```
+
+## Steps
+
+1. **bus** → **shop.oms** — PaymentAuthorized
+   status: unresolved · `examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs:20` · Reacts to the message named `payments.PaymentAuthorized`, which is not an event this repository declares.
+2. **shop.oms** ↺ **shop.oms** — ConfirmOrder
+   status: declared · `examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs:27`
+3. **shop.oms** → **oms-pg** — by_id
+   status: declared · `examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:31`
+4. **shop.oms** → **payments-v1** — Authorize
+   `payments.v1.PaymentService/Authorize` · status: unresolved · `examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:32`
+5. **shop.oms** → **oms-pg** — save
+   status: declared · `examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:34`
+6. **shop.oms** → **bus** — OrderConfirmed
+   [shop.oms.order.OrderConfirmed](../shop/oms/aggregates/order.md) · status: declared · `examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:34`
+
+<!-- flows/oms-place-order-on-basket-checked-out.md -->
+
+# Place order on basket checked out
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `flow.oms-place-order-on-basket-checked-out`
+- **Owner:** [shop](../shop/README.md)
+- **Source:** `examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs`
+
+Places the order the basket was checked out for (ADR oms.0002). The order takes the basket's id, so the same checkout heard twice places one order.
+
+## Participants
+
+| Participant | Kind | Context |
+| --- | --- | --- |
+| `bus` | broker | — |
+| `shop.oms` | service | [shop](../shop/README.md) |
+| `oms-pg` | store | [shop](../shop/README.md) |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant p0 as bus
+    participant p1 as shop.oms
+    participant p2 as oms-pg
+    p0-)p1: BasketCheckedOut
+    p1->>p1: PlaceOrder
+    p1->>p2: by_basket
+    p1->>p2: save
+    p1-)p0: OrderPlaced
+```
+
+## Steps
+
+1. **bus** → **shop.oms** — BasketCheckedOut
+   [shop.cart.basket.BasketCheckedOut](../shop/cart/aggregates/basket.md) · `examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs:19` · Seen running in telemetry/traces.jsonl (1 trace).
+2. **shop.oms** ↺ **shop.oms** — PlaceOrder
+   status: declared · `examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs:29`
+3. **shop.oms** → **oms-pg** — by_basket
+   status: declared · `examples/shop/oms/src/application/order/usecases/place_order/mod.rs:27`
+4. **shop.oms** → **oms-pg** — save
+   status: declared · `examples/shop/oms/src/application/order/usecases/place_order/mod.rs:31`
+5. **shop.oms** → **bus** — OrderPlaced
+   [shop.oms.order.OrderPlaced](../shop/oms/aggregates/order.md) · `examples/shop/oms/src/application/order/usecases/place_order/mod.rs:31` · Seen running in telemetry/traces.jsonl (1 trace).
+
+<!-- adr/README.md -->
+
+# Decision records
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+| ADR | Title | Status | Date | Scope |
+| --- | --- | --- | --- | --- |
+| [org.0001](org.0001.md) | Client proto copies live in the consumer's infrastructure layer | accepted | 2025-03-11 | org |
+| [org.0002](org.0002.md) | Domain event schema version is encoded in the package path (events/v1) | accepted | 2025-05-02 | org |
+| [payments.0004](payments.0004.md) | Journal entries are idempotent by (order_id, attempt) | proposed | 2026-02-09 | [payments](../payments/README.md) |
+
+<!-- adr/org.0001.md -->
+
+# org.0001 — Client proto copies live in the consumer's infrastructure layer
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2025-03-11
+- **Scope:** org
+- **Source:** `docs/adr/0001-client-protos-in-consumer-infrastructure.md`
+
+## Context and Problem Statement
+
+When `shop.oms` calls `payments.v1.Payments/Authorize`, it needs the payments
+`.proto`. Where does that file come from at build time?
+
+A shared schema repository consumed by every service is the obvious answer, and
+it is the one that couples every release to every other release: a change to a
+message nobody in `shop` uses still forces `shop` to bump, regenerate and
+retest.
+
+## Decision Drivers
+
+- A team must be able to release without waiting on another team's schema bump.
+- The boundary between contexts should be explicit in the code, not implicit in
+  a shared package.
+- Drift between a producer's schema and a consumer's copy must be **detectable**,
+  not merely hoped against.
+
+## Considered Options
+
+1. **A vendored copy of the producer's `.proto` under the consumer's
+   `internal/infrastructure/<peer>/`**, an anti-corruption layer in the DDD
+   sense: the copy is the consumer's translation boundary.
+2. **A shared schema repo** published as one versioned artifact for everyone.
+3. **Runtime reflection** — resolve descriptors from the server at startup.
+
+## Decision Outcome
+
+Chosen option: **vendored copies in the consumer's infrastructure layer**.
+
+This is the ACL trade-off taken deliberately:
+
+| | compile-time independence | drift risk |
+|---|---|---|
+| vendored copy | full — a consumer builds and ships alone | real — the copy can fall behind |
+| shared repo | none — every bump is everyone's bump | none |
+| reflection | full | moved to runtime, where it fails in production instead of in CI |
+
+We take the drift risk because we can *measure* it, and we cannot measure the
+cost of coordinated releases until it has already been paid.
+
+The mitigation is mechanical: **the catalog merge compares descriptors.** Each
+producer publishes the descriptor set for the services it provides; each
+consumer's vendored copy is parsed at catalog build time; a field, method or
+enum value that differs between the two is reported against the consuming
+service and shows on its page as an unresolved call rather than silently
+compiling.
+
+### Consequences
+
+- Good: `shop` and `delivery` release on their own cadence.
+- Good: the copy is a real boundary — a consumer may narrow a message to the
+  fields it actually uses, and that narrowing is visible in review.
+- Bad: the same `.proto` exists in several repositories. Someone reading two of
+  them may reasonably wonder which is authoritative. The producer's is; the
+  header comment on every vendored copy says so.
+- Bad: drift is caught at catalog build, which is after merge. It is not caught
+  at compile time, and it never will be.
+
+## Relates to
+
+- **Services:** [shop.oms](../shop/oms/README.md), [delivery.core](../delivery/core/README.md)
+
+<!-- adr/org.0002.md -->
+
+# org.0002 — Domain event schema version is encoded in the package path (events/v1)
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2025-05-02
+- **Scope:** org
+- **Source:** `docs/adr/0002-event-version-in-package-path.md`
+
+## Context and Problem Statement
+
+A domain event outlives the code that published it. Consumers deserialize
+messages written months earlier, and a consumer that is down for a day comes
+back to a backlog of the *old* shape. We need a versioning scheme that a
+consumer can act on before it parses a single byte.
+
+## Decision Drivers
+
+- A consumer must be able to decide "can I read this?" from routing information
+  alone, without a registry lookup.
+- Two versions of one event must be publishable at the same time during a
+  migration.
+- The version must be visible in the source tree, in the topic name and in the
+  type URL — not only in a field.
+
+## Considered Options
+
+1. **Version in the package path**: `shop.events.v1.BasketCheckedOut`, file at
+   `proto/shop/events/v1/basket.proto`.
+2. **A `version` field inside the message.**
+3. **A schema registry** with subject-level compatibility rules.
+
+## Decision Outcome
+
+Chosen option: **version in the package path**.
+
+The version becomes part of the fully-qualified name, so it is part of the type
+URL, part of the generated Go package, and part of the topic name
+(`shop.events.v1.basket-checked-out`). A consumer subscribes to the versions it
+understands and is structurally incapable of receiving one it does not.
+
+Option 2 puts the version *inside* the payload, which means parsing an unknown
+shape to discover that it is unknown. Option 3 is the right answer at a
+different scale; it adds an operational dependency on the publish path that we
+are not willing to take yet.
+
+### Consequences
+
+- Good: an unreadable version is never delivered — it is a different topic.
+- Good: v1 and v2 publish side by side during a migration; the producer emits
+  both until the v1 subscription drains.
+- Bad: a breaking change means a new package, a new topic and a period of dual
+  publishing. This is deliberate friction, and it is the point.
+- Bad: additive changes still land in v1. "Is this additive?" stays a judgement
+  call at review time, and the catalog's field diff per version is what makes
+  that call reviewable.
+
+## Relates to
+
+- **Events:** [shop.cart.basket.BasketCheckedOut](../shop/cart/aggregates/basket.md)
+
+<!-- adr/payments.0004.md -->
+
+# payments.0004 — Journal entries are idempotent by (order_id, attempt)
+
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Status:** proposed
+- **Date:** 2026-02-09
+- **Scope:** [payments](../payments/README.md)
+- **Source:** `docs/adr/0004-idempotent-journal-entries.md`
+
+## Context and Problem Statement
+
+The ledger writes a journal entry when a capture succeeds. The capture path is
+at-least-once end to end: the PSP retries its webhook, our own consumer retries
+on redelivery, and an operator can replay a partition. Today a replayed capture
+writes a second journal entry, and the ledger has to be repaired by hand.
+
+The natural key is not `order_id` alone: a declined authorization is followed by
+a second, legitimate attempt on the same order, and that attempt must produce
+its own entry.
+
+## Decision Drivers
+
+- Replaying the capture consumer must be safe, always, with no operator
+  ceremony.
+- A genuine retry by the customer is a distinct financial fact and must not be
+  collapsed into the first one.
+- The guarantee should be enforced by the database, not by application code that
+  can be bypassed by the next caller.
+
+## Considered Options
+
+1. **A unique constraint on `(order_id, attempt)`**, with `attempt` carried on
+   the capture command and echoed on the event.
+2. **A dedup table keyed by the message id** of the inbound event.
+3. **Application-level "does an entry exist?" check** before insert.
+
+## Decision Outcome
+
+Proposed: **unique constraint on `(order_id, attempt)`**, with the insert
+written as `INSERT ... ON CONFLICT (order_id, attempt) DO NOTHING`.
+
+Option 2 dedups the *transport*, not the *fact*: the same capture arriving via a
+webhook and via the event bus has two message ids and would write twice. Option
+3 is a read-then-write race that fails exactly under the concurrency it is meant
+to protect against.
+
+### Consequences
+
+- Good: replay is a no-op at the storage layer, whatever the caller does.
+- Good: the key is a domain fact, so it holds across transports.
+- Bad: `attempt` has to be threaded through the capture command and onto
+  `PaymentCaptured`; a producer that omits it cannot be made idempotent.
+- Bad: existing rows have no `attempt`. The backfill assigns `attempt = 1` and
+  is only correct if no order in history was captured twice — which has to be
+  checked before this is accepted, not after.
+
+## Open Questions
+
+- Does the PSP guarantee a stable attempt identifier across its own retries, or
+  do we mint it ourselves at authorization time?
+- What is the correct behaviour when a capture arrives for an attempt that was
+  never authorized? Currently it would insert; it should probably reject.
+
+## Relates to
+
+- **Events:** [payments.ledger.payment.PaymentCaptured](../payments/ledger/aggregates/payment.md)

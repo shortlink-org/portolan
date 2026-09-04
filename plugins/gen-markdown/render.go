@@ -71,6 +71,7 @@ func render(req plugin.Request, opts Options) plugin.Response {
 	}
 	s.renderFlows()
 	s.renderAdrs()
+	s.renderLlms()
 
 	return s.b.Response()
 }

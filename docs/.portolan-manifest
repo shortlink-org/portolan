@@ -42,6 +42,8 @@
     "flows/oms-place-order-on-basket-checked-out.md",
     "flows/quote-expired-on-checkout.md",
     "flows/shipment-tracking.md",
+    "llms-full.txt",
+    "llms.txt",
     "payments/README.md",
     "payments/ledger/README.md",
     "payments/ledger/aggregates/payment.md",

@@ -1,0 +1,387 @@
+*llms-full.txt: every page of Golden estate, one after another. A page begins with a comment naming its file, and the links inside it are relative to that file's directory.*
+
+*Generated from the portolan catalog · commit `abc1234` · at 2026-01-02T03:04:05Z. Do not edit by hand.*
+
+<!-- README.md -->
+
+# Golden estate
+
+*Generated from the portolan catalog · commit `abc1234` · at 2026-01-02T03:04:05Z. Do not edit by hand.*
+
+
+## Contexts
+
+| Context | Class | Services | Summary |
+| --- | --- | --- | --- |
+| [Billing](billing/README.md) | core | [Invoices](billing/invoices/README.md) | Money owed and money taken. |
+
+## Flows
+
+| Flow | Owner | Summary |
+| --- | --- | --- |
+| [Raise an invoice](flows/raise-invoice.md) | [billing](billing/README.md) | An invoice is raised, and paid or written off. |
+
+## Decisions
+
+| ADR | Title | Status | Date |
+| --- | --- | --- | --- |
+| [billing.0001](adr/billing.0001.md) | One currency per invoice | accepted | 2026-01-01 |
+
+<!-- types.md -->
+
+# Shared types
+
+*Generated from the portolan catalog · commit `abc1234` · at 2026-01-02T03:04:05Z. Do not edit by hand.*
+
+Types named by more than one aggregate, event or message. A field that
+refers to one of these is knowably the same shape everywhere it appears.
+
+## Money
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `amountMinor` | `int64` | Amount in the minor unit. |
+| `currency` | `string` | ISO 4217, upper case. |
+
+<!-- billing/README.md -->
+
+# Billing
+
+*Generated from the portolan catalog · commit `abc1234` · at 2026-01-02T03:04:05Z. Do not edit by hand.*
+
+- **Id:** `billing`
+- **Classification:** core
+
+Money owed and money taken.
+
+## Services
+
+| Service | Path | Aggregates |
+| --- | --- | --- |
+| [Invoices](invoices/README.md) | `services/invoices` | Invoice |
+
+## Decisions
+
+| ADR | Title | Status | Date |
+| --- | --- | --- | --- |
+| [billing.0001](../adr/billing.0001.md) | One currency per invoice | accepted | 2026-01-01 |
+
+<!-- billing/invoices/README.md -->
+
+# Invoices
+
+*Generated from the portolan catalog · commit `abc1234` · at 2026-01-02T03:04:05Z. Do not edit by hand.*
+
+- **Id:** `billing.invoices`
+- **Context:** [Billing](../README.md)
+- **Repo:** `github.com/example/billing`
+- **Path:** `services/invoices`
+
+Raises invoices and chases them.
+
+## Not here
+
+No dunning.
+
+## Aggregates
+
+| Aggregate | Root | Commands | Queries | Events |
+| --- | --- | --- | --- | --- |
+| [Invoice](aggregates/invoice.md) | `Invoice` | 1 command | 1 query | 1 event |
+
+## Provides
+
+**`billing.v1.Invoices`** — `api/invoices.proto`
+
+- `Raise`
+- `Get`
+
+<details><summary>RaiseRequest</summary>
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `total` | [`Money`](../../types.md#money) | What is owed. |
+
+</details>
+
+## Consumes
+
+| Call | Peer | Status | Source | Note |
+| --- | --- | --- | --- | --- |
+| `psp.v1.Charges/Create` | `psp-gateway` | unresolved | `internal/psp/client.go:20` | Nothing in this catalog owns the gateway. |
+
+## Publishes
+
+| Event | Latest | Consumers |
+| --- | --- | --- |
+| [InvoiceRaised](aggregates/invoice.md) | v2 | `billing.ledger (declared)` |
+
+## Stores
+
+| Store | Kind | Access | Tables |
+| --- | --- | --- | --- |
+| [Invoices Postgres](stores/pg.md) | postgres | owns | 2 tables |
+
+<!-- billing/invoices/aggregates/invoice.md -->
+
+# Invoice
+
+*Generated from the portolan catalog · commit `abc1234` · at 2026-01-02T03:04:05Z. Do not edit by hand.*
+
+- **Id:** `billing.invoices.invoice`
+- **Service:** [Invoices](../README.md)
+- **Root:** `Invoice`
+
+One invoice, one customer, one currency.
+
+## Entities
+
+### Invoice — aggregate root
+
+The invoice itself.
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `id` | `string` | Invoice id. |
+| `total` | [`Money`](../../../types.md#money) | What is owed. |
+
+## Value objects
+
+### Money
+
+An amount in one currency.
+
+Shared type [`Money`](../../../types.md#money).
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `amountMinor` | `int64` | Amount in the minor unit. |
+| `currency` | `string` | ISO 4217, upper case. |
+
+## Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> draft
+    draft --> raised: raise · InvoiceRaised
+    raised --> paid: settle
+    paid --> [*]
+```
+
+| From | To | On | Emits | Source |
+| --- | --- | --- | --- | --- |
+| `draft` | `raised` | `raise` | `InvoiceRaised` | `internal/domain/invoice/invoice.go:41` |
+| `raised` | `paid` | `settle` | — | `internal/domain/invoice/invoice.go:58` |
+
+## Operations
+
+| Operation | Kind | Doc |
+| --- | --- | --- |
+| `RaiseInvoice` | command | Raises one. |
+| `GetInvoice` | query | — |
+
+## Events
+
+### InvoiceRaised
+
+`billing.invoices.invoice.InvoiceRaised`
+
+On the wire as `billing.InvoiceRaised`, on `billing_invoice`.
+
+| Consumer | Status | Note |
+| --- | --- | --- |
+| `billing.ledger` | declared | Not observed. |
+
+#### v1
+
+The original.
+
+Source: `api/events/v1/invoice_raised.proto`
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `invoiceId` | `string` | Which invoice. |
+
+#### v2 — current
+
+Adds the total.
+
+Source: `api/events/v2/invoice_raised.proto`
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `invoiceId` | `string` | Which invoice. |
+| `total` | [`Money`](../../../types.md#money) | What is owed. |
+
+<!-- billing/invoices/stores/pg.md -->
+
+# Invoices Postgres
+
+*Generated from the portolan catalog · commit `abc1234` · at 2026-01-02T03:04:05Z. Do not edit by hand.*
+
+- **Id:** `billing.invoices.pg`
+- **Kind:** postgres
+- **Owner:** [billing.invoices](../README.md)
+- **Source:** `migrations/`
+
+## Tables
+
+### invoices
+
+aggregate-root · persists [billing.invoices.invoice](../aggregates/invoice.md)
+
+One row per invoice.
+
+| Column | Type | Null | Key | Maps |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | not null | PK | Invoice.ID |
+| `total_minor` | `bigint` | not null | — | Invoice.Total.AmountMinor |
+
+| Index | Columns | Kind |
+| --- | --- | --- |
+| `invoices_pkey` | id | unique |
+
+### invoice_lines
+
+child
+
+| Column | Type | Null | Key |
+| --- | --- | --- | --- |
+| `id` | `uuid` | not null | PK |
+| `invoice_id` | `uuid` | not null | → [`billing.invoices.pg.invoices`](pg.md#invoices).id (cascade) |
+
+## Views
+
+### invoice_totals
+
+**materialized** — rows are stored, and can be stale · reads [`billing.invoices.pg.invoices`](pg.md#invoices)
+
+Totals, refreshed nightly.
+
+| Column | Type | Null | From |
+| --- | --- | --- | --- |
+| `id` | `uuid` | not null | `billing.invoices.pg.invoices.id` |
+| `total_minor` | `bigint` | null | `billing.invoices.pg.invoices.total_minor` |
+
+```sql
+SELECT id, total_minor FROM invoices
+```
+
+<!-- flows/README.md -->
+
+# Flows
+
+*Generated from the portolan catalog · commit `abc1234` · at 2026-01-02T03:04:05Z. Do not edit by hand.*
+
+| Flow | Owner | Summary |
+| --- | --- | --- |
+| [Raise an invoice](raise-invoice.md) | [billing](../billing/README.md) | An invoice is raised, and paid or written off. |
+
+<!-- flows/raise-invoice.md -->
+
+# Raise an invoice
+
+*Generated from the portolan catalog · commit `abc1234` · at 2026-01-02T03:04:05Z. Do not edit by hand.*
+
+- **Id:** `flow.raise-invoice`
+- **Owner:** [billing](../billing/README.md)
+- **Source:** `test/e2e/raise_test.go`
+
+An invoice is raised, and paid or written off.
+
+## Participants
+
+| Participant | Kind | Context | Label |
+| --- | --- | --- | --- |
+| `operator` | actor | — | — |
+| `billing.invoices` | service | [billing](../billing/README.md) | — |
+| `bus` | broker | — | — |
+| `psp-gateway` | external | — | psp-gateway (external) |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor p0 as operator
+    participant p1 as billing.invoices
+    participant p2 as bus
+    participant p3 as psp-gateway (external)
+    p0->>p1: Raise → Invoice
+    p1-)p2: billing.invoices.invoice.InvoiceRaised
+    loop until paid or written off
+        alt customer pays
+            par settle and notify
+                p1->>p3: psp.v1.Charges/Create
+            and
+                p1->>p1: markPaid #35;1
+            end
+        else written off
+            p1->>p0: write-off notice
+            Note over p0: flow ends here
+        end
+    end
+```
+
+## Steps
+
+1. **operator** → **billing.invoices** — Raise → Invoice
+   `raise_test.go:31`
+2. **billing.invoices** → **bus** — billing.invoices.invoice.InvoiceRaised
+   [billing.invoices.invoice.InvoiceRaised](../billing/invoices/aggregates/invoice.md)
+
+> **Repeats** — until paid or written off
+>
+>
+> > **One of**
+> >
+> > *customer pays*
+> >
+> >
+> > > **In parallel** — settle and notify
+> > >
+> > > *Branch 1*
+> > >
+> > > 3. **billing.invoices** → **psp-gateway** — psp.v1.Charges/Create
+> > >    `psp.v1.Charges/Create` · status: unresolved · The gateway is outside this catalog.
+> > >
+> > > *Branch 2*
+> > >
+> > > 4. **billing.invoices** ↺ **billing.invoices** — markPaid #1
+> >
+> >
+> > *written off — *ends the flow**
+> >
+> > 5. **billing.invoices** → **operator** — write-off notice
+> >    status: declared
+
+<!-- adr/README.md -->
+
+# Decision records
+
+*Generated from the portolan catalog · commit `abc1234` · at 2026-01-02T03:04:05Z. Do not edit by hand.*
+
+| ADR | Title | Status | Date | Scope |
+| --- | --- | --- | --- | --- |
+| [billing.0001](billing.0001.md) | One currency per invoice | accepted | 2026-01-01 | [billing](../billing/README.md) |
+
+<!-- adr/billing.0001.md -->
+
+# billing.0001 — One currency per invoice
+
+*Generated from the portolan catalog · commit `abc1234` · at 2026-01-02T03:04:05Z. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-01-01
+- **Scope:** [billing](../billing/README.md)
+- **Source:** `docs/adr/0001.md`
+
+## Decision
+
+An invoice is in one currency.
+
+## Relates to
+
+- **Services:** [billing.invoices](../billing/invoices/README.md)
+- **Events:** [billing.invoices.invoice.InvoiceRaised](../billing/invoices/aggregates/invoice.md)
+- **Flows:** [flow.raise-invoice](../flows/raise-invoice.md)

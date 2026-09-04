@@ -1,0 +1,28 @@
+# Golden estate
+
+> Architecture catalog of Golden estate: 1 bounded context, 1 service, 1 aggregate, 1 store, 1 flow and 1 decision record, read from the code, the specs and the traces of the estate.
+
+*Generated from the portolan catalog · commit `abc1234` · at 2026-01-02T03:04:05Z. Do not edit by hand.*
+
+Every link below is a markdown page beside this file. [llms-full.txt](llms-full.txt) is all of those pages in one file, in the order the site lists them.
+
+## Contexts
+
+- [Billing](billing/README.md): core. Money owed and money taken
+
+## Services
+
+- [Invoices](billing/invoices/README.md): in Billing. Aggregates: Invoice
+
+## Flows
+
+- [Raise an invoice](flows/raise-invoice.md): owned by [billing](billing/README.md). An invoice is raised, and paid or written off
+
+## Decisions
+
+- [billing.0001](adr/billing.0001.md): One currency per invoice (accepted, 2026-01-01)
+
+## Optional
+
+- [Shared types](types.md): types named by more than one aggregate, event or message
+- [Invoices Postgres](billing/invoices/stores/pg.md): postgres store of [Invoices](billing/invoices/README.md). 2 tables
