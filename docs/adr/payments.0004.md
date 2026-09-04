@@ -1,6 +1,6 @@
 # payments.0004 — Journal entries are idempotent by (order_id, attempt)
 
-*Generated from the portolan catalog · commit `3 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `2 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Status:** proposed
 - **Date:** 2026-02-09

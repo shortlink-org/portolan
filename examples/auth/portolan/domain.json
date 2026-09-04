@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-09-04T19:43:11+07:00",
-  "commit": "bf50e40",
+  "generatedAt": "2026-09-04T21:22:05+07:00",
+  "commit": "51248ba",
   "contexts": [
     {
       "id": "auth",
@@ -658,7 +658,7 @@
         },
         {
           "type": "alt",
-          "id": "alt7",
+          "id": "alt9",
           "branches": [
             {
               "title": "err != nil",
@@ -669,10 +669,32 @@
                   "from": "auth.auth",
                   "to": "auth.auth",
                   "kind": "call",
-                  "label": "Check",
+                  "label": "RecordFailure",
                   "status": "declared",
-                  "note": "Port `Lockout`, bound at assembly to the Check use case.",
+                  "note": "Port `Lockout`, bound at assembly to the RecordFailure use case.",
                   "line": "examples/auth/internal/application/user/usecases/authenticate/usecase.go:58"
+                },
+                {
+                  "type": "step",
+                  "id": "s7",
+                  "from": "auth.auth",
+                  "to": "auth-pg",
+                  "kind": "call",
+                  "label": "ByUserID",
+                  "status": "declared",
+                  "note": "inside a loop over `retries`.",
+                  "line": "examples/auth/internal/application/lockout/usecases/record_failure/usecase.go:37"
+                },
+                {
+                  "type": "step",
+                  "id": "s8",
+                  "from": "auth.auth",
+                  "to": "auth-pg",
+                  "kind": "call",
+                  "label": "Save",
+                  "status": "declared",
+                  "note": "inside a loop over `retries`.",
+                  "line": "examples/auth/internal/application/lockout/usecases/record_failure/usecase.go:54"
                 }
               ],
               "terminal": true
@@ -685,18 +707,40 @@
         },
         {
           "type": "step",
-          "id": "s8",
+          "id": "s10",
           "from": "auth.auth",
           "to": "auth.auth",
           "kind": "call",
-          "label": "Check",
+          "label": "RecordSuccess",
           "status": "declared",
-          "note": "Port `Lockout`, bound at assembly to the Check use case.",
+          "note": "Port `Lockout`, bound at assembly to the RecordSuccess use case.",
           "line": "examples/auth/internal/application/user/usecases/authenticate/usecase.go:67"
         },
         {
           "type": "step",
-          "id": "s9",
+          "id": "s11",
+          "from": "auth.auth",
+          "to": "auth-pg",
+          "kind": "call",
+          "label": "ByUserID",
+          "status": "declared",
+          "note": "inside a loop over `retries`.",
+          "line": "examples/auth/internal/application/lockout/usecases/record_success/usecase.go:32"
+        },
+        {
+          "type": "step",
+          "id": "s12",
+          "from": "auth.auth",
+          "to": "auth-pg",
+          "kind": "call",
+          "label": "Save",
+          "status": "declared",
+          "note": "inside a loop over `retries`.",
+          "line": "examples/auth/internal/application/lockout/usecases/record_success/usecase.go:44"
+        },
+        {
+          "type": "step",
+          "id": "s13",
           "from": "auth.auth",
           "to": "risk-v1",
           "kind": "rpc",
@@ -707,14 +751,14 @@
         },
         {
           "type": "alt",
-          "id": "alt13",
+          "id": "alt17",
           "branches": [
             {
               "title": "verdict == VerdictBlock",
               "steps": [
                 {
                   "type": "step",
-                  "id": "s10",
+                  "id": "s14",
                   "from": "auth.auth",
                   "to": "auth-pg",
                   "kind": "call",
@@ -724,7 +768,7 @@
                 },
                 {
                   "type": "step",
-                  "id": "s11",
+                  "id": "s15",
                   "from": "auth.auth",
                   "to": "auth-pg",
                   "kind": "call",
@@ -735,7 +779,7 @@
                 },
                 {
                   "type": "step",
-                  "id": "s12",
+                  "id": "s16",
                   "from": "auth.auth",
                   "to": "bus",
                   "kind": "event",
@@ -756,7 +800,7 @@
         },
         {
           "type": "step",
-          "id": "s14",
+          "id": "s18",
           "from": "auth.auth",
           "to": "auth-pg",
           "kind": "call",
@@ -766,7 +810,7 @@
         },
         {
           "type": "step",
-          "id": "s15",
+          "id": "s19",
           "from": "auth.auth",
           "to": "bus",
           "kind": "event",

@@ -743,8 +743,13 @@ func (r *flowReader) portCall(d *flowDraft, s *scope, field, method string, site
 		return
 	}
 
-	// A port this use case declares, bound in assembly to another use case.
-	if target, ok := r.bindings[s.key+"."+declared]; ok {
+	// A port this use case declares, bound in assembly to another use case:
+	// by method when the adapter reaches several, by port otherwise.
+	target, ok := r.bindings[s.key+"."+declared+"."+method]
+	if !ok {
+		target, ok = r.bindings[s.key+"."+declared]
+	}
+	if ok {
 		r.useCaseHop(d, target, "Port `"+declared+"`, bound at assembly to the "+operationName(target)+" use case.", at(source, line), depth)
 
 		return

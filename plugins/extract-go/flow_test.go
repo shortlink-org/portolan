@@ -397,6 +397,67 @@ func ProvideSomethingElse(uc *authenticate.UseCase) (login.Authenticator, error)
 	}
 }
 
+// A port filled by several use cases, one per method, is bound per method:
+// the signature names the use cases, the adapter's methods say which is which.
+func TestAPortOverSeveralUseCasesIsBoundPerMethod(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "internal/di/provider")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	const provider = `package provider
+
+import (
+	"context"
+
+	"github.com/example/auth/internal/application/lockout/usecases/check"
+	checkdto "github.com/example/auth/internal/application/lockout/usecases/check/dto"
+	"github.com/example/auth/internal/application/lockout/usecases/record_failure"
+	failuredto "github.com/example/auth/internal/application/lockout/usecases/record_failure/dto"
+	"github.com/example/auth/internal/application/user/usecases/authenticate"
+)
+
+func ProvideLockout(check *check.UseCase, failed *record_failure.UseCase) authenticate.Lockout {
+	return lockoutAdapter{check: check, failed: failed}
+}
+
+type lockoutAdapter struct {
+	check  *check.UseCase
+	failed *record_failure.UseCase
+}
+
+func (l lockoutAdapter) Allowed(ctx context.Context, id string) (bool, error) {
+	out, err := l.check.Handle(ctx, checkdto.Input{UserID: id})
+	if err != nil {
+		return false, err
+	}
+	return out.Allowed, nil
+}
+
+func (l lockoutAdapter) Failed(ctx context.Context, id string) error {
+	return l.failed.Handle(ctx, failuredto.Input{UserID: id})
+}
+`
+	if err := os.WriteFile(filepath.Join(dir, "lockout.go"), []byte(provider), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got := portBindings(root)
+	want := map[string]string{
+		"user/authenticate.Lockout.Allowed": "lockout/check",
+		"user/authenticate.Lockout.Failed":  "lockout/record_failure",
+	}
+	for key, useCase := range want {
+		if got[key] != useCase {
+			t.Errorf("%s = %q, want %q", key, got[key], useCase)
+		}
+	}
+	if _, bound := got["user/authenticate.Lockout"]; bound {
+		t.Errorf("bindings = %v, want no port-level binding when the methods say which use case is which", got)
+	}
+}
+
 // An import of the domain is a lane; the event package under it is a fact.
 // Nothing else is either, and a reader that guessed would put a helper package
 // on a diagram as if it were a database.

@@ -1,6 +1,6 @@
 # Login
 
-*Generated from the portolan catalog · commit `3 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `2 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.auth-login`
 - **Owner:** [auth](../auth/README.md)
@@ -34,11 +34,15 @@ sequenceDiagram
     p1->>p1: Check
     p1->>p2: ByUserID
     alt err != nil
-        p1->>p1: Check
-        Note over p1: flow ends here
+        p1->>p1: RecordFailure
+        p1->>p2: ByUserID
+        p1->>p2: Save
+        Note over p2: flow ends here
     else otherwise
     end
-    p1->>p1: Check
+    p1->>p1: RecordSuccess
+    p1->>p2: ByUserID
+    p1->>p2: Save
     p1->>p3: Assess
     alt verdict == VerdictBlock
         p1->>p2: ByUserID
@@ -68,30 +72,38 @@ sequenceDiagram
 >
 > *err != nil — *ends the flow**
 >
-> 6. **auth.auth** ↺ **auth.auth** — Check
->    status: declared · `examples/auth/internal/application/user/usecases/authenticate/usecase.go:58` · Port `Lockout`, bound at assembly to the Check use case.
+> 6. **auth.auth** ↺ **auth.auth** — RecordFailure
+>    status: declared · `examples/auth/internal/application/user/usecases/authenticate/usecase.go:58` · Port `Lockout`, bound at assembly to the RecordFailure use case.
+> 7. **auth.auth** → **auth-pg** — ByUserID
+>    status: declared · `examples/auth/internal/application/lockout/usecases/record_failure/usecase.go:37` · inside a loop over `retries`.
+> 8. **auth.auth** → **auth-pg** — Save
+>    status: declared · `examples/auth/internal/application/lockout/usecases/record_failure/usecase.go:54` · inside a loop over `retries`.
 >
 > *otherwise*
 
-7. **auth.auth** ↺ **auth.auth** — Check
-   status: declared · `examples/auth/internal/application/user/usecases/authenticate/usecase.go:67` · Port `Lockout`, bound at assembly to the Check use case.
-8. **auth.auth** → **risk-v1** — Assess
+9. **auth.auth** ↺ **auth.auth** — RecordSuccess
+   status: declared · `examples/auth/internal/application/user/usecases/authenticate/usecase.go:67` · Port `Lockout`, bound at assembly to the RecordSuccess use case.
+10. **auth.auth** → **auth-pg** — ByUserID
+   status: declared · `examples/auth/internal/application/lockout/usecases/record_success/usecase.go:32` · inside a loop over `retries`.
+11. **auth.auth** → **auth-pg** — Save
+   status: declared · `examples/auth/internal/application/lockout/usecases/record_success/usecase.go:44` · inside a loop over `retries`.
+12. **auth.auth** → **risk-v1** — Assess
    `risk.v1.RiskService/Assess` · status: unresolved · `examples/auth/internal/application/session/usecases/login/usecase.go:63`
 
 > **One of**
 >
 > *verdict == VerdictBlock — *ends the flow**
 >
-> 9. **auth.auth** → **auth-pg** — ByUserID
+> 13. **auth.auth** → **auth-pg** — ByUserID
 >    status: declared · `examples/auth/internal/application/session/usecases/login/usecase.go:92`
-> 10. **auth.auth** → **auth-pg** — Save
+> 14. **auth.auth** → **auth-pg** — Save
 >    status: declared · `examples/auth/internal/application/session/usecases/login/usecase.go:102` · inside a loop over `sessions`.
-> 11. **auth.auth** → **bus** — SessionEnded
+> 15. **auth.auth** → **bus** — SessionEnded
 >    [auth.auth.session.SessionEnded](../auth/auth/aggregates/session.md) · status: declared · `examples/auth/internal/application/session/usecases/login/usecase.go:102` · inside a loop over `sessions`.
 >
 > *otherwise*
 
-12. **auth.auth** → **auth-pg** — Save
+16. **auth.auth** → **auth-pg** — Save
    status: declared · `examples/auth/internal/application/session/usecases/login/usecase.go:78`
-13. **auth.auth** → **bus** — SessionStarted
+17. **auth.auth** → **bus** — SessionStarted
    [auth.auth.session.SessionStarted](../auth/auth/aggregates/session.md) · `examples/auth/internal/application/session/usecases/login/usecase.go:78` · Seen running in telemetry/traces.jsonl (2 traces).
