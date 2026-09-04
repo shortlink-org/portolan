@@ -38,7 +38,7 @@
     },
     "repositories": {
       "type": "string",
-      "description": "Where the adapters live, relative to the input root: one package per aggregate, its migrations under migrations/ (every .sql that is not a .down.sql). The migrations are read from there, and so is which aggregate a table persists and which field a column carries - off the statements that write the rows, in Go or in TypeScript.",
+      "description": "Where the adapters live, relative to the input root: one package per aggregate, its migrations under migrations/ (every .sql that is not a .down.sql). The migrations are read from there, and so is which aggregate a table persists and which field a column carries - off the statements that write the rows, in Go, in TypeScript or in Rust.",
       "default": "internal/infrastructure/repository"
     },
     "out": {

@@ -50,9 +50,14 @@ func readStore(root, repositories, storeID, owner string, b *plugin.Builder) []c
 		// Which column carries which field, read from the statements that
 		// write the rows rather than from the column names.
 		mapped := readMaps(root, repositories, aggregate, b)
-		for table, columns := range readMapsTS(root, repositories, aggregate, b) {
-			if _, ok := mapped[table]; !ok {
-				mapped[table] = columns
+		for _, more := range []map[string]map[string]string{
+			readMapsTS(root, repositories, aggregate, b),
+			readMapsRust(root, repositories, aggregate, b),
+		} {
+			for table, columns := range more {
+				if _, ok := mapped[table]; !ok {
+					mapped[table] = columns
+				}
 			}
 		}
 		first := true
