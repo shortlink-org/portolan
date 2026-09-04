@@ -25,6 +25,14 @@ it goes out on. That is the one string by which the catalog and a running system
 meet — a verifier holds the channel a trace shows against it — and a channel,
 like a store, has one owner: a second service publishing on it is a problem.
 
+A service can also say that itself, in `channels`, read out of an AsyncAPI
+document: the addresses it sends on and the messages it listens for. The second
+half is the one nothing else could supply — no publisher's source says who
+subscribes — and a subscription that resolves joins two repositories that never
+mention each other. The first half is a claim beside a claim: the code says an
+event goes out on a channel, the document says the service sends there, and
+where the two disagree one of them is stale and the Problems page says so.
+
 A store also holds views. A view is kept apart from a table rather than folded
 in behind a flag: it has no key, no constraints and no rows of its own, and what
 it has instead is what it reads. Any column — of a view, of a projection, of an

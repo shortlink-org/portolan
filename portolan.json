@@ -26,6 +26,12 @@
       }
     },
     {
+      "name": "asyncapi",
+      "process": {
+        "cmd": "go run ./plugins/extract-asyncapi"
+      }
+    },
+    {
       "name": "sql",
       "process": {
         "cmd": "go run ./plugins/extract-sql"
@@ -134,6 +140,17 @@
         "service": "cart",
         "spec": "src/infrastructure/transport/http/gen/openapi.yaml",
         "out": "api.json"
+      }
+    },
+    {
+      "plugin": "asyncapi",
+      "in": "examples/shop/cart",
+      "out": "examples/shop/cart/portolan",
+      "options": {
+        "context": "shop",
+        "service": "cart",
+        "spec": "src/infrastructure/transport/bus/asyncapi.yaml",
+        "out": "bus.json"
       }
     },
     {

@@ -408,6 +408,63 @@ describe("mergeCatalogs: schema modules", () => {
       "buf.build/acme/pricing",
     ]);
   });
+
+  // A service may split its bus across several documents, so two sources
+  // describing one channel is not a conflict: the address is the identity, and
+  // the messages are the union.
+  it("unions the messages two documents put on one channel", () => {
+    const outgoing = context("shop", ["shop.cart"]);
+    outgoing.services = outgoing.services.map((s) => ({
+      ...s,
+      channels: [
+        {
+          address: "shop.cart.basket",
+          source: "bus/asyncapi.yaml",
+          messages: [
+            { name: "cart.BasketCreated", direction: "send" as const },
+          ],
+        },
+      ],
+    }));
+
+    const incoming = context("shop", ["shop.cart"]);
+    incoming.services = incoming.services.map((s) => ({
+      ...s,
+      channels: [
+        {
+          address: "shop.cart.basket",
+          source: "policies/asyncapi.yaml",
+          messages: [
+            { name: "cart.BasketCreated", direction: "send" as const },
+            { name: "cart.BasketCheckedOut", direction: "send" as const },
+          ],
+        },
+        {
+          address: "auth_session",
+          source: "policies/asyncapi.yaml",
+          messages: [{ name: "auth.SessionEnded", direction: "receive" as const }],
+        },
+      ],
+    }));
+
+    const merged = mergeCatalogs([
+      source("a-outgoing.json", { contexts: [outgoing] }),
+      source("b-incoming.json", { contexts: [incoming] }),
+    ]);
+
+    const channels = merged.catalog.contexts[0]?.services[0]?.channels;
+    expect(channels?.map((c) => c.address)).toEqual([
+      "shop.cart.basket",
+      "auth_session",
+    ]);
+    expect(channels?.[0]?.messages.map((m) => m.name)).toEqual([
+      "cart.BasketCreated",
+      "cart.BasketCheckedOut",
+    ]);
+    // The channel that was here keeps its own source; it is where its prose
+    // came from.
+    expect(channels?.[0]?.source).toBe("bus/asyncapi.yaml");
+  });
 });
 
 describe("a second source that has seen the flow run", () => {

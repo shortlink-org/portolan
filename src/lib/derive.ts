@@ -378,7 +378,10 @@ export type ProblemKind =
   | "column-type"
   | "outbox-payload"
   | "proto-missing"
-  | "shared-channel";
+  | "shared-channel"
+  | "channel-undeclared"
+  | "channel-unpublished"
+  | "subscription-unresolved";
 
 /**
  * How wrong a problem is. Two values, not five: an edge either lands somewhere

@@ -1,0 +1,191 @@
+# What the cart puts on the bus, and the only place it is described. The events
+# are the domain's - src/domain/basket/events - and this says how they leave:
+# the subject they go out on and the name each message carries. The catalog
+# reads both, from here and from the code, and holds the two against each other.
+asyncapi: 3.0.0
+info:
+  title: cart
+  version: 1.0.0
+  description: >-
+    Everything a basket says about itself. The outbox relay publishes over NATS
+    JetStream when NATS_URL names a server, and in process when it does not
+    (cart.0008).
+
+servers:
+  jetstream:
+    host: "nats:4222"
+    protocol: nats
+    description: The estate's JetStream cluster.
+
+channels:
+  basket:
+    address: shop.cart.basket
+    title: Basket
+    description: >-
+      One subject per aggregate, dotted the way a NATS subject is. The subject
+      is the topic the outbox row held, and the event's name is on the message
+      metadata, so a subscriber dispatches without parsing the payload.
+    messages:
+      BasketCreated:
+        $ref: "#/components/messages/BasketCreated"
+      BasketItemAdded:
+        $ref: "#/components/messages/BasketItemAdded"
+      BasketItemRemoved:
+        $ref: "#/components/messages/BasketItemRemoved"
+      BasketCheckedOut:
+        $ref: "#/components/messages/BasketCheckedOut"
+      BasketAbandoned:
+        $ref: "#/components/messages/BasketAbandoned"
+      BasketMerged:
+        $ref: "#/components/messages/BasketMerged"
+
+operations:
+  publishBasket:
+    action: send
+    channel:
+      $ref: "#/channels/basket"
+    summary: Everything the basket raises leaves on its own subject.
+
+components:
+  messages:
+    BasketCreated:
+      name: cart.BasketCreated
+      title: Basket created
+      summary: A basket exists, for a visitor or for a customer.
+      payload:
+        type: object
+        required: [basketId, occurredAt]
+        properties:
+          basketId:
+            type: string
+            format: uuid
+          customerId:
+            type: string
+            format: uuid
+            description: Null while the basket is anonymous.
+          occurredAt:
+            type: string
+            format: date-time
+    BasketItemAdded:
+      name: cart.BasketItemAdded
+      title: Item added
+      summary: A line was added, or an existing line grew.
+      payload:
+        type: object
+        required: [basketId, sku, quantity, unitPrice, occurredAt]
+        properties:
+          basketId:
+            type: string
+            format: uuid
+          sku:
+            type: string
+          quantity:
+            type: integer
+          unitPrice:
+            $ref: "#/components/schemas/Money"
+          occurredAt:
+            type: string
+            format: date-time
+    BasketItemRemoved:
+      name: cart.BasketItemRemoved
+      title: Item removed
+      summary: A line is gone from the basket.
+      payload:
+        type: object
+        required: [basketId, sku, occurredAt]
+        properties:
+          basketId:
+            type: string
+            format: uuid
+          sku:
+            type: string
+          occurredAt:
+            type: string
+            format: date-time
+    BasketCheckedOut:
+      name: cart.BasketCheckedOut
+      title: Basket checked out
+      summary: >-
+        The basket is closed and an order is expected. This is the message
+        anything downstream of the cart waits for.
+      payload:
+        type: object
+        required: [basketId, customerId, items, total, occurredAt]
+        properties:
+          basketId:
+            type: string
+            format: uuid
+          customerId:
+            type: string
+            format: uuid
+          items:
+            type: array
+            items:
+              type: object
+              properties:
+                sku:
+                  type: string
+                quantity:
+                  type: integer
+                unitPrice:
+                  $ref: "#/components/schemas/Money"
+          total:
+            $ref: "#/components/schemas/Money"
+          quoteId:
+            type: string
+            description: The price quote the total was taken from.
+          occurredAt:
+            type: string
+            format: date-time
+    BasketAbandoned:
+      name: cart.BasketAbandoned
+      title: Basket abandoned
+      summary: Nobody touched the basket for long enough that it was let go.
+      payload:
+        type: object
+        required: [basketId, idleSince, occurredAt]
+        properties:
+          basketId:
+            type: string
+            format: uuid
+          customerId:
+            type: string
+            format: uuid
+          idleSince:
+            type: string
+            format: date-time
+          occurredAt:
+            type: string
+            format: date-time
+    BasketMerged:
+      name: cart.BasketMerged
+      title: Basket merged
+      summary: A visitor signed in and their basket was folded into their own.
+      payload:
+        type: object
+        required: [basketId, intoBasketId, customerId, occurredAt]
+        properties:
+          basketId:
+            type: string
+            format: uuid
+          intoBasketId:
+            type: string
+            format: uuid
+          customerId:
+            type: string
+            format: uuid
+          occurredAt:
+            type: string
+            format: date-time
+
+  schemas:
+    Money:
+      type: object
+      required: [amountMinor, currency]
+      properties:
+        amountMinor:
+          type: integer
+          format: int64
+        currency:
+          type: string
+          description: ISO 4217, three letters.

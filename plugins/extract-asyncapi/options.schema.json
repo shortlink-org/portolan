@@ -1,0 +1,26 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "context": {
+      "type": "string",
+      "description": "Slug of the bounded context that owns the service this document belongs to. Defaults to the name of the input directory.",
+      "examples": ["shop"]
+    },
+    "service": {
+      "type": "string",
+      "description": "Slug of the service the document describes. Defaults to the name of the input directory.",
+      "examples": ["cart"]
+    },
+    "spec": {
+      "type": "string",
+      "description": "The AsyncAPI document, relative to the input root. Left out, the extractor looks for one.",
+      "examples": ["src/infrastructure/bus/gen/asyncapi.yaml"]
+    },
+    "out": {
+      "type": "string",
+      "description": "Name of the fragment file, inside the step's output directory.",
+      "default": "bus.json"
+    }
+  }
+}

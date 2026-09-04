@@ -38,6 +38,9 @@ const KIND_OF: Record<Problem["kind"], "service" | "event" | "table"> = {
   "outbox-payload": "table",
   "proto-missing": "service",
   "shared-channel": "event",
+  "channel-undeclared": "event",
+  "channel-unpublished": "service",
+  "subscription-unresolved": "service",
 };
 
 const KIND_NOTE: Record<Problem["kind"], string> = {
@@ -52,6 +55,11 @@ const KIND_NOTE: Record<Problem["kind"], string> = {
   "proto-missing":
     "the provider is in the catalog but answers on no such method",
   "shared-channel": "a second service publishes on this channel",
+  "channel-undeclared":
+    "this event goes out on a channel the service does not declare",
+  "channel-unpublished": "a declared channel no event of this service names",
+  "subscription-unresolved":
+    "nothing in the catalog publishes what this service listens for",
 };
 
 export function Problems() {
@@ -230,8 +238,15 @@ function nearPath(problem: Problem): string | null {
     case "proto-missing":
       return servicePath(problem.service);
     case "consumer":
-    case "shared-channel":
+    case "channel-undeclared":
       return eventPath(problem.id);
+    // The near end is an event when the service has one on the channel, and
+    // the service itself when the claim comes from its document alone.
+    case "shared-channel":
+      return eventPath(problem.id) ?? servicePath(problem.service);
+    case "channel-unpublished":
+    case "subscription-unresolved":
+      return servicePath(problem.service);
     case "shared-store":
     case "persistence-drift":
     case "outbox-payload":

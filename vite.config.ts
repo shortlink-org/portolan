@@ -2,6 +2,7 @@ import { execSync } from "node:child_process";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+import { nodePolyfills } from "vite-plugin-node-polyfills";
 
 /** A git answer, or "" when there is nothing to answer with (no repo, no git). */
 function git(args: string): string {
@@ -84,7 +85,19 @@ const buildInfo = {
 export default defineConfig({
   base: env.BASE_PATH ?? "/",
   define: { __BUILD_INFO__: JSON.stringify(buildInfo) },
-  plugins: [react(), tailwindcss()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    // The AsyncAPI reference brings a parser written for Node, and it calls
+    // Buffer, util and process while it loads. Only the modules it actually
+    // reaches are shimmed: this is a static site with no server in it, and a
+    // blanket polyfill would put a Node runtime in the chunk the app boots
+    // from to serve one lazily loaded tab.
+    nodePolyfills({
+      include: ["buffer", "events", "path", "process", "stream", "util"],
+      globals: { Buffer: true, global: true, process: true },
+    }),
+  ],
   resolve: {
     // One React, whatever a dependency asks for. The api reference ships its
     // own React wrapper around a Vue app, and a second copy of React reaching

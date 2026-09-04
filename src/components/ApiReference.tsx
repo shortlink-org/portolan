@@ -13,6 +13,7 @@
 
 import { lazy, Suspense, useEffect, useState } from "react";
 import { useTheme } from "../app/theme";
+import { loaderFor as loaderIn } from "../lib/spec-files";
 import { Empty } from "./PageHeader";
 
 /**
@@ -42,11 +43,7 @@ const SPECS = import.meta.glob<string>(
 );
 
 function loaderFor(source: string): (() => Promise<string>) | null {
-  for (const [path, load] of Object.entries(SPECS)) {
-    if (path.replace(/^(\.\.\/)+/, "") === source) return load;
-  }
-
-  return null;
+  return loaderIn(SPECS, source);
 }
 
 /** Whether the document a catalog entry points at is one this site can show. */

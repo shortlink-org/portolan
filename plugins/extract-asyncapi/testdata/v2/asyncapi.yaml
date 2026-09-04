@@ -1,0 +1,31 @@
+asyncapi: "2.6.0"
+
+info:
+  title: billing
+  version: "1.0.0"
+
+channels:
+  billing_invoice:
+    description: Invoices as they are raised and settled.
+    # From the client's side: what somebody subscribes to is what this
+    # application produces.
+    subscribe:
+      message:
+        oneOf:
+          - $ref: "#/components/messages/InvoiceRaised"
+          - $ref: "#/components/messages/InvoiceSettled"
+  auth_user:
+    # And what somebody publishes here is what this application consumes.
+    publish:
+      message:
+        $ref: "#/components/messages/UserRegistered"
+
+components:
+  messages:
+    InvoiceRaised:
+      name: billing.InvoiceRaised
+      summary: A customer owes money.
+    InvoiceSettled:
+      name: billing.InvoiceSettled
+    UserRegistered:
+      name: auth.UserRegistered

@@ -1,0 +1,48 @@
+asyncapi: 3.0.0
+
+info:
+  title: cart
+  version: "1.0.0"
+
+channels:
+  basket:
+    address: shop.cart.basket
+    title: Basket
+    description: Everything a basket says about itself.
+    messages:
+      BasketCreated:
+        $ref: "#/components/messages/BasketCreated"
+      BasketCheckedOut:
+        $ref: "#/components/messages/BasketCheckedOut"
+  sessions:
+    address: auth_session
+    description: What authentication says about a session.
+    messages:
+      SessionEnded:
+        $ref: "#/components/messages/SessionEnded"
+  telemetry:
+    address: shop.cart.telemetry
+    description: Declared, and no operation says which way it goes.
+
+operations:
+  publishBasket:
+    action: send
+    channel:
+      $ref: "#/channels/basket"
+  onSessionEnded:
+    action: receive
+    channel:
+      $ref: "#/channels/sessions"
+    messages:
+      - $ref: "#/channels/sessions/messages/SessionEnded"
+
+components:
+  messages:
+    BasketCreated:
+      name: cart.BasketCreated
+      title: Basket created
+      summary: A shopper has a basket.
+    BasketCheckedOut:
+      name: cart.BasketCheckedOut
+    SessionEnded:
+      name: auth.SessionEnded

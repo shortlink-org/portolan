@@ -21,6 +21,7 @@ import type {
   AltBranch,
   BoundedContext,
   Catalog,
+  Channel,
   Flow,
   FlowNode,
   Loop,
@@ -260,6 +261,9 @@ function mergeService(
       aggregates: incoming.aggregates.map(copyAggregate),
       ...(incoming.stores ? { stores: [...incoming.stores] } : {}),
       ...(incoming.modules ? { modules: [...incoming.modules] } : {}),
+      ...(incoming.channels
+        ? { channels: incoming.channels.map(copyChannel) }
+        : {}),
     });
     origin.set(incoming.id, path);
 
@@ -300,6 +304,35 @@ function mergeService(
       if (!modules.includes(id)) modules.push(id);
     existing.modules = modules;
   }
+
+  if (incoming.channels?.length) {
+    // Keyed by address, because that is the whole of a channel's identity. Two
+    // documents describing one channel is not a conflict worth reporting - a
+    // service may split its bus across several - so the first one keeps the
+    // messages it declared and the second adds the ones it knows about.
+    const channels = existing.channels ?? [];
+    appendNew(
+      channels,
+      incoming.channels.map(copyChannel),
+      (c) => c.address,
+      (mine, theirs) => {
+        appendNew(
+          mine.messages,
+          theirs.messages,
+          (m) => `${m.direction} ${m.name}`,
+        );
+
+        // Mutated in place: the channel that was here keeps its prose and its
+        // source, and gains the messages the other document named.
+        return undefined;
+      },
+    );
+    existing.channels = channels;
+  }
+}
+
+function copyChannel(channel: Channel): Channel {
+  return { ...channel, messages: [...channel.messages] };
 }
 
 /**

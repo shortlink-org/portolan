@@ -10,7 +10,11 @@
    The rhythm is 4px. Every literal below is a multiple of it: page gutter 24,
    card padding 20, section gap 32, grid gap 20, card gap 16.
    --------------------------------------------------------------------------- */
-:root {
+:root,
+/* The sheet a foreign document is drawn on takes the light palette whatever
+   the site's theme is - see the rule further down that says why. Listed here
+   rather than repeating the values: one palette, declared once. */
+.spec-sheet {
   --bg: #ffffff;
   --surface: #f7f8f9;
   --surface-2: #eef0f2;
@@ -1100,6 +1104,26 @@ h3 {
 [class*="overflow-auto"] {
   scrollbar-width: thin;
   scrollbar-color: var(--scroll-thumb) transparent;
+}
+
+/* ---------------------------------------------------------------------------
+   A document drawn by somebody else's component - the AsyncAPI reference.
+   
+   It brings its own stylesheet, and that stylesheet has no dark mode at all:
+   not a variant this site could set, none. So the sheet it is drawn on is
+   always light, and `color-scheme` says so too, or the browser paints the form
+   controls inside it for the other theme.
+   
+   The tokens are re-declared rather than merely painted over because the two
+   stylesheets share a class name: `.prose` is Tailwind Typography's, which the
+   component's markup uses, and it is also this site's own. Its rules reach into
+   the document and colour it with whatever `--fg` currently means - which, in
+   the dark theme, is near-white text on a white sheet.
+   --------------------------------------------------------------------------- */
+.spec-sheet {
+  color-scheme: light;
+  background: var(--bg);
+  color: var(--fg);
 }
 
 /* ---------------------------------------------------------------------------

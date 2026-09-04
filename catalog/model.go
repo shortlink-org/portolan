@@ -74,6 +74,11 @@ type Service struct {
 	// module names its own owner, so an id here that does not call this service
 	// its owner is one the service reads.
 	Modules []string `json:"modules,omitempty"`
+
+	// Channels this service declares it publishes on or listens to, read out of
+	// an AsyncAPI document. Absent for a service that has no such document,
+	// which is not the same as a service that speaks to nobody.
+	Channels []Channel `json:"channels,omitempty"`
 }
 
 type RpcService struct {
@@ -284,6 +289,51 @@ type EventWire struct {
 	// Channel is the topic, subject or stream: "cart_basket". Empty when the
 	// source names the event but not where it goes.
 	Channel string `json:"channel,omitempty"`
+}
+
+// Channel is a topic, subject or stream a service says it uses, and the
+// messages that travel on it. It is what an AsyncAPI document declares, and it
+// is the async half of what an OpenAPI document says about routes.
+//
+// The catalog already knew about channels, but only by inference: an event
+// carries a Wire, and the channel was whatever the events happened to name. A
+// declaration is a different fact. It says what the service means to put on the
+// bus whether or not any event was found saying so, and it says what the
+// service listens for - which nothing in a publisher's source could ever say.
+type Channel struct {
+	// Address is the channel as the broker knows it: "shop.cart.basket". It is
+	// the same string an event's Wire.Channel carries, and comparing the two is
+	// how a document and the code it belongs to are held against each other.
+	Address string `json:"address"`
+
+	Title string `json:"title,omitempty"`
+	Doc   string `json:"doc,omitempty"`
+
+	Messages []ChannelMessage `json:"messages"`
+
+	// Source is the document this was read out of.
+	Source string `json:"source,omitempty"`
+}
+
+// ChannelDirection is which way a message travels, from this service's side.
+//
+// It decides ownership: a service that sends on a channel is publishing on it,
+// and a channel has one publisher. A service that only receives is a
+// subscriber, and any number of those is fine.
+type ChannelDirection string
+
+const (
+	ChannelSend    ChannelDirection = "send"
+	ChannelReceive ChannelDirection = "receive"
+)
+
+// ChannelMessage is one message on a channel, by the name it goes by on the
+// wire - the same name an event's Wire.Name carries.
+type ChannelMessage struct {
+	Name      string           `json:"name"`
+	Title     string           `json:"title,omitempty"`
+	Doc       string           `json:"doc,omitempty"`
+	Direction ChannelDirection `json:"direction"`
 }
 
 type EventConsumer struct {

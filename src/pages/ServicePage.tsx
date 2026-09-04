@@ -15,6 +15,11 @@ import { Ident } from "../components/Ident";
 import { MessageList, MethodRows } from "../components/MethodRows";
 import { docPathOf, pickSpec } from "../lib/source-doc";
 import { ApiReference, hasSpec } from "../components/ApiReference";
+import {
+  AsyncApiReference,
+  hasAsyncSpec,
+} from "../components/AsyncApiReference";
+import { ChannelRows } from "../components/ChannelRows";
 import { ModuleSpec } from "../components/SourceDoc";
 import { methodCount, operationsExposedBy } from "../lib/api";
 import { KindIcon } from "../components/kind";
@@ -41,6 +46,11 @@ const TABS = [
   // per service and the url stop meaning the same thing.
   "spec",
   "consumes",
+  // What the service says on the bus: the channels it declares, and the
+  // document they were read out of. Beside `provides` and `spec` rather than
+  // inside them, because a call and a message are answered differently and a
+  // reader is asking one question or the other.
+  "bus",
   "data",
   "flows",
   "decisions",
@@ -90,12 +100,20 @@ export function ServicePage() {
   // What the spec tab has to show: a document this repository holds, else the
   // schema module the interfaces were declared in, else nothing.
   const spec = pickSpec(service, hasSpec);
+  // The channels the service declares, and the document behind them when this
+  // repository holds it. A channel names its own source, so the tab does not
+  // have to be told where to look.
+  const channels = service.channels ?? [];
+  const busDoc = channels
+    .map((channel) => channel.source)
+    .find((source) => source !== undefined && hasAsyncSpec(source));
 
   const counts: Record<Tab, number | null> = {
     overview: null,
     provides: methodCount(service),
     spec: null,
     consumes: service.consumes.length,
+    bus: channels.length,
     data: stores.length,
     flows: flows.length,
     decisions: adrs.length,
@@ -465,6 +483,25 @@ export function ServicePage() {
               );
             })}
           </div>
+        </TabPanel>
+
+        <TabPanel>
+          {channels.length === 0 ? (
+            <Empty>
+              nothing says what this service puts on the bus — channels are read
+              from an AsyncAPI document, and none was found for this repository
+            </Empty>
+          ) : (
+            <ChannelRows channels={channels} service={service.id} />
+          )}
+
+          {busDoc ? (
+            <>
+              <div className="mt-section" />
+              <SectionTitle>Document</SectionTitle>
+              <AsyncApiReference source={busDoc} />
+            </>
+          ) : null}
         </TabPanel>
 
         <TabPanel>

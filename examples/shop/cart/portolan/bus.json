@@ -1,0 +1,74 @@
+{
+  "generatedAt": "2026-09-05T01:37:11+07:00",
+  "commit": "08fcaaa",
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.cart",
+          "slug": "cart",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "channels": [
+            {
+              "address": "shop.cart.basket",
+              "title": "Basket",
+              "doc": "One subject per aggregate, dotted the way a NATS subject is. The subject is the topic the outbox row held, and the event's name is on the message metadata, so a subscriber dispatches without parsing the payload.",
+              "messages": [
+                {
+                  "name": "cart.BasketCreated",
+                  "title": "Basket created",
+                  "doc": "A basket exists, for a visitor or for a customer.",
+                  "direction": "send"
+                },
+                {
+                  "name": "cart.BasketItemAdded",
+                  "title": "Item added",
+                  "doc": "A line was added, or an existing line grew.",
+                  "direction": "send"
+                },
+                {
+                  "name": "cart.BasketItemRemoved",
+                  "title": "Item removed",
+                  "doc": "A line is gone from the basket.",
+                  "direction": "send"
+                },
+                {
+                  "name": "cart.BasketCheckedOut",
+                  "title": "Basket checked out",
+                  "doc": "The basket is closed and an order is expected. This is the message anything downstream of the cart waits for.",
+                  "direction": "send"
+                },
+                {
+                  "name": "cart.BasketAbandoned",
+                  "title": "Basket abandoned",
+                  "doc": "Nobody touched the basket for long enough that it was let go.",
+                  "direction": "send"
+                },
+                {
+                  "name": "cart.BasketMerged",
+                  "title": "Basket merged",
+                  "doc": "A visitor signed in and their basket was folded into their own.",
+                  "direction": "send"
+                }
+              ],
+              "source": "examples/shop/cart/src/infrastructure/transport/bus/asyncapi.yaml"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": []
+}

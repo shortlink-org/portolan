@@ -417,3 +417,49 @@ not become a catalog `Event`. `Event.id` is `<service>.<aggregate>.<Name>` and
 this extractor knows the package, not the aggregate; a guess would collide with
 the event `extract-go` already emits, or invent a ghost aggregate that would sit
 beside the real one forever.
+
+## The bus: a channel is a claim, not an event
+
+`extract-asyncapi` reads an AsyncAPI document and answers with the channels a
+service declares — the address the broker knows, and each message on it with the
+direction it travels. What it does **not** answer with is events.
+
+That looks like a gap and is a boundary. `Event.id` is
+`<service>.<aggregate>.<Name>`, and an AsyncAPI document knows the message on the
+wire, not the aggregate that raised it. An extractor that guessed would either
+collide with the event `extract-go` and `extract-ts` already emit or invent a
+ghost aggregate that would sit beside the real one forever — the same rule
+`extract-proto` keeps about a message called `OrderPlaced`.
+
+So the two sources meet in the merge instead, and the pages hold them against
+each other. The domain says an aggregate raises `BasketCreated` and how it leaves,
+in `wire`; the document says the service sends `cart.BasketCreated` on
+`shop.cart.basket`. Where they agree the catalog says the same thing twice, which
+is worth nothing. Where they disagree it is worth a row on the Problems page,
+because one of the two is stale:
+
+- an event whose channel the document does not declare — a subscriber reading
+  the document does not know the message exists;
+- a channel the document declares and no event names — a promise nothing keeps;
+- a message the document listens for that nothing in the estate publishes.
+
+That last one is the only edge in the catalog that runs from the subscriber
+outwards. Everywhere else a publisher names its consumers; here the subscriber
+names a message and the estate is searched for whoever puts it on the wire. A
+subscription that resolves is how two repositories that never mention each other
+are found to be joined — and a channel that two services both declare a send on
+is a second publisher, which is an error for the reason a second writer in a
+database is.
+
+### 2.x says publish and subscribe backwards
+
+In AsyncAPI 3.x an operation carries `action: send` or `action: receive`, from
+the application's side, and there is nothing to get wrong. In 2.x a channel has
+`publish` and `subscribe`, and both are written from the **client's** side:
+`publish` is what somebody else publishes *to* the application, so the
+application receives it, and `subscribe` is what the application produces for
+somebody else to subscribe to.
+
+Reading 2.x the obvious way puts every arrow in the estate the wrong way round.
+The extractor reads both versions and answers in 3.x's vocabulary, which is the
+one the catalog keeps.

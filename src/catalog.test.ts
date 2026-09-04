@@ -783,3 +783,78 @@ function withModule(catalog: Catalog): Catalog {
 
   return catalog;
 }
+
+describe("validateCatalog: channels", () => {
+  function speaking(): Catalog {
+    const good = clone();
+    const service = good.contexts[0]?.services[0];
+    if (!service) throw new Error("nothing to change");
+    service.channels = [
+      {
+        address: "shop.cart.basket",
+        source: "asyncapi.yaml",
+        messages: [
+          { name: "cart.BasketCreated", direction: "send" },
+          { name: "auth.SessionEnded", direction: "receive" },
+        ],
+      },
+    ];
+
+    return good;
+  }
+
+  it("accepts a service that declares what it says on the bus", () => {
+    expect(() => validateCatalog(speaking())).not.toThrow();
+  });
+
+  // A service with no document is the normal case, and it is not a service
+  // that speaks to nobody.
+  it("accepts a service with no channels at all", () => {
+    const none = clone();
+    for (const context of none.contexts) {
+      for (const service of context.services) delete service.channels;
+    }
+
+    expect(() => validateCatalog(none)).not.toThrow();
+  });
+
+  it("rejects a channel with no address", () => {
+    const bad = speaking();
+    const channel = bad.contexts[0]?.services[0]?.channels?.[0];
+    if (!channel) throw new Error("nothing to break");
+    channel.address = "";
+
+    expect(() => validateCatalog(bad)).toThrow(/no address/);
+  });
+
+  // One channel says both directions, so a second entry for the same address
+  // is two answers to one question.
+  it("rejects one address declared twice", () => {
+    const bad = speaking();
+    const channels = bad.contexts[0]?.services[0]?.channels;
+    if (!channels?.[0]) throw new Error("nothing to break");
+    channels.push({ ...channels[0], messages: [] });
+
+    expect(() => validateCatalog(bad)).toThrow(/twice/);
+  });
+
+  // The name is what an event's wire is compared against, and a blank one
+  // matches everything.
+  it("rejects a message with no name", () => {
+    const bad = speaking();
+    const message = bad.contexts[0]?.services[0]?.channels?.[0]?.messages[0];
+    if (!message) throw new Error("nothing to break");
+    message.name = "";
+
+    expect(() => validateCatalog(bad)).toThrow(/no name/);
+  });
+
+  it("rejects a direction that is neither send nor receive", () => {
+    const bad = speaking();
+    const message = bad.contexts[0]?.services[0]?.channels?.[0]?.messages[0];
+    if (!message) throw new Error("nothing to break");
+    message.direction = "publish" as never;
+
+    expect(() => validateCatalog(bad)).toThrow(/neither send nor receive/);
+  });
+});

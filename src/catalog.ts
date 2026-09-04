@@ -79,6 +79,12 @@ export interface Service {
    * that does not call this service its owner is one the service reads.
    */
   modules?: string[];
+  /**
+   * Channels this service declares it publishes on or listens to, read out of
+   * an AsyncAPI document. Absent for a service with no such document, which is
+   * not the same as a service that speaks to nobody.
+   */
+  channels?: Channel[];
 }
 export interface RpcService {
   id: string;
@@ -330,6 +336,46 @@ export interface EventWire {
    * when the source names the event but does not say where it goes.
    */
   channel?: string;
+}
+/**
+ * A topic, subject or stream a service says it uses, and the messages that
+ * travel on it. This is what an AsyncAPI document declares - the async half of
+ * what an OpenAPI document says about routes.
+ *
+ * The catalog knew about channels before this, but only by inference: an event
+ * carries a wire, and a channel was whatever the events happened to name. A
+ * declaration is a different fact, and it says two things inference could not.
+ * What the service means to put on the bus, whether or not an extractor found
+ * an event saying so - and what it listens for, which nothing in a publisher's
+ * source could ever say.
+ */
+export interface Channel {
+  /**
+   * "shop.cart.basket" - the channel as the broker knows it. The same string an
+   * event's `wire.channel` carries, and comparing the two is how a document and
+   * the code beside it are held against each other.
+   */
+  address: string;
+  title?: string;
+  doc?: string;
+  messages: ChannelMessage[];
+  /** The document this was read out of. */
+  source?: string;
+}
+/**
+ * Which way a message travels, from this service's side.
+ *
+ * It decides ownership: a service that sends on a channel publishes on it, and
+ * a channel has one publisher. A service that only receives is a subscriber,
+ * and any number of those is the point of a bus.
+ */
+export type ChannelDirection = "send" | "receive";
+export interface ChannelMessage {
+  /** "cart.BasketCreated" - the name on the message, as an event's wire.name. */
+  name: string;
+  title?: string;
+  doc?: string;
+  direction: ChannelDirection;
 }
 export interface EventConsumer {
   service: string;
@@ -914,6 +960,16 @@ export interface CatalogIndex {
   aggregateOwner: Map<string, Service>;
   eventById: Map<string, Event>;
   eventOwner: Map<string, { service: Service; aggregate: Aggregate }>;
+  /**
+   * wire name -> the event that goes out under it.
+   *
+   * The one lookup that starts from the bus rather than from the catalog. A
+   * subscriber names a message and knows nothing else about it, and this is
+   * what turns that name back into the event, its aggregate and its owner.
+   * Only events are in here: a channel declared by a document is a promise,
+   * and a promise is not a page anything can link to.
+   */
+  eventByWireName: Map<string, Event>;
   /** value object and entity id -> the block and everything that owns it */
   blockById: Map<string, BlockOwner>;
   /** defs key -> ids of the blocks that name it */
@@ -982,6 +1038,7 @@ export function buildIndex(catalog: Catalog): CatalogIndex {
   const aggregateById = new Map<string, Aggregate>();
   const aggregateOwner = new Map<string, Service>();
   const eventById = new Map<string, Event>();
+  const eventByWireName = new Map<string, Event>();
   const eventOwner = new Map<
     string,
     { service: Service; aggregate: Aggregate }
@@ -1025,6 +1082,11 @@ export function buildIndex(catalog: Catalog): CatalogIndex {
         for (const event of aggregate.events) {
           eventById.set(event.id, event);
           eventOwner.set(event.id, { service, aggregate });
+          // First one wins, and two events sharing a wire name is a problem
+          // the Problems page is the place to say so about, not this.
+          if (event.wire && !eventByWireName.has(event.wire.name)) {
+            eventByWireName.set(event.wire.name, event);
+          }
         }
         for (const { kind, block } of aggregateBlocks(aggregate)) {
           blockById.set(block.id, { block, kind, aggregate, service, context });
@@ -1189,6 +1251,7 @@ export function buildIndex(catalog: Catalog): CatalogIndex {
     aggregateOwner,
     eventById,
     eventOwner,
+    eventByWireName,
     blockById,
     blocksByDef,
     rpcById,
@@ -1258,6 +1321,59 @@ function assertUniqueSlugs(
     if (seen.has(slug))
       fail(`${what} slug "${slug}" is not unique within ${parent}`, parent);
     seen.add(slug);
+  }
+}
+
+/**
+ * What a service says about the bus.
+ *
+ * The address is the whole of a channel's identity - there is no id, because a
+ * channel is not a page and nothing links to one - so two channels sharing an
+ * address in one service is the same mistake as two aggregates sharing a slug.
+ * A message with no name is worse than no message at all: the name is what an
+ * event's wire is compared against, and a blank one matches everything.
+ */
+function validateChannels(service: Service): void {
+  const addresses = new Set<string>();
+
+  for (const channel of service.channels ?? []) {
+    if (typeof channel.address !== "string" || channel.address === "") {
+      fail(
+        `service "${service.id}" declares a channel with no address; the address is what a channel is`,
+        `service ${service.id}`,
+      );
+    }
+    if (addresses.has(channel.address)) {
+      fail(
+        `service "${service.id}" declares channel "${channel.address}" twice; one channel says both directions`,
+        `service ${service.id}`,
+      );
+    }
+    addresses.add(channel.address);
+
+    const seen = new Set<string>();
+    for (const message of channel.messages) {
+      if (typeof message.name !== "string" || message.name === "") {
+        fail(
+          `channel "${channel.address}" of service "${service.id}" carries a message with no name; the name is what a subscriber dispatches on`,
+          `service ${service.id} / channel ${channel.address}`,
+        );
+      }
+      if (message.direction !== "send" && message.direction !== "receive") {
+        fail(
+          `message "${message.name}" on channel "${channel.address}" travels "${message.direction}", which is neither send nor receive`,
+          `service ${service.id} / channel ${channel.address}`,
+        );
+      }
+      const key = `${message.direction} ${message.name}`;
+      if (seen.has(key)) {
+        fail(
+          `channel "${channel.address}" of service "${service.id}" declares "${message.name}" twice in the same direction`,
+          `service ${service.id} / channel ${channel.address}`,
+        );
+      }
+      seen.add(key);
+    }
   }
 }
 
@@ -1346,6 +1462,8 @@ export function validateCatalog(catalog: Catalog): Catalog {
           provided.methods.map((method) => method.name),
         ),
       );
+
+      validateChannels(service);
 
       assertUniqueSlugs(
         service.aggregates.map((a) => a.slug),
