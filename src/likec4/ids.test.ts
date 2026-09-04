@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { catalog } from "../testing/estate";
+// The generated sources are generated from the estate the app ships, so the
+// block that reads them off disk is held against that one and not against the
+// frozen fixture the id rules are checked with.
+import { catalog as shipped } from "../data";
 import {
   LANDSCAPE_VIEW,
   allViewIds,
@@ -111,7 +115,7 @@ describe("generated sources match the ids the app asks for", () => {
   ].map((m) => m[1] as string);
 
   it("declares exactly the views the app can ask for, no more and no fewer", () => {
-    expect([...declared].sort()).toEqual([...allViewIds(catalog)].sort());
+    expect([...declared].sort()).toEqual([...allViewIds(shipped)].sort());
   });
 
   it("declares the landscape once, and it is the only view with a fixed name", () => {
