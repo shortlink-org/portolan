@@ -3,6 +3,7 @@ package session_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -34,6 +35,11 @@ type fakeStore struct {
 	reads    int
 	saves    int
 	err      error
+
+	// afterRead runs inside ByToken, after the row was read and before it is
+	// returned. It is how a test stands in the gap where a reader has the
+	// store's answer and has not yet cached it.
+	afterRead func()
 }
 
 func newFakeStore(sessions ...*domain.Session) *fakeStore {
@@ -54,8 +60,13 @@ func (s *fakeStore) ByToken(_ context.Context, presented token.Token) (*domain.S
 	if !ok {
 		return nil, domain.ErrNotFound
 	}
+	read := found.Clone()
 
-	return found.Clone(), nil
+	if s.afterRead != nil {
+		s.afterRead()
+	}
+
+	return read, nil
 }
 
 func (s *fakeStore) ByID(_ context.Context, id string) (*domain.Session, error) {
@@ -98,11 +109,14 @@ func (s *fakeStore) Save(_ context.Context, sess *domain.Session, _ ...event.Eve
 
 // fakeCache is a map that records what was asked of it. broken makes every
 // operation fail, which is the interesting state: a cache that is down.
+// deletesBroken fails only the drops, which is the dangerous one: a cache
+// that keeps answering while refusing to forget.
 type fakeCache struct {
-	entries map[string][]byte
-	ttls    map[string]time.Duration
-	deletes int
-	broken  bool
+	entries       map[string][]byte
+	ttls          map[string]time.Duration
+	deletes       int
+	broken        bool
+	deletesBroken bool
 }
 
 func newFakeCache() *fakeCache {
@@ -136,7 +150,7 @@ func (c *fakeCache) Set(_ context.Context, key string, value []byte, ttl time.Du
 func (c *fakeCache) Delete(_ context.Context, keys ...string) error {
 	c.deletes++
 
-	if c.broken {
+	if c.broken || c.deletesBroken {
 		return errBroken
 	}
 	for _, key := range keys {
@@ -146,20 +160,50 @@ func (c *fakeCache) Delete(_ context.Context, keys ...string) error {
 	return nil
 }
 
-// only returns the single entry a test has caused to be cached, which is all
-// any of them ever store. It keeps the tests from having to know how a key is
-// built - that is the decorator's business, and hashing it is the point.
-func (c *fakeCache) only(t *testing.T) []byte {
+// The two kinds of entry the decorator keeps, told apart by prefix. That the
+// tests know the prefixes and nothing else about a key is deliberate: which of
+// the two a write produced is the thing under test, and how a token becomes
+// the rest of the key - hashed - is the decorator's business.
+const (
+	livePrefix    = "auth:session:token:"
+	revokedPrefix = "auth:session:revoked:"
+)
+
+// live counts the entries that hold a session.
+func (c *fakeCache) live() int {
+	return c.count(livePrefix)
+}
+
+// revoked counts the entries that record a revocation.
+func (c *fakeCache) revoked() int {
+	return c.count(revokedPrefix)
+}
+
+func (c *fakeCache) count(prefix string) int {
+	n := 0
+	for key := range c.entries {
+		if strings.HasPrefix(key, prefix) {
+			n++
+		}
+	}
+
+	return n
+}
+
+// ttlOf returns the ttl of the single entry under a prefix.
+func (c *fakeCache) ttlOf(t *testing.T, prefix string) time.Duration {
 	t.Helper()
 
-	if len(c.entries) != 1 {
-		t.Fatalf("the cache holds %d entries, want 1", len(c.entries))
+	if c.count(prefix) != 1 {
+		t.Fatalf("the cache holds %d entries under %s, want 1", c.count(prefix), prefix)
 	}
-	for _, value := range c.entries {
-		return value
+	for key, ttl := range c.ttls {
+		if strings.HasPrefix(key, prefix) {
+			return ttl
+		}
 	}
 
-	return nil
+	return 0
 }
 
 func cached(store *fakeStore, memory *fakeCache) *repo.Cached {
@@ -227,8 +271,11 @@ func TestCachedRevocationIsNotServedFromTheCache(t *testing.T) {
 	if err := repository.Save(ctx, live, ev); err != nil {
 		t.Fatal(err)
 	}
-	if len(memory.entries) != 0 {
-		t.Fatalf("the cache still holds %d entries after a write", len(memory.entries))
+	if memory.live() != 0 {
+		t.Fatalf("the cache still holds %d live copies after a revocation", memory.live())
+	}
+	if memory.revoked() != 1 {
+		t.Fatalf("the cache holds %d revocations after a revocation, want 1", memory.revoked())
 	}
 
 	after, err := repository.ByToken(ctx, sess.Token)
@@ -240,6 +287,186 @@ func TestCachedRevocationIsNotServedFromTheCache(t *testing.T) {
 	}
 	if err := after.Validate(now); !errors.Is(err, domain.ErrRevoked) {
 		t.Errorf("Validate = %v, want ErrRevoked", err)
+	}
+
+	// And it stays that way: a revoked token is read from the store for the
+	// rest of its life, and nothing about it is kept.
+	if _, err := repository.ByToken(ctx, sess.Token); err != nil {
+		t.Fatal(err)
+	}
+	if store.reads != 3 {
+		t.Errorf("reads = %d, want 3: every read of a revoked token is the store's", store.reads)
+	}
+	if memory.live() != 0 {
+		t.Error("a revoked session was cached")
+	}
+}
+
+func TestCachedRevocationBeatsAReaderThatLostTheRace(t *testing.T) {
+	ctx := context.Background()
+	sess := newSession(t, "s1", "u1", now)
+	sess.Version = 1
+	store := newFakeStore(sess)
+	memory := newFakeCache()
+	repository := cached(store, memory)
+
+	// The reader has the store's answer - live - in hand. Before it can cache
+	// it, the session is revoked through the same repository. Dropping the
+	// entry cannot help here: there is nothing to drop yet.
+	store.afterRead = func() {
+		store.afterRead = nil
+
+		revoking := sess.Clone()
+		ev, ended := revoking.Revoke(event.ReasonLogout, now)
+		if !ended {
+			t.Fatal("a live session refused to be revoked")
+		}
+		if err := repository.Save(ctx, revoking, ev); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// The reader is right, for its moment: the revocation had not happened
+	// when it read.
+	racer, err := repository.ByToken(ctx, sess.Token)
+	if err != nil || !racer.RevokedAt.IsZero() {
+		t.Fatalf("ByToken = %v, %v, want the live copy the reader was handed", racer, err)
+	}
+
+	// Whatever the reader put in the cache, the next read is not answered
+	// from it.
+	after, err := repository.ByToken(ctx, sess.Token)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := after.Validate(now); !errors.Is(err, domain.ErrRevoked) {
+		t.Errorf("Validate = %v, want ErrRevoked: the copy the racing reader cached was served", err)
+	}
+}
+
+func TestCachedRevocationSurvivesADropThatFailed(t *testing.T) {
+	ctx := context.Background()
+	sess := newSession(t, "s1", "u1", now)
+	sess.Version = 1
+	store := newFakeStore(sess)
+	memory := newFakeCache()
+	repository := cached(store, memory)
+
+	live, err := repository.ByToken(ctx, sess.Token)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The cache keeps answering but will not forget.
+	memory.deletesBroken = true
+
+	ev, ended := live.Revoke(event.ReasonLogout, now)
+	if !ended {
+		t.Fatal("a live session refused to be revoked")
+	}
+	if err := repository.Save(ctx, live, ev); err != nil {
+		t.Fatalf("Save = %v; a write must not fail because the cache cannot be told", err)
+	}
+	if memory.live() != 1 {
+		t.Fatalf("the failed drop removed the entry after all; live = %d", memory.live())
+	}
+
+	after, err := repository.ByToken(ctx, sess.Token)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := after.Validate(now); !errors.Is(err, domain.ErrRevoked) {
+		t.Errorf("Validate = %v, want ErrRevoked: the copy the drop could not remove was served", err)
+	}
+}
+
+func TestCachedRevocationIsKeptBeforeTheStoreIsAsked(t *testing.T) {
+	ctx := context.Background()
+	sess := newSession(t, "s1", "u1", now)
+	sess.Version = 1
+	store := newFakeStore(sess)
+	memory := newFakeCache()
+	repository := cached(store, memory)
+
+	live, err := repository.ByToken(ctx, sess.Token)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	store.err = errors.New("the database said no")
+	ev, _ := live.Revoke(event.ReasonLogout, now)
+	if err := repository.Save(ctx, live, ev); err == nil {
+		t.Fatal("Save = nil, want the store's error")
+	}
+
+	// The revocation is in the cache although the store refused it. That is
+	// the order that survives a process dying after the commit, and what it
+	// costs is one session that is read from the store instead of the cache.
+	if memory.revoked() != 1 {
+		t.Fatalf("revocations = %d, want 1: the entry has to be written before the store is asked", memory.revoked())
+	}
+
+	store.err = nil
+	for range 2 {
+		got, err := repository.ByToken(ctx, sess.Token)
+		if err != nil || !got.RevokedAt.IsZero() {
+			t.Fatalf("ByToken = %v, %v, want the live session the store still holds", got, err)
+		}
+	}
+	if store.reads != 3 {
+		t.Errorf("reads = %d, want 3: a token with a revocation on record is never answered from the cache", store.reads)
+	}
+	if memory.live() != 0 {
+		t.Error("a token with a revocation on record was cached")
+	}
+}
+
+func TestCachedRevocationLivesAsLongAsTheSessionWouldHave(t *testing.T) {
+	ctx := context.Background()
+
+	// Half a minute of life left, and the cache is allowed a minute for a live
+	// copy. The revocation is bound by the session alone.
+	left := 30 * time.Second
+	sess := newSession(t, "s1", "u1", now.Add(-domain.TTL+left))
+	sess.Version = 1
+	memory := newFakeCache()
+	repository := cached(newFakeStore(sess), memory)
+
+	ev, _ := sess.Revoke(event.ReasonLogout, now)
+	if err := repository.Save(ctx, sess, ev); err != nil {
+		t.Fatal(err)
+	}
+	if ttl := memory.ttlOf(t, revokedPrefix); ttl != left {
+		t.Errorf("ttl of the revocation = %s, want %s: what is left of the session", ttl, left)
+	}
+
+	// Already past its expiry: the store refuses it on its own, and nothing
+	// live is ever kept for it, so there is nothing to record.
+	expired := newSession(t, "s2", "u1", now.Add(-domain.TTL-time.Minute))
+	expired.Version = 1
+	ev, _ = expired.Revoke(event.ReasonLogout, now)
+	if err := repository.Save(ctx, expired, ev); err != nil {
+		t.Fatal(err)
+	}
+	if memory.revoked() != 1 {
+		t.Errorf("revocations = %d, want 1: revoking an expired session records nothing", memory.revoked())
+	}
+}
+
+func TestCachedKeepsNothingThatIsRevoked(t *testing.T) {
+	ctx := context.Background()
+	sess := newSession(t, "s1", "u1", now)
+	sess.Version = 1
+	sess.Revoke(event.ReasonLogout, now)
+	memory := newFakeCache()
+	repository := cached(newFakeStore(sess), memory)
+
+	got, err := repository.ByToken(ctx, sess.Token)
+	if err != nil || got.RevokedAt.IsZero() {
+		t.Fatalf("ByToken = %v, %v, want the revoked session", got, err)
+	}
+	if len(memory.entries) != 0 {
+		t.Error("a session the store says is revoked was cached")
 	}
 }
 
@@ -387,13 +614,8 @@ func TestCachedEntryNeverOutlivesItsSession(t *testing.T) {
 	if _, err := repository.ByToken(ctx, sess.Token); err != nil {
 		t.Fatal(err)
 	}
-	for key, ttl := range memory.ttls {
-		if ttl != left {
-			t.Errorf("ttl of %s = %s, want %s: what is left of the session", key, ttl, left)
-		}
-	}
-	if memory.only(t) == nil {
-		t.Fatal("nothing was cached")
+	if ttl := memory.ttlOf(t, livePrefix); ttl != left {
+		t.Errorf("ttl of the live copy = %s, want %s: what is left of the session", ttl, left)
 	}
 }
 

@@ -76,6 +76,15 @@ func TestCachedThroughARealRedis(t *testing.T) {
 	if err := after.Validate(now); !errors.Is(err, domain.ErrRevoked) {
 		t.Errorf("Validate = %v, want ErrRevoked", err)
 	}
+
+	// The revocation is on record in the server, not in a map that agrees
+	// with us: the read after that one is the store's too.
+	if _, err := repository.ByToken(ctx, sess.Token); err != nil {
+		t.Fatal(err)
+	}
+	if store.reads != 3 {
+		t.Errorf("a revoked token was answered from redis; reads = %d, want 3", store.reads)
+	}
 }
 
 func TestCachedKeepsNothingItCannotStore(t *testing.T) {

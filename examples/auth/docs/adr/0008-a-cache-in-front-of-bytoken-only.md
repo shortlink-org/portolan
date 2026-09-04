@@ -3,6 +3,8 @@
 - **Status:** accepted
 - **Date:** 2026-09-01
 - **Scope:** auth.auth
+- **Note:** how a revocation is kept out of the cache was decided again in
+  auth.0010; the drop described below turned out not to be enough.
 
 ## Context and Problem Statement
 
