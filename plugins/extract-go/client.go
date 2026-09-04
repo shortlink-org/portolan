@@ -12,25 +12,33 @@ import (
 
 // A call to another service is read off the generated client, because that is
 // where the fact is written down: protoc-gen-go-grpc emits one constant per
-// rpc holding the full method name, and the client interface beside it. The
-// use case never names the proto - it holds a port - so the chain is port →
-// provider → adapter → client, and every link of it is in the tree.
+// rpc holding the full method name, and the client interface beside it;
+// oapi-codegen emits a request builder per operation with its route, beside
+// the document it was generated from (httpclient.go). The use case never
+// names either - it holds a port - so the chain is port → provider → adapter
+// → client, and every link of it is in the tree.
 
-// grpcClient is one generated client interface and the rpcs it carries.
-type grpcClient struct {
-	// pkg is the proto package, "risk.v1": the key the manifest's peers map
-	// uses to say which service answers to it.
+// client is one generated client and the calls it carries.
+type client struct {
+	// pkg is what the manifest's peers map is keyed by: the proto package,
+	// "risk.v1", or the api id, "auth.v1".
 	pkg string
-	// methods maps an rpc name to the call id, "risk.v1.RiskService/Assess".
+	// methods maps a Go method name to the call id: "risk.v1.RiskService/Assess",
+	// "auth.v1.Sessions/login".
 	methods map[string]string
-	// source is the generated file the names were read from.
+	// source is the generated file, or the document, the names were read from.
 	source string
 }
 
-// readClients finds every client interface a package declares, keyed by the
-// interface's name ("RiskServiceClient"), from its *_FullMethodName constants.
-func readClients(pkg *pkg) map[string]grpcClient {
-	out := map[string]grpcClient{}
+// readClients finds every client a package declares, keyed by the type a port
+// would hold it as: "RiskServiceClient" for gRPC, "ClientWithResponses" and
+// its three siblings for HTTP. The problem, when there is one, says why an
+// HTTP client could not be named.
+func readClients(pkg *pkg) (map[string]client, string) {
+	if isHTTPClient(pkg) {
+		return readHTTPClient(pkg)
+	}
+	out := map[string]client{}
 
 	for _, file := range pkg.files {
 		for _, decl := range file.Decls {
@@ -61,22 +69,22 @@ func readClients(pkg *pkg) map[string]grpcClient {
 					}
 
 					key := goService + "Client"
-					client, known := out[key]
+					c, known := out[key]
 					if !known {
-						client = grpcClient{
+						c = client{
 							pkg:     lastDotPrefix(service),
 							methods: map[string]string{},
 							source:  pkg.paths[file],
 						}
 					}
-					client.methods[method] = service + "/" + method
-					out[key] = client
+					c.methods[method] = service + "/" + method
+					out[key] = c
 				}
 			}
 		}
 	}
 
-	return out
+	return out, ""
 }
 
 // splitFullMethod reads `RiskService_Assess_FullMethodName = "/risk.v1.RiskService/Assess"`
@@ -107,15 +115,19 @@ func lastDotPrefix(name string) string {
 }
 
 // clientPkg reads the clients of a package by import path, once.
-func (r *flowReader) clientPkg(importPath string) map[string]grpcClient {
+func (r *flowReader) clientPkg(importPath string) map[string]client {
 	if cached, ok := r.clients[importPath]; ok {
 		return cached
 	}
 
-	var out map[string]grpcClient
+	var out map[string]client
 	if rel, ok := r.relDir(importPath); ok {
 		if pkg, err := parsePkg(r.root, rel); err == nil {
-			out = readClients(pkg)
+			var problem string
+			out, problem = readClients(pkg)
+			if problem != "" {
+				r.b.Warn(r.opts.svcID, problem)
+			}
 		}
 	}
 	r.clients[importPath] = out
@@ -135,10 +147,10 @@ func (r *flowReader) relDir(importPath string) (string, bool) {
 
 // clientOf resolves a type written as `riskpb.RiskServiceClient` to the client
 // it names, or says the type is not a generated client.
-func (r *flowReader) clientOf(declared string, imports map[string]string) (grpcClient, bool) {
+func (r *flowReader) clientOf(declared string, imports map[string]string) (client, bool) {
 	selector, name, found := strings.Cut(strings.TrimPrefix(declared, "*"), ".")
 	if !found {
-		return grpcClient{}, false
+		return client{}, false
 	}
 	client, ok := r.clientPkg(imports[selector])[name]
 
@@ -147,7 +159,7 @@ func (r *flowReader) clientOf(declared string, imports map[string]string) (grpcC
 
 // rpcHop is one call on a port that turns out to be another service's rpc.
 type rpcHop struct {
-	client grpcClient
+	client client
 	method string
 }
 
@@ -177,7 +189,7 @@ func (r *flowReader) clientCalls(s *scope, declared, method string) []rpcHop {
 // adapterCalls reads the provider that binds a port to a client, follows it to
 // the adapter type it builds, and reads which rpcs the adapter's method runs.
 func (r *flowReader) adapterCalls(key, declared string, binding adapterDecl, method string) []rpcHop {
-	var client grpcClient
+	var client client
 	var clientType string
 	for _, param := range params(binding.fn) {
 		written := types.ExprString(param)
@@ -349,7 +361,7 @@ func returnedExpr(fn *ast.FuncDecl) ast.Expr {
 // can claim about it. The manifest says which service answers to a proto
 // package; without that line the far end is a package name, which is not a
 // thing the catalog has, and the step says so rather than guessing.
-func (r *flowReader) peerLane(d *flowDraft, client grpcClient) (lane, peer string, status catalog.Status) {
+func (r *flowReader) peerLane(d *flowDraft, client client) (lane, peer string, status catalog.Status) {
 	if service, ok := r.opts.peers[client.pkg]; ok {
 		context, _, _ := strings.Cut(service, ".")
 

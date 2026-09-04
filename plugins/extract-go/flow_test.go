@@ -4,6 +4,7 @@ import (
 	"go/ast"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/shortlink-org/portolan/catalog"
@@ -427,5 +428,91 @@ func TestPackagesAreToldApart(t *testing.T) {
 func TestSentence(t *testing.T) {
 	if got := sentence("revoke-sessions-on-password-change"); got != "Revoke sessions on password change" {
 		t.Errorf("sentence = %q", got)
+	}
+}
+
+// A switch is a choice too. Its arms are titled by what the case says, with
+// the subject in front; default is otherwise; an arm that returns is
+// terminal; and, like an if, nothing is drawn unless some arm has a hop.
+func TestASwitchWithAHopIsAnAlt(t *testing.T) {
+	const source = `package login
+
+import (
+	"context"
+
+	"github.com/example/auth/internal/domain/session"
+)
+
+type UseCase struct {
+	repo session.Repository
+}
+
+func (uc *UseCase) Handle(ctx context.Context, in dto.Input) error {
+	u, err := uc.repo.ByID(ctx, in.ID)
+	if err != nil {
+		return err
+	}
+	switch in.Mode {
+	case "soft", "gentle":
+		return uc.repo.Save(ctx, u)
+	case "hard":
+		uc.repo.ByToken(ctx, in.Token)
+	default:
+		return nil
+	}
+	switch {
+	case in.A > 1:
+		return nil
+	case in.B:
+		return nil
+	}
+	return nil
+}
+`
+	d, _ := walkSource(t, source, nil)
+	if got := dump(d.steps); got != "s1:ByID alt4{s2:Save s3:ByToken } " {
+		t.Fatalf("nodes = %q; the second switch has no hop and is not drawn", got)
+	}
+	alt := d.steps[1].(*catalog.Alt)
+	var titles []string
+	for _, b := range alt.Branches {
+		titles = append(titles, b.Title)
+	}
+	if strings.Join(titles, "|") != `in.Mode is "soft", "gentle"|in.Mode is "hard"|otherwise` {
+		t.Errorf("titles = %q", titles)
+	}
+	if !alt.Branches[0].Terminal || alt.Branches[1].Terminal || !alt.Branches[2].Terminal {
+		t.Errorf("terminal = %v %v %v", alt.Branches[0].Terminal, alt.Branches[1].Terminal, alt.Branches[2].Terminal)
+	}
+}
+
+// A type switch asks about one value, and every arm says what it turned out
+// to be.
+func TestATypeSwitchNamesWhatItAsksAbout(t *testing.T) {
+	const source = `package login
+
+import "github.com/example/auth/internal/domain/session"
+
+type UseCase struct {
+	repo session.Repository
+}
+
+func (uc *UseCase) Handle(ctx context.Context, in dto.Input) error {
+	switch e := in.Event.(type) {
+	case *Started, *Renewed:
+		return uc.repo.Save(ctx, nil)
+	case *Ended:
+		uc.repo.ByID(ctx, e.ID)
+	}
+	return nil
+}
+`
+	d, _ := walkSource(t, source, nil)
+	alt, ok := d.steps[0].(*catalog.Alt)
+	if !ok {
+		t.Fatalf("node = %T", d.steps[0])
+	}
+	if alt.Branches[0].Title != "in.Event is *Started, *Renewed" || alt.Branches[1].Title != "in.Event is *Ended" || alt.Branches[2].Title != "otherwise" {
+		t.Errorf("titles = %q %q %q", alt.Branches[0].Title, alt.Branches[1].Title, alt.Branches[2].Title)
 	}
 }

@@ -369,10 +369,11 @@
           "additionalProperties": {
             "type": "string"
           },
-          "description": "Which service answers for a proto package this one calls, as package to service id. The generated client names the package and the rpc; only the manifest knows whose it is. A package with no line here is called as unknown and its steps stay unresolved.",
+          "description": "Which service answers for what this one calls, as the callee's package to its service id: a proto package for a gRPC client, the api id (the document's title and major version, `auth.v1`) for a generated HTTP client. The generated client names the package and the operation; only the manifest knows whose it is. A package with no line here is called as unknown and its steps stay unresolved.",
           "examples": [
             {
-              "risk.v1": "shop.risk"
+              "risk.v1": "shop.risk",
+              "auth.v1": "auth.auth"
             }
           ]
         },

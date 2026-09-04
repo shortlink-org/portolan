@@ -22,9 +22,9 @@ import (
 // is a hop, and a domain call whose signature returns an event is what puts the
 // event on the bus.
 //
-// What this cannot do it does not pretend to. An `if` becomes an alt only when
-// something happens inside it - a hop, a publish - and its branch is terminal
-// when the block ends in a return; an `if err != nil { return err }` with
+// What this cannot do it does not pretend to. An `if` or a `switch` becomes an
+// alt only when something happens inside it - a hop, a publish - and its
+// branch is terminal when the block ends in a return; an `if err != nil { return err }` with
 // nothing in it is not an alternative path, it is the end of this one, and
 // forty empty frames would say less than none. A step inside a loop carries a
 // note saying so rather than a frame the reader would have to trust. Nothing
@@ -72,7 +72,7 @@ type flowReader struct {
 	// adapters are the ports assembly fills with something other than a use
 	// case; clients are the generated clients already read, by import path.
 	adapters map[string]adapterDecl
-	clients  map[string]map[string]grpcClient
+	clients  map[string]map[string]client
 	// calls are the rpcs some step made, by id, for the service's consumes.
 	calls      map[string]catalog.RpcCall
 	warnedPeer map[string]bool
@@ -110,7 +110,7 @@ func newFlowReader(root string, opts flowOptions, b *plugin.Builder) *flowReader
 		module:     modulePath(root),
 		useCases:   map[string]*pkg{},
 		domains:    map[string]*pkg{},
-		clients:    map[string]map[string]grpcClient{},
+		clients:    map[string]map[string]client{},
 		calls:      map[string]catalog.RpcCall{},
 		referenced: map[string]bool{},
 		warnedPeer: map[string]bool{},
@@ -436,13 +436,13 @@ func (r *flowReader) walkStmt(d *flowDraft, s *scope, stmt ast.Stmt, depth int) 
 		if x.Tag != nil {
 			r.callsIn(d, s, x.Tag, depth)
 		}
-		r.walkStmts(d, s, x.Body.List, depth)
+		r.walkCases(d, s, x.Body.List, switchTitle(x.Tag), depth)
 	case *ast.TypeSwitchStmt:
 		if x.Init != nil {
 			r.walkStmt(d, s, x.Init, depth)
 		}
 		r.walkStmt(d, s, x.Assign, depth)
-		r.walkStmts(d, s, x.Body.List, depth)
+		r.walkCases(d, s, x.Body.List, typeSwitchTitle(x.Assign), depth)
 	case *ast.SelectStmt:
 		r.walkStmts(d, s, x.Body.List, depth)
 	case *ast.CaseClause:
@@ -457,6 +457,113 @@ func (r *flowReader) walkStmt(d *flowDraft, s *scope, stmt ast.Stmt, depth int) 
 		r.walkStmts(d, s, x.Body, depth)
 	default:
 		r.callsIn(d, s, stmt, depth)
+	}
+}
+
+// walkCases reads a switch as one choice, an arm per case. The title of an
+// arm is what the case says, with the subject in front of it - `resp.Code is
+// 200, 201`, `err is ErrNotFound` - and `default` is otherwise. The rest of
+// the rule is the `if` rule: an arm is terminal when it returns, the choice is
+// drawn only if some arm has a hop in it, and a choice every arm of which
+// leaves loses the marks.
+func (r *flowReader) walkCases(d *flowDraft, s *scope, clauses []ast.Stmt, title func([]ast.Expr) string, depth int) {
+	var branches []catalog.AltBranch
+	titles := map[string]bool{}
+	drew := false
+	sawDefault := false
+
+	for _, stmt := range clauses {
+		clause, ok := stmt.(*ast.CaseClause)
+		if !ok {
+			continue
+		}
+		for _, expr := range clause.List {
+			r.callsIn(d, s, expr, depth)
+		}
+		d.push()
+		r.walkStmts(d, s, clause.Body, depth)
+		steps := d.pop()
+		drew = drew || len(steps) > 0
+
+		name := "otherwise"
+		if clause.List != nil {
+			name = title(clause.List)
+		} else {
+			sawDefault = true
+		}
+		terminal := len(clause.Body) > 0 && isReturn(clause.Body[len(clause.Body)-1])
+		branches = append(branches, catalog.AltBranch{Title: uniqueTitle(name, titles), Steps: steps, Terminal: terminal})
+	}
+	if !drew {
+		return
+	}
+	if !sawDefault {
+		branches = append(branches, catalog.AltBranch{Title: uniqueTitle("otherwise", titles), Steps: catalog.FlowNodes{}})
+	}
+
+	all := true
+	for _, branch := range branches {
+		if !branch.Terminal {
+			all = false
+		}
+	}
+	if all {
+		for i := range branches {
+			branches[i].Terminal = false
+		}
+	}
+
+	d.addAlt(branches)
+}
+
+func isReturn(stmt ast.Stmt) bool {
+	_, ok := stmt.(*ast.ReturnStmt)
+
+	return ok
+}
+
+// switchTitle names an arm of a switch: with a tag, `tag is a, b`; without
+// one the cases are conditions in their own right, joined by or.
+func switchTitle(tag ast.Expr) func([]ast.Expr) string {
+	return func(list []ast.Expr) string {
+		parts := make([]string, 0, len(list))
+		for _, expr := range list {
+			parts = append(parts, types.ExprString(expr))
+		}
+		if tag == nil {
+			return strings.Join(parts, " or ")
+		}
+
+		return types.ExprString(tag) + " is " + strings.Join(parts, ", ")
+	}
+}
+
+// typeSwitchTitle names an arm of a type switch by what is being asked
+// about: `e is *OrderPlaced, *OrderCancelled`.
+func typeSwitchTitle(assign ast.Stmt) func([]ast.Expr) string {
+	subject := ""
+	var find func(ast.Node) bool
+	find = func(node ast.Node) bool {
+		if assert, ok := node.(*ast.TypeAssertExpr); ok && assert.Type == nil {
+			subject = types.ExprString(assert.X)
+
+			return false
+		}
+
+		return true
+	}
+	ast.Inspect(assign, find)
+
+	return func(list []ast.Expr) string {
+		parts := make([]string, 0, len(list))
+		for _, expr := range list {
+			parts = append(parts, types.ExprString(expr))
+		}
+		if subject == "" {
+			return strings.Join(parts, ", ")
+		}
+
+		return subject + " is " + strings.Join(parts, ", ")
 	}
 }
 
@@ -703,12 +810,15 @@ func (r *flowReader) rpcHop(d *flowDraft, hop rpcHop, line string) {
 	id := hop.client.methods[hop.method]
 	lane, peer, status := r.peerLane(d, hop.client)
 
+	// The label is the operation as the contract names it - the rpc, or the
+	// operationId - rather than the Go method the client offers it under:
+	// GetUserWithResponse is how the client is called, getUser is what runs.
 	d.add(catalog.Step{
 		From:   r.opts.svcID,
 		To:     lane,
 		Kind:   catalog.StepRPC,
 		Ref:    id,
-		Label:  hop.method,
+		Label:  id[strings.LastIndex(id, "/")+1:],
 		Status: status,
 		Line:   line,
 	})

@@ -33,7 +33,10 @@ func TestClientsAreReadOffTheGeneratedNames(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	clients := readClients(pkg)
+	clients, problem := readClients(pkg)
+	if problem != "" {
+		t.Fatal(problem)
+	}
 	client, ok := clients["RiskServiceClient"]
 	if !ok {
 		t.Fatalf("clients = %v", clients)
@@ -56,7 +59,7 @@ func TestClientsAreReadOffTheGeneratedNames(t *testing.T) {
 // lands on a service; without one the far end is a package name, which the
 // catalog does not have, and the step says so.
 func TestThePeerIsTheManifestsToName(t *testing.T) {
-	client := grpcClient{pkg: "risk.v1", methods: map[string]string{"Assess": "risk.v1.RiskService/Assess"}, source: "gen/risk_grpc.pb.go"}
+	client := client{pkg: "risk.v1", methods: map[string]string{"Assess": "risk.v1.RiskService/Assess"}, source: "gen/risk_grpc.pb.go"}
 
 	named := newFlowReader(t.TempDir(), flowOptions{svcID: "auth.auth", peers: map[string]string{"risk.v1": "shop.risk"}}, &plugin.Builder{})
 	d := newDraft()

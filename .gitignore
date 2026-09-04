@@ -20,3 +20,10 @@ plugins/*.wasm
 # The collector writes here while recording; the scrubbed copy beside it is
 # what is committed.
 examples/auth/telemetry/out/
+
+# Binaries `go build` drops beside a plugin's main. The plugins run via `go run`
+# or as wasm; a native binary is never the thing that is checked in.
+plugins/*/extract-*
+plugins/*/verify-*
+plugins/*/fetch-*
+plugins/gen-markdown/gen-markdown
