@@ -122,7 +122,65 @@ func (l *lookup) operation(svc *catalog.Service, method, route string) (string, 
 }
 
 func samePath(a, b string) bool {
-	return strings.TrimSuffix(a, "/") == strings.TrimSuffix(b, "/")
+	return shapeOf(a) == shapeOf(b)
+}
+
+// shapeOf replaces every segment that is a parameter - `{userId}` in a
+// document - or looks like a value where the document has one - with a
+// marker, so a request's concrete path matches its template by position.
+// isParam says whether a route segment stands for a value: `{userId}` as an
+// OpenAPI document writes it, `:userId` as Fastify and Express report the
+// route they matched.
+func isParam(seg string) bool {
+	return (strings.HasPrefix(seg, "{") && strings.HasSuffix(seg, "}")) || (len(seg) > 1 && seg[0] == ':')
+}
+
+func shapeOf(path string) string {
+	path = strings.TrimSuffix(path, "/")
+	segments := strings.Split(path, "/")
+	for i, seg := range segments {
+		if isParam(seg) {
+			segments[i] = "*"
+		}
+	}
+
+	return strings.Join(segments, "/")
+}
+
+// httpProvider finds the service whose interface answers on a verb and a
+// concrete path, matching a template's parameters to the path's segments.
+func (l *lookup) httpProvider(method, path string) (*catalog.Service, string, string) {
+	for _, svc := range l.services {
+		for _, provided := range svc.Provides {
+			for _, m := range provided.Methods {
+				if m.HTTP != nil && m.HTTP.Method == strings.ToUpper(method) && routeMatches(m.HTTP.Path, path) {
+					return svc, m.Name, provided.ID
+				}
+			}
+		}
+	}
+
+	return nil, "", ""
+}
+
+// routeMatches says whether a concrete path fits a template, segment by
+// segment, a `{param}` standing for any one segment.
+func routeMatches(template, path string) bool {
+	t := strings.Split(strings.TrimSuffix(template, "/"), "/")
+	p := strings.Split(strings.TrimSuffix(path, "/"), "/")
+	if len(t) != len(p) {
+		return false
+	}
+	for i := range t {
+		if isParam(t[i]) {
+			continue
+		}
+		if t[i] != p[i] {
+			return false
+		}
+	}
+
+	return true
 }
 
 // event reads a wire name back to an event id. The manifest's word first;

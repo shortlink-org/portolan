@@ -298,6 +298,34 @@ func (v *verifier) hop(s *span, parentDB bool) (*hop, bool) {
 			entry: true, operation: a["rpc.method"], file: s.file,
 		}, false
 
+	case s.kind == kindClient && a["http.request.method"] != "":
+		// A call over HTTP to another service. The route is the request's
+		// path; the provider is whichever service declares an operation on
+		// that verb and route, read the way the OpenAPI extractor records
+		// them - so the call and the method share one id.
+		method := a["http.request.method"]
+		path := requestPath(a)
+		if path == "" {
+			return nil, false
+		}
+		h := &hop{from: me, kind: catalog.StepRPC, file: s.file}
+		if peer, op, iface := v.l.httpProvider(method, path); peer != nil {
+			id := iface + "/" + op
+			h.to = v.l.serviceLane(peer)
+			h.ref = id
+			h.label = op
+			h.status = catalog.StatusVerified
+			h.call = &catalog.RpcCall{ID: id, Peer: peer.ID, Status: catalog.StatusVerified, Source: s.file}
+		} else {
+			host := firstNonEmpty(a["server.address"], a["net.peer.name"], "http")
+			h.to = catalog.Participant{ID: strings.ReplaceAll(host, ".", "-"), Kind: catalog.ParticipantUnknown, Label: host}
+			h.label = method + " " + path
+			h.status = catalog.StatusUnresolved
+			v.warnOnce("http:"+method+path, svc.ID, "calls "+method+" "+path+" on "+host+", which no service in the catalog answers on; the hop is unresolved")
+		}
+
+		return h, false
+
 	case s.kind == kindClient && a["rpc.service"] != "":
 		iface, method := a["rpc.service"], a["rpc.method"]
 		id := iface + "/" + method
@@ -388,6 +416,33 @@ func (v *verifier) warnOnce(key, ref, message string) {
 	}
 	v.warned[key] = true
 	v.b.Warn(ref, message)
+}
+
+// requestPath is the path of a client request, off url.full or url.path.
+func requestPath(a map[string]string) string {
+	if p := a["url.path"]; p != "" {
+		return p
+	}
+	full := a["url.full"]
+	if full == "" {
+		full = a["http.url"]
+	}
+	if full == "" {
+		return ""
+	}
+	if i := strings.Index(full, "://"); i >= 0 {
+		full = full[i+3:]
+		if j := strings.Index(full, "/"); j >= 0 {
+			full = full[j:]
+		} else {
+			full = "/"
+		}
+	}
+	if i := strings.IndexAny(full, "?#"); i >= 0 {
+		full = full[:i]
+	}
+
+	return full
 }
 
 // fragment is what goes back: every declared flow a trace opened, with the

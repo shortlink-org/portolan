@@ -39,6 +39,7 @@ func estate() catalog.Catalog {
 					Methods: []catalog.RpcMethod{
 						{Name: "login", HTTP: &catalog.HttpRoute{Method: "POST", Path: "/v1/sessions"}},
 						{Name: "changePassword", HTTP: &catalog.HttpRoute{Method: "POST", Path: "/v1/users/me/password"}},
+						{Name: "getUser", HTTP: &catalog.HttpRoute{Method: "GET", Path: "/v1/users/{userId}"}},
 					},
 				}},
 				Consumes: []catalog.RpcCall{{ID: "risk.v1.RiskService/Assess", Peer: "risk.v1", Status: catalog.StatusUnresolved, Source: "gen"}},
@@ -87,6 +88,8 @@ const recording = `{"resourceSpans":[{"resource":{"attributes":[{"key":"service.
  {"traceId":"t1","spanId":"a2","parentSpanId":"a1","name":"SELECT users","kind":3,"startTimeUnixNano":"110","attributes":[{"key":"db.system.name","value":{"stringValue":"postgresql"}},{"key":"db.operation.name","value":{"stringValue":"SELECT"}}]},
  {"traceId":"t1","spanId":"a3","parentSpanId":"a2","name":"prepare SELECT users","kind":3,"startTimeUnixNano":"111","attributes":[{"key":"db.system.name","value":{"stringValue":"postgresql"}},{"key":"db.operation.name","value":{"stringValue":"SELECT"}}]},
  {"traceId":"t1","spanId":"a4","parentSpanId":"a1","name":"risk.v1.RiskService/Assess","kind":3,"startTimeUnixNano":"120","attributes":[{"key":"rpc.system","value":{"stringValue":"grpc"}},{"key":"rpc.service","value":{"stringValue":"risk.v1.RiskService"}},{"key":"rpc.method","value":{"stringValue":"Assess"}}]},
+ {"traceId":"t1","spanId":"a6","parentSpanId":"a1","name":"GET","kind":3,"startTimeUnixNano":"125","attributes":[{"key":"http.request.method","value":{"stringValue":"GET"}},{"key":"url.full","value":{"stringValue":"http://auth:8080/v1/users/42?verbose=1"}},{"key":"server.address","value":{"stringValue":"auth"}}]},
+ {"traceId":"t1","spanId":"a7","parentSpanId":"a1","name":"GET","kind":3,"startTimeUnixNano":"126","attributes":[{"key":"http.request.method","value":{"stringValue":"GET"}},{"key":"url.full","value":{"stringValue":"http://profile:9000/v1/profiles/42"}},{"key":"server.address","value":{"stringValue":"profile"}}]},
  {"traceId":"t1","spanId":"a5","parentSpanId":"a1","name":"publish auth.SessionStarted","kind":"SPAN_KIND_PRODUCER","startTimeUnixNano":"130","attributes":[{"key":"messaging.destination.name","value":{"stringValue":"auth_session"}},{"key":"event.name","value":{"stringValue":"auth.SessionStarted"}}]},
 
  {"traceId":"t2","spanId":"b1","name":"POST /v1/users/me/password","kind":2,"startTimeUnixNano":"200","attributes":[{"key":"http.route","value":{"stringValue":"/v1/users/me/password"}},{"key":"http.request.method","value":{"stringValue":"POST"}}]},
@@ -187,7 +190,7 @@ func TestATraceRaisesTheHopsItShows(t *testing.T) {
 		t.Errorf("participants changed: %+v", login.Participants)
 	}
 	for _, d := range resp.Diagnostics {
-		if strings.Contains(d.Message, "no service in the catalog") && !strings.Contains(d.Message, "billing") {
+		if strings.Contains(d.Message, "no service in the catalog") && !strings.Contains(d.Message, "billing") && !strings.Contains(d.Message, "profile") {
 			t.Errorf("unexpected diagnostic: %s", d.Message)
 		}
 	}
@@ -235,8 +238,35 @@ func TestACallToNobodyStaysUnresolved(t *testing.T) {
 			}
 		}
 	}
-	if len(calls) != 1 || calls[0].ID != "risk.v1.RiskService/Assess" || calls[0].Status != catalog.StatusUnresolved || calls[0].Peer != "risk.v1" {
+	if len(calls) != 2 || calls[1].ID != "risk.v1.RiskService/Assess" || calls[1].Status != catalog.StatusUnresolved || calls[1].Peer != "risk.v1" {
 		t.Errorf("consumes = %+v", calls)
+	}
+}
+
+// A call over HTTP is read back to the operation whose route it hit, by the
+// verb and the path's shape; one no service answers on is a hop to a host.
+func TestAnHTTPCallIsNamedByTheRouteItHit(t *testing.T) {
+	out, resp := runVerify(t, recording, Options{})
+
+	var calls []catalog.RpcCall
+	for _, ctx := range out.Contexts {
+		for _, svc := range ctx.Services {
+			if svc.ID == "auth.auth" {
+				calls = svc.Consumes
+			}
+		}
+	}
+	if len(calls) != 2 || calls[0].ID != "auth.v1.Sessions/getUser" || calls[0].Peer != "auth.auth" || calls[0].Status != catalog.StatusVerified {
+		t.Errorf("consumes = %+v", calls)
+	}
+	var warned bool
+	for _, d := range resp.Diagnostics {
+		if strings.Contains(d.Message, "GET /v1/profiles/42") && strings.Contains(d.Message, "profile") {
+			warned = true
+		}
+	}
+	if !warned {
+		t.Errorf("a call to a host nobody in the catalog is should be reported: %+v", resp.Diagnostics)
 	}
 }
 
@@ -311,11 +341,11 @@ func TestJSONLinesAndOneValueReadAlike(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(a) != len(b) || len(a) != 13 {
-		t.Errorf("spans = %d and %d, want 13 both ways", len(a), len(b))
+	if len(a) != len(b) || len(a) != 15 {
+		t.Errorf("spans = %d and %d, want 15 both ways", len(a), len(b))
 	}
-	if a[4].kind != kindProducer {
-		t.Errorf("kind written as a name = %d", a[4].kind)
+	if a[6].kind != kindProducer {
+		t.Errorf("kind written as a name = %d", a[6].kind)
 	}
 }
 
@@ -332,5 +362,14 @@ func TestNoRecordingIsAWarningAndAnEmptyFragment(t *testing.T) {
 	var out catalog.Catalog
 	if err := json.Unmarshal([]byte(resp.Files[0].Contents), &out); err != nil || len(out.Flows) != 0 {
 		t.Errorf("fragment = %s", resp.Files[0].Contents)
+	}
+}
+
+func TestAColonRouteHasTheShapeOfABracedOne(t *testing.T) {
+	if shapeOf("/v1/baskets/:basketId/items/:sku") != shapeOf("/v1/baskets/{basketId}/items/{sku}") {
+		t.Fatalf("a Fastify route and the OpenAPI path it serves read as different shapes")
+	}
+	if !routeMatches("/v1/baskets/{basketId}", "/v1/baskets/42") || routeMatches("/v1/baskets/{basketId}", "/v1/baskets") {
+		t.Fatalf("routeMatches does not fill a parameter with exactly one segment")
 	}
 }
