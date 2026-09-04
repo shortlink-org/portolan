@@ -21,6 +21,8 @@
               "methods": [
                 {
                   "name": "invoice_create",
+                  "request": "DrawUpRequest",
+                  "response": "InvoiceId",
                   "http": {
                     "method": "POST",
                     "path": "/v1/invoices"
@@ -28,6 +30,7 @@
                 },
                 {
                   "name": "invoice_retrieve",
+                  "response": "Invoice",
                   "http": {
                     "method": "GET",
                     "path": "/v1/invoices/{id}"
@@ -35,6 +38,7 @@
                 },
                 {
                   "name": "invoice_destroy",
+                  "response": "204",
                   "http": {
                     "method": "DELETE",
                     "path": "/v1/invoices/{id}"
@@ -42,6 +46,7 @@
                 },
                 {
                   "name": "invoice_issue",
+                  "response": "InvoiceId",
                   "http": {
                     "method": "POST",
                     "path": "/v1/invoices/{id}/issue"

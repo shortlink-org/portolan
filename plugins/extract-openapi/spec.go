@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -153,4 +154,64 @@ func (d *document) schemaRefs(node *yaml.Node, into *[]string, seen, visited map
 			d.schemaRefs(item, into, seen, visited)
 		}
 	}
+}
+
+// shapes are what an operation sends and what it answers with, by the names the
+// document gives them.
+//
+// A body behind a $ref has a name a reader can look up in Messages; an inline
+// schema has none, and inventing one would put a shape in the catalog the
+// document does not have. A success with no body at all is answered by its
+// status: 204 is a real answer, and saying nothing for it reads as a call that
+// never came back.
+func (d *document) shapes(operation *yaml.Node) (string, string) {
+	request := d.bodyName(child(operation, "requestBody"))
+
+	code, body := "", (*yaml.Node)(nil)
+	for _, e := range entries(child(operation, "responses")) {
+		status, err := strconv.Atoi(e.key)
+		if err != nil || status < 200 || status > 299 {
+			continue
+		}
+		if code == "" || e.key < code {
+			code, body = e.key, e.value
+		}
+	}
+	if body == nil {
+		return request, ""
+	}
+	if name := d.bodyName(body); name != "" {
+		return request, name
+	}
+
+	return request, code
+}
+
+// bodyName is the component schema a request or response body names, following
+// one $ref to a shared component on the way. A list of a schema is that schema
+// with brackets: the message is the item, and the reader wants to see there are
+// several.
+func (d *document) bodyName(node *yaml.Node) string {
+	for _, e := range entries(child(d.follow(node), "content")) {
+		schema := child(d.follow(e.value), "schema")
+		if name, ok := strings.CutPrefix(text(child(schema, "$ref")), schemaRefPrefix); ok {
+			return name
+		}
+		if name, ok := strings.CutPrefix(text(child(schema, "items", "$ref")), schemaRefPrefix); ok {
+			return name + "[]"
+		}
+	}
+
+	return ""
+}
+
+// follow resolves a $ref into another component, once. Twice would be a
+// document referring a reference to a reference, which none of these do.
+func (d *document) follow(node *yaml.Node) *yaml.Node {
+	ref := text(child(node, "$ref"))
+	if !strings.HasPrefix(ref, componentPrefix) {
+		return node
+	}
+
+	return child(d.root, strings.Split(strings.TrimPrefix(ref, "#/"), "/")...)
 }

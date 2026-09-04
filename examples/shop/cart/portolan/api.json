@@ -21,6 +21,7 @@
               "methods": [
                 {
                   "name": "createBasket",
+                  "response": "BasketCreated",
                   "http": {
                     "method": "POST",
                     "path": "/v1/baskets"
@@ -28,6 +29,7 @@
                 },
                 {
                   "name": "getBasket",
+                  "response": "Basket",
                   "http": {
                     "method": "GET",
                     "path": "/v1/baskets/{basketId}"
@@ -35,6 +37,8 @@
                 },
                 {
                   "name": "addItem",
+                  "request": "AddItemRequest",
+                  "response": "Basket",
                   "http": {
                     "method": "POST",
                     "path": "/v1/baskets/{basketId}/items"
@@ -42,6 +46,7 @@
                 },
                 {
                   "name": "removeItem",
+                  "response": "Basket",
                   "http": {
                     "method": "DELETE",
                     "path": "/v1/baskets/{basketId}/items/{sku}"
@@ -49,6 +54,8 @@
                 },
                 {
                   "name": "mergeBaskets",
+                  "request": "MergeRequest",
+                  "response": "Basket",
                   "http": {
                     "method": "POST",
                     "path": "/v1/baskets/{basketId}/merge"
@@ -56,6 +63,7 @@
                 },
                 {
                   "name": "checkout",
+                  "response": "CheckedOut",
                   "http": {
                     "method": "POST",
                     "path": "/v1/baskets/{basketId}/checkout"

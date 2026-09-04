@@ -1,6 +1,6 @@
 # Login
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.auth-login`
 - **Owner:** [auth](../auth/README.md)
@@ -28,7 +28,7 @@ sequenceDiagram
     participant p2 as auth-pg
     participant p3 as risk.v1
     participant p4 as bus
-    p0->>p1: login
+    p0->>p1: login → Session
     p1->>p1: Authenticate
     p1->>p2: ByEmail
     p1->>p1: Check
@@ -57,7 +57,7 @@ sequenceDiagram
 
 ## Steps
 
-1. **client** → **auth.auth** — login
+1. **client** → **auth.auth** — login → Session
    `examples/auth/internal/infrastructure/transport/http/session/login.go:11` · Seen running in telemetry/traces.jsonl (2 traces).
 2. **auth.auth** ↺ **auth.auth** — Authenticate
    status: declared · `examples/auth/internal/application/session/usecases/login/usecase.go:58` · Port `Authenticator`, bound at assembly to the Authenticate use case.

@@ -26,7 +26,7 @@ sequenceDiagram
     participant p1 as billing.invoices
     participant p2 as bus
     participant p3 as psp-gateway (external)
-    p0->>p1: RaiseInvoice
+    p0->>p1: Raise → Invoice
     p1-)p2: billing.invoices.invoice.InvoiceRaised
     loop until paid or written off
         alt customer pays
@@ -44,7 +44,7 @@ sequenceDiagram
 
 ## Steps
 
-1. **operator** → **billing.invoices** — RaiseInvoice
+1. **operator** → **billing.invoices** — Raise → Invoice
    `raise_test.go:31`
 2. **billing.invoices** → **bus** — billing.invoices.invoice.InvoiceRaised
    [billing.invoices.invoice.InvoiceRaised](../billing/invoices/aggregates/invoice.md)

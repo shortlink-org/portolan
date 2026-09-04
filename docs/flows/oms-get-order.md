@@ -1,6 +1,6 @@
 # Get order
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.oms-get-order`
 - **Owner:** [shop](../shop/README.md)
@@ -24,13 +24,13 @@ sequenceDiagram
     actor p0 as client
     participant p1 as shop.oms
     participant p2 as oms-pg
-    p0->>p1: GetOrder
+    p0->>p1: GetOrder → GetOrderResponse
     p1->>p2: by_id
 ```
 
 ## Steps
 
-1. **client** → **shop.oms** — GetOrder
+1. **client** → **shop.oms** — GetOrder → GetOrderResponse
    `examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:31` · Seen running in telemetry/traces.jsonl (2 traces).
 2. **shop.oms** → **oms-pg** — by_id
    status: declared · `examples/shop/oms/src/application/order/usecases/get_order/mod.rs:14`

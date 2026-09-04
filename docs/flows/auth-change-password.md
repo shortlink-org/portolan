@@ -1,6 +1,6 @@
 # Change password
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.auth-change-password`
 - **Owner:** [auth](../auth/README.md)
@@ -26,7 +26,7 @@ sequenceDiagram
     participant p1 as auth.auth
     participant p2 as auth-pg
     participant p3 as bus
-    p0->>p1: changePassword
+    p0->>p1: changePassword → 204
     p1->>p2: ByToken
     p1->>p2: ByID
     p1->>p2: Save
@@ -35,7 +35,7 @@ sequenceDiagram
 
 ## Steps
 
-1. **client** → **auth.auth** — changePassword
+1. **client** → **auth.auth** — changePassword → 204
    `examples/auth/internal/infrastructure/transport/http/user/change_password.go:20` · Seen running in telemetry/traces.jsonl (1 trace).
 2. **auth.auth** → **auth-pg** — ByToken
    status: declared · `examples/auth/internal/application/session/usecases/validate/usecase.go:34`

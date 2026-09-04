@@ -21,6 +21,8 @@
               "methods": [
                 {
                   "name": "registerUser",
+                  "request": "RegisterRequest",
+                  "response": "User",
                   "http": {
                     "method": "POST",
                     "path": "/v1/users"
@@ -28,6 +30,7 @@
                 },
                 {
                   "name": "getUser",
+                  "response": "User",
                   "http": {
                     "method": "GET",
                     "path": "/v1/users/{userId}"
@@ -35,6 +38,8 @@
                 },
                 {
                   "name": "changePassword",
+                  "request": "ChangePasswordRequest",
+                  "response": "204",
                   "http": {
                     "method": "POST",
                     "path": "/v1/users/me/password"
@@ -115,6 +120,8 @@
               "methods": [
                 {
                   "name": "login",
+                  "request": "LoginRequest",
+                  "response": "Session",
                   "http": {
                     "method": "POST",
                     "path": "/v1/sessions"
@@ -122,6 +129,7 @@
                 },
                 {
                   "name": "validateSession",
+                  "response": "SessionInfo",
                   "http": {
                     "method": "GET",
                     "path": "/v1/sessions/current"
@@ -129,6 +137,7 @@
                 },
                 {
                   "name": "logout",
+                  "response": "204",
                   "http": {
                     "method": "DELETE",
                     "path": "/v1/sessions/current"

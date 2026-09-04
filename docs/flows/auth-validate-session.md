@@ -1,6 +1,6 @@
 # Validate session
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.auth-validate-session`
 - **Owner:** [auth](../auth/README.md)
@@ -24,13 +24,13 @@ sequenceDiagram
     actor p0 as client
     participant p1 as auth.auth
     participant p2 as auth-pg
-    p0->>p1: validateSession
+    p0->>p1: validateSession → SessionInfo
     p1->>p2: ByToken
 ```
 
 ## Steps
 
-1. **client** → **auth.auth** — validateSession
+1. **client** → **auth.auth** — validateSession → SessionInfo
    `examples/auth/internal/infrastructure/transport/http/session/validate.go:12` · Seen running in telemetry/traces.jsonl (2 traces).
 2. **auth.auth** → **auth-pg** — ByToken
    status: declared · `examples/auth/internal/application/session/usecases/validate/usecase.go:34`

@@ -1,6 +1,6 @@
 # Checkout
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.cart-checkout`
 - **Owner:** [shop](../shop/README.md)
@@ -28,8 +28,8 @@ sequenceDiagram
     participant p3 as cart-pg
     participant p4 as shop.pricing
     participant p5 as bus
-    p0->>p1: checkout
-    p1->>p2: validateSession
+    p0->>p1: checkout → CheckedOut
+    p1->>p2: validateSession → SessionInfo
     p1->>p3: byId
     p1->>p4: GetQuote
     p1->>p3: save
@@ -38,9 +38,9 @@ sequenceDiagram
 
 ## Steps
 
-1. **client** → **shop.cart** — checkout
+1. **client** → **shop.cart** — checkout → CheckedOut
    `examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:60` · Seen running in telemetry/traces.jsonl (1 trace).
-2. **shop.cart** → **auth.auth** — validateSession
+2. **shop.cart** → **auth.auth** — validateSession → SessionInfo
    `auth.v1.Sessions/validateSession` · `examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:44` · Seen running in telemetry/traces.jsonl (1 trace).
 3. **shop.cart** → **cart-pg** — byId
    status: declared · `examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:48`

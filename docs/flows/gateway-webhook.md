@@ -1,6 +1,6 @@
 # Gateway webhook
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.gateway-webhook`
 - **Owner:** [payments](../payments/README.md)
@@ -34,7 +34,7 @@ sequenceDiagram
         p1->>p1: markCaptured
         p1-)p2: PaymentCaptured
     else charge.succeeded, no local payment
-        p1->>p3: GetOrder
+        p1->>p3: GetOrder → GetOrderResponse
         p1->>p1: adoptOrphanCharge
         p1-)p2: PaymentAuthorized
     else charge.failed
@@ -67,7 +67,7 @@ sequenceDiagram
 >
 > *charge.succeeded, no local payment*
 >
-> 6. **payments.ledger** → **shop.oms** — GetOrder
+> 6. **payments.ledger** → **shop.oms** — GetOrder → GetOrderResponse
 >    `shop.v1.OrderService/GetOrder` · status: declared · `internal/ledger/app/webhook.go:132` · The order reference travels in the gateway's metadata. The ledger reads the order back to decide whether the charge belongs to this estate at all.
 > 7. **payments.ledger** ↺ **payments.ledger** — adoptOrphanCharge
 >    status: declared · `internal/ledger/app/webhook.go:151` · Closes the gap left when the synchronous Authorize in checkout timed out after the gateway had already charged. Read from the code; the integration suite has no fixture for it, and it is the only path that keeps a customer from being charged for an order the estate never opened.

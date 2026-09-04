@@ -27,7 +27,10 @@
           "provides": [
             {
               "id": "billing.v1.Invoices",
-              "methods": [{ "name": "Raise" }, { "name": "Get" }],
+              "methods": [
+                { "name": "Raise", "request": "RaiseRequest", "response": "Invoice" },
+                { "name": "Get", "response": "Invoice" }
+              ],
               "source": "api/invoices.proto",
               "messages": [
                 {
@@ -193,7 +196,7 @@
           "from": "operator",
           "to": "billing.invoices",
           "kind": "rpc",
-          "label": "RaiseInvoice",
+          "label": "Raise",
           "status": "verified",
           "line": "raise_test.go:31"
         },

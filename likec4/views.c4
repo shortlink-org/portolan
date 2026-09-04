@@ -115,7 +115,7 @@ views {
         }
       }
       else 'charge.succeeded, no local payment' {
-        payments.ledger -> shop.oms 'GetOrder' {
+        payments.ledger -> shop.oms 'GetOrder → GetOrderResponse' {
           color declared  line dashed  head normal
           notes 'The order reference travels in the gateway\'s metadata. The ledger reads the order back to decide whether the charge belongs to this estate at all. — internal/ledger/app/webhook.go:132'
         }
@@ -159,7 +159,7 @@ views {
         }
       }
       else 'charge.succeeded, no local payment' {
-        payments.ledger -> shop.oms 'GetOrder' {
+        payments.ledger -> shop.oms 'GetOrder → GetOrderResponse' {
           color declared  line dashed  head normal
           notes 'The order reference travels in the gateway\'s metadata. The ledger reads the order back to decide whether the charge belongs to this estate at all. — internal/ledger/app/webhook.go:132'
         }
@@ -221,7 +221,7 @@ views {
       color verified  line solid  head normal
       notes 'Storefront tracking page. 41k calls in the window, p95 180 ms. — trace 9f2c1a../span 04'
     }
-    delivery.core -> shop.oms 'GetOrder' {
+    delivery.core -> shop.oms 'GetOrder → GetOrderResponse' {
       color declared  line dashed  head normal
       notes 'Resolves the order reference shown beside the parcel. Present in 96% of the traces; the rest are served from the tracking cache. — trace 9f2c1a../span 06'
     }
@@ -275,7 +275,7 @@ views {
       color verified  line solid  head normal
       notes 'Storefront tracking page. 41k calls in the window, p95 180 ms. — trace 9f2c1a../span 04'
     }
-    delivery.core -> shop.oms 'GetOrder' {
+    delivery.core -> shop.oms 'GetOrder → GetOrderResponse' {
       color declared  line dashed  head normal
       notes 'Resolves the order reference shown beside the parcel. Present in 96% of the traces; the rest are served from the tracking cache. — trace 9f2c1a../span 06'
     }
@@ -308,7 +308,7 @@ views {
   dynamic view flow_auth_change_password {
     title 'Change password'
     description 'Replaces the password of a user, given the current one.'
-    client -> auth.auth 'changePassword' {
+    client -> auth.auth 'changePassword → 204' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/auth/internal/infrastructure/transport/http/user/change_password.go:20'
     }
@@ -332,7 +332,7 @@ views {
 
   dynamic view flow_auth_change_password_cross {
     title 'Change password — crossings only'
-    client -> auth.auth 'changePassword' {
+    client -> auth.auth 'changePassword → 204' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/auth/internal/infrastructure/transport/http/user/change_password.go:20'
     }
@@ -345,7 +345,7 @@ views {
   dynamic view flow_auth_get_user {
     title 'Get user'
     description 'Reads a user by id.'
-    client -> auth.auth 'getUser' {
+    client -> auth.auth 'getUser → User' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/auth/internal/infrastructure/transport/http/user/get.go:11'
     }
@@ -357,7 +357,7 @@ views {
 
   dynamic view flow_auth_get_user_cross {
     title 'Get user — crossings only'
-    client -> auth.auth 'getUser' {
+    client -> auth.auth 'getUser → User' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/auth/internal/infrastructure/transport/http/user/get.go:11'
     }
@@ -366,7 +366,7 @@ views {
   dynamic view flow_auth_login {
     title 'Login'
     description 'Turns credentials into a session.'
-    client -> auth.auth 'login' {
+    client -> auth.auth 'login → Session' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/auth/internal/infrastructure/transport/http/session/login.go:11'
     }
@@ -454,7 +454,7 @@ views {
 
   dynamic view flow_auth_login_cross {
     title 'Login — crossings only'
-    client -> auth.auth 'login' {
+    client -> auth.auth 'login → Session' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/auth/internal/infrastructure/transport/http/session/login.go:11'
     }
@@ -481,7 +481,7 @@ views {
   dynamic view flow_auth_logout {
     title 'Logout'
     description 'Ends the session behind a token.'
-    client -> auth.auth 'logout' {
+    client -> auth.auth 'logout → 204' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/auth/internal/infrastructure/transport/http/session/logout.go:15'
     }
@@ -501,7 +501,7 @@ views {
 
   dynamic view flow_auth_logout_cross {
     title 'Logout — crossings only'
-    client -> auth.auth 'logout' {
+    client -> auth.auth 'logout → 204' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/auth/internal/infrastructure/transport/http/session/logout.go:15'
     }
@@ -514,7 +514,7 @@ views {
   dynamic view flow_auth_register_user {
     title 'Register user'
     description 'Creates a user from an email address and a password.'
-    client -> auth.auth 'registerUser' {
+    client -> auth.auth 'registerUser → User' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/auth/internal/infrastructure/transport/http/user/register.go:16'
     }
@@ -534,7 +534,7 @@ views {
 
   dynamic view flow_auth_register_user_cross {
     title 'Register user — crossings only'
-    client -> auth.auth 'registerUser' {
+    client -> auth.auth 'registerUser → User' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/auth/internal/infrastructure/transport/http/user/register.go:16'
     }
@@ -547,7 +547,7 @@ views {
   dynamic view flow_auth_validate_session {
     title 'Validate session'
     description 'Resolves a token to a live session: who is calling, and how long the answer stays good.'
-    client -> auth.auth 'validateSession' {
+    client -> auth.auth 'validateSession → SessionInfo' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/auth/internal/infrastructure/transport/http/session/validate.go:12'
     }
@@ -559,7 +559,7 @@ views {
 
   dynamic view flow_auth_validate_session_cross {
     title 'Validate session — crossings only'
-    client -> auth.auth 'validateSession' {
+    client -> auth.auth 'validateSession → SessionInfo' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/auth/internal/infrastructure/transport/http/session/validate.go:12'
     }
@@ -609,7 +609,7 @@ views {
   dynamic view flow_billing_invoice_create {
     title 'Invoice create'
     description 'Draws up a draft invoice for an order, with a line for each thing sold.'
-    client -> shop.billing 'invoice_create' {
+    client -> shop.billing 'invoice_create → InvoiceId' {
       color declared  line dashed  head normal
       notes 'examples/shop/billing/invoices/views.py:13'
     }
@@ -625,7 +625,7 @@ views {
 
   dynamic view flow_billing_invoice_create_cross {
     title 'Invoice create — crossings only'
-    client -> shop.billing 'invoice_create' {
+    client -> shop.billing 'invoice_create → InvoiceId' {
       color declared  line dashed  head normal
       notes 'examples/shop/billing/invoices/views.py:13'
     }
@@ -634,7 +634,7 @@ views {
   dynamic view flow_billing_invoice_destroy {
     title 'Invoice destroy'
     description 'Ends an invoice nobody is going to pay.'
-    client -> shop.billing 'invoice_destroy' {
+    client -> shop.billing 'invoice_destroy → 204' {
       color declared  line dashed  head normal
       notes 'examples/shop/billing/invoices/views.py:34'
     }
@@ -654,7 +654,7 @@ views {
 
   dynamic view flow_billing_invoice_destroy_cross {
     title 'Invoice destroy — crossings only'
-    client -> shop.billing 'invoice_destroy' {
+    client -> shop.billing 'invoice_destroy → 204' {
       color declared  line dashed  head normal
       notes 'examples/shop/billing/invoices/views.py:34'
     }
@@ -667,11 +667,11 @@ views {
   dynamic view flow_billing_invoice_issue {
     title 'Invoice issue'
     description 'Confirms the session, freezes the invoice and asks the customer to pay.'
-    client -> shop.billing 'invoice_issue' {
+    client -> shop.billing 'invoice_issue → InvoiceId' {
       color declared  line dashed  head normal
       notes 'examples/shop/billing/invoices/views.py:29'
     }
-    shop.billing -> auth.auth 'validateSession' {
+    shop.billing -> auth.auth 'validateSession → SessionInfo' {
       color declared  line dashed  head normal
       notes 'examples/shop/billing/invoices/services.py:36'
     }
@@ -691,11 +691,11 @@ views {
 
   dynamic view flow_billing_invoice_issue_cross {
     title 'Invoice issue — crossings only'
-    client -> shop.billing 'invoice_issue' {
+    client -> shop.billing 'invoice_issue → InvoiceId' {
       color declared  line dashed  head normal
       notes 'examples/shop/billing/invoices/views.py:29'
     }
-    shop.billing -> auth.auth 'validateSession' {
+    shop.billing -> auth.auth 'validateSession → SessionInfo' {
       color declared  line dashed  head normal
       notes 'examples/shop/billing/invoices/services.py:36'
     }
@@ -708,7 +708,7 @@ views {
   dynamic view flow_billing_invoice_retrieve {
     title 'Invoice retrieve'
     description 'Reads one invoice and the lines it is made of.'
-    client -> shop.billing 'invoice_retrieve' {
+    client -> shop.billing 'invoice_retrieve → Invoice' {
       color declared  line dashed  head normal
       notes 'examples/shop/billing/invoices/views.py:24'
     }
@@ -720,7 +720,7 @@ views {
 
   dynamic view flow_billing_invoice_retrieve_cross {
     title 'Invoice retrieve — crossings only'
-    client -> shop.billing 'invoice_retrieve' {
+    client -> shop.billing 'invoice_retrieve → Invoice' {
       color declared  line dashed  head normal
       notes 'examples/shop/billing/invoices/views.py:24'
     }
@@ -762,7 +762,7 @@ views {
   dynamic view flow_cart_add_item {
     title 'Add item'
     description ''
-    client -> shop.cart 'addItem' {
+    client -> shop.cart 'addItem → Basket' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (3 traces). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:43'
     }
@@ -778,7 +778,7 @@ views {
 
   dynamic view flow_cart_add_item_cross {
     title 'Add item — crossings only'
-    client -> shop.cart 'addItem' {
+    client -> shop.cart 'addItem → Basket' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (3 traces). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:43'
     }
@@ -791,11 +791,11 @@ views {
   dynamic view flow_cart_checkout {
     title 'Checkout'
     description ''
-    client -> shop.cart 'checkout' {
+    client -> shop.cart 'checkout → CheckedOut' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:60'
     }
-    shop.cart -> auth.auth 'validateSession' {
+    shop.cart -> auth.auth 'validateSession → SessionInfo' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:44'
     }
@@ -819,11 +819,11 @@ views {
 
   dynamic view flow_cart_checkout_cross {
     title 'Checkout — crossings only'
-    client -> shop.cart 'checkout' {
+    client -> shop.cart 'checkout → CheckedOut' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:60'
     }
-    shop.cart -> auth.auth 'validateSession' {
+    shop.cart -> auth.auth 'validateSession → SessionInfo' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:44'
     }
@@ -836,7 +836,7 @@ views {
   dynamic view flow_cart_create_basket {
     title 'Create basket'
     description ''
-    client -> shop.cart 'createBasket' {
+    client -> shop.cart 'createBasket → BasketCreated' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:33'
     }
@@ -852,7 +852,7 @@ views {
 
   dynamic view flow_cart_create_basket_cross {
     title 'Create basket — crossings only'
-    client -> shop.cart 'createBasket' {
+    client -> shop.cart 'createBasket → BasketCreated' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:33'
     }
@@ -865,7 +865,7 @@ views {
   dynamic view flow_cart_get_basket {
     title 'Get basket'
     description ''
-    client -> shop.cart 'getBasket' {
+    client -> shop.cart 'getBasket → Basket' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:38'
     }
@@ -873,7 +873,7 @@ views {
 
   dynamic view flow_cart_get_basket_cross {
     title 'Get basket — crossings only'
-    client -> shop.cart 'getBasket' {
+    client -> shop.cart 'getBasket → Basket' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:38'
     }
@@ -882,11 +882,11 @@ views {
   dynamic view flow_cart_merge_baskets {
     title 'Merge baskets'
     description ''
-    client -> shop.cart 'mergeBaskets' {
+    client -> shop.cart 'mergeBaskets → Basket' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:54'
     }
-    shop.cart -> auth.auth 'validateSession' {
+    shop.cart -> auth.auth 'validateSession → SessionInfo' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:28'
     }
@@ -918,11 +918,11 @@ views {
 
   dynamic view flow_cart_merge_baskets_cross {
     title 'Merge baskets — crossings only'
-    client -> shop.cart 'mergeBaskets' {
+    client -> shop.cart 'mergeBaskets → Basket' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:54'
     }
-    shop.cart -> auth.auth 'validateSession' {
+    shop.cart -> auth.auth 'validateSession → SessionInfo' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:28'
     }
@@ -943,7 +943,7 @@ views {
   dynamic view flow_cart_remove_item {
     title 'Remove item'
     description ''
-    client -> shop.cart 'removeItem' {
+    client -> shop.cart 'removeItem → Basket' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:49'
     }
@@ -959,7 +959,7 @@ views {
 
   dynamic view flow_cart_remove_item_cross {
     title 'Remove item — crossings only'
-    client -> shop.cart 'removeItem' {
+    client -> shop.cart 'removeItem → Basket' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:49'
     }
@@ -972,7 +972,7 @@ views {
   dynamic view flow_oms_cancel_order {
     title 'Cancel order'
     description 'Answers with the order as it is now; a cancelled order is still found.'
-    client -> shop.oms 'CancelOrder' {
+    client -> shop.oms 'CancelOrder → CancelOrderResponse' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:41'
     }
@@ -1004,7 +1004,7 @@ views {
 
   dynamic view flow_oms_cancel_order_cross {
     title 'Cancel order — crossings only'
-    client -> shop.oms 'CancelOrder' {
+    client -> shop.oms 'CancelOrder → CancelOrderResponse' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:41'
     }
@@ -1021,7 +1021,7 @@ views {
   dynamic view flow_oms_get_order {
     title 'Get order'
     description 'Answers with the order as it is now; a cancelled order is still found.'
-    client -> shop.oms 'GetOrder' {
+    client -> shop.oms 'GetOrder → GetOrderResponse' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:31'
     }
@@ -1033,7 +1033,7 @@ views {
 
   dynamic view flow_oms_get_order_cross {
     title 'Get order — crossings only'
-    client -> shop.oms 'GetOrder' {
+    client -> shop.oms 'GetOrder → GetOrderResponse' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:31'
     }

@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { catalog } from "../data";
+import { catalog, index } from "../data";
+import { flowAnswers } from "./answers";
 import { flowMermaid } from "./mermaid";
 
 /** The fenced mermaid block of a generated flow page. */
@@ -16,6 +17,6 @@ describe("flowMermaid", () => {
   // wrong; the generated pages are the record of what the Go one drew.
   it.each(catalog.flows.map((f) => f.slug))("draws %s as gen-markdown does", (slug) => {
     const flow = catalog.flows.find((f) => f.slug === slug)!;
-    expect(flowMermaid(flow)).toBe(generated(slug));
+    expect(flowMermaid(flow, flowAnswers(index, flow))).toBe(generated(slug));
   });
 });

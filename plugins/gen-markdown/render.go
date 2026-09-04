@@ -38,6 +38,9 @@ type site struct {
 	// adrsFor is keyed by what an ADR is scoped to: "org", a context id, or a
 	// service id.
 	adrsFor map[string][]*catalog.Adr
+	// methodOf is every interface method by "<interface>/<method>", which is
+	// how a flow step names the call it makes.
+	methodOf map[string]catalog.RpcMethod
 }
 
 func render(req plugin.Request, opts Options) plugin.Response {
@@ -51,6 +54,7 @@ func render(req plugin.Request, opts Options) plugin.Response {
 		stores:    map[string]*catalog.Store{},
 		eventPage: map[string]string{},
 		adrsFor:   map[string][]*catalog.Adr{},
+		methodOf:  map[string]catalog.RpcMethod{},
 
 		relationStore: map[string]string{},
 		relationName:  map[string]string{},
@@ -83,6 +87,12 @@ func (s *site) layout() {
 			dir := ctx.Slug + "/" + svc.Slug
 			s.pathOf[svc.ID] = dir + "/README.md"
 			s.services[svc.ID] = svc
+			for j := range svc.Provides {
+				provided := &svc.Provides[j]
+				for k := range provided.Methods {
+					s.methodOf[provided.ID+"/"+provided.Methods[k].Name] = provided.Methods[k]
+				}
+			}
 			s.contextOf[svc.ID] = ctx
 
 			for k := range svc.Aggregates {

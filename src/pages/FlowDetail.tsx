@@ -11,6 +11,7 @@ import { toClipboard } from "../lib/clipboard";
 import { flowRepoService } from "../lib/derive";
 import { statusCounts } from "../lib/flow-tree";
 import { sourceHref } from "../lib/source-link";
+import { flowAnswers } from "../flow/answers";
 import { flowMermaid } from "../flow/mermaid";
 import { useToastStore } from "../app/toast";
 import { contextResolver, hiddenStepIds, isCrossContext } from "../flow/cross-context";
@@ -193,6 +194,14 @@ export function FlowDetail() {
     [flow],
   );
 
+  // What each step's callee hands back, read out of the contract rather than
+  // out of the flow: the rail says it beside the step, and the Mermaid copy
+  // draws it as a return.
+  const answers = useMemo(
+    () => (flow ? flowAnswers(index, flow) : new Map<string, string>()),
+    [flow],
+  );
+
   const crossContextOf = useCallback(
     (step: Step) =>
       isCrossContext(step, contextOf) ? contextOf(step.to) : undefined,
@@ -350,7 +359,7 @@ export function FlowDetail() {
     : null;
 
   const copyMermaid = () => {
-    void toClipboard(flowMermaid(flow)).then((ok) => {
+    void toClipboard(flowMermaid(flow, answers)).then((ok) => {
       say(ok ? "Mermaid sequence copied" : "could not reach the clipboard");
     });
   };
@@ -403,6 +412,7 @@ export function FlowDetail() {
       />
       <StepRail
         groups={groups}
+        answers={answers}
         activeId={activeId}
         matchIds={matchIds}
         collapsed={collapsed}

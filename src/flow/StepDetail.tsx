@@ -8,6 +8,7 @@ import { Ident } from "../components/Ident";
 import { flowRepoService } from "../lib/derive";
 import { sourceHref } from "../lib/source-link";
 import { AdrNumber, StatusChip } from "../components/primitives";
+import { stepAnswer } from "./answers";
 import { paths, eventPath, servicePath } from "../routes";
 
 function Label({ children }: { children: React.ReactNode }) {
@@ -149,10 +150,19 @@ function RpcDetail({ step, flow }: { step: Step; flow: Flow }) {
     ? index.rpcProviderByMethod.get(step.ref)
     : undefined;
   const providerPath = provider ? servicePath(provider.id) : null;
+  // The flow records the hop; what comes back is the contract's to say.
+  const answer = stepAnswer(index, step);
 
   return (
     <>
       <Ident block value={method} className="text-ink" />
+
+      {answer ? (
+        <>
+          <Label>Answers with</Label>
+          <div className="mono text-muted">{answer}</div>
+        </>
+      ) : null}
 
       <Label>Provider</Label>
       {provider && providerPath ? (

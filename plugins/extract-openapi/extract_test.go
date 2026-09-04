@@ -144,3 +144,31 @@ func TestFragmentClaimsNothingItDoesNotKnow(t *testing.T) {
 		t.Error("the api fragment should carry no aggregates")
 	}
 }
+
+// What the operation sends and answers with. The document names both whenever
+// the body is a $ref; a success with no body at all is answered by its status,
+// because 204 is a real answer and an empty string reads as an unread one.
+func TestShapesOnEitherSide(t *testing.T) {
+	byName := map[string]catalog.RpcMethod{}
+	for _, p := range provided(t) {
+		for _, method := range p.Methods {
+			byName[method.Name] = method
+		}
+	}
+
+	raise, ok := byName["raiseInvoice"]
+	if !ok {
+		t.Fatal("no raiseInvoice")
+	}
+	if raise.Request != "RaiseRequest" || raise.Response != "Invoice" {
+		t.Errorf("raiseInvoice sends %q and returns %q", raise.Request, raise.Response)
+	}
+
+	health, ok := byName["GET /v2/health"]
+	if !ok {
+		t.Fatal("no health operation")
+	}
+	if health.Request != "" || health.Response != "200" {
+		t.Errorf("health sends %q and returns %q", health.Request, health.Response)
+	}
+}

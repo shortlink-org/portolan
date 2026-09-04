@@ -1,6 +1,6 @@
 # Invoice issue
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.billing-invoice-issue`
 - **Owner:** [shop](../shop/README.md)
@@ -28,8 +28,8 @@ sequenceDiagram
     participant p2 as auth.auth
     participant p3 as billing-pg
     participant p4 as bus
-    p0->>p1: invoice_issue
-    p1->>p2: validateSession
+    p0->>p1: invoice_issue → InvoiceId
+    p1->>p2: validateSession → SessionInfo
     p1->>p3: Invoice.objects.get
     p1->>p3: Invoice.save
     p1-)p4: InvoiceIssued
@@ -37,9 +37,9 @@ sequenceDiagram
 
 ## Steps
 
-1. **client** → **shop.billing** — invoice_issue
+1. **client** → **shop.billing** — invoice_issue → InvoiceId
    status: declared · `examples/shop/billing/invoices/views.py:29`
-2. **shop.billing** → **auth.auth** — validateSession
+2. **shop.billing** → **auth.auth** — validateSession → SessionInfo
    `auth.v1.Sessions/validateSession` · status: declared · `examples/shop/billing/invoices/services.py:36`
 3. **shop.billing** → **billing-pg** — Invoice.objects.get
    status: declared · `examples/shop/billing/invoices/services.py:37`

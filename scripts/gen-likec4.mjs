@@ -307,10 +307,42 @@ model.push("}");
  * in a `break` frame, which is what a sequence diagram calls a branch that
  * leaves the flow rather than rejoining it.
  */
+// --- what comes back from a call (mirrors src/flow/answers.ts) -------------
+// The catalog records hops and never replies, so a reply is looked up in the
+// contract the step reaches. It rides on the step's own label rather than
+// becoming an arrow of its own: a dynamic view numbers its steps, and those
+// numbers are the ones the rail beside the canvas counts.
+const methodOf = new Map();
+const serviceById = new Map();
+for (const context of catalog.contexts) {
+  for (const service of context.services) {
+    serviceById.set(service.id, service);
+    for (const provided of service.provides) {
+      for (const method of provided.methods) {
+        methodOf.set(`${provided.id}/${method.name}`, method);
+      }
+    }
+  }
+}
+
+function answerOf(step) {
+  if (step.kind !== "rpc") return "";
+  if (step.ref) return methodOf.get(step.ref)?.response ?? "";
+  const service = serviceById.get(step.to);
+  if (!service || !step.label) return "";
+  for (const provided of service.provides) {
+    const found = provided.methods.find((m) => m.name === step.label);
+    if (found) return found.response ?? "";
+  }
+  return "";
+}
+
 function emitSteps(nodes, out, indent) {
   for (const node of nodes) {
     if (node.type === "step") {
-      const label = node.label ?? node.ref ?? node.kind;
+      const answer = answerOf(node);
+      const label =
+        (node.label ?? node.ref ?? node.kind) + (answer ? ` → ${answer}` : "");
       const attrs = [
         `color ${node.status}`,
         `line ${STATUS_LINE[node.status]}`,

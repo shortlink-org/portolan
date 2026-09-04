@@ -129,7 +129,10 @@ func (s *site) mermaidNodes(b *strings.Builder, nodes catalog.FlowNodes, alias m
 			if n.Kind == catalog.StepEvent {
 				arrow = "-)"
 			}
-			b.WriteString(indent + alias[n.From] + arrow + alias[n.To] + ": " + mermaidText(stepLabel(n)) + "\n")
+			// The reply rides on the hop's own label rather than coming back
+			// as a second message: autonumber counts messages, and these are
+			// the numbers the step list below carries.
+			b.WriteString(indent + alias[n.From] + arrow + alias[n.To] + ": " + mermaidText(s.labelWithAnswer(n)) + "\n")
 
 		case *catalog.Parallel:
 			b.WriteString(indent + "par " + mermaidText(orDefault(n.Title, "in parallel")) + "\n")
@@ -188,7 +191,7 @@ func (s *site) stepList(self string, flow *catalog.Flow, nodes catalog.FlowNodes
 			if n.From == n.To {
 				arrow = " ↺ "
 			}
-			b.WriteString(strconv.Itoa(*counter) + ". **" + n.From + "**" + arrow + "**" + n.To + "** — " + stepLabel(n) + "\n")
+			b.WriteString(strconv.Itoa(*counter) + ". **" + n.From + "**" + arrow + "**" + n.To + "** — " + s.labelWithAnswer(n) + "\n")
 
 			var notes []string
 			if n.Ref != "" {
@@ -335,4 +338,46 @@ func orDefault(s, fallback string) string {
 	}
 
 	return s
+}
+
+// labelWithAnswer is the step's label, and what comes back when a contract
+// says so.
+func (s *site) labelWithAnswer(step *catalog.Step) string {
+	if answer := s.answer(step); answer != "" {
+		return stepLabel(step) + " → " + answer
+	}
+
+	return stepLabel(step)
+}
+
+// answer is what the far end of an rpc hands back, as the contract names it.
+// The mirror of src/flow/answers.ts, and the prose is there.
+//
+// Only an rpc has one: a call lands inside a service, which no interface
+// describes, and an event is a publication - a reply drawn to one would be a
+// lie about the bus.
+func (s *site) answer(step *catalog.Step) string {
+	if step.Kind != catalog.StepRPC {
+		return ""
+	}
+
+	// Outgoing: the step names the call, and a call id is "<interface>/<method>".
+	if step.Ref != "" {
+		return s.methodOf[step.Ref].Response
+	}
+
+	// Incoming: somebody called this service, and the label is the operation.
+	service, ok := s.services[step.To]
+	if !ok || step.Label == "" {
+		return ""
+	}
+	for i := range service.Provides {
+		for j := range service.Provides[i].Methods {
+			if service.Provides[i].Methods[j].Name == step.Label {
+				return service.Provides[i].Methods[j].Response
+			}
+		}
+	}
+
+	return ""
 }

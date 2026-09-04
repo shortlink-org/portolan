@@ -1,6 +1,6 @@
 # Invoice destroy
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.billing-invoice-destroy`
 - **Owner:** [shop](../shop/README.md)
@@ -26,7 +26,7 @@ sequenceDiagram
     participant p1 as shop.billing
     participant p2 as billing-pg
     participant p3 as bus
-    p0->>p1: invoice_destroy
+    p0->>p1: invoice_destroy → 204
     p1->>p2: Invoice.objects.get
     p1->>p2: Invoice.save
     p1-)p3: InvoiceVoided
@@ -34,7 +34,7 @@ sequenceDiagram
 
 ## Steps
 
-1. **client** → **shop.billing** — invoice_destroy
+1. **client** → **shop.billing** — invoice_destroy → 204
    status: declared · `examples/shop/billing/invoices/views.py:34`
 2. **shop.billing** → **billing-pg** — Invoice.objects.get
    status: declared · `examples/shop/billing/invoices/services.py:59`

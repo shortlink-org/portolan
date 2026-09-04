@@ -8,7 +8,16 @@
 
 import type { Flow, FlowNode, Step } from "../catalog";
 
-export function flowMermaid(flow: Flow): string {
+/**
+ * `answers` is what each step's callee hands back, by step id - see
+ * `answers.ts`. It is passed in rather than looked up here so that this stays
+ * a function of the flow, and so the Go generator, which has the catalog and
+ * not the index, can hand over the same map.
+ */
+export function flowMermaid(
+  flow: Flow,
+  answers: ReadonlyMap<string, string> = new Map(),
+): string {
   const alias = new Map<string, string>();
   flow.participants.forEach((p, i) => alias.set(p.id, `p${i}`));
   const of = (id: string) => alias.get(id) ?? id;
@@ -18,7 +27,7 @@ export function flowMermaid(flow: Flow): string {
     const keyword = p.kind === "actor" ? "actor" : "participant";
     lines.push(`    ${keyword} ${of(p.id)} as ${text(p.label || p.id)}`);
   }
-  emit(flow.steps, of, 1, lines);
+  emit(flow.steps, of, 1, lines, answers);
   return `${lines.join("\n")}\n`;
 }
 
@@ -27,6 +36,7 @@ function emit(
   of: (id: string) => string,
   depth: number,
   out: string[],
+  answers: ReadonlyMap<string, string>,
 ): void {
   const indent = "    ".repeat(depth);
   for (const node of nodes) {
@@ -35,14 +45,17 @@ function emit(
         // An event is drawn with the async arrow. A reader who cannot tell a
         // call from a publication is reading a different flow.
         const arrow = node.kind === "event" ? "-)" : "->>";
-        out.push(`${indent}${of(node.from)}${arrow}${of(node.to)}: ${text(stepLabel(node))}`);
+        // The reply rides on the hop's own label rather than coming back as a
+        // second message: `autonumber` counts messages, and the numbers here
+        // are the numbers of the step list beside the diagram.
+        out.push(`${indent}${of(node.from)}${arrow}${of(node.to)}: ${text(labelWithAnswer(node, answers))}`);
         break;
       }
       case "parallel": {
         out.push(`${indent}par ${text(node.title?.trim() ? node.title : "in parallel")}`);
         node.branches.forEach((branch, i) => {
           if (i > 0) out.push(`${indent}and`);
-          emit(branch, of, depth + 1, out);
+          emit(branch, of, depth + 1, out, answers);
         });
         out.push(`${indent}end`);
         break;
@@ -50,7 +63,7 @@ function emit(
       case "alt": {
         node.branches.forEach((branch, i) => {
           out.push(`${indent}${i === 0 ? "alt " : "else "}${text(branch.title)}`);
-          emit(branch.steps, of, depth + 1, out);
+          emit(branch.steps, of, depth + 1, out, answers);
           // A branch that ends the flow has to say so inside the diagram, or
           // the steps drawn after the alt read as if they follow it too.
           if (branch.terminal) {
@@ -64,7 +77,7 @@ function emit(
       }
       case "loop": {
         out.push(`${indent}loop ${text(node.title)}`);
-        emit(node.steps, of, depth + 1, out);
+        emit(node.steps, of, depth + 1, out, answers);
         out.push(`${indent}end`);
         break;
       }
@@ -102,6 +115,15 @@ function lastParticipant(nodes: FlowNode[]): string {
     }
   }
   return "";
+}
+
+/** The step's label, and what comes back when a contract says so. */
+export function labelWithAnswer(
+  step: Step,
+  answers: ReadonlyMap<string, string>,
+): string {
+  const answer = answers.get(step.id);
+  return answer ? `${stepLabel(step)} → ${answer}` : stepLabel(step);
 }
 
 /**

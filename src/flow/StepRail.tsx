@@ -177,6 +177,7 @@ function CrossChip({ step, context }: { step: Step; context: string | null }) {
 
 function StepRow({
   row,
+  answer,
   active,
   dimmed,
   onSelect,
@@ -186,6 +187,8 @@ function StepRow({
   full,
 }: {
   row: OutlineStep;
+  /** What the callee hands back, when a contract says. */
+  answer?: string | undefined;
   active: boolean;
   dimmed: boolean;
   onSelect: (id: string) => void;
@@ -233,11 +236,27 @@ function StepRow({
           {number}
         </span>
         <span className="min-w-0 flex-1">
-          <span
-            className="mono block truncate text-ink"
-            title={step.label ?? step.ref ?? step.kind}
-          >
-            {step.label ?? step.ref ?? step.kind}
+          <span className="mono flex items-baseline gap-1">
+            <span
+              className="min-w-0 flex-1 truncate text-ink"
+              title={step.label ?? step.ref ?? step.kind}
+            >
+              {step.label ?? step.ref ?? step.kind}
+            </span>
+            {/* The reply is not a step of its own - it is the far end of this
+                one - so it is read on the same line, and only where a contract
+                says what comes back. */}
+            {/* Only where there is room for it. The rail can be dragged down
+                to a quarter of the pane, and two truncated halves read worse
+                than one whole label; the step's own panel always says it. */}
+            {full && answer ? (
+              <span
+                className="min-w-0 shrink truncate text-muted"
+                title={`answers with ${answer}`}
+              >
+                → {answer}
+              </span>
+            ) : null}
           </span>
           {/* Two ids on one line in a rail the reader can drag down to a
               quarter of the pane. Both are cut from the left, so what survives
@@ -298,6 +317,7 @@ function StepRow({
 
 export function StepRail({
   groups,
+  answers,
   activeId,
   matchIds,
   collapsed,
@@ -310,6 +330,8 @@ export function StepRail({
 }: {
   /** The rail's rows, already cut into chapters. */
   groups: readonly ChapterGroup[];
+  /** What each step's callee hands back, by step id; see flow/answers.ts. */
+  answers: ReadonlyMap<string, string>;
   /** The step the rail marks and scrolls to. */
   activeId: string | null;
   /**
@@ -365,6 +387,7 @@ export function StepRail({
                     <li key={row.key} data-step={row.step.id}>
                       <StepRow
                         row={row}
+                        answer={answers.get(row.step.id)}
                         active={activeId === row.step.id}
                         dimmed={matchIds ? !matchIds.has(row.step.id) : false}
                         onSelect={onSelect}

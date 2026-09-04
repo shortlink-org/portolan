@@ -121,12 +121,16 @@ func rpcServices(doc *document, api, source string, b *plugin.Builder) []catalog
 				groups[id] = g
 				order = append(order, id)
 			}
-			// The name and the route: this document says what the interface
-			// is called and what it answers on, and it does not say which
-			// message goes out or comes back in a form this extractor reads.
+			// The name, the route, and the shapes on either side. The
+			// document names the last two whenever the body is a $ref, which
+			// is what lets a flow draw what comes back from a call and not
+			// only that one was made.
+			request, response := doc.shapes(operation)
 			g.methods = append(g.methods, catalog.RpcMethod{
-				Name: method,
-				HTTP: &catalog.HttpRoute{Method: strings.ToUpper(verb), Path: p.key},
+				Name:     method,
+				Request:  request,
+				Response: response,
+				HTTP:     &catalog.HttpRoute{Method: strings.ToUpper(verb), Path: p.key},
 			})
 			doc.schemaRefs(operation, &g.schemas, g.seen, g.visited)
 		}
@@ -279,5 +283,3 @@ func firstNonEmpty(values ...string) string {
 
 	return ""
 }
-
-

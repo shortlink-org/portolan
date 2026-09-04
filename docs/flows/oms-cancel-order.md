@@ -1,6 +1,6 @@
 # Cancel order
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.oms-cancel-order`
 - **Owner:** [shop](../shop/README.md)
@@ -26,7 +26,7 @@ sequenceDiagram
     participant p1 as shop.oms
     participant p2 as oms-pg
     participant p3 as bus
-    p0->>p1: CancelOrder
+    p0->>p1: CancelOrder → CancelOrderResponse
     p1->>p2: by_id
     alt order.status is Status::Cancelled
     else otherwise
@@ -38,7 +38,7 @@ sequenceDiagram
 
 ## Steps
 
-1. **client** → **shop.oms** — CancelOrder
+1. **client** → **shop.oms** — CancelOrder → CancelOrderResponse
    `examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:41` · Seen running in telemetry/traces.jsonl (1 trace).
 2. **shop.oms** → **oms-pg** — by_id
    status: declared · `examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:21`

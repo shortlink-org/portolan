@@ -1,6 +1,6 @@
 # Merge baskets
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.cart-merge-baskets`
 - **Owner:** [shop](../shop/README.md)
@@ -26,8 +26,8 @@ sequenceDiagram
     participant p2 as auth.auth
     participant p3 as cart-pg
     participant p4 as bus
-    p0->>p1: mergeBaskets
-    p1->>p2: validateSession
+    p0->>p1: mergeBaskets → Basket
+    p1->>p2: validateSession → SessionInfo
     p1->>p3: openFor
     p1->>p3: save
     p1-)p4: BasketCreated
@@ -38,9 +38,9 @@ sequenceDiagram
 
 ## Steps
 
-1. **client** → **shop.cart** — mergeBaskets
+1. **client** → **shop.cart** — mergeBaskets → Basket
    `examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:54` · Seen running in telemetry/traces.jsonl (1 trace).
-2. **shop.cart** → **auth.auth** — validateSession
+2. **shop.cart** → **auth.auth** — validateSession → SessionInfo
    `auth.v1.Sessions/validateSession` · `examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:28` · Seen running in telemetry/traces.jsonl (1 trace).
 3. **shop.cart** → **cart-pg** — openFor
    status: declared · `examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:35`
