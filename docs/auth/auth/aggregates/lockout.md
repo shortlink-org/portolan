@@ -24,7 +24,10 @@ change when one arrives, so the two do not share a lock.
   password starts the count at one.
 
 The state is read off `LockedUntil` with `now`; there is no stored flag to
-drift from it.
+drift from it. The moves are one table, `Rules` in `rules.go`, run through
+`go-sdk/fsm` by `trigger`: `lock` on the failure that reaches the threshold,
+`lapse` on the first attempt after a lock has run out, which is when the code
+notices it. The run-out itself is not a move; nothing runs when it happens.
 
 ```mermaid
 stateDiagram-v2
@@ -69,6 +72,22 @@ Lockout is the aggregate root. Its identity is the user id: there is one per acc
 | `LockedUntil` | `time.Time` | LockedUntil is when the lock ends; zero while the account has never been locked. A time in the past is a lock that ran out: the state is read off it with `now`, and nothing runs when it passes. |
 | `Version` | `int64` | Version is what the store compares against before writing; see the note on user.User.Version. Zero means the lockout has never been stored. |
 
+## Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> open
+    open --> locked: Fail · AccountLocked
+    locked --> open: Fail
+    locked --> open: Succeed
+```
+
+| From | To | On | Emits | Source |
+| --- | --- | --- | --- | --- |
+| `open` | `locked` | `Fail` | `AccountLocked` | `examples/auth/internal/domain/lockout/lockout.go:95` |
+| `locked` | `open` | `Fail` | — | `examples/auth/internal/domain/lockout/lockout.go:88` |
+| `locked` | `open` | `Succeed` | — | `examples/auth/internal/domain/lockout/lockout.go:121` |
+
 ## Operations
 
 | Operation | Kind | Doc |
@@ -76,3 +95,23 @@ Lockout is the aggregate root. Its identity is the user id: there is one per acc
 | `Check` | query | Answers whether an account accepts a password right now. |
 | `RecordFailure` | command | Counts a wrong password against an account, and locks the account when the count reaches the threshold. |
 | `RecordSuccess` | command | Clears the count of wrong passwords after a right one. |
+
+## Events
+
+### AccountLocked
+
+`auth.auth.lockout.AccountLocked`
+
+#### v1 — current
+
+AccountLocked is published when an account starts refusing logins because of too many wrong passwords in a row. Until says when it stops.
+
+Published on the bus as `auth.AccountLocked`.
+
+Source: `examples/auth/internal/domain/lockout/event/account_locked.go`
+
+| Field | Type |
+| --- | --- |
+| `userID` | `string` |
+| `until` | `time.Time` |
+| `occurredAt` | `time.Time` |

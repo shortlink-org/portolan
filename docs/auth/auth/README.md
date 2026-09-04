@@ -70,7 +70,7 @@ without Docker the packages that need Postgres or redis are skipped.
 
 | Aggregate | Root | Commands | Queries | Events |
 | --- | --- | --- | --- | --- |
-| [Lockout](aggregates/lockout.md) | `Lockout` | 2 commands | 1 query | 0 events |
+| [Lockout](aggregates/lockout.md) | `Lockout` | 2 commands | 1 query | 1 event |
 | [Session](aggregates/session.md) | `Session` | 3 commands | 1 query | 2 events |
 | [User](aggregates/user.md) | `User` | 2 commands | 2 queries | 2 events |
 
@@ -171,6 +171,7 @@ without Docker the packages that need Postgres or redis are skipped.
 
 | Event | Latest | Consumers |
 | --- | --- | --- |
+| [AccountLocked](aggregates/lockout.md) | v1 | — |
 | [SessionEnded](aggregates/session.md) | v1 | — |
 | [SessionStarted](aggregates/session.md) | v1 | — |
 | [PasswordChanged](aggregates/user.md) | v1 | [auth.auth](README.md) |
