@@ -4,18 +4,22 @@ import { BasketCheckedOut } from "./events/basket-checked-out.ts";
 import { BasketCreated } from "./events/basket-created.ts";
 import { BasketItemAdded } from "./events/basket-item-added.ts";
 import { BasketItemRemoved } from "./events/basket-item-removed.ts";
+import { BasketMerged } from "./events/basket-merged.ts";
 import { BasketItem } from "./item.ts";
 import { whyNotAdd } from "./rules/index.ts";
+import { EDITABLE, canMove, type BasketStatus } from "./status.ts";
 import type { Currency } from "./vo/currency.ts";
 import { LineItem } from "./vo/line-item.ts";
 import { Money } from "./vo/money.ts";
 
-export type BasketStatus = "open" | "checked-out" | "abandoned" | "merged";
+export type { BasketStatus } from "./status.ts";
 
 /**
  * Basket is the aggregate root: a visitor's or a customer's lines, their
  * currency and their state, decided under one lock. Every method that changes
- * it answers with the fact, and publishing is the caller's business.
+ * it answers with the fact, and publishing is the caller's business. Where
+ * it can go from where it is, `status.ts` says in one table; `moveTo` is the
+ * only way through it.
  */
 export class Basket {
   readonly id: string;
@@ -48,7 +52,7 @@ export class Basket {
 
   /** Puts a line in, or grows the one already there, under the rules in `rules/`. */
   addItem(line: LineItem, now: Date): BasketItemAdded {
-    this.mustBeOpen();
+    this.mustBeEditable();
     const existing = this.items.find((i) => i.sku === line.sku);
     const why = whyNotAdd(line, {
       currency: this.currency,
@@ -73,7 +77,7 @@ export class Basket {
 
   /** Takes a line out outright. */
   removeItem(sku: string, now: Date): BasketItemRemoved {
-    this.mustBeOpen();
+    this.mustBeEditable();
     const at = this.items.findIndex((i) => i.sku === sku);
     if (at < 0) throw new BasketError("not-found", `no line for ${sku}`);
     this.items.splice(at, 1);
@@ -84,28 +88,28 @@ export class Basket {
 
   /** Freezes the basket against the quote pricing gave for it (cart.0004). */
   checkout(customerId: string, total: Money, quoteId: string, now: Date): BasketCheckedOut {
-    this.mustBeOpen();
     if (this.items.length === 0) throw new BasketError("refused", "an empty basket cannot be checked out");
+    this.moveTo("checked-out", now);
     this.customerId = customerId;
-    this.status = "checked-out";
-    this.touchedAt = now;
     return new BasketCheckedOut(this.id, customerId, this.lines(), total, quoteId, now);
   }
 
   /** Marks the basket as left behind (cart.0006). */
   abandon(now: Date): BasketAbandoned {
-    this.mustBeOpen();
     const idleSince = this.touchedAt;
-    this.status = "abandoned";
-    this.touchedAt = now;
+    this.moveTo("abandoned", now);
     return new BasketAbandoned(this.id, this.customerId, idleSince, now);
   }
 
-  /** The visitor's basket, once its lines have moved into the customer's (cart.0005). */
-  markMerged(now: Date): void {
-    this.mustBeOpen();
-    this.status = "merged";
-    this.touchedAt = now;
+  /**
+   * The visitor's basket, once its lines have moved into the customer's
+   * (cart.0005). Moving the lines is the caller's job, under `addItem`'s own
+   * rules on the other basket; this is the record that it happened.
+   */
+  mergeInto(into: Basket, now: Date): BasketMerged {
+    if (into.customerId === undefined) throw new BasketError("refused", "a basket merges into a customer's basket, not a visitor's");
+    this.moveTo("merged", now);
+    return new BasketMerged(this.id, into.id, into.customerId, now);
   }
 
   /** The lines as the estate's shared shape. */
@@ -120,7 +124,14 @@ export class Basket {
     return rest.reduce((sum, i) => sum.add(i.total()), first.total());
   }
 
-  private mustBeOpen(): void {
-    if (this.status !== "open") throw new BasketError("not-open", `the basket is ${this.status}`);
+  /** The one way the status changes: through the table in `status.ts`. */
+  private moveTo(next: BasketStatus, now: Date): void {
+    if (!canMove(this.status, next)) throw new BasketError("not-open", `a ${this.status} basket cannot become ${next}`);
+    this.status = next;
+    this.touchedAt = now;
+  }
+
+  private mustBeEditable(): void {
+    if (!EDITABLE.includes(this.status)) throw new BasketError("not-open", `the basket is ${this.status}`);
   }
 }

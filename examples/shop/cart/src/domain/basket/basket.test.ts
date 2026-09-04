@@ -3,12 +3,18 @@ import { Basket } from "./basket.ts";
 import { BasketError } from "./errors.ts";
 import { LineItem } from "./vo/line-item.ts";
 import { Money } from "./vo/money.ts";
+import { TRANSITIONS, type BasketStatus } from "./status.ts";
 
 const now = new Date("2026-09-04T12:00:00Z");
 const line = (sku: string, quantity = 1, price = 500, currency = "EUR") => new LineItem(sku, quantity, Money.of(price, currency));
 
 function fresh(): Basket {
   const [basket] = Basket.create("b1", "t1", undefined, now);
+  return basket;
+}
+
+function customers(): Basket {
+  const [basket] = Basket.create("c1", "t2", "u1", now);
   return basket;
 }
 
@@ -71,6 +77,34 @@ describe("a basket", () => {
     expect(out.total.amountMinor).toBe(1000);
     expect(basket.status).toBe("checked-out");
     expect(() => basket.addItem(line("b"), now)).toThrowError(/checked-out/);
+  });
+
+  it("moves only along the table, and never out of a state the table closes", () => {
+    const outOfOpen: Record<Exclude<BasketStatus, "open">, (b: Basket) => unknown> = {
+      "checked-out": (b) => b.checkout("c1", Money.of(500, "EUR"), "q1", now),
+      abandoned: (b) => b.abandon(now),
+      merged: (b) => b.mergeInto(customers(), now),
+    };
+    for (const [next, move] of Object.entries(outOfOpen) as [Exclude<BasketStatus, "open">, (b: Basket) => unknown][]) {
+      expect(TRANSITIONS.open).toContain(next);
+      const basket = fresh();
+      basket.addItem(line("a"), now);
+      move(basket);
+      expect(basket.status).toBe(next);
+      // Closed is closed: nothing in the table leads out, and nothing in the code does either.
+      expect(TRANSITIONS[next]).toEqual([]);
+      for (const again of Object.values(outOfOpen)) expect(() => again(basket)).toThrowError(/cannot become/);
+      expect(() => basket.addItem(line("b"), now)).toThrowError(BasketError);
+    }
+  });
+
+  it("merges into a customer's basket and says which, not into a visitor's", () => {
+    const basket = fresh();
+    expect(() => basket.mergeInto(fresh(), now)).toThrowError(/visitor/);
+    const merged = basket.mergeInto(customers(), now);
+    expect(merged.intoBasketId).toBe("c1");
+    expect(merged.customerId).toBe("u1");
+    expect(basket.status).toBe("merged");
   });
 
   it("is abandoned with the moment it was last touched", () => {

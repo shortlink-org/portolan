@@ -21,7 +21,7 @@ describe("contextStats", () => {
     const stats = contextStats(shop);
     expect(stats.services).toBe(3);
     expect(stats.aggregates).toBe(4);
-    expect(stats.events).toBe(10);
+    expect(stats.events).toBe(11);
   });
 
   it("counts unresolved rpc calls and unresolved consumers together", () => {

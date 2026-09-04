@@ -76,6 +76,13 @@ Published on the bus as `cart.BasketItemAdded`.'
 
 Published on the bus as `cart.BasketItemRemoved`.'
         }
+        BasketMerged = event 'BasketMerged' {
+          description 'The visitor\'s basket has given its lines to the customer\'s and is done
+(cart.0005). `basketId` is the one that emptied; `intoBasketId` the one
+that now holds everything.
+
+Published on the bus as `cart.BasketMerged`.'
+        }
       }
     }
   }

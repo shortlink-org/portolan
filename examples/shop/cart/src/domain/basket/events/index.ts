@@ -3,6 +3,7 @@ import type { BasketCheckedOut } from "./basket-checked-out.ts";
 import type { BasketCreated } from "./basket-created.ts";
 import type { BasketItemAdded } from "./basket-item-added.ts";
 import type { BasketItemRemoved } from "./basket-item-removed.ts";
+import type { BasketMerged } from "./basket-merged.ts";
 
 /** Everything the basket publishes. */
-export type BasketEvent = BasketCreated | BasketItemAdded | BasketItemRemoved | BasketCheckedOut | BasketAbandoned;
+export type BasketEvent = BasketCreated | BasketItemAdded | BasketItemRemoved | BasketCheckedOut | BasketAbandoned | BasketMerged;

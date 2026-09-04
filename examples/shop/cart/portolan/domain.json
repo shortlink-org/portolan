@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-09-04T22:39:26+07:00",
-  "commit": "7576ca7",
+  "generatedAt": "2026-09-05T00:22:18+07:00",
+  "commit": "8149120",
   "contexts": [
     {
       "id": "shop",
@@ -35,14 +35,14 @@
               "id": "shop.cart.basket",
               "slug": "basket",
               "name": "Basket",
-              "readme": "# Basket\n\nThe one mutable thing between a customer arriving and an order existing: a\nvisitor's or a customer's lines, under one lock. It changes as items go in and\nout and stops changing the moment it is checked out; from then on the order is\nsomebody else's aggregate and the basket is a record of what was bought.\n\n## States\n\n`open` → `checked-out` | `abandoned` | `merged`. Only an open basket changes.\n\n## Invariants\n\n- One currency, set by the first line and never changed (cart.0002).\n- A line's price is what it was given when added, never recomputed (cart.0003).\n- One to 99 of a SKU per line; at most 50 distinct SKUs.\n- A version travels with every write; a write from a stale read is refused.",
+              "readme": "# Basket\n\nThe one mutable thing between a customer arriving and an order existing: a\nvisitor's or a customer's lines, under one lock. It changes as items go in and\nout and stops changing the moment it is checked out; from then on the order is\nsomebody else's aggregate and the basket is a record of what was bought.\n\n## States\n\n`open` → `checked-out` | `abandoned` | `merged`, and nothing leads back. The\ntable is `status.ts`, and `moveTo` is the only way through it; lines go in\nand out only while the basket is `open`. Each way out publishes: checkout\n`BasketCheckedOut`, the sweep `BasketAbandoned`, a merge `BasketMerged` from\nthe basket that emptied.\n\n## Invariants\n\n- One currency, set by the first line and never changed (cart.0002).\n- A line's price is what it was given when added, never recomputed (cart.0003).\n- One to 99 of a SKU per line; at most 50 distinct SKUs.\n- A version travels with every write; a write from a stale read is refused.",
               "root": "Basket",
               "entities": [
                 {
                   "id": "shop.cart.basket.basket",
                   "slug": "basket",
                   "name": "Basket",
-                  "doc": "Basket is the aggregate root: a visitor's or a customer's lines, their\ncurrency and their state, decided under one lock. Every method that changes\nit answers with the fact, and publishing is the caller's business.",
+                  "doc": "Basket is the aggregate root: a visitor's or a customer's lines, their\ncurrency and their state, decided under one lock. Every method that changes\nit answers with the fact, and publishing is the caller's business. Where\nit can go from where it is, `status.ts` says in one table; `moveTo` is the\nonly way through it.",
                   "fields": [
                     {
                       "name": "id",
@@ -402,6 +402,41 @@
                         },
                         {
                           "name": "sku",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "occurredAt",
+                          "type": "Date",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": []
+                },
+                {
+                  "id": "shop.cart.basket.BasketMerged",
+                  "slug": "basket-merged",
+                  "name": "BasketMerged",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "The visitor's basket has given its lines to the customer's and is done\n(cart.0005). `basketId` is the one that emptied; `intoBasketId` the one\nthat now holds everything.\n\nPublished on the bus as `cart.BasketMerged`.",
+                      "source": "examples/shop/cart/src/domain/basket/events/basket-merged.ts",
+                      "fields": [
+                        {
+                          "name": "basketId",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "intoBasketId",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "customerId",
                           "type": "string",
                           "doc": ""
                         },
@@ -793,6 +828,17 @@
           "kind": "call",
           "label": "save",
           "status": "declared",
+          "line": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:47"
+        },
+        {
+          "type": "step",
+          "id": "s8",
+          "from": "shop.cart",
+          "to": "bus",
+          "kind": "event",
+          "label": "BasketMerged",
+          "status": "declared",
+          "ref": "shop.cart.basket.BasketMerged",
           "line": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:47"
         }
       ]

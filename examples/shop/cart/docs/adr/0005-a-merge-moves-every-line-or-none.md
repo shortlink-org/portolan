@@ -30,6 +30,8 @@ they picked and not the rest, with nothing saying which.
 ### Consequences
 
 - Good: after a merge either both baskets are as they were, or one holds
-  everything and the other is marked `merged`.
+  everything and the other is marked `merged` and says so with
+  `BasketMerged`, naming the basket that now holds its lines - so a listener
+  following a visitor's basket knows where it went, not only that it stopped.
 - Bad: a customer with a basket in one currency and a visitor's basket in
   another has to choose; the storefront has to offer the choice.

@@ -13,7 +13,11 @@ somebody else's aggregate and the basket is a record of what was bought.
 
 ## States
 
-`open` → `checked-out` | `abandoned` | `merged`. Only an open basket changes.
+`open` → `checked-out` | `abandoned` | `merged`, and nothing leads back. The
+table is `status.ts`, and `moveTo` is the only way through it; lines go in
+and out only while the basket is `open`. Each way out publishes: checkout
+`BasketCheckedOut`, the sweep `BasketAbandoned`, a merge `BasketMerged` from
+the basket that emptied.
 
 ## Invariants
 
@@ -28,7 +32,9 @@ somebody else's aggregate and the basket is a record of what was bought.
 
 Basket is the aggregate root: a visitor's or a customer's lines, their
 currency and their state, decided under one lock. Every method that changes
-it answers with the fact, and publishing is the caller's business.
+it answers with the fact, and publishing is the caller's business. Where
+it can go from where it is, `status.ts` says in one table; `moveTo` is the
+only way through it.
 
 | Field | Type | Doc |
 | --- | --- | --- |
@@ -214,4 +220,29 @@ Source: `examples/shop/cart/src/domain/basket/events/basket-item-removed.ts`
 | --- | --- |
 | `basketId` | `string` |
 | `sku` | `string` |
+| `occurredAt` | `Date` |
+
+### BasketMerged
+
+`shop.cart.basket.BasketMerged`
+
+| Consumer | Status | Note |
+| --- | --- | --- |
+| [shop.cart](../README.md) | verified | Seen consuming it in telemetry/traces.jsonl. |
+
+#### v1 — current
+
+The visitor's basket has given its lines to the customer's and is done
+(cart.0005). `basketId` is the one that emptied; `intoBasketId` the one
+that now holds everything.
+
+Published on the bus as `cart.BasketMerged`.
+
+Source: `examples/shop/cart/src/domain/basket/events/basket-merged.ts`
+
+| Field | Type |
+| --- | --- |
+| `basketId` | `string` |
+| `intoBasketId` | `string` |
+| `customerId` | `string` |
 | `occurredAt` | `Date` |

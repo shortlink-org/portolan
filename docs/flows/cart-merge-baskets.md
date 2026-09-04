@@ -33,6 +33,7 @@ sequenceDiagram
     p1-)p4: BasketCreated
     p1-)p4: BasketItemAdded
     p1->>p3: save
+    p1-)p4: BasketMerged
 ```
 
 ## Steps
@@ -51,3 +52,5 @@ sequenceDiagram
    [shop.cart.basket.BasketItemAdded](../shop/cart/aggregates/basket.md) · `examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46` · Seen running in telemetry/traces.jsonl (1 trace).
 7. **shop.cart** → **cart-pg** — save
    status: declared · `examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:47`
+8. **shop.cart** → **bus** — BasketMerged
+   [shop.cart.basket.BasketMerged](../shop/cart/aggregates/basket.md) · `examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:47` · Seen running in telemetry/traces.jsonl (1 trace).

@@ -30,5 +30,7 @@ export function toWire(event: BasketEvent): Record<string, unknown> {
       };
     case "cart.BasketAbandoned":
       return { basketId: event.basketId, customerId: event.customerId ?? null, idleSince: event.idleSince, occurredAt: event.occurredAt };
+    case "cart.BasketMerged":
+      return { basketId: event.basketId, intoBasketId: event.intoBasketId, customerId: event.customerId, occurredAt: event.occurredAt };
   }
 }

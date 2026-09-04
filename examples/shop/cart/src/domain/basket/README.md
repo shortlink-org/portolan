@@ -7,7 +7,11 @@ somebody else's aggregate and the basket is a record of what was bought.
 
 ## States
 
-`open` → `checked-out` | `abandoned` | `merged`. Only an open basket changes.
+`open` → `checked-out` | `abandoned` | `merged`, and nothing leads back. The
+table is `status.ts`, and `moveTo` is the only way through it; lines go in
+and out only while the basket is `open`. Each way out publishes: checkout
+`BasketCheckedOut`, the sweep `BasketAbandoned`, a merge `BasketMerged` from
+the basket that emptied.
 
 ## Invariants
 

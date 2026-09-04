@@ -56,7 +56,7 @@ need Postgres are skipped.
 
 | Aggregate | Root | Commands | Queries | Events |
 | --- | --- | --- | --- | --- |
-| [Basket](aggregates/basket.md) | `Basket` | 6 commands | 1 query | 5 events |
+| [Basket](aggregates/basket.md) | `Basket` | 6 commands | 1 query | 6 events |
 
 ## Provides
 
@@ -164,6 +164,7 @@ need Postgres are skipped.
 | [BasketCreated](aggregates/basket.md) | v1 | [shop.cart](README.md) |
 | [BasketItemAdded](aggregates/basket.md) | v1 | [shop.cart](README.md) |
 | [BasketItemRemoved](aggregates/basket.md) | v1 | [shop.cart](README.md) |
+| [BasketMerged](aggregates/basket.md) | v1 | [shop.cart](README.md) |
 
 ## Stores
 

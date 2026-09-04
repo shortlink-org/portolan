@@ -77,7 +77,7 @@ describe("merge_baskets", () => {
     expect(view.basketId).toBe("c1");
     expect(view.items.map((i) => i.sku)).toEqual(["a", "b"]);
     expect(visitor.status).toBe("merged");
-    expect(repo.published.map((e) => e.name)).toEqual(["cart.BasketCreated", "cart.BasketItemAdded", "cart.BasketItemAdded"]);
+    expect(repo.published.map((e) => e.name)).toEqual(["cart.BasketCreated", "cart.BasketItemAdded", "cart.BasketItemAdded", "cart.BasketMerged"]);
   });
 
   it("moves nothing when one line would break a rule", async () => {

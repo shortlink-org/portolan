@@ -42,9 +42,9 @@ export class UseCase {
     for (const line of from.lines()) {
       events.push(into.addItem(line, now));
     }
-    from.markMerged(now);
+    const merged = from.mergeInto(into, now);
     await this.repo.save(into, ...events);
-    await this.repo.save(from);
+    await this.repo.save(from, merged);
     return viewOf(into);
   }
 }

@@ -1442,6 +1442,10 @@ views {
       color declared  line dashed  head none
       notes 'examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:47'
     }
+    shop.cart -> bus 'BasketMerged' {
+      color verified  line solid  head onormal
+      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:47'
+    }
   }
 
   dynamic view flow_cart_merge_baskets_cross {
@@ -1461,6 +1465,10 @@ views {
     shop.cart -> bus 'BasketItemAdded' {
       color verified  line solid  head onormal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46'
+    }
+    shop.cart -> bus 'BasketMerged' {
+      color verified  line solid  head onormal
+      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:47'
     }
   }
 
