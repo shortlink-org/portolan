@@ -51,11 +51,11 @@ export const SHORTCUT_GROUPS: { group: string; items: Shortcut[] }[] = [
     ],
   },
   {
-    group: "Lists and tables",
+    group: "Lists, tables and the steps of a flow",
     items: [
-      { keys: ["j"], what: "next row" },
-      { keys: ["k"], what: "previous row" },
-      { keys: ["⏎"], what: "open the row" },
+      { keys: ["j"], what: "next row or step" },
+      { keys: ["k"], what: "previous row or step" },
+      { keys: ["⏎"], what: "open the row, or select the step" },
     ],
   },
   {

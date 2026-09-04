@@ -100,26 +100,27 @@ export function ModulePage() {
             </a>
           ) : undefined
         }
-      >
-        <div className="mono mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-muted">
-          <span>
-            {counts.packages} {plural(counts.packages, "package")}
-          </span>
-          <span>
-            {counts.methods} {plural(counts.methods, "method")}
-          </span>
-          {module.commit ? (
-            <Ident value={module.commit.slice(0, 12)} />
-          ) : (
-            /* Unpinned means two builds a day apart can describe two different
-               modules under one name. Worth saying on the page, not only in a
-               diagnostic nobody reads twice. */
-            <span title="tracked by label rather than pinned to a commit">
-              not pinned
+        meta={
+          <div className="mono mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-muted">
+            <span>
+              {counts.packages} {plural(counts.packages, "package")}
             </span>
-          )}
-        </div>
-
+            <span>
+              {counts.methods} {plural(counts.methods, "method")}
+            </span>
+            {module.commit ? (
+              <Ident value={module.commit.slice(0, 12)} />
+            ) : (
+              /* Unpinned means two builds a day apart can describe two different
+                 modules under one name. Worth saying on the page, not only in a
+                 diagnostic nobody reads twice. */
+              <span title="tracked by label rather than pinned to a commit">
+                not pinned
+              </span>
+            )}
+          </div>
+        }
+      >
         {/* The same underline the service page uses: these tabs switch the page
             under them rather than filtering a list beside it. */}
         <TabList className="mt-4 flex gap-0">

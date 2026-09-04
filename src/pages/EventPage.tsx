@@ -226,7 +226,17 @@ export function EventPage() {
   return (
     <div className="h-full overflow-y-auto">
       <PageHeader
-        kind={`event · ${aggregate.id}`}
+        kind={
+          <>
+            event ·{" "}
+            <Link
+              to={paths.aggregate(context.id, service.slug, aggregate.slug)}
+              className="rounded-control hover:text-ink hover:underline"
+            >
+              {aggregate.id}
+            </Link>
+          </>
+        }
         name={event.name}
         id={event.id}
         contextId={context.id}

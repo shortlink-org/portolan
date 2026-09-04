@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { ctxStyle } from "../lib/context-color";
 import { PinButton } from "../app/pins";
@@ -23,6 +23,12 @@ import { Ident } from "./Ident";
  * from landing behind it. The height is written rather than assumed because a
  * service header carries a meta row and a tab list that an aggregate's does
  * not, and both wrap at narrow widths.
+ *
+ * `meta` is the row that folds away once the page is scrolled: repo, path,
+ * counts - read once on arrival, and a strip's worth of viewport for the rest
+ * of the visit. The name and the tabs stay. It folds only when the page has
+ * room to stay scrolled past the full header afterwards, or a short page would
+ * fold, lose the scroll it folded on, and unfold again.
  */
 const HEIGHT_VAR = "--page-header-h";
 
@@ -33,18 +39,50 @@ export function PageHeader({
   contextId,
   pin,
   right,
+  meta,
   children,
 }: {
-  kind: string;
+  /** The kind of thing, and what it belongs to - the latter usually a link. */
+  kind: ReactNode;
   name: string;
   id?: string;
   contextId?: string | null;
   /** What pinning this page pins. Omitted on pages that are not pinnable. */
   pin?: { kind: PinKind; id: string };
   right?: ReactNode;
+  /** The row under the name that folds away once the page is scrolled. */
+  meta?: ReactNode;
   children?: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const metaRef = useRef<HTMLDivElement>(null);
+  const [compact, setCompact] = useState(false);
+  const foldable = meta != null;
+
+  useEffect(() => {
+    const el = ref.current;
+    const host = el?.parentElement;
+    if (!el || !host || !foldable) return;
+    // The header's full height, remembered while it is unfolded: the threshold
+    // must not move with the fold it triggers, or it would trigger twice.
+    let full = el.offsetHeight;
+    let folded = false;
+    const onScroll = () => {
+      if (!folded) full = el.offsetHeight;
+      const metaH = metaRef.current?.offsetHeight ?? 0;
+      const reach = host.scrollHeight - host.clientHeight;
+      const next = folded
+        ? host.scrollTop > full
+        : host.scrollTop > full && reach - metaH > full;
+      if (next !== folded) {
+        folded = next;
+        setCompact(next);
+      }
+    };
+    onScroll();
+    host.addEventListener("scroll", onScroll, { passive: true });
+    return () => host.removeEventListener("scroll", onScroll);
+  }, [foldable]);
 
   useLayoutEffect(() => {
     const el = ref.current;
@@ -65,6 +103,7 @@ export function PageHeader({
     <div
       ref={ref}
       className="page-header border-b border-line px-gutter py-5"
+      data-compact={compact ? "" : undefined}
     >
       <div aria-hidden className="hero-wash" style={ctxStyle(contextId)} />
       <div className="label">{kind}</div>
@@ -84,6 +123,13 @@ export function PageHeader({
           </div>
         ) : null}
       </div>
+      {foldable ? (
+        <div className="page-header-meta">
+          <div ref={metaRef} className="min-h-0 overflow-hidden">
+            {meta}
+          </div>
+        </div>
+      ) : null}
       {children}
     </div>
   );
@@ -103,7 +149,9 @@ export function SectionTitle({
   anchor?: string;
 }) {
   return (
-    <div className={`mb-3 flex items-center gap-2 ${anchor ? "anchored" : ""}`}>
+    <div
+      className={`section-head mb-3 flex items-center gap-2 ${anchor ? "anchored" : ""}`}
+    >
       <h2 className="section-title">{children}</h2>
       {anchor ? (
         <AnchorLink

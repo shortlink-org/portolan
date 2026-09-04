@@ -281,7 +281,17 @@ export function AggregatePage() {
   return (
     <div className="h-full overflow-y-auto">
       <PageHeader
-        kind={`aggregate · ${service.id}`}
+        kind={
+          <>
+            aggregate ·{" "}
+            <Link
+              to={paths.service(context.id, service.slug)}
+              className="rounded-control hover:text-ink hover:underline"
+            >
+              {service.id}
+            </Link>
+          </>
+        }
         name={aggregate.name}
         id={aggregate.id}
         contextId={context.id}

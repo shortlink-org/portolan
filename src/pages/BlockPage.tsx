@@ -127,7 +127,17 @@ export function BlockPage({ kind }: { kind: BlockKind }) {
   return (
     <div className="h-full overflow-y-auto">
       <PageHeader
-        kind={`${KIND_LABEL[kind]} · ${aggregate.id}`}
+        kind={
+          <>
+            {KIND_LABEL[kind]} ·{" "}
+            <Link
+              to={paths.aggregate(context.id, service.slug, aggregate.slug)}
+              className="rounded-control hover:text-ink hover:underline"
+            >
+              {aggregate.id}
+            </Link>
+          </>
+        }
         name={block.name}
         id={block.id}
         right={

@@ -123,39 +123,41 @@ export function ServicePage() {
         contextId={context.id}
         pin={{ kind: "service", id: service.id }}
         right={<ContextPill id={context.id} name={context.name} />}
-      >
-        <div className="mono mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-muted">
-          <Ident value={service.repo}>{middleTruncate(service.repo, 32)}</Ident>
-          <Ident value={service.path}>{middleTruncate(service.path, 32)}</Ident>
-          {tree ? (
+        meta={
+          <div className="mono mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-muted">
+            <Ident value={service.repo}>{middleTruncate(service.repo, 32)}</Ident>
+            <Ident value={service.path}>{middleTruncate(service.path, 32)}</Ident>
+            {tree ? (
+              <a
+                href={tree}
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-control text-accent hover:underline"
+                title="Open the service's directory on the forge, at the built commit"
+              >
+                open ↗
+              </a>
+            ) : null}
+            <span aria-hidden className="h-4 w-px bg-line-strong" />
+            {/* Both counts land in the section that lists what they counted;
+                the tabs above do the same job for the other four. */}
             <a
-              href={tree}
-              target="_blank"
-              rel="noreferrer"
-              className="rounded-control text-accent hover:underline"
-              title="Open the service's directory on the forge, at the built commit"
+              href={`#${SERVICE_ANCHOR.aggregates}`}
+              className="rounded-control hover:text-ink"
             >
-              open ↗
+              <span className="tnum">{service.aggregates.length}</span>{" "}
+              {plural(service.aggregates.length, "aggregate")}
             </a>
-          ) : null}
-          <span aria-hidden className="h-4 w-px bg-line-strong" />
-          {/* Both counts land in the section that lists what they counted;
-              the tabs above do the same job for the other four. */}
-          <a
-            href={`#${SERVICE_ANCHOR.aggregates}`}
-            className="rounded-control hover:text-ink"
-          >
-            <span className="tnum">{service.aggregates.length}</span>{" "}
-            {plural(service.aggregates.length, "aggregate")}
-          </a>
-          <a
-            href={`#${SERVICE_ANCHOR.events}`}
-            className="rounded-control hover:text-ink"
-          >
-            <span className="tnum">{events.length}</span>{" "}
-            {plural(events.length, "event")}
-          </a>
-        </div>
+            <a
+              href={`#${SERVICE_ANCHOR.events}`}
+              className="rounded-control hover:text-ink"
+            >
+              <span className="tnum">{events.length}</span>{" "}
+              {plural(events.length, "event")}
+            </a>
+          </div>
+        }
+      >
 
         {/* Tabs keep the underline rather than becoming a segmented box: they
             switch the page under them, they do not filter a list beside them.

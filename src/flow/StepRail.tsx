@@ -206,7 +206,12 @@ function StepRow({
     >
       <button
         type="button"
+        data-nav-item
         onClick={() => onSelect(step.id)}
+        /* Focus lights the canvas arrow the way hover does: j and k walk the
+           rail, and the reader walking it should see where each step goes. */
+        onFocus={() => onHover(step.id)}
+        onBlur={() => onHover(null)}
         /* Playback dims and undims at the narrative tier - the reader is meant to
            watch the sequence recede, not to be blinked at. The accent edge is
            always 2px and merely changes colour, so lighting a step never nudges
@@ -334,7 +339,10 @@ export function StepRail({
   }, [activeId]);
 
   return (
-    <div ref={listRef}>
+    /* `data-nav-list`: j / k walk the steps and ⏎ selects the one under the
+       cursor, the same keys that walk every table. Chapter and frame rows are
+       not items - a chapter folds, it is not somewhere to stand. */
+    <div ref={listRef} data-nav-list>
       {groups.map((group) => {
         const { chapter } = group;
         const rows = railRows(group);
