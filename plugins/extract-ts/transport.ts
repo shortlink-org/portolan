@@ -2,11 +2,11 @@
 // operationIds name the handlers, and a handler's body names the use cases
 // it runs, in order.
 
-import type * as TSNS from "ts-api";
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { readSpec, type Spec } from "./openapi.ts";
-import { readSource, ts, type ClassInfo, type Source, at } from "./source.ts";
+import { readSource, type ClassInfo, type Source, at } from "./source.ts";
+import { isCall, isMember, memberName, thisMember, walk, type Node } from "./ast.ts";
 import { useCaseKeyOf } from "./operations.ts";
 import type { Diagnostics } from "./domain.ts";
 
@@ -47,7 +47,7 @@ export function readTransport(httpDir: string, rel: (abs: string) => string, b: 
           found.add(method);
           endpoints.push({
             id: method,
-            line: at(src.sf, m.node, rel),
+            line: at(src, m.node, rel),
             source: rel(src.path),
             useCases: useCasesRun(m.node, ports),
           });
@@ -76,18 +76,13 @@ export function useCasePorts(src: Source, cls: ClassInfo): Map<string, string> {
 }
 
 /** `this.<port>.handle(...)` calls, in source order, as use case keys. */
-function useCasesRun(node: TSNS.Node, ports: Map<string, string>): string[] {
+function useCasesRun(node: Node, ports: Map<string, string>): string[] {
   const out: string[] = [];
-  const visit = (n: TSNS.Node): void => {
-    if (ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression) && n.expression.name.text === "handle") {
-      const target = n.expression.expression;
-      if (ts.isPropertyAccessExpression(target) && target.expression.kind === ts.SyntaxKind.ThisKeyword) {
-        const key = ports.get(target.name.text);
-        if (key) out.push(key);
-      }
-    }
-    ts.forEachChild(n, visit);
-  };
-  visit(node);
+  walk(node, (n) => {
+    if (!isCall(n) || !isMember(n.callee) || memberName(n.callee) !== "handle") return;
+    const port = thisMember(n.callee.object);
+    const key = port === undefined ? undefined : ports.get(port);
+    if (key) out.push(key);
+  });
   return out;
 }

@@ -2,12 +2,12 @@
 // is an operation of the aggregate its directory is named after, and the
 // constructor of its UseCase is the list of ports it reaches through.
 
-import type * as TSNS from "ts-api";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, join } from "node:path";
 import type { Operation } from "../../src/catalog.ts";
 import { camel } from "./ids.ts";
-import { readSource, ts, type ClassInfo, type Source } from "./source.ts";
+import { readSource, type ClassInfo, type Source } from "./source.ts";
+import { isCall, isMember, memberName, thisMember, walk } from "./ast.ts";
 import type { Diagnostics } from "./domain.ts";
 
 /** A use case: where it is, what it is called, and what it holds. */
@@ -72,19 +72,14 @@ function docOf(uc: UseCase): string {
 function isCommand(uc: UseCase): boolean {
   let command = false;
   const ports = new Set(uc.cls.params.map((p) => p.name));
-  const visit = (node: TSNS.Node): void => {
-    if (command) return;
-    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)) {
-      const callee = node.expression;
-      const method = callee.name.text.toLowerCase();
-      if (WRITES.has(method) && ts.isPropertyAccessExpression(callee.expression) && callee.expression.expression.kind === ts.SyntaxKind.ThisKeyword && ports.has(callee.expression.name.text)) {
-        command = true;
-        return;
-      }
-    }
-    ts.forEachChild(node, visit);
-  };
-  for (const m of uc.cls.methods.values()) visit(m.node);
+  for (const m of uc.cls.methods.values()) {
+    walk(m.node, (node) => {
+      if (command || !isCall(node) || !isMember(node.callee)) return;
+      const method = memberName(node.callee)?.toLowerCase() ?? "";
+      const port = thisMember(node.callee.object);
+      if (WRITES.has(method) && port !== undefined && ports.has(port)) command = true;
+    });
+  }
   return command;
 }
 

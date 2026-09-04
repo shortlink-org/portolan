@@ -2,14 +2,5 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended"
-  ],
-  "packageRules": [
-    {
-      "description": "ts-api is typescript@5 under an alias, on purpose: extract-ts parses with TypeScript's JS API, which typescript@7 (the native port) does not ship. Keep it on 5.x until the plugin is rewritten against whatever replaces it.",
-      "matchPackageNames": [
-        "ts-api"
-      ],
-      "allowedVersions": "<6"
-    }
   ]
 }

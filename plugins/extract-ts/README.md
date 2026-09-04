@@ -7,13 +7,15 @@ tree, and it reads the tree by its layout. Nothing is annotated for the
 catalog; the layout is the claim.
 
 Written in TypeScript and run as a process plugin, `node plugins/extract-ts/main.ts`,
-because the right parser for TypeScript is the TypeScript compiler, and the
-catalog's own types in `src/catalog.ts` are the fragment's types. The parser
-is TypeScript 5's, installed as `ts-api` beside the project's TypeScript 7,
-which is a native compiler with no syntax tree to offer; there is no type
-checker, everything is resolved by name and by relative import, which is all
-a layout that is the claim needs. It is the only plugin so far that is not Go,
-which is the point of it having the same protocol.
+because the catalog's own types in `src/catalog.ts` are the fragment's types.
+The parser is oxc-parser: native, with no TypeScript inside it, handing back
+an ESTree with the TypeScript nodes typescript-eslint would give. The
+project's TypeScript is the 7 series, a compiler with no syntax tree to offer,
+and holding a second copy of 5 beside it for the parser alone was a workaround
+this replaces. The tree is read through `ast.ts`, a hand-written, minimal set
+of node shapes and predicates, so the reading does not move when the parser's
+own typings do. There is no type checker: everything is resolved by name and
+by relative import, which is all a layout that is the claim needs.
 
 ## The layout it reads
 

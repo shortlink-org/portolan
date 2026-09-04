@@ -5,10 +5,10 @@
 // the port and whose body says what it returns, or as an Inversify
 // container's `bind<Port>(token).to(Impl)` - and both are read here.
 
-import type * as TSNS from "ts-api";
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { readSource, ts, type Source } from "./source.ts";
+import { readSource, text, type Source } from "./source.ts";
+import { isBlock, isCall, isIdent, isMember, isNew, isReturn, isTypeRef, keyName, memberName, walk, type BlockStatement, type CallExpression, type FunctionNode, type Node } from "./ast.ts";
 import { useCaseKeyOf } from "./operations.ts";
 
 export interface Binding {
@@ -71,33 +71,32 @@ export function readBindings(diDir: string): Map<string, Binding[]> {
  */
 function containerBindings(src: Source): Binding[] {
   const out: Binding[] = [];
-  const visit = (node: TSNS.Node): void => {
-    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && (node.expression.name.text === "to" || node.expression.name.text === "toConstantValue")) {
-      const arg = node.arguments[0];
-      const target = arg && ts.isNewExpression(arg) ? arg.expression : arg;
-      const bindCall = bindOf(node.expression.expression);
-      if (bindCall && target && ts.isIdentifier(target)) {
-        const binding = containerBinding(src, bindCall, target.text);
-        if (binding) out.push(binding);
-      }
+  walk(src.parsed.program, (node) => {
+    if (!isCall(node) || !isMember(node.callee)) return;
+    const method = memberName(node.callee);
+    if (method !== "to" && method !== "toConstantValue") return;
+    const arg = node.arguments[0];
+    const target = arg && isNew(arg) ? arg.callee : arg;
+    const bindCall = bindOf(node.callee.object);
+    if (bindCall && isIdent(target)) {
+      const binding = containerBinding(src, bindCall, target.name);
+      if (binding) out.push(binding);
     }
-    ts.forEachChild(node, visit);
-  };
-  visit(src.sf);
+  });
   return out;
 }
 
 /** Walks back along a chain - `.inSingletonScope()`, `.whenTargetNamed(...)` - to the `bind(...)` call. */
-function bindOf(expr: TSNS.Expression): TSNS.CallExpression | undefined {
-  let e: TSNS.Expression = expr;
+function bindOf(expr: Node): CallExpression | undefined {
+  let e: Node = expr;
   for (let i = 0; i < 8; i++) {
-    if (ts.isCallExpression(e) && ts.isPropertyAccessExpression(e.expression)) {
-      if (e.expression.name.text === "bind") return e;
-      e = e.expression.expression;
+    if (isCall(e) && isMember(e.callee)) {
+      if (memberName(e.callee) === "bind") return e;
+      e = e.callee.object;
       continue;
     }
-    if (ts.isPropertyAccessExpression(e)) {
-      e = e.expression;
+    if (isMember(e)) {
+      e = e.object;
       continue;
     }
     return undefined;
@@ -105,15 +104,15 @@ function bindOf(expr: TSNS.Expression): TSNS.CallExpression | undefined {
   return undefined;
 }
 
-function containerBinding(src: Source, bind: TSNS.CallExpression, implName: string): Binding | undefined {
+function containerBinding(src: Source, bind: CallExpression, implName: string): Binding | undefined {
   // The port: the type argument of bind<Port>(...), or the token's last name.
   let portName: string | undefined;
-  const typeArg = bind.typeArguments?.[0];
-  if (typeArg && ts.isTypeReferenceNode(typeArg) && ts.isIdentifier(typeArg.typeName)) portName = typeArg.typeName.text;
+  const typeArg = bind.typeArguments?.params[0];
+  if (isTypeRef(typeArg) && isIdent(typeArg.typeName)) portName = typeArg.typeName.name;
   if (!portName) {
     const token = bind.arguments[0];
-    if (token && ts.isPropertyAccessExpression(token)) portName = token.name.text;
-    else if (token && ts.isIdentifier(token)) portName = token.text;
+    if (isMember(token)) portName = memberName(token);
+    else if (isIdent(token)) portName = token.name;
   }
   if (!portName) return undefined;
   const portImport = src.imports.find((i) => i.local === portName);
@@ -133,9 +132,10 @@ function containerBinding(src: Source, bind: TSNS.CallExpression, implName: stri
   return undefined;
 }
 
-function bindingOf(src: Source, fn: TSNS.FunctionDeclaration): Binding | undefined {
-  if (!fn.type || !fn.body) return undefined;
-  const typeName = ts.isTypeReferenceNode(fn.type) && ts.isIdentifier(fn.type.typeName) ? fn.type.typeName.text : undefined;
+function bindingOf(src: Source, fn: FunctionNode): Binding | undefined {
+  if (!fn.returnType || !fn.body) return undefined;
+  const returned = fn.returnType.typeAnnotation;
+  const typeName = isTypeRef(returned) && isIdent(returned.typeName) ? returned.typeName.name : undefined;
   if (!typeName) return undefined;
   const portImport = src.imports.find((i) => i.local === typeName);
   if (!portImport?.file) return undefined;
@@ -144,8 +144,9 @@ function bindingOf(src: Source, fn: TSNS.FunctionDeclaration): Binding | undefin
   const port = `${key}.${portImport.imported}`;
 
   // A parameter that is another use case binds the port to it.
-  for (const p of fn.parameters) {
-    const t = p.type && ts.isTypeReferenceNode(p.type) && ts.isIdentifier(p.type.typeName) ? p.type.typeName.text : undefined;
+  for (const p of fn.params) {
+    const ann = isIdent(p) ? p.typeAnnotation?.typeAnnotation : undefined;
+    const t = isTypeRef(ann) && isIdent(ann.typeName) ? ann.typeName.name : undefined;
     const imp = t ? src.imports.find((i) => i.local === t) : undefined;
     if (imp?.file && imp.imported === "UseCase") {
       const target = useCaseKeyOf(imp.file);
@@ -154,18 +155,18 @@ function bindingOf(src: Source, fn: TSNS.FunctionDeclaration): Binding | undefin
   }
 
   // Otherwise the body says what it builds: `return new Adapter(...)`.
-  const returned = lastReturn(fn.body);
-  if (returned && ts.isNewExpression(returned) && ts.isIdentifier(returned.expression)) {
-    const imp = src.imports.find((i) => i.local === returned.expression.getText());
+  const built = lastReturn(fn.body);
+  if (isNew(built) && isIdent(built.callee)) {
+    const name = text(src, built.callee);
+    const imp = src.imports.find((i) => i.local === name);
     if (imp?.file) return { port, adapter: { file: imp.file, cls: imp.imported }, source: src.path };
-    const local = src.classes.find((c) => c.name === returned.expression.getText());
+    const local = src.classes.find((c) => c.name === name);
     if (local) return { port, adapter: { file: src.path, cls: local.name }, source: src.path };
   }
   return undefined;
 }
 
-function lastReturn(body: TSNS.Block): TSNS.Expression | undefined {
-  const last = body.statements[body.statements.length - 1];
-  if (last && ts.isReturnStatement(last)) return last.expression;
-  return undefined;
+function lastReturn(body: BlockStatement): Node | undefined {
+  const last = body.body[body.body.length - 1];
+  return isReturn(last) ? (last.argument ?? undefined) : undefined;
 }

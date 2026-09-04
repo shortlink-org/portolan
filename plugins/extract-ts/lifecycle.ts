@@ -12,11 +12,11 @@
 // assigned anywhere else is reported, and an edge in the table no method
 // makes is reported, because the table is a claim and the claim should be
 // kept.
-import type * as TSNS from "ts-api";
 import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import type { Lifecycle, Transition } from "../../src/catalog.ts";
-import { readSource, ts, at, bareType, type ClassInfo } from "./source.ts";
+import { readSource, at, bareType, type ClassInfo } from "./source.ts";
+import { isArray, isAssign, isCall, isIdent, isMember, isObject, isProp, isString, isVarDecl, keyName, memberName, thisMember, unwrap, walk, type Node, type ObjectExpression } from "./ast.ts";
 import type { Diagnostics } from "./domain.ts";
 
 /** The exported constant the table is looked for under. */
@@ -38,21 +38,21 @@ export function readLifecycle(dir: string, root: ClassInfo, rootFile: string, ev
   const transitions: Transition[] = [];
   const made = new Set<string>();
   for (const [name, m] of root.methods) {
-    if (name === mover || m.isStatic || !m.node.body) continue;
+    if (name === mover || m.isStatic || !m.body) continue;
     const returned = bareType(m.returns);
     const emits = events.get(returned);
-    visit(m.node.body, (node) => {
+    walk(m.body, (node) => {
       // this.moveTo("checked-out", …): the edges into that state, made here.
       const to = moveCall(node, mover);
       if (to !== undefined) {
         if (!table.has(to)) {
-          b.warn(id, `${at(rootSrc.sf, node, rel)}: ${name} moves to "${to}", which is not a state in ${TABLE}`);
+          b.warn(id, `${at(rootSrc, node, rel)}: ${name} moves to "${to}", which is not a state in ${TABLE}`);
           return;
         }
         for (const [from, targets] of table) {
           if (!targets.includes(to)) continue;
           made.add(`${from}→${to}`);
-          const t: Transition = { from, to, on: name, source: at(rootSrc.sf, node, rel) };
+          const t: Transition = { from, to, on: name, source: at(rootSrc, node, rel) };
           if (emits) t.emits = emits;
           transitions.push(t);
         }
@@ -60,7 +60,7 @@ export function readLifecycle(dir: string, root: ClassInfo, rootFile: string, ev
       }
       // this.status = …, anywhere but the mover: a move the table cannot see.
       if (assignsStatus(node)) {
-        b.warn(id, `${at(rootSrc.sf, node, rel)}: ${name} assigns this.status directly; a move outside ${mover} is not in the lifecycle`);
+        b.warn(id, `${at(rootSrc, node, rel)}: ${name} assigns this.status directly; a move outside ${mover} is not in the lifecycle`);
       }
     });
   }
@@ -83,29 +83,30 @@ function readTable(dir: string): Map<string, string[]> | undefined {
     if (!name.endsWith(".ts") || name.endsWith(".test.ts")) continue;
     const src = readSource(join(dir, name));
     if (!src) continue;
-    for (const stmt of src.sf.statements) {
-      if (!ts.isVariableStatement(stmt)) continue;
-      for (const decl of stmt.declarationList.declarations) {
-        if (!ts.isIdentifier(decl.name) || decl.name.text !== TABLE || !decl.initializer) continue;
-        const init = unwrap(decl.initializer);
-        if (ts.isObjectLiteralExpression(init)) return tableOf(init);
+    for (const stmt of src.parsed.program.body) {
+      const decl = stmt.type === "ExportNamedDeclaration" ? (stmt as { declaration: Node | null }).declaration : stmt;
+      if (!isVarDecl(decl)) continue;
+      for (const d of decl.declarations) {
+        if (!isIdent(d.id) || d.id.name !== TABLE || !d.init) continue;
+        const init = unwrap(d.init);
+        if (isObject(init)) return tableOf(init);
       }
     }
   }
   return undefined;
 }
 
-function tableOf(obj: TSNS.ObjectLiteralExpression): Map<string, string[]> | undefined {
+function tableOf(obj: ObjectExpression): Map<string, string[]> | undefined {
   const out = new Map<string, string[]>();
   for (const prop of obj.properties) {
-    if (!ts.isPropertyAssignment(prop)) return undefined;
-    const key = ts.isIdentifier(prop.name) || ts.isStringLiteral(prop.name) ? prop.name.text : undefined;
-    const value = unwrap(prop.initializer);
-    if (key === undefined || !ts.isArrayLiteralExpression(value)) return undefined;
+    if (!isProp(prop) || prop.computed) return undefined;
+    const key = keyName(prop.key);
+    const value = unwrap(prop.value);
+    if (key === undefined || !isArray(value)) return undefined;
     const targets: string[] = [];
     for (const el of value.elements) {
-      if (!ts.isStringLiteral(el)) return undefined;
-      targets.push(el.text);
+      if (!isString(el)) return undefined;
+      targets.push(el.value);
     }
     out.set(key, targets);
   }
@@ -115,9 +116,9 @@ function tableOf(obj: TSNS.ObjectLiteralExpression): Map<string, string[]> | und
 /** The method whose body assigns `this.status`: the one way the status changes. */
 function moverOf(root: ClassInfo): string | undefined {
   for (const [name, m] of root.methods) {
-    if (!m.node.body) continue;
+    if (!m.body) continue;
     let assigns = false;
-    visit(m.node.body, (node) => {
+    walk(m.body, (node) => {
       if (assignsStatus(node)) assigns = true;
     });
     if (assigns) return name;
@@ -125,32 +126,13 @@ function moverOf(root: ClassInfo): string | undefined {
   return undefined;
 }
 
-function assignsStatus(node: TSNS.Node): boolean {
-  return (
-    ts.isBinaryExpression(node) &&
-    node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
-    ts.isPropertyAccessExpression(node.left) &&
-    node.left.expression.kind === ts.SyntaxKind.ThisKeyword &&
-    node.left.name.text === "status"
-  );
+function assignsStatus(node: Node): boolean {
+  return isAssign(node) && node.operator === "=" && thisMember(node.left) === "status";
 }
 
 /** `this.<mover>("state", …)` → "state". */
-function moveCall(node: TSNS.Node, mover: string): string | undefined {
-  if (!ts.isCallExpression(node) || !ts.isPropertyAccessExpression(node.expression)) return undefined;
-  const callee = node.expression;
-  if (callee.expression.kind !== ts.SyntaxKind.ThisKeyword || callee.name.text !== mover) return undefined;
+function moveCall(node: Node, mover: string): string | undefined {
+  if (!isCall(node) || !isMember(node.callee) || thisMember(node.callee) !== mover) return undefined;
   const first = node.arguments[0];
-  return first && ts.isStringLiteral(first) ? first.text : undefined;
-}
-
-function unwrap(e: TSNS.Expression): TSNS.Expression {
-  let x = e;
-  while (ts.isAsExpression(x) || ts.isSatisfiesExpression(x) || ts.isParenthesizedExpression(x) || ts.isTypeAssertionExpression(x)) x = x.expression;
-  return x;
-}
-
-function visit(node: TSNS.Node, f: (n: TSNS.Node) => void): void {
-  f(node);
-  ts.forEachChild(node, (child) => visit(child, f));
+  return isString(first) ? first.value : undefined;
 }

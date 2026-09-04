@@ -14,12 +14,12 @@
 // Nothing is observed running, so every step is declared; a call whose peer
 // the manifest does not name is unresolved.
 
-import type * as TSNS from "ts-api";
 import { dirname, join } from "node:path";
 import type { Alt, AltBranch, Flow, FlowNode, Participant, RpcCall, Status, Step } from "../../src/catalog.ts";
 import { adapterCalls, callsIn, type RpcHop } from "./clients.ts";
 import { camel, eventID, slug } from "./ids.ts";
-import { readSource, ts, at, bareType, type ClassInfo, type Source } from "./source.ts";
+import { readSource, at, bareType, text, type ClassInfo, type Source } from "./source.ts";
+import { isArrayPattern, isBinary, isBlock, isCall, isForEach, isFor, isFunctionType, isIdent, isIf, isMember, isMethodSig, isPropertySig, isReturn, isSpread, isString, isSwitch, isThis, isThrow, isTry, isVarDecl, isWhile, isAssign, keyName, memberName, paramIdent, thisMember, typeText, unwrap, walk, type CallExpression, type ForEachStatement, type IfStatement, type Node, type SwitchStatement } from "./ast.ts";
 import type { UseCase } from "./operations.ts";
 import type { Binding } from "./wiring.ts";
 import type { AggregateRead, Diagnostics } from "./domain.ts";
@@ -199,7 +199,7 @@ export class FlowReader {
       if (!src) continue;
       for (const cls of src.classes) {
         const handle = cls.methods.get("handle");
-        if (!cls.exported || !handle?.node.body) continue;
+        if (!cls.exported || !handle?.body) continue;
         const trigger = this.assertedEvent(src, handle.node);
         if (!trigger) {
           this.b.warn(cls.name, `${this.rel(src.path)}: ${cls.name}.handle tests for no event; the policy is not paired with what triggers it`);
@@ -208,7 +208,7 @@ export class FlowReader {
         const d = new Draft();
         d.lane(this.busLane());
         d.lane(this.serviceLane());
-        const line = at(src.sf, handle.node, this.rel);
+        const line = at(src, handle.node, this.rel);
         if (trigger.foreign) {
           this.b.warn(cls.name, `${this.rel(src.path)}: ${cls.name}.handle reacts to ${trigger.name} from ${trigger.foreign}, an event this repository does not declare and the manifest's \`events\` does not place; the step is unresolved`);
           d.add({ from: LANE_BUS, to: this.opts.svcID, kind: "event", label: trigger.name, status: "unresolved", note: `Reacts to \`${trigger.name}\` from \`${trigger.foreign}\`, which is not an event this repository declares.`, line });
@@ -216,7 +216,7 @@ export class FlowReader {
           d.add({ from: LANE_BUS, to: this.opts.svcID, kind: "event", label: trigger.name, ref: trigger.id, line });
           this.referenced.add(trigger.id!);
         }
-        this.walkBody(d, { src, key: `policy/${cls.name}`, cls, ports: new Map(cls.params.map((p) => [p.name, p.type])), vars: new Map([[handle.node.parameters[0]?.name.getText() ?? "event", { name: trigger.name, event: trigger.id }]]) }, handle.node, 0);
+        this.walkBody(d, { src, key: `policy/${cls.name}`, cls, ports: new Map(cls.params.map((p) => [p.name, p.type])), vars: new Map([[paramIdent(handle.params[0]!)?.name ?? "event", { name: trigger.name, event: trigger.id }]]) }, handle.body, 0);
         const id = `${this.opts.service}-${slug(cls.name)}`;
         out.push({ id: `flow.${id}`, slug: id, name: sentence(slug(cls.name)), summary: cls.doc.split(/\n\s*\n/)[0]?.replace(/\s+/g, " ") ?? "", source: this.rel(src.path), owner: this.opts.context, participants: d.lanes, steps: d.steps });
       }
@@ -225,7 +225,7 @@ export class FlowReader {
   }
 
   /** `event instanceof X`, `event.name === "…"`, or `switch (event.name) { case "…" }`. */
-  private assertedEvent(src: Source, fn: TSNS.MethodDeclaration): { name: string; id?: string; foreign?: string } | undefined {
+  private assertedEvent(src: Source, fn: Node): { name: string; id?: string; foreign?: string } | undefined {
     let found: { name: string; id?: string; foreign?: string } | undefined;
     const byName = (wire: string): typeof found => {
       for (const agg of this.aggregates) {
@@ -253,26 +253,22 @@ export class FlowReader {
       }
       return undefined;
     };
-    const visit = (node: TSNS.Node): void => {
+    walk(fn, (node) => {
       if (found) return;
-      if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.InstanceOfKeyword && ts.isIdentifier(node.right)) {
-        found = byClass(node.right.text);
+      if (isBinary(node) && node.operator === "instanceof" && isIdent(node.right)) {
+        found = byClass(node.right.name);
         return;
       }
-      if (ts.isBinaryExpression(node) && (node.operatorToken.kind === ts.SyntaxKind.EqualsEqualsEqualsToken || node.operatorToken.kind === ts.SyntaxKind.EqualsEqualsToken)) {
-        const lit = [node.left, node.right].find((e) => ts.isStringLiteral(e)) as TSNS.StringLiteral | undefined;
-        if (lit) {
-          found = byName(lit.text);
-          return;
-        }
-      }
-      if (ts.isCaseClause(node) && ts.isStringLiteral(node.expression)) {
-        found = byName(node.expression.text);
+      if (isBinary(node) && (node.operator === "===" || node.operator === "==")) {
+        const lit = [node.left, node.right].find((e) => isString(e));
+        if (isString(lit)) found = byName(lit.value);
         return;
       }
-      ts.forEachChild(node, visit);
-    };
-    visit(fn);
+      if (node.type === "SwitchCase") {
+        const test = (node as { test: Node | null }).test;
+        if (isString(test)) found = byName(test.value);
+      }
+    });
     return found;
   }
 
@@ -291,70 +287,70 @@ export class FlowReader {
     if (!uc) return;
     const handle = uc.cls.methods.get("handle");
     if (!handle) return;
-    this.walkBody(d, { src: uc.source, key, cls: uc.cls, ports: new Map(uc.cls.params.map((p) => [p.name, p.type])), vars: new Map() }, handle.node, depth);
+    this.walkBody(d, { src: uc.source, key, cls: uc.cls, ports: new Map(uc.cls.params.map((p) => [p.name, p.type])), vars: new Map() }, handle.body, depth);
   }
 
-  private walkBody(d: Draft, s: Scope, fn: TSNS.MethodDeclaration, depth: number): void {
-    if (!fn.body) return;
-    this.walkStmts(d, s, fn.body.statements, depth);
+  private walkBody(d: Draft, s: Scope, body: Node | null, depth: number): void {
+    if (!body || !isBlock(body)) return;
+    this.walkStmts(d, s, body.body, depth);
   }
 
-  private walkStmts(d: Draft, s: Scope, list: readonly TSNS.Statement[], depth: number): void {
+  private walkStmts(d: Draft, s: Scope, list: readonly Node[], depth: number): void {
     for (const stmt of list) this.walkStmt(d, s, stmt, depth);
   }
 
-  private walkStmt(d: Draft, s: Scope, stmt: TSNS.Statement, depth: number): void {
-    if (ts.isIfStatement(stmt)) return this.walkIf(d, s, stmt, depth);
-    if (ts.isSwitchStatement(stmt)) return this.walkSwitch(d, s, stmt, depth);
-    if (ts.isForOfStatement(stmt) || ts.isForInStatement(stmt)) {
-      this.callsIn(d, s, stmt.expression, depth);
+  private walkStmt(d: Draft, s: Scope, stmt: Node, depth: number): void {
+    if (isIf(stmt)) return this.walkIf(d, s, stmt, depth);
+    if (isSwitch(stmt)) return this.walkSwitch(d, s, stmt, depth);
+    if (isForEach(stmt)) {
+      this.callsIn(d, s, stmt.right, depth);
       this.bindElement(s, stmt);
-      d.enter(`inside a loop over \`${stmt.expression.getText()}\``);
-      this.walkBlock(d, s, stmt.statement, depth);
+      d.enter(`inside a loop over \`${text(s.src, stmt.right)}\``);
+      this.walkBlock(d, s, stmt.body, depth);
       d.leave();
       return;
     }
-    if (ts.isForStatement(stmt) || ts.isWhileStatement(stmt) || ts.isDoStatement(stmt)) {
-      const cond = ts.isForStatement(stmt) ? stmt.condition : stmt.expression;
-      if (ts.isForStatement(stmt) && stmt.initializer) this.callsIn(d, s, stmt.initializer, depth);
-      d.enter(cond ? `inside a loop, while \`${cond.getText()}\`` : "inside a loop");
-      this.walkBlock(d, s, stmt.statement, depth);
+    if (isFor(stmt) || isWhile(stmt)) {
+      const cond = stmt.test;
+      if (isFor(stmt) && stmt.init) this.callsIn(d, s, stmt.init, depth);
+      d.enter(cond ? `inside a loop, while \`${text(s.src, cond)}\`` : "inside a loop");
+      this.walkBlock(d, s, stmt.body, depth);
       d.leave();
       return;
     }
-    if (ts.isBlock(stmt)) return this.walkStmts(d, s, stmt.statements, depth);
-    if (ts.isTryStatement(stmt)) {
-      this.walkStmts(d, s, stmt.tryBlock.statements, depth);
-      if (stmt.catchClause) this.walkStmts(d, s, stmt.catchClause.block.statements, depth);
-      if (stmt.finallyBlock) this.walkStmts(d, s, stmt.finallyBlock.statements, depth);
+    if (isBlock(stmt)) return this.walkStmts(d, s, stmt.body, depth);
+    if (isTry(stmt)) {
+      this.walkStmts(d, s, stmt.block.body, depth);
+      if (stmt.handler) this.walkStmts(d, s, stmt.handler.body.body, depth);
+      if (stmt.finalizer) this.walkStmts(d, s, stmt.finalizer.body, depth);
       return;
     }
     this.callsIn(d, s, stmt, depth);
   }
 
-  private walkBlock(d: Draft, s: Scope, stmt: TSNS.Statement, depth: number): void {
-    if (ts.isBlock(stmt)) this.walkStmts(d, s, stmt.statements, depth);
+  private walkBlock(d: Draft, s: Scope, stmt: Node, depth: number): void {
+    if (isBlock(stmt)) this.walkStmts(d, s, stmt.body, depth);
     else this.walkStmt(d, s, stmt, depth);
   }
 
-  private walkIf(d: Draft, s: Scope, stmt: TSNS.IfStatement, depth: number): void {
+  private walkIf(d: Draft, s: Scope, stmt: IfStatement, depth: number): void {
     const branches: AltBranch[] = [];
     const titles = new Set<string>();
     let drew = false;
-    let current: TSNS.IfStatement | undefined = stmt;
+    let current: IfStatement | undefined = stmt;
     while (current) {
-      this.callsIn(d, s, current.expression, depth);
+      this.callsIn(d, s, current.test, depth);
       d.push();
-      this.walkBlock(d, s, current.thenStatement, depth);
+      this.walkBlock(d, s, current.consequent, depth);
       const steps = d.pop();
       drew ||= steps.length > 0;
-      branches.push({ title: unique(current.expression.getText(), titles), steps, terminal: leaves(current.thenStatement) });
-      const els: TSNS.Statement | undefined = current.elseStatement;
+      branches.push({ title: unique(text(s.src, current.test), titles), steps, terminal: leaves(current.consequent) });
+      const els: Node | null = current.alternate;
       if (!els) {
         branches.push({ title: unique("otherwise", titles), steps: [] });
         break;
       }
-      if (ts.isIfStatement(els)) {
+      if (isIf(els)) {
         current = els;
         continue;
       }
@@ -369,22 +365,22 @@ export class FlowReader {
     d.addAlt(unmarkIfAllLeave(branches));
   }
 
-  private walkSwitch(d: Draft, s: Scope, stmt: TSNS.SwitchStatement, depth: number): void {
-    this.callsIn(d, s, stmt.expression, depth);
-    const subject = stmt.expression.getText();
+  private walkSwitch(d: Draft, s: Scope, stmt: SwitchStatement, depth: number): void {
+    this.callsIn(d, s, stmt.discriminant, depth);
+    const subject = text(s.src, stmt.discriminant);
     const branches: AltBranch[] = [];
     const titles = new Set<string>();
     let drew = false;
     let sawDefault = false;
-    for (const clause of stmt.caseBlock.clauses) {
-      if (ts.isCaseClause(clause)) this.callsIn(d, s, clause.expression, depth);
+    for (const clause of stmt.cases) {
+      if (clause.test) this.callsIn(d, s, clause.test, depth);
       d.push();
-      this.walkStmts(d, s, clause.statements, depth);
+      this.walkStmts(d, s, clause.consequent, depth);
       const steps = d.pop();
       drew ||= steps.length > 0;
-      const title = ts.isCaseClause(clause) ? `${subject} is ${clause.expression.getText()}` : "otherwise";
-      if (!ts.isCaseClause(clause)) sawDefault = true;
-      const last = clause.statements[clause.statements.length - 1];
+      const title = clause.test ? `${subject} is ${text(s.src, clause.test)}` : "otherwise";
+      if (!clause.test) sawDefault = true;
+      const last = clause.consequent[clause.consequent.length - 1];
       branches.push({ title: unique(title, titles), steps, terminal: last ? leaves(last) : false });
     }
     if (!drew) return;
@@ -393,76 +389,75 @@ export class FlowReader {
   }
 
   /** Every call under a node, in source order. */
-  private callsIn(d: Draft, s: Scope, node: TSNS.Node, depth: number): void {
-    const assigned = new Map<TSNS.CallExpression, TSNS.BindingName>();
-    const collect = (n: TSNS.Node): void => {
-      if (ts.isVariableDeclaration(n) && n.initializer) {
-        const call = unwrapAwait(n.initializer);
-        if (call && ts.isCallExpression(call)) assigned.set(call, n.name);
+  private callsIn(d: Draft, s: Scope, node: Node, depth: number): void {
+    const assigned = new Map<CallExpression, Node>();
+    walk(node, (n) => {
+      if (isVarDecl(n)) {
+        for (const decl of n.declarations) {
+          const call = decl.init ? unwrap(decl.init) : undefined;
+          if (isCall(call)) assigned.set(call, decl.id);
+        }
       }
-      ts.forEachChild(n, collect);
-    };
-    collect(node);
-    const visit = (n: TSNS.Node): void => {
-      if (ts.isCallExpression(n)) this.call(d, s, n, assigned.get(n), depth);
+    });
+    walk(node, (n) => {
+      if (isCall(n)) this.call(d, s, n, assigned.get(n), depth);
       // `into = created`: a later assignment carries what the right side held.
-      if (ts.isBinaryExpression(n) && n.operatorToken.kind === ts.SyntaxKind.EqualsToken && ts.isIdentifier(n.left)) {
+      if (isAssign(n) && n.operator === "=" && isIdent(n.left)) {
         const r = this.resultsOfExpr(s, n.right)[0];
-        if (r?.name) s.vars.set(n.left.text, r);
+        if (r?.name) s.vars.set(n.left.name, r);
       }
-      ts.forEachChild(n, visit);
-    };
-    visit(node);
+    });
   }
 
-  private call(d: Draft, s: Scope, call: TSNS.CallExpression, lhs: TSNS.BindingName | undefined, depth: number): void {
-    const callee = call.expression;
-    if (!ts.isPropertyAccessExpression(callee)) {
+  private call(d: Draft, s: Scope, call: CallExpression, lhs: Node | undefined, depth: number): void {
+    const callee = call.callee;
+    if (!isMember(callee)) {
       // A bare function: a domain constructor imported from the aggregate, `createBasket(...)`.
-      if (ts.isIdentifier(callee)) this.bind(s, lhs, this.resultsOfFunction(s, callee.text));
+      if (isIdent(callee)) this.bind(s, lhs, this.resultsOfFunction(s, callee.name));
       return;
     }
-    const method = callee.name.text;
-    const target = callee.expression;
+    const method = memberName(callee);
+    if (method === undefined) return;
+    const target = callee.object;
 
     // events.push(into.addItem(...)) — a list the use case collects, to hand to a port later as `...events`.
-    if (method === "push" && ts.isIdentifier(target)) {
-      const list = s.vars.get(target.text) ?? { name: target.text };
+    if (method === "push" && isIdent(target)) {
+      const list = s.vars.get(target.name) ?? { name: target.name };
       list.items ??= [];
       for (const arg of call.arguments) for (const r of this.resultsOfExpr(s, arg)) if (r.event) list.items.push(r);
-      s.vars.set(target.text, list);
+      s.vars.set(target.name, list);
       return;
     }
 
     // this.<port>.<method>(...) — a hop.
-    if (ts.isPropertyAccessExpression(target) && target.expression.kind === ts.SyntaxKind.ThisKeyword) {
-      const port = target.name.text;
+    const port = thisMember(target);
+    if (port !== undefined) {
       const declared = s.ports.get(port);
       if (declared !== undefined) this.portCall(d, s, port, declared, method, call, lhs, depth);
       return;
     }
     // this.<helper>(...) — the same use case, another method.
-    if (target.kind === ts.SyntaxKind.ThisKeyword) {
+    if (isThis(target)) {
       const helper = s.cls.methods.get(method);
-      if (helper?.node.body) this.walkStmts(d, s, helper.node.body.statements, depth);
+      if (helper?.body) this.walkStmts(d, s, helper.body.body, depth);
       return;
     }
     // Basket.create(...) — a static domain constructor; basket.addItem(...) — a method on something the domain handed over.
-    if (ts.isIdentifier(target)) {
-      const held = s.vars.get(target.text);
+    if (isIdent(target)) {
+      const held = s.vars.get(target.name);
       if (held?.aggregate) {
         this.bind(s, lhs, this.resultsOfMethod(held, method));
         return;
       }
-      this.bind(s, lhs, this.resultsOfStatic(s, target.text, method));
+      this.bind(s, lhs, this.resultsOfStatic(s, target.name, method));
     }
   }
 
-  private portCall(d: Draft, s: Scope, port: string, declared: string, method: string, call: TSNS.CallExpression, lhs: TSNS.BindingName | undefined, depth: number): void {
+  private portCall(d: Draft, s: Scope, port: string, declared: string, method: string, call: CallExpression, lhs: Node | undefined, depth: number): void {
     if (/^\(.*\)\s*=>/.test(declared) || declared === "") return; // a clock, an id generator
 
     const src = s.src;
-    const line = at(src.sf, call, this.rel);
+    const line = at(src, call, this.rel);
     const bare = bareType(declared);
 
     // A port bound in assembly to another use case, or to an adapter over a
@@ -520,9 +515,9 @@ export class FlowReader {
     // can show.
     const handed = new Set<string>();
     for (const arg of call.arguments) {
-      const inner = ts.isSpreadElement(arg) ? arg.expression : arg;
-      if (!ts.isIdentifier(inner)) continue;
-      const held = s.vars.get(inner.text);
+      const inner = isSpread(arg) ? arg.argument! : arg;
+      if (!isIdent(inner)) continue;
+      const held = s.vars.get(inner.name);
       for (const item of held?.items ?? (held ? [held] : [])) {
         // A list handed over says which events leave, not how many times.
         if (!item.event || handed.has(item.event)) continue;
@@ -556,19 +551,21 @@ export class FlowReader {
   }
 
   /** What an expression holds, for a value read somewhere other than a declaration. */
-  private resultsOfExpr(s: Scope, expr: TSNS.Expression): DomainRef[] {
-    const e = unwrapAwait(expr);
-    if (ts.isIdentifier(e)) {
-      const held = s.vars.get(e.text);
+  private resultsOfExpr(s: Scope, expr: Node): DomainRef[] {
+    const e = unwrap(expr);
+    if (isIdent(e)) {
+      const held = s.vars.get(e.name);
       return held ? [held] : [];
     }
-    if (!ts.isCallExpression(e)) return [];
-    const callee = e.expression;
-    if (ts.isIdentifier(callee)) return this.resultsOfFunction(s, callee.text);
-    if (ts.isPropertyAccessExpression(callee) && ts.isIdentifier(callee.expression)) {
-      const held = s.vars.get(callee.expression.text);
-      if (held?.aggregate) return this.resultsOfMethod(held, callee.name.text);
-      return this.resultsOfStatic(s, callee.expression.text, callee.name.text);
+    if (!isCall(e)) return [];
+    const callee = e.callee;
+    if (isIdent(callee)) return this.resultsOfFunction(s, callee.name);
+    if (isMember(callee) && isIdent(callee.object)) {
+      const method = memberName(callee);
+      if (method === undefined) return [];
+      const held = s.vars.get(callee.object.name);
+      if (held?.aggregate) return this.resultsOfMethod(held, method);
+      return this.resultsOfStatic(s, callee.object.name, method);
     }
     return [];
   }
@@ -584,11 +581,12 @@ export class FlowReader {
     const imp = src.imports.find((i) => i.local === port);
     const portSrc = imp?.file ? readSource(imp.file) : undefined;
     const iface = portSrc?.interfaces.get(imp?.imported ?? port);
-    if (!iface) return [];
-    for (const m of iface.members) {
-      if ((ts.isMethodSignature(m) || ts.isPropertySignature(m)) && m.name.getText() === method) {
-        const type = ts.isMethodSignature(m) ? m.type : ts.isPropertySignature(m) && m.type && ts.isFunctionTypeNode(m.type) ? m.type.type : undefined;
-        return this.refsOfType(agg, type ? type.getText() : "");
+    if (!iface || !portSrc) return [];
+    for (const m of iface.body.body) {
+      if (isMethodSig(m) && keyName(m.key) === method) return this.refsOfType(agg, typeText(portSrc.parsed, m.returnType));
+      if (isPropertySig(m) && keyName(m.key) === method) {
+        const fn = m.typeAnnotation?.typeAnnotation;
+        return this.refsOfType(agg, isFunctionType(fn) ? typeText(portSrc.parsed, fn.returnType) : "");
       }
     }
     return [];
@@ -603,7 +601,8 @@ export class FlowReader {
     // elsewhere - `holderOf(repo, id, token)` under application/ - against
     // whichever aggregate its return type names.
     const own = this.aggregates.find((a) => imp.file!.startsWith(a.dir));
-    const type = fn.type?.getText() ?? "";
+    const fnSrc = readSource(imp.file)!;
+    const type = typeText(fnSrc.parsed, fn.returnType);
     for (const agg of own ? [own] : this.aggregates) {
       const refs = this.refsOfType(agg, type);
       if (refs.some((r) => r.name)) return refs;
@@ -646,27 +645,27 @@ export class FlowReader {
     });
   }
 
-  private bind(s: Scope, lhs: TSNS.BindingName | undefined, results: DomainRef[]): void {
+  private bind(s: Scope, lhs: Node | undefined, results: DomainRef[]): void {
     if (!lhs) return;
-    if (ts.isIdentifier(lhs)) {
+    if (isIdent(lhs)) {
       const r = results[0];
-      if (r?.name) s.vars.set(lhs.text, r);
+      if (r?.name) s.vars.set(lhs.name, r);
       return;
     }
-    if (ts.isArrayBindingPattern(lhs)) {
+    if (isArrayPattern(lhs)) {
       lhs.elements.forEach((el, i) => {
         const r = results[i];
-        if (ts.isBindingElement(el) && ts.isIdentifier(el.name) && r?.name) s.vars.set(el.name.text, r);
+        if (isIdent(el) && r?.name) s.vars.set(el.name, r);
       });
     }
   }
 
   /** `for (const basket of idle)`: the element holds what the list was read as holding. */
-  private bindElement(s: Scope, stmt: TSNS.ForOfStatement | TSNS.ForInStatement): void {
-    if (!ts.isForOfStatement(stmt) || !ts.isIdentifier(stmt.expression) || !ts.isVariableDeclarationList(stmt.initializer)) return;
-    const held = s.vars.get(stmt.expression.text);
-    const decl = stmt.initializer.declarations[0];
-    if (held && !held.items && decl && ts.isIdentifier(decl.name)) s.vars.set(decl.name.text, held);
+  private bindElement(s: Scope, stmt: ForEachStatement): void {
+    if (stmt.type !== "ForOfStatement" || !isIdent(stmt.right) || !isVarDecl(stmt.left)) return;
+    const held = s.vars.get(stmt.right.name);
+    const decl = stmt.left.declarations[0];
+    if (held && !held.items && decl && isIdent(decl.id)) s.vars.set(decl.id.name, held);
   }
 }
 
@@ -675,16 +674,10 @@ function useCaseKeyFromFile(file: string): string | undefined {
   return m ? `${m[1]}/${m[2]}` : undefined;
 }
 
-function unwrapAwait(e: TSNS.Expression): TSNS.Expression {
-  let x = e;
-  while (ts.isAwaitExpression(x) || ts.isParenthesizedExpression(x) || ts.isAsExpression(x) || ts.isNonNullExpression(x)) x = x.expression;
-  return x;
-}
-
 /** A block ends the path when its last statement returns or throws. */
-function leaves(stmt: TSNS.Statement): boolean {
-  const last = ts.isBlock(stmt) ? stmt.statements[stmt.statements.length - 1] : stmt;
-  return !!last && (ts.isReturnStatement(last) || ts.isThrowStatement(last));
+function leaves(stmt: Node): boolean {
+  const last = isBlock(stmt) ? stmt.body[stmt.body.length - 1] : stmt;
+  return !!last && (isReturn(last) || isThrow(last));
 }
 
 function unmarkIfAllLeave(branches: AltBranch[]): AltBranch[] {

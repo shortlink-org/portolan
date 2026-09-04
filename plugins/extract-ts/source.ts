@@ -1,18 +1,37 @@
 // Reading TypeScript files: the few shapes the extractor looks at, pulled out
 // of the syntax tree once so the modules above it work on names and strings.
 //
-// The parser is TypeScript 5's, installed as `ts-api` beside the project's
-// TypeScript 7, which is a native compiler with no syntax tree to offer. No
-// type checker: everything here is resolved by name and by relative import,
-// which is all a layout that is the claim needs.
+// No type checker: everything here is resolved by name and by relative
+// import, which is all a layout that is the claim needs. The tree itself is
+// oxc-parser's, through `ast.ts`.
 
 import { existsSync, readFileSync, statSync } from "node:fs";
-import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
-import type * as TS from "ts-api";
-
-const require = createRequire(import.meta.url);
-export const ts: typeof TS = require("ts-api");
+import {
+  parse,
+  jsdoc as docOf,
+  firstTokenOf,
+  isArray,
+  isBoolean,
+  isClassDecl,
+  isExportNamed,
+  isFunctionDecl,
+  isIdent,
+  isImport,
+  isInterface,
+  isMethod,
+  isNew,
+  isNumber,
+  isParamProperty,
+  isPropertyDef,
+  isString,
+  keyName,
+  lineOf,
+  paramIdent,
+  text as textOf,
+  typeText,
+} from "./ast.ts";
+import type { BlockStatement, ClassDeclaration, FunctionNode, InterfaceDeclaration, MethodDefinition, Node, Parsed } from "./ast.ts";
 
 export interface Field {
   name: string;
@@ -22,7 +41,11 @@ export interface Field {
 
 export interface Method {
   name: string;
-  node: TS.MethodDeclaration;
+  node: MethodDefinition;
+  /** The parameters, in order. */
+  params: Node[];
+  /** The body, or null for an overload signature. */
+  body: BlockStatement | null;
   /** The return type as written, or "" when it is not. */
   returns: string;
   isStatic: boolean;
@@ -30,7 +53,7 @@ export interface Method {
 
 export interface ClassInfo {
   name: string;
-  node: TS.ClassDeclaration;
+  node: ClassDeclaration;
   doc: string;
   exported: boolean;
   fields: Field[];
@@ -54,13 +77,13 @@ export interface Import {
 
 export interface Source {
   path: string;
-  sf: TS.SourceFile;
+  parsed: Parsed;
   classes: ClassInfo[];
   imports: Import[];
   /** Exported interfaces, by name. */
-  interfaces: Map<string, TS.InterfaceDeclaration>;
+  interfaces: Map<string, InterfaceDeclaration>;
   /** Exported functions, by name. */
-  functions: Map<string, TS.FunctionDeclaration>;
+  functions: Map<string, FunctionNode>;
 }
 
 const cache = new Map<string, Source | null>();
@@ -73,14 +96,16 @@ export function readSource(path: string): Source | null {
     cache.set(key, null);
     return null;
   }
-  const text = readFileSync(key, "utf8");
-  const sf = ts.createSourceFile(key, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-  const source: Source = { path: key, sf, classes: [], imports: [], interfaces: new Map(), functions: new Map() };
-  for (const stmt of sf.statements) {
-    if (ts.isImportDeclaration(stmt)) source.imports.push(...importsOf(stmt, key));
-    else if (ts.isClassDeclaration(stmt) && stmt.name) source.classes.push(classInfo(stmt, sf));
-    else if (ts.isInterfaceDeclaration(stmt)) source.interfaces.set(stmt.name.text, stmt);
-    else if (ts.isFunctionDeclaration(stmt) && stmt.name) source.functions.set(stmt.name.text, stmt);
+  const parsed = parse(key, readFileSync(key, "utf8"));
+  const source: Source = { path: key, parsed, classes: [], imports: [], interfaces: new Map(), functions: new Map() };
+  for (const stmt of parsed.program.body) {
+    const exported = isExportNamed(stmt);
+    const decl = exported ? stmt.declaration : stmt;
+    if (!decl) continue;
+    if (isImport(decl)) source.imports.push(...importsOf(decl, key));
+    else if (isClassDecl(decl) && decl.id) source.classes.push(classInfo(parsed, decl, exported ? stmt : undefined));
+    else if (isInterface(decl)) source.interfaces.set(decl.id.name, decl);
+    else if (isFunctionDecl(decl) && decl.id) source.functions.set(decl.id.name, decl);
   }
   cache.set(key, source);
   return source;
@@ -96,104 +121,90 @@ export function resolveImport(from: string, specifier: string): string | undefin
   return undefined;
 }
 
-function importsOf(decl: TS.ImportDeclaration, from: string): Import[] {
-  const specifier = (decl.moduleSpecifier as TS.StringLiteral).text;
+function importsOf(decl: import("./ast.ts").ImportDeclaration, from: string): Import[] {
+  const specifier = String(decl.source.value);
   const file = resolveImport(from, specifier);
+  const typeOnly = decl.importKind === "type";
   const out: Import[] = [];
-  const clause = decl.importClause;
-  if (!clause) return out;
-  const typeOnly = clause.isTypeOnly;
-  if (clause.name) out.push({ local: clause.name.text, imported: "default", specifier, file, typeOnly });
-  const bindings = clause.namedBindings;
-  if (bindings) {
-    if (ts.isNamespaceImport(bindings)) {
-      out.push({ local: bindings.name.text, imported: "*", specifier, file, typeOnly });
-    } else {
-      for (const el of bindings.elements) {
-        out.push({
-          local: el.name.text,
-          imported: el.propertyName?.text ?? el.name.text,
-          specifier,
-          file,
-          typeOnly: typeOnly || el.isTypeOnly,
-        });
-      }
-    }
+  for (const s of decl.specifiers) {
+    if (s.type === "ImportDefaultSpecifier") out.push({ local: s.local.name, imported: "default", specifier, file, typeOnly });
+    else if (s.type === "ImportNamespaceSpecifier") out.push({ local: s.local.name, imported: "*", specifier, file, typeOnly });
+    else out.push({ local: s.local.name, imported: (s.imported && keyName(s.imported)) ?? s.local.name, specifier, file, typeOnly: typeOnly || s.importKind === "type" });
   }
   return out;
 }
 
-export function jsdoc(node: TS.Node): string {
-  const docs = (node as { jsDoc?: TS.JSDoc[] }).jsDoc;
-  if (!docs || docs.length === 0) return "";
-  const last = docs[docs.length - 1]!;
-  const comment = last.comment;
-  if (!comment) return "";
-  return (typeof comment === "string" ? comment : comment.map((c) => c.text).join("")).trim();
+/** The doc comment above a node, allowing for a decorator or an `export` in front of it. */
+export function jsdoc(src: Source, node: Node, exportNode?: Node): string {
+  return docOf(src.parsed, node, firstTokenOf(node, exportNode));
 }
 
-function typeText(node: TS.TypeNode | undefined): string {
-  return node ? node.getText() : "";
-}
-
-function classInfo(node: TS.ClassDeclaration, sf: TS.SourceFile): ClassInfo {
+function classInfo(p: Parsed, node: ClassDeclaration, exportNode: Node | undefined): ClassInfo {
   const info: ClassInfo = {
-    name: node.name!.text,
+    name: node.id!.name,
     node,
-    doc: jsdoc(node),
-    exported: node.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword) ?? false,
+    doc: docOf(p, node, firstTokenOf(node, exportNode)),
+    exported: exportNode !== undefined,
     fields: [],
     params: [],
     methods: new Map(),
     nameLiteral: undefined,
   };
-  for (const member of node.members) {
-    if (ts.isPropertyDeclaration(member) && ts.isIdentifier(member.name)) {
-      const name = member.name.text;
-      const init = member.initializer;
-      if (name === "name" && init && ts.isStringLiteral(init)) {
-        info.nameLiteral = init.text;
+  for (const member of node.body.body) {
+    if (isPropertyDef(member) && !member.computed) {
+      const name = keyName(member.key);
+      if (name === undefined) continue;
+      const init = member.value;
+      if (name === "name" && isString(init)) {
+        info.nameLiteral = init.value;
         continue;
       }
-      if (member.modifiers?.some((m) => m.kind === ts.SyntaxKind.StaticKeyword)) continue;
-      info.fields.push({ name, type: typeText(member.type) || inferred(init), doc: jsdoc(member) });
-    } else if (ts.isConstructorDeclaration(member)) {
-      for (const p of member.parameters) {
-        if (!ts.isIdentifier(p.name)) continue;
-        const type = typeText(p.type);
-        info.params.push({ name: p.name.text, type });
-        const isProperty = p.modifiers?.some((m) =>
-          [ts.SyntaxKind.ReadonlyKeyword, ts.SyntaxKind.PrivateKeyword, ts.SyntaxKind.PublicKeyword, ts.SyntaxKind.ProtectedKeyword].includes(m.kind),
-        );
-        if (isProperty) info.fields.push({ name: p.name.text, type, doc: jsdoc(p) });
+      if (member.static) continue;
+      info.fields.push({ name, type: typeText(p, member.typeAnnotation) || inferred(p, init), doc: docOf(p, member, firstTokenOf(member)) });
+    } else if (isMethod(member) && member.kind === "constructor") {
+      for (const param of member.value.params) {
+        const id = paramIdent(param);
+        if (!id) continue;
+        const type = typeText(p, id.typeAnnotation);
+        info.params.push({ name: id.name, type });
+        if (isParamProperty(param)) info.fields.push({ name: id.name, type, doc: docOf(p, param, firstTokenOf(param)) });
       }
-    } else if (ts.isMethodDeclaration(member) && ts.isIdentifier(member.name)) {
-      info.methods.set(member.name.text, {
-        name: member.name.text,
+    } else if (isMethod(member) && !member.computed && member.kind === "method") {
+      const name = keyName(member.key);
+      // An overload signature has no body; the implementation that follows is
+      // the one read, so the last declaration of a name wins.
+      if (name === undefined) continue;
+      info.methods.set(name, {
+        name,
         node: member,
-        returns: typeText(member.type),
-        isStatic: member.modifiers?.some((m) => m.kind === ts.SyntaxKind.StaticKeyword) ?? false,
+        params: member.value.params,
+        body: member.value.body,
+        returns: typeText(p, member.value.returnType),
+        isStatic: member.static,
       });
     }
   }
-  void sf;
   return info;
 }
 
-function inferred(init: TS.Expression | undefined): string {
+function inferred(p: Parsed, init: Node | null): string {
   if (!init) return "";
-  if (ts.isStringLiteral(init)) return "string";
-  if (ts.isNumericLiteral(init)) return "number";
-  if (init.kind === ts.SyntaxKind.TrueKeyword || init.kind === ts.SyntaxKind.FalseKeyword) return "boolean";
-  if (ts.isArrayLiteralExpression(init)) return "[]";
-  if (ts.isNewExpression(init)) return init.expression.getText();
+  if (isString(init)) return "string";
+  if (isNumber(init)) return "number";
+  if (isBoolean(init)) return "boolean";
+  if (isArray(init)) return "[]";
+  if (isNew(init)) return textOf(p, init.callee);
   return "";
 }
 
+/** The source of a node, as written. */
+export function text(src: Source, node: Node): string {
+  return textOf(src.parsed, node);
+}
+
 /** `file:line` for a node, relative to the repository the way the catalog spells it. */
-export function at(sf: TS.SourceFile, node: TS.Node, rel: (abs: string) => string): string {
-  const { line } = sf.getLineAndCharacterOfPosition(node.getStart(sf));
-  return `${rel(sf.fileName)}:${line + 1}`;
+export function at(src: Source, node: Node, rel: (abs: string) => string): string {
+  return `${rel(src.path)}:${lineOf(src.parsed, node.start)}`;
 }
 
 /** The type behind `Promise<X>`, `X | undefined`, `readonly X[]` and friends, as a bare name. */

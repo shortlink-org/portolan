@@ -9,11 +9,11 @@
 // the proto package, and a call `client.getQuote()` is the rpc in the proto's
 // own case. Either way the id is the one the callee's extractor would give.
 
-import type * as TSNS from "ts-api";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { callID, findOperation, readSpec, type Spec } from "./openapi.ts";
-import { ts, type Source } from "./source.ts";
+import type { Source } from "./source.ts";
+import { isCall, isMember, isTemplate, memberName, stringOf, templateShape, walk, type CallExpression, type Node } from "./ast.ts";
 import type { Diagnostics } from "./domain.ts";
 
 /** One call the adapter makes, in the catalog's terms. */
@@ -129,47 +129,42 @@ function protoServices(text: string, source: string): ProtoService[] {
 export function adapterCalls(src: Source, cls: string, method: string, rel: (abs: string) => string, b: Diagnostics): RpcHop[] {
   const c = src.classes.find((k) => k.name === cls);
   const m = c?.methods.get(method);
-  if (!m?.node.body) return [];
+  if (!m?.body) return [];
   const peer = peerOf(src, rel, b);
   const out: RpcHop[] = [];
   const seen = new Set<string>();
-  const visit = (node: TSNS.Node): void => {
-    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)) {
-      const name = node.expression.name.text;
-      const hop = hopOf(peer, name, node, rel, b);
-      if (hop && !seen.has(hop.id)) {
-        seen.add(hop.id);
-        out.push(hop);
-      }
+  walk(m.body, (node) => {
+    if (!isCall(node) || !isMember(node.callee)) return;
+    const name = memberName(node.callee);
+    const hop = name === undefined ? undefined : hopOf(peer, name, node, rel, b);
+    if (hop && !seen.has(hop.id)) {
+      seen.add(hop.id);
+      out.push(hop);
     }
-    ts.forEachChild(node, visit);
-  };
-  visit(m.node.body);
+  });
   return out;
 }
 
 /** Calls from any body that reaches a generated client directly, by the same reading. */
-export function callsIn(src: Source, node: TSNS.Node, rel: (abs: string) => string, b: Diagnostics): RpcHop[] {
+export function callsIn(src: Source, node: Node, rel: (abs: string) => string, b: Diagnostics): RpcHop[] {
   const peer = peerOf(src, rel, b);
   if (!peer.spec && peer.protos.length === 0) return [];
   const out: RpcHop[] = [];
-  const visit = (n: TSNS.Node): void => {
-    if (ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression)) {
-      const hop = hopOf(peer, n.expression.name.text, n, rel, b);
-      if (hop) out.push(hop);
-    }
-    ts.forEachChild(n, visit);
-  };
-  visit(node);
+  walk(node, (n) => {
+    if (!isCall(n) || !isMember(n.callee)) return;
+    const name = memberName(n.callee);
+    const hop = name === undefined ? undefined : hopOf(peer, name, n, rel, b);
+    if (hop) out.push(hop);
+  });
   return out;
 }
 
-function hopOf(peer: Peer, name: string, call: TSNS.CallExpression, rel: (abs: string) => string, b: Diagnostics): RpcHop | undefined {
+function hopOf(peer: Peer, name: string, call: CallExpression, rel: (abs: string) => string, b: Diagnostics): RpcHop | undefined {
   if (HTTP_VERBS.has(name)) {
     if (!peer.spec) return undefined;
     const first = call.arguments[0];
     if (!first) return undefined;
-    const route = ts.isStringLiteral(first) || ts.isNoSubstitutionTemplateLiteral(first) ? first.text : ts.isTemplateExpression(first) ? templateShape(first) : undefined;
+    const route = stringOf(first) ?? (isTemplate(first) ? templateShape(first) : undefined);
     if (!route) return undefined;
     const op = findOperation(peer.spec, name, route);
     if (!op) {
@@ -183,11 +178,6 @@ function hopOf(peer: Peer, name: string, call: TSNS.CallExpression, rel: (abs: s
     if (rpc) return { id: `${svc.pkg}.${svc.name}/${rpc}`, pkg: svc.pkg, source: svc.source };
   }
   return undefined;
-}
-
-/** `/v1/users/${id}` → `/v1/users/${x}`: a template's holes are parameters. */
-function templateShape(t: TSNS.TemplateExpression): string {
-  return t.head.text + t.templateSpans.map((span: TSNS.TemplateSpan) => "${x}" + span.literal.text).join("");
 }
 
 export function isOpenapiFetchClientType(type: string): boolean {

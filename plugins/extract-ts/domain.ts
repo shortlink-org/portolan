@@ -5,8 +5,9 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, join } from "node:path";
 import type { Aggregate, Block, Event, Field as CatalogField } from "../../src/catalog.ts";
 import { aggregateID, blockID, eventID, pascal, slug, title } from "./ids.ts";
+import { isExportNamed, isIdent, isString, isVarDecl } from "./ast.ts";
 import { readLifecycle } from "./lifecycle.ts";
-import { readSource, ts, type ClassInfo, type Source } from "./source.ts";
+import { readSource, type ClassInfo, type Source } from "./source.ts";
 
 export interface Diagnostics {
   warn(ref: string, message: string): void;
@@ -135,12 +136,11 @@ function readAggregate(dir: string, name: string, svcID: string, rel: (abs: stri
 function channelOf(domainDir: string, aggregate: string): string {
   const src = readSource(join(domainDir, "..", "..", "infrastructure", "repository", aggregate, "dto.ts"));
   if (!src) return "";
-  for (const stmt of src.sf.statements) {
-    if (!ts.isVariableStatement(stmt)) continue;
-    for (const decl of stmt.declarationList.declarations) {
-      if (ts.isIdentifier(decl.name) && decl.name.text === "TOPIC" && decl.initializer && ts.isStringLiteral(decl.initializer)) {
-        return decl.initializer.text;
-      }
+  for (const stmt of src.parsed.program.body) {
+    const decl = isExportNamed(stmt) ? stmt.declaration : stmt;
+    if (!isVarDecl(decl)) continue;
+    for (const d of decl.declarations) {
+      if (isIdent(d.id) && d.id.name === "TOPIC" && isString(d.init)) return d.init.value;
     }
   }
   return "";

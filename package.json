@@ -10,7 +10,7 @@
     "test": "vitest run",
     "test:go": "go test ./...",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p plugins/extract-ts",
     "likec4:gen": "node scripts/gen-likec4.mjs && likec4 gen react likec4 -o src/likec4/generated.jsx",
     "likec4:validate": "likec4 validate likec4",
     "predev": "npm run likec4:gen",
@@ -46,8 +46,8 @@
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^6.1.1",
     "ajv": "^8.20.0",
+    "oxc-parser": "^0.148.0",
     "tailwindcss": "^4.0.0",
-    "ts-api": "npm:typescript@^5.9.3",
     "typescript": "^7.0.2",
     "vite": "^8.2.2",
     "vitest": "^4.1.11"
