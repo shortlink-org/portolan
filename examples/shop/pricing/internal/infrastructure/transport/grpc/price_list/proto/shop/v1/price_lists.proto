@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package shop.v1;
+
+option go_package = "github.com/shortlink-org/portolan/examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/gen/shop/v1;pricelistv1";
+
+// What things cost before anybody asks. Lists are imported whole and archived
+// rather than edited, so that what a quote was priced against stays readable.
+service PriceLists {
+  // Take in a whole list.
+  rpc ImportPriceList(ImportPriceListRequest) returns (ImportPriceListResponse);
+
+  // Take a list out of use without losing it.
+  rpc ArchivePriceList(ArchivePriceListRequest) returns (ArchivePriceListResponse);
+
+  // Every list there is, archived ones included.
+  rpc ListPriceLists(ListPriceListsRequest) returns (ListPriceListsResponse);
+}
+
+message ImportPriceListRequest {
+  string name = 1;
+  string currency = 2;
+  string valid_from = 3;
+  repeated PriceRow rows = 4;
+}
+
+message PriceRow {
+  string sku = 1;
+  int64 amount_minor = 2;
+}
+
+message ImportPriceListResponse {
+  string price_list_id = 1;
+  int32 rows = 2;
+}
+
+message ArchivePriceListRequest {
+  string price_list_id = 1;
+}
+
+message ArchivePriceListResponse {
+  string price_list_id = 1;
+}
+
+message ListPriceListsRequest {}
+
+message ListPriceListsResponse {
+  repeated PriceListSummary lists = 1;
+}
+
+message PriceListSummary {
+  string price_list_id = 1;
+  string name = 2;
+  string currency = 3;
+  int32 rows = 4;
+  bool archived = 5;
+}

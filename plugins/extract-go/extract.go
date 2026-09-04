@@ -68,7 +68,7 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	}
 
 	for aggregate, ops := range operations {
-		if !hasAggregate(service.Aggregates, aggregateID(svcID, aggregate)) {
+		if !hasAggregate(service.Aggregates, aggregateID(svcID, slug(aggregate))) {
 			b.Warn(svcID, "internal/application/"+aggregate+" has "+plural(len(ops))+" but there is no matching aggregate under internal/domain")
 		}
 	}
@@ -81,6 +81,7 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 		service: opts.Service,
 		store:   opts.Store,
 		peers:   opts.Peers,
+		events:  opts.Events,
 	}, endpoints, eventIDs(service.Aggregates), b)
 	// What the service calls is read off its flows: the generated client in
 	// the tree names the rpc, and a step on it is the call being made.

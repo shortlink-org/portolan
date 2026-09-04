@@ -1,0 +1,17 @@
+# The contract of the price list aggregate.
+version: v2
+modules:
+  - path: .
+    name: buf.build/shortlink-org/portolan-shop-price-list
+lint:
+  use:
+    - STANDARD
+  except:
+    # STANDARD wants every service suffixed with `Service`. This one is called
+    # `Pricing` because shop.cart has been calling `shop.v1.Pricing/GetQuote`
+    # since before this service existed, and renaming it would break a consumer
+    # to satisfy a naming rule.
+    - SERVICE_SUFFIX
+breaking:
+  use:
+    - FILE

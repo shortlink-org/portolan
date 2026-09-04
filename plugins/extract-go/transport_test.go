@@ -49,7 +49,7 @@ func exposures(t *testing.T, source string) map[string][]string {
 	b := &plugin.Builder{}
 	out := map[string][]string{}
 	for name, fields := range handlerFields(pkg) {
-		for _, endpoint := range operationsRunning(pkg, name, fields, b) {
+		for _, endpoint := range operationsRunning(pkg, name, fields, isHandler, lowerFirst, b) {
 			for _, useCase := range endpoint.useCases {
 				out[useCase] = appendOnce(out[useCase], endpoint.id)
 			}
@@ -137,7 +137,7 @@ func (h *Users) Healthz(ctx context.Context, request gen.HealthzRequestObject) (
 	}
 
 	b := &plugin.Builder{}
-	operationsRunning(pkg, "Users", handlerFields(pkg)["Users"], b)
+	operationsRunning(pkg, "Users", handlerFields(pkg)["Users"], isHandler, lowerFirst, b)
 
 	if len(b.Diagnostics) != 1 || !strings.Contains(b.Diagnostics[0].Message, "runs no use case") {
 		t.Errorf("diagnostics = %+v", b.Diagnostics)

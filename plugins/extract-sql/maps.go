@@ -390,3 +390,9 @@ func unquote(literal string) string {
 
 	return literal
 }
+
+// slug is the id form of a package name: price_list becomes price-list, the
+// way every extractor spells an aggregate.
+func slug(name string) string {
+	return strings.ReplaceAll(name, "_", "-")
+}

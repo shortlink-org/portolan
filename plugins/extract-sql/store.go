@@ -47,7 +47,9 @@ func readStore(root, repositories, storeID, owner string, b *plugin.Builder) ([]
 		// allowed to know about an earlier one.
 		sort.Strings(names)
 
-		aggregateID := owner + "." + aggregate
+		// The directory names the aggregate, and an id spells it the way every
+		// extractor spells one: price_list is price-list.
+		aggregateID := owner + "." + slug(aggregate)
 		// Which column carries which field, read from the statements that
 		// write the rows rather than from the column names.
 		mapped := readMaps(root, repositories, aggregate, b)

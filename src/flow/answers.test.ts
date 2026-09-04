@@ -38,10 +38,13 @@ describe("stepAnswer", () => {
   });
 
   it("collects a flow's answers by step id", () => {
+    // Three, now that pricing is a service rather than a hand-written entry:
+    // its contract says what a quote comes back as.
     const answers = flowAnswers(index, flow("cart-checkout"));
     expect([...answers.entries()].sort()).toEqual([
       ["s1", "CheckedOut"],
       ["s2", "SessionInfo"],
+      ["s4", "GetQuoteResponse"],
     ]);
   });
 });

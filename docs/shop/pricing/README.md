@@ -1,105 +1,210 @@
 # Pricing
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.pricing`
 - **Context:** [Shop](../README.md)
-- **Repo:** `github.com/acme/shop`
-- **Path:** `services/pricing`
+- **Repo:** `github.com/shortlink-org/portolan`
+- **Path:** `examples/shop/pricing`
 
-## Pricing Service
+Service `pricing` — bounded context **shop**. Go.
 
-`shop.pricing` answers one question: what should this basket cost for this
-customer, right now. It is a pure read model over price lists, promotions and
-customer agreements. It never writes order state.
+Owns what things cost. It is asked, and it answers with a promise: a quote is a
+price for one basket, good until a moment, and after that moment it is gone
+rather than stale.
 
-### Design
+## What it does
 
-Quotes are immutable and time-boxed. A quote is issued with an explicit
-expiry; the OMS must re-quote rather than reuse an expired one. This keeps
-pricing decisions auditable long after the price list has changed.
+- Prices a basket against the list in force and issues a quote — `QuoteIssued`.
+- Answers what a quote says, by its id or by the basket it priced.
+- Lets promises lapse: the sweep expires everything past its moment, and a
+  basket checked out has its quote expired straight away, because from then on
+  the order holds the price.
+- Takes in price lists whole and archives them rather than editing them, so
+  that what a quote was priced against stays readable.
 
-```mermaid
-flowchart LR
-    A[GetQuote] --> B{customer agreement?}
-    B -- yes --> C[Contract price list]
-    B -- no --> D[Public price list]
-    C --> E[Apply promotions]
-    D --> E
-    E --> F[QuoteIssued]
+## What it does not do
+
+Does not decide what to buy, does not hold a basket and does not place an
+order. It never recomputes a price it has already promised — a quote that
+changed under the customer would not be a quote.
+
+## Publishes
+
+`QuoteIssued`, `QuoteExpired`, on `shop.pricing.quote`.
+
+## Provides
+
+`shop.v1.Pricing` — IssueQuote, GetQuote — and `shop.v1.PriceLists` —
+ImportPriceList, ArchivePriceList, ListPriceLists. One contract per aggregate,
+vendored under the transport package that answers it.
+
+`Pricing` keeps its name rather than taking the `Service` suffix the lint rules
+want: `shop.cart` has been calling `shop.v1.Pricing/GetQuote` since before this
+service existed, and a naming rule is not worth breaking a consumer over. The
+exception is written down in the module's `buf.yaml`.
+
+## Running it
+
+```bash
+docker compose up -d db
+make gen && go run ./cmd/pricing
 ```
 
-### Price list precedence
-
-| Rank | Source              | Scope             | Overrides            |
-| ---- | ------------------- | ----------------- | -------------------- |
-| 1    | Contract price list | One customer      | Everything below     |
-| 2    | Regional list       | One country       | Public list          |
-| 3    | Public list         | Everyone          | Nothing              |
-
-Promotions are applied after precedence is resolved and are never stacked more
-than two deep.
-
-### Aggregates
-
-- `quote` — an issued quote and its expiry. Emits `QuoteIssued` and
-  `QuoteExpired`.
-- `price-list` — the price list itself. It is edited through an internal admin
-  tool that writes directly to the store, so this aggregate currently publishes
-  no domain events. That is a known gap, not a design choice.
-
-### Caching
-
-Quotes are cached for 60 seconds keyed by basket hash and customer segment. The
-cache is deliberately short: a stale quote is worse than a slow one.
+`make gen` regenerates the stubs from the contracts in this tree — one call per
+module, into the `gen` directory beside the code that uses it.
 
 ## Aggregates
 
 | Aggregate | Root | Commands | Queries | Events |
 | --- | --- | --- | --- | --- |
+| [Price List](aggregates/price-list.md) | `PriceList` | 2 commands | 1 query | 0 events |
 | [Quote](aggregates/quote.md) | `Quote` | 2 commands | 1 query | 2 events |
-| [PriceList](aggregates/price-list.md) | `PriceList` | 2 commands | 1 query | 0 events |
 
 ## Provides
 
-**`shop.v1.Pricing`** — `proto/shop/v1/pricing.proto:9`
+**`shop.v1.Pricing`** — `examples/shop/pricing/internal/infrastructure/transport/grpc/quote/proto/shop/v1/pricing.proto:11`
 
+- `IssueQuote`
 - `GetQuote`
-- `ListPriceLists`
+
+<details><summary>IssueQuoteRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `basket_id` | `string` |
+| `currency` | `string` |
+| `items` | `[]Item` |
+
+</details>
+
+<details><summary>IssueQuoteResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `quote_id` | `string` |
+| `total_minor` | `int64` |
+| `currency` | `string` |
+| `expires_at` | `string` |
+
+</details>
 
 <details><summary>GetQuoteRequest</summary>
 
-| Field | Type | Doc |
-| --- | --- | --- |
-| `items` | [`LineItem`](../../types.md#lineitem) | Lines to price. |
-| `customer` | [`CustomerRef`](../../types.md#customerref) | Segment drives the discount. |
+| Field | Type |
+| --- | --- |
+| `quote_id` | `string` |
+| `basket_id` | `string` |
 
 </details>
 
 <details><summary>GetQuoteResponse</summary>
 
-| Field | Type | Doc |
-| --- | --- | --- |
-| `quoteId` | `string` | Quote id, to be echoed at checkout. |
-| `total` | [`Money`](../../types.md#money) | Quoted total. |
+| Field | Type |
+| --- | --- |
+| `quote_id` | `string` |
+| `basket_id` | `string` |
+| `total_minor` | `int64` |
+| `currency` | `string` |
+| `state` | `string` |
+| `expires_at` | `string` |
 
 </details>
 
-## Consumes
+<details><summary>Item</summary>
 
-| Call | Peer | Status | Source |
-| --- | --- | --- | --- |
-| `shop.v1.OrderService/GetOrder` | [shop.oms](../oms/README.md) | verified | `internal/pricing/client/orders.go:19` |
+| Field | Type |
+| --- | --- |
+| `sku` | `string` |
+| `quantity` | `int32` |
+
+</details>
+
+**`shop.v1.PriceLists`** — `examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/proto/shop/v1/price_lists.proto:9`
+
+- `ImportPriceList`
+- `ArchivePriceList`
+- `ListPriceLists`
+
+<details><summary>ImportPriceListRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `name` | `string` |
+| `currency` | `string` |
+| `valid_from` | `string` |
+| `rows` | `[]PriceRow` |
+
+</details>
+
+<details><summary>ImportPriceListResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `price_list_id` | `string` |
+| `rows` | `int32` |
+
+</details>
+
+<details><summary>ArchivePriceListRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `price_list_id` | `string` |
+
+</details>
+
+<details><summary>ArchivePriceListResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `price_list_id` | `string` |
+
+</details>
+
+<details><summary>ListPriceListsRequest</summary>
+
+
+</details>
+
+<details><summary>ListPriceListsResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `lists` | `[]PriceListSummary` |
+
+</details>
+
+<details><summary>PriceRow</summary>
+
+| Field | Type |
+| --- | --- |
+| `sku` | `string` |
+| `amount_minor` | `int64` |
+
+</details>
+
+<details><summary>PriceListSummary</summary>
+
+| Field | Type |
+| --- | --- |
+| `price_list_id` | `string` |
+| `name` | `string` |
+| `currency` | `string` |
+| `rows` | `int32` |
+| `archived` | `bool` |
+
+</details>
 
 ## Publishes
 
 | Event | Latest |
 | --- | --- |
-| [QuoteIssued](aggregates/quote.md) | v1 |
 | [QuoteExpired](aggregates/quote.md) | v1 |
+| [QuoteIssued](aggregates/quote.md) | v1 |
 
 ## Stores
 
 | Store | Kind | Access | Tables |
 | --- | --- | --- | --- |
-| [Price list cache](stores/cache.md) | redis | owns | 0 tables |
+| [Pricing database](stores/pg.md) | postgres | owns | 5 tables |

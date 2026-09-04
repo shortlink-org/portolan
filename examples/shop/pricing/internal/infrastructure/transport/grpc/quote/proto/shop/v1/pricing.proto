@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package shop.v1;
+
+option go_package = "github.com/shortlink-org/portolan/examples/shop/pricing/internal/infrastructure/transport/grpc/quote/gen/shop/v1;pricingv1";
+
+// What a basket costs, and for how long.
+//
+// Pricing is asked; it never decides what to buy. A quote is a promise with a
+// moment attached, and after that moment it is gone rather than stale.
+service Pricing {
+  // Price a basket and promise the price for a window.
+  rpc IssueQuote(IssueQuoteRequest) returns (IssueQuoteResponse);
+
+  // Read a quote, by its own id or by the basket it priced.
+  rpc GetQuote(GetQuoteRequest) returns (GetQuoteResponse);
+}
+
+message IssueQuoteRequest {
+  string basket_id = 1;
+  string currency = 2;
+  repeated Item items = 3;
+}
+
+message Item {
+  string sku = 1;
+  int32 quantity = 2;
+}
+
+message IssueQuoteResponse {
+  string quote_id = 1;
+  int64 total_minor = 2;
+  string currency = 3;
+  string expires_at = 4;
+}
+
+message GetQuoteRequest {
+  string quote_id = 1;
+  string basket_id = 2;
+}
+
+message GetQuoteResponse {
+  string quote_id = 1;
+  string basket_id = 2;
+  int64 total_minor = 3;
+  string currency = 4;
+  string state = 5;
+  string expires_at = 6;
+}

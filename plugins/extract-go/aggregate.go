@@ -27,12 +27,12 @@ func extractAggregate(root, dir, svcID string, b *plugin.Builder) (catalog.Aggre
 		return catalog.Aggregate{}, false
 	}
 
-	id := aggregateID(svcID, dir)
+	id := aggregateID(svcID, slug(dir))
 	name := title(pkg.name)
 
 	aggregate := catalog.Aggregate{
 		ID:           id,
-		Slug:         dir,
+		Slug:         slug(dir),
 		Name:         name,
 		Readme:       aggregateReadme(root, dir, pkg.name, name, pkg.doc()),
 		Entities:     []catalog.Block{},
@@ -55,9 +55,10 @@ func extractAggregate(root, dir, svcID string, b *plugin.Builder) (catalog.Aggre
 		})
 	}
 
-	// The root is the entity named after its package: package user holds User.
-	// It is a rule rather than a guess, and a package that breaks it says so.
-	aggregate.Root = name
+	// The root is the entity named after its package: package user holds User,
+	// and package price_list holds PriceList. It is a rule rather than a guess,
+	// and a package that breaks it says so.
+	aggregate.Root = pascal(pkg.name)
 	if !hasBlock(aggregate.Entities, aggregate.Root) {
 		if len(aggregate.Entities) == 0 {
 			b.Warn(id, "internal/domain/"+dir+" declares no exported struct, so the aggregate has no root")
@@ -66,7 +67,7 @@ func extractAggregate(root, dir, svcID string, b *plugin.Builder) (catalog.Aggre
 		}
 
 		aggregate.Root = aggregate.Entities[0].Name
-		b.Warn(id, "internal/domain/"+dir+" has no struct called "+name+"; taking "+aggregate.Root+" as the root")
+		b.Warn(id, "internal/domain/"+dir+" has no struct called "+pascal(pkg.name)+"; taking "+aggregate.Entities[0].Name+" as the root")
 	}
 
 	aggregate.ValueObjects = extractValueObjects(root, dir, id, b)

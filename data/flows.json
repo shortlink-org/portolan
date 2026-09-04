@@ -186,68 +186,6 @@
       ]
     },
     {
-      "id": "flow.quote-expired-on-checkout",
-      "slug": "quote-expired-on-checkout",
-      "name": "Quote expired on checkout",
-      "summary": "A basket that has been checked out is a basket whose quote is spent. Pricing hears the event the cart publishes and expires the quote it issued for that basket, so a second checkout of the same basket has to be priced again rather than reuse a number the price list may have moved on from.",
-      "source": "services/pricing/internal/policy/expire_quote.go",
-      "owner": "shop",
-      "participants": [
-        {
-          "id": "bus",
-          "kind": "broker",
-          "context": null
-        },
-        {
-          "id": "shop.pricing",
-          "kind": "service",
-          "context": "shop"
-        },
-        {
-          "id": "pricing-db",
-          "kind": "store",
-          "context": "shop",
-          "label": "pricing-db (postgres)"
-        }
-      ],
-      "steps": [
-        {
-          "type": "step",
-          "id": "s1",
-          "from": "bus",
-          "to": "shop.pricing",
-          "kind": "event",
-          "ref": "shop.cart.basket.BasketCheckedOut",
-          "label": "BasketCheckedOut",
-          "status": "declared",
-          "note": "One consumer group, the basket id as the routing key. A basket with no quote on file is ignored, not an error: not every basket was priced.",
-          "line": "internal/policy/expire_quote.go:24"
-        },
-        {
-          "type": "step",
-          "id": "s2",
-          "from": "shop.pricing",
-          "to": "pricing-db",
-          "kind": "call",
-          "label": "expireQuote",
-          "status": "declared",
-          "line": "internal/adapter/postgres/quotes.go:71"
-        },
-        {
-          "type": "step",
-          "id": "s3",
-          "from": "shop.pricing",
-          "to": "bus",
-          "kind": "event",
-          "ref": "shop.pricing.quote.QuoteExpired",
-          "label": "QuoteExpired",
-          "status": "declared",
-          "note": "Published for the audit trail; nothing in the estate acts on it yet.",
-          "line": "internal/policy/expire_quote.go:31"
-        }
-      ]
-    },
-    {
       "id": "flow.shipment-tracking",
       "slug": "shipment-tracking",
       "name": "Shipment tracking",

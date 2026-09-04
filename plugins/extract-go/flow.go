@@ -53,6 +53,9 @@ type flowOptions struct {
 	store string
 	// peers maps a proto package to the service that answers to it.
 	peers map[string]string
+	// events maps the import path a foreign event is vendored under to the
+	// aggregate that raised it.
+	events map[string]string
 }
 
 type flowReader struct {
@@ -290,6 +293,21 @@ func (r *flowReader) assertedEvent(fn *ast.FuncDecl, imports map[string]string) 
 		importPath := imports[selector]
 		if aggregate, isEvent := eventPackage(importPath); isEvent {
 			out = eventRef{id: eventID(aggregateID(r.opts.svcID, aggregate), name), name: name}
+			found = true
+
+			return false
+		}
+		// Somebody else's event, vendored into this tree as a shape of its own.
+		// The manifest is the only place that knows whose aggregate raised it.
+		if aggregate, placed := r.opts.events[importPath]; placed {
+			out = eventRef{id: eventID(aggregate, name), name: name}
+			found = true
+
+			return false
+		}
+		// The same thing with nobody to place it: named, and left to the merge.
+		if importPath != "" && strings.Contains(importPath, "/internal/infrastructure/") {
+			out = eventRef{name: name, foreign: importPath}
 			found = true
 
 			return false

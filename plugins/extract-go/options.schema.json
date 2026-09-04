@@ -45,6 +45,12 @@
       "description": "Which service answers for what this one calls, as the callee's package to its service id: a proto package for a gRPC client, the api id (the document's title and major version, `auth.v1`) for a generated HTTP client. The generated client names the package and the operation; only the manifest knows whose it is. A package with no line here is called as unknown and its steps stay unresolved.",
       "examples": [{ "risk.v1": "shop.risk", "auth.v1": "auth.auth" }]
     },
+    "events": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "Which aggregate another service's events belong to, as the import path a policy reads them from to the aggregate id, so a policy reacting to a foreign event resolves.",
+      "examples": [{ "github.com/acme/shop/pricing/internal/infrastructure/cart": "shop.cart.basket" }]
+    },
     "out": {
       "type": "string",
       "description": "Name of the fragment file, inside the step's output directory. One extractor writes one file, so that a fragment carries the provenance of the run that produced it.",

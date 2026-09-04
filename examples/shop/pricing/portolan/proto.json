@@ -1,0 +1,338 @@
+{
+  "generatedAt": "2026-09-05T05:27:02+07:00",
+  "commit": "ef3a561",
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.pricing",
+          "slug": "pricing",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [
+            {
+              "id": "shop.v1.Pricing",
+              "methods": [
+                {
+                  "name": "IssueQuote",
+                  "doc": "Price a basket and promise the price for a window.",
+                  "request": "IssueQuoteRequest",
+                  "response": "IssueQuoteResponse"
+                },
+                {
+                  "name": "GetQuote",
+                  "doc": "Read a quote, by its own id or by the basket it priced.",
+                  "request": "GetQuoteRequest",
+                  "response": "GetQuoteResponse"
+                }
+              ],
+              "source": "examples/shop/pricing/internal/infrastructure/transport/grpc/quote/proto/shop/v1/pricing.proto:11",
+              "messages": [
+                {
+                  "name": "IssueQuoteRequest",
+                  "fields": [
+                    {
+                      "name": "basket_id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "currency",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "items",
+                      "type": "[]Item",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "IssueQuoteResponse",
+                  "fields": [
+                    {
+                      "name": "quote_id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "total_minor",
+                      "type": "int64",
+                      "doc": ""
+                    },
+                    {
+                      "name": "currency",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "expires_at",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "GetQuoteRequest",
+                  "fields": [
+                    {
+                      "name": "quote_id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "basket_id",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "GetQuoteResponse",
+                  "fields": [
+                    {
+                      "name": "quote_id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "basket_id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "total_minor",
+                      "type": "int64",
+                      "doc": ""
+                    },
+                    {
+                      "name": "currency",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "state",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "expires_at",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "Item",
+                  "fields": [
+                    {
+                      "name": "sku",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "quantity",
+                      "type": "int32",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "module": "local:shop/quote"
+            },
+            {
+              "id": "shop.v1.PriceLists",
+              "methods": [
+                {
+                  "name": "ImportPriceList",
+                  "doc": "Take in a whole list.",
+                  "request": "ImportPriceListRequest",
+                  "response": "ImportPriceListResponse"
+                },
+                {
+                  "name": "ArchivePriceList",
+                  "doc": "Take a list out of use without losing it.",
+                  "request": "ArchivePriceListRequest",
+                  "response": "ArchivePriceListResponse"
+                },
+                {
+                  "name": "ListPriceLists",
+                  "doc": "Every list there is, archived ones included.",
+                  "request": "ListPriceListsRequest",
+                  "response": "ListPriceListsResponse"
+                }
+              ],
+              "source": "examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/proto/shop/v1/price_lists.proto:9",
+              "messages": [
+                {
+                  "name": "ImportPriceListRequest",
+                  "fields": [
+                    {
+                      "name": "name",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "currency",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "valid_from",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "rows",
+                      "type": "[]PriceRow",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "ImportPriceListResponse",
+                  "fields": [
+                    {
+                      "name": "price_list_id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "rows",
+                      "type": "int32",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "ArchivePriceListRequest",
+                  "fields": [
+                    {
+                      "name": "price_list_id",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "ArchivePriceListResponse",
+                  "fields": [
+                    {
+                      "name": "price_list_id",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "ListPriceListsRequest",
+                  "fields": []
+                },
+                {
+                  "name": "ListPriceListsResponse",
+                  "fields": [
+                    {
+                      "name": "lists",
+                      "type": "[]PriceListSummary",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "PriceRow",
+                  "fields": [
+                    {
+                      "name": "sku",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "amount_minor",
+                      "type": "int64",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "PriceListSummary",
+                  "fields": [
+                    {
+                      "name": "price_list_id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "name",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "currency",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "rows",
+                      "type": "int32",
+                      "doc": ""
+                    },
+                    {
+                      "name": "archived",
+                      "type": "bool",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "module": "local:shop/price-list"
+            }
+          ],
+          "consumes": [],
+          "aggregates": [],
+          "modules": [
+            "local:shop/price-list",
+            "local:shop/quote"
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": [],
+  "modules": [
+    {
+      "id": "local:shop/price-list",
+      "slug": "shop-price-list",
+      "name": "shop/price-list",
+      "owner": "shop.pricing",
+      "packages": [
+        "shop.v1"
+      ],
+      "files": [
+        "shop/v1/price_lists.proto"
+      ],
+      "source": "examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/proto"
+    },
+    {
+      "id": "local:shop/quote",
+      "slug": "shop-quote",
+      "name": "shop/quote",
+      "owner": "shop.pricing",
+      "packages": [
+        "shop.v1"
+      ],
+      "files": [
+        "shop/v1/pricing.proto"
+      ],
+      "source": "examples/shop/pricing/internal/infrastructure/transport/grpc/quote/proto"
+    }
+  ]
+}

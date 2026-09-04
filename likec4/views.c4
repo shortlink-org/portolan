@@ -3,49 +3,9 @@ views {
   view landscape {
     title 'Estate'
     description 'Every bounded context, and everything outside the estate that touches one.'
-    include shop, delivery, auth, payments, psp_gateway, customer, carrier_api, analytics_sink, client, risk_v1, psp
+    include delivery, auth, payments, shop, psp_gateway, customer, carrier_api, analytics_sink, client, risk_v1, psp
   }
 
-  view ctx_shop of shop {
-    title 'Shop'
-    include *, shop.pricing.cache, shop.billing.pg, shop.cart.pg, shop.oms.pg
-  }
-  view svc_shop_pricing of shop.pricing {
-    title 'Pricing — neighbours'
-    include *, -> *, * ->
-    exclude quote, price_list, cache
-  }
-  view svc_shop_pricing_inside of shop.pricing {
-    title 'Pricing — inside'
-    include *
-  }
-  view svc_shop_billing of shop.billing {
-    title 'Billing — neighbours'
-    include *, -> *, * ->
-    exclude invoice, pg
-  }
-  view svc_shop_billing_inside of shop.billing {
-    title 'Billing — inside'
-    include *
-  }
-  view svc_shop_cart of shop.cart {
-    title 'Shopping Cart — neighbours'
-    include *, -> *, * ->
-    exclude basket, pg
-  }
-  view svc_shop_cart_inside of shop.cart {
-    title 'Shopping Cart — inside'
-    include *
-  }
-  view svc_shop_oms of shop.oms {
-    title 'Order Management — neighbours'
-    include *, -> *, * ->
-    exclude _order, pg
-  }
-  view svc_shop_oms_inside of shop.oms {
-    title 'Order Management — inside'
-    include *
-  }
   view ctx_delivery of delivery {
     title 'Delivery'
     include *, delivery.core.pg
@@ -83,6 +43,46 @@ views {
   }
   view svc_payments_ledger_inside of payments.ledger {
     title 'Ledger — inside'
+    include *
+  }
+  view ctx_shop of shop {
+    title 'Shop'
+    include *, shop.billing.pg, shop.cart.pg, shop.oms.pg, shop.pricing.pg
+  }
+  view svc_shop_billing of shop.billing {
+    title 'Billing — neighbours'
+    include *, -> *, * ->
+    exclude invoice, pg
+  }
+  view svc_shop_billing_inside of shop.billing {
+    title 'Billing — inside'
+    include *
+  }
+  view svc_shop_cart of shop.cart {
+    title 'Shopping Cart — neighbours'
+    include *, -> *, * ->
+    exclude basket, pg
+  }
+  view svc_shop_cart_inside of shop.cart {
+    title 'Shopping Cart — inside'
+    include *
+  }
+  view svc_shop_oms of shop.oms {
+    title 'Order Management — neighbours'
+    include *, -> *, * ->
+    exclude _order, pg
+  }
+  view svc_shop_oms_inside of shop.oms {
+    title 'Order Management — inside'
+    include *
+  }
+  view svc_shop_pricing of shop.pricing {
+    title 'Pricing — neighbours'
+    include *, -> *, * ->
+    exclude price_list, quote, pg
+  }
+  view svc_shop_pricing_inside of shop.pricing {
+    title 'Pricing — inside'
     include *
   }
 
@@ -182,35 +182,6 @@ views {
     payments.ledger -> psp_gateway 'ack 200' {
       color verified  line solid  head normal
       notes 'Acked only after the branch above has committed. Anything else and the gateway replays, which is what makes the dedup table load-bearing. — webhook_test.go:142'
-    }
-  }
-
-  dynamic view flow_quote_expired_on_checkout {
-    title 'Quote expired on checkout'
-    description 'A basket that has been checked out is a basket whose quote is spent. Pricing hears the event the cart publishes and expires the quote it issued for that basket, so a second checkout of the same basket has to be priced again rather than reuse a number the price list may have moved on from.'
-    bus -> shop.pricing 'BasketCheckedOut' {
-      color declared  line dashed  head onormal
-      notes 'One consumer group, the basket id as the routing key. A basket with no quote on file is ignored, not an error: not every basket was priced. — internal/policy/expire_quote.go:24'
-    }
-    shop.pricing -> pricing_db 'expireQuote' {
-      color declared  line dashed  head none
-      notes 'internal/adapter/postgres/quotes.go:71'
-    }
-    shop.pricing -> bus 'QuoteExpired' {
-      color declared  line dashed  head onormal
-      notes 'Published for the audit trail; nothing in the estate acts on it yet. — internal/policy/expire_quote.go:31'
-    }
-  }
-
-  dynamic view flow_quote_expired_on_checkout_cross {
-    title 'Quote expired on checkout — crossings only'
-    bus -> shop.pricing 'BasketCheckedOut' {
-      color declared  line dashed  head onormal
-      notes 'One consumer group, the basket id as the routing key. A basket with no quote on file is ignored, not an error: not every basket was priced. — internal/policy/expire_quote.go:24'
-    }
-    shop.pricing -> bus 'QuoteExpired' {
-      color declared  line dashed  head onormal
-      notes 'Published for the audit trail; nothing in the estate acts on it yet. — internal/policy/expire_quote.go:31'
     }
   }
 
@@ -1043,7 +1014,7 @@ views {
       color declared  line dashed  head none
       notes 'examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:48'
     }
-    shop.cart -> shop.pricing 'GetQuote' {
+    shop.cart -> shop.pricing 'GetQuote → GetQuoteResponse' {
       color declared  line dashed  head normal
       notes 'examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:55'
     }
@@ -1283,7 +1254,7 @@ views {
     title 'Confirm order on payment authorized'
     description 'Confirms the order once the payment for it is authorised (ADR oms.0005). The publisher is `payments.ledger`, and the name is the one it puts on the message: every service on this bus names its events after itself.'
     bus -> shop.oms 'PaymentAuthorized' {
-      color unresolved  line dotted  head onormal
+      color declared  line dashed  head onormal
       notes 'Reacts to the message named `ledger.PaymentAuthorized`, which is not an event this repository declares. — examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs:20'
     }
     shop.oms -> shop.oms 'ConfirmOrder' {
@@ -1311,7 +1282,7 @@ views {
   dynamic view flow_oms_confirm_order_on_payment_authorized_cross {
     title 'Confirm order on payment authorized — crossings only'
     bus -> shop.oms 'PaymentAuthorized' {
-      color unresolved  line dotted  head onormal
+      color declared  line dashed  head onormal
       notes 'Reacts to the message named `ledger.PaymentAuthorized`, which is not an event this repository declares. — examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs:20'
     }
     shop.oms -> payments.ledger 'Authorize → AuthorizeResponse' {
@@ -1358,6 +1329,170 @@ views {
     shop.oms -> bus 'OrderPlaced' {
       color verified  line solid  head onormal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/oms/src/application/order/usecases/place_order/mod.rs:31'
+    }
+  }
+
+  dynamic view flow_pricing_archive_price_list {
+    title 'Archive price list'
+    description 'Package archive_price_list takes a price list out of use without losing it.'
+    client -> shop.pricing 'ArchivePriceList → ArchivePriceListResponse' {
+      color declared  line dashed  head normal
+      notes 'examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:50'
+    }
+    shop.pricing -> pricing_pg 'ByID' {
+      color declared  line dashed  head none
+      notes 'examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:22'
+    }
+    shop.pricing -> pricing_pg 'Save' {
+      color declared  line dashed  head none
+      notes 'examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:28'
+    }
+  }
+
+  dynamic view flow_pricing_archive_price_list_cross {
+    title 'Archive price list — crossings only'
+    client -> shop.pricing 'ArchivePriceList → ArchivePriceListResponse' {
+      color declared  line dashed  head normal
+      notes 'examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:50'
+    }
+  }
+
+  dynamic view flow_pricing_get_quote {
+    title 'Get quote'
+    description 'Package get_quote reads one quote.'
+    client -> shop.pricing 'GetQuote → GetQuoteResponse' {
+      color declared  line dashed  head normal
+      notes 'examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go:52'
+    }
+    alt {
+      when 'in.QuoteID != ""' {
+        shop.pricing -> pricing_pg 'ByID' {
+          color declared  line dashed  head none
+          notes 'examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go:27'
+        }
+      }
+      else 'otherwise' {
+        shop.pricing -> pricing_pg 'ByBasket' {
+          color declared  line dashed  head none
+          notes 'examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go:29'
+        }
+      }
+    }
+  }
+
+  dynamic view flow_pricing_get_quote_cross {
+    title 'Get quote — crossings only'
+    client -> shop.pricing 'GetQuote → GetQuoteResponse' {
+      color declared  line dashed  head normal
+      notes 'examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go:52'
+    }
+  }
+
+  dynamic view flow_pricing_import_price_list {
+    title 'Import price list'
+    description 'Package import_price_list takes in a whole price list.'
+    client -> shop.pricing 'ImportPriceList → ImportPriceListResponse' {
+      color declared  line dashed  head normal
+      notes 'examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:30'
+    }
+    shop.pricing -> pricing_pg 'Save' {
+      color declared  line dashed  head none
+      notes 'examples/shop/pricing/internal/application/price_list/usecases/import_price_list/usecase.go:43'
+    }
+  }
+
+  dynamic view flow_pricing_import_price_list_cross {
+    title 'Import price list — crossings only'
+    client -> shop.pricing 'ImportPriceList → ImportPriceListResponse' {
+      color declared  line dashed  head normal
+      notes 'examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:30'
+    }
+  }
+
+  dynamic view flow_pricing_issue_quote {
+    title 'Issue quote'
+    description 'Package issue_quote prices a basket and promises the price for a while.'
+    client -> shop.pricing 'IssueQuote → IssueQuoteResponse' {
+      color declared  line dashed  head normal
+      notes 'examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go:28'
+    }
+    shop.pricing -> pricing_pg 'Current' {
+      color declared  line dashed  head none
+      notes 'examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:35'
+    }
+    shop.pricing -> pricing_pg 'Save' {
+      color declared  line dashed  head none
+      notes 'examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:55'
+    }
+    shop.pricing -> bus 'QuoteIssued' {
+      color declared  line dashed  head onormal
+      notes 'examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:55'
+    }
+  }
+
+  dynamic view flow_pricing_issue_quote_cross {
+    title 'Issue quote — crossings only'
+    client -> shop.pricing 'IssueQuote → IssueQuoteResponse' {
+      color declared  line dashed  head normal
+      notes 'examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go:28'
+    }
+    shop.pricing -> bus 'QuoteIssued' {
+      color declared  line dashed  head onormal
+      notes 'examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:55'
+    }
+  }
+
+  dynamic view flow_pricing_list_price_lists {
+    title 'List price lists'
+    description 'Package list_price_lists reads every price list there is.'
+    client -> shop.pricing 'ListPriceLists → ListPriceListsResponse' {
+      color declared  line dashed  head normal
+      notes 'examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:60'
+    }
+    shop.pricing -> pricing_pg 'All' {
+      color declared  line dashed  head none
+      notes 'examples/shop/pricing/internal/application/price_list/usecases/list_price_lists/usecase.go:22'
+    }
+  }
+
+  dynamic view flow_pricing_list_price_lists_cross {
+    title 'List price lists — crossings only'
+    client -> shop.pricing 'ListPriceLists → ListPriceListsResponse' {
+      color declared  line dashed  head normal
+      notes 'examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:60'
+    }
+  }
+
+  dynamic view flow_pricing_expire_quote_on_checkout {
+    title 'Expire quote on checkout'
+    description 'Ends the promise once the basket it priced is checked out.'
+    bus -> shop.pricing 'BasketCheckedOut' {
+      color declared  line dashed  head onormal
+      notes 'examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:35'
+    }
+    shop.pricing -> pricing_pg 'ByBasket' {
+      color declared  line dashed  head none
+      notes 'examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:41'
+    }
+    shop.pricing -> pricing_pg 'Save' {
+      color declared  line dashed  head none
+      notes 'examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:55'
+    }
+    shop.pricing -> bus 'QuoteExpired' {
+      color declared  line dashed  head onormal
+      notes 'examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:55'
+    }
+  }
+
+  dynamic view flow_pricing_expire_quote_on_checkout_cross {
+    title 'Expire quote on checkout — crossings only'
+    bus -> shop.pricing 'BasketCheckedOut' {
+      color declared  line dashed  head onormal
+      notes 'examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:35'
+    }
+    shop.pricing -> bus 'QuoteExpired' {
+      color declared  line dashed  head onormal
+      notes 'examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:55'
     }
   }
 

@@ -2,7 +2,6 @@
 model {
   psp_gateway = external 'psp-gateway (external)'
   bus = broker 'bus'
-  pricing_db = store 'pricing-db (postgres)'
   customer = actor 'customer'
   carrier_api = external 'carrier-api (external)'
   analytics_sink = unknown 'analytics-sink (unknown)'
@@ -14,30 +13,97 @@ model {
   billing_pg = store 'billing-pg'
   cart_pg = store 'cart-pg'
   oms_pg = store 'oms-pg'
+  pricing_pg = store 'pricing-pg'
 
-  shop = context 'Shop' {
-    description 'Everything the customer touches before money moves: baskets, orders and prices.'
+  delivery = context 'Delivery' {
+    description 'Routes, parcels and proof of delivery. Reacts to captured payments, never to placed orders.'
     style { color ctx0 }
-    pricing = service 'Pricing' {
-      description 'github.com/acme/shop/services/pricing'
+    core = service 'Delivery Core' {
+      description 'github.com/acme/delivery/services/core'
       style { color ctx0 }
-      quote = aggregate 'Quote' {
-        QuoteIssued = event 'QuoteIssued' {
-          description 'A priced, time-boxed answer for one basket and one customer.'
+      shipment = aggregate 'Shipment' {
+        ShipmentDispatched = event 'ShipmentDispatched' {
+          description 'A parcel physically left the depot.'
         }
-        QuoteExpired = event 'QuoteExpired' {
-          description 'A quote passed its expiry without being consumed.'
+        ShipmentDelivered = event 'ShipmentDelivered' {
+          description 'Proof of delivery recorded. Terminal for the shipment.'
         }
       }
-      price_list = aggregate 'PriceList' {
+      route = aggregate 'Route' {
+        RoutePlanned = event 'RoutePlanned' {
+          description 'A vehicle and window were assigned a stop sequence.'
+        }
       }
-      cache = store 'Price list cache' {
-        description 'redis'
+      pg = store 'Delivery database' {
+        description 'postgres'
       }
     }
+  }
+  auth = context 'Authentication' {
+    description 'Who someone is, and whether they are still logged in. The only service in the estate that stores credentials, and the only one allowed to mint or revoke a session.'
+    style { color ctx1 }
+    auth = service 'Authentication & Sessions' {
+      description 'github.com/shortlink-org/portolan/examples/auth'
+      style { color ctx1 }
+      lockout = aggregate 'Lockout' {
+        AccountLocked = event 'AccountLocked' {
+          description 'AccountLocked is published when an account starts refusing logins because of too many wrong passwords in a row. Until says when it stops.'
+        }
+      }
+      session = aggregate 'Session' {
+        SessionEnded = event 'SessionEnded' {
+          description 'SessionEnded is published when a session is deliberately ended.'
+        }
+        SessionStarted = event 'SessionStarted' {
+          description 'SessionStarted is published on a successful login. ExpiresAt is on the event so a consumer can reason about the session\'s lifetime without asking auth again on every check.'
+        }
+      }
+      user = aggregate 'User' {
+        PasswordChanged = event 'PasswordChanged' {
+          description 'PasswordChanged is published when a user\'s password is replaced. It says the password is different now; it does not carry the password, old or new, in any form.'
+        }
+        UserRegistered = event 'UserRegistered' {
+          description 'UserRegistered is published once per user, at registration. It carries the address because consumers routinely need to reach the person, and asking auth for it on every event would make the bus useless.'
+        }
+      }
+      pg = store 'Auth database' {
+        description 'postgres'
+      }
+    }
+  }
+  payments = context 'Payments' {
+    description 'Money, and the record of every movement of it. Nothing here decides whether to charge - it is asked, and it writes down what happened either way.'
+    style { color ctx2 }
+    ledger = service 'Ledger' {
+      description 'github.com/shortlink-org/portolan/examples/payments/ledger'
+      style { color ctx2 }
+      payment = aggregate 'Payment' {
+        PaymentAuthorized = event 'PaymentAuthorized' {
+          description 'The gateway agreed to hold the money. Nothing has moved yet.'
+        }
+        PaymentCaptured = event 'PaymentCaptured' {
+          description 'The money moved. Whoever is owed something for this order - the invoice, the warehouse - waits for this one and nothing earlier.'
+        }
+        PaymentDeclined = event 'PaymentDeclined' {
+          description 'The gateway refused, and it says why in its own words rather than ours.'
+        }
+      }
+      refund = aggregate 'Refund' {
+        RefundIssued = event 'RefundIssued' {
+          description 'Money went back to the customer, against a payment that had been captured.'
+        }
+      }
+      pg = store 'Ledger database' {
+        description 'postgres'
+      }
+    }
+  }
+  shop = context 'Shop' {
+    description ''
+    style { color ctx3 }
     billing = service 'Billing' {
       description 'github.com/shortlink-org/portolan/examples/shop/billing'
-      style { color ctx0 }
+      style { color ctx3 }
       invoice = aggregate 'Invoice' {
         InvoiceIssued = event 'InvoiceIssued' {
           description 'The invoice is final and the customer has been asked to pay it.'
@@ -55,7 +121,7 @@ model {
     }
     cart = service 'Shopping Cart' {
       description 'github.com/shortlink-org/portolan/examples/shop/cart'
-      style { color ctx0 }
+      style { color ctx3 }
       basket = aggregate 'Basket' {
         BasketAbandoned = event 'BasketAbandoned' {
           description 'Nobody touched the basket for a day, and the sweep said so (cart.0006).'
@@ -85,7 +151,7 @@ that now holds everything.'
     }
     oms = service 'Order Management' {
       description 'github.com/shortlink-org/portolan/examples/shop/oms'
-      style { color ctx0 }
+      style { color ctx3 }
       _order = aggregate 'Order' {
         OrderCancelled = event 'OrderCancelled' {
           description 'The order will not be fulfilled. The reason says whether the customer
@@ -105,115 +171,25 @@ for: whoever moves money listens for this.'
         description 'postgres'
       }
     }
-  }
-  delivery = context 'Delivery' {
-    description 'Routes, parcels and proof of delivery. Reacts to captured payments, never to placed orders.'
-    style { color ctx1 }
-    core = service 'Delivery Core' {
-      description 'github.com/acme/delivery/services/core'
-      style { color ctx1 }
-      shipment = aggregate 'Shipment' {
-        ShipmentDispatched = event 'ShipmentDispatched' {
-          description 'A parcel physically left the depot.'
-        }
-        ShipmentDelivered = event 'ShipmentDelivered' {
-          description 'Proof of delivery recorded. Terminal for the shipment.'
-        }
-      }
-      route = aggregate 'Route' {
-        RoutePlanned = event 'RoutePlanned' {
-          description 'A vehicle and window were assigned a stop sequence.'
-        }
-      }
-      pg = store 'Delivery database' {
-        description 'postgres'
-      }
-    }
-  }
-  auth = context 'Authentication' {
-    description 'Who someone is, and whether they are still logged in. The only service in the estate that stores credentials, and the only one allowed to mint or revoke a session.'
-    style { color ctx2 }
-    auth = service 'Authentication & Sessions' {
-      description 'github.com/shortlink-org/portolan/examples/auth'
-      style { color ctx2 }
-      lockout = aggregate 'Lockout' {
-        AccountLocked = event 'AccountLocked' {
-          description 'AccountLocked is published when an account starts refusing logins because of too many wrong passwords in a row. Until says when it stops.'
-        }
-      }
-      session = aggregate 'Session' {
-        SessionEnded = event 'SessionEnded' {
-          description 'SessionEnded is published when a session is deliberately ended.'
-        }
-        SessionStarted = event 'SessionStarted' {
-          description 'SessionStarted is published on a successful login. ExpiresAt is on the event so a consumer can reason about the session\'s lifetime without asking auth again on every check.'
-        }
-      }
-      user = aggregate 'User' {
-        PasswordChanged = event 'PasswordChanged' {
-          description 'PasswordChanged is published when a user\'s password is replaced. It says the password is different now; it does not carry the password, old or new, in any form.'
-        }
-        UserRegistered = event 'UserRegistered' {
-          description 'UserRegistered is published once per user, at registration. It carries the address because consumers routinely need to reach the person, and asking auth for it on every event would make the bus useless.'
-        }
-      }
-      pg = store 'Auth database' {
-        description 'postgres'
-      }
-    }
-  }
-  payments = context 'Payments' {
-    description 'Money, and the record of every movement of it. Nothing here decides whether to charge - it is asked, and it writes down what happened either way.'
-    style { color ctx3 }
-    ledger = service 'Ledger' {
-      description 'github.com/shortlink-org/portolan/examples/payments/ledger'
+    pricing = service 'Pricing' {
+      description 'github.com/shortlink-org/portolan/examples/shop/pricing'
       style { color ctx3 }
-      payment = aggregate 'Payment' {
-        PaymentAuthorized = event 'PaymentAuthorized' {
-          description 'The gateway agreed to hold the money. Nothing has moved yet.'
+      price_list = aggregate 'Price List' {
+      }
+      quote = aggregate 'Quote' {
+        QuoteExpired = event 'QuoteExpired' {
+          description 'QuoteExpired says the price is no longer promised. Nothing is refunded and nothing is cancelled: whoever holds the quote has to ask for another one.'
         }
-        PaymentCaptured = event 'PaymentCaptured' {
-          description 'The money moved. Whoever is owed something for this order - the invoice, the warehouse - waits for this one and nothing earlier.'
-        }
-        PaymentDeclined = event 'PaymentDeclined' {
-          description 'The gateway refused, and it says why in its own words rather than ours.'
+        QuoteIssued = event 'QuoteIssued' {
+          description 'QuoteIssued says a basket has a price, and for how long. Whoever places the order needs both, so both are on the event rather than fetched again.'
         }
       }
-      refund = aggregate 'Refund' {
-        RefundIssued = event 'RefundIssued' {
-          description 'Money went back to the customer, against a payment that had been captured.'
-        }
-      }
-      pg = store 'Ledger database' {
+      pg = store 'Pricing database' {
         description 'postgres'
       }
     }
   }
 
-  shop.pricing -> shop.oms 'GetOrder' {
-    style { color verified  line solid  head normal }
-  }
-  shop.billing -> auth.auth 'validateSession' {
-    style { color declared  line dashed  head normal }
-  }
-  shop.cart -> shop.oms 'BasketCheckedOut' {
-    style { color verified  line solid  head onormal }
-  }
-  shop.cart -> shop.pricing 'BasketCheckedOut' {
-    style { color declared  line dashed  head onormal }
-  }
-  shop.cart -> auth.auth 'validateSession' {
-    style { color verified  line solid  head normal }
-  }
-  shop.cart -> shop.pricing 'GetQuote' {
-    style { color declared  line dashed  head normal }
-  }
-  shop.oms -> payments.ledger 'OrderCancelled' {
-    style { color declared  line dashed  head onormal }
-  }
-  shop.oms -> payments.ledger 'Authorize' {
-    style { color declared  line dashed  head normal }
-  }
   delivery.core -> analytics_sink 'ShipmentDispatched' {
     style { color declared  line dashed  head onormal }
   }
@@ -228,6 +204,9 @@ for: whoever moves money listens for this.'
   }
   delivery.core -> payments.ledger 'GetPayment' {
     style { color declared  line dashed  head normal }
+  }
+  payments.ledger -> shop.oms 'PaymentAuthorized' {
+    style { color declared  line dashed  head onormal }
   }
   payments.ledger -> shop.billing 'PaymentCaptured' {
     style { color declared  line dashed  head onormal }
@@ -248,6 +227,27 @@ for: whoever moves money listens for this.'
     style { color unresolved  line dotted  head normal }
   }
   payments.ledger -> shop.oms 'GetOrder' {
+    style { color declared  line dashed  head normal }
+  }
+  shop.billing -> auth.auth 'validateSession' {
+    style { color declared  line dashed  head normal }
+  }
+  shop.cart -> shop.oms 'BasketCheckedOut' {
+    style { color verified  line solid  head onormal }
+  }
+  shop.cart -> shop.pricing 'BasketCheckedOut' {
+    style { color declared  line dashed  head onormal }
+  }
+  shop.cart -> auth.auth 'validateSession' {
+    style { color verified  line solid  head normal }
+  }
+  shop.cart -> shop.pricing 'GetQuote' {
+    style { color declared  line dashed  head normal }
+  }
+  shop.oms -> payments.ledger 'OrderCancelled' {
+    style { color declared  line dashed  head onormal }
+  }
+  shop.oms -> payments.ledger 'Authorize' {
     style { color declared  line dashed  head normal }
   }
   delivery.core.shipment -> delivery.core.pg 'packages, parcels' {
@@ -280,6 +280,12 @@ for: whoever moves money listens for this.'
   shop.oms._order -> shop.oms.pg 'orders, order_lines' {
     style { color declared  line dashed  head normal }
   }
+  shop.pricing.price_list -> shop.pricing.pg 'price_lists, price_rows' {
+    style { color declared  line dashed  head normal }
+  }
+  shop.pricing.quote -> shop.pricing.pg 'quotes, quote_lines' {
+    style { color declared  line dashed  head normal }
+  }
   customer -> delivery.core 'Shipment tracking' {
     style { color verified  line solid  head normal }
   }
@@ -297,5 +303,8 @@ for: whoever moves money listens for this.'
   }
   client -> shop.oms '2 flows' {
     style { color verified  line solid  head normal }
+  }
+  client -> shop.pricing '5 flows' {
+    style { color declared  line dashed  head normal }
   }
 }

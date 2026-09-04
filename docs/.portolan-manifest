@@ -46,7 +46,12 @@
     "flows/oms-confirm-order-on-payment-authorized.md",
     "flows/oms-get-order.md",
     "flows/oms-place-order-on-basket-checked-out.md",
-    "flows/quote-expired-on-checkout.md",
+    "flows/pricing-archive-price-list.md",
+    "flows/pricing-expire-quote-on-checkout.md",
+    "flows/pricing-get-quote.md",
+    "flows/pricing-import-price-list.md",
+    "flows/pricing-issue-quote.md",
+    "flows/pricing-list-price-lists.md",
     "flows/shipment-tracking.md",
     "llms-full.txt",
     "llms.txt",
@@ -68,7 +73,7 @@
     "shop/pricing/README.md",
     "shop/pricing/aggregates/price-list.md",
     "shop/pricing/aggregates/quote.md",
-    "shop/pricing/stores/cache.md",
+    "shop/pricing/stores/pg.md",
     "types.md"
   ]
 }

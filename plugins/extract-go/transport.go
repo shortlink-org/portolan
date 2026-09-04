@@ -29,7 +29,40 @@ func extractTransport(root string, b *plugin.Builder) (map[string][]string, []en
 	out := map[string][]string{}
 	var endpoints []endpointDecl
 
-	base := "internal/infrastructure/transport/http"
+	for _, endpoint := range readTransport(root, "internal/infrastructure/transport/http", isHandler, lowerFirst, b) {
+		endpoints = append(endpoints, endpoint)
+		for _, useCase := range endpoint.useCases {
+			out[useCase] = appendOnce(out[useCase], endpoint.id)
+		}
+	}
+
+	// A gRPC handler is read the same way, and differs in two things: what
+	// marks a method as one of the contract's, and what the endpoint is called.
+	// An rpc is named the same on both sides - GetQuote is GetQuote - so the
+	// method name is the id, and it is the id extract-proto puts in `provides`.
+	for _, endpoint := range readTransport(root, "internal/infrastructure/transport/grpc", isRpcHandler, sameName, b) {
+		endpoints = append(endpoints, endpoint)
+		for _, useCase := range endpoint.useCases {
+			out[useCase] = appendOnce(out[useCase], endpoint.id)
+		}
+	}
+
+	// Both the struct set and the method set are walked as maps, so the order
+	// operations arrive in is not the order they were written in. Sorting here
+	// is what keeps the fragment byte-identical between runs.
+	for useCase := range out {
+		sort.Strings(out[useCase])
+	}
+	sort.Slice(endpoints, func(i, j int) bool { return endpoints[i].id < endpoints[j].id })
+
+	return out, endpoints
+}
+
+// readTransport walks one transport layer: a package per handler, a struct per
+// server, and the methods of it that answer something.
+func readTransport(root, base string, handler func(*ast.FuncDecl) bool, id func(string) string, b *plugin.Builder) []endpointDecl {
+	var endpoints []endpointDecl
+
 	for _, dir := range subdirs(root, base) {
 		// The generated server is not a handler package: it declares the
 		// interface these implement, and reading it would pair every operation
@@ -44,24 +77,11 @@ func extractTransport(root string, b *plugin.Builder) (map[string][]string, []en
 		}
 
 		for name, useCase := range handlerFields(pkg) {
-			for _, endpoint := range operationsRunning(pkg, name, useCase, b) {
-				endpoints = append(endpoints, endpoint)
-				for _, useCase := range endpoint.useCases {
-					out[useCase] = appendOnce(out[useCase], endpoint.id)
-				}
-			}
+			endpoints = append(endpoints, operationsRunning(pkg, name, useCase, handler, id, b)...)
 		}
 	}
 
-	// Both the struct set and the method set are walked as maps, so the order
-	// operations arrive in is not the order they were written in. Sorting here
-	// is what keeps the fragment byte-identical between runs.
-	for useCase := range out {
-		sort.Strings(out[useCase])
-	}
-	sort.Slice(endpoints, func(i, j int) bool { return endpoints[i].id < endpoints[j].id })
-
-	return out, endpoints
+	return endpoints
 }
 
 // handlerFields maps each handler struct to the use case behind each of its
@@ -170,15 +190,15 @@ type endpointDecl struct {
 
 // operationsRunning finds the handler methods on a struct and the use cases
 // each one reaches.
-func operationsRunning(pkg *pkg, structName string, fields map[string]string, b *plugin.Builder) []endpointDecl {
+func operationsRunning(pkg *pkg, structName string, fields map[string]string, handler func(*ast.FuncDecl) bool, id func(string) string, b *plugin.Builder) []endpointDecl {
 	var out []endpointDecl
 
 	for name, fn := range pkg.methods(structName) {
-		if !isHandler(fn) {
+		if !handler(fn) {
 			continue
 		}
 
-		operation := lowerFirst(name)
+		operation := id(name)
 		used := useCasesTouched(fn, fields)
 
 		if len(used) == 0 {
@@ -212,6 +232,32 @@ func isHandler(fn *ast.FuncDecl) bool {
 
 	return false
 }
+
+// isRpcHandler tells a generated-server method from a helper beside it. A
+// protoc-gen-go-grpc server takes a context and a pointer to the request
+// message and answers with a pointer and an error, and the generated
+// Unimplemented embed is what says the struct is one of those servers at all.
+func isRpcHandler(fn *ast.FuncDecl) bool {
+	if fn.Type.Params == nil || fn.Type.Results == nil {
+		return false
+	}
+	if len(fn.Type.Params.List) != 2 || len(fn.Type.Results.List) != 2 {
+		return false
+	}
+	if types.ExprString(fn.Type.Params.List[0].Type) != "context.Context" {
+		return false
+	}
+	if !strings.HasPrefix(types.ExprString(fn.Type.Params.List[1].Type), "*") {
+		return false
+	}
+
+	return types.ExprString(fn.Type.Results.List[1].Type) == "error" &&
+		strings.HasPrefix(types.ExprString(fn.Type.Results.List[0].Type), "*")
+}
+
+// sameName is the id of an rpc: the method's own name, because the contract
+// spells it the same and extract-proto puts that spelling in `provides`.
+func sameName(name string) string { return name }
 
 // useCasesTouched collects the receiver's use case fields a body reaches, in a
 // stable order.

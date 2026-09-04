@@ -71,6 +71,13 @@ func camel(name string) string {
 
 // title is the human name for a package: user becomes User, price_list becomes
 // Price List.
+// pascal is the name a struct would have for this package: price_list holds
+// PriceList. `title` puts the words apart for a page to read; a type name has
+// them joined.
+func pascal(name string) string {
+	return strings.ReplaceAll(title(name), " ", "")
+}
+
 func title(name string) string {
 	words := strings.FieldsFunc(name, func(r rune) bool { return r == '_' || r == '-' })
 	for i, word := range words {

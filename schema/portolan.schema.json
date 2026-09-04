@@ -517,6 +517,18 @@
             }
           ]
         },
+        "events": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Which aggregate another service's events belong to, as the import path a policy reads them from to the aggregate id, so a policy reacting to a foreign event resolves.",
+          "examples": [
+            {
+              "github.com/acme/shop/pricing/internal/infrastructure/cart": "shop.cart.basket"
+            }
+          ]
+        },
         "out": {
           "type": "string",
           "description": "Name of the fragment file, inside the step's output directory. One extractor writes one file, so that a fragment carries the provenance of the run that produced it.",

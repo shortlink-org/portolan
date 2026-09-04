@@ -1,0 +1,15 @@
+# The Go stubs. Run once per contract, each into the `gen` directory beside the
+# handler that answers it or the client that calls it:
+#
+#   buf generate <dir>/proto -o <dir>/gen
+#
+# `paths=source_relative` keeps shop/v1 under gen, which is where the proto
+# says the package lives.
+version: v2
+plugins:
+  - remote: buf.build/protocolbuffers/go
+    out: .
+    opt: paths=source_relative
+  - remote: buf.build/grpc/go
+    out: .
+    opt: paths=source_relative

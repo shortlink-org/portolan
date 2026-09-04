@@ -1,0 +1,692 @@
+{
+  "generatedAt": "2026-09-05T05:27:02+07:00",
+  "commit": "ef3a561",
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "Shop",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.pricing",
+          "slug": "pricing",
+          "name": "Pricing",
+          "repo": "github.com/shortlink-org/portolan",
+          "path": "examples/shop/pricing",
+          "readme": "# Pricing\n\nService `pricing` — bounded context **shop**. Go.\n\nOwns what things cost. It is asked, and it answers with a promise: a quote is a\nprice for one basket, good until a moment, and after that moment it is gone\nrather than stale.\n\n## What it does\n\n- Prices a basket against the list in force and issues a quote — `QuoteIssued`.\n- Answers what a quote says, by its id or by the basket it priced.\n- Lets promises lapse: the sweep expires everything past its moment, and a\n  basket checked out has its quote expired straight away, because from then on\n  the order holds the price.\n- Takes in price lists whole and archives them rather than editing them, so\n  that what a quote was priced against stays readable.\n\n## What it does not do\n\nDoes not decide what to buy, does not hold a basket and does not place an\norder. It never recomputes a price it has already promised — a quote that\nchanged under the customer would not be a quote.\n\n## Publishes\n\n`QuoteIssued`, `QuoteExpired`, on `shop.pricing.quote`.\n\n## Provides\n\n`shop.v1.Pricing` — IssueQuote, GetQuote — and `shop.v1.PriceLists` —\nImportPriceList, ArchivePriceList, ListPriceLists. One contract per aggregate,\nvendored under the transport package that answers it.\n\n`Pricing` keeps its name rather than taking the `Service` suffix the lint rules\nwant: `shop.cart` has been calling `shop.v1.Pricing/GetQuote` since before this\nservice existed, and a naming rule is not worth breaking a consumer over. The\nexception is written down in the module's `buf.yaml`.\n\n## Running it\n\n```bash\ndocker compose up -d db\nmake gen \u0026\u0026 go run ./cmd/pricing\n```\n\n`make gen` regenerates the stubs from the contracts in this tree — one call per\nmodule, into the `gen` directory beside the code that uses it.",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [
+            {
+              "id": "shop.pricing.price-list",
+              "slug": "price-list",
+              "name": "Price List",
+              "readme": "What things cost before anybody asks.\n\nA list is imported whole and never edited: a change is another list, valid from\nits own moment, and the old one is archived rather than deleted so that a quote\npriced against it stays readable. Nothing here is announced on the bus - a\nprice list changing is this service's business until somebody asks for a quote.",
+              "root": "PriceList",
+              "entities": [
+                {
+                  "id": "shop.pricing.price-list.price-list",
+                  "slug": "price-list",
+                  "name": "PriceList",
+                  "doc": "PriceList is one import of prices, valid from a moment. Lists are never edited: a change is a new list, and what a quote was priced against stays readable for as long as the quote does.",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "name",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "currency",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "rows",
+                      "type": "[]Row",
+                      "doc": ""
+                    },
+                    {
+                      "name": "validFrom",
+                      "type": "time.Time",
+                      "doc": ""
+                    },
+                    {
+                      "name": "archived",
+                      "type": "bool",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "id": "shop.pricing.price-list.row",
+                  "slug": "row",
+                  "name": "Row",
+                  "doc": "Row is one price in a list. An entity rather than a value: it is tracked over the life of the list, and a reader asks about this sku's price in that list.",
+                  "fields": [
+                    {
+                      "name": "sku",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "price",
+                      "type": "money.Money",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [],
+              "operations": [
+                {
+                  "id": "ArchivePriceList",
+                  "kind": "command",
+                  "doc": "Package archive_price_list takes a price list out of use without losing it.",
+                  "exposedBy": [
+                    "ArchivePriceList"
+                  ]
+                },
+                {
+                  "id": "ImportPriceList",
+                  "kind": "command",
+                  "doc": "Package import_price_list takes in a whole price list.",
+                  "exposedBy": [
+                    "ImportPriceList"
+                  ]
+                },
+                {
+                  "id": "ListPriceLists",
+                  "kind": "query",
+                  "doc": "Package list_price_lists reads every price list there is.",
+                  "exposedBy": [
+                    "ListPriceLists"
+                  ]
+                }
+              ],
+              "events": []
+            },
+            {
+              "id": "shop.pricing.quote",
+              "slug": "quote",
+              "name": "Quote",
+              "readme": "What a basket costs, promised until a moment.\n\nA quote is issued against a basket with its lines captured, and from then on it\nonly moves twice: it is taken by the order it priced, or it expires. The price\nis never recomputed - a quote that changed under the customer would not be a\nquote - and an expired one is not revived, it is replaced.",
+              "root": "Quote",
+              "entities": [
+                {
+                  "id": "shop.pricing.quote.quote",
+                  "slug": "quote",
+                  "name": "Quote",
+                  "doc": "Quote is one basket, priced. The lines are captured at issue and never recomputed: a quote that changed under the customer would not be a quote.",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "basketID",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "lines",
+                      "type": "[]line.Line",
+                      "doc": ""
+                    },
+                    {
+                      "name": "total",
+                      "type": "money.Money",
+                      "doc": ""
+                    },
+                    {
+                      "name": "state",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "issuedAt",
+                      "type": "time.Time",
+                      "doc": ""
+                    },
+                    {
+                      "name": "expiresAt",
+                      "type": "time.Time",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [
+                {
+                  "id": "shop.pricing.quote.line",
+                  "slug": "line",
+                  "name": "Line",
+                  "doc": "Line is a value: two lines with the same sku, quantity and price are the same line. The price is captured when the quote is issued and never recomputed - that is the whole point of quoting.",
+                  "fields": [
+                    {
+                      "name": "sku",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "quantity",
+                      "type": "int32",
+                      "doc": ""
+                    },
+                    {
+                      "name": "unitPrice",
+                      "type": "money.Money",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "id": "shop.pricing.quote.money",
+                  "slug": "money",
+                  "name": "Money",
+                  "doc": "Money never rounds: everything is an integer of minor units, and two amounts are only added when they are in the same currency.",
+                  "fields": [
+                    {
+                      "name": "amountMinor",
+                      "type": "int64",
+                      "doc": ""
+                    },
+                    {
+                      "name": "currency",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "operations": [
+                {
+                  "id": "ExpireQuote",
+                  "kind": "command",
+                  "doc": "Package expire_quote lets promises lapse."
+                },
+                {
+                  "id": "GetQuote",
+                  "kind": "query",
+                  "doc": "Package get_quote reads one quote.",
+                  "exposedBy": [
+                    "GetQuote"
+                  ]
+                },
+                {
+                  "id": "IssueQuote",
+                  "kind": "command",
+                  "doc": "Package issue_quote prices a basket and promises the price for a while.",
+                  "exposedBy": [
+                    "IssueQuote"
+                  ]
+                }
+              ],
+              "events": [
+                {
+                  "id": "shop.pricing.quote.QuoteExpired",
+                  "slug": "quote-expired",
+                  "name": "QuoteExpired",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "QuoteExpired says the price is no longer promised. Nothing is refunded and nothing is cancelled: whoever holds the quote has to ask for another one.",
+                      "source": "examples/shop/pricing/internal/domain/quote/event/quote_expired.go",
+                      "fields": [
+                        {
+                          "name": "quoteID",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "basketID",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "occurredAt",
+                          "type": "time.Time",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [],
+                  "wire": {
+                    "name": "pricing.QuoteExpired",
+                    "channel": "shop.pricing.quote"
+                  }
+                },
+                {
+                  "id": "shop.pricing.quote.QuoteIssued",
+                  "slug": "quote-issued",
+                  "name": "QuoteIssued",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "QuoteIssued says a basket has a price, and for how long. Whoever places the order needs both, so both are on the event rather than fetched again.",
+                      "source": "examples/shop/pricing/internal/domain/quote/event/quote_issued.go",
+                      "fields": [
+                        {
+                          "name": "quoteID",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "basketID",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "totalMinor",
+                          "type": "int64",
+                          "doc": ""
+                        },
+                        {
+                          "name": "currency",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "expiresAt",
+                          "type": "time.Time",
+                          "doc": ""
+                        },
+                        {
+                          "name": "occurredAt",
+                          "type": "time.Time",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [],
+                  "wire": {
+                    "name": "pricing.QuoteIssued",
+                    "channel": "shop.pricing.quote"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [
+    {
+      "id": "flow.pricing-archive-price-list",
+      "slug": "pricing-archive-price-list",
+      "name": "Archive price list",
+      "summary": "Package archive_price_list takes a price list out of use without losing it.",
+      "source": "examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.pricing",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "pricing-pg",
+          "kind": "store",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.pricing",
+          "kind": "rpc",
+          "label": "ArchivePriceList",
+          "status": "declared",
+          "line": "examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:50"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.pricing",
+          "to": "pricing-pg",
+          "kind": "call",
+          "label": "ByID",
+          "status": "declared",
+          "line": "examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:22"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "shop.pricing",
+          "to": "pricing-pg",
+          "kind": "call",
+          "label": "Save",
+          "status": "declared",
+          "line": "examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:28"
+        }
+      ]
+    },
+    {
+      "id": "flow.pricing-get-quote",
+      "slug": "pricing-get-quote",
+      "name": "Get quote",
+      "summary": "Package get_quote reads one quote.",
+      "source": "examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.pricing",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "pricing-pg",
+          "kind": "store",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.pricing",
+          "kind": "rpc",
+          "label": "GetQuote",
+          "status": "declared",
+          "line": "examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go:52"
+        },
+        {
+          "type": "alt",
+          "id": "alt4",
+          "branches": [
+            {
+              "title": "in.QuoteID != \"\"",
+              "steps": [
+                {
+                  "type": "step",
+                  "id": "s2",
+                  "from": "shop.pricing",
+                  "to": "pricing-pg",
+                  "kind": "call",
+                  "label": "ByID",
+                  "status": "declared",
+                  "line": "examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go:27"
+                }
+              ]
+            },
+            {
+              "title": "otherwise",
+              "steps": [
+                {
+                  "type": "step",
+                  "id": "s3",
+                  "from": "shop.pricing",
+                  "to": "pricing-pg",
+                  "kind": "call",
+                  "label": "ByBasket",
+                  "status": "declared",
+                  "line": "examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go:29"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "flow.pricing-import-price-list",
+      "slug": "pricing-import-price-list",
+      "name": "Import price list",
+      "summary": "Package import_price_list takes in a whole price list.",
+      "source": "examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.pricing",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "pricing-pg",
+          "kind": "store",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.pricing",
+          "kind": "rpc",
+          "label": "ImportPriceList",
+          "status": "declared",
+          "line": "examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:30"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.pricing",
+          "to": "pricing-pg",
+          "kind": "call",
+          "label": "Save",
+          "status": "declared",
+          "line": "examples/shop/pricing/internal/application/price_list/usecases/import_price_list/usecase.go:43"
+        }
+      ]
+    },
+    {
+      "id": "flow.pricing-issue-quote",
+      "slug": "pricing-issue-quote",
+      "name": "Issue quote",
+      "summary": "Package issue_quote prices a basket and promises the price for a while.",
+      "source": "examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.pricing",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "pricing-pg",
+          "kind": "store",
+          "context": "shop"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.pricing",
+          "kind": "rpc",
+          "label": "IssueQuote",
+          "status": "declared",
+          "line": "examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go:28"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.pricing",
+          "to": "pricing-pg",
+          "kind": "call",
+          "label": "Current",
+          "status": "declared",
+          "line": "examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:35"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "shop.pricing",
+          "to": "pricing-pg",
+          "kind": "call",
+          "label": "Save",
+          "status": "declared",
+          "line": "examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:55"
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "shop.pricing",
+          "to": "bus",
+          "kind": "event",
+          "ref": "shop.pricing.quote.QuoteIssued",
+          "label": "QuoteIssued",
+          "status": "declared",
+          "line": "examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:55"
+        }
+      ]
+    },
+    {
+      "id": "flow.pricing-list-price-lists",
+      "slug": "pricing-list-price-lists",
+      "name": "List price lists",
+      "summary": "Package list_price_lists reads every price list there is.",
+      "source": "examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.pricing",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "pricing-pg",
+          "kind": "store",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.pricing",
+          "kind": "rpc",
+          "label": "ListPriceLists",
+          "status": "declared",
+          "line": "examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:60"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.pricing",
+          "to": "pricing-pg",
+          "kind": "call",
+          "label": "All",
+          "status": "declared",
+          "line": "examples/shop/pricing/internal/application/price_list/usecases/list_price_lists/usecase.go:22"
+        }
+      ]
+    },
+    {
+      "id": "flow.pricing-expire-quote-on-checkout",
+      "slug": "pricing-expire-quote-on-checkout",
+      "name": "Expire quote on checkout",
+      "summary": "Ends the promise once the basket it priced is checked out.",
+      "source": "examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        },
+        {
+          "id": "shop.pricing",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "pricing-pg",
+          "kind": "store",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "bus",
+          "to": "shop.pricing",
+          "kind": "event",
+          "ref": "shop.cart.basket.BasketCheckedOut",
+          "label": "BasketCheckedOut",
+          "status": "declared",
+          "line": "examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:35"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.pricing",
+          "to": "pricing-pg",
+          "kind": "call",
+          "label": "ByBasket",
+          "status": "declared",
+          "line": "examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:41"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "shop.pricing",
+          "to": "pricing-pg",
+          "kind": "call",
+          "label": "Save",
+          "status": "declared",
+          "line": "examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:55"
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "shop.pricing",
+          "to": "bus",
+          "kind": "event",
+          "ref": "shop.pricing.quote.QuoteExpired",
+          "label": "QuoteExpired",
+          "status": "declared",
+          "line": "examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:55"
+        }
+      ]
+    }
+  ],
+  "adrs": []
+}

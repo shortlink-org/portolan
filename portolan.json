@@ -226,6 +226,54 @@
       }
     },
     {
+      "plugin": "go-domain",
+      "in": "examples/shop/pricing",
+      "out": "examples/shop/pricing/portolan",
+      "options": {
+        "context": "shop",
+        "service": "pricing",
+        "repo": "github.com/shortlink-org/portolan",
+        "store": "pg",
+        "peers": {
+          "shop.v1": "shop.oms"
+        },
+        "events": {
+          "github.com/shortlink-org/portolan/examples/shop/pricing/internal/infrastructure/cart": "shop.cart.basket"
+        },
+        "out": "domain.json"
+      }
+    },
+    {
+      "plugin": "proto",
+      "in": "examples/shop/pricing",
+      "out": "examples/shop/pricing/portolan",
+      "options": {
+        "context": "shop",
+        "service": "pricing",
+        "paths": [
+          "internal/infrastructure/transport/grpc/quote/proto",
+          "internal/infrastructure/transport/grpc/price_list/proto"
+        ],
+        "modules": {
+          "internal/infrastructure/transport/grpc/quote/proto": "local:shop/quote",
+          "internal/infrastructure/transport/grpc/price_list/proto": "local:shop/price-list"
+        },
+        "out": "proto.json"
+      }
+    },
+    {
+      "plugin": "sql",
+      "in": "examples/shop/pricing",
+      "out": "examples/shop/pricing/portolan",
+      "options": {
+        "context": "shop",
+        "service": "pricing",
+        "store": "pg",
+        "name": "Pricing database",
+        "out": "stores.json"
+      }
+    },
+    {
       "plugin": "java-domain",
       "in": "examples/payments/ledger",
       "out": "examples/payments/ledger/portolan",

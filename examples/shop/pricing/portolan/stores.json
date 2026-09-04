@@ -1,0 +1,322 @@
+{
+  "generatedAt": "2026-09-05T05:27:02+07:00",
+  "commit": "ef3a561",
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.pricing",
+          "slug": "pricing",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "stores": [
+            "shop.pricing.pg"
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": [],
+  "stores": [
+    {
+      "id": "shop.pricing.pg",
+      "slug": "pg",
+      "name": "Pricing database",
+      "kind": "postgres",
+      "owner": "shop.pricing",
+      "tables": [
+        {
+          "id": "shop.pricing.pg.price_lists",
+          "name": "price_lists",
+          "columns": [
+            {
+              "name": "id",
+              "type": "text",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "name",
+              "type": "text",
+              "nullable": false
+            },
+            {
+              "name": "currency",
+              "type": "char(3)",
+              "nullable": false
+            },
+            {
+              "name": "valid_from",
+              "type": "timestamptz",
+              "nullable": false
+            },
+            {
+              "name": "archived",
+              "type": "boolean",
+              "nullable": false
+            }
+          ],
+          "indexes": [
+            {
+              "name": "price_lists_in_force",
+              "columns": [
+                "currency",
+                "valid_from"
+              ],
+              "unique": false
+            }
+          ],
+          "persists": {
+            "aggregate": "shop.pricing.price-list"
+          },
+          "role": "aggregate-root"
+        },
+        {
+          "id": "shop.pricing.pg.price_rows",
+          "name": "price_rows",
+          "columns": [
+            {
+              "name": "price_list_id",
+              "type": "text",
+              "nullable": false,
+              "pk": true,
+              "fk": {
+                "table": "shop.pricing.pg.price_lists",
+                "column": "id",
+                "onDelete": "cascade"
+              }
+            },
+            {
+              "name": "sku",
+              "type": "text",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "amount_minor",
+              "type": "bigint",
+              "nullable": false
+            }
+          ],
+          "persists": {
+            "aggregate": "shop.pricing.price-list"
+          },
+          "role": "child"
+        },
+        {
+          "id": "shop.pricing.pg.quotes",
+          "name": "quotes",
+          "columns": [
+            {
+              "name": "id",
+              "type": "text",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "basket_id",
+              "type": "text",
+              "nullable": false
+            },
+            {
+              "name": "total_minor",
+              "type": "bigint",
+              "nullable": false
+            },
+            {
+              "name": "currency",
+              "type": "char(3)",
+              "nullable": false
+            },
+            {
+              "name": "state",
+              "type": "text",
+              "nullable": false
+            },
+            {
+              "name": "issued_at",
+              "type": "timestamptz",
+              "nullable": false
+            },
+            {
+              "name": "expires_at",
+              "type": "timestamptz",
+              "nullable": false
+            }
+          ],
+          "indexes": [
+            {
+              "name": "quotes_open_by_expiry",
+              "columns": [
+                "state",
+                "expires_at"
+              ],
+              "unique": false
+            },
+            {
+              "name": "quotes_by_basket",
+              "columns": [
+                "basket_id"
+              ],
+              "unique": false
+            }
+          ],
+          "persists": {
+            "aggregate": "shop.pricing.quote"
+          },
+          "role": "aggregate-root"
+        },
+        {
+          "id": "shop.pricing.pg.quote_lines",
+          "name": "quote_lines",
+          "columns": [
+            {
+              "name": "quote_id",
+              "type": "text",
+              "nullable": false,
+              "pk": true,
+              "fk": {
+                "table": "shop.pricing.pg.quotes",
+                "column": "id",
+                "onDelete": "cascade"
+              }
+            },
+            {
+              "name": "sku",
+              "type": "text",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "quantity",
+              "type": "integer",
+              "nullable": false
+            },
+            {
+              "name": "unit_price_minor",
+              "type": "bigint",
+              "nullable": false
+            },
+            {
+              "name": "currency",
+              "type": "char(3)",
+              "nullable": false
+            }
+          ],
+          "persists": {
+            "aggregate": "shop.pricing.quote"
+          },
+          "role": "child"
+        },
+        {
+          "id": "shop.pricing.pg.outbox",
+          "name": "outbox",
+          "columns": [
+            {
+              "name": "id",
+              "type": "bigserial",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "topic",
+              "type": "text",
+              "nullable": false
+            },
+            {
+              "name": "name",
+              "type": "text",
+              "nullable": false
+            },
+            {
+              "name": "aggregate_id",
+              "type": "text",
+              "nullable": false
+            },
+            {
+              "name": "occurred_at",
+              "type": "timestamptz",
+              "nullable": false
+            },
+            {
+              "name": "published_at",
+              "type": "timestamptz",
+              "nullable": true
+            }
+          ],
+          "indexes": [
+            {
+              "name": "outbox_unpublished",
+              "columns": [
+                "id"
+              ],
+              "unique": false
+            }
+          ],
+          "role": "outbox"
+        }
+      ],
+      "views": [
+        {
+          "id": "shop.pricing.pg.v_price_list_use",
+          "name": "v_price_list_use",
+          "columns": [
+            {
+              "name": "price_list_id",
+              "type": "text",
+              "nullable": false,
+              "from": [
+                "shop.pricing.pg.price_lists.id"
+              ]
+            },
+            {
+              "name": "name",
+              "type": "text",
+              "nullable": false,
+              "from": [
+                "shop.pricing.pg.price_lists.name"
+              ]
+            },
+            {
+              "name": "currency",
+              "type": "char(3)",
+              "nullable": false,
+              "from": [
+                "shop.pricing.pg.price_lists.currency"
+              ]
+            },
+            {
+              "name": "rows_priced",
+              "type": "text",
+              "nullable": false,
+              "from": [
+                "shop.pricing.pg.price_rows.sku"
+              ]
+            }
+          ],
+          "reads": [
+            "shop.pricing.pg.price_lists",
+            "shop.pricing.pg.price_rows"
+          ],
+          "definition": "CREATE VIEW v_price_list_use AS\nSELECT l.id        AS price_list_id,\n       l.name      AS name,\n       l.currency  AS currency,\n       count(r.sku) AS rows_priced\n  FROM price_lists l\n  LEFT JOIN price_rows r ON r.price_list_id = l.id\n GROUP BY l.id;",
+          "persists": {
+            "aggregate": "shop.pricing.price-list"
+          },
+          "source": "internal/infrastructure/repository/price_list/migrations/0002_price_list_use.sql"
+        }
+      ],
+      "source": "examples/shop/pricing/internal/infrastructure/repository"
+    }
+  ]
+}

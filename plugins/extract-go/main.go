@@ -42,6 +42,12 @@ type Options struct {
 	// with no line here is called as `unknown`, and the steps are unresolved.
 	Peers map[string]string `json:"peers,omitempty"`
 
+	// Events says which aggregate another service's events belong to, as the
+	// import path a policy reads them from to the aggregate id. A service that
+	// vendors the shape of somebody else's event has the type and nothing else;
+	// only the manifest knows whose aggregate raised it.
+	Events map[string]string `json:"events,omitempty"`
+
 	// Out names the fragment file. One extractor, one file, so that a fragment
 	// carries the provenance of the run that produced it.
 	Out string `json:"out,omitempty"`

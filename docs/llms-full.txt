@@ -1,29 +1,28 @@
 *llms-full.txt: every page of Example estate, one after another. A page begins with a comment naming its file, and the links inside it are relative to that file's directory.*
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 <!-- README.md -->
 
 # Example estate
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 
 ## Contexts
 
 | Context | Class | Services | Summary |
 | --- | --- | --- | --- |
-| [Shop](shop/README.md) | core | [Pricing](shop/pricing/README.md), [Billing](shop/billing/README.md), [Shopping Cart](shop/cart/README.md), [Order Management](shop/oms/README.md) | Everything the customer touches before money moves: baskets, orders and prices. |
 | [Delivery](delivery/README.md) | supporting | [Delivery Core](delivery/core/README.md) | Routes, parcels and proof of delivery. Reacts to captured payments, never to placed orders. |
 | [Authentication](auth/README.md) | core | [Authentication & Sessions](auth/auth/README.md) | Who someone is, and whether they are still logged in. The only service in the estate that stores credentials, and the only one allowed to mint or revoke a session. |
 | [Payments](payments/README.md) | core | [Ledger](payments/ledger/README.md) | Money, and the record of every movement of it. Nothing here decides whether to charge - it is asked, and it writes down what happened either way. |
+| [Shop](shop/README.md) | — | [Billing](shop/billing/README.md), [Shopping Cart](shop/cart/README.md), [Order Management](shop/oms/README.md), [Pricing](shop/pricing/README.md) | — |
 
 ## Flows
 
 | Flow | Owner | Summary |
 | --- | --- | --- |
 | [Gateway webhook](flows/gateway-webhook.md) | [payments](payments/README.md) | The gateway's side of the story, arriving after the fact. One signed callback, four ways to read it: a replay to ignore, a capture to record, a charge with no local payment to adopt, and a failure to pass on. The adopt branch is the only repair for a checkout that timed out mid-authorization, and it is the one branch no test covers. |
-| [Quote expired on checkout](flows/quote-expired-on-checkout.md) | [shop](shop/README.md) | A basket that has been checked out is a basket whose quote is spent. Pricing hears the event the cart publishes and expires the quote it issued for that basket, so a second checkout of the same basket has to be priced again rather than reuse a number the price list may have moved on from. |
 | [Shipment tracking](flows/shipment-tracking.md) | [delivery](delivery/README.md) | Reconstructed from production traces over a 24 hour window: the tracking page, the carrier's scan webhook, and what each scan code sets off. Two things only the traces know about — a consumer no repository accounts for, and an exception path whose reader emits no spans at all. |
 | [Change password](flows/auth-change-password.md) | [auth](auth/README.md) | Replaces the password of a user, given the current one. |
 | [Get user](flows/auth-get-user.md) | [auth](auth/README.md) | Reads a user by id. |
@@ -53,6 +52,12 @@
 | [Get order](flows/oms-get-order.md) | [shop](shop/README.md) | Answers with the order as it is now; a cancelled order is still found. |
 | [Confirm order on payment authorized](flows/oms-confirm-order-on-payment-authorized.md) | [shop](shop/README.md) | Confirms the order once the payment for it is authorised (ADR oms.0005). The publisher is `payments.ledger`, and the name is the one it puts on the message: every service on this bus names its events after itself. |
 | [Place order on basket checked out](flows/oms-place-order-on-basket-checked-out.md) | [shop](shop/README.md) | Places the order the basket was checked out for (ADR oms.0002). The order takes the basket's id, so the same checkout heard twice places one order. |
+| [Archive price list](flows/pricing-archive-price-list.md) | [shop](shop/README.md) | Package archive_price_list takes a price list out of use without losing it. |
+| [Get quote](flows/pricing-get-quote.md) | [shop](shop/README.md) | Package get_quote reads one quote. |
+| [Import price list](flows/pricing-import-price-list.md) | [shop](shop/README.md) | Package import_price_list takes in a whole price list. |
+| [Issue quote](flows/pricing-issue-quote.md) | [shop](shop/README.md) | Package issue_quote prices a basket and promises the price for a while. |
+| [List price lists](flows/pricing-list-price-lists.md) | [shop](shop/README.md) | Package list_price_lists reads every price list there is. |
+| [Expire quote on checkout](flows/pricing-expire-quote-on-checkout.md) | [shop](shop/README.md) | Ends the promise once the basket it priced is checked out. |
 
 ## Decisions
 
@@ -66,7 +71,7 @@
 
 # Shared types
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 Types named by more than one aggregate, event or message. A field that
 refers to one of these is knowably the same shape everywhere it appears.
@@ -121,112 +126,546 @@ refers to one of these is knowably the same shape everywhere it appears.
 | `amountMinor` | `int64` | Amount in the minor unit of the currency. |
 | `currency` | `string` | ISO 4217 code, upper case. |
 
-<!-- shop/README.md -->
+<!-- delivery/README.md -->
 
-# Shop
+# Delivery
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
-- **Id:** `shop`
-- **Classification:** core
+- **Id:** `delivery`
+- **Classification:** supporting
 
-Everything the customer touches before money moves: baskets, orders and prices.
+Routes, parcels and proof of delivery. Reacts to captured payments, never to placed orders.
 
 ## Services
 
 | Service | Path | Aggregates |
 | --- | --- | --- |
-| [Pricing](pricing/README.md) | `services/pricing` | Quote, PriceList |
-| [Billing](billing/README.md) | `examples/shop/billing` | Invoice |
-| [Shopping Cart](cart/README.md) | `examples/shop/cart` | Basket |
-| [Order Management](oms/README.md) | `examples/shop/oms` | Order |
+| [Delivery Core](core/README.md) | `services/core` | Shipment, Route |
 
-<!-- shop/pricing/README.md -->
+<!-- delivery/core/README.md -->
 
-# Pricing
+# Delivery Core
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
-- **Id:** `shop.pricing`
-- **Context:** [Shop](../README.md)
-- **Repo:** `github.com/acme/shop`
-- **Path:** `services/pricing`
+- **Id:** `delivery.core`
+- **Context:** [Delivery](../README.md)
+- **Repo:** `github.com/acme/delivery`
+- **Path:** `services/core`
 
-## Pricing Service
+`delivery.core` turns confirmed orders into physical movement: routes, parcels
+and proof of delivery. It is the only service in the `delivery` context and it
+owns every carrier integration.
 
-`shop.pricing` answers one question: what should this basket cost for this
-customer, right now. It is a pure read model over price lists, promotions and
-customer agreements. It never writes order state.
+## Boundaries
 
-### Design
-
-Quotes are immutable and time-boxed. A quote is issued with an explicit
-expiry; the OMS must re-quote rather than reuse an expired one. This keeps
-pricing decisions auditable long after the price list has changed.
+Delivery reacts to `PaymentCaptured` rather than to `OrderPlaced`. An order
+that is placed but never paid must never reach a van. This is the single most
+important rule in the context.
 
 ```mermaid
-flowchart LR
-    A[GetQuote] --> B{customer agreement?}
-    B -- yes --> C[Contract price list]
-    B -- no --> D[Public price list]
-    C --> E[Apply promotions]
-    D --> E
-    E --> F[QuoteIssued]
+flowchart TD
+    P[PaymentCaptured] --> R[Plan route]
+    R --> S[ShipmentDispatched]
+    S --> T{scan events}
+    T -- delivered --> D[ShipmentDelivered]
+    T -- failed --> F[Retry next window]
+    F --> R
 ```
 
-### Price list precedence
+## Carriers
 
-| Rank | Source              | Scope             | Overrides            |
-| ---- | ------------------- | ----------------- | -------------------- |
-| 1    | Contract price list | One customer      | Everything below     |
-| 2    | Regional list       | One country       | Public list          |
-| 3    | Public list         | Everyone          | Nothing              |
+| Carrier   | Coverage      | Tracking      | Cutoff  |
+| --------- | ------------- | ------------- | ------- |
+| `inhouse` | Metro only    | Live GPS      | 18:00   |
+| `natpost` | National      | Scan events   | 15:30   |
+| `express` | International | Scan events   | 12:00   |
 
-Promotions are applied after precedence is resolved and are never stacked more
-than two deep.
+Carrier choice is decided at route planning time and is not part of the order.
 
-### Aggregates
+## Aggregates
 
-- `quote` — an issued quote and its expiry. Emits `QuoteIssued` and
-  `QuoteExpired`.
-- `price-list` — the price list itself. It is edited through an internal admin
-  tool that writes directly to the store, so this aggregate currently publishes
-  no domain events. That is a known gap, not a design choice.
+- `shipment` — one parcel from dispatch to proof of delivery.
+- `route` — a planned sequence of stops for one vehicle and one window.
 
-### Caching
+## Retries
 
-Quotes are cached for 60 seconds keyed by basket hash and customer segment. The
-cache is deliberately short: a stale quote is worse than a slow one.
+A failed delivery attempt does not fail the shipment. The shipment stays open
+and is re-routed into the next available window, up to three attempts, after
+which it is returned to the depot and the order is flagged for support.
+
+## Observability
+
+Every scan event carries the trace id of the originating `PaymentCaptured`
+message, which is how the shipment tracking flow was derived from traces.
 
 ## Aggregates
 
 | Aggregate | Root | Commands | Queries | Events |
 | --- | --- | --- | --- | --- |
-| [Quote](aggregates/quote.md) | `Quote` | 2 commands | 1 query | 2 events |
-| [PriceList](aggregates/price-list.md) | `PriceList` | 2 commands | 1 query | 0 events |
+| [Shipment](aggregates/shipment.md) | `Shipment` | 3 commands | 2 queries | 2 events |
+| [Route](aggregates/route.md) | `Route` | 2 commands | 1 query | 1 event |
 
 ## Provides
 
-**`shop.v1.Pricing`** — `proto/shop/v1/pricing.proto:9`
+**`delivery.v1.Delivery`** — `proto/delivery/v1/delivery.proto:11`
 
-- `GetQuote`
-- `ListPriceLists`
+- `PlanRoute`
+- `TrackShipment`
+- `GetShipment`
 
-<details><summary>GetQuoteRequest</summary>
+## Consumes
+
+| Call | Peer | Status | Source |
+| --- | --- | --- | --- |
+| `shop.v1.OrderService/GetOrder` | [shop.oms](../../shop/oms/README.md) | verified | `internal/delivery/client/orders.go:31` |
+| `payments.v1.PaymentService/GetPayment` | [payments.ledger](../../payments/ledger/README.md) | declared | `internal/delivery/client/payments.go:18` |
+
+## Publishes
+
+| Event | Latest | Consumers |
+| --- | --- | --- |
+| [ShipmentDispatched](aggregates/shipment.md) | v1 | `analytics-sink (declared)` |
+| [ShipmentDelivered](aggregates/shipment.md) | v1 | `analytics-sink (unresolved)`, [shop.oms (declared)](../../shop/oms/README.md) |
+| [RoutePlanned](aggregates/route.md) | v1 | — |
+
+## Stores
+
+| Store | Kind | Access | Tables |
+| --- | --- | --- | --- |
+| [Delivery database](stores/pg.md) | postgres | owns | 3 tables |
+
+<!-- delivery/core/aggregates/shipment.md -->
+
+# Shipment
+
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `delivery.core.shipment`
+- **Service:** [Delivery Core](../README.md)
+- **Root:** `Shipment`
+
+One parcel, from dispatch to proof of delivery.
+
+## Attempts
+
+A failed attempt does not fail the shipment. The shipment stays open and is
+re-routed into the next window, up to three attempts.
+
+| Attempt | Outcome            | Next                       |
+| ------- | ------------------ | -------------------------- |
+| 1       | no answer          | re-route, next window      |
+| 2       | no answer          | re-route, next window      |
+| 3       | no answer          | return to depot, flag order |
+
+## Exceptions
+
+An `EXCEPTION` scan stops the shipment advancing and opens a delivery
+exception. What reads that queue is not in this catalog and emits no spans, so
+the shipment-tracking flow ends there too — the gap is real, not a modelling
+omission.
+
+## Commands
+
+`Dispatch`, `RecordScan` and `RecordDelivery` are the only writes. Scans
+arrive from carrier webhooks and are deduplicated on the carrier scan id.
+
+## Queries
+
+`TrackShipment` is public-facing and rate limited per tracking reference.
+
+## Entities
+
+### Shipment — aggregate root
+
+Goods on their way to one address. The unit carriers scan.
 
 | Field | Type | Doc |
 | --- | --- | --- |
-| `items` | [`LineItem`](../../types.md#lineitem) | Lines to price. |
-| `customer` | [`CustomerRef`](../../types.md#customerref) | Segment drives the discount. |
+| `id` | `string` | Shipment id. |
+| `orderId` | `string` | Order the goods belong to. |
+| `parcels` | `[]Parcel` | Physical parcels in this shipment. |
+| `shipTo` | [`Address`](../../../types.md#address) | Destination. |
+| `state` | `string` | held \| planned \| dispatched \| delivered \| exception. A shipment sits in `held` from order confirmation until the money is actually captured. |
+| `scans` | `[]Scan` | Every carrier scan, oldest first. Append-only: a corrected scan is a new one. |
+
+### Parcel
+
+One box. Has its own tracking code and is scanned independently of its shipment.
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `id` | `string` | Parcel id. |
+| `weightGrams` | `int32` | Gross weight at dispatch. |
+| `tracking` | `TrackingCode` | Carrier tracking code. |
+
+### Scan
+
+One reading of a parcel by a carrier. Has identity because the carrier's scan id is what a retried webhook is deduplicated on.
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `carrierEventId` | `string` | The carrier's id for the scan. Deduplication is on this alone; a retried webhook carries the same one. |
+| `code` | `string` | IN_TRANSIT \| DELIVERED \| EXCEPTION. The carrier's vocabulary, stored unmapped so a new code is visible rather than swallowed. |
+| `scannedAt` | `time.Time` | When the carrier says it happened, which is not when we heard about it. |
+| `location` | `string` | Depot or delivery point as the carrier names it. Free text; no two carriers agree. |
+
+## Value objects
+
+### Address
+
+A postal address, unvalidated.
+
+Shared type [`Address`](../../../types.md#address).
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `line1` | `string` | Street and number. |
+| `line2` | `string` | Optional second line. |
+| `city` | `string` | City or locality. |
+| `postcode` | `string` | Postal code, unvalidated. |
+| `country` | `string` | ISO 3166-1 alpha-2. |
+
+### TrackingCode
+
+A carrier and the code it issued. Meaningless without the carrier, so the two travel together.
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `carrier` | `string` | Carrier code, e.g. DHL. |
+| `code` | `string` | Tracking code as issued by the carrier. |
+
+## Operations
+
+| Operation | Kind | Doc |
+| --- | --- | --- |
+| `Dispatch` | command | Releases a held shipment to a carrier and mints its tracking codes. Refused unless the payment is captured. |
+| `RecordScan` | command | Appends a carrier scan, deduplicated on the carrier's scan id. An EXCEPTION scan stops the shipment advancing and opens a delivery exception. |
+| `RecordDelivery` | command | Records proof of delivery and closes the shipment. Terminal: a scan arriving afterwards is stored and changes nothing. |
+| `TrackShipment` | query | The public tracking view for one reference. Rate limited per reference, and returns scans rather than internal state. |
+| `GetShipment` | query | The whole shipment, for callers inside the estate. This is what OMS reads before it will allow a cancellation. |
+
+## Events
+
+### ShipmentDispatched
+
+`delivery.core.shipment.ShipmentDispatched`
+
+| Consumer | Status | Note |
+| --- | --- | --- |
+| `analytics-sink` | declared | Registered in the traces exporter, not in any Go repo. |
+
+#### v1 — current
+
+A parcel physically left the depot.
+
+Source: `internal/delivery/domain/shipment/events.go:52`
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `shipmentId` | `string` | Identifier of the shipment. |
+| `orderId` | `string` | Order being fulfilled. |
+| `carrier` | `string` | One of inhouse, natpost, express. |
+| `trackingRef` | `string` | Carrier tracking reference. |
+| `shipTo` | [`Address`](../../../types.md#address) | Address the parcel is routed to. |
+
+### ShipmentDelivered
+
+`delivery.core.shipment.ShipmentDelivered`
+
+| Consumer | Status | Note |
+| --- | --- | --- |
+| `analytics-sink` | unresolved | Observed downstream of the bus in OTel traces; owner unknown. |
+| [shop.oms](../../../shop/oms/README.md) | declared | — |
+
+#### v1 — current
+
+Proof of delivery recorded. Terminal for the shipment.
+
+Source: `internal/delivery/domain/shipment/events.go:97`
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `shipmentId` | `string` | Identifier of the shipment. |
+| `orderId` | `string` | Order that is now fulfilled. |
+| `signedBy` | `string` | Name captured at the door, empty for contactless. |
+| `deliveredAt` | `time.Time` | Instant of the delivery scan. |
+
+<!-- delivery/core/aggregates/route.md -->
+
+# Route
+
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `delivery.core.route`
+- **Service:** [Delivery Core](../README.md)
+- **Root:** `Route`
+
+A planned sequence of stops for one vehicle and one delivery window.
+
+## Planning
+
+Routes are planned once per window, ninety minutes before the window opens.
+Shipments that miss the cut-off wait for the next window rather than forcing a
+re-plan; re-planning a live route is not supported.
+
+## Commands
+
+| Command       | Notes                                   |
+| ------------- | --------------------------------------- |
+| `PlanRoute`   | Assigns vehicle and stop order          |
+| `CloseRoute`  | Terminal; unfinished stops are re-queued |
+
+## Queries
+
+`GetRoute` returns stops in planned order, not in scan order.
+
+## Entities
+
+### Route — aggregate root
+
+A day's driving for one vehicle, as planned the night before.
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `id` | `string` | Route id. |
+| `date` | `string` | Delivery date, ISO. |
+| `vehicleId` | `string` | Vehicle assigned. |
+| `stops` | `[]Stop` | Stops in driving order. |
+
+### Stop
+
+One address on a route. Identified by its position, which is what the driver's app shows.
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `sequence` | `int32` | Position on the route, 1-based. |
+| `address` | [`Address`](../../../types.md#address) | Where to stop. |
+| `shipmentId` | `string` | Shipment dropped here. |
+
+## Value objects
+
+### Address
+
+A postal address, unvalidated.
+
+Shared type [`Address`](../../../types.md#address).
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `line1` | `string` | Street and number. |
+| `line2` | `string` | Optional second line. |
+| `city` | `string` | City or locality. |
+| `postcode` | `string` | Postal code, unvalidated. |
+| `country` | `string` | ISO 3166-1 alpha-2. |
+
+## Operations
+
+| Operation | Kind | Doc |
+| --- | --- | --- |
+| `PlanRoute` | command | Sequences one window's shipments for one vehicle. Runs 90 minutes before the window opens; anything missing the cut-off waits for the next one. |
+| `CloseRoute` | command | Ends a route once every stop is recorded. A route with unrecorded stops cannot be closed. |
+| `GetRoute` | query | One route with its stops in driving order. |
+
+## Events
+
+### RoutePlanned
+
+`delivery.core.route.RoutePlanned`
+
+#### v1 — current
+
+A vehicle and window were assigned a stop sequence.
+
+Source: `internal/delivery/domain/route/events.go:38`
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `routeId` | `string` | Identifier of the route. |
+| `vehicleId` | `string` | Vehicle assigned to the route. |
+| `stopCount` | `int32` | Number of stops on the route. |
+| `windowStart` | `time.Time` | Start of the delivery window. |
+
+<!-- auth/README.md -->
+
+# Authentication
+
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `auth`
+- **Classification:** core
+
+Who someone is, and whether they are still logged in. The only service in the estate that stores credentials, and the only one allowed to mint or revoke a session.
+
+## Services
+
+| Service | Path | Aggregates |
+| --- | --- | --- |
+| [Authentication & Sessions](auth/README.md) | `examples/auth` | Lockout, Session, User |
+
+<!-- auth/auth/README.md -->
+
+# Authentication & Sessions
+
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `auth.auth`
+- **Context:** [Authentication](../README.md)
+- **Repo:** `github.com/shortlink-org/portolan`
+- **Path:** `examples/auth`
+
+Service `auth` — bounded context **auth**.
+
+Owns *who someone is* and *whether they are still logged in*. It is the only
+service in the estate that stores credentials, and the only one allowed to mint
+or revoke a session.
+
+## What it does
+
+- Registers a user: an email address and a password, hashed before it is stored.
+- Authenticates: checks a password and answers with a user id or a refusal.
+- Replaces a password, given the current one, and ends the sessions the old one
+  was issued against.
+- Starts a session on a successful login, once a risk service has allowed it,
+  and hands back an opaque token.
+- Ends a session on logout.
+- Validates a token for everyone else — the hot path every authenticated
+  request in `shop` goes through.
+- Locks an account after five wrong passwords in a row, for fifteen minutes,
+  and says so with an event.
+
+## What it does not do
+
+No profile data, no addresses, no payment instruments, no roles or scopes.
+Other contexts hold their own view of a customer and reference it by opaque
+user id; nothing outside `auth` ever sees a credential.
+
+No MFA, no email verification, no refresh tokens, no way for support to lift a
+lock early. Each of those is a real requirement somewhere, and none of them is
+here: this service is deliberately the smallest thing that is still
+authentication.
+
+## Decisions
+
+- [auth.0001](docs/adr/0001-events-returned-not-buffered.md) — Aggregates return their events; they do not buffer them
+- [auth.0002](docs/adr/0002-session-is-its-own-aggregate.md) — Session is its own aggregate, linked to User by id
+- [auth.0003](docs/adr/0003-expiry-publishes-nothing.md) — Session expiry publishes no event
+- [auth.0004](docs/adr/0004-lockout-is-its-own-aggregate.md) — Lockout is its own aggregate, keyed by user id
+- [auth.0005](docs/adr/0005-rules-are-specifications-at-construction.md) — Validation lives in constructors, as specifications, and applies when a value is made
+- [auth.0006](docs/adr/0006-a-password-change-ends-sessions-through-a-policy.md) — A password change ends sessions through a policy, and the domains never import each other
+- [auth.0007](docs/adr/0007-login-asks-risk-and-a-block-is-a-compromise.md) — Login asks a risk service, and a blocked attempt is treated as a compromise
+- [auth.0008](docs/adr/0008-a-cache-in-front-of-bytoken-only.md) — A cache in front of the token lookup, and nothing else
+- [auth.0009](docs/adr/0009-a-lock-answers-like-a-wrong-password.md) — A locked account answers exactly like a wrong password
+
+## Running it
+
+```bash
+docker compose up -d
+STORE_TYPE=postgres \
+STORE_POSTGRES_URI=postgres://auth:auth@localhost:5432/auth?sslmode=disable \
+  go run ./cmd/auth
+```
+
+`CACHE_TYPE=redis` with `STORE_REDIS_URI` turns the cache on; `RISK_ADDR`
+points login at a risk service; `TRACER_URI` switches tracing on. Unset, each
+is a stand-in that keeps nothing, allows everything, or costs nothing. The
+schema is brought up to date at startup. `go test ./...` runs everything;
+without Docker the packages that need Postgres or redis are skipped.
+`go generate ./...` regenerates the server from the spec and the wire graph.
+
+## Aggregates
+
+| Aggregate | Root | Commands | Queries | Events |
+| --- | --- | --- | --- | --- |
+| [Lockout](aggregates/lockout.md) | `Lockout` | 2 commands | 1 query | 1 event |
+| [Session](aggregates/session.md) | `Session` | 3 commands | 1 query | 2 events |
+| [User](aggregates/user.md) | `User` | 2 commands | 2 queries | 2 events |
+
+## Provides
+
+**`auth.v1.Users`** — `examples/auth/internal/infrastructure/transport/http/gen/openapi.yaml`
+
+- `registerUser`
+- `getUser`
+- `changePassword`
+
+<details><summary>RegisterRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `email` | `string (email)` |
+| `password` | `string (password)` |
 
 </details>
 
-<details><summary>GetQuoteResponse</summary>
+<details><summary>User</summary>
+
+| Field | Type |
+| --- | --- |
+| `userId` | `string` |
+| `email` | `string (email)` |
+| `createdAt` | `string (date-time)` |
+
+</details>
+
+<details><summary>Error</summary>
 
 | Field | Type | Doc |
 | --- | --- | --- |
-| `quoteId` | `string` | Quote id, to be echoed at checkout. |
-| `total` | [`Money`](../../types.md#money) | Quoted total. |
+| `message` | `string` | One sentence, always present. A client that shows the user a single line shows this one. |
+| `reasons` | `[]string` | Optional. One entry per rule the request broke, present only where rules apply - a 404 or a 500 has none. Each entry names its own field, so it can be shown on its own without knowing what it referred to. |
+
+</details>
+
+<details><summary>ChangePasswordRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `currentPassword` | `string (password)` |
+| `newPassword` | `string (password)` |
+
+</details>
+
+**`auth.v1.Sessions`** — `examples/auth/internal/infrastructure/transport/http/gen/openapi.yaml`
+
+- `login`
+- `validateSession`
+- `logout`
+
+<details><summary>LoginRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `email` | `string (email)` |
+| `password` | `string (password)` |
+
+</details>
+
+<details><summary>Session</summary>
+
+| Field | Type |
+| --- | --- |
+| `token` | `string` |
+| `expiresAt` | `string (date-time)` |
+
+</details>
+
+<details><summary>Error</summary>
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `message` | `string` | One sentence, always present. A client that shows the user a single line shows this one. |
+| `reasons` | `[]string` | Optional. One entry per rule the request broke, present only where rules apply - a 404 or a 500 has none. Each entry names its own field, so it can be shown on its own without knowing what it referred to. |
+
+</details>
+
+<details><summary>SessionInfo</summary>
+
+| Field | Type |
+| --- | --- |
+| `userId` | `string` |
+| `expiresAt` | `string (date-time)` |
 
 </details>
 
@@ -234,223 +673,929 @@ cache is deliberately short: a stale quote is worse than a slow one.
 
 | Call | Peer | Status | Source |
 | --- | --- | --- | --- |
-| `shop.v1.OrderService/GetOrder` | [shop.oms](../oms/README.md) | verified | `internal/pricing/client/orders.go:19` |
+| `risk.v1.RiskService/Assess` | `risk.v1` | unresolved | `examples/auth/internal/infrastructure/risk/gen/riskpb/risk_grpc.pb.go` |
 
 ## Publishes
 
-| Event | Latest |
-| --- | --- |
-| [QuoteIssued](aggregates/quote.md) | v1 |
-| [QuoteExpired](aggregates/quote.md) | v1 |
+| Event | Latest | Consumers |
+| --- | --- | --- |
+| [AccountLocked](aggregates/lockout.md) | v1 | — |
+| [SessionEnded](aggregates/session.md) | v1 | — |
+| [SessionStarted](aggregates/session.md) | v1 | — |
+| [PasswordChanged](aggregates/user.md) | v1 | [auth.auth](README.md) |
+| [UserRegistered](aggregates/user.md) | v1 | — |
 
 ## Stores
 
 | Store | Kind | Access | Tables |
 | --- | --- | --- | --- |
-| [Price list cache](stores/cache.md) | redis | owns | 0 tables |
+| [Auth database](stores/pg.md) | postgres | owns | 3 tables |
 
-<!-- shop/pricing/aggregates/quote.md -->
+<!-- auth/auth/aggregates/lockout.md -->
 
-# Quote
+# Lockout
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
-- **Id:** `shop.pricing.quote`
-- **Service:** [Pricing](../README.md)
-- **Root:** `Quote`
+- **Id:** `auth.auth.lockout`
+- **Service:** [Authentication & Sessions](../README.md)
+- **Root:** `Lockout`
 
-An immutable, time-boxed price for one basket and one customer.
+How many wrong passwords in a row an account has taken, and whether it is
+refusing logins because of them. One per user, identified by the user id,
+existing from the first wrong password on. A separate aggregate from `User`:
+a failed attempt is written on every wrong password and the user does not
+change when one arrives, so the two do not share a lock.
 
-## Currency
+## States
 
-Quoting never converts. The customer's currency selects the price list, and a
-currency no active list covers is a refusal — an FX rate belongs to the
-moment money moves, not to the moment a price is shown.
+- **Open** — counting. `Failures` is the number of wrong passwords in a row;
+  the account accepts a password. The only state a password is checked in.
+- **Locked** — until `LockedUntil`. The account refuses a password without
+  checking it, with the same answer a wrong one gets. Not terminal: it ends
+  by time.
+- A lock that has run out is **Open** again. Derived from time when the next
+  attempt arrives; no command, no event, nothing runs. The next wrong
+  password starts the count at one.
 
-## Why immutable
+The state is read off `LockedUntil` with `now`; there is no stored flag to
+drift from it. The moves are one table, `Rules` in `rules.go`, run through
+`go-sdk/fsm` by `trigger`: `lock` on the failure that reaches the threshold,
+`lapse` on the first attempt after a lock has run out, which is when the code
+notices it. The run-out itself is not a move; nothing runs when it happens.
 
-A quote is a promise. Re-deriving it later would give a different answer once
-price lists change, which makes disputes unwinnable. So the quote is stored
-whole, including which price list won and which promotions applied.
+```mermaid
+stateDiagram-v2
+    [*] --> Open : first wrong password (no event)
+    Open --> Open : Fail, count < Threshold (no event)
+    Open --> Locked : Fail, count = Threshold / AccountLocked
+    Open --> Open : Succeed, count := 0 (no event)
+    Locked --> Locked : Fail, not counted (no event)
+    Locked --> Open : now ≥ LockedUntil (no event)
+```
 
 ## Commands
 
-| Command      | Notes                                       |
-| ------------ | ------------------------------------------- |
-| `IssueQuote` | Computes precedence and applies promotions  |
-| `ExpireQuote`| Called by the sweeper, never by a customer  |
+| Command | From | To | Event |
+|---|---|---|---|
+| `New` | — | Open, zero failures | none; nothing has happened yet |
+| `Fail` | Open, count < Threshold − 1 | Open, count + 1 | none |
+| `Fail` | Open, count = Threshold − 1 | Locked | `AccountLocked` |
+| `Fail` | Locked | unchanged | none; reports "locked nothing" |
+| `Succeed` | Open | Open, count 0 | none; reports whether anything changed |
+| `Succeed` | Locked | unchanged | none; the lock stands |
 
-## Queries
+`Allows(now)` and `Locked(now)` are the read, for the caller that asks
+before checking a password.
 
-`GetQuote` returns the stored quote verbatim, including expired ones, so
-support can explain what a customer was shown.
+One event for the whole aggregate. A wrong password that locked nothing is a
+count, not a fact anybody consumes; a count going back to zero is
+bookkeeping; the lock running out is time passing. `AccountLocked` carries
+`Until`, so a consumer who wants to know when the account is usable again
+does not have to be told twice.
 
 ## Entities
 
-### Quote — aggregate root
+### Lockout — aggregate root
 
-A price offered for a basket, valid until it expires.
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `id` | `string` | Quote id. |
-| `basketId` | `string` | Basket the quote was calculated for. |
-| `lines` | `[]QuotedLine` | Per-SKU pricing. |
-| `total` | [`Money`](../../../types.md#money) | Quoted total. |
-| `expiresAt` | `time.Time` | After this, the quote is void. |
-| `currency` | `string` | ISO 4217, taken from the price list that won. A basket in a currency no active list covers is refused, not converted. |
-| `priceListId` | `string` | Which list produced these prices. Stored so a disputed quote can be re-read against the list as it was. |
-
-## Value objects
-
-### Money
-
-An amount in a single currency.
-
-Shared type [`Money`](../../../types.md#money).
+Lockout is the aggregate root. Its identity is the user id: there is one per account, and it exists from the first wrong password on.
 
 | Field | Type | Doc |
 | --- | --- | --- |
-| `amountMinor` | `int64` | Amount in the minor unit of the currency. |
-| `currency` | `string` | ISO 4217 code, upper case. |
+| `UserID` | `string` | — |
+| `Failures` | `int` | Failures is the number of wrong passwords in a row. It is reset by a right one and by the count starting again after a lock has run out. |
+| `LockedUntil` | `time.Time` | LockedUntil is when the lock ends; zero while the account has never been locked. A time in the past is a lock that ran out: the state is read off it with `now`, and nothing runs when it passes. |
+| `Version` | `int64` | Version is what the store compares against before writing; see the note on user.User.Version. Zero means the lockout has never been stored. |
 
-### QuotedLine
+## Lifecycle
 
-The price arrived at for one SKU, with the discount that produced it. Local to pricing; nothing outside quotes uses this shape.
+```mermaid
+stateDiagram-v2
+    [*] --> open
+    open --> locked: Fail · AccountLocked
+    locked --> open: Fail
+    locked --> open: Succeed
+```
 
-| Field | Type | Doc |
-| --- | --- | --- |
-| `sku` | `string` | SKU priced. |
-| `unitPrice` | [`Money`](../../../types.md#money) | Price per unit after discount. |
-| `discountMinor` | `int64` | Discount applied, in the minor unit. |
-| `rule` | `string` | Id of the pricing rule that fired. |
+| From | To | On | Emits | Source |
+| --- | --- | --- | --- | --- |
+| `open` | `locked` | `Fail` | `AccountLocked` | `examples/auth/internal/domain/lockout/lockout.go:95` |
+| `locked` | `open` | `Fail` | — | `examples/auth/internal/domain/lockout/lockout.go:88` |
+| `locked` | `open` | `Succeed` | — | `examples/auth/internal/domain/lockout/lockout.go:121` |
 
 ## Operations
 
 | Operation | Kind | Doc |
 | --- | --- | --- |
-| `IssueQuote` | command | Prices a basket against the list matching the customer's segment and currency. A basket in a currency no active list covers is refused rather than converted. |
-| `ExpireQuote` | command | Marks a quote past its validity. Runs on a sweep rather than on read, so an expired quote is briefly still readable. |
-| `GetQuote` | query | One quote, whole: the lines, which price list won, and which rule produced each discount. |
+| `Check` | query | Answers whether an account accepts a password right now. |
+| `RecordFailure` | command | Counts a wrong password against an account, and locks the account when the count reaches the threshold. |
+| `RecordSuccess` | command | Clears the count of wrong passwords after a right one. |
 
 ## Events
 
-### QuoteIssued
+### AccountLocked
 
-`shop.pricing.quote.QuoteIssued`
+`auth.auth.lockout.AccountLocked`
 
-#### v1 — current
-
-A priced, time-boxed answer for one basket and one customer.
-
-Source: `internal/pricing/domain/quote/events.go:27`
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `quoteId` | `string` | Identifier of the issued quote. |
-| `basketId` | `string` | Basket the quote was computed for. |
-| `total` | [`Money`](../../../types.md#money) | Quoted total including promotions. |
-| `priceListId` | `string` | Price list that won precedence. |
-| `expiresAt` | `time.Time` | After this instant the quote must not be used. |
-
-### QuoteExpired
-
-`shop.pricing.quote.QuoteExpired`
+On the wire as `auth.AccountLocked`, on `auth_lockout`.
 
 #### v1 — current
 
-A quote passed its expiry without being consumed.
+AccountLocked is published when an account starts refusing logins because of too many wrong passwords in a row. Until says when it stops.
 
-Source: `internal/pricing/domain/quote/events.go:61`
+Source: `examples/auth/internal/domain/lockout/event/account_locked.go`
 
-| Field | Type | Doc |
-| --- | --- | --- |
-| `quoteId` | `string` | Quote that expired. |
-| `expiredAt` | `time.Time` | Instant the sweeper observed the expiry. |
+| Field | Type |
+| --- | --- |
+| `userID` | `string` |
+| `until` | `time.Time` |
+| `occurredAt` | `time.Time` |
 
-<!-- shop/pricing/aggregates/price-list.md -->
+<!-- auth/auth/aggregates/session.md -->
 
-# PriceList
+# Session
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
-- **Id:** `shop.pricing.price-list`
-- **Service:** [Pricing](../README.md)
-- **Root:** `PriceList`
+- **Id:** `auth.auth.session`
+- **Service:** [Authentication & Sessions](../README.md)
+- **Root:** `Session`
 
-The set of prices that quoting reads from. Contract, regional and public lists
-share this aggregate and differ only by scope.
+Proof that a user logged in, how long that proof is good for, and whether it
+has been taken away. A separate aggregate from `User`: it is written far more
+often and revoked without the user changing, so the two do not share a lock.
+They are linked by user id and nothing else.
 
-## No events
+## States
 
-This aggregate publishes no domain events. Price lists are edited through an
-internal admin tool that writes to the store directly, bypassing the domain
-layer entirely.
+- **Live** — issued, not revoked, not past expiry. The only state a token is
+  accepted in.
+- **Revoked** — ended by a command, with a reason. Terminal: a revoked session
+  never comes back, logging in again produces a new one.
+- **Expired** — past `ExpiresAt`. Derived from time when the token is
+  presented; no command, no event, nothing runs. Every consumer already knows
+  the expiry from `SessionStarted`.
 
-That is a gap, not a decision. Anything that wants to react to a price change
-currently polls. Emitting `PriceListPublished` is tracked as work, and until it
-exists this page will keep showing an empty event list.
+The state is not stored as a field. It is read off `RevokedAt` and
+`ExpiresAt` with `now`, so there is no second copy to drift. The moves are
+one table, `Rules` in `rules.go`, run through `go-sdk/fsm` by `trigger`; a
+command that would move the session somewhere the table does not allow is
+refused there, which is what makes `Revoke` idempotent. Expiry is not in the
+table: it is not a move, nothing runs when it happens.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Live : Start / SessionStarted
+    Live --> Revoked : Revoke(reason) / SessionEnded
+    Live --> Expired : now ≥ ExpiresAt (no event)
+    Revoked --> [*]
+    Expired --> [*]
+```
 
 ## Commands
 
-| Command             | Notes                                    |
-| ------------------- | ---------------------------------------- |
-| `ImportPriceList`   | Bulk CSV import, validated then swapped  |
-| `ArchivePriceList`  | Soft delete; quoting stops selecting it  |
+| Command | From | To | Event |
+|---|---|---|---|
+| `Start` | — | Live | `SessionStarted` |
+| `Revoke(reason)` | Live | Revoked | `SessionEnded` |
+| `Revoke(reason)` | Revoked, Expired | unchanged | none; reports "nothing to do" |
 
-## Queries
+`Validate(now)` is the read: it says which state forbids use (`ErrRevoked`,
+`ErrExpired`) or nothing. `Live(now)` is the same question as a boolean.
 
-`ListPriceLists` is the only read path and is heavily cached.
+Revoking twice is the "nothing to do" answer, not a refusal: the caller asked
+for something already true. Ending it again would publish a `SessionEnded`
+for an ending that did not happen.
 
 ## Entities
 
-### PriceList — aggregate root
+### Session — aggregate root
 
-A dated set of prices, imported wholesale from the merchandising system.
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `id` | `string` | Price list id. |
-| `name` | `string` | Human name, as given by merchandising. |
-| `validFrom` | `time.Time` | First day the list applies. |
-| `rows` | `[]PriceRow` | One row per SKU. |
-| `currency` | `string` | ISO 4217. A list prices in exactly one currency; a second currency is a second list, not a conversion. |
-
-### PriceRow
-
-One SKU's price inside a list. Identified by SKU within its list.
+Session is the aggregate root. Its identity is ID; the Token is a secret it carries, not what it is called.
 
 | Field | Type | Doc |
 | --- | --- | --- |
-| `sku` | `string` | SKU priced. |
-| `price` | [`Money`](../../../types.md#money) | List price, net of tax. |
+| `ID` | `string` | — |
+| `UserID` | `string` | — |
+| `Token` | `token.Token` | — |
+| `IssuedAt` | `time.Time` | — |
+| `ExpiresAt` | `time.Time` | — |
+| `RevokedAt` | `time.Time` | zero while live |
+| `Version` | `int64` | Version is what the store compares against before writing; see the note on user.User.Version. Zero means the session has never been stored. |
+
+## Value objects
+
+### Token
+
+Token is the opaque string a client presents instead of a password.
+
+| Field | Type |
+| --- | --- |
+| `value` | `string` |
+
+## Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> live
+    live --> revoked: Revoke · SessionEnded
+    revoked --> [*]
+```
+
+| From | To | On | Emits | Source |
+| --- | --- | --- | --- | --- |
+| `live` | `revoked` | `Revoke` | `SessionEnded` | `examples/auth/internal/domain/session/session.go:88` |
+
+## Operations
+
+| Operation | Kind | Exposed by | Doc |
+| --- | --- | --- | --- |
+| `EndAfterCredentialChange` | command | *internal* | Ends the sessions a credential change invalidates. |
+| `Login` | command | `login` | Turns credentials into a session. |
+| `Logout` | command | `logout` | Ends the session behind a token. |
+| `Validate` | query | `changePassword`, `validateSession` | Resolves a token to a live session: who is calling, and how long the answer stays good. |
+
+## Events
+
+### SessionEnded
+
+`auth.auth.session.SessionEnded`
+
+On the wire as `auth.SessionEnded`, on `auth_session`.
+
+#### v1 — current
+
+SessionEnded is published when a session is deliberately ended.
+
+Source: `examples/auth/internal/domain/session/event/session_ended.go`
+
+| Field | Type |
+| --- | --- |
+| `sessionID` | `string` |
+| `userID` | `string` |
+| `reason` | `Reason` |
+| `occurredAt` | `time.Time` |
+
+### SessionStarted
+
+`auth.auth.session.SessionStarted`
+
+On the wire as `auth.SessionStarted`, on `auth_session`.
+
+#### v1 — current
+
+SessionStarted is published on a successful login. ExpiresAt is on the event so a consumer can reason about the session's lifetime without asking auth again on every check.
+
+Source: `examples/auth/internal/domain/session/event/session_started.go`
+
+| Field | Type |
+| --- | --- |
+| `sessionID` | `string` |
+| `userID` | `string` |
+| `expiresAt` | `time.Time` |
+| `occurredAt` | `time.Time` |
+
+<!-- auth/auth/aggregates/user.md -->
+
+# User
+
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `auth.auth.user`
+- **Service:** [Authentication & Sessions](../README.md)
+- **Root:** `User`
+
+A person, the address they log in with, and the hash of the password they log
+in by. Identity is the id, minted at registration; the address can change.
+
+## States
+
+One state. A user that exists is registered, and nothing here ends that:
+there is no deletion, no suspension, no lockout. Each of those is a real
+requirement somewhere and none of them is here.
+
+`ChangePassword` changes a value, not a state. It is a command with a guard
+(the current password) and an event, and the user is the same user afterwards.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Registered : Register / UserRegistered
+    Registered --> Registered : ChangePassword(current, next) / PasswordChanged
+```
+
+## Commands
+
+| Command | Guard | Event |
+|---|---|---|
+| `Register` | address and password pass their policies | `UserRegistered` |
+| `ChangePassword` | the current password matches; the new one passes the policy | `PasswordChanged` |
+| `Authenticate` | — | none; a read that answers one refusal for every failure |
+
+No command here touches a session. That a password change ends sessions is a
+rule about sessions, applied by the policy in `internal/application/policy`.
+
+## Entities
+
+### User — aggregate root
+
+User is the aggregate root. Identity is ID, minted once at registration and never reused - not the email, because people change addresses.
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `ID` | `string` | — |
+| `Email` | `email.Address` | — |
+| `Password` | `password.Hash` | — |
+| `CreatedAt` | `time.Time` | — |
+| `Version` | `int64` | Version is what the store compares against before writing. It is carried on the aggregate rather than known only to the repository so that a copy which has gone stale can say so - without it, two changes made from two reads both succeed and the first one silently disappears. |
+
+## Value objects
+
+### email.Address
+
+Address is a normalised email address.
+
+| Field | Type |
+| --- | --- |
+| `value` | `string` |
+
+### password.Hash
+
+Hash is what the user domain stores in place of a password. The plaintext never lives on an aggregate and never leaves the function that hashed it.
+
+| Field | Type |
+| --- | --- |
+| `algorithm` | `string` |
+| `iterations` | `int` |
+| `salt` | `[]byte` |
+| `digest` | `[]byte` |
+
+## Operations
+
+| Operation | Kind | Exposed by | Doc |
+| --- | --- | --- | --- |
+| `Authenticate` | query | *internal* | Checks an address and a password, and says which user they belong to. |
+| `ChangePassword` | command | `changePassword` | Replaces the password of a user, given the current one. |
+| `Get` | query | `getUser` | Reads a user by id. |
+| `Register` | command | `registerUser` | Creates a user from an email address and a password. |
+
+## Events
+
+### PasswordChanged
+
+`auth.auth.user.PasswordChanged`
+
+On the wire as `auth.PasswordChanged`, on `auth_user`.
+
+| Consumer | Status | Note |
+| --- | --- | --- |
+| [auth.auth](../README.md) | verified | Seen consuming it in telemetry/traces.jsonl. |
+
+#### v1 — current
+
+PasswordChanged is published when a user's password is replaced. It says the password is different now; it does not carry the password, old or new, in any form.
+
+Source: `examples/auth/internal/domain/user/event/password_changed.go`
+
+| Field | Type |
+| --- | --- |
+| `userID` | `string` |
+| `by` | `string` |
+| `occurredAt` | `time.Time` |
+
+### UserRegistered
+
+`auth.auth.user.UserRegistered`
+
+On the wire as `auth.UserRegistered`, on `auth_user`.
+
+#### v1 — current
+
+UserRegistered is published once per user, at registration. It carries the address because consumers routinely need to reach the person, and asking auth for it on every event would make the bus useless.
+
+Source: `examples/auth/internal/domain/user/event/user_registered.go`
+
+| Field | Type |
+| --- | --- |
+| `userID` | `string` |
+| `email` | `string` |
+| `occurredAt` | `time.Time` |
+
+<!-- payments/README.md -->
+
+# Payments
+
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `payments`
+- **Classification:** core
+
+Money, and the record of every movement of it. Nothing here decides whether to charge - it is asked, and it writes down what happened either way.
+
+## Services
+
+| Service | Path | Aggregates |
+| --- | --- | --- |
+| [Ledger](ledger/README.md) | `examples/payments/ledger` | Payment, Refund |
+
+## Decisions
+
+| ADR | Title | Status | Date |
+| --- | --- | --- | --- |
+| [payments.0004](../adr/payments.0004.md) | Journal entries are idempotent by (order_id, attempt) | proposed | 2026-02-09 |
+
+<!-- payments/ledger/README.md -->
+
+# Ledger
+
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `payments.ledger`
+- **Context:** [Payments](../README.md)
+- **Repo:** `github.com/shortlink-org/portolan`
+- **Path:** `examples/payments/ledger`
+
+Service `ledger` — bounded context **payments**. Java on Spring Boot.
+
+Owns money. Every authorisation, capture and refund against an order passes
+through here, and what it writes is the record the business is audited on.
+Nothing it holds is updated in place: a movement of money is a pair of postings
+that sum to zero, and a correction is another pair.
+
+## What it does
+
+- Asks the gateway to hold the money for an order, and records either the hold
+  or the refusal — `PaymentAuthorized` or `PaymentDeclined`.
+- Captures what was held, writes the pair of postings for it, and says
+  `PaymentCaptured`. That is the message anything waiting to be paid listens for.
+- Sends money back against a captured payment, in full or in part, and says
+  `RefundIssued`.
+- Gives back a hold nobody will be charged for, when the order it was held for
+  is cancelled.
+
+## What it does not do
+
+Does not decide *whether* to charge — that is the order's business, and the
+ledger is asked. Does not issue invoices: what a customer is *asked* to pay is
+`shop.billing`'s aggregate, and this one only says what happened to the money.
+Does not store card data; the gateway holds the instrument and this holds a
+token for it.
+
+## Publishes
+
+`PaymentAuthorized`, `PaymentCaptured`, `PaymentDeclined` on
+`payments.ledger.payment`; `RefundIssued` on `payments.ledger.refund`.
+
+## Provides
+
+`payments.v1.PaymentService` — Authorize, Capture, GetPayment — and
+`payments.v1.RefundService` — IssueRefund, ListRefunds. One contract per
+aggregate, under the transport package that answers it, each its own buf
+module with its own `buf.yaml`.
+
+Neither has been pushed to the registry yet, so the estate lists them as
+`local:payments/payment` and `local:payments/refund` — which is what an
+unpublished set of protos is. Pushing them is two commands and a manifest line:
+
+```bash
+cd src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/proto && buf push
+cd ../../refund/proto && buf push
+```
+
+then in `portolan.json` the ledger's `proto` step swaps each `local:…` for the
+module it now is, `buf.build/shortlink-org/portolan-payments-payment` and
+`-refund`. `buf registry module create` comes first for a module that has never
+been pushed; it asks for a classifier, which is a decision rather than a
+command.
+
+## How the catalog reads it
+
+Nothing here is annotated for the catalog, but plenty is annotated for the
+model: `@AggregateRoot`, `@Entity`, `@ValueObject`, `@Repository`,
+`@SecondaryPort` and `@DomainEvent` are jMolecules, and `extract-java` reads
+what they say rather than guessing from the layout. The rules are in
+[plugins/extract-java/README.md](../../../plugins/extract-java/README.md).
+
+Two things follow from that and are worth knowing when reading the pages:
+
+- A `@Repository` is the store, and any other port goes wherever its adapter
+  reaches. `PaymentGateway` is filled by `PspGateway`, which has no vendored
+  contract because the far end is a third party — so those calls are recorded
+  and left **unresolved**, which is the true answer to "who answers this".
+- The lifecycle is `PaymentStatus.TRANSITIONS`, not the branches of the methods.
+  A move the table does not allow is a diagnostic, not a new arrow.
+
+## Running it
+
+```bash
+docker compose up -d db
+mvn -q spring-boot:run
+```
+
+`NATS_URL` picks the bus: with a server named, events leave on their channel
+with their wire name in the headers; without one they are written to the log and
+nothing leaves. `OMS_ADDRESS` is where `shop.v1.OrderService` answers.
+
+## Decisions
+
+- [payments.0004](../../../docs/adr/payments.0004.md) — journal rows are
+  idempotent by `(order_id, attempt)`, which is why `payments` carries an
+  `attempt` and a unique key over the pair.
+
+## Aggregates
+
+| Aggregate | Root | Commands | Queries | Events |
+| --- | --- | --- | --- | --- |
+| [Payment](aggregates/payment.md) | `Payment` | 2 commands | 1 query | 3 events |
+| [Refund](aggregates/refund.md) | `Refund` | 1 command | 1 query | 1 event |
+
+## Provides
+
+**`payments.v1.PaymentService`** — `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/proto/payments/v1/payment.proto:12`
+
+- `Authorize`
+- `Capture`
+- `GetPayment`
+
+<details><summary>AuthorizeRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `payment_id` | `string` |
+| `order_id` | `string` |
+| `amount_minor` | `int64` |
+| `currency` | `string` |
+
+</details>
+
+<details><summary>AuthorizeResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `payment_id` | `string` |
+| `auth_code` | `string` |
+| `authorized` | `bool` |
+
+</details>
+
+<details><summary>CaptureRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `payment_id` | `string` |
+
+</details>
+
+<details><summary>CaptureResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `payment_id` | `string` |
+| `captured_at` | `string` |
+
+</details>
+
+<details><summary>GetPaymentRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `payment_id` | `string` |
+
+</details>
+
+<details><summary>GetPaymentResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `payment_id` | `string` |
+| `order_id` | `string` |
+| `status` | `string` |
+| `amount_minor` | `int64` |
+| `currency` | `string` |
+
+</details>
+
+**`payments.v1.RefundService`** — `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/proto/payments/v1/refund.proto:10`
+
+- `IssueRefund`
+- `ListRefunds`
+
+<details><summary>IssueRefundRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `refund_id` | `string` |
+| `payment_id` | `string` |
+| `amount_minor` | `int64` |
+| `currency` | `string` |
+| `reason` | `string` |
+
+</details>
+
+<details><summary>IssueRefundResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `refund_id` | `string` |
+| `issued` | `bool` |
+
+</details>
+
+<details><summary>ListRefundsRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `payment_id` | `string` |
+
+</details>
+
+<details><summary>ListRefundsResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `refunds` | `[]RefundView` |
+
+</details>
+
+<details><summary>RefundView</summary>
+
+| Field | Type |
+| --- | --- |
+| `refund_id` | `string` |
+| `amount_minor` | `int64` |
+| `currency` | `string` |
+| `status` | `string` |
+
+</details>
+
+## Consumes
+
+| Call | Peer | Status | Source |
+| --- | --- | --- | --- |
+| `psp/giveBack` | `psp` | unresolved | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java` |
+| `psp/release` | `psp` | unresolved | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java` |
+| `psp/reserve` | `psp` | unresolved | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java` |
+| `psp/settle` | `psp` | unresolved | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java` |
+| `shop.v1.OrderService/GetOrder` | [shop.oms](../../shop/oms/README.md) | declared | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/oms/proto/shop/v1/order.proto` |
+
+## Publishes
+
+| Event | Latest | Consumers |
+| --- | --- | --- |
+| [PaymentAuthorized](aggregates/payment.md) | v1 | [shop.oms (declared)](../../shop/oms/README.md) |
+| [PaymentCaptured](aggregates/payment.md) | v1 | [shop.billing (declared)](../../shop/billing/README.md) |
+| [PaymentDeclined](aggregates/payment.md) | v1 | [shop.oms (declared)](../../shop/oms/README.md) |
+| [RefundIssued](aggregates/refund.md) | v1 | — |
+
+## Stores
+
+| Store | Kind | Access | Tables |
+| --- | --- | --- | --- |
+| [Ledger database](stores/pg.md) | postgres | owns | 3 tables |
+
+<!-- payments/ledger/aggregates/payment.md -->
+
+# Payment
+
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `payments.ledger.payment`
+- **Service:** [Ledger](../README.md)
+- **Root:** `Payment`
+
+What one order owes, and everything that has happened to that money.
+
+## Entities
+
+### Payment — aggregate root
+
+What one order owes, and everything that has happened to that money.
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `id` | `String` | — |
+| `orderId` | `String` | The order this payment is for. Another context owns it, so this is its id and not its shape. |
+| `amount` | `Money` | — |
+| `attempt` | `int` | Which try at charging this order it is. payments.0004 keys the row on it. |
+| `createdAt` | `Instant` | — |
+| `postings` | `List<Posting>` | — |
+| `status` | `PaymentStatus` | — |
+| `authCode` | `String` | — |
+
+### Posting
+
+One side of one movement of money.
+
+| Field | Type |
+| --- | --- |
+| `account` | `String` |
+| `amount` | `Money` |
+| `writtenAt` | `String` |
 
 ## Value objects
 
 ### Money
 
-An amount in a single currency.
+An amount in the minor unit of a currency: 1250 GBP is £12.50.
 
-Shared type [`Money`](../../../types.md#money).
+| Field | Type |
+| --- | --- |
+| `amountMinor` | `long` |
+| `currency` | `String` |
 
-| Field | Type | Doc |
-| --- | --- | --- |
-| `amountMinor` | `int64` | Amount in the minor unit of the currency. |
-| `currency` | `string` | ISO 4217 code, upper case. |
+## Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> PENDING
+    PENDING --> AUTHORIZED: authorize · PaymentAuthorized
+    AUTHORIZED --> CAPTURED: capture · PaymentCaptured
+    PENDING --> DECLINED: decline · PaymentDeclined
+    AUTHORIZED --> VOIDED: voidAuthorization
+    CAPTURED --> [*]
+    DECLINED --> [*]
+    VOIDED --> [*]
+```
+
+| From | To | On | Emits | Source |
+| --- | --- | --- | --- | --- |
+| `PENDING` | `AUTHORIZED` | `authorize` | `PaymentAuthorized` | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:61` |
+| `AUTHORIZED` | `CAPTURED` | `capture` | `PaymentCaptured` | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:72` |
+| `PENDING` | `DECLINED` | `decline` | `PaymentDeclined` | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:78` |
+| `AUTHORIZED` | `VOIDED` | `voidAuthorization` | — | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:84` |
 
 ## Operations
 
-| Operation | Kind | Doc |
+| Operation | Kind | Exposed by | Doc |
+| --- | --- | --- | --- |
+| `AuthorizePayment` | command | `Authorize` | Asks the gateway to hold the money for an order, and records either that it agreed or that it refused. |
+| `CapturePayment` | command | `Capture` | Moves the money the gateway was holding, writes the pair of postings for it, and says so on the bus. |
+| `GetPayment` | query | `GetPayment` | Reads one payment, for whoever is asking what happened to the money. |
+
+## Events
+
+### PaymentAuthorized
+
+`payments.ledger.payment.PaymentAuthorized`
+
+On the wire as `ledger.PaymentAuthorized`, on `payments.ledger.payment`.
+
+| Consumer | Status |
+| --- | --- |
+| [shop.oms](../../../shop/oms/README.md) | declared |
+
+#### v1 — current
+
+The gateway agreed to hold the money. Nothing has moved yet.
+
+Source: `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/event/PaymentAuthorized.java`
+
+| Field | Type |
+| --- | --- |
+| `paymentId` | `String` |
+| `orderId` | `String` |
+| `amount` | `Money` |
+| `authCode` | `String` |
+
+### PaymentCaptured
+
+`payments.ledger.payment.PaymentCaptured`
+
+On the wire as `ledger.PaymentCaptured`, on `payments.ledger.payment`.
+
+| Consumer | Status |
+| --- | --- |
+| [shop.billing](../../../shop/billing/README.md) | declared |
+
+#### v1 — current
+
+The money moved. Whoever is owed something for this order - the invoice, the warehouse - waits for this one and nothing earlier.
+
+Source: `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/event/PaymentCaptured.java`
+
+| Field | Type |
+| --- | --- |
+| `paymentId` | `String` |
+| `orderId` | `String` |
+| `amount` | `Money` |
+| `capturedAt` | `String` |
+
+### PaymentDeclined
+
+`payments.ledger.payment.PaymentDeclined`
+
+On the wire as `ledger.PaymentDeclined`, on `payments.ledger.payment`.
+
+| Consumer | Status |
+| --- | --- |
+| [shop.oms](../../../shop/oms/README.md) | declared |
+
+#### v1 — current
+
+The gateway refused, and it says why in its own words rather than ours.
+
+Source: `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/event/PaymentDeclined.java`
+
+| Field | Type |
+| --- | --- |
+| `paymentId` | `String` |
+| `orderId` | `String` |
+| `reason` | `String` |
+
+<!-- payments/ledger/aggregates/refund.md -->
+
+# Refund
+
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `payments.ledger.refund`
+- **Service:** [Ledger](../README.md)
+- **Root:** `Refund`
+
+Money going back, against a payment that was captured.
+
+## Entities
+
+### Refund — aggregate root
+
+Money going back, against a payment that was captured.
+
+| Field | Type |
+| --- | --- |
+| `id` | `String` |
+| `paymentId` | `String` |
+| `orderId` | `String` |
+| `amount` | `Money` |
+| `reason` | `String` |
+| `status` | `RefundStatus` |
+| `settledAt` | `Instant` |
+
+## Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> REQUESTED
+    REQUESTED --> ISSUED: issue · RefundIssued
+    REQUESTED --> REJECTED: reject
+    ISSUED --> [*]
+    REJECTED --> [*]
+```
+
+| From | To | On | Emits | Source |
+| --- | --- | --- | --- | --- |
+| `REQUESTED` | `ISSUED` | `issue` | `RefundIssued` | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/refund/Refund.java:41` |
+| `REQUESTED` | `REJECTED` | `reject` | — | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/refund/Refund.java:47` |
+
+## Operations
+
+| Operation | Kind | Exposed by | Doc |
+| --- | --- | --- | --- |
+| `IssueRefund` | command | `IssueRefund` | Sends money back against a captured payment, in full or in part. |
+| `ListRefunds` | query | `ListRefunds` | Every refund against one payment, newest first. |
+
+## Events
+
+### RefundIssued
+
+`payments.ledger.refund.RefundIssued`
+
+On the wire as `ledger.RefundIssued`, on `payments.ledger.refund`.
+
+#### v1 — current
+
+Money went back to the customer, against a payment that had been captured.
+
+Source: `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/refund/event/RefundIssued.java`
+
+| Field | Type |
+| --- | --- |
+| `refundId` | `String` |
+| `paymentId` | `String` |
+| `orderId` | `String` |
+| `amount` | `Money` |
+| `reason` | `String` |
+
+<!-- shop/README.md -->
+
+# Shop
+
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `shop`
+
+## Services
+
+| Service | Path | Aggregates |
 | --- | --- | --- |
-| `ImportPriceList` | command | Replaces a list wholesale from the merchandising export. A partial import is rejected outright — half a price list is worse than a stale one. |
-| `ArchivePriceList` | command | Takes a list out of quoting without deleting it. Quotes already issued from it stay valid until they expire. |
-| `ListPriceLists` | query | Active lists with their currency and validity window. The only pricing query the storefront may reach directly. |
+| [Billing](billing/README.md) | `examples/shop/billing` | Invoice |
+| [Shopping Cart](cart/README.md) | `examples/shop/cart` | Basket |
+| [Order Management](oms/README.md) | `examples/shop/oms` | Order |
+| [Pricing](pricing/README.md) | `examples/shop/pricing` | Price List, Quote |
 
 <!-- shop/billing/README.md -->
 
 # Billing
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.billing`
 - **Context:** [Shop](../README.md)
@@ -582,7 +1727,7 @@ python manage.py migrate && python manage.py runserver
 
 # Invoice
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.billing.invoice`
 - **Service:** [Billing](../README.md)
@@ -730,7 +1875,7 @@ Source: `examples/shop/billing/invoices/events.py`
 
 # Shopping Cart
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.cart`
 - **Context:** [Shop](../README.md)
@@ -908,7 +2053,7 @@ Docker the tests that need Postgres or NATS are skipped.
 
 # Basket
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.cart.basket`
 - **Service:** [Shopping Cart](../README.md)
@@ -1163,7 +2308,7 @@ Source: `examples/shop/cart/src/domain/basket/events/basket-merged.ts`
 
 # Order Management
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.oms`
 - **Context:** [Shop](../README.md)
@@ -1317,7 +2462,7 @@ skipped.
 
 # Order
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.oms.order`
 - **Service:** [Order Management](../README.md)
@@ -1478,1470 +2623,376 @@ Source: `examples/shop/oms/src/domain/order/event/order_placed.rs`
 | `total` | `Money` |
 | `occurred_at` | `DateTime<Utc>` |
 
-<!-- delivery/README.md -->
+<!-- shop/pricing/README.md -->
 
-# Delivery
+# Pricing
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
-- **Id:** `delivery`
-- **Classification:** supporting
-
-Routes, parcels and proof of delivery. Reacts to captured payments, never to placed orders.
-
-## Services
-
-| Service | Path | Aggregates |
-| --- | --- | --- |
-| [Delivery Core](core/README.md) | `services/core` | Shipment, Route |
-
-<!-- delivery/core/README.md -->
-
-# Delivery Core
-
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
-
-- **Id:** `delivery.core`
-- **Context:** [Delivery](../README.md)
-- **Repo:** `github.com/acme/delivery`
-- **Path:** `services/core`
-
-`delivery.core` turns confirmed orders into physical movement: routes, parcels
-and proof of delivery. It is the only service in the `delivery` context and it
-owns every carrier integration.
-
-## Boundaries
-
-Delivery reacts to `PaymentCaptured` rather than to `OrderPlaced`. An order
-that is placed but never paid must never reach a van. This is the single most
-important rule in the context.
-
-```mermaid
-flowchart TD
-    P[PaymentCaptured] --> R[Plan route]
-    R --> S[ShipmentDispatched]
-    S --> T{scan events}
-    T -- delivered --> D[ShipmentDelivered]
-    T -- failed --> F[Retry next window]
-    F --> R
-```
-
-## Carriers
-
-| Carrier   | Coverage      | Tracking      | Cutoff  |
-| --------- | ------------- | ------------- | ------- |
-| `inhouse` | Metro only    | Live GPS      | 18:00   |
-| `natpost` | National      | Scan events   | 15:30   |
-| `express` | International | Scan events   | 12:00   |
-
-Carrier choice is decided at route planning time and is not part of the order.
-
-## Aggregates
-
-- `shipment` — one parcel from dispatch to proof of delivery.
-- `route` — a planned sequence of stops for one vehicle and one window.
-
-## Retries
-
-A failed delivery attempt does not fail the shipment. The shipment stays open
-and is re-routed into the next available window, up to three attempts, after
-which it is returned to the depot and the order is flagged for support.
-
-## Observability
-
-Every scan event carries the trace id of the originating `PaymentCaptured`
-message, which is how the shipment tracking flow was derived from traces.
-
-## Aggregates
-
-| Aggregate | Root | Commands | Queries | Events |
-| --- | --- | --- | --- | --- |
-| [Shipment](aggregates/shipment.md) | `Shipment` | 3 commands | 2 queries | 2 events |
-| [Route](aggregates/route.md) | `Route` | 2 commands | 1 query | 1 event |
-
-## Provides
-
-**`delivery.v1.Delivery`** — `proto/delivery/v1/delivery.proto:11`
-
-- `PlanRoute`
-- `TrackShipment`
-- `GetShipment`
-
-## Consumes
-
-| Call | Peer | Status | Source |
-| --- | --- | --- | --- |
-| `shop.v1.OrderService/GetOrder` | [shop.oms](../../shop/oms/README.md) | verified | `internal/delivery/client/orders.go:31` |
-| `payments.v1.PaymentService/GetPayment` | [payments.ledger](../../payments/ledger/README.md) | declared | `internal/delivery/client/payments.go:18` |
-
-## Publishes
-
-| Event | Latest | Consumers |
-| --- | --- | --- |
-| [ShipmentDispatched](aggregates/shipment.md) | v1 | `analytics-sink (declared)` |
-| [ShipmentDelivered](aggregates/shipment.md) | v1 | `analytics-sink (unresolved)`, [shop.oms (declared)](../../shop/oms/README.md) |
-| [RoutePlanned](aggregates/route.md) | v1 | — |
-
-## Stores
-
-| Store | Kind | Access | Tables |
-| --- | --- | --- | --- |
-| [Delivery database](stores/pg.md) | postgres | owns | 3 tables |
-
-<!-- delivery/core/aggregates/shipment.md -->
-
-# Shipment
-
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
-
-- **Id:** `delivery.core.shipment`
-- **Service:** [Delivery Core](../README.md)
-- **Root:** `Shipment`
-
-One parcel, from dispatch to proof of delivery.
-
-## Attempts
-
-A failed attempt does not fail the shipment. The shipment stays open and is
-re-routed into the next window, up to three attempts.
-
-| Attempt | Outcome            | Next                       |
-| ------- | ------------------ | -------------------------- |
-| 1       | no answer          | re-route, next window      |
-| 2       | no answer          | re-route, next window      |
-| 3       | no answer          | return to depot, flag order |
-
-## Exceptions
-
-An `EXCEPTION` scan stops the shipment advancing and opens a delivery
-exception. What reads that queue is not in this catalog and emits no spans, so
-the shipment-tracking flow ends there too — the gap is real, not a modelling
-omission.
-
-## Commands
-
-`Dispatch`, `RecordScan` and `RecordDelivery` are the only writes. Scans
-arrive from carrier webhooks and are deduplicated on the carrier scan id.
-
-## Queries
-
-`TrackShipment` is public-facing and rate limited per tracking reference.
-
-## Entities
-
-### Shipment — aggregate root
-
-Goods on their way to one address. The unit carriers scan.
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `id` | `string` | Shipment id. |
-| `orderId` | `string` | Order the goods belong to. |
-| `parcels` | `[]Parcel` | Physical parcels in this shipment. |
-| `shipTo` | [`Address`](../../../types.md#address) | Destination. |
-| `state` | `string` | held \| planned \| dispatched \| delivered \| exception. A shipment sits in `held` from order confirmation until the money is actually captured. |
-| `scans` | `[]Scan` | Every carrier scan, oldest first. Append-only: a corrected scan is a new one. |
-
-### Parcel
-
-One box. Has its own tracking code and is scanned independently of its shipment.
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `id` | `string` | Parcel id. |
-| `weightGrams` | `int32` | Gross weight at dispatch. |
-| `tracking` | `TrackingCode` | Carrier tracking code. |
-
-### Scan
-
-One reading of a parcel by a carrier. Has identity because the carrier's scan id is what a retried webhook is deduplicated on.
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `carrierEventId` | `string` | The carrier's id for the scan. Deduplication is on this alone; a retried webhook carries the same one. |
-| `code` | `string` | IN_TRANSIT \| DELIVERED \| EXCEPTION. The carrier's vocabulary, stored unmapped so a new code is visible rather than swallowed. |
-| `scannedAt` | `time.Time` | When the carrier says it happened, which is not when we heard about it. |
-| `location` | `string` | Depot or delivery point as the carrier names it. Free text; no two carriers agree. |
-
-## Value objects
-
-### Address
-
-A postal address, unvalidated.
-
-Shared type [`Address`](../../../types.md#address).
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `line1` | `string` | Street and number. |
-| `line2` | `string` | Optional second line. |
-| `city` | `string` | City or locality. |
-| `postcode` | `string` | Postal code, unvalidated. |
-| `country` | `string` | ISO 3166-1 alpha-2. |
-
-### TrackingCode
-
-A carrier and the code it issued. Meaningless without the carrier, so the two travel together.
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `carrier` | `string` | Carrier code, e.g. DHL. |
-| `code` | `string` | Tracking code as issued by the carrier. |
-
-## Operations
-
-| Operation | Kind | Doc |
-| --- | --- | --- |
-| `Dispatch` | command | Releases a held shipment to a carrier and mints its tracking codes. Refused unless the payment is captured. |
-| `RecordScan` | command | Appends a carrier scan, deduplicated on the carrier's scan id. An EXCEPTION scan stops the shipment advancing and opens a delivery exception. |
-| `RecordDelivery` | command | Records proof of delivery and closes the shipment. Terminal: a scan arriving afterwards is stored and changes nothing. |
-| `TrackShipment` | query | The public tracking view for one reference. Rate limited per reference, and returns scans rather than internal state. |
-| `GetShipment` | query | The whole shipment, for callers inside the estate. This is what OMS reads before it will allow a cancellation. |
-
-## Events
-
-### ShipmentDispatched
-
-`delivery.core.shipment.ShipmentDispatched`
-
-| Consumer | Status | Note |
-| --- | --- | --- |
-| `analytics-sink` | declared | Registered in the traces exporter, not in any Go repo. |
-
-#### v1 — current
-
-A parcel physically left the depot.
-
-Source: `internal/delivery/domain/shipment/events.go:52`
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `shipmentId` | `string` | Identifier of the shipment. |
-| `orderId` | `string` | Order being fulfilled. |
-| `carrier` | `string` | One of inhouse, natpost, express. |
-| `trackingRef` | `string` | Carrier tracking reference. |
-| `shipTo` | [`Address`](../../../types.md#address) | Address the parcel is routed to. |
-
-### ShipmentDelivered
-
-`delivery.core.shipment.ShipmentDelivered`
-
-| Consumer | Status | Note |
-| --- | --- | --- |
-| `analytics-sink` | unresolved | Observed downstream of the bus in OTel traces; owner unknown. |
-| [shop.oms](../../../shop/oms/README.md) | declared | — |
-
-#### v1 — current
-
-Proof of delivery recorded. Terminal for the shipment.
-
-Source: `internal/delivery/domain/shipment/events.go:97`
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `shipmentId` | `string` | Identifier of the shipment. |
-| `orderId` | `string` | Order that is now fulfilled. |
-| `signedBy` | `string` | Name captured at the door, empty for contactless. |
-| `deliveredAt` | `time.Time` | Instant of the delivery scan. |
-
-<!-- delivery/core/aggregates/route.md -->
-
-# Route
-
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
-
-- **Id:** `delivery.core.route`
-- **Service:** [Delivery Core](../README.md)
-- **Root:** `Route`
-
-A planned sequence of stops for one vehicle and one delivery window.
-
-## Planning
-
-Routes are planned once per window, ninety minutes before the window opens.
-Shipments that miss the cut-off wait for the next window rather than forcing a
-re-plan; re-planning a live route is not supported.
-
-## Commands
-
-| Command       | Notes                                   |
-| ------------- | --------------------------------------- |
-| `PlanRoute`   | Assigns vehicle and stop order          |
-| `CloseRoute`  | Terminal; unfinished stops are re-queued |
-
-## Queries
-
-`GetRoute` returns stops in planned order, not in scan order.
-
-## Entities
-
-### Route — aggregate root
-
-A day's driving for one vehicle, as planned the night before.
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `id` | `string` | Route id. |
-| `date` | `string` | Delivery date, ISO. |
-| `vehicleId` | `string` | Vehicle assigned. |
-| `stops` | `[]Stop` | Stops in driving order. |
-
-### Stop
-
-One address on a route. Identified by its position, which is what the driver's app shows.
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `sequence` | `int32` | Position on the route, 1-based. |
-| `address` | [`Address`](../../../types.md#address) | Where to stop. |
-| `shipmentId` | `string` | Shipment dropped here. |
-
-## Value objects
-
-### Address
-
-A postal address, unvalidated.
-
-Shared type [`Address`](../../../types.md#address).
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `line1` | `string` | Street and number. |
-| `line2` | `string` | Optional second line. |
-| `city` | `string` | City or locality. |
-| `postcode` | `string` | Postal code, unvalidated. |
-| `country` | `string` | ISO 3166-1 alpha-2. |
-
-## Operations
-
-| Operation | Kind | Doc |
-| --- | --- | --- |
-| `PlanRoute` | command | Sequences one window's shipments for one vehicle. Runs 90 minutes before the window opens; anything missing the cut-off waits for the next one. |
-| `CloseRoute` | command | Ends a route once every stop is recorded. A route with unrecorded stops cannot be closed. |
-| `GetRoute` | query | One route with its stops in driving order. |
-
-## Events
-
-### RoutePlanned
-
-`delivery.core.route.RoutePlanned`
-
-#### v1 — current
-
-A vehicle and window were assigned a stop sequence.
-
-Source: `internal/delivery/domain/route/events.go:38`
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `routeId` | `string` | Identifier of the route. |
-| `vehicleId` | `string` | Vehicle assigned to the route. |
-| `stopCount` | `int32` | Number of stops on the route. |
-| `windowStart` | `time.Time` | Start of the delivery window. |
-
-<!-- auth/README.md -->
-
-# Authentication
-
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
-
-- **Id:** `auth`
-- **Classification:** core
-
-Who someone is, and whether they are still logged in. The only service in the estate that stores credentials, and the only one allowed to mint or revoke a session.
-
-## Services
-
-| Service | Path | Aggregates |
-| --- | --- | --- |
-| [Authentication & Sessions](auth/README.md) | `examples/auth` | Lockout, Session, User |
-
-<!-- auth/auth/README.md -->
-
-# Authentication & Sessions
-
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
-
-- **Id:** `auth.auth`
-- **Context:** [Authentication](../README.md)
+- **Id:** `shop.pricing`
+- **Context:** [Shop](../README.md)
 - **Repo:** `github.com/shortlink-org/portolan`
-- **Path:** `examples/auth`
+- **Path:** `examples/shop/pricing`
 
-Service `auth` — bounded context **auth**.
+Service `pricing` — bounded context **shop**. Go.
 
-Owns *who someone is* and *whether they are still logged in*. It is the only
-service in the estate that stores credentials, and the only one allowed to mint
-or revoke a session.
+Owns what things cost. It is asked, and it answers with a promise: a quote is a
+price for one basket, good until a moment, and after that moment it is gone
+rather than stale.
 
 ## What it does
 
-- Registers a user: an email address and a password, hashed before it is stored.
-- Authenticates: checks a password and answers with a user id or a refusal.
-- Replaces a password, given the current one, and ends the sessions the old one
-  was issued against.
-- Starts a session on a successful login, once a risk service has allowed it,
-  and hands back an opaque token.
-- Ends a session on logout.
-- Validates a token for everyone else — the hot path every authenticated
-  request in `shop` goes through.
-- Locks an account after five wrong passwords in a row, for fifteen minutes,
-  and says so with an event.
+- Prices a basket against the list in force and issues a quote — `QuoteIssued`.
+- Answers what a quote says, by its id or by the basket it priced.
+- Lets promises lapse: the sweep expires everything past its moment, and a
+  basket checked out has its quote expired straight away, because from then on
+  the order holds the price.
+- Takes in price lists whole and archives them rather than editing them, so
+  that what a quote was priced against stays readable.
 
 ## What it does not do
 
-No profile data, no addresses, no payment instruments, no roles or scopes.
-Other contexts hold their own view of a customer and reference it by opaque
-user id; nothing outside `auth` ever sees a credential.
-
-No MFA, no email verification, no refresh tokens, no way for support to lift a
-lock early. Each of those is a real requirement somewhere, and none of them is
-here: this service is deliberately the smallest thing that is still
-authentication.
-
-## Decisions
-
-- [auth.0001](docs/adr/0001-events-returned-not-buffered.md) — Aggregates return their events; they do not buffer them
-- [auth.0002](docs/adr/0002-session-is-its-own-aggregate.md) — Session is its own aggregate, linked to User by id
-- [auth.0003](docs/adr/0003-expiry-publishes-nothing.md) — Session expiry publishes no event
-- [auth.0004](docs/adr/0004-lockout-is-its-own-aggregate.md) — Lockout is its own aggregate, keyed by user id
-- [auth.0005](docs/adr/0005-rules-are-specifications-at-construction.md) — Validation lives in constructors, as specifications, and applies when a value is made
-- [auth.0006](docs/adr/0006-a-password-change-ends-sessions-through-a-policy.md) — A password change ends sessions through a policy, and the domains never import each other
-- [auth.0007](docs/adr/0007-login-asks-risk-and-a-block-is-a-compromise.md) — Login asks a risk service, and a blocked attempt is treated as a compromise
-- [auth.0008](docs/adr/0008-a-cache-in-front-of-bytoken-only.md) — A cache in front of the token lookup, and nothing else
-- [auth.0009](docs/adr/0009-a-lock-answers-like-a-wrong-password.md) — A locked account answers exactly like a wrong password
-
-## Running it
-
-```bash
-docker compose up -d
-STORE_TYPE=postgres \
-STORE_POSTGRES_URI=postgres://auth:auth@localhost:5432/auth?sslmode=disable \
-  go run ./cmd/auth
-```
-
-`CACHE_TYPE=redis` with `STORE_REDIS_URI` turns the cache on; `RISK_ADDR`
-points login at a risk service; `TRACER_URI` switches tracing on. Unset, each
-is a stand-in that keeps nothing, allows everything, or costs nothing. The
-schema is brought up to date at startup. `go test ./...` runs everything;
-without Docker the packages that need Postgres or redis are skipped.
-`go generate ./...` regenerates the server from the spec and the wire graph.
-
-## Aggregates
-
-| Aggregate | Root | Commands | Queries | Events |
-| --- | --- | --- | --- | --- |
-| [Lockout](aggregates/lockout.md) | `Lockout` | 2 commands | 1 query | 1 event |
-| [Session](aggregates/session.md) | `Session` | 3 commands | 1 query | 2 events |
-| [User](aggregates/user.md) | `User` | 2 commands | 2 queries | 2 events |
-
-## Provides
-
-**`auth.v1.Users`** — `examples/auth/internal/infrastructure/transport/http/gen/openapi.yaml`
-
-- `registerUser`
-- `getUser`
-- `changePassword`
-
-<details><summary>RegisterRequest</summary>
-
-| Field | Type |
-| --- | --- |
-| `email` | `string (email)` |
-| `password` | `string (password)` |
-
-</details>
-
-<details><summary>User</summary>
-
-| Field | Type |
-| --- | --- |
-| `userId` | `string` |
-| `email` | `string (email)` |
-| `createdAt` | `string (date-time)` |
-
-</details>
-
-<details><summary>Error</summary>
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `message` | `string` | One sentence, always present. A client that shows the user a single line shows this one. |
-| `reasons` | `[]string` | Optional. One entry per rule the request broke, present only where rules apply - a 404 or a 500 has none. Each entry names its own field, so it can be shown on its own without knowing what it referred to. |
-
-</details>
-
-<details><summary>ChangePasswordRequest</summary>
-
-| Field | Type |
-| --- | --- |
-| `currentPassword` | `string (password)` |
-| `newPassword` | `string (password)` |
-
-</details>
-
-**`auth.v1.Sessions`** — `examples/auth/internal/infrastructure/transport/http/gen/openapi.yaml`
-
-- `login`
-- `validateSession`
-- `logout`
-
-<details><summary>LoginRequest</summary>
-
-| Field | Type |
-| --- | --- |
-| `email` | `string (email)` |
-| `password` | `string (password)` |
-
-</details>
-
-<details><summary>Session</summary>
-
-| Field | Type |
-| --- | --- |
-| `token` | `string` |
-| `expiresAt` | `string (date-time)` |
-
-</details>
-
-<details><summary>Error</summary>
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `message` | `string` | One sentence, always present. A client that shows the user a single line shows this one. |
-| `reasons` | `[]string` | Optional. One entry per rule the request broke, present only where rules apply - a 404 or a 500 has none. Each entry names its own field, so it can be shown on its own without knowing what it referred to. |
-
-</details>
-
-<details><summary>SessionInfo</summary>
-
-| Field | Type |
-| --- | --- |
-| `userId` | `string` |
-| `expiresAt` | `string (date-time)` |
-
-</details>
-
-## Consumes
-
-| Call | Peer | Status | Source |
-| --- | --- | --- | --- |
-| `risk.v1.RiskService/Assess` | `risk.v1` | unresolved | `examples/auth/internal/infrastructure/risk/gen/riskpb/risk_grpc.pb.go` |
+Does not decide what to buy, does not hold a basket and does not place an
+order. It never recomputes a price it has already promised — a quote that
+changed under the customer would not be a quote.
 
 ## Publishes
 
-| Event | Latest | Consumers |
-| --- | --- | --- |
-| [AccountLocked](aggregates/lockout.md) | v1 | — |
-| [SessionEnded](aggregates/session.md) | v1 | — |
-| [SessionStarted](aggregates/session.md) | v1 | — |
-| [PasswordChanged](aggregates/user.md) | v1 | [auth.auth](README.md) |
-| [UserRegistered](aggregates/user.md) | v1 | — |
-
-## Stores
-
-| Store | Kind | Access | Tables |
-| --- | --- | --- | --- |
-| [Auth database](stores/pg.md) | postgres | owns | 3 tables |
-
-<!-- auth/auth/aggregates/lockout.md -->
-
-# Lockout
-
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
-
-- **Id:** `auth.auth.lockout`
-- **Service:** [Authentication & Sessions](../README.md)
-- **Root:** `Lockout`
-
-How many wrong passwords in a row an account has taken, and whether it is
-refusing logins because of them. One per user, identified by the user id,
-existing from the first wrong password on. A separate aggregate from `User`:
-a failed attempt is written on every wrong password and the user does not
-change when one arrives, so the two do not share a lock.
-
-## States
-
-- **Open** — counting. `Failures` is the number of wrong passwords in a row;
-  the account accepts a password. The only state a password is checked in.
-- **Locked** — until `LockedUntil`. The account refuses a password without
-  checking it, with the same answer a wrong one gets. Not terminal: it ends
-  by time.
-- A lock that has run out is **Open** again. Derived from time when the next
-  attempt arrives; no command, no event, nothing runs. The next wrong
-  password starts the count at one.
-
-The state is read off `LockedUntil` with `now`; there is no stored flag to
-drift from it. The moves are one table, `Rules` in `rules.go`, run through
-`go-sdk/fsm` by `trigger`: `lock` on the failure that reaches the threshold,
-`lapse` on the first attempt after a lock has run out, which is when the code
-notices it. The run-out itself is not a move; nothing runs when it happens.
-
-```mermaid
-stateDiagram-v2
-    [*] --> Open : first wrong password (no event)
-    Open --> Open : Fail, count < Threshold (no event)
-    Open --> Locked : Fail, count = Threshold / AccountLocked
-    Open --> Open : Succeed, count := 0 (no event)
-    Locked --> Locked : Fail, not counted (no event)
-    Locked --> Open : now ≥ LockedUntil (no event)
-```
-
-## Commands
-
-| Command | From | To | Event |
-|---|---|---|---|
-| `New` | — | Open, zero failures | none; nothing has happened yet |
-| `Fail` | Open, count < Threshold − 1 | Open, count + 1 | none |
-| `Fail` | Open, count = Threshold − 1 | Locked | `AccountLocked` |
-| `Fail` | Locked | unchanged | none; reports "locked nothing" |
-| `Succeed` | Open | Open, count 0 | none; reports whether anything changed |
-| `Succeed` | Locked | unchanged | none; the lock stands |
-
-`Allows(now)` and `Locked(now)` are the read, for the caller that asks
-before checking a password.
-
-One event for the whole aggregate. A wrong password that locked nothing is a
-count, not a fact anybody consumes; a count going back to zero is
-bookkeeping; the lock running out is time passing. `AccountLocked` carries
-`Until`, so a consumer who wants to know when the account is usable again
-does not have to be told twice.
-
-## Entities
-
-### Lockout — aggregate root
-
-Lockout is the aggregate root. Its identity is the user id: there is one per account, and it exists from the first wrong password on.
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `UserID` | `string` | — |
-| `Failures` | `int` | Failures is the number of wrong passwords in a row. It is reset by a right one and by the count starting again after a lock has run out. |
-| `LockedUntil` | `time.Time` | LockedUntil is when the lock ends; zero while the account has never been locked. A time in the past is a lock that ran out: the state is read off it with `now`, and nothing runs when it passes. |
-| `Version` | `int64` | Version is what the store compares against before writing; see the note on user.User.Version. Zero means the lockout has never been stored. |
-
-## Lifecycle
-
-```mermaid
-stateDiagram-v2
-    [*] --> open
-    open --> locked: Fail · AccountLocked
-    locked --> open: Fail
-    locked --> open: Succeed
-```
-
-| From | To | On | Emits | Source |
-| --- | --- | --- | --- | --- |
-| `open` | `locked` | `Fail` | `AccountLocked` | `examples/auth/internal/domain/lockout/lockout.go:95` |
-| `locked` | `open` | `Fail` | — | `examples/auth/internal/domain/lockout/lockout.go:88` |
-| `locked` | `open` | `Succeed` | — | `examples/auth/internal/domain/lockout/lockout.go:121` |
-
-## Operations
-
-| Operation | Kind | Doc |
-| --- | --- | --- |
-| `Check` | query | Answers whether an account accepts a password right now. |
-| `RecordFailure` | command | Counts a wrong password against an account, and locks the account when the count reaches the threshold. |
-| `RecordSuccess` | command | Clears the count of wrong passwords after a right one. |
-
-## Events
-
-### AccountLocked
-
-`auth.auth.lockout.AccountLocked`
-
-On the wire as `auth.AccountLocked`, on `auth_lockout`.
-
-#### v1 — current
-
-AccountLocked is published when an account starts refusing logins because of too many wrong passwords in a row. Until says when it stops.
-
-Source: `examples/auth/internal/domain/lockout/event/account_locked.go`
-
-| Field | Type |
-| --- | --- |
-| `userID` | `string` |
-| `until` | `time.Time` |
-| `occurredAt` | `time.Time` |
-
-<!-- auth/auth/aggregates/session.md -->
-
-# Session
-
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
-
-- **Id:** `auth.auth.session`
-- **Service:** [Authentication & Sessions](../README.md)
-- **Root:** `Session`
-
-Proof that a user logged in, how long that proof is good for, and whether it
-has been taken away. A separate aggregate from `User`: it is written far more
-often and revoked without the user changing, so the two do not share a lock.
-They are linked by user id and nothing else.
-
-## States
-
-- **Live** — issued, not revoked, not past expiry. The only state a token is
-  accepted in.
-- **Revoked** — ended by a command, with a reason. Terminal: a revoked session
-  never comes back, logging in again produces a new one.
-- **Expired** — past `ExpiresAt`. Derived from time when the token is
-  presented; no command, no event, nothing runs. Every consumer already knows
-  the expiry from `SessionStarted`.
-
-The state is not stored as a field. It is read off `RevokedAt` and
-`ExpiresAt` with `now`, so there is no second copy to drift. The moves are
-one table, `Rules` in `rules.go`, run through `go-sdk/fsm` by `trigger`; a
-command that would move the session somewhere the table does not allow is
-refused there, which is what makes `Revoke` idempotent. Expiry is not in the
-table: it is not a move, nothing runs when it happens.
-
-```mermaid
-stateDiagram-v2
-    [*] --> Live : Start / SessionStarted
-    Live --> Revoked : Revoke(reason) / SessionEnded
-    Live --> Expired : now ≥ ExpiresAt (no event)
-    Revoked --> [*]
-    Expired --> [*]
-```
-
-## Commands
-
-| Command | From | To | Event |
-|---|---|---|---|
-| `Start` | — | Live | `SessionStarted` |
-| `Revoke(reason)` | Live | Revoked | `SessionEnded` |
-| `Revoke(reason)` | Revoked, Expired | unchanged | none; reports "nothing to do" |
-
-`Validate(now)` is the read: it says which state forbids use (`ErrRevoked`,
-`ErrExpired`) or nothing. `Live(now)` is the same question as a boolean.
-
-Revoking twice is the "nothing to do" answer, not a refusal: the caller asked
-for something already true. Ending it again would publish a `SessionEnded`
-for an ending that did not happen.
-
-## Entities
-
-### Session — aggregate root
-
-Session is the aggregate root. Its identity is ID; the Token is a secret it carries, not what it is called.
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `ID` | `string` | — |
-| `UserID` | `string` | — |
-| `Token` | `token.Token` | — |
-| `IssuedAt` | `time.Time` | — |
-| `ExpiresAt` | `time.Time` | — |
-| `RevokedAt` | `time.Time` | zero while live |
-| `Version` | `int64` | Version is what the store compares against before writing; see the note on user.User.Version. Zero means the session has never been stored. |
-
-## Value objects
-
-### Token
-
-Token is the opaque string a client presents instead of a password.
-
-| Field | Type |
-| --- | --- |
-| `value` | `string` |
-
-## Lifecycle
-
-```mermaid
-stateDiagram-v2
-    [*] --> live
-    live --> revoked: Revoke · SessionEnded
-    revoked --> [*]
-```
-
-| From | To | On | Emits | Source |
-| --- | --- | --- | --- | --- |
-| `live` | `revoked` | `Revoke` | `SessionEnded` | `examples/auth/internal/domain/session/session.go:88` |
-
-## Operations
-
-| Operation | Kind | Exposed by | Doc |
-| --- | --- | --- | --- |
-| `EndAfterCredentialChange` | command | *internal* | Ends the sessions a credential change invalidates. |
-| `Login` | command | `login` | Turns credentials into a session. |
-| `Logout` | command | `logout` | Ends the session behind a token. |
-| `Validate` | query | `changePassword`, `validateSession` | Resolves a token to a live session: who is calling, and how long the answer stays good. |
-
-## Events
-
-### SessionEnded
-
-`auth.auth.session.SessionEnded`
-
-On the wire as `auth.SessionEnded`, on `auth_session`.
-
-#### v1 — current
-
-SessionEnded is published when a session is deliberately ended.
-
-Source: `examples/auth/internal/domain/session/event/session_ended.go`
-
-| Field | Type |
-| --- | --- |
-| `sessionID` | `string` |
-| `userID` | `string` |
-| `reason` | `Reason` |
-| `occurredAt` | `time.Time` |
-
-### SessionStarted
-
-`auth.auth.session.SessionStarted`
-
-On the wire as `auth.SessionStarted`, on `auth_session`.
-
-#### v1 — current
-
-SessionStarted is published on a successful login. ExpiresAt is on the event so a consumer can reason about the session's lifetime without asking auth again on every check.
-
-Source: `examples/auth/internal/domain/session/event/session_started.go`
-
-| Field | Type |
-| --- | --- |
-| `sessionID` | `string` |
-| `userID` | `string` |
-| `expiresAt` | `time.Time` |
-| `occurredAt` | `time.Time` |
-
-<!-- auth/auth/aggregates/user.md -->
-
-# User
-
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
-
-- **Id:** `auth.auth.user`
-- **Service:** [Authentication & Sessions](../README.md)
-- **Root:** `User`
-
-A person, the address they log in with, and the hash of the password they log
-in by. Identity is the id, minted at registration; the address can change.
-
-## States
-
-One state. A user that exists is registered, and nothing here ends that:
-there is no deletion, no suspension, no lockout. Each of those is a real
-requirement somewhere and none of them is here.
-
-`ChangePassword` changes a value, not a state. It is a command with a guard
-(the current password) and an event, and the user is the same user afterwards.
-
-```mermaid
-stateDiagram-v2
-    [*] --> Registered : Register / UserRegistered
-    Registered --> Registered : ChangePassword(current, next) / PasswordChanged
-```
-
-## Commands
-
-| Command | Guard | Event |
-|---|---|---|
-| `Register` | address and password pass their policies | `UserRegistered` |
-| `ChangePassword` | the current password matches; the new one passes the policy | `PasswordChanged` |
-| `Authenticate` | — | none; a read that answers one refusal for every failure |
-
-No command here touches a session. That a password change ends sessions is a
-rule about sessions, applied by the policy in `internal/application/policy`.
-
-## Entities
-
-### User — aggregate root
-
-User is the aggregate root. Identity is ID, minted once at registration and never reused - not the email, because people change addresses.
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `ID` | `string` | — |
-| `Email` | `email.Address` | — |
-| `Password` | `password.Hash` | — |
-| `CreatedAt` | `time.Time` | — |
-| `Version` | `int64` | Version is what the store compares against before writing. It is carried on the aggregate rather than known only to the repository so that a copy which has gone stale can say so - without it, two changes made from two reads both succeed and the first one silently disappears. |
-
-## Value objects
-
-### email.Address
-
-Address is a normalised email address.
-
-| Field | Type |
-| --- | --- |
-| `value` | `string` |
-
-### password.Hash
-
-Hash is what the user domain stores in place of a password. The plaintext never lives on an aggregate and never leaves the function that hashed it.
-
-| Field | Type |
-| --- | --- |
-| `algorithm` | `string` |
-| `iterations` | `int` |
-| `salt` | `[]byte` |
-| `digest` | `[]byte` |
-
-## Operations
-
-| Operation | Kind | Exposed by | Doc |
-| --- | --- | --- | --- |
-| `Authenticate` | query | *internal* | Checks an address and a password, and says which user they belong to. |
-| `ChangePassword` | command | `changePassword` | Replaces the password of a user, given the current one. |
-| `Get` | query | `getUser` | Reads a user by id. |
-| `Register` | command | `registerUser` | Creates a user from an email address and a password. |
-
-## Events
-
-### PasswordChanged
-
-`auth.auth.user.PasswordChanged`
-
-On the wire as `auth.PasswordChanged`, on `auth_user`.
-
-| Consumer | Status | Note |
-| --- | --- | --- |
-| [auth.auth](../README.md) | verified | Seen consuming it in telemetry/traces.jsonl. |
-
-#### v1 — current
-
-PasswordChanged is published when a user's password is replaced. It says the password is different now; it does not carry the password, old or new, in any form.
-
-Source: `examples/auth/internal/domain/user/event/password_changed.go`
-
-| Field | Type |
-| --- | --- |
-| `userID` | `string` |
-| `by` | `string` |
-| `occurredAt` | `time.Time` |
-
-### UserRegistered
-
-`auth.auth.user.UserRegistered`
-
-On the wire as `auth.UserRegistered`, on `auth_user`.
-
-#### v1 — current
-
-UserRegistered is published once per user, at registration. It carries the address because consumers routinely need to reach the person, and asking auth for it on every event would make the bus useless.
-
-Source: `examples/auth/internal/domain/user/event/user_registered.go`
-
-| Field | Type |
-| --- | --- |
-| `userID` | `string` |
-| `email` | `string` |
-| `occurredAt` | `time.Time` |
-
-<!-- payments/README.md -->
-
-# Payments
-
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
-
-- **Id:** `payments`
-- **Classification:** core
-
-Money, and the record of every movement of it. Nothing here decides whether to charge - it is asked, and it writes down what happened either way.
-
-## Services
-
-| Service | Path | Aggregates |
-| --- | --- | --- |
-| [Ledger](ledger/README.md) | `examples/payments/ledger` | Payment, Refund |
-
-## Decisions
-
-| ADR | Title | Status | Date |
-| --- | --- | --- | --- |
-| [payments.0004](../adr/payments.0004.md) | Journal entries are idempotent by (order_id, attempt) | proposed | 2026-02-09 |
-
-<!-- payments/ledger/README.md -->
-
-# Ledger
-
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
-
-- **Id:** `payments.ledger`
-- **Context:** [Payments](../README.md)
-- **Repo:** `github.com/shortlink-org/portolan`
-- **Path:** `examples/payments/ledger`
-
-Service `ledger` — bounded context **payments**. Java on Spring Boot.
-
-Owns money. Every authorisation, capture and refund against an order passes
-through here, and what it writes is the record the business is audited on.
-Nothing it holds is updated in place: a movement of money is a pair of postings
-that sum to zero, and a correction is another pair.
-
-## What it does
-
-- Asks the gateway to hold the money for an order, and records either the hold
-  or the refusal — `PaymentAuthorized` or `PaymentDeclined`.
-- Captures what was held, writes the pair of postings for it, and says
-  `PaymentCaptured`. That is the message anything waiting to be paid listens for.
-- Sends money back against a captured payment, in full or in part, and says
-  `RefundIssued`.
-- Gives back a hold nobody will be charged for, when the order it was held for
-  is cancelled.
-
-## What it does not do
-
-Does not decide *whether* to charge — that is the order's business, and the
-ledger is asked. Does not issue invoices: what a customer is *asked* to pay is
-`shop.billing`'s aggregate, and this one only says what happened to the money.
-Does not store card data; the gateway holds the instrument and this holds a
-token for it.
-
-## Publishes
-
-`PaymentAuthorized`, `PaymentCaptured`, `PaymentDeclined` on
-`payments.ledger.payment`; `RefundIssued` on `payments.ledger.refund`.
+`QuoteIssued`, `QuoteExpired`, on `shop.pricing.quote`.
 
 ## Provides
 
-`payments.v1.PaymentService` — Authorize, Capture, GetPayment — and
-`payments.v1.RefundService` — IssueRefund, ListRefunds. One contract per
-aggregate, under the transport package that answers it, each its own buf
-module with its own `buf.yaml`.
+`shop.v1.Pricing` — IssueQuote, GetQuote — and `shop.v1.PriceLists` —
+ImportPriceList, ArchivePriceList, ListPriceLists. One contract per aggregate,
+vendored under the transport package that answers it.
 
-Neither has been pushed to the registry yet, so the estate lists them as
-`local:payments/payment` and `local:payments/refund` — which is what an
-unpublished set of protos is. Pushing them is two commands and a manifest line:
-
-```bash
-cd src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/proto && buf push
-cd ../../refund/proto && buf push
-```
-
-then in `portolan.json` the ledger's `proto` step swaps each `local:…` for the
-module it now is, `buf.build/shortlink-org/portolan-payments-payment` and
-`-refund`. `buf registry module create` comes first for a module that has never
-been pushed; it asks for a classifier, which is a decision rather than a
-command.
-
-## How the catalog reads it
-
-Nothing here is annotated for the catalog, but plenty is annotated for the
-model: `@AggregateRoot`, `@Entity`, `@ValueObject`, `@Repository`,
-`@SecondaryPort` and `@DomainEvent` are jMolecules, and `extract-java` reads
-what they say rather than guessing from the layout. The rules are in
-[plugins/extract-java/README.md](../../../plugins/extract-java/README.md).
-
-Two things follow from that and are worth knowing when reading the pages:
-
-- A `@Repository` is the store, and any other port goes wherever its adapter
-  reaches. `PaymentGateway` is filled by `PspGateway`, which has no vendored
-  contract because the far end is a third party — so those calls are recorded
-  and left **unresolved**, which is the true answer to "who answers this".
-- The lifecycle is `PaymentStatus.TRANSITIONS`, not the branches of the methods.
-  A move the table does not allow is a diagnostic, not a new arrow.
+`Pricing` keeps its name rather than taking the `Service` suffix the lint rules
+want: `shop.cart` has been calling `shop.v1.Pricing/GetQuote` since before this
+service existed, and a naming rule is not worth breaking a consumer over. The
+exception is written down in the module's `buf.yaml`.
 
 ## Running it
 
 ```bash
 docker compose up -d db
-mvn -q spring-boot:run
+make gen && go run ./cmd/pricing
 ```
 
-`NATS_URL` picks the bus: with a server named, events leave on their channel
-with their wire name in the headers; without one they are written to the log and
-nothing leaves. `OMS_ADDRESS` is where `shop.v1.OrderService` answers.
-
-## Decisions
-
-- [payments.0004](../../../docs/adr/payments.0004.md) — journal rows are
-  idempotent by `(order_id, attempt)`, which is why `payments` carries an
-  `attempt` and a unique key over the pair.
+`make gen` regenerates the stubs from the contracts in this tree — one call per
+module, into the `gen` directory beside the code that uses it.
 
 ## Aggregates
 
 | Aggregate | Root | Commands | Queries | Events |
 | --- | --- | --- | --- | --- |
-| [Payment](aggregates/payment.md) | `Payment` | 2 commands | 1 query | 3 events |
-| [Refund](aggregates/refund.md) | `Refund` | 1 command | 1 query | 1 event |
+| [Price List](aggregates/price-list.md) | `PriceList` | 2 commands | 1 query | 0 events |
+| [Quote](aggregates/quote.md) | `Quote` | 2 commands | 1 query | 2 events |
 
 ## Provides
 
-**`payments.v1.PaymentService`** — `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/proto/payments/v1/payment.proto:12`
+**`shop.v1.Pricing`** — `examples/shop/pricing/internal/infrastructure/transport/grpc/quote/proto/shop/v1/pricing.proto:11`
 
-- `Authorize`
-- `Capture`
-- `GetPayment`
+- `IssueQuote`
+- `GetQuote`
 
-<details><summary>AuthorizeRequest</summary>
+<details><summary>IssueQuoteRequest</summary>
 
 | Field | Type |
 | --- | --- |
-| `payment_id` | `string` |
-| `order_id` | `string` |
-| `amount_minor` | `int64` |
+| `basket_id` | `string` |
 | `currency` | `string` |
+| `items` | `[]Item` |
 
 </details>
 
-<details><summary>AuthorizeResponse</summary>
+<details><summary>IssueQuoteResponse</summary>
 
 | Field | Type |
 | --- | --- |
-| `payment_id` | `string` |
-| `auth_code` | `string` |
-| `authorized` | `bool` |
-
-</details>
-
-<details><summary>CaptureRequest</summary>
-
-| Field | Type |
-| --- | --- |
-| `payment_id` | `string` |
-
-</details>
-
-<details><summary>CaptureResponse</summary>
-
-| Field | Type |
-| --- | --- |
-| `payment_id` | `string` |
-| `captured_at` | `string` |
-
-</details>
-
-<details><summary>GetPaymentRequest</summary>
-
-| Field | Type |
-| --- | --- |
-| `payment_id` | `string` |
-
-</details>
-
-<details><summary>GetPaymentResponse</summary>
-
-| Field | Type |
-| --- | --- |
-| `payment_id` | `string` |
-| `order_id` | `string` |
-| `status` | `string` |
-| `amount_minor` | `int64` |
+| `quote_id` | `string` |
+| `total_minor` | `int64` |
 | `currency` | `string` |
+| `expires_at` | `string` |
 
 </details>
 
-**`payments.v1.RefundService`** — `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/proto/payments/v1/refund.proto:10`
-
-- `IssueRefund`
-- `ListRefunds`
-
-<details><summary>IssueRefundRequest</summary>
+<details><summary>GetQuoteRequest</summary>
 
 | Field | Type |
 | --- | --- |
-| `refund_id` | `string` |
-| `payment_id` | `string` |
-| `amount_minor` | `int64` |
+| `quote_id` | `string` |
+| `basket_id` | `string` |
+
+</details>
+
+<details><summary>GetQuoteResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `quote_id` | `string` |
+| `basket_id` | `string` |
+| `total_minor` | `int64` |
 | `currency` | `string` |
-| `reason` | `string` |
+| `state` | `string` |
+| `expires_at` | `string` |
 
 </details>
 
-<details><summary>IssueRefundResponse</summary>
+<details><summary>Item</summary>
 
 | Field | Type |
 | --- | --- |
-| `refund_id` | `string` |
-| `issued` | `bool` |
+| `sku` | `string` |
+| `quantity` | `int32` |
 
 </details>
 
-<details><summary>ListRefundsRequest</summary>
+**`shop.v1.PriceLists`** — `examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/proto/shop/v1/price_lists.proto:9`
+
+- `ImportPriceList`
+- `ArchivePriceList`
+- `ListPriceLists`
+
+<details><summary>ImportPriceListRequest</summary>
 
 | Field | Type |
 | --- | --- |
-| `payment_id` | `string` |
-
-</details>
-
-<details><summary>ListRefundsResponse</summary>
-
-| Field | Type |
-| --- | --- |
-| `refunds` | `[]RefundView` |
-
-</details>
-
-<details><summary>RefundView</summary>
-
-| Field | Type |
-| --- | --- |
-| `refund_id` | `string` |
-| `amount_minor` | `int64` |
+| `name` | `string` |
 | `currency` | `string` |
-| `status` | `string` |
+| `valid_from` | `string` |
+| `rows` | `[]PriceRow` |
 
 </details>
 
-## Consumes
+<details><summary>ImportPriceListResponse</summary>
 
-| Call | Peer | Status | Source |
-| --- | --- | --- | --- |
-| `psp/giveBack` | `psp` | unresolved | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java` |
-| `psp/release` | `psp` | unresolved | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java` |
-| `psp/reserve` | `psp` | unresolved | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java` |
-| `psp/settle` | `psp` | unresolved | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java` |
-| `shop.v1.OrderService/GetOrder` | [shop.oms](../../shop/oms/README.md) | declared | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/oms/proto/shop/v1/order.proto` |
+| Field | Type |
+| --- | --- |
+| `price_list_id` | `string` |
+| `rows` | `int32` |
+
+</details>
+
+<details><summary>ArchivePriceListRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `price_list_id` | `string` |
+
+</details>
+
+<details><summary>ArchivePriceListResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `price_list_id` | `string` |
+
+</details>
+
+<details><summary>ListPriceListsRequest</summary>
+
+
+</details>
+
+<details><summary>ListPriceListsResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `lists` | `[]PriceListSummary` |
+
+</details>
+
+<details><summary>PriceRow</summary>
+
+| Field | Type |
+| --- | --- |
+| `sku` | `string` |
+| `amount_minor` | `int64` |
+
+</details>
+
+<details><summary>PriceListSummary</summary>
+
+| Field | Type |
+| --- | --- |
+| `price_list_id` | `string` |
+| `name` | `string` |
+| `currency` | `string` |
+| `rows` | `int32` |
+| `archived` | `bool` |
+
+</details>
 
 ## Publishes
 
-| Event | Latest | Consumers |
-| --- | --- | --- |
-| [PaymentAuthorized](aggregates/payment.md) | v1 | [shop.oms (declared)](../../shop/oms/README.md) |
-| [PaymentCaptured](aggregates/payment.md) | v1 | [shop.billing (declared)](../../shop/billing/README.md) |
-| [PaymentDeclined](aggregates/payment.md) | v1 | [shop.oms (declared)](../../shop/oms/README.md) |
-| [RefundIssued](aggregates/refund.md) | v1 | — |
+| Event | Latest |
+| --- | --- |
+| [QuoteExpired](aggregates/quote.md) | v1 |
+| [QuoteIssued](aggregates/quote.md) | v1 |
 
 ## Stores
 
 | Store | Kind | Access | Tables |
 | --- | --- | --- | --- |
-| [Ledger database](stores/pg.md) | postgres | owns | 3 tables |
+| [Pricing database](stores/pg.md) | postgres | owns | 5 tables |
 
-<!-- payments/ledger/aggregates/payment.md -->
+<!-- shop/pricing/aggregates/price-list.md -->
 
-# Payment
+# Price List
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
-- **Id:** `payments.ledger.payment`
-- **Service:** [Ledger](../README.md)
-- **Root:** `Payment`
+- **Id:** `shop.pricing.price-list`
+- **Service:** [Pricing](../README.md)
+- **Root:** `PriceList`
 
-What one order owes, and everything that has happened to that money.
+What things cost before anybody asks.
+
+A list is imported whole and never edited: a change is another list, valid from
+its own moment, and the old one is archived rather than deleted so that a quote
+priced against it stays readable. Nothing here is announced on the bus - a
+price list changing is this service's business until somebody asks for a quote.
 
 ## Entities
 
-### Payment — aggregate root
+### PriceList — aggregate root
 
-What one order owes, and everything that has happened to that money.
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `id` | `String` | — |
-| `orderId` | `String` | The order this payment is for. Another context owns it, so this is its id and not its shape. |
-| `amount` | `Money` | — |
-| `attempt` | `int` | Which try at charging this order it is. payments.0004 keys the row on it. |
-| `createdAt` | `Instant` | — |
-| `postings` | `List<Posting>` | — |
-| `status` | `PaymentStatus` | — |
-| `authCode` | `String` | — |
-
-### Posting
-
-One side of one movement of money.
+PriceList is one import of prices, valid from a moment. Lists are never edited: a change is a new list, and what a quote was priced against stays readable for as long as the quote does.
 
 | Field | Type |
 | --- | --- |
-| `account` | `String` |
-| `amount` | `Money` |
-| `writtenAt` | `String` |
+| `id` | `string` |
+| `name` | `string` |
+| `currency` | `string` |
+| `rows` | `[]Row` |
+| `validFrom` | `time.Time` |
+| `archived` | `bool` |
+
+### Row
+
+Row is one price in a list. An entity rather than a value: it is tracked over the life of the list, and a reader asks about this sku's price in that list.
+
+| Field | Type |
+| --- | --- |
+| `sku` | `string` |
+| `price` | `money.Money` |
+
+## Operations
+
+| Operation | Kind | Exposed by | Doc |
+| --- | --- | --- | --- |
+| `ArchivePriceList` | command | `ArchivePriceList` | Package archive_price_list takes a price list out of use without losing it. |
+| `ImportPriceList` | command | `ImportPriceList` | Package import_price_list takes in a whole price list. |
+| `ListPriceLists` | query | `ListPriceLists` | Package list_price_lists reads every price list there is. |
+
+<!-- shop/pricing/aggregates/quote.md -->
+
+# Quote
+
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `shop.pricing.quote`
+- **Service:** [Pricing](../README.md)
+- **Root:** `Quote`
+
+What a basket costs, promised until a moment.
+
+A quote is issued against a basket with its lines captured, and from then on it
+only moves twice: it is taken by the order it priced, or it expires. The price
+is never recomputed - a quote that changed under the customer would not be a
+quote - and an expired one is not revived, it is replaced.
+
+## Entities
+
+### Quote — aggregate root
+
+Quote is one basket, priced. The lines are captured at issue and never recomputed: a quote that changed under the customer would not be a quote.
+
+| Field | Type |
+| --- | --- |
+| `id` | `string` |
+| `basketID` | `string` |
+| `lines` | `[]line.Line` |
+| `total` | `money.Money` |
+| `state` | `string` |
+| `issuedAt` | `time.Time` |
+| `expiresAt` | `time.Time` |
 
 ## Value objects
 
+### Line
+
+Line is a value: two lines with the same sku, quantity and price are the same line. The price is captured when the quote is issued and never recomputed - that is the whole point of quoting.
+
+| Field | Type |
+| --- | --- |
+| `sku` | `string` |
+| `quantity` | `int32` |
+| `unitPrice` | `money.Money` |
+
 ### Money
 
-An amount in the minor unit of a currency: 1250 GBP is £12.50.
+Money never rounds: everything is an integer of minor units, and two amounts are only added when they are in the same currency.
 
 | Field | Type |
 | --- | --- |
-| `amountMinor` | `long` |
-| `currency` | `String` |
-
-## Lifecycle
-
-```mermaid
-stateDiagram-v2
-    [*] --> PENDING
-    PENDING --> AUTHORIZED: authorize · PaymentAuthorized
-    AUTHORIZED --> CAPTURED: capture · PaymentCaptured
-    PENDING --> DECLINED: decline · PaymentDeclined
-    AUTHORIZED --> VOIDED: voidAuthorization
-    CAPTURED --> [*]
-    DECLINED --> [*]
-    VOIDED --> [*]
-```
-
-| From | To | On | Emits | Source |
-| --- | --- | --- | --- | --- |
-| `PENDING` | `AUTHORIZED` | `authorize` | `PaymentAuthorized` | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:61` |
-| `AUTHORIZED` | `CAPTURED` | `capture` | `PaymentCaptured` | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:72` |
-| `PENDING` | `DECLINED` | `decline` | `PaymentDeclined` | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:78` |
-| `AUTHORIZED` | `VOIDED` | `voidAuthorization` | — | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:84` |
+| `amountMinor` | `int64` |
+| `currency` | `string` |
 
 ## Operations
 
 | Operation | Kind | Exposed by | Doc |
 | --- | --- | --- | --- |
-| `AuthorizePayment` | command | `Authorize` | Asks the gateway to hold the money for an order, and records either that it agreed or that it refused. |
-| `CapturePayment` | command | `Capture` | Moves the money the gateway was holding, writes the pair of postings for it, and says so on the bus. |
-| `GetPayment` | query | `GetPayment` | Reads one payment, for whoever is asking what happened to the money. |
+| `ExpireQuote` | command | *internal* | Package expire_quote lets promises lapse. |
+| `GetQuote` | query | `GetQuote` | Package get_quote reads one quote. |
+| `IssueQuote` | command | `IssueQuote` | Package issue_quote prices a basket and promises the price for a while. |
 
 ## Events
 
-### PaymentAuthorized
+### QuoteExpired
 
-`payments.ledger.payment.PaymentAuthorized`
+`shop.pricing.quote.QuoteExpired`
 
-On the wire as `ledger.PaymentAuthorized`, on `payments.ledger.payment`.
-
-| Consumer | Status |
-| --- | --- |
-| [shop.oms](../../../shop/oms/README.md) | declared |
+On the wire as `pricing.QuoteExpired`, on `shop.pricing.quote`.
 
 #### v1 — current
 
-The gateway agreed to hold the money. Nothing has moved yet.
+QuoteExpired says the price is no longer promised. Nothing is refunded and nothing is cancelled: whoever holds the quote has to ask for another one.
 
-Source: `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/event/PaymentAuthorized.java`
+Source: `examples/shop/pricing/internal/domain/quote/event/quote_expired.go`
 
 | Field | Type |
 | --- | --- |
-| `paymentId` | `String` |
-| `orderId` | `String` |
-| `amount` | `Money` |
-| `authCode` | `String` |
+| `quoteID` | `string` |
+| `basketID` | `string` |
+| `occurredAt` | `time.Time` |
 
-### PaymentCaptured
+### QuoteIssued
 
-`payments.ledger.payment.PaymentCaptured`
+`shop.pricing.quote.QuoteIssued`
 
-On the wire as `ledger.PaymentCaptured`, on `payments.ledger.payment`.
-
-| Consumer | Status |
-| --- | --- |
-| [shop.billing](../../../shop/billing/README.md) | declared |
+On the wire as `pricing.QuoteIssued`, on `shop.pricing.quote`.
 
 #### v1 — current
 
-The money moved. Whoever is owed something for this order - the invoice, the warehouse - waits for this one and nothing earlier.
+QuoteIssued says a basket has a price, and for how long. Whoever places the order needs both, so both are on the event rather than fetched again.
 
-Source: `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/event/PaymentCaptured.java`
-
-| Field | Type |
-| --- | --- |
-| `paymentId` | `String` |
-| `orderId` | `String` |
-| `amount` | `Money` |
-| `capturedAt` | `String` |
-
-### PaymentDeclined
-
-`payments.ledger.payment.PaymentDeclined`
-
-On the wire as `ledger.PaymentDeclined`, on `payments.ledger.payment`.
-
-| Consumer | Status |
-| --- | --- |
-| [shop.oms](../../../shop/oms/README.md) | declared |
-
-#### v1 — current
-
-The gateway refused, and it says why in its own words rather than ours.
-
-Source: `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/event/PaymentDeclined.java`
+Source: `examples/shop/pricing/internal/domain/quote/event/quote_issued.go`
 
 | Field | Type |
 | --- | --- |
-| `paymentId` | `String` |
-| `orderId` | `String` |
-| `reason` | `String` |
-
-<!-- payments/ledger/aggregates/refund.md -->
-
-# Refund
-
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
-
-- **Id:** `payments.ledger.refund`
-- **Service:** [Ledger](../README.md)
-- **Root:** `Refund`
-
-Money going back, against a payment that was captured.
-
-## Entities
-
-### Refund — aggregate root
-
-Money going back, against a payment that was captured.
-
-| Field | Type |
-| --- | --- |
-| `id` | `String` |
-| `paymentId` | `String` |
-| `orderId` | `String` |
-| `amount` | `Money` |
-| `reason` | `String` |
-| `status` | `RefundStatus` |
-| `settledAt` | `Instant` |
-
-## Lifecycle
-
-```mermaid
-stateDiagram-v2
-    [*] --> REQUESTED
-    REQUESTED --> ISSUED: issue · RefundIssued
-    REQUESTED --> REJECTED: reject
-    ISSUED --> [*]
-    REJECTED --> [*]
-```
-
-| From | To | On | Emits | Source |
-| --- | --- | --- | --- | --- |
-| `REQUESTED` | `ISSUED` | `issue` | `RefundIssued` | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/refund/Refund.java:41` |
-| `REQUESTED` | `REJECTED` | `reject` | — | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/refund/Refund.java:47` |
-
-## Operations
-
-| Operation | Kind | Exposed by | Doc |
-| --- | --- | --- | --- |
-| `IssueRefund` | command | `IssueRefund` | Sends money back against a captured payment, in full or in part. |
-| `ListRefunds` | query | `ListRefunds` | Every refund against one payment, newest first. |
-
-## Events
-
-### RefundIssued
-
-`payments.ledger.refund.RefundIssued`
-
-On the wire as `ledger.RefundIssued`, on `payments.ledger.refund`.
-
-#### v1 — current
-
-Money went back to the customer, against a payment that had been captured.
-
-Source: `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/refund/event/RefundIssued.java`
-
-| Field | Type |
-| --- | --- |
-| `refundId` | `String` |
-| `paymentId` | `String` |
-| `orderId` | `String` |
-| `amount` | `Money` |
-| `reason` | `String` |
-
-<!-- shop/pricing/stores/cache.md -->
-
-# Price list cache
-
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
-
-- **Id:** `shop.pricing.cache`
-- **Kind:** redis
-- **Owner:** [shop.pricing](../README.md)
-- **Source:** `shop/pricing/internal/cache`
+| `quoteID` | `string` |
+| `basketID` | `string` |
+| `totalMinor` | `int64` |
+| `currency` | `string` |
+| `expiresAt` | `time.Time` |
+| `occurredAt` | `time.Time` |
 
 <!-- delivery/core/stores/pg.md -->
 
 # Delivery database
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `delivery.core.pg`
 - **Kind:** postgres
@@ -3018,7 +3069,7 @@ Source: `delivery/core/db/migrations/0005_route_load.sql`
 
 # Auth database
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `auth.auth.pg`
 - **Kind:** postgres
@@ -3077,7 +3128,7 @@ aggregate-root · persists [auth.auth.user](../aggregates/user.md)
 
 # Ledger database
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `payments.ledger.pg`
 - **Kind:** postgres
@@ -3173,7 +3224,7 @@ Source: `src/main/java/org/portolan/payments/ledger/infrastructure/repository/re
 
 # Billing database
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.billing.pg`
 - **Kind:** postgres
@@ -3226,7 +3277,7 @@ child · persists [shop.billing.invoice](../aggregates/invoice.md) · block `sho
 
 # Cart database
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.cart.pg`
 - **Kind:** postgres
@@ -3288,7 +3339,7 @@ outbox
 
 # Order database
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.oms.pg`
 - **Kind:** postgres
@@ -3342,16 +3393,128 @@ outbox
 | --- | --- | --- |
 | `outbox_unpublished` | id | index |
 
+<!-- shop/pricing/stores/pg.md -->
+
+# Pricing database
+
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `shop.pricing.pg`
+- **Kind:** postgres
+- **Owner:** [shop.pricing](../README.md)
+- **Source:** `examples/shop/pricing/internal/infrastructure/repository`
+
+## Tables
+
+### price_lists
+
+aggregate-root · persists [shop.pricing.price-list](../aggregates/price-list.md)
+
+| Column | Type | Null | Key |
+| --- | --- | --- | --- |
+| `id` | `text` | not null | PK |
+| `name` | `text` | not null | — |
+| `currency` | `char(3)` | not null | — |
+| `valid_from` | `timestamptz` | not null | — |
+| `archived` | `boolean` | not null | — |
+
+| Index | Columns | Kind |
+| --- | --- | --- |
+| `price_lists_in_force` | currency, valid_from | index |
+
+### price_rows
+
+child · persists [shop.pricing.price-list](../aggregates/price-list.md)
+
+| Column | Type | Null | Key |
+| --- | --- | --- | --- |
+| `price_list_id` | `text` | not null | PK |
+| `sku` | `text` | not null | PK |
+| `amount_minor` | `bigint` | not null | — |
+
+### quotes
+
+aggregate-root · persists [shop.pricing.quote](../aggregates/quote.md)
+
+| Column | Type | Null | Key |
+| --- | --- | --- | --- |
+| `id` | `text` | not null | PK |
+| `basket_id` | `text` | not null | — |
+| `total_minor` | `bigint` | not null | — |
+| `currency` | `char(3)` | not null | — |
+| `state` | `text` | not null | — |
+| `issued_at` | `timestamptz` | not null | — |
+| `expires_at` | `timestamptz` | not null | — |
+
+| Index | Columns | Kind |
+| --- | --- | --- |
+| `quotes_open_by_expiry` | state, expires_at | index |
+| `quotes_by_basket` | basket_id | index |
+
+### quote_lines
+
+child · persists [shop.pricing.quote](../aggregates/quote.md)
+
+| Column | Type | Null | Key |
+| --- | --- | --- | --- |
+| `quote_id` | `text` | not null | PK |
+| `sku` | `text` | not null | PK |
+| `quantity` | `integer` | not null | — |
+| `unit_price_minor` | `bigint` | not null | — |
+| `currency` | `char(3)` | not null | — |
+
+### outbox
+
+outbox
+
+| Column | Type | Null | Key |
+| --- | --- | --- | --- |
+| `id` | `bigserial` | not null | PK |
+| `topic` | `text` | not null | — |
+| `name` | `text` | not null | — |
+| `aggregate_id` | `text` | not null | — |
+| `occurred_at` | `timestamptz` | not null | — |
+| `published_at` | `timestamptz` | null | — |
+
+| Index | Columns | Kind |
+| --- | --- | --- |
+| `outbox_unpublished` | id | index |
+
+## Views
+
+### v_price_list_use
+
+computed on read · reads [`shop.pricing.pg.price_lists`](pg.md#price_lists), [`shop.pricing.pg.price_rows`](pg.md#price_rows)
+
+| Column | Type | Null | From |
+| --- | --- | --- | --- |
+| `price_list_id` | `text` | not null | `shop.pricing.pg.price_lists.id` |
+| `name` | `text` | not null | `shop.pricing.pg.price_lists.name` |
+| `currency` | `char(3)` | not null | `shop.pricing.pg.price_lists.currency` |
+| `rows_priced` | `text` | not null | `shop.pricing.pg.price_rows.sku` |
+
+```sql
+CREATE VIEW v_price_list_use AS
+SELECT l.id        AS price_list_id,
+       l.name      AS name,
+       l.currency  AS currency,
+       count(r.sku) AS rows_priced
+  FROM price_lists l
+  LEFT JOIN price_rows r ON r.price_list_id = l.id
+ GROUP BY l.id;
+```
+
+Source: `internal/infrastructure/repository/price_list/migrations/0002_price_list_use.sql`
+
 <!-- flows/README.md -->
 
 # Flows
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 | Flow | Owner | Summary |
 | --- | --- | --- |
 | [Gateway webhook](gateway-webhook.md) | [payments](../payments/README.md) | The gateway's side of the story, arriving after the fact. One signed callback, four ways to read it: a replay to ignore, a capture to record, a charge with no local payment to adopt, and a failure to pass on. The adopt branch is the only repair for a checkout that timed out mid-authorization, and it is the one branch no test covers. |
-| [Quote expired on checkout](quote-expired-on-checkout.md) | [shop](../shop/README.md) | A basket that has been checked out is a basket whose quote is spent. Pricing hears the event the cart publishes and expires the quote it issued for that basket, so a second checkout of the same basket has to be priced again rather than reuse a number the price list may have moved on from. |
 | [Shipment tracking](shipment-tracking.md) | [delivery](../delivery/README.md) | Reconstructed from production traces over a 24 hour window: the tracking page, the carrier's scan webhook, and what each scan code sets off. Two things only the traces know about — a consumer no repository accounts for, and an exception path whose reader emits no spans at all. |
 | [Change password](auth-change-password.md) | [auth](../auth/README.md) | Replaces the password of a user, given the current one. |
 | [Get user](auth-get-user.md) | [auth](../auth/README.md) | Reads a user by id. |
@@ -3381,12 +3544,18 @@ outbox
 | [Get order](oms-get-order.md) | [shop](../shop/README.md) | Answers with the order as it is now; a cancelled order is still found. |
 | [Confirm order on payment authorized](oms-confirm-order-on-payment-authorized.md) | [shop](../shop/README.md) | Confirms the order once the payment for it is authorised (ADR oms.0005). The publisher is `payments.ledger`, and the name is the one it puts on the message: every service on this bus names its events after itself. |
 | [Place order on basket checked out](oms-place-order-on-basket-checked-out.md) | [shop](../shop/README.md) | Places the order the basket was checked out for (ADR oms.0002). The order takes the basket's id, so the same checkout heard twice places one order. |
+| [Archive price list](pricing-archive-price-list.md) | [shop](../shop/README.md) | Package archive_price_list takes a price list out of use without losing it. |
+| [Get quote](pricing-get-quote.md) | [shop](../shop/README.md) | Package get_quote reads one quote. |
+| [Import price list](pricing-import-price-list.md) | [shop](../shop/README.md) | Package import_price_list takes in a whole price list. |
+| [Issue quote](pricing-issue-quote.md) | [shop](../shop/README.md) | Package issue_quote prices a basket and promises the price for a while. |
+| [List price lists](pricing-list-price-lists.md) | [shop](../shop/README.md) | Package list_price_lists reads every price list there is. |
+| [Expire quote on checkout](pricing-expire-quote-on-checkout.md) | [shop](../shop/README.md) | Ends the promise once the basket it priced is checked out. |
 
 <!-- flows/gateway-webhook.md -->
 
 # Gateway webhook
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.gateway-webhook`
 - **Owner:** [payments](../payments/README.md)
@@ -3470,53 +3639,11 @@ sequenceDiagram
 11. **payments.ledger** → **psp-gateway** — ack 200
    `webhook_test.go:142` · Acked only after the branch above has committed. Anything else and the gateway replays, which is what makes the dedup table load-bearing.
 
-<!-- flows/quote-expired-on-checkout.md -->
-
-# Quote expired on checkout
-
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
-
-- **Id:** `flow.quote-expired-on-checkout`
-- **Owner:** [shop](../shop/README.md)
-- **Source:** `services/pricing/internal/policy/expire_quote.go`
-
-A basket that has been checked out is a basket whose quote is spent. Pricing hears the event the cart publishes and expires the quote it issued for that basket, so a second checkout of the same basket has to be priced again rather than reuse a number the price list may have moved on from.
-
-## Participants
-
-| Participant | Kind | Context | Label |
-| --- | --- | --- | --- |
-| `bus` | broker | — | — |
-| `shop.pricing` | service | [shop](../shop/README.md) | — |
-| `pricing-db` | store | [shop](../shop/README.md) | pricing-db (postgres) |
-
-## Sequence
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant p0 as bus
-    participant p1 as shop.pricing
-    participant p2 as pricing-db (postgres)
-    p0-)p1: BasketCheckedOut
-    p1->>p2: expireQuote
-    p1-)p0: QuoteExpired
-```
-
-## Steps
-
-1. **bus** → **shop.pricing** — BasketCheckedOut
-   [shop.cart.basket.BasketCheckedOut](../shop/cart/aggregates/basket.md) · status: declared · `internal/policy/expire_quote.go:24` · One consumer group, the basket id as the routing key. A basket with no quote on file is ignored, not an error: not every basket was priced.
-2. **shop.pricing** → **pricing-db** — expireQuote
-   status: declared · `internal/adapter/postgres/quotes.go:71`
-3. **shop.pricing** → **bus** — QuoteExpired
-   [shop.pricing.quote.QuoteExpired](../shop/pricing/aggregates/quote.md) · status: declared · `internal/policy/expire_quote.go:31` · Published for the audit trail; nothing in the estate acts on it yet.
-
 <!-- flows/shipment-tracking.md -->
 
 # Shipment tracking
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.shipment-tracking`
 - **Owner:** [delivery](../delivery/README.md)
@@ -3616,7 +3743,7 @@ sequenceDiagram
 
 # Change password
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.auth-change-password`
 - **Owner:** [auth](../auth/README.md)
@@ -3666,7 +3793,7 @@ sequenceDiagram
 
 # Get user
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.auth-get-user`
 - **Owner:** [auth](../auth/README.md)
@@ -3705,7 +3832,7 @@ sequenceDiagram
 
 # Login
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.auth-login`
 - **Owner:** [auth](../auth/README.md)
@@ -3817,7 +3944,7 @@ sequenceDiagram
 
 # Logout
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.auth-logout`
 - **Owner:** [auth](../auth/README.md)
@@ -3864,7 +3991,7 @@ sequenceDiagram
 
 # Register user
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.auth-register-user`
 - **Owner:** [auth](../auth/README.md)
@@ -3911,7 +4038,7 @@ sequenceDiagram
 
 # Validate session
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.auth-validate-session`
 - **Owner:** [auth](../auth/README.md)
@@ -3950,7 +4077,7 @@ sequenceDiagram
 
 # Revoke sessions on password change
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.auth-revoke-sessions-on-password-change`
 - **Owner:** [auth](../auth/README.md)
@@ -4001,7 +4128,7 @@ sequenceDiagram
 
 # Authorize
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.ledger-authorize`
 - **Owner:** [payments](../payments/README.md)
@@ -4073,7 +4200,7 @@ sequenceDiagram
 
 # Capture
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.ledger-capture`
 - **Owner:** [payments](../payments/README.md)
@@ -4125,7 +4252,7 @@ sequenceDiagram
 
 # Get payment
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.ledger-get-payment`
 - **Owner:** [payments](../payments/README.md)
@@ -4164,7 +4291,7 @@ sequenceDiagram
 
 # Issue refund
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.ledger-issue-refund`
 - **Owner:** [payments](../payments/README.md)
@@ -4231,7 +4358,7 @@ sequenceDiagram
 
 # List refunds
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.ledger-list-refunds`
 - **Owner:** [payments](../payments/README.md)
@@ -4270,7 +4397,7 @@ sequenceDiagram
 
 # Void payment on order cancelled
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.ledger-void-payment-on-order-cancelled`
 - **Owner:** [payments](../payments/README.md)
@@ -4317,7 +4444,7 @@ sequenceDiagram
 
 # Invoice create
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.billing-invoice-create`
 - **Owner:** [shop](../shop/README.md)
@@ -4359,7 +4486,7 @@ sequenceDiagram
 
 # Invoice destroy
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.billing-invoice-destroy`
 - **Owner:** [shop](../shop/README.md)
@@ -4406,7 +4533,7 @@ sequenceDiagram
 
 # Invoice issue
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.billing-invoice-issue`
 - **Owner:** [shop](../shop/README.md)
@@ -4458,7 +4585,7 @@ sequenceDiagram
 
 # Invoice retrieve
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.billing-invoice-retrieve`
 - **Owner:** [shop](../shop/README.md)
@@ -4497,7 +4624,7 @@ sequenceDiagram
 
 # Close invoice on payment
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.billing-close-invoice-on-payment`
 - **Owner:** [shop](../shop/README.md)
@@ -4542,7 +4669,7 @@ sequenceDiagram
 
 # Add item
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.cart-add-item`
 - **Owner:** [shop](../shop/README.md)
@@ -4584,7 +4711,7 @@ sequenceDiagram
 
 # Checkout
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.cart-checkout`
 - **Owner:** [shop](../shop/README.md)
@@ -4615,7 +4742,7 @@ sequenceDiagram
     p0->>p1: checkout → CheckedOut
     p1->>p2: validateSession → SessionInfo
     p1->>p3: byId
-    p1->>p4: GetQuote
+    p1->>p4: GetQuote → GetQuoteResponse
     p1->>p3: save
     p1-)p5: BasketCheckedOut
 ```
@@ -4628,7 +4755,7 @@ sequenceDiagram
    `auth.v1.Sessions/validateSession` · `examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:44` · Seen running in telemetry/traces.jsonl (1 trace).
 3. **shop.cart** → **cart-pg** — byId
    status: declared · `examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:48`
-4. **shop.cart** → **shop.pricing** — GetQuote
+4. **shop.cart** → **shop.pricing** — GetQuote → GetQuoteResponse
    `shop.v1.Pricing/GetQuote` · status: declared · `examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:55`
 5. **shop.cart** → **cart-pg** — save
    status: declared · `examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:57`
@@ -4639,7 +4766,7 @@ sequenceDiagram
 
 # Create basket
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.cart-create-basket`
 - **Owner:** [shop](../shop/README.md)
@@ -4681,7 +4808,7 @@ sequenceDiagram
 
 # Get basket
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.cart-get-basket`
 - **Owner:** [shop](../shop/README.md)
@@ -4713,7 +4840,7 @@ sequenceDiagram
 
 # Merge baskets
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.cart-merge-baskets`
 - **Owner:** [shop](../shop/README.md)
@@ -4772,7 +4899,7 @@ sequenceDiagram
 
 # Remove item
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.cart-remove-item`
 - **Owner:** [shop](../shop/README.md)
@@ -4814,7 +4941,7 @@ sequenceDiagram
 
 # Cancel order
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.oms-cancel-order`
 - **Owner:** [shop](../shop/README.md)
@@ -4876,7 +5003,7 @@ sequenceDiagram
 
 # Get order
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.oms-get-order`
 - **Owner:** [shop](../shop/README.md)
@@ -4915,7 +5042,7 @@ sequenceDiagram
 
 # Confirm order on payment authorized
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.oms-confirm-order-on-payment-authorized`
 - **Owner:** [shop](../shop/README.md)
@@ -4968,7 +5095,7 @@ sequenceDiagram
 
 # Place order on basket checked out
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.oms-place-order-on-basket-checked-out`
 - **Owner:** [shop](../shop/README.md)
@@ -5012,11 +5139,276 @@ sequenceDiagram
 5. **shop.oms** → **bus** — OrderPlaced
    [shop.oms.order.OrderPlaced](../shop/oms/aggregates/order.md) · `examples/shop/oms/src/application/order/usecases/place_order/mod.rs:31` · Seen running in telemetry/traces.jsonl (1 trace).
 
+<!-- flows/pricing-archive-price-list.md -->
+
+# Archive price list
+
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `flow.pricing-archive-price-list`
+- **Owner:** [shop](../shop/README.md)
+- **Source:** `examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go`
+
+Package archive_price_list takes a price list out of use without losing it.
+
+## Participants
+
+| Participant | Kind | Context |
+| --- | --- | --- |
+| `client` | actor | — |
+| `shop.pricing` | service | [shop](../shop/README.md) |
+| `pricing-pg` | store | [shop](../shop/README.md) |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor p0 as client
+    participant p1 as shop.pricing
+    participant p2 as pricing-pg
+    p0->>p1: ArchivePriceList → ArchivePriceListResponse
+    p1->>p2: ByID
+    p1->>p2: Save
+```
+
+## Steps
+
+1. **client** → **shop.pricing** — ArchivePriceList → ArchivePriceListResponse
+   status: declared · `examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:50`
+2. **shop.pricing** → **pricing-pg** — ByID
+   status: declared · `examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:22`
+3. **shop.pricing** → **pricing-pg** — Save
+   status: declared · `examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:28`
+
+<!-- flows/pricing-get-quote.md -->
+
+# Get quote
+
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `flow.pricing-get-quote`
+- **Owner:** [shop](../shop/README.md)
+- **Source:** `examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go`
+
+Package get_quote reads one quote.
+
+## Participants
+
+| Participant | Kind | Context |
+| --- | --- | --- |
+| `client` | actor | — |
+| `shop.pricing` | service | [shop](../shop/README.md) |
+| `pricing-pg` | store | [shop](../shop/README.md) |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor p0 as client
+    participant p1 as shop.pricing
+    participant p2 as pricing-pg
+    p0->>p1: GetQuote → GetQuoteResponse
+    alt in.QuoteID != ""
+        p1->>p2: ByID
+    else otherwise
+        p1->>p2: ByBasket
+    end
+```
+
+## Steps
+
+1. **client** → **shop.pricing** — GetQuote → GetQuoteResponse
+   status: declared · `examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go:52`
+
+> **One of**
+>
+> *in.QuoteID != ""*
+>
+> 2. **shop.pricing** → **pricing-pg** — ByID
+>    status: declared · `examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go:27`
+>
+> *otherwise*
+>
+> 3. **shop.pricing** → **pricing-pg** — ByBasket
+>    status: declared · `examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go:29`
+
+<!-- flows/pricing-import-price-list.md -->
+
+# Import price list
+
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `flow.pricing-import-price-list`
+- **Owner:** [shop](../shop/README.md)
+- **Source:** `examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go`
+
+Package import_price_list takes in a whole price list.
+
+## Participants
+
+| Participant | Kind | Context |
+| --- | --- | --- |
+| `client` | actor | — |
+| `shop.pricing` | service | [shop](../shop/README.md) |
+| `pricing-pg` | store | [shop](../shop/README.md) |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor p0 as client
+    participant p1 as shop.pricing
+    participant p2 as pricing-pg
+    p0->>p1: ImportPriceList → ImportPriceListResponse
+    p1->>p2: Save
+```
+
+## Steps
+
+1. **client** → **shop.pricing** — ImportPriceList → ImportPriceListResponse
+   status: declared · `examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:30`
+2. **shop.pricing** → **pricing-pg** — Save
+   status: declared · `examples/shop/pricing/internal/application/price_list/usecases/import_price_list/usecase.go:43`
+
+<!-- flows/pricing-issue-quote.md -->
+
+# Issue quote
+
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `flow.pricing-issue-quote`
+- **Owner:** [shop](../shop/README.md)
+- **Source:** `examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go`
+
+Package issue_quote prices a basket and promises the price for a while.
+
+## Participants
+
+| Participant | Kind | Context |
+| --- | --- | --- |
+| `client` | actor | — |
+| `shop.pricing` | service | [shop](../shop/README.md) |
+| `pricing-pg` | store | [shop](../shop/README.md) |
+| `bus` | broker | — |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor p0 as client
+    participant p1 as shop.pricing
+    participant p2 as pricing-pg
+    participant p3 as bus
+    p0->>p1: IssueQuote → IssueQuoteResponse
+    p1->>p2: Current
+    p1->>p2: Save
+    p1-)p3: QuoteIssued
+```
+
+## Steps
+
+1. **client** → **shop.pricing** — IssueQuote → IssueQuoteResponse
+   status: declared · `examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go:28`
+2. **shop.pricing** → **pricing-pg** — Current
+   status: declared · `examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:35`
+3. **shop.pricing** → **pricing-pg** — Save
+   status: declared · `examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:55`
+4. **shop.pricing** → **bus** — QuoteIssued
+   [shop.pricing.quote.QuoteIssued](../shop/pricing/aggregates/quote.md) · status: declared · `examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:55`
+
+<!-- flows/pricing-list-price-lists.md -->
+
+# List price lists
+
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `flow.pricing-list-price-lists`
+- **Owner:** [shop](../shop/README.md)
+- **Source:** `examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go`
+
+Package list_price_lists reads every price list there is.
+
+## Participants
+
+| Participant | Kind | Context |
+| --- | --- | --- |
+| `client` | actor | — |
+| `shop.pricing` | service | [shop](../shop/README.md) |
+| `pricing-pg` | store | [shop](../shop/README.md) |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor p0 as client
+    participant p1 as shop.pricing
+    participant p2 as pricing-pg
+    p0->>p1: ListPriceLists → ListPriceListsResponse
+    p1->>p2: All
+```
+
+## Steps
+
+1. **client** → **shop.pricing** — ListPriceLists → ListPriceListsResponse
+   status: declared · `examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:60`
+2. **shop.pricing** → **pricing-pg** — All
+   status: declared · `examples/shop/pricing/internal/application/price_list/usecases/list_price_lists/usecase.go:22`
+
+<!-- flows/pricing-expire-quote-on-checkout.md -->
+
+# Expire quote on checkout
+
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Id:** `flow.pricing-expire-quote-on-checkout`
+- **Owner:** [shop](../shop/README.md)
+- **Source:** `examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go`
+
+Ends the promise once the basket it priced is checked out.
+
+## Participants
+
+| Participant | Kind | Context |
+| --- | --- | --- |
+| `bus` | broker | — |
+| `shop.pricing` | service | [shop](../shop/README.md) |
+| `pricing-pg` | store | [shop](../shop/README.md) |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant p0 as bus
+    participant p1 as shop.pricing
+    participant p2 as pricing-pg
+    p0-)p1: BasketCheckedOut
+    p1->>p2: ByBasket
+    p1->>p2: Save
+    p1-)p0: QuoteExpired
+```
+
+## Steps
+
+1. **bus** → **shop.pricing** — BasketCheckedOut
+   [shop.cart.basket.BasketCheckedOut](../shop/cart/aggregates/basket.md) · status: declared · `examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:35`
+2. **shop.pricing** → **pricing-pg** — ByBasket
+   status: declared · `examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:41`
+3. **shop.pricing** → **pricing-pg** — Save
+   status: declared · `examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:55`
+4. **shop.pricing** → **bus** — QuoteExpired
+   [shop.pricing.quote.QuoteExpired](../shop/pricing/aggregates/quote.md) · status: declared · `examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:55`
+
 <!-- adr/README.md -->
 
 # Decision records
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 | ADR | Title | Status | Date | Scope |
 | --- | --- | --- | --- | --- |
@@ -5028,7 +5420,7 @@ sequenceDiagram
 
 # org.0001 — Client proto copies live in the consumer's infrastructure layer
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2025-03-11
@@ -5102,7 +5494,7 @@ compiling.
 
 # org.0002 — Domain event schema version is encoded in the package path (events/v1)
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2025-05-02
@@ -5165,7 +5557,7 @@ are not willing to take yet.
 
 # payments.0004 — Journal entries are idempotent by (order_id, attempt)
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Status:** proposed
 - **Date:** 2026-02-09

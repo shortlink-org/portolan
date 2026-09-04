@@ -290,6 +290,8 @@ describe("modules in the palette", () => {
       "local:payments/payment",
       "local:payments/refund",
       "buf.build/shortlink-org/portolan-shop-order",
+      "local:shop/price-list",
+      "local:shop/quote",
     ]);
   });
 });
