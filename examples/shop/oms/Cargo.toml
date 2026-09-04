@@ -1,0 +1,32 @@
+[package]
+name = "oms"
+version = "0.1.0"
+edition = "2024"
+description = "Order Management — service `oms` of bounded context `shop`"
+repository = "https://github.com/shortlink-org/portolan"
+publish = false
+
+[dependencies]
+tokio = { version = "1.53", features = ["rt-multi-thread", "macros", "signal", "sync", "time"] }
+tonic = "0.14"
+prost = "0.14"
+prost-types = "0.14"
+sqlx = { version = "0.9", default-features = false, features = ["runtime-tokio", "tls-rustls", "postgres", "uuid", "chrono", "json", "migrate", "macros"] }
+async-nats = "0.50"
+futures = "0.3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+tracing-opentelemetry = "0.33"
+opentelemetry = "0.32"
+opentelemetry_sdk = { version = "0.32", features = ["rt-tokio"] }
+opentelemetry-otlp = { version = "0.32", features = ["grpc-tonic", "trace"] }
+tonic-prost = "0.14"
+http = "1"
+
+[dev-dependencies]
+testcontainers = "0.28"

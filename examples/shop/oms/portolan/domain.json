@@ -1,0 +1,632 @@
+{
+  "generatedAt": "2026-09-05T01:16:26+07:00",
+  "commit": "1d17393",
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "Shop",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.oms",
+          "slug": "oms",
+          "name": "Order Management",
+          "repo": "github.com/shortlink-org/portolan",
+          "path": "examples/shop/oms",
+          "readme": "# Order Management\n\nService `oms` — bounded context **shop**. Rust on Tokio.\n\nOwns the order: what a basket became at checkout, from the moment the cart\nsays `BasketCheckedOut` until the order is confirmed or cancelled. It is the\nonly writer of order state; every other service holds a copy of what it was\ntold.\n\n## What it does\n\n- Places an order from a checked-out basket, once per basket, copying the\n  lines and the total the customer agreed to.\n- Answers `GetOrder` and `CancelOrder` over gRPC, `shop.v1.OrderService`.\n- Confirms an order once its total is authorised with payments, and says so.\n- Publishes `OrderPlaced`, `OrderConfirmed` and `OrderCancelled` through an\n  outbox, over NATS JetStream.\n\n## What it does not do\n\nDoes not price anything, move money or ship: the lines and the total are the\nbasket's, the money is `payments`' and the parcel is `delivery`'s. Does not\nhold a catalogue or know who a customer is beyond the id the cart passed on.\nNothing in the estate provides `payments.v1` yet, so the authorisation is a\nstand-in until something does, and the catalog says so.\n\n## Decisions\n\n- [oms.0001](docs/adr/0001-rust-on-tokio.md) — Rust on Tokio, and the stack around it\n- [oms.0002](docs/adr/0002-an-order-is-placed-from-a-checked-out-basket.md) — An order is placed from a checked-out basket, not by a call\n- [oms.0003](docs/adr/0003-lines-are-copied-never-repriced.md) — Lines and the total are copied from the basket, never repriced\n- [oms.0004](docs/adr/0004-cancel-is-allowed-until-dispatch.md) — Cancelling is allowed until the parcel moves\n- [oms.0005](docs/adr/0005-confirmation-waits-for-a-payment-that-does-not-exist-yet.md) — Confirmation waits for a payment service that does not exist yet\n\n## Running it\n\n```bash\ndocker compose up -d\ncargo run\n```\n\n`NATS_URL` is where events arrive and leave; without it the bus is in process\nand nothing does. `PAYMENTS_ADDR` points confirmation at a ledger; without it\nevery authorisation is granted. `TRACER_URI` switches tracing on. `cargo test`\nruns everything; without Docker the tests that need Postgres or NATS are\nskipped.",
+          "provides": [],
+          "consumes": [
+            {
+              "id": "payments.v1.PaymentService/Authorize",
+              "peer": "payments.v1",
+              "status": "unresolved",
+              "source": "examples/shop/oms/src/infrastructure/payments/proto/payments/v1/payments.proto"
+            }
+          ],
+          "aggregates": [
+            {
+              "id": "shop.oms.order",
+              "slug": "order",
+              "name": "Order",
+              "readme": "# Order\n\nWhat a basket became at checkout: the lines and the total the customer agreed\nto, copied and never repriced, under one lock. An order is placed from a\n`BasketCheckedOut`, not by anyone calling in; it is confirmed when the payment\nis authorised, and cancelled by the customer while the parcel has not moved,\nor by a declined payment.\n\n```mermaid\nstateDiagram-v2\n    [*] --> placed\n    placed --> confirmed: confirm · OrderConfirmed\n    placed --> cancelled: cancel · OrderCancelled\n    confirmed --> cancelled: cancel · OrderCancelled\n```\n\nThe moves are one table, `TRANSITIONS` in `status.rs`, and one method makes\nthem, `move_to`: an edge the table lacks is refused before anything else\nhappens. Fulfilled is not a state yet - nothing in the estate delivers - and\nwill arrive with the service that does.",
+              "root": "Order",
+              "entities": [
+                {
+                  "id": "shop.oms.order.order",
+                  "slug": "order",
+                  "name": "Order",
+                  "doc": "The root. Everything about an order changes through a method here, and\nevery method that changes something hands back the event that says so:\nthe caller records both in one transaction, or neither.",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "String",
+                      "doc": ""
+                    },
+                    {
+                      "name": "customer_id",
+                      "type": "String",
+                      "doc": ""
+                    },
+                    {
+                      "name": "basket_id",
+                      "type": "String",
+                      "doc": ""
+                    },
+                    {
+                      "name": "lines",
+                      "type": "Vec<Line>",
+                      "doc": ""
+                    },
+                    {
+                      "name": "total",
+                      "type": "Money",
+                      "doc": ""
+                    },
+                    {
+                      "name": "status",
+                      "type": "Status",
+                      "doc": ""
+                    },
+                    {
+                      "name": "placed_at",
+                      "type": "DateTime<Utc>",
+                      "doc": ""
+                    },
+                    {
+                      "name": "version",
+                      "type": "u32",
+                      "doc": "Bumped on every save; a save from a stale read is refused (Error::Conflict)."
+                    }
+                  ]
+                },
+                {
+                  "id": "shop.oms.order.line",
+                  "slug": "line",
+                  "name": "Line",
+                  "doc": "One line of the order: a SKU, how many, and the price it was added to the\nbasket at. The price is copied from the basket and never recomputed (ADR\noms.0003); the customer agreed to this number.",
+                  "fields": [
+                    {
+                      "name": "sku",
+                      "type": "String",
+                      "doc": ""
+                    },
+                    {
+                      "name": "quantity",
+                      "type": "u32",
+                      "doc": ""
+                    },
+                    {
+                      "name": "unit_price",
+                      "type": "Money",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [
+                {
+                  "id": "shop.oms.order.money",
+                  "slug": "money",
+                  "name": "Money",
+                  "doc": "An amount in the minor unit of a currency: 1999 EUR is 19.99. The currency\nis three upper-case letters and nothing checks it further; the order only\nrequires every line to agree with the total on it.",
+                  "fields": [
+                    {
+                      "name": "amount_minor",
+                      "type": "i64",
+                      "doc": ""
+                    },
+                    {
+                      "name": "currency",
+                      "type": "String",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "operations": [
+                {
+                  "id": "CancelOrder",
+                  "kind": "command",
+                  "doc": "Cancels an order that has not been dispatched, and says so with `OrderCancelled`. Cancelling twice is not an error: the second call finds a cancelled order and changes nothing.",
+                  "exposedBy": [
+                    "CancelOrder"
+                  ]
+                },
+                {
+                  "id": "ConfirmOrder",
+                  "kind": "command",
+                  "doc": "Confirms a placed order once its total is authorised with payments, and says so with `OrderConfirmed`. Payments is asked synchronously, because the answer is what decides; no service in the estate provides `payments.v1` yet, so the call is a stand-in until one does (ADR oms.0005)."
+                },
+                {
+                  "id": "GetOrder",
+                  "kind": "query",
+                  "doc": "Answers with the order as it is now; a cancelled order is still found.",
+                  "exposedBy": [
+                    "CancelOrder",
+                    "GetOrder"
+                  ]
+                },
+                {
+                  "id": "PlaceOrder",
+                  "kind": "command",
+                  "doc": "Places an order from a checked-out basket, once: a second `BasketCheckedOut` for the same basket places nothing and answers with the order already there. The lines and the total are the basket's, copied and never repriced."
+                }
+              ],
+              "events": [
+                {
+                  "id": "shop.oms.order.OrderCancelled",
+                  "slug": "order-cancelled",
+                  "name": "OrderCancelled",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "The order will not be fulfilled. The reason says whether the customer\nasked or the payment was declined, because a consumer unwinds them\ndifferently: a hold is voided, a capture is refunded.",
+                      "source": "examples/shop/oms/src/domain/order/event/order_cancelled.rs",
+                      "fields": [
+                        {
+                          "name": "order_id",
+                          "type": "String",
+                          "doc": ""
+                        },
+                        {
+                          "name": "reason",
+                          "type": "String",
+                          "doc": ""
+                        },
+                        {
+                          "name": "occurred_at",
+                          "type": "DateTime<Utc>",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [],
+                  "wire": {
+                    "name": "oms.OrderCancelled",
+                    "channel": "shop.oms.order"
+                  }
+                },
+                {
+                  "id": "shop.oms.order.OrderConfirmed",
+                  "slug": "order-confirmed",
+                  "name": "OrderConfirmed",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "The payment is authorised and the order may be fulfilled. Whoever ships\nlistens for this.",
+                      "source": "examples/shop/oms/src/domain/order/event/order_confirmed.rs",
+                      "fields": [
+                        {
+                          "name": "order_id",
+                          "type": "String",
+                          "doc": ""
+                        },
+                        {
+                          "name": "authorization_id",
+                          "type": "String",
+                          "doc": ""
+                        },
+                        {
+                          "name": "occurred_at",
+                          "type": "DateTime<Utc>",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [],
+                  "wire": {
+                    "name": "oms.OrderConfirmed",
+                    "channel": "shop.oms.order"
+                  }
+                },
+                {
+                  "id": "shop.oms.order.OrderPlaced",
+                  "slug": "order-placed",
+                  "name": "OrderPlaced",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "An order came into being from a checked-out basket. Placed, not yet paid\nfor: whoever moves money listens for this.",
+                      "source": "examples/shop/oms/src/domain/order/event/order_placed.rs",
+                      "fields": [
+                        {
+                          "name": "order_id",
+                          "type": "String",
+                          "doc": ""
+                        },
+                        {
+                          "name": "basket_id",
+                          "type": "String",
+                          "doc": ""
+                        },
+                        {
+                          "name": "customer_id",
+                          "type": "String",
+                          "doc": ""
+                        },
+                        {
+                          "name": "total",
+                          "type": "Money",
+                          "doc": ""
+                        },
+                        {
+                          "name": "occurred_at",
+                          "type": "DateTime<Utc>",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [],
+                  "wire": {
+                    "name": "oms.OrderPlaced",
+                    "channel": "shop.oms.order"
+                  }
+                }
+              ],
+              "lifecycle": {
+                "states": [
+                  "placed",
+                  "confirmed",
+                  "cancelled"
+                ],
+                "transitions": [
+                  {
+                    "from": "placed",
+                    "to": "confirmed",
+                    "on": "confirm",
+                    "source": "examples/shop/oms/src/domain/order/order.rs:65",
+                    "emits": "shop.oms.order.OrderConfirmed"
+                  },
+                  {
+                    "from": "placed",
+                    "to": "cancelled",
+                    "on": "cancel",
+                    "source": "examples/shop/oms/src/domain/order/order.rs:76",
+                    "emits": "shop.oms.order.OrderCancelled"
+                  },
+                  {
+                    "from": "confirmed",
+                    "to": "cancelled",
+                    "on": "cancel",
+                    "source": "examples/shop/oms/src/domain/order/order.rs:76",
+                    "emits": "shop.oms.order.OrderCancelled"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [
+    {
+      "id": "flow.oms-cancel-order",
+      "slug": "oms-cancel-order",
+      "name": "Cancel order",
+      "summary": "Answers with the order as it is now; a cancelled order is still found.",
+      "source": "examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.oms",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "oms-pg",
+          "kind": "store",
+          "context": "shop"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.oms",
+          "kind": "rpc",
+          "label": "CancelOrder",
+          "status": "declared",
+          "line": "examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:41"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.oms",
+          "to": "oms-pg",
+          "kind": "call",
+          "label": "by_id",
+          "status": "declared",
+          "line": "examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:21"
+        },
+        {
+          "type": "alt",
+          "id": "alt5",
+          "branches": [
+            {
+              "title": "order.status is Status::Cancelled",
+              "steps": [],
+              "terminal": true
+            },
+            {
+              "title": "otherwise",
+              "steps": [
+                {
+                  "type": "step",
+                  "id": "s3",
+                  "from": "shop.oms",
+                  "to": "oms-pg",
+                  "kind": "call",
+                  "label": "save",
+                  "status": "declared",
+                  "line": "examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:26"
+                },
+                {
+                  "type": "step",
+                  "id": "s4",
+                  "from": "shop.oms",
+                  "to": "bus",
+                  "kind": "event",
+                  "label": "OrderCancelled",
+                  "status": "declared",
+                  "ref": "shop.oms.order.OrderCancelled",
+                  "line": "examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:26"
+                }
+              ],
+              "terminal": false
+            }
+          ]
+        },
+        {
+          "type": "step",
+          "id": "s6",
+          "from": "shop.oms",
+          "to": "oms-pg",
+          "kind": "call",
+          "label": "by_id",
+          "status": "declared",
+          "line": "examples/shop/oms/src/application/order/usecases/get_order/mod.rs:14"
+        }
+      ]
+    },
+    {
+      "id": "flow.oms-get-order",
+      "slug": "oms-get-order",
+      "name": "Get order",
+      "summary": "Answers with the order as it is now; a cancelled order is still found.",
+      "source": "examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.oms",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "oms-pg",
+          "kind": "store",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.oms",
+          "kind": "rpc",
+          "label": "GetOrder",
+          "status": "declared",
+          "line": "examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:31"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.oms",
+          "to": "oms-pg",
+          "kind": "call",
+          "label": "by_id",
+          "status": "declared",
+          "line": "examples/shop/oms/src/application/order/usecases/get_order/mod.rs:14"
+        }
+      ]
+    },
+    {
+      "id": "flow.oms-confirm-order-on-payment-authorized",
+      "slug": "oms-confirm-order-on-payment-authorized",
+      "name": "Confirm order on payment authorized",
+      "summary": "Confirms the order once the payment for it is authorised (ADR oms.0005). Declared ahead of its publisher: nothing in the estate says `payments.PaymentAuthorized` yet, and the catalog says so.",
+      "source": "examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        },
+        {
+          "id": "shop.oms",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "oms-pg",
+          "kind": "store",
+          "context": "shop"
+        },
+        {
+          "id": "payments-v1",
+          "kind": "unknown",
+          "context": null,
+          "label": "payments.v1"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "bus",
+          "to": "shop.oms",
+          "kind": "event",
+          "label": "PaymentAuthorized",
+          "status": "unresolved",
+          "note": "Reacts to the message named `payments.PaymentAuthorized`, which is not an event this repository declares.",
+          "line": "examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs:20"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.oms",
+          "to": "shop.oms",
+          "kind": "call",
+          "label": "ConfirmOrder",
+          "status": "declared",
+          "line": "examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs:27"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "shop.oms",
+          "to": "oms-pg",
+          "kind": "call",
+          "label": "by_id",
+          "status": "declared",
+          "line": "examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:31"
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "shop.oms",
+          "to": "payments-v1",
+          "kind": "rpc",
+          "label": "Authorize",
+          "status": "unresolved",
+          "ref": "payments.v1.PaymentService/Authorize",
+          "line": "examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:32"
+        },
+        {
+          "type": "step",
+          "id": "s5",
+          "from": "shop.oms",
+          "to": "oms-pg",
+          "kind": "call",
+          "label": "save",
+          "status": "declared",
+          "line": "examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:34"
+        },
+        {
+          "type": "step",
+          "id": "s6",
+          "from": "shop.oms",
+          "to": "bus",
+          "kind": "event",
+          "label": "OrderConfirmed",
+          "status": "declared",
+          "ref": "shop.oms.order.OrderConfirmed",
+          "line": "examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:34"
+        }
+      ]
+    },
+    {
+      "id": "flow.oms-place-order-on-basket-checked-out",
+      "slug": "oms-place-order-on-basket-checked-out",
+      "name": "Place order on basket checked out",
+      "summary": "Places the order the basket was checked out for (ADR oms.0002). The order takes the basket's id, so the same checkout heard twice places one order.",
+      "source": "examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        },
+        {
+          "id": "shop.oms",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "oms-pg",
+          "kind": "store",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "bus",
+          "to": "shop.oms",
+          "kind": "event",
+          "label": "BasketCheckedOut",
+          "status": "declared",
+          "ref": "shop.cart.basket.BasketCheckedOut",
+          "line": "examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs:19"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.oms",
+          "to": "shop.oms",
+          "kind": "call",
+          "label": "PlaceOrder",
+          "status": "declared",
+          "line": "examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs:29"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "shop.oms",
+          "to": "oms-pg",
+          "kind": "call",
+          "label": "by_basket",
+          "status": "declared",
+          "line": "examples/shop/oms/src/application/order/usecases/place_order/mod.rs:27"
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "shop.oms",
+          "to": "oms-pg",
+          "kind": "call",
+          "label": "save",
+          "status": "declared",
+          "line": "examples/shop/oms/src/application/order/usecases/place_order/mod.rs:31"
+        },
+        {
+          "type": "step",
+          "id": "s5",
+          "from": "shop.oms",
+          "to": "bus",
+          "kind": "event",
+          "label": "OrderPlaced",
+          "status": "declared",
+          "ref": "shop.oms.order.OrderPlaced",
+          "line": "examples/shop/oms/src/application/order/usecases/place_order/mod.rs:31"
+        }
+      ]
+    }
+  ],
+  "adrs": []
+}

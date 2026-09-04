@@ -5,7 +5,7 @@
 // forty services, and it does not run in CI.
 
 import { describe, expect, it } from "vitest";
-import { catalog } from "../data";
+import { catalog } from "../testing/estate";
 import { eventGraph, filterEventGraph } from "../lib/event-graph";
 import { thinCatalog, wideCatalog } from "../lib/scenarios";
 import { SIMPLEX_BUDGET, budgeted, layoutDependencyGraph } from "./dependency-layout";

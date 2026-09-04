@@ -79,8 +79,8 @@ Three obligations, and they are the whole of it:
 
 An aggregate whose root has a status gets a `lifecycle` on the catalog: the
 states, the first being where a new root starts, and one move per edge - the
-method that makes it and the event it hands back. Both extractors read it off
-a table the code keeps, never off the branches of the methods, because the
+method that makes it and the event it hands back. All three extractors read it
+off a table the code keeps, never off the branches of the methods, because the
 table is the claim and the methods are held to it: an edge in the table no
 method makes, a move into a state the table lacks, and a status changed
 outside the one way through the table are each reported.
@@ -93,10 +93,13 @@ names. The event type a method returns is what its last move publishes - a
 method lapsing a lock and then locking again hands `AccountLocked` back for
 the lock. In TypeScript it is `export const TRANSITIONS = { open: ["checked-out"],
 … }` and the method that assigns `this.status`; see `extract-ts/README.md`. In
-Python it is the same mapping on the Django model, beside the `TextChoices`
-that names the states, and the method assigning `self.status` - or django-fsm's
-`@transition(field=status, source=…, target=…)`, which is that table written
-one edge at a time; see `extract-django/README.md`.
+Rust it is `pub const TRANSITIONS: &[(&str, &[&str])] = &[("placed", &["confirmed"]),
+…]` and the method that assigns `self.status`, handed a string or a variant of
+the status enum; see `extract-rust/README.md`. In Python it is that mapping on
+the Django model, beside the `TextChoices` that names the states, and the
+method assigning `self.status` - or django-fsm's `@transition(field=status,
+source=…, target=…)`, which is the same table written one edge at a time; see
+`extract-django/README.md`.
 Terminal states are derived on the page - nothing leads out - and never
 written down. A move the clock makes, a session expiring, a lock running out,
 is not a move: nothing runs when it happens, so it is not in the table.

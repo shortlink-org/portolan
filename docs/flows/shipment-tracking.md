@@ -56,7 +56,7 @@ sequenceDiagram
 1. **customer** → **delivery.core** — TrackShipment
    `trace 9f2c1a../span 04` · Storefront tracking page. 41k calls in the window, p95 180 ms.
 2. **delivery.core** → **shop.oms** — GetOrder
-   `shop.v1.Orders/GetOrder` · `trace 9f2c1a../span 06` · Resolves the order reference shown beside the parcel. Present in 96% of the traces; the rest are served from the tracking cache.
+   `shop.v1.OrderService/GetOrder` · status: declared · `trace 9f2c1a../span 06` · Resolves the order reference shown beside the parcel. Present in 96% of the traces; the rest are served from the tracking cache.
 
 > **Repeats** — one iteration per carrier scan; 4 scans per shipment at p50 over the window
 >
@@ -78,7 +78,7 @@ sequenceDiagram
 > > *Branch 1*
 > >
 > > 6. **bus** → **shop.oms** — ShipmentDelivered
-> >    [delivery.core.shipment.ShipmentDelivered](../delivery/core/aggregates/shipment.md) · `trace 7be40d../span 29` · Closes the order and starts the 30-day refund window the refund flow reads.
+> >    [delivery.core.shipment.ShipmentDelivered](../delivery/core/aggregates/shipment.md) · status: declared · `trace 7be40d../span 29` · Closes the order and starts the 30-day refund window the refund flow reads.
 > >
 > > *Branch 2*
 > >

@@ -30,6 +30,9 @@ jobs:
         with:
           go-version: '1.27'
 
+      # The Rust extractor is a process plugin the schema and gen steps run
+      - uses: dtolnay/rust-toolchain@stable
+
       - run: npm ci
 
       # Regenerates likec4/ from data/catalog.json, then checks the model
@@ -41,6 +44,7 @@ jobs:
 
       - run: npm test
       - run: npm run test:go
+      - run: cargo test --manifest-path plugins/extract-rust/Cargo.toml
 
       # Refuses a commit where schema/portolan.schema.json no longer matches
       # what the plugins say their options are. The schema is committed so that

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { catalog } from "../data";
+import { catalog } from "../testing/estate";
 import { walkSteps } from "../catalog";
 import {
   contextResolver,

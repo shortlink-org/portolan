@@ -1,0 +1,498 @@
+{
+  "generatedAt": "2026-09-05T01:37:11+07:00",
+  "commit": "08fcaaa",
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "Shop",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.cart",
+          "slug": "cart",
+          "name": "Shopping Cart",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [
+            {
+              "id": "auth.v1.Sessions/validateSession",
+              "peer": "auth.auth",
+              "status": "verified",
+              "source": "telemetry/traces.jsonl"
+            }
+          ],
+          "aggregates": []
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [
+    {
+      "id": "flow.cart-add-item",
+      "slug": "cart-add-item",
+      "name": "Add item",
+      "summary": "",
+      "source": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.cart",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "cart-pg",
+          "kind": "store",
+          "context": "shop"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.cart",
+          "kind": "rpc",
+          "label": "addItem",
+          "status": "verified",
+          "note": "Seen running in telemetry/traces.jsonl (3 traces).",
+          "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:43"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.cart",
+          "to": "cart-pg",
+          "kind": "call",
+          "label": "save",
+          "status": "declared",
+          "line": "examples/shop/cart/src/application/basket/usecases/add_item/usecase.ts:27"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "shop.cart",
+          "to": "bus",
+          "kind": "event",
+          "ref": "shop.cart.basket.BasketItemAdded",
+          "label": "BasketItemAdded",
+          "status": "verified",
+          "note": "Seen running in telemetry/traces.jsonl (3 traces).",
+          "line": "examples/shop/cart/src/application/basket/usecases/add_item/usecase.ts:27"
+        }
+      ]
+    },
+    {
+      "id": "flow.cart-checkout",
+      "slug": "cart-checkout",
+      "name": "Checkout",
+      "summary": "",
+      "source": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.cart",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "auth.auth",
+          "kind": "service",
+          "context": "auth"
+        },
+        {
+          "id": "cart-pg",
+          "kind": "store",
+          "context": "shop"
+        },
+        {
+          "id": "shop.pricing",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.cart",
+          "kind": "rpc",
+          "label": "checkout",
+          "status": "verified",
+          "note": "Seen running in telemetry/traces.jsonl (1 trace).",
+          "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:60"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.cart",
+          "to": "auth.auth",
+          "kind": "rpc",
+          "ref": "auth.v1.Sessions/validateSession",
+          "label": "validateSession",
+          "status": "verified",
+          "note": "Seen running in telemetry/traces.jsonl (1 trace).",
+          "line": "examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:44"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "shop.cart",
+          "to": "cart-pg",
+          "kind": "call",
+          "label": "byId",
+          "status": "declared",
+          "line": "examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:48"
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "shop.cart",
+          "to": "shop.pricing",
+          "kind": "rpc",
+          "ref": "shop.v1.Pricing/GetQuote",
+          "label": "GetQuote",
+          "status": "declared",
+          "line": "examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:55"
+        },
+        {
+          "type": "step",
+          "id": "s5",
+          "from": "shop.cart",
+          "to": "cart-pg",
+          "kind": "call",
+          "label": "save",
+          "status": "declared",
+          "line": "examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:57"
+        },
+        {
+          "type": "step",
+          "id": "s6",
+          "from": "shop.cart",
+          "to": "bus",
+          "kind": "event",
+          "ref": "shop.cart.basket.BasketCheckedOut",
+          "label": "BasketCheckedOut",
+          "status": "verified",
+          "note": "Seen running in telemetry/traces.jsonl (1 trace).",
+          "line": "examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:57"
+        }
+      ]
+    },
+    {
+      "id": "flow.cart-create-basket",
+      "slug": "cart-create-basket",
+      "name": "Create basket",
+      "summary": "",
+      "source": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.cart",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "cart-pg",
+          "kind": "store",
+          "context": "shop"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.cart",
+          "kind": "rpc",
+          "label": "createBasket",
+          "status": "verified",
+          "note": "Seen running in telemetry/traces.jsonl (2 traces).",
+          "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:33"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.cart",
+          "to": "cart-pg",
+          "kind": "call",
+          "label": "save",
+          "status": "declared",
+          "line": "examples/shop/cart/src/application/basket/usecases/create_basket/usecase.ts:22"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "shop.cart",
+          "to": "bus",
+          "kind": "event",
+          "ref": "shop.cart.basket.BasketCreated",
+          "label": "BasketCreated",
+          "status": "verified",
+          "note": "Seen running in telemetry/traces.jsonl (2 traces).",
+          "line": "examples/shop/cart/src/application/basket/usecases/create_basket/usecase.ts:22"
+        }
+      ]
+    },
+    {
+      "id": "flow.cart-get-basket",
+      "slug": "cart-get-basket",
+      "name": "Get basket",
+      "summary": "",
+      "source": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.cart",
+          "kind": "service",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.cart",
+          "kind": "rpc",
+          "label": "getBasket",
+          "status": "verified",
+          "note": "Seen running in telemetry/traces.jsonl (2 traces).",
+          "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:38"
+        }
+      ]
+    },
+    {
+      "id": "flow.cart-merge-baskets",
+      "slug": "cart-merge-baskets",
+      "name": "Merge baskets",
+      "summary": "",
+      "source": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.cart",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "auth.auth",
+          "kind": "service",
+          "context": "auth"
+        },
+        {
+          "id": "cart-pg",
+          "kind": "store",
+          "context": "shop"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.cart",
+          "kind": "rpc",
+          "label": "mergeBaskets",
+          "status": "verified",
+          "note": "Seen running in telemetry/traces.jsonl (1 trace).",
+          "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:54"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.cart",
+          "to": "auth.auth",
+          "kind": "rpc",
+          "ref": "auth.v1.Sessions/validateSession",
+          "label": "validateSession",
+          "status": "verified",
+          "note": "Seen running in telemetry/traces.jsonl (1 trace).",
+          "line": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:28"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "shop.cart",
+          "to": "cart-pg",
+          "kind": "call",
+          "label": "openFor",
+          "status": "declared",
+          "line": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:35"
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "shop.cart",
+          "to": "cart-pg",
+          "kind": "call",
+          "label": "save",
+          "status": "declared",
+          "line": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46"
+        },
+        {
+          "type": "step",
+          "id": "s5",
+          "from": "shop.cart",
+          "to": "bus",
+          "kind": "event",
+          "ref": "shop.cart.basket.BasketCreated",
+          "label": "BasketCreated",
+          "status": "verified",
+          "note": "Seen running in telemetry/traces.jsonl (1 trace).",
+          "line": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46"
+        },
+        {
+          "type": "step",
+          "id": "s6",
+          "from": "shop.cart",
+          "to": "bus",
+          "kind": "event",
+          "ref": "shop.cart.basket.BasketItemAdded",
+          "label": "BasketItemAdded",
+          "status": "verified",
+          "note": "Seen running in telemetry/traces.jsonl (1 trace).",
+          "line": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46"
+        },
+        {
+          "type": "step",
+          "id": "s7",
+          "from": "shop.cart",
+          "to": "cart-pg",
+          "kind": "call",
+          "label": "save",
+          "status": "declared",
+          "line": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:47"
+        },
+        {
+          "type": "step",
+          "id": "s8",
+          "from": "shop.cart",
+          "to": "bus",
+          "kind": "event",
+          "ref": "shop.cart.basket.BasketMerged",
+          "label": "BasketMerged",
+          "status": "verified",
+          "note": "Seen running in telemetry/traces.jsonl (1 trace).",
+          "line": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:47"
+        }
+      ]
+    },
+    {
+      "id": "flow.cart-remove-item",
+      "slug": "cart-remove-item",
+      "name": "Remove item",
+      "summary": "",
+      "source": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.cart",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "cart-pg",
+          "kind": "store",
+          "context": "shop"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.cart",
+          "kind": "rpc",
+          "label": "removeItem",
+          "status": "verified",
+          "note": "Seen running in telemetry/traces.jsonl (1 trace).",
+          "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:49"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.cart",
+          "to": "cart-pg",
+          "kind": "call",
+          "label": "save",
+          "status": "declared",
+          "line": "examples/shop/cart/src/application/basket/usecases/remove_item/usecase.ts:22"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "shop.cart",
+          "to": "bus",
+          "kind": "event",
+          "ref": "shop.cart.basket.BasketItemRemoved",
+          "label": "BasketItemRemoved",
+          "status": "verified",
+          "note": "Seen running in telemetry/traces.jsonl (1 trace).",
+          "line": "examples/shop/cart/src/application/basket/usecases/remove_item/usecase.ts:22"
+        }
+      ]
+    }
+  ],
+  "adrs": []
+}

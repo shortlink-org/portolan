@@ -1,0 +1,19 @@
+// A narrowed copy of the ledger's contract: the one rpc oms calls.
+syntax = "proto3";
+
+package payments.v1;
+
+service PaymentService {
+  // Authorize holds the amount against the customer's instrument.
+  rpc Authorize(AuthorizeRequest) returns (AuthorizeResponse);
+}
+
+message AuthorizeRequest {
+  string order_id = 1;
+  int64 amount_minor = 2;
+  string currency = 3;
+}
+
+message AuthorizeResponse {
+  string authorization_id = 1;
+}

@@ -39,9 +39,9 @@ describe("selection hash", () => {
   });
 
   it("escapes the slash in a flow step so the id survives the URL", () => {
-    const hash = selectionHash(selectionFor(flowStepId("checkout", "s6")));
-    expect(hash).toBe("#sel=flow-step:checkout%2Fs6");
-    expect(parseSelectionHash(hash)?.id).toBe("checkout/s6");
+    const hash = selectionHash(selectionFor(flowStepId("cart-checkout", "s6")));
+    expect(hash).toBe("#sel=flow-step:cart-checkout%2Fs6");
+    expect(parseSelectionHash(hash)?.id).toBe("cart-checkout/s6");
   });
 
   /**

@@ -15,13 +15,13 @@ aggregate-root · persists [delivery.core.shipment](../aggregates/shipment.md)
 
 One row per shipment. order_id is a real foreign key into the OMS database — see Problems.
 
-| Column | Type | Null | Key | Maps | From | Doc |
-| --- | --- | --- | --- | --- | --- | --- |
-| `id` | `text` | not null | PK | Shipment.id | — | — |
-| `order_id` | `uuid` | not null | → [`shop.oms.pg.orders`](../../../shop/oms/stores/pg.md#orders).id (restrict) | Shipment.orderId | — | — |
-| `state` | `text` | not null | — | Shipment.state | — | — |
-| `ship_to` | `jsonb` | not null | — | Shipment.shipTo | `shop.oms.pg.orders.ship_to` | Copied off the order when the shipment is created; never read back from OMS. |
-| `dispatched_at` | `timestamptz` | null | — | — | — | — |
+| Column | Type | Null | Key | Maps | Doc |
+| --- | --- | --- | --- | --- | --- |
+| `id` | `text` | not null | PK | Shipment.id | — |
+| `order_id` | `uuid` | not null | → [`shop.oms.pg.orders`](../../../shop/oms/stores/pg.md#orders).id (restrict) | Shipment.orderId | — |
+| `state` | `text` | not null | — | Shipment.state | — |
+| `ship_to` | `jsonb` | not null | — | Shipment.shipTo | Copied off the order when the shipment is created; the real order carries no address yet, so nothing says where this comes from. |
+| `dispatched_at` | `timestamptz` | null | — | — | — |
 
 ### parcels
 

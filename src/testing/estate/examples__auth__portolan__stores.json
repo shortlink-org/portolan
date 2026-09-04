@@ -1,0 +1,195 @@
+{
+  "generatedAt": "2026-09-05T01:13:04+07:00",
+  "commit": "80e6873",
+  "contexts": [
+    {
+      "id": "auth",
+      "slug": "auth",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "auth.auth",
+          "slug": "auth",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "stores": [
+            "auth.auth.pg"
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": [],
+  "stores": [
+    {
+      "id": "auth.auth.pg",
+      "slug": "pg",
+      "name": "Auth database",
+      "kind": "postgres",
+      "owner": "auth.auth",
+      "tables": [
+        {
+          "id": "auth.auth.pg.lockouts",
+          "name": "lockouts",
+          "columns": [
+            {
+              "name": "user_id",
+              "type": "text",
+              "nullable": false,
+              "pk": true,
+              "maps": "Lockout.UserID"
+            },
+            {
+              "name": "failures",
+              "type": "integer",
+              "nullable": false,
+              "maps": "Lockout.Failures"
+            },
+            {
+              "name": "locked_until",
+              "type": "timestamptz",
+              "nullable": true,
+              "maps": "Lockout.LockedUntil"
+            },
+            {
+              "name": "version",
+              "type": "bigint",
+              "nullable": false
+            }
+          ],
+          "persists": {
+            "aggregate": "auth.auth.lockout"
+          },
+          "role": "aggregate-root"
+        },
+        {
+          "id": "auth.auth.pg.sessions",
+          "name": "sessions",
+          "columns": [
+            {
+              "name": "id",
+              "type": "text",
+              "nullable": false,
+              "pk": true,
+              "maps": "Session.ID"
+            },
+            {
+              "name": "user_id",
+              "type": "text",
+              "nullable": false,
+              "maps": "Session.UserID"
+            },
+            {
+              "name": "token",
+              "type": "text",
+              "nullable": false,
+              "maps": "Session.Token"
+            },
+            {
+              "name": "issued_at",
+              "type": "timestamptz",
+              "nullable": false,
+              "maps": "Session.IssuedAt"
+            },
+            {
+              "name": "expires_at",
+              "type": "timestamptz",
+              "nullable": false,
+              "maps": "Session.ExpiresAt"
+            },
+            {
+              "name": "revoked_at",
+              "type": "timestamptz",
+              "nullable": true,
+              "maps": "Session.RevokedAt"
+            },
+            {
+              "name": "version",
+              "type": "bigint",
+              "nullable": false
+            }
+          ],
+          "indexes": [
+            {
+              "name": "sessions_token_key",
+              "columns": [
+                "token"
+              ],
+              "unique": true
+            },
+            {
+              "name": "sessions_user_id_idx",
+              "columns": [
+                "user_id",
+                "issued_at"
+              ],
+              "unique": false
+            }
+          ],
+          "persists": {
+            "aggregate": "auth.auth.session"
+          },
+          "role": "aggregate-root"
+        },
+        {
+          "id": "auth.auth.pg.users",
+          "name": "users",
+          "columns": [
+            {
+              "name": "id",
+              "type": "text",
+              "nullable": false,
+              "pk": true,
+              "maps": "User.ID"
+            },
+            {
+              "name": "email",
+              "type": "text",
+              "nullable": false,
+              "maps": "User.Email"
+            },
+            {
+              "name": "password_hash",
+              "type": "text",
+              "nullable": false,
+              "maps": "User.Password"
+            },
+            {
+              "name": "created_at",
+              "type": "timestamptz",
+              "nullable": false,
+              "maps": "User.CreatedAt"
+            },
+            {
+              "name": "version",
+              "type": "bigint",
+              "nullable": false
+            }
+          ],
+          "indexes": [
+            {
+              "name": "users_email_key",
+              "columns": [
+                "email"
+              ],
+              "unique": true
+            }
+          ],
+          "persists": {
+            "aggregate": "auth.auth.user"
+          },
+          "role": "aggregate-root"
+        }
+      ],
+      "source": "examples/auth/internal/infrastructure/repository"
+    }
+  ]
+}

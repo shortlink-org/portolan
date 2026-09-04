@@ -1,0 +1,26 @@
+// A narrowed copy of the ledger's contract, kept here because this is the
+// service that calls it (see ADR org.0001 in the estate's decisions): the
+// consumer vendors what it uses and nothing else. Authorize is the one rpc
+// oms runs; nothing in the estate provides payments.v1 yet, so the peer is
+// unresolved by design.
+syntax = "proto3";
+
+package payments.v1;
+
+// PaymentService moves money against an order.
+service PaymentService {
+  // Authorize holds the order's total against the customer's instrument. The
+  // capture comes later, when the parcel moves.
+  rpc Authorize(AuthorizeRequest) returns (AuthorizeResponse);
+}
+
+message AuthorizeRequest {
+  string order_id = 1;
+  int64 amount_minor = 2;
+  string currency = 3;
+}
+
+message AuthorizeResponse {
+  // The hold, to capture or void by.
+  string authorization_id = 1;
+}

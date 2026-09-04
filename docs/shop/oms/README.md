@@ -4,93 +4,61 @@
 
 - **Id:** `shop.oms`
 - **Context:** [Shop](../README.md)
-- **Repo:** `github.com/acme/shop`
-- **Path:** `services/oms`
+- **Repo:** `github.com/shortlink-org/portolan`
+- **Path:** `examples/shop/oms`
 
-## Order Management Service
+Service `oms` — bounded context **shop**. Rust on Tokio.
 
-`shop.oms` owns the lifecycle of a customer order from the moment a basket is
-checked out until the order is either fulfilled or cancelled. It is the write
-side of the `shop` bounded context and the only service permitted to mutate
-order state.
+Owns the order: what a basket became at checkout, from the moment the cart
+says `BasketCheckedOut` until the order is confirmed or cancelled. It is the
+only writer of order state; every other service holds a copy of what it was
+told.
 
-### Responsibilities
+## What it does
 
-- Accept `PlaceOrder` and turn a basket snapshot into an immutable order.
-- Coordinate quoting, authorisation and dispatch without owning any of them.
-- Publish domain events describing what happened, never what should happen next.
+- Places an order from a checked-out basket, once per basket, copying the
+  lines and the total the customer agreed to.
+- Answers `GetOrder` and `CancelOrder` over gRPC, `shop.v1.OrderService`.
+- Confirms an order once its total is authorised with payments, and says so.
+- Publishes `OrderPlaced`, `OrderConfirmed` and `OrderCancelled` through an
+  outbox, over NATS JetStream.
 
-### Non-responsibilities
+## What it does not do
 
-Pricing rules live in `shop.pricing`. Money movement lives in
-`payments.ledger`. Physical fulfilment lives in `delivery.core`. The OMS
-holds no schedule, no price list and no ledger balance.
+Does not price anything, move money or ship: the lines and the total are the
+basket's, the money is `payments`' and the parcel is `delivery`'s. Does not
+hold a catalogue or know who a customer is beyond the id the cart passed on.
+Nothing in the estate provides `payments.v1` yet, so the authorisation is a
+stand-in until something does, and the catalog says so.
 
-### Order lifecycle
+## Decisions
 
-```mermaid
-stateDiagram-v2
-    [*] --> Draft
-    Draft --> Quoted: BasketCheckedOut
-    Quoted --> Placed: OrderPlaced
-    Placed --> Confirmed: PaymentCaptured
-    Placed --> Cancelled: risk rejected
-    Confirmed --> Fulfilled: ShipmentDelivered
-    Cancelled --> [*]
-    Fulfilled --> [*]
+- [oms.0001](docs/adr/0001-rust-on-tokio.md) — Rust on Tokio, and the stack around it
+- [oms.0002](docs/adr/0002-an-order-is-placed-from-a-checked-out-basket.md) — An order is placed from a checked-out basket, not by a call
+- [oms.0003](docs/adr/0003-lines-are-copied-never-repriced.md) — Lines and the total are copied from the basket, never repriced
+- [oms.0004](docs/adr/0004-cancel-is-allowed-until-dispatch.md) — Cancelling is allowed until the parcel moves
+- [oms.0005](docs/adr/0005-confirmation-waits-for-a-payment-that-does-not-exist-yet.md) — Confirmation waits for a payment service that does not exist yet
+
+## Running it
+
+```bash
+docker compose up -d
+cargo run
 ```
 
-### Aggregates
-
-| Aggregate | Root entity   | Events | Notes                                   |
-| --------- | ------------- | ------ | --------------------------------------- |
-| `order`   | `Order`       | 3      | Transactional boundary for one order.   |
-| `basket`  | `Basket`      | 1      | Short lived; expires after 24h.         |
-
-### Consistency
-
-Every command runs inside a single database transaction that also appends to the
-outbox table. The relay publishes to the bus at least once, so all consumers must
-be idempotent on `event_id`.
-
-### Operational notes
-
-- Read replicas serve `GetOrder`; expect up to 400ms of replication lag.
-- The fraud scoring call is best-effort and fails open after 250ms.
+`NATS_URL` is where events arrive and leave; without it the bus is in process
+and nothing does. `PAYMENTS_ADDR` points confirmation at a ledger; without it
+every authorisation is granted. `TRACER_URI` switches tracing on. `cargo test`
+runs everything; without Docker the tests that need Postgres or NATS are
+skipped.
 
 ## Aggregates
 
 | Aggregate | Root | Commands | Queries | Events |
 | --- | --- | --- | --- | --- |
-| [Order](aggregates/order.md) | `Order` | 3 commands | 2 queries | 3 events |
+| [Order](aggregates/order.md) | `Order` | 3 commands | 1 query | 3 events |
 
 ## Provides
-
-**`shop.v1.Orders`** — `proto/shop/v1/orders.proto:12`
-
-- `PlaceOrder`
-- `GetOrder`
-- `CancelOrder`
-- `ConfirmOrder`
-
-<details><summary>PlaceOrderRequest</summary>
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `customer` | [`CustomerRef`](../../types.md#customerref) | Who is placing the order. |
-| `items` | [`LineItem`](../../types.md#lineitem) | Basket contents at checkout. |
-| `shipTo` | [`Address`](../../types.md#address) | Delivery address. |
-
-</details>
-
-<details><summary>PlaceOrderResponse</summary>
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `orderId` | `string` | Id of the order just created. |
-| `total` | [`Money`](../../types.md#money) | Total charged. |
-
-</details>
 
 **`shop.v1.OrderService`** — `examples/shop/oms/vendor/proto/shortlink-org/portolan-shop-order/shop/v1/orders.proto:14`
 
@@ -164,32 +132,20 @@ be idempotent on `event_id`.
 
 ## Consumes
 
-| Call | Peer | Status | Source | Note |
-| --- | --- | --- | --- | --- |
-| `shop.v1.Pricing/GetQuote` | [shop.pricing](../pricing/README.md) | verified | `internal/oms/client/pricing.go:34` | — |
-| `payments.v1.Payments/Authorize` | [payments.ledger](../../payments/ledger/README.md) | verified | `internal/oms/client/payments.go:51` | Covered end to end by services/oms/test/integration/order_accepted_test.go. |
-| `payments.v1.Payments/Capture` | [payments.ledger](../../payments/ledger/README.md) | declared | `internal/oms/client/payments.go:78` | — |
-| `payments.v1.Payments/Refund` | [payments.ledger](../../payments/ledger/README.md) | declared | `internal/oms/client/payments.go:104` | — |
-| `fraud.v2.Scoring/Score` | `fraud-scoring` | unresolved | `internal/oms/client/fraud.go:22` | No service in the catalog provides fraud.v2.Scoring. The target is configured per environment via FRAUD_ADDR. |
-| `delivery.v1.Delivery/GetShipment` | [delivery.core](../../delivery/core/README.md) | declared | `internal/oms/client/delivery.go:41` | — |
+| Call | Peer | Status | Source |
+| --- | --- | --- | --- |
+| `payments.v1.PaymentService/Authorize` | `payments.v1` | unresolved | `examples/shop/oms/src/infrastructure/payments/proto/payments/v1/payments.proto` |
 
 ## Publishes
 
-| Event | Latest | Consumers |
-| --- | --- | --- |
-| [OrderPlaced](aggregates/order.md) | v2 | [payments.ledger](../../payments/ledger/README.md), [shop.pricing (declared)](../pricing/README.md), `analytics-sink (unresolved)` |
-| [OrderConfirmed](aggregates/order.md) | v1 | [delivery.core](../../delivery/core/README.md) |
-| [OrderCancelled](aggregates/order.md) | v1 | [payments.ledger](../../payments/ledger/README.md), [delivery.core (declared)](../../delivery/core/README.md) |
+| Event | Latest |
+| --- | --- |
+| [OrderCancelled](aggregates/order.md) | v1 |
+| [OrderConfirmed](aggregates/order.md) | v1 |
+| [OrderPlaced](aggregates/order.md) | v1 |
 
 ## Stores
 
 | Store | Kind | Access | Tables |
 | --- | --- | --- | --- |
-| [Order management database](stores/pg.md) | postgres | owns | 4 tables |
-
-## Decisions
-
-| ADR | Title | Status | Date |
-| --- | --- | --- | --- |
-| [shop.oms.0007](../../adr/shop.oms.0007.md) | Cart reads go through CartRepository, not Temporal Queries | accepted | 2026-04-23 |
-| [shop.oms.0003](../../adr/shop.oms.0003.md) | Read cart state via Temporal QueryWorkflow | superseded | 2025-06-18 |
+| [Order database](stores/pg.md) | postgres | owns | 3 tables |

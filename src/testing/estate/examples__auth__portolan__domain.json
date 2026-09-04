@@ -1,0 +1,1204 @@
+{
+  "generatedAt": "2026-09-05T01:13:04+07:00",
+  "commit": "80e6873",
+  "contexts": [
+    {
+      "id": "auth",
+      "slug": "auth",
+      "name": "Authentication",
+      "summary": "Who someone is, and whether they are still logged in. The only service in the estate that stores credentials, and the only one allowed to mint or revoke a session.",
+      "classification": "core",
+      "services": [
+        {
+          "id": "auth.auth",
+          "slug": "auth",
+          "name": "Authentication \u0026 Sessions",
+          "repo": "github.com/shortlink-org/portolan",
+          "path": "examples/auth",
+          "readme": "# Authentication \u0026 Sessions\n\nService `auth` — bounded context **auth**.\n\nOwns *who someone is* and *whether they are still logged in*. It is the only\nservice in the estate that stores credentials, and the only one allowed to mint\nor revoke a session.\n\n## What it does\n\n- Registers a user: an email address and a password, hashed before it is stored.\n- Authenticates: checks a password and answers with a user id or a refusal.\n- Replaces a password, given the current one, and ends the sessions the old one\n  was issued against.\n- Starts a session on a successful login, once a risk service has allowed it,\n  and hands back an opaque token.\n- Ends a session on logout.\n- Validates a token for everyone else — the hot path every authenticated\n  request in `shop` goes through.\n- Locks an account after five wrong passwords in a row, for fifteen minutes,\n  and says so with an event.\n\n## What it does not do\n\nNo profile data, no addresses, no payment instruments, no roles or scopes.\nOther contexts hold their own view of a customer and reference it by opaque\nuser id; nothing outside `auth` ever sees a credential.\n\nNo MFA, no email verification, no refresh tokens, no way for support to lift a\nlock early. Each of those is a real requirement somewhere, and none of them is\nhere: this service is deliberately the smallest thing that is still\nauthentication.\n\n## Decisions\n\n- [auth.0001](docs/adr/0001-events-returned-not-buffered.md) — Aggregates return their events; they do not buffer them\n- [auth.0002](docs/adr/0002-session-is-its-own-aggregate.md) — Session is its own aggregate, linked to User by id\n- [auth.0003](docs/adr/0003-expiry-publishes-nothing.md) — Session expiry publishes no event\n- [auth.0004](docs/adr/0004-lockout-is-its-own-aggregate.md) — Lockout is its own aggregate, keyed by user id\n- [auth.0005](docs/adr/0005-rules-are-specifications-at-construction.md) — Validation lives in constructors, as specifications, and applies when a value is made\n- [auth.0006](docs/adr/0006-a-password-change-ends-sessions-through-a-policy.md) — A password change ends sessions through a policy, and the domains never import each other\n- [auth.0007](docs/adr/0007-login-asks-risk-and-a-block-is-a-compromise.md) — Login asks a risk service, and a blocked attempt is treated as a compromise\n- [auth.0008](docs/adr/0008-a-cache-in-front-of-bytoken-only.md) — A cache in front of the token lookup, and nothing else\n- [auth.0009](docs/adr/0009-a-lock-answers-like-a-wrong-password.md) — A locked account answers exactly like a wrong password\n\n## Running it\n\n```bash\ndocker compose up -d\nSTORE_TYPE=postgres \\\nSTORE_POSTGRES_URI=postgres://auth:auth@localhost:5432/auth?sslmode=disable \\\n  go run ./cmd/auth\n```\n\n`CACHE_TYPE=redis` with `STORE_REDIS_URI` turns the cache on; `RISK_ADDR`\npoints login at a risk service; `TRACER_URI` switches tracing on. Unset, each\nis a stand-in that keeps nothing, allows everything, or costs nothing. The\nschema is brought up to date at startup. `go test ./...` runs everything;\nwithout Docker the packages that need Postgres or redis are skipped.\n`go generate ./...` regenerates the server from the spec and the wire graph.",
+          "provides": [],
+          "consumes": [
+            {
+              "id": "risk.v1.RiskService/Assess",
+              "peer": "risk.v1",
+              "status": "unresolved",
+              "source": "examples/auth/internal/infrastructure/risk/gen/riskpb/risk_grpc.pb.go"
+            }
+          ],
+          "aggregates": [
+            {
+              "id": "auth.auth.lockout",
+              "slug": "lockout",
+              "name": "Lockout",
+              "readme": "# Lockout\n\nHow many wrong passwords in a row an account has taken, and whether it is\nrefusing logins because of them. One per user, identified by the user id,\nexisting from the first wrong password on. A separate aggregate from `User`:\na failed attempt is written on every wrong password and the user does not\nchange when one arrives, so the two do not share a lock.\n\n## States\n\n- **Open** — counting. `Failures` is the number of wrong passwords in a row;\n  the account accepts a password. The only state a password is checked in.\n- **Locked** — until `LockedUntil`. The account refuses a password without\n  checking it, with the same answer a wrong one gets. Not terminal: it ends\n  by time.\n- A lock that has run out is **Open** again. Derived from time when the next\n  attempt arrives; no command, no event, nothing runs. The next wrong\n  password starts the count at one.\n\nThe state is read off `LockedUntil` with `now`; there is no stored flag to\ndrift from it. The moves are one table, `Rules` in `rules.go`, run through\n`go-sdk/fsm` by `trigger`: `lock` on the failure that reaches the threshold,\n`lapse` on the first attempt after a lock has run out, which is when the code\nnotices it. The run-out itself is not a move; nothing runs when it happens.\n\n```mermaid\nstateDiagram-v2\n    [*] --\u003e Open : first wrong password (no event)\n    Open --\u003e Open : Fail, count \u003c Threshold (no event)\n    Open --\u003e Locked : Fail, count = Threshold / AccountLocked\n    Open --\u003e Open : Succeed, count := 0 (no event)\n    Locked --\u003e Locked : Fail, not counted (no event)\n    Locked --\u003e Open : now ≥ LockedUntil (no event)\n```\n\n## Commands\n\n| Command | From | To | Event |\n|---|---|---|---|\n| `New` | — | Open, zero failures | none; nothing has happened yet |\n| `Fail` | Open, count \u003c Threshold − 1 | Open, count + 1 | none |\n| `Fail` | Open, count = Threshold − 1 | Locked | `AccountLocked` |\n| `Fail` | Locked | unchanged | none; reports \"locked nothing\" |\n| `Succeed` | Open | Open, count 0 | none; reports whether anything changed |\n| `Succeed` | Locked | unchanged | none; the lock stands |\n\n`Allows(now)` and `Locked(now)` are the read, for the caller that asks\nbefore checking a password.\n\nOne event for the whole aggregate. A wrong password that locked nothing is a\ncount, not a fact anybody consumes; a count going back to zero is\nbookkeeping; the lock running out is time passing. `AccountLocked` carries\n`Until`, so a consumer who wants to know when the account is usable again\ndoes not have to be told twice.",
+              "root": "Lockout",
+              "entities": [
+                {
+                  "id": "auth.auth.lockout.lockout",
+                  "slug": "lockout",
+                  "name": "Lockout",
+                  "doc": "Lockout is the aggregate root. Its identity is the user id: there is one per account, and it exists from the first wrong password on.",
+                  "fields": [
+                    {
+                      "name": "UserID",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "Failures",
+                      "type": "int",
+                      "doc": "Failures is the number of wrong passwords in a row. It is reset by a right one and by the count starting again after a lock has run out."
+                    },
+                    {
+                      "name": "LockedUntil",
+                      "type": "time.Time",
+                      "doc": "LockedUntil is when the lock ends; zero while the account has never been locked. A time in the past is a lock that ran out: the state is read off it with `now`, and nothing runs when it passes."
+                    },
+                    {
+                      "name": "Version",
+                      "type": "int64",
+                      "doc": "Version is what the store compares against before writing; see the note on user.User.Version. Zero means the lockout has never been stored."
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [],
+              "operations": [
+                {
+                  "id": "Check",
+                  "kind": "query",
+                  "doc": "Answers whether an account accepts a password right now."
+                },
+                {
+                  "id": "RecordFailure",
+                  "kind": "command",
+                  "doc": "Counts a wrong password against an account, and locks the account when the count reaches the threshold."
+                },
+                {
+                  "id": "RecordSuccess",
+                  "kind": "command",
+                  "doc": "Clears the count of wrong passwords after a right one."
+                }
+              ],
+              "events": [
+                {
+                  "id": "auth.auth.lockout.AccountLocked",
+                  "slug": "account-locked",
+                  "name": "AccountLocked",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "AccountLocked is published when an account starts refusing logins because of too many wrong passwords in a row. Until says when it stops.",
+                      "source": "examples/auth/internal/domain/lockout/event/account_locked.go",
+                      "fields": [
+                        {
+                          "name": "userID",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "until",
+                          "type": "time.Time",
+                          "doc": ""
+                        },
+                        {
+                          "name": "occurredAt",
+                          "type": "time.Time",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [],
+                  "wire": {
+                    "name": "auth.AccountLocked",
+                    "channel": "auth_lockout"
+                  }
+                }
+              ],
+              "lifecycle": {
+                "states": [
+                  "open",
+                  "locked"
+                ],
+                "transitions": [
+                  {
+                    "from": "open",
+                    "to": "locked",
+                    "on": "Fail",
+                    "emits": "auth.auth.lockout.AccountLocked",
+                    "source": "examples/auth/internal/domain/lockout/lockout.go:95"
+                  },
+                  {
+                    "from": "locked",
+                    "to": "open",
+                    "on": "Fail",
+                    "source": "examples/auth/internal/domain/lockout/lockout.go:88"
+                  },
+                  {
+                    "from": "locked",
+                    "to": "open",
+                    "on": "Succeed",
+                    "source": "examples/auth/internal/domain/lockout/lockout.go:121"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "auth.auth.session",
+              "slug": "session",
+              "name": "Session",
+              "readme": "# Session\n\nProof that a user logged in, how long that proof is good for, and whether it\nhas been taken away. A separate aggregate from `User`: it is written far more\noften and revoked without the user changing, so the two do not share a lock.\nThey are linked by user id and nothing else.\n\n## States\n\n- **Live** — issued, not revoked, not past expiry. The only state a token is\n  accepted in.\n- **Revoked** — ended by a command, with a reason. Terminal: a revoked session\n  never comes back, logging in again produces a new one.\n- **Expired** — past `ExpiresAt`. Derived from time when the token is\n  presented; no command, no event, nothing runs. Every consumer already knows\n  the expiry from `SessionStarted`.\n\nThe state is not stored as a field. It is read off `RevokedAt` and\n`ExpiresAt` with `now`, so there is no second copy to drift. The moves are\none table, `Rules` in `rules.go`, run through `go-sdk/fsm` by `trigger`; a\ncommand that would move the session somewhere the table does not allow is\nrefused there, which is what makes `Revoke` idempotent. Expiry is not in the\ntable: it is not a move, nothing runs when it happens.\n\n```mermaid\nstateDiagram-v2\n    [*] --\u003e Live : Start / SessionStarted\n    Live --\u003e Revoked : Revoke(reason) / SessionEnded\n    Live --\u003e Expired : now ≥ ExpiresAt (no event)\n    Revoked --\u003e [*]\n    Expired --\u003e [*]\n```\n\n## Commands\n\n| Command | From | To | Event |\n|---|---|---|---|\n| `Start` | — | Live | `SessionStarted` |\n| `Revoke(reason)` | Live | Revoked | `SessionEnded` |\n| `Revoke(reason)` | Revoked, Expired | unchanged | none; reports \"nothing to do\" |\n\n`Validate(now)` is the read: it says which state forbids use (`ErrRevoked`,\n`ErrExpired`) or nothing. `Live(now)` is the same question as a boolean.\n\nRevoking twice is the \"nothing to do\" answer, not a refusal: the caller asked\nfor something already true. Ending it again would publish a `SessionEnded`\nfor an ending that did not happen.",
+              "root": "Session",
+              "entities": [
+                {
+                  "id": "auth.auth.session.session",
+                  "slug": "session",
+                  "name": "Session",
+                  "doc": "Session is the aggregate root. Its identity is ID; the Token is a secret it carries, not what it is called.",
+                  "fields": [
+                    {
+                      "name": "ID",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "UserID",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "Token",
+                      "type": "token.Token",
+                      "doc": ""
+                    },
+                    {
+                      "name": "IssuedAt",
+                      "type": "time.Time",
+                      "doc": ""
+                    },
+                    {
+                      "name": "ExpiresAt",
+                      "type": "time.Time",
+                      "doc": ""
+                    },
+                    {
+                      "name": "RevokedAt",
+                      "type": "time.Time",
+                      "doc": "zero while live"
+                    },
+                    {
+                      "name": "Version",
+                      "type": "int64",
+                      "doc": "Version is what the store compares against before writing; see the note on user.User.Version. Zero means the session has never been stored."
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [
+                {
+                  "id": "auth.auth.session.token",
+                  "slug": "token",
+                  "name": "Token",
+                  "doc": "Token is the opaque string a client presents instead of a password.",
+                  "fields": [
+                    {
+                      "name": "value",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "operations": [
+                {
+                  "id": "EndAfterCredentialChange",
+                  "kind": "command",
+                  "doc": "Ends the sessions a credential change invalidates."
+                },
+                {
+                  "id": "Login",
+                  "kind": "command",
+                  "doc": "Turns credentials into a session.",
+                  "exposedBy": [
+                    "login"
+                  ]
+                },
+                {
+                  "id": "Logout",
+                  "kind": "command",
+                  "doc": "Ends the session behind a token.",
+                  "exposedBy": [
+                    "logout"
+                  ]
+                },
+                {
+                  "id": "Validate",
+                  "kind": "query",
+                  "doc": "Resolves a token to a live session: who is calling, and how long the answer stays good.",
+                  "exposedBy": [
+                    "changePassword",
+                    "validateSession"
+                  ]
+                }
+              ],
+              "events": [
+                {
+                  "id": "auth.auth.session.SessionEnded",
+                  "slug": "session-ended",
+                  "name": "SessionEnded",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "SessionEnded is published when a session is deliberately ended.",
+                      "source": "examples/auth/internal/domain/session/event/session_ended.go",
+                      "fields": [
+                        {
+                          "name": "sessionID",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "userID",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "reason",
+                          "type": "Reason",
+                          "doc": ""
+                        },
+                        {
+                          "name": "occurredAt",
+                          "type": "time.Time",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [],
+                  "wire": {
+                    "name": "auth.SessionEnded",
+                    "channel": "auth_session"
+                  }
+                },
+                {
+                  "id": "auth.auth.session.SessionStarted",
+                  "slug": "session-started",
+                  "name": "SessionStarted",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "SessionStarted is published on a successful login. ExpiresAt is on the event so a consumer can reason about the session's lifetime without asking auth again on every check.",
+                      "source": "examples/auth/internal/domain/session/event/session_started.go",
+                      "fields": [
+                        {
+                          "name": "sessionID",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "userID",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "expiresAt",
+                          "type": "time.Time",
+                          "doc": ""
+                        },
+                        {
+                          "name": "occurredAt",
+                          "type": "time.Time",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [],
+                  "wire": {
+                    "name": "auth.SessionStarted",
+                    "channel": "auth_session"
+                  }
+                }
+              ],
+              "lifecycle": {
+                "states": [
+                  "live",
+                  "revoked"
+                ],
+                "transitions": [
+                  {
+                    "from": "live",
+                    "to": "revoked",
+                    "on": "Revoke",
+                    "emits": "auth.auth.session.SessionEnded",
+                    "source": "examples/auth/internal/domain/session/session.go:88"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "auth.auth.user",
+              "slug": "user",
+              "name": "User",
+              "readme": "# User\n\nA person, the address they log in with, and the hash of the password they log\nin by. Identity is the id, minted at registration; the address can change.\n\n## States\n\nOne state. A user that exists is registered, and nothing here ends that:\nthere is no deletion, no suspension, no lockout. Each of those is a real\nrequirement somewhere and none of them is here.\n\n`ChangePassword` changes a value, not a state. It is a command with a guard\n(the current password) and an event, and the user is the same user afterwards.\n\n```mermaid\nstateDiagram-v2\n    [*] --\u003e Registered : Register / UserRegistered\n    Registered --\u003e Registered : ChangePassword(current, next) / PasswordChanged\n```\n\n## Commands\n\n| Command | Guard | Event |\n|---|---|---|\n| `Register` | address and password pass their policies | `UserRegistered` |\n| `ChangePassword` | the current password matches; the new one passes the policy | `PasswordChanged` |\n| `Authenticate` | — | none; a read that answers one refusal for every failure |\n\nNo command here touches a session. That a password change ends sessions is a\nrule about sessions, applied by the policy in `internal/application/policy`.",
+              "root": "User",
+              "entities": [
+                {
+                  "id": "auth.auth.user.user",
+                  "slug": "user",
+                  "name": "User",
+                  "doc": "User is the aggregate root. Identity is ID, minted once at registration and never reused - not the email, because people change addresses.",
+                  "fields": [
+                    {
+                      "name": "ID",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "Email",
+                      "type": "email.Address",
+                      "doc": ""
+                    },
+                    {
+                      "name": "Password",
+                      "type": "password.Hash",
+                      "doc": ""
+                    },
+                    {
+                      "name": "CreatedAt",
+                      "type": "time.Time",
+                      "doc": ""
+                    },
+                    {
+                      "name": "Version",
+                      "type": "int64",
+                      "doc": "Version is what the store compares against before writing. It is carried on the aggregate rather than known only to the repository so that a copy which has gone stale can say so - without it, two changes made from two reads both succeed and the first one silently disappears."
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [
+                {
+                  "id": "auth.auth.user.email-address",
+                  "slug": "email-address",
+                  "name": "email.Address",
+                  "doc": "Address is a normalised email address.",
+                  "fields": [
+                    {
+                      "name": "value",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "id": "auth.auth.user.password-hash",
+                  "slug": "password-hash",
+                  "name": "password.Hash",
+                  "doc": "Hash is what the user domain stores in place of a password. The plaintext never lives on an aggregate and never leaves the function that hashed it.",
+                  "fields": [
+                    {
+                      "name": "algorithm",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "iterations",
+                      "type": "int",
+                      "doc": ""
+                    },
+                    {
+                      "name": "salt",
+                      "type": "[]byte",
+                      "doc": ""
+                    },
+                    {
+                      "name": "digest",
+                      "type": "[]byte",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "operations": [
+                {
+                  "id": "Authenticate",
+                  "kind": "query",
+                  "doc": "Checks an address and a password, and says which user they belong to."
+                },
+                {
+                  "id": "ChangePassword",
+                  "kind": "command",
+                  "doc": "Replaces the password of a user, given the current one.",
+                  "exposedBy": [
+                    "changePassword"
+                  ]
+                },
+                {
+                  "id": "Get",
+                  "kind": "query",
+                  "doc": "Reads a user by id.",
+                  "exposedBy": [
+                    "getUser"
+                  ]
+                },
+                {
+                  "id": "Register",
+                  "kind": "command",
+                  "doc": "Creates a user from an email address and a password.",
+                  "exposedBy": [
+                    "registerUser"
+                  ]
+                }
+              ],
+              "events": [
+                {
+                  "id": "auth.auth.user.PasswordChanged",
+                  "slug": "password-changed",
+                  "name": "PasswordChanged",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "PasswordChanged is published when a user's password is replaced. It says the password is different now; it does not carry the password, old or new, in any form.",
+                      "source": "examples/auth/internal/domain/user/event/password_changed.go",
+                      "fields": [
+                        {
+                          "name": "userID",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "by",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "occurredAt",
+                          "type": "time.Time",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [],
+                  "wire": {
+                    "name": "auth.PasswordChanged",
+                    "channel": "auth_user"
+                  }
+                },
+                {
+                  "id": "auth.auth.user.UserRegistered",
+                  "slug": "user-registered",
+                  "name": "UserRegistered",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "UserRegistered is published once per user, at registration. It carries the address because consumers routinely need to reach the person, and asking auth for it on every event would make the bus useless.",
+                      "source": "examples/auth/internal/domain/user/event/user_registered.go",
+                      "fields": [
+                        {
+                          "name": "userID",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "email",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "occurredAt",
+                          "type": "time.Time",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [],
+                  "wire": {
+                    "name": "auth.UserRegistered",
+                    "channel": "auth_user"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [
+    {
+      "id": "flow.auth-change-password",
+      "slug": "auth-change-password",
+      "name": "Change password",
+      "summary": "Replaces the password of a user, given the current one.",
+      "source": "examples/auth/internal/infrastructure/transport/http/user/change_password.go",
+      "owner": "auth",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "auth.auth",
+          "kind": "service",
+          "context": "auth"
+        },
+        {
+          "id": "auth-pg",
+          "kind": "store",
+          "context": "auth"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "auth.auth",
+          "kind": "rpc",
+          "label": "changePassword",
+          "status": "declared",
+          "line": "examples/auth/internal/infrastructure/transport/http/user/change_password.go:20"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "auth.auth",
+          "to": "auth-pg",
+          "kind": "call",
+          "label": "ByToken",
+          "status": "declared",
+          "line": "examples/auth/internal/application/session/usecases/validate/usecase.go:34"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "auth.auth",
+          "to": "auth-pg",
+          "kind": "call",
+          "label": "ByID",
+          "status": "declared",
+          "line": "examples/auth/internal/application/user/usecases/change_password/usecase.go:31"
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "auth.auth",
+          "to": "auth-pg",
+          "kind": "call",
+          "label": "Save",
+          "status": "declared",
+          "line": "examples/auth/internal/application/user/usecases/change_password/usecase.go:40"
+        },
+        {
+          "type": "step",
+          "id": "s5",
+          "from": "auth.auth",
+          "to": "bus",
+          "kind": "event",
+          "ref": "auth.auth.user.PasswordChanged",
+          "label": "PasswordChanged",
+          "status": "declared",
+          "line": "examples/auth/internal/application/user/usecases/change_password/usecase.go:40"
+        }
+      ]
+    },
+    {
+      "id": "flow.auth-get-user",
+      "slug": "auth-get-user",
+      "name": "Get user",
+      "summary": "Reads a user by id.",
+      "source": "examples/auth/internal/infrastructure/transport/http/user/get.go",
+      "owner": "auth",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "auth.auth",
+          "kind": "service",
+          "context": "auth"
+        },
+        {
+          "id": "auth-pg",
+          "kind": "store",
+          "context": "auth"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "auth.auth",
+          "kind": "rpc",
+          "label": "getUser",
+          "status": "declared",
+          "line": "examples/auth/internal/infrastructure/transport/http/user/get.go:11"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "auth.auth",
+          "to": "auth-pg",
+          "kind": "call",
+          "label": "ByID",
+          "status": "declared",
+          "line": "examples/auth/internal/application/user/usecases/get/usecase.go:23"
+        }
+      ]
+    },
+    {
+      "id": "flow.auth-login",
+      "slug": "auth-login",
+      "name": "Login",
+      "summary": "Turns credentials into a session.",
+      "source": "examples/auth/internal/infrastructure/transport/http/session/login.go",
+      "owner": "auth",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "auth.auth",
+          "kind": "service",
+          "context": "auth"
+        },
+        {
+          "id": "auth-pg",
+          "kind": "store",
+          "context": "auth"
+        },
+        {
+          "id": "risk-v1",
+          "kind": "unknown",
+          "context": null,
+          "label": "risk.v1"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "auth.auth",
+          "kind": "rpc",
+          "label": "login",
+          "status": "declared",
+          "line": "examples/auth/internal/infrastructure/transport/http/session/login.go:11"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "auth.auth",
+          "to": "auth.auth",
+          "kind": "call",
+          "label": "Authenticate",
+          "status": "declared",
+          "note": "Port `Authenticator`, bound at assembly to the Authenticate use case.",
+          "line": "examples/auth/internal/application/session/usecases/login/usecase.go:58"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "auth.auth",
+          "to": "auth-pg",
+          "kind": "call",
+          "label": "ByEmail",
+          "status": "declared",
+          "line": "examples/auth/internal/application/user/usecases/authenticate/usecase.go:41"
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "auth.auth",
+          "to": "auth.auth",
+          "kind": "call",
+          "label": "Check",
+          "status": "declared",
+          "note": "Port `Lockout`, bound at assembly to the Check use case.",
+          "line": "examples/auth/internal/application/user/usecases/authenticate/usecase.go:49"
+        },
+        {
+          "type": "step",
+          "id": "s5",
+          "from": "auth.auth",
+          "to": "auth-pg",
+          "kind": "call",
+          "label": "ByUserID",
+          "status": "declared",
+          "line": "examples/auth/internal/application/lockout/usecases/check/usecase.go:27"
+        },
+        {
+          "type": "alt",
+          "id": "alt9",
+          "branches": [
+            {
+              "title": "err != nil",
+              "steps": [
+                {
+                  "type": "step",
+                  "id": "s6",
+                  "from": "auth.auth",
+                  "to": "auth.auth",
+                  "kind": "call",
+                  "label": "RecordFailure",
+                  "status": "declared",
+                  "note": "Port `Lockout`, bound at assembly to the RecordFailure use case.",
+                  "line": "examples/auth/internal/application/user/usecases/authenticate/usecase.go:58"
+                },
+                {
+                  "type": "step",
+                  "id": "s7",
+                  "from": "auth.auth",
+                  "to": "auth-pg",
+                  "kind": "call",
+                  "label": "ByUserID",
+                  "status": "declared",
+                  "note": "inside a loop over `retries`.",
+                  "line": "examples/auth/internal/application/lockout/usecases/record_failure/usecase.go:37"
+                },
+                {
+                  "type": "step",
+                  "id": "s8",
+                  "from": "auth.auth",
+                  "to": "auth-pg",
+                  "kind": "call",
+                  "label": "Save",
+                  "status": "declared",
+                  "note": "inside a loop over `retries`.",
+                  "line": "examples/auth/internal/application/lockout/usecases/record_failure/usecase.go:54"
+                }
+              ],
+              "terminal": true
+            },
+            {
+              "title": "otherwise",
+              "steps": []
+            }
+          ]
+        },
+        {
+          "type": "step",
+          "id": "s10",
+          "from": "auth.auth",
+          "to": "auth.auth",
+          "kind": "call",
+          "label": "RecordSuccess",
+          "status": "declared",
+          "note": "Port `Lockout`, bound at assembly to the RecordSuccess use case.",
+          "line": "examples/auth/internal/application/user/usecases/authenticate/usecase.go:67"
+        },
+        {
+          "type": "step",
+          "id": "s11",
+          "from": "auth.auth",
+          "to": "auth-pg",
+          "kind": "call",
+          "label": "ByUserID",
+          "status": "declared",
+          "note": "inside a loop over `retries`.",
+          "line": "examples/auth/internal/application/lockout/usecases/record_success/usecase.go:32"
+        },
+        {
+          "type": "step",
+          "id": "s12",
+          "from": "auth.auth",
+          "to": "auth-pg",
+          "kind": "call",
+          "label": "Save",
+          "status": "declared",
+          "note": "inside a loop over `retries`.",
+          "line": "examples/auth/internal/application/lockout/usecases/record_success/usecase.go:44"
+        },
+        {
+          "type": "step",
+          "id": "s13",
+          "from": "auth.auth",
+          "to": "risk-v1",
+          "kind": "rpc",
+          "ref": "risk.v1.RiskService/Assess",
+          "label": "Assess",
+          "status": "unresolved",
+          "line": "examples/auth/internal/application/session/usecases/login/usecase.go:63"
+        },
+        {
+          "type": "alt",
+          "id": "alt17",
+          "branches": [
+            {
+              "title": "verdict == VerdictBlock",
+              "steps": [
+                {
+                  "type": "step",
+                  "id": "s14",
+                  "from": "auth.auth",
+                  "to": "auth-pg",
+                  "kind": "call",
+                  "label": "ByUserID",
+                  "status": "declared",
+                  "line": "examples/auth/internal/application/session/usecases/login/usecase.go:92"
+                },
+                {
+                  "type": "step",
+                  "id": "s15",
+                  "from": "auth.auth",
+                  "to": "auth-pg",
+                  "kind": "call",
+                  "label": "Save",
+                  "status": "declared",
+                  "note": "inside a loop over `sessions`.",
+                  "line": "examples/auth/internal/application/session/usecases/login/usecase.go:102"
+                },
+                {
+                  "type": "step",
+                  "id": "s16",
+                  "from": "auth.auth",
+                  "to": "bus",
+                  "kind": "event",
+                  "ref": "auth.auth.session.SessionEnded",
+                  "label": "SessionEnded",
+                  "status": "declared",
+                  "note": "inside a loop over `sessions`.",
+                  "line": "examples/auth/internal/application/session/usecases/login/usecase.go:102"
+                }
+              ],
+              "terminal": true
+            },
+            {
+              "title": "otherwise",
+              "steps": []
+            }
+          ]
+        },
+        {
+          "type": "step",
+          "id": "s18",
+          "from": "auth.auth",
+          "to": "auth-pg",
+          "kind": "call",
+          "label": "Save",
+          "status": "declared",
+          "line": "examples/auth/internal/application/session/usecases/login/usecase.go:78"
+        },
+        {
+          "type": "step",
+          "id": "s19",
+          "from": "auth.auth",
+          "to": "bus",
+          "kind": "event",
+          "ref": "auth.auth.session.SessionStarted",
+          "label": "SessionStarted",
+          "status": "declared",
+          "line": "examples/auth/internal/application/session/usecases/login/usecase.go:78"
+        }
+      ]
+    },
+    {
+      "id": "flow.auth-logout",
+      "slug": "auth-logout",
+      "name": "Logout",
+      "summary": "Ends the session behind a token.",
+      "source": "examples/auth/internal/infrastructure/transport/http/session/logout.go",
+      "owner": "auth",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "auth.auth",
+          "kind": "service",
+          "context": "auth"
+        },
+        {
+          "id": "auth-pg",
+          "kind": "store",
+          "context": "auth"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "auth.auth",
+          "kind": "rpc",
+          "label": "logout",
+          "status": "declared",
+          "line": "examples/auth/internal/infrastructure/transport/http/session/logout.go:15"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "auth.auth",
+          "to": "auth-pg",
+          "kind": "call",
+          "label": "ByToken",
+          "status": "declared",
+          "line": "examples/auth/internal/application/session/usecases/logout/usecase.go:35"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "auth.auth",
+          "to": "auth-pg",
+          "kind": "call",
+          "label": "Save",
+          "status": "declared",
+          "line": "examples/auth/internal/application/session/usecases/logout/usecase.go:49"
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "auth.auth",
+          "to": "bus",
+          "kind": "event",
+          "ref": "auth.auth.session.SessionEnded",
+          "label": "SessionEnded",
+          "status": "declared",
+          "line": "examples/auth/internal/application/session/usecases/logout/usecase.go:49"
+        }
+      ]
+    },
+    {
+      "id": "flow.auth-register-user",
+      "slug": "auth-register-user",
+      "name": "Register user",
+      "summary": "Creates a user from an email address and a password.",
+      "source": "examples/auth/internal/infrastructure/transport/http/user/register.go",
+      "owner": "auth",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "auth.auth",
+          "kind": "service",
+          "context": "auth"
+        },
+        {
+          "id": "auth-pg",
+          "kind": "store",
+          "context": "auth"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "auth.auth",
+          "kind": "rpc",
+          "label": "registerUser",
+          "status": "declared",
+          "line": "examples/auth/internal/infrastructure/transport/http/user/register.go:16"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "auth.auth",
+          "to": "auth-pg",
+          "kind": "call",
+          "label": "ByEmail",
+          "status": "declared",
+          "line": "examples/auth/internal/application/user/usecases/register/usecase.go:36"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "auth.auth",
+          "to": "auth-pg",
+          "kind": "call",
+          "label": "Save",
+          "status": "declared",
+          "line": "examples/auth/internal/application/user/usecases/register/usecase.go:49"
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "auth.auth",
+          "to": "bus",
+          "kind": "event",
+          "ref": "auth.auth.user.UserRegistered",
+          "label": "UserRegistered",
+          "status": "declared",
+          "line": "examples/auth/internal/application/user/usecases/register/usecase.go:49"
+        }
+      ]
+    },
+    {
+      "id": "flow.auth-validate-session",
+      "slug": "auth-validate-session",
+      "name": "Validate session",
+      "summary": "Resolves a token to a live session: who is calling, and how long the answer stays good.",
+      "source": "examples/auth/internal/infrastructure/transport/http/session/validate.go",
+      "owner": "auth",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "auth.auth",
+          "kind": "service",
+          "context": "auth"
+        },
+        {
+          "id": "auth-pg",
+          "kind": "store",
+          "context": "auth"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "auth.auth",
+          "kind": "rpc",
+          "label": "validateSession",
+          "status": "declared",
+          "line": "examples/auth/internal/infrastructure/transport/http/session/validate.go:12"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "auth.auth",
+          "to": "auth-pg",
+          "kind": "call",
+          "label": "ByToken",
+          "status": "declared",
+          "line": "examples/auth/internal/application/session/usecases/validate/usecase.go:34"
+        }
+      ]
+    },
+    {
+      "id": "flow.auth-revoke-sessions-on-password-change",
+      "slug": "auth-revoke-sessions-on-password-change",
+      "name": "Revoke sessions on password change",
+      "summary": "Ends the sessions issued against a password that has just been replaced.",
+      "source": "examples/auth/internal/application/policy/revoke_sessions_on_password_change.go",
+      "owner": "auth",
+      "participants": [
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        },
+        {
+          "id": "auth.auth",
+          "kind": "service",
+          "context": "auth"
+        },
+        {
+          "id": "auth-pg",
+          "kind": "store",
+          "context": "auth"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "bus",
+          "to": "auth.auth",
+          "kind": "event",
+          "ref": "auth.auth.user.PasswordChanged",
+          "label": "PasswordChanged",
+          "status": "declared",
+          "line": "examples/auth/internal/application/policy/revoke_sessions_on_password_change.go:41"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "auth.auth",
+          "to": "auth.auth",
+          "kind": "call",
+          "label": "EndAfterCredentialChange",
+          "status": "declared",
+          "line": "examples/auth/internal/application/policy/revoke_sessions_on_password_change.go:47"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "auth.auth",
+          "to": "auth-pg",
+          "kind": "call",
+          "label": "ByUserID",
+          "status": "declared",
+          "line": "examples/auth/internal/application/session/usecases/end_after_credential_change/usecase.go:40"
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "auth.auth",
+          "to": "auth-pg",
+          "kind": "call",
+          "label": "ByID",
+          "status": "declared",
+          "note": "inside a loop over `change.Ends(sessions, uc.now())`, inside a loop over `retries`.",
+          "line": "examples/auth/internal/application/session/usecases/end_after_credential_change/usecase.go:62"
+        },
+        {
+          "type": "step",
+          "id": "s5",
+          "from": "auth.auth",
+          "to": "auth-pg",
+          "kind": "call",
+          "label": "Save",
+          "status": "declared",
+          "note": "inside a loop over `change.Ends(sessions, uc.now())`, inside a loop over `retries`.",
+          "line": "examples/auth/internal/application/session/usecases/end_after_credential_change/usecase.go:77"
+        },
+        {
+          "type": "step",
+          "id": "s6",
+          "from": "auth.auth",
+          "to": "bus",
+          "kind": "event",
+          "ref": "auth.auth.session.SessionEnded",
+          "label": "SessionEnded",
+          "status": "declared",
+          "note": "inside a loop over `change.Ends(sessions, uc.now())`, inside a loop over `retries`.",
+          "line": "examples/auth/internal/application/session/usecases/end_after_credential_change/usecase.go:77"
+        }
+      ]
+    }
+  ],
+  "adrs": []
+}

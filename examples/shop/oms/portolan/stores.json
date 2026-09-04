@@ -1,0 +1,199 @@
+{
+  "generatedAt": "2026-09-05T01:16:26+07:00",
+  "commit": "1d17393",
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.oms",
+          "slug": "oms",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "stores": [
+            "shop.oms.pg"
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": [],
+  "stores": [
+    {
+      "id": "shop.oms.pg",
+      "slug": "pg",
+      "name": "Order database",
+      "kind": "postgres",
+      "owner": "shop.oms",
+      "tables": [
+        {
+          "id": "shop.oms.pg.orders",
+          "name": "orders",
+          "columns": [
+            {
+              "name": "id",
+              "type": "text",
+              "nullable": false,
+              "pk": true,
+              "maps": "Order.id"
+            },
+            {
+              "name": "customer_id",
+              "type": "text",
+              "nullable": false,
+              "maps": "Order.customer_id"
+            },
+            {
+              "name": "basket_id",
+              "type": "text",
+              "nullable": false,
+              "maps": "Order.basket_id"
+            },
+            {
+              "name": "status",
+              "type": "text",
+              "nullable": false,
+              "maps": "Order.status"
+            },
+            {
+              "name": "total_minor",
+              "type": "bigint",
+              "nullable": false,
+              "maps": "Order.total.amount_minor"
+            },
+            {
+              "name": "currency",
+              "type": "text",
+              "nullable": false,
+              "maps": "Order.total.currency"
+            },
+            {
+              "name": "placed_at",
+              "type": "timestamptz",
+              "nullable": false,
+              "maps": "Order.placed_at"
+            },
+            {
+              "name": "version",
+              "type": "integer",
+              "nullable": false
+            }
+          ],
+          "persists": {
+            "aggregate": "shop.oms.order"
+          },
+          "role": "aggregate-root"
+        },
+        {
+          "id": "shop.oms.pg.order_lines",
+          "name": "order_lines",
+          "columns": [
+            {
+              "name": "order_id",
+              "type": "text",
+              "nullable": false,
+              "pk": true,
+              "fk": {
+                "table": "shop.oms.pg.orders",
+                "column": "id",
+                "onDelete": "cascade"
+              },
+              "maps": "Order.id"
+            },
+            {
+              "name": "sku",
+              "type": "text",
+              "nullable": false,
+              "pk": true,
+              "maps": "Order.sku"
+            },
+            {
+              "name": "quantity",
+              "type": "integer",
+              "nullable": false
+            },
+            {
+              "name": "unit_price_minor",
+              "type": "bigint",
+              "nullable": false,
+              "maps": "Order.unit_price.amount_minor"
+            },
+            {
+              "name": "currency",
+              "type": "text",
+              "nullable": false,
+              "maps": "Order.unit_price.currency"
+            }
+          ],
+          "persists": {
+            "aggregate": "shop.oms.order"
+          },
+          "role": "child"
+        },
+        {
+          "id": "shop.oms.pg.outbox",
+          "name": "outbox",
+          "columns": [
+            {
+              "name": "id",
+              "type": "bigserial",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "uuid",
+              "type": "text",
+              "nullable": false
+            },
+            {
+              "name": "topic",
+              "type": "text",
+              "nullable": false
+            },
+            {
+              "name": "payload",
+              "type": "jsonb",
+              "nullable": false
+            },
+            {
+              "name": "metadata",
+              "type": "jsonb",
+              "nullable": false
+            },
+            {
+              "name": "created_at",
+              "type": "timestamptz",
+              "nullable": false
+            },
+            {
+              "name": "published_at",
+              "type": "timestamptz",
+              "nullable": true
+            }
+          ],
+          "indexes": [
+            {
+              "name": "outbox_unpublished",
+              "columns": [
+                "id"
+              ],
+              "unique": false
+            }
+          ],
+          "role": "outbox"
+        }
+      ],
+      "source": "examples/shop/oms/src/infrastructure/repository"
+    }
+  ]
+}

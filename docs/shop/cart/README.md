@@ -162,7 +162,7 @@ Docker the tests that need Postgres or NATS are skipped.
 | Event | Latest | Consumers |
 | --- | --- | --- |
 | [BasketAbandoned](aggregates/basket.md) | v1 | — |
-| [BasketCheckedOut](aggregates/basket.md) | v1 | [shop.pricing (declared)](../pricing/README.md) |
+| [BasketCheckedOut](aggregates/basket.md) | v1 | [shop.oms](../oms/README.md), [shop.pricing (declared)](../pricing/README.md) |
 | [BasketCreated](aggregates/basket.md) | v1 | — |
 | [BasketItemAdded](aggregates/basket.md) | v1 | — |
 | [BasketItemRemoved](aggregates/basket.md) | v1 | — |

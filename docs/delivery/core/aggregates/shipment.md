@@ -114,7 +114,6 @@ A carrier and the code it issued. Meaningless without the carrier, so the two tr
 
 | Consumer | Status | Note |
 | --- | --- | --- |
-| [shop.oms](../../../shop/oms/README.md) | verified | — |
 | `analytics-sink` | declared | Registered in the traces exporter, not in any Go repo. |
 
 #### v1 — current
@@ -137,8 +136,8 @@ Source: `internal/delivery/domain/shipment/events.go:52`
 
 | Consumer | Status | Note |
 | --- | --- | --- |
-| [shop.oms](../../../shop/oms/README.md) | verified | — |
 | `analytics-sink` | unresolved | Observed downstream of the bus in OTel traces; owner unknown. |
+| [shop.oms](../../../shop/oms/README.md) | declared | — |
 
 #### v1 — current
 

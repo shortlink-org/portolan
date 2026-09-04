@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { catalog, index } from "../data";
+import { catalog, index } from "../testing/estate";
 import { backlinkCount, backlinksFor, stepsInto } from "./backlinks";
 import type { BacklinkGroup, BacklinkTarget } from "./backlinks";
 import type { Kind } from "./kinds";

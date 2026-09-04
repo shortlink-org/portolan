@@ -17,7 +17,7 @@ exception path whose reader emits no spans at all.
 ## Steps
 customer -> delivery.core: rpc TrackShipment [verified] @trace 9f2c1a../span 04 #d1
   > Storefront tracking page. 41k calls in the window, p95 180 ms.
-delivery.core -> shop.oms: rpc shop.v1.Orders/GetOrder [verified] @trace 9f2c1a../span 06 #d2
+delivery.core -> shop.oms: rpc shop.v1.OrderService/GetOrder @trace 9f2c1a../span 06 #d2
   > Resolves the order reference shown beside the parcel. Present in 96% of the
   > traces; the rest are served from the tracking cache.
 loop one iteration per carrier scan; 4 scans per shipment at p50 over the window #loop-scan
@@ -31,7 +31,7 @@ end
 alt scan code DELIVERED #alt-scan
   delivery.core -> bus: event delivery.core.shipment.ShipmentDelivered [verified] @trace 7be40d../span 27 #d5
   par ShipmentDelivered fan-out #par-delivered
-    bus -> shop.oms: event delivery.core.shipment.ShipmentDelivered [verified] @trace 7be40d../span 29 #d6
+    bus -> shop.oms: event delivery.core.shipment.ShipmentDelivered @trace 7be40d../span 29 #d6
       > Closes the order and starts the 30-day refund window the refund flow
       > reads.
   and

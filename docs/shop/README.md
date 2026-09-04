@@ -11,7 +11,7 @@ Everything the customer touches before money moves: baskets, orders and prices.
 
 | Service | Path | Aggregates |
 | --- | --- | --- |
-| [Order Management](oms/README.md) | `services/oms` | Order |
 | [Pricing](pricing/README.md) | `services/pricing` | Quote, PriceList |
 | [Billing](billing/README.md) | `examples/shop/billing` | Invoice |
 | [Shopping Cart](cart/README.md) | `examples/shop/cart` | Basket |
+| [Order Management](oms/README.md) | `examples/shop/oms` | Order |

@@ -1,0 +1,23 @@
+[package]
+name = "portolan-extract-rust"
+version = "0.1.0"
+edition = "2024"
+description = "A Rust service in, a catalog fragment out: the Rust twin of extract-go and extract-ts, on the same protocol."
+publish = false
+
+[lib]
+name = "portolan_extract_rust"
+path = "src/lib.rs"
+
+[[bin]]
+name = "portolan-extract-rust"
+path = "src/main.rs"
+
+[dependencies]
+# The right parser for Rust is Rust's own; syn reads the whole language, and
+# proc-macro2's span-locations is what turns a node back into file:line.
+syn = { version = "2", features = ["full", "visit", "extra-traits"] }
+proc-macro2 = { version = "1", features = ["span-locations"] }
+quote = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }

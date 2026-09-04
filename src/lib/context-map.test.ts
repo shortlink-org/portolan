@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { catalog } from "../data";
+import { catalog } from "../testing/estate";
 import { contextMap } from "./context-map";
 import type { ContextRelation, PatternName } from "./context-map";
 

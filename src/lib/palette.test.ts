@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { catalog } from "../data";
+import { catalog as shipped } from "../data";
+import { catalog } from "../testing/estate";
 import { excerptOf, flattenProse, paletteItems, search } from "./palette";
 import { isRoutable } from "../routes";
 import { allEvents } from "../catalog";
@@ -12,6 +13,9 @@ const kinds = (raw: string) => new Set(rows(raw).map((i) => i.kind));
 
 describe("palette index", () => {
   it("indexes every kind, and every row goes somewhere real", () => {
+    // Against what the app ships: the routes are built from the live catalog,
+    // and a row of the frozen estate has nowhere real to go.
+    const items = paletteItems(shipped);
     expect(new Set(items.map((i) => i.kind))).toEqual(
       new Set([
         "def",
@@ -281,7 +285,7 @@ describe("modules in the palette", () => {
   // The app's own catalog has published exactly one module, and shows exactly
   // one row for it: a row per module, never an empty group.
   it("adds one row per module the estate has published", () => {
-    expect(items.filter((i) => i.kind === "module").map((i) => i.id)).toEqual([
+    expect(paletteItems(shipped).filter((i) => i.kind === "module").map((i) => i.id)).toEqual([
       "buf.build/shortlink-org/portolan-shop-order",
     ]);
   });

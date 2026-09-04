@@ -60,8 +60,8 @@ describe("classify", () => {
 
 describe("flow step ids", () => {
   it("round-trips through the flow slug", () => {
-    expect(parseFlowStepId(flowStepId("checkout", "s6"))).toEqual({
-      flowSlug: "checkout",
+    expect(parseFlowStepId(flowStepId("cart-checkout", "s6"))).toEqual({
+      flowSlug: "cart-checkout",
       stepId: "s6",
     });
   });
@@ -84,7 +84,7 @@ describe("resolveSelection", () => {
   });
 
   it("numbers a flow step the way the rail numbers it", () => {
-    const resolved = resolveSelection(flowStepId("checkout", "s6"));
+    const resolved = resolveSelection(flowStepId("cart-checkout", "s6"));
     expect(resolved?.kind).toBe("flow-step");
     if (resolved?.kind !== "flow-step") throw new Error("unreachable");
     expect(resolved.number).toBe(6);
@@ -122,36 +122,36 @@ describe("selectionTrail", () => {
     expect(selectionTrail(selectionFor("Money")).map((s) => s.id)).toEqual([
       "Money",
     ]);
-    const step = selectionFor(flowStepId("checkout", "s6"));
+    const step = selectionFor(flowStepId("cart-checkout", "s6"));
     expect(selectionTrail(step)).toEqual([step]);
   });
 });
 
 describe("views and their columns", () => {
   it("classifies a view and a view's column by id", () => {
-    expect(classify("shop.oms.pg.v_open_orders")).toBe("view");
-    expect(classify("shop.oms.pg.v_open_orders.total_minor")).toBe("column");
+    expect(classify("payments.ledger.pg.v_payment_state")).toBe("view");
+    expect(classify("payments.ledger.pg.v_payment_state.amount_minor")).toBe("column");
   });
 
   it("resolves a view column to its view, with no table pretending to hold it", () => {
-    const resolved = resolveSelection("shop.oms.pg.v_open_orders.total_minor");
+    const resolved = resolveSelection("payments.ledger.pg.v_payment_state.amount_minor");
     expect(resolved?.kind).toBe("column");
     if (resolved?.kind !== "column") throw new Error("expected a column");
-    expect(resolved.view?.name).toBe("v_open_orders");
+    expect(resolved.view?.name).toBe("v_payment_state");
     expect(resolved.table).toBeNull();
-    expect(resolved.store.id).toBe("shop.oms.pg");
+    expect(resolved.store.id).toBe("payments.ledger.pg");
   });
 
   it("walks a view column back through its view rather than a table", () => {
     const trail = selectionTrail(
-      selectionFor("shop.oms.pg.v_open_orders.total_minor"),
+      selectionFor("payments.ledger.pg.v_payment_state.amount_minor"),
     );
     expect(trail.map((s) => s.id)).toEqual([
-      "shop",
-      "shop.oms",
-      "shop.oms.pg",
-      "shop.oms.pg.v_open_orders",
-      "shop.oms.pg.v_open_orders.total_minor",
+      "payments",
+      "payments.ledger",
+      "payments.ledger.pg",
+      "payments.ledger.pg.v_payment_state",
+      "payments.ledger.pg.v_payment_state.amount_minor",
     ]);
     expect(trail.map((s) => s.kind)).toEqual([
       "context",

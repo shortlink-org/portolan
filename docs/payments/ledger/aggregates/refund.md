@@ -100,7 +100,6 @@ Shared type [`GatewayRef`](../../../types.md#gatewayref).
 
 | Consumer | Status |
 | --- | --- |
-| [shop.oms](../../../shop/oms/README.md) | declared |
 | [delivery.core](../../../delivery/core/README.md) | declared |
 
 #### v1 — current

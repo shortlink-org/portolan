@@ -83,7 +83,7 @@ sequenceDiagram
 
 | Call | Peer | Status | Source | Note |
 | --- | --- | --- | --- | --- |
-| `shop.v1.Orders/GetOrder` | [shop.oms](../../shop/oms/README.md) | verified | `internal/ledger/client/orders.go:27` | — |
+| `shop.v1.OrderService/GetOrder` | [shop.oms](../../shop/oms/README.md) | verified | `internal/ledger/client/orders.go:27` | — |
 | `psp.v2.Charges/Create` | `psp-gateway` | unresolved | `internal/ledger/adapter/psp/client.go:64` | Authorization. The peer is a third party; no service in the estate provides psp.v2.Charges, so the call cannot be resolved to anything the catalog knows. |
 | `psp.v2.Charges/Capture` | `psp-gateway` | unresolved | `internal/ledger/adapter/psp/client.go:102` | Settlement of an existing authorization. Same unresolvable peer as the rest of psp.v2.Charges. |
 | `psp.v2.Charges/Refund` | `psp-gateway` | unresolved | `internal/ledger/adapter/psp/client.go:138` | Returns money on a settled charge. Same unresolvable peer as the rest of psp.v2.Charges. |
@@ -93,10 +93,10 @@ sequenceDiagram
 
 | Event | Latest | Consumers |
 | --- | --- | --- |
-| [PaymentAuthorized](aggregates/payment.md) | v1 | [shop.oms](../../shop/oms/README.md), [delivery.core (declared)](../../delivery/core/README.md) |
-| [PaymentCaptured](aggregates/payment.md) | v1 | [delivery.core](../../delivery/core/README.md), [shop.oms](../../shop/oms/README.md), [shop.billing (declared)](../../shop/billing/README.md) |
-| [PaymentDeclined](aggregates/payment.md) | v1 | [shop.oms](../../shop/oms/README.md) |
-| [RefundIssued](aggregates/refund.md) | v1 | [shop.oms (declared)](../../shop/oms/README.md), [delivery.core (declared)](../../delivery/core/README.md) |
+| [PaymentAuthorized](aggregates/payment.md) | v1 | [delivery.core (declared)](../../delivery/core/README.md) |
+| [PaymentCaptured](aggregates/payment.md) | v1 | [delivery.core](../../delivery/core/README.md), [shop.billing (declared)](../../shop/billing/README.md) |
+| [PaymentDeclined](aggregates/payment.md) | v1 | [shop.oms (declared)](../../shop/oms/README.md) |
+| [RefundIssued](aggregates/refund.md) | v1 | [delivery.core (declared)](../../delivery/core/README.md) |
 
 ## Stores
 
