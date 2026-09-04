@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package shop.v1;
+
+// A narrowed vendored copy: the one rpc the ledger calls, and nothing else.
+service OrderService {
+  rpc GetOrder(GetOrderRequest) returns (GetOrderResponse);
+}
+
+message GetOrderRequest {
+  string order_id = 1;
+}
+
+message GetOrderResponse {
+  string order_id = 1;
+  string status = 2;
+  int64 total_minor = 3;
+}

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>org.portolan.payments</groupId>
+  <artifactId>ledger</artifactId>
+  <version>0.1.0</version>
+
+  <scm>
+    <url>https://github.com/acme/payments</url>
+  </scm>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.jmolecules</groupId>
+      <artifactId>jmolecules-ddd</artifactId>
+      <version>1.9.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.modulith</groupId>
+      <artifactId>spring-modulith-core</artifactId>
+      <version>1.3.0</version>
+    </dependency>
+  </dependencies>
+</project>

@@ -99,7 +99,10 @@ the status enum; see `extract-rust/README.md`. In Python it is that mapping on
 the Django model, beside the `TextChoices` that names the states, and the
 method assigning `self.status` - or django-fsm's `@transition(field=status,
 source=…, target=…)`, which is the same table written one edge at a time; see
-`extract-django/README.md`.
+`extract-django/README.md`. In Java it is `TRANSITIONS` beside the status enum
+and the method assigning `this.status`; Java is also the one language here with
+a vocabulary for the model, so the rest of `extract-java` reads what jMolecules
+declares rather than what the layout implies.
 Terminal states are derived on the page - nothing leads out - and never
 written down. A move the clock makes, a session expiring, a lock running out,
 is not a move: nothing runs when it happens, so it is not in the table.

@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package payments.v1;
+
+// What the rest of the estate may ask the ledger to do with money.
+service PaymentService {
+  rpc Authorize(AuthorizeRequest) returns (AuthorizeResponse);
+  rpc Capture(CaptureRequest) returns (CaptureResponse);
+  rpc GetPayment(GetPaymentRequest) returns (GetPaymentResponse);
+}
+
+message AuthorizeRequest {
+  string order_id = 1;
+  int64 amount_minor = 2;
+  string currency = 3;
+}
+
+message AuthorizeResponse {
+  string payment_id = 1;
+  string auth_code = 2;
+}
+
+message CaptureRequest {
+  string payment_id = 1;
+}
+
+message CaptureResponse {
+  string captured_at = 1;
+}
+
+message GetPaymentRequest {
+  string payment_id = 1;
+}
+
+message GetPaymentResponse {
+  string payment_id = 1;
+  string status = 2;
+}

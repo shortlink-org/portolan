@@ -46,6 +46,7 @@
               "go-domain",
               "ts-domain",
               "rust-domain",
+              "java-domain",
               "django-domain",
               "openapi",
               "asyncapi",
@@ -123,6 +124,25 @@
               "properties": {
                 "options": {
                   "$ref": "#/$defs/options.rust-domain"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "plugin"
+              ],
+              "properties": {
+                "plugin": {
+                  "const": "java-domain"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "options": {
+                  "$ref": "#/$defs/options.java-domain"
                 }
               }
             }
@@ -680,6 +700,94 @@
         "out": {
           "type": "string",
           "description": "Name of the fragment file, inside the step's output directory. One extractor writes one file, so that a fragment carries the provenance of the run that produced it.",
+          "default": "domain.json"
+        }
+      }
+    },
+    "options.java-domain": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "Slug of the bounded context this service belongs to. Defaults to the name of the input directory.",
+          "examples": [
+            "payments"
+          ]
+        },
+        "contextName": {
+          "type": "string",
+          "description": "What the context is called on the page. Defaults to the slug, titled."
+        },
+        "contextSummary": {
+          "type": "string",
+          "description": "A sentence or two on what the context is responsible for."
+        },
+        "classification": {
+          "enum": [
+            "core",
+            "supporting",
+            "generic"
+          ],
+          "description": "Whether the context is core to the business, supports it, or is generic and could be bought."
+        },
+        "service": {
+          "type": "string",
+          "description": "Slug of the service. Defaults to the name of the input directory.",
+          "examples": [
+            "ledger"
+          ]
+        },
+        "serviceName": {
+          "type": "string",
+          "description": "What the service is called on the page. Defaults to the title of its README, and failing that to the slug, titled."
+        },
+        "repo": {
+          "type": "string",
+          "description": "Where the source lives. Defaults to the scm url in pom.xml.",
+          "examples": [
+            "github.com/shortlink-org/portolan"
+          ]
+        },
+        "store": {
+          "type": "string",
+          "description": "Slug of the database this service keeps its state in, the same one the sql extractor is given. It is here for the flows: a call on a port lands somewhere, and only the manifest knows where.",
+          "examples": [
+            "pg"
+          ]
+        },
+        "peers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Which service answers for what this one calls, as the proto package of the contract vendored beside the adapter to the callee's service id. A package with no line here is called as unknown and its steps stay unresolved.",
+          "examples": [
+            {
+              "shop.v1": "shop.oms"
+            }
+          ]
+        },
+        "events": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Which aggregate another service's events belong to, as the package a listener reads them from to the aggregate id, so a policy reacting to a foreign event resolves.",
+          "examples": [
+            {
+              "org.portolan.payments.ledger.infrastructure.oms.event": "shop.oms.order"
+            }
+          ]
+        },
+        "source": {
+          "type": "string",
+          "description": "The directory the packages start in, relative to the input root.",
+          "default": "src/main/java"
+        },
+        "out": {
+          "type": "string",
+          "description": "Name of the fragment file, inside the step's output directory.",
           "default": "domain.json"
         }
       }

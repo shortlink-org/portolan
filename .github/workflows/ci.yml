@@ -33,6 +33,13 @@ jobs:
       # The Rust extractor is a process plugin the schema and gen steps run
       - uses: dtolnay/rust-toolchain@stable
 
+      # extract-java is compiled by `plugins:build`, which the schema and gen
+      # steps run first. javac is the whole toolchain it needs.
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
       - run: npm ci
 
       # Regenerates likec4/ from data/catalog.json, then checks the model

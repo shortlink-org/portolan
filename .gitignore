@@ -30,3 +30,6 @@ plugins/gen-markdown/gen-markdown
 
 # The Rust plugin builds into its own target directory
 plugins/extract-rust/target
+
+# The Java plugin compiles into a class directory beside its source
+plugins/extract-java/build

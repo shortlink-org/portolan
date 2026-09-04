@@ -26,6 +26,12 @@
       }
     },
     {
+      "name": "java-domain",
+      "process": {
+        "cmd": "java -cp plugins/extract-java/build org.portolan.extract.Main"
+      }
+    },
+    {
       "name": "django-domain",
       "process": {
         "cmd": "python3 plugins/extract-django/main.py"

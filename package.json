@@ -14,7 +14,7 @@
     "likec4:gen": "node scripts/gen-likec4.mjs && likec4 gen react likec4 -o src/likec4/generated.jsx",
     "likec4:validate": "likec4 validate likec4",
     "predev": "npm run likec4:gen",
-    "plugins:build": "GOOS=wasip1 GOARCH=wasm go build -o plugins/gen-markdown.wasm ./plugins/gen-markdown",
+    "plugins:build": "GOOS=wasip1 GOARCH=wasm go build -o plugins/gen-markdown.wasm ./plugins/gen-markdown && javac --release 21 -d plugins/extract-java/build plugins/extract-java/src/org/portolan/extract/*.java",
     "schema": "npm run plugins:build && node scripts/schema.mjs",
     "schema:check": "npm run plugins:build && node scripts/schema.mjs --check",
     "gen": "npm run plugins:build && node scripts/gen.mjs",
