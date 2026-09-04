@@ -526,9 +526,12 @@ export function DataTable<T extends RowData>({
         />
       ) : null}
 
+      {/* `isolate`: the sticky head and column stack by z-index inside the
+          table, and those numbers must not reach the page - a corner cell at
+          z-30 would otherwise ride over the pinned name row as it passes. */}
       <div
         ref={scrollRef}
-        className="overflow-x-auto rounded-card border border-line shadow-xs"
+        className="isolate overflow-x-auto rounded-card border border-line shadow-xs"
         style={virtual ? { maxHeight: "70vh", overflowY: "auto" } : undefined}
       >
         <table
