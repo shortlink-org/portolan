@@ -15,6 +15,7 @@ import type { Point } from "./elk";
 import type { DependencyNode } from "./DependencyNodes";
 import type { RoutedEdgeType } from "./RoutedEdge";
 import {
+  EDGE_W,
   EVENT_H,
   SERVICE_H,
   SERVICE_W,
@@ -236,7 +237,7 @@ async function bipartite(graph: EventGraph): Promise<Layout> {
       type: "routed",
       style: {
         stroke: color,
-        strokeWidth: 1.3,
+        strokeWidth: EDGE_W,
         ...(dash ? { strokeDasharray: dash } : {}),
       },
       // No arrowhead on a publish line: the pill it lands on is unmistakably
@@ -310,7 +311,7 @@ async function compact(graph: EventGraph): Promise<Layout> {
       type: "routed",
       style: {
         stroke: color,
-        strokeWidth: 1.4,
+        strokeWidth: EDGE_W,
         ...(dash ? { strokeDasharray: dash } : {}),
       },
       markerEnd: { ...ARROW, color },

@@ -16,7 +16,7 @@ import { HEADER_H } from "./spec";
 import { Badge, CardFrame, ColumnRows } from "./RelationCard";
 import type { ErViewNode } from "./RelationCard";
 
-export function ViewNodeCard({ data, selected }: NodeProps<ErViewNode>) {
+export function ViewNodeCard({ data }: NodeProps<ErViewNode>) {
   const { node, matched, dimmed, onToggle } = data;
   const view = node.view;
   if (!view) return null;
@@ -29,7 +29,6 @@ export function ViewNodeCard({ data, selected }: NodeProps<ErViewNode>) {
   return (
     <CardFrame
       matched={matched}
-      selected={selected ?? false}
       /* Always dashed: nothing in a view is the source of truth, which is the
          same claim the dash makes on an outbox or a projection. */
       dashed
@@ -49,9 +48,8 @@ export function ViewNodeCard({ data, selected }: NodeProps<ErViewNode>) {
           /* Lighter than a table's tint, and striped, so a canvas of twenty
              cards sorts itself into "rows live here" and "rows are computed
              here" before a single name has been read. */
-          background: `repeating-linear-gradient(135deg, color-mix(in srgb, ${accent} 10%, var(--surface)) 0 6px, var(--surface) 6px 12px)`,
+          background: `repeating-linear-gradient(135deg, color-mix(in srgb, ${accent} 8%, var(--flow-card)) 0 6px, var(--flow-card) 6px 12px)`,
           borderBottom: "1px dashed var(--border)",
-          borderLeft: `2px dashed ${accent}`,
         }}
       >
         <Glyph size={9} aria-hidden className="shrink-0 text-muted" />

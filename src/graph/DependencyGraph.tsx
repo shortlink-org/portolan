@@ -32,7 +32,7 @@ import { catalogIdOf, EVENT_NODE, layoutDependencyGraph } from "./dependency-lay
 import type { GraphMode, Layout } from "./dependency-layout";
 import { dependencyEdgeTypes } from "./RoutedEdge";
 import { FIT_OPTIONS, GraphToolbar } from "./GraphToolbar";
-import { LEGIBLE_ZOOM } from "./theme";
+import { EDGE_W, EDGE_W_LIT, LEGIBLE_ZOOM } from "./theme";
 
 /** How far out of the way everything more than one hop from the subject goes. */
 const DIM_EDGE = 0.1;
@@ -172,7 +172,7 @@ export function DependencyGraph({
         style: {
           ...edge.style,
           opacity: dimmed ? DIM_EDGE : 1,
-          strokeWidth: lit ? 2.2 : (edge.style?.strokeWidth ?? 1.3),
+          strokeWidth: lit ? EDGE_W_LIT : (edge.style?.strokeWidth ?? EDGE_W),
         },
         zIndex: lit ? 10 : 0,
       };
@@ -242,7 +242,7 @@ export function DependencyGraph({
           maxZoom={2}
           key={ready ? `fit-${fitKey}-${nodes.length}-${edges.length}` : "pending"}
         >
-          <Background gap={22} size={1} color="var(--border)" />
+          <Background gap={20} size={2} />
           <GraphToolbar
             mode={mode}
             onMode={onMode}
@@ -259,11 +259,7 @@ export function DependencyGraph({
               pannable
               zoomable
               ariaLabel="Graph overview"
-              maskColor="color-mix(in srgb, var(--bg) 72%, transparent)"
-              style={{
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-              }}
+              nodeBorderRadius={4}
               nodeColor={(node) =>
                 contextVar(
                   (node.data as { context?: string | null }).context ?? null,

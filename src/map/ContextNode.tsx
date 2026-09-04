@@ -1,62 +1,65 @@
 // A bounded context, as a node on the map.
 //
 // Bigger than a service node because it holds three things a service node does
-// not have to: the domain's name, its id, and how the estate rates it. It is
-// the only node in the app that carries a wash of its own colour rather than
-// just an edge of it - on a map of six boxes the colour IS the identity, and
-// the same 6% wash the page headers use is what makes a box read as "shop"
-// from across the screen.
+// not have to: the domain's name, its id, and how the estate rates it. On a
+// map of six boxes the colour IS the identity, so the tile is bigger here too
+// - it is what makes a card read as "shop" from across the screen.
 
 import { Handle, Position } from "@xyflow/react";
 import type { NodeProps } from "@xyflow/react";
+import { Boxes } from "lucide-react";
 import { contextVar } from "../lib/context-color";
-import { NODE_RADIUS } from "../graph/theme";
 import type { PortolanNode } from "../graph/nodes";
 
-export const CTX_NODE_W = 208;
+export const CTX_NODE_W = 224;
 export const CTX_NODE_H = 62;
 
-export function ContextNode({ data, selected }: NodeProps<PortolanNode>) {
+export function ContextNode({ data }: NodeProps<PortolanNode>) {
   const accent = contextVar(data.context);
 
   return (
     <div
-      className="flex h-full w-full flex-col justify-center gap-0.5 px-3"
-      style={{
-        background: `linear-gradient(to right, color-mix(in srgb, ${accent} 10%, var(--surface)), var(--surface))`,
-        border: `1px solid ${accent}`,
-        borderLeftWidth: 3,
-        borderRadius: NODE_RADIUS,
-        color: "var(--fg)",
-        outline: selected ? "1px solid var(--accent)" : undefined,
-        outlineOffset: 1,
-      }}
+      className="flow-card flex h-full w-full items-center gap-2.5 px-3"
+      style={{ color: "var(--fg)" }}
       title={data.sub ? `${data.sub} — ${data.label}` : data.label}
     >
-      <div className="flex items-baseline gap-2">
-        <span
-          className="truncate text-sm font-semibold"
-          style={{ lineHeight: 1.2 }}
-        >
-          {data.sub ?? data.label}
-        </span>
-        {data.tag ? (
-          <span
-            className="mono ml-auto shrink-0 rounded-[4px] border px-1"
-            style={{
-              fontSize: 10,
-              lineHeight: "14px",
-              borderColor: data.tag === "core" ? "var(--accent)" : accent,
-              color: data.tag === "core" ? "var(--accent)" : "var(--fg-muted)",
-            }}
-          >
-            {data.tag}
-          </span>
-        ) : null}
-      </div>
-      <span className="mono truncate" style={{ color: accent, fontSize: 11 }}>
-        {data.label}
+      <span
+        className="flow-tile"
+        style={{ color: accent, width: 28, height: 28 }}
+      >
+        <Boxes size={15} aria-hidden />
       </span>
+      <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
+        <div className="flex items-baseline gap-2">
+          <span
+            className="truncate text-sm font-semibold"
+            style={{ lineHeight: 1.2 }}
+          >
+            {data.sub ?? data.label}
+          </span>
+          {data.tag ? (
+            /* A badge, tinted the way a status badge is: the core domain
+               takes the app's accent, the others take their own colour. */
+            <span
+              className="ml-auto shrink-0 rounded-full px-1.5"
+              style={{
+                fontSize: 9,
+                lineHeight: "14px",
+                fontWeight: 600,
+                background: `color-mix(in srgb, ${
+                  data.tag === "core" ? "var(--accent)" : accent
+                } 14%, transparent)`,
+                color: data.tag === "core" ? "var(--accent)" : accent,
+              }}
+            >
+              {data.tag}
+            </span>
+          ) : null}
+        </div>
+        <span className="mono truncate" style={{ color: accent, fontSize: 11 }}>
+          {data.label}
+        </span>
+      </div>
       <Handle type="target" position={Position.Left} style={{ opacity: 0 }} />
       <Handle type="source" position={Position.Right} style={{ opacity: 0 }} />
     </div>

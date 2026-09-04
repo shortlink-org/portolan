@@ -29,7 +29,7 @@ import "@xyflow/react/dist/style.css";
 import type { Catalog, Status } from "../catalog";
 import { DiagramSkeleton } from "../components/DiagramSkeleton";
 import { layoutWithElk } from "../graph/elk";
-import { statusColor, statusDash } from "../graph/theme";
+import { EDGE_W, statusColor, statusDash } from "../graph/theme";
 import type { PortolanNode } from "../graph/nodes";
 import { PATTERN_LABEL } from "../lib/context-map";
 import type { ContextRelation } from "../lib/context-map";
@@ -166,7 +166,7 @@ export function ContextMapGraph({
           type: "floating",
           style: {
             stroke: color,
-            strokeWidth: 1.4,
+            strokeWidth: EDGE_W,
             ...(dash ? { strokeDasharray: dash } : {}),
             // A pair joined by a shared type and nothing else gets a line
             // with no heads at all; it is a fact about both, not a direction.
@@ -249,7 +249,7 @@ export function ContextMapGraph({
         maxZoom={1.6}
         key={fitKey}
       >
-        <Background gap={22} size={1} color="var(--border)" />
+        <Background gap={20} size={2} />
       </ReactFlow>
     </div>
   );

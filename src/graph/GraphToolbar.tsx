@@ -27,7 +27,7 @@ export function GraphToolbar({
 }) {
   return (
     <Panel position="top-left" className="flex flex-wrap items-center gap-2">
-      <div className="seg bg-canvas" role="group" aria-label="Graph mode">
+      <div className="seg seg-float" role="group" aria-label="Graph mode">
         <button
           type="button"
           onClick={() => onMode("bipartite")}
@@ -50,7 +50,7 @@ export function GraphToolbar({
 
       <ViewportSeg />
 
-      <div className="seg bg-canvas">
+      <div className="seg seg-float">
         <button
           type="button"
           onClick={() => onFocusing(!focusing)}
@@ -80,7 +80,7 @@ export function ViewportSeg() {
   const flow = useReactFlow();
 
   return (
-    <div className="seg bg-canvas shadow-xs" role="group" aria-label="Viewport">
+    <div className="seg seg-float" role="group" aria-label="Viewport">
       <button
         type="button"
         onClick={() => void flow.fitView(FIT_OPTIONS)}

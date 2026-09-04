@@ -43,18 +43,19 @@ export const HANDLE = {
 } as const;
 
 /**
- * The box: border, tint, dimming, and the two anchors an edge falls back to
- * when the column it wants is not on show.
+ * The box: surface, dimming, and the two anchors an edge falls back to when
+ * the column it wants is not on show. A table is a card; a view, an outbox or
+ * a projection is the outline of one, because nothing in it is the source of
+ * truth and the dash is how that is said. A search hit takes the ring, so the
+ * eye lands on it; selection takes the same ring, drawn by the canvas.
  */
 export function CardFrame({
   matched,
-  selected,
   dimmed,
   dashed,
   children,
 }: {
   matched: boolean;
-  selected: boolean;
   dimmed: boolean;
   /** Nothing in here is the source of truth: a view, a projection, an outbox. */
   dashed: boolean;
@@ -62,18 +63,17 @@ export function CardFrame({
 }) {
   return (
     <div
-      className="mono flex h-full w-full flex-col overflow-hidden"
+      className={`mono flex h-full w-full flex-col overflow-hidden ${
+        dashed ? "" : "flow-card"
+      }`}
       style={{
-        background: "var(--surface)",
-        border: `1px ${dashed ? "dashed" : "solid"} ${
-          matched || selected ? "var(--accent)" : "var(--border)"
-        }`,
-        borderRadius: 2,
+        background: "var(--flow-card)",
+        borderRadius: "var(--radius-node)",
+        ...(dashed ? { border: "1px dashed var(--border-strong)" } : {}),
+        ...(matched ? { boxShadow: "var(--ring)" } : {}),
         opacity: dimmed ? 0.3 : 1,
-        outline: selected ? "1px solid var(--accent)" : undefined,
-        outlineOffset: 1,
         fontSize: 11,
-        transition: "opacity 120ms ease-out",
+        transition: "opacity 120ms ease-out, box-shadow var(--dur-micro) var(--ease-out)",
       }}
     >
       {children}
@@ -103,8 +103,8 @@ export function CardFrame({
 export function Badge({ children }: { children: ReactNode }) {
   return (
     <span
-      className="shrink-0 rounded-[2px] border px-1 text-muted"
-      style={{ borderColor: "var(--border)", fontSize: 9 }}
+      className="shrink-0 rounded-full px-1.5 text-muted"
+      style={{ background: "var(--surface-2)", fontSize: 9, lineHeight: "14px" }}
     >
       {children}
     </span>

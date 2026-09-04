@@ -4,7 +4,7 @@ import { MarkerType } from "@xyflow/react";
 import type { Status } from "../catalog";
 import { layoutWithElk } from "./elk";
 import type { PortolanNode, ServiceNodeData } from "./nodes";
-import { NODE_H, NODE_W, statusColor, statusDash } from "./theme";
+import { EDGE_W, NODE_H, NODE_W, statusColor, statusDash } from "./theme";
 
 export interface FlowSpec {
   nodes: {
@@ -84,7 +84,7 @@ export function useElkFlow(spec: FlowSpec): FlowState {
           animated: false,
           style: {
             stroke: color,
-            strokeWidth: 1.2,
+            strokeWidth: EDGE_W,
             ...(dash ? { strokeDasharray: dash } : {}),
           },
           labelStyle: {
@@ -96,12 +96,12 @@ export function useElkFlow(spec: FlowSpec): FlowState {
           // it. The label carries the canvas background and a hairline of its
           // own, which is the same pill the bundled edges wear.
           labelBgStyle: {
-            fill: "var(--bg)",
+            fill: "var(--flow-card)",
             stroke: "var(--border)",
             strokeWidth: 1,
           },
           labelBgPadding: [6, 3] as [number, number],
-          labelBgBorderRadius: 4,
+          labelBgBorderRadius: 8,
           labelShowBg: true,
           markerEnd: {
             type: MarkerType.ArrowClosed,

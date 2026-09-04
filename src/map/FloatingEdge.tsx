@@ -7,12 +7,12 @@
 // directly above loop all the way around it before coming back.
 //
 // So the endpoints are computed: the line runs between the two centres, and is
-// cut where it crosses each box. The label is drawn in React Flow's own label
-// layer, which sits ABOVE the nodes - on a short line between two neighbours
-// the label would otherwise be underneath one of them.
+// cut where it crosses each box. The label is the same pill the dependency
+// graph's bundled edges wear, and it says there why it lives above the nodes.
 
-import { BaseEdge, EdgeLabelRenderer, useInternalNode } from "@xyflow/react";
+import { BaseEdge, useInternalNode } from "@xyflow/react";
 import type { EdgeProps, InternalNode, Node } from "@xyflow/react";
+import { EdgeLabel } from "../graph/EdgeLabel";
 
 interface Point {
   x: number;
@@ -72,31 +72,12 @@ export function FloatingEdge({
         style={style}
       />
       {label ? (
-        <EdgeLabelRenderer>
-          <div
-            className="mono nodrag nopan"
-            style={{
-              position: "absolute",
-              transform: `translate(-50%, -50%) translate(${(a.x + b.x) / 2}px, ${(a.y + b.y) / 2}px)`,
-              background: "var(--bg)",
-              color: "var(--fg-muted)",
-              border: "1px solid var(--border)",
-              borderRadius: 4,
-              padding: "0 4px",
-              fontSize: 10,
-              lineHeight: "16px",
-              whiteSpace: "nowrap",
-              pointerEvents: "none",
-              opacity,
-              // Above the boxes. On a short line between two neighbours the
-              // label is wider than the gap, and half a word is worse than a
-              // word laid over a corner.
-              zIndex: 5,
-            }}
-          >
-            {label}
-          </div>
-        </EdgeLabelRenderer>
+        <EdgeLabel
+          at={{ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }}
+          opacity={opacity}
+        >
+          {label}
+        </EdgeLabel>
       ) : null}
     </>
   );

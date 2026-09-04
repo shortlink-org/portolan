@@ -161,7 +161,7 @@ export function FocusedEventGraph({
   return (
     <div
       style={{ height: canvasHeight }}
-      className="relative w-full overflow-hidden rounded-card border border-line bg-canvas shadow-xs"
+      className="relative w-full overflow-hidden rounded-card border border-line shadow-xs"
     >
       {ready ? null : <DiagramSkeleton />}
       <ReactFlow
@@ -188,7 +188,7 @@ export function FocusedEventGraph({
         maxZoom={1.5}
         key={ready ? `fit-${event.id}-${nodes.length}` : "pending"}
       >
-        <Background gap={18} size={1} color="var(--border)" />
+        <Background gap={20} size={2} />
         {fits ? null : (
           <Panel position="top-right">
             <ViewportSeg />

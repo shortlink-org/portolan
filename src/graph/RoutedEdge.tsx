@@ -9,9 +9,10 @@
 //
 // So the points come in through `data` and the path is drawn from them.
 
-import { BaseEdge, EdgeLabelRenderer } from "@xyflow/react";
+import { BaseEdge } from "@xyflow/react";
 import type { Edge, EdgeProps } from "@xyflow/react";
 import { useSelectionStore } from "../selection/store";
+import { EdgeLabel } from "./EdgeLabel";
 import { midpoint, roundedPath } from "./elk";
 import type { Point } from "./elk";
 
@@ -40,11 +41,13 @@ export function RoutedEdge({
   markerEnd,
   interactionWidth,
 }: EdgeProps<RoutedEdgeType>) {
+  const select = useSelectionStore((s) => s.select);
   const points = data?.points ?? [];
   if (points.length < 2) return null;
 
   const path = roundedPath(points);
   const opacity = Number(style?.opacity ?? 1);
+  const selectId = data?.selectId;
 
   return (
     <>
@@ -55,61 +58,22 @@ export function RoutedEdge({
         markerEnd={markerEnd}
         interactionWidth={interactionWidth ?? 14}
       />
+      {/* The count on a bundled edge. It is the only thing on the line a
+          reader can point at, so it takes the pointer even though the line
+          under it does too. */}
       {data?.chip ? (
-        <Chip at={data.chipAt ?? midpoint(points)} data={data} opacity={opacity} />
+        <EdgeLabel
+          at={data.chipAt ?? midpoint(points)}
+          opacity={opacity}
+          title={data.chipTitle}
+          onClick={() => {
+            if (selectId) select(selectId, "diagram");
+          }}
+        >
+          {data.chip}
+        </EdgeLabel>
       ) : null}
     </>
-  );
-}
-
-/**
- * The count on a bundled edge.
- *
- * It sits in the label layer, above the nodes, and it carries the canvas
- * background and a hairline of its own: a number printed straight onto a line
- * is a number with a line through it.
- */
-function Chip({
-  at,
-  data,
-  opacity,
-}: {
-  at: Point;
-  data: RoutedEdgeData;
-  opacity: number;
-}) {
-  const select = useSelectionStore((s) => s.select);
-  return (
-    <EdgeLabelRenderer>
-      <button
-        type="button"
-        onClick={() => {
-          if (data.selectId) select(data.selectId, "diagram");
-        }}
-        className="mono nodrag nopan tnum"
-        title={data.chipTitle}
-        style={{
-          position: "absolute",
-          transform: `translate(-50%, -50%) translate(${at.x}px, ${at.y}px)`,
-          background: "var(--bg)",
-          color: "var(--fg-muted)",
-          border: "1px solid var(--border)",
-          borderRadius: 4,
-          padding: "0 4px",
-          fontSize: 10,
-          lineHeight: "15px",
-          whiteSpace: "nowrap",
-          opacity,
-          zIndex: 5,
-          // The chip is the only thing on a bundled edge a reader can point
-          // at, so it takes the pointer even though the line under it does too.
-          pointerEvents: "all",
-          cursor: "pointer",
-        }}
-      >
-        {data.chip}
-      </button>
-    </EdgeLabelRenderer>
   );
 }
 

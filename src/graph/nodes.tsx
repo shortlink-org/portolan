@@ -3,7 +3,6 @@ import type { NodeProps, Node } from "@xyflow/react";
 import { Server } from "lucide-react";
 import { EventIcon } from "../components/ddd-icons";
 import { contextVar } from "../lib/context-color";
-import { NODE_RADIUS } from "./theme";
 
 export type ServiceNodeData = {
   label: string;
@@ -38,14 +37,15 @@ const ROLE: Record<ServiceNodeData["kind"], string> = {
  * so this one is not shared - it used to be, and the comment saying so
  * outlived the split.)
  *
- * Two lines rather than one. A single mono word in a box is a label, and a
- * reader has to work out from its position what it is a label FOR; the
- * eyebrow says so outright - publisher, event, consumer - and takes the
- * colour, which leaves the name below it plain and readable. The wash is the
- * same 10% one the context map uses, for the same reason: it is what makes a
- * box read as belonging to something from across the screen.
+ * A card: an icon in a tinted tile, and beside it two lines. The eyebrow says
+ * outright what the box is - publisher, event, consumer - so a reader does
+ * not have to work it out from position, and it takes the colour, which
+ * leaves the name under it plain and readable. The tile is where the card
+ * keeps the colour of the context that owns it; it used to be a bar down the
+ * left edge and a wash across the box, and on a canvas of cards a wash is
+ * the one thing that stops a card being a card.
  */
-export function PortolanNode({ data, selected }: NodeProps<PortolanNode>) {
+export function PortolanNode({ data }: NodeProps<PortolanNode>) {
   const accent = data.ghost
     ? "var(--status-unresolved)"
     : data.kind === "event"
@@ -62,34 +62,32 @@ export function PortolanNode({ data, selected }: NodeProps<PortolanNode>) {
 
   return (
     <div
-      className="flex h-full w-full flex-col justify-center gap-0.5 px-2.5"
-      style={{
-        background: `linear-gradient(to right, color-mix(in srgb, ${accent} 10%, var(--surface)), var(--surface))`,
-        border: `1px ${data.ghost ? "dashed" : "solid"} ${accent}`,
-        borderLeftWidth: 3,
-        borderRadius: NODE_RADIUS,
-        color: data.ghost ? "var(--status-unresolved)" : "var(--fg)",
-        outline: selected ? "1px solid var(--accent)" : undefined,
-        outlineOffset: 1,
-        boxShadow: "var(--shadow-xs)",
-      }}
+      className={`flex h-full w-full items-center gap-2 px-2.5 ${
+        data.ghost ? "flow-card-ghost" : "flow-card"
+      }`}
+      style={{ color: data.ghost ? "var(--status-unresolved)" : "var(--fg)" }}
       title={data.ghost ? `${data.label} — not in the catalog` : data.label}
     >
-      <span
-        className="mono flex items-center gap-1 truncate uppercase"
-        style={{
-          color: accent,
-          fontSize: 9,
-          lineHeight: 1.3,
-          letterSpacing: "0.06em",
-        }}
-      >
-        <Icon size={10} aria-hidden />
-        {eyebrow}
+      <span className="flow-tile" style={{ color: accent }}>
+        <Icon size={12} aria-hidden />
       </span>
-      <span className="mono truncate" style={{ fontSize: 12, lineHeight: 1.3 }}>
-        {data.label}
-      </span>
+      <div className="flex min-w-0 flex-1 flex-col justify-center gap-px">
+        <span
+          className="truncate uppercase"
+          style={{
+            color: accent,
+            fontSize: 9,
+            lineHeight: 1.3,
+            letterSpacing: "0.06em",
+            fontWeight: 600,
+          }}
+        >
+          {eyebrow}
+        </span>
+        <span className="mono truncate" style={{ fontSize: 12, lineHeight: 1.3 }}>
+          {data.label}
+        </span>
+      </div>
       <Handle type="target" position={Position.Left} style={{ opacity: 0 }} />
       <Handle type="source" position={Position.Right} style={{ opacity: 0 }} />
     </div>

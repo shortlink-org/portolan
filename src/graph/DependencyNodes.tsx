@@ -1,15 +1,15 @@
 // The dependency graph's two node kinds.
 //
-// A service is a box and an event is a pill, and the difference in silhouette
-// is doing most of the work: a reader scanning the canvas can tell which of
-// the two rows they are looking at without reading a word of either.
+// A service is a card and an event is a pill, and the difference in
+// silhouette is doing most of the work: a reader scanning the canvas can tell
+// which of the two rows they are looking at without reading a word of either.
 
 import { createContext, useContext } from "react";
 import { Handle, Position } from "@xyflow/react";
 import type { Node, NodeProps } from "@xyflow/react";
-import { Zap } from "lucide-react";
+import { Server, Zap } from "lucide-react";
 import { contextVar } from "../lib/context-color";
-import { EVENT_ICON_W, NODE_RADIUS } from "./theme";
+import { EVENT_ICON_W } from "./theme";
 
 /**
  * True when the viewport is zoomed out past the point where an 11px label is
@@ -48,36 +48,33 @@ export type DependencyNode = ServiceNodeType | EventNodeType;
 
 const HANDLE = { opacity: 0, width: 1, height: 1 } as const;
 
-export function ServiceNode({ data, selected }: NodeProps<ServiceNodeType>) {
+export function ServiceNode({ data }: NodeProps<ServiceNodeType>) {
   const accent = data.ghost ? "var(--status-unresolved)" : contextVar(data.context);
 
   return (
     <div
-      className="flex h-full w-full items-stretch overflow-hidden"
-      style={{
-        background: "var(--surface)",
-        border: `1px ${data.ghost ? "dashed" : "solid"} ${accent}`,
-        borderRadius: NODE_RADIUS,
-        color: data.ghost ? "var(--status-unresolved)" : "var(--fg)",
-        outline: selected ? "1px solid var(--accent)" : undefined,
-        outlineOffset: 1,
-      }}
+      className={`flex h-full w-full items-center gap-2 px-2.5 ${
+        data.ghost ? "flow-card-ghost" : "flow-card"
+      }`}
+      style={{ color: data.ghost ? "var(--status-unresolved)" : "var(--fg)" }}
       title={data.ghost ? `${data.label} — not in the catalog` : data.label}
     >
-      <span aria-hidden className="w-[3px] shrink-0" style={{ background: accent }} />
-      <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-2.5">
+      <span className="flow-tile" style={{ color: accent }}>
+        <Server size={12} aria-hidden />
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
         <span className="mono truncate" style={{ fontSize: 11, lineHeight: 1.3 }}>
           {data.label}
         </span>
         {data.ghost ? (
-          <span className="mono truncate" style={{ fontSize: 10, opacity: 0.8 }}>
+          <span className="truncate" style={{ fontSize: 10, opacity: 0.8 }}>
             not in catalog
           </span>
         ) : (
           /* Two numbers, one line: what it emits and what it listens to. The
              arrows carry the direction so the words do not have to shout it. */
           <span
-            className="mono truncate text-muted"
+            className="tnum truncate text-muted"
             style={{ fontSize: 10, lineHeight: 1.4 }}
           >
             ↑{data.publishes} publishes · ↓{data.consumes} consumes
@@ -90,6 +87,12 @@ export function ServiceNode({ data, selected }: NodeProps<ServiceNodeType>) {
   );
 }
 
+/**
+ * The pill. A tinted badge in the publisher's colour, the way a status badge
+ * is tinted: the tint is the context, the bolt is the kind, and neither needs
+ * a border to say so. Selection draws its own ring here because the pill is
+ * not the shape of its box - see the rule on `.react-flow__node.selected`.
+ */
 export function EventNode({ data, selected }: NodeProps<EventNodeType>) {
   const accent = contextVar(data.context);
   const tiny = useContext(TinyZoom);
@@ -100,14 +103,13 @@ export function EventNode({ data, selected }: NodeProps<EventNodeType>) {
         className="flex h-full items-center gap-1.5 overflow-hidden px-2"
         style={{
           width: tiny ? EVENT_ICON_W : "100%",
-          background: "var(--surface-2)",
-          border: `1px solid ${accent}`,
+          background: `color-mix(in srgb, ${accent} 10%, var(--flow-card))`,
           // A pill, not a box: the shape is the kind.
           borderRadius: 999,
-          outline: selected ? "1px solid var(--accent)" : undefined,
-          outlineOffset: 1,
+          boxShadow: selected ? "var(--ring)" : "var(--shadow-card)",
           justifyContent: tiny ? "center" : undefined,
           paddingInline: tiny ? 0 : undefined,
+          transition: "box-shadow var(--dur-micro) var(--ease-out)",
         }}
         title={
           data.self
@@ -136,11 +138,12 @@ export function EventNode({ data, selected }: NodeProps<EventNodeType>) {
                 for a reader to follow. */}
             {data.self ? (
               <span
-                className="mono ml-auto shrink-0 rounded-full border px-1"
+                className="ml-auto shrink-0 rounded-full px-1.5"
                 style={{
                   fontSize: 9,
-                  lineHeight: "13px",
-                  borderColor: accent,
+                  lineHeight: "14px",
+                  fontWeight: 600,
+                  background: `color-mix(in srgb, ${accent} 16%, transparent)`,
                   color: accent,
                 }}
               >

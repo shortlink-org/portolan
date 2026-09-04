@@ -21,7 +21,7 @@ function isDerived(role: string | undefined): boolean {
   return role === "outbox" || role === "projection";
 }
 
-export function TableNodeCard({ data, selected }: NodeProps<ErTableNode>) {
+export function TableNodeCard({ data }: NodeProps<ErTableNode>) {
   const { node, matched, dimmed, onToggle } = data;
   const table = node.table;
   if (!table) return null;
@@ -35,7 +35,6 @@ export function TableNodeCard({ data, selected }: NodeProps<ErTableNode>) {
   return (
     <CardFrame
       matched={matched}
-      selected={selected ?? false}
       dimmed={dimmed}
       dashed={isDerived(table.role) || node.ghost}
     >
@@ -51,9 +50,8 @@ export function TableNodeCard({ data, selected }: NodeProps<ErTableNode>) {
         className="flex w-full shrink-0 items-center gap-1.5 px-2 text-left"
         style={{
           height: HEADER_H,
-          background: `color-mix(in srgb, ${accent} 14%, var(--surface))`,
+          background: `color-mix(in srgb, ${accent} 9%, var(--flow-card))`,
           borderBottom: "1px solid var(--border)",
-          borderLeft: `2px solid ${accent}`,
         }}
       >
         <span className="truncate text-ink">{table.name}</span>

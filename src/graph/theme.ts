@@ -3,8 +3,21 @@
 
 import type { Status } from "../catalog";
 
-/** Radii used by LikeC4's own nodes; React Flow nodes match them. */
-export const NODE_RADIUS = 2;
+/**
+ * The corner of every card on a canvas. 8px is Stripe's card radius, and it
+ * is the one the CSS `--radius-node` token carries; this constant is the same
+ * number for the places that size a box in TypeScript before CSS sees it.
+ */
+export const NODE_RADIUS = 8;
+
+/**
+ * Edge weight. One width for a line at rest, one for a line the selection has
+ * lit, on every canvas - a reader who has learned that a thick line means
+ * "this one" on the dependency graph should not have to relearn it on the
+ * context map.
+ */
+export const EDGE_W = 1.25;
+export const EDGE_W_LIT = 2;
 
 /**
  * The focused event graph's boxes - the only nodes elk sizes from these
@@ -18,8 +31,11 @@ export const EVENT_W = 204;
 // The dependency graph's two node kinds.
 // ---------------------------------------------------------------------------
 
-/** A service box: context bar, name, and the two traffic counters under it. */
-export const SERVICE_W = 190;
+/**
+ * A service box: icon tile, name, and the two traffic counters under it. Wide
+ * enough for the counters to sit beside the tile without a truncated word.
+ */
+export const SERVICE_W = 212;
 export const SERVICE_H = 52;
 
 /** An event pill. 28px is the height of a chip, which is what it is. */

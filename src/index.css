@@ -63,6 +63,30 @@
   --shadow-md:
     0 8px 24px -6px rgb(16 24 32 / 0.18), 0 2px 6px -2px rgb(16 24 32 / 0.08);
 
+  /* A card on a diagram canvas. Three passes, the way Stripe draws a card: a
+     hairline ring that stands in for a border, a soft ambient pass, and a
+     crisp one-pixel contact line. The border is gone because a canvas of
+     forty outlined boxes is a wireframe; the ring reads as an edge without
+     being one. Lifted on hover, and the ring is what selection paints. */
+  --shadow-card:
+    0 0 0 1px rgb(60 66 87 / 0.08), 0 2px 5px rgb(60 66 87 / 0.08),
+    0 1px 1px rgb(0 0 0 / 0.06);
+  --shadow-card-hover:
+    0 0 0 1px rgb(60 66 87 / 0.1), 0 3px 9px rgb(60 66 87 / 0.12),
+    0 2px 2px rgb(0 0 0 / 0.06);
+  --ring:
+    0 0 0 1px var(--accent),
+    0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent);
+  --radius-node: 8px;
+
+  /* The canvas is a shade cooler than the page and the cards on it are the
+     page's white, so a card is lighter than what it sits on - that contrast,
+     not a border, is what makes it a card. The dots are the faintest grey
+     that still registers as a grid. */
+  --flow-pane: #f6f9fc;
+  --flow-card: #ffffff;
+  --flow-dot: #d9dfe6;
+
   --font-sans:
     ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
     sans-serif;
@@ -140,6 +164,20 @@
   --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.4), 0 0 0 1px rgb(255 255 255 / 0.04);
   --shadow-md:
     0 12px 32px -8px rgb(0 0 0 / 0.7), 0 2px 8px -2px rgb(0 0 0 / 0.5);
+
+  /* Same three passes, but the ring goes light and does the lifting: a dark
+     card on a dark canvas has no shadow to cast, only an edge to catch. */
+  --shadow-card:
+    0 0 0 1px rgb(255 255 255 / 0.07), 0 2px 5px rgb(0 0 0 / 0.4),
+    0 1px 1px rgb(0 0 0 / 0.5);
+  --shadow-card-hover:
+    0 0 0 1px rgb(255 255 255 / 0.12), 0 3px 9px rgb(0 0 0 / 0.5),
+    0 2px 2px rgb(0 0 0 / 0.5);
+
+  /* Inverted: the canvas is the page's black and the cards are a step up. */
+  --flow-pane: #0c0e11;
+  --flow-card: #161b21;
+  --flow-dot: #262c34;
 }
 
 @theme inline {
@@ -183,9 +221,11 @@
   --radius-control: 6px;
   --radius-card: 10px;
   --radius-modal: 14px;
+  --radius-node: var(--radius-node);
 
   --shadow-xs: var(--shadow-xs);
   --shadow-md: var(--shadow-md);
+  --shadow-card: var(--shadow-card);
 
   --spacing-gutter: var(--gutter);
   --spacing-card: var(--pad-card);
@@ -502,6 +542,43 @@
   }
   .seg-stack > .seg + .seg {
     border-top: 1px solid var(--border);
+  }
+  /* A segment floating over a canvas. It is a card, so it wears the card's
+     shadow in place of its border; the hairlines between members stay. */
+  .seg-float {
+    @apply shadow-card;
+    background: var(--flow-card);
+    border-color: transparent;
+  }
+
+  /* ---------------------------------------------------------------------
+     A node on a React Flow canvas. The class carries what every kind of node
+     shares - the card surface, the radius, the shadow and its lift - so a
+     component is left with only what makes it a service, an event or a
+     table. A ghost is not a card: it is a name someone wrote down, and it is
+     drawn as an outline of one.
+     --------------------------------------------------------------------- */
+  .flow-card {
+    background: var(--flow-card);
+    border-radius: var(--radius-node);
+    box-shadow: var(--shadow-card);
+    transition: box-shadow var(--dur-micro) var(--ease-out);
+  }
+  .flow-card:hover {
+    box-shadow: var(--shadow-card-hover);
+  }
+  .flow-card-ghost {
+    background: transparent;
+    border-radius: var(--radius-node);
+    border: 1px dashed currentColor;
+  }
+  /* The small tinted square an icon sits in, which is where a card keeps
+     the colour of the context that owns it. */
+  .flow-tile {
+    @apply flex shrink-0 items-center justify-center rounded-control;
+    width: 22px;
+    height: 22px;
+    background: color-mix(in srgb, currentColor 12%, transparent);
   }
 
   /* Non-navigable header for a group of leaves inside an aggregate. */
@@ -1278,4 +1355,59 @@ h3 {
    --------------------------------------------------------------------------- */
 .mermaid-figure :is(.label, .labelBkg, .nodeLabel, .edgeLabel) {
   text-transform: none;
+}
+
+/* ---------------------------------------------------------------------------
+   React Flow. It ships its chrome - pane, dot grid, minimap, rubber-band
+   selection - painted from --xy-* custom properties, so the canvases are
+   themed here, once, from the app's own tokens: the .dark block above swaps
+   the tokens and every --xy-* follows without a second declaration. Nodes and
+   edges are this app's components and carry their own paint; what this block
+   owns is the chrome, and the one thing React Flow will not do for a custom
+   node, which is draw its selected state.
+   --------------------------------------------------------------------------- */
+.react-flow {
+  --xy-background-color: var(--flow-pane);
+  --xy-background-pattern-color: var(--flow-dot);
+  --xy-node-border-radius: var(--radius-node);
+  --xy-edge-stroke: var(--border-strong);
+  --xy-edge-stroke-selected: var(--accent);
+  --xy-edge-label-background-color: var(--flow-card);
+  --xy-edge-label-color: var(--fg-muted);
+  --xy-minimap-background-color: var(--flow-card);
+  --xy-minimap-mask-background-color: color-mix(
+    in srgb,
+    var(--flow-pane) 72%,
+    transparent
+  );
+  --xy-minimap-mask-stroke-color: var(--border-strong);
+  --xy-selection-background-color: color-mix(
+    in srgb,
+    var(--accent) 8%,
+    transparent
+  );
+  --xy-selection-border: 1px solid
+    color-mix(in srgb, var(--accent) 60%, transparent);
+  font-family: var(--font-sans);
+}
+
+/* Selection is the ring, on the node's own box. The event pill is the one
+   node that is not the shape of its box - it is a capsule, and at fit zooms
+   it shrinks to an icon inside the box - so it draws the ring itself. */
+.react-flow__node.selected:not(.react-flow__node-event) {
+  border-radius: var(--radius-node);
+  box-shadow: var(--ring);
+}
+
+/* A routed edge turns corners; round joins keep them from growing spurs at
+   the thicker lit width. Caps stay flat because the dashed status markers
+   are measured for flat caps. */
+.react-flow__edge-path {
+  stroke-linejoin: round;
+}
+
+.react-flow__minimap {
+  border-radius: var(--radius-node);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
 }

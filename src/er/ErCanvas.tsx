@@ -30,6 +30,7 @@ import { useSelectionStore } from "../selection/store";
 import { TableNodeCard } from "./TableNode";
 import { ViewNodeCard } from "./ViewNode";
 import type { ErFlowNode } from "./RelationCard";
+import { EDGE_W, EDGE_W_LIT } from "../graph/theme";
 import { ErMarkers, MARKER_FLOW, MARKER_MANY, MARKER_ONE } from "./markers";
 import { layoutEr } from "./layout";
 import { lineageChain } from "./lineage";
@@ -289,12 +290,12 @@ function Canvas({
             fontSize: 9,
             fontFamily: "var(--font-mono)",
           },
-          labelBgStyle: { fill: "var(--bg)" },
+          labelBgStyle: { fill: "var(--flow-card)" },
           labelBgPadding: [3, 1] as [number, number],
           labelShowBg: true,
           style: {
             stroke: colour,
-            strokeWidth: lit ? 1.8 : 1,
+            strokeWidth: lit ? EDGE_W_LIT : EDGE_W,
             opacity: litEdges.size > 0 && !lit ? DIM : 1,
             // Dashed for lineage, solid for a key: one is a copy the database
             // performs, the other a constraint it enforces, and a reader
@@ -359,7 +360,7 @@ function Canvas({
           maxZoom={2}
           key={fitKey}
         >
-          <Background gap={22} size={1} color="var(--border)" />
+          <Background gap={20} size={2} />
         </ReactFlow>
       </div>
     </div>
