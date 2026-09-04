@@ -97,7 +97,7 @@ export function Toc({
     <nav
       /* Hidden below the two-column breakpoint, where the page has no right
          edge to spare at all. */
-      className="toc-dock sticky top-0 hidden h-fit shrink-0 self-start lg:block"
+      className="toc-dock sticky hidden h-fit shrink-0 self-start lg:block"
       aria-label={label}
     >
       <div className="toc-panel">

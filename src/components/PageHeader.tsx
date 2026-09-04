@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from "react";
 import type { ReactNode } from "react";
 import { ctxStyle } from "../lib/context-color";
 import { PinButton } from "../app/pins";
@@ -15,7 +16,16 @@ import { Ident } from "./Ident";
  * whatever else the page puts there. It is first because it is the only
  * control on the strip that is about the reader rather than about the entity,
  * and a reader looking for it should find it in the same place on every page.
+ *
+ * The strip is sticky inside the page's scroll box (`.page-header`), so it
+ * publishes its own height as `--page-header-h` on that box: the toc dock
+ * pins itself under it, and the box's scroll-padding keeps an anchor jump
+ * from landing behind it. The height is written rather than assumed because a
+ * service header carries a meta row and a tab list that an aggregate's does
+ * not, and both wrap at narrow widths.
  */
+const HEIGHT_VAR = "--page-header-h";
+
 export function PageHeader({
   kind,
   name,
@@ -34,8 +44,28 @@ export function PageHeader({
   right?: ReactNode;
   children?: ReactNode;
 }) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    const host = el?.parentElement;
+    if (!el || !host || typeof ResizeObserver === "undefined") return;
+    const publish = () =>
+      host.style.setProperty(HEIGHT_VAR, `${el.offsetHeight}px`);
+    publish();
+    const observer = new ResizeObserver(publish);
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      host.style.removeProperty(HEIGHT_VAR);
+    };
+  }, []);
+
   return (
-    <div className="hero border-b border-line px-gutter py-5">
+    <div
+      ref={ref}
+      className="page-header border-b border-line px-gutter py-5"
+    >
       <div aria-hidden className="hero-wash" style={ctxStyle(contextId)} />
       <div className="label">{kind}</div>
       <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">

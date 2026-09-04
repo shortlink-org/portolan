@@ -228,6 +228,9 @@
   position: absolute;
   inset: 0 0 auto 0;
   height: 120px;
+  /* Never past the header's own edge: the header pins over the page, and a
+     wash hanging out of it would ride over the content underneath. */
+  max-height: 100%;
   z-index: -1;
   pointer-events: none;
   background: linear-gradient(
@@ -512,6 +515,8 @@
      --------------------------------------------------------------------- */
   .toc-dock {
     width: 24px;
+    /* Pinned just under the page header, which is pinned too. */
+    top: var(--page-header-h, 0px);
   }
   /* In flow, so the dock has a height to be hovered at all - what overlays is
      the WIDTH. The panel grows to 216px while its left margin goes equally
@@ -571,6 +576,29 @@
     background: color-mix(in srgb, var(--bg) 80%, transparent);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
+  }
+
+  /* The strip an entity page opens with stays at the top of the page while
+     the page scrolls under it: the name of what is being read, its id and its
+     pin are the three things a reader reaches for from anywhere in a long
+     readme. It pins inside the page's own scroll box, not the shell - the top
+     bar above it is the shell's and never scrolled to begin with. Above the
+     table heads (z-20) and the toc panel, below the overlays (z-40). */
+  .page-header {
+    @apply sticky top-0 z-30;
+    /* Its own stacking context, so the wash can sit at z-index -1 behind the
+       text and nowhere else. Not `hero`: that utility pins the wash with
+       `position: relative`, which would win over the sticky here. */
+    isolation: isolate;
+    background: color-mix(in srgb, var(--bg) 80%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  /* The header measures itself into --page-header-h on the box it scrolls in,
+     and that box treats the covered strip as not-visible: an anchor scrolled
+     to lands under the header's bottom edge rather than behind it. */
+  :has(> .page-header) {
+    scroll-padding-top: var(--page-header-h, 0px);
   }
 
   /* The flow page's one bar. Wraps rather than scrolls: a control that has
