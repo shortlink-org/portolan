@@ -1,9 +1,9 @@
 // GENERATED — do not edit.
 model {
-  oms_db = store 'oms-db (postgres)'
-  bus = broker 'bus'
   customer = actor 'customer'
+  oms_db = store 'oms-db (postgres)'
   fraud_scoring = unknown 'fraud-scoring (unknown)'
+  bus = broker 'bus'
   psp_gateway = external 'psp-gateway (external)'
   agent = actor 'support agent'
   carrier_api = external 'carrier-api (external)'

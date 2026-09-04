@@ -2,7 +2,7 @@
 // each proved not to fire on the cases that look like it.
 
 import { describe, expect, it } from "vitest";
-import rawCatalog from "../../data/catalog.json";
+import { rawCatalog } from "../test-catalog";
 import { buildIndex, validateCatalog } from "../catalog";
 import type { Catalog } from "../catalog";
 import type { Problem } from "./derive";

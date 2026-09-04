@@ -37,63 +37,6 @@ views {
     include *, -> *, * ->
   }
 
-  dynamic view flow_order_accepted {
-    title 'Order accepted'
-    description 'The narrow slice one integration test pins end to end: an order commits with its outbox row, the relay publishes it, the ledger picks it up and the authorization comes back. Every hop here is asserted, which is why this is the only flow with no gaps in it.'
-    shop.oms -> oms_db 'insertOrderAndOutboxRow' {
-      color verified  line solid  head none
-      notes 'The order row and the OrderPlaced outbox row commit in one transaction, so the event cannot be published before the order exists or lost after it does. — internal/oms/adapter/postgres/order_repo.go:141'
-    }
-    shop.oms -> bus 'OrderPlaced' {
-      color verified  line solid  head onormal
-      notes 'Published by the outbox relay, not by the request handler. The test waits on the relay rather than on PlaceOrder returning. — order_accepted_test.go:58'
-    }
-    bus -> payments.ledger 'OrderPlaced' {
-      color verified  line solid  head onormal
-      notes 'Consumer group `ledger-orders`, at-least-once. The test replays the same message a second time and asserts nothing changes. — order_accepted_test.go:71'
-    }
-    payments.ledger -> payments.ledger 'openReconciliationRecord' {
-      color verified  line solid  head none
-      notes 'The event only opens the record the gateway webhook later matches against. Authorizing is the synchronous call below, because checkout needs the answer before it can confirm. — internal/ledger/app/intent.go:47'
-    }
-    shop.oms -> payments.ledger 'Authorize' {
-      color verified  line solid  head normal
-      notes 'Carries the order\'s idempotency key. The gateway behind the ledger is the sandbox stub here; the real hop out of the estate is drawn in the checkout flow. — order_accepted_test.go:88'
-    }
-    payments.ledger -> bus 'PaymentAuthorized' {
-      color verified  line solid  head onormal
-      notes 'order_accepted_test.go:103'
-    }
-    bus -> shop.oms 'PaymentAuthorized' {
-      color verified  line solid  head onormal
-      notes 'order_accepted_test.go:114'
-    }
-  }
-
-  dynamic view flow_order_accepted_cross {
-    title 'Order accepted — crossings only'
-    shop.oms -> bus 'OrderPlaced' {
-      color verified  line solid  head onormal
-      notes 'Published by the outbox relay, not by the request handler. The test waits on the relay rather than on PlaceOrder returning. — order_accepted_test.go:58'
-    }
-    bus -> payments.ledger 'OrderPlaced' {
-      color verified  line solid  head onormal
-      notes 'Consumer group `ledger-orders`, at-least-once. The test replays the same message a second time and asserts nothing changes. — order_accepted_test.go:71'
-    }
-    shop.oms -> payments.ledger 'Authorize' {
-      color verified  line solid  head normal
-      notes 'Carries the order\'s idempotency key. The gateway behind the ledger is the sandbox stub here; the real hop out of the estate is drawn in the checkout flow. — order_accepted_test.go:88'
-    }
-    payments.ledger -> bus 'PaymentAuthorized' {
-      color verified  line solid  head onormal
-      notes 'order_accepted_test.go:103'
-    }
-    bus -> shop.oms 'PaymentAuthorized' {
-      color verified  line solid  head onormal
-      notes 'order_accepted_test.go:114'
-    }
-  }
-
   dynamic view flow_checkout {
     title 'Checkout'
     description 'Basket to dispatch, as the e2e suite drives it: a priced basket, a risk call whose peer is not in the catalog, an outbox publish, an authorization at the gateway, a capture retried with backoff, and a shipment held until the money lands. Three branches and two hops are read from the code rather than observed.'
@@ -501,6 +444,299 @@ views {
     }
   }
 
+  dynamic view flow_gateway_webhook {
+    title 'Gateway webhook'
+    description 'The gateway\'s side of the story, arriving after the fact. One signed callback, four ways to read it: a replay to ignore, a capture to record, a charge with no local payment to adopt, and a failure to pass on. The adopt branch is the only repair for a checkout that timed out mid-authorization, and it is the one branch no test covers.'
+    psp_gateway -> payments.ledger 'POST /webhooks/psp/v2' {
+      color verified  line solid  head normal
+      notes 'HMAC-signed body. The gateway retries for three days with backoff until it gets a 2xx, so every branch below has to tolerate being run twice. — webhook_test.go:38'
+    }
+    payments.ledger -> payments.ledger 'verifySignatureAndParse' {
+      color verified  line solid  head none
+      notes 'A bad signature is answered 401 and never reaches the dedup table. The test drives a tampered body for this. — internal/ledger/adapter/psp/webhook.go:44'
+    }
+    alt {
+      when 'event id already applied' {
+        payments.ledger -> payments.ledger 'dropDuplicate' {
+          color verified  line solid  head none
+          notes 'Dedup table keyed by the gateway\'s event id, rows kept 30 days. A replay older than that would be applied again; nothing guards it. — webhook_test.go:71'
+        }
+      }
+      else 'charge.succeeded, matching a local authorization' {
+        payments.ledger -> payments.ledger 'markCaptured' {
+          color verified  line solid  head none
+          notes 'internal/ledger/app/webhook.go:96'
+        }
+        payments.ledger -> bus 'PaymentCaptured' {
+          color verified  line solid  head onormal
+          notes 'webhook_test.go:104'
+        }
+      }
+      else 'charge.succeeded, no local payment' {
+        payments.ledger -> shop.oms 'GetOrder' {
+          color verified  line solid  head normal
+          notes 'The order reference travels in the gateway\'s metadata. The ledger reads the order back to decide whether the charge belongs to this estate at all. — internal/ledger/app/webhook.go:132'
+        }
+        payments.ledger -> payments.ledger 'adoptOrphanCharge' {
+          color declared  line dashed  head none
+          notes 'Closes the gap left when the synchronous Authorize in checkout timed out after the gateway had already charged. Read from the code; the integration suite has no fixture for it, and it is the only path that keeps a customer from being charged for an order the estate never opened. — internal/ledger/app/webhook.go:151'
+        }
+        payments.ledger -> bus 'PaymentAuthorized' {
+          color declared  line dashed  head onormal
+          notes 'Published late and out of order — consumers see the authorization after the charge already settled. — internal/ledger/app/webhook.go:168'
+        }
+      }
+      else 'charge.failed' {
+        payments.ledger -> bus 'PaymentDeclined' {
+          color verified  line solid  head onormal
+          notes 'webhook_test.go:126'
+        }
+        bus -> shop.oms 'PaymentDeclined' {
+          color verified  line solid  head onormal
+          notes 'webhook_test.go:131'
+        }
+      }
+    }
+    payments.ledger -> psp_gateway 'ack 200' {
+      color verified  line solid  head normal
+      notes 'Acked only after the branch above has committed. Anything else and the gateway replays, which is what makes the dedup table load-bearing. — webhook_test.go:142'
+    }
+  }
+
+  dynamic view flow_gateway_webhook_cross {
+    title 'Gateway webhook — crossings only'
+    psp_gateway -> payments.ledger 'POST /webhooks/psp/v2' {
+      color verified  line solid  head normal
+      notes 'HMAC-signed body. The gateway retries for three days with backoff until it gets a 2xx, so every branch below has to tolerate being run twice. — webhook_test.go:38'
+    }
+    alt {
+      when 'charge.succeeded, matching a local authorization' {
+        payments.ledger -> bus 'PaymentCaptured' {
+          color verified  line solid  head onormal
+          notes 'webhook_test.go:104'
+        }
+      }
+      else 'charge.succeeded, no local payment' {
+        payments.ledger -> shop.oms 'GetOrder' {
+          color verified  line solid  head normal
+          notes 'The order reference travels in the gateway\'s metadata. The ledger reads the order back to decide whether the charge belongs to this estate at all. — internal/ledger/app/webhook.go:132'
+        }
+        payments.ledger -> bus 'PaymentAuthorized' {
+          color declared  line dashed  head onormal
+          notes 'Published late and out of order — consumers see the authorization after the charge already settled. — internal/ledger/app/webhook.go:168'
+        }
+      }
+      else 'charge.failed' {
+        payments.ledger -> bus 'PaymentDeclined' {
+          color verified  line solid  head onormal
+          notes 'webhook_test.go:126'
+        }
+        bus -> shop.oms 'PaymentDeclined' {
+          color verified  line solid  head onormal
+          notes 'webhook_test.go:131'
+        }
+      }
+    }
+    payments.ledger -> psp_gateway 'ack 200' {
+      color verified  line solid  head normal
+      notes 'Acked only after the branch above has committed. Anything else and the gateway replays, which is what makes the dedup table load-bearing. — webhook_test.go:142'
+    }
+  }
+
+  dynamic view flow_order_accepted {
+    title 'Order accepted'
+    description 'The narrow slice one integration test pins end to end: an order commits with its outbox row, the relay publishes it, the ledger picks it up and the authorization comes back. Every hop here is asserted, which is why this is the only flow with no gaps in it.'
+    shop.oms -> oms_db 'insertOrderAndOutboxRow' {
+      color verified  line solid  head none
+      notes 'The order row and the OrderPlaced outbox row commit in one transaction, so the event cannot be published before the order exists or lost after it does. — internal/oms/adapter/postgres/order_repo.go:141'
+    }
+    shop.oms -> bus 'OrderPlaced' {
+      color verified  line solid  head onormal
+      notes 'Published by the outbox relay, not by the request handler. The test waits on the relay rather than on PlaceOrder returning. — order_accepted_test.go:58'
+    }
+    bus -> payments.ledger 'OrderPlaced' {
+      color verified  line solid  head onormal
+      notes 'Consumer group `ledger-orders`, at-least-once. The test replays the same message a second time and asserts nothing changes. — order_accepted_test.go:71'
+    }
+    payments.ledger -> payments.ledger 'openReconciliationRecord' {
+      color verified  line solid  head none
+      notes 'The event only opens the record the gateway webhook later matches against. Authorizing is the synchronous call below, because checkout needs the answer before it can confirm. — internal/ledger/app/intent.go:47'
+    }
+    shop.oms -> payments.ledger 'Authorize' {
+      color verified  line solid  head normal
+      notes 'Carries the order\'s idempotency key. The gateway behind the ledger is the sandbox stub here; the real hop out of the estate is drawn in the checkout flow. — order_accepted_test.go:88'
+    }
+    payments.ledger -> bus 'PaymentAuthorized' {
+      color verified  line solid  head onormal
+      notes 'order_accepted_test.go:103'
+    }
+    bus -> shop.oms 'PaymentAuthorized' {
+      color verified  line solid  head onormal
+      notes 'order_accepted_test.go:114'
+    }
+  }
+
+  dynamic view flow_order_accepted_cross {
+    title 'Order accepted — crossings only'
+    shop.oms -> bus 'OrderPlaced' {
+      color verified  line solid  head onormal
+      notes 'Published by the outbox relay, not by the request handler. The test waits on the relay rather than on PlaceOrder returning. — order_accepted_test.go:58'
+    }
+    bus -> payments.ledger 'OrderPlaced' {
+      color verified  line solid  head onormal
+      notes 'Consumer group `ledger-orders`, at-least-once. The test replays the same message a second time and asserts nothing changes. — order_accepted_test.go:71'
+    }
+    shop.oms -> payments.ledger 'Authorize' {
+      color verified  line solid  head normal
+      notes 'Carries the order\'s idempotency key. The gateway behind the ledger is the sandbox stub here; the real hop out of the estate is drawn in the checkout flow. — order_accepted_test.go:88'
+    }
+    payments.ledger -> bus 'PaymentAuthorized' {
+      color verified  line solid  head onormal
+      notes 'order_accepted_test.go:103'
+    }
+    bus -> shop.oms 'PaymentAuthorized' {
+      color verified  line solid  head onormal
+      notes 'order_accepted_test.go:114'
+    }
+  }
+
+  dynamic view flow_order_cancelled {
+    title 'Order cancelled'
+    description 'A customer cancels before the parcel moves, and two compensations run side by side: the money is unwound at the gateway, and the stop is taken off the route. Whether the money is voided or refunded depends on how far payment got, and the delivery half is declared everywhere and observed nowhere.'
+    customer -> shop.oms 'CancelOrder' {
+      color verified  line solid  head normal
+      notes 'cancel_test.go:44'
+    }
+    shop.oms -> delivery.core 'GetShipment' {
+      color declared  line dashed  head normal
+      notes 'Cancelling is only allowed while the shipment is `held` or `planned`. The state comes from delivery, not from the order, so a stale read here is what lets a dispatched parcel be cancelled. — internal/oms/client/delivery.go:41'
+    }
+    alt {
+      when 'shipment not yet dispatched' {
+        shop.oms -> bus 'OrderCancelled' {
+          color verified  line solid  head onormal
+          notes 'cancel_test.go:61'
+        }
+        par 'compensations, which do not wait for each other' {
+          bus -> payments.ledger 'OrderCancelled' {
+            color verified  line solid  head onormal
+            notes 'cancel_test.go:70'
+          }
+          alt {
+            when 'authorization not yet captured' {
+              payments.ledger -> psp_gateway 'Charges.Void' {
+                color unresolved  line dotted  head normal
+                notes 'Voiding costs nothing and leaves no trace on the customer\'s statement, which is why the capture is held back until dispatch in the first place. — internal/ledger/adapter/psp/client.go:171'
+              }
+              payments.ledger -> payments.ledger 'releaseHold' {
+                color verified  line solid  head none
+                notes 'cancel_test.go:83'
+              }
+            }
+            else 'payment already captured' {
+              payments.ledger -> psp_gateway 'Charges.Refund' {
+                color unresolved  line dotted  head normal
+                notes 'internal/ledger/adapter/psp/client.go:138'
+              }
+              payments.ledger -> bus 'RefundIssued' {
+                color declared  line dashed  head onormal
+                notes 'The same event the support refund publishes. Nothing in the payload says which of the two happened, so a consumer cannot tell a cancelled order from a returned one. — internal/ledger/app/refund.go:88'
+              }
+            }
+          }
+          bus -> delivery.core 'OrderCancelled' {
+            color declared  line dashed  head onormal
+            notes 'The subscription is registered in the delivery repo, but no test covers it and no trace in the sampled window shows it firing. — internal/delivery/app/subscribe.go:62'
+          }
+          delivery.core -> delivery.core 'removeStopAndReplan' {
+            color declared  line dashed  head none
+            notes 'internal/delivery/app/route.go:112'
+          }
+          delivery.core -> bus 'RoutePlanned' {
+            color declared  line dashed  head onormal
+            notes 'The route is republished without the stop. Consumers see a second RoutePlanned for the same route and are expected to take the later one. — internal/delivery/app/route.go:94'
+          }
+        }
+        shop.oms -> customer 'cancellation confirmation' {
+          color declared  line dashed  head normal
+          notes 'internal/oms/notify/cancellation.go:19'
+        }
+      }
+      else 'shipment already dispatched' {
+        break 'ends the flow' {
+          shop.oms -> customer '409 Conflict' {
+            color verified  line solid  head normal
+            notes 'The edge refuses and points the customer at returns instead. What happens from there is the refund-requested flow, and none of it is observed. — cancel_test.go:118'
+          }
+        }
+      }
+    }
+  }
+
+  dynamic view flow_order_cancelled_cross {
+    title 'Order cancelled — crossings only'
+    customer -> shop.oms 'CancelOrder' {
+      color verified  line solid  head normal
+      notes 'cancel_test.go:44'
+    }
+    shop.oms -> delivery.core 'GetShipment' {
+      color declared  line dashed  head normal
+      notes 'Cancelling is only allowed while the shipment is `held` or `planned`. The state comes from delivery, not from the order, so a stale read here is what lets a dispatched parcel be cancelled. — internal/oms/client/delivery.go:41'
+    }
+    alt {
+      when 'shipment not yet dispatched' {
+        shop.oms -> bus 'OrderCancelled' {
+          color verified  line solid  head onormal
+          notes 'cancel_test.go:61'
+        }
+        par 'compensations, which do not wait for each other' {
+          bus -> payments.ledger 'OrderCancelled' {
+            color verified  line solid  head onormal
+            notes 'cancel_test.go:70'
+          }
+          alt {
+            when 'authorization not yet captured' {
+              payments.ledger -> psp_gateway 'Charges.Void' {
+                color unresolved  line dotted  head normal
+                notes 'Voiding costs nothing and leaves no trace on the customer\'s statement, which is why the capture is held back until dispatch in the first place. — internal/ledger/adapter/psp/client.go:171'
+              }
+            }
+            else 'payment already captured' {
+              payments.ledger -> psp_gateway 'Charges.Refund' {
+                color unresolved  line dotted  head normal
+                notes 'internal/ledger/adapter/psp/client.go:138'
+              }
+              payments.ledger -> bus 'RefundIssued' {
+                color declared  line dashed  head onormal
+                notes 'The same event the support refund publishes. Nothing in the payload says which of the two happened, so a consumer cannot tell a cancelled order from a returned one. — internal/ledger/app/refund.go:88'
+              }
+            }
+          }
+          bus -> delivery.core 'OrderCancelled' {
+            color declared  line dashed  head onormal
+            notes 'The subscription is registered in the delivery repo, but no test covers it and no trace in the sampled window shows it firing. — internal/delivery/app/subscribe.go:62'
+          }
+          delivery.core -> bus 'RoutePlanned' {
+            color declared  line dashed  head onormal
+            notes 'The route is republished without the stop. Consumers see a second RoutePlanned for the same route and are expected to take the later one. — internal/delivery/app/route.go:94'
+          }
+        }
+        shop.oms -> customer 'cancellation confirmation' {
+          color declared  line dashed  head normal
+          notes 'internal/oms/notify/cancellation.go:19'
+        }
+      }
+      else 'shipment already dispatched' {
+        break 'ends the flow' {
+          shop.oms -> customer '409 Conflict' {
+            color verified  line solid  head normal
+            notes 'The edge refuses and points the customer at returns instead. What happens from there is the refund-requested flow, and none of it is observed. — cancel_test.go:118'
+          }
+        }
+      }
+    }
+  }
+
   dynamic view flow_refund_requested {
     title 'Refund requested'
     description 'How a support-initiated refund is meant to travel: the window is read off the shipment, an undispatched parcel is recalled first, and the money is returned through the ledger. Written by hand from the design doc — not one step has been observed in a test or a trace, which is why every hop on this page is declared.'
@@ -715,242 +951,6 @@ views {
           bus -> analytics_sink 'ShipmentDelivered' {
             color unresolved  line dotted  head onormal
             notes 'Seen in traces only, under client id `analytics-sink-2`. No subscription registration exists in any indexed repository, so the owning team is unknown and nobody can be told before this topic changes shape. — trace 7be40d../span 31'
-          }
-        }
-      }
-    }
-  }
-
-  dynamic view flow_gateway_webhook {
-    title 'Gateway webhook'
-    description 'The gateway\'s side of the story, arriving after the fact. One signed callback, four ways to read it: a replay to ignore, a capture to record, a charge with no local payment to adopt, and a failure to pass on. The adopt branch is the only repair for a checkout that timed out mid-authorization, and it is the one branch no test covers.'
-    psp_gateway -> payments.ledger 'POST /webhooks/psp/v2' {
-      color verified  line solid  head normal
-      notes 'HMAC-signed body. The gateway retries for three days with backoff until it gets a 2xx, so every branch below has to tolerate being run twice. — webhook_test.go:38'
-    }
-    payments.ledger -> payments.ledger 'verifySignatureAndParse' {
-      color verified  line solid  head none
-      notes 'A bad signature is answered 401 and never reaches the dedup table. The test drives a tampered body for this. — internal/ledger/adapter/psp/webhook.go:44'
-    }
-    alt {
-      when 'event id already applied' {
-        payments.ledger -> payments.ledger 'dropDuplicate' {
-          color verified  line solid  head none
-          notes 'Dedup table keyed by the gateway\'s event id, rows kept 30 days. A replay older than that would be applied again; nothing guards it. — webhook_test.go:71'
-        }
-      }
-      else 'charge.succeeded, matching a local authorization' {
-        payments.ledger -> payments.ledger 'markCaptured' {
-          color verified  line solid  head none
-          notes 'internal/ledger/app/webhook.go:96'
-        }
-        payments.ledger -> bus 'PaymentCaptured' {
-          color verified  line solid  head onormal
-          notes 'webhook_test.go:104'
-        }
-      }
-      else 'charge.succeeded, no local payment' {
-        payments.ledger -> shop.oms 'GetOrder' {
-          color verified  line solid  head normal
-          notes 'The order reference travels in the gateway\'s metadata. The ledger reads the order back to decide whether the charge belongs to this estate at all. — internal/ledger/app/webhook.go:132'
-        }
-        payments.ledger -> payments.ledger 'adoptOrphanCharge' {
-          color declared  line dashed  head none
-          notes 'Closes the gap left when the synchronous Authorize in checkout timed out after the gateway had already charged. Read from the code; the integration suite has no fixture for it, and it is the only path that keeps a customer from being charged for an order the estate never opened. — internal/ledger/app/webhook.go:151'
-        }
-        payments.ledger -> bus 'PaymentAuthorized' {
-          color declared  line dashed  head onormal
-          notes 'Published late and out of order — consumers see the authorization after the charge already settled. — internal/ledger/app/webhook.go:168'
-        }
-      }
-      else 'charge.failed' {
-        payments.ledger -> bus 'PaymentDeclined' {
-          color verified  line solid  head onormal
-          notes 'webhook_test.go:126'
-        }
-        bus -> shop.oms 'PaymentDeclined' {
-          color verified  line solid  head onormal
-          notes 'webhook_test.go:131'
-        }
-      }
-    }
-    payments.ledger -> psp_gateway 'ack 200' {
-      color verified  line solid  head normal
-      notes 'Acked only after the branch above has committed. Anything else and the gateway replays, which is what makes the dedup table load-bearing. — webhook_test.go:142'
-    }
-  }
-
-  dynamic view flow_gateway_webhook_cross {
-    title 'Gateway webhook — crossings only'
-    psp_gateway -> payments.ledger 'POST /webhooks/psp/v2' {
-      color verified  line solid  head normal
-      notes 'HMAC-signed body. The gateway retries for three days with backoff until it gets a 2xx, so every branch below has to tolerate being run twice. — webhook_test.go:38'
-    }
-    alt {
-      when 'charge.succeeded, matching a local authorization' {
-        payments.ledger -> bus 'PaymentCaptured' {
-          color verified  line solid  head onormal
-          notes 'webhook_test.go:104'
-        }
-      }
-      else 'charge.succeeded, no local payment' {
-        payments.ledger -> shop.oms 'GetOrder' {
-          color verified  line solid  head normal
-          notes 'The order reference travels in the gateway\'s metadata. The ledger reads the order back to decide whether the charge belongs to this estate at all. — internal/ledger/app/webhook.go:132'
-        }
-        payments.ledger -> bus 'PaymentAuthorized' {
-          color declared  line dashed  head onormal
-          notes 'Published late and out of order — consumers see the authorization after the charge already settled. — internal/ledger/app/webhook.go:168'
-        }
-      }
-      else 'charge.failed' {
-        payments.ledger -> bus 'PaymentDeclined' {
-          color verified  line solid  head onormal
-          notes 'webhook_test.go:126'
-        }
-        bus -> shop.oms 'PaymentDeclined' {
-          color verified  line solid  head onormal
-          notes 'webhook_test.go:131'
-        }
-      }
-    }
-    payments.ledger -> psp_gateway 'ack 200' {
-      color verified  line solid  head normal
-      notes 'Acked only after the branch above has committed. Anything else and the gateway replays, which is what makes the dedup table load-bearing. — webhook_test.go:142'
-    }
-  }
-
-  dynamic view flow_order_cancelled {
-    title 'Order cancelled'
-    description 'A customer cancels before the parcel moves, and two compensations run side by side: the money is unwound at the gateway, and the stop is taken off the route. Whether the money is voided or refunded depends on how far payment got, and the delivery half is declared everywhere and observed nowhere.'
-    customer -> shop.oms 'CancelOrder' {
-      color verified  line solid  head normal
-      notes 'cancel_test.go:44'
-    }
-    shop.oms -> delivery.core 'GetShipment' {
-      color declared  line dashed  head normal
-      notes 'Cancelling is only allowed while the shipment is `held` or `planned`. The state comes from delivery, not from the order, so a stale read here is what lets a dispatched parcel be cancelled. — internal/oms/client/delivery.go:41'
-    }
-    alt {
-      when 'shipment not yet dispatched' {
-        shop.oms -> bus 'OrderCancelled' {
-          color verified  line solid  head onormal
-          notes 'cancel_test.go:61'
-        }
-        par 'compensations, which do not wait for each other' {
-          bus -> payments.ledger 'OrderCancelled' {
-            color verified  line solid  head onormal
-            notes 'cancel_test.go:70'
-          }
-          alt {
-            when 'authorization not yet captured' {
-              payments.ledger -> psp_gateway 'Charges.Void' {
-                color unresolved  line dotted  head normal
-                notes 'Voiding costs nothing and leaves no trace on the customer\'s statement, which is why the capture is held back until dispatch in the first place. — internal/ledger/adapter/psp/client.go:171'
-              }
-              payments.ledger -> payments.ledger 'releaseHold' {
-                color verified  line solid  head none
-                notes 'cancel_test.go:83'
-              }
-            }
-            else 'payment already captured' {
-              payments.ledger -> psp_gateway 'Charges.Refund' {
-                color unresolved  line dotted  head normal
-                notes 'internal/ledger/adapter/psp/client.go:138'
-              }
-              payments.ledger -> bus 'RefundIssued' {
-                color declared  line dashed  head onormal
-                notes 'The same event the support refund publishes. Nothing in the payload says which of the two happened, so a consumer cannot tell a cancelled order from a returned one. — internal/ledger/app/refund.go:88'
-              }
-            }
-          }
-          bus -> delivery.core 'OrderCancelled' {
-            color declared  line dashed  head onormal
-            notes 'The subscription is registered in the delivery repo, but no test covers it and no trace in the sampled window shows it firing. — internal/delivery/app/subscribe.go:62'
-          }
-          delivery.core -> delivery.core 'removeStopAndReplan' {
-            color declared  line dashed  head none
-            notes 'internal/delivery/app/route.go:112'
-          }
-          delivery.core -> bus 'RoutePlanned' {
-            color declared  line dashed  head onormal
-            notes 'The route is republished without the stop. Consumers see a second RoutePlanned for the same route and are expected to take the later one. — internal/delivery/app/route.go:94'
-          }
-        }
-        shop.oms -> customer 'cancellation confirmation' {
-          color declared  line dashed  head normal
-          notes 'internal/oms/notify/cancellation.go:19'
-        }
-      }
-      else 'shipment already dispatched' {
-        break 'ends the flow' {
-          shop.oms -> customer '409 Conflict' {
-            color verified  line solid  head normal
-            notes 'The edge refuses and points the customer at returns instead. What happens from there is the refund-requested flow, and none of it is observed. — cancel_test.go:118'
-          }
-        }
-      }
-    }
-  }
-
-  dynamic view flow_order_cancelled_cross {
-    title 'Order cancelled — crossings only'
-    customer -> shop.oms 'CancelOrder' {
-      color verified  line solid  head normal
-      notes 'cancel_test.go:44'
-    }
-    shop.oms -> delivery.core 'GetShipment' {
-      color declared  line dashed  head normal
-      notes 'Cancelling is only allowed while the shipment is `held` or `planned`. The state comes from delivery, not from the order, so a stale read here is what lets a dispatched parcel be cancelled. — internal/oms/client/delivery.go:41'
-    }
-    alt {
-      when 'shipment not yet dispatched' {
-        shop.oms -> bus 'OrderCancelled' {
-          color verified  line solid  head onormal
-          notes 'cancel_test.go:61'
-        }
-        par 'compensations, which do not wait for each other' {
-          bus -> payments.ledger 'OrderCancelled' {
-            color verified  line solid  head onormal
-            notes 'cancel_test.go:70'
-          }
-          alt {
-            when 'authorization not yet captured' {
-              payments.ledger -> psp_gateway 'Charges.Void' {
-                color unresolved  line dotted  head normal
-                notes 'Voiding costs nothing and leaves no trace on the customer\'s statement, which is why the capture is held back until dispatch in the first place. — internal/ledger/adapter/psp/client.go:171'
-              }
-            }
-            else 'payment already captured' {
-              payments.ledger -> psp_gateway 'Charges.Refund' {
-                color unresolved  line dotted  head normal
-                notes 'internal/ledger/adapter/psp/client.go:138'
-              }
-              payments.ledger -> bus 'RefundIssued' {
-                color declared  line dashed  head onormal
-                notes 'The same event the support refund publishes. Nothing in the payload says which of the two happened, so a consumer cannot tell a cancelled order from a returned one. — internal/ledger/app/refund.go:88'
-              }
-            }
-          }
-          bus -> delivery.core 'OrderCancelled' {
-            color declared  line dashed  head onormal
-            notes 'The subscription is registered in the delivery repo, but no test covers it and no trace in the sampled window shows it firing. — internal/delivery/app/subscribe.go:62'
-          }
-          delivery.core -> bus 'RoutePlanned' {
-            color declared  line dashed  head onormal
-            notes 'The route is republished without the stop. Consumers see a second RoutePlanned for the same route and are expected to take the later one. — internal/delivery/app/route.go:94'
-          }
-        }
-        shop.oms -> customer 'cancellation confirmation' {
-          color declared  line dashed  head normal
-          notes 'internal/oms/notify/cancellation.go:19'
-        }
-      }
-      else 'shipment already dispatched' {
-        break 'ends the flow' {
-          shop.oms -> customer '409 Conflict' {
-            color verified  line solid  head normal
-            notes 'The edge refuses and points the customer at returns instead. What happens from there is the refund-requested flow, and none of it is observed. — cancel_test.go:118'
           }
         }
       }

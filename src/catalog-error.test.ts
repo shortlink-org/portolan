@@ -2,7 +2,7 @@
 // fail with a message a reader can act on AND a path that names where to look.
 
 import { describe, expect, it } from "vitest";
-import rawCatalog from "../data/catalog.json";
+import { rawCatalog } from "./test-catalog";
 import { CatalogError, validateCatalog } from "./catalog";
 import type { Catalog } from "./catalog";
 

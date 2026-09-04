@@ -5,7 +5,7 @@
 // all, so the negative cases below carry as much weight as the positive ones.
 
 import { describe, expect, it } from "vitest";
-import rawCatalog from "../../data/catalog.json";
+import { rawCatalog } from "../test-catalog";
 import { buildIndex, validateCatalog } from "../catalog";
 import type { Catalog } from "../catalog";
 import {

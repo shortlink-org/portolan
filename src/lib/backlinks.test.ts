@@ -16,13 +16,13 @@ describe("stepsInto", () => {
   it("numbers steps by their place in the whole flow, frames included", () => {
     const steps = stepsInto(catalog, new Set(["shop.oms.order.OrderPlaced"]));
     expect(steps.map((s) => `${s.flow.slug}#${s.stepId}`)).toEqual([
-      "order-accepted#a2",
-      "order-accepted#a3",
       "checkout#s12",
       "checkout#s14",
       "checkout#s15",
+      "order-accepted#a2",
+      "order-accepted#a3",
     ]);
-    expect(steps[2]?.number).toBe(12);
+    expect(steps[0]?.number).toBe(12);
   });
 
   it("takes several events at once and still comes out in flow order", () => {
@@ -63,11 +63,11 @@ describe("an event", () => {
 
   it("points at the step of a flow, not the top of it", () => {
     expect(of(target, "flow").map((l) => `${l.id}#${l.at} ${l.via}`)).toEqual([
-      "order-accepted#a2 step 2",
-      "order-accepted#a3 step 3",
       "checkout#s12 step 12",
       "checkout#s14 step 14",
       "checkout#s15 step 15",
+      "order-accepted#a2 step 2",
+      "order-accepted#a3 step 3",
     ]);
   });
 

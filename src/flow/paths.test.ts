@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import raw from "../../data/catalog.json";
+import { rawCatalog as raw } from "../test-catalog";
 import type { Alt, Catalog, Flow, FlowNode } from "../catalog";
 import { stepFrames, walkSteps } from "../catalog";
 import { flowPaths } from "./paths";

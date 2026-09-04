@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import raw from "../data/catalog.json";
+import { rawCatalog as raw } from "./test-catalog";
 import {
   CatalogError,
   allAggregates,
@@ -497,19 +497,21 @@ describe("sample data shape", () => {
 
   it("gives every flow an owner, and covers both ends of step status", () => {
     const flows = catalog.flows;
+    // In the order their files sort, which is the order the extract step
+    // reads data/flows/*.flow.md in.
     expect(flows.map((f) => f.slug)).toEqual([
-      "order-accepted",
       "checkout",
+      "gateway-webhook",
+      "order-accepted",
+      "order-cancelled",
       "refund-requested",
       "shipment-tracking",
-      "gateway-webhook",
-      "order-cancelled",
     ]);
     // Nothing in the tree has to guess where a flow belongs.
     for (const flow of flows) expect(flow.owner, flow.slug).toBeTruthy();
 
-    const a = flows[0];
-    const c = flows[2];
+    const a = flows.find((f) => f.slug === "order-accepted");
+    const c = flows.find((f) => f.slug === "refund-requested");
     if (!a || !c) throw new Error("missing flows");
     // One flow whose every hop lands on something the catalog has, and one
     // with a hop that does not: both ends of the range are in the fixture.
@@ -565,8 +567,8 @@ describe("sample data shape", () => {
   it("indexes flows by event", () => {
     const index = buildIndex(catalog);
     expect(index.flowsByEvent.get("shop.oms.order.OrderPlaced")).toEqual([
-      "order-accepted",
       "checkout",
+      "order-accepted",
     ]);
     expect(index.rpcProviderByMethod.get("shop.v1.Pricing/GetQuote")?.id).toBe(
       "shop.pricing",

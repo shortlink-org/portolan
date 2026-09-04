@@ -1,7 +1,7 @@
 // Walking the lineage graph: both directions, and no walk that never ends.
 
 import { describe, expect, it } from "vitest";
-import rawCatalog from "../../data/catalog.json";
+import { rawCatalog } from "../test-catalog";
 import { buildIndex, validateCatalog } from "../catalog";
 import type { Catalog } from "../catalog";
 import {

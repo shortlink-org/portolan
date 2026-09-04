@@ -8,7 +8,7 @@
 // does NOT enforce: whether an outbox has a payload.
 
 import { describe, expect, it } from "vitest";
-import rawCatalog from "../data/catalog.json";
+import { rawCatalog } from "./test-catalog";
 import {
   CatalogError,
   buildIndex,

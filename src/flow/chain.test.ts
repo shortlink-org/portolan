@@ -360,8 +360,13 @@ describe("eventChain: the real catalog", () => {
     const ledger = chain.nodes.find((x) => x.kind === "consumer" && x.service === "payments.ledger");
     const receipt = ledger?.children.find((r) => r.kind === "receipt" && r.flow === "order-accepted");
     expect(receipt?.kind === "receipt" && receipt.number).toBe(3);
-    const authorized = receipt?.children.find((e) => e.kind === "event" && e.name === "PaymentAuthorized");
-    expect(authorized?.children.map((x) => (x.kind === "consumer" ? x.service : null))).toContain(
+    // PaymentAuthorized is expanded once, under whichever receipt the walk
+    // reaches first - the other receipts say "seen" - so the consumers are
+    // looked for wherever it was expanded rather than under order-accepted.
+    const expanded = (ledger?.children ?? [])
+      .flatMap((r) => (r.kind === "receipt" ? r.children : []))
+      .find((e) => e.kind === "event" && e.name === "PaymentAuthorized" && e.children.length > 0);
+    expect(expanded?.children.map((x) => (x.kind === "consumer" ? x.service : null))).toContain(
       "shop.oms",
     );
     expect(chain.truncated).toBe(false);

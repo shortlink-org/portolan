@@ -1,9 +1,10 @@
 # Shipment tracking
 
-*Generated from the portolan catalog · commit `2 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.shipment-tracking`
 - **Owner:** [delivery](../delivery/README.md)
+- **Source:** `data/flows/shipment-tracking.flow.md`
 
 Reconstructed from production traces over a 24 hour window: the tracking page, the carrier's scan webhook, and what each scan code sets off. Two things only the traces know about — a consumer no repository accounts for, and an exception path whose reader emits no spans at all.
 

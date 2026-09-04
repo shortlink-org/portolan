@@ -75,6 +75,78 @@ Three obligations, and they are the whole of it:
 }
 ```
 
+## Flows written by hand
+
+Some flows will always be written by people: the design doc for something not
+built yet, the reconstruction after an incident, the path no test pins. The
+catalog's JSON is the wrong place to write one - a tree of nodes, a unique id
+per step, every lane declared twice - so `extract-flows` reads a text form
+that reads like the sequence diagram it becomes: one file per flow, one line
+per hop, frames closed by `end`. The demo estate's flows live in `data/flows`
+and are read by the step declared for it in `portolan.json`.
+
+```markdown
+# Order accepted
+owner: shop
+source: services/oms/test/integration/order_accepted_test.go
+
+The narrow slice one integration test pins end to end.
+
+## Participants
+- oms-db: store in shop "oms-db (postgres)"
+- psp-gateway: external "psp-gateway (external)"
+
+## Steps
+shop.oms -> oms-db: insertOrderAndOutboxRow [verified] @internal/oms/adapter/postgres/order_repo.go:141 #a1
+  > The order row and the outbox row commit in one transaction.
+shop.oms -> bus: event shop.oms.order.OrderPlaced [verified]
+shop.oms -> shop.pricing: rpc shop.v1.Pricing/GetQuote as "GetQuote (250 ms)"
+
+alt score below 40 #alt-risk
+  bus -> payments.ledger: event shop.oms.order.OrderPlaced
+else score at or above 40
+  shop.oms -> bus: event shop.oms.order.OrderCancelled
+  stop
+else
+end
+
+par OrderPlaced fan-out
+  bus -> payments.ledger: event shop.oms.order.OrderPlaced
+and
+  bus -> delivery.core: event shop.oms.order.OrderPlaced
+end
+
+loop outbox relay, every 200 ms until the batch is empty
+  shop.oms -> oms-db: SELECT ... FOR UPDATE SKIP LOCKED
+end
+```
+
+The head is the name, `owner:` (the context the flow belongs to), an optional
+`source:` (where it was read from; the file itself when left out) and an
+optional `slug:` (the file's name when left out), then the summary. A hop is
+`from -> to: [call|rpc|event] label-or-ref` - `call` when no kind is written -
+followed in any order by `as "label"`, `[status]`, `@where` and `#id`. An
+event names its ref, `shop.oms.order.OrderPlaced`; an rpc names its call id,
+`shop.v1.Pricing/GetQuote`, or, for a call no interface declares - a webhook
+arriving on a route - just a label. The label of an event or rpc is the last
+segment of its ref unless `as` says otherwise; the status is `declared`
+unless written; `@` is a file and line, or wherever the hop was seen. A note is
+the `>` lines under the hop. Ids are numbered unless given, and giving them
+is what keeps deep links to a step stable across edits.
+
+`alt <when> … else <when> … end` is a choice; `else` alone is "otherwise", a
+branch with nothing in it is allowed, and `stop` as the last line of a branch
+says the flow ends there rather than rejoining. `par [title] … and … end`
+runs its branches side by side; `loop <until> … end` repeats. Frames nest.
+
+Services are known by their `context.service` id, `bus` and `client` by name;
+any other lane is declared under Participants, in the order the lanes should
+be drawn, as `- <id>: <kind> [in <context>] ["label"]`. Lines starting with
+`//` are comments. A mistake fails the run with its file and line, the way a
+compiler would: a flow silently left out is the kind of missing nobody
+notices. A ref that resolves to nothing is caught later, by the validator,
+because only the merged catalog can say.
+
 ## Verifiers: the third phase
 
 An extractor reads source and runs before there is a catalog; a generator

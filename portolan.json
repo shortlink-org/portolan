@@ -35,9 +35,23 @@
       "process": {
         "cmd": "go run ./plugins/verify-otel"
       }
+    },
+    {
+      "name": "flows",
+      "process": {
+        "cmd": "go run ./plugins/extract-flows"
+      }
     }
   ],
   "extract": [
+    {
+      "plugin": "flows",
+      "in": "data/flows",
+      "out": "data",
+      "options": {
+        "out": "flows.json"
+      }
+    },
     {
       "plugin": "go-domain",
       "in": "examples/auth",

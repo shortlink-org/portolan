@@ -1,7 +1,7 @@
 // What the canvas decides before it draws anything.
 
 import { describe, expect, it } from "vitest";
-import rawCatalog from "../../data/catalog.json";
+import { rawCatalog } from "../test-catalog";
 import { buildIndex, validateCatalog } from "../catalog";
 import type { Catalog, Store, Table, View } from "../catalog";
 import { pathologicalCatalog } from "../lib/scenarios";

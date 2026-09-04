@@ -45,7 +45,8 @@
             "enum": [
               "go-domain",
               "openapi",
-              "sql"
+              "sql",
+              "flows"
             ],
             "description": "A plugin declared above, one that belongs in this phase."
           },
@@ -116,6 +117,25 @@
               "properties": {
                 "options": {
                   "$ref": "#/$defs/options.sql"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "plugin"
+              ],
+              "properties": {
+                "plugin": {
+                  "const": "flows"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "options": {
+                  "$ref": "#/$defs/options.flows"
                 }
               }
             }
@@ -519,6 +539,28 @@
         "out": {
           "type": "string",
           "description": "Name of the fragment file, inside the step's output directory."
+        }
+      }
+    },
+    "options.flows": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The flow files to read, as globs relative to the input root. Left out, every *.flow.md directly under the root.",
+          "examples": [
+            [
+              "*.flow.md"
+            ]
+          ]
+        },
+        "out": {
+          "type": "string",
+          "description": "Name of the fragment file, inside the step's output directory. Left out, flows.json."
         }
       }
     }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import raw from "../../data/catalog.json";
+import { rawCatalog as raw } from "../test-catalog";
 import type { Catalog, Flow } from "../catalog";
 import { stepFrames, walkSteps } from "../catalog";
 import { hiddenStepIds } from "./cross-context";
