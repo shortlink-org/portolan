@@ -66,6 +66,25 @@ describe("a lifecycle", () => {
     for (const e of edges) expect(e.path.startsWith("M ")).toBe(true);
   });
 
+  it("keeps two moves between one pair apart, each with its own line and label", () => {
+    const lockout: Lifecycle = {
+      states: ["open", "locked"],
+      transitions: [
+        { from: "open", to: "locked", on: "Fail", emits: "e.AccountLocked" },
+        { from: "locked", to: "open", on: "Fail" },
+        { from: "locked", to: "open", on: "Succeed" },
+      ],
+    };
+    const { edges, height } = layoutLifecycle(lockout);
+    const [lock, lapse, clear] = edges as [typeof edges[0], typeof edges[0], typeof edges[0]];
+    expect(lapse.back && clear.back).toBe(true);
+    expect(lapse.path).not.toBe(clear.path);
+    expect(clear.labelY).toBeGreaterThan(lapse.labelY);
+    expect(lock.back).toBe(false);
+    // The deeper of the two is what the diagram makes room for.
+    expect(height).toBeGreaterThan(layoutLifecycle({ ...lockout, transitions: lockout.transitions.slice(0, 2) }).height);
+  });
+
   it("carries what the transition said through to the edge", () => {
     const checkout = layoutLifecycle(fan).edges[0]!;
     expect(checkout.on).toBe("checkout");

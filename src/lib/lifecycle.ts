@@ -114,12 +114,18 @@ export function layoutLifecycle(lifecycle: Lifecycle, m: Metrics = METRICS): Lif
     at.set(state, box);
   }
 
-  let dips = false;
+  // Two moves between the same pair - a lock lapsing on a wrong password and
+  // on a right one - are two edges, and each needs its own line and label:
+  // the second dips deeper, or sits a step higher, than the first.
+  const seen = new Map<string, number>();
+  let deepest = 0;
   const edges: LifecycleEdge[] = lifecycle.transitions.map((t) => {
     const a = at.get(t.from)!;
     const z = at.get(t.to)!;
+    const pair = `${t.from}→${t.to}`;
+    const k = seen.get(pair) ?? 0;
+    seen.set(pair, k + 1);
     const back = z.column <= a.column;
-    if (back) dips = true;
     if (!back) {
       const x1 = a.x + m.boxWidth;
       const y1 = a.y + m.boxHeight / 2;
@@ -131,7 +137,7 @@ export function layoutLifecycle(lifecycle: Lifecycle, m: Metrics = METRICS): Lif
         back,
         path: `M ${x1} ${y1} C ${x1 + bend} ${y1}, ${x2 - bend} ${y2}, ${x2} ${y2}`,
         labelX: (x1 + x2) / 2,
-        labelY: (y1 + y2) / 2 - LIFT,
+        labelY: (y1 + y2) / 2 - LIFT * (k + 1),
       };
     }
     // Underneath, from the bottom of one box to the bottom of the other.
@@ -139,7 +145,8 @@ export function layoutLifecycle(lifecycle: Lifecycle, m: Metrics = METRICS): Lif
     const x2 = z.x + m.boxWidth / 2;
     const y1 = a.y + m.boxHeight;
     const y2 = z.y + m.boxHeight;
-    const low = m.pad + rowsHeight + DIP;
+    const low = m.pad + rowsHeight + DIP * (k + 1);
+    deepest = Math.max(deepest, DIP * (k + 1));
     return {
       ...t,
       back,
@@ -151,7 +158,7 @@ export function layoutLifecycle(lifecycle: Lifecycle, m: Metrics = METRICS): Lif
 
   return {
     width: m.pad * 2 + columnCount * m.boxWidth + Math.max(0, columnCount - 1) * m.gapX,
-    height: m.pad * 2 + rowsHeight + (dips ? DIP : 0),
+    height: m.pad * 2 + rowsHeight + deepest,
     boxes,
     edges,
   };
