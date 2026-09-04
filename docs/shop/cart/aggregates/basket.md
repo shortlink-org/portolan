@@ -1,6 +1,6 @@
 # Basket
 
-*Generated from the portolan catalog · commit `3 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `4 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.cart.basket`
 - **Service:** [Shopping Cart](../README.md)
@@ -93,6 +93,26 @@ An amount in the minor unit of the currency: an integer, never a float.
 | --- | --- |
 | `amountMinor` | `number` |
 | `currency` | `Currency` |
+
+## Lifecycle
+
+```mermaid
+stateDiagram-v2
+    state "checked-out" as checked_out
+    [*] --> open
+    open --> checked_out: checkout · BasketCheckedOut
+    open --> abandoned: abandon · BasketAbandoned
+    open --> merged: mergeInto · BasketMerged
+    checked_out --> [*]
+    abandoned --> [*]
+    merged --> [*]
+```
+
+| From | To | On | Emits | Source |
+| --- | --- | --- | --- | --- |
+| `open` | `checked-out` | `checkout` | `BasketCheckedOut` | `examples/shop/cart/src/domain/basket/basket.ts:92` |
+| `open` | `abandoned` | `abandon` | `BasketAbandoned` | `examples/shop/cart/src/domain/basket/basket.ts:100` |
+| `open` | `merged` | `mergeInto` | `BasketMerged` | `examples/shop/cart/src/domain/basket/basket.ts:111` |
 
 ## Operations
 

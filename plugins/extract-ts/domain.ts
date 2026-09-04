@@ -5,6 +5,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, join } from "node:path";
 import type { Aggregate, Block, Event, Field as CatalogField } from "../../src/catalog.ts";
 import { aggregateID, blockID, eventID, pascal, slug, title } from "./ids.ts";
+import { readLifecycle } from "./lifecycle.ts";
 import { readSource, type ClassInfo, type Source } from "./source.ts";
 
 export interface Diagnostics {
@@ -47,6 +48,7 @@ function readAggregate(dir: string, name: string, svcID: string, rel: (abs: stri
   const own = new Set<string>();
   const entities: Block[] = [];
   let root: ClassInfo | undefined;
+  let rootFile = "";
   let rootDoc = "";
 
   for (const file of tsFiles(dir)) {
@@ -57,6 +59,7 @@ function readAggregate(dir: string, name: string, svcID: string, rel: (abs: stri
       own.add(c.name);
       if (c.name === rootName) {
         root = c;
+        rootFile = file;
         rootDoc = c.doc;
       }
       entities.push(block(id, c));
@@ -99,6 +102,7 @@ function readAggregate(dir: string, name: string, svcID: string, rel: (abs: stri
 
   const readmePath = join(dir, "README.md");
   const readme = existsSync(readmePath) ? readFileSync(readmePath, "utf8").trim() : rootDoc;
+  const lifecycle = readLifecycle(dir, root, rootFile, eventIds, id, rel, b);
 
   return {
     aggregate: {
@@ -111,6 +115,7 @@ function readAggregate(dir: string, name: string, svcID: string, rel: (abs: stri
       valueObjects,
       operations: [],
       events,
+      ...(lifecycle ? { lifecycle } : {}),
     },
     dir,
     events: eventIds,

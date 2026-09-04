@@ -26,6 +26,7 @@ src/
     rules/*.ts            specifications; skipped, they are not shapes
     events/*.ts           one class per event, `readonly name = "<service>.<Name>"`
     port.ts               interfaces a use case holds: repositories, publishers
+    status.ts             optional: `export const TRANSITIONS = { open: ["checked-out"], … }`, the root's lifecycle
     README.md             the aggregate's page, or the doc comment above the root class
   application/<aggregate>/usecases/<name>/
     usecase.ts            `export class UseCase` with a `handle(...)` method
@@ -86,6 +87,17 @@ class. What it is decides what a call on it becomes:
 | an interface another use case declares, imported from its `usecase.ts` | whatever that use case's binding says: the port is looked up under the use case that declares it |
 | the generated client itself | an `rpc` to the peer |
 | a function type, `() => Date` | nothing: a clock is a port with nobody at the other end |
+
+**Lifecycle.** An aggregate whose directory exports a `TRANSITIONS` table -
+an object literal, each state to the states it may become - gets a
+`lifecycle`: the states in the table's order, the first being where a new
+root starts, and one move per edge. The method of the root that assigns
+`this.status` is the mover; every public method that calls it with a literal
+(`this.moveTo("checked-out", now)`) makes the edges into that state, and
+`emits` is the event its return type names. A status assigned anywhere else,
+a move into a state the table lacks, and an edge in the table no method makes
+are each reported. A state nothing leads out of is terminal; that is derived
+on the page, never written down.
 
 **Flow, from an endpoint.** Each handler method named by an `operationId` in
 `transport/http/gen/openapi.yaml` opens a flow: `client → service : rpc

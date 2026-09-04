@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-09-05T00:22:18+07:00",
-  "commit": "8149120",
+  "generatedAt": "2026-09-05T00:38:50+07:00",
+  "commit": "e32b0ae",
   "contexts": [
     {
       "id": "shop",
@@ -450,7 +450,38 @@
                   ],
                   "consumers": []
                 }
-              ]
+              ],
+              "lifecycle": {
+                "states": [
+                  "open",
+                  "checked-out",
+                  "abandoned",
+                  "merged"
+                ],
+                "transitions": [
+                  {
+                    "from": "open",
+                    "to": "checked-out",
+                    "on": "checkout",
+                    "source": "examples/shop/cart/src/domain/basket/basket.ts:92",
+                    "emits": "shop.cart.basket.BasketCheckedOut"
+                  },
+                  {
+                    "from": "open",
+                    "to": "abandoned",
+                    "on": "abandon",
+                    "source": "examples/shop/cart/src/domain/basket/basket.ts:100",
+                    "emits": "shop.cart.basket.BasketAbandoned"
+                  },
+                  {
+                    "from": "open",
+                    "to": "merged",
+                    "on": "mergeInto",
+                    "source": "examples/shop/cart/src/domain/basket/basket.ts:111",
+                    "emits": "shop.cart.basket.BasketMerged"
+                  }
+                ]
+              }
             }
           ]
         }

@@ -76,6 +76,7 @@ export const paths = {
 export const AGGREGATE_ANCHOR = {
   entities: "bb-entities",
   valueObjects: "bb-value-objects",
+  lifecycle: "bb-lifecycle",
   events: "bb-events",
   commands: "bb-commands",
   queries: "bb-queries",

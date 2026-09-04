@@ -236,6 +236,32 @@ export interface Aggregate {
   valueObjects: ValueObject[];
   operations: Operation[];
   events: Event[];
+  /**
+   * Where the root can go from where it is, when the aggregate has a status
+   * and the code writes its transitions down as one table. Absent means the
+   * aggregate has no lifecycle worth the name, or the extractor found none.
+   */
+  lifecycle?: Lifecycle;
+}
+/**
+ * A state machine read off the aggregate: the states in the order the code
+ * lists them, the first being the one a new root starts in, and every move
+ * between them. A state nothing leads out of is terminal; that is derived,
+ * never declared.
+ */
+export interface Lifecycle {
+  states: string[];
+  transitions: Transition[];
+}
+export interface Transition {
+  from: string;
+  to: string;
+  /** The method on the root that makes the move, as written: `checkout`. */
+  on: string;
+  /** The event the method hands back for it, by id, when it hands one back. */
+  emits?: string;
+  /** Where the move is made, `file:line`. */
+  source?: string;
 }
 export interface Operation {
   id: string;
@@ -1899,6 +1925,47 @@ function validateBlocks(catalog: Catalog, aggregate: Aggregate): void {
       `aggregate "${aggregate.id}" names root "${aggregate.root}", which is not one of its entities`,
       `aggregate ${aggregate.id}`,
     );
+  }
+  if (aggregate.lifecycle) validateLifecycle(aggregate, aggregate.lifecycle);
+}
+
+/**
+ * A lifecycle names only states it lists and events the aggregate owns. A
+ * transition into a state nobody listed is a typo that would draw a box the
+ * code never reaches; a transition emitting an event of another aggregate is
+ * a claim the aggregate's own page could not follow.
+ */
+function validateLifecycle(aggregate: Aggregate, lifecycle: Lifecycle): void {
+  const where = `aggregate ${aggregate.id} / lifecycle`;
+  if (lifecycle.states.length === 0) {
+    fail(`aggregate "${aggregate.id}" has a lifecycle with no states`, where);
+  }
+  const states = new Set<string>();
+  for (const state of lifecycle.states) {
+    if (states.has(state)) {
+      fail(`aggregate "${aggregate.id}" lists state "${state}" twice`, where);
+    }
+    states.add(state);
+  }
+  const events = new Set(aggregate.events.map((e) => e.id));
+  for (const t of lifecycle.transitions) {
+    for (const end of [t.from, t.to]) {
+      if (!states.has(end)) {
+        fail(
+          `aggregate "${aggregate.id}" moves ${t.from} → ${t.to} on ${t.on}, and "${end}" is not one of its states`,
+          where,
+        );
+      }
+    }
+    if (!t.on) {
+      fail(`aggregate "${aggregate.id}" moves ${t.from} → ${t.to} on nothing`, where);
+    }
+    if (t.emits !== undefined && !events.has(t.emits)) {
+      fail(
+        `aggregate "${aggregate.id}" moves ${t.from} → ${t.to} emitting "${t.emits}", which is not one of its events`,
+        where,
+      );
+    }
   }
 }
 

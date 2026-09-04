@@ -4,11 +4,12 @@ import { BasketCreated } from "./events/basket-created.ts";
 import { BasketItemAdded } from "./events/basket-item-added.ts";
 import { Money } from "./vo/money.ts";
 import { BasketItem } from "./item.ts";
+import { canMove, type BasketStatus } from "./status.ts";
 
 /** A visitor's or a customer's lines, under one lock. */
 export class Basket {
   readonly items: BasketItem[] = [];
-  status: "open" | "checked-out" | "abandoned" = "open";
+  status: BasketStatus = "open";
   constructor(
     readonly id: string,
     readonly token: string,
@@ -30,12 +31,17 @@ export class Basket {
   }
 
   checkout(total: Money, quoteId: string): BasketCheckedOut {
-    this.status = "checked-out";
+    this.moveTo("checked-out");
     return new BasketCheckedOut(this.id, total, quoteId);
   }
 
   abandon(): BasketAbandoned {
-    this.status = "abandoned";
+    this.moveTo("abandoned");
     return new BasketAbandoned(this.id);
+  }
+
+  private moveTo(next: BasketStatus): void {
+    if (!canMove(this.status, next)) throw new Error(`a ${this.status} basket cannot become ${next}`);
+    this.status = next;
   }
 }

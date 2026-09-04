@@ -263,6 +263,34 @@ describe("validateCatalog: building blocks", () => {
     );
   });
 
+  it("accepts a lifecycle over its own states and events, and derives nothing else", () => {
+    const ok = clone();
+    const agg = firstAggregate(ok);
+    agg.lifecycle = {
+      states: ["open", "placed"],
+      transitions: [{ from: "open", to: "placed", on: "place", emits: agg.events[0]!.id }],
+    };
+    expect(() => validateCatalog(ok)).not.toThrow();
+  });
+
+  it("rejects a transition into a state the lifecycle does not list", () => {
+    const bad = clone();
+    firstAggregate(bad).lifecycle = {
+      states: ["open"],
+      transitions: [{ from: "open", to: "gone", on: "vanish" }],
+    };
+    expect(() => validateCatalog(bad)).toThrowError(/"gone" is not one of its states/);
+  });
+
+  it("rejects a transition emitting an event of another aggregate", () => {
+    const bad = clone();
+    firstAggregate(bad).lifecycle = {
+      states: ["open", "placed"],
+      transitions: [{ from: "open", to: "placed", on: "place", emits: "shop.cart.basket.BasketCreated" }],
+    };
+    expect(() => validateCatalog(bad)).toThrowError(/which is not one of its events/);
+  });
+
   it("rejects a block id that disagrees with its slug", () => {
     const bad = clone();
     const vo = firstAggregate(bad).valueObjects[0];

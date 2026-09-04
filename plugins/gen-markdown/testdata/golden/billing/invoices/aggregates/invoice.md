@@ -32,6 +32,21 @@ Shared type [`Money`](../../../types.md#money).
 | `amountMinor` | `int64` | Amount in the minor unit. |
 | `currency` | `string` | ISO 4217, upper case. |
 
+## Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> draft
+    draft --> raised: raise · InvoiceRaised
+    raised --> paid: settle
+    paid --> [*]
+```
+
+| From | To | On | Emits | Source |
+| --- | --- | --- | --- | --- |
+| `draft` | `raised` | `raise` | `InvoiceRaised` | `internal/domain/invoice/invoice.go:41` |
+| `raised` | `paid` | `settle` | — | `internal/domain/invoice/invoice.go:58` |
+
 ## Operations
 
 | Operation | Kind | Doc |

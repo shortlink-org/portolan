@@ -33,6 +33,8 @@ import { RowActions } from "../components/RowActions";
 import { Toc } from "../components/Toc";
 import type { TocItem } from "../components/Toc";
 import { WhatLinksHere } from "../components/WhatLinksHere";
+import { LifecycleDiagram } from "../components/LifecycleDiagram";
+import { isTerminal } from "../lib/lifecycle";
 import { NotFound } from "./NotFound";
 
 /**
@@ -266,6 +268,7 @@ export function AggregatePage() {
     ...outline.map((h) => ({ id: h.slug, label: h.text, depth: h.depth })),
     { id: AGGREGATE_ANCHOR.entities, label: "Entities" },
     { id: AGGREGATE_ANCHOR.valueObjects, label: "Value objects" },
+    ...(aggregate.lifecycle ? [{ id: AGGREGATE_ANCHOR.lifecycle, label: "Lifecycle" }] : []),
     { id: AGGREGATE_ANCHOR.events, label: "Events" },
     { id: AGGREGATE_ANCHOR.commands, label: "Commands" },
     { id: AGGREGATE_ANCHOR.queries, label: "Queries" },
@@ -349,6 +352,37 @@ export function AggregatePage() {
               linkTo={voPath}
             />
           </div>
+
+          {aggregate.lifecycle ? (
+            <div className="mt-section" id={AGGREGATE_ANCHOR.lifecycle}>
+              <SectionTitle
+                anchor={AGGREGATE_ANCHOR.lifecycle}
+                right={
+                  <span className="tnum">
+                    {aggregate.lifecycle.states.length}{" "}
+                    {plural(aggregate.lifecycle.states.length, "state")} ·{" "}
+                    {aggregate.lifecycle.transitions.length}{" "}
+                    {plural(aggregate.lifecycle.transitions.length, "move")} ·{" "}
+                    {aggregate.lifecycle.states.filter((s) => isTerminal(aggregate.lifecycle!, s)).length}{" "}
+                    terminal
+                  </span>
+                }
+              >
+                Lifecycle
+              </SectionTitle>
+              {/* Where the root can go from where it is, as the code wrote it
+                  down: one table of moves, read off the source. The first
+                  state is where a new one starts; a state nothing leads out
+                  of is where it becomes a record. */}
+              <LifecycleDiagram
+                aggregate={aggregate}
+                eventPath={(id) => {
+                  const event = aggregate.events.find((e) => e.id === id);
+                  return event ? paths.event(context.id, service.slug, aggregate.slug, event.slug) : null;
+                }}
+              />
+            </div>
+          ) : null}
 
           <div className="mt-section max-w-prose" id={AGGREGATE_ANCHOR.events}>
             <SectionTitle anchor={AGGREGATE_ANCHOR.events}>Events</SectionTitle>

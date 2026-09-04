@@ -212,6 +212,25 @@ type Aggregate struct {
 	ValueObjects []Block     `json:"valueObjects"`
 	Operations   []Operation `json:"operations"`
 	Events       []Event     `json:"events"`
+	Lifecycle    *Lifecycle  `json:"lifecycle,omitempty"`
+}
+
+// Lifecycle is the root's state machine as the code writes it down: the
+// states in the order listed, the first being where a new root starts, and
+// every move between them. A state nothing leads out of is terminal.
+type Lifecycle struct {
+	States      []string     `json:"states"`
+	Transitions []Transition `json:"transitions"`
+}
+
+// Transition is one move: the method on the root that makes it, and the
+// event it hands back for it when it hands one back.
+type Transition struct {
+	From   string `json:"from"`
+	To     string `json:"to"`
+	On     string `json:"on"`
+	Emits  string `json:"emits,omitempty"`
+	Source string `json:"source,omitempty"`
 }
 
 type OperationKind string

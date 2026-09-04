@@ -30,10 +30,78 @@ func (s *site) renderAggregate(svc *catalog.Service, agg *catalog.Aggregate) {
 
 	section(&b, "Entities", s.blocks(self, agg.Entities, agg.Root))
 	section(&b, "Value objects", s.blocks(self, agg.ValueObjects, ""))
+	section(&b, "Lifecycle", s.lifecycle(self, agg))
 	section(&b, "Operations", s.operationsTable(agg))
 	section(&b, "Events", s.eventsBlock(self, agg))
 
 	s.b.file(self, b.String())
+}
+
+// lifecycle draws the root's state machine as the code wrote it down, and
+// lists the moves under it with the event each one publishes. The first
+// state is where a new root starts; a state nothing leads out of ends.
+func (s *site) lifecycle(from string, agg *catalog.Aggregate) string {
+	lc := agg.Lifecycle
+	if lc == nil || len(lc.States) == 0 {
+		return ""
+	}
+	alias := func(state string) string {
+		var b strings.Builder
+		for _, r := range state {
+			if r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' {
+				b.WriteRune(r)
+			} else {
+				b.WriteByte('_')
+			}
+		}
+		return b.String()
+	}
+	leads := map[string]bool{}
+	for _, t := range lc.Transitions {
+		if t.From != t.To {
+			leads[t.From] = true
+		}
+	}
+	eventName := func(id string) string {
+		for i := range agg.Events {
+			if agg.Events[i].ID == id {
+				return agg.Events[i].Name
+			}
+		}
+		return id
+	}
+
+	var d strings.Builder
+	d.WriteString("stateDiagram-v2\n")
+	for _, state := range lc.States {
+		if alias(state) != state {
+			d.WriteString("    state \"" + mermaidText(state) + "\" as " + alias(state) + "\n")
+		}
+	}
+	d.WriteString("    [*] --> " + alias(lc.States[0]) + "\n")
+	for _, t := range lc.Transitions {
+		label := t.On
+		if t.Emits != "" {
+			label += " · " + eventName(t.Emits)
+		}
+		d.WriteString("    " + alias(t.From) + " --> " + alias(t.To) + ": " + mermaidText(label) + "\n")
+	}
+	for _, state := range lc.States {
+		if !leads[state] {
+			d.WriteString("    " + alias(state) + " --> [*]\n")
+		}
+	}
+
+	rows := make([][]string, 0, len(lc.Transitions))
+	for _, t := range lc.Transitions {
+		emits := ""
+		if t.Emits != "" {
+			emits = s.ref(from, t.Emits, eventName(t.Emits))
+		}
+		rows = append(rows, []string{code(t.From), code(t.To), code(t.On), emits, code(t.Source)})
+	}
+
+	return fence("mermaid", d.String()) + "\n" + table([]string{"From", "To", "On", "Emits", "Source"}, rows)
 }
 
 func hasBlock(blocks []catalog.Block, name string) bool {

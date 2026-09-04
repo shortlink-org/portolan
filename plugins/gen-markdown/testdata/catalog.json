@@ -75,6 +75,13 @@
                   "ref": "Money"
                 }
               ],
+              "lifecycle": {
+                "states": ["draft", "raised", "paid"],
+                "transitions": [
+                  { "from": "draft", "to": "raised", "on": "raise", "emits": "billing.invoices.invoice.InvoiceRaised", "source": "internal/domain/invoice/invoice.go:41" },
+                  { "from": "raised", "to": "paid", "on": "settle", "source": "internal/domain/invoice/invoice.go:58" }
+                ]
+              },
               "operations": [
                 { "id": "RaiseInvoice", "kind": "command", "doc": "Raises one." },
                 { "id": "GetInvoice", "kind": "query" }
