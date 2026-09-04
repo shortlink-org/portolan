@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/shortlink-org/portolan/catalog"
@@ -33,7 +34,7 @@ func extractAggregate(root, dir, svcID string, b *plugin.Builder) (catalog.Aggre
 		ID:           id,
 		Slug:         dir,
 		Name:         name,
-		Readme:       readme(pkg.name, name, pkg.doc()),
+		Readme:       aggregateReadme(root, dir, pkg.name, name, pkg.doc()),
 		Entities:     []catalog.Block{},
 		ValueObjects: []catalog.Block{},
 		Operations:   []catalog.Operation{},
@@ -149,6 +150,19 @@ func qualified(pkg, name string) string {
 
 func exported(name string) bool {
 	return name != "" && name[0] >= 'A' && name[0] <= 'Z'
+}
+
+// aggregateReadme prefers the package's README.md, which is written for a
+// reader and can draw the states, over the package comment, which is written
+// for whoever opens the file next. Same preference as operationDoc, for the
+// same reason. The comment is a fallback, not a second source: a package that
+// has both is described by its README alone.
+func aggregateReadme(root, dir, pkgName, name, doc string) string {
+	if md := readFile(filepath.Join(root, "internal", "domain", filepath.FromSlash(dir), "README.md")); md != "" {
+		return md
+	}
+
+	return readme(pkgName, name, doc)
 }
 
 // readme turns a package comment into the markdown the catalog carries. The

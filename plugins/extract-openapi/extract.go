@@ -9,6 +9,7 @@ import (
 
 	"github.com/shortlink-org/portolan/catalog"
 	"github.com/shortlink-org/portolan/plugin"
+	"github.com/shortlink-org/portolan/plugins/openapi"
 	"gopkg.in/yaml.v3"
 )
 
@@ -112,10 +113,7 @@ func rpcServices(doc *document, api, source string, b *plugin.Builder) []catalog
 				tag = tags[0]
 			}
 
-			id := api
-			if tag != "" {
-				id = api + "." + title(tag)
-			}
+			id := openapi.InterfaceID(api, tag)
 
 			g, ok := groups[id]
 			if !ok {
@@ -229,22 +227,13 @@ func typeOf(node *yaml.Node) string {
 	return kind
 }
 
-// apiID is the document's title and major version: `auth` 1.0.0 gives `auth.v1`.
+// apiID is the document's title and major version: `auth` 1.0.0 gives
+// `auth.v1`. Spelled by the package the client-side extractor shares, so a
+// call and the method it lands on are named alike.
 func apiID(doc *document) string {
 	info := child(doc.root, "info")
 
-	name := text(child(info, "title"))
-	if name == "" {
-		name = "api"
-	}
-	name = strings.ReplaceAll(strings.ToLower(name), " ", "-")
-
-	version := text(child(info, "version"))
-	if major, _, ok := strings.Cut(version, "."); ok && major != "" {
-		return name + ".v" + major
-	}
-
-	return name
+	return openapi.APIID(text(child(info, "title")), text(child(info, "version")))
 }
 
 // findSpec locates the document. Told where it is, it looks there; otherwise it
@@ -291,17 +280,4 @@ func firstNonEmpty(values ...string) string {
 	return ""
 }
 
-// title is the human form of a tag: users becomes Users, price_list becomes
-// PriceList, because it sits in an id beside a proto-shaped service name.
-func title(name string) string {
-	var b strings.Builder
-	for _, word := range strings.FieldsFunc(name, func(r rune) bool { return r == '_' || r == '-' || r == ' ' }) {
-		runes := []rune(word)
-		if runes[0] >= 'a' && runes[0] <= 'z' {
-			runes[0] = runes[0] - 'a' + 'A'
-		}
-		b.WriteString(string(runes))
-	}
 
-	return b.String()
-}

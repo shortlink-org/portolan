@@ -2,6 +2,8 @@ package main
 
 import (
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -154,4 +156,26 @@ func mustParse(t *testing.T, src string) *pkg {
 	}
 
 	return parsed
+}
+
+// A domain package with a README is described by it; one without falls back
+// to the package comment, headed so the page does not start mid-paragraph.
+func TestAggregateReadmePrefersTheFile(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "internal", "domain", "session")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := aggregateReadme(root, "session", "session", "Session", "Package session holds the Session aggregate."); got != "# Session\n\nHolds the Session aggregate." {
+		t.Errorf("without a README = %q", got)
+	}
+
+	md := "# Session\n\n## States\n\n- Live\n"
+	if err := os.WriteFile(filepath.Join(dir, "README.md"), []byte(md+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got := aggregateReadme(root, "session", "session", "Session", "Package session holds the Session aggregate."); got != strings.TrimSpace(md) {
+		t.Errorf("with a README = %q", got)
+	}
 }

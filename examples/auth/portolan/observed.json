@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-09-04T13:16:07+07:00",
-  "commit": "90b8e5a",
+  "generatedAt": "2026-09-04T19:43:11+07:00",
+  "commit": "bf50e40",
   "contexts": [
     {
       "id": "auth",
@@ -22,7 +22,7 @@
               "id": "auth.auth.user",
               "slug": "user",
               "name": "User",
-              "readme": "# User\n\nHolds the User aggregate: a person, the address they log in\nwith, and the hash of the password they log in by.\n\nThe aggregate is the transactional boundary. Every rule below is enforced\nhere and nowhere else, so a caller cannot reach past the root and leave a\nUser in a state the domain says is impossible.",
+              "readme": "# User\n\nA person, the address they log in with, and the hash of the password they log\nin by. Identity is the id, minted at registration; the address can change.\n\n## States\n\nOne state. A user that exists is registered, and nothing here ends that:\nthere is no deletion, no suspension, no lockout. Each of those is a real\nrequirement somewhere and none of them is here.\n\n`ChangePassword` changes a value, not a state. It is a command with a guard\n(the current password) and an event, and the user is the same user afterwards.\n\n```mermaid\nstateDiagram-v2\n    [*] --\u003e Registered : Register / UserRegistered\n    Registered --\u003e Registered : ChangePassword(current, next) / PasswordChanged\n```\n\n## Commands\n\n| Command | Guard | Event |\n|---|---|---|\n| `Register` | address and password pass their policies | `UserRegistered` |\n| `ChangePassword` | the current password matches; the new one passes the policy | `PasswordChanged` |\n| `Authenticate` | — | none; a read that answers one refusal for every failure |\n\nNo command here touches a session. That a password change ends sessions is a\nrule about sessions, applied by the policy in `internal/application/policy`.",
               "root": "User",
               "entities": [],
               "valueObjects": [],

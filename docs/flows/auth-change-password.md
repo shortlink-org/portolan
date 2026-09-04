@@ -1,6 +1,6 @@
 # Change password
 
-*Generated from the portolan catalog · commit `3 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `2 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.auth-change-password`
 - **Owner:** [auth](../auth/README.md)

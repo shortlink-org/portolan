@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-09-04T13:16:07+07:00",
-  "commit": "90b8e5a",
+  "generatedAt": "2026-09-04T19:43:11+07:00",
+  "commit": "bf50e40",
   "contexts": [
     {
       "id": "auth",
@@ -30,7 +30,7 @@
               "id": "auth.auth.session",
               "slug": "session",
               "name": "Session",
-              "readme": "# Session\n\nHolds the Session aggregate: proof that a user logged in,\nhow long that proof is good for, and whether it has been taken away.\n\nIt is a separate aggregate from User on purpose. A session is written far\nmore often than a user, and it is revoked without the user changing at all,\nso the two do not belong under one lock. They are linked by UserID only.",
+              "readme": "# Session\n\nProof that a user logged in, how long that proof is good for, and whether it\nhas been taken away. A separate aggregate from `User`: it is written far more\noften and revoked without the user changing, so the two do not share a lock.\nThey are linked by user id and nothing else.\n\n## States\n\n- **Live** — issued, not revoked, not past expiry. The only state a token is\n  accepted in.\n- **Revoked** — ended by a command, with a reason. Terminal: a revoked session\n  never comes back, logging in again produces a new one.\n- **Expired** — past `ExpiresAt`. Derived from time when the token is\n  presented; no command, no event, nothing runs. Every consumer already knows\n  the expiry from `SessionStarted`.\n\nThe state is not stored as a field. It is read off `RevokedAt` and\n`ExpiresAt` with `now`, so there is no second copy to drift.\n\n```mermaid\nstateDiagram-v2\n    [*] --\u003e Live : Start / SessionStarted\n    Live --\u003e Revoked : Revoke(reason) / SessionEnded\n    Live --\u003e Expired : now ≥ ExpiresAt (no event)\n    Revoked --\u003e [*]\n    Expired --\u003e [*]\n```\n\n## Commands\n\n| Command | From | To | Event |\n|---|---|---|---|\n| `Start` | — | Live | `SessionStarted` |\n| `Revoke(reason)` | Live | Revoked | `SessionEnded` |\n| `Revoke(reason)` | Revoked, Expired | unchanged | none; reports \"nothing to do\" |\n\n`Validate(now)` is the read: it says which state forbids use (`ErrRevoked`,\n`ErrExpired`) or nothing. `Live(now)` is the same question as a boolean.\n\nRevoking twice is the \"nothing to do\" answer, not a refusal: the caller asked\nfor something already true. Ending it again would publish a `SessionEnded`\nfor an ending that did not happen.",
               "root": "Session",
               "entities": [
                 {
@@ -201,7 +201,7 @@
               "id": "auth.auth.user",
               "slug": "user",
               "name": "User",
-              "readme": "# User\n\nHolds the User aggregate: a person, the address they log in\nwith, and the hash of the password they log in by.\n\nThe aggregate is the transactional boundary. Every rule below is enforced\nhere and nowhere else, so a caller cannot reach past the root and leave a\nUser in a state the domain says is impossible.",
+              "readme": "# User\n\nA person, the address they log in with, and the hash of the password they log\nin by. Identity is the id, minted at registration; the address can change.\n\n## States\n\nOne state. A user that exists is registered, and nothing here ends that:\nthere is no deletion, no suspension, no lockout. Each of those is a real\nrequirement somewhere and none of them is here.\n\n`ChangePassword` changes a value, not a state. It is a command with a guard\n(the current password) and an event, and the user is the same user afterwards.\n\n```mermaid\nstateDiagram-v2\n    [*] --\u003e Registered : Register / UserRegistered\n    Registered --\u003e Registered : ChangePassword(current, next) / PasswordChanged\n```\n\n## Commands\n\n| Command | Guard | Event |\n|---|---|---|\n| `Register` | address and password pass their policies | `UserRegistered` |\n| `ChangePassword` | the current password matches; the new one passes the policy | `PasswordChanged` |\n| `Authenticate` | — | none; a read that answers one refusal for every failure |\n\nNo command here touches a session. That a password change ends sessions is a\nrule about sessions, applied by the policy in `internal/application/policy`.",
               "root": "User",
               "entities": [
                 {
