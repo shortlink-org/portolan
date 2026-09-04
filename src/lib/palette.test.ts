@@ -282,18 +282,19 @@ describe("modules in the palette", () => {
     }
   });
 
-  // A row per module the estate holds, published or not: the ledger's two are
-  // local until somebody pushes them, and a reader still has to be able to find
-  // the contract they hold.
+  // A row per module the estate holds, published or not - a set of protos
+  // nobody has pushed is listed as `local:` and a reader still has to be able
+  // to find the contract it holds. Every module of this estate is pushed, one
+  // per aggregate, so every row here is a name that can be fetched.
   it("adds one row per module the estate holds", () => {
     expect(paletteItems(shipped).filter((i) => i.kind === "module").map((i) => i.id)).toEqual([
-      "local:payments/payment",
-      "local:payments/refund",
-      "local:delivery/route",
-      "local:delivery/shipment",
+      "buf.build/shortlink-org/portolan-payments-payment",
+      "buf.build/shortlink-org/portolan-payments-refund",
+      "buf.build/shortlink-org/portolan-delivery-route",
+      "buf.build/shortlink-org/portolan-delivery-shipment",
       "buf.build/shortlink-org/portolan-shop-order",
-      "local:shop/price-list",
-      "local:shop/quote",
+      "buf.build/shortlink-org/portolan-shop-price-list",
+      "buf.build/shortlink-org/portolan-shop-quote",
     ]);
   });
 });

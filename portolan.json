@@ -256,8 +256,8 @@
           "internal/infrastructure/transport/grpc/price_list/proto"
         ],
         "modules": {
-          "internal/infrastructure/transport/grpc/quote/proto": "local:shop/quote",
-          "internal/infrastructure/transport/grpc/price_list/proto": "local:shop/price-list"
+          "internal/infrastructure/transport/grpc/quote/proto": "buf.build/shortlink-org/portolan-shop-quote",
+          "internal/infrastructure/transport/grpc/price_list/proto": "buf.build/shortlink-org/portolan-shop-price-list"
         },
         "out": "proto.json"
       }
@@ -308,8 +308,8 @@
           "src/infrastructure/transport/grpc/route/proto"
         ],
         "modules": {
-          "src/infrastructure/transport/grpc/shipment/proto": "local:delivery/shipment",
-          "src/infrastructure/transport/grpc/route/proto": "local:delivery/route"
+          "src/infrastructure/transport/grpc/shipment/proto": "buf.build/shortlink-org/portolan-delivery-shipment",
+          "src/infrastructure/transport/grpc/route/proto": "buf.build/shortlink-org/portolan-delivery-route"
         },
         "out": "proto.json"
       }
@@ -359,8 +359,8 @@
           "src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/proto"
         ],
         "modules": {
-          "src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/proto": "local:payments/payment",
-          "src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/proto": "local:payments/refund"
+          "src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/proto": "buf.build/shortlink-org/portolan-payments-payment",
+          "src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/proto": "buf.build/shortlink-org/portolan-payments-refund"
         },
         "out": "proto.json"
       }

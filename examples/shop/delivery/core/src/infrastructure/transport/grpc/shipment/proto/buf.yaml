@@ -1,5 +1,5 @@
 # The contract of the shipment aggregate. One module per aggregate; pushed by
-# hand, and until it is the estate lists it as local.
+# hand from this directory, under the name portolan.json reads it by.
 version: v2
 modules:
   - path: .

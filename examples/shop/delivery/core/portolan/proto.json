@@ -228,7 +228,7 @@
                   ]
                 }
               ],
-              "module": "local:delivery/shipment"
+              "module": "buf.build/shortlink-org/portolan-delivery-shipment"
             },
             {
               "id": "delivery.v1.RouteService",
@@ -370,14 +370,14 @@
                   ]
                 }
               ],
-              "module": "local:delivery/route"
+              "module": "buf.build/shortlink-org/portolan-delivery-route"
             }
           ],
           "consumes": [],
           "aggregates": [],
           "modules": [
-            "local:delivery/route",
-            "local:delivery/shipment"
+            "buf.build/shortlink-org/portolan-delivery-route",
+            "buf.build/shortlink-org/portolan-delivery-shipment"
           ]
         }
       ]
@@ -388,9 +388,10 @@
   "adrs": [],
   "modules": [
     {
-      "id": "local:delivery/route",
-      "slug": "delivery-route",
-      "name": "delivery/route",
+      "id": "buf.build/shortlink-org/portolan-delivery-route",
+      "slug": "shortlink-org-portolan-delivery-route",
+      "name": "shortlink-org/portolan-delivery-route",
+      "registry": "buf.build",
       "owner": "delivery.core",
       "packages": [
         "delivery.v1"
@@ -401,9 +402,10 @@
       "source": "examples/shop/delivery/core/src/infrastructure/transport/grpc/route/proto"
     },
     {
-      "id": "local:delivery/shipment",
-      "slug": "delivery-shipment",
-      "name": "delivery/shipment",
+      "id": "buf.build/shortlink-org/portolan-delivery-shipment",
+      "slug": "shortlink-org-portolan-delivery-shipment",
+      "name": "shortlink-org/portolan-delivery-shipment",
+      "registry": "buf.build",
       "owner": "delivery.core",
       "packages": [
         "delivery.v1"

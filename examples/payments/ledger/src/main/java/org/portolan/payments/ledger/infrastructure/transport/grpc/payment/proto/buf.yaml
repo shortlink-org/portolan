@@ -1,7 +1,7 @@
 # The contract of the payment aggregate, and nothing else's: one module per
 # aggregate, the way one migrations directory sits under one repository.
-# Pushed by hand from this directory; until it is, the estate lists it as
-# `local:payments/payment` and portolan.json says so.
+# Pushed by hand from this directory; portolan.json names the module the
+# estate reads it under, and the two must agree.
 version: v2
 modules:
   - path: .

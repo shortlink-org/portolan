@@ -151,7 +151,7 @@
                   ]
                 }
               ],
-              "module": "local:payments/payment"
+              "module": "buf.build/shortlink-org/portolan-payments-payment"
             },
             {
               "id": "payments.v1.RefundService",
@@ -262,14 +262,14 @@
                   ]
                 }
               ],
-              "module": "local:payments/refund"
+              "module": "buf.build/shortlink-org/portolan-payments-refund"
             }
           ],
           "consumes": [],
           "aggregates": [],
           "modules": [
-            "local:payments/payment",
-            "local:payments/refund"
+            "buf.build/shortlink-org/portolan-payments-payment",
+            "buf.build/shortlink-org/portolan-payments-refund"
           ]
         }
       ]
@@ -280,9 +280,10 @@
   "adrs": [],
   "modules": [
     {
-      "id": "local:payments/payment",
-      "slug": "payments-payment",
-      "name": "payments/payment",
+      "id": "buf.build/shortlink-org/portolan-payments-payment",
+      "slug": "shortlink-org-portolan-payments-payment",
+      "name": "shortlink-org/portolan-payments-payment",
+      "registry": "buf.build",
       "owner": "payments.ledger",
       "packages": [
         "payments.v1"
@@ -293,9 +294,10 @@
       "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/proto"
     },
     {
-      "id": "local:payments/refund",
-      "slug": "payments-refund",
-      "name": "payments/refund",
+      "id": "buf.build/shortlink-org/portolan-payments-refund",
+      "slug": "shortlink-org-portolan-payments-refund",
+      "name": "shortlink-org/portolan-payments-refund",
+      "registry": "buf.build",
       "owner": "payments.ledger",
       "packages": [
         "payments.v1"

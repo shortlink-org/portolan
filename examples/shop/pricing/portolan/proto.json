@@ -145,7 +145,7 @@
                   ]
                 }
               ],
-              "module": "local:shop/quote"
+              "module": "buf.build/shortlink-org/portolan-shop-quote"
             },
             {
               "id": "shop.v1.PriceLists",
@@ -291,14 +291,14 @@
                   ]
                 }
               ],
-              "module": "local:shop/price-list"
+              "module": "buf.build/shortlink-org/portolan-shop-price-list"
             }
           ],
           "consumes": [],
           "aggregates": [],
           "modules": [
-            "local:shop/price-list",
-            "local:shop/quote"
+            "buf.build/shortlink-org/portolan-shop-price-list",
+            "buf.build/shortlink-org/portolan-shop-quote"
           ]
         }
       ]
@@ -309,9 +309,10 @@
   "adrs": [],
   "modules": [
     {
-      "id": "local:shop/price-list",
-      "slug": "shop-price-list",
-      "name": "shop/price-list",
+      "id": "buf.build/shortlink-org/portolan-shop-price-list",
+      "slug": "shortlink-org-portolan-shop-price-list",
+      "name": "shortlink-org/portolan-shop-price-list",
+      "registry": "buf.build",
       "owner": "shop.pricing",
       "packages": [
         "shop.v1"
@@ -322,9 +323,10 @@
       "source": "examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/proto"
     },
     {
-      "id": "local:shop/quote",
-      "slug": "shop-quote",
-      "name": "shop/quote",
+      "id": "buf.build/shortlink-org/portolan-shop-quote",
+      "slug": "shortlink-org-portolan-shop-quote",
+      "name": "shortlink-org/portolan-shop-quote",
+      "registry": "buf.build",
       "owner": "shop.pricing",
       "packages": [
         "shop.v1"

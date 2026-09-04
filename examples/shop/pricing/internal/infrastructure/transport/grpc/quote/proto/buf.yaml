@@ -1,5 +1,5 @@
 # The contract of the quote aggregate, and nothing else's: one module per
-# aggregate. Pushed by hand; until it is, the estate lists it as local.
+# aggregate. Pushed by hand, under the name portolan.json reads it by.
 version: v2
 modules:
   - path: .
