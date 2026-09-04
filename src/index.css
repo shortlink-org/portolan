@@ -1268,3 +1268,14 @@ h3 {
 .prose .callout > :last-child {
   margin-bottom: 0;
 }
+
+/* ---------------------------------------------------------------------------
+   A mermaid diagram, drawn into the page by the library rather than by this
+   app. Mermaid names a node's text `.label`, and so does this app - where it
+   means a mono uppercase eyebrow over a section. The utility wins by
+   cascade order and shouts every state name in a diagram, so the transform
+   is undone inside the figure and nowhere else.
+   --------------------------------------------------------------------------- */
+.mermaid-figure :is(.label, .labelBkg, .nodeLabel, .edgeLabel) {
+  text-transform: none;
+}

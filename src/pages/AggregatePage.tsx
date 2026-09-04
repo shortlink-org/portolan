@@ -308,7 +308,7 @@ export function AggregatePage() {
             rootTo={root ? entityPath(root) : null}
           />
 
-          <Markdown>{aggregate.readme}</Markdown>
+          <Markdown mermaid>{aggregate.readme}</Markdown>
 
           <div
             className="mt-section max-w-prose"

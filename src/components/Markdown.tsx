@@ -136,11 +136,12 @@ function Pre(props: ComponentPropsWithoutRef<"pre">) {
 }
 
 /**
- * Mermaid fences deliberately render as <pre> everywhere except decision
- * records. Portolan draws its own diagrams from measurements; a diagram
- * written by hand in a README is a quotation, not a fact, so it is shown as
- * the source text it is. An ADR is the one place where the quotation is the
- * whole point — pass `mermaid` there, and only there.
+ * Mermaid fences are drawn where the prose they sit in was written by hand:
+ * decision records, and the readmes of a service or an aggregate. What is
+ * drawn there is a quotation, never a fact — portolan’s own diagrams come
+ * from the catalog and are drawn from measurements — but a lifecycle somebody
+ * sketched in a readme reads as a picture and not as twelve lines of source.
+ * Pass `mermaid` where the markdown is somebody’s writing.
  */
 export function Markdown({
   children,

@@ -234,7 +234,7 @@ export function ServicePage() {
               height={300}
             />
             <div className="mt-section" />
-            <Markdown>{service.readme}</Markdown>
+            <Markdown mermaid>{service.readme}</Markdown>
             <section
               id={SERVICE_ANCHOR.aggregates}
               className="mt-section max-w-table"
