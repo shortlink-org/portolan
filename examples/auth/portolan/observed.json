@@ -35,7 +35,7 @@
                   "versions": [
                     {
                       "version": "v1",
-                      "doc": "PasswordChanged is published when a user's password is replaced. It says the password is different now; it does not carry the password, old or new, in any form.\n\nPublished on the bus as `auth.PasswordChanged`.",
+                      "doc": "PasswordChanged is published when a user's password is replaced. It says the password is different now; it does not carry the password, old or new, in any form.",
                       "source": "examples/auth/internal/domain/user/event/password_changed.go",
                       "fields": [
                         {

@@ -88,7 +88,7 @@
                   "versions": [
                     {
                       "version": "v1",
-                      "doc": "AccountLocked is published when an account starts refusing logins because of too many wrong passwords in a row. Until says when it stops.\n\nPublished on the bus as `auth.AccountLocked`.",
+                      "doc": "AccountLocked is published when an account starts refusing logins because of too many wrong passwords in a row. Until says when it stops.",
                       "source": "examples/auth/internal/domain/lockout/event/account_locked.go",
                       "fields": [
                         {
@@ -109,7 +109,11 @@
                       ]
                     }
                   ],
-                  "consumers": []
+                  "consumers": [],
+                  "wire": {
+                    "name": "auth.AccountLocked",
+                    "channel": "auth_lockout"
+                  }
                 }
               ],
               "lifecycle": {
@@ -246,7 +250,7 @@
                   "versions": [
                     {
                       "version": "v1",
-                      "doc": "SessionEnded is published when a session is deliberately ended.\n\nPublished on the bus as `auth.SessionEnded`.",
+                      "doc": "SessionEnded is published when a session is deliberately ended.",
                       "source": "examples/auth/internal/domain/session/event/session_ended.go",
                       "fields": [
                         {
@@ -272,7 +276,11 @@
                       ]
                     }
                   ],
-                  "consumers": []
+                  "consumers": [],
+                  "wire": {
+                    "name": "auth.SessionEnded",
+                    "channel": "auth_session"
+                  }
                 },
                 {
                   "id": "auth.auth.session.SessionStarted",
@@ -281,7 +289,7 @@
                   "versions": [
                     {
                       "version": "v1",
-                      "doc": "SessionStarted is published on a successful login. ExpiresAt is on the event so a consumer can reason about the session's lifetime without asking auth again on every check.\n\nPublished on the bus as `auth.SessionStarted`.",
+                      "doc": "SessionStarted is published on a successful login. ExpiresAt is on the event so a consumer can reason about the session's lifetime without asking auth again on every check.",
                       "source": "examples/auth/internal/domain/session/event/session_started.go",
                       "fields": [
                         {
@@ -307,7 +315,11 @@
                       ]
                     }
                   ],
-                  "consumers": []
+                  "consumers": [],
+                  "wire": {
+                    "name": "auth.SessionStarted",
+                    "channel": "auth_session"
+                  }
                 }
               ],
               "lifecycle": {
@@ -449,7 +461,7 @@
                   "versions": [
                     {
                       "version": "v1",
-                      "doc": "PasswordChanged is published when a user's password is replaced. It says the password is different now; it does not carry the password, old or new, in any form.\n\nPublished on the bus as `auth.PasswordChanged`.",
+                      "doc": "PasswordChanged is published when a user's password is replaced. It says the password is different now; it does not carry the password, old or new, in any form.",
                       "source": "examples/auth/internal/domain/user/event/password_changed.go",
                       "fields": [
                         {
@@ -470,7 +482,11 @@
                       ]
                     }
                   ],
-                  "consumers": []
+                  "consumers": [],
+                  "wire": {
+                    "name": "auth.PasswordChanged",
+                    "channel": "auth_user"
+                  }
                 },
                 {
                   "id": "auth.auth.user.UserRegistered",
@@ -479,7 +495,7 @@
                   "versions": [
                     {
                       "version": "v1",
-                      "doc": "UserRegistered is published once per user, at registration. It carries the address because consumers routinely need to reach the person, and asking auth for it on every event would make the bus useless.\n\nPublished on the bus as `auth.UserRegistered`.",
+                      "doc": "UserRegistered is published once per user, at registration. It carries the address because consumers routinely need to reach the person, and asking auth for it on every event would make the bus useless.",
                       "source": "examples/auth/internal/domain/user/event/user_registered.go",
                       "fields": [
                         {
@@ -500,7 +516,11 @@
                       ]
                     }
                   ],
-                  "consumers": []
+                  "consumers": [],
+                  "wire": {
+                    "name": "auth.UserRegistered",
+                    "channel": "auth_user"
+                  }
                 }
               ]
             }

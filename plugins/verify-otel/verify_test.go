@@ -107,6 +107,12 @@ const recording = `{"resourceSpans":[{"resource":{"attributes":[{"key":"service.
 
 func runVerify(t *testing.T, traces string, opts Options) (catalog.Catalog, plugin.Response) {
 	t.Helper()
+
+	return runVerifyOn(t, estate(), traces, opts)
+}
+
+func runVerifyOn(t *testing.T, cat catalog.Catalog, traces string, opts Options) (catalog.Catalog, plugin.Response) {
+	t.Helper()
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, "telemetry"), 0o755); err != nil {
 		t.Fatal(err)
@@ -118,7 +124,7 @@ func runVerify(t *testing.T, traces string, opts Options) (catalog.Catalog, plug
 		opts.Traces = []string{"telemetry/*.jsonl"}
 	}
 
-	resp, err := verify(plugin.Request{Catalog: estate(), Input: plugin.Input{Root: root, Commit: "abc1234", GeneratedAt: "2026-01-01T00:00:00Z"}}, opts)
+	resp, err := verify(plugin.Request{Catalog: cat, Input: plugin.Input{Root: root, Commit: "abc1234", GeneratedAt: "2026-01-01T00:00:00Z"}}, opts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -193,6 +199,44 @@ func TestATraceRaisesTheHopsItShows(t *testing.T) {
 		if strings.Contains(d.Message, "no service in the catalog") && !strings.Contains(d.Message, "billing") && !strings.Contains(d.Message, "profile") {
 			t.Errorf("unexpected diagnostic: %s", d.Message)
 		}
+	}
+}
+
+// An event that declares its wire is matched by that name before any guess
+// from the last segment, and a publish span that names a channel other than
+// the declared one is reported once - the hop stays, because the event did
+// go out.
+func TestTheWireIsMatchedByNameAndHeldToItsChannel(t *testing.T) {
+	cat := estate()
+	ev := &cat.Contexts[0].Services[0].Aggregates[0].Events[0]
+	if ev.ID != "auth.auth.session.SessionStarted" {
+		t.Fatalf("fixture moved: %s", ev.ID)
+	}
+	ev.Name = "Started"
+	ev.Wire = &catalog.EventWire{Name: "auth.SessionStarted", Channel: "sessions"}
+
+	out, resp := runVerifyOn(t, cat, recording, Options{})
+
+	seen := false
+	for _, f := range out.Flows {
+		walkSteps(f.Steps, func(s *catalog.Step) {
+			if s.Ref == ev.ID && s.Status == catalog.StatusVerified {
+				seen = true
+			}
+		})
+	}
+	if !seen {
+		t.Errorf("a publish of the declared wire name should resolve to the event: %+v", out.Flows)
+	}
+
+	warned := 0
+	for _, d := range resp.Diagnostics {
+		if strings.Contains(d.Message, `on "auth_session"`) && strings.Contains(d.Message, `it goes on "sessions"`) {
+			warned++
+		}
+	}
+	if warned != 1 {
+		t.Errorf("the channel the trace shows should be held against the declared one, once: %+v", resp.Diagnostics)
 	}
 }
 

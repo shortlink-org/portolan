@@ -226,8 +226,11 @@ request's flow and the policy's. A root no flow opens is written down as
 traces showed it.
 
 `service.name` is matched to the one service whose slug it is, `event.name` to
-the one event of the publisher's with that last segment; `services` and
-`events` in the options say otherwise where an estate's names differ.
+the one event whose `wire.name` it is, or failing that to the one event of the
+publisher's with that last segment; `services` and `events` in the options say
+otherwise where an estate's names differ. A publish span whose
+`messaging.destination.name` is not the event's `wire.channel` is a warning:
+the event went out, but not where the code says it does.
 
 ## wasm or process
 

@@ -129,12 +129,30 @@ type UserRegistered struct{ userID string }
 func (UserRegistered) Name() string { return "auth.UserRegistered" }
 `)
 
-	events := eventsIn(pkg, "auth.auth.user")
+	events := eventsIn(pkg, "auth.auth.user", "auth_user")
 	if len(events) != 1 || events[0].Name != "UserRegistered" {
 		t.Fatalf("expected only UserRegistered, got %v", names(events))
 	}
-	if got := events[0].Versions[0].Doc; !strings.Contains(got, "auth.UserRegistered") {
-		t.Errorf("the bus topic should survive into the version doc, got %q", got)
+	wire := events[0].Wire
+	if wire == nil || wire.Name != "auth.UserRegistered" || wire.Channel != "auth_user" {
+		t.Errorf("the name on the message and the channel should be the wire, got %+v", wire)
+	}
+	if got := events[0].Versions[0].Doc; got != "UserRegistered is published once per user." {
+		t.Errorf("the doc should be the struct's own, got %q", got)
+	}
+}
+
+func TestEventsWithoutAChannel(t *testing.T) {
+	pkg := mustParse(t, `package event
+
+type Registered struct{}
+
+func (Registered) Name() string { return "auth.Registered" }
+`)
+
+	events := eventsIn(pkg, "auth.auth.user", "")
+	if len(events) != 1 || events[0].Wire == nil || events[0].Wire.Channel != "" {
+		t.Fatalf("a named event with no dto.Topic keeps its name and no channel, got %+v", events)
 	}
 }
 

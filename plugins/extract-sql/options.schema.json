@@ -31,7 +31,6 @@
         "mongodb",
         "clickhouse",
         "s3",
-        "kafka-topic",
         "other"
       ],
       "description": "What kind of store it is.",

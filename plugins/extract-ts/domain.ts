@@ -6,7 +6,7 @@ import { basename, join } from "node:path";
 import type { Aggregate, Block, Event, Field as CatalogField } from "../../src/catalog.ts";
 import { aggregateID, blockID, eventID, pascal, slug, title } from "./ids.ts";
 import { readLifecycle } from "./lifecycle.ts";
-import { readSource, type ClassInfo, type Source } from "./source.ts";
+import { readSource, ts, type ClassInfo, type Source } from "./source.ts";
 
 export interface Diagnostics {
   warn(ref: string, message: string): void;
@@ -80,6 +80,7 @@ function readAggregate(dir: string, name: string, svcID: string, rel: (abs: stri
 
   const events: Event[] = [];
   const eventIds = new Map<string, string>();
+  const channel = channelOf(dir, name);
   for (const file of tsFiles(join(dir, "events"))) {
     const src = readSource(file);
     for (const c of src?.classes ?? []) {
@@ -94,8 +95,9 @@ function readAggregate(dir: string, name: string, svcID: string, rel: (abs: stri
         id: evID,
         slug: slug(c.name),
         name: c.name,
-        versions: [{ version: "v1", doc: eventDoc(c), source: rel(file), fields: fields(c) }],
+        versions: [{ version: "v1", doc: c.doc.trim(), source: rel(file), fields: fields(c) }],
         consumers: [],
+        wire: { name: c.nameLiteral, ...(channel ? { channel } : {}) },
       });
     }
   }
@@ -123,10 +125,25 @@ function readAggregate(dir: string, name: string, svcID: string, rel: (abs: stri
   };
 }
 
-function eventDoc(c: ClassInfo): string {
-  const doc = c.doc.trim();
-  const wire = c.nameLiteral ? `Published on the bus as \`${c.nameLiteral}\`.` : "";
-  return [doc, wire].filter(Boolean).join("\n\n");
+/**
+ * Where the aggregate's events go: the `TOPIC` constant of
+ * src/infrastructure/repository/<aggregate>/dto.ts, the module that turns a
+ * domain event into a message. The domain names the event and the adapter
+ * names the channel, because the channel is a fact about the transport, not
+ * about what happened. Empty when the module or the constant is missing.
+ */
+function channelOf(domainDir: string, aggregate: string): string {
+  const src = readSource(join(domainDir, "..", "..", "infrastructure", "repository", aggregate, "dto.ts"));
+  if (!src) return "";
+  for (const stmt of src.sf.statements) {
+    if (!ts.isVariableStatement(stmt)) continue;
+    for (const decl of stmt.declarationList.declarations) {
+      if (ts.isIdentifier(decl.name) && decl.name.text === "TOPIC" && decl.initializer && ts.isStringLiteral(decl.initializer)) {
+        return decl.initializer.text;
+      }
+    }
+  }
+  return "";
 }
 
 function block(aggregate: string, c: ClassInfo): Block {

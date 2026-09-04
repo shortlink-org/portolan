@@ -285,6 +285,19 @@ export function EventPage() {
             unit={plural(backlinkCount(links), "link here", "links here")}
           />
         </div>
+        {/* What the bus sees: the name on the message and the channel it goes
+            on. The one line to take to a subscription or a trace search. */}
+        {event.wire ? (
+          <div className="meta mt-2">
+            On the wire as{" "}
+            <span className="mono text-ink">{event.wire.name}</span>
+            {event.wire.channel ? (
+              <>
+                , on <span className="mono">{event.wire.channel}</span>
+              </>
+            ) : null}
+          </div>
+        ) : null}
         {/* How this event actually leaves the service. It is a fact about the
             publisher, not about the schema, but it belongs here: a consumer
             reading this page wants to know whether the event is committed with

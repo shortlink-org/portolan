@@ -309,6 +309,27 @@ export interface Event {
   name: string;
   versions: EventVersion[]; // >=1, oldest first
   consumers: EventConsumer[];
+  /**
+   * How the event leaves the service. Optional because a hand-written catalog
+   * may not know, and an extractor only says what the source declares.
+   */
+  wire?: EventWire;
+}
+/**
+ * The event as the bus sees it: its name on the message and the channel it
+ * is published on. The two are different facts - one topic carries every
+ * event of an aggregate, and a subscriber dispatches on the name - and a
+ * trace carries both, as `event.name` and `messaging.destination.name`.
+ * This is the one place the catalog and a running system meet by string.
+ */
+export interface EventWire {
+  /** "cart.BasketCreated" - the name on the message, as a trace's event.name. */
+  name: string;
+  /**
+   * "cart_basket" - the topic, subject or stream it is published on. Absent
+   * when the source names the event but does not say where it goes.
+   */
+  channel?: string;
 }
 export interface EventConsumer {
   service: string;
@@ -351,7 +372,6 @@ export type StoreKind =
   | "mongodb"
   | "clickhouse"
   | "s3"
-  | "kafka-topic"
   | "other";
 
 export const STORE_KINDS: readonly StoreKind[] = [
@@ -362,7 +382,6 @@ export const STORE_KINDS: readonly StoreKind[] = [
   "mongodb",
   "clickhouse",
   "s3",
-  "kafka-topic",
   "other",
 ] as const;
 
@@ -1358,6 +1377,20 @@ export function validateCatalog(catalog: Catalog): Catalog {
             );
           }
           eventIds.add(event.id);
+          if (event.wire !== undefined) {
+            if (typeof event.wire.name !== "string" || event.wire.name === "") {
+              fail(
+                `event "${event.id}" has a wire with no name; the name on the message is what a wire is`,
+                `event ${event.id}`,
+              );
+            }
+            if (event.wire.channel !== undefined && event.wire.channel === "") {
+              fail(
+                `event "${event.id}" names an empty channel; leave it out when the source does not say`,
+                `event ${event.id}`,
+              );
+            }
+          }
           for (const version of event.versions) {
             for (const field of version.fields) {
               if (field.ref !== undefined && !(field.ref in catalog.defs)) {

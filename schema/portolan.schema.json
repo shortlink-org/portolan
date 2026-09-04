@@ -611,7 +611,6 @@
             "mongodb",
             "clickhouse",
             "s3",
-            "kafka-topic",
             "other"
           ],
           "description": "What kind of store it is.",
@@ -679,7 +678,7 @@
           "additionalProperties": {
             "type": "string"
           },
-          "description": "Which catalog event a wire name belongs to, for an estate where the last segment of the event.name attribute is not the event's name in the model.",
+          "description": "Which catalog event a wire name belongs to, for an estate where the event does not declare its wire name and the last segment of the event.name attribute is not the event's name in the model.",
           "examples": [
             {
               "auth.PasswordChanged": "auth.auth.PasswordChanged"

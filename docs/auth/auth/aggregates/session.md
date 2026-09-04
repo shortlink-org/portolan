@@ -106,11 +106,11 @@ stateDiagram-v2
 
 `auth.auth.session.SessionEnded`
 
+On the wire as `auth.SessionEnded`, on `auth_session`.
+
 #### v1 — current
 
 SessionEnded is published when a session is deliberately ended.
-
-Published on the bus as `auth.SessionEnded`.
 
 Source: `examples/auth/internal/domain/session/event/session_ended.go`
 
@@ -125,11 +125,11 @@ Source: `examples/auth/internal/domain/session/event/session_ended.go`
 
 `auth.auth.session.SessionStarted`
 
+On the wire as `auth.SessionStarted`, on `auth_session`.
+
 #### v1 — current
 
 SessionStarted is published on a successful login. ExpiresAt is on the event so a consumer can reason about the session's lifetime without asking auth again on every check.
-
-Published on the bus as `auth.SessionStarted`.
 
 Source: `examples/auth/internal/domain/session/event/session_started.go`
 

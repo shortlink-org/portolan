@@ -270,6 +270,20 @@ type Event struct {
 	Name      string          `json:"name"`
 	Versions  []EventVersion  `json:"versions"`
 	Consumers []EventConsumer `json:"consumers"`
+	// Wire is how the event leaves the service; nil when the source does
+	// not say.
+	Wire *EventWire `json:"wire,omitempty"`
+}
+
+// EventWire is the event as the bus sees it: its name on the message and the
+// channel it is published on. A trace carries both, as `event.name` and
+// `messaging.destination.name`, and this is where the catalog meets it.
+type EventWire struct {
+	// Name is the name on the message: "cart.BasketCreated".
+	Name string `json:"name"`
+	// Channel is the topic, subject or stream: "cart_basket". Empty when the
+	// source names the event but not where it goes.
+	Channel string `json:"channel,omitempty"`
 }
 
 type EventConsumer struct {
@@ -309,7 +323,6 @@ const (
 	StoreKindMongoDB    StoreKind = "mongodb"
 	StoreKindClickHouse StoreKind = "clickhouse"
 	StoreKindS3         StoreKind = "s3"
-	StoreKindKafkaTopic StoreKind = "kafka-topic"
 	StoreKindOther      StoreKind = "other"
 )
 

@@ -33,7 +33,8 @@ type Options struct {
 
 	// Events maps an event's wire name - the `event.name` attribute,
 	// "auth.PasswordChanged" - to a catalog event id, for an estate where the
-	// last segment of the wire name is not the event's name in the model.
+	// event does not declare its wire name and the last segment of the wire
+	// name is not the event's name in the model.
 	Events map[string]string `json:"events,omitempty"`
 
 	// Out names the fragment file.

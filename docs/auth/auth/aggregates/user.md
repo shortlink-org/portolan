@@ -85,6 +85,8 @@ Hash is what the user domain stores in place of a password. The plaintext never 
 
 `auth.auth.user.PasswordChanged`
 
+On the wire as `auth.PasswordChanged`, on `auth_user`.
+
 | Consumer | Status | Note |
 | --- | --- | --- |
 | [auth.auth](../README.md) | verified | Seen consuming it in telemetry/traces.jsonl. |
@@ -92,8 +94,6 @@ Hash is what the user domain stores in place of a password. The plaintext never 
 #### v1 — current
 
 PasswordChanged is published when a user's password is replaced. It says the password is different now; it does not carry the password, old or new, in any form.
-
-Published on the bus as `auth.PasswordChanged`.
 
 Source: `examples/auth/internal/domain/user/event/password_changed.go`
 
@@ -107,11 +107,11 @@ Source: `examples/auth/internal/domain/user/event/password_changed.go`
 
 `auth.auth.user.UserRegistered`
 
+On the wire as `auth.UserRegistered`, on `auth_user`.
+
 #### v1 — current
 
 UserRegistered is published once per user, at registration. It carries the address because consumers routinely need to reach the person, and asking auth for it on every event would make the bus useless.
-
-Published on the bus as `auth.UserRegistered`.
 
 Source: `examples/auth/internal/domain/user/event/user_registered.go`
 

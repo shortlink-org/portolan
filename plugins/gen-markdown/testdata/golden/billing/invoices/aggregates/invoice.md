@@ -60,6 +60,8 @@ stateDiagram-v2
 
 `billing.invoices.invoice.InvoiceRaised`
 
+On the wire as `billing.InvoiceRaised`, on `billing_invoice`.
+
 | Consumer | Status | Note |
 | --- | --- | --- |
 | `billing.ledger` | declared | Not observed. |

@@ -42,7 +42,7 @@
                   "versions": [
                     {
                       "version": "v1",
-                      "doc": "The basket is frozen. This is the handoff: whoever places the order listens\nfor it, and pricing expires the quote it issued.\n\nPublished on the bus as `cart.BasketCheckedOut`.",
+                      "doc": "The basket is frozen. This is the handoff: whoever places the order listens\nfor it, and pricing expires the quote it issued.",
                       "source": "examples/shop/cart/src/domain/basket/events/basket-checked-out.ts",
                       "fields": [
                         {
@@ -93,7 +93,7 @@
                   "versions": [
                     {
                       "version": "v1",
-                      "doc": "A basket exists, for a visitor or for a customer.\n\nPublished on the bus as `cart.BasketCreated`.",
+                      "doc": "A basket exists, for a visitor or for a customer.",
                       "source": "examples/shop/cart/src/domain/basket/events/basket-created.ts",
                       "fields": [
                         {
@@ -129,7 +129,7 @@
                   "versions": [
                     {
                       "version": "v1",
-                      "doc": "A line went in, or grew; `quantity` is the line's after the add.\n\nPublished on the bus as `cart.BasketItemAdded`.",
+                      "doc": "A line went in, or grew; `quantity` is the line's after the add.",
                       "source": "examples/shop/cart/src/domain/basket/events/basket-item-added.ts",
                       "fields": [
                         {
@@ -175,7 +175,7 @@
                   "versions": [
                     {
                       "version": "v1",
-                      "doc": "A line went out.\n\nPublished on the bus as `cart.BasketItemRemoved`.",
+                      "doc": "A line went out.",
                       "source": "examples/shop/cart/src/domain/basket/events/basket-item-removed.ts",
                       "fields": [
                         {
@@ -211,7 +211,7 @@
                   "versions": [
                     {
                       "version": "v1",
-                      "doc": "The visitor's basket has given its lines to the customer's and is done\n(cart.0005). `basketId` is the one that emptied; `intoBasketId` the one\nthat now holds everything.\n\nPublished on the bus as `cart.BasketMerged`.",
+                      "doc": "The visitor's basket has given its lines to the customer's and is done\n(cart.0005). `basketId` is the one that emptied; `intoBasketId` the one\nthat now holds everything.",
                       "source": "examples/shop/cart/src/domain/basket/events/basket-merged.ts",
                       "fields": [
                         {

@@ -380,6 +380,7 @@ func (v *verifier) hop(s *span, parentDB bool) (*hop, bool) {
 		h := &hop{from: me, to: catalog.Participant{ID: laneBus, Kind: catalog.ParticipantBroker}, kind: catalog.StepEvent, label: lastSegment(wire), status: catalog.StatusVerified, eventID: id, file: s.file}
 		if ok {
 			h.ref = id
+			v.checkChannel(svc, id, a["messaging.destination.name"])
 		} else {
 			h.status = catalog.StatusUnresolved
 			v.warnOnce("event:"+wire, svc.ID, "publishes "+strconv.Quote(wire)+", which matches no event of its own in the catalog; name it under `events`")
@@ -666,6 +667,19 @@ func copyFlow(flow *catalog.Flow) *catalog.Flow {
 	}
 
 	return &out
+}
+
+// checkChannel holds the channel a publish span names against the one the
+// catalog declares for the event. A trace is the one witness that the two
+// agree, and a publisher whose code and whose telemetry name different
+// channels has a bug in one of them; the hop is kept, because the event did
+// go out, and the disagreement is said once.
+func (v *verifier) checkChannel(svc *catalog.Service, eventID, destination string) {
+	ev := v.l.events[eventID]
+	if ev == nil || ev.Wire == nil || ev.Wire.Channel == "" || destination == "" || destination == ev.Wire.Channel {
+		return
+	}
+	v.warnOnce("channel:"+eventID, svc.ID, "publishes "+strconv.Quote(ev.Wire.Name)+" on "+strconv.Quote(destination)+", but the catalog says it goes on "+strconv.Quote(ev.Wire.Channel))
 }
 
 func lastSegment(wire string) string {

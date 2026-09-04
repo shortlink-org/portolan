@@ -132,11 +132,11 @@ stateDiagram-v2
 
 `shop.cart.basket.BasketAbandoned`
 
+On the wire as `cart.BasketAbandoned`, on `cart_basket`.
+
 #### v1 — current
 
 Nobody touched the basket for a day, and the sweep said so (cart.0006).
-
-Published on the bus as `cart.BasketAbandoned`.
 
 Source: `examples/shop/cart/src/domain/basket/events/basket-abandoned.ts`
 
@@ -151,6 +151,8 @@ Source: `examples/shop/cart/src/domain/basket/events/basket-abandoned.ts`
 
 `shop.cart.basket.BasketCheckedOut`
 
+On the wire as `cart.BasketCheckedOut`, on `cart_basket`.
+
 | Consumer | Status | Note |
 | --- | --- | --- |
 | [shop.cart](../README.md) | verified | Seen consuming it in telemetry/traces.jsonl. |
@@ -160,8 +162,6 @@ Source: `examples/shop/cart/src/domain/basket/events/basket-abandoned.ts`
 
 The basket is frozen. This is the handoff: whoever places the order listens
 for it, and pricing expires the quote it issued.
-
-Published on the bus as `cart.BasketCheckedOut`.
 
 Source: `examples/shop/cart/src/domain/basket/events/basket-checked-out.ts`
 
@@ -178,6 +178,8 @@ Source: `examples/shop/cart/src/domain/basket/events/basket-checked-out.ts`
 
 `shop.cart.basket.BasketCreated`
 
+On the wire as `cart.BasketCreated`, on `cart_basket`.
+
 | Consumer | Status | Note |
 | --- | --- | --- |
 | [shop.cart](../README.md) | verified | Seen consuming it in telemetry/traces.jsonl. |
@@ -185,8 +187,6 @@ Source: `examples/shop/cart/src/domain/basket/events/basket-checked-out.ts`
 #### v1 — current
 
 A basket exists, for a visitor or for a customer.
-
-Published on the bus as `cart.BasketCreated`.
 
 Source: `examples/shop/cart/src/domain/basket/events/basket-created.ts`
 
@@ -200,6 +200,8 @@ Source: `examples/shop/cart/src/domain/basket/events/basket-created.ts`
 
 `shop.cart.basket.BasketItemAdded`
 
+On the wire as `cart.BasketItemAdded`, on `cart_basket`.
+
 | Consumer | Status | Note |
 | --- | --- | --- |
 | [shop.cart](../README.md) | verified | Seen consuming it in telemetry/traces.jsonl. |
@@ -207,8 +209,6 @@ Source: `examples/shop/cart/src/domain/basket/events/basket-created.ts`
 #### v1 — current
 
 A line went in, or grew; `quantity` is the line's after the add.
-
-Published on the bus as `cart.BasketItemAdded`.
 
 Source: `examples/shop/cart/src/domain/basket/events/basket-item-added.ts`
 
@@ -224,6 +224,8 @@ Source: `examples/shop/cart/src/domain/basket/events/basket-item-added.ts`
 
 `shop.cart.basket.BasketItemRemoved`
 
+On the wire as `cart.BasketItemRemoved`, on `cart_basket`.
+
 | Consumer | Status | Note |
 | --- | --- | --- |
 | [shop.cart](../README.md) | verified | Seen consuming it in telemetry/traces.jsonl. |
@@ -231,8 +233,6 @@ Source: `examples/shop/cart/src/domain/basket/events/basket-item-added.ts`
 #### v1 — current
 
 A line went out.
-
-Published on the bus as `cart.BasketItemRemoved`.
 
 Source: `examples/shop/cart/src/domain/basket/events/basket-item-removed.ts`
 
@@ -246,6 +246,8 @@ Source: `examples/shop/cart/src/domain/basket/events/basket-item-removed.ts`
 
 `shop.cart.basket.BasketMerged`
 
+On the wire as `cart.BasketMerged`, on `cart_basket`.
+
 | Consumer | Status | Note |
 | --- | --- | --- |
 | [shop.cart](../README.md) | verified | Seen consuming it in telemetry/traces.jsonl. |
@@ -255,8 +257,6 @@ Source: `examples/shop/cart/src/domain/basket/events/basket-item-removed.ts`
 The visitor's basket has given its lines to the customer's and is done
 (cart.0005). `basketId` is the one that emptied; `intoBasketId` the one
 that now holds everything.
-
-Published on the bus as `cart.BasketMerged`.
 
 Source: `examples/shop/cart/src/domain/basket/events/basket-merged.ts`
 

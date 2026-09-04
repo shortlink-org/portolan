@@ -19,6 +19,7 @@ type lookup struct {
 	eventOwner map[string]*catalog.Service
 	aggregate  map[string]*catalog.Aggregate // by event id
 	byName     map[string][]string           // event name -> ids
+	byWire     map[string][]string           // declared wire name -> ids
 	providers  map[string]*catalog.Service   // interface id -> provider
 	rpcIDs     map[string]bool
 	stores     map[string][]*catalog.Store // owner -> stores
@@ -35,6 +36,7 @@ func newLookup(cat *catalog.Catalog, opts Options) *lookup {
 		eventOwner: map[string]*catalog.Service{},
 		aggregate:  map[string]*catalog.Aggregate{},
 		byName:     map[string][]string{},
+		byWire:     map[string][]string{},
 		providers:  map[string]*catalog.Service{},
 		rpcIDs:     map[string]bool{},
 		stores:     map[string][]*catalog.Store{},
@@ -68,6 +70,9 @@ func newLookup(cat *catalog.Catalog, opts Options) *lookup {
 					l.eventOwner[ev.ID] = svc
 					l.aggregate[ev.ID] = agg
 					l.byName[ev.Name] = append(l.byName[ev.Name], ev.ID)
+					if ev.Wire != nil {
+						l.byWire[ev.Wire.Name] = append(l.byWire[ev.Wire.Name], ev.ID)
+					}
 				}
 			}
 		}
@@ -184,14 +189,19 @@ func routeMatches(template, path string) bool {
 }
 
 // event reads a wire name back to an event id. The manifest's word first;
-// then, for a producer, the one event of its own with that name; then, for a
-// consumer of somebody else's event, the one event anywhere with that name.
-// Two events sharing a name is an ambiguity the manifest has to settle.
+// then the one event that declares this very name as its wire; then, for a
+// producer, the one event of its own with that name as its last segment;
+// then, for a consumer of somebody else's event, the one event anywhere with
+// that name. Two events sharing a name is an ambiguity the manifest has to
+// settle.
 func (l *lookup) event(producer *catalog.Service, wire string) (string, bool) {
 	if id, ok := l.opts.Events[wire]; ok {
 		_, known := l.events[id]
 
 		return id, known
+	}
+	if ids := l.byWire[wire]; len(ids) == 1 {
+		return ids[0], true
 	}
 	name := wire
 	if i := strings.LastIndex(wire, "."); i >= 0 {

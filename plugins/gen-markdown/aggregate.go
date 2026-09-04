@@ -201,6 +201,14 @@ func (s *site) eventsBlock(from string, agg *catalog.Aggregate) string {
 		b.WriteString("### " + event.Name + "\n\n")
 		b.WriteString(code(event.ID) + "\n")
 
+		if event.Wire != nil {
+			line := "On the wire as " + code(event.Wire.Name)
+			if event.Wire.Channel != "" {
+				line += ", on " + code(event.Wire.Channel)
+			}
+			b.WriteString("\n" + line + ".\n")
+		}
+
 		if len(event.Versions) == 0 {
 			s.b.warn(event.ID, "event %q has no versions", event.ID)
 		}

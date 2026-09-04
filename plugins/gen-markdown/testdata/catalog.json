@@ -91,6 +91,7 @@
                   "id": "billing.invoices.invoice.InvoiceRaised",
                   "slug": "invoice-raised",
                   "name": "InvoiceRaised",
+                  "wire": { "name": "billing.InvoiceRaised", "channel": "billing_invoice" },
                   "consumers": [
                     { "service": "billing.ledger", "status": "declared", "note": "Not observed." }
                   ],

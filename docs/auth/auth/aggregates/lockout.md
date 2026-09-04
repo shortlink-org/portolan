@@ -102,11 +102,11 @@ stateDiagram-v2
 
 `auth.auth.lockout.AccountLocked`
 
+On the wire as `auth.AccountLocked`, on `auth_lockout`.
+
 #### v1 — current
 
 AccountLocked is published when an account starts refusing logins because of too many wrong passwords in a row. Until says when it stops.
-
-Published on the bus as `auth.AccountLocked`.
 
 Source: `examples/auth/internal/domain/lockout/event/account_locked.go`
 

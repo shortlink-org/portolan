@@ -162,7 +162,7 @@
                   "versions": [
                     {
                       "version": "v1",
-                      "doc": "Nobody touched the basket for long enough that it is no longer anybody's.\n\nPublished on the bus as `cart.BasketAbandoned`.",
+                      "doc": "Nobody touched the basket for long enough that it is no longer anybody's.",
                       "source": "plugins/extract-ts/testdata/cart/src/domain/basket/events/basket-abandoned.ts",
                       "fields": [
                         {
@@ -173,7 +173,11 @@
                       ]
                     }
                   ],
-                  "consumers": []
+                  "consumers": [],
+                  "wire": {
+                    "name": "cart.BasketAbandoned",
+                    "channel": "cart_basket"
+                  }
                 },
                 {
                   "id": "shop.cart.basket.BasketCheckedOut",
@@ -182,7 +186,7 @@
                   "versions": [
                     {
                       "version": "v1",
-                      "doc": "The basket is frozen; whoever places the order listens for this.\n\nPublished on the bus as `cart.BasketCheckedOut`.",
+                      "doc": "The basket is frozen; whoever places the order listens for this.",
                       "source": "plugins/extract-ts/testdata/cart/src/domain/basket/events/basket-checked-out.ts",
                       "fields": [
                         {
@@ -203,7 +207,11 @@
                       ]
                     }
                   ],
-                  "consumers": []
+                  "consumers": [],
+                  "wire": {
+                    "name": "cart.BasketCheckedOut",
+                    "channel": "cart_basket"
+                  }
                 },
                 {
                   "id": "shop.cart.basket.BasketCreated",
@@ -212,7 +220,7 @@
                   "versions": [
                     {
                       "version": "v1",
-                      "doc": "A basket came into being, for a visitor or for a customer.\n\nPublished on the bus as `cart.BasketCreated`.",
+                      "doc": "A basket came into being, for a visitor or for a customer.",
                       "source": "plugins/extract-ts/testdata/cart/src/domain/basket/events/basket-created.ts",
                       "fields": [
                         {
@@ -228,7 +236,11 @@
                       ]
                     }
                   ],
-                  "consumers": []
+                  "consumers": [],
+                  "wire": {
+                    "name": "cart.BasketCreated",
+                    "channel": "cart_basket"
+                  }
                 },
                 {
                   "id": "shop.cart.basket.BasketItemAdded",
@@ -237,7 +249,7 @@
                   "versions": [
                     {
                       "version": "v1",
-                      "doc": "A line went in, or grew.\n\nPublished on the bus as `cart.BasketItemAdded`.",
+                      "doc": "A line went in, or grew.",
                       "source": "plugins/extract-ts/testdata/cart/src/domain/basket/events/basket-item-added.ts",
                       "fields": [
                         {
@@ -263,7 +275,11 @@
                       ]
                     }
                   ],
-                  "consumers": []
+                  "consumers": [],
+                  "wire": {
+                    "name": "cart.BasketItemAdded",
+                    "channel": "cart_basket"
+                  }
                 }
               ],
               "lifecycle": {

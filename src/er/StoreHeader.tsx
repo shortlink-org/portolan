@@ -27,7 +27,6 @@ export const STORE_KIND_LABEL: Record<StoreKind, string> = {
   mongodb: "MongoDB",
   clickhouse: "ClickHouse",
   s3: "S3",
-  "kafka-topic": "Kafka topic",
   other: "store",
 };
 
