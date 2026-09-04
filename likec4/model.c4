@@ -20,7 +20,7 @@ model {
     oms = service 'Order Management' {
       description 'github.com/acme/shop/services/oms'
       style { color ctx0 }
-      order = aggregate 'Order' {
+      _order = aggregate 'Order' {
         OrderPlaced = event 'OrderPlaced' {
           description 'Adds the acquisition channel so pricing and delivery can differ per channel.'
         }
@@ -30,6 +30,9 @@ model {
         OrderCancelled = event 'OrderCancelled' {
           description 'The order was cancelled before fulfilment, by the customer or by risk.'
         }
+      }
+      pg = store 'Order management database' {
+        description 'postgres'
       }
     }
     pricing = service 'Pricing' {
@@ -44,6 +47,9 @@ model {
         }
       }
       price_list = aggregate 'PriceList' {
+      }
+      cache = store 'Price list cache' {
+        description 'redis'
       }
     }
     cart = service 'Shopping Cart' {
@@ -72,6 +78,9 @@ for it, and pricing expires the quote it issued.'
 that now holds everything.'
         }
       }
+      pg = store 'Cart database' {
+        description 'postgres'
+      }
     }
   }
   payments = context 'Payments' {
@@ -96,6 +105,9 @@ that now holds everything.'
           description 'A compensating posting pair against a captured payment.'
         }
       }
+      pg = store 'Ledger database' {
+        description 'postgres'
+      }
     }
   }
   delivery = context 'Delivery' {
@@ -116,6 +128,9 @@ that now holds everything.'
         RoutePlanned = event 'RoutePlanned' {
           description 'A vehicle and window were assigned a stop sequence.'
         }
+      }
+      pg = store 'Delivery database' {
+        description 'postgres'
       }
     }
   }
@@ -145,6 +160,9 @@ that now holds everything.'
         UserRegistered = event 'UserRegistered' {
           description 'UserRegistered is published once per user, at registration. It carries the address because consumers routinely need to reach the person, and asking auth for it on every event would make the bus useless.'
         }
+      }
+      pg = store 'Auth database' {
+        description 'postgres'
       }
     }
   }
@@ -193,6 +211,9 @@ that now holds everything.'
   }
   shop.pricing -> shop.oms 'GetOrder' {
     style { color verified  line solid  head normal }
+  }
+  shop.pricing -> shop.oms.pg 'reads' {
+    style { color declared  line dashed  head normal }
   }
   shop.cart -> shop.pricing 'BasketCheckedOut' {
     style { color declared  line dashed  head onormal }
@@ -259,5 +280,59 @@ that now holds everything.'
   }
   delivery.core -> payments.ledger 'GetPayment' {
     style { color declared  line dashed  head normal }
+  }
+  delivery.core -> shop.oms.pg 'reads' {
+    style { color declared  line dashed  head normal }
+  }
+  shop.oms._order -> shop.oms.pg 'orders, order_items' {
+    style { color declared  line dashed  head normal }
+  }
+  shop.pricing.quote -> shop.oms.pg 'price_snapshots' {
+    style { color declared  line dashed  head normal }
+  }
+  payments.ledger.payment -> payments.ledger.pg 'journal_entries' {
+    style { color declared  line dashed  head normal }
+  }
+  payments.ledger.refund -> payments.ledger.pg 'refunds' {
+    style { color declared  line dashed  head normal }
+  }
+  delivery.core.shipment -> delivery.core.pg 'packages, parcels' {
+    style { color declared  line dashed  head normal }
+  }
+  delivery.core.route -> delivery.core.pg 'route_stops' {
+    style { color declared  line dashed  head normal }
+  }
+  auth.auth.lockout -> auth.auth.pg 'lockouts' {
+    style { color declared  line dashed  head normal }
+  }
+  auth.auth.session -> auth.auth.pg 'sessions' {
+    style { color declared  line dashed  head normal }
+  }
+  auth.auth.user -> auth.auth.pg 'users' {
+    style { color declared  line dashed  head normal }
+  }
+  shop.cart.basket -> shop.cart.pg 'baskets, basket_items' {
+    style { color declared  line dashed  head normal }
+  }
+  customer -> shop.oms '2 flows' {
+    style { color verified  line solid  head normal }
+  }
+  shop.oms -> customer '2 flows' {
+    style { color verified  line solid  head normal }
+  }
+  agent -> shop.oms 'Refund requested' {
+    style { color declared  line dashed  head normal }
+  }
+  shop.oms -> agent 'Refund requested' {
+    style { color declared  line dashed  head normal }
+  }
+  customer -> delivery.core 'Shipment tracking' {
+    style { color verified  line solid  head normal }
+  }
+  client -> auth.auth '6 flows' {
+    style { color verified  line solid  head normal }
+  }
+  client -> shop.cart '6 flows' {
+    style { color verified  line solid  head normal }
   }
 }

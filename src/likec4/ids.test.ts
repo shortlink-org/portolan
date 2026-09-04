@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { catalog } from "../data";
 import {
+  LANDSCAPE_VIEW,
   allViewIds,
   contextViewId,
   eventFqn,
@@ -10,6 +11,7 @@ import {
   fqn,
   participantFqn,
   safeId,
+  serviceInsideViewId,
   serviceViewId,
 } from "./ids";
 
@@ -18,6 +20,14 @@ describe("safeId", () => {
     expect(safeId("fraud-scoring")).toBe("fraud_scoring");
     expect(safeId("price-list")).toBe("price_list");
     expect(safeId("analytics-sink")).toBe("analytics_sink");
+  });
+
+  it("escapes a word the grammar has taken", () => {
+    // An aggregate called `order` is what a shop calls its aggregate, and a
+    // model that declares one under that name does not parse at all.
+    expect(safeId("order")).toBe("_order");
+    expect(safeId("style")).toBe("_style");
+    expect(safeId("view")).toBe("_view");
   });
 
   it("never starts an identifier with a digit", () => {
@@ -31,9 +41,18 @@ describe("safeId", () => {
 
 describe("fqn", () => {
   it("keeps catalog dots as LikeC4 hierarchy separators", () => {
-    expect(fqn("shop.oms.order")).toBe("shop.oms.order");
+    expect(fqn("shop.cart.basket")).toBe("shop.cart.basket");
+    expect(eventFqn("shop.cart.basket.ItemAdded")).toBe(
+      "shop.cart.basket.ItemAdded",
+    );
+  });
+
+  it("escapes only the segment that needs it", () => {
+    // The shop's aggregate is called `order`, and `order` is a word of the
+    // LikeC4 grammar; the segments around it are left alone.
+    expect(fqn("shop.oms.order")).toBe("shop.oms._order");
     expect(eventFqn("shop.oms.order.OrderPlaced")).toBe(
-      "shop.oms.order.OrderPlaced",
+      "shop.oms._order.OrderPlaced",
     );
   });
 
@@ -53,6 +72,7 @@ describe("view ids", () => {
     expect(flowCrossViewId("checkout")).toBe("flow_checkout_cross");
     expect(contextViewId("shop")).toBe("ctx_shop");
     expect(serviceViewId("shop.oms")).toBe("svc_shop_oms");
+    expect(serviceInsideViewId("shop.oms")).toBe("svc_shop_oms_inside");
   });
 
   it("is unique across the whole catalog", () => {
@@ -60,14 +80,19 @@ describe("view ids", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("covers every context, every service and both flow views, and nothing else", () => {
+  it("covers the landscape, every context, both views of every service and both of every flow", () => {
     const ids = allViewIds(catalog);
     const services = catalog.contexts.flatMap((c) => c.services);
     expect(ids).toHaveLength(
-      catalog.contexts.length + services.length + catalog.flows.length * 2,
+      1 +
+        catalog.contexts.length +
+        services.length * 2 +
+        catalog.flows.length * 2,
     );
-    // No landscape view: /graph is React Flow's, and no picture is drawn twice.
-    expect(ids).not.toContain("landscape");
+    // The three C4 levels: the estate, a context, and a service opened up.
+    expect(ids).toContain(LANDSCAPE_VIEW);
+    expect(ids).toContain(contextViewId("shop"));
+    expect(ids).toContain(serviceInsideViewId("shop.oms"));
   });
 
   it("produces only valid LikeC4 identifiers", () => {
@@ -89,7 +114,7 @@ describe("generated sources match the ids the app asks for", () => {
     expect([...declared].sort()).toEqual([...allViewIds(catalog)].sort());
   });
 
-  it("declares no landscape view, since /graph is React Flow's picture", () => {
-    expect(declared).not.toContain("landscape");
+  it("declares the landscape once, and it is the only view with a fixed name", () => {
+    expect(declared.filter((id) => id === LANDSCAPE_VIEW)).toHaveLength(1);
   });
 });

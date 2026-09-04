@@ -31,7 +31,9 @@ import {
 import { WhatLinksHere } from "../components/WhatLinksHere";
 import { NotFound } from "./NotFound";
 import { C4View } from "../likec4/C4View";
-import { serviceViewId } from "../likec4/ids";
+import { LevelSwitch } from "../likec4/levels";
+import type { C4Level } from "../likec4/levels";
+import { serviceInsideViewId, serviceViewId } from "../likec4/ids";
 import { index } from "../data";
 import { storesOfService } from "../lib/data-model";
 import { ErCanvas } from "../er/ErCanvas";
@@ -65,6 +67,8 @@ export function ServicePage() {
   const { context: contextId, service: serviceSlug } = useParams();
   const [params, setParams] = useSearchParams();
   const [showRetired, setShowRetired] = useState(false);
+  /** Which C4 level the model canvas is drawn at: the service, or its parts. */
+  const [level, setLevel] = useState<C4Level>(2);
   // Read-only stores are off by default: they belong to someone else, and the
   // question this tab opens with is what THIS service is responsible for.
   const [showReadOnly, setShowReadOnly] = useState(false);
@@ -203,8 +207,32 @@ export function ServicePage() {
       <TabPanels className="p-gutter">
         <TabPanel>
           <>
-            <SectionTitle>Model</SectionTitle>
-            <C4View viewId={serviceViewId(service)} height={300} />
+            {/* Two scopes of the same service: the box among the ones it
+                touches, and the box opened up. The page already lists the
+                aggregates below, so it opens on the level the list cannot
+                give — who is on the other end. */}
+            <SectionTitle
+              right={
+                <LevelSwitch
+                  level={level}
+                  onLevel={setLevel}
+                  levels={[
+                    { level: 2, label: "neighbours" },
+                    { level: 3, label: "inside" },
+                  ]}
+                />
+              }
+            >
+              Model
+            </SectionTitle>
+            <C4View
+              viewId={
+                level === 3
+                  ? serviceInsideViewId(service)
+                  : serviceViewId(service)
+              }
+              height={300}
+            />
             <div className="mt-section" />
             <Markdown>{service.readme}</Markdown>
             <section

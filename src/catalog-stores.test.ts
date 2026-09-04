@@ -104,6 +104,15 @@ describe("store validation", () => {
     expect(error.message).toContain("shop.oms.postgres");
   });
 
+  it("rejects a store whose slug is an aggregate's, since the model draws both inside the service", () => {
+    const bad = clone();
+    const store = omsStore(bad);
+    store.slug = "order";
+    store.id = "shop.oms.order";
+
+    expect(failureOf(bad).message).toContain("aggregate");
+  });
+
   it("rejects an index over a column the table does not have", () => {
     const bad = clone();
     const table = omsStore(bad).tables.find((t) => t.name === "orders");

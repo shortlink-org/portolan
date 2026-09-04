@@ -27,6 +27,9 @@ for (const context of catalog.contexts) {
     }
   }
 }
+// A store is a container inside the service that owns it, and clicking one
+// should open the schema rather than nothing.
+for (const store of catalog.stores ?? []) remember(store.id);
 // Brokers, actors and externals are model elements too, and a flow lane is the
 // most likely thing on screen to be clicked.
 for (const flow of catalog.flows) {

@@ -9,6 +9,7 @@
 import { writeFileSync, mkdirSync } from "node:fs";
 
 import { loadCatalog } from "./catalog-sources.mjs";
+import reserved from "../src/likec4/reserved.json" with { type: "json" };
 
 // Every source, not one file: a service that publishes its own facts gets a
 // C4 view like any other, and generating from a single file would leave it out
@@ -16,15 +17,21 @@ import { loadCatalog } from "./catalog-sources.mjs";
 const { catalog } = await loadCatalog();
 
 // --- ids (mirrors src/likec4/ids.ts; kept in step by src/likec4/ids.test.ts) ---
+// The reserved words are not mirrored, they are the same file: a word the
+// grammar has taken must be escaped identically on both sides or a clicked
+// node stops finding what it stands for.
+const RESERVED = new Set(reserved);
 const safeId = (raw) => {
   const cleaned = raw.replace(/[^A-Za-z0-9_]/g, "_");
-  return /^[0-9]/.test(cleaned) ? `_${cleaned}` : cleaned;
+  return /^[0-9]/.test(cleaned) || RESERVED.has(cleaned) ? `_${cleaned}` : cleaned;
 };
 const fqn = (id) => id.split(".").map(safeId).join(".");
 const flowViewId = (flow) => `flow_${safeId(flow.slug)}`;
 const flowCrossViewId = (flow) => `${flowViewId(flow)}_cross`;
 const contextViewId = (c) => `ctx_${safeId(c.id)}`;
 const serviceViewId = (s) => `svc_${safeId(s.id)}`;
+const serviceInsideViewId = (s) => `${serviceViewId(s)}_inside`;
+const LANDSCAPE_VIEW = "landscape";
 
 const q = (text) => `'${String(text).replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
 
@@ -72,6 +79,29 @@ for (const context of catalog.contexts) {
         }
       }
     }
+  }
+}
+
+// A store is a container the estate keeps its state in, so it belongs inside
+// the service that owns it — not at the model root, where a flow's own store
+// participants sit. The two are different ids and the catalog says nothing
+// that would join them, so neither is guessed into the other.
+const storesByOwner = new Map();
+const storeById = new Map();
+for (const store of catalog.stores ?? []) {
+  storeById.set(store.id, store);
+  const owned = storesByOwner.get(store.owner) ?? [];
+  owned.push(store);
+  storesByOwner.set(store.owner, owned);
+}
+
+/** Every step of a flow, branches and loops included, in declaration order. */
+function walkFlowSteps(nodes, visit) {
+  for (const node of nodes) {
+    if (node.type === "step") visit(node);
+    else if (node.type === "parallel") node.branches.forEach((b) => walkFlowSteps(b, visit));
+    else if (node.type === "loop") walkFlowSteps(node.steps, visit);
+    else if (node.type === "alt") node.branches.forEach((b) => walkFlowSteps(b.steps, visit));
   }
 }
 
@@ -144,6 +174,11 @@ for (const context of catalog.contexts) {
       }
       model.push("      }");
     }
+    for (const store of storesByOwner.get(service.id) ?? []) {
+      model.push(`      ${safeId(store.slug)} = store ${q(store.name)} {`);
+      model.push(`        description ${q(store.kind)}`);
+      model.push("      }");
+    }
     model.push("    }");
   }
   model.push("  }");
@@ -178,8 +213,84 @@ for (const context of catalog.contexts) {
           `  }`,
       );
     }
+    // Owning a store is containment and needs no arrow. Reading one somebody
+    // else owns is the arrow worth drawing, and it is the same fact the
+    // Problems page reports: a database with a second reader.
+    for (const storeId of service.stores ?? []) {
+      const store = storeById.get(storeId);
+      if (!store || store.owner === service.id) continue;
+      relations.push(
+        `  ${fqn(service.id)} -> ${fqn(store.id)} 'reads' {\n` +
+          `    style { color declared  line ${STATUS_LINE.declared}  head normal }\n` +
+          `  }`,
+      );
+    }
   }
 }
+
+// What a table says it persists is the one arrow inside a service that is read
+// off the schema rather than off the code: the aggregate goes into the store,
+// and the tables that carry it are the label. A table persisting an aggregate
+// another service owns draws the same arrow across the boundary, which is the
+// crossing the Problems page reports.
+const persists = new Map(); // "aggregate|store" -> { aggregate, store, tables:[] }
+for (const store of catalog.stores ?? []) {
+  for (const table of store.tables) {
+    const aggregate = table.persists?.aggregate;
+    if (!aggregate) continue;
+    const key = `${aggregate}|${store.id}`;
+    const edge = persists.get(key) ?? { aggregate, store: store.id, tables: [] };
+    edge.tables.push(table.name);
+    persists.set(key, edge);
+  }
+}
+for (const edge of persists.values()) {
+  const label =
+    edge.tables.length > 3 ? `${edge.tables.length} tables` : edge.tables.join(", ");
+  relations.push(
+    `  ${fqn(edge.aggregate)} -> ${fqn(edge.store)} ${q(label)} {\n` +
+      `    style { color declared  line ${STATUS_LINE.declared}  head normal }\n` +
+      `  }`,
+  );
+}
+
+// An actor is the one participant nothing else in the catalog can place: no
+// repository imports the customer, and no event names them. A flow step is
+// the only evidence that they touch the estate at all, so it is read as a
+// relation — once per pair, however many flows walk it.
+const STATUS_RANK = { verified: 0, declared: 1, unresolved: 2 };
+const actorIds = new Set(
+  [...rootParticipants].filter(([, meta]) => meta.kind === "actor").map(([id]) => id),
+);
+const actorEdges = new Map(); // "from|to" -> { from, to, flows:Set, status }
+for (const flow of catalog.flows) {
+  walkFlowSteps(flow.steps, (step) => {
+    if (!actorIds.has(step.from) && !actorIds.has(step.to)) return;
+    if (step.from === step.to) return;
+    const key = `${step.from}|${step.to}`;
+    const edge = actorEdges.get(key) ?? {
+      from: step.from,
+      to: step.to,
+      flows: new Set(),
+      status: "unresolved",
+    };
+    edge.flows.add(flow.name);
+    // The best evidence any step offers: one observed crossing is enough to
+    // say the actor really does touch the estate there.
+    if (STATUS_RANK[step.status] < STATUS_RANK[edge.status]) edge.status = step.status;
+    actorEdges.set(key, edge);
+  });
+}
+for (const edge of actorEdges.values()) {
+  const names = [...edge.flows];
+  const label = names.length === 1 ? names[0] : `${names.length} flows`;
+  relations.push(
+    `  ${fqn(edge.from)} -> ${fqn(edge.to)} ${q(label)} {\n` +
+      `    style { color ${edge.status}  line ${STATUS_LINE[edge.status]}  head normal }\n` +
+      `  }`,
+  );
+}
+
 model.push(...relations);
 model.push("}");
 
@@ -281,17 +392,74 @@ function crossContextOnly(nodes, contextOf) {
 
 const views = [];
 views.push("views {");
-// No landscape view: the system-wide dependency picture belongs to React Flow
-// at /graph, and no picture may be drawn by both renderers.
+
+// --- C4 level 1: the estate and what stands outside it ---------------------
+// Contexts as black boxes, and the participants that are not the estate's to
+// build: the people who use it, the systems it pays and asks, and the
+// consumers nothing in the catalog accounts for. Brokers and the stores a
+// flow names are left out on purpose — they are containers, and they belong
+// to the level below.
+//
+// This is not /graph's picture: that one is services against the events they
+// carry, and it is drawn by React Flow. No picture is drawn by both.
+const OUTSIDE = new Set(["actor", "external", "unknown"]);
+const outside = [...rootParticipants]
+  .filter(([, meta]) => OUTSIDE.has(meta.kind))
+  .map(([id]) => safeId(id));
+views.push(`  view ${LANDSCAPE_VIEW} {`);
+views.push("    title 'Estate'");
+views.push(
+  "    description 'Every bounded context, and everything outside the estate that touches one.'",
+);
+views.push(
+  `    include ${[...catalog.contexts.map((c) => safeId(c.id)), ...outside].join(", ")}`,
+);
+views.push("  }");
+views.push("");
+
 for (const context of catalog.contexts) {
+  // --- C4 level 2: the containers of one context --------------------------
+  // Services, and the databases they keep their state in. A store is a
+  // grandchild of the context, so `*` does not reach it and each one is named:
+  // the ones this context's services own, and the ones they only read, which
+  // is how a service reading someone else's database shows up as a crossing
+  // rather than as a box inside its own walls.
+  const contextStores = new Set();
+  for (const service of context.services) {
+    for (const store of storesByOwner.get(service.id) ?? []) contextStores.add(store.id);
+    for (const storeId of service.stores ?? []) {
+      if (storeById.has(storeId)) contextStores.add(storeId);
+    }
+  }
+  const include = ["*", ...[...contextStores].map(fqn)].join(", ");
   views.push(`  view ${contextViewId(context)} of ${safeId(context.id)} {`);
   views.push(`    title ${q(context.name)}`);
-  views.push("    include *");
+  views.push(`    include ${include}`);
   views.push("  }");
+
   for (const service of context.services) {
+    // Still level 2, one service deep: the service as a box, and everything
+    // that reaches it or that it reaches. Its own parts are excluded by name
+    // rather than the subject included by name, because inside a scoped view a
+    // dotted reference is read relative to the scope first — and `auth.auth`
+    // read from inside `auth.auth` resolves to nothing at all.
+    const parts = [
+      ...service.aggregates.map((a) => safeId(a.slug)),
+      ...(storesByOwner.get(service.id) ?? []).map((store) => safeId(store.slug)),
+    ];
     views.push(`  view ${serviceViewId(service)} of ${fqn(service.id)} {`);
-    views.push(`    title ${q(service.name)}`);
+    views.push(`    title ${q(`${service.name} — neighbours`)}`);
     views.push("    include *, -> *, * ->");
+    if (parts.length > 0) views.push(`    exclude ${parts.join(", ")}`);
+    views.push("  }");
+
+    // --- C4 level 3: inside one service ------------------------------------
+    // Its aggregates and its stores. Events are in the model but not in this
+    // picture: a service with eleven of them would draw a wall of boxes where
+    // the page already lists them, one line each.
+    views.push(`  view ${serviceInsideViewId(service)} of ${fqn(service.id)} {`);
+    views.push(`    title ${q(`${service.name} — inside`)}`);
+    views.push("    include *");
     views.push("  }");
   }
 }

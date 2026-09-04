@@ -1701,7 +1701,8 @@ function validateStores(catalog: Catalog): void {
   const stores = allStores(catalog);
   if (stores.length === 0) return;
 
-  const serviceIds = new Set(allServices(catalog).map((s) => s.id));
+  const services = new Map(allServices(catalog).map((s) => [s.id, s]));
+  const serviceIds = new Set(services.keys());
   const aggregates = new Map(allAggregates(catalog).map((a) => [a.id, a]));
 
   assertUniqueSlugs(
@@ -1765,6 +1766,17 @@ function validateStores(catalog: Catalog): void {
     if (!serviceIds.has(store.owner)) {
       fail(
         `store "${store.id}" is owned by "${store.owner}", which is not a service in the catalog`,
+        `store ${store.id}`,
+      );
+    }
+    // A store is drawn inside the service that owns it, beside that service's
+    // aggregates, so the two share one namespace in the architecture model. A
+    // store whose slug is also an aggregate's would be one box standing for
+    // two things, and the id it is clicked by would answer with whichever was
+    // registered first.
+    if (services.get(store.owner)?.aggregates.some((a) => a.slug === store.slug)) {
+      fail(
+        `store "${store.id}" has the slug of an aggregate of "${store.owner}"`,
         `store ${store.id}`,
       );
     }

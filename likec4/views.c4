@@ -1,44 +1,80 @@
 // GENERATED — do not edit.
 views {
+  view landscape {
+    title 'Estate'
+    description 'Every bounded context, and everything outside the estate that touches one.'
+    include shop, payments, delivery, auth, customer, fraud_scoring, psp_gateway, agent, carrier_api, analytics_sink, client, risk_v1
+  }
+
   view ctx_shop of shop {
     title 'Shop'
-    include *
+    include *, shop.oms.pg, shop.pricing.cache, shop.cart.pg
   }
   view svc_shop_oms of shop.oms {
-    title 'Order Management'
+    title 'Order Management — neighbours'
     include *, -> *, * ->
+    exclude _order, pg
+  }
+  view svc_shop_oms_inside of shop.oms {
+    title 'Order Management — inside'
+    include *
   }
   view svc_shop_pricing of shop.pricing {
-    title 'Pricing'
+    title 'Pricing — neighbours'
     include *, -> *, * ->
+    exclude quote, price_list, cache
+  }
+  view svc_shop_pricing_inside of shop.pricing {
+    title 'Pricing — inside'
+    include *
   }
   view svc_shop_cart of shop.cart {
-    title 'Shopping Cart'
+    title 'Shopping Cart — neighbours'
     include *, -> *, * ->
+    exclude basket, pg
+  }
+  view svc_shop_cart_inside of shop.cart {
+    title 'Shopping Cart — inside'
+    include *
   }
   view ctx_payments of payments {
     title 'Payments'
-    include *
+    include *, payments.ledger.pg
   }
   view svc_payments_ledger of payments.ledger {
-    title 'Ledger'
+    title 'Ledger — neighbours'
     include *, -> *, * ->
+    exclude payment, refund, pg
+  }
+  view svc_payments_ledger_inside of payments.ledger {
+    title 'Ledger — inside'
+    include *
   }
   view ctx_delivery of delivery {
     title 'Delivery'
-    include *
+    include *, delivery.core.pg, shop.oms.pg
   }
   view svc_delivery_core of delivery.core {
-    title 'Delivery Core'
+    title 'Delivery Core — neighbours'
     include *, -> *, * ->
+    exclude shipment, route, pg
+  }
+  view svc_delivery_core_inside of delivery.core {
+    title 'Delivery Core — inside'
+    include *
   }
   view ctx_auth of auth {
     title 'Authentication'
-    include *
+    include *, auth.auth.pg
   }
   view svc_auth_auth of auth.auth {
-    title 'Authentication & Sessions'
+    title 'Authentication & Sessions — neighbours'
     include *, -> *, * ->
+    exclude lockout, session, user, pg
+  }
+  view svc_auth_auth_inside of auth.auth {
+    title 'Authentication & Sessions — inside'
+    include *
   }
 
   dynamic view flow_checkout {

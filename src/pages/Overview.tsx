@@ -7,6 +7,9 @@ import { absoluteTime, plural, relativeTime } from "../lib/format";
 import { useCountUp, staggerStyle } from "../lib/motion";
 import { CONTEXT_ANCHOR, OVERVIEW_ANCHOR, paths } from "../routes";
 import { Blank, SectionTitle } from "../components/PageHeader";
+import { C4View } from "../likec4/C4View";
+import { LANDSCAPE_VIEW } from "../likec4/ids";
+import { LevelBadge } from "../likec4/levels";
 import { Ident } from "../components/Ident";
 import { RowActions } from "../components/RowActions";
 import {
@@ -56,6 +59,21 @@ export function Overview() {
           catalog {catalog.commit} · {relativeTime(catalog.generatedAt)}
         </span>
       </div>
+
+      {/* C4 level 1, and the only picture in the app that draws the whole
+          estate as boxes: the contexts, the people who use them, the systems
+          they pay and ask, and the consumers nothing in the catalog accounts
+          for. The event graph at /graph is a different question — which event
+          reaches whom — and it is drawn by a different renderer. */}
+      <section id={OVERVIEW_ANCHOR.landscape} className="mt-section">
+        <SectionTitle
+          anchor={OVERVIEW_ANCHOR.landscape}
+          right={<LevelBadge level={1} />}
+        >
+          Landscape
+        </SectionTitle>
+        <C4View viewId={LANDSCAPE_VIEW} height={400} />
+      </section>
 
       <section id={OVERVIEW_ANCHOR.contexts} className="mt-section">
         <SectionTitle anchor={OVERVIEW_ANCHOR.contexts}>Contexts</SectionTitle>

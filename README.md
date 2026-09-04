@@ -11,8 +11,12 @@ the site is the output.
 `data/catalog.json` is the single source of truth. On startup the app validates
 it and builds lookup indexes; if validation fails the shell renders the error
 instead of a blank page. At build time the LikeC4 model is generated from the
-same JSON — a C4 view per context and service, plus a dynamic view per flow.
-The app never draws these diagrams itself.
+same JSON, in the three C4 levels the catalog holds facts about: one landscape
+of the whole estate and what stands outside it, one view per context of its
+services and their stores, and two per service — the service among the ones it
+touches, and the service opened onto its aggregates and where each is
+persisted. A dynamic view per flow sits beside them. The app never draws these
+diagrams itself.
 
 A store belongs to exactly one service and holds tables, and a table says which
 aggregate it persists and which domain field each column carries. That is what

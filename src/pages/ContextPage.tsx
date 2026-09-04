@@ -16,6 +16,7 @@ import type { TocItem } from "../components/Toc";
 import { WhatLinksHere } from "../components/WhatLinksHere";
 import { NotFound } from "./NotFound";
 import { C4View } from "../likec4/C4View";
+import { LevelBadge } from "../likec4/levels";
 import { contextViewId } from "../likec4/ids";
 
 const TOC: TocItem[] = [
@@ -92,11 +93,13 @@ export function ContextPage() {
 
       <div className="flex gap-section p-gutter">
         <div className="min-w-0 flex-1">
-          <SectionTitle>Model</SectionTitle>
-          {/* The derived `ctx_<id>` view unless the catalog names another one. */}
+          <SectionTitle right={<LevelBadge level={2} />}>Model</SectionTitle>
+          {/* The derived `ctx_<id>` view unless the catalog names another one.
+              Containers: the services of this context, the stores they own,
+              and any store they read that somebody else owns. */}
           <C4View
             viewId={context.viewId ?? contextViewId(context)}
-            height={340}
+            height={400}
           />
 
           {/* --- Services ----------------------------------------------- */}
