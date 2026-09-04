@@ -406,3 +406,117 @@ describe("enrichCatalog: the auth fragment", () => {
     expect(problems(catalog)).toEqual(problems(raw));
   });
 });
+
+// ---------------------------------------------------------------------------
+
+describe("enrichCatalog: an event named by the name it travels under", () => {
+  /** The same estate, with a wire name on OrderPlaced. */
+  function wired(name = "oms.OrderPlaced"): Service {
+    const service = oms();
+    service.aggregates[0]!.events[0]!.wire = { name, channel: "shop.oms.order" };
+    return service;
+  }
+
+  function stepOf(catalog: Catalog, slug: string) {
+    const found = catalog.flows.find((f) => f.slug === slug)!;
+    return found.steps[0] as Extract<FlowNode, { type: "step" }>;
+  }
+
+  it("resolves a step that names the wire name, and reads the consumer off it", () => {
+    // What an extractor can say about somebody else's message: the name on it.
+    const listens = flow("listens", [
+      step("bus", "shop.pricing", "event", { status: "unresolved", label: "oms.OrderPlaced" }),
+    ]);
+    const { catalog } = enrichCatalog(estate([listens], [wired(), pricing()]));
+
+    const resolved = stepOf(catalog, "listens");
+    expect(resolved.ref).toBe(EVENT);
+    expect(resolved.status).toBe("declared");
+    expect(consumersOf(catalog)).toEqual([
+      { service: "shop.pricing", status: "declared", via: { flow: "listens", step: "s1" } },
+    ]);
+  });
+
+  it("resolves the last segment when one event travels under it", () => {
+    const listens = flow("listens", [
+      step("bus", "shop.pricing", "event", { status: "unresolved", label: "OrderPlaced" }),
+    ]);
+    const { catalog } = enrichCatalog(estate([listens], [wired(), pricing()]));
+
+    expect(stepOf(catalog, "listens").ref).toBe(EVENT);
+  });
+
+  it("leaves a segment two events answer to alone", () => {
+    // Two publishers, one last segment: resolving it would put the listener on
+    // somebody else's event, which is worse than leaving the step unresolved.
+    const other = service("payments", "ledger", {
+      aggregates: [
+        {
+          id: "payments.ledger.payment",
+          slug: "payment",
+          name: "Payment",
+          readme: "",
+          root: "Payment",
+          entities: [],
+          valueObjects: [],
+          operations: [],
+          events: [
+            {
+              id: "payments.ledger.payment.OrderPlaced",
+              slug: "orderplaced",
+              name: "OrderPlaced",
+              versions: [{ version: "v1", doc: "", source: "x.java", fields: [] }],
+              consumers: [],
+              wire: { name: "ledger.OrderPlaced" },
+            },
+          ],
+        },
+      ],
+    });
+    const listens = flow("listens", [
+      step("bus", "shop.pricing", "event", { status: "unresolved", label: "OrderPlaced" }),
+    ]);
+    const catalog = estate([listens], [wired(), pricing()]);
+    catalog.contexts[1]!.services = [other];
+
+    const enriched = enrichCatalog(catalog).catalog;
+    expect(stepOf(enriched, "listens").ref).toBeUndefined();
+    expect(stepOf(enriched, "listens").status).toBe("unresolved");
+  });
+
+  it("leaves a step that already resolves, and one nothing answers to", () => {
+    const both = flow("both", [
+      step("bus", "shop.pricing", "event", { ref: EVENT }),
+      step("bus", "shop.pricing", "event", { status: "unresolved", label: "nothing.AtAll" }),
+    ]);
+    const { catalog } = enrichCatalog(estate([both], [wired(), pricing()]));
+
+    const steps = catalog.flows[0]!.steps as Extract<FlowNode, { type: "step" }>[];
+    expect(steps[0]!.status).toBe("declared");
+    expect(steps[1]!.ref).toBeUndefined();
+    expect(steps[1]!.status).toBe("unresolved");
+  });
+
+  it("sees a step inside a frame, and enriching twice changes nothing", () => {
+    const nested = flow("nested", [
+      {
+        type: "alt",
+        id: "alt1",
+        branches: [
+          {
+            title: "the money arrived",
+            steps: [step("bus", "shop.pricing", "event", { status: "unresolved", label: "oms.OrderPlaced" })],
+          },
+          { title: "otherwise", steps: [] },
+        ],
+      },
+    ]);
+    const once = enrichCatalog(estate([nested], [wired(), pricing()])).catalog;
+    const twice = enrichCatalog(once).catalog;
+
+    const inside = (catalog: Catalog) =>
+      (catalog.flows[0]!.steps[0] as Extract<FlowNode, { type: "alt" }>).branches[0]!.steps[0] as Extract<FlowNode, { type: "step" }>;
+    expect(inside(once).ref).toBe(EVENT);
+    expect(twice).toEqual(once);
+  });
+});

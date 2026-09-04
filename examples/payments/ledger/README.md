@@ -35,7 +35,23 @@ token for it.
 
 `payments.v1.PaymentService` — Authorize, Capture, GetPayment — and
 `payments.v1.RefundService` — IssueRefund, ListRefunds. One contract per
-aggregate, vendored under the transport package that answers it.
+aggregate, under the transport package that answers it, each its own buf
+module with its own `buf.yaml`.
+
+Neither has been pushed to the registry yet, so the estate lists them as
+`local:payments/payment` and `local:payments/refund` — which is what an
+unpublished set of protos is. Pushing them is two commands and a manifest line:
+
+```bash
+cd src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/proto && buf push
+cd ../../refund/proto && buf push
+```
+
+then in `portolan.json` the ledger's `proto` step swaps each `local:…` for the
+module it now is, `buf.build/shortlink-org/portolan-payments-payment` and
+`-refund`. `buf registry module create` comes first for a module that has never
+been pushed; it asks for a classifier, which is a decision rather than a
+command.
 
 ## How the catalog reads it
 

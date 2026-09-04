@@ -2501,7 +2501,23 @@ token for it.
 
 `payments.v1.PaymentService` — Authorize, Capture, GetPayment — and
 `payments.v1.RefundService` — IssueRefund, ListRefunds. One contract per
-aggregate, vendored under the transport package that answers it.
+aggregate, under the transport package that answers it, each its own buf
+module with its own `buf.yaml`.
+
+Neither has been pushed to the registry yet, so the estate lists them as
+`local:payments/payment` and `local:payments/refund` — which is what an
+unpublished set of protos is. Pushing them is two commands and a manifest line:
+
+```bash
+cd src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/proto && buf push
+cd ../../refund/proto && buf push
+```
+
+then in `portolan.json` the ledger's `proto` step swaps each `local:…` for the
+module it now is, `buf.build/shortlink-org/portolan-payments-payment` and
+`-refund`. `buf registry module create` comes first for a module that has never
+been pushed; it asks for a classifier, which is a decision rather than a
+command.
 
 ## How the catalog reads it
 
@@ -2677,7 +2693,7 @@ nothing leaves. `OMS_ADDRESS` is where `shop.v1.OrderService` answers.
 
 | Event | Latest | Consumers |
 | --- | --- | --- |
-| [PaymentAuthorized](aggregates/payment.md) | v1 | — |
+| [PaymentAuthorized](aggregates/payment.md) | v1 | [shop.oms (declared)](../../shop/oms/README.md) |
 | [PaymentCaptured](aggregates/payment.md) | v1 | [shop.billing (declared)](../../shop/billing/README.md) |
 | [PaymentDeclined](aggregates/payment.md) | v1 | [shop.oms (declared)](../../shop/oms/README.md) |
 | [RefundIssued](aggregates/refund.md) | v1 | — |
@@ -2774,6 +2790,10 @@ stateDiagram-v2
 `payments.ledger.payment.PaymentAuthorized`
 
 On the wire as `ledger.PaymentAuthorized`, on `payments.ledger.payment`.
+
+| Consumer | Status |
+| --- | --- |
+| [shop.oms](../../../shop/oms/README.md) | declared |
 
 #### v1 — current
 
@@ -4932,7 +4952,7 @@ sequenceDiagram
 ## Steps
 
 1. **bus** → **shop.oms** — PaymentAuthorized
-   status: unresolved · `examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs:20` · Reacts to the message named `ledger.PaymentAuthorized`, which is not an event this repository declares.
+   [payments.ledger.payment.PaymentAuthorized](../payments/ledger/aggregates/payment.md) · status: declared · `examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs:20` · Reacts to the message named `ledger.PaymentAuthorized`, which is not an event this repository declares.
 2. **shop.oms** ↺ **shop.oms** — ConfirmOrder
    status: declared · `examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs:27`
 3. **shop.oms** → **oms-pg** — by_id

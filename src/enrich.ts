@@ -21,9 +21,11 @@ import type {
   Catalog,
   EdgeVia,
   EventConsumer,
+  FlowNode,
   RpcCall,
   Service,
   Status,
+  Step,
 } from "./catalog";
 // With the extension: scripts/catalog-sources.mjs runs this file under Node
 // without a bundler, and Node resolves nothing it is not told.
@@ -51,7 +53,12 @@ export interface Enriched {
  * imply, plus the list of what was added. Pure: the input is never written to,
  * and enriching twice yields the same catalog as enriching once.
  */
-export function enrichCatalog(catalog: Catalog): Enriched {
+export function enrichCatalog(input: Catalog): Enriched {
+  // A step naming an event by the name it travels under is resolved first, so
+  // everything below - and every consumer derived from it - sees the event
+  // rather than the name.
+  const catalog = resolveWireNames(input);
+
   const serviceById = new Map<string, Service>();
   const eventOwner = new Map<string, string>();
   const providedMethods = new Set<string>(); // "<service>|<interface>/<method>"
@@ -180,6 +187,90 @@ export function enrichCatalog(catalog: Catalog): Enriched {
   }));
 
   return { catalog: { ...catalog, contexts }, derived };
+}
+
+/**
+ * Steps that name an event by the name it travels under, resolved to the event
+ * that travels under it.
+ *
+ * An extractor can only resolve what its own repository declares. A policy
+ * reacting to somebody else's message has the wire name and nothing else —
+ * `ledger.PaymentAuthorized` — so the step names it, says `unresolved`, and
+ * leaves the other end to the merge. This is where it arrives, and the match is
+ * the one verify-otel already makes against a trace: the event whose wire name
+ * that is, or failing that the one event whose wire name ends in that segment.
+ * Two candidates resolve to neither, because a guess here would put a service
+ * on somebody else's event.
+ *
+ * A resolved step becomes `declared` and never `verified`: reading a name in
+ * source is a claim that it listens, not a record of it having listened.
+ */
+function resolveWireNames(catalog: Catalog): Catalog {
+  const byWire = new Map<string, string>();
+  const bySegment = new Map<string, string | null>();
+
+  for (const context of catalog.contexts) {
+    for (const service of context.services) {
+      for (const aggregate of service.aggregates) {
+        for (const event of aggregate.events) {
+          const wire = event.wire?.name;
+          if (!wire) continue;
+          if (!byWire.has(wire)) byWire.set(wire, event.id);
+          const segment = wire.slice(wire.lastIndexOf(".") + 1);
+          bySegment.set(segment, bySegment.has(segment) ? null : event.id);
+        }
+      }
+    }
+  }
+  if (byWire.size === 0) return catalog;
+
+  const resolve = (step: Step): Step => {
+    if (step.kind !== "event" || step.ref || step.status !== "unresolved") return step;
+    const named = step.label;
+    if (!named) return step;
+    const found = byWire.get(named) ?? bySegment.get(named) ?? null;
+    if (!found) return step;
+
+    return { ...step, ref: found, status: "declared" };
+  };
+
+  let any = false;
+  const flows = catalog.flows.map((flow) => {
+    let changed = false;
+    const steps = mapSteps(flow.steps, (step) => {
+      const resolved = resolve(step);
+      changed ||= resolved !== step;
+
+      return resolved;
+    });
+    any ||= changed;
+
+    return changed ? { ...flow, steps } : flow;
+  });
+
+  return any ? { ...catalog, flows } : catalog;
+}
+
+/** The same tree, with every step handed to `resolve`. */
+function mapSteps(nodes: FlowNode[], resolve: (step: Step) => Step): FlowNode[] {
+  return nodes.map((node) => {
+    switch (node.type) {
+      case "step":
+        return resolve(node);
+      case "alt":
+        return {
+          ...node,
+          branches: node.branches.map((branch) => ({
+            ...branch,
+            steps: mapSteps(branch.steps, resolve),
+          })),
+        };
+      case "parallel":
+        return { ...node, branches: node.branches.map((branch) => mapSteps(branch, resolve)) };
+      case "loop":
+        return { ...node, steps: mapSteps(node.steps, resolve) };
+    }
+  });
 }
 
 function push<T>(into: Map<string, T[]>, key: string, item: T): void {

@@ -1,0 +1,12 @@
+# The contract of the refund aggregate. Its own module because it is its own
+# aggregate: money going back is asked for by somebody else, at another time.
+version: v2
+modules:
+  - path: .
+    name: buf.build/shortlink-org/portolan-payments-refund
+lint:
+  use:
+    - STANDARD
+breaking:
+  use:
+    - FILE

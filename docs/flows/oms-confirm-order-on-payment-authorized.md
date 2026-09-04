@@ -37,7 +37,7 @@ sequenceDiagram
 ## Steps
 
 1. **bus** → **shop.oms** — PaymentAuthorized
-   status: unresolved · `examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs:20` · Reacts to the message named `ledger.PaymentAuthorized`, which is not an event this repository declares.
+   [payments.ledger.payment.PaymentAuthorized](../payments/ledger/aggregates/payment.md) · status: declared · `examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs:20` · Reacts to the message named `ledger.PaymentAuthorized`, which is not an event this repository declares.
 2. **shop.oms** ↺ **shop.oms** — ConfirmOrder
    status: declared · `examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs:27`
 3. **shop.oms** → **oms-pg** — by_id

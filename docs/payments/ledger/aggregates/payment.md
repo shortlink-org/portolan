@@ -83,6 +83,10 @@ stateDiagram-v2
 
 On the wire as `ledger.PaymentAuthorized`, on `payments.ledger.payment`.
 
+| Consumer | Status |
+| --- | --- |
+| [shop.oms](../../../shop/oms/README.md) | declared |
+
 #### v1 — current
 
 The gateway agreed to hold the money. Nothing has moved yet.
