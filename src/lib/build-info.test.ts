@@ -16,6 +16,7 @@ const CI: BuildInfo = {
   buildUrl: "https://gitlab.com/acme/portolan/-/pipelines/17390211",
   buildNumber: "128",
   dirty: false,
+  repoUrl: "https://gitlab.com/acme/portolan",
 };
 
 const UNKNOWN: BuildInfo = {
@@ -27,6 +28,7 @@ const UNKNOWN: BuildInfo = {
   buildUrl: "",
   buildNumber: "",
   dirty: false,
+  repoUrl: "",
 };
 
 describe("buildHref", () => {

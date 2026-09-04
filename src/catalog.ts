@@ -3,6 +3,9 @@
 
 export type Status = "verified" | "declared" | "unresolved";
 
+/** Every status, best first: the order a count or a filter lists them in. */
+export const STATUSES: readonly Status[] = ["verified", "declared", "unresolved"];
+
 export interface Catalog {
   generatedAt: string; // ISO 8601
   commit: string; // short sha

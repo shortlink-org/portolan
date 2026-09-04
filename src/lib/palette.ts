@@ -12,6 +12,8 @@
 // reader cannot see is a row they have to open to understand.
 
 import type { Block, Catalog, Event, Field } from "../catalog";
+import { walkSteps } from "../catalog";
+import { flowHealth } from "./flow-tree";
 import { parseQuery } from "./kinds";
 import type { Kind, ParsedQuery } from "./kinds";
 import { paths, storePath, tablePath, viewPath } from "../routes";
@@ -67,6 +69,12 @@ export interface PaletteItem {
   context: string | null;
   /** Right-aligned extra, e.g. an event's latest version. */
   badge?: string;
+  /**
+   * Names the row is also known by, searched after its own and before its
+   * prose: for a flow, the lanes it runs through and the labels and refs of
+   * its steps, so "GetQuote" finds the flow that makes that call.
+   */
+  keywords?: string[];
   /**
    * The row's own prose, flattened to one line. Searched last, and only for
    * terms long enough to mean something; a row with nothing written about it
@@ -296,6 +304,12 @@ export function paletteItems(catalog: Catalog): PaletteItem[] {
   }
 
   for (const flow of catalog.flows) {
+    const keywords = new Set<string>();
+    for (const p of flow.participants) keywords.add(p.id);
+    for (const step of walkSteps(flow.steps)) {
+      if (step.label) keywords.add(step.label);
+      if (step.ref) keywords.add(step.ref);
+    }
     items.push({
       kind: "flow",
       id: flow.id,
@@ -303,6 +317,8 @@ export function paletteItems(catalog: Catalog): PaletteItem[] {
       detail: flow.name,
       path: paths.flow(flow.slug),
       context: null,
+      badge: flowHealth(flow),
+      keywords: [...keywords],
       text: flattenProse(`${flow.name} ${flow.summary}`),
     });
   }
@@ -346,6 +362,7 @@ export function score(item: PaletteItem, term: string): number | null {
   if (name.includes(needle)) return 3;
   if (item.id.toLowerCase().includes(needle)) return 4;
   if (item.detail.toLowerCase().includes(needle)) return 5;
+  if (keywordHit(item, needle)) return KEYWORD_SCORE;
   // Last, and only for a term with something to say. Two characters match
   // prose everywhere and rank nothing; the floor is what stops "or" from
   // returning the whole estate under the rows that actually answered.
@@ -354,9 +371,18 @@ export function score(item: PaletteItem, term: string): number | null {
     item.text &&
     item.text.toLowerCase().includes(needle)
   )
-    return 6;
+    return PROSE_SCORE;
   return null;
 }
+
+/** The first keyword the term is found in, or undefined. */
+export function keywordHit(item: PaletteItem, needle: string): string | undefined {
+  if (needle.length < PROSE_MIN) return undefined;
+  return item.keywords?.find((k) => k.toLowerCase().includes(needle));
+}
+
+/** The score a keyword hit returns; it owes an excerpt naming the keyword. */
+export const KEYWORD_SCORE = 6;
 
 /** Shortest term the prose tier will answer. Below it, names only. */
 export const PROSE_MIN = 3;
@@ -452,8 +478,8 @@ export interface PaletteResult extends ParsedQuery {
   truncated: number;
 }
 
-/** The score the prose tier returns; the one tier that owes an excerpt. */
-const PROSE_SCORE = 6;
+/** The score the prose tier returns; the other tier that owes an excerpt. */
+const PROSE_SCORE = 7;
 
 export function search(
   items: PaletteItem[],
@@ -480,6 +506,12 @@ export function search(
   );
 
   const hits = scored.slice(0, limit).map(({ item, score: s }) => {
+    if (s === KEYWORD_SCORE) {
+      const keyword = keywordHit(item, parsed.term.toLowerCase());
+      return keyword
+        ? { item, excerpt: { before: "runs through ", match: keyword, after: "" } }
+        : { item };
+    }
     if (s !== PROSE_SCORE || !item.text) return { item };
     const excerpt = excerptOf(item.text, parsed.term);
     return excerpt ? { item, excerpt } : { item };

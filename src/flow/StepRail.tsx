@@ -7,7 +7,8 @@ import {
   CornerDownLeft,
   CornerDownRight,
 } from "lucide-react";
-import type { Status, Step } from "../catalog";
+import type { Step } from "../catalog";
+import { STATUSES } from "../catalog";
 import { contextName, ctxStyle } from "../lib/context-color";
 import { paths } from "../routes";
 import { statusVar } from "../components/primitives";
@@ -16,7 +17,7 @@ import type { Chapter, ChapterGroup } from "./chapters";
 import type { Continuation } from "./continues";
 import type { OutlineFrame, OutlineStep } from "./outline";
 
-const STATUSES: readonly Status[] = ["verified", "declared", "unresolved"];
+
 
 /**
  * A chapter header. The one row on the rail that is a control rather than a
@@ -194,14 +195,14 @@ function StepRow({
   continuations: readonly Continuation[];
   full?: boolean;
 }) {
-  const { step, number, depth, hidden, offPath } = row;
+  const { step, number, depth, hidden, offPath, offStatus } = row;
   const self = step.from === step.to;
   const crosses = crossContext !== undefined;
   return (
     <div
       onMouseEnter={() => onHover(step.id)}
       onMouseLeave={() => onHover(null)}
-      style={{ opacity: dimmed || offPath ? 0.3 : 1 }}
+      style={{ opacity: dimmed || offPath || offStatus ? 0.3 : 1 }}
     >
       <button
         type="button"

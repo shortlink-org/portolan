@@ -34,6 +34,15 @@ const gh = env.GITHUB_SHA
   : "";
 const gl = env.CI_COMMIT_SHA ? env.CI_PROJECT_URL || "" : "";
 
+// Where the tree can be opened, for links from a path in the catalog to the
+// file on the forge. A remote spelled for ssh is rewritten to its page.
+const origin = git("remote get-url origin")
+  .replace(/^git@([^:]+):/, "https://$1/")
+  .replace(/^ssh:\/\/git@/, "https://")
+  .replace(/\.git$/, "");
+const repoUrl =
+  env.BUILD_REPO_URL || gh || gl || (/^https?:\/\//.test(origin) ? origin : "");
+
 const commit =
   env.BUILD_COMMIT ||
   env.GITHUB_SHA ||
@@ -67,6 +76,7 @@ const buildInfo = {
   // Only a local build can be dirty: CI builds a checkout of one commit.
   dirty:
     !env.GITHUB_SHA && !env.CI_COMMIT_SHA && git("status --porcelain") !== "",
+  repoUrl,
 };
 
 // GitHub Pages serves the app from /<repo>/, so CI sets BASE_PATH.

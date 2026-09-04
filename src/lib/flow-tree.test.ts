@@ -8,6 +8,7 @@ import {
   flowOwner,
   groupFlowsByOwner,
   reachDots,
+  statusCounts,
   visibleEntries,
 } from "./flow-tree";
 
@@ -42,12 +43,33 @@ describe("flowHealth", () => {
     expect(flowHealth(bySlug("shipment-tracking"))).toBe("unresolved");
   });
 
-  it("is otherwise declared - there is no better state to reach", () => {
-    // A flow is not evidence that anything ran, so every hop landing where it
-    // said it would is as good as it gets.
-    expect(flowHealth(bySlug("order-accepted"))).toBe("declared");
+  it("is declared while some hop has not been seen running", () => {
+    // Written by hand from a design doc: every hop resolves, none observed.
     expect(flowHealth(bySlug("refund-requested"))).toBe("declared");
+    // Pinned by a test on three of its four branches; the adopt branch is
+    // the one nobody covers, and one unseen message is enough.
     expect(flowHealth(bySlug("gateway-webhook"))).toBe("declared");
+  });
+
+  it("is verified once every call in and every message has been seen", () => {
+    // order-accepted is pinned by an integration test end to end; the auth
+    // flows by the recording in examples/auth/telemetry, which shows the
+    // request arriving and the events leaving. The store calls between stay
+    // declared, and do not hold the flow back: a query having run is not the
+    // claim the code makes about the repository method.
+    expect(flowHealth(bySlug("order-accepted"))).toBe("verified");
+    expect(flowHealth(bySlug("auth-register-user"))).toBe("verified");
+    expect(flowHealth(bySlug("auth-change-password"))).toBe("verified");
+  });
+
+  it("is not verified by store calls alone", () => {
+    const only = { ...bySlug("auth-get-user"), steps: bySlug("auth-get-user").steps.slice(1) } as Flow;
+    // Only the ByID call is left, and a call is never a hop a trace vouches for.
+    expect(flowHealth(only)).toBe("declared");
+  });
+
+  it("counts steps by status", () => {
+    expect(statusCounts(bySlug("auth-login"))).toEqual({ verified: 2, declared: 6, unresolved: 1 });
   });
 });
 
@@ -86,7 +108,7 @@ describe("groupFlowsByOwner", () => {
       "unresolved",
       "unresolved",
       "declared",
-      "declared",
+      "verified",
     ]);
     // Red first, then name: the two unresolved flows are alphabetical.
     expect(shop.entries.slice(0, 2).map((e) => e.flow.name)).toEqual([

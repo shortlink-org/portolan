@@ -3,8 +3,10 @@ import { Link } from "react-router";
 import { AlertTriangle } from "lucide-react";
 import { stepFrames } from "../catalog";
 import type { Flow, Step, StepFrame } from "../catalog";
-import { index } from "../data";
+import { catalog, index } from "../data";
 import { Ident } from "../components/Ident";
+import { flowRepoService } from "../lib/derive";
+import { sourceHref } from "../lib/source-link";
 import { AdrNumber, StatusChip } from "../components/primitives";
 import { paths, eventPath, servicePath } from "../routes";
 
@@ -140,7 +142,7 @@ function EventDetail({ step, flow }: { step: Step; flow: Flow }) {
   );
 }
 
-function RpcDetail({ step }: { step: Step }) {
+function RpcDetail({ step, flow }: { step: Step; flow: Flow }) {
   const method = step.ref ?? step.label ?? "(unknown method)";
   const call = step.ref ? index.rpcById.get(step.ref) : undefined;
   const provider = step.ref
@@ -174,9 +176,7 @@ function RpcDetail({ step }: { step: Step }) {
       ) : (
         <>
           <Label>Source</Label>
-          <div className="mono break-all text-muted">
-            {step.line ?? "not recorded"}
-          </div>
+          <Where step={step} flow={flow} />
         </>
       )}
     </>
@@ -259,6 +259,32 @@ function Frames({ step, flow }: { step: Step; flow: Flow }) {
  * Everything a step is, minus the frame. The frame belongs to the detail panel,
  * which draws the same header for every kind of selection.
  */
+/**
+ * Where a step was read from, and a way there when the forge is known. A
+ * `file:line` in the repository this was built from opens on the line; a
+ * trace id or a path in another repository stays as it is, to copy.
+ */
+function Where({ step, flow }: { step: Step; flow: Flow }) {
+  if (!step.line) return <div className="mono text-muted">not recorded</div>;
+  const href = sourceHref(step.line, flowRepoService(catalog, flow));
+  return (
+    <div className="mono flex flex-wrap items-center gap-2 break-all text-muted">
+      <Ident block value={step.line} className="text-muted" />
+      {href ? (
+        <a
+          href={href}
+          target="_blank"
+          rel="noreferrer"
+          className="rounded-control text-accent hover:underline"
+          title="Open on the forge, at the built commit"
+        >
+          open ↗
+        </a>
+      ) : null}
+    </div>
+  );
+}
+
 export function StepDetailBody({ step, flow }: { step: Step; flow: Flow }) {
   const decisions = step.ref ? (index.adrsByEvent.get(step.ref) ?? []) : [];
 
@@ -296,16 +322,14 @@ export function StepDetailBody({ step, flow }: { step: Step; flow: Flow }) {
       {step.kind === "event" ? (
         <EventDetail step={step} flow={flow} />
       ) : step.kind === "rpc" ? (
-        <RpcDetail step={step} />
+        <RpcDetail step={step} flow={flow} />
       ) : (
         <>
           <div className="mono text-[13px]">
             {step.label ?? "internal call"}
           </div>
           <Label>Source</Label>
-          <div className="mono break-all text-muted">
-            {step.line ?? "not recorded"}
-          </div>
+          <Where step={step} flow={flow} />
         </>
       )}
 
@@ -330,7 +354,7 @@ export function StepDetailBody({ step, flow }: { step: Step; flow: Flow }) {
       {step.line && step.kind !== "call" ? (
         <>
           <Label>Observed at</Label>
-          <Ident block value={step.line} className="text-muted" />
+          <Where step={step} flow={flow} />
         </>
       ) : null}
     </>

@@ -17,6 +17,7 @@ export type BuildInfo = {
   buildUrl: string; // the CI run or pipeline that built it
   buildNumber: string; // the number a human reads off that pipeline
   dirty: boolean; // local build with uncommitted changes
+  repoUrl: string; // the repository's page on the forge, for links into the tree
 };
 
 declare const __BUILD_INFO__: BuildInfo | undefined;
@@ -30,6 +31,7 @@ const UNKNOWN: BuildInfo = {
   buildUrl: "",
   buildNumber: "",
   dirty: false,
+  repoUrl: "",
 };
 
 // The define substitutes an object literal, which `typeof` is happy to take,

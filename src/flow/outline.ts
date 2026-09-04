@@ -7,7 +7,7 @@
 // in the sequence-diagram convention — alt / else, par / and, loop — and the
 // steps inside it are indented under that row.
 
-import type { Flow, FlowNode, Step } from "../catalog";
+import type { Flow, FlowNode, Status, Step } from "../catalog";
 
 export type FrameKeyword = "alt" | "else" | "par" | "and" | "loop";
 
@@ -35,6 +35,8 @@ export interface OutlineStep {
   hidden: boolean;
   /** True when the chosen path does not run through this step. */
   offPath: boolean;
+  /** True when the status filter is on and this step is not the status asked for. */
+  offStatus: boolean;
 }
 
 export type OutlineRow = OutlineFrame | OutlineStep;
@@ -54,6 +56,13 @@ export interface OutlineOptions {
    * fact that there IS a branch here is most of what both are for.
    */
   path?: ReadonlySet<string> | null;
+  /**
+   * When set, steps of other statuses are marked `offStatus`. Like `path`,
+   * the step stays and recedes: the filter answers "which hops have been seen
+   * running", and the answer only means something against the ones that have
+   * not.
+   */
+  statuses?: ReadonlySet<Status> | null;
 }
 
 /**
@@ -89,6 +98,9 @@ export function buildOutline(
             number: counter,
             hidden,
             offPath: options.path ? !options.path.has(node.id) : false,
+            offStatus: options.statuses
+              ? !options.statuses.has(node.status)
+              : false,
           });
           break;
         }

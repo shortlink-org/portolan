@@ -60,6 +60,8 @@ export interface CanvasHandle {
   stop: () => void;
   /** The escape hatch from readable zoom: show the whole shape. */
   fit: () => void;
+  /** The canvas element, for whoever wants to draw it to a file. */
+  node: () => HTMLElement | null;
 }
 
 export function CanvasBridge({
@@ -87,6 +89,7 @@ export function CanvasBridge({
       step: (delta) => diagram.walkthroughStep(delta > 0 ? "next" : "prev"),
       stop: () => diagram.stopWalkthrough(),
       fit: () => diagram.fitDiagram(),
+      node: () => canvasNode(diagram),
     }),
     [diagram],
   );

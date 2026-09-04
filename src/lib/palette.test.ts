@@ -282,3 +282,33 @@ describe("modules in the palette", () => {
     expect(items.filter((i) => i.kind === "module")).toEqual([]);
   });
 });
+
+describe("a flow is found by what runs through it", () => {
+  const items = paletteItems(catalog);
+  const flows = (term: string) =>
+    search(items, term).hits.filter((h) => h.item.kind === "flow");
+
+  it("matches a step's rpc, and says which", () => {
+    const hit = flows("Pricing/GetQuote")[0];
+    expect(hit?.item.name).toBe("checkout");
+    expect(hit?.excerpt).toEqual({ before: "runs through ", match: "shop.v1.Pricing/GetQuote", after: "" });
+  });
+
+  it("matches a lane the flow crosses", () => {
+    expect(flows("psp-gateway").map((h) => h.item.name)).toContain("gateway-webhook");
+  });
+
+  it("ranks the flow's own name above a flow that merely mentions it", () => {
+    const names = flows("checkout").map((h) => h.item.name);
+    expect(names[0]).toBe("checkout");
+  });
+
+  it("carries the flow's health as its badge", () => {
+    const login = items.find((i) => i.kind === "flow" && i.name === "auth-login");
+    expect(login?.badge).toBe("unresolved");
+  });
+
+  it("does not answer a two-letter term from keywords", () => {
+    expect(flows("ms").length).toBe(0);
+  });
+});

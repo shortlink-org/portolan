@@ -1,11 +1,18 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { toPng } from "html-to-image";
 import { flowContexts, walkSteps } from "../catalog";
-import type { Flow, Step } from "../catalog";
+import type { Flow, Status, Step } from "../catalog";
 import { catalog, index } from "../data";
 import { contextName, ctxStyle } from "../lib/context-color";
 import { middleTruncate } from "../lib/format";
+import { toClipboard } from "../lib/clipboard";
+import { flowRepoService } from "../lib/derive";
+import { statusCounts } from "../lib/flow-tree";
+import { sourceHref } from "../lib/source-link";
+import { flowMermaid } from "../flow/mermaid";
+import { useToastStore } from "../app/toast";
 import { contextResolver, hiddenStepIds, isCrossContext } from "../flow/cross-context";
 import { StepRail } from "../flow/StepRail";
 import { FlowTable } from "../flow/FlowTable";
@@ -89,6 +96,10 @@ export function FlowDetail() {
 
   const [crossOnly, setCrossOnly] = useState(false);
   const [compact, setCompact] = useState(false);
+  /** The one status the rail is reading, or null for all of them. */
+  const [statusFilter, setStatusFilter] = useState<Status | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const say = useToastStore((s) => s.say);
   /** Empty means every branch at once — the union, not a run. */
   const [pathId, setPathId] = useState("");
   /** Chapters the reader has folded away. Empty means the whole flow is open. */
@@ -132,6 +143,10 @@ export function FlowDetail() {
 
   // Frames are part of the rail, not something flattened out of it, so the
   // outline is what the rail draws and what the arrow keys step through.
+  const statuses = useMemo(
+    () => (statusFilter ? new Set<Status>([statusFilter]) : null),
+    [statusFilter],
+  );
   const rows = useMemo(
     () =>
       flow
@@ -139,9 +154,25 @@ export function FlowDetail() {
             hidden,
             crossOnly,
             path: path ? path.stepIds : null,
+            statuses,
           })
         : [],
-    [flow, hidden, crossOnly, path],
+    [flow, hidden, crossOnly, path, statuses],
+  );
+  /**
+   * What the canvas lifts: the chosen path, narrowed to the chosen status.
+   * Both narrow the same way on the picture - the rest recedes - so they are
+   * one set there, and two flags on the rail, where each has its own words.
+   */
+  const liftedSteps = useMemo(() => {
+    if (!path && !statusFilter) return null;
+    return allSteps
+      .filter((s) => (!path || path.stepIds.has(s.id)) && (!statusFilter || s.status === statusFilter))
+      .map((s) => s.id);
+  }, [allSteps, path, statusFilter]);
+  const counts = useMemo(
+    () => (flow ? statusCounts(flow) : { verified: 0, declared: 0, unresolved: 0 }),
+    [flow],
   );
   const walkable = useMemo(() => outlineSteps(rows), [rows]);
 
@@ -314,6 +345,38 @@ export function FlowDetail() {
   const contexts = flowContexts(flow);
   const viewId = crossOnly ? flowCrossViewId(flow) : flowViewId(flow);
   const hiddenCount = crossOnly ? hidden.size : 0;
+  const sourceLink = flow.source
+    ? sourceHref(flow.source, flowRepoService(catalog, flow))
+    : null;
+
+  const copyMermaid = () => {
+    void toClipboard(flowMermaid(flow)).then((ok) => {
+      say(ok ? "Mermaid sequence copied" : "could not reach the clipboard");
+    });
+  };
+
+  const exportPng = async (): Promise<void> => {
+    const viewport = canvas.current
+      ?.node()
+      ?.querySelector<HTMLElement>(".react-flow__viewport");
+    if (!viewport) {
+      say("the canvas is not on screen; leave compact to save a picture");
+      return;
+    }
+    setExporting(true);
+    try {
+      const url = await toPng(viewport, {
+        backgroundColor: getComputedStyle(document.body).backgroundColor,
+        pixelRatio: 2,
+      });
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${flow.slug}.png`;
+      a.click();
+    } finally {
+      setExporting(false);
+    }
+  };
 
   /**
    * Steps are paired to the diagram's arrows by position, which holds only
@@ -391,6 +454,17 @@ export function FlowDetail() {
               {middleTruncate(flow.source, 40)}
             </Ident>
           ) : null}
+          {sourceLink ? (
+            <a
+              href={sourceLink}
+              target="_blank"
+              rel="noreferrer"
+              className="mono rounded-control text-accent hover:underline"
+              title="Open the file on the forge, at the built commit"
+            >
+              open ↗
+            </a>
+          ) : null}
           <WhatLinksHere
             target={{ kind: "flow", id: flow.slug }}
             variant="line"
@@ -421,6 +495,12 @@ export function FlowDetail() {
           viewId={viewId}
           hiddenCount={hiddenCount}
           pairingBroken={pairingBroken}
+          statusFilter={statusFilter}
+          onStatusFilter={setStatusFilter}
+          statusCounts={counts}
+          onCopyMermaid={copyMermaid}
+          onExportPng={() => void exportPng()}
+          exporting={exporting}
         />
       </div>
 
@@ -466,7 +546,7 @@ export function FlowDetail() {
                 crossOnly={crossOnly}
                 variant={prefs.variant}
                 litSteps={litSteps}
-                pathSteps={path ? [...path.stepIds] : null}
+                pathSteps={liftedSteps}
                 /* What the READER is pointing at, which is not the same thing
                    as what the rail is marking: during playback the rail marks
                    the step being played, and feeding that back to the canvas

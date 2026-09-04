@@ -13,29 +13,46 @@ import type { Flow, Status } from "../catalog";
 import { flowContexts, walkSteps } from "../catalog";
 
 /**
- * Whether every hop in a flow lands somewhere the catalog knows, in one word.
+ * How far a flow can be believed, in one word.
  *
- * Two states, because a flow read out of source can only be in two: either
- * every step resolves, or one of them points at something the catalog does not
- * have. There is no third, better state to reach - a flow is not evidence that
- * anything ran, and a shade meaning "checked" would say it was.
+ * Three states. A flow read out of source is in one of two: either every step
+ * resolves, or one points at something the catalog does not have. The third
+ * is reached only by a recording of the system running - a verifier that saw
+ * the hops happen - and it is held to the hops a trace can show: the call in,
+ * and every message between services. A `call` on a store is never raised by
+ * a trace, because a query having run is not the claim the code makes, so a
+ * flow whose every rpc and event is verified is as verified as a flow gets.
  */
-export type FlowHealth = "declared" | "unresolved";
+export type FlowHealth = "verified" | "declared" | "unresolved";
 
-/** Order of attention: a broken flow first. */
+/** Order of attention: a broken flow first, a proven one last. */
 const HEALTH_RANK: Record<FlowHealth, number> = {
   unresolved: 0,
   declared: 1,
+  verified: 2,
 };
 
 export const FLOW_HEALTH_NOTE: Record<FlowHealth, string> = {
   unresolved: "a step in this flow points at something the catalog does not have",
-  declared: "every step resolves to something the catalog has",
+  declared: "every step resolves to something the catalog has; none has been seen running",
+  verified: "every call in and every message between services has been seen running",
 };
 
 export function flowHealth(flow: Flow): FlowHealth {
-  const statuses: Status[] = walkSteps(flow.steps).map((s) => s.status);
-  return statuses.some((s) => s === "unresolved") ? "unresolved" : "declared";
+  const steps = walkSteps(flow.steps);
+  const statuses: Status[] = steps.map((s) => s.status);
+  if (statuses.some((s) => s === "unresolved")) return "unresolved";
+  const hops = steps.filter((s) => s.kind !== "call");
+  if (hops.length > 0 && hops.every((s) => s.status === "verified"))
+    return "verified";
+  return "declared";
+}
+
+/** How many steps of each status, for a card or a row that counts rather than dots. */
+export function statusCounts(flow: Flow): Record<Status, number> {
+  const counts: Record<Status, number> = { verified: 0, declared: 0, unresolved: 0 };
+  for (const step of walkSteps(flow.steps)) counts[step.status] += 1;
+  return counts;
 }
 
 /**

@@ -16,6 +16,23 @@ function frames(rows: ReturnType<typeof buildOutline>): OutlineFrame[] {
   return rows.filter((r): r is OutlineFrame => r.type === "frame");
 }
 
+describe("buildOutline with a status filter", () => {
+  it("marks the steps of other statuses off, and keeps them", () => {
+    const rows = buildOutline(checkout, { ...NO_FILTER, statuses: new Set(["verified"]) });
+    const steps = outlineSteps(rows);
+    expect(steps.length).toBe(walkSteps(checkout.steps).length);
+    const off = steps.filter((r) => r.offStatus).map((r) => r.step.status);
+    expect(off.length).toBeGreaterThan(0);
+    expect(off.every((s) => s !== "verified")).toBe(true);
+    expect(steps.filter((r) => !r.offStatus).every((r) => r.step.status === "verified")).toBe(true);
+  });
+
+  it("marks nothing off when no status is chosen", () => {
+    const steps = outlineSteps(buildOutline(checkout, { ...NO_FILTER, statuses: null }));
+    expect(steps.some((r) => r.offStatus)).toBe(false);
+  });
+});
+
 describe("buildOutline", () => {
   it("heads every frame with the keyword its shape calls for", () => {
     const keywords = frames(buildOutline(checkout, NO_FILTER)).map(

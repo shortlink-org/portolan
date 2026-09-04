@@ -3,7 +3,12 @@ import { Link, useSearchParams } from "react-router";
 import { ArrowUpDown, X } from "lucide-react";
 import { CATALOG_PATH, catalog } from "../data";
 import { flowContexts, walkSteps } from "../catalog";
-import { flowOwner } from "../lib/flow-tree";
+import { FLOW_HEALTH_NOTE, flowHealth, flowOwner, statusCounts } from "../lib/flow-tree";
+import type { FlowHealth } from "../lib/flow-tree";
+import { statusVar } from "../components/primitives";
+import { STATUSES } from "../catalog";
+import { sourceHref } from "../lib/source-link";
+import { flowRepoService } from "../lib/derive";
 import { contextName, contextVar, ctxStyle } from "../lib/context-color";
 import { middleTruncate } from "../lib/format";
 import { staggerStyle } from "../lib/motion";
@@ -12,13 +17,23 @@ import { RowActions } from "../components/RowActions";
 import { Blank, Empty } from "../components/PageHeader";
 import { ContextPill } from "../components/primitives";
 
-type Sort = "contexts" | "name" | "steps";
+type Sort = "contexts" | "name" | "steps" | "health";
 
 const SORTS: { key: Sort; label: string }[] = [
   { key: "contexts", label: "contexts crossed" },
   { key: "steps", label: "steps" },
+  { key: "health", label: "status" },
   { key: "name", label: "name" },
 ];
+
+/** Broken first, proven last: the order of attention. */
+const HEALTH_ORDER: Record<FlowHealth, number> = { unresolved: 0, declared: 1, verified: 2 };
+
+const HEALTH_COLOR: Record<FlowHealth, string> = {
+  unresolved: "var(--status-unresolved)",
+  declared: "var(--fg-faint)",
+  verified: "var(--status-verified)",
+};
 
 export function FlowIndex() {
   const [sort, setSort] = useState<Sort>("contexts");
@@ -40,6 +55,8 @@ export function FlowIndex() {
         flow,
         contexts: flowContexts(flow),
         steps: walkSteps(flow.steps).length,
+        health: flowHealth(flow),
+        counts: statusCounts(flow),
       }));
     const filtered =
       active.size === 0
@@ -53,6 +70,12 @@ export function FlowIndex() {
     } else if (sort === "steps") {
       sorted.sort(
         (a, b) => b.steps - a.steps || a.flow.name.localeCompare(b.flow.name),
+      );
+    } else if (sort === "health") {
+      sorted.sort(
+        (a, b) =>
+          HEALTH_ORDER[a.health] - HEALTH_ORDER[b.health] ||
+          a.flow.name.localeCompare(b.flow.name),
       );
     } else {
       sorted.sort(
@@ -178,7 +201,8 @@ export function FlowIndex() {
           className="mt-section grid gap-grid grid-cols-[repeat(auto-fill,minmax(380px,1fr))]"
           data-nav-list
         >
-          {rows.map(({ flow, contexts, steps }, i) => {
+          {rows.map(({ flow, contexts, steps, health, counts }, i) => {
+            const source = flow.source ? sourceHref(flow.source, flowRepoService(catalog, flow)) : null;
             return (
               <div
                 key={flow.slug}
@@ -201,6 +225,29 @@ export function FlowIndex() {
                     {flow.slug}
                   </Ident>
                   <RowActions copy={flow.id} label={flow.name} />
+                  {/* How far the flow can be believed, as one dot and the
+                      counts behind it: a card has room for both, and the
+                      dot alone is the sidebar's answer. */}
+                  <span
+                    className="mono ml-auto flex shrink-0 items-center gap-1.5 text-muted"
+                    title={FLOW_HEALTH_NOTE[health]}
+                  >
+                    <span
+                      aria-hidden
+                      className="size-2 rounded-[2px]"
+                      style={{ background: HEALTH_COLOR[health] }}
+                    />
+                    {STATUSES.filter((status) => counts[status] > 0).map((status) => (
+                      <span key={status} className="flex items-center gap-0.5" title={status}>
+                        <span
+                          aria-hidden
+                          className="size-1.5 rounded-[1px]"
+                          style={{ background: statusVar(status) }}
+                        />
+                        <span className="tnum">{counts[status]}</span>
+                      </span>
+                    ))}
+                  </span>
                 </div>
 
                 <p className="mt-2 line-clamp-2 text-muted">{flow.summary}</p>
@@ -223,10 +270,21 @@ export function FlowIndex() {
                     same way, so the only thing worth printing is WHICH source
                     said so. */}
                 {flow.source ? (
-                  <div className="mt-4">
+                  <div className="mt-4 flex items-center gap-2">
                     <Ident value={flow.source} className="text-muted">
                       {middleTruncate(flow.source, 44)}
                     </Ident>
+                    {source ? (
+                      <a
+                        href={source}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mono rounded-control text-accent hover:underline"
+                        title="Open the file on the forge, at the built commit"
+                      >
+                        open ↗
+                      </a>
+                    ) : null}
                   </div>
                 ) : null}
               </div>

@@ -2,16 +2,12 @@ import { useState } from "react";
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { catalog } from "../data";
-import { flowsForService } from "../lib/derive";
+import { flowRoles } from "../lib/derive";
+import { treeHref } from "../lib/source-link";
+import { flowHealth } from "../lib/flow-tree";
 import { adrsForService, isCurrent } from "../lib/adr";
 import { AdrRow } from "../components/AdrRow";
-import {
-  EVENT_ANCHOR,
-  SERVICE_ANCHOR,
-  aggregatePath,
-  paths,
-  servicePath,
-} from "../routes";
+import { EVENT_ANCHOR, SERVICE_ANCHOR, aggregatePath, paths, servicePath } from "../routes";
 import { Markdown } from "../components/Markdown";
 import { middleTruncate, plural } from "../lib/format";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
@@ -86,7 +82,8 @@ export function ServicePage() {
     aggregate.events.map((event) => ({ aggregate, event })),
   );
   const stores = storesOfService(index, service.id);
-  const flows = flowsForService(catalog, service.id);
+  const flows = flowRoles(catalog, service.id);
+  const tree = treeHref(service.path, service);
   const adrs = adrsForService(catalog, service.id, context.id);
   const current = adrs.filter(isCurrent);
   const retired = adrs.filter((a) => !isCurrent(a));
@@ -130,6 +127,17 @@ export function ServicePage() {
         <div className="mono mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-muted">
           <Ident value={service.repo}>{middleTruncate(service.repo, 32)}</Ident>
           <Ident value={service.path}>{middleTruncate(service.path, 32)}</Ident>
+          {tree ? (
+            <a
+              href={tree}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-control text-accent hover:underline"
+              title="Open the service's directory on the forge, at the built commit"
+            >
+              open ↗
+            </a>
+          ) : null}
           <span aria-hidden className="h-4 w-px bg-line-strong" />
           {/* Both counts land in the section that lists what they counted;
               the tabs above do the same job for the other four. */}
@@ -512,16 +520,42 @@ export function ServicePage() {
             {flows.length === 0 ? (
               <Empty>no chart runs through here yet</Empty>
             ) : null}
-            {flows.map((flow) => {
+            {flows.map(({ flow, role, trigger, firstStepId, steps, publishes, consumes }) => {
+              // What this service does in the flow, in one phrase, and the
+              // counts behind it. The link lands on the first step the
+              // service is on rather than the top of the rail.
+              const does =
+                role === "initiates"
+                  ? `answers ${trigger ?? "the call in"}`
+                  : role === "reacts"
+                    ? `reacts to ${trigger ?? "an event"}`
+                    : "on the way";
               return (
                 <Link
                   key={flow.slug}
-                  to={paths.flow(flow.slug)}
+                  to={firstStepId ? paths.flowStep(flow.slug, firstStepId) : paths.flow(flow.slug)}
                   data-nav-item
-                  className="row flex-wrap"
+                  className="row flex-wrap items-baseline gap-x-3"
                 >
                   <span className="font-semibold">{flow.name}</span>
                   <span className="mono text-muted">{flow.slug}</span>
+                  <span className="mono text-muted">{does}</span>
+                  <span className="mono ml-auto flex shrink-0 items-center gap-3 text-muted">
+                    {publishes.length > 0 ? (
+                      <span title={`publishes ${publishes.join(", ")}`}>
+                        ↑ <span className="tnum">{publishes.length}</span>
+                      </span>
+                    ) : null}
+                    {consumes.length > 0 ? (
+                      <span title={`consumes ${consumes.join(", ")}`}>
+                        ↓ <span className="tnum">{consumes.length}</span>
+                      </span>
+                    ) : null}
+                    <span title="steps this service is on">
+                      <span className="tnum">{steps}</span> step{steps === 1 ? "" : "s"}
+                    </span>
+                    <StatusChip status={flowHealth(flow)} />
+                  </span>
                 </Link>
               );
             })}

@@ -3,11 +3,13 @@
 
 import type {
   Block,
-  Catalog,
   BoundedContext,
+  Catalog,
   Event,
   Field,
   Flow,
+  Service,
+  Step,
 } from "../catalog";
 import { aggregateBlocks, flowContexts, walkSteps } from "../catalog";
 
@@ -58,6 +60,81 @@ export function flowsForService(catalog: Catalog, serviceId: string): Flow[] {
   return catalog.flows.filter((f) =>
     f.participants.some((p) => p.id === serviceId),
   );
+}
+
+/** What a service does in a flow, read off the steps it is on. */
+export interface FlowRole {
+  flow: Flow;
+  /**
+   * `initiates`: the flow opens with somebody calling this service;
+   * `reacts`: it opens with an event arriving at this service;
+   * `participates`: the service is on a later step only.
+   */
+  role: "initiates" | "reacts" | "participates";
+  /** The operation called or the event that arrived, for the two roles that have one. */
+  trigger: string | null;
+  /** The first step the service is on, for a link that lands on it. */
+  firstStepId: string | null;
+  /** How many steps the service is on either end of. */
+  steps: number;
+  /** Event names the service publishes and consumes in this flow, each once. */
+  publishes: string[];
+  consumes: string[];
+}
+
+/**
+ * The flows a service is in, and what it does in each. The list a service
+ * page needs: not "which flows mention me" but "which do I start, which do I
+ * answer to, and where am I merely on the way".
+ */
+export function flowRoles(catalog: Catalog, serviceId: string): FlowRole[] {
+  return flowsForService(catalog, serviceId).map((flow) => {
+    const steps = walkSteps(flow.steps);
+    const brokers = new Set(
+      flow.participants.filter((p) => p.kind === "broker").map((p) => p.id),
+    );
+    const mine = steps.filter((s) => s.from === serviceId || s.to === serviceId);
+    const first = steps[0];
+    let role: FlowRole["role"] = "participates";
+    let trigger: string | null = null;
+    if (first && first.to === serviceId && first.from !== serviceId) {
+      if (first.kind === "event" && brokers.has(first.from)) {
+        role = "reacts";
+        trigger = first.label ?? first.ref ?? null;
+      } else if (first.kind === "rpc") {
+        role = "initiates";
+        trigger = first.label ?? first.ref ?? null;
+      }
+    }
+    const names = (list: Step[]) =>
+      [...new Set(list.map((s) => s.label ?? s.ref ?? "").filter(Boolean))];
+    return {
+      flow,
+      role,
+      trigger,
+      firstStepId: mine[0]?.id ?? null,
+      steps: mine.length,
+      publishes: names(mine.filter((s) => s.kind === "event" && s.from === serviceId)),
+      consumes: names(mine.filter((s) => s.kind === "event" && s.to === serviceId)),
+    };
+  });
+}
+
+/**
+ * The service whose repository a flow's paths are written against: the first
+ * service lane in the context that owns the flow. A flow's source and its
+ * steps' lines are spelled relative to that repository, so it is the one a
+ * link has to be built from.
+ */
+export function flowRepoService(catalog: Catalog, flow: Flow): Service | null {
+  const lanes = flow.participants.filter((p) => p.kind === "service");
+  const owned = lanes.find((p) => p.context === flow.owner) ?? lanes[0];
+  if (!owned) return null;
+  for (const context of catalog.contexts) {
+    const service = context.services.find((s) => s.id === owned.id);
+    if (service) return service;
+  }
+  return null;
 }
 
 export interface StepRef {

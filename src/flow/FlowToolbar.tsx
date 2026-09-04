@@ -13,7 +13,9 @@
 
 import {
   Columns3,
+  Copy,
   Filter,
+  ImageDown,
   Maximize2,
   Network,
   Pause,
@@ -25,8 +27,11 @@ import {
   Workflow,
 } from "lucide-react";
 import type { ReactNode } from "react";
+import { STATUSES } from "../catalog";
+import type { Status } from "../catalog";
 import { Ident } from "../components/Ident";
 import { Select } from "../components/Select";
+import { statusVar } from "../components/primitives";
 import type { FlowPath } from "./paths";
 import type { Variant } from "./prefs";
 
@@ -81,6 +86,12 @@ export function FlowToolbar({
   viewId,
   hiddenCount,
   pairingBroken,
+  statusFilter,
+  onStatusFilter,
+  statusCounts,
+  onCopyMermaid,
+  onExportPng,
+  exporting,
 }: {
   variant: Variant;
   onVariant: (variant: Variant) => void;
@@ -105,6 +116,16 @@ export function FlowToolbar({
   hiddenCount: number;
   /** The generated view and the catalog disagree, so nothing can be paired. */
   pairingBroken: boolean;
+  /** The one status the rail is reading, or null for all of them. */
+  statusFilter: Status | null;
+  onStatusFilter: (status: Status | null) => void;
+  /** How many steps of each status the flow has, for the switch's labels. */
+  statusCounts: Record<Status, number>;
+  /** The sequence as Mermaid, to the clipboard. */
+  onCopyMermaid: () => void;
+  /** The canvas as it stands, to a file. */
+  onExportPng: () => void;
+  exporting: boolean;
 }) {
   return (
     <div className="flow-toolbar">
@@ -239,6 +260,34 @@ export function FlowToolbar({
       ) : null}
 
       <div className="ml-auto flex items-center gap-2">
+        {/* One status at a time: the question the switch answers is "which of
+            these hops have been seen running", and the answer is only legible
+            against the ones that have not, so the rest recede rather than go. */}
+        <div className="seg" role="group" aria-label="Show steps by status">
+          {STATUSES.filter((status) => statusCounts[status] > 0).map((status) => (
+            <button
+              key={status}
+              type="button"
+              onClick={() => onStatusFilter(statusFilter === status ? null : status)}
+              aria-pressed={statusFilter === status}
+              title={
+                statusFilter === status
+                  ? "Read every step again"
+                  : `Read only the ${status} steps; the others recede`
+              }
+              className={`flex items-center gap-1.5 ${statusFilter === status ? "is-on" : ""}`}
+            >
+              <span
+                aria-hidden
+                className="size-1.5 rounded-[1px]"
+                style={{ background: statusVar(status) }}
+              />
+              {status}
+              <span className="tnum text-muted">{statusCounts[status]}</span>
+            </button>
+          ))}
+        </div>
+
         {/* Which view is actually on the canvas. It changes with both switches
             on this bar, which is the argument for it being on this bar. */}
         <Ident
@@ -277,6 +326,30 @@ export function FlowToolbar({
           >
             <Maximize2 size={14} aria-hidden />
             fit
+          </button>
+        </div>
+
+        {/* Two ways out of the page with the flow in hand: the diagram as text,
+            for a wiki or a pull request, and the canvas as a picture. */}
+        <div className="seg">
+          <button
+            type="button"
+            onClick={onCopyMermaid}
+            title="Copy the sequence as a Mermaid diagram"
+            className="flex items-center gap-1.5"
+          >
+            <Copy size={14} aria-hidden />
+            mermaid
+          </button>
+          <button
+            type="button"
+            onClick={onExportPng}
+            disabled={exporting}
+            title="Save the canvas as a PNG"
+            className="flex items-center gap-1.5"
+          >
+            <ImageDown size={14} aria-hidden />
+            {exporting ? "saving…" : "png"}
           </button>
         </div>
       </div>

@@ -647,6 +647,7 @@ function HidingLine({
 const HEALTH_COLOR: Record<FlowHealth, string> = {
   unresolved: "var(--status-unresolved)",
   declared: "var(--fg-faint)",
+  verified: "var(--status-verified)",
 };
 
 /**

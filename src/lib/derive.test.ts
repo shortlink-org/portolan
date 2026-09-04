@@ -3,6 +3,8 @@ import { catalog } from "../data";
 import {
   addedFields,
   contextStats,
+  flowRepoService,
+  flowRoles,
   flowsByReach,
   flowsForService,
   headingSlug,
@@ -158,5 +160,45 @@ describe("usagesOfDef", () => {
 
   it("returns nothing for a type nothing names", () => {
     expect(usagesOfDef(catalog, "Doubloons")).toEqual([]);
+  });
+});
+
+describe("flowRoles", () => {
+  const roles = (id: string) => new Map(flowRoles(catalog, id).map((r) => [r.flow.slug, r]));
+
+  it("says which flows a service answers to, and which it merely joins", () => {
+    const auth = roles("auth.auth");
+    expect(auth.get("auth-login")?.role).toBe("initiates");
+    expect(auth.get("auth-login")?.trigger).toBe("login");
+    expect(auth.get("auth-revoke-sessions-on-password-change")?.role).toBe("reacts");
+    expect(auth.get("auth-revoke-sessions-on-password-change")?.trigger).toBe("PasswordChanged");
+
+    const ledger = roles("payments.ledger");
+    expect(ledger.get("order-accepted")?.role).toBe("participates");
+    expect(ledger.get("gateway-webhook")?.role).toBe("initiates");
+  });
+
+  it("counts the steps the service is on and the events it moves", () => {
+    const login = roles("auth.auth").get("auth-login");
+    expect(login?.steps).toBe(9);
+    expect(login?.firstStepId).toBe("s1");
+    expect(login?.publishes).toEqual(["SessionEnded", "SessionStarted"]);
+    expect(login?.consumes).toEqual([]);
+
+    const ledger = roles("payments.ledger").get("order-accepted");
+    expect(ledger?.consumes).toEqual(["OrderPlaced"]);
+    expect(ledger?.publishes).toEqual(["PaymentAuthorized"]);
+    expect(ledger?.firstStepId).toBe("a3");
+  });
+});
+
+describe("flowRepoService", () => {
+  it("is the owning context's service, whose repository the paths are written against", () => {
+    const checkout = catalog.flows.find((f) => f.slug === "checkout")!;
+    expect(flowRepoService(catalog, checkout)?.id).toBe("shop.oms");
+    const webhook = catalog.flows.find((f) => f.slug === "gateway-webhook")!;
+    expect(flowRepoService(catalog, webhook)?.id).toBe("payments.ledger");
+    const login = catalog.flows.find((f) => f.slug === "auth-login")!;
+    expect(flowRepoService(catalog, login)?.repo).toBe("github.com/shortlink-org/portolan");
   });
 });
