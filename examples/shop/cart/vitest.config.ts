@@ -8,5 +8,5 @@ export default defineConfig({
     // mean no emitted metadata is needed for the tests to build the container.
     setupFiles: ["./src/testing/setup.ts"],
   },
-  esbuild: { tsconfigRaw: { compilerOptions: { experimentalDecorators: true } } },
+  oxc: { decorator: { legacy: true } },
 });

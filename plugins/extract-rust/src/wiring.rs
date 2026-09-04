@@ -35,7 +35,7 @@ pub fn read_bindings(krate: &Crate) -> BTreeMap<String, Vec<Binding>> {
             let written = im
                 .trait_
                 .as_ref()
-                .map(|(_, p, _)| p.segments.iter().map(|s| s.ident.to_string()).collect::<Vec<_>>().join("::"))
+                .map(|(p, _)| p.segments.iter().map(|s| s.ident.to_string()).collect::<Vec<_>>().join("::"))
                 .unwrap_or_default();
             let full = src.resolve_path(&written);
             let Some(declaring) = krate.declaring(&trait_, Some(&full)) else { continue };

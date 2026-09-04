@@ -662,18 +662,19 @@ impl<'a> FlowReader<'a> {
         let mut drew = false;
         let mut saw_default = false;
         for arm in &stmt.arms {
-            if let Some((_, guard)) = &arm.guard {
+            let (pat, guard) = split_guard(&arm.pat);
+            if let Some(guard) = guard {
                 self.walk_expr(d, s, guard, None, depth);
             }
             d.push();
             self.walk_expr(d, s, &arm.body, None, depth);
             let steps = d.pop();
             drew |= !steps.is_empty();
-            let wild = matches!(arm.pat, Pat::Wild(_));
+            let wild = matches!(pat, Pat::Wild(_));
             let title = if wild {
                 "otherwise".to_string()
             } else {
-                format!("{subject} is {}", s.src.text_of(span_of(&arm.pat)))
+                format!("{subject} is {}", s.src.text_of(span_of(pat)))
             };
             if wild {
                 saw_default = true;
@@ -1104,13 +1105,22 @@ fn collect_compared_literals(block: &syn::Block, out: &mut Vec<String>) {
             syn::visit::visit_expr_binary(self, e);
         }
         fn visit_arm(&mut self, arm: &'ast syn::Arm) {
-            if let Pat::Lit(syn::PatLit { lit: syn::Lit::Str(s), .. }) = &arm.pat {
+            if let Pat::Lit(syn::PatLit { lit: syn::Lit::Str(s), .. }) = split_guard(&arm.pat).0 {
                 self.0.push(s.value());
             }
             syn::visit::visit_arm(self, arm);
         }
     }
     Lits(out).visit_block(block);
+}
+
+/// A match arm's pattern and its `if` guard, apart: syn keeps `pat if guard`
+/// as one pattern, and the title of a branch is the pattern alone.
+fn split_guard(pat: &Pat) -> (&Pat, Option<&Expr>) {
+    match pat {
+        Pat::Guard(g) => (&g.pat, Some(&g.guard)),
+        p => (p, None),
+    }
 }
 
 fn bind(s: &mut Scope<'_>, pat: &Pat, results: &[DomainRef]) {
