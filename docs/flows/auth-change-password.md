@@ -36,7 +36,7 @@ sequenceDiagram
 ## Steps
 
 1. **client** → **auth.auth** — changePassword
-   status: declared · `examples/auth/internal/infrastructure/transport/http/user/change_password.go:20`
+   `examples/auth/internal/infrastructure/transport/http/user/change_password.go:20` · Seen running in telemetry/traces.jsonl (1 trace).
 2. **auth.auth** → **auth-pg** — ByToken
    status: declared · `examples/auth/internal/application/session/usecases/validate/usecase.go:34`
 3. **auth.auth** → **auth-pg** — ByID
@@ -44,4 +44,4 @@ sequenceDiagram
 4. **auth.auth** → **auth-pg** — Save
    status: declared · `examples/auth/internal/application/user/usecases/change_password/usecase.go:40`
 5. **auth.auth** → **bus** — PasswordChanged
-   [auth.auth.user.PasswordChanged](../auth/auth/aggregates/user.md) · status: declared · `examples/auth/internal/application/user/usecases/change_password/usecase.go:40`
+   [auth.auth.user.PasswordChanged](../auth/auth/aggregates/user.md) · `examples/auth/internal/application/user/usecases/change_password/usecase.go:40` · Seen running in telemetry/traces.jsonl (1 trace).

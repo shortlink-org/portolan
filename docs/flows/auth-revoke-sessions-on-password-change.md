@@ -35,7 +35,7 @@ sequenceDiagram
 ## Steps
 
 1. **bus** → **auth.auth** — PasswordChanged
-   [auth.auth.user.PasswordChanged](../auth/auth/aggregates/user.md) · status: declared · `examples/auth/internal/application/policy/revoke_sessions_on_password_change.go:41`
+   [auth.auth.user.PasswordChanged](../auth/auth/aggregates/user.md) · `examples/auth/internal/application/policy/revoke_sessions_on_password_change.go:41` · Seen running in telemetry/traces.jsonl (1 trace).
 2. **auth.auth** ↺ **auth.auth** — EndAfterCredentialChange
    status: declared · `examples/auth/internal/application/policy/revoke_sessions_on_password_change.go:47`
 3. **auth.auth** → **auth-pg** — ByUserID
@@ -45,4 +45,4 @@ sequenceDiagram
 5. **auth.auth** → **auth-pg** — Save
    status: declared · `examples/auth/internal/application/session/usecases/end_after_credential_change/usecase.go:77` · inside a loop over `change.Ends(sessions, uc.now())`, inside a loop over `retries`.
 6. **auth.auth** → **bus** — SessionEnded
-   [auth.auth.session.SessionEnded](../auth/auth/aggregates/session.md) · status: declared · `examples/auth/internal/application/session/usecases/end_after_credential_change/usecase.go:77` · inside a loop over `change.Ends(sessions, uc.now())`, inside a loop over `retries`.
+   [auth.auth.session.SessionEnded](../auth/auth/aggregates/session.md) · `examples/auth/internal/application/session/usecases/end_after_credential_change/usecase.go:77` · inside a loop over `change.Ends(sessions, uc.now())`, inside a loop over `retries`.

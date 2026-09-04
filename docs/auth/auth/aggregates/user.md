@@ -63,9 +63,9 @@ Hash is what the user domain stores in place of a password. The plaintext never 
 
 `auth.auth.user.PasswordChanged`
 
-| Consumer | Status |
-| --- | --- |
-| [auth.auth](../README.md) | declared |
+| Consumer | Status | Note |
+| --- | --- | --- |
+| [auth.auth](../README.md) | verified | Seen consuming it in telemetry/traces.jsonl. |
 
 #### v1 — current
 

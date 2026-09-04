@@ -41,7 +41,9 @@ func NewServer(users *user.Users, sessions *session.Sessions) *Server {
 }
 
 // Router returns the routes described by the spec, mounted on a fresh chi
-// router.
+// router, with a server span around every request.
 func Router(srv *Server) nethttp.Handler {
-	return gen.HandlerFromMux(gen.NewStrictHandler(srv, nil), chi.NewRouter())
+	strict := gen.NewStrictHandler(srv, []gen.StrictMiddlewareFunc{named})
+
+	return traced(gen.HandlerFromMux(strict, chi.NewRouter()))
 }

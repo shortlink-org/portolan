@@ -42,6 +42,11 @@ func (p *Publisher) Publish(ctx context.Context, events []event.Event) error {
 		if err != nil {
 			return err
 		}
+		// One span per event, and its context on the message: that is what
+		// lets the policy that reacts to it show up in the same trace as the
+		// request that caused it.
+		_, span := messaging.StartPublish(ctx, dto.Topic, msg, e.Name())
+		span.End()
 		messages = append(messages, msg)
 	}
 
@@ -72,6 +77,9 @@ func Handle(relay *sdkoutbox.Relay, byName map[string]Handler) error {
 			// broken, just uninteresting.
 			return nil
 		}
+
+		ctx, span := messaging.StartConsume(ctx, dto.Topic, name)
+		defer span.End()
 
 		e, err := dto.Unmarshal(msg)
 		if err != nil {

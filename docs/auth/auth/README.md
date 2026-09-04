@@ -111,6 +111,17 @@ only then is the attempt refused, with the same 401 as a wrong password. A 403
 would say the account exists and is worth attacking, which is the one thing
 the attacker came to learn.
 
+## Tracing
+
+`TRACER_URI` names an OTLP collector and switches tracing on; without it the
+provider is the no-op one and every span costs nothing. Requests are traced by
+route, database calls by the SDK's pgx tracer, and each domain event twice:
+where it is written to the outbox and where a policy takes it off the bus, with
+the event's name on both spans and the trace carried across the table so the
+two are one trace. `telemetry/` holds the collector config, a script that
+records the service doing everything it does, and the recording itself, which
+is what the catalog is verified against: see `telemetry/README.md`.
+
 ## Caching
 
 `ByToken` is the hot path: every authenticated request in the estate ends
@@ -320,7 +331,7 @@ go generate ./...
 | --- | --- | --- |
 | [SessionEnded](aggregates/session.md) | v1 | — |
 | [SessionStarted](aggregates/session.md) | v1 | — |
-| [PasswordChanged](aggregates/user.md) | v1 | [auth.auth (declared)](README.md) |
+| [PasswordChanged](aggregates/user.md) | v1 | [auth.auth](README.md) |
 | [UserRegistered](aggregates/user.md) | v1 | — |
 
 ## Stores

@@ -31,6 +31,6 @@ sequenceDiagram
 ## Steps
 
 1. **client** → **auth.auth** — validateSession
-   status: declared · `examples/auth/internal/infrastructure/transport/http/session/validate.go:12`
+   `examples/auth/internal/infrastructure/transport/http/session/validate.go:12` · Seen running in telemetry/traces.jsonl (2 traces).
 2. **auth.auth** → **auth-pg** — ByToken
    status: declared · `examples/auth/internal/application/session/usecases/validate/usecase.go:34`

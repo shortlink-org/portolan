@@ -16,3 +16,7 @@ src/likec4/generated.d.ts
 
 # Compiled generator plugins: rebuilt by `npm run plugins:build`
 plugins/*.wasm
+
+# The collector writes here while recording; the scrubbed copy beside it is
+# what is committed.
+examples/auth/telemetry/out/

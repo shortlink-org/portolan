@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-09-01T23:36:34+08:00",
-  "commit": "1e38b7f",
+  "generatedAt": "2026-09-04T03:08:28+07:00",
+  "commit": "464bce6",
   "contexts": [
     {
       "id": "auth",
@@ -20,13 +20,25 @@
               "id": "auth.v1.Users",
               "methods": [
                 {
-                  "name": "registerUser"
+                  "name": "registerUser",
+                  "http": {
+                    "method": "POST",
+                    "path": "/v1/users"
+                  }
                 },
                 {
-                  "name": "getUser"
+                  "name": "getUser",
+                  "http": {
+                    "method": "GET",
+                    "path": "/v1/users/{userId}"
+                  }
                 },
                 {
-                  "name": "changePassword"
+                  "name": "changePassword",
+                  "http": {
+                    "method": "POST",
+                    "path": "/v1/users/me/password"
+                  }
                 }
               ],
               "source": "examples/auth/internal/infrastructure/transport/http/gen/openapi.yaml",
@@ -102,13 +114,25 @@
               "id": "auth.v1.Sessions",
               "methods": [
                 {
-                  "name": "login"
+                  "name": "login",
+                  "http": {
+                    "method": "POST",
+                    "path": "/v1/sessions"
+                  }
                 },
                 {
-                  "name": "validateSession"
+                  "name": "validateSession",
+                  "http": {
+                    "method": "GET",
+                    "path": "/v1/sessions/current"
+                  }
                 },
                 {
-                  "name": "logout"
+                  "name": "logout",
+                  "http": {
+                    "method": "DELETE",
+                    "path": "/v1/sessions/current"
+                  }
                 }
               ],
               "source": "examples/auth/internal/infrastructure/transport/http/gen/openapi.yaml",

@@ -44,5 +44,18 @@ services:
       timeout: 3s
       retries: 30
 
+  # Optional, like redis: the service sends spans only when TRACER_URI names
+  # this. The collector writes every span it receives to ./telemetry/out as
+  # OTLP JSON, which is the file portolan reads to mark hops as observed - see
+  # telemetry/README.md for the recording.
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.126.0
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./telemetry/otel-collector.yaml:/etc/otelcol/config.yaml:ro
+      - ./telemetry/out:/out
+    ports:
+      - "4317:4317"
+
 volumes:
   pgdata:

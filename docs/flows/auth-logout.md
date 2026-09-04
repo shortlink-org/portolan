@@ -35,10 +35,10 @@ sequenceDiagram
 ## Steps
 
 1. **client** → **auth.auth** — logout
-   status: declared · `examples/auth/internal/infrastructure/transport/http/session/logout.go:15`
+   `examples/auth/internal/infrastructure/transport/http/session/logout.go:15` · Seen running in telemetry/traces.jsonl (1 trace).
 2. **auth.auth** → **auth-pg** — ByToken
    status: declared · `examples/auth/internal/application/session/usecases/logout/usecase.go:35`
 3. **auth.auth** → **auth-pg** — Save
    status: declared · `examples/auth/internal/application/session/usecases/logout/usecase.go:49`
 4. **auth.auth** → **bus** — SessionEnded
-   [auth.auth.session.SessionEnded](../auth/auth/aggregates/session.md) · status: declared · `examples/auth/internal/application/session/usecases/logout/usecase.go:49`
+   [auth.auth.session.SessionEnded](../auth/auth/aggregates/session.md) · `examples/auth/internal/application/session/usecases/logout/usecase.go:49` · Seen running in telemetry/traces.jsonl (1 trace).

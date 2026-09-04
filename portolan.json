@@ -28,6 +28,12 @@
       "wasm": {
         "url": "file://plugins/gen-markdown.wasm"
       }
+    },
+    {
+      "name": "otel",
+      "process": {
+        "cmd": "go run ./plugins/verify-otel"
+      }
     }
   ],
   "extract": [
@@ -67,6 +73,19 @@
         "store": "pg",
         "name": "Auth database",
         "out": "stores.json"
+      }
+    }
+  ],
+  "verify": [
+    {
+      "plugin": "otel",
+      "in": "examples/auth",
+      "out": "examples/auth/portolan",
+      "options": {
+        "traces": [
+          "telemetry/traces.jsonl"
+        ],
+        "out": "observed.json"
       }
     }
   ],

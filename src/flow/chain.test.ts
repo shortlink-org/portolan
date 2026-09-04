@@ -367,12 +367,12 @@ describe("eventChain: the real catalog", () => {
     expect(chain.truncated).toBe(false);
   });
 
-  it("follows the derived consumer: auth hears PasswordChanged and ends sessions", () => {
+  it("follows the consumer the traces verified: auth hears PasswordChanged and ends sessions", () => {
     const chain = eventChain(real, "auth.auth.user.PasswordChanged");
     expect(outline(chain.nodes)).toEqual([
-      "auth.auth (declared)",
-      "  in auth-revoke-sessions-on-password-change · step 1 (declared)",
-      "    SessionEnded · step 6 (declared)",
+      "auth.auth (verified)",
+      "  in auth-revoke-sessions-on-password-change · step 1 (verified)",
+      "    SessionEnded · step 6 (verified)",
     ]);
   });
 });

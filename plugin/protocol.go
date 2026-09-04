@@ -20,6 +20,12 @@ const Version = "0.1.0"
 type Request struct {
 	PortolanVersion string `json:"portolanVersion"`
 
+	// Kind is what the host is asking for. Empty - the only thing anyone sent
+	// before this field existed - means do the work. KindDescribe means answer
+	// with a Descriptor and read nothing: it is how the manifest schema is
+	// built, and it has to be cheap enough to run over every declared plugin.
+	Kind string `json:"kind,omitempty"`
+
 	// Catalog is the merged catalog, for a plugin that renders from it. An
 	// extractor is handed the zero value: it runs before there is one.
 	Catalog catalog.Catalog `json:"catalog"`
@@ -54,6 +60,11 @@ type Input struct {
 type Response struct {
 	Files       []File       `json:"files"`
 	Diagnostics []Diagnostic `json:"diagnostics,omitempty"`
+
+	// Describe answers KindDescribe and is absent otherwise. A plugin written
+	// against an older version of this protocol answers without it, which the
+	// host reports rather than treating as a plugin with no options.
+	Describe *Descriptor `json:"describe,omitempty"`
 }
 
 type File struct {

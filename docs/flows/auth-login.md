@@ -46,7 +46,7 @@ sequenceDiagram
 ## Steps
 
 1. **client** → **auth.auth** — login
-   status: declared · `examples/auth/internal/infrastructure/transport/http/session/login.go:11`
+   `examples/auth/internal/infrastructure/transport/http/session/login.go:11` · Seen running in telemetry/traces.jsonl (2 traces).
 2. **auth.auth** ↺ **auth.auth** — Authenticate
    status: declared · `examples/auth/internal/application/session/usecases/login/usecase.go:58` · Port `Authenticator`, bound at assembly to the Authenticate use case.
 3. **auth.auth** → **auth-pg** — ByEmail
@@ -70,4 +70,4 @@ sequenceDiagram
 8. **auth.auth** → **auth-pg** — Save
    status: declared · `examples/auth/internal/application/session/usecases/login/usecase.go:78`
 9. **auth.auth** → **bus** — SessionStarted
-   [auth.auth.session.SessionStarted](../auth/auth/aggregates/session.md) · status: declared · `examples/auth/internal/application/session/usecases/login/usecase.go:78`
+   [auth.auth.session.SessionStarted](../auth/auth/aggregates/session.md) · `examples/auth/internal/application/session/usecases/login/usecase.go:78` · Seen running in telemetry/traces.jsonl (2 traces).

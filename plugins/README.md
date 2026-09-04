@@ -49,6 +49,66 @@ Three obligations, and they are the whole of it:
 }
 ```
 
+## Verifiers: the third phase
+
+An extractor reads source and runs before there is a catalog; a generator
+reads the catalog and writes pages. A **verifier** sits between them. It reads
+something observed - traces today, a test's record tomorrow - and answers with
+a fragment like an extractor's, but one that only makes sense against the
+merged catalog: "this hop was seen running" names a hop somebody else declared.
+So a `verify` step is handed both `input` and `catalog`, and the catalog it is
+handed leaves out the step's own last output. Without that, what it wrote last
+time would count as evidence this time, and the fragment could never be checked
+against a clean run.
+
+```json
+{
+  "plugins": [{ "name": "otel", "process": { "cmd": "go run ./plugins/verify-otel" } }],
+  "verify": [
+    {
+      "plugin": "otel",
+      "in": "examples/auth",
+      "out": "examples/auth/portolan",
+      "options": { "traces": ["telemetry/traces.jsonl"], "out": "observed.json" }
+    }
+  ]
+}
+```
+
+What comes back is merged like any other source, under two rules that exist
+for it. A flow declared twice is accepted when the second declaration differs
+only in status: `declared` steps become `verified`, and anything else that
+differs - a lane, a hop, a branch - is the conflict it always was. A consumer
+or a call declared twice keeps the first note and takes `verified` if either
+side has it.
+
+### verify-otel
+
+Reads OTLP JSON - one batch per file or one per line, as a collector's file
+exporter writes it - and turns each trace into hops between lanes:
+
+| span | hop |
+| --- | --- |
+| kind server, `http.route` | `client → service`, an rpc; matched to the operation whose `http` verb and path the OpenAPI extractor recorded, which is what opens an endpoint flow |
+| kind client, `rpc.service` + `rpc.method` | `service → provider`, an rpc; `unknown` lane and `unresolved` when nothing provides it, however often it ran |
+| `db.system.name`, `db.operation.name` | `service → its store`, a call; the statement nested under a query is not a second call |
+| kind producer, `event.name` | `service → bus`, the event whose name that is among the service's own |
+| kind consumer, `event.name` | `bus → service`, and a `verified` consumer on the event |
+
+A trace whose root opens a declared flow raises the steps it shows: the call
+in, the events out, the rpcs with a ref. A `call` step is never raised - a
+`SELECT` ran, which is not the same claim as "the repository's `ByEmail` was
+called" - and `unresolved` is never raised, because a trace does not put the
+far end in the catalog. A consumer span inside a trace opens a flow of its own
+and is matched the same way, so one password change verifies both the
+request's flow and the policy's. A root no flow opens is written down as
+`observed-<service>-<route>`, once per shape, with a summary saying how many
+traces showed it.
+
+`service.name` is matched to the one service whose slug it is, `event.name` to
+the one event of the publisher's with that last segment; `services` and
+`events` in the options say otherwise where an estate's names differ.
+
 ## wasm or process
 
 `wasm` is the default and should stay that way. The module gets no filesystem,

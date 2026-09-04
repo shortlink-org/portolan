@@ -1,0 +1,654 @@
+{
+  "generatedAt": "2026-09-04T03:08:28+07:00",
+  "commit": "464bce6",
+  "contexts": [
+    {
+      "id": "auth",
+      "slug": "auth",
+      "name": "Authentication",
+      "summary": "",
+      "services": [
+        {
+          "id": "auth.auth",
+          "slug": "auth",
+          "name": "Authentication \u0026 Sessions",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [
+            {
+              "id": "auth.auth.user",
+              "slug": "user",
+              "name": "User",
+              "readme": "# User\n\nHolds the User aggregate: a person, the address they log in\nwith, and the hash of the password they log in by.\n\nThe aggregate is the transactional boundary. Every rule below is enforced\nhere and nowhere else, so a caller cannot reach past the root and leave a\nUser in a state the domain says is impossible.",
+              "root": "User",
+              "entities": [],
+              "valueObjects": [],
+              "operations": [],
+              "events": [
+                {
+                  "id": "auth.auth.user.PasswordChanged",
+                  "slug": "password-changed",
+                  "name": "PasswordChanged",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "PasswordChanged is published when a user's password is replaced. It says the password is different now; it does not carry the password, old or new, in any form.\n\nPublished on the bus as `auth.PasswordChanged`.",
+                      "source": "examples/auth/internal/domain/user/event/password_changed.go",
+                      "fields": [
+                        {
+                          "name": "userID",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "by",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "occurredAt",
+                          "type": "time.Time",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [
+                    {
+                      "service": "auth.auth",
+                      "status": "verified",
+                      "note": "Seen consuming it in telemetry/traces.jsonl."
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [
+    {
+      "id": "flow.auth-change-password",
+      "slug": "auth-change-password",
+      "name": "Change password",
+      "summary": "Replaces the password of a user, given the current one.",
+      "source": "examples/auth/internal/infrastructure/transport/http/user/change_password.go",
+      "owner": "auth",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "auth.auth",
+          "kind": "service",
+          "context": "auth"
+        },
+        {
+          "id": "auth-pg",
+          "kind": "store",
+          "context": "auth"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "auth.auth",
+          "kind": "rpc",
+          "label": "changePassword",
+          "status": "verified",
+          "note": "Seen running in telemetry/traces.jsonl (1 trace).",
+          "line": "examples/auth/internal/infrastructure/transport/http/user/change_password.go:20"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "auth.auth",
+          "to": "auth-pg",
+          "kind": "call",
+          "label": "ByToken",
+          "status": "declared",
+          "line": "examples/auth/internal/application/session/usecases/validate/usecase.go:34"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "auth.auth",
+          "to": "auth-pg",
+          "kind": "call",
+          "label": "ByID",
+          "status": "declared",
+          "line": "examples/auth/internal/application/user/usecases/change_password/usecase.go:31"
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "auth.auth",
+          "to": "auth-pg",
+          "kind": "call",
+          "label": "Save",
+          "status": "declared",
+          "line": "examples/auth/internal/application/user/usecases/change_password/usecase.go:40"
+        },
+        {
+          "type": "step",
+          "id": "s5",
+          "from": "auth.auth",
+          "to": "bus",
+          "kind": "event",
+          "ref": "auth.auth.user.PasswordChanged",
+          "label": "PasswordChanged",
+          "status": "verified",
+          "note": "Seen running in telemetry/traces.jsonl (1 trace).",
+          "line": "examples/auth/internal/application/user/usecases/change_password/usecase.go:40"
+        }
+      ]
+    },
+    {
+      "id": "flow.auth-get-user",
+      "slug": "auth-get-user",
+      "name": "Get user",
+      "summary": "Reads a user by id.",
+      "source": "examples/auth/internal/infrastructure/transport/http/user/get.go",
+      "owner": "auth",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "auth.auth",
+          "kind": "service",
+          "context": "auth"
+        },
+        {
+          "id": "auth-pg",
+          "kind": "store",
+          "context": "auth"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "auth.auth",
+          "kind": "rpc",
+          "label": "getUser",
+          "status": "verified",
+          "note": "Seen running in telemetry/traces.jsonl (2 traces).",
+          "line": "examples/auth/internal/infrastructure/transport/http/user/get.go:11"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "auth.auth",
+          "to": "auth-pg",
+          "kind": "call",
+          "label": "ByID",
+          "status": "declared",
+          "line": "examples/auth/internal/application/user/usecases/get/usecase.go:23"
+        }
+      ]
+    },
+    {
+      "id": "flow.auth-login",
+      "slug": "auth-login",
+      "name": "Login",
+      "summary": "Turns credentials into a session.",
+      "source": "examples/auth/internal/infrastructure/transport/http/session/login.go",
+      "owner": "auth",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "auth.auth",
+          "kind": "service",
+          "context": "auth"
+        },
+        {
+          "id": "auth-pg",
+          "kind": "store",
+          "context": "auth"
+        },
+        {
+          "id": "risk-v1",
+          "kind": "unknown",
+          "context": null,
+          "label": "risk.v1"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "auth.auth",
+          "kind": "rpc",
+          "label": "login",
+          "status": "verified",
+          "note": "Seen running in telemetry/traces.jsonl (2 traces).",
+          "line": "examples/auth/internal/infrastructure/transport/http/session/login.go:11"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "auth.auth",
+          "to": "auth.auth",
+          "kind": "call",
+          "label": "Authenticate",
+          "status": "declared",
+          "note": "Port `Authenticator`, bound at assembly to the Authenticate use case.",
+          "line": "examples/auth/internal/application/session/usecases/login/usecase.go:58"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "auth.auth",
+          "to": "auth-pg",
+          "kind": "call",
+          "label": "ByEmail",
+          "status": "declared",
+          "line": "examples/auth/internal/application/user/usecases/authenticate/usecase.go:33"
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "auth.auth",
+          "to": "risk-v1",
+          "kind": "rpc",
+          "ref": "risk.v1.RiskService/Assess",
+          "label": "Assess",
+          "status": "unresolved",
+          "line": "examples/auth/internal/application/session/usecases/login/usecase.go:63"
+        },
+        {
+          "type": "alt",
+          "id": "alt8",
+          "branches": [
+            {
+              "title": "verdict == VerdictBlock",
+              "steps": [
+                {
+                  "type": "step",
+                  "id": "s5",
+                  "from": "auth.auth",
+                  "to": "auth-pg",
+                  "kind": "call",
+                  "label": "ByUserID",
+                  "status": "declared",
+                  "line": "examples/auth/internal/application/session/usecases/login/usecase.go:92"
+                },
+                {
+                  "type": "step",
+                  "id": "s6",
+                  "from": "auth.auth",
+                  "to": "auth-pg",
+                  "kind": "call",
+                  "label": "Save",
+                  "status": "declared",
+                  "note": "inside a loop over `sessions`.",
+                  "line": "examples/auth/internal/application/session/usecases/login/usecase.go:102"
+                },
+                {
+                  "type": "step",
+                  "id": "s7",
+                  "from": "auth.auth",
+                  "to": "bus",
+                  "kind": "event",
+                  "ref": "auth.auth.session.SessionEnded",
+                  "label": "SessionEnded",
+                  "status": "declared",
+                  "note": "inside a loop over `sessions`.",
+                  "line": "examples/auth/internal/application/session/usecases/login/usecase.go:102"
+                }
+              ],
+              "terminal": true
+            },
+            {
+              "title": "otherwise",
+              "steps": []
+            }
+          ]
+        },
+        {
+          "type": "step",
+          "id": "s9",
+          "from": "auth.auth",
+          "to": "auth-pg",
+          "kind": "call",
+          "label": "Save",
+          "status": "declared",
+          "line": "examples/auth/internal/application/session/usecases/login/usecase.go:78"
+        },
+        {
+          "type": "step",
+          "id": "s10",
+          "from": "auth.auth",
+          "to": "bus",
+          "kind": "event",
+          "ref": "auth.auth.session.SessionStarted",
+          "label": "SessionStarted",
+          "status": "verified",
+          "note": "Seen running in telemetry/traces.jsonl (2 traces).",
+          "line": "examples/auth/internal/application/session/usecases/login/usecase.go:78"
+        }
+      ]
+    },
+    {
+      "id": "flow.auth-logout",
+      "slug": "auth-logout",
+      "name": "Logout",
+      "summary": "Ends the session behind a token.",
+      "source": "examples/auth/internal/infrastructure/transport/http/session/logout.go",
+      "owner": "auth",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "auth.auth",
+          "kind": "service",
+          "context": "auth"
+        },
+        {
+          "id": "auth-pg",
+          "kind": "store",
+          "context": "auth"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "auth.auth",
+          "kind": "rpc",
+          "label": "logout",
+          "status": "verified",
+          "note": "Seen running in telemetry/traces.jsonl (1 trace).",
+          "line": "examples/auth/internal/infrastructure/transport/http/session/logout.go:15"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "auth.auth",
+          "to": "auth-pg",
+          "kind": "call",
+          "label": "ByToken",
+          "status": "declared",
+          "line": "examples/auth/internal/application/session/usecases/logout/usecase.go:35"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "auth.auth",
+          "to": "auth-pg",
+          "kind": "call",
+          "label": "Save",
+          "status": "declared",
+          "line": "examples/auth/internal/application/session/usecases/logout/usecase.go:49"
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "auth.auth",
+          "to": "bus",
+          "kind": "event",
+          "ref": "auth.auth.session.SessionEnded",
+          "label": "SessionEnded",
+          "status": "verified",
+          "note": "Seen running in telemetry/traces.jsonl (1 trace).",
+          "line": "examples/auth/internal/application/session/usecases/logout/usecase.go:49"
+        }
+      ]
+    },
+    {
+      "id": "flow.auth-register-user",
+      "slug": "auth-register-user",
+      "name": "Register user",
+      "summary": "Creates a user from an email address and a password.",
+      "source": "examples/auth/internal/infrastructure/transport/http/user/register.go",
+      "owner": "auth",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "auth.auth",
+          "kind": "service",
+          "context": "auth"
+        },
+        {
+          "id": "auth-pg",
+          "kind": "store",
+          "context": "auth"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "auth.auth",
+          "kind": "rpc",
+          "label": "registerUser",
+          "status": "verified",
+          "note": "Seen running in telemetry/traces.jsonl (2 traces).",
+          "line": "examples/auth/internal/infrastructure/transport/http/user/register.go:16"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "auth.auth",
+          "to": "auth-pg",
+          "kind": "call",
+          "label": "ByEmail",
+          "status": "declared",
+          "line": "examples/auth/internal/application/user/usecases/register/usecase.go:36"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "auth.auth",
+          "to": "auth-pg",
+          "kind": "call",
+          "label": "Save",
+          "status": "declared",
+          "line": "examples/auth/internal/application/user/usecases/register/usecase.go:49"
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "auth.auth",
+          "to": "bus",
+          "kind": "event",
+          "ref": "auth.auth.user.UserRegistered",
+          "label": "UserRegistered",
+          "status": "verified",
+          "note": "Seen running in telemetry/traces.jsonl (2 traces).",
+          "line": "examples/auth/internal/application/user/usecases/register/usecase.go:49"
+        }
+      ]
+    },
+    {
+      "id": "flow.auth-revoke-sessions-on-password-change",
+      "slug": "auth-revoke-sessions-on-password-change",
+      "name": "Revoke sessions on password change",
+      "summary": "Ends the sessions issued against a password that has just been replaced.",
+      "source": "examples/auth/internal/application/policy/revoke_sessions_on_password_change.go",
+      "owner": "auth",
+      "participants": [
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        },
+        {
+          "id": "auth.auth",
+          "kind": "service",
+          "context": "auth"
+        },
+        {
+          "id": "auth-pg",
+          "kind": "store",
+          "context": "auth"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "bus",
+          "to": "auth.auth",
+          "kind": "event",
+          "ref": "auth.auth.user.PasswordChanged",
+          "label": "PasswordChanged",
+          "status": "verified",
+          "note": "Seen running in telemetry/traces.jsonl (1 trace).",
+          "line": "examples/auth/internal/application/policy/revoke_sessions_on_password_change.go:41"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "auth.auth",
+          "to": "auth.auth",
+          "kind": "call",
+          "label": "EndAfterCredentialChange",
+          "status": "declared",
+          "line": "examples/auth/internal/application/policy/revoke_sessions_on_password_change.go:47"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "auth.auth",
+          "to": "auth-pg",
+          "kind": "call",
+          "label": "ByUserID",
+          "status": "declared",
+          "line": "examples/auth/internal/application/session/usecases/end_after_credential_change/usecase.go:40"
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "auth.auth",
+          "to": "auth-pg",
+          "kind": "call",
+          "label": "ByID",
+          "status": "declared",
+          "note": "inside a loop over `change.Ends(sessions, uc.now())`, inside a loop over `retries`.",
+          "line": "examples/auth/internal/application/session/usecases/end_after_credential_change/usecase.go:62"
+        },
+        {
+          "type": "step",
+          "id": "s5",
+          "from": "auth.auth",
+          "to": "auth-pg",
+          "kind": "call",
+          "label": "Save",
+          "status": "declared",
+          "note": "inside a loop over `change.Ends(sessions, uc.now())`, inside a loop over `retries`.",
+          "line": "examples/auth/internal/application/session/usecases/end_after_credential_change/usecase.go:77"
+        },
+        {
+          "type": "step",
+          "id": "s6",
+          "from": "auth.auth",
+          "to": "bus",
+          "kind": "event",
+          "ref": "auth.auth.session.SessionEnded",
+          "label": "SessionEnded",
+          "status": "verified",
+          "note": "inside a loop over `change.Ends(sessions, uc.now())`, inside a loop over `retries`.",
+          "line": "examples/auth/internal/application/session/usecases/end_after_credential_change/usecase.go:77"
+        }
+      ]
+    },
+    {
+      "id": "flow.auth-validate-session",
+      "slug": "auth-validate-session",
+      "name": "Validate session",
+      "summary": "Resolves a token to a live session: who is calling, and how long the answer stays good.",
+      "source": "examples/auth/internal/infrastructure/transport/http/session/validate.go",
+      "owner": "auth",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "auth.auth",
+          "kind": "service",
+          "context": "auth"
+        },
+        {
+          "id": "auth-pg",
+          "kind": "store",
+          "context": "auth"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "auth.auth",
+          "kind": "rpc",
+          "label": "validateSession",
+          "status": "verified",
+          "note": "Seen running in telemetry/traces.jsonl (2 traces).",
+          "line": "examples/auth/internal/infrastructure/transport/http/session/validate.go:12"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "auth.auth",
+          "to": "auth-pg",
+          "kind": "call",
+          "label": "ByToken",
+          "status": "declared",
+          "line": "examples/auth/internal/application/session/usecases/validate/usecase.go:34"
+        }
+      ]
+    }
+  ],
+  "adrs": []
+}
