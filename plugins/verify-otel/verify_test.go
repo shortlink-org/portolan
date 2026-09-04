@@ -417,3 +417,44 @@ func TestAColonRouteHasTheShapeOfABracedOne(t *testing.T) {
 		t.Fatalf("routeMatches does not fill a parameter with exactly one segment")
 	}
 }
+
+// An outbox writes the event and a relay puts it on the bus, and each opens
+// a producer span, the second under the first. They are one publish: the
+// event left the service once, and a shape nobody declared must show it
+// once too.
+const relayed = `{"resourceSpans":[{"resource":{"attributes":[{"key":"service.name","value":{"stringValue":"auth"}}]},"scopeSpans":[{"spans":[
+ {"traceId":"t9","spanId":"r1","name":"POST /v1/ping","kind":2,"startTimeUnixNano":"900","attributes":[{"key":"http.route","value":{"stringValue":"/v1/ping"}},{"key":"http.request.method","value":{"stringValue":"POST"}}]},
+ {"traceId":"t9","spanId":"r2","parentSpanId":"r1","name":"publish auth.SessionStarted","kind":4,"startTimeUnixNano":"910","attributes":[{"key":"messaging.system","value":{"stringValue":"outbox"}},{"key":"messaging.destination.name","value":{"stringValue":"auth_session"}},{"key":"messaging.operation.type","value":{"stringValue":"publish"}},{"key":"event.name","value":{"stringValue":"auth.SessionStarted"}}]},
+ {"traceId":"t9","spanId":"r3","parentSpanId":"r2","name":"publish auth.SessionStarted","kind":4,"startTimeUnixNano":"920","attributes":[{"key":"messaging.system","value":{"stringValue":"nats"}},{"key":"messaging.destination.name","value":{"stringValue":"sessions"}},{"key":"messaging.operation.type","value":{"stringValue":"publish"}},{"key":"event.name","value":{"stringValue":"auth.SessionStarted"}}]}
+]}]}]}`
+
+func TestARelayedPublishIsOneHop(t *testing.T) {
+	cat := estate()
+	ev := &cat.Contexts[0].Services[0].Aggregates[0].Events[0]
+	ev.Wire = &catalog.EventWire{Name: "auth.SessionStarted", Channel: "auth_session"}
+
+	out, resp := runVerifyOn(t, cat, relayed, Options{})
+
+	ping := flowNamed(t, out, "observed-auth-post-v1-ping")
+	var events []string
+	walkSteps(ping.Steps, func(s *catalog.Step) {
+		if s.Kind == catalog.StepEvent {
+			events = append(events, s.From+">"+s.To+":"+s.Ref)
+		}
+	})
+	if len(events) != 1 || events[0] != "auth.auth>bus:"+ev.ID {
+		t.Errorf("one event left, so one hop: %v", events)
+	}
+
+	// The inner span is the one that says which bus, so it is the one the
+	// channel is read off.
+	warned := false
+	for _, d := range resp.Diagnostics {
+		if strings.Contains(d.Message, `on "sessions"`) {
+			warned = true
+		}
+	}
+	if !warned {
+		t.Errorf("the relay's destination should be held against the declared channel: %+v", resp.Diagnostics)
+	}
+}

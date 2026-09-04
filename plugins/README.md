@@ -212,7 +212,7 @@ exporter writes it - and turns each trace into hops between lanes:
 | kind server, `http.route` | `client → service`, an rpc; matched to the operation whose `http` verb and path the OpenAPI extractor recorded, which is what opens an endpoint flow |
 | kind client, `rpc.service` + `rpc.method` | `service → provider`, an rpc; `unknown` lane and `unresolved` when nothing provides it, however often it ran |
 | `db.system.name`, `db.operation.name` | `service → its store`, a call; the statement nested under a query is not a second call |
-| kind producer, `event.name` | `service → bus`, the event whose name that is among the service's own |
+| kind producer, `event.name` | `service → bus`, the event whose name that is among the service's own; a producer span under another for the same name is the relay's and the same publish |
 | kind consumer, `event.name` | `bus → service`, and a `verified` consumer on the event |
 
 A trace whose root opens a declared flow raises the steps it shows: the call

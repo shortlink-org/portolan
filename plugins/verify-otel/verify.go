@@ -25,6 +25,7 @@ type hop struct {
 	operation string // for an entry, the operation the route answers on
 	consume   bool
 	eventID   string
+	wire      string // for a publish, the event.name it carried
 	call      *catalog.RpcCall
 	file      string
 }
@@ -228,15 +229,23 @@ func (v *verifier) observe(hops []hop) {
 
 // sequence reads a span and everything under it, in the order it ran, into
 // hops. The spans come back alongside so a consumer's subtree can be found.
+//
+// What a span is read as depends on what it sits under: a statement under a
+// database call is the same call, and a publish under a publish of the same
+// event is the same publish - an outbox writes the event and a relay puts it
+// on the bus, each with a producer span, and the event left the service once.
 func (v *verifier) sequence(s *span) ([]hop, []*span) {
 	var hops []hop
 	var spans []*span
-	var walk func(s *span, parentDB bool)
-	walk = func(s *span, parentDB bool) {
-		h, isDB := v.hop(s, parentDB)
+	var walk func(s *span, parentDB bool, publishing string)
+	walk = func(s *span, parentDB bool, publishing string) {
+		h, isDB := v.hop(s, parentDB, publishing)
 		if h != nil {
 			hops = append(hops, *h)
 			spans = append(spans, s)
+			if h.kind == catalog.StepEvent && !h.consume {
+				publishing = h.wire
+			}
 		}
 		kids := v.children[s.spanID]
 		sort.Slice(kids, func(i, j int) bool {
@@ -247,10 +256,10 @@ func (v *verifier) sequence(s *span) ([]hop, []*span) {
 			return kids[i].spanID < kids[j].spanID
 		})
 		for _, kid := range kids {
-			walk(kid, isDB)
+			walk(kid, isDB, publishing)
 		}
 	}
-	walk(s, false)
+	walk(s, false, "")
 
 	return hops, spans
 }
@@ -259,8 +268,10 @@ var tableOf = regexp.MustCompile(`(?i)\b(?:INTO|FROM|UPDATE|JOIN)\s+([A-Za-z_][A
 
 // hop reads one span. The second result says whether the span was a database
 // call, so that the statements nested under one - a prepare inside a query -
-// are not read as a second call.
-func (v *verifier) hop(s *span, parentDB bool) (*hop, bool) {
+// are not read as a second call. publishing is the wire name of the event a
+// producer span above this one is publishing, so that the relay's span under
+// the outbox's is not read as a second publish.
+func (v *verifier) hop(s *span, parentDB bool, publishing string) (*hop, bool) {
 	svc := v.l.service(s.service)
 	if svc == nil {
 		v.warnOnce("service:"+s.service, s.service, "spans from service.name "+strconv.Quote(s.service)+" match no service in the catalog; name it under `services` to say which one it is")
@@ -377,10 +388,18 @@ func (v *verifier) hop(s *span, parentDB bool) (*hop, bool) {
 			return nil, false
 		}
 		id, ok := v.l.event(svc, wire)
-		h := &hop{from: me, to: catalog.Participant{ID: laneBus, Kind: catalog.ParticipantBroker}, kind: catalog.StepEvent, label: lastSegment(wire), status: catalog.StatusVerified, eventID: id, file: s.file}
+		if ok {
+			// Checked on every span of the publish: the inner one, the
+			// relay's, is the one that names the bus the event actually
+			// went over.
+			v.checkChannel(svc, id, a["messaging.destination.name"])
+		}
+		if wire == publishing {
+			return nil, false
+		}
+		h := &hop{from: me, to: catalog.Participant{ID: laneBus, Kind: catalog.ParticipantBroker}, kind: catalog.StepEvent, label: lastSegment(wire), status: catalog.StatusVerified, eventID: id, wire: wire, file: s.file}
 		if ok {
 			h.ref = id
-			v.checkChannel(svc, id, a["messaging.destination.name"])
 		} else {
 			h.status = catalog.StatusUnresolved
 			v.warnOnce("event:"+wire, svc.ID, "publishes "+strconv.Quote(wire)+", which matches no event of its own in the catalog; name it under `events`")
