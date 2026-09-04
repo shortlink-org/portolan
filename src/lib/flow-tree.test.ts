@@ -69,7 +69,7 @@ describe("flowHealth", () => {
   });
 
   it("counts steps by status", () => {
-    expect(statusCounts(bySlug("auth-login"))).toEqual({ verified: 2, declared: 6, unresolved: 1 });
+    expect(statusCounts(bySlug("auth-login"))).toEqual({ verified: 2, declared: 14, unresolved: 1 });
   });
 });
 
