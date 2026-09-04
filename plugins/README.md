@@ -222,6 +222,52 @@ A plugin fetched over `https://` must declare its `sha256`; the host verifies it
 and caches by digest. A `file://` plugin may declare one, but a checksum
 protects a download, not a module built from the source next to it.
 
+## Services in other repositories: fetch-git
+
+`fetch-git` is `fetch-bsr` for a repository rather than a registry, and it
+lives by the same four rules. A pin is a repository, a commit and the paths
+actually read; the step fetches exactly those directories at exactly that
+commit and hands them back as files, so the host writes them into the tree
+beside a `git.lock.json` naming the commit and the digest of every file. The
+paths inside the copy are the repository's own, which is the point: the
+extract step that follows points its `in` at the vendored service and reads
+it exactly as it would read that service's checkout.
+
+```json
+{
+  "plugins": [{ "name": "git", "process": { "cmd": "go run ./plugins/fetch-git" } }],
+  "extract": [
+    {
+      "plugin": "git",
+      "in": "vendor",
+      "out": "vendor/repos",
+      "options": {
+        "cache": "vendor/repos",
+        "repos": [
+          { "repo": "github.com/acme/shop", "commit": "c1d2e3f4…", "paths": ["services/oms", "proto"] }
+        ]
+      }
+    },
+    {
+      "plugin": "go-domain",
+      "in": "vendor/repos/acme/shop/services/oms",
+      "out": "data/shop",
+      "options": { "context": "shop", "service": "oms", "store": "pg" }
+    }
+  ]
+}
+```
+
+It runs the `git` the host already needs for stamps: a fetch of the one
+commit into a directory that exists for one call, and an archive of the paths
+wanted, read straight into memory. Whatever git is configured to do about
+credentials and hosts - a helper, a netrc entry, an ssh agent - it does here
+too, and the plugin reads none of it. `PORTOLAN_OFFLINE` (or any truthy `CI`)
+replays the committed copies against their locks; a commit the manifest does
+not pin is resolved online with a warning and refused offline; a fetch that
+fails falls back to the committed copy when there is one, and is a red build
+when there is not; a vendored file edited by hand is reported by path.
+
 ## Schema modules: fetch and parse, kept apart
 
 `fetch-bsr` and `extract-proto` are two plugins on purpose, and the split is
