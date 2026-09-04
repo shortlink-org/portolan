@@ -1,0 +1,602 @@
+{
+  "generatedAt": "2026-09-05T00:00:00Z",
+  "commit": "abc1234",
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "Shop",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.billing",
+          "slug": "billing",
+          "name": "Billing",
+          "repo": "github.com/acme/shop",
+          "path": "plugins/extract-django/testdata/billing",
+          "readme": "# Billing\n\nService `billing` — bounded context **shop**. A fixture: the Django layout\nextract-django reads, each shape it claims to read present once.",
+          "provides": [],
+          "consumes": [
+            {
+              "id": "pricing.v1.Quotes/createQuote",
+              "peer": "shop.pricing",
+              "status": "declared",
+              "source": "plugins/extract-django/testdata/billing/invoices/clients/pricing/openapi.yaml"
+            }
+          ],
+          "aggregates": [
+            {
+              "id": "shop.billing.invoice",
+              "slug": "invoice",
+              "name": "Invoice",
+              "readme": "What a customer owes for one order, and what happens to it between being drawn\nup and being paid.",
+              "root": "Invoice",
+              "entities": [
+                {
+                  "id": "shop.billing.invoice.invoice",
+                  "slug": "invoice",
+                  "name": "Invoice",
+                  "doc": "What a customer owes for one order, and where it is in its life.",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "UUIDField",
+                      "doc": ""
+                    },
+                    {
+                      "name": "order_id",
+                      "type": "UUIDField",
+                      "doc": "The order this invoice is drawn up for."
+                    },
+                    {
+                      "name": "customer_id",
+                      "type": "UUIDField",
+                      "doc": ""
+                    },
+                    {
+                      "name": "number",
+                      "type": "CharField",
+                      "doc": ""
+                    },
+                    {
+                      "name": "currency",
+                      "type": "CharField",
+                      "doc": ""
+                    },
+                    {
+                      "name": "total_minor",
+                      "type": "BigIntegerField",
+                      "doc": ""
+                    },
+                    {
+                      "name": "tax_rate",
+                      "type": "DecimalField",
+                      "doc": ""
+                    },
+                    {
+                      "name": "status",
+                      "type": "CharField",
+                      "doc": ""
+                    },
+                    {
+                      "name": "issued_at",
+                      "type": "DateTimeField",
+                      "doc": ""
+                    },
+                    {
+                      "name": "paid_at",
+                      "type": "DateTimeField",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "id": "shop.billing.invoice.invoice-line",
+                  "slug": "invoice-line",
+                  "name": "InvoiceLine",
+                  "doc": "One line of an invoice: what was bought, and what it cost.",
+                  "fields": [
+                    {
+                      "name": "invoice",
+                      "type": "ForeignKey[Invoice]",
+                      "doc": ""
+                    },
+                    {
+                      "name": "sku",
+                      "type": "CharField",
+                      "doc": ""
+                    },
+                    {
+                      "name": "quantity",
+                      "type": "PositiveIntegerField",
+                      "doc": ""
+                    },
+                    {
+                      "name": "unit_price_minor",
+                      "type": "BigIntegerField",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [
+                {
+                  "id": "shop.billing.invoice.money",
+                  "slug": "money",
+                  "name": "Money",
+                  "doc": "An amount in the minor unit of a currency.",
+                  "fields": [
+                    {
+                      "name": "amount_minor",
+                      "type": "int",
+                      "doc": ""
+                    },
+                    {
+                      "name": "currency",
+                      "type": "str",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "operations": [
+                {
+                  "id": "GetInvoice",
+                  "kind": "query",
+                  "doc": "Reads one invoice.",
+                  "exposedBy": [
+                    "invoice_retrieve"
+                  ]
+                },
+                {
+                  "id": "IssueInvoice",
+                  "kind": "command",
+                  "doc": "Draws the lines up, freezes the invoice and asks the customer to pay.",
+                  "exposedBy": [
+                    "invoice_issue"
+                  ]
+                },
+                {
+                  "id": "PayInvoice",
+                  "kind": "command",
+                  "doc": "Closes an issued invoice against the money the ledger says arrived."
+                },
+                {
+                  "id": "VoidInvoice",
+                  "kind": "command",
+                  "doc": "Ends an invoice nobody is going to pay.",
+                  "exposedBy": [
+                    "invoice_destroy"
+                  ]
+                }
+              ],
+              "events": [
+                {
+                  "id": "shop.billing.invoice.InvoiceIssued",
+                  "slug": "invoice-issued",
+                  "name": "InvoiceIssued",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "The invoice is final and the customer has been asked to pay it.",
+                      "source": "plugins/extract-django/testdata/billing/invoices/events.py",
+                      "fields": [
+                        {
+                          "name": "invoice_id",
+                          "type": "str",
+                          "doc": ""
+                        },
+                        {
+                          "name": "number",
+                          "type": "str",
+                          "doc": ""
+                        },
+                        {
+                          "name": "total_minor",
+                          "type": "int",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [],
+                  "wire": {
+                    "name": "billing.InvoiceIssued",
+                    "channel": "shop.billing.invoice"
+                  }
+                },
+                {
+                  "id": "shop.billing.invoice.InvoicePaid",
+                  "slug": "invoice-paid",
+                  "name": "InvoicePaid",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "The money arrived and the invoice is closed.",
+                      "source": "plugins/extract-django/testdata/billing/invoices/events.py",
+                      "fields": [
+                        {
+                          "name": "invoice_id",
+                          "type": "str",
+                          "doc": ""
+                        },
+                        {
+                          "name": "paid_at",
+                          "type": "str",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [],
+                  "wire": {
+                    "name": "billing.InvoicePaid",
+                    "channel": "shop.billing.invoice"
+                  }
+                },
+                {
+                  "id": "shop.billing.invoice.InvoiceVoided",
+                  "slug": "invoice-voided",
+                  "name": "InvoiceVoided",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "",
+                      "source": "plugins/extract-django/testdata/billing/invoices/events.py",
+                      "fields": []
+                    }
+                  ],
+                  "consumers": [],
+                  "wire": {
+                    "name": "billing.InvoiceVoided"
+                  }
+                }
+              ],
+              "lifecycle": {
+                "states": [
+                  "draft",
+                  "issued",
+                  "paid",
+                  "void"
+                ],
+                "transitions": [
+                  {
+                    "from": "draft",
+                    "to": "issued",
+                    "on": "issue",
+                    "emits": "shop.billing.invoice.InvoiceIssued",
+                    "source": "plugins/extract-django/testdata/billing/invoices/models.py:46"
+                  },
+                  {
+                    "from": "issued",
+                    "to": "paid",
+                    "on": "pay",
+                    "emits": "shop.billing.invoice.InvoicePaid",
+                    "source": "plugins/extract-django/testdata/billing/invoices/models.py:52"
+                  },
+                  {
+                    "from": "draft",
+                    "to": "void",
+                    "on": "void",
+                    "source": "plugins/extract-django/testdata/billing/invoices/models.py:57"
+                  },
+                  {
+                    "from": "issued",
+                    "to": "void",
+                    "on": "void",
+                    "source": "plugins/extract-django/testdata/billing/invoices/models.py:57"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [
+    {
+      "id": "flow.billing-invoice-destroy",
+      "slug": "billing-invoice-destroy",
+      "name": "Invoice destroy",
+      "summary": "Ends an invoice nobody is going to pay.",
+      "source": "plugins/extract-django/testdata/billing/invoices/views.py",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.billing",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "billing-pg",
+          "kind": "store",
+          "context": "shop"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.billing",
+          "kind": "rpc",
+          "label": "invoice_destroy",
+          "status": "declared",
+          "line": "plugins/extract-django/testdata/billing/invoices/views.py:29"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.billing",
+          "to": "billing-pg",
+          "kind": "call",
+          "label": "Invoice.objects.get",
+          "status": "declared",
+          "line": "plugins/extract-django/testdata/billing/invoices/services.py:45"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "shop.billing",
+          "to": "billing-pg",
+          "kind": "call",
+          "label": "Invoice.save",
+          "status": "declared",
+          "line": "plugins/extract-django/testdata/billing/invoices/services.py:47"
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "shop.billing",
+          "to": "bus",
+          "kind": "event",
+          "label": "InvoiceVoided",
+          "status": "declared",
+          "ref": "shop.billing.invoice.InvoiceVoided",
+          "line": "plugins/extract-django/testdata/billing/invoices/services.py:48"
+        }
+      ]
+    },
+    {
+      "id": "flow.billing-invoice-issue",
+      "slug": "billing-invoice-issue",
+      "name": "Invoice issue",
+      "summary": "Draws the lines up, freezes the invoice and asks the customer to pay.",
+      "source": "plugins/extract-django/testdata/billing/invoices/views.py",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.billing",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "billing-pg",
+          "kind": "store",
+          "context": "shop"
+        },
+        {
+          "id": "shop.pricing",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.billing",
+          "kind": "rpc",
+          "label": "invoice_issue",
+          "status": "declared",
+          "line": "plugins/extract-django/testdata/billing/invoices/views.py:19"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.billing",
+          "to": "billing-pg",
+          "kind": "call",
+          "label": "Invoice.objects.get",
+          "status": "declared",
+          "line": "plugins/extract-django/testdata/billing/invoices/services.py:14"
+        },
+        {
+          "type": "alt",
+          "id": "alt4",
+          "branches": [
+            {
+              "title": "invoice.total_minor == 0",
+              "steps": [
+                {
+                  "type": "step",
+                  "id": "s3",
+                  "from": "shop.billing",
+                  "to": "shop.pricing",
+                  "kind": "rpc",
+                  "label": "createQuote",
+                  "status": "declared",
+                  "ref": "pricing.v1.Quotes/createQuote",
+                  "line": "plugins/extract-django/testdata/billing/invoices/services.py:18"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "step",
+          "id": "s5",
+          "from": "shop.billing",
+          "to": "billing-pg",
+          "kind": "call",
+          "label": "InvoiceLine.objects.create",
+          "status": "declared",
+          "note": "in one transaction, for each line.",
+          "line": "plugins/extract-django/testdata/billing/invoices/services.py:22"
+        },
+        {
+          "type": "step",
+          "id": "s6",
+          "from": "shop.billing",
+          "to": "billing-pg",
+          "kind": "call",
+          "label": "Invoice.save",
+          "status": "declared",
+          "note": "in one transaction.",
+          "line": "plugins/extract-django/testdata/billing/invoices/services.py:29"
+        },
+        {
+          "type": "step",
+          "id": "s7",
+          "from": "shop.billing",
+          "to": "bus",
+          "kind": "event",
+          "label": "InvoiceIssued",
+          "status": "declared",
+          "ref": "shop.billing.invoice.InvoiceIssued",
+          "line": "plugins/extract-django/testdata/billing/invoices/services.py:30"
+        }
+      ]
+    },
+    {
+      "id": "flow.billing-invoice-retrieve",
+      "slug": "billing-invoice-retrieve",
+      "name": "Invoice retrieve",
+      "summary": "Reads one invoice.",
+      "source": "plugins/extract-django/testdata/billing/invoices/views.py",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.billing",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "billing-pg",
+          "kind": "store",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.billing",
+          "kind": "rpc",
+          "label": "invoice_retrieve",
+          "status": "declared",
+          "line": "plugins/extract-django/testdata/billing/invoices/views.py:14"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.billing",
+          "to": "billing-pg",
+          "kind": "call",
+          "label": "Invoice.objects.filter",
+          "status": "declared",
+          "line": "plugins/extract-django/testdata/billing/invoices/services.py:53"
+        }
+      ]
+    },
+    {
+      "id": "flow.billing-mark-invoice-paid",
+      "slug": "billing-mark-invoice-paid",
+      "name": "Mark invoice paid",
+      "summary": "Closes the invoice once the ledger says the money arrived.",
+      "source": "plugins/extract-django/testdata/billing/invoices/handlers.py",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        },
+        {
+          "id": "shop.billing",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "billing-pg",
+          "kind": "store",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "bus",
+          "to": "shop.billing",
+          "kind": "event",
+          "label": "PaymentCaptured",
+          "status": "declared",
+          "ref": "payments.ledger.payment.PaymentCaptured",
+          "line": "plugins/extract-django/testdata/billing/invoices/handlers.py:10"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.billing",
+          "to": "billing-pg",
+          "kind": "call",
+          "label": "Invoice.objects.get",
+          "status": "declared",
+          "line": "plugins/extract-django/testdata/billing/invoices/services.py:36"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "shop.billing",
+          "to": "billing-pg",
+          "kind": "call",
+          "label": "Invoice.save",
+          "status": "declared",
+          "line": "plugins/extract-django/testdata/billing/invoices/services.py:38"
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "shop.billing",
+          "to": "bus",
+          "kind": "event",
+          "label": "InvoicePaid",
+          "status": "declared",
+          "ref": "shop.billing.invoice.InvoicePaid",
+          "line": "plugins/extract-django/testdata/billing/invoices/services.py:39"
+        }
+      ]
+    }
+  ],
+  "adrs": []
+}

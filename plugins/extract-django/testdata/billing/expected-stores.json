@@ -1,0 +1,196 @@
+{
+  "generatedAt": "2026-09-05T00:00:00Z",
+  "commit": "abc1234",
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.billing",
+          "slug": "billing",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "stores": [
+            "shop.billing.pg"
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": [],
+  "stores": [
+    {
+      "id": "shop.billing.pg",
+      "slug": "pg",
+      "name": "Billing database",
+      "kind": "postgres",
+      "owner": "shop.billing",
+      "tables": [
+        {
+          "id": "shop.billing.pg.invoices",
+          "name": "invoices",
+          "columns": [
+            {
+              "name": "id",
+              "type": "uuid",
+              "nullable": false,
+              "pk": true,
+              "maps": "Invoice.id"
+            },
+            {
+              "name": "order_id",
+              "type": "uuid",
+              "nullable": false,
+              "maps": "Invoice.order_id",
+              "doc": "The order this invoice is drawn up for."
+            },
+            {
+              "name": "customer_id",
+              "type": "uuid",
+              "nullable": false,
+              "maps": "Invoice.customer_id"
+            },
+            {
+              "name": "number",
+              "type": "varchar(32)",
+              "nullable": true,
+              "maps": "Invoice.number"
+            },
+            {
+              "name": "currency",
+              "type": "varchar(3)",
+              "nullable": false,
+              "maps": "Invoice.currency"
+            },
+            {
+              "name": "total_minor",
+              "type": "bigint",
+              "nullable": false,
+              "maps": "Invoice.total_minor"
+            },
+            {
+              "name": "tax_rate",
+              "type": "numeric(5,4)",
+              "nullable": false,
+              "maps": "Invoice.tax_rate"
+            },
+            {
+              "name": "status",
+              "type": "varchar(16)",
+              "nullable": false,
+              "maps": "Invoice.status"
+            },
+            {
+              "name": "issued_at",
+              "type": "timestamptz",
+              "nullable": true,
+              "maps": "Invoice.issued_at"
+            },
+            {
+              "name": "paid_at",
+              "type": "timestamptz",
+              "nullable": true,
+              "maps": "Invoice.paid_at"
+            }
+          ],
+          "indexes": [
+            {
+              "name": "invoices_order_id",
+              "columns": [
+                "order_id"
+              ],
+              "unique": false
+            },
+            {
+              "name": "invoices_number_key",
+              "columns": [
+                "number"
+              ],
+              "unique": true
+            },
+            {
+              "name": "invoices_by_customer",
+              "columns": [
+                "customer_id",
+                "status"
+              ],
+              "unique": false
+            }
+          ],
+          "persists": {
+            "aggregate": "shop.billing.invoice",
+            "block": "shop.billing.invoice.invoice"
+          },
+          "role": "aggregate-root"
+        },
+        {
+          "id": "shop.billing.pg.invoice_lines",
+          "name": "invoice_lines",
+          "columns": [
+            {
+              "name": "id",
+              "type": "bigserial",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "invoice_id",
+              "type": "uuid",
+              "nullable": false,
+              "fk": {
+                "table": "shop.billing.pg.invoices",
+                "column": "id",
+                "onDelete": "cascade"
+              },
+              "maps": "Invoice.id"
+            },
+            {
+              "name": "sku",
+              "type": "varchar(64)",
+              "nullable": false,
+              "maps": "InvoiceLine.sku"
+            },
+            {
+              "name": "quantity",
+              "type": "integer",
+              "nullable": false,
+              "maps": "InvoiceLine.quantity"
+            },
+            {
+              "name": "unit_price",
+              "type": "bigint",
+              "nullable": false,
+              "maps": "InvoiceLine.unit_price_minor"
+            }
+          ],
+          "indexes": [
+            {
+              "name": "invoice_lines_invoice_id_sku_key",
+              "columns": [
+                "invoice_id",
+                "sku"
+              ],
+              "unique": true
+            }
+          ],
+          "persists": {
+            "aggregate": "shop.billing.invoice",
+            "block": "shop.billing.invoice.invoice-line"
+          },
+          "role": "child"
+        }
+      ],
+      "source": "plugins/extract-django/testdata/billing"
+    }
+  ]
+}

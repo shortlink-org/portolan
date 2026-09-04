@@ -92,7 +92,11 @@ every exported method that hands it a constant makes the edges that constant
 names. The event type a method returns is what its last move publishes - a
 method lapsing a lock and then locking again hands `AccountLocked` back for
 the lock. In TypeScript it is `export const TRANSITIONS = { open: ["checked-out"],
-… }` and the method that assigns `this.status`; see `extract-ts/README.md`.
+… }` and the method that assigns `this.status`; see `extract-ts/README.md`. In
+Python it is the same mapping on the Django model, beside the `TextChoices`
+that names the states, and the method assigning `self.status` - or django-fsm's
+`@transition(field=status, source=…, target=…)`, which is that table written
+one edge at a time; see `extract-django/README.md`.
 Terminal states are derived on the page - nothing leads out - and never
 written down. A move the clock makes, a session expiring, a lock running out,
 is not a move: nothing runs when it happens, so it is not in the table.

@@ -1,0 +1,90 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "context": {
+      "type": "string",
+      "description": "Slug of the bounded context this service belongs to. Defaults to the name of the input directory.",
+      "examples": ["shop"]
+    },
+    "contextName": {
+      "type": "string",
+      "description": "What the context is called on the page. Defaults to the slug, titled."
+    },
+    "contextSummary": {
+      "type": "string",
+      "description": "A sentence or two on what the context is responsible for."
+    },
+    "classification": {
+      "enum": ["core", "supporting", "generic"],
+      "description": "Whether the context is core to the business, supports it, or is generic and could be bought."
+    },
+    "service": {
+      "type": "string",
+      "description": "Slug of the service. Defaults to the name of the input directory.",
+      "examples": ["billing"]
+    },
+    "serviceName": {
+      "type": "string",
+      "description": "What the service is called on the page. Defaults to the title of its README, and failing that to the slug, titled."
+    },
+    "repo": {
+      "type": "string",
+      "description": "Where the source lives. Defaults to the repository url in pyproject.toml.",
+      "examples": ["github.com/shortlink-org/portolan"]
+    },
+    "store": {
+      "type": "string",
+      "description": "Slug of the database this service keeps its state in. The models are read as its schema, and a call into the ORM lands on its lane; without it neither is claimed.",
+      "examples": ["pg"]
+    },
+    "storeName": {
+      "type": "string",
+      "description": "What the database is called on the page. Defaults to the service, titled, and the word database."
+    },
+    "storeKind": {
+      "enum": ["postgres", "mysql", "sqlite", "redis", "mongodb", "clickhouse", "s3", "other"],
+      "description": "Which database the models are the schema of. It picks the column types a field becomes; only postgres has a mapping, and a kind without one keeps the field's own name and says so.",
+      "default": "postgres"
+    },
+    "apps": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "The Django applications to read, as import packages, for a project that keeps them somewhere a models module would not be found. Every package holding one is read when this is left out.",
+      "examples": [["billing.invoices"]]
+    },
+    "aggregates": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "Which model is the root of an application's aggregate, as the application to the model. Only needed where the application is not named after its root - `invoices` finds `Invoice` on its own.",
+      "examples": [{ "invoices": "Invoice" }]
+    },
+    "peers": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "Which service answers for what this one calls, as the api id of the document vendored beside the client to the callee's service id. A client with no line here is called as unknown and its steps stay unresolved.",
+      "examples": [{ "pricing.v1": "shop.pricing" }]
+    },
+    "events": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "Which aggregate another service's events belong to, as the module a receiver imports the signal from to the aggregate id, so a policy reacting to a foreign event resolves.",
+      "examples": [{ "payments.events": "payments.ledger.payment" }]
+    },
+    "source": {
+      "type": "string",
+      "description": "The directory the applications are looked for in, relative to the input root.",
+      "default": "."
+    },
+    "out": {
+      "type": "string",
+      "description": "Name of the fragment file, inside the step's output directory.",
+      "default": "domain.json"
+    },
+    "storesOut": {
+      "type": "string",
+      "description": "Name of the fragment holding the database the models describe, inside the step's output directory. Written only when store is set.",
+      "default": "stores.json"
+    }
+  }
+}

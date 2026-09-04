@@ -1,0 +1,14 @@
+openapi: 3.0.3
+
+info:
+  title: pricing
+  version: "1.0.0"
+
+paths:
+  /v1/quotes:
+    post:
+      tags: [quotes]
+      operationId: createQuote
+      responses:
+        "200":
+          description: What the order comes to.
