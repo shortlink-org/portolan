@@ -27,3 +27,6 @@ plugins/*/extract-*
 plugins/*/verify-*
 plugins/*/fetch-*
 plugins/gen-markdown/gen-markdown
+
+# The Rust plugin builds into its own target directory
+plugins/extract-rust/target

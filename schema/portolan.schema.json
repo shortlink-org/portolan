@@ -45,6 +45,7 @@
             "enum": [
               "go-domain",
               "ts-domain",
+              "rust-domain",
               "openapi",
               "sql",
               "flows",
@@ -101,6 +102,25 @@
               "properties": {
                 "options": {
                   "$ref": "#/$defs/options.ts-domain"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "plugin"
+              ],
+              "properties": {
+                "plugin": {
+                  "const": "rust-domain"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "options": {
+                  "$ref": "#/$defs/options.rust-domain"
                 }
               }
             }
@@ -529,6 +549,97 @@
         "out": {
           "type": "string",
           "description": "Name of the fragment file, inside the step's output directory.",
+          "default": "domain.json"
+        }
+      }
+    },
+    "options.rust-domain": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "Slug of the bounded context this service belongs to. A crate knows its name, not which context owns it. Defaults to the name of the input directory.",
+          "examples": [
+            "shop"
+          ]
+        },
+        "contextName": {
+          "type": "string",
+          "description": "What the context is called on the page. Defaults to the slug, titled.",
+          "examples": [
+            "Shop"
+          ]
+        },
+        "contextSummary": {
+          "type": "string",
+          "description": "A sentence or two on what the context is responsible for. Read on the context page and nowhere else."
+        },
+        "classification": {
+          "enum": [
+            "core",
+            "supporting",
+            "generic"
+          ],
+          "description": "Whether the context is core to the business, supports it, or is generic and could be bought."
+        },
+        "service": {
+          "type": "string",
+          "description": "Slug of the service. Defaults to the name of the input directory.",
+          "examples": [
+            "oms"
+          ]
+        },
+        "serviceName": {
+          "type": "string",
+          "description": "What the service is called on the page. Defaults to the title of its README, and failing that to the slug, titled."
+        },
+        "repo": {
+          "type": "string",
+          "description": "Where the source lives. Defaults to the repository in Cargo.toml.",
+          "examples": [
+            "github.com/shortlink-org/portolan"
+          ]
+        },
+        "store": {
+          "type": "string",
+          "description": "Slug of the database this service keeps its state in, the same one the sql extractor is given. It is here for the flows: a call on a repository lands somewhere, and only the manifest knows where.",
+          "examples": [
+            "pg"
+          ]
+        },
+        "peers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Which service answers for what this one calls, as the callee's proto package to its service id. The generated client names the package and the rpc; only the manifest knows whose it is. A package with no line here is called as unknown and its steps stay unresolved.",
+          "examples": [
+            {
+              "payments.v1": "payments.ledger"
+            }
+          ]
+        },
+        "events": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Where another service's events are decoded in this crate, as the module path to the aggregate id they belong to: a policy reacting to a type from that module reacts to that aggregate's event. Without a line the step is unresolved.",
+          "examples": [
+            {
+              "crate::infrastructure::cart": "shop.cart.basket"
+            }
+          ]
+        },
+        "source": {
+          "type": "string",
+          "description": "The directory the layout starts in, relative to the input root.",
+          "default": "src"
+        },
+        "out": {
+          "type": "string",
+          "description": "Name of the fragment file, inside the step's output directory. One extractor writes one file, so that a fragment carries the provenance of the run that produced it.",
           "default": "domain.json"
         }
       }

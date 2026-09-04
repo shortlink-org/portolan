@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package shop.v1;
+
+// OrderService reads and cancels orders.
+service OrderService {
+  rpc GetOrder(GetOrderRequest) returns (GetOrderResponse);
+  rpc CancelOrder(CancelOrderRequest) returns (CancelOrderResponse);
+}
+
+message GetOrderRequest { string order_id = 1; }
+message GetOrderResponse { string order_id = 1; }
+message CancelOrderRequest { string order_id = 1; }
+message CancelOrderResponse { string order_id = 1; }

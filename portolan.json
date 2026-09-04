@@ -20,6 +20,12 @@
       }
     },
     {
+      "name": "rust-domain",
+      "process": {
+        "cmd": "cargo run --quiet --manifest-path plugins/extract-rust/Cargo.toml"
+      }
+    },
+    {
       "name": "openapi",
       "process": {
         "cmd": "go run ./plugins/extract-openapi"
