@@ -1,0 +1,51 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "context": {
+      "type": "string",
+      "description": "Slug of the bounded context that owns the service these migrations belong to. Defaults to the name of the input directory.",
+      "examples": ["auth"]
+    },
+    "service": {
+      "type": "string",
+      "description": "Slug of the service that owns the database. A store belongs to exactly one service. Defaults to the name of the input directory.",
+      "examples": ["auth"]
+    },
+    "store": {
+      "type": "string",
+      "description": "Slug of the database these migrations build. One service can keep state in more than one, and a slug is how the two are told apart. Give the go-domain extractor the same one.",
+      "default": "pg"
+    },
+    "name": {
+      "type": "string",
+      "description": "What the database is called on the page.",
+      "examples": ["Auth database"]
+    },
+    "kind": {
+      "enum": [
+        "postgres",
+        "mysql",
+        "sqlite",
+        "redis",
+        "mongodb",
+        "clickhouse",
+        "s3",
+        "kafka-topic",
+        "other"
+      ],
+      "description": "What kind of store it is.",
+      "default": "postgres"
+    },
+    "repositories": {
+      "type": "string",
+      "description": "Where the adapters live, relative to the input root. The migrations are read from there, and so is which aggregate a table persists.",
+      "default": "internal/infrastructure/repository"
+    },
+    "out": {
+      "type": "string",
+      "description": "Name of the fragment file, inside the step's output directory.",
+      "default": "stores.json"
+    }
+  }
+}

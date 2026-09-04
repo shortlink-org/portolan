@@ -14,7 +14,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -49,25 +48,5 @@ func main() {
 }
 
 func run(in io.Reader, out io.Writer) error {
-	var req plugin.Request
-	if err := json.NewDecoder(in).Decode(&req); err != nil {
-		return fmt.Errorf("reading request: %w", err)
-	}
-
-	var opts Options
-	if len(req.Options) > 0 {
-		if err := json.Unmarshal(req.Options, &opts); err != nil {
-			return fmt.Errorf("reading options: %w", err)
-		}
-	}
-
-	resp, err := verify(req, opts)
-	if err != nil {
-		return err
-	}
-
-	enc := json.NewEncoder(out)
-	enc.SetIndent("", "  ")
-
-	return enc.Encode(resp)
+	return plugin.Serve(in, out, descriptor(), verify)
 }

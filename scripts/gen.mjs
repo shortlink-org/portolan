@@ -20,6 +20,7 @@ import { execFileSync } from "node:child_process";
 import { dirname, join, normalize, relative, resolve, sep } from "node:path";
 
 import { loadCatalog } from "./catalog-sources.mjs";
+import { loadManifest } from "./manifest.mjs";
 import { runPlugin } from "./plugin-host.mjs";
 
 const PORTOLAN_VERSION = "0.1.0";
@@ -36,7 +37,16 @@ const MANIFEST = ".portolan-manifest";
 
 const check = process.argv.includes("--check");
 
-const manifest = JSON.parse(readFileSync("portolan.json", "utf8"));
+// Checked before anything runs, against the schema the plugins describe. A
+// step with a misspelled option would otherwise run to completion and write a
+// fragment missing whatever that option was for, which is the kind of wrong
+// that is only noticed on the page weeks later.
+const { manifest, problems } = loadManifest("portolan.json");
+if (problems.length > 0) {
+  console.error("portolan.json does not match schema/portolan.schema.json:");
+  for (const problem of problems) console.error(`  ${problem}`);
+  process.exit(1);
+}
 
 let drifted = false;
 

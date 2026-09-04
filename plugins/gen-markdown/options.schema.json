@@ -1,0 +1,11 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Heading of the index page. The catalog does not name the estate, so this is the one thing the generator cannot derive.",
+      "examples": ["Example estate"]
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["traces"],
+  "properties": {
+    "traces": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" },
+      "description": "The recordings to read, as globs relative to the input root. OTLP JSON, one batch per file or one per line.",
+      "examples": [["telemetry/traces.jsonl"]]
+    },
+    "services": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "Which catalog service a resource's service.name belongs to, for an estate where the two differ. Without a line here a name is matched to the one service whose slug it is.",
+      "examples": [{ "auth-api": "auth.auth" }]
+    },
+    "events": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "Which catalog event a wire name belongs to, for an estate where the last segment of the event.name attribute is not the event's name in the model.",
+      "examples": [{ "auth.PasswordChanged": "auth.auth.PasswordChanged" }]
+    },
+    "out": {
+      "type": "string",
+      "description": "Name of the fragment file, inside the step's output directory."
+    }
+  }
+}

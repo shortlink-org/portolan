@@ -1,4 +1,5 @@
 {
+  "$schema": "./schema/portolan.schema.json",
   "$comment": "Where the facts come from, what produces them, and what turns them into something to read.",
   "sources": [
     "data/*.json",

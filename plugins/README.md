@@ -11,6 +11,26 @@ The contract is one JSON message in and one JSON message out:
     "diagnostics": [{ "severity": "warning", "message": "...", "ref": "..." }] }
 ```
 
+There is a second question, asked with `"kind": "describe"`, and the answer is
+the plugin itself rather than its work:
+
+```
+→ { "portolanVersion": "0.1.0", "kind": "describe" }
+← { "files": [],
+    "describe": { "name": "extract-go", "summary": "...",
+                  "phases": ["extract"],
+                  "options": { "type": "object", "additionalProperties": false,
+                               "properties": { "context": { ... } } } } }
+```
+
+The options a plugin takes are facts the source does not carry, so only the
+plugin knows what it can be told. `npm run schema` asks all of them and composes
+`schema/portolan.schema.json`, which an editor reads while the manifest is being
+written and `gen` checks before it runs anything. `additionalProperties: false`
+is what makes that worth having: `encoding/json` drops a field it does not
+recognise, so before this a misspelled option was no option at all and nothing
+said so.
+
 A generator **names** files; it never writes them. `scripts/gen.mjs` writes what
 comes back, refuses a name that points outside the output directory, and deletes
 pages that stopped being generated. That is what lets a generator run as a wasm
@@ -29,14 +49,20 @@ Three obligations, and they are the whole of it:
 
 ## Adding one
 
-1. Write it. In Go, a new directory here with a `main` that reads stdin and
-   writes stdout; `catalog.Catalog` from `github.com/shortlink-org/portolan/catalog`
+1. Write it. In Go, a new directory here with a `main` that hands its options
+   type to `plugin.Serve`, which reads the request, answers a describe and calls
+   the work; `catalog.Catalog` from `github.com/shortlink-org/portolan/catalog`
    is the mirror of the schema. In any other language, anything that speaks the
    protocol above.
-2. Build it. For a wasm plugin, `GOOS=wasip1 GOARCH=wasm go build`. Add the
+2. Describe it. An `options.schema.json` beside the source, embedded with
+   `go:embed` and returned in the descriptor. `schematest.Check` in a test keeps
+   it from drifting from the options struct: a field renamed on one side and not
+   the other fails, and so does an option with no description.
+3. Build it. For a wasm plugin, `GOOS=wasip1 GOARCH=wasm go build`. Add the
    line to `plugins:build` in `package.json`.
-3. Declare it in `portolan.json`, under `plugins` (how to run it) and
-   `generate` (what to run it on).
+4. Declare it in `portolan.json`, under `plugins` (how to run it) and
+   `generate` (what to run it on), then run `npm run schema` so the manifest
+   schema learns its options.
 
 ```json
 {

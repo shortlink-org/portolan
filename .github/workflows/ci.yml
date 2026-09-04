@@ -42,6 +42,12 @@ jobs:
       - run: npm test
       - run: npm run test:go
 
+      # Refuses a commit where schema/portolan.schema.json no longer matches
+      # what the plugins say their options are. The schema is committed so that
+      # `gen` can check the manifest without starting every plugin to ask; this
+      # is what keeps the committed copy honest.
+      - run: npm run schema:check
+
       # Rebuilds the wasm plugins and refuses a commit whose docs/ no longer
       # follows from the catalog.
       #

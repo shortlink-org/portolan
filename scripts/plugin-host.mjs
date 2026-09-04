@@ -22,6 +22,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { WASI } from "node:wasi";
 
+const PORTOLAN_VERSION = "0.1.0";
+
 /**
  * Runs one plugin.
  *
@@ -49,7 +51,31 @@ export async function runPlugin(plugin, request) {
     throw new Error(`plugin ${plugin.name} answered without a files list`);
   }
 
-  return { files: response.files, diagnostics: response.diagnostics ?? [] };
+  return {
+    files: response.files,
+    diagnostics: response.diagnostics ?? [],
+    describe: response.describe,
+  };
+}
+
+/**
+ * Asks a plugin what it is and what it can be told.
+ *
+ * The answer is a descriptor with a JSON Schema for its options, which is what
+ * schema/portolan.schema.json is composed from. A plugin written against an
+ * older protocol answers without one; that comes back as null rather than as
+ * an error, because a manifest naming it is not wrong, it is just a manifest
+ * nothing can check.
+ *
+ * @param {{name: string, wasm?: {url: string, sha256?: string}, process?: {cmd: string}}} plugin
+ */
+export async function describePlugin(plugin) {
+  const { describe } = await runPlugin(plugin, {
+    portolanVersion: PORTOLAN_VERSION,
+    kind: "describe",
+  });
+
+  return describe ?? null;
 }
 
 // ---------------------------------------------------------------------------

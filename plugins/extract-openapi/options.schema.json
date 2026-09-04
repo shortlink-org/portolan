@@ -1,0 +1,31 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "context": {
+      "type": "string",
+      "description": "Slug of the bounded context that owns the service this document belongs to. Defaults to the name of the input directory.",
+      "examples": ["auth"]
+    },
+    "service": {
+      "type": "string",
+      "description": "Slug of the service the document describes. Defaults to the name of the input directory.",
+      "examples": ["auth"]
+    },
+    "spec": {
+      "type": "string",
+      "description": "The OpenAPI document, relative to the input root. Left out, the extractor looks for one.",
+      "examples": ["internal/infrastructure/transport/http/gen/openapi.yaml"]
+    },
+    "api": {
+      "type": "string",
+      "description": "Prefix for the ids of the rpc services this produces. Left out, it is built from the document's title and major version: auth 1.0.0 gives auth.v1, and a tag called users gives auth.v1.Users.",
+      "examples": ["auth.v1"]
+    },
+    "out": {
+      "type": "string",
+      "description": "Name of the fragment file, inside the step's output directory.",
+      "default": "api.json"
+    }
+  }
+}

@@ -39,3 +39,12 @@ hops a trace shows and on nothing else. Flows
 carry no such mark about where they came from: every one of them is read out of
 source the same way, and a field with one possible value is not a fact. What a
 flow does say is the file it was read out of, and which context owns it.
+
+What runs, and what each step is told, is `portolan.json`: which fragments make
+up the estate, which plugins produce them, and the options each is handed. Those
+options belong to the plugin, so it is the plugin that describes them —
+`npm run schema` asks every declared one and composes
+`schema/portolan.schema.json`. The manifest points at it, which is what lets an
+editor complete a step and mark a key that is not one; `gen` checks the same
+document before it runs anything, because an option dropped in silence is a page
+that comes out blank with nothing saying why.
