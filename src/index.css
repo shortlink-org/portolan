@@ -597,6 +597,21 @@
     scroll-padding-top: var(--page-header-h, 0px);
   }
 
+  /* A section's heading stays at the top of its section while the section
+     scrolls under it, just below the pinned name row - the same footing a
+     readme's h2 has. Sticky within the section, so it leaves when the section
+     does; opaque, so where two share a parent the later one simply covers the
+     first. The padding is what keeps the text off the row's rule when pinned,
+     and the negative margin gives it back, so nothing moves in place. */
+  .section-head {
+    position: sticky;
+    top: var(--page-header-h, 0px);
+    z-index: 10;
+    padding-top: 4px;
+    margin-top: -4px;
+    background: var(--bg);
+  }
+
   /* The flow page's one bar. Wraps rather than scrolls: a control that has
      gone off the right-hand edge of a toolbar is a control nobody finds. */
   .flow-toolbar {

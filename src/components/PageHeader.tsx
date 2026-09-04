@@ -134,7 +134,9 @@ export function SectionTitle({
   anchor?: string;
 }) {
   return (
-    <div className={`mb-3 flex items-center gap-2 ${anchor ? "anchored" : ""}`}>
+    <div
+      className={`section-head mb-3 flex items-center gap-2 ${anchor ? "anchored" : ""}`}
+    >
       <h2 className="section-title">{children}</h2>
       {anchor ? (
         <AnchorLink
