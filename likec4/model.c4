@@ -101,6 +101,8 @@ model {
     auth = service 'Authentication & Sessions' {
       description 'github.com/shortlink-org/portolan/examples/auth'
       style { color ctx3 }
+      lockout = aggregate 'Lockout' {
+      }
       session = aggregate 'Session' {
         SessionEnded = event 'SessionEnded' {
           description 'SessionEnded is published when a session is deliberately ended.

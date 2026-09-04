@@ -1028,7 +1028,47 @@ views {
     }
     auth.auth -> auth_pg 'ByEmail' {
       color declared  line dashed  head none
-      notes 'examples/auth/internal/application/user/usecases/authenticate/usecase.go:33'
+      notes 'examples/auth/internal/application/user/usecases/authenticate/usecase.go:41'
+    }
+    auth.auth -> auth.auth 'Check' {
+      color declared  line dashed  head none
+      notes 'Port `Lockout`, bound at assembly to the Check use case. — examples/auth/internal/application/user/usecases/authenticate/usecase.go:49'
+    }
+    auth.auth -> auth_pg 'ByUserID' {
+      color declared  line dashed  head none
+      notes 'examples/auth/internal/application/lockout/usecases/check/usecase.go:27'
+    }
+    alt {
+      when 'err != nil' {
+        break 'ends the flow' {
+          auth.auth -> auth.auth 'RecordFailure' {
+            color declared  line dashed  head none
+            notes 'Port `Lockout`, bound at assembly to the RecordFailure use case. — examples/auth/internal/application/user/usecases/authenticate/usecase.go:58'
+          }
+          auth.auth -> auth_pg 'ByUserID' {
+            color declared  line dashed  head none
+            notes 'inside a loop over `retries`. — examples/auth/internal/application/lockout/usecases/record_failure/usecase.go:37'
+          }
+          auth.auth -> auth_pg 'Save' {
+            color declared  line dashed  head none
+            notes 'inside a loop over `retries`. — examples/auth/internal/application/lockout/usecases/record_failure/usecase.go:54'
+          }
+        }
+      }
+      else 'otherwise' {
+      }
+    }
+    auth.auth -> auth.auth 'RecordSuccess' {
+      color declared  line dashed  head none
+      notes 'Port `Lockout`, bound at assembly to the RecordSuccess use case. — examples/auth/internal/application/user/usecases/authenticate/usecase.go:67'
+    }
+    auth.auth -> auth_pg 'ByUserID' {
+      color declared  line dashed  head none
+      notes 'inside a loop over `retries`. — examples/auth/internal/application/lockout/usecases/record_success/usecase.go:32'
+    }
+    auth.auth -> auth_pg 'Save' {
+      color declared  line dashed  head none
+      notes 'inside a loop over `retries`. — examples/auth/internal/application/lockout/usecases/record_success/usecase.go:44'
     }
     auth.auth -> risk_v1 'Assess' {
       color unresolved  line dotted  head normal
