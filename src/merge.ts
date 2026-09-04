@@ -17,9 +17,17 @@
 
 import type {
   Aggregate,
+  Alt,
+  AltBranch,
   BoundedContext,
   Catalog,
+  Flow,
+  FlowNode,
+  Loop,
+  Parallel,
   Service,
+  Status,
+  Step,
   TypeDef,
 } from "./catalog";
 
@@ -160,7 +168,31 @@ export function mergeCatalogs(sources: CatalogSource[]): MergeResult {
     }
 
     for (const flow of catalog.flows) {
-      if (claim(seen, flow.id, path, conflicts, "flow")) flows.push(flow);
+      const owner = seen.get(flow.id);
+      if (owner === undefined) {
+        seen.set(flow.id, path);
+        flows.push(flow);
+
+        continue;
+      }
+      // A second declaration of the same flow is allowed to say one thing:
+      // that some of its steps have been seen running. That is what a source
+      // built from traces knows and a source built from code cannot, and the
+      // two meet here, on the step. Anything else about the flow - a lane, a
+      // hop, a branch - has to agree, or the second one is the conflict it
+      // always was.
+      const at = flows.findIndex((f) => f.id === flow.id);
+      const raised = overlayFlow(flows[at]!, flow);
+      if (raised) {
+        flows[at] = raised;
+
+        continue;
+      }
+      conflicts.push({
+        path,
+        where: flow.id,
+        message: `flow "${flow.id}" is already declared in ${owner}; the one here is ignored`,
+      });
     }
     for (const adr of catalog.adrs) {
       if (claim(seen, adr.id, path, conflicts, "ADR")) adrs.push(adr);
@@ -253,7 +285,7 @@ function mergeService(
   }
 
   appendNew(existing.provides, incoming.provides, (p) => p.id);
-  appendNew(existing.consumes, incoming.consumes, (c) => c.id);
+  appendNew(existing.consumes, incoming.consumes, (c) => c.id, raise);
   mergeAggregates(existing.aggregates, incoming.aggregates);
 
   if (incoming.stores?.length) {
@@ -305,7 +337,7 @@ function mergeAggregates(
 
         continue;
       }
-      appendNew(known.consumers, event.consumers, (c) => c.service);
+      appendNew(known.consumers, event.consumers, (c) => c.service, raise);
     }
   }
 }
@@ -318,14 +350,135 @@ function copyAggregate(aggregate: Aggregate): Aggregate {
   };
 }
 
-/** Appends the entries whose id is not already present. */
-function appendNew<T>(into: T[], from: T[], id: (item: T) => string): void {
-  const seen = new Set(into.map(id));
+/**
+ * Appends the entries whose id is not already present. An entry that IS
+ * present is left alone, unless `meet` is given: then the two are handed to
+ * it, because for a few kinds of entry a second source can add to the first
+ * without contradicting it.
+ */
+function appendNew<T>(
+  into: T[],
+  from: T[],
+  id: (item: T) => string,
+  meet?: (existing: T, incoming: T) => T | undefined,
+): void {
+  const at = new Map(into.map((item, i) => [id(item), i]));
   for (const item of from) {
-    if (seen.has(id(item))) continue;
-    seen.add(id(item));
+    const i = at.get(id(item));
+    if (i !== undefined) {
+      const replaced = meet?.(into[i]!, item);
+      if (replaced !== undefined) into[i] = replaced;
+
+      continue;
+    }
+    at.set(id(item), into.length);
     into.push(item);
   }
+}
+
+/**
+ * Where two sources describe the same edge, `verified` wins. A code reader
+ * says a call is declared; a trace says it happened; the second does not
+ * contradict the first, it knows more. Nothing else about the edge moves:
+ * the first note stays unless there was none.
+ */
+function raise<T extends { status: Status; note?: string }>(
+  existing: T,
+  incoming: T,
+): T | undefined {
+  if (incoming.status !== "verified" || existing.status === "verified") return undefined;
+  const raised = { ...existing, status: "verified" as Status };
+  if (!raised.note && incoming.note) raised.note = incoming.note;
+
+  return raised;
+}
+
+/**
+ * The same flow, declared twice, where the second declaration differs only in
+ * what it can vouch for. Returns a copy of the first with every step the
+ * second marks `verified` raised, or undefined when the two disagree about
+ * anything but status - a different lane, hop, branch or ref - in which case
+ * the second is the ordinary conflict.
+ *
+ * Only `declared` is raised. `unresolved` means the far end is not in the
+ * catalog, and a trace showing the hop does not put it there.
+ */
+export function overlayFlow(existing: Flow, incoming: Flow): Flow | undefined {
+  const lanes = (flow: Flow) => flow.participants.map((p) => p.id).join(" ");
+  if (lanes(existing) !== lanes(incoming)) return undefined;
+
+  const steps = overlayNodes(existing.steps, incoming.steps);
+  if (!steps) return undefined;
+
+  return { ...existing, steps };
+}
+
+function overlayNodes(
+  existing: FlowNode[],
+  incoming: FlowNode[],
+): FlowNode[] | undefined {
+  if (existing.length !== incoming.length) return undefined;
+  const out: FlowNode[] = [];
+  for (let i = 0; i < existing.length; i++) {
+    const a = existing[i]!;
+    const b = incoming[i]!;
+    if (a.type !== b.type || a.id !== b.id) return undefined;
+    switch (a.type) {
+      case "step": {
+        const step = b as Step;
+        if (
+          a.from !== step.from ||
+          a.to !== step.to ||
+          a.kind !== step.kind ||
+          (a.ref ?? "") !== (step.ref ?? "")
+        )
+          return undefined;
+        if (step.status === "verified" && a.status === "declared") {
+          out.push({ ...a, status: "verified", note: a.note || step.note });
+        } else {
+          out.push(a);
+        }
+        break;
+      }
+      case "parallel": {
+        const other = b as Parallel;
+        if (a.branches.length !== other.branches.length) return undefined;
+        const branches: FlowNode[][] = [];
+        for (let j = 0; j < a.branches.length; j++) {
+          const branch = overlayNodes(a.branches[j]!, other.branches[j]!);
+          if (!branch) return undefined;
+          branches.push(branch);
+        }
+        out.push({ ...a, branches });
+        break;
+      }
+      case "alt": {
+        const other = b as Alt;
+        if (a.branches.length !== other.branches.length) return undefined;
+        const branches: AltBranch[] = [];
+        for (let j = 0; j < a.branches.length; j++) {
+          const mine = a.branches[j]!;
+          const theirs = other.branches[j]!;
+          if (mine.title !== theirs.title) return undefined;
+          const steps = overlayNodes(mine.steps, theirs.steps);
+          if (!steps) return undefined;
+          branches.push({ ...mine, steps });
+        }
+        out.push({ ...a, branches });
+        break;
+      }
+      case "loop": {
+        const other = b as Loop;
+        if (a.title !== other.title) return undefined;
+        const steps = overlayNodes(a.steps, other.steps);
+        if (!steps) return undefined;
+        out.push({ ...a, steps });
+        break;
+      }
+    }
+  }
+
+  return out;
 }
 
 /**

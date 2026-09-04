@@ -205,8 +205,10 @@ describe("mergeCatalogs", () => {
       "shop.oms.order.OrderPlaced",
       "shop.oms.order.OrderCancelled",
     ]);
+    // The second source has seen the ledger consume it, and that is the one
+    // thing a later source may say about an edge somebody else declared.
     expect(events?.[0]?.consumers).toEqual([
-      { service: "payments.ledger", status: "declared", note: "first" },
+      { service: "payments.ledger", status: "verified", note: "first" },
       { service: "delivery.core", status: "declared" },
     ]);
     // The union never writes into a source.
@@ -261,7 +263,7 @@ describe("mergeCatalogs", () => {
     expect(merged.catalog.defs.Money?.fields[0]?.type).toBe("int64");
   });
 
-  it("keeps one flow when two sources declare the same id, and says so", () => {
+  it("keeps one flow when two sources declare the same id, and says so when they disagree", () => {
     const flow = {
       id: "flow.checkout",
       slug: "checkout",
@@ -271,14 +273,24 @@ describe("mergeCatalogs", () => {
       participants: [],
       steps: [],
     };
+    const hop = {
+      type: "step" as const,
+      id: "s1",
+      from: "a",
+      to: "b",
+      kind: "call" as const,
+      label: "x",
+      status: "declared" as const,
+    };
 
     const merged = mergeCatalogs([
       source("a.json", { flows: [flow] }),
-      source("b.json", { flows: [{ ...flow, name: "Checkout again" }] }),
+      source("b.json", { flows: [{ ...flow, name: "Checkout again", steps: [hop] }] }),
     ]);
 
     expect(merged.catalog.flows).toHaveLength(1);
     expect(merged.catalog.flows[0]?.name).toBe("Checkout");
+    expect(merged.catalog.flows[0]?.steps).toEqual([]);
     expect(merged.conflicts[0]?.message).toContain(
       "already declared in a.json",
     );
@@ -395,5 +407,122 @@ describe("mergeCatalogs: schema modules", () => {
       "buf.build/acme/shop",
       "buf.build/acme/pricing",
     ]);
+  });
+});
+
+describe("a second source that has seen the flow run", () => {
+  const step = (id: string, status: "declared" | "verified", ref?: string) => ({
+    type: "step" as const,
+    id,
+    from: "client",
+    to: "auth.auth",
+    kind: "rpc" as const,
+    label: id,
+    status,
+    ...(ref ? { ref } : {}),
+  });
+  const flow = (steps: Catalog["flows"][number]["steps"]) => ({
+    id: "flow.login",
+    slug: "login",
+    name: "Login",
+    summary: "",
+    owner: "auth",
+    participants: [
+      { id: "client", kind: "actor" as const, context: null },
+      { id: "auth.auth", kind: "service" as const, context: "auth" },
+    ],
+    steps,
+  });
+
+  it("raises the steps it vouches for and leaves the rest as declared", () => {
+    const merged = mergeCatalogs([
+      source("a.json", { flows: [flow([step("s1", "declared"), step("s2", "declared")])] }),
+      source("b.json", { flows: [flow([step("s1", "verified"), step("s2", "declared")])] }),
+    ]);
+
+    expect(merged.conflicts).toEqual([]);
+    const steps = merged.catalog.flows[0]?.steps ?? [];
+    expect(steps.map((s) => (s.type === "step" ? s.status : s.type))).toEqual(["verified", "declared"]);
+  });
+
+  it("raises steps inside frames too", () => {
+    const framed = (status: "declared" | "verified") => [
+      {
+        type: "alt" as const,
+        id: "alt1",
+        branches: [
+          { title: "blocked", terminal: true, steps: [step("s2", status)] },
+          { title: "otherwise", steps: [] },
+        ],
+      },
+    ];
+    const merged = mergeCatalogs([
+      source("a.json", { flows: [flow(framed("declared"))] }),
+      source("b.json", { flows: [flow(framed("verified"))] }),
+    ]);
+
+    expect(merged.conflicts).toEqual([]);
+    const alt = merged.catalog.flows[0]?.steps[0];
+    expect(alt?.type === "alt" && alt.branches[0]?.steps[0]?.type === "step" ? alt.branches[0].steps[0].status : "").toBe("verified");
+  });
+
+  it("is a conflict when it disagrees about anything but status", () => {
+    const merged = mergeCatalogs([
+      source("a.json", { flows: [flow([step("s1", "declared")])] }),
+      source("b.json", { flows: [flow([step("s1", "verified", "auth.v1.Users/login")])] }),
+    ]);
+
+    expect(merged.conflicts).toHaveLength(1);
+    expect(merged.conflicts[0]?.message).toContain("already declared");
+    const first = merged.catalog.flows[0]?.steps[0];
+    expect(first?.type === "step" ? first.status : "").toBe("declared");
+  });
+
+  it("does not touch the source it was handed", () => {
+    const a = source("a.json", { flows: [flow([step("s1", "declared")])] });
+    mergeCatalogs([a, source("b.json", { flows: [flow([step("s1", "verified")])] })]);
+
+    const first = a.catalog.flows[0]?.steps[0];
+    expect(first?.type === "step" ? first.status : "").toBe("declared");
+  });
+
+  it("lets verified win for a consumer and a call declared twice", () => {
+    const withEdges = (status: "declared" | "verified") => {
+      const ctx = context("shop", ["shop.oms"]);
+      ctx.services[0]!.consumes = [{ id: "psp.v2.Charges/Create", peer: "psp", status, source: "x" }];
+      ctx.services[0]!.aggregates = [
+        {
+          id: "shop.oms.order",
+          slug: "order",
+          name: "Order",
+          readme: "",
+          root: "Order",
+          entities: [],
+          valueObjects: [],
+          operations: [],
+          events: [
+            {
+              id: "shop.oms.order.OrderPlaced",
+              slug: "order-placed",
+              name: "OrderPlaced",
+              versions: [{ version: "v1", doc: "", source: "", fields: [] }],
+              consumers: [{ service: "payments.ledger", status, note: status === "verified" ? "seen in traces" : "" }],
+            },
+          ],
+        },
+      ];
+      return ctx;
+    };
+    const merged = mergeCatalogs([
+      source("a.json", { contexts: [withEdges("declared")] }),
+      source("b.json", { contexts: [withEdges("verified")] }),
+    ]);
+
+    expect(merged.conflicts).toEqual([]);
+    const service = merged.catalog.contexts[0]?.services[0];
+    expect(service?.consumes[0]?.status).toBe("verified");
+    const consumer = service?.aggregates[0]?.events[0]?.consumers[0];
+    expect(consumer?.status).toBe("verified");
+    expect(consumer?.note).toBe("seen in traces");
   });
 });

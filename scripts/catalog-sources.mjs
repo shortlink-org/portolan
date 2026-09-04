@@ -8,16 +8,26 @@
 
 import { readFileSync } from "node:fs";
 import { glob } from "node:fs/promises";
+import { normalize } from "node:path";
 
 import { validateCatalog } from "../src/catalog.ts";
 import { enrichCatalog } from "../src/enrich.ts";
 import { mergeCatalogs } from "../src/merge.ts";
 
-export async function loadCatalog(manifestPath = "portolan.json") {
+/**
+ * `exclude` names source files to leave out, as the manifest would spell
+ * them. It exists for the verify phase: a step that writes a fragment from
+ * what it observed must be shown the catalog WITHOUT its own last output, or
+ * what it wrote last time would count as what it saw this time.
+ */
+export async function loadCatalog(manifestPath = "portolan.json", { exclude = [] } = {}) {
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+  const excluded = new Set(exclude.map((path) => normalize(path)));
 
   const paths = [];
-  for await (const path of glob(manifest.sources ?? [])) paths.push(path);
+  for await (const path of glob(manifest.sources ?? [])) {
+    if (!excluded.has(normalize(path))) paths.push(path);
+  }
 
   if (paths.length === 0) {
     throw new Error(

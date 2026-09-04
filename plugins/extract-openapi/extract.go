@@ -123,10 +123,13 @@ func rpcServices(doc *document, api, source string, b *plugin.Builder) []catalog
 				groups[id] = g
 				order = append(order, id)
 			}
-			// Only the name: this document says what the interface is called
-			// and what it answers on, and it does not say which message goes
-			// out or comes back in a form this extractor reads.
-			g.methods = append(g.methods, catalog.RpcMethod{Name: method})
+			// The name and the route: this document says what the interface
+			// is called and what it answers on, and it does not say which
+			// message goes out or comes back in a form this extractor reads.
+			g.methods = append(g.methods, catalog.RpcMethod{
+				Name: method,
+				HTTP: &catalog.HttpRoute{Method: strings.ToUpper(verb), Path: p.key},
+			})
 			doc.schemaRefs(operation, &g.schemas, g.seen, g.visited)
 		}
 	}

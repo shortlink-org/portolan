@@ -127,6 +127,11 @@ export function MethodRows({
                   value={id}
                   className={method.deprecated ? "line-through" : undefined}
                 />
+                {method.http ? (
+                  <span className="chip mono" title="the route this operation answers on">
+                    {method.http.method} {method.http.path}
+                  </span>
+                ) : null}
                 {method.deprecated ? (
                   <span className="chip">deprecated</span>
                 ) : null}

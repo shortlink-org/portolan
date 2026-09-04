@@ -125,6 +125,19 @@ export interface RpcMethod {
   /** How the method streams. Absent is unary, which is most of them. */
   streaming?: Streaming;
   deprecated?: boolean;
+  /**
+   * The route, for a method read from an OpenAPI document: the verb and the
+   * path template as the document writes them. This is what lets a request
+   * seen on the wire be read back to the operation it ran.
+   */
+  http?: HttpRoute;
+}
+
+export interface HttpRoute {
+  /** Upper case: `POST`. */
+  method: string;
+  /** As templated in the document: `/v1/users/{id}`. */
+  path: string;
 }
 
 export type Streaming = "client" | "server" | "bidi";

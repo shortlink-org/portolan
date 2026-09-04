@@ -113,6 +113,17 @@ type RpcMethod struct {
 	// Streaming is empty for a unary method, which is most of them.
 	Streaming  Streaming `json:"streaming,omitempty"`
 	Deprecated bool      `json:"deprecated,omitempty"`
+
+	// HTTP is the route, for a method read from an OpenAPI document. It is
+	// what lets a request seen on the wire be read back to the operation.
+	HTTP *HttpRoute `json:"http,omitempty"`
+}
+
+type HttpRoute struct {
+	// Method is upper case: POST.
+	Method string `json:"method"`
+	// Path is the template as the document writes it: /v1/users/{id}.
+	Path string `json:"path"`
 }
 
 type Streaming string

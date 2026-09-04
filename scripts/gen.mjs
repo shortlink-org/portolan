@@ -41,7 +41,7 @@ const manifest = JSON.parse(readFileSync("portolan.json", "utf8"));
 let drifted = false;
 
 // Extractors run first and write catalog fragments; only then is there a
-// catalog for anything else to read. The two phases are declared separately in
+// catalog for anything else to read. The phases are declared separately in
 // the manifest rather than ordered by hand, because "this step produces a
 // source and that one consumes it" is a fact about the step, not about where
 // somebody put it in a list.
@@ -57,6 +57,28 @@ for (const step of manifest.extract ?? []) {
 
   report(diagnostics);
   drifted = summarise(`${step.plugin} ← ${step.in}`, files, apply(files, step.out, step.plugin, check)) || drifted;
+}
+
+// Verifiers run between the two. They read something observed - traces, a
+// test's record - and answer with a fragment too, but a fragment that only
+// makes sense against the merged catalog: "this hop was seen running" names a
+// hop somebody else declared. So a verifier is handed the catalog AND a root,
+// and the catalog it is handed leaves out the verifier's own last output.
+// Without that, what it wrote last time would count as evidence this time,
+// and the fragment could never be checked against a clean run.
+for (const step of manifest.verify ?? []) {
+  const plugin = pluginNamed(step.plugin);
+  const stamp = stampFor(step.in, step.out);
+  const own = (previous(step.out)[step.plugin] ?? []).map((name) => join(step.out, name));
+  const { catalog } = await loadSources({ exclude: own });
+  const { files, diagnostics } = await runPlugin(plugin, {
+    portolanVersion: PORTOLAN_VERSION,
+    input: { root: step.in, commit: stamp.commit, generatedAt: stamp.generatedAt },
+    catalog,
+    options: step.options ?? {},
+  });
+  report(diagnostics);
+  drifted = summarise(`${step.plugin} ⇐ ${step.in}`, files, apply(files, step.out, step.plugin, check)) || drifted;
 }
 
 const { catalog, sources, conflicts } = await loadSources();
@@ -188,9 +210,9 @@ function shallow() {
 }
 
 /** Reads, merges and validates every source the manifest names. */
-async function loadSources() {
+async function loadSources(options = {}) {
   try {
-    return await loadCatalog();
+    return await loadCatalog("portolan.json", options);
   } catch (cause) {
     fail(cause.message);
   }
