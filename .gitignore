@@ -33,3 +33,15 @@ plugins/extract-rust/target
 
 # The Java plugin compiles into a class directory beside its source
 plugins/extract-java/build
+
+# `go build ./plugins/...` drops the binary in the working directory; it is
+# build output and was committed once by accident.
+/extract-go
+/extract-openapi
+/extract-sql
+/extract-proto
+/extract-flows
+/extract-asyncapi
+/fetch-bsr
+/fetch-git
+/verify-otel
