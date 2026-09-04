@@ -1,0 +1,22 @@
+# The collector the service sends spans to when TRACER_URI names it. It keeps
+# nothing and forwards nowhere: every span is appended, as OTLP JSON, to a file
+# under /out, which is what `portolan` reads to mark hops as observed.
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+
+exporters:
+  file:
+    path: /out/traces.jsonl
+  # Counts what arrives, in the collector's own log, so a recording that is
+  # coming out empty can be told apart from a service that is not sending.
+  debug:
+    verbosity: basic
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      exporters: [file, debug]

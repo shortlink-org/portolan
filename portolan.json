@@ -181,6 +181,35 @@
         ],
         "out": "proto.json"
       }
+    },
+    {
+      "plugin": "rust-domain",
+      "in": "examples/shop/oms",
+      "out": "examples/shop/oms/portolan",
+      "options": {
+        "context": "shop",
+        "service": "oms",
+        "repo": "github.com/shortlink-org/portolan",
+        "store": "pg",
+        "peers": {},
+        "events": {
+          "crate::infrastructure::cart": "shop.cart.basket"
+        },
+        "out": "domain.json"
+      }
+    },
+    {
+      "plugin": "sql",
+      "in": "examples/shop/oms",
+      "out": "examples/shop/oms/portolan",
+      "options": {
+        "context": "shop",
+        "service": "oms",
+        "store": "pg",
+        "name": "Order database",
+        "repositories": "src/infrastructure/repository",
+        "out": "stores.json"
+      }
     }
   ],
   "verify": [
@@ -199,6 +228,17 @@
       "plugin": "otel",
       "in": "examples/shop/cart",
       "out": "examples/shop/cart/portolan",
+      "options": {
+        "traces": [
+          "telemetry/traces.jsonl"
+        ],
+        "out": "observed.json"
+      }
+    },
+    {
+      "plugin": "otel",
+      "in": "examples/shop/oms",
+      "out": "examples/shop/oms/portolan",
       "options": {
         "traces": [
           "telemetry/traces.jsonl"

@@ -69,13 +69,13 @@ describe("visitSubject from the path", () => {
   });
 
   it("names flows and decisions, which have no selection of their own", () => {
-    expect(subject("/flows/checkout")).toEqual({
+    expect(subject("/flows/cart-checkout")).toEqual({
       kind: "flow",
-      label: "checkout",
+      label: "cart-checkout",
     });
-    expect(subject("/adrs/shop-oms-0007-cart-reads-via-repository")).toEqual({
+    expect(subject("/adrs/payments-0004-idempotent-journal-entries")).toEqual({
       kind: "adr",
-      label: "ADR-0007",
+      label: "ADR-0004",
     });
   });
 });
@@ -94,9 +94,9 @@ describe("visitSubject from the selection", () => {
   });
 
   it("carries the step number for a flow", () => {
-    expect(subject("/flows/order-accepted", "order-accepted/a1")).toEqual({
+    expect(subject("/flows/cart-checkout", "cart-checkout/s1")).toEqual({
       kind: "flow",
-      label: "order-accepted · 1",
+      label: "cart-checkout · 1",
     });
   });
 
@@ -118,14 +118,14 @@ describe("identity", () => {
    * a slot, or a single flow fills the whole trail.
    */
   it("is the page, so steps of one flow collapse", () => {
-    const a = { path: "/flows/checkout", selection: null };
+    const a = { path: "/flows/cart-checkout", selection: null };
     const b = {
-      path: "/flows/checkout",
-      selection: { kind: "flow-step" as const, id: "checkout/a1" },
+      path: "/flows/cart-checkout",
+      selection: { kind: "flow-step" as const, id: "cart-checkout/s1" },
     };
     expect(sameVisit(a, b)).toBe(true);
     expect(
-      sameVisit(a, { path: "/flows/refund-requested", selection: null }),
+      sameVisit(a, { path: "/flows/auth-login", selection: null }),
     ).toBe(false);
   });
 

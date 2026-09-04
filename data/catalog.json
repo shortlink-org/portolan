@@ -137,478 +137,6 @@
       "classification": "core",
       "services": [
         {
-          "id": "shop.oms",
-          "slug": "oms",
-          "name": "Order Management",
-          "repo": "github.com/acme/shop",
-          "path": "services/oms",
-          "readme": "# Order Management Service\n\n`shop.oms` owns the lifecycle of a customer order from the moment a basket is\nchecked out until the order is either fulfilled or cancelled. It is the write\nside of the `shop` bounded context and the only service permitted to mutate\norder state.\n\n## Responsibilities\n\n- Accept `PlaceOrder` and turn a basket snapshot into an immutable order.\n- Coordinate quoting, authorisation and dispatch without owning any of them.\n- Publish domain events describing what happened, never what should happen next.\n\n## Non-responsibilities\n\nPricing rules live in `shop.pricing`. Money movement lives in\n`payments.ledger`. Physical fulfilment lives in `delivery.core`. The OMS\nholds no schedule, no price list and no ledger balance.\n\n## Order lifecycle\n\n```mermaid\nstateDiagram-v2\n    [*] --> Draft\n    Draft --> Quoted: BasketCheckedOut\n    Quoted --> Placed: OrderPlaced\n    Placed --> Confirmed: PaymentCaptured\n    Placed --> Cancelled: risk rejected\n    Confirmed --> Fulfilled: ShipmentDelivered\n    Cancelled --> [*]\n    Fulfilled --> [*]\n```\n\n## Aggregates\n\n| Aggregate | Root entity   | Events | Notes                                   |\n| --------- | ------------- | ------ | --------------------------------------- |\n| `order`   | `Order`       | 3      | Transactional boundary for one order.   |\n| `basket`  | `Basket`      | 1      | Short lived; expires after 24h.         |\n\n## Consistency\n\nEvery command runs inside a single database transaction that also appends to the\noutbox table. The relay publishes to the bus at least once, so all consumers must\nbe idempotent on `event_id`.\n\n## Operational notes\n\n- Read replicas serve `GetOrder`; expect up to 400ms of replication lag.\n- The fraud scoring call is best-effort and fails open after 250ms.\n",
-          "provides": [
-            {
-              "id": "shop.v1.Orders",
-              "methods": [
-                {
-                  "name": "PlaceOrder"
-                },
-                {
-                  "name": "GetOrder"
-                },
-                {
-                  "name": "CancelOrder"
-                },
-                {
-                  "name": "ConfirmOrder"
-                }
-              ],
-              "source": "proto/shop/v1/orders.proto:12",
-              "messages": [
-                {
-                  "name": "PlaceOrderRequest",
-                  "fields": [
-                    {
-                      "name": "customer",
-                      "type": "CustomerRef",
-                      "doc": "Who is placing the order.",
-                      "ref": "CustomerRef"
-                    },
-                    {
-                      "name": "items",
-                      "type": "[]LineItem",
-                      "doc": "Basket contents at checkout.",
-                      "ref": "LineItem"
-                    },
-                    {
-                      "name": "shipTo",
-                      "type": "Address",
-                      "doc": "Delivery address.",
-                      "ref": "Address"
-                    }
-                  ]
-                },
-                {
-                  "name": "PlaceOrderResponse",
-                  "fields": [
-                    {
-                      "name": "orderId",
-                      "type": "string",
-                      "doc": "Id of the order just created."
-                    },
-                    {
-                      "name": "total",
-                      "type": "Money",
-                      "doc": "Total charged.",
-                      "ref": "Money"
-                    }
-                  ]
-                }
-              ]
-            }
-          ],
-          "consumes": [
-            {
-              "id": "shop.v1.Pricing/GetQuote",
-              "peer": "shop.pricing",
-              "status": "verified",
-              "source": "internal/oms/client/pricing.go:34"
-            },
-            {
-              "id": "payments.v1.Payments/Authorize",
-              "peer": "payments.ledger",
-              "status": "verified",
-              "source": "internal/oms/client/payments.go:51",
-              "note": "Covered end to end by services/oms/test/integration/order_accepted_test.go."
-            },
-            {
-              "id": "payments.v1.Payments/Capture",
-              "peer": "payments.ledger",
-              "status": "declared",
-              "source": "internal/oms/client/payments.go:78"
-            },
-            {
-              "id": "payments.v1.Payments/Refund",
-              "peer": "payments.ledger",
-              "status": "declared",
-              "source": "internal/oms/client/payments.go:104"
-            },
-            {
-              "id": "fraud.v2.Scoring/Score",
-              "peer": "fraud-scoring",
-              "status": "unresolved",
-              "source": "internal/oms/client/fraud.go:22",
-              "note": "No service in the catalog provides fraud.v2.Scoring. The target is configured per environment via FRAUD_ADDR."
-            },
-            {
-              "id": "delivery.v1.Delivery/GetShipment",
-              "peer": "delivery.core",
-              "status": "declared",
-              "source": "internal/oms/client/delivery.go:41"
-            }
-          ],
-          "aggregates": [
-            {
-              "id": "shop.oms.order",
-              "slug": "order",
-              "name": "Order",
-              "readme": "# Order\n\nThe transactional boundary for a single customer order. One order, one\naggregate instance, one row lock.\n\n## Invariants\n\n- An order always has at least one line item.\n- The total is recomputed from line items on every mutation; it is never set\n  directly by a caller.\n- A cancelled order is terminal. There is no un-cancel.\n- Every line, and the total, is in the order's own currency. Mixing two\n  currencies in one order is refused at placement; nothing converts.\n- An order carries the risk decision that let it through, including a\n  `review` decision reached only because the scorer timed out.\n\n## Commands\n\n| Command        | Precondition            | Emits            |\n| -------------- | ----------------------- | ---------------- |\n| `PlaceOrder`   | quote is unexpired      | `OrderPlaced`    |\n| `ConfirmOrder` | payment captured        | `OrderConfirmed` |\n| `CancelOrder`  | not already fulfilled   | `OrderCancelled` |\n\n## Queries\n\n`GetOrder` and `ListOrdersForCustomer` are served from a read replica and are\neventually consistent with the write side.\n\n## Concurrency\n\nOptimistic, on a `version` column. A conflicting write returns\n`ErrConcurrentModification` and the caller is expected to reload and retry.",
-              "root": "Order",
-              "entities": [
-                {
-                  "id": "shop.oms.order.order",
-                  "slug": "order",
-                  "name": "Order",
-                  "doc": "The order itself. Identity is the order id, which is minted at placement and never reused.",
-                  "fields": [
-                    {
-                      "name": "id",
-                      "type": "string",
-                      "doc": "Order id, minted at placement."
-                    },
-                    {
-                      "name": "status",
-                      "type": "string",
-                      "doc": "placed | awaiting-review | confirmed | cancelled. `awaiting-review` is where a fail-open risk check leaves the order: accepted, but not yet trusted."
-                    },
-                    {
-                      "name": "customer",
-                      "type": "CustomerRef",
-                      "doc": "Who placed it.",
-                      "ref": "CustomerRef"
-                    },
-                    {
-                      "name": "lines",
-                      "type": "[]OrderLine",
-                      "doc": "One line per SKU ordered."
-                    },
-                    {
-                      "name": "total",
-                      "type": "Money",
-                      "doc": "Order total, net of shipping.",
-                      "ref": "Money"
-                    },
-                    {
-                      "name": "shipTo",
-                      "type": "Address",
-                      "doc": "Delivery address as entered.",
-                      "ref": "Address"
-                    },
-                    {
-                      "name": "currency",
-                      "type": "string",
-                      "doc": "Presentment currency, frozen at placement. Every Money on the order is in it; a basket that would mix two is refused rather than converted."
-                    },
-                    {
-                      "name": "risk",
-                      "type": "RiskDecision",
-                      "doc": "How the risk check answered — including the case where it did not answer at all."
-                    }
-                  ]
-                },
-                {
-                  "id": "shop.oms.order.order-line",
-                  "slug": "order-line",
-                  "name": "OrderLine",
-                  "doc": "A single ordered SKU. Has identity inside the order so a line can be amended without rewriting the rest.",
-                  "fields": [
-                    {
-                      "name": "lineNo",
-                      "type": "int32",
-                      "doc": "Position in the order, 1-based."
-                    },
-                    {
-                      "name": "sku",
-                      "type": "string",
-                      "doc": "Catalog SKU at the time of ordering."
-                    },
-                    {
-                      "name": "quantity",
-                      "type": "int32",
-                      "doc": "Units ordered; always positive."
-                    },
-                    {
-                      "name": "unitPrice",
-                      "type": "Money",
-                      "doc": "Price per unit, net of tax.",
-                      "ref": "Money"
-                    }
-                  ]
-                }
-              ],
-              "valueObjects": [
-                {
-                  "id": "shop.oms.order.money",
-                  "slug": "money",
-                  "name": "Money",
-                  "doc": "An amount in a single currency. Equal amounts in the same currency are the same value.",
-                  "ref": "Money"
-                },
-                {
-                  "id": "shop.oms.order.address",
-                  "slug": "address",
-                  "name": "Address",
-                  "doc": "A postal address, unvalidated. Frozen onto the order at placement.",
-                  "ref": "Address"
-                },
-                {
-                  "id": "shop.oms.order.customer-ref",
-                  "slug": "customer-ref",
-                  "name": "CustomerRef",
-                  "doc": "A pointer at the customer, plus the pricing segment as it stood when the order was taken.",
-                  "ref": "CustomerRef"
-                },
-                {
-                  "id": "shop.oms.order.risk-decision",
-                  "slug": "risk-decision",
-                  "name": "RiskDecision",
-                  "doc": "What the scorer said about this order, and what was done when it said nothing.",
-                  "fields": [
-                    {
-                      "name": "score",
-                      "type": "int32",
-                      "doc": "0–100 as the model returned it. Absent when the decision was `review`."
-                    },
-                    {
-                      "name": "decision",
-                      "type": "string",
-                      "doc": "accept | reject | review. `review` is what a timed-out scorer produces, not an answer the model gave."
-                    },
-                    {
-                      "name": "decidedAt",
-                      "type": "time.Time",
-                      "doc": "When the decision was reached, which for `review` is when the deadline expired."
-                    },
-                    {
-                      "name": "source",
-                      "type": "string",
-                      "doc": "`fraud.v2.Scoring` when the model answered, `fail-open` when it did not."
-                    }
-                  ]
-                }
-              ],
-              "operations": [
-                {
-                  "id": "PlaceOrder",
-                  "kind": "command",
-                  "doc": "Turns a checked-out basket into an order. Requires an unexpired quote and one currency across every line; writes the order and its OrderPlaced outbox row in the same transaction."
-                },
-                {
-                  "id": "ConfirmOrder",
-                  "kind": "command",
-                  "doc": "Commits the order to fulfilment once the payment is authorized. Emits OrderConfirmed. Refuses an order still `awaiting-review`."
-                },
-                {
-                  "id": "CancelOrder",
-                  "kind": "command",
-                  "doc": "Ends the order. Allowed only while the shipment is `held` or `planned`, and that state is read from delivery rather than assumed. Emits OrderCancelled."
-                },
-                {
-                  "id": "GetOrder",
-                  "kind": "query",
-                  "doc": "One order with its lines and its risk decision. Served from a replica, so a read straight after a write can still show the previous status."
-                },
-                {
-                  "id": "ListOrdersForCustomer",
-                  "kind": "query",
-                  "doc": "A customer's orders, newest first, paginated on the placement timestamp. Never joins payments — the caller resolves those itself."
-                }
-              ],
-              "events": [
-                {
-                  "id": "shop.oms.order.OrderPlaced",
-                  "slug": "order-placed",
-                  "name": "OrderPlaced",
-                  "versions": [
-                    {
-                      "version": "v1",
-                      "doc": "Emitted once a basket has been converted into an immutable order.",
-                      "source": "internal/oms/domain/order/events.go:41",
-                      "fields": [
-                        {
-                          "name": "orderId",
-                          "type": "string",
-                          "doc": "Identifier of the newly placed order."
-                        },
-                        {
-                          "name": "customer",
-                          "type": "CustomerRef",
-                          "doc": "Who placed the order.",
-                          "ref": "CustomerRef"
-                        },
-                        {
-                          "name": "items",
-                          "type": "[]LineItem",
-                          "doc": "Frozen basket contents.",
-                          "ref": "LineItem"
-                        },
-                        {
-                          "name": "total",
-                          "type": "Money",
-                          "doc": "Order total, net of shipping.",
-                          "ref": "Money"
-                        },
-                        {
-                          "name": "shipTo",
-                          "type": "Address",
-                          "doc": "Delivery address as entered by the customer.",
-                          "ref": "Address"
-                        },
-                        {
-                          "name": "placedAt",
-                          "type": "time.Time",
-                          "doc": "Server time the order was accepted."
-                        }
-                      ]
-                    },
-                    {
-                      "version": "v2",
-                      "doc": "Adds the acquisition channel so pricing and delivery can differ per channel.",
-                      "source": "internal/oms/domain/order/events.go:78",
-                      "fields": [
-                        {
-                          "name": "orderId",
-                          "type": "string",
-                          "doc": "Identifier of the newly placed order."
-                        },
-                        {
-                          "name": "customer",
-                          "type": "CustomerRef",
-                          "doc": "Who placed the order.",
-                          "ref": "CustomerRef"
-                        },
-                        {
-                          "name": "items",
-                          "type": "[]LineItem",
-                          "doc": "Frozen basket contents.",
-                          "ref": "LineItem"
-                        },
-                        {
-                          "name": "total",
-                          "type": "Money",
-                          "doc": "Order total, net of shipping.",
-                          "ref": "Money"
-                        },
-                        {
-                          "name": "shipTo",
-                          "type": "Address",
-                          "doc": "Delivery address as entered by the customer.",
-                          "ref": "Address"
-                        },
-                        {
-                          "name": "placedAt",
-                          "type": "time.Time",
-                          "doc": "Server time the order was accepted."
-                        },
-                        {
-                          "name": "channel",
-                          "type": "string",
-                          "doc": "New in v2. One of web, ios, android, pos."
-                        }
-                      ]
-                    }
-                  ],
-                  "consumers": [
-                    {
-                      "service": "payments.ledger",
-                      "status": "verified"
-                    },
-                    {
-                      "service": "shop.pricing",
-                      "status": "declared"
-                    },
-                    {
-                      "service": "analytics-sink",
-                      "status": "unresolved",
-                      "note": "Seen on the bus in traces; no consumer registration found in any repo."
-                    }
-                  ]
-                },
-                {
-                  "id": "shop.oms.order.OrderConfirmed",
-                  "slug": "order-confirmed",
-                  "name": "OrderConfirmed",
-                  "versions": [
-                    {
-                      "version": "v1",
-                      "doc": "Payment captured and the order is committed to fulfilment.",
-                      "source": "internal/oms/domain/order/events.go:150",
-                      "fields": [
-                        {
-                          "name": "orderId",
-                          "type": "string",
-                          "doc": "Order that was confirmed."
-                        },
-                        {
-                          "name": "paymentId",
-                          "type": "string",
-                          "doc": "Ledger payment that backs this confirmation."
-                        },
-                        {
-                          "name": "confirmedAt",
-                          "type": "time.Time",
-                          "doc": "Server time of confirmation."
-                        }
-                      ]
-                    }
-                  ],
-                  "consumers": [
-                    {
-                      "service": "delivery.core",
-                      "status": "verified"
-                    }
-                  ]
-                },
-                {
-                  "id": "shop.oms.order.OrderCancelled",
-                  "slug": "order-cancelled",
-                  "name": "OrderCancelled",
-                  "versions": [
-                    {
-                      "version": "v1",
-                      "doc": "The order was cancelled before fulfilment, by the customer or by risk.",
-                      "source": "internal/oms/domain/order/events.go:112",
-                      "fields": [
-                        {
-                          "name": "orderId",
-                          "type": "string",
-                          "doc": "Order that was cancelled."
-                        },
-                        {
-                          "name": "reason",
-                          "type": "string",
-                          "doc": "One of customer_request, risk_rejected, payment_failed."
-                        },
-                        {
-                          "name": "refundDue",
-                          "type": "Money",
-                          "doc": "Amount to be refunded, zero if nothing was captured.",
-                          "ref": "Money"
-                        },
-                        {
-                          "name": "cancelledAt",
-                          "type": "time.Time",
-                          "doc": "Server time of cancellation."
-                        }
-                      ]
-                    }
-                  ],
-                  "consumers": [
-                    {
-                      "service": "payments.ledger",
-                      "status": "verified"
-                    },
-                    {
-                      "service": "delivery.core",
-                      "status": "declared"
-                    }
-                  ]
-                }
-              ]
-            }
-          ],
-          "stores": [
-            "shop.oms.pg"
-          ]
-        },
-        {
           "id": "shop.pricing",
           "slug": "pricing",
           "name": "Pricing",
@@ -666,7 +194,7 @@
           ],
           "consumes": [
             {
-              "id": "shop.v1.Orders/GetOrder",
+              "id": "shop.v1.OrderService/GetOrder",
               "peer": "shop.oms",
               "status": "verified",
               "source": "internal/pricing/client/orders.go:19"
@@ -820,12 +348,7 @@
                       ]
                     }
                   ],
-                  "consumers": [
-                    {
-                      "service": "shop.oms",
-                      "status": "verified"
-                    }
-                  ]
+                  "consumers": []
                 },
                 {
                   "id": "shop.pricing.quote.QuoteExpired",
@@ -850,13 +373,7 @@
                       ]
                     }
                   ],
-                  "consumers": [
-                    {
-                      "service": "shop.oms",
-                      "status": "declared",
-                      "note": "Handler exists but is registered behind a disabled feature flag."
-                    }
-                  ]
+                  "consumers": []
                 }
               ]
             },
@@ -950,8 +467,7 @@
             }
           ],
           "stores": [
-            "shop.pricing.cache",
-            "shop.oms.pg"
+            "shop.pricing.cache"
           ]
         }
       ]
@@ -1010,7 +526,7 @@
           ],
           "consumes": [
             {
-              "id": "shop.v1.Orders/GetOrder",
+              "id": "shop.v1.OrderService/GetOrder",
               "peer": "shop.oms",
               "status": "verified",
               "source": "internal/ledger/client/orders.go:27"
@@ -1277,10 +793,6 @@
                   ],
                   "consumers": [
                     {
-                      "service": "shop.oms",
-                      "status": "verified"
-                    },
-                    {
                       "service": "delivery.core",
                       "status": "declared",
                       "note": "Used only to pre-warm route planning."
@@ -1325,10 +837,6 @@
                     {
                       "service": "delivery.core",
                       "status": "verified"
-                    },
-                    {
-                      "service": "shop.oms",
-                      "status": "verified"
                     }
                   ]
                 },
@@ -1365,12 +873,7 @@
                       ]
                     }
                   ],
-                  "consumers": [
-                    {
-                      "service": "shop.oms",
-                      "status": "verified"
-                    }
-                  ]
+                  "consumers": []
                 }
               ]
             },
@@ -1520,10 +1023,6 @@
                   ],
                   "consumers": [
                     {
-                      "service": "shop.oms",
-                      "status": "declared"
-                    },
-                    {
                       "service": "delivery.core",
                       "status": "declared"
                     }
@@ -1571,7 +1070,7 @@
           ],
           "consumes": [
             {
-              "id": "shop.v1.Orders/GetOrder",
+              "id": "shop.v1.OrderService/GetOrder",
               "peer": "shop.oms",
               "status": "verified",
               "source": "internal/delivery/client/orders.go:31"
@@ -1778,10 +1277,6 @@
                   ],
                   "consumers": [
                     {
-                      "service": "shop.oms",
-                      "status": "verified"
-                    },
-                    {
                       "service": "analytics-sink",
                       "status": "declared",
                       "note": "Registered in the traces exporter, not in any Go repo."
@@ -1822,10 +1317,6 @@
                     }
                   ],
                   "consumers": [
-                    {
-                      "service": "shop.oms",
-                      "status": "verified"
-                    },
                     {
                       "service": "analytics-sink",
                       "status": "unresolved",
@@ -1955,19 +1446,13 @@
                       ]
                     }
                   ],
-                  "consumers": [
-                    {
-                      "service": "shop.oms",
-                      "status": "declared"
-                    }
-                  ]
+                  "consumers": []
                 }
               ]
             }
           ],
           "stores": [
-            "delivery.core.pg",
-            "shop.oms.pg"
+            "delivery.core.pg"
           ]
         }
       ]
@@ -1975,54 +1460,6 @@
   ],
   "flows": [],
   "adrs": [
-    {
-      "id": "shop.oms.0007",
-      "slug": "shop-oms-0007-cart-reads-via-repository",
-      "number": 7,
-      "title": "Cart reads go through CartRepository, not Temporal Queries",
-      "status": "accepted",
-      "date": "2026-04-23",
-      "scope": {
-        "kind": "service",
-        "service": "shop.oms"
-      },
-      "supersedes": [
-        "shop.oms.0003"
-      ],
-      "relates": {
-        "services": [
-          "shop.oms"
-        ],
-        "flows": [
-          "checkout"
-        ]
-      },
-      "source": "docs/adr/0007-cart-reads-via-repository.md",
-      "body": "# Cart reads go through CartRepository, not Temporal Queries\n\n## Context and Problem Statement\n\nA cart is owned by a long-running Temporal workflow for the whole of a checkout\nattempt. Reads of cart state come from three places: the storefront polling the\ncart page, the OMS API answering `GetCart`, and support tooling.\n\nADR-0003 chose to serve those reads with `QueryWorkflow` against the\nrunning workflow. That decision was never fully implemented, and the gap only\nbecame visible when the read path started failing in staging:\n\n- the cart workflow **registers no query handler at all** — `SetQueryHandler`\n  is absent from `cart_workflow.go`, so every `QueryWorkflow` call fails with\n  `unknown queryType`;\n- `EVENT_GET` is **reserved but unwired** in `proto/shop/v1/cart.proto`. The\n  enum value exists so the wire numbering stays stable, and nothing dispatches\n  on it;\n- reads therefore fall back to whatever the caller has locally, which for the\n  storefront meant a stale session copy.\n\nWe need one read path that is actually wired up, and we need it to survive a\ncompleted or archived workflow, which a query cannot.\n\n## Decision Drivers\n\n- A read must work after the workflow has closed. Carts are read for days\n  afterwards by support and by the returns flow.\n- Read load must not be answered by the workflow worker fleet.\n- The read path must be testable without a Temporal dev server.\n- Whatever we choose has to be the *only* path, so there is no second answer to\n  \"what is in this cart\".\n\n## Considered Options\n\n1. **`CartRepository` over the `cart_projection` table** — the workflow\n   publishes events, a projector writes rows, reads hit Postgres.\n2. **`QueryWorkflow` against the running workflow** — the option ADR-0003 took.\n3. **Both, with the query as a fast path** — query first, fall back to the\n   projection.\n\n## Decision Outcome\n\nChosen option: **`CartRepository` over the projection**.\n\nOption 2 cannot answer reads once the workflow closes, and pins read latency to\nworker availability. Option 3 gives two sources for one fact, which is how the\nstaging drift started; a cart read that sometimes comes from the workflow and\nsometimes from the projection is a cart read nobody can reason about.\n\nThe read path is now, in full:\n\n```mermaid\nsequenceDiagram\n    autonumber\n    participant SF as storefront\n    participant API as shop.oms API\n    participant Repo as CartRepository\n    participant PG as postgres · cart_projection\n    participant WF as cart workflow\n\n    SF->>API: GetCart(cart_id)\n    API->>Repo: Load(ctx, cart_id)\n    Repo->>PG: SELECT * FROM cart_projection WHERE cart_id = $1\n    PG-->>Repo: row (or none)\n    Repo-->>API: Cart\n    API-->>SF: CartResponse\n\n    Note over WF,PG: writes only - the workflow never answers a read\n    WF-)PG: projector applies cart events\n```\n\n### Consequences\n\n- Good: reads keep working after the workflow closes, and can be served from a\n  read replica.\n- Good: `CartRepository` is an interface; unit tests use an in-memory\n  implementation and never start a Temporal test environment.\n- Bad: the projection is eventually consistent. A read issued in the same\n  millisecond as a write can miss it, so the checkout path reads its own writes\n  from the command result rather than re-reading the cart.\n- Bad: one more thing to run — the projector is now on the critical path for\n  correctness of reads, and needs its own lag alert.\n\n## More Information\n\n`EVENT_GET` stays reserved in `proto/shop/v1/cart.proto`. Removing it would\nrecycle the field number onto a different meaning for any client still holding\nan old descriptor. It is dead on purpose; do not wire it.\n"
-    },
-    {
-      "id": "shop.oms.0003",
-      "slug": "shop-oms-0003-cart-state-via-temporal-query",
-      "number": 3,
-      "title": "Read cart state via Temporal QueryWorkflow",
-      "status": "superseded",
-      "date": "2025-06-18",
-      "scope": {
-        "kind": "service",
-        "service": "shop.oms"
-      },
-      "supersededBy": "shop.oms.0007",
-      "relates": {
-        "services": [
-          "shop.oms"
-        ],
-        "flows": [
-          "checkout"
-        ]
-      },
-      "source": "docs/adr/0003-cart-state-via-temporal-query.md",
-      "body": "# Read cart state via Temporal QueryWorkflow\n\n## Context and Problem Statement\n\nThe cart is being moved out of the session store and into a Temporal workflow,\nso that an abandoned checkout can be resumed and so that the cart has one\nowner. The workflow holds the authoritative cart in memory. The storefront\nstill needs to render the cart on every page load.\n\nWhere should that read come from?\n\n## Decision Drivers\n\n- The workflow already holds the exact state; anything else is a copy.\n- We do not want to build and operate a projection for a value that exists in\n  memory a few milliseconds away.\n- Temporal queries are strongly consistent against the workflow's own history.\n\n## Considered Options\n\n1. **`QueryWorkflow` against the cart workflow.**\n2. A read-model projection in Postgres, fed by cart events.\n3. Keep the session copy and accept the drift.\n\n## Decision Outcome\n\nChosen option: **`QueryWorkflow`**. It gives a strongly consistent read with no\nnew storage, no projector to run and no lag to alert on. Option 2 is a lot of\nmachinery for a value we already have; option 3 is the status quo we are trying\nto leave.\n\n```mermaid\nsequenceDiagram\n    autonumber\n    participant SF as storefront\n    participant API as shop.oms API\n    participant TC as temporal frontend\n    participant WF as cart workflow\n\n    SF->>API: GetCart(cart_id)\n    API->>TC: QueryWorkflow(cart_id, \"cart.get\")\n    TC->>WF: dispatch query handler\n    WF-->>TC: Cart (in-memory state)\n    TC-->>API: Cart\n    API-->>SF: CartResponse\n```\n\n### Consequences\n\n- Good: no projection, no projector, no lag.\n- Good: the read is as fresh as the workflow's own state.\n- Bad: a read fails once the workflow completes or is archived. Support tooling\n  will need a different path for historical carts.\n- Bad: read load lands on the workflow worker fleet.\n\n## More Information\n\n`EVENT_GET` is added to `proto/shop/v1/cart.proto` for the query dispatch.\n"
-    },
     {
       "id": "org.0001",
       "slug": "org-0001-client-protos-in-consumer-infrastructure",
@@ -2072,9 +1509,6 @@
         "context": "payments"
       },
       "relates": {
-        "flows": [
-          "checkout"
-        ],
         "events": [
           "payments.ledger.payment.PaymentCaptured"
         ]
@@ -2084,343 +1518,6 @@
     }
   ],
   "stores": [
-    {
-      "id": "shop.oms.pg",
-      "slug": "pg",
-      "name": "Order management database",
-      "kind": "postgres",
-      "owner": "shop.oms",
-      "source": "shop/oms/db/migrations",
-      "tables": [
-        {
-          "id": "shop.oms.pg.orders",
-          "name": "orders",
-          "doc": "One row per order. The row lock taken here is the aggregate boundary.",
-          "role": "aggregate-root",
-          "persists": {
-            "aggregate": "shop.oms.order"
-          },
-          "columns": [
-            {
-              "name": "id",
-              "type": "uuid",
-              "nullable": false,
-              "pk": true,
-              "maps": "Order.id",
-              "doc": "Order identity, generated on placement."
-            },
-            {
-              "name": "status",
-              "type": "text",
-              "nullable": false,
-              "maps": "Order.status"
-            },
-            {
-              "name": "customer_id",
-              "type": "uuid",
-              "nullable": false,
-              "maps": "Order.customer"
-            },
-            {
-              "name": "total_minor",
-              "type": "bigint",
-              "nullable": false,
-              "maps": "Order.total"
-            },
-            {
-              "name": "currency",
-              "type": "char(3)",
-              "nullable": false,
-              "maps": "Order.currency"
-            },
-            {
-              "name": "ship_to",
-              "type": "jsonb",
-              "nullable": false,
-              "maps": "Order.shipTo"
-            },
-            {
-              "name": "risk",
-              "type": "jsonb",
-              "nullable": true,
-              "maps": "Order.risk"
-            },
-            {
-              "name": "placed_at",
-              "type": "timestamptz",
-              "nullable": false
-            },
-            {
-              "name": "updated_at",
-              "type": "timestamptz",
-              "nullable": false
-            }
-          ],
-          "indexes": [
-            {
-              "name": "orders_status_placed_at_idx",
-              "columns": [
-                "status",
-                "placed_at"
-              ],
-              "unique": false
-            },
-            {
-              "name": "orders_customer_idx",
-              "columns": [
-                "customer_id"
-              ],
-              "unique": false
-            }
-          ]
-        },
-        {
-          "id": "shop.oms.pg.order_items",
-          "name": "order_items",
-          "doc": "Lines of an order, keyed inside it. Nothing outside the aggregate points here.",
-          "role": "child",
-          "persists": {
-            "aggregate": "shop.oms.order",
-            "block": "shop.oms.order.order-line"
-          },
-          "columns": [
-            {
-              "name": "order_id",
-              "type": "uuid",
-              "nullable": false,
-              "pk": true,
-              "fk": {
-                "table": "shop.oms.pg.orders",
-                "column": "id",
-                "onDelete": "cascade"
-              }
-            },
-            {
-              "name": "line_no",
-              "type": "integer",
-              "nullable": false,
-              "pk": true,
-              "maps": "OrderLine.lineNo"
-            },
-            {
-              "name": "sku",
-              "type": "text",
-              "nullable": false,
-              "maps": "OrderLine.sku"
-            },
-            {
-              "name": "quantity",
-              "type": "bigint",
-              "nullable": false,
-              "maps": "OrderLine.quantity"
-            },
-            {
-              "name": "unit_price_minor",
-              "type": "bigint",
-              "nullable": false,
-              "maps": "OrderLine.unitPrice"
-            }
-          ]
-        },
-        {
-          "id": "shop.oms.pg.outbox",
-          "name": "outbox",
-          "doc": "Events committed with the state change that produced them.",
-          "role": "outbox",
-          "columns": [
-            {
-              "name": "id",
-              "type": "bigserial",
-              "nullable": false,
-              "pk": true
-            },
-            {
-              "name": "aggregate_id",
-              "type": "uuid",
-              "nullable": false,
-              "from": [
-                "shop.oms.pg.orders.id"
-              ],
-              "doc": "The order the event is about. Copied from orders.id in the same transaction."
-            },
-            {
-              "name": "event_type",
-              "type": "text",
-              "nullable": false,
-              "doc": "The event name, as published."
-            },
-            {
-              "name": "payload",
-              "type": "jsonb",
-              "nullable": false,
-              "doc": "The event body, exactly as published."
-            },
-            {
-              "name": "created_at",
-              "type": "timestamptz",
-              "nullable": false
-            },
-            {
-              "name": "published_at",
-              "type": "timestamptz",
-              "nullable": true
-            }
-          ],
-          "indexes": [
-            {
-              "name": "outbox_unpublished_idx",
-              "columns": [
-                "published_at"
-              ],
-              "unique": false
-            }
-          ]
-        },
-        {
-          "id": "shop.oms.pg.price_snapshots",
-          "name": "price_snapshots",
-          "doc": "Quotes as pricing left them. Written by shop.pricing, not by this service.",
-          "persists": {
-            "aggregate": "shop.pricing.quote"
-          },
-          "columns": [
-            {
-              "name": "quote_id",
-              "type": "text",
-              "nullable": false,
-              "pk": true,
-              "maps": "Quote.id"
-            },
-            {
-              "name": "basket_id",
-              "type": "text",
-              "nullable": false,
-              "maps": "Quote.basketId"
-            },
-            {
-              "name": "total_minor",
-              "type": "bigint",
-              "nullable": false,
-              "maps": "Quote.total"
-            },
-            {
-              "name": "captured_at",
-              "type": "timestamptz",
-              "nullable": false
-            }
-          ]
-        }
-      ],
-      "views": [
-        {
-          "id": "shop.oms.pg.v_open_orders",
-          "name": "v_open_orders",
-          "doc": "Orders not yet delivered, with their line count. What the ops console reads.",
-          "persists": {
-            "aggregate": "shop.oms.order"
-          },
-          "reads": [
-            "shop.oms.pg.orders",
-            "shop.oms.pg.order_items"
-          ],
-          "source": "shop/oms/db/migrations/0007_open_orders.sql",
-          "definition": "CREATE VIEW v_open_orders AS\nSELECT o.id AS order_id, o.status, o.customer_id, o.total_minor,\n       o.placed_at, count(i.line_no) AS line_count\n  FROM orders o\n  LEFT JOIN order_items i ON i.order_id = o.id\n WHERE o.status <> 'delivered'\n GROUP BY o.id;",
-          "columns": [
-            {
-              "name": "order_id",
-              "type": "uuid",
-              "nullable": false,
-              "from": [
-                "shop.oms.pg.orders.id"
-              ],
-              "maps": "Order.id"
-            },
-            {
-              "name": "status",
-              "type": "text",
-              "nullable": false,
-              "from": [
-                "shop.oms.pg.orders.status"
-              ],
-              "maps": "Order.status"
-            },
-            {
-              "name": "customer_id",
-              "type": "uuid",
-              "nullable": false,
-              "from": [
-                "shop.oms.pg.orders.customer_id"
-              ],
-              "maps": "Order.customer"
-            },
-            {
-              "name": "total_minor",
-              "type": "bigint",
-              "nullable": false,
-              "from": [
-                "shop.oms.pg.orders.total_minor"
-              ],
-              "maps": "Order.total"
-            },
-            {
-              "name": "placed_at",
-              "type": "timestamptz",
-              "nullable": false,
-              "from": [
-                "shop.oms.pg.orders.placed_at"
-              ]
-            },
-            {
-              "name": "line_count",
-              "type": "bigint",
-              "nullable": false,
-              "from": [
-                "shop.oms.pg.order_items.line_no"
-              ],
-              "doc": "count(*) over the order's lines, so it is a number where the source is a key."
-            }
-          ]
-        },
-        {
-          "id": "shop.oms.pg.mv_orders_daily",
-          "name": "mv_orders_daily",
-          "materialized": true,
-          "doc": "Yesterday's order volume, refreshed nightly. Stale by design between refreshes.",
-          "reads": [
-            "shop.oms.pg.v_open_orders"
-          ],
-          "source": "shop/oms/db/migrations/0009_orders_daily.sql",
-          "definition": "CREATE MATERIALIZED VIEW mv_orders_daily AS\nSELECT date_trunc('day', placed_at) AS day,\n       count(*) AS orders, sum(total_minor) AS gross_minor\n  FROM v_open_orders\n GROUP BY 1;",
-          "columns": [
-            {
-              "name": "day",
-              "type": "timestamptz",
-              "nullable": false,
-              "from": [
-                "shop.oms.pg.v_open_orders.placed_at"
-              ]
-            },
-            {
-              "name": "orders",
-              "type": "bigint",
-              "nullable": false,
-              "from": [
-                "shop.oms.pg.v_open_orders.order_id"
-              ]
-            },
-            {
-              "name": "gross_minor",
-              "type": "bigint",
-              "nullable": true,
-              "from": [
-                "shop.oms.pg.v_open_orders.total_minor"
-              ],
-              "doc": "Two hops from orders.total_minor, which is the column a discrepancy is chased back to."
-            }
-          ]
-        }
-      ]
-    },
     {
       "id": "shop.pricing.cache",
       "slug": "cache",
@@ -2673,10 +1770,7 @@
               "type": "jsonb",
               "nullable": false,
               "maps": "Shipment.shipTo",
-              "from": [
-                "shop.oms.pg.orders.ship_to"
-              ],
-              "doc": "Copied off the order when the shipment is created; never read back from OMS."
+              "doc": "Copied off the order when the shipment is created; the real order carries no address yet, so nothing says where this comes from."
             },
             {
               "name": "dispatched_at",

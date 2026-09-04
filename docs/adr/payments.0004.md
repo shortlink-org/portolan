@@ -64,4 +64,3 @@ to protect against.
 ## Relates to
 
 - **Events:** [payments.ledger.payment.PaymentCaptured](../payments/ledger/aggregates/payment.md)
-- **Flows:** `checkout`

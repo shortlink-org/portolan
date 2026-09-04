@@ -1,5 +1,14 @@
 {
   "proto": [
     "proto.json"
+  ],
+  "rust-domain": [
+    "domain.json"
+  ],
+  "sql": [
+    "stores.json"
+  ],
+  "otel": [
+    "observed.json"
   ]
 }

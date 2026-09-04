@@ -49,10 +49,10 @@ describe("selectionPath", () => {
 describe("pageContains across pages", () => {
   const orderPlaced = selectionFor("shop.oms.order.OrderPlaced");
   const oms = selectionFor("shop.oms");
-  const step = selectionFor("checkout/s6");
+  const step = selectionFor("cart-checkout/s6");
 
   it("keeps an event on the flow that carries it, and drops it elsewhere", () => {
-    expect(pageContains("/flows/checkout", orderPlaced)).toBe(true);
+    expect(pageContains("/flows/oms-place-order-on-basket-checked-out", orderPlaced)).toBe(true);
     expect(pageContains("/flows/shipment-tracking", orderPlaced)).toBe(false);
   });
 
@@ -71,8 +71,8 @@ describe("pageContains across pages", () => {
   });
 
   it("binds a step to its own flow", () => {
-    expect(pageContains("/flows/checkout", step)).toBe(true);
-    expect(pageContains("/flows/order-accepted", step)).toBe(false);
+    expect(pageContains("/flows/cart-checkout", step)).toBe(true);
+    expect(pageContains("/flows/auth-login", step)).toBe(false);
   });
 
   it("holds services and events on the dependency graph", () => {

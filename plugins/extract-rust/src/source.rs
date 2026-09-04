@@ -360,14 +360,20 @@ pub fn bare_type(ty: &Type) -> String {
                 _ => None,
             })
             .unwrap_or_default(),
-        Type::ImplTrait(t) => t
-            .bounds
-            .iter()
-            .find_map(|b| match b {
-                syn::TypeParamBound::Trait(tb) => tb.path.segments.last().map(|s| s.ident.to_string()),
-                _ => None,
-            })
-            .unwrap_or_default(),
+        Type::ImplTrait(t) => {
+            // `impl Future<Output = T> + Send` is a T that arrives later, which
+            // is how a port says its method's future may cross a thread.
+            if let Some(out) = future_output(t) {
+                return bare_type(out);
+            }
+            t.bounds
+                .iter()
+                .find_map(|b| match b {
+                    syn::TypeParamBound::Trait(tb) => tb.path.segments.last().map(|s| s.ident.to_string()),
+                    _ => None,
+                })
+                .unwrap_or_default()
+        }
         Type::Path(p) => {
             let Some(last) = p.path.segments.last() else { return String::new() };
             let name = last.ident.to_string();
@@ -392,6 +398,10 @@ pub fn positions(ty: &Type) -> Vec<String> {
     match ty {
         Type::Reference(r) => positions(&r.elem),
         Type::Paren(p) => positions(&p.elem),
+        Type::ImplTrait(t) => match future_output(t) {
+            Some(out) => positions(out),
+            None => vec![bare_type(ty)],
+        },
         Type::Path(p) => {
             let Some(last) = p.path.segments.last() else { return vec![] };
             let name = last.ident.to_string();
@@ -406,6 +416,24 @@ pub fn positions(ty: &Type) -> Vec<String> {
         Type::Tuple(t) => t.elems.iter().map(bare_type).collect(),
         _ => vec![bare_type(ty)],
     }
+}
+
+/// The `T` of `impl Future<Output = T> + …`, when the bounds name one.
+fn future_output(t: &syn::TypeImplTrait) -> Option<&Type> {
+    t.bounds.iter().find_map(|b| {
+        let syn::TypeParamBound::Trait(tb) = b else { return None };
+        let last = tb.path.segments.last()?;
+        if last.ident != "Future" {
+            return None;
+        }
+        let syn::PathArguments::AngleBracketed(args) = &last.arguments else {
+            return None;
+        };
+        args.args.iter().find_map(|a| match a {
+            syn::GenericArgument::AssocType(at) if at.ident == "Output" => Some(&at.ty),
+            _ => None,
+        })
+    })
 }
 
 /// The struct an `impl` block is for, by name.

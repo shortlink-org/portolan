@@ -153,9 +153,10 @@ Source: `examples/shop/cart/src/domain/basket/events/basket-abandoned.ts`
 
 On the wire as `cart.BasketCheckedOut`, on `shop.cart.basket`.
 
-| Consumer | Status |
-| --- | --- |
-| [shop.pricing](../../pricing/README.md) | declared |
+| Consumer | Status | Note |
+| --- | --- | --- |
+| [shop.oms](../../oms/README.md) | verified | Seen consuming it in telemetry/traces.jsonl. |
+| [shop.pricing](../../pricing/README.md) | declared | — |
 
 #### v1 — current
 

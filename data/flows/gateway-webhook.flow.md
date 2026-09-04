@@ -29,7 +29,7 @@ else charge.succeeded, matching a local authorization
   payments.ledger -> payments.ledger: markCaptured [verified] @internal/ledger/app/webhook.go:96 #w4
   payments.ledger -> bus: event payments.ledger.payment.PaymentCaptured [verified] @webhook_test.go:104 #w5
 else charge.succeeded, no local payment
-  payments.ledger -> shop.oms: rpc shop.v1.Orders/GetOrder [verified] @internal/ledger/app/webhook.go:132 #w6
+  payments.ledger -> shop.oms: rpc shop.v1.OrderService/GetOrder @internal/ledger/app/webhook.go:132 #w6
     > The order reference travels in the gateway's metadata. The ledger reads
     > the order back to decide whether the charge belongs to this estate at all.
   payments.ledger -> payments.ledger: adoptOrphanCharge @internal/ledger/app/webhook.go:151 #w7
@@ -42,7 +42,7 @@ else charge.succeeded, no local payment
     > the charge already settled.
 else charge.failed
   payments.ledger -> bus: event payments.ledger.payment.PaymentDeclined [verified] @webhook_test.go:126 #w9
-  bus -> shop.oms: event payments.ledger.payment.PaymentDeclined [verified] @webhook_test.go:131 #w10
+  bus -> shop.oms: event payments.ledger.payment.PaymentDeclined @webhook_test.go:131 #w10
 end
 
 payments.ledger -> psp-gateway: rpc ack 200 [verified] @webhook_test.go:142 #w11

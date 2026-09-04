@@ -159,7 +159,6 @@ Why a payment was refused, in enough detail to decide whether trying again is wo
 
 | Consumer | Status | Note |
 | --- | --- | --- |
-| [shop.oms](../../../shop/oms/README.md) | verified | — |
 | [delivery.core](../../../delivery/core/README.md) | declared | Used only to pre-warm route planning. |
 
 #### v1 — current
@@ -183,7 +182,6 @@ Source: `internal/ledger/domain/payment/events.go:44`
 | Consumer | Status |
 | --- | --- |
 | [delivery.core](../../../delivery/core/README.md) | verified |
-| [shop.oms](../../../shop/oms/README.md) | verified |
 
 #### v1 — current
 
@@ -204,7 +202,7 @@ Source: `internal/ledger/domain/payment/events.go:88`
 
 | Consumer | Status |
 | --- | --- |
-| [shop.oms](../../../shop/oms/README.md) | verified |
+| [shop.oms](../../../shop/oms/README.md) | declared |
 
 #### v1 — current
 

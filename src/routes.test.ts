@@ -67,8 +67,8 @@ describe("routes", () => {
     expect(blockPath("shop.oms.order.money")).toBe(
       "/c/shop/oms/order/vo/money",
     );
-    expect(blockPath("shop.oms.order.order-line")).toBe(
-      "/c/shop/oms/order/entity/order-line",
+    expect(blockPath("shop.oms.order.line")).toBe(
+      "/c/shop/oms/order/entity/line",
     );
   });
 
@@ -111,19 +111,19 @@ describe("routes", () => {
       expect(path, view.id).not.toBeNull();
       expect(isRoutable(path as string), path as string).toBe(true);
     }
-    expect(viewPath("shop.oms.pg.v_open_orders")).toBe(
-      "/c/shop/oms/data/pg#sel=view:shop.oms.pg.v_open_orders",
+    expect(viewPath("payments.ledger.pg.v_payment_state")).toBe(
+      "/c/payments/ledger/data/pg#sel=view:payments.ledger.pg.v_payment_state",
     );
     // A view is not a table and vice versa, so neither answers for the other.
     expect(viewPath("shop.oms.pg.orders")).toBeNull();
-    expect(tablePath("shop.oms.pg.v_open_orders")).toBeNull();
+    expect(tablePath("payments.ledger.pg.v_payment_state")).toBeNull();
   });
 
   it("carries a view through the hash as a view", () => {
-    const link = viewPath("shop.oms.pg.mv_orders_daily") as string;
+    const link = viewPath("delivery.core.pg.mv_route_load") as string;
     expect(parseSelectionHash(link.slice(link.indexOf("#")))).toEqual({
       kind: "view",
-      id: "shop.oms.pg.mv_orders_daily",
+      id: "delivery.core.pg.mv_route_load",
     });
   });
 
@@ -140,12 +140,12 @@ describe("routes", () => {
   });
 
   it("builds deep links to steps, carrying the step as a selection", () => {
-    const link = paths.flowStep("checkout", "s6");
-    expect(link).toBe("/flows/checkout#sel=flow-step:checkout%2Fs6");
+    const link = paths.flowStep("cart-checkout", "s6");
+    expect(link).toBe("/flows/cart-checkout#sel=flow-step:cart-checkout%2Fs6");
     expect(isRoutable(link)).toBe(true);
     expect(parseSelectionHash(link.slice(link.indexOf("#")))).toEqual({
       kind: "flow-step",
-      id: "checkout/s6",
+      id: "cart-checkout/s6",
     });
   });
 });

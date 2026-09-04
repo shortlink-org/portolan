@@ -86,10 +86,6 @@ The price arrived at for one SKU, with the discount that produced it. Local to p
 
 `shop.pricing.quote.QuoteIssued`
 
-| Consumer | Status |
-| --- | --- |
-| [shop.oms](../../oms/README.md) | verified |
-
 #### v1 — current
 
 A priced, time-boxed answer for one basket and one customer.
@@ -107,10 +103,6 @@ Source: `internal/pricing/domain/quote/events.go:27`
 ### QuoteExpired
 
 `shop.pricing.quote.QuoteExpired`
-
-| Consumer | Status | Note |
-| --- | --- | --- |
-| [shop.oms](../../oms/README.md) | declared | Handler exists but is registered behind a disabled feature flag. |
 
 #### v1 — current
 

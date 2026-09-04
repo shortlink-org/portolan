@@ -1,0 +1,51 @@
+# The database the service runs against locally, the bus it talks to the cart
+# over, and the collector that records what it did.
+#
+#   docker compose up -d
+#   cargo run
+#
+# nats is one server for the whole estate on 4222: the cart's compose names
+# the same port, and whichever service came up first is the one both talk
+# to. `telemetry/record.sh` starts it only when nothing is listening there.
+#
+# The tests do not use any of these: they start their own containers through
+# testcontainers, so a test run cannot be affected by whatever state a local
+# database happens to be in.
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: oms
+      POSTGRES_PASSWORD: oms
+      POSTGRES_DB: oms
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oms -d oms"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+
+  nats:
+    image: nats:2.12-alpine
+    command: ["-js", "-m", "8222"]
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8222/healthz"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+
+  # Optional: the service sends spans only when TRACER_URI names this. The
+  # collector writes every span it receives to ./telemetry/out as OTLP JSON,
+  # which is the file portolan reads to mark hops as observed.
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.126.0
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./telemetry/otel-collector.yaml:/etc/otelcol/config.yaml:ro
+      - ./telemetry/out:/out
+    ports:
+      - "4337:4317"

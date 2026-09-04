@@ -9,7 +9,7 @@ import type {
   Participant,
   Service,
 } from "../catalog";
-import { catalog as real } from "../data";
+import { catalog as real } from "../testing/estate";
 import { eventChain } from "./chain";
 import type { ChainNode } from "./chain";
 

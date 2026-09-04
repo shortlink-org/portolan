@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { catalog } from "../data";
+import { catalog } from "../testing/estate";
 import type { Flow } from "../catalog";
 import {
   GROUP_SHOW_HEAD,

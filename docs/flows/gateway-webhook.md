@@ -68,7 +68,7 @@ sequenceDiagram
 > *charge.succeeded, no local payment*
 >
 > 6. **payments.ledger** → **shop.oms** — GetOrder
->    `shop.v1.Orders/GetOrder` · `internal/ledger/app/webhook.go:132` · The order reference travels in the gateway's metadata. The ledger reads the order back to decide whether the charge belongs to this estate at all.
+>    `shop.v1.OrderService/GetOrder` · status: declared · `internal/ledger/app/webhook.go:132` · The order reference travels in the gateway's metadata. The ledger reads the order back to decide whether the charge belongs to this estate at all.
 > 7. **payments.ledger** ↺ **payments.ledger** — adoptOrphanCharge
 >    status: declared · `internal/ledger/app/webhook.go:151` · Closes the gap left when the synchronous Authorize in checkout timed out after the gateway had already charged. Read from the code; the integration suite has no fixture for it, and it is the only path that keeps a customer from being charged for an order the estate never opened.
 > 8. **payments.ledger** → **bus** — PaymentAuthorized
@@ -79,7 +79,7 @@ sequenceDiagram
 > 9. **payments.ledger** → **bus** — PaymentDeclined
 >    [payments.ledger.payment.PaymentDeclined](../payments/ledger/aggregates/payment.md) · `webhook_test.go:126`
 > 10. **bus** → **shop.oms** — PaymentDeclined
->    [payments.ledger.payment.PaymentDeclined](../payments/ledger/aggregates/payment.md) · `webhook_test.go:131`
+>    [payments.ledger.payment.PaymentDeclined](../payments/ledger/aggregates/payment.md) · status: declared · `webhook_test.go:131`
 
 11. **payments.ledger** → **psp-gateway** — ack 200
    `webhook_test.go:142` · Acked only after the branch above has committed. Anything else and the gateway replays, which is what makes the dedup table load-bearing.

@@ -1,0 +1,208 @@
+{
+  "generatedAt": "2026-09-05T01:37:11+07:00",
+  "commit": "08fcaaa",
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.cart",
+          "slug": "cart",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "stores": [
+            "shop.cart.pg"
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": [],
+  "stores": [
+    {
+      "id": "shop.cart.pg",
+      "slug": "pg",
+      "name": "Cart database",
+      "kind": "postgres",
+      "owner": "shop.cart",
+      "tables": [
+        {
+          "id": "shop.cart.pg.baskets",
+          "name": "baskets",
+          "columns": [
+            {
+              "name": "id",
+              "type": "uuid",
+              "nullable": false,
+              "pk": true,
+              "maps": "Basket.id"
+            },
+            {
+              "name": "token",
+              "type": "text",
+              "nullable": false,
+              "maps": "Basket.token"
+            },
+            {
+              "name": "customer_id",
+              "type": "text",
+              "nullable": true
+            },
+            {
+              "name": "currency",
+              "type": "char(3)",
+              "nullable": true
+            },
+            {
+              "name": "status",
+              "type": "text",
+              "nullable": false,
+              "maps": "Basket.status"
+            },
+            {
+              "name": "touched_at",
+              "type": "timestamptz",
+              "nullable": false,
+              "maps": "Basket.touchedAt"
+            },
+            {
+              "name": "version",
+              "type": "integer",
+              "nullable": false
+            }
+          ],
+          "indexes": [
+            {
+              "name": "baskets_open_by_customer",
+              "columns": [
+                "customer_id"
+              ],
+              "unique": false
+            },
+            {
+              "name": "baskets_idle",
+              "columns": [
+                "touched_at"
+              ],
+              "unique": false
+            }
+          ],
+          "persists": {
+            "aggregate": "shop.cart.basket"
+          },
+          "role": "aggregate-root"
+        },
+        {
+          "id": "shop.cart.pg.basket_items",
+          "name": "basket_items",
+          "columns": [
+            {
+              "name": "basket_id",
+              "type": "uuid",
+              "nullable": false,
+              "pk": true,
+              "fk": {
+                "table": "shop.cart.pg.baskets",
+                "column": "id",
+                "onDelete": "cascade"
+              },
+              "maps": "Basket.id"
+            },
+            {
+              "name": "sku",
+              "type": "text",
+              "nullable": false,
+              "pk": true,
+              "maps": "Basket.sku"
+            },
+            {
+              "name": "quantity",
+              "type": "integer",
+              "nullable": false,
+              "maps": "Basket.quantity"
+            },
+            {
+              "name": "unit_price_minor",
+              "type": "bigint",
+              "nullable": false,
+              "maps": "Basket.unitPrice.amountMinor"
+            },
+            {
+              "name": "currency",
+              "type": "char(3)",
+              "nullable": false,
+              "maps": "Basket.unitPrice.currency.code"
+            }
+          ],
+          "persists": {
+            "aggregate": "shop.cart.basket"
+          },
+          "role": "child"
+        },
+        {
+          "id": "shop.cart.pg.outbox",
+          "name": "outbox",
+          "columns": [
+            {
+              "name": "id",
+              "type": "bigserial",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "uuid",
+              "type": "uuid",
+              "nullable": false
+            },
+            {
+              "name": "topic",
+              "type": "text",
+              "nullable": false
+            },
+            {
+              "name": "payload",
+              "type": "jsonb",
+              "nullable": false
+            },
+            {
+              "name": "metadata",
+              "type": "jsonb",
+              "nullable": false
+            },
+            {
+              "name": "created_at",
+              "type": "timestamptz",
+              "nullable": false
+            },
+            {
+              "name": "published_at",
+              "type": "timestamptz",
+              "nullable": true
+            }
+          ],
+          "indexes": [
+            {
+              "name": "outbox_unpublished",
+              "columns": [
+                "id"
+              ],
+              "unique": false
+            }
+          ],
+          "role": "outbox"
+        }
+      ],
+      "source": "examples/shop/cart/src/infrastructure/repository"
+    }
+  ]
+}

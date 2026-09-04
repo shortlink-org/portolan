@@ -1,0 +1,323 @@
+{
+  "generatedAt": "2026-09-05T01:16:26+07:00",
+  "commit": "1d17393",
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "Shop",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.cart",
+          "slug": "cart",
+          "name": "Shopping Cart",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [
+            {
+              "id": "shop.cart.basket",
+              "slug": "basket",
+              "name": "Basket",
+              "readme": "# Basket\n\nThe one mutable thing between a customer arriving and an order existing: a\nvisitor's or a customer's lines, under one lock. It changes as items go in and\nout and stops changing the moment it is checked out; from then on the order is\nsomebody else's aggregate and the basket is a record of what was bought.\n\n## States\n\n`open` → `checked-out` | `abandoned` | `merged`, and nothing leads back. The\ntable is `status.ts`, and `moveTo` is the only way through it; lines go in\nand out only while the basket is `open`. Each way out publishes: checkout\n`BasketCheckedOut`, the sweep `BasketAbandoned`, a merge `BasketMerged` from\nthe basket that emptied.\n\n## Invariants\n\n- One currency, set by the first line and never changed (cart.0002).\n- A line's price is what it was given when added, never recomputed (cart.0003).\n- One to 99 of a SKU per line; at most 50 distinct SKUs.\n- A version travels with every write; a write from a stale read is refused.",
+              "root": "Basket",
+              "entities": [],
+              "valueObjects": [],
+              "operations": [],
+              "events": [
+                {
+                  "id": "shop.cart.basket.BasketCheckedOut",
+                  "slug": "basket-checked-out",
+                  "name": "BasketCheckedOut",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "The basket is frozen. This is the handoff: whoever places the order listens\nfor it, and pricing expires the quote it issued.",
+                      "source": "examples/shop/cart/src/domain/basket/events/basket-checked-out.ts",
+                      "fields": [
+                        {
+                          "name": "basketId",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "customerId",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "items",
+                          "type": "LineItem[]",
+                          "doc": ""
+                        },
+                        {
+                          "name": "total",
+                          "type": "Money",
+                          "doc": ""
+                        },
+                        {
+                          "name": "quoteId",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "occurredAt",
+                          "type": "Date",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [
+                    {
+                      "service": "shop.oms",
+                      "status": "verified",
+                      "note": "Seen consuming it in telemetry/traces.jsonl."
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [
+    {
+      "id": "flow.oms-cancel-order",
+      "slug": "oms-cancel-order",
+      "name": "Cancel order",
+      "summary": "Answers with the order as it is now; a cancelled order is still found.",
+      "source": "examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.oms",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "oms-pg",
+          "kind": "store",
+          "context": "shop"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.oms",
+          "kind": "rpc",
+          "label": "CancelOrder",
+          "status": "verified",
+          "note": "Seen running in telemetry/traces.jsonl (1 trace).",
+          "line": "examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:41"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.oms",
+          "to": "oms-pg",
+          "kind": "call",
+          "label": "by_id",
+          "status": "declared",
+          "line": "examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:21"
+        },
+        {
+          "type": "alt",
+          "id": "alt5",
+          "branches": [
+            {
+              "title": "order.status is Status::Cancelled",
+              "steps": [],
+              "terminal": true
+            },
+            {
+              "title": "otherwise",
+              "steps": [
+                {
+                  "type": "step",
+                  "id": "s3",
+                  "from": "shop.oms",
+                  "to": "oms-pg",
+                  "kind": "call",
+                  "label": "save",
+                  "status": "declared",
+                  "line": "examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:26"
+                },
+                {
+                  "type": "step",
+                  "id": "s4",
+                  "from": "shop.oms",
+                  "to": "bus",
+                  "kind": "event",
+                  "ref": "shop.oms.order.OrderCancelled",
+                  "label": "OrderCancelled",
+                  "status": "verified",
+                  "note": "Seen running in telemetry/traces.jsonl (1 trace).",
+                  "line": "examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:26"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "step",
+          "id": "s6",
+          "from": "shop.oms",
+          "to": "oms-pg",
+          "kind": "call",
+          "label": "by_id",
+          "status": "declared",
+          "line": "examples/shop/oms/src/application/order/usecases/get_order/mod.rs:14"
+        }
+      ]
+    },
+    {
+      "id": "flow.oms-get-order",
+      "slug": "oms-get-order",
+      "name": "Get order",
+      "summary": "Answers with the order as it is now; a cancelled order is still found.",
+      "source": "examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.oms",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "oms-pg",
+          "kind": "store",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.oms",
+          "kind": "rpc",
+          "label": "GetOrder",
+          "status": "verified",
+          "note": "Seen running in telemetry/traces.jsonl (2 traces).",
+          "line": "examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:31"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.oms",
+          "to": "oms-pg",
+          "kind": "call",
+          "label": "by_id",
+          "status": "declared",
+          "line": "examples/shop/oms/src/application/order/usecases/get_order/mod.rs:14"
+        }
+      ]
+    },
+    {
+      "id": "flow.oms-place-order-on-basket-checked-out",
+      "slug": "oms-place-order-on-basket-checked-out",
+      "name": "Place order on basket checked out",
+      "summary": "Places the order the basket was checked out for (ADR oms.0002). The order takes the basket's id, so the same checkout heard twice places one order.",
+      "source": "examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        },
+        {
+          "id": "shop.oms",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "oms-pg",
+          "kind": "store",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "bus",
+          "to": "shop.oms",
+          "kind": "event",
+          "ref": "shop.cart.basket.BasketCheckedOut",
+          "label": "BasketCheckedOut",
+          "status": "verified",
+          "note": "Seen running in telemetry/traces.jsonl (1 trace).",
+          "line": "examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs:19"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.oms",
+          "to": "shop.oms",
+          "kind": "call",
+          "label": "PlaceOrder",
+          "status": "declared",
+          "line": "examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs:29"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "shop.oms",
+          "to": "oms-pg",
+          "kind": "call",
+          "label": "by_basket",
+          "status": "declared",
+          "line": "examples/shop/oms/src/application/order/usecases/place_order/mod.rs:27"
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "shop.oms",
+          "to": "oms-pg",
+          "kind": "call",
+          "label": "save",
+          "status": "declared",
+          "line": "examples/shop/oms/src/application/order/usecases/place_order/mod.rs:31"
+        },
+        {
+          "type": "step",
+          "id": "s5",
+          "from": "shop.oms",
+          "to": "bus",
+          "kind": "event",
+          "ref": "shop.oms.order.OrderPlaced",
+          "label": "OrderPlaced",
+          "status": "verified",
+          "note": "Seen running in telemetry/traces.jsonl (1 trace).",
+          "line": "examples/shop/oms/src/application/order/usecases/place_order/mod.rs:31"
+        }
+      ]
+    }
+  ],
+  "adrs": []
+}

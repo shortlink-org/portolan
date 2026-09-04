@@ -78,10 +78,6 @@ Shared type [`Address`](../../../types.md#address).
 
 `delivery.core.route.RoutePlanned`
 
-| Consumer | Status |
-| --- | --- |
-| [shop.oms](../../../shop/oms/README.md) | declared |
-
 #### v1 — current
 
 A vehicle and window were assigned a stop sequence.

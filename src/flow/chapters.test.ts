@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { catalog } from "../data";
+import { catalog } from "../testing/estate";
 import { walkSteps } from "../catalog";
 import type { Flow } from "../catalog";
 import { buildChapters, groupRows, railRows } from "./chapters";

@@ -72,20 +72,19 @@ message, which is how the shipment tracking flow was derived from traces.
 
 | Call | Peer | Status | Source |
 | --- | --- | --- | --- |
-| `shop.v1.Orders/GetOrder` | [shop.oms](../../shop/oms/README.md) | verified | `internal/delivery/client/orders.go:31` |
+| `shop.v1.OrderService/GetOrder` | [shop.oms](../../shop/oms/README.md) | verified | `internal/delivery/client/orders.go:31` |
 | `payments.v1.Payments/GetPayment` | [payments.ledger](../../payments/ledger/README.md) | declared | `internal/delivery/client/payments.go:18` |
 
 ## Publishes
 
 | Event | Latest | Consumers |
 | --- | --- | --- |
-| [ShipmentDispatched](aggregates/shipment.md) | v1 | [shop.oms](../../shop/oms/README.md), `analytics-sink (declared)` |
-| [ShipmentDelivered](aggregates/shipment.md) | v1 | [shop.oms](../../shop/oms/README.md), `analytics-sink (unresolved)` |
-| [RoutePlanned](aggregates/route.md) | v1 | [shop.oms (declared)](../../shop/oms/README.md) |
+| [ShipmentDispatched](aggregates/shipment.md) | v1 | `analytics-sink (declared)` |
+| [ShipmentDelivered](aggregates/shipment.md) | v1 | `analytics-sink (unresolved)`, [shop.oms (declared)](../../shop/oms/README.md) |
+| [RoutePlanned](aggregates/route.md) | v1 | — |
 
 ## Stores
 
 | Store | Kind | Access | Tables |
 | --- | --- | --- | --- |
 | [Delivery database](stores/pg.md) | postgres | owns | 3 tables |
-| [Order management database](../../shop/oms/stores/pg.md) | postgres | reads | 4 tables |
