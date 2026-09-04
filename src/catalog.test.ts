@@ -439,29 +439,36 @@ describe("sample data shape", () => {
     expect(index.blocksByDef.has("Doubloons")).toBe(false);
   });
 
-  it("has three contexts, four services and one empty aggregate", () => {
+  it("has four contexts, six services and two aggregates that publish nothing", () => {
+    // The hand-written estate first, in its own order; then what the
+    // examples publish, in path order. shop.cart sits under examples/ and so
+    // joins shop after the two services data/ wrote.
     expect(catalog.contexts.map((c) => c.id)).toEqual([
       "shop",
       "payments",
       "delivery",
+      "auth",
     ]);
     expect(catalog.contexts.map((c) => c.classification)).toEqual([
       "core",
       "core",
       "supporting",
+      "core",
     ]);
     const services = catalog.contexts.flatMap((c) => c.services);
     expect(services.map((s) => s.id)).toEqual([
       "shop.oms",
       "shop.pricing",
+      "shop.cart",
       "payments.ledger",
       "delivery.core",
+      "auth.auth",
     ]);
     const empty = services
       .flatMap((s) => s.aggregates)
       .filter((a) => a.events.length === 0)
       .map((a) => a.id);
-    expect(empty).toEqual(["shop.pricing.price-list"]);
+    expect(empty).toEqual(["shop.pricing.price-list", "auth.auth.lockout"]);
   });
 
   it("has around twelve events and one with two versions adding a field", () => {
@@ -476,7 +483,7 @@ describe("sample data shape", () => {
     expect(v2.fields.length).toBe(v1.fields.length + 1);
   });
 
-  it("leaves two peers unresolved: the risk scorer and the payment gateway", () => {
+  it("leaves two peers unresolved by hand, and one more read out of auth", () => {
     const unresolved = catalog.contexts
       .flatMap((c) => c.services)
       .flatMap((s) => s.consumes)
@@ -487,25 +494,44 @@ describe("sample data shape", () => {
       "psp.v2.Charges/Capture",
       "psp.v2.Charges/Refund",
       "psp.v2.Charges/Void",
+      "risk.v1.RiskService/Assess",
     ]);
-    // Both are unresolved for the same reason and each says so on the record.
-    expect(new Set(unresolved.map((r) => r.peer))).toEqual(
+    // The hand-written two are unresolved for the same reason and each says
+    // so on the record; the one the extractor read off auth has only the
+    // package it could not place.
+    const byHand = unresolved.filter((r) => !r.id.startsWith("risk."));
+    expect(new Set(byHand.map((r) => r.peer))).toEqual(
       new Set(["fraud-scoring", "psp-gateway"]),
     );
-    for (const call of unresolved) expect(call.note, call.id).toBeTruthy();
+    for (const call of byHand) expect(call.note, call.id).toBeTruthy();
   });
 
   it("gives every flow an owner, and covers both ends of step status", () => {
     const flows = catalog.flows;
     // In the order their files sort, which is the order the extract step
-    // reads data/flows/*.flow.md in.
+    // reads data/flows/*.flow.md in; then each example's flows, in the order
+    // its extractor and its recording wrote them.
     expect(flows.map((f) => f.slug)).toEqual([
       "checkout",
       "gateway-webhook",
       "order-accepted",
       "order-cancelled",
+      "quote-expired-on-checkout",
       "refund-requested",
       "shipment-tracking",
+      "auth-change-password",
+      "auth-get-user",
+      "auth-login",
+      "auth-logout",
+      "auth-register-user",
+      "auth-validate-session",
+      "auth-revoke-sessions-on-password-change",
+      "cart-add-item",
+      "cart-checkout",
+      "cart-create-basket",
+      "cart-get-basket",
+      "cart-merge-baskets",
+      "cart-remove-item",
     ]);
     // Nothing in the tree has to guess where a flow belongs.
     for (const flow of flows) expect(flow.owner, flow.slug).toBeTruthy();

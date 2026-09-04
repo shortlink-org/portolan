@@ -83,9 +83,9 @@ describe("store validation", () => {
     const bad = clone();
     const table = omsStore(bad).tables.find((t) => t.name === "order_items");
     if (!table?.persists) throw new Error("fixture has no child table");
-    table.persists.block = "shop.oms.basket.basket";
+    table.persists.block = "shop.pricing.quote.quote";
 
-    expect(failureOf(bad).message).toContain("shop.oms.basket.basket");
+    expect(failureOf(bad).message).toContain("shop.pricing.quote.quote");
   });
 
   it("rejects a store owned by a service that is not in the catalog", () => {

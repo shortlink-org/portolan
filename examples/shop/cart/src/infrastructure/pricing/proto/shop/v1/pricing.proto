@@ -1,0 +1,33 @@
+// A narrowed copy of pricing's contract, kept beside the client generated from
+// it (ADR org.0001): the one rpc the cart calls.
+syntax = "proto3";
+
+package shop.v1;
+
+// Pricing prices a basket: promotions and tax included, against the lines it
+// is given.
+service Pricing {
+  // GetQuote answers with the total the customer is about to be charged.
+  rpc GetQuote(GetQuoteRequest) returns (GetQuoteResponse);
+}
+
+message Money {
+  int64 amount_minor = 1;
+  string currency = 2;
+}
+
+message LineItem {
+  string sku = 1;
+  int32 quantity = 2;
+  Money unit_price = 3;
+}
+
+message GetQuoteRequest {
+  string basket_id = 1;
+  repeated LineItem lines = 2;
+}
+
+message GetQuoteResponse {
+  string quote_id = 1;
+  Money total = 2;
+}

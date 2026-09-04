@@ -30,7 +30,7 @@ describe("stepsInto", () => {
       catalog,
       new Set([
         "shop.oms.order.OrderPlaced",
-        "shop.oms.basket.BasketCheckedOut",
+        "shop.oms.order.OrderCancelled",
       ]),
     );
     const flows = steps.map((s) => s.flow.slug);
@@ -73,7 +73,7 @@ describe("an event", () => {
 
   it("lists the decisions that name it, and says which field named it", () => {
     const adrs = of(
-      { kind: "event", id: "shop.oms.basket.BasketCheckedOut" },
+      { kind: "event", id: "shop.cart.basket.BasketCheckedOut" },
       "adr",
     );
     expect(adrs.map((l) => [l.id, l.name, l.via])).toEqual([

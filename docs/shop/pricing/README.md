@@ -103,4 +103,4 @@ cache is deliberately short: a stale quote is worse than a slow one.
 | Store | Kind | Access | Tables |
 | --- | --- | --- | --- |
 | [Price list cache](stores/cache.md) | redis | owns | 0 tables |
-| [Order management database](../oms/stores/pg.md) | postgres | reads | 5 tables |
+| [Order management database](../oms/stores/pg.md) | postgres | reads | 4 tables |

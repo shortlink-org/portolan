@@ -12,6 +12,10 @@ views {
     title 'Pricing'
     include *, -> *, * ->
   }
+  view svc_shop_cart of shop.cart {
+    title 'Shopping Cart'
+    include *, -> *, * ->
+  }
   view ctx_payments of payments {
     title 'Payments'
     include *
@@ -737,6 +741,35 @@ views {
     }
   }
 
+  dynamic view flow_quote_expired_on_checkout {
+    title 'Quote expired on checkout'
+    description 'A basket that has been checked out is a basket whose quote is spent. Pricing hears the event the cart publishes and expires the quote it issued for that basket, so a second checkout of the same basket has to be priced again rather than reuse a number the price list may have moved on from.'
+    bus -> shop.pricing 'BasketCheckedOut' {
+      color declared  line dashed  head onormal
+      notes 'One consumer group, the basket id as the routing key. A basket with no quote on file is ignored, not an error: not every basket was priced. — internal/policy/expire_quote.go:24'
+    }
+    shop.pricing -> pricing_db 'expireQuote' {
+      color declared  line dashed  head none
+      notes 'internal/adapter/postgres/quotes.go:71'
+    }
+    shop.pricing -> bus 'QuoteExpired' {
+      color declared  line dashed  head onormal
+      notes 'Published for the audit trail; nothing in the estate acts on it yet. — internal/policy/expire_quote.go:31'
+    }
+  }
+
+  dynamic view flow_quote_expired_on_checkout_cross {
+    title 'Quote expired on checkout — crossings only'
+    bus -> shop.pricing 'BasketCheckedOut' {
+      color declared  line dashed  head onormal
+      notes 'One consumer group, the basket id as the routing key. A basket with no quote on file is ignored, not an error: not every basket was priced. — internal/policy/expire_quote.go:24'
+    }
+    shop.pricing -> bus 'QuoteExpired' {
+      color declared  line dashed  head onormal
+      notes 'Published for the audit trail; nothing in the estate acts on it yet. — internal/policy/expire_quote.go:31'
+    }
+  }
+
   dynamic view flow_refund_requested {
     title 'Refund requested'
     description 'How a support-initiated refund is meant to travel: the window is read off the shipment, an undispatched parcel is recalled first, and the money is returned through the ledger. Written by hand from the design doc — not one step has been observed in a test or a trace, which is why every hop on this page is declared.'
@@ -1255,6 +1288,208 @@ views {
     auth.auth -> bus 'SessionEnded' {
       color verified  line solid  head onormal
       notes 'inside a loop over `change.Ends(sessions, uc.now())`, inside a loop over `retries`. — examples/auth/internal/application/session/usecases/end_after_credential_change/usecase.go:77'
+    }
+  }
+
+  dynamic view flow_cart_add_item {
+    title 'Add item'
+    description ''
+    client -> shop.cart 'addItem' {
+      color verified  line solid  head normal
+      notes 'Seen running in telemetry/traces.jsonl (3 traces). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:43'
+    }
+    shop.cart -> cart_pg 'save' {
+      color declared  line dashed  head none
+      notes 'examples/shop/cart/src/application/basket/usecases/add_item/usecase.ts:27'
+    }
+    shop.cart -> bus 'BasketItemAdded' {
+      color verified  line solid  head onormal
+      notes 'Seen running in telemetry/traces.jsonl (3 traces). — examples/shop/cart/src/application/basket/usecases/add_item/usecase.ts:27'
+    }
+  }
+
+  dynamic view flow_cart_add_item_cross {
+    title 'Add item — crossings only'
+    client -> shop.cart 'addItem' {
+      color verified  line solid  head normal
+      notes 'Seen running in telemetry/traces.jsonl (3 traces). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:43'
+    }
+    shop.cart -> bus 'BasketItemAdded' {
+      color verified  line solid  head onormal
+      notes 'Seen running in telemetry/traces.jsonl (3 traces). — examples/shop/cart/src/application/basket/usecases/add_item/usecase.ts:27'
+    }
+  }
+
+  dynamic view flow_cart_checkout {
+    title 'Checkout'
+    description ''
+    client -> shop.cart 'checkout' {
+      color verified  line solid  head normal
+      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:60'
+    }
+    shop.cart -> auth.auth 'validateSession' {
+      color verified  line solid  head normal
+      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:44'
+    }
+    shop.cart -> cart_pg 'byId' {
+      color declared  line dashed  head none
+      notes 'examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:48'
+    }
+    shop.cart -> shop.pricing 'GetQuote' {
+      color declared  line dashed  head normal
+      notes 'examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:55'
+    }
+    shop.cart -> cart_pg 'save' {
+      color declared  line dashed  head none
+      notes 'examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:57'
+    }
+    shop.cart -> bus 'BasketCheckedOut' {
+      color verified  line solid  head onormal
+      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:57'
+    }
+  }
+
+  dynamic view flow_cart_checkout_cross {
+    title 'Checkout — crossings only'
+    client -> shop.cart 'checkout' {
+      color verified  line solid  head normal
+      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:60'
+    }
+    shop.cart -> auth.auth 'validateSession' {
+      color verified  line solid  head normal
+      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:44'
+    }
+    shop.cart -> bus 'BasketCheckedOut' {
+      color verified  line solid  head onormal
+      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:57'
+    }
+  }
+
+  dynamic view flow_cart_create_basket {
+    title 'Create basket'
+    description ''
+    client -> shop.cart 'createBasket' {
+      color verified  line solid  head normal
+      notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:33'
+    }
+    shop.cart -> cart_pg 'save' {
+      color declared  line dashed  head none
+      notes 'examples/shop/cart/src/application/basket/usecases/create_basket/usecase.ts:22'
+    }
+    shop.cart -> bus 'BasketCreated' {
+      color verified  line solid  head onormal
+      notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/shop/cart/src/application/basket/usecases/create_basket/usecase.ts:22'
+    }
+  }
+
+  dynamic view flow_cart_create_basket_cross {
+    title 'Create basket — crossings only'
+    client -> shop.cart 'createBasket' {
+      color verified  line solid  head normal
+      notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:33'
+    }
+    shop.cart -> bus 'BasketCreated' {
+      color verified  line solid  head onormal
+      notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/shop/cart/src/application/basket/usecases/create_basket/usecase.ts:22'
+    }
+  }
+
+  dynamic view flow_cart_get_basket {
+    title 'Get basket'
+    description ''
+    client -> shop.cart 'getBasket' {
+      color verified  line solid  head normal
+      notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:38'
+    }
+  }
+
+  dynamic view flow_cart_get_basket_cross {
+    title 'Get basket — crossings only'
+    client -> shop.cart 'getBasket' {
+      color verified  line solid  head normal
+      notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:38'
+    }
+  }
+
+  dynamic view flow_cart_merge_baskets {
+    title 'Merge baskets'
+    description ''
+    client -> shop.cart 'mergeBaskets' {
+      color verified  line solid  head normal
+      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:54'
+    }
+    shop.cart -> auth.auth 'validateSession' {
+      color verified  line solid  head normal
+      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:28'
+    }
+    shop.cart -> cart_pg 'openFor' {
+      color declared  line dashed  head none
+      notes 'examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:35'
+    }
+    shop.cart -> cart_pg 'save' {
+      color declared  line dashed  head none
+      notes 'examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46'
+    }
+    shop.cart -> bus 'BasketCreated' {
+      color verified  line solid  head onormal
+      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46'
+    }
+    shop.cart -> bus 'BasketItemAdded' {
+      color verified  line solid  head onormal
+      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46'
+    }
+    shop.cart -> cart_pg 'save' {
+      color declared  line dashed  head none
+      notes 'examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:47'
+    }
+  }
+
+  dynamic view flow_cart_merge_baskets_cross {
+    title 'Merge baskets — crossings only'
+    client -> shop.cart 'mergeBaskets' {
+      color verified  line solid  head normal
+      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:54'
+    }
+    shop.cart -> auth.auth 'validateSession' {
+      color verified  line solid  head normal
+      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:28'
+    }
+    shop.cart -> bus 'BasketCreated' {
+      color verified  line solid  head onormal
+      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46'
+    }
+    shop.cart -> bus 'BasketItemAdded' {
+      color verified  line solid  head onormal
+      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46'
+    }
+  }
+
+  dynamic view flow_cart_remove_item {
+    title 'Remove item'
+    description ''
+    client -> shop.cart 'removeItem' {
+      color verified  line solid  head normal
+      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:49'
+    }
+    shop.cart -> cart_pg 'save' {
+      color declared  line dashed  head none
+      notes 'examples/shop/cart/src/application/basket/usecases/remove_item/usecase.ts:22'
+    }
+    shop.cart -> bus 'BasketItemRemoved' {
+      color verified  line solid  head onormal
+      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/remove_item/usecase.ts:22'
+    }
+  }
+
+  dynamic view flow_cart_remove_item_cross {
+    title 'Remove item — crossings only'
+    client -> shop.cart 'removeItem' {
+      color verified  line solid  head normal
+      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:49'
+    }
+    shop.cart -> bus 'BasketItemRemoved' {
+      color verified  line solid  head onormal
+      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/remove_item/usecase.ts:22'
     }
   }
 

@@ -1,0 +1,865 @@
+{
+  "generatedAt": "2026-09-04T22:39:26+07:00",
+  "commit": "7576ca7",
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "Shop",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.cart",
+          "slug": "cart",
+          "name": "Shopping Cart",
+          "repo": "github.com/shortlink-org/portolan",
+          "path": "examples/shop/cart",
+          "readme": "# Shopping Cart\n\nService `cart` — bounded context **shop**. TypeScript on Node.js.\n\nOwns the basket: the one mutable thing between a customer arriving and an\norder existing. A basket belongs to a visitor's token or to a signed-in\ncustomer, changes as items go in and out, and stops changing the moment it is\nchecked out — from then on the order is somebody else's aggregate and the\nbasket is a record of what was bought.\n\n## What it does\n\n- Creates a basket for a visitor and lets items go in and out of it.\n- Merges a visitor's basket into a customer's after login.\n- Checks out: confirms the session with `auth`, takes a quote from `pricing`,\n  freezes the basket and says so with `BasketCheckedOut`.\n- Abandons baskets nobody has touched for a day, and says so.\n\n## What it does not do\n\nDoes not place the order, charge anything or reserve stock: `BasketCheckedOut`\nis where its job ends. Does not hold a catalogue - a SKU is a string it was\ngiven, with the price it was given. Does not know who a customer is beyond an\nopaque id `auth` vouched for.\n\n## Decisions\n\n- [cart.0001](docs/adr/0001-typescript-on-node.md) — TypeScript on Node.js, and the stack around it\n- [cart.0002](docs/adr/0002-currency-frozen-at-the-first-item.md) — A basket freezes its currency at the first item\n- [cart.0003](docs/adr/0003-prices-captured-never-recomputed.md) — Line prices are captured when added, never recomputed\n- [cart.0004](docs/adr/0004-checkout-confirms-with-auth-and-pricing.md) — Checkout confirms the session with `auth` and the total with `pricing`\n- [cart.0005](docs/adr/0005-a-merge-moves-every-line-or-none.md) — A merge moves every line or none\n- [cart.0006](docs/adr/0006-abandonment-is-a-sweep-that-publishes.md) — Abandonment is a sweep inside the service, and it publishes\n- [cart.0007](docs/adr/0007-an-anonymous-basket-is-owned-by-its-token.md) — An anonymous basket is owned by whoever holds its token\n\n## Running it\n\n```bash\ndocker compose up -d\nnpm start\n```\n\n`AUTH_URL` and `PRICING_ADDR` point checkout at running peers; without them\nevery session is live and the quote is the sum of the lines. `TRACER_URI`\nswitches tracing on. `npm test` runs everything; without Docker the tests that\nneed Postgres are skipped.",
+          "provides": [],
+          "consumes": [
+            {
+              "id": "auth.v1.Sessions/validateSession",
+              "peer": "auth.auth",
+              "status": "declared",
+              "source": "examples/shop/cart/src/infrastructure/auth/gen/openapi.yaml"
+            },
+            {
+              "id": "shop.v1.Pricing/GetQuote",
+              "peer": "shop.pricing",
+              "status": "declared",
+              "source": "examples/shop/cart/src/infrastructure/pricing/proto/shop/v1/pricing.proto"
+            }
+          ],
+          "aggregates": [
+            {
+              "id": "shop.cart.basket",
+              "slug": "basket",
+              "name": "Basket",
+              "readme": "# Basket\n\nThe one mutable thing between a customer arriving and an order existing: a\nvisitor's or a customer's lines, under one lock. It changes as items go in and\nout and stops changing the moment it is checked out; from then on the order is\nsomebody else's aggregate and the basket is a record of what was bought.\n\n## States\n\n`open` → `checked-out` | `abandoned` | `merged`. Only an open basket changes.\n\n## Invariants\n\n- One currency, set by the first line and never changed (cart.0002).\n- A line's price is what it was given when added, never recomputed (cart.0003).\n- One to 99 of a SKU per line; at most 50 distinct SKUs.\n- A version travels with every write; a write from a stale read is refused.",
+              "root": "Basket",
+              "entities": [
+                {
+                  "id": "shop.cart.basket.basket",
+                  "slug": "basket",
+                  "name": "Basket",
+                  "doc": "Basket is the aggregate root: a visitor's or a customer's lines, their\ncurrency and their state, decided under one lock. Every method that changes\nit answers with the fact, and publishing is the caller's business.",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "token",
+                      "type": "string",
+                      "doc": "The capability to change an anonymous basket (cart.0007)."
+                    },
+                    {
+                      "name": "customerId",
+                      "type": "string | undefined",
+                      "doc": ""
+                    },
+                    {
+                      "name": "currency",
+                      "type": "Currency | undefined",
+                      "doc": "Set by the first line, never changed (cart.0002)."
+                    },
+                    {
+                      "name": "status",
+                      "type": "BasketStatus",
+                      "doc": ""
+                    },
+                    {
+                      "name": "items",
+                      "type": "BasketItem[]",
+                      "doc": ""
+                    },
+                    {
+                      "name": "touchedAt",
+                      "type": "Date",
+                      "doc": ""
+                    },
+                    {
+                      "name": "version",
+                      "type": "number",
+                      "doc": "Bumped by every write; a write from a stale read is refused."
+                    }
+                  ]
+                },
+                {
+                  "id": "shop.cart.basket.basket-error",
+                  "slug": "basket-error",
+                  "name": "BasketError",
+                  "doc": "What the basket refuses, and why, in a word a caller can switch on.",
+                  "fields": [
+                    {
+                      "name": "code",
+                      "type": "BasketErrorCode",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "id": "shop.cart.basket.basket-item",
+                  "slug": "basket-item",
+                  "name": "BasketItem",
+                  "doc": "One line: a SKU, how many, and what each one cost when it went in.",
+                  "fields": [
+                    {
+                      "name": "sku",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "quantity",
+                      "type": "number",
+                      "doc": ""
+                    },
+                    {
+                      "name": "unitPrice",
+                      "type": "Money",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [
+                {
+                  "id": "shop.cart.basket.currency",
+                  "slug": "currency",
+                  "name": "Currency",
+                  "doc": "ISO 4217, upper case. A basket has one, set by its first line.",
+                  "fields": [
+                    {
+                      "name": "code",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "id": "shop.cart.basket.line-item",
+                  "slug": "line-item",
+                  "name": "LineItem",
+                  "doc": "What the caller asks to put in: the estate's shared shape for a line.",
+                  "fields": [
+                    {
+                      "name": "sku",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "quantity",
+                      "type": "number",
+                      "doc": ""
+                    },
+                    {
+                      "name": "unitPrice",
+                      "type": "Money",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "id": "shop.cart.basket.money",
+                  "slug": "money",
+                  "name": "Money",
+                  "doc": "An amount in the minor unit of the currency: an integer, never a float.",
+                  "fields": [
+                    {
+                      "name": "amountMinor",
+                      "type": "number",
+                      "doc": ""
+                    },
+                    {
+                      "name": "currency",
+                      "type": "Currency",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "operations": [
+                {
+                  "id": "AddItem",
+                  "kind": "command",
+                  "doc": "Puts a line into a basket, or grows the one already there. The price is captured as sent (cart.0003); the first line sets the currency (cart.0002).",
+                  "exposedBy": [
+                    "addItem"
+                  ]
+                },
+                {
+                  "id": "Checkout",
+                  "kind": "command",
+                  "doc": "Freezes the basket and hands it on: the session is confirmed with `auth`, the total with `pricing`, then the basket is frozen and `BasketCheckedOut` written in the same transaction (cart.0004).",
+                  "exposedBy": [
+                    "checkout"
+                  ]
+                },
+                {
+                  "id": "CreateBasket",
+                  "kind": "command",
+                  "doc": "Creates an empty basket for a visitor and hands back its id and the token that owns it (cart.0007).",
+                  "exposedBy": [
+                    "createBasket"
+                  ]
+                },
+                {
+                  "id": "ExpireIdleBaskets",
+                  "kind": "command",
+                  "doc": "The sweep (cart.0006): marks every open basket untouched for a day as abandoned and publishes `BasketAbandoned` for each. Nothing calls it from outside; the service runs it once a minute."
+                },
+                {
+                  "id": "GetBasket",
+                  "kind": "query",
+                  "doc": "The basket as it stands, for whoever holds its token.",
+                  "exposedBy": [
+                    "getBasket"
+                  ]
+                },
+                {
+                  "id": "MergeBaskets",
+                  "kind": "command",
+                  "doc": "Moves a visitor's lines into the signed-in customer's open basket - creating one when there is none - every line or none (cart.0005), and marks the visitor's basket merged.",
+                  "exposedBy": [
+                    "mergeBaskets"
+                  ]
+                },
+                {
+                  "id": "RemoveItem",
+                  "kind": "command",
+                  "doc": "Takes a line out of a basket outright.",
+                  "exposedBy": [
+                    "removeItem"
+                  ]
+                }
+              ],
+              "events": [
+                {
+                  "id": "shop.cart.basket.BasketAbandoned",
+                  "slug": "basket-abandoned",
+                  "name": "BasketAbandoned",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "Nobody touched the basket for a day, and the sweep said so (cart.0006).\n\nPublished on the bus as `cart.BasketAbandoned`.",
+                      "source": "examples/shop/cart/src/domain/basket/events/basket-abandoned.ts",
+                      "fields": [
+                        {
+                          "name": "basketId",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "customerId",
+                          "type": "string | undefined",
+                          "doc": ""
+                        },
+                        {
+                          "name": "idleSince",
+                          "type": "Date",
+                          "doc": ""
+                        },
+                        {
+                          "name": "occurredAt",
+                          "type": "Date",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": []
+                },
+                {
+                  "id": "shop.cart.basket.BasketCheckedOut",
+                  "slug": "basket-checked-out",
+                  "name": "BasketCheckedOut",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "The basket is frozen. This is the handoff: whoever places the order listens\nfor it, and pricing expires the quote it issued.\n\nPublished on the bus as `cart.BasketCheckedOut`.",
+                      "source": "examples/shop/cart/src/domain/basket/events/basket-checked-out.ts",
+                      "fields": [
+                        {
+                          "name": "basketId",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "customerId",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "items",
+                          "type": "LineItem[]",
+                          "doc": ""
+                        },
+                        {
+                          "name": "total",
+                          "type": "Money",
+                          "doc": ""
+                        },
+                        {
+                          "name": "quoteId",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "occurredAt",
+                          "type": "Date",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": []
+                },
+                {
+                  "id": "shop.cart.basket.BasketCreated",
+                  "slug": "basket-created",
+                  "name": "BasketCreated",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "A basket exists, for a visitor or for a customer.\n\nPublished on the bus as `cart.BasketCreated`.",
+                      "source": "examples/shop/cart/src/domain/basket/events/basket-created.ts",
+                      "fields": [
+                        {
+                          "name": "basketId",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "customerId",
+                          "type": "string | undefined",
+                          "doc": ""
+                        },
+                        {
+                          "name": "occurredAt",
+                          "type": "Date",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": []
+                },
+                {
+                  "id": "shop.cart.basket.BasketItemAdded",
+                  "slug": "basket-item-added",
+                  "name": "BasketItemAdded",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "A line went in, or grew; `quantity` is the line's after the add.\n\nPublished on the bus as `cart.BasketItemAdded`.",
+                      "source": "examples/shop/cart/src/domain/basket/events/basket-item-added.ts",
+                      "fields": [
+                        {
+                          "name": "basketId",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "sku",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "quantity",
+                          "type": "number",
+                          "doc": ""
+                        },
+                        {
+                          "name": "unitPrice",
+                          "type": "Money",
+                          "doc": ""
+                        },
+                        {
+                          "name": "occurredAt",
+                          "type": "Date",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": []
+                },
+                {
+                  "id": "shop.cart.basket.BasketItemRemoved",
+                  "slug": "basket-item-removed",
+                  "name": "BasketItemRemoved",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "A line went out.\n\nPublished on the bus as `cart.BasketItemRemoved`.",
+                      "source": "examples/shop/cart/src/domain/basket/events/basket-item-removed.ts",
+                      "fields": [
+                        {
+                          "name": "basketId",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "sku",
+                          "type": "string",
+                          "doc": ""
+                        },
+                        {
+                          "name": "occurredAt",
+                          "type": "Date",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [
+    {
+      "id": "flow.cart-add-item",
+      "slug": "cart-add-item",
+      "name": "Add item",
+      "summary": "",
+      "source": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.cart",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "cart-pg",
+          "kind": "store",
+          "context": "shop"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.cart",
+          "kind": "rpc",
+          "label": "addItem",
+          "status": "declared",
+          "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:43"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.cart",
+          "to": "cart-pg",
+          "kind": "call",
+          "label": "save",
+          "status": "declared",
+          "line": "examples/shop/cart/src/application/basket/usecases/add_item/usecase.ts:27"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "shop.cart",
+          "to": "bus",
+          "kind": "event",
+          "label": "BasketItemAdded",
+          "status": "declared",
+          "ref": "shop.cart.basket.BasketItemAdded",
+          "line": "examples/shop/cart/src/application/basket/usecases/add_item/usecase.ts:27"
+        }
+      ]
+    },
+    {
+      "id": "flow.cart-checkout",
+      "slug": "cart-checkout",
+      "name": "Checkout",
+      "summary": "",
+      "source": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.cart",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "auth.auth",
+          "kind": "service",
+          "context": "auth"
+        },
+        {
+          "id": "cart-pg",
+          "kind": "store",
+          "context": "shop"
+        },
+        {
+          "id": "shop.pricing",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.cart",
+          "kind": "rpc",
+          "label": "checkout",
+          "status": "declared",
+          "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:60"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.cart",
+          "to": "auth.auth",
+          "kind": "rpc",
+          "label": "validateSession",
+          "status": "declared",
+          "ref": "auth.v1.Sessions/validateSession",
+          "line": "examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:44"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "shop.cart",
+          "to": "cart-pg",
+          "kind": "call",
+          "label": "byId",
+          "status": "declared",
+          "line": "examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:48"
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "shop.cart",
+          "to": "shop.pricing",
+          "kind": "rpc",
+          "label": "GetQuote",
+          "status": "declared",
+          "ref": "shop.v1.Pricing/GetQuote",
+          "line": "examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:55"
+        },
+        {
+          "type": "step",
+          "id": "s5",
+          "from": "shop.cart",
+          "to": "cart-pg",
+          "kind": "call",
+          "label": "save",
+          "status": "declared",
+          "line": "examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:57"
+        },
+        {
+          "type": "step",
+          "id": "s6",
+          "from": "shop.cart",
+          "to": "bus",
+          "kind": "event",
+          "label": "BasketCheckedOut",
+          "status": "declared",
+          "ref": "shop.cart.basket.BasketCheckedOut",
+          "line": "examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:57"
+        }
+      ]
+    },
+    {
+      "id": "flow.cart-create-basket",
+      "slug": "cart-create-basket",
+      "name": "Create basket",
+      "summary": "",
+      "source": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.cart",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "cart-pg",
+          "kind": "store",
+          "context": "shop"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.cart",
+          "kind": "rpc",
+          "label": "createBasket",
+          "status": "declared",
+          "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:33"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.cart",
+          "to": "cart-pg",
+          "kind": "call",
+          "label": "save",
+          "status": "declared",
+          "line": "examples/shop/cart/src/application/basket/usecases/create_basket/usecase.ts:22"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "shop.cart",
+          "to": "bus",
+          "kind": "event",
+          "label": "BasketCreated",
+          "status": "declared",
+          "ref": "shop.cart.basket.BasketCreated",
+          "line": "examples/shop/cart/src/application/basket/usecases/create_basket/usecase.ts:22"
+        }
+      ]
+    },
+    {
+      "id": "flow.cart-get-basket",
+      "slug": "cart-get-basket",
+      "name": "Get basket",
+      "summary": "",
+      "source": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.cart",
+          "kind": "service",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.cart",
+          "kind": "rpc",
+          "label": "getBasket",
+          "status": "declared",
+          "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:38"
+        }
+      ]
+    },
+    {
+      "id": "flow.cart-merge-baskets",
+      "slug": "cart-merge-baskets",
+      "name": "Merge baskets",
+      "summary": "",
+      "source": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.cart",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "auth.auth",
+          "kind": "service",
+          "context": "auth"
+        },
+        {
+          "id": "cart-pg",
+          "kind": "store",
+          "context": "shop"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.cart",
+          "kind": "rpc",
+          "label": "mergeBaskets",
+          "status": "declared",
+          "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:54"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.cart",
+          "to": "auth.auth",
+          "kind": "rpc",
+          "label": "validateSession",
+          "status": "declared",
+          "ref": "auth.v1.Sessions/validateSession",
+          "line": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:28"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "shop.cart",
+          "to": "cart-pg",
+          "kind": "call",
+          "label": "openFor",
+          "status": "declared",
+          "line": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:35"
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "shop.cart",
+          "to": "cart-pg",
+          "kind": "call",
+          "label": "save",
+          "status": "declared",
+          "line": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46"
+        },
+        {
+          "type": "step",
+          "id": "s5",
+          "from": "shop.cart",
+          "to": "bus",
+          "kind": "event",
+          "label": "BasketCreated",
+          "status": "declared",
+          "ref": "shop.cart.basket.BasketCreated",
+          "line": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46"
+        },
+        {
+          "type": "step",
+          "id": "s6",
+          "from": "shop.cart",
+          "to": "bus",
+          "kind": "event",
+          "label": "BasketItemAdded",
+          "status": "declared",
+          "ref": "shop.cart.basket.BasketItemAdded",
+          "line": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46"
+        },
+        {
+          "type": "step",
+          "id": "s7",
+          "from": "shop.cart",
+          "to": "cart-pg",
+          "kind": "call",
+          "label": "save",
+          "status": "declared",
+          "line": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:47"
+        }
+      ]
+    },
+    {
+      "id": "flow.cart-remove-item",
+      "slug": "cart-remove-item",
+      "name": "Remove item",
+      "summary": "",
+      "source": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.cart",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "cart-pg",
+          "kind": "store",
+          "context": "shop"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.cart",
+          "kind": "rpc",
+          "label": "removeItem",
+          "status": "declared",
+          "line": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:49"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.cart",
+          "to": "cart-pg",
+          "kind": "call",
+          "label": "save",
+          "status": "declared",
+          "line": "examples/shop/cart/src/application/basket/usecases/remove_item/usecase.ts:22"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "shop.cart",
+          "to": "bus",
+          "kind": "event",
+          "label": "BasketItemRemoved",
+          "status": "declared",
+          "ref": "shop.cart.basket.BasketItemRemoved",
+          "line": "examples/shop/cart/src/application/basket/usecases/remove_item/usecase.ts:22"
+        }
+      ]
+    }
+  ],
+  "adrs": []
+}

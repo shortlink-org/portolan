@@ -94,8 +94,8 @@ describe("groupFlowsByOwner", () => {
     expect(
       groups.map((g) => [g.owner, g.entries.length] as const),
     ).toEqual([
+      ["shop", 11],
       ["auth", 7],
-      ["shop", 4],
       ["delivery", 1],
       ["payments", 1],
     ]);
@@ -104,10 +104,21 @@ describe("groupFlowsByOwner", () => {
   it("puts the broken flows at the top of their group", () => {
     const shop = groups.find((g) => g.owner === "shop");
     if (!shop) throw new Error("no shop group");
+    // Two hand-written flows with a hop nobody resolves; then the ones every
+    // hop of which resolves but none has been seen running, cart's checkout
+    // among them because its call to pricing is answered by a stand-in; then
+    // the ones the recordings proved.
     expect(shop.entries.map((e) => e.health)).toEqual([
       "unresolved",
       "unresolved",
       "declared",
+      "declared",
+      "declared",
+      "verified",
+      "verified",
+      "verified",
+      "verified",
+      "verified",
       "verified",
     ]);
     // Red first, then name: the two unresolved flows are alphabetical.

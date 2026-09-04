@@ -19,9 +19,9 @@ describe("contextStats", () => {
     const shop = catalog.contexts.find((c) => c.id === "shop");
     if (!shop) throw new Error("no shop context");
     const stats = contextStats(shop);
-    expect(stats.services).toBe(2);
+    expect(stats.services).toBe(3);
     expect(stats.aggregates).toBe(4);
-    expect(stats.events).toBe(6);
+    expect(stats.events).toBe(10);
   });
 
   it("counts unresolved rpc calls and unresolved consumers together", () => {
@@ -47,7 +47,7 @@ describe("flowsByReach", () => {
 describe("flowsForService", () => {
   it("finds flows by participant id", () => {
     expect(flowsForService(catalog, "shop.pricing").map((f) => f.slug)).toEqual(
-      ["checkout"],
+      ["checkout", "quote-expired-on-checkout", "cart-checkout"],
     );
     expect(
       flowsForService(catalog, "payments.ledger").map((f) => f.slug),
@@ -147,7 +147,7 @@ describe("usagesOfDef", () => {
   });
 
   it("lists a block that IS the type with no fields of its own", () => {
-    const vo = money.find((u) => u.id === "shop.oms.basket.money");
+    const vo = money.find((u) => u.id === "shop.oms.order.money");
     expect(vo?.kind).toBe("vo");
     expect(vo?.fields).toEqual([]);
   });

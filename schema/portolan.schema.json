@@ -44,6 +44,7 @@
           "plugin": {
             "enum": [
               "go-domain",
+              "ts-domain",
               "openapi",
               "sql",
               "flows"
@@ -79,6 +80,25 @@
               "properties": {
                 "options": {
                   "$ref": "#/$defs/options.go-domain"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "plugin"
+              ],
+              "properties": {
+                "plugin": {
+                  "const": "ts-domain"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "options": {
+                  "$ref": "#/$defs/options.ts-domain"
                 }
               }
             }
@@ -384,6 +404,95 @@
         }
       }
     },
+    "options.ts-domain": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "Slug of the bounded context this service belongs to. Defaults to the name of the input directory.",
+          "examples": [
+            "shop"
+          ]
+        },
+        "contextName": {
+          "type": "string",
+          "description": "What the context is called on the page. Defaults to the slug, titled."
+        },
+        "contextSummary": {
+          "type": "string",
+          "description": "A sentence or two on what the context is responsible for."
+        },
+        "classification": {
+          "enum": [
+            "core",
+            "supporting",
+            "generic"
+          ],
+          "description": "Whether the context is core to the business, supports it, or is generic and could be bought."
+        },
+        "service": {
+          "type": "string",
+          "description": "Slug of the service. Defaults to the name of the input directory.",
+          "examples": [
+            "cart"
+          ]
+        },
+        "serviceName": {
+          "type": "string",
+          "description": "What the service is called on the page. Defaults to the title of its README, and failing that to the slug, titled."
+        },
+        "repo": {
+          "type": "string",
+          "description": "Where the source lives. Defaults to the repository field of package.json.",
+          "examples": [
+            "github.com/shortlink-org/portolan"
+          ]
+        },
+        "store": {
+          "type": "string",
+          "description": "Slug of the database this service keeps its state in, the same one the sql extractor is given. It is here for the flows: a call on a repository lands somewhere, and only the manifest knows where.",
+          "examples": [
+            "pg"
+          ]
+        },
+        "peers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Which service answers for what this one calls, as the callee's package to its service id: the api id for an HTTP peer, the proto package for a gRPC one. A package with no line here is called as unknown and its steps stay unresolved.",
+          "examples": [
+            {
+              "auth.v1": "auth.auth",
+              "shop.v1": "shop.pricing"
+            }
+          ]
+        },
+        "events": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Which aggregate another service's events belong to, as the import specifier a policy reads them from to the aggregate id, so a policy reacting to a foreign event resolves.",
+          "examples": [
+            {
+              "@acme/payments-events": "payments.ledger.payment"
+            }
+          ]
+        },
+        "source": {
+          "type": "string",
+          "description": "The directory the layout starts in, relative to the input root.",
+          "default": "src"
+        },
+        "out": {
+          "type": "string",
+          "description": "Name of the fragment file, inside the step's output directory.",
+          "default": "domain.json"
+        }
+      }
+    },
     "options.openapi": {
       "type": "object",
       "additionalProperties": false,
@@ -470,7 +579,7 @@
         },
         "repositories": {
           "type": "string",
-          "description": "Where the adapters live, relative to the input root. The migrations are read from there, and so is which aggregate a table persists.",
+          "description": "Where the adapters live, relative to the input root: one package per aggregate, its migrations under migrations/ (every .sql that is not a .down.sql). The migrations are read from there, and so is which aggregate a table persists and which field a column carries - off the statements that write the rows, in Go or in TypeScript.",
           "default": "internal/infrastructure/repository"
         },
         "out": {

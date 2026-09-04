@@ -100,7 +100,6 @@ describe("erSpec", () => {
         "orders",
         "order_items",
         "outbox",
-        "baskets",
         "price_snapshots",
       ]);
   });

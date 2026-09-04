@@ -88,4 +88,4 @@ message, which is how the shipment tracking flow was derived from traces.
 | Store | Kind | Access | Tables |
 | --- | --- | --- | --- |
 | [Delivery database](stores/pg.md) | postgres | owns | 3 tables |
-| [Order management database](../../shop/oms/stores/pg.md) | postgres | reads | 5 tables |
+| [Order management database](../../shop/oms/stores/pg.md) | postgres | reads | 4 tables |

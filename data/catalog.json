@@ -602,122 +602,6 @@
                   ]
                 }
               ]
-            },
-            {
-              "id": "shop.oms.basket",
-              "slug": "basket",
-              "name": "Basket",
-              "readme": "# Basket\n\nA short-lived container of line items belonging to one customer session.\n\n## Lifetime\n\nBaskets expire 24 hours after the last mutation. Expiry is a hard delete; there\nis no archive. Anything worth keeping has already become an order.\n\n## Commands\n\n| Command           | Notes                                        |\n| ----------------- | -------------------------------------------- |\n| `AddItem`         | Merges quantity if the SKU is already present |\n| `RemoveItem`      | Removing the last item leaves an empty basket |\n| `CheckoutBasket`  | Freezes contents and emits the event          |\n\n## Queries\n\n`GetBasket` is served from the write store; baskets are too short-lived for\nreplication lag to be acceptable.",
-              "root": "Basket",
-              "entities": [
-                {
-                  "id": "shop.oms.basket.basket",
-                  "slug": "basket",
-                  "name": "Basket",
-                  "doc": "A customer's working basket. Lives until checkout, then becomes an order.",
-                  "fields": [
-                    {
-                      "name": "id",
-                      "type": "string",
-                      "doc": "Basket id, one per customer session."
-                    },
-                    {
-                      "name": "customer",
-                      "type": "CustomerRef",
-                      "doc": "Owner of the basket.",
-                      "ref": "CustomerRef"
-                    },
-                    {
-                      "name": "items",
-                      "type": "[]LineItem",
-                      "doc": "Current contents.",
-                      "ref": "LineItem"
-                    },
-                    {
-                      "name": "updatedAt",
-                      "type": "time.Time",
-                      "doc": "Last mutation, server time."
-                    }
-                  ]
-                }
-              ],
-              "valueObjects": [
-                {
-                  "id": "shop.oms.basket.line-item",
-                  "slug": "line-item",
-                  "name": "LineItem",
-                  "doc": "A SKU, a quantity and the price it was added at. Replaced wholesale on change.",
-                  "ref": "LineItem"
-                },
-                {
-                  "id": "shop.oms.basket.money",
-                  "slug": "money",
-                  "name": "Money",
-                  "doc": "An amount in a single currency.",
-                  "ref": "Money"
-                }
-              ],
-              "operations": [
-                {
-                  "id": "AddItem",
-                  "kind": "command",
-                  "doc": "Adds a SKU or increments one already there. The price is captured as the item is added and is not refreshed until checkout."
-                },
-                {
-                  "id": "RemoveItem",
-                  "kind": "command",
-                  "doc": "Removes a line outright. Decrementing to zero is a removal, not a line with quantity zero."
-                },
-                {
-                  "id": "CheckoutBasket",
-                  "kind": "command",
-                  "doc": "Freezes the basket and emits BasketCheckedOut. The basket stays readable for 24 hours afterwards so support can see what was actually submitted."
-                },
-                {
-                  "id": "GetBasket",
-                  "kind": "query",
-                  "doc": "The working basket for one session. An expired basket comes back empty rather than as a 404 — the storefront has nothing useful to do with the difference."
-                }
-              ],
-              "events": [
-                {
-                  "id": "shop.oms.basket.BasketCheckedOut",
-                  "slug": "basket-checked-out",
-                  "name": "BasketCheckedOut",
-                  "versions": [
-                    {
-                      "version": "v1",
-                      "doc": "The customer submitted the basket. Precedes OrderPlaced by milliseconds.",
-                      "source": "internal/oms/domain/basket/events.go:33",
-                      "fields": [
-                        {
-                          "name": "basketId",
-                          "type": "string",
-                          "doc": "Basket being checked out."
-                        },
-                        {
-                          "name": "customer",
-                          "type": "CustomerRef",
-                          "doc": "Who checked out.",
-                          "ref": "CustomerRef"
-                        },
-                        {
-                          "name": "items",
-                          "type": "[]LineItem",
-                          "doc": "Basket contents at submission.",
-                          "ref": "LineItem"
-                        }
-                      ]
-                    }
-                  ],
-                  "consumers": [
-                    {
-                      "service": "shop.pricing",
-                      "status": "verified"
-                    }
-                  ]
-                }
-              ]
             }
           ],
           "stores": [
@@ -2170,7 +2054,7 @@
       },
       "relates": {
         "events": [
-          "shop.oms.basket.BasketCheckedOut"
+          "shop.cart.basket.BasketCheckedOut"
         ]
       },
       "source": "docs/adr/0002-event-version-in-package-path.md",
@@ -2389,41 +2273,6 @@
                 "published_at"
               ],
               "unique": false
-            }
-          ]
-        },
-        {
-          "id": "shop.oms.pg.baskets",
-          "name": "baskets",
-          "doc": "Pre-checkout state. Renamed from carts; the column names have not caught up.",
-          "role": "aggregate-root",
-          "persists": {
-            "aggregate": "shop.oms.basket"
-          },
-          "columns": [
-            {
-              "name": "id",
-              "type": "uuid",
-              "nullable": false,
-              "pk": true,
-              "maps": "Basket.cartId"
-            },
-            {
-              "name": "cart_token",
-              "type": "text",
-              "nullable": false,
-              "maps": "Basket.token"
-            },
-            {
-              "name": "customer_id",
-              "type": "uuid",
-              "nullable": true
-            },
-            {
-              "name": "touched_at",
-              "type": "timestamptz",
-              "nullable": false,
-              "maps": "Basket.touchedAt"
             }
           ]
         },

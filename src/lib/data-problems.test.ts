@@ -34,18 +34,31 @@ describe("the sample estate", () => {
     expect(shared?.severity).toBe("error");
   });
 
-  it("reports the renamed table whose columns did not follow", () => {
-    const drift = problems.find((p) => p.kind === "persistence-drift");
-    expect(drift?.id).toBe("shop.oms.pg.baskets");
+  it("reports no persistence drift: every table's columns follow its aggregate", () => {
+    expect(problems.filter((p) => p.kind === "persistence-drift")).toEqual([]);
+  });
+
+  it("reports a renamed table whose columns did not follow", () => {
+    const drifted = clone();
+    const orders = (drifted.stores ?? [])
+      .find((s) => s.id === "shop.oms.pg")
+      ?.tables.find((t) => t.name === "orders");
+    if (!orders) throw new Error("fixture has no orders table");
+    for (const column of orders.columns) if (column.maps) column.maps = `Order.${column.name}Gone`;
+    const drift = found(drifted).find((p) => p.kind === "persistence-drift");
+    expect(drift?.id).toBe("shop.oms.pg.orders");
     expect(drift?.severity).toBe("warning");
   });
 
-  it("reports both type disagreements and nothing else", () => {
+  it("reports every type disagreement and nothing else", () => {
     const types = problems.filter((p) => p.kind === "column-type");
     expect(types.map((p) => p.id)).toEqual([
       "shop.oms.pg.orders.id",
       "shop.oms.pg.order_items.quantity",
       "delivery.core.pg.packages.order_id",
+      "auth.auth.pg.lockouts.failures",
+      "shop.cart.pg.baskets.id",
+      "shop.cart.pg.basket_items.basket_id",
     ]);
   });
 

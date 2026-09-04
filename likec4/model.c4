@@ -5,12 +5,14 @@ model {
   fraud_scoring = unknown 'fraud-scoring (unknown)'
   bus = broker 'bus'
   psp_gateway = external 'psp-gateway (external)'
+  pricing_db = store 'pricing-db (postgres)'
   agent = actor 'support agent'
   carrier_api = external 'carrier-api (external)'
   analytics_sink = unknown 'analytics-sink (unknown)'
   client = actor 'client'
   auth_pg = store 'auth-pg'
   risk_v1 = unknown 'risk.v1'
+  cart_pg = store 'cart-pg'
 
   shop = context 'Shop' {
     description 'Everything the customer touches before money moves: baskets, orders and prices.'
@@ -29,11 +31,6 @@ model {
           description 'The order was cancelled before fulfilment, by the customer or by risk.'
         }
       }
-      basket = aggregate 'Basket' {
-        BasketCheckedOut = event 'BasketCheckedOut' {
-          description 'The customer submitted the basket. Precedes OrderPlaced by milliseconds.'
-        }
-      }
     }
     pricing = service 'Pricing' {
       description 'github.com/acme/shop/services/pricing'
@@ -47,6 +44,38 @@ model {
         }
       }
       price_list = aggregate 'PriceList' {
+      }
+    }
+    cart = service 'Shopping Cart' {
+      description 'github.com/shortlink-org/portolan/examples/shop/cart'
+      style { color ctx0 }
+      basket = aggregate 'Basket' {
+        BasketAbandoned = event 'BasketAbandoned' {
+          description 'Nobody touched the basket for a day, and the sweep said so (cart.0006).
+
+Published on the bus as `cart.BasketAbandoned`.'
+        }
+        BasketCheckedOut = event 'BasketCheckedOut' {
+          description 'The basket is frozen. This is the handoff: whoever places the order listens
+for it, and pricing expires the quote it issued.
+
+Published on the bus as `cart.BasketCheckedOut`.'
+        }
+        BasketCreated = event 'BasketCreated' {
+          description 'A basket exists, for a visitor or for a customer.
+
+Published on the bus as `cart.BasketCreated`.'
+        }
+        BasketItemAdded = event 'BasketItemAdded' {
+          description 'A line went in, or grew; `quantity` is the line\'s after the add.
+
+Published on the bus as `cart.BasketItemAdded`.'
+        }
+        BasketItemRemoved = event 'BasketItemRemoved' {
+          description 'A line went out.
+
+Published on the bus as `cart.BasketItemRemoved`.'
+        }
       }
     }
   }
@@ -148,9 +177,6 @@ Published on the bus as `auth.UserRegistered`.'
   shop.oms -> delivery.core 'OrderCancelled' {
     style { color declared  line dashed  head onormal }
   }
-  shop.oms -> shop.pricing 'BasketCheckedOut' {
-    style { color verified  line solid  head onormal }
-  }
   shop.oms -> shop.pricing 'GetQuote' {
     style { color verified  line solid  head normal }
   }
@@ -177,6 +203,15 @@ Published on the bus as `auth.UserRegistered`.'
   }
   shop.pricing -> shop.oms 'GetOrder' {
     style { color verified  line solid  head normal }
+  }
+  shop.cart -> shop.pricing 'BasketCheckedOut' {
+    style { color declared  line dashed  head onormal }
+  }
+  shop.cart -> auth.auth 'validateSession' {
+    style { color verified  line solid  head normal }
+  }
+  shop.cart -> shop.pricing 'GetQuote' {
+    style { color declared  line dashed  head normal }
   }
   payments.ledger -> shop.oms 'PaymentAuthorized' {
     style { color verified  line solid  head onormal }

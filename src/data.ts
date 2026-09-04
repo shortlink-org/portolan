@@ -24,13 +24,22 @@ import type { CatalogSource, MergeConflict, SourceStamp } from "./merge";
  * Where sources are looked for. The patterns are written out because
  * import.meta.glob resolves at build time and needs literals - and because
  * they are worth reading: the first is the estate's own files, the second is
- * what each service publishes beside its code.
+ * what each service publishes beside its code - one level down for a context
+ * of one service, two for a context that holds several.
  */
-const SOURCE_GLOBS = ["data/*.json", "examples/*/portolan/*.json"] as const;
+const SOURCE_GLOBS = [
+  "data/*.json",
+  "examples/*/portolan/*.json",
+  "examples/*/*/portolan/*.json",
+] as const;
 
 const modules: Record<string, unknown> = {
   ...import.meta.glob("../data/*.json", { eager: true, import: "default" }),
   ...import.meta.glob("../examples/*/portolan/*.json", {
+    eager: true,
+    import: "default",
+  }),
+  ...import.meta.glob("../examples/*/*/portolan/*.json", {
     eager: true,
     import: "default",
   }),
@@ -52,6 +61,8 @@ interface Loaded {
   conflicts: MergeConflict[];
   derived: DerivedEdge[];
   error: CatalogError | null;
+  /** The sources as merged, before anything was derived or checked. */
+  raw: Catalog;
 }
 
 function load(): Loaded {
@@ -77,6 +88,7 @@ function load(): Loaded {
       conflicts: merged.conflicts,
       derived: enriched.derived,
       error: null,
+      raw: merged.catalog,
     };
   } catch (cause) {
     const error =
@@ -95,6 +107,7 @@ function load(): Loaded {
       conflicts: merged.conflicts,
       derived: [],
       error,
+      raw: merged.catalog,
     };
   }
 }
@@ -132,3 +145,10 @@ export const CATALOG_PATH = SOURCE_GLOBS.join(" · ");
 
 /** Non-null when the catalog failed validation; the shell renders it instead. */
 export const catalogError: CatalogError | null = loaded.error;
+
+/**
+ * The merge before enrichment and validation: what the sources said, with
+ * nothing derived onto it yet. Tests that check the validator, or that want
+ * to see the estate the way a source wrote it, start from here.
+ */
+export const rawCatalog: Catalog = loaded.raw;

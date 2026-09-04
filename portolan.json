@@ -3,13 +3,20 @@
   "$comment": "Where the facts come from, what produces them, and what turns them into something to read.",
   "sources": [
     "data/*.json",
-    "examples/*/portolan/*.json"
+    "examples/*/portolan/*.json",
+    "examples/*/*/portolan/*.json"
   ],
   "plugins": [
     {
       "name": "go-domain",
       "process": {
         "cmd": "go run ./plugins/extract-go"
+      }
+    },
+    {
+      "name": "ts-domain",
+      "process": {
+        "cmd": "node plugins/extract-ts/main.ts"
       }
     },
     {
@@ -89,6 +96,46 @@
         "name": "Auth database",
         "out": "stores.json"
       }
+    },
+    {
+      "plugin": "ts-domain",
+      "in": "examples/shop/cart",
+      "out": "examples/shop/cart/portolan",
+      "options": {
+        "context": "shop",
+        "service": "cart",
+        "repo": "github.com/shortlink-org/portolan",
+        "store": "pg",
+        "peers": {
+          "auth.v1": "auth.auth",
+          "shop.v1": "shop.pricing"
+        },
+        "out": "domain.json"
+      }
+    },
+    {
+      "plugin": "openapi",
+      "in": "examples/shop/cart",
+      "out": "examples/shop/cart/portolan",
+      "options": {
+        "context": "shop",
+        "service": "cart",
+        "spec": "src/infrastructure/transport/http/gen/openapi.yaml",
+        "out": "api.json"
+      }
+    },
+    {
+      "plugin": "sql",
+      "in": "examples/shop/cart",
+      "out": "examples/shop/cart/portolan",
+      "options": {
+        "context": "shop",
+        "service": "cart",
+        "store": "pg",
+        "name": "Cart database",
+        "repositories": "src/infrastructure/repository",
+        "out": "stores.json"
+      }
     }
   ],
   "verify": [
@@ -96,6 +143,17 @@
       "plugin": "otel",
       "in": "examples/auth",
       "out": "examples/auth/portolan",
+      "options": {
+        "traces": [
+          "telemetry/traces.jsonl"
+        ],
+        "out": "observed.json"
+      }
+    },
+    {
+      "plugin": "otel",
+      "in": "examples/shop/cart",
+      "out": "examples/shop/cart/portolan",
       "options": {
         "traces": [
           "telemetry/traces.jsonl"

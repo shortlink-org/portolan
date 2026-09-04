@@ -63,7 +63,6 @@ be idempotent on `event_id`.
 | Aggregate | Root | Commands | Queries | Events |
 | --- | --- | --- | --- | --- |
 | [Order](aggregates/order.md) | `Order` | 3 commands | 2 queries | 3 events |
-| [Basket](aggregates/basket.md) | `Basket` | 3 commands | 1 query | 1 event |
 
 ## Provides
 
@@ -111,13 +110,12 @@ be idempotent on `event_id`.
 | [OrderPlaced](aggregates/order.md) | v2 | [payments.ledger](../../payments/ledger/README.md), [shop.pricing (declared)](../pricing/README.md), `analytics-sink (unresolved)` |
 | [OrderConfirmed](aggregates/order.md) | v1 | [delivery.core](../../delivery/core/README.md) |
 | [OrderCancelled](aggregates/order.md) | v1 | [payments.ledger](../../payments/ledger/README.md), [delivery.core (declared)](../../delivery/core/README.md) |
-| [BasketCheckedOut](aggregates/basket.md) | v1 | [shop.pricing](../pricing/README.md) |
 
 ## Stores
 
 | Store | Kind | Access | Tables |
 | --- | --- | --- | --- |
-| [Order management database](stores/pg.md) | postgres | owns | 5 tables |
+| [Order management database](stores/pg.md) | postgres | owns | 4 tables |
 
 ## Decisions
 

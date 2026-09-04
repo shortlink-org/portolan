@@ -1,0 +1,234 @@
+{
+  "generatedAt": "2026-09-04T22:39:26+07:00",
+  "commit": "7576ca7",
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.cart",
+          "slug": "cart",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [
+            {
+              "id": "cart.v1.Baskets",
+              "methods": [
+                {
+                  "name": "createBasket",
+                  "http": {
+                    "method": "POST",
+                    "path": "/v1/baskets"
+                  }
+                },
+                {
+                  "name": "getBasket",
+                  "http": {
+                    "method": "GET",
+                    "path": "/v1/baskets/{basketId}"
+                  }
+                },
+                {
+                  "name": "addItem",
+                  "http": {
+                    "method": "POST",
+                    "path": "/v1/baskets/{basketId}/items"
+                  }
+                },
+                {
+                  "name": "removeItem",
+                  "http": {
+                    "method": "DELETE",
+                    "path": "/v1/baskets/{basketId}/items/{sku}"
+                  }
+                },
+                {
+                  "name": "mergeBaskets",
+                  "http": {
+                    "method": "POST",
+                    "path": "/v1/baskets/{basketId}/merge"
+                  }
+                },
+                {
+                  "name": "checkout",
+                  "http": {
+                    "method": "POST",
+                    "path": "/v1/baskets/{basketId}/checkout"
+                  }
+                }
+              ],
+              "source": "examples/shop/cart/src/infrastructure/transport/http/gen/openapi.yaml",
+              "messages": [
+                {
+                  "name": "BasketCreated",
+                  "fields": [
+                    {
+                      "name": "basketId",
+                      "type": "string (uuid)",
+                      "doc": ""
+                    },
+                    {
+                      "name": "token",
+                      "type": "string",
+                      "doc": "The capability to change this basket; sent back as X-Basket-Token."
+                    }
+                  ]
+                },
+                {
+                  "name": "Basket",
+                  "fields": [
+                    {
+                      "name": "basketId",
+                      "type": "string (uuid)",
+                      "doc": ""
+                    },
+                    {
+                      "name": "customerId",
+                      "type": "string",
+                      "doc": "Optional. Present once the basket belongs to a signed-in customer."
+                    },
+                    {
+                      "name": "currency",
+                      "type": "string",
+                      "doc": "Optional. Set by the first line; absent while the basket is empty."
+                    },
+                    {
+                      "name": "status",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "items",
+                      "type": "[]LineItem",
+                      "doc": ""
+                    },
+                    {
+                      "name": "subtotal",
+                      "type": "Money",
+                      "doc": "Optional."
+                    },
+                    {
+                      "name": "touchedAt",
+                      "type": "string (date-time)",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "Error",
+                  "fields": [
+                    {
+                      "name": "message",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "AddItemRequest",
+                  "fields": [
+                    {
+                      "name": "sku",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "quantity",
+                      "type": "integer",
+                      "doc": ""
+                    },
+                    {
+                      "name": "unitPrice",
+                      "type": "Money",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "MergeRequest",
+                  "fields": [
+                    {
+                      "name": "fromBasketId",
+                      "type": "string (uuid)",
+                      "doc": ""
+                    },
+                    {
+                      "name": "fromToken",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "CheckedOut",
+                  "fields": [
+                    {
+                      "name": "basketId",
+                      "type": "string (uuid)",
+                      "doc": ""
+                    },
+                    {
+                      "name": "quoteId",
+                      "type": "string",
+                      "doc": "The quote pricing issued; the order is placed against it."
+                    },
+                    {
+                      "name": "total",
+                      "type": "Money",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "LineItem",
+                  "fields": [
+                    {
+                      "name": "sku",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "quantity",
+                      "type": "integer",
+                      "doc": ""
+                    },
+                    {
+                      "name": "unitPrice",
+                      "type": "Money",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "Money",
+                  "fields": [
+                    {
+                      "name": "amountMinor",
+                      "type": "integer (int64)",
+                      "doc": "Amount in the minor unit of the currency."
+                    },
+                    {
+                      "name": "currency",
+                      "type": "string",
+                      "doc": "ISO 4217 code"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "consumes": [],
+          "aggregates": []
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": []
+}

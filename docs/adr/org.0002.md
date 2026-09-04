@@ -57,4 +57,4 @@ are not willing to take yet.
 
 ## Relates to
 
-- **Events:** [shop.oms.basket.BasketCheckedOut](../shop/oms/aggregates/basket.md)
+- **Events:** [shop.cart.basket.BasketCheckedOut](../shop/cart/aggregates/basket.md)

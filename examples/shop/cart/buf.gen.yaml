@@ -1,0 +1,12 @@
+# The client of pricing, from the narrowed copy of its contract vendored under
+# src/infrastructure/pricing/proto. `npm run generate:pricing` regenerates the
+# output; it is committed, as every generated file here is.
+version: v2
+inputs:
+  - directory: src/infrastructure/pricing/proto
+plugins:
+  - local: protoc-gen-es
+    out: src/infrastructure/pricing/gen
+    opt:
+      - target=ts
+      - import_extension=.ts

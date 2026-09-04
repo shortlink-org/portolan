@@ -28,6 +28,22 @@ const catalog = validateCatalog(
 );
 const index = buildIndex(catalog);
 
+/**
+ * The catalog with one table's columns pointing at fields the aggregate no
+ * longer declares - the shape a schema takes after a rename that never
+ * reached the migrations, and the thing the drift warning is about.
+ */
+function drifted(): { catalog: Catalog; index: ReturnType<typeof buildIndex> } {
+  const copy = JSON.parse(JSON.stringify(rawCatalog)) as unknown as Catalog;
+  const orders = (copy.stores ?? [])
+    .find((s) => s.id === "shop.oms.pg")
+    ?.tables.find((t) => t.name === "orders");
+  if (!orders) throw new Error("fixture has no orders table");
+  for (const column of orders.columns) if (column.maps) column.maps = `Order.${column.name}Gone`;
+  const validated = validateCatalog(copy);
+  return { catalog: validated, index: buildIndex(validated) };
+}
+
 describe("type classes", () => {
   it("reads postgres spellings, parameters and all", () => {
     expect(dbClass("varchar(64)")).toBe("text");
@@ -141,9 +157,10 @@ describe("storedFields", () => {
   });
 
   it("keeps a column whose field no longer exists, with no field", () => {
-    const drifted = storedFields(catalog, index, "shop.oms.basket.basket");
-    expect(drifted.length).toBeGreaterThan(0);
-    expect(drifted.every((s) => s.field === null)).toBe(true);
+    const d = drifted();
+    const stored = storedFields(d.catalog, d.index, "shop.oms.order.order");
+    expect(stored.length).toBeGreaterThan(0);
+    expect(stored.every((s) => s.field === null)).toBe(true);
   });
 
   it("resolves a nested path against the field the block declares", () => {
@@ -185,10 +202,15 @@ describe("counts", () => {
   });
 
   it("counts the fields of an aggregate no column carries", () => {
-    const basket = index.aggregateById.get("shop.oms.basket");
-    if (!basket) throw new Error("fixture has no basket");
-    // Every field, because the basket's columns all point at names it no
-    // longer declares — which is exactly what the drift warning is about.
-    expect(unmappedFields(catalog, index, basket)).toBeGreaterThan(0);
+    const order = index.aggregateById.get("shop.oms.order");
+    if (!order) throw new Error("fixture has no order");
+    const d = drifted();
+    const drift = d.index.aggregateById.get("shop.oms.order");
+    if (!drift) throw new Error("drifted fixture has no order");
+    // More once the columns point at names the aggregate no longer declares:
+    // that gap is exactly what the drift warning counts.
+    expect(unmappedFields(d.catalog, d.index, drift)).toBeGreaterThan(
+      unmappedFields(catalog, index, order),
+    );
   });
 });

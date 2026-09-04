@@ -1,0 +1,14 @@
+{
+  "ts-domain": [
+    "domain.json"
+  ],
+  "openapi": [
+    "api.json"
+  ],
+  "sql": [
+    "stores.json"
+  ],
+  "otel": [
+    "observed.json"
+  ]
+}

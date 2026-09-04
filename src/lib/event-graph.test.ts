@@ -18,10 +18,12 @@ describe("eventGraph", () => {
     expect(sample.services.filter((s) => !s.ghost).map((s) => s.id)).toEqual([
       "shop.oms",
       "shop.pricing",
+      // Merge order is source path order, so what the examples publish comes
+      // after the hand-written estate: cart joins shop after its two hand-
+      // written services, and auth's context comes last.
+      "shop.cart",
       "payments.ledger",
       "delivery.core",
-      // Merge order is source path order, so what examples/auth publishes
-      // comes after the hand-written estate.
       "auth.auth",
     ]);
     expect(sample.events.map((e) => e.name)).toContain("PaymentCaptured");

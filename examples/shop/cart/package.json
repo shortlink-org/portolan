@@ -1,0 +1,50 @@
+{
+  "name": "cart",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Shopping Cart — service `cart` of bounded context `shop`",
+  "type": "module",
+  "repository": "git+https://github.com/shortlink-org/portolan.git",
+  "engines": {
+    "node": ">=26"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && mkdir -p dist/infrastructure/repository/basket && cp -R src/infrastructure/repository/basket/migrations dist/infrastructure/repository/basket/",
+    "start": "node dist/main.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "generate": "npm run generate:api && npm run generate:auth && npm run generate:pricing",
+    "generate:api": "openapi-typescript src/infrastructure/transport/http/gen/openapi.yaml -o src/infrastructure/transport/http/gen/types.ts",
+    "generate:auth": "openapi-typescript src/infrastructure/auth/gen/openapi.yaml -o src/infrastructure/auth/gen/types.ts",
+    "generate:pricing": "buf generate"
+  },
+  "dependencies": {
+    "@bufbuild/protobuf": "^2.14.1",
+    "@connectrpc/connect": "^2.1.2",
+    "@connectrpc/connect-node": "^2.1.2",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/exporter-trace-otlp-grpc": "^0.222.0",
+    "@opentelemetry/instrumentation-http": "^0.222.0",
+    "@opentelemetry/instrumentation-pg": "^0.74.0",
+    "@opentelemetry/instrumentation-undici": "^0.22.0",
+    "@opentelemetry/resources": "^2.0.0",
+    "@opentelemetry/sdk-node": "^0.222.0",
+    "@opentelemetry/sdk-trace-base": "^2.0.0",
+    "fastify": "6.0.0-alpha.3",
+    "inversify": "^8.2.3",
+    "openapi-fetch": "^0.17.0",
+    "pg": "^8.23.0",
+    "reflect-metadata": "^0.2.2",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@bufbuild/buf": "^1.72.0",
+    "@bufbuild/protoc-gen-es": "^2.14.1",
+    "@testcontainers/postgresql": "^12.1.0",
+    "@types/node": "^26.0.0",
+    "@types/pg": "^8.15.0",
+    "openapi-typescript": "^7.13.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.11"
+  }
+}

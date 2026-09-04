@@ -65,19 +65,6 @@ Events committed with the state change that produced them.
 | --- | --- | --- |
 | `outbox_unpublished_idx` | published_at | index |
 
-### baskets
-
-aggregate-root · persists [shop.oms.basket](../aggregates/basket.md)
-
-Pre-checkout state. Renamed from carts; the column names have not caught up.
-
-| Column | Type | Null | Key | Maps |
-| --- | --- | --- | --- | --- |
-| `id` | `uuid` | not null | PK | Basket.cartId |
-| `cart_token` | `text` | not null | — | Basket.token |
-| `customer_id` | `uuid` | null | — | — |
-| `touched_at` | `timestamptz` | not null | — | Basket.touchedAt |
-
 ### price_snapshots
 
 persists [shop.pricing.quote](../../pricing/aggregates/quote.md)
