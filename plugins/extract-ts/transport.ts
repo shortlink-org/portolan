@@ -1,10 +1,14 @@
-// Endpoints, read off src/infrastructure/transport/http: the document's
-// operationIds name the handlers, and a handler's body names the use cases
-// it runs, in order.
+// Endpoints, read off src/infrastructure/transport.
+//
+// Over HTTP the document's operationIds name the handlers; over gRPC the
+// contract vendored beside the handler does, and an rpc is named the same on
+// both sides - `planRoute` answers `PlanRoute`. Either way a handler's body
+// names the use cases it runs, in order, and that is what opens a flow.
 
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { readSpec, type Spec } from "./openapi.ts";
+import { readProtos } from "./clients.ts";
 import { readSource, type ClassInfo, type Source, at } from "./source.ts";
 import { isCall, isMember, memberName, thisMember, walk, type Node } from "./ast.ts";
 import { useCaseKeyOf } from "./operations.ts";
@@ -23,6 +27,61 @@ export interface Endpoint {
 export interface Transport {
   spec: Spec | undefined;
   endpoints: Endpoint[];
+}
+
+/**
+ * The gRPC half: one directory per aggregate, the contract it answers vendored
+ * under it, and a handler whose methods are that contract's rpcs. The endpoint
+ * is called what the proto calls it, which is the name `extract-proto` puts in
+ * `provides`, so an operation and the interface that exposes it meet.
+ */
+export function readGrpcTransport(grpcDir: string, rel: (abs: string) => string, b: Diagnostics): Endpoint[] {
+  if (!existsSync(grpcDir)) return [];
+  const endpoints: Endpoint[] = [];
+
+  for (const pkg of readdirSync(grpcDir).sort()) {
+    const dir = join(grpcDir, pkg);
+    if (!statSync(dir).isDirectory()) continue;
+
+    const contracts = readProtos(join(dir, "proto"), rel);
+    if (contracts.length === 0) {
+      b.warn(rel(dir), "a grpc handler with no contract vendored beside it: nothing says which rpc its methods answer");
+      continue;
+    }
+    const rpcs = new Map<string, string>();
+    for (const contract of contracts) {
+      for (const rpc of contract.rpcs) rpcs.set(rpc.toLowerCase(), rpc);
+    }
+    const answered = new Set<string>();
+
+    for (const name of readdirSync(dir).sort()) {
+      if (!name.endsWith(".ts") || name.endsWith(".test.ts")) continue;
+      const src = readSource(join(dir, name));
+      if (!src) continue;
+      for (const cls of src.classes) {
+        const ports = useCasePorts(src, cls);
+        for (const [method, m] of cls.methods) {
+          const rpc = rpcs.get(method.toLowerCase());
+          if (!rpc || answered.has(rpc)) continue;
+          answered.add(rpc);
+          endpoints.push({
+            id: rpc,
+            line: at(src, m.node, rel),
+            source: rel(src.path),
+            useCases: useCasesRun(m.node, ports),
+          });
+        }
+      }
+    }
+
+    for (const [, rpc] of rpcs) {
+      if (!answered.has(rpc)) {
+        b.warn(rel(dir), rpc + " is declared by the contract and answered by no method here");
+      }
+    }
+  }
+
+  return endpoints.sort((a, c) => a.id.localeCompare(c.id));
 }
 
 export function readTransport(httpDir: string, rel: (abs: string) => string, b: Diagnostics): Transport {

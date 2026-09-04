@@ -28,7 +28,7 @@ export interface RpcHop {
 
 const HTTP_VERBS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]);
 
-interface ProtoService {
+export interface ProtoService {
   pkg: string;
   name: string;
   rpcs: string[];
@@ -96,7 +96,7 @@ function specBeside(dir: string): string | undefined {
 }
 
 /** A minimal reading of .proto files: package, services, rpcs. */
-function readProtos(dir: string, rel: (abs: string) => string): ProtoService[] {
+export function readProtos(dir: string, rel: (abs: string) => string): ProtoService[] {
   if (!existsSync(dir)) return [];
   const out: ProtoService[] = [];
   const walk = (d: string): void => {

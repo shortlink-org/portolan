@@ -8,7 +8,7 @@ import type { Catalog, Service } from "../../src/catalog.ts";
 import { readAggregates, type Diagnostics } from "./domain.ts";
 import { operationOf, readUseCases } from "./operations.ts";
 import { readBindings } from "./wiring.ts";
-import { readTransport } from "./transport.ts";
+import { readGrpcTransport, readTransport } from "./transport.ts";
 import { FlowReader } from "./flows.ts";
 import { serviceID, title } from "./ids.ts";
 
@@ -67,6 +67,9 @@ export function extract(input: Input, opts: Options, cwd = process.cwd()): Respo
   const useCases = readUseCases(join(src, "application"), rel, b);
   const bindings = readBindings(join(src, "di"));
   const transport = readTransport(join(src, "infrastructure", "transport", "http"), rel, b);
+  // A service may answer over both, and a service that answers over neither is
+  // read the same way with nothing to show for it.
+  transport.endpoints.push(...readGrpcTransport(join(src, "infrastructure", "transport", "grpc"), rel, b));
 
   // Operations belong to the aggregate their use case sits under.
   const exposedBy = new Map<string, string[]>();
