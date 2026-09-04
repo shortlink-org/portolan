@@ -1,11 +1,12 @@
-// Bindings, read off src/di/providers: which use case or which adapter fills
-// a port a use case declares for itself. A use case states its need as an
-// interface of its own so that it does not import what satisfies it; the
-// binding therefore exists in assembly, as a function whose return type is
-// the port and whose body says what it returns.
+// Bindings, read off src/di: which use case or which adapter fills a port a
+// use case declares for itself. A use case states its need as an interface
+// of its own so that it does not import what satisfies it; the binding
+// therefore exists in assembly - as a provider function whose return type is
+// the port and whose body says what it returns, or as an Inversify
+// container's `bind<Port>(token).to(Impl)` - and both are read here.
 
 import type * as TSNS from "ts-api";
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { readSource, ts, type Source } from "./source.ts";
 import { useCaseKeyOf } from "./operations.ts";
@@ -21,19 +22,105 @@ export interface Binding {
   source: string;
 }
 
-export function readBindings(providersDir: string): Map<string, Binding> {
+/**
+ * Every binding under src/di, whichever way it is written: a provider
+ * function whose return type is the port, or an Inversify container's
+ * `bind<Port>(token).to(Impl)`. Both say the same thing - this port, filled
+ * by that - and both are read into the same map.
+ */
+export function readBindings(diDir: string): Map<string, Binding> {
   const out = new Map<string, Binding>();
-  if (!existsSync(providersDir)) return out;
-  for (const name of readdirSync(providersDir).sort()) {
-    if (!name.endsWith(".ts") || name.endsWith(".test.ts")) continue;
-    const src = readSource(join(providersDir, name));
-    if (!src) continue;
-    for (const fn of src.functions.values()) {
-      const binding = bindingOf(src, fn);
-      if (binding) out.set(binding.port, binding);
+  if (!existsSync(diDir)) return out;
+  const walk = (dir: string): void => {
+    for (const name of readdirSync(dir).sort()) {
+      const path = join(dir, name);
+      if (statSync(path).isDirectory()) {
+        walk(path);
+        continue;
+      }
+      if (!name.endsWith(".ts") || name.endsWith(".test.ts")) continue;
+      const src = readSource(path);
+      if (!src) continue;
+      for (const fn of src.functions.values()) {
+        const binding = bindingOf(src, fn);
+        if (binding) out.set(binding.port, binding);
+      }
+      for (const binding of containerBindings(src)) out.set(binding.port, binding);
     }
-  }
+  };
+  walk(diDir);
   return out;
+}
+
+/**
+ * `container.bind<Sessions>(TOKENS.Sessions).to(AuthSessions)`: the type
+ * argument names the port, the import of that type says which use case
+ * declares it, and `.to(...)` says what fills it - a use case or an adapter.
+ * `.toSelf()` and `.toDynamicValue(...)` bind a class to itself or to a
+ * factory, which is a binding of a different kind and not one that pairs a
+ * port with a service; those are left alone.
+ */
+function containerBindings(src: Source): Binding[] {
+  const out: Binding[] = [];
+  const visit = (node: TSNS.Node): void => {
+    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "to") {
+      const target = node.arguments[0];
+      const bindCall = bindOf(node.expression.expression);
+      if (bindCall && target && ts.isIdentifier(target)) {
+        const binding = containerBinding(src, bindCall, target.text);
+        if (binding) out.push(binding);
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(src.sf);
+  return out;
+}
+
+/** Walks back along a chain - `.inSingletonScope()`, `.whenTargetNamed(...)` - to the `bind(...)` call. */
+function bindOf(expr: TSNS.Expression): TSNS.CallExpression | undefined {
+  let e: TSNS.Expression = expr;
+  for (let i = 0; i < 8; i++) {
+    if (ts.isCallExpression(e) && ts.isPropertyAccessExpression(e.expression)) {
+      if (e.expression.name.text === "bind") return e;
+      e = e.expression.expression;
+      continue;
+    }
+    if (ts.isPropertyAccessExpression(e)) {
+      e = e.expression;
+      continue;
+    }
+    return undefined;
+  }
+  return undefined;
+}
+
+function containerBinding(src: Source, bind: TSNS.CallExpression, implName: string): Binding | undefined {
+  // The port: the type argument of bind<Port>(...), or the token's last name.
+  let portName: string | undefined;
+  const typeArg = bind.typeArguments?.[0];
+  if (typeArg && ts.isTypeReferenceNode(typeArg) && ts.isIdentifier(typeArg.typeName)) portName = typeArg.typeName.text;
+  if (!portName) {
+    const token = bind.arguments[0];
+    if (token && ts.isPropertyAccessExpression(token)) portName = token.name.text;
+    else if (token && ts.isIdentifier(token)) portName = token.text;
+  }
+  if (!portName) return undefined;
+  const portImport = src.imports.find((i) => i.local === portName);
+  if (!portImport?.file) return undefined;
+  const key = useCaseKeyOf(portImport.file);
+  if (!key) return undefined;
+  const port = `${key}.${portImport.imported}`;
+
+  const impl = src.imports.find((i) => i.local === implName);
+  if (impl?.file && impl.imported === "UseCase") {
+    const target = useCaseKeyOf(impl.file);
+    if (target) return { port, useCase: target, source: src.path };
+  }
+  if (impl?.file) return { port, adapter: { file: impl.file, cls: impl.imported }, source: src.path };
+  const local = src.classes.find((c) => c.name === implName);
+  if (local) return { port, adapter: { file: src.path, cls: local.name }, source: src.path };
+  return undefined;
 }
 
 function bindingOf(src: Source, fn: TSNS.FunctionDeclaration): Binding | undefined {

@@ -345,7 +345,7 @@
           "label": "validateSession",
           "status": "declared",
           "ref": "auth.v1.Sessions/validateSession",
-          "line": "plugins/extract-ts/testdata/cart/src/application/basket/usecases/checkout/usecase.ts:27"
+          "line": "plugins/extract-ts/testdata/cart/src/application/basket/usecases/checkout/usecase.ts:30"
         },
         {
           "type": "step",
@@ -355,7 +355,7 @@
           "kind": "call",
           "label": "byId",
           "status": "declared",
-          "line": "plugins/extract-ts/testdata/cart/src/application/basket/usecases/checkout/usecase.ts:31"
+          "line": "plugins/extract-ts/testdata/cart/src/application/basket/usecases/checkout/usecase.ts:34"
         },
         {
           "type": "step",
@@ -366,7 +366,7 @@
           "label": "GetQuote",
           "status": "declared",
           "ref": "shop.v1.Pricing/GetQuote",
-          "line": "plugins/extract-ts/testdata/cart/src/application/basket/usecases/checkout/usecase.ts:35"
+          "line": "plugins/extract-ts/testdata/cart/src/application/basket/usecases/checkout/usecase.ts:38"
         },
         {
           "type": "step",
@@ -376,7 +376,7 @@
           "kind": "call",
           "label": "save",
           "status": "declared",
-          "line": "plugins/extract-ts/testdata/cart/src/application/basket/usecases/checkout/usecase.ts:37"
+          "line": "plugins/extract-ts/testdata/cart/src/application/basket/usecases/checkout/usecase.ts:40"
         },
         {
           "type": "step",
@@ -387,7 +387,7 @@
           "label": "BasketCheckedOut",
           "status": "declared",
           "ref": "shop.cart.basket.BasketCheckedOut",
-          "line": "plugins/extract-ts/testdata/cart/src/application/basket/usecases/checkout/usecase.ts:37"
+          "line": "plugins/extract-ts/testdata/cart/src/application/basket/usecases/checkout/usecase.ts:40"
         }
       ]
     },

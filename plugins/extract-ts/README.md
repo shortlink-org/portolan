@@ -40,7 +40,9 @@ src/
     client.ts             the adapter over the generated client, implementing a use case's port
   infrastructure/repository/<aggregate>/
     migrations/*.sql      read by extract-sql, with `repositories` pointed at the directory above
-  di/providers/*.ts       `export function provideX(deps): Port` - which adapter or use case fills a port
+  di/**/*.ts              which adapter or use case fills a port: `export function provideX(deps): Port`,
+                          or an Inversify container's `bind<Port>(TOKENS.X).to(Impl)`; a use case's
+                          constructor may carry `@inject(TOKENS.X)`, the type beside it is still the port
 ```
 
 ## What becomes what
@@ -76,8 +78,8 @@ class. What it is decides what a call on it becomes:
 | --- | --- |
 | an interface from `domain/<aggregate>/port.ts` | a `call` into the store lane, named by the method; an argument that holds an event is the event leaving for the bus |
 | another `UseCase` | a `call` to the service itself, and that use case's own steps, inlined two deep at most |
-| an interface bound in `di/providers` to a use case | the same |
-| an interface bound in `di/providers` to an adapter over a generated client | an `rpc` to the peer, read through the adapter's method to the client's call |
+| an interface bound in `di/` to a use case | the same |
+| an interface bound in `di/` to an adapter over a generated client | an `rpc` to the peer, read through the adapter's method to the client's call |
 | the generated client itself | an `rpc` to the peer |
 | a function type, `() => Date` | nothing: a clock is a port with nobody at the other end |
 

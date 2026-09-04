@@ -65,7 +65,7 @@ export function extract(input: Input, opts: Options, cwd = process.cwd()): Respo
 
   const aggregates = readAggregates(join(src, "domain"), svcID, rel, b);
   const useCases = readUseCases(join(src, "application"), rel, b);
-  const bindings = readBindings(join(src, "di", "providers"));
+  const bindings = readBindings(join(src, "di"));
   const transport = readTransport(join(src, "infrastructure", "transport", "http"), rel, b);
 
   // Operations belong to the aggregate their use case sits under.

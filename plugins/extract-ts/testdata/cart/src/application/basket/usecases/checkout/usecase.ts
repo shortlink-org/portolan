@@ -1,5 +1,7 @@
+import { inject, injectable } from "inversify";
 import type { BasketRepository } from "../../../../domain/basket/port.ts";
 import type { Money } from "../../../../domain/basket/vo/money.ts";
+import { TOKENS } from "../../../../di/tokens.ts";
 
 /** Somebody who can say whether a bearer token is a live session. */
 export interface Sessions {
@@ -16,11 +18,12 @@ export interface Input {
   token: string;
 }
 
+@injectable()
 export class UseCase {
   constructor(
-    private readonly repo: BasketRepository,
-    private readonly sessions: Sessions,
-    private readonly pricing: Pricing,
+    @inject(TOKENS.BasketRepository) private readonly repo: BasketRepository,
+    @inject(TOKENS.Sessions) private readonly sessions: Sessions,
+    @inject(TOKENS.Pricing) private readonly pricing: Pricing,
   ) {}
 
   async handle(input: Input): Promise<{ quoteId: string }> {
