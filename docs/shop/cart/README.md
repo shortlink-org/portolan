@@ -39,6 +39,7 @@ opaque id `auth` vouched for.
 - [cart.0005](docs/adr/0005-a-merge-moves-every-line-or-none.md) — A merge moves every line or none
 - [cart.0006](docs/adr/0006-abandonment-is-a-sweep-that-publishes.md) — Abandonment is a sweep inside the service, and it publishes
 - [cart.0007](docs/adr/0007-an-anonymous-basket-is-owned-by-its-token.md) — An anonymous basket is owned by whoever holds its token
+- [cart.0008](docs/adr/0008-events-leave-over-nats-jetstream.md) — Events leave the service over NATS JetStream, and the outbox stays
 
 ## Running it
 
@@ -48,9 +49,10 @@ npm start
 ```
 
 `AUTH_URL` and `PRICING_ADDR` point checkout at running peers; without them
-every session is live and the quote is the sum of the lines. `TRACER_URI`
-switches tracing on. `npm test` runs everything; without Docker the tests that
-need Postgres are skipped.
+every session is live and the quote is the sum of the lines. `NATS_URL` is
+where events leave the service; without it the bus is in process and nothing
+does. `TRACER_URI` switches tracing on. `npm test` runs everything; without
+Docker the tests that need Postgres or NATS are skipped.
 
 ## Aggregates
 
@@ -160,11 +162,11 @@ need Postgres are skipped.
 | Event | Latest | Consumers |
 | --- | --- | --- |
 | [BasketAbandoned](aggregates/basket.md) | v1 | — |
-| [BasketCheckedOut](aggregates/basket.md) | v1 | [shop.cart](README.md), [shop.pricing (declared)](../pricing/README.md) |
-| [BasketCreated](aggregates/basket.md) | v1 | [shop.cart](README.md) |
-| [BasketItemAdded](aggregates/basket.md) | v1 | [shop.cart](README.md) |
-| [BasketItemRemoved](aggregates/basket.md) | v1 | [shop.cart](README.md) |
-| [BasketMerged](aggregates/basket.md) | v1 | [shop.cart](README.md) |
+| [BasketCheckedOut](aggregates/basket.md) | v1 | [shop.pricing (declared)](../pricing/README.md) |
+| [BasketCreated](aggregates/basket.md) | v1 | — |
+| [BasketItemAdded](aggregates/basket.md) | v1 | — |
+| [BasketItemRemoved](aggregates/basket.md) | v1 | — |
+| [BasketMerged](aggregates/basket.md) | v1 | — |
 
 ## Stores
 

@@ -6,12 +6,14 @@ set -eu
 cd "$(dirname "$0")/.."
 
 rm -f telemetry/out/traces.jsonl
-docker compose up -d postgres otel-collector
+docker compose up -d postgres nats otel-collector
 docker compose restart otel-collector >/dev/null
 until docker compose ps --format '{{.Status}}' postgres | grep -q healthy; do sleep 1; done
+until docker compose ps --format '{{.Status}}' nats | grep -q healthy; do sleep 1; done
 
 export STORE_POSTGRES_URI='postgres://cart:cart@localhost:5433/cart'
 export TRACER_URI=http://localhost:4327 SERVICE_NAME=cart PORT=8081
+export NATS_URL=nats://localhost:4222
 export AUTH_URL="${AUTH_URL:-http://localhost:8080}"
 
 npm run build >/dev/null

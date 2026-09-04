@@ -16,6 +16,22 @@ services:
       timeout: 3s
       retries: 30
 
+  # Where events leave the service (ADR cart.0008). Optional the way the
+  # collector is: without NATS_URL the bus is in process and this is never
+  # opened. One server on 4222 for the whole estate; oms's compose names the
+  # same port, and whichever service came up first is the one both talk to.
+  nats:
+    image: nats:2.12-alpine
+    command: ["-js", "-m", "8222"]
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8222/healthz"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.126.0
     command: ["--config=/etc/otelcol/config.yaml"]

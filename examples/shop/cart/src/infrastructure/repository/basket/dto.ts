@@ -1,11 +1,12 @@
 // The wire form of the basket's events: what goes into the outbox row's
-// payload. One topic per aggregate, underscored (a topic is a value in a
-// column here and has been a table name elsewhere), and the event's name on
-// the message, so subscribers dispatch on it.
+// payload. One topic per aggregate, dotted the way a NATS subject is, because
+// the topic in the row is the subject on the wire and one name is enough
+// (ADR cart.0008); and the event's name on the message, so subscribers
+// dispatch on it.
 import type { BasketEvent } from "../../../domain/basket/events/index.ts";
 import { Money } from "../../../domain/basket/vo/money.ts";
 
-export const TOPIC = "cart_basket";
+export const TOPIC = "shop.cart.basket";
 
 function money(m: Money): { amountMinor: number; currency: string } {
   return { amountMinor: m.amountMinor, currency: m.currency.code };

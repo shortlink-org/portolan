@@ -14,7 +14,7 @@
           "name": "Shopping Cart",
           "repo": "github.com/shortlink-org/portolan",
           "path": "examples/shop/cart",
-          "readme": "# Shopping Cart\n\nService `cart` — bounded context **shop**. TypeScript on Node.js.\n\nOwns the basket: the one mutable thing between a customer arriving and an\norder existing. A basket belongs to a visitor's token or to a signed-in\ncustomer, changes as items go in and out, and stops changing the moment it is\nchecked out — from then on the order is somebody else's aggregate and the\nbasket is a record of what was bought.\n\n## What it does\n\n- Creates a basket for a visitor and lets items go in and out of it.\n- Merges a visitor's basket into a customer's after login.\n- Checks out: confirms the session with `auth`, takes a quote from `pricing`,\n  freezes the basket and says so with `BasketCheckedOut`.\n- Abandons baskets nobody has touched for a day, and says so.\n\n## What it does not do\n\nDoes not place the order, charge anything or reserve stock: `BasketCheckedOut`\nis where its job ends. Does not hold a catalogue - a SKU is a string it was\ngiven, with the price it was given. Does not know who a customer is beyond an\nopaque id `auth` vouched for.\n\n## Decisions\n\n- [cart.0001](docs/adr/0001-typescript-on-node.md) — TypeScript on Node.js, and the stack around it\n- [cart.0002](docs/adr/0002-currency-frozen-at-the-first-item.md) — A basket freezes its currency at the first item\n- [cart.0003](docs/adr/0003-prices-captured-never-recomputed.md) — Line prices are captured when added, never recomputed\n- [cart.0004](docs/adr/0004-checkout-confirms-with-auth-and-pricing.md) — Checkout confirms the session with `auth` and the total with `pricing`\n- [cart.0005](docs/adr/0005-a-merge-moves-every-line-or-none.md) — A merge moves every line or none\n- [cart.0006](docs/adr/0006-abandonment-is-a-sweep-that-publishes.md) — Abandonment is a sweep inside the service, and it publishes\n- [cart.0007](docs/adr/0007-an-anonymous-basket-is-owned-by-its-token.md) — An anonymous basket is owned by whoever holds its token\n\n## Running it\n\n```bash\ndocker compose up -d\nnpm start\n```\n\n`AUTH_URL` and `PRICING_ADDR` point checkout at running peers; without them\nevery session is live and the quote is the sum of the lines. `TRACER_URI`\nswitches tracing on. `npm test` runs everything; without Docker the tests that\nneed Postgres are skipped.",
+          "readme": "# Shopping Cart\n\nService `cart` — bounded context **shop**. TypeScript on Node.js.\n\nOwns the basket: the one mutable thing between a customer arriving and an\norder existing. A basket belongs to a visitor's token or to a signed-in\ncustomer, changes as items go in and out, and stops changing the moment it is\nchecked out — from then on the order is somebody else's aggregate and the\nbasket is a record of what was bought.\n\n## What it does\n\n- Creates a basket for a visitor and lets items go in and out of it.\n- Merges a visitor's basket into a customer's after login.\n- Checks out: confirms the session with `auth`, takes a quote from `pricing`,\n  freezes the basket and says so with `BasketCheckedOut`.\n- Abandons baskets nobody has touched for a day, and says so.\n\n## What it does not do\n\nDoes not place the order, charge anything or reserve stock: `BasketCheckedOut`\nis where its job ends. Does not hold a catalogue - a SKU is a string it was\ngiven, with the price it was given. Does not know who a customer is beyond an\nopaque id `auth` vouched for.\n\n## Decisions\n\n- [cart.0001](docs/adr/0001-typescript-on-node.md) — TypeScript on Node.js, and the stack around it\n- [cart.0002](docs/adr/0002-currency-frozen-at-the-first-item.md) — A basket freezes its currency at the first item\n- [cart.0003](docs/adr/0003-prices-captured-never-recomputed.md) — Line prices are captured when added, never recomputed\n- [cart.0004](docs/adr/0004-checkout-confirms-with-auth-and-pricing.md) — Checkout confirms the session with `auth` and the total with `pricing`\n- [cart.0005](docs/adr/0005-a-merge-moves-every-line-or-none.md) — A merge moves every line or none\n- [cart.0006](docs/adr/0006-abandonment-is-a-sweep-that-publishes.md) — Abandonment is a sweep inside the service, and it publishes\n- [cart.0007](docs/adr/0007-an-anonymous-basket-is-owned-by-its-token.md) — An anonymous basket is owned by whoever holds its token\n- [cart.0008](docs/adr/0008-events-leave-over-nats-jetstream.md) — Events leave the service over NATS JetStream, and the outbox stays\n\n## Running it\n\n```bash\ndocker compose up -d\nnpm start\n```\n\n`AUTH_URL` and `PRICING_ADDR` point checkout at running peers; without them\nevery session is live and the quote is the sum of the lines. `NATS_URL` is\nwhere events leave the service; without it the bus is in process and nothing\ndoes. `TRACER_URI` switches tracing on. `npm test` runs everything; without\nDocker the tests that need Postgres or NATS are skipped.",
           "provides": [],
           "consumes": [
             {
@@ -271,7 +271,7 @@
                   "consumers": [],
                   "wire": {
                     "name": "cart.BasketAbandoned",
-                    "channel": "cart_basket"
+                    "channel": "shop.cart.basket"
                   }
                 },
                 {
@@ -320,7 +320,7 @@
                   "consumers": [],
                   "wire": {
                     "name": "cart.BasketCheckedOut",
-                    "channel": "cart_basket"
+                    "channel": "shop.cart.basket"
                   }
                 },
                 {
@@ -354,7 +354,7 @@
                   "consumers": [],
                   "wire": {
                     "name": "cart.BasketCreated",
-                    "channel": "cart_basket"
+                    "channel": "shop.cart.basket"
                   }
                 },
                 {
@@ -398,7 +398,7 @@
                   "consumers": [],
                   "wire": {
                     "name": "cart.BasketItemAdded",
-                    "channel": "cart_basket"
+                    "channel": "shop.cart.basket"
                   }
                 },
                 {
@@ -432,7 +432,7 @@
                   "consumers": [],
                   "wire": {
                     "name": "cart.BasketItemRemoved",
-                    "channel": "cart_basket"
+                    "channel": "shop.cart.basket"
                   }
                 },
                 {
@@ -471,7 +471,7 @@
                   "consumers": [],
                   "wire": {
                     "name": "cart.BasketMerged",
-                    "channel": "cart_basket"
+                    "channel": "shop.cart.basket"
                   }
                 }
               ],

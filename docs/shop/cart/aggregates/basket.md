@@ -132,7 +132,7 @@ stateDiagram-v2
 
 `shop.cart.basket.BasketAbandoned`
 
-On the wire as `cart.BasketAbandoned`, on `cart_basket`.
+On the wire as `cart.BasketAbandoned`, on `shop.cart.basket`.
 
 #### v1 — current
 
@@ -151,12 +151,11 @@ Source: `examples/shop/cart/src/domain/basket/events/basket-abandoned.ts`
 
 `shop.cart.basket.BasketCheckedOut`
 
-On the wire as `cart.BasketCheckedOut`, on `cart_basket`.
+On the wire as `cart.BasketCheckedOut`, on `shop.cart.basket`.
 
-| Consumer | Status | Note |
-| --- | --- | --- |
-| [shop.cart](../README.md) | verified | Seen consuming it in telemetry/traces.jsonl. |
-| [shop.pricing](../../pricing/README.md) | declared | — |
+| Consumer | Status |
+| --- | --- |
+| [shop.pricing](../../pricing/README.md) | declared |
 
 #### v1 — current
 
@@ -178,11 +177,7 @@ Source: `examples/shop/cart/src/domain/basket/events/basket-checked-out.ts`
 
 `shop.cart.basket.BasketCreated`
 
-On the wire as `cart.BasketCreated`, on `cart_basket`.
-
-| Consumer | Status | Note |
-| --- | --- | --- |
-| [shop.cart](../README.md) | verified | Seen consuming it in telemetry/traces.jsonl. |
+On the wire as `cart.BasketCreated`, on `shop.cart.basket`.
 
 #### v1 — current
 
@@ -200,11 +195,7 @@ Source: `examples/shop/cart/src/domain/basket/events/basket-created.ts`
 
 `shop.cart.basket.BasketItemAdded`
 
-On the wire as `cart.BasketItemAdded`, on `cart_basket`.
-
-| Consumer | Status | Note |
-| --- | --- | --- |
-| [shop.cart](../README.md) | verified | Seen consuming it in telemetry/traces.jsonl. |
+On the wire as `cart.BasketItemAdded`, on `shop.cart.basket`.
 
 #### v1 — current
 
@@ -224,11 +215,7 @@ Source: `examples/shop/cart/src/domain/basket/events/basket-item-added.ts`
 
 `shop.cart.basket.BasketItemRemoved`
 
-On the wire as `cart.BasketItemRemoved`, on `cart_basket`.
-
-| Consumer | Status | Note |
-| --- | --- | --- |
-| [shop.cart](../README.md) | verified | Seen consuming it in telemetry/traces.jsonl. |
+On the wire as `cart.BasketItemRemoved`, on `shop.cart.basket`.
 
 #### v1 — current
 
@@ -246,11 +233,7 @@ Source: `examples/shop/cart/src/domain/basket/events/basket-item-removed.ts`
 
 `shop.cart.basket.BasketMerged`
 
-On the wire as `cart.BasketMerged`, on `cart_basket`.
-
-| Consumer | Status | Note |
-| --- | --- | --- |
-| [shop.cart](../README.md) | verified | Seen consuming it in telemetry/traces.jsonl. |
+On the wire as `cart.BasketMerged`, on `shop.cart.basket`.
 
 #### v1 — current
 

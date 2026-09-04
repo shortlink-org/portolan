@@ -22,6 +22,8 @@
     "@bufbuild/protobuf": "^2.14.1",
     "@connectrpc/connect": "^2.1.2",
     "@connectrpc/connect-node": "^2.1.2",
+    "@nats-io/jetstream": "^3.4.0",
+    "@nats-io/transport-node": "^3.4.0",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/exporter-trace-otlp-grpc": "^0.222.0",
     "@opentelemetry/instrumentation-http": "^0.222.0",
@@ -44,6 +46,7 @@
     "@types/node": "^26.0.0",
     "@types/pg": "^8.15.0",
     "openapi-typescript": "^7.13.0",
+    "testcontainers": "^12.1.0",
     "typescript": "^5.9.3",
     "vitest": "^4.1.11"
   }

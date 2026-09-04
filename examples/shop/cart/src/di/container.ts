@@ -17,7 +17,8 @@ import { AuthSessions, PermissiveSessions } from "../infrastructure/auth/client.
 import { PermissivePricing, PricingClient } from "../infrastructure/pricing/client.ts";
 import { PostgresBaskets } from "../infrastructure/repository/basket/postgres.ts";
 import { BasketHandlers } from "../infrastructure/transport/http/basket/handlers.ts";
-import { Bus } from "../pkg/messaging/bus.ts";
+import { type Bus, InProcBus } from "../pkg/messaging/bus.ts";
+import { NatsBus } from "../pkg/messaging/nats.ts";
 import { TOKENS, type NewId, type NewToken, type Now } from "./tokens.ts";
 
 export interface Settings {
@@ -26,18 +27,27 @@ export interface Settings {
   authUrl?: string | undefined;
   /** Where pricing is; unset, the quote is the sum of the lines. */
   pricingAddr?: string | undefined;
+  /** Where NATS is; unset, the bus is in process and no event leaves the service (cart.0008). */
+  natsUrl?: string | undefined;
 }
 
 export function buildContainer(settings: Settings): Container {
   const container = new Container({ defaultScope: "Singleton" });
 
   container.bind<Pool>(TOKENS.Pool).toConstantValue(new Pool({ connectionString: settings.databaseUrl }));
-  container.bind<Bus>(TOKENS.Bus).toConstantValue(new Bus());
   container.bind<Now>(TOKENS.Now).toConstantValue(() => new Date());
   container.bind<NewId>(TOKENS.NewId).toConstantValue(() => randomUUID());
   container.bind<NewToken>(TOKENS.NewToken).toConstantValue(() => randomBytes(32).toString("base64url"));
 
   container.bind<BasketRepository>(TOKENS.BasketRepository).to(PostgresBaskets);
+
+  // The bus. Over NATS when there is one to talk to; in process otherwise,
+  // and the relay cannot tell which it was handed.
+  if (settings.natsUrl) {
+    container.bind<Bus>(TOKENS.Bus).toConstantValue(new NatsBus(settings.natsUrl, "cart"));
+  } else {
+    container.bind<Bus>(TOKENS.Bus).toConstantValue(new InProcBus());
+  }
 
   // The peers. A stand-in is assembly's choice and the use case cannot tell.
   if (settings.authUrl) {

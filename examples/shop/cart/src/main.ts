@@ -1,6 +1,8 @@
 // Runs the service. It does four things and no more: trace if told to,
 // assemble, listen, and run the relay and the sweep beside the listener until
-// told to stop.
+// told to stop. The bus is opened before listening, so a wrong NATS_URL is a
+// service that never came up rather than one that took orders it could not
+// deliver.
 import "reflect-metadata";
 import { startTracing } from "./telemetry/tracing.ts";
 
@@ -13,16 +15,18 @@ const { UseCase: ExpireIdleBaskets } = await import("./application/basket/usecas
 const { migrate } = await import("./pkg/migrate.ts");
 const { Relay } = await import("./pkg/outbox/relay.ts");
 const { TOKENS } = await import("./di/tokens.ts");
-const { Bus } = await import("./pkg/messaging/bus.ts");
+type Bus = import("./pkg/messaging/bus.ts").Bus;
 const { Pool } = await import("pg");
 
 const databaseUrl = process.env.STORE_POSTGRES_URI ?? "postgres://cart:cart@localhost:5433/cart";
-const container = buildContainer({ databaseUrl, authUrl: process.env.AUTH_URL, pricingAddr: process.env.PRICING_ADDR });
+const container = buildContainer({ databaseUrl, authUrl: process.env.AUTH_URL, pricingAddr: process.env.PRICING_ADDR, natsUrl: process.env.NATS_URL });
 const pool = container.get<InstanceType<typeof Pool>>(TOKENS.Pool);
 await migrate(pool, new URL("./infrastructure/repository/basket/migrations", import.meta.url).pathname);
 
 const app = buildServer(container.get(BasketHandlers));
-const relay = new Relay(pool, container.get<InstanceType<typeof Bus>>(TOKENS.Bus));
+const bus = container.get<Bus>(TOKENS.Bus);
+await bus.ready();
+const relay = new Relay(pool, bus);
 const sweep = container.get(ExpireIdleBaskets);
 const stopping = new AbortController();
 
@@ -43,6 +47,7 @@ const stop = async (): Promise<void> => {
   relay.stop();
   await app.close();
   await relaying;
+  await bus.close();
   await pool.end();
   await stopTracing?.();
   console.log("cart: stopped");

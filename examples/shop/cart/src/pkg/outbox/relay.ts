@@ -3,8 +3,8 @@
 // as fatal as the listener's - a service that serves but never delivers what
 // it recorded is worse than one that is plainly down.
 import type { Pool } from "pg";
-import { Bus, METADATA_EVENT_NAME, type Message } from "../messaging/bus.ts";
-import { startConsume } from "../messaging/tracing.ts";
+import { type Bus, eventNameOf, type Message } from "../messaging/bus.ts";
+import { startRelay } from "../messaging/tracing.ts";
 
 const POLL_MS = 200;
 const BATCH = 50;
@@ -33,8 +33,10 @@ export class Relay {
       [BATCH],
     );
     for (const row of rows.rows) {
-      const message: Message = { uuid: row.uuid, topic: row.topic, payload: row.payload, metadata: row.metadata };
-      const span = startConsume(row.topic, row.metadata[METADATA_EVENT_NAME] ?? row.topic, row.metadata);
+      // A copy of the metadata: the span moves the trace context on to itself
+      // for whoever reads the message, and the row keeps what was written.
+      const message: Message = { uuid: row.uuid, topic: row.topic, payload: row.payload, metadata: { ...row.metadata } };
+      const span = startRelay(this.bus.system, message.topic, eventNameOf(message), message.metadata);
       try {
         await this.bus.publish(message);
         await this.pool.query("UPDATE outbox SET published_at = now() WHERE id = $1", [row.id]);

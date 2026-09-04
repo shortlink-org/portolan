@@ -9,3 +9,4 @@
 | [cart.0005](0005-a-merge-moves-every-line-or-none.md) | A merge moves every line or none | accepted | 2026-09-04 |
 | [cart.0006](0006-abandonment-is-a-sweep-that-publishes.md) | Abandonment is a sweep inside the service, and it publishes | accepted | 2026-09-04 |
 | [cart.0007](0007-an-anonymous-basket-is-owned-by-its-token.md) | An anonymous basket is owned by whoever holds its token | accepted | 2026-09-04 |
+| [cart.0008](0008-events-leave-over-nats-jetstream.md) | Events leave the service over NATS JetStream, and the outbox stays | accepted | 2026-09-05 |

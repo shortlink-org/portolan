@@ -40,7 +40,7 @@ describe.skipIf(!container)("PostgresBaskets", () => {
     expect(read?.version).toBe(1);
 
     const outbox = await pool.query<{ topic: string; metadata: Record<string, string> }>("SELECT topic, metadata FROM outbox ORDER BY id");
-    expect(outbox.rows.map((r) => `${r.topic}:${r.metadata.event_name}`)).toEqual(["cart_basket:cart.BasketCreated", "cart_basket:cart.BasketItemAdded"]);
+    expect(outbox.rows.map((r) => `${r.topic}:${r.metadata.event_name}`)).toEqual(["shop.cart.basket:cart.BasketCreated", "shop.cart.basket:cart.BasketItemAdded"]);
   });
 
   it("refuses a write from a stale read", async () => {
