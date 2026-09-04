@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { children, firstTokenOf, isClassDecl, isExportNamed, isMethod, jsdoc, lineOf, parse, paramIdent, stringOf, templateShape, text, typeText, unwrap, walk } from "./ast.ts";
-import type { CallExpression, ClassDeclaration, TemplateLiteral } from "./ast.ts";
+import { children, firstTokenOf, isClassDecl, isExportNamed, isMethod, isVarDecl, jsdoc, lineOf, parse, paramIdent, stringOf, templateShape, text, typeText, unwrap, walk } from "./ast.ts";
+import type { CallExpression, ClassDeclaration, Literal, TemplateLiteral } from "./ast.ts";
 
 const SRC = `import { inject } from "inversify";
 /** Class doc.
@@ -54,9 +54,8 @@ describe("the adapter", () => {
   it("unwraps await, parentheses, as and ! down to the call", () => {
     const calls: CallExpression[] = [];
     walk(cls, (n) => {
-      if (n.type === "VariableDeclaration") {
-        const init = (n as { declarations: { init: import("./ast.ts").Node }[] }).declarations[0]!.init;
-        const inner = unwrap(init);
+      if (isVarDecl(n)) {
+        const inner = unwrap(n.declarations[0]!.init!);
         if (inner.type === "CallExpression") calls.push(inner as CallExpression);
       }
     });
@@ -78,6 +77,7 @@ describe("the adapter", () => {
       if (n.type === "TemplateLiteral") route = templateShape(n as TemplateLiteral);
     });
     expect(route).toBe("/v1/users/${x}/orders");
-    expect(stringOf({ type: "Literal", value: "a", start: 0, end: 3 })).toBe("a");
+    const lit: Literal = { type: "Literal", value: "a", start: 0, end: 3 };
+    expect(stringOf(lit)).toBe("a");
   });
 });

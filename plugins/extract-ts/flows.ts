@@ -19,7 +19,7 @@ import type { Alt, AltBranch, Flow, FlowNode, Participant, RpcCall, Status, Step
 import { adapterCalls, callsIn, type RpcHop } from "./clients.ts";
 import { camel, eventID, slug } from "./ids.ts";
 import { readSource, at, bareType, text, type ClassInfo, type Source } from "./source.ts";
-import { isArrayPattern, isBinary, isBlock, isCall, isForEach, isFor, isFunctionType, isIdent, isIf, isMember, isMethodSig, isPropertySig, isReturn, isSpread, isString, isSwitch, isThis, isThrow, isTry, isVarDecl, isWhile, isAssign, keyName, memberName, paramIdent, thisMember, typeText, unwrap, walk, type CallExpression, type ForEachStatement, type IfStatement, type Node, type SwitchStatement } from "./ast.ts";
+import { isArrayPattern, isBinary, isBlock, isCall, isForEach, isFor, isFunctionType, isIdent, isIf, isMember, isMethodSig, isPropertySig, isReturn, isSpread, isString, isSwitch, isSwitchCase, isThis, isThrow, isTry, isVarDecl, isWhile, isAssign, keyName, memberName, paramIdent, thisMember, typeText, unwrap, walk, type CallExpression, type ForEachStatement, type IfStatement, type Node, type SwitchStatement } from "./ast.ts";
 import type { UseCase } from "./operations.ts";
 import type { Binding } from "./wiring.ts";
 import type { AggregateRead, Diagnostics } from "./domain.ts";
@@ -264,10 +264,7 @@ export class FlowReader {
         if (isString(lit)) found = byName(lit.value);
         return;
       }
-      if (node.type === "SwitchCase") {
-        const test = (node as { test: Node | null }).test;
-        if (isString(test)) found = byName(test.value);
-      }
+      if (isSwitchCase(node) && isString(node.test)) found = byName(node.test.value);
     });
     return found;
   }

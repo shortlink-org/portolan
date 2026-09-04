@@ -366,6 +366,7 @@ export const isThrow = (n: Node | null | undefined): boolean => n?.type === "Thr
 export const isBlock = (n: Node | null | undefined): n is BlockStatement => n?.type === "BlockStatement";
 export const isIf = (n: Node | null | undefined): n is IfStatement => n?.type === "IfStatement";
 export const isSwitch = (n: Node | null | undefined): n is SwitchStatement => n?.type === "SwitchStatement";
+export const isSwitchCase = (n: Node | null | undefined): n is SwitchCase => n?.type === "SwitchCase";
 export const isForEach = (n: Node | null | undefined): n is ForEachStatement => n?.type === "ForOfStatement" || n?.type === "ForInStatement";
 export const isFor = (n: Node | null | undefined): n is ForStatement => n?.type === "ForStatement";
 export const isWhile = (n: Node | null | undefined): n is WhileStatement => n?.type === "WhileStatement" || n?.type === "DoWhileStatement";
