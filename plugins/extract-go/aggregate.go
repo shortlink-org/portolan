@@ -71,6 +71,7 @@ func extractAggregate(root, dir, svcID string, b *plugin.Builder) (catalog.Aggre
 
 	aggregate.ValueObjects = extractValueObjects(root, dir, id, b)
 	aggregate.Events = extractEvents(root, dir, id, b)
+	aggregate.Lifecycle = readLifecycle(pkg, aggregate.Root, aggregate.Events, id, b)
 
 	return aggregate, true
 }

@@ -8,7 +8,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/shortlink-org/portolan/catalog"
@@ -207,9 +206,11 @@ func fields(st *ast.StructType) []catalog.Field {
 	return out
 }
 
-// returnedString is the string literal a one-line method returns, which is how
-// an event's name on the bus is read out of `func (E) Name() string`.
-func returnedString(fn *ast.FuncDecl) (string, bool) {
+// returnedString is the string a one-line method returns, which is how an
+// event's name on the bus is read out of `func (E) Name() string`: a literal,
+// or a constant the package declares - `return TopicAccountLocked` - since a
+// topic is routinely named once and returned by name.
+func returnedString(p *pkg, fn *ast.FuncDecl) (string, bool) {
 	if fn == nil || fn.Body == nil {
 		return "", false
 	}
@@ -219,16 +220,9 @@ func returnedString(fn *ast.FuncDecl) (string, bool) {
 		if !ok || len(ret.Results) != 1 {
 			continue
 		}
-		lit, ok := ret.Results[0].(*ast.BasicLit)
-		if !ok || lit.Kind != token.STRING {
-			continue
+		if value, ok := constString(ret.Results[0], stringConsts(p)); ok {
+			return value, true
 		}
-		value, err := strconv.Unquote(lit.Value)
-		if err != nil {
-			continue
-		}
-
-		return value, true
 	}
 
 	return "", false

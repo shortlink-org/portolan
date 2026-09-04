@@ -18,7 +18,10 @@ change when one arrives, so the two do not share a lock.
   password starts the count at one.
 
 The state is read off `LockedUntil` with `now`; there is no stored flag to
-drift from it.
+drift from it. The moves are one table, `Rules` in `rules.go`, run through
+`go-sdk/fsm` by `trigger`: `lock` on the failure that reaches the threshold,
+`lapse` on the first attempt after a lock has run out, which is when the code
+notices it. The run-out itself is not a move; nothing runs when it happens.
 
 ```mermaid
 stateDiagram-v2

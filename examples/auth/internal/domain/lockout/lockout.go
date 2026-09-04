@@ -83,17 +83,18 @@ func (l *Lockout) Fail(now time.Time) (event.AccountLocked, bool) {
 	if l.Locked(now) {
 		return event.AccountLocked{}, false
 	}
-	if !l.LockedUntil.IsZero() {
-		l.LockedUntil = time.Time{}
-		l.Failures = 0
-	}
+	// A lock that ran out is noticed here, on the next attempt: the way back
+	// through the table, and the count starts again.
+	l.trigger(EventLapse, now)
 
 	l.Failures++
 	if l.Failures < Threshold {
 		return event.AccountLocked{}, false
 	}
 
-	l.LockedUntil = now.Add(Duration)
+	if !l.trigger(EventLock, now) {
+		return event.AccountLocked{}, false
+	}
 	return event.NewAccountLocked(l.UserID, l.LockedUntil, now), true
 }
 
@@ -115,8 +116,11 @@ func (l *Lockout) Succeed(now time.Time) bool {
 		return false
 	}
 
-	l.Failures = 0
-	l.LockedUntil = time.Time{}
+	// A right password after a lock ran out is the same way back as a wrong
+	// one would have been; with no lock standing it is only the count going.
+	if !l.trigger(EventLapse, now) {
+		l.Failures = 0
+	}
 	return true
 }
 

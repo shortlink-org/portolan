@@ -75,6 +75,28 @@ Three obligations, and they are the whole of it:
 }
 ```
 
+## Lifecycles
+
+An aggregate whose root has a status gets a `lifecycle` on the catalog: the
+states, the first being where a new root starts, and one move per edge - the
+method that makes it and the event it hands back. Both extractors read it off
+a table the code keeps, never off the branches of the methods, because the
+table is the claim and the methods are held to it: an edge in the table no
+method makes, a move into a state the table lacks, and a status changed
+outside the one way through the table are each reported.
+
+In Go the table is a `go-sdk/fsm` rule set, `var Rules = fsm.TransitionRuleSet{
+StateLive: {EventRevoke: StateRevoked}, …}`, with the states and events as
+string constants; the method whose body calls `TriggerEvent` is the mover, and
+every exported method that hands it a constant makes the edges that constant
+names. The event type a method returns is what its last move publishes - a
+method lapsing a lock and then locking again hands `AccountLocked` back for
+the lock. In TypeScript it is `export const TRANSITIONS = { open: ["checked-out"],
+… }` and the method that assigns `this.status`; see `extract-ts/README.md`.
+Terminal states are derived on the page - nothing leads out - and never
+written down. A move the clock makes, a session expiring, a lock running out,
+is not a move: nothing runs when it happens, so it is not in the table.
+
 ## Flows written by hand
 
 Some flows will always be written by people: the design doc for something not

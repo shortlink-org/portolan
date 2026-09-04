@@ -411,6 +411,8 @@ github.com/shortlink-org/go-sdk/config v0.0.0-20260901121657-d7eab0200634 h1:nKA
 github.com/shortlink-org/go-sdk/config v0.0.0-20260901121657-d7eab0200634/go.mod h1:uhqAXLWj5Z67H7eVbUu78SMqK92JnKlskBwiEdWPGU0=
 github.com/shortlink-org/go-sdk/db v0.0.0-20260829181537-766b3331c5e3 h1:ekBfI7UyeFOOYPS3hnqjYE8iQierW60K9QE+Lj68bG8=
 github.com/shortlink-org/go-sdk/db v0.0.0-20260829181537-766b3331c5e3/go.mod h1:H6ItcgQ59CZP02BeU1cVU5vMaD0dMYgPM+QyHlqr/3k=
+github.com/shortlink-org/go-sdk/fsm v0.0.0-20260901155230-945620b3fa49 h1:yOb7fppqqib1XM2m01wGfQUYVMfV9svqY+w9vJ/RBTk=
+github.com/shortlink-org/go-sdk/fsm v0.0.0-20260901155230-945620b3fa49/go.mod h1:dE7FzG9ThOk4OgQDZXPUpCr/w94SZKK3ntEqavQuHiE=
 github.com/shortlink-org/go-sdk/logger v0.0.0-20260829181537-766b3331c5e3 h1:h7grDSQmr3E331jG3XxRlEsn4soXLJgFOCD23EqXXhc=
 github.com/shortlink-org/go-sdk/logger v0.0.0-20260829181537-766b3331c5e3/go.mod h1:6DW9sLcJNahaeVTqBBaJHjeeeY5IA3D16+2pXu54aug=
 github.com/shortlink-org/go-sdk/outbox v0.0.0-20260901121657-d7eab0200634 h1:3cEy31TJ4JY8qlw1f040V15KlrNU7aUM90V1Py/kn1Q=

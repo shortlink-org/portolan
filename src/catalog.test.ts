@@ -467,7 +467,7 @@ describe("sample data shape", () => {
     expect(index.blocksByDef.has("Doubloons")).toBe(false);
   });
 
-  it("has four contexts, six services and two aggregates that publish nothing", () => {
+  it("has four contexts, six services and one aggregate that publishes nothing", () => {
     // The hand-written estate first, in its own order; then what the
     // examples publish, in path order. shop.cart sits under examples/ and so
     // joins shop after the two services data/ wrote.
@@ -496,7 +496,7 @@ describe("sample data shape", () => {
       .flatMap((s) => s.aggregates)
       .filter((a) => a.events.length === 0)
       .map((a) => a.id);
-    expect(empty).toEqual(["shop.pricing.price-list", "auth.auth.lockout"]);
+    expect(empty).toEqual(["shop.pricing.price-list"]);
   });
 
   it("has around twelve events and one with two versions adding a field", () => {

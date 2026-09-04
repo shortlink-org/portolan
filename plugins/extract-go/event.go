@@ -39,7 +39,7 @@ func eventsIn(pkg *pkg, aggID string) []catalog.Event {
 			continue
 		}
 
-		topic, named := returnedString(pkg.methods(decl.name)["Name"])
+		topic, named := returnedString(pkg, pkg.methods(decl.name)["Name"])
 		if !named {
 			// Not every struct in the package is an event. One without a Name
 			// is a payload or a helper, and quietly documenting it as a

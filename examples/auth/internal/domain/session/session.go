@@ -85,10 +85,9 @@ func (s *Session) Validate(now time.Time) error {
 //
 // A revoked session never comes back - logging in again produces a new one.
 func (s *Session) Revoke(reason event.Reason, now time.Time) (event.SessionEnded, bool) {
-	if !s.RevokedAt.IsZero() {
+	if !s.trigger(EventRevoke, now) {
 		return event.SessionEnded{}, false
 	}
-	s.RevokedAt = now
 	return event.NewSessionEnded(s.ID, s.UserID, reason, now), true
 }
 

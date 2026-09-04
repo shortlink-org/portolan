@@ -16,7 +16,11 @@ They are linked by user id and nothing else.
   the expiry from `SessionStarted`.
 
 The state is not stored as a field. It is read off `RevokedAt` and
-`ExpiresAt` with `now`, so there is no second copy to drift.
+`ExpiresAt` with `now`, so there is no second copy to drift. The moves are
+one table, `Rules` in `rules.go`, run through `go-sdk/fsm` by `trigger`; a
+command that would move the session somewhere the table does not allow is
+refused there, which is what makes `Revoke` idempotent. Expiry is not in the
+table: it is not a move, nothing runs when it happens.
 
 ```mermaid
 stateDiagram-v2
