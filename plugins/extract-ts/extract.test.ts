@@ -55,7 +55,7 @@ describe("the service", () => {
     const added = basket.events[3].versions[0];
     expect(added.fields.map((f: { name: string; type: string }) => `${f.name}:${f.type}`)).toEqual(["basketId:string", "sku:string", "quantity:number", "unitPrice:Money"]);
     expect(added.doc).not.toContain("Published on the bus");
-    expect(basket.events[3].wire).toEqual({ name: "cart.BasketItemAdded", channel: "cart_basket" });
+    expect(basket.events[3].wire).toEqual({ name: "cart.BasketItemAdded", channel: "shop.cart.basket" });
   });
 
   it("reads fields off properties and constructor parameter properties alike", () => {

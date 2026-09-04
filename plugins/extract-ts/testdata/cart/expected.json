@@ -176,7 +176,7 @@
                   "consumers": [],
                   "wire": {
                     "name": "cart.BasketAbandoned",
-                    "channel": "cart_basket"
+                    "channel": "shop.cart.basket"
                   }
                 },
                 {
@@ -210,7 +210,7 @@
                   "consumers": [],
                   "wire": {
                     "name": "cart.BasketCheckedOut",
-                    "channel": "cart_basket"
+                    "channel": "shop.cart.basket"
                   }
                 },
                 {
@@ -239,7 +239,7 @@
                   "consumers": [],
                   "wire": {
                     "name": "cart.BasketCreated",
-                    "channel": "cart_basket"
+                    "channel": "shop.cart.basket"
                   }
                 },
                 {
@@ -278,7 +278,7 @@
                   "consumers": [],
                   "wire": {
                     "name": "cart.BasketItemAdded",
-                    "channel": "cart_basket"
+                    "channel": "shop.cart.basket"
                   }
                 }
               ],
