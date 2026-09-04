@@ -36,8 +36,9 @@ func readStore(root, repositories, storeID, owner string, b *plugin.Builder) []c
 		names := make([]string, 0, len(files))
 		for _, file := range files {
 			// Only the up direction describes the schema. A down migration
-			// says how to lose it.
-			if !file.IsDir() && strings.HasSuffix(file.Name(), ".up.sql") {
+			// says how to lose it; a migration with no direction in its name
+			// only goes up.
+			if !file.IsDir() && strings.HasSuffix(file.Name(), ".sql") && !strings.HasSuffix(file.Name(), ".down.sql") {
 				names = append(names, file.Name())
 			}
 		}
@@ -49,6 +50,11 @@ func readStore(root, repositories, storeID, owner string, b *plugin.Builder) []c
 		// Which column carries which field, read from the statements that
 		// write the rows rather than from the column names.
 		mapped := readMaps(root, repositories, aggregate, b)
+		for table, columns := range readMapsTS(root, repositories, aggregate, b) {
+			if _, ok := mapped[table]; !ok {
+				mapped[table] = columns
+			}
+		}
 		first := true
 
 		for _, name := range names {
@@ -75,6 +81,17 @@ func readStore(root, repositories, storeID, owner string, b *plugin.Builder) []c
 				table := relation.table
 				table.ID = storeID + "." + table.Name
 				table.Indexes = relation.indexes
+				// An outbox holds messages on their way out, not the
+				// aggregate: it is created beside the aggregate because the
+				// repository writes both in one transaction, and that is all
+				// the layout says about it.
+				if isOutbox(table.Name) {
+					table.Role = catalog.TableRoleOutbox
+					tables = append(tables, table)
+
+					continue
+				}
+
 				// The layout is the claim: these rows exist because this
 				// aggregate exists, and its schema lives beside the code that
 				// reads it.
@@ -101,6 +118,12 @@ func readStore(root, repositories, storeID, owner string, b *plugin.Builder) []c
 	}
 
 	return tables
+}
+
+// isOutbox says whether a table is the outbox by its name, which is the one
+// convention every outbox library shares.
+func isOutbox(name string) bool {
+	return name == "outbox" || strings.HasSuffix(name, "_outbox")
 }
 
 // resolveForeignKeys turns the table names the grammar gives into table ids the
