@@ -29,6 +29,7 @@ const (
 // no code runs, nobody decided anything, and every consumer already knows the
 // expiry from SessionStarted. An event here would be an invention, published by
 // whichever sweep noticed first.
+// See docs/adr/0003-expiry-publishes-nothing.md.
 type SessionEnded struct {
 	sessionID  string
 	userID     string

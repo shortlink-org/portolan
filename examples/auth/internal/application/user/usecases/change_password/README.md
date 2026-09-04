@@ -36,3 +36,9 @@ support reset, an import - gets the same behaviour without asking for it.
 | the current password is wrong | refused, indistinguishable from a bad token |
 | the new password breaks the policy | refused, with every rule it broke |
 | the user was changed by somebody else meanwhile | read it again and retry |
+
+## Sequence
+
+The sequence is derived from the code and the traces, not drawn here: see
+[the flow page](../../../../../../../docs/flows/auth-change-password.md), where each hop carries its source line and
+whether it was seen running.

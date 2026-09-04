@@ -47,3 +47,9 @@ out on one device does not end the other.
 The session id is not in the answer. It names a row in this service's store, is
 of no use to a client, and putting it on the wire would invite something to be
 built on it.
+
+## Sequence
+
+The sequence is derived from the code and the traces, not drawn here: see
+[the flow page](../../../../../../../docs/flows/auth-login.md), where each hop carries its source line and
+whether it was seen running.

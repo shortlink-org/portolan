@@ -2,6 +2,12 @@
 
 Reads a user by id.
 
+## What it does
+
+1. Loads the user by id.
+2. Answers with the id, the address and when it was created; nothing about
+   the password, in any form.
+
 ## What follows from it
 
 **It says plainly when there is no such user.** Unlike `authenticate`, which
@@ -18,3 +24,9 @@ either one needs to.
 |---|---|
 | found | the user id, the address, and when it was created |
 | no such user | refused, plainly |
+
+## Sequence
+
+The sequence is derived from the code and the traces, not drawn here: see
+[the flow page](../../../../../../../docs/flows/auth-get-user.md), where each hop carries its source line and
+whether it was seen running.

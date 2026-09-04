@@ -49,7 +49,7 @@ type User struct {
 // The event is RETURNED rather than buffered on the aggregate. An aggregate
 // that quietly accumulates events carries hidden state and has to know the word
 // "committed"; here what happened is visible in the signature, and publishing
-// is the caller's business.
+// is the caller's business. See docs/adr/0001-events-returned-not-buffered.md.
 func Register(id, rawEmail, plaintext string, now time.Time) (*User, event.UserRegistered, error) {
 	address, err := email.New(rawEmail)
 	if err != nil {

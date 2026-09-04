@@ -5,6 +5,13 @@ Checks an address and a password, and says which user they belong to.
 It issues nothing. Turning a checked credential into a session is the session
 domain's business, and the only caller of this use case is `login`.
 
+## What it does
+
+1. Looks the user up by address. Not found is folded into the one refusal
+   before it leaves.
+2. Asks the user to check the password.
+3. Answers with the user id, and nothing else.
+
 ## What follows from it
 
 **Every way of failing looks the same.** An unknown address, a wrong password, a
@@ -28,3 +35,9 @@ without issuing a session is an oracle for guessing at them.
 |---|---|
 | the credentials are good | the user id, and nothing else |
 | anything else | one refusal, the same every time |
+
+## Sequence
+
+This use case has no flow of its own: it is the second step of
+[Login](../../../../../../../docs/flows/auth-login.md), reached through the `Authenticator` port that
+assembly binds to it.

@@ -1,3 +1,5 @@
+// Why Session is not part of User: docs/adr/0002-session-is-its-own-aggregate.md.
+
 // Package session holds the Session aggregate: proof that a user logged in,
 // how long that proof is good for, and whether it has been taken away.
 //
