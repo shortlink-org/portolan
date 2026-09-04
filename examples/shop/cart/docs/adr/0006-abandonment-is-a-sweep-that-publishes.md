@@ -1,8 +1,8 @@
-# Abandonment is a sweep inside the service, and it publishes
+# cart.0006 — Abandonment is a sweep inside the service, and it publishes
 
-- Status: accepted
-- Date: 2026-09-04
-- Scope: service `shop.cart`
+- **Status:** accepted
+- **Date:** 2026-09-04
+- **Scope:** shop.cart
 
 ## Context and Problem Statement
 

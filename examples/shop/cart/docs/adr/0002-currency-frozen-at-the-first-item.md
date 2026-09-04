@@ -1,8 +1,8 @@
-# A basket freezes its currency at the first item
+# cart.0002 — A basket freezes its currency at the first item
 
-- Status: accepted
-- Date: 2026-09-04
-- Scope: service `shop.cart`
+- **Status:** accepted
+- **Date:** 2026-09-04
+- **Scope:** shop.cart
 
 ## Context and Problem Statement
 

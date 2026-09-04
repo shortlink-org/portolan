@@ -1,8 +1,8 @@
-# A merge moves every line or none
+# cart.0005 — A merge moves every line or none
 
-- Status: accepted
-- Date: 2026-09-04
-- Scope: service `shop.cart`
+- **Status:** accepted
+- **Date:** 2026-09-04
+- **Scope:** shop.cart
 
 ## Context and Problem Statement
 

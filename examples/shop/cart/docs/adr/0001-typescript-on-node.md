@@ -1,8 +1,8 @@
-# TypeScript on Node.js, and the stack around it
+# cart.0001 — TypeScript on Node.js, and the stack around it
 
-- Status: accepted
-- Date: 2026-09-04
-- Scope: service `shop.cart`
+- **Status:** accepted
+- **Date:** 2026-09-04
+- **Scope:** shop.cart
 
 ## Context and Problem Statement
 

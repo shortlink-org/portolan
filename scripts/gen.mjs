@@ -190,7 +190,12 @@ function stampFor(root, out) {
     );
   }
 
-  const exclude = out ? [`:(exclude)${out}`] : [];
+  // Only an output INSIDE the root is excluded. An output beside it, or above
+  // it, is not in the root's history to begin with - and excluding a parent
+  // would exclude the root itself, leaving nothing to read and a stamp that
+  // moved on every commit.
+  const inside = out && (out === root || out.startsWith(`${root.replace(/\/$/, "")}/`));
+  const exclude = inside && out !== root ? [`:(exclude)${out}`] : [];
 
   for (const args of [
     ["log", "-1", "--format=%h %cI", "--", root, ...exclude],

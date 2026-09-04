@@ -1,8 +1,8 @@
-# An anonymous basket is owned by whoever holds its token
+# cart.0007 — An anonymous basket is owned by whoever holds its token
 
-- Status: accepted
-- Date: 2026-09-04
-- Scope: service `shop.cart`
+- **Status:** accepted
+- **Date:** 2026-09-04
+- **Scope:** shop.cart
 
 ## Context and Problem Statement
 

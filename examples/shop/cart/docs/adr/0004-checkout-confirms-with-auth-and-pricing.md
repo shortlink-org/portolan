@@ -1,8 +1,8 @@
-# Checkout confirms the session with `auth` and the total with `pricing`
+# cart.0004 — Checkout confirms the session with `auth` and the total with `pricing`
 
-- Status: accepted
-- Date: 2026-09-04
-- Scope: service `shop.cart`
+- **Status:** accepted
+- **Date:** 2026-09-04
+- **Scope:** shop.cart
 
 ## Context and Problem Statement
 

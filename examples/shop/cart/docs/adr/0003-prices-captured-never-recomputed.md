@@ -1,8 +1,8 @@
-# Line prices are captured when added, never recomputed
+# cart.0003 — Line prices are captured when added, never recomputed
 
-- Status: accepted
-- Date: 2026-09-04
-- Scope: service `shop.cart`
+- **Status:** accepted
+- **Date:** 2026-09-04
+- **Scope:** shop.cart
 
 ## Context and Problem Statement
 
