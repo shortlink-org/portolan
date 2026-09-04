@@ -16,7 +16,7 @@ path = "src/main.rs"
 [dependencies]
 # The right parser for Rust is Rust's own; syn reads the whole language, and
 # proc-macro2's span-locations is what turns a node back into file:line.
-syn = { version = "2", features = ["full", "visit", "extra-traits"] }
+syn = { version = "3", features = ["full", "visit", "extra-traits"] }
 proc-macro2 = { version = "1", features = ["span-locations"] }
 quote = "1"
 serde = { version = "1", features = ["derive"] }
