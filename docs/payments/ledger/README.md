@@ -1,6 +1,6 @@
 # Ledger
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `payments.ledger`
 - **Context:** [Payments](../README.md)
@@ -94,7 +94,7 @@ sequenceDiagram
 | Event | Latest | Consumers |
 | --- | --- | --- |
 | [PaymentAuthorized](aggregates/payment.md) | v1 | [shop.oms](../../shop/oms/README.md), [delivery.core (declared)](../../delivery/core/README.md) |
-| [PaymentCaptured](aggregates/payment.md) | v1 | [delivery.core](../../delivery/core/README.md), [shop.oms](../../shop/oms/README.md) |
+| [PaymentCaptured](aggregates/payment.md) | v1 | [delivery.core](../../delivery/core/README.md), [shop.oms](../../shop/oms/README.md), [shop.billing (declared)](../../shop/billing/README.md) |
 | [PaymentDeclined](aggregates/payment.md) | v1 | [shop.oms](../../shop/oms/README.md) |
 | [RefundIssued](aggregates/refund.md) | v1 | [shop.oms (declared)](../../shop/oms/README.md), [delivery.core (declared)](../../delivery/core/README.md) |
 

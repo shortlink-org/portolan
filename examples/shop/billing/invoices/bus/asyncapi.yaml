@@ -1,0 +1,54 @@
+# What billing puts on the bus. The events are the domain's - invoices/events.py
+# - and this says how they leave: the subject they go out on and the name each
+# message carries. The catalog reads both and holds the two against each other.
+asyncapi: 3.0.0
+
+info:
+  title: billing
+  version: 1.0.0
+  description: >-
+    Everything an invoice says about itself. One subject per aggregate, dotted
+    the way a NATS subject is.
+
+servers:
+  jetstream:
+    host: "nats:4222"
+    protocol: nats
+    description: The estate's JetStream cluster.
+
+channels:
+  invoice:
+    address: shop.billing.invoice
+    title: Invoice
+    description: >-
+      The subject every invoice event leaves on. The event's name is on the
+      message metadata, so a subscriber dispatches without parsing the payload.
+    messages:
+      InvoiceIssued:
+        $ref: "#/components/messages/InvoiceIssued"
+      InvoicePaid:
+        $ref: "#/components/messages/InvoicePaid"
+      InvoiceVoided:
+        $ref: "#/components/messages/InvoiceVoided"
+
+operations:
+  publishInvoice:
+    action: send
+    channel:
+      $ref: "#/channels/invoice"
+    summary: Everything the invoice raises leaves on its own subject.
+
+components:
+  messages:
+    InvoiceIssued:
+      name: billing.InvoiceIssued
+      title: Invoice issued
+      summary: The invoice is final and the customer has been asked to pay it.
+    InvoicePaid:
+      name: billing.InvoicePaid
+      title: Invoice paid
+      summary: The money arrived and the invoice is closed.
+    InvoiceVoided:
+      name: billing.InvoiceVoided
+      title: Invoice voided
+      summary: The invoice was ended without payment.

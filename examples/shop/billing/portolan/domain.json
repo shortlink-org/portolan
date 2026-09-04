@@ -1,0 +1,685 @@
+{
+  "generatedAt": "2026-09-01T03:15:14+08:00",
+  "commit": "09a0308",
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "Shop",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.billing",
+          "slug": "billing",
+          "name": "Billing",
+          "repo": "github.com/shortlink-org/portolan",
+          "path": "examples/shop/billing",
+          "readme": "# Billing\n\nService `billing` — bounded context **shop**. Python on Django.\n\nOwns the invoice: what a customer is asked to pay for one order, and what\nhappens to it between being drawn up and being closed. It does not move money.\n`payments.ledger` does that; billing records what was owed, what it was for,\nand when it was settled.\n\n## What it does\n\n- Draws up a draft invoice, with its lines, against an order.\n- Issues it: confirms the session with `auth`, freezes the lines, gives the\n  invoice the number the customer will quote, and says `InvoiceIssued`.\n- Closes it when the ledger says the money arrived — it listens for\n  `PaymentCaptured` and answers with `InvoicePaid`.\n- Voids an invoice nobody is going to pay.\n\n## What it does not do\n\nDoes not authorise, capture or refund anything: money is `payments.ledger`'s,\nand billing only hears about it. Does not price anything — a line arrives with\nthe amount it was sold at. Does not hold card data, or know who a customer is\nbeyond an opaque id `auth` vouched for.\n\n## Publishes\n\n`InvoiceIssued`, `InvoicePaid`, `InvoiceVoided`, on `shop.billing.invoice`.\n\n## How the catalog reads it\n\nNothing here is annotated for the catalog: `extract-django` reads the\napplications, and the applications are the claim — `invoices/models.py` is the\naggregate and the schema, `events.py` is what leaves, `services.py` is what can\nbe asked for, the DRF view and `urls.py` are the way in, and `handlers.py` is\nwhat runs when somebody else's event arrives. The rules are in\n[plugins/extract-django/README.md](../../../plugins/extract-django/README.md).\n\n```bash\ndocker compose up -d db\npython manage.py migrate && python manage.py runserver\n```",
+          "provides": [],
+          "consumes": [
+            {
+              "id": "auth.v1.Sessions/validateSession",
+              "peer": "auth.auth",
+              "status": "declared",
+              "source": "examples/shop/billing/invoices/clients/auth/openapi.yaml"
+            }
+          ],
+          "aggregates": [
+            {
+              "id": "shop.billing.invoice",
+              "slug": "invoice",
+              "name": "Invoice",
+              "readme": "What a customer owes for one order, and what happens to it between being drawn\nup and being closed.\n\nAn invoice is drawn up as a draft with its lines, issued once somebody with a\nlive session asks for it, and closed when the ledger says the money arrived.\nNothing about it is updated in place after it is paid or voided: those are the\ntwo ends of its life, and a correction is a new invoice.",
+              "root": "Invoice",
+              "entities": [
+                {
+                  "id": "shop.billing.invoice.invoice",
+                  "slug": "invoice",
+                  "name": "Invoice",
+                  "doc": "What a customer owes for one order, and where it is in its life.",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "UUIDField",
+                      "doc": ""
+                    },
+                    {
+                      "name": "order_id",
+                      "type": "UUIDField",
+                      "doc": "The order this invoice is drawn up for."
+                    },
+                    {
+                      "name": "customer_id",
+                      "type": "UUIDField",
+                      "doc": "Opaque, and only ever as good as the session auth vouched for."
+                    },
+                    {
+                      "name": "number",
+                      "type": "CharField",
+                      "doc": "What the customer quotes. A draft has none."
+                    },
+                    {
+                      "name": "currency",
+                      "type": "CharField",
+                      "doc": "ISO 4217, frozen when the first line is drawn up."
+                    },
+                    {
+                      "name": "total_minor",
+                      "type": "BigIntegerField",
+                      "doc": "The sum of the lines, in the minor unit of the currency."
+                    },
+                    {
+                      "name": "tax_rate",
+                      "type": "DecimalField",
+                      "doc": "The rate the total was taxed at."
+                    },
+                    {
+                      "name": "status",
+                      "type": "CharField",
+                      "doc": ""
+                    },
+                    {
+                      "name": "drawn_up_at",
+                      "type": "DateTimeField",
+                      "doc": ""
+                    },
+                    {
+                      "name": "issued_at",
+                      "type": "DateTimeField",
+                      "doc": ""
+                    },
+                    {
+                      "name": "settled_at",
+                      "type": "DateTimeField",
+                      "doc": "When it was paid or voided; null while it is neither."
+                    }
+                  ]
+                },
+                {
+                  "id": "shop.billing.invoice.invoice-line",
+                  "slug": "invoice-line",
+                  "name": "InvoiceLine",
+                  "doc": "One line of an invoice: what was bought, and what it was sold at.",
+                  "fields": [
+                    {
+                      "name": "invoice",
+                      "type": "ForeignKey[Invoice]",
+                      "doc": ""
+                    },
+                    {
+                      "name": "sku",
+                      "type": "CharField",
+                      "doc": ""
+                    },
+                    {
+                      "name": "quantity",
+                      "type": "PositiveIntegerField",
+                      "doc": ""
+                    },
+                    {
+                      "name": "unit_price_minor",
+                      "type": "BigIntegerField",
+                      "doc": "Captured when the line is drawn up, never recomputed."
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [
+                {
+                  "id": "shop.billing.invoice.money",
+                  "slug": "money",
+                  "name": "Money",
+                  "doc": "An amount in the minor unit of a currency: 1250 GBP is £12.50.",
+                  "fields": [
+                    {
+                      "name": "amount_minor",
+                      "type": "int",
+                      "doc": ""
+                    },
+                    {
+                      "name": "currency",
+                      "type": "str",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "operations": [
+                {
+                  "id": "DrawUpInvoice",
+                  "kind": "command",
+                  "doc": "Draws up a draft invoice for an order, with a line for each thing sold.",
+                  "exposedBy": [
+                    "invoice_create"
+                  ]
+                },
+                {
+                  "id": "GetInvoice",
+                  "kind": "query",
+                  "doc": "Reads one invoice and the lines it is made of.",
+                  "exposedBy": [
+                    "invoice_retrieve"
+                  ]
+                },
+                {
+                  "id": "IssueInvoice",
+                  "kind": "command",
+                  "doc": "Confirms the session, freezes the invoice and asks the customer to pay.",
+                  "exposedBy": [
+                    "invoice_issue"
+                  ]
+                },
+                {
+                  "id": "PayInvoice",
+                  "kind": "command",
+                  "doc": "Closes an issued invoice against the money the ledger says arrived."
+                },
+                {
+                  "id": "VoidInvoice",
+                  "kind": "command",
+                  "doc": "Ends an invoice nobody is going to pay.",
+                  "exposedBy": [
+                    "invoice_destroy"
+                  ]
+                }
+              ],
+              "events": [
+                {
+                  "id": "shop.billing.invoice.InvoiceIssued",
+                  "slug": "invoice-issued",
+                  "name": "InvoiceIssued",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "The invoice is final and the customer has been asked to pay it.",
+                      "source": "examples/shop/billing/invoices/events.py",
+                      "fields": [
+                        {
+                          "name": "invoice_id",
+                          "type": "str",
+                          "doc": ""
+                        },
+                        {
+                          "name": "order_id",
+                          "type": "str",
+                          "doc": ""
+                        },
+                        {
+                          "name": "number",
+                          "type": "str",
+                          "doc": ""
+                        },
+                        {
+                          "name": "total_minor",
+                          "type": "int",
+                          "doc": ""
+                        },
+                        {
+                          "name": "currency",
+                          "type": "str",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [],
+                  "wire": {
+                    "name": "billing.InvoiceIssued",
+                    "channel": "shop.billing.invoice"
+                  }
+                },
+                {
+                  "id": "shop.billing.invoice.InvoicePaid",
+                  "slug": "invoice-paid",
+                  "name": "InvoicePaid",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "The money arrived and the invoice is closed. Nothing is owed on the order.",
+                      "source": "examples/shop/billing/invoices/events.py",
+                      "fields": [
+                        {
+                          "name": "invoice_id",
+                          "type": "str",
+                          "doc": ""
+                        },
+                        {
+                          "name": "order_id",
+                          "type": "str",
+                          "doc": ""
+                        },
+                        {
+                          "name": "paid_at",
+                          "type": "str",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [],
+                  "wire": {
+                    "name": "billing.InvoicePaid",
+                    "channel": "shop.billing.invoice"
+                  }
+                },
+                {
+                  "id": "shop.billing.invoice.InvoiceVoided",
+                  "slug": "invoice-voided",
+                  "name": "InvoiceVoided",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "The invoice was ended without payment, and nobody will be asked again.",
+                      "source": "examples/shop/billing/invoices/events.py",
+                      "fields": [
+                        {
+                          "name": "invoice_id",
+                          "type": "str",
+                          "doc": ""
+                        },
+                        {
+                          "name": "order_id",
+                          "type": "str",
+                          "doc": ""
+                        },
+                        {
+                          "name": "reason",
+                          "type": "str",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [],
+                  "wire": {
+                    "name": "billing.InvoiceVoided",
+                    "channel": "shop.billing.invoice"
+                  }
+                }
+              ],
+              "lifecycle": {
+                "states": [
+                  "draft",
+                  "issued",
+                  "paid",
+                  "void"
+                ],
+                "transitions": [
+                  {
+                    "from": "draft",
+                    "to": "issued",
+                    "on": "issue",
+                    "emits": "shop.billing.invoice.InvoiceIssued",
+                    "source": "examples/shop/billing/invoices/models.py:48"
+                  },
+                  {
+                    "from": "issued",
+                    "to": "paid",
+                    "on": "pay",
+                    "emits": "shop.billing.invoice.InvoicePaid",
+                    "source": "examples/shop/billing/invoices/models.py:54"
+                  },
+                  {
+                    "from": "draft",
+                    "to": "void",
+                    "on": "void",
+                    "emits": "shop.billing.invoice.InvoiceVoided",
+                    "source": "examples/shop/billing/invoices/models.py:60"
+                  },
+                  {
+                    "from": "issued",
+                    "to": "void",
+                    "on": "void",
+                    "emits": "shop.billing.invoice.InvoiceVoided",
+                    "source": "examples/shop/billing/invoices/models.py:60"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [
+    {
+      "id": "flow.billing-invoice-create",
+      "slug": "billing-invoice-create",
+      "name": "Invoice create",
+      "summary": "Draws up a draft invoice for an order, with a line for each thing sold.",
+      "source": "examples/shop/billing/invoices/views.py",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.billing",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "billing-pg",
+          "kind": "store",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.billing",
+          "kind": "rpc",
+          "label": "invoice_create",
+          "status": "declared",
+          "line": "examples/shop/billing/invoices/views.py:13"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.billing",
+          "to": "billing-pg",
+          "kind": "call",
+          "label": "Invoice.objects.create",
+          "status": "declared",
+          "note": "in one transaction.",
+          "line": "examples/shop/billing/invoices/services.py:16"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "shop.billing",
+          "to": "billing-pg",
+          "kind": "call",
+          "label": "InvoiceLine.objects.create",
+          "status": "declared",
+          "note": "in one transaction, for each line.",
+          "line": "examples/shop/billing/invoices/services.py:25"
+        }
+      ]
+    },
+    {
+      "id": "flow.billing-invoice-destroy",
+      "slug": "billing-invoice-destroy",
+      "name": "Invoice destroy",
+      "summary": "Ends an invoice nobody is going to pay.",
+      "source": "examples/shop/billing/invoices/views.py",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.billing",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "billing-pg",
+          "kind": "store",
+          "context": "shop"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.billing",
+          "kind": "rpc",
+          "label": "invoice_destroy",
+          "status": "declared",
+          "line": "examples/shop/billing/invoices/views.py:34"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.billing",
+          "to": "billing-pg",
+          "kind": "call",
+          "label": "Invoice.objects.get",
+          "status": "declared",
+          "line": "examples/shop/billing/invoices/services.py:59"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "shop.billing",
+          "to": "billing-pg",
+          "kind": "call",
+          "label": "Invoice.save",
+          "status": "declared",
+          "line": "examples/shop/billing/invoices/services.py:61"
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "shop.billing",
+          "to": "bus",
+          "kind": "event",
+          "label": "InvoiceVoided",
+          "status": "declared",
+          "ref": "shop.billing.invoice.InvoiceVoided",
+          "line": "examples/shop/billing/invoices/services.py:62"
+        }
+      ]
+    },
+    {
+      "id": "flow.billing-invoice-issue",
+      "slug": "billing-invoice-issue",
+      "name": "Invoice issue",
+      "summary": "Confirms the session, freezes the invoice and asks the customer to pay.",
+      "source": "examples/shop/billing/invoices/views.py",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.billing",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "auth.auth",
+          "kind": "service",
+          "context": "auth"
+        },
+        {
+          "id": "billing-pg",
+          "kind": "store",
+          "context": "shop"
+        },
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.billing",
+          "kind": "rpc",
+          "label": "invoice_issue",
+          "status": "declared",
+          "line": "examples/shop/billing/invoices/views.py:29"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.billing",
+          "to": "auth.auth",
+          "kind": "rpc",
+          "label": "validateSession",
+          "status": "declared",
+          "ref": "auth.v1.Sessions/validateSession",
+          "line": "examples/shop/billing/invoices/services.py:36"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "shop.billing",
+          "to": "billing-pg",
+          "kind": "call",
+          "label": "Invoice.objects.get",
+          "status": "declared",
+          "line": "examples/shop/billing/invoices/services.py:37"
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "shop.billing",
+          "to": "billing-pg",
+          "kind": "call",
+          "label": "Invoice.save",
+          "status": "declared",
+          "line": "examples/shop/billing/invoices/services.py:41"
+        },
+        {
+          "type": "step",
+          "id": "s5",
+          "from": "shop.billing",
+          "to": "bus",
+          "kind": "event",
+          "label": "InvoiceIssued",
+          "status": "declared",
+          "ref": "shop.billing.invoice.InvoiceIssued",
+          "line": "examples/shop/billing/invoices/services.py:42"
+        }
+      ]
+    },
+    {
+      "id": "flow.billing-invoice-retrieve",
+      "slug": "billing-invoice-retrieve",
+      "name": "Invoice retrieve",
+      "summary": "Reads one invoice and the lines it is made of.",
+      "source": "examples/shop/billing/invoices/views.py",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.billing",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "billing-pg",
+          "kind": "store",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.billing",
+          "kind": "rpc",
+          "label": "invoice_retrieve",
+          "status": "declared",
+          "line": "examples/shop/billing/invoices/views.py:24"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.billing",
+          "to": "billing-pg",
+          "kind": "call",
+          "label": "Invoice.objects.get",
+          "status": "declared",
+          "line": "examples/shop/billing/invoices/services.py:68"
+        }
+      ]
+    },
+    {
+      "id": "flow.billing-close-invoice-on-payment",
+      "slug": "billing-close-invoice-on-payment",
+      "name": "Close invoice on payment",
+      "summary": "Closes the invoice for an order once the ledger says the money arrived.",
+      "source": "examples/shop/billing/invoices/handlers.py",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "bus",
+          "kind": "broker",
+          "context": null
+        },
+        {
+          "id": "shop.billing",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "billing-pg",
+          "kind": "store",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "bus",
+          "to": "shop.billing",
+          "kind": "event",
+          "label": "PaymentCaptured",
+          "status": "declared",
+          "ref": "payments.ledger.payment.PaymentCaptured",
+          "line": "examples/shop/billing/invoices/handlers.py:10"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.billing",
+          "to": "billing-pg",
+          "kind": "call",
+          "label": "Invoice.objects.filter",
+          "status": "declared",
+          "line": "examples/shop/billing/invoices/services.py:48"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "shop.billing",
+          "to": "billing-pg",
+          "kind": "call",
+          "label": "Invoice.save",
+          "status": "declared",
+          "line": "examples/shop/billing/invoices/services.py:52"
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "shop.billing",
+          "to": "bus",
+          "kind": "event",
+          "label": "InvoicePaid",
+          "status": "declared",
+          "ref": "shop.billing.invoice.InvoicePaid",
+          "line": "examples/shop/billing/invoices/services.py:53"
+        }
+      ]
+    }
+  ],
+  "adrs": []
+}

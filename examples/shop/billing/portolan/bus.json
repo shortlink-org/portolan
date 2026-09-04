@@ -1,0 +1,56 @@
+{
+  "generatedAt": "2026-09-01T03:15:14+08:00",
+  "commit": "09a0308",
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.billing",
+          "slug": "billing",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "channels": [
+            {
+              "address": "shop.billing.invoice",
+              "title": "Invoice",
+              "doc": "The subject every invoice event leaves on. The event's name is on the message metadata, so a subscriber dispatches without parsing the payload.",
+              "messages": [
+                {
+                  "name": "billing.InvoiceIssued",
+                  "title": "Invoice issued",
+                  "doc": "The invoice is final and the customer has been asked to pay it.",
+                  "direction": "send"
+                },
+                {
+                  "name": "billing.InvoicePaid",
+                  "title": "Invoice paid",
+                  "doc": "The money arrived and the invoice is closed.",
+                  "direction": "send"
+                },
+                {
+                  "name": "billing.InvoiceVoided",
+                  "title": "Invoice voided",
+                  "doc": "The invoice was ended without payment.",
+                  "direction": "send"
+                }
+              ],
+              "source": "examples/shop/billing/invoices/bus/asyncapi.yaml"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": []
+}

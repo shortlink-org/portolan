@@ -20,6 +20,12 @@
       }
     },
     {
+      "name": "django-domain",
+      "process": {
+        "cmd": "python3 plugins/extract-django/main.py"
+      }
+    },
+    {
       "name": "openapi",
       "process": {
         "cmd": "go run ./plugins/extract-openapi"
@@ -164,6 +170,47 @@
         "name": "Cart database",
         "repositories": "src/infrastructure/repository",
         "out": "stores.json"
+      }
+    },
+    {
+      "plugin": "django-domain",
+      "in": "examples/shop/billing",
+      "out": "examples/shop/billing/portolan",
+      "options": {
+        "context": "shop",
+        "service": "billing",
+        "store": "pg",
+        "storeName": "Billing database",
+        "peers": {
+          "auth.v1": "auth.auth"
+        },
+        "events": {
+          "shop_events.payments": "payments.ledger.payment"
+        },
+        "out": "domain.json",
+        "storesOut": "stores.json"
+      }
+    },
+    {
+      "plugin": "openapi",
+      "in": "examples/shop/billing",
+      "out": "examples/shop/billing/portolan",
+      "options": {
+        "context": "shop",
+        "service": "billing",
+        "spec": "invoices/schema/openapi.yaml",
+        "out": "api.json"
+      }
+    },
+    {
+      "plugin": "asyncapi",
+      "in": "examples/shop/billing",
+      "out": "examples/shop/billing/portolan",
+      "options": {
+        "context": "shop",
+        "service": "billing",
+        "spec": "invoices/bus/asyncapi.yaml",
+        "out": "bus.json"
       }
     },
     {

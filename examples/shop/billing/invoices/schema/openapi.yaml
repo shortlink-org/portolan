@@ -1,0 +1,169 @@
+# drf-spectacular's output, written out and committed. The operation ids are
+# given rather than generated, so an endpoint is spelled the same here and in
+# the view the catalog reads: `invoice_issue` on both sides.
+openapi: 3.0.3
+
+info:
+  title: billing
+  version: "1.0.0"
+  description: |
+    Invoices against an order. Everything here needs a live session; the
+    customer an invoice belongs to is the one auth vouched for, never the one
+    the request claims.
+
+servers:
+  - url: /
+
+tags:
+  - name: invoices
+
+paths:
+  /v1/invoices:
+    post:
+      tags: [invoices]
+      operationId: invoice_create
+      summary: Draw up a draft invoice for an order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DrawUpRequest"
+      responses:
+        "201":
+          description: The draft exists.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvoiceId"
+
+  /v1/invoices/{id}:
+    get:
+      tags: [invoices]
+      operationId: invoice_retrieve
+      summary: Read one invoice
+      parameters:
+        - $ref: "#/components/parameters/InvoiceId"
+      responses:
+        "200":
+          description: The invoice, with its lines.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invoice"
+        "404":
+          description: No such invoice.
+    delete:
+      tags: [invoices]
+      operationId: invoice_destroy
+      summary: Void an invoice
+      parameters:
+        - $ref: "#/components/parameters/InvoiceId"
+      responses:
+        "204":
+          description: The invoice is void; nobody will be asked for the money.
+
+  /v1/invoices/{id}/issue:
+    post:
+      tags: [invoices]
+      operationId: invoice_issue
+      summary: Issue a draft invoice
+      parameters:
+        - $ref: "#/components/parameters/InvoiceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [number]
+              properties:
+                number:
+                  type: string
+                  description: What the customer will quote.
+      responses:
+        "200":
+          description: The invoice is issued.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvoiceId"
+        "409":
+          description: The invoice is not a draft.
+
+components:
+  parameters:
+    InvoiceId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    InvoiceId:
+      type: object
+      properties:
+        invoiceId:
+          type: string
+          format: uuid
+        number:
+          type: string
+
+    DrawUpRequest:
+      type: object
+      required: [orderId, customerId, currency, taxRate, lines]
+      properties:
+        orderId:
+          type: string
+          format: uuid
+        customerId:
+          type: string
+          format: uuid
+        currency:
+          type: string
+          description: ISO 4217.
+        taxRate:
+          type: string
+          description: A decimal, as a string, so nothing rounds on the way in.
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/Line"
+
+    Line:
+      type: object
+      required: [sku, quantity, unitPriceMinor]
+      properties:
+        sku:
+          type: string
+        quantity:
+          type: integer
+        unitPriceMinor:
+          type: integer
+          format: int64
+
+    Invoice:
+      type: object
+      properties:
+        invoiceId:
+          type: string
+          format: uuid
+        orderId:
+          type: string
+          format: uuid
+        number:
+          type: string
+        currency:
+          type: string
+        totalMinor:
+          type: integer
+          format: int64
+        status:
+          type: string
+          enum: [draft, issued, paid, void]
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/Line"

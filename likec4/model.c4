@@ -12,6 +12,7 @@ model {
   client = actor 'client'
   auth_pg = store 'auth-pg'
   risk_v1 = unknown 'risk.v1'
+  billing_pg = store 'billing-pg'
   cart_pg = store 'cart-pg'
 
   shop = context 'Shop' {
@@ -50,6 +51,24 @@ model {
       }
       cache = store 'Price list cache' {
         description 'redis'
+      }
+    }
+    billing = service 'Billing' {
+      description 'github.com/shortlink-org/portolan/examples/shop/billing'
+      style { color ctx0 }
+      invoice = aggregate 'Invoice' {
+        InvoiceIssued = event 'InvoiceIssued' {
+          description 'The invoice is final and the customer has been asked to pay it.'
+        }
+        InvoicePaid = event 'InvoicePaid' {
+          description 'The money arrived and the invoice is closed. Nothing is owed on the order.'
+        }
+        InvoiceVoided = event 'InvoiceVoided' {
+          description 'The invoice was ended without payment, and nobody will be asked again.'
+        }
+      }
+      pg = store 'Billing database' {
+        description 'postgres'
       }
     }
     cart = service 'Shopping Cart' {
@@ -215,6 +234,9 @@ that now holds everything.'
   shop.pricing -> shop.oms.pg 'reads' {
     style { color declared  line dashed  head normal }
   }
+  shop.billing -> auth.auth 'validateSession' {
+    style { color declared  line dashed  head normal }
+  }
   shop.cart -> shop.pricing 'BasketCheckedOut' {
     style { color declared  line dashed  head onormal }
   }
@@ -235,6 +257,9 @@ that now holds everything.'
   }
   payments.ledger -> shop.oms 'PaymentCaptured' {
     style { color verified  line solid  head onormal }
+  }
+  payments.ledger -> shop.billing 'PaymentCaptured' {
+    style { color declared  line dashed  head onormal }
   }
   payments.ledger -> shop.oms 'PaymentDeclined' {
     style { color verified  line solid  head onormal }
@@ -311,6 +336,9 @@ that now holds everything.'
   auth.auth.user -> auth.auth.pg 'users' {
     style { color declared  line dashed  head normal }
   }
+  shop.billing.invoice -> shop.billing.pg 'invoices, invoice_lines' {
+    style { color declared  line dashed  head normal }
+  }
   shop.cart.basket -> shop.cart.pg 'baskets, basket_items' {
     style { color declared  line dashed  head normal }
   }
@@ -331,6 +359,9 @@ that now holds everything.'
   }
   client -> auth.auth '6 flows' {
     style { color verified  line solid  head normal }
+  }
+  client -> shop.billing '4 flows' {
+    style { color declared  line dashed  head normal }
   }
   client -> shop.cart '6 flows' {
     style { color verified  line solid  head normal }

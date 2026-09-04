@@ -1,0 +1,12 @@
+{
+  "django-domain": [
+    "domain.json",
+    "stores.json"
+  ],
+  "openapi": [
+    "api.json"
+  ],
+  "asyncapi": [
+    "bus.json"
+  ]
+}

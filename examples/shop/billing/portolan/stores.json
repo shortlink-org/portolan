@@ -1,0 +1,209 @@
+{
+  "generatedAt": "2026-09-01T03:15:14+08:00",
+  "commit": "09a0308",
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.billing",
+          "slug": "billing",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "stores": [
+            "shop.billing.pg"
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": [],
+  "stores": [
+    {
+      "id": "shop.billing.pg",
+      "slug": "pg",
+      "name": "Billing database",
+      "kind": "postgres",
+      "owner": "shop.billing",
+      "tables": [
+        {
+          "id": "shop.billing.pg.invoices",
+          "name": "invoices",
+          "columns": [
+            {
+              "name": "id",
+              "type": "uuid",
+              "nullable": false,
+              "pk": true,
+              "maps": "Invoice.id"
+            },
+            {
+              "name": "order_id",
+              "type": "uuid",
+              "nullable": false,
+              "maps": "Invoice.order_id",
+              "doc": "The order this invoice is drawn up for."
+            },
+            {
+              "name": "customer_id",
+              "type": "uuid",
+              "nullable": false,
+              "maps": "Invoice.customer_id",
+              "doc": "Opaque, and only ever as good as the session auth vouched for."
+            },
+            {
+              "name": "number",
+              "type": "varchar(32)",
+              "nullable": true,
+              "maps": "Invoice.number",
+              "doc": "What the customer quotes. A draft has none."
+            },
+            {
+              "name": "currency",
+              "type": "varchar(3)",
+              "nullable": false,
+              "maps": "Invoice.currency",
+              "doc": "ISO 4217, frozen when the first line is drawn up."
+            },
+            {
+              "name": "total_minor",
+              "type": "bigint",
+              "nullable": false,
+              "maps": "Invoice.total_minor",
+              "doc": "The sum of the lines, in the minor unit of the currency."
+            },
+            {
+              "name": "tax_rate",
+              "type": "numeric(5,4)",
+              "nullable": false,
+              "maps": "Invoice.tax_rate",
+              "doc": "The rate the total was taxed at."
+            },
+            {
+              "name": "status",
+              "type": "varchar(16)",
+              "nullable": false,
+              "maps": "Invoice.status"
+            },
+            {
+              "name": "drawn_up_at",
+              "type": "timestamptz",
+              "nullable": false,
+              "maps": "Invoice.drawn_up_at"
+            },
+            {
+              "name": "issued_at",
+              "type": "timestamptz",
+              "nullable": true,
+              "maps": "Invoice.issued_at"
+            },
+            {
+              "name": "settled_at",
+              "type": "timestamptz",
+              "nullable": true,
+              "maps": "Invoice.settled_at",
+              "doc": "When it was paid or voided; null while it is neither."
+            }
+          ],
+          "indexes": [
+            {
+              "name": "invoices_order_id",
+              "columns": [
+                "order_id"
+              ],
+              "unique": false
+            },
+            {
+              "name": "invoices_number_key",
+              "columns": [
+                "number"
+              ],
+              "unique": true
+            },
+            {
+              "name": "invoices_by_customer",
+              "columns": [
+                "customer_id",
+                "status"
+              ],
+              "unique": false
+            }
+          ],
+          "persists": {
+            "aggregate": "shop.billing.invoice",
+            "block": "shop.billing.invoice.invoice"
+          },
+          "role": "aggregate-root"
+        },
+        {
+          "id": "shop.billing.pg.invoice_lines",
+          "name": "invoice_lines",
+          "columns": [
+            {
+              "name": "id",
+              "type": "bigserial",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "invoice_id",
+              "type": "uuid",
+              "nullable": false,
+              "fk": {
+                "table": "shop.billing.pg.invoices",
+                "column": "id",
+                "onDelete": "cascade"
+              },
+              "maps": "Invoice.id"
+            },
+            {
+              "name": "sku",
+              "type": "varchar(64)",
+              "nullable": false,
+              "maps": "InvoiceLine.sku"
+            },
+            {
+              "name": "quantity",
+              "type": "integer",
+              "nullable": false,
+              "maps": "InvoiceLine.quantity"
+            },
+            {
+              "name": "unit_price",
+              "type": "bigint",
+              "nullable": false,
+              "maps": "InvoiceLine.unit_price_minor",
+              "doc": "Captured when the line is drawn up, never recomputed."
+            }
+          ],
+          "indexes": [
+            {
+              "name": "invoice_lines_invoice_id_sku_key",
+              "columns": [
+                "invoice_id",
+                "sku"
+              ],
+              "unique": true
+            }
+          ],
+          "persists": {
+            "aggregate": "shop.billing.invoice",
+            "block": "shop.billing.invoice.invoice-line"
+          },
+          "role": "child"
+        }
+      ],
+      "source": "examples/shop/billing"
+    }
+  ]
+}

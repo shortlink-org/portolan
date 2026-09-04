@@ -1,0 +1,31 @@
+# A narrowed vendored copy of auth's document: the one operation billing calls,
+# and nothing else. org.0001 - a consumer vendors what it uses.
+openapi: 3.0.3
+
+info:
+  title: auth
+  version: "1.0.0"
+  description: The part of the auth service billing calls.
+
+paths:
+  /v1/sessions/current:
+    get:
+      tags: [sessions]
+      operationId: validateSession
+      summary: Resolve the bearer token to a live session
+      responses:
+        "200":
+          description: The session is live.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessionId:
+                    type: string
+                    format: uuid
+                  customerId:
+                    type: string
+                    format: uuid
+        "401":
+          description: The token is not a live session.

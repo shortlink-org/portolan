@@ -1,6 +1,6 @@
 # Payment
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `payments.ledger.payment`
 - **Service:** [Ledger](../README.md)
@@ -184,6 +184,7 @@ Source: `internal/ledger/domain/payment/events.go:44`
 | --- | --- |
 | [delivery.core](../../../delivery/core/README.md) | verified |
 | [shop.oms](../../../shop/oms/README.md) | verified |
+| [shop.billing](../../../shop/billing/README.md) | declared |
 
 #### v1 — current
 

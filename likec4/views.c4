@@ -8,7 +8,7 @@ views {
 
   view ctx_shop of shop {
     title 'Shop'
-    include *, shop.oms.pg, shop.pricing.cache, shop.cart.pg
+    include *, shop.oms.pg, shop.pricing.cache, shop.billing.pg, shop.cart.pg
   }
   view svc_shop_oms of shop.oms {
     title 'Order Management — neighbours'
@@ -26,6 +26,15 @@ views {
   }
   view svc_shop_pricing_inside of shop.pricing {
     title 'Pricing — inside'
+    include *
+  }
+  view svc_shop_billing of shop.billing {
+    title 'Billing — neighbours'
+    include *, -> *, * ->
+    exclude invoice, pg
+  }
+  view svc_shop_billing_inside of shop.billing {
+    title 'Billing — inside'
     include *
   }
   view svc_shop_cart of shop.cart {
@@ -1324,6 +1333,159 @@ views {
     auth.auth -> bus 'SessionEnded' {
       color verified  line solid  head onormal
       notes 'inside a loop over `change.Ends(sessions, uc.now())`, inside a loop over `retries`. — examples/auth/internal/application/session/usecases/end_after_credential_change/usecase.go:77'
+    }
+  }
+
+  dynamic view flow_billing_invoice_create {
+    title 'Invoice create'
+    description 'Draws up a draft invoice for an order, with a line for each thing sold.'
+    client -> shop.billing 'invoice_create' {
+      color declared  line dashed  head normal
+      notes 'examples/shop/billing/invoices/views.py:13'
+    }
+    shop.billing -> billing_pg 'Invoice.objects.create' {
+      color declared  line dashed  head none
+      notes 'in one transaction. — examples/shop/billing/invoices/services.py:16'
+    }
+    shop.billing -> billing_pg 'InvoiceLine.objects.create' {
+      color declared  line dashed  head none
+      notes 'in one transaction, for each line. — examples/shop/billing/invoices/services.py:25'
+    }
+  }
+
+  dynamic view flow_billing_invoice_create_cross {
+    title 'Invoice create — crossings only'
+    client -> shop.billing 'invoice_create' {
+      color declared  line dashed  head normal
+      notes 'examples/shop/billing/invoices/views.py:13'
+    }
+  }
+
+  dynamic view flow_billing_invoice_destroy {
+    title 'Invoice destroy'
+    description 'Ends an invoice nobody is going to pay.'
+    client -> shop.billing 'invoice_destroy' {
+      color declared  line dashed  head normal
+      notes 'examples/shop/billing/invoices/views.py:34'
+    }
+    shop.billing -> billing_pg 'Invoice.objects.get' {
+      color declared  line dashed  head none
+      notes 'examples/shop/billing/invoices/services.py:59'
+    }
+    shop.billing -> billing_pg 'Invoice.save' {
+      color declared  line dashed  head none
+      notes 'examples/shop/billing/invoices/services.py:61'
+    }
+    shop.billing -> bus 'InvoiceVoided' {
+      color declared  line dashed  head onormal
+      notes 'examples/shop/billing/invoices/services.py:62'
+    }
+  }
+
+  dynamic view flow_billing_invoice_destroy_cross {
+    title 'Invoice destroy — crossings only'
+    client -> shop.billing 'invoice_destroy' {
+      color declared  line dashed  head normal
+      notes 'examples/shop/billing/invoices/views.py:34'
+    }
+    shop.billing -> bus 'InvoiceVoided' {
+      color declared  line dashed  head onormal
+      notes 'examples/shop/billing/invoices/services.py:62'
+    }
+  }
+
+  dynamic view flow_billing_invoice_issue {
+    title 'Invoice issue'
+    description 'Confirms the session, freezes the invoice and asks the customer to pay.'
+    client -> shop.billing 'invoice_issue' {
+      color declared  line dashed  head normal
+      notes 'examples/shop/billing/invoices/views.py:29'
+    }
+    shop.billing -> auth.auth 'validateSession' {
+      color declared  line dashed  head normal
+      notes 'examples/shop/billing/invoices/services.py:36'
+    }
+    shop.billing -> billing_pg 'Invoice.objects.get' {
+      color declared  line dashed  head none
+      notes 'examples/shop/billing/invoices/services.py:37'
+    }
+    shop.billing -> billing_pg 'Invoice.save' {
+      color declared  line dashed  head none
+      notes 'examples/shop/billing/invoices/services.py:41'
+    }
+    shop.billing -> bus 'InvoiceIssued' {
+      color declared  line dashed  head onormal
+      notes 'examples/shop/billing/invoices/services.py:42'
+    }
+  }
+
+  dynamic view flow_billing_invoice_issue_cross {
+    title 'Invoice issue — crossings only'
+    client -> shop.billing 'invoice_issue' {
+      color declared  line dashed  head normal
+      notes 'examples/shop/billing/invoices/views.py:29'
+    }
+    shop.billing -> auth.auth 'validateSession' {
+      color declared  line dashed  head normal
+      notes 'examples/shop/billing/invoices/services.py:36'
+    }
+    shop.billing -> bus 'InvoiceIssued' {
+      color declared  line dashed  head onormal
+      notes 'examples/shop/billing/invoices/services.py:42'
+    }
+  }
+
+  dynamic view flow_billing_invoice_retrieve {
+    title 'Invoice retrieve'
+    description 'Reads one invoice and the lines it is made of.'
+    client -> shop.billing 'invoice_retrieve' {
+      color declared  line dashed  head normal
+      notes 'examples/shop/billing/invoices/views.py:24'
+    }
+    shop.billing -> billing_pg 'Invoice.objects.get' {
+      color declared  line dashed  head none
+      notes 'examples/shop/billing/invoices/services.py:68'
+    }
+  }
+
+  dynamic view flow_billing_invoice_retrieve_cross {
+    title 'Invoice retrieve — crossings only'
+    client -> shop.billing 'invoice_retrieve' {
+      color declared  line dashed  head normal
+      notes 'examples/shop/billing/invoices/views.py:24'
+    }
+  }
+
+  dynamic view flow_billing_close_invoice_on_payment {
+    title 'Close invoice on payment'
+    description 'Closes the invoice for an order once the ledger says the money arrived.'
+    bus -> shop.billing 'PaymentCaptured' {
+      color declared  line dashed  head onormal
+      notes 'examples/shop/billing/invoices/handlers.py:10'
+    }
+    shop.billing -> billing_pg 'Invoice.objects.filter' {
+      color declared  line dashed  head none
+      notes 'examples/shop/billing/invoices/services.py:48'
+    }
+    shop.billing -> billing_pg 'Invoice.save' {
+      color declared  line dashed  head none
+      notes 'examples/shop/billing/invoices/services.py:52'
+    }
+    shop.billing -> bus 'InvoicePaid' {
+      color declared  line dashed  head onormal
+      notes 'examples/shop/billing/invoices/services.py:53'
+    }
+  }
+
+  dynamic view flow_billing_close_invoice_on_payment_cross {
+    title 'Close invoice on payment — crossings only'
+    bus -> shop.billing 'PaymentCaptured' {
+      color declared  line dashed  head onormal
+      notes 'examples/shop/billing/invoices/handlers.py:10'
+    }
+    shop.billing -> bus 'InvoicePaid' {
+      color declared  line dashed  head onormal
+      notes 'examples/shop/billing/invoices/services.py:53'
     }
   }
 

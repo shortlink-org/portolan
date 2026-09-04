@@ -1,27 +1,42 @@
-# Billing & Payments
+# Billing
 
-Service `shop.billing` — bounded context **shop**.
+Service `billing` — bounded context **shop**. Python on Django.
 
-Owns money. Every charge, refund and invoice against an order passes through
-here, and the ledger it keeps is the record the business is audited on.
+Owns the invoice: what a customer is asked to pay for one order, and what
+happens to it between being drawn up and being closed. It does not move money.
+`payments.ledger` does that; billing records what was owed, what it was for,
+and when it was settled.
 
 ## What it does
 
-- Authorises a payment at checkout and captures it once the order is confirmed —
-  two steps, because an order that never ships must not be charged.
-- Talks to the payment gateway and reconciles its webhooks against the ledger,
-  which is the one place the two systems can disagree.
-- Issues refunds, in full or per line, against a captured payment.
-- Produces invoices and credit notes, and holds the tax breakdown behind them.
-- Keeps double-entry ledger postings; nothing here is ever updated in place.
+- Draws up a draft invoice, with its lines, against an order.
+- Issues it: confirms the session with `auth`, freezes the lines, gives the
+  invoice the number the customer will quote, and says `InvoiceIssued`.
+- Closes it when the ledger says the money arrived — it listens for
+  `PaymentCaptured` and answers with `InvoicePaid`.
+- Voids an invoice nobody is going to pay.
 
 ## What it does not do
 
-Does not decide *whether* to charge — that is the order's business — and does
-not store card data. The gateway holds the instrument; billing holds a token
-for it.
+Does not authorise, capture or refund anything: money is `payments.ledger`'s,
+and billing only hears about it. Does not price anything — a line arrives with
+the amount it was sold at. Does not hold card data, or know who a customer is
+beyond an opaque id `auth` vouched for.
 
 ## Publishes
 
-`PaymentAuthorized`, `PaymentCaptured`, `PaymentFailed`, `RefundIssued`,
-`InvoiceCreated`.
+`InvoiceIssued`, `InvoicePaid`, `InvoiceVoided`, on `shop.billing.invoice`.
+
+## How the catalog reads it
+
+Nothing here is annotated for the catalog: `extract-django` reads the
+applications, and the applications are the claim — `invoices/models.py` is the
+aggregate and the schema, `events.py` is what leaves, `services.py` is what can
+be asked for, the DRF view and `urls.py` are the way in, and `handlers.py` is
+what runs when somebody else's event arrives. The rules are in
+[plugins/extract-django/README.md](../../../plugins/extract-django/README.md).
+
+```bash
+docker compose up -d db
+python manage.py migrate && python manage.py runserver
+```

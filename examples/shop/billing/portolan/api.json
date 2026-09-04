@@ -1,0 +1,170 @@
+{
+  "generatedAt": "2026-09-01T03:15:14+08:00",
+  "commit": "09a0308",
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.billing",
+          "slug": "billing",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [
+            {
+              "id": "billing.v1.Invoices",
+              "methods": [
+                {
+                  "name": "invoice_create",
+                  "http": {
+                    "method": "POST",
+                    "path": "/v1/invoices"
+                  }
+                },
+                {
+                  "name": "invoice_retrieve",
+                  "http": {
+                    "method": "GET",
+                    "path": "/v1/invoices/{id}"
+                  }
+                },
+                {
+                  "name": "invoice_destroy",
+                  "http": {
+                    "method": "DELETE",
+                    "path": "/v1/invoices/{id}"
+                  }
+                },
+                {
+                  "name": "invoice_issue",
+                  "http": {
+                    "method": "POST",
+                    "path": "/v1/invoices/{id}/issue"
+                  }
+                }
+              ],
+              "source": "examples/shop/billing/invoices/schema/openapi.yaml",
+              "messages": [
+                {
+                  "name": "DrawUpRequest",
+                  "fields": [
+                    {
+                      "name": "orderId",
+                      "type": "string (uuid)",
+                      "doc": ""
+                    },
+                    {
+                      "name": "customerId",
+                      "type": "string (uuid)",
+                      "doc": ""
+                    },
+                    {
+                      "name": "currency",
+                      "type": "string",
+                      "doc": "ISO 4217."
+                    },
+                    {
+                      "name": "taxRate",
+                      "type": "string",
+                      "doc": "A decimal, as a string, so nothing rounds on the way in."
+                    },
+                    {
+                      "name": "lines",
+                      "type": "[]Line",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "InvoiceId",
+                  "fields": [
+                    {
+                      "name": "invoiceId",
+                      "type": "string (uuid)",
+                      "doc": "Optional."
+                    },
+                    {
+                      "name": "number",
+                      "type": "string",
+                      "doc": "Optional."
+                    }
+                  ]
+                },
+                {
+                  "name": "Invoice",
+                  "fields": [
+                    {
+                      "name": "invoiceId",
+                      "type": "string (uuid)",
+                      "doc": "Optional."
+                    },
+                    {
+                      "name": "orderId",
+                      "type": "string (uuid)",
+                      "doc": "Optional."
+                    },
+                    {
+                      "name": "number",
+                      "type": "string",
+                      "doc": "Optional."
+                    },
+                    {
+                      "name": "currency",
+                      "type": "string",
+                      "doc": "Optional."
+                    },
+                    {
+                      "name": "totalMinor",
+                      "type": "integer (int64)",
+                      "doc": "Optional."
+                    },
+                    {
+                      "name": "status",
+                      "type": "string",
+                      "doc": "Optional."
+                    },
+                    {
+                      "name": "lines",
+                      "type": "[]Line",
+                      "doc": "Optional."
+                    }
+                  ]
+                },
+                {
+                  "name": "Line",
+                  "fields": [
+                    {
+                      "name": "sku",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "quantity",
+                      "type": "integer",
+                      "doc": ""
+                    },
+                    {
+                      "name": "unitPriceMinor",
+                      "type": "integer (int64)",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "consumes": [],
+          "aggregates": []
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": []
+}
