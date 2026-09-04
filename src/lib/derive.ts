@@ -377,7 +377,8 @@ export type ProblemKind =
   | "persistence-drift"
   | "column-type"
   | "outbox-payload"
-  | "proto-missing";
+  | "proto-missing"
+  | "shared-channel";
 
 /**
  * How wrong a problem is. Two values, not five: an edge either lands somewhere

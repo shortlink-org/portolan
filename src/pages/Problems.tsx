@@ -11,6 +11,7 @@ import { edgeCount, problems } from "../lib/derive";
 import type { Problem } from "../lib/derive";
 import { dataProblems } from "../lib/data-problems";
 import { protoProblems } from "../lib/proto-problems";
+import { wireProblems } from "../lib/wire-problems";
 import { contextVar, ctxStyle } from "../lib/context-color";
 import { absoluteTime, plural, relativeTime } from "../lib/format";
 import { staggerStyle } from "../lib/motion";
@@ -36,6 +37,7 @@ const KIND_OF: Record<Problem["kind"], "service" | "event" | "table"> = {
   "column-type": "table",
   "outbox-payload": "table",
   "proto-missing": "service",
+  "shared-channel": "event",
 };
 
 const KIND_NOTE: Record<Problem["kind"], string> = {
@@ -49,6 +51,7 @@ const KIND_NOTE: Record<Problem["kind"], string> = {
   "outbox-payload": "an outbox with no payload column",
   "proto-missing":
     "the provider is in the catalog but answers on no such method",
+  "shared-channel": "a second service publishes on this channel",
 };
 
 export function Problems() {
@@ -73,6 +76,7 @@ export function Problems() {
       ...problems(catalog),
       ...protoProblems(catalog, index),
       ...dataProblems(catalog, index),
+      ...wireProblems(catalog, index),
     ];
     return [
       ...found.filter((p) => p.severity === "error"),
@@ -226,6 +230,7 @@ function nearPath(problem: Problem): string | null {
     case "proto-missing":
       return servicePath(problem.service);
     case "consumer":
+    case "shared-channel":
       return eventPath(problem.id);
     case "shared-store":
     case "persistence-drift":
@@ -262,6 +267,7 @@ function peerPath(problem: Problem): string | null {
         relationPath(problem.peer.split(".").slice(0, -1).join("."))
       );
     case "shared-store":
+    case "shared-channel":
       return servicePath(problem.peer);
     case "outbox-payload":
       return storePath(problem.peer);

@@ -20,6 +20,11 @@ lets the schema be read next to the model rather than beside it — and what let
 the Problems page name a foreign key that crosses a service boundary, a database
 with a second writer, or a column whose type has drifted from its field's.
 
+An event says how it leaves, in `wire`: its name on the message and the channel
+it goes out on. That is the one string by which the catalog and a running system
+meet — a verifier holds the channel a trace shows against it — and a channel,
+like a store, has one owner: a second service publishing on it is a problem.
+
 A store also holds views. A view is kept apart from a table rather than folded
 in behind a flag: it has no key, no constraints and no rows of its own, and what
 it has instead is what it reads. Any column — of a view, of a projection, of an
