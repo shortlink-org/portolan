@@ -1,0 +1,17 @@
+openapi: 3.0.3
+info:
+  title: cart
+  version: 1.0.0
+paths:
+  /v1/baskets/{basketId}/items:
+    post:
+      operationId: addItem
+      tags: [baskets]
+  /v1/baskets/{basketId}/checkout:
+    post:
+      operationId: checkout
+      tags: [baskets]
+  /v1/baskets/{basketId}:
+    get:
+      operationId: getBasket
+      tags: [baskets]

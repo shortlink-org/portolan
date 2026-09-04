@@ -8,9 +8,12 @@ catalog; the layout is the claim.
 
 Written in TypeScript and run as a process plugin, `node plugins/extract-ts/main.ts`,
 because the right parser for TypeScript is the TypeScript compiler, and the
-catalog's own types in `src/catalog.ts` are the fragment's types. It is the
-only plugin so far that is not Go, which is the point of it having the same
-protocol.
+catalog's own types in `src/catalog.ts` are the fragment's types. The parser
+is TypeScript 5's, installed as `ts-api` beside the project's TypeScript 7,
+which is a native compiler with no syntax tree to offer; there is no type
+checker, everything is resolved by name and by relative import, which is all
+a layout that is the claim needs. It is the only plugin so far that is not Go,
+which is the point of it having the same protocol.
 
 ## The layout it reads
 
@@ -36,7 +39,7 @@ src/
     proto/**/*.proto + gen/*_pb.ts       a gRPC peer: the vendored contract and Connect-ES output
     client.ts             the adapter over the generated client, implementing a use case's port
   infrastructure/repository/<aggregate>/
-    migrations/*.sql      read by extract-sql, with `migrations` pointed here
+    migrations/*.sql      read by extract-sql, with `repositories` pointed at the directory above
   di/providers/*.ts       `export function provideX(deps): Port` - which adapter or use case fills a port
 ```
 
@@ -157,7 +160,7 @@ Reported beside the fragment, never papered over inside it:
                    "spec": "src/infrastructure/transport/http/gen/openapi.yaml", "out": "api.json" } },
     { "plugin": "sql", "in": "examples/shop/cart", "out": "examples/shop/cart/portolan",
       "options": { "context": "shop", "service": "cart", "store": "pg", "name": "Cart database",
-                   "migrations": "src/infrastructure/repository/*/migrations", "out": "stores.json" } }
+                   "repositories": "src/infrastructure/repository", "out": "stores.json" } }
   ],
   "verify": [
     { "plugin": "otel", "in": "examples/shop/cart", "out": "examples/shop/cart/portolan",
@@ -166,9 +169,9 @@ Reported beside the fragment, never papered over inside it:
 }
 ```
 
-`extract-sql` learns a `migrations` option for this: its default layout is the
-Go one, `internal/infrastructure/repository/<aggregate>/migrations`, and a
-TypeScript service keeps the same shape one directory over.
+`extract-sql`'s `repositories` points it at the adapters: its default is the
+Go layout, `internal/infrastructure/repository`, and a TypeScript service
+keeps the same shape one directory over, `<aggregate>/migrations` under it.
 
 ## Tests
 
