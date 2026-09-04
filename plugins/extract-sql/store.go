@@ -76,6 +76,7 @@ func readStore(root, repositories, storeID, owner string, b *plugin.Builder) ([]
 				continue
 			}
 
+			copies := readCopies(string(sql), storeID)
 			relations, declared, unread, err := readDDL(string(sql), source)
 			if err != nil {
 				b.Warn(storeID, "could not parse "+source+": "+err.Error())
@@ -113,6 +114,12 @@ func readStore(root, repositories, storeID, owner string, b *plugin.Builder) ([]
 				for i := range table.Columns {
 					if field, ok := mapped[table.Name][table.Columns[i].Name]; ok {
 						table.Columns[i].Maps = field
+					}
+					// Where the value came from, when the migration says. A
+					// table cannot show a copy the way a view shows a select,
+					// so the copy is declared beside the column it lands in.
+					if from, ok := copies[table.Name][table.Columns[i].Name]; ok {
+						table.Columns[i].From = from
 					}
 				}
 

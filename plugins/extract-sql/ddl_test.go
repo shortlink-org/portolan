@@ -203,3 +203,65 @@ SELECT p.id AS payment_id, p.order_id, coalesce(sum(r.amount_minor), 0) AS refun
 		t.Errorf("definition %q", view.definition)
 	}
 }
+
+// A column copied from another service's row is a fact the migration declares,
+// because the statement that creates the column cannot show it.
+func TestReadsWhereACopiedColumnCameFrom(t *testing.T) {
+	sql := `
+CREATE TABLE packages (
+    id       text NOT NULL PRIMARY KEY,
+    -- from: shop.oms.pg.orders.ship_to
+    ship_to  text NOT NULL,
+    -- from: packages.id
+    label_of text NOT NULL,
+    weight_g integer NOT NULL
+);
+`
+
+	copies := readCopies(sql, "delivery.core.pg")
+
+	if got := strings.Join(copies["packages"]["ship_to"], ","); got != "shop.oms.pg.orders.ship_to" {
+		t.Errorf("ship_to came from %q", got)
+	}
+	// A column of this store may be named without it.
+	if got := strings.Join(copies["packages"]["label_of"], ","); got != "delivery.core.pg.packages.id" {
+		t.Errorf("label_of came from %q", got)
+	}
+	if _, said := copies["packages"]["weight_g"]; said {
+		t.Error("a column with no comment above it says nothing")
+	}
+	if _, said := copies["packages"]["id"]; said {
+		t.Error("the comment belongs to the column under it, not the one before")
+	}
+}
+
+// The other spelling of a view: the grammar calls it a CREATE TABLE AS whose
+// object is a matview, and the difference a reader needs is that the rows are
+// kept and can be stale.
+func TestReadsAMaterializedView(t *testing.T) {
+	sql := `
+CREATE TABLE routes (id text PRIMARY KEY, planned_for date NOT NULL);
+CREATE TABLE route_stops (route_id text NOT NULL, seq integer NOT NULL);
+CREATE MATERIALIZED VIEW mv_route_load AS
+SELECT r.id AS route_id, count(s.seq) AS stops
+  FROM routes r LEFT JOIN route_stops s ON s.route_id = r.id
+ GROUP BY r.id;
+`
+
+	_, views, unread, err := readDDL(sql, "test.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(unread) != 0 {
+		t.Fatalf("nothing should be left unread: %v", unread)
+	}
+	if len(views) != 1 || !views[0].materialized {
+		t.Fatalf("views = %+v", views)
+	}
+	if strings.Join(views[0].reads, ",") != "routes,route_stops" {
+		t.Errorf("reads %v", views[0].reads)
+	}
+	if !strings.HasPrefix(views[0].definition, "CREATE MATERIALIZED VIEW mv_route_load AS") {
+		t.Errorf("definition %q", views[0].definition)
+	}
+}

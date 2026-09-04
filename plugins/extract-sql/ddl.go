@@ -52,6 +52,15 @@ func readDDL(sql, source string) ([]relation, []view, []string, error) {
 		case *nodes.ViewStmt:
 			views = append(views, readView(stmt, sql))
 
+		case *nodes.CreateTableAsStmt:
+			materialized, ok := readMaterializedView(stmt, sql)
+			if !ok {
+				unread = append(unread, fmt.Sprintf("%T is not read", stmt))
+
+				continue
+			}
+			views = append(views, materialized)
+
 		case *nodes.IndexStmt:
 			at, known := byName[stmt.Relation.Relname]
 			if !known {

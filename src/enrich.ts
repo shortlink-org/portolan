@@ -57,7 +57,7 @@ export function enrichCatalog(input: Catalog): Enriched {
   // A step naming an event by the name it travels under is resolved first, so
   // everything below - and every consumer derived from it - sees the event
   // rather than the name.
-  const catalog = resolveWireNames(input);
+  const catalog = resolveForeignKeys(resolveWireNames(input));
 
   const serviceById = new Map<string, Service>();
   const eventOwner = new Map<string, string>();
@@ -249,6 +249,55 @@ function resolveWireNames(catalog: Catalog): Catalog {
   });
 
   return any ? { ...catalog, flows } : catalog;
+}
+
+/**
+ * Foreign keys naming a table this store does not have, resolved against the
+ * estate's other stores.
+ *
+ * A migration says `REFERENCES orders (id)`, and the extractor that read it
+ * knows only the store it was reading: a key into another service's table
+ * keeps the raw name, because no extractor sees two schemas. The merge sees
+ * all of them, and a name exactly one table in the estate answers to is that
+ * table - which is what turns a dangling key into the crossing it is, on the
+ * page and on Problems. Two tables of that name resolve to neither.
+ */
+function resolveForeignKeys(catalog: Catalog): Catalog {
+  const stores = catalog.stores ?? [];
+  if (stores.length === 0) return catalog;
+
+  const known = new Set<string>();
+  const byName = new Map<string, string | null>();
+  for (const store of stores) {
+    for (const table of store.tables) {
+      known.add(table.id);
+      byName.set(table.name, byName.has(table.name) ? null : table.id);
+    }
+  }
+
+  let any = false;
+  const resolved = stores.map((store) => {
+    let touched = false;
+    const tables = store.tables.map((table) => {
+      let changed = false;
+      const columns = table.columns.map((column) => {
+        if (!column.fk || known.has(column.fk.table)) return column;
+        const found = byName.get(column.fk.table);
+        if (!found) return column;
+        changed = true;
+
+        return { ...column, fk: { ...column.fk, table: found } };
+      });
+      touched ||= changed;
+
+      return changed ? { ...table, columns } : table;
+    });
+    any ||= touched;
+
+    return touched ? { ...store, tables } : store;
+  });
+
+  return any ? { ...catalog, stores: resolved } : catalog;
 }
 
 /** The same tree, with every step handed to `resolve`. */

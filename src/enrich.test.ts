@@ -520,3 +520,76 @@ describe("enrichCatalog: an event named by the name it travels under", () => {
     expect(twice).toEqual(once);
   });
 });
+
+// ---------------------------------------------------------------------------
+
+describe("enrichCatalog: a foreign key into another service's table", () => {
+  function estateWithStores(): Catalog {
+    const catalog = estate([]);
+    catalog.stores = [
+      {
+        id: "delivery.core.pg",
+        slug: "pg",
+        name: "Delivery database",
+        kind: "postgres",
+        owner: "delivery.core",
+        tables: [
+          {
+            id: "delivery.core.pg.packages",
+            name: "packages",
+            columns: [
+              { name: "id", type: "text", nullable: false, pk: true },
+              // What the extractor leaves when the table is not in its store.
+              { name: "order_id", type: "text", nullable: false, fk: { table: "orders", column: "id" } },
+            ],
+          },
+        ],
+      },
+      {
+        id: "shop.oms.pg",
+        slug: "pg",
+        name: "Order database",
+        kind: "postgres",
+        owner: "shop.oms",
+        tables: [
+          {
+            id: "shop.oms.pg.orders",
+            name: "orders",
+            columns: [{ name: "id", type: "text", nullable: false, pk: true }],
+          },
+        ],
+      },
+    ];
+    return catalog;
+  }
+
+  function keyOf(catalog: Catalog) {
+    return catalog.stores![0]!.tables[0]!.columns[1]!.fk!.table;
+  }
+
+  it("resolves a name exactly one table in the estate answers to", () => {
+    expect(keyOf(enrichCatalog(estateWithStores()).catalog)).toBe("shop.oms.pg.orders");
+  });
+
+  it("leaves a name two tables answer to alone", () => {
+    const catalog = estateWithStores();
+    catalog.stores!.push({
+      id: "payments.ledger.pg",
+      slug: "pg",
+      name: "Ledger database",
+      kind: "postgres",
+      owner: "payments.ledger",
+      tables: [{ id: "payments.ledger.pg.orders", name: "orders", columns: [] }],
+    });
+
+    expect(keyOf(enrichCatalog(catalog).catalog)).toBe("orders");
+  });
+
+  it("leaves a key that already resolves untouched, and enriching twice changes nothing", () => {
+    const once = enrichCatalog(estateWithStores()).catalog;
+    const twice = enrichCatalog(once).catalog;
+
+    expect(keyOf(twice)).toBe("shop.oms.pg.orders");
+    expect(twice).toEqual(once);
+  });
+});

@@ -25,6 +25,10 @@ import (
 type view struct {
 	name string
 	doc  string
+	// materialized: the database keeps the rows rather than recomputing them,
+	// which means they can be stale. A reader has to know that before believing
+	// one, so it is carried rather than inferred from the name.
+	materialized bool
 	// reads names the relations of the FROM clause, in the order written.
 	reads []string
 	// columns, in the order the select lists them.
@@ -40,9 +44,28 @@ type viewColumn struct {
 }
 
 func readView(stmt *nodes.ViewStmt, sql string) view {
-	out := view{name: stmt.View.Relname}
+	return selectInto(stmt.View.Relname, stmt.Query, false, sql)
+}
 
-	query, ok := stmt.Query.(*nodes.SelectStmt)
+// readMaterializedView reads the other spelling. The grammar calls it a CREATE
+// TABLE AS whose object type is a matview, because that is what it is: a query
+// whose rows are kept.
+func readMaterializedView(stmt *nodes.CreateTableAsStmt, sql string) (view, bool) {
+	if stmt.Objtype != nodes.OBJECT_MATVIEW || stmt.Into == nil || stmt.Into.Rel == nil {
+		return view{}, false
+	}
+	query := stmt.Query
+	if query == nil {
+		query = stmt.Into.ViewQuery
+	}
+
+	return selectInto(stmt.Into.Rel.Relname, query, true, sql), true
+}
+
+func selectInto(name string, node nodes.Node, materialized bool, sql string) view {
+	out := view{name: name, materialized: materialized}
+
+	query, ok := node.(*nodes.SelectStmt)
 	if !ok {
 		return out
 	}
@@ -71,7 +94,7 @@ func readView(stmt *nodes.ViewStmt, sql string) view {
 		out.columns = append(out.columns, viewColumn{name: name, from: sources})
 	}
 
-	out.definition = definitionOf(sql, out.name)
+	out.definition = definitionOf(sql, out.name, materialized)
 
 	return out
 }
@@ -155,9 +178,13 @@ func columnRefs(node nodes.Node, relations map[string]string, into *[]string) {
 //
 // The parse tree is not printed back: a reader comparing the page to the
 // migration wants the SQL somebody wrote, down to the line breaks they chose.
-func definitionOf(sql, name string) string {
+func definitionOf(sql, name string, materialized bool) string {
 	lower := strings.ToLower(sql)
-	at := strings.Index(lower, "create view "+strings.ToLower(name))
+	opening := "create view "
+	if materialized {
+		opening = "create materialized view "
+	}
+	at := strings.Index(lower, opening+strings.ToLower(name))
 	if at < 0 {
 		at = strings.Index(lower, "create or replace view "+strings.ToLower(name))
 	}
@@ -177,11 +204,12 @@ func definitionOf(sql, name string) string {
 // computed from.
 func (v view) asCatalog(storeID, source string, tables []catalog.Table) catalog.View {
 	out := catalog.View{
-		ID:         storeID + "." + v.name,
-		Name:       v.name,
-		Doc:        v.doc,
-		Definition: v.definition,
-		Source:     source,
+		ID:           storeID + "." + v.name,
+		Name:         v.name,
+		Doc:          v.doc,
+		Materialized: v.materialized,
+		Definition:   v.definition,
+		Source:       source,
 	}
 	for _, relation := range v.reads {
 		out.Reads = append(out.Reads, storeID+"."+relation)
