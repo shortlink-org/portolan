@@ -1,0 +1,15 @@
+# The contract of the order aggregate, and nothing else's: one module per
+# aggregate, the way one migrations directory sits under one repository.
+# Pushed by hand from this directory; the commit it answers with is pinned in
+# the service's buf.gen.yaml and in the estate's portolan.json, and the two
+# pins must agree.
+version: v2
+modules:
+  - path: .
+    name: buf.build/shortlink-org/portolan-shop-order
+lint:
+  use:
+    - STANDARD
+breaking:
+  use:
+    - FILE

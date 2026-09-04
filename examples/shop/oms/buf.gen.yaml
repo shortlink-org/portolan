@@ -1,0 +1,12 @@
+# The service's own contract, generated from the registry rather than from the
+# proto beside it: the code the server is built on is the code a consumer
+# would get, at the commit that was pushed. The pin here and the fetch-bsr pin
+# in the estate's portolan.json must name the same commit.
+version: v2
+inputs:
+  - module: buf.build/shortlink-org/portolan-shop-order:6ae5e6ade8a547a59553b3aae02a2335
+plugins:
+  - remote: buf.build/community/neoeinstein-prost
+    out: src/infrastructure/transport/grpc/order/gen
+  - remote: buf.build/community/neoeinstein-tonic
+    out: src/infrastructure/transport/grpc/order/gen

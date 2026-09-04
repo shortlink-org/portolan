@@ -1,0 +1,80 @@
+// What the rest of the estate may ask an order: to be read, and to be
+// cancelled. There is no PlaceOrder - an order is placed when a basket is
+// checked out, and the service hears that from the bus rather than being told
+// over rpc (see ADR oms.0002). Nobody outside can confirm one either: that
+// waits for the payment.
+syntax = "proto3";
+
+package shop.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// OrderService reads and cancels orders. It is the only writer of order state;
+// every other service holds a copy of what it was told.
+service OrderService {
+  // GetOrder answers with the order as it is now. NOT_FOUND for an id the
+  // service has never seen; a cancelled order is still found.
+  rpc GetOrder(GetOrderRequest) returns (GetOrderResponse);
+  // CancelOrder cancels an order that has not been dispatched yet.
+  // FAILED_PRECONDITION once it has: from then on the way back is a return,
+  // which is delivery's business, not this service's. Cancelling twice is
+  // not an error; the second call answers with the already cancelled order.
+  rpc CancelOrder(CancelOrderRequest) returns (CancelOrderResponse);
+}
+
+message GetOrderRequest {
+  string order_id = 1;
+}
+
+message GetOrderResponse {
+  Order order = 1;
+}
+
+message CancelOrderRequest {
+  string order_id = 1;
+}
+
+message CancelOrderResponse {
+  Order order = 1;
+}
+
+// Order is what a basket became at checkout. Its lines and total are copied
+// from the basket and the quote it was checked out with, and never priced
+// again (ADR oms.0003): the customer agreed to this number, not to today's.
+message Order {
+  string id = 1;
+  // The customer auth vouched for at checkout. Opaque here, as everywhere.
+  string customer_id = 2;
+  // The basket this order was placed from, so a reader can walk back to it.
+  string basket_id = 3;
+  OrderStatus status = 4;
+  repeated Line lines = 5;
+  // The quoted total, tax and promotions included.
+  Money total = 6;
+  google.protobuf.Timestamp placed_at = 7;
+}
+
+// OrderStatus is closed on purpose: a caller switches on it, and a new state is
+// a contract change rather than a string somebody starts sending.
+enum OrderStatus {
+  ORDER_STATUS_UNSPECIFIED = 0;
+  // Placed from a checked-out basket; the payment is not authorised yet.
+  ORDER_STATUS_PLACED = 1;
+  // The payment is authorised and the order may be fulfilled.
+  ORDER_STATUS_CONFIRMED = 2;
+  // Cancelled by the customer, or because the payment was declined. Terminal.
+  ORDER_STATUS_CANCELLED = 3;
+}
+
+// Line is one SKU at the price it was added to the basket at.
+message Line {
+  string sku = 1;
+  int32 quantity = 2;
+  Money unit_price = 3;
+}
+
+// Money is an amount in the smallest unit of its currency: 1999 EUR is 19.99.
+message Money {
+  int64 amount_minor = 1;
+  string currency = 2;
+}

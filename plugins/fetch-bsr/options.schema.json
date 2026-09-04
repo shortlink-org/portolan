@@ -1,0 +1,42 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["modules", "cache"],
+  "properties": {
+    "modules": {
+      "type": "array",
+      "minItems": 1,
+      "description": "The modules to fetch, each pinned to a commit.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["module"],
+        "properties": {
+          "module": {
+            "type": "string",
+            "description": "The module's registry-global name: registry, owner and name.",
+            "examples": ["buf.build/shortlink-org/portolan-shop-order"]
+          },
+          "commit": {
+            "type": "string",
+            "description": "The commit to fetch. A BSR commit is immutable, so a pinned fetch is byte-reproducible, which is what lets an offline run replay it from the tree. Left out, `ref` is resolved online and warned about, and refused offline."
+          },
+          "ref": {
+            "type": "string",
+            "description": "The label to resolve when there is no commit. Defaults to main."
+          },
+          "paths": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Directories of the module to keep, relative to its root; the rest is left behind. Left out, the whole module.",
+            "examples": [["shop/v1"]]
+          }
+        }
+      }
+    },
+    "cache": {
+      "type": "string",
+      "description": "Where the last run's files were written, repo-relative: the same path as the step's out. An offline run replays what is there and checks it against the lock beside it."
+    }
+  }
+}

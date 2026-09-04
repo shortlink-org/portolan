@@ -1,0 +1,16 @@
+{
+  "modules": [
+    {
+      "module": "buf.build/shortlink-org/portolan-shop-order",
+      "commit": "6ae5e6ade8a547a59553b3aae02a2335",
+      "digest": "b5:98cb137b4f89cdc545fec4d960a0d2fa57bc89e3a91803e305d7e19e52a12260d97642a4df82c3f97887fea0c25c976db3df9754b0eb3e09f39ceecfa21f7d92",
+      "files": [
+        {
+          "path": "shop/v1/orders.proto",
+          "sha256": "58c2c03c5af3c95f2c3e34c2cf61b72194647b791620f7a3d618500ca24fba5b",
+          "size": 2774
+        }
+      ]
+    }
+  ]
+}

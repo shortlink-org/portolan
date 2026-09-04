@@ -665,9 +665,17 @@ describe("validateCatalog: interfaces and modules", () => {
     expect(() => validateCatalog(good)).not.toThrow();
   });
 
+  // The shipped catalog publishes, so "no modules" has to be made: nothing may
+  // name one either, or the validator is right to refuse.
   it("accepts a catalog with no modules at all", () => {
     const none = clone();
     delete none.modules;
+    for (const context of none.contexts) {
+      for (const service of context.services) {
+        delete service.modules;
+        for (const provided of service.provides) delete provided.module;
+      }
+    }
 
     expect(() => validateCatalog(none)).not.toThrow();
   });
@@ -751,10 +759,16 @@ describe("validateCatalog: interfaces and modules", () => {
   });
 });
 
-/** The shipped catalog plus one module, owned by its first service. */
+/**
+ * The shipped catalog plus one module, owned by its first service. Added
+ * beside what the estate has published, not in its place: a service already
+ * names its module, and taking that module away breaks the catalog before the
+ * test gets to say what it meant to.
+ */
 function withModule(catalog: Catalog): Catalog {
   const owner = catalog.contexts[0]?.services[0]?.id;
   catalog.modules = [
+    ...(catalog.modules ?? []),
     {
       id: "buf.build/acme/shop",
       slug: "acme-shop",

@@ -29,6 +29,7 @@ describe("palette index", () => {
         "view",
         "flow",
         "adr",
+        "module",
       ]),
     );
     for (const item of items) {
@@ -66,6 +67,7 @@ describe("palette index", () => {
         "store",
         "table",
         "view",
+        "module",
       ]),
     );
     // A value object has a page but is not a selectable entity; it navigates.
@@ -276,10 +278,12 @@ describe("modules in the palette", () => {
     }
   });
 
-  // The app's own catalog has published nothing, and must show no module rows
-  // at all rather than an empty group.
-  it("adds no rows for an estate that has published nothing", () => {
-    expect(items.filter((i) => i.kind === "module")).toEqual([]);
+  // The app's own catalog has published exactly one module, and shows exactly
+  // one row for it: a row per module, never an empty group.
+  it("adds one row per module the estate has published", () => {
+    expect(items.filter((i) => i.kind === "module").map((i) => i.id)).toEqual([
+      "buf.build/shortlink-org/portolan-shop-order",
+    ]);
   });
 });
 

@@ -1,0 +1,51 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["context", "service"],
+  "properties": {
+    "context": {
+      "type": "string",
+      "description": "Slug of the bounded context the service belongs to. A .proto knows its package, not which context owns it.",
+      "examples": ["shop"]
+    },
+    "service": {
+      "type": "string",
+      "description": "Slug of the service that publishes or calls these protos.",
+      "examples": ["oms"]
+    },
+    "paths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Directories of protos this service publishes, relative to the input root. They become what it provides. A directory fetch-bsr wrote carries its lock, and the lock says which module the protos came from.",
+      "examples": [["vendor/proto/shortlink-org/portolan-shop-order"]]
+    },
+    "vendored": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Directories of client copies this service consumes, relative to the input root. They become what it calls. Listed rather than globbed: which copies a service may keep is a boundary a reviewer should see change.",
+      "examples": [["src/infrastructure/payments/proto"]]
+    },
+    "peers": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "Which service answers for a vendored copy, as the proto package to its service id. A package with no line here is called as unknown and its steps stay unresolved.",
+      "examples": [{ "payments.v1": "payments.ledger" }]
+    },
+    "modules": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "Which module a directory's protos belong to, as the directory relative to the input root to the module id. Only needed where there is no lock beside them to say.",
+      "examples": [{ "src/infrastructure/payments/proto": "buf.build/shortlink-org/portolan-payments-payment" }]
+    },
+    "defs": {
+      "enum": ["shared", "off"],
+      "description": "Whether a message imported from another file is promoted to a shared type, on the reasoning that the import is the author's own signal it is not local.",
+      "default": "shared"
+    },
+    "out": {
+      "type": "string",
+      "description": "Name of the fragment file, inside the step's output directory.",
+      "default": "proto.json"
+    }
+  }
+}

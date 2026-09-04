@@ -1,0 +1,186 @@
+{
+  "generatedAt": "2026-09-05T02:04:33+08:00",
+  "commit": "c60cb70",
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.oms",
+          "slug": "oms",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [
+            {
+              "id": "shop.v1.OrderService",
+              "methods": [
+                {
+                  "name": "GetOrder",
+                  "doc": "GetOrder answers with the order as it is now. NOT_FOUND for an id the\nservice has never seen; a cancelled order is still found.",
+                  "request": "GetOrderRequest",
+                  "response": "GetOrderResponse"
+                },
+                {
+                  "name": "CancelOrder",
+                  "doc": "CancelOrder cancels an order that has not been dispatched yet.\nFAILED_PRECONDITION once it has: from then on the way back is a return,\nwhich is delivery's business, not this service's. Cancelling twice is\nnot an error; the second call answers with the already cancelled order.",
+                  "request": "CancelOrderRequest",
+                  "response": "CancelOrderResponse"
+                }
+              ],
+              "source": "examples/shop/oms/vendor/proto/shortlink-org/portolan-shop-order/shop/v1/orders.proto:14",
+              "messages": [
+                {
+                  "name": "GetOrderRequest",
+                  "fields": [
+                    {
+                      "name": "order_id",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "GetOrderResponse",
+                  "fields": [
+                    {
+                      "name": "order",
+                      "type": "Order",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "CancelOrderRequest",
+                  "fields": [
+                    {
+                      "name": "order_id",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "CancelOrderResponse",
+                  "fields": [
+                    {
+                      "name": "order",
+                      "type": "Order",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "Order",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "customer_id",
+                      "type": "string",
+                      "doc": "The customer auth vouched for at checkout. Opaque here, as everywhere."
+                    },
+                    {
+                      "name": "basket_id",
+                      "type": "string",
+                      "doc": "The basket this order was placed from, so a reader can walk back to it."
+                    },
+                    {
+                      "name": "status",
+                      "type": "OrderStatus",
+                      "doc": ""
+                    },
+                    {
+                      "name": "lines",
+                      "type": "[]Line",
+                      "doc": ""
+                    },
+                    {
+                      "name": "total",
+                      "type": "Money",
+                      "doc": "The quoted total, tax and promotions included."
+                    },
+                    {
+                      "name": "placed_at",
+                      "type": "Timestamp",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "Line",
+                  "fields": [
+                    {
+                      "name": "sku",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "quantity",
+                      "type": "int32",
+                      "doc": ""
+                    },
+                    {
+                      "name": "unit_price",
+                      "type": "Money",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "Money",
+                  "fields": [
+                    {
+                      "name": "amount_minor",
+                      "type": "int64",
+                      "doc": ""
+                    },
+                    {
+                      "name": "currency",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "module": "buf.build/shortlink-org/portolan-shop-order"
+            }
+          ],
+          "consumes": [],
+          "aggregates": [],
+          "modules": [
+            "buf.build/shortlink-org/portolan-shop-order"
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": [],
+  "modules": [
+    {
+      "id": "buf.build/shortlink-org/portolan-shop-order",
+      "slug": "shortlink-org-portolan-shop-order",
+      "name": "shortlink-org/portolan-shop-order",
+      "registry": "buf.build",
+      "owner": "shop.oms",
+      "commit": "6ae5e6ade8a547a59553b3aae02a2335",
+      "digest": "b5:98cb137b4f89cdc545fec4d960a0d2fa57bc89e3a91803e305d7e19e52a12260d97642a4df82c3f97887fea0c25c976db3df9754b0eb3e09f39ceecfa21f7d92",
+      "packages": [
+        "shop.v1"
+      ],
+      "files": [
+        "shop/v1/orders.proto"
+      ],
+      "source": "examples/shop/oms/vendor/proto/shortlink-org/portolan-shop-order"
+    }
+  ]
+}

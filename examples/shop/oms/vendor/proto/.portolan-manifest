@@ -1,0 +1,6 @@
+{
+  "bsr": [
+    "shortlink-org/portolan-shop-order/bsr.lock.json",
+    "shortlink-org/portolan-shop-order/shop/v1/orders.proto"
+  ]
+}

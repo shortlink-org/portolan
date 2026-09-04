@@ -48,6 +48,18 @@
       "process": {
         "cmd": "go run ./plugins/extract-flows"
       }
+    },
+    {
+      "name": "bsr",
+      "process": {
+        "cmd": "go run ./plugins/fetch-bsr"
+      }
+    },
+    {
+      "name": "proto",
+      "process": {
+        "cmd": "go run ./plugins/extract-proto"
+      }
     }
   ],
   "extract": [
@@ -135,6 +147,33 @@
         "name": "Cart database",
         "repositories": "src/infrastructure/repository",
         "out": "stores.json"
+      }
+    },
+    {
+      "plugin": "bsr",
+      "in": "examples/shop/oms",
+      "out": "examples/shop/oms/vendor/proto",
+      "options": {
+        "cache": "examples/shop/oms/vendor/proto",
+        "modules": [
+          {
+            "module": "buf.build/shortlink-org/portolan-shop-order",
+            "commit": "6ae5e6ade8a547a59553b3aae02a2335"
+          }
+        ]
+      }
+    },
+    {
+      "plugin": "proto",
+      "in": "examples/shop/oms",
+      "out": "examples/shop/oms/portolan",
+      "options": {
+        "context": "shop",
+        "service": "oms",
+        "paths": [
+          "vendor/proto/shortlink-org/portolan-shop-order"
+        ],
+        "out": "proto.json"
       }
     }
   ],

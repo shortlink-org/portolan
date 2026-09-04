@@ -47,7 +47,9 @@
               "ts-domain",
               "openapi",
               "sql",
-              "flows"
+              "flows",
+              "bsr",
+              "proto"
             ],
             "description": "A plugin declared above, one that belongs in this phase."
           },
@@ -156,6 +158,44 @@
               "properties": {
                 "options": {
                   "$ref": "#/$defs/options.flows"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "plugin"
+              ],
+              "properties": {
+                "plugin": {
+                  "const": "bsr"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "options": {
+                  "$ref": "#/$defs/options.bsr"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "plugin"
+              ],
+              "properties": {
+                "plugin": {
+                  "const": "proto"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "options": {
+                  "$ref": "#/$defs/options.proto"
                 }
               }
             }
@@ -671,6 +711,146 @@
         "out": {
           "type": "string",
           "description": "Name of the fragment file, inside the step's output directory. Left out, flows.json."
+        }
+      }
+    },
+    "options.bsr": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "modules",
+        "cache"
+      ],
+      "properties": {
+        "modules": {
+          "type": "array",
+          "minItems": 1,
+          "description": "The modules to fetch, each pinned to a commit.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "module"
+            ],
+            "properties": {
+              "module": {
+                "type": "string",
+                "description": "The module's registry-global name: registry, owner and name.",
+                "examples": [
+                  "buf.build/shortlink-org/portolan-shop-order"
+                ]
+              },
+              "commit": {
+                "type": "string",
+                "description": "The commit to fetch. A BSR commit is immutable, so a pinned fetch is byte-reproducible, which is what lets an offline run replay it from the tree. Left out, `ref` is resolved online and warned about, and refused offline."
+              },
+              "ref": {
+                "type": "string",
+                "description": "The label to resolve when there is no commit. Defaults to main."
+              },
+              "paths": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Directories of the module to keep, relative to its root; the rest is left behind. Left out, the whole module.",
+                "examples": [
+                  [
+                    "shop/v1"
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        "cache": {
+          "type": "string",
+          "description": "Where the last run's files were written, repo-relative: the same path as the step's out. An offline run replays what is there and checks it against the lock beside it."
+        }
+      }
+    },
+    "options.proto": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "context",
+        "service"
+      ],
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "Slug of the bounded context the service belongs to. A .proto knows its package, not which context owns it.",
+          "examples": [
+            "shop"
+          ]
+        },
+        "service": {
+          "type": "string",
+          "description": "Slug of the service that publishes or calls these protos.",
+          "examples": [
+            "oms"
+          ]
+        },
+        "paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Directories of protos this service publishes, relative to the input root. They become what it provides. A directory fetch-bsr wrote carries its lock, and the lock says which module the protos came from.",
+          "examples": [
+            [
+              "vendor/proto/shortlink-org/portolan-shop-order"
+            ]
+          ]
+        },
+        "vendored": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Directories of client copies this service consumes, relative to the input root. They become what it calls. Listed rather than globbed: which copies a service may keep is a boundary a reviewer should see change.",
+          "examples": [
+            [
+              "src/infrastructure/payments/proto"
+            ]
+          ]
+        },
+        "peers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Which service answers for a vendored copy, as the proto package to its service id. A package with no line here is called as unknown and its steps stay unresolved.",
+          "examples": [
+            {
+              "payments.v1": "payments.ledger"
+            }
+          ]
+        },
+        "modules": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Which module a directory's protos belong to, as the directory relative to the input root to the module id. Only needed where there is no lock beside them to say.",
+          "examples": [
+            {
+              "src/infrastructure/payments/proto": "buf.build/shortlink-org/portolan-payments-payment"
+            }
+          ]
+        },
+        "defs": {
+          "enum": [
+            "shared",
+            "off"
+          ],
+          "description": "Whether a message imported from another file is promoted to a shared type, on the reasoning that the import is the author's own signal it is not local.",
+          "default": "shared"
+        },
+        "out": {
+          "type": "string",
+          "description": "Name of the fragment file, inside the step's output directory.",
+          "default": "proto.json"
         }
       }
     }

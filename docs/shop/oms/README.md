@@ -1,6 +1,6 @@
 # Order Management
 
-*Generated from the portolan catalog · commit `4 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `5 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.oms`
 - **Context:** [Shop](../README.md)
@@ -89,6 +89,76 @@ be idempotent on `event_id`.
 | --- | --- | --- |
 | `orderId` | `string` | Id of the order just created. |
 | `total` | [`Money`](../../types.md#money) | Total charged. |
+
+</details>
+
+**`shop.v1.OrderService`** — `examples/shop/oms/vendor/proto/shortlink-org/portolan-shop-order/shop/v1/orders.proto:14`
+
+- `GetOrder`
+- `CancelOrder`
+
+<details><summary>GetOrderRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `order_id` | `string` |
+
+</details>
+
+<details><summary>GetOrderResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `order` | `Order` |
+
+</details>
+
+<details><summary>CancelOrderRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `order_id` | `string` |
+
+</details>
+
+<details><summary>CancelOrderResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `order` | `Order` |
+
+</details>
+
+<details><summary>Order</summary>
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `id` | `string` | — |
+| `customer_id` | `string` | The customer auth vouched for at checkout. Opaque here, as everywhere. |
+| `basket_id` | `string` | The basket this order was placed from, so a reader can walk back to it. |
+| `status` | `OrderStatus` | — |
+| `lines` | `[]Line` | — |
+| `total` | `Money` | The quoted total, tax and promotions included. |
+| `placed_at` | `Timestamp` | — |
+
+</details>
+
+<details><summary>Line</summary>
+
+| Field | Type |
+| --- | --- |
+| `sku` | `string` |
+| `quantity` | `int32` |
+| `unit_price` | `Money` |
+
+</details>
+
+<details><summary>Money</summary>
+
+| Field | Type |
+| --- | --- |
+| `amount_minor` | `int64` |
+| `currency` | `string` |
 
 </details>
 
