@@ -16,7 +16,6 @@ import {
   isClassDecl,
   isExportNamed,
   isFunctionDecl,
-  isIdent,
   isImport,
   isInterface,
   isMethod,

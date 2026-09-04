@@ -16,7 +16,7 @@ import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import type { Lifecycle, Transition } from "../../src/catalog.ts";
 import { readSource, at, bareType, type ClassInfo } from "./source.ts";
-import { isArray, isAssign, isCall, isIdent, isMember, isObject, isProp, isString, isVarDecl, keyName, memberName, thisMember, unwrap, walk, type Node, type ObjectExpression } from "./ast.ts";
+import { isArray, isAssign, isCall, isIdent, isMember, isObject, isProp, isString, isVarDecl, keyName, thisMember, unwrap, walk, type Node, type ObjectExpression } from "./ast.ts";
 import type { Diagnostics } from "./domain.ts";
 
 /** The exported constant the table is looked for under. */

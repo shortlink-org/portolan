@@ -8,7 +8,7 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { readSource, text, type Source } from "./source.ts";
-import { isBlock, isCall, isIdent, isMember, isNew, isReturn, isTypeRef, keyName, memberName, walk, type BlockStatement, type CallExpression, type FunctionNode, type Node } from "./ast.ts";
+import { isCall, isIdent, isMember, isNew, isReturn, isTypeRef, memberName, walk, type BlockStatement, type CallExpression, type FunctionNode, type Node } from "./ast.ts";
 import { useCaseKeyOf } from "./operations.ts";
 
 export interface Binding {
