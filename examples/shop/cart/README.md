@@ -23,20 +23,6 @@ is where its job ends. Does not hold a catalogue - a SKU is a string it was
 given, with the price it was given. Does not know who a customer is beyond an
 opaque id `auth` vouched for.
 
-## Where the facts are
-
-Nothing about routes, shapes, tables or events is repeated here: each has one
-place it is true in, and the catalog reads that place.
-
-| | |
-|---|---|
-| the API | [`src/infrastructure/transport/http/gen/openapi.yaml`](src/infrastructure/transport/http/gen/openapi.yaml) |
-| the model and its events | `src/domain/basket`, read by [`extract-ts`](../../../plugins/extract-ts/README.md) |
-| the tables | `src/infrastructure/repository/basket/migrations` |
-| what it calls | the documents vendored under `src/infrastructure/auth` and `src/infrastructure/pricing` |
-| the recording it is verified against | `telemetry/` |
-| the decisions | [`docs/adr`](docs/adr) |
-
 ## Decisions
 
 - [cart.0001](docs/adr/cart.0001.md) — TypeScript on Node.js, and the stack around it
