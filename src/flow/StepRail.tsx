@@ -237,8 +237,12 @@ function StepRow({
         </span>
         <span className="min-w-0 flex-1">
           <span className="mono flex items-baseline gap-1">
+            {/* No flex-1 here: a basis of zero makes shrinking proportional
+                to nothing, and the label collapses before the answer gives up
+                a character. Both sit on their content and the answer, weighted
+                to give way ten times faster, is the one that loses. */}
             <span
-              className="min-w-0 flex-1 truncate text-ink"
+              className="min-w-0 truncate text-ink"
               title={step.label ?? step.ref ?? step.kind}
             >
               {step.label ?? step.ref ?? step.kind}
@@ -246,12 +250,12 @@ function StepRow({
             {/* The reply is not a step of its own - it is the far end of this
                 one - so it is read on the same line, and only where a contract
                 says what comes back. */}
-            {/* Only where there is room for it. The rail can be dragged down
-                to a quarter of the pane, and two truncated halves read worse
-                than one whole label; the step's own panel always says it. */}
-            {full && answer ? (
+            {/* Only where there is room for it: two truncated halves read
+                worse than one whole label, so on a rail dragged narrow the
+                answer steps aside and the step's own panel still says it. */}
+            {answer ? (
               <span
-                className="min-w-0 shrink truncate text-muted"
+                className={`min-w-0 shrink-[10] truncate text-muted ${full ? "" : "hidden @[16rem]:inline"}`}
                 title={`answers with ${answer}`}
               >
                 → {answer}
@@ -364,7 +368,9 @@ export function StepRail({
     /* `data-nav-list`: j / k walk the steps and ⏎ selects the one under the
        cursor, the same keys that walk every table. Chapter and frame rows are
        not items - a chapter folds, it is not somewhere to stand. */
-    <div ref={listRef} data-nav-list>
+    // A container so a row can ask how wide the rail is: the reader drags it,
+    // and what fits at half a pane does not fit at a quarter.
+    <div ref={listRef} data-nav-list className="@container">
       {groups.map((group) => {
         const { chapter } = group;
         const rows = railRows(group);
