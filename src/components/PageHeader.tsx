@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { ctxStyle } from "../lib/context-color";
 import { PinButton } from "../app/pins";
@@ -17,18 +17,19 @@ import { Ident } from "./Ident";
  * control on the strip that is about the reader rather than about the entity,
  * and a reader looking for it should find it in the same place on every page.
  *
- * The strip is sticky inside the page's scroll box (`.page-header`), so it
- * publishes its own height as `--page-header-h` on that box: the toc dock
- * pins itself under it, and the box's scroll-padding keeps an anchor jump
- * from landing behind it. The height is written rather than assumed because a
- * service header carries a meta row and a tab list that an aggregate's does
- * not, and both wrap at narrow widths.
+ * Only the name row is pinned (`.page-bar`): the name, its id, and the
+ * controls at its right. The kind label above it and whatever the page puts
+ * under it - a meta row, a tab list - scroll away like the rest of the page;
+ * they were read on arrival, and a strip that kept them would be a strip that
+ * kept a third of a small window. The row is transparent in place and goes
+ * opaque once it is pinned, so the text is never read through the page
+ * scrolling under it. Rendered as siblings rather than one wrapper, because a
+ * sticky row pins inside its parent only, and its parent has to be the box
+ * that scrolls.
  *
- * `meta` is the row that folds away once the page is scrolled: repo, path,
- * counts - read once on arrival, and a strip's worth of viewport for the rest
- * of the visit. The name and the tabs stay. It folds only when the page has
- * room to stay scrolled past the full header afterwards, or a short page would
- * fold, lose the scroll it folded on, and unfold again.
+ * The row publishes its height as `--page-header-h` on that box: the toc dock
+ * pins itself under it, and the box's scroll-padding keeps an anchor jump
+ * from landing behind it.
  */
 const HEIGHT_VAR = "--page-header-h";
 
@@ -39,7 +40,6 @@ export function PageHeader({
   contextId,
   pin,
   right,
-  meta,
   children,
 }: {
   /** The kind of thing, and what it belongs to - the latter usually a link. */
@@ -50,64 +50,56 @@ export function PageHeader({
   /** What pinning this page pins. Omitted on pages that are not pinnable. */
   pin?: { kind: PinKind; id: string };
   right?: ReactNode;
-  /** The row under the name that folds away once the page is scrolled. */
-  meta?: ReactNode;
   children?: ReactNode;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const metaRef = useRef<HTMLDivElement>(null);
-  const [compact, setCompact] = useState(false);
-  const foldable = meta != null;
+  const bar = useRef<HTMLDivElement>(null);
+  const [stuck, setStuck] = useState(false);
 
-  useEffect(() => {
-    const el = ref.current;
+  useLayoutEffect(() => {
+    const el = bar.current;
     const host = el?.parentElement;
-    if (!el || !host || !foldable) return;
-    // The header's full height, remembered while it is unfolded: the threshold
-    // must not move with the fold it triggers, or it would trigger twice.
-    let full = el.offsetHeight;
-    let folded = false;
+    if (!el || !host) return;
+
+    const publish = () =>
+      host.style.setProperty(HEIGHT_VAR, `${el.offsetHeight}px`);
+    publish();
+    const observer =
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(publish);
+    observer?.observe(el);
+
+    // Pinned means the row is at the top of the box and the box has scrolled:
+    // the same test the browser applies, read back off the geometry.
+    let was = false;
     const onScroll = () => {
-      if (!folded) full = el.offsetHeight;
-      const metaH = metaRef.current?.offsetHeight ?? 0;
-      const reach = host.scrollHeight - host.clientHeight;
-      const next = folded
-        ? host.scrollTop > full
-        : host.scrollTop > full && reach - metaH > full;
-      if (next !== folded) {
-        folded = next;
-        setCompact(next);
+      const now =
+        host.scrollTop > 0 &&
+        el.getBoundingClientRect().top - host.getBoundingClientRect().top < 1;
+      if (now !== was) {
+        was = now;
+        setStuck(now);
       }
     };
     onScroll();
     host.addEventListener("scroll", onScroll, { passive: true });
-    return () => host.removeEventListener("scroll", onScroll);
-  }, [foldable]);
 
-  useLayoutEffect(() => {
-    const el = ref.current;
-    const host = el?.parentElement;
-    if (!el || !host || typeof ResizeObserver === "undefined") return;
-    const publish = () =>
-      host.style.setProperty(HEIGHT_VAR, `${el.offsetHeight}px`);
-    publish();
-    const observer = new ResizeObserver(publish);
-    observer.observe(el);
     return () => {
-      observer.disconnect();
+      observer?.disconnect();
+      host.removeEventListener("scroll", onScroll);
       host.style.removeProperty(HEIGHT_VAR);
     };
   }, []);
 
   return (
-    <div
-      ref={ref}
-      className="page-header border-b border-line px-gutter py-5"
-      data-compact={compact ? "" : undefined}
-    >
-      <div aria-hidden className="hero-wash" style={ctxStyle(contextId)} />
-      <div className="label">{kind}</div>
-      <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+    <>
+      <div className="hero px-gutter pt-5">
+        <div aria-hidden className="hero-wash" style={ctxStyle(contextId)} />
+        <div className="label">{kind}</div>
+      </div>
+      <div
+        ref={bar}
+        className="page-bar flex flex-wrap items-baseline gap-x-3 gap-y-1 px-gutter py-1.5"
+        data-stuck={stuck ? "" : undefined}
+      >
         <h1 className="text-md font-semibold" title={name}>
           {name}
         </h1>
@@ -123,15 +115,8 @@ export function PageHeader({
           </div>
         ) : null}
       </div>
-      {foldable ? (
-        <div className="page-header-meta">
-          <div ref={metaRef} className="min-h-0 overflow-hidden">
-            {meta}
-          </div>
-        </div>
-      ) : null}
-      {children}
-    </div>
+      <div className="border-b border-line px-gutter pb-3.5">{children}</div>
+    </>
   );
 }
 
@@ -149,9 +134,7 @@ export function SectionTitle({
   anchor?: string;
 }) {
   return (
-    <div
-      className={`section-head mb-3 flex items-center gap-2 ${anchor ? "anchored" : ""}`}
-    >
+    <div className={`mb-3 flex items-center gap-2 ${anchor ? "anchored" : ""}`}>
       <h2 className="section-title">{children}</h2>
       {anchor ? (
         <AnchorLink

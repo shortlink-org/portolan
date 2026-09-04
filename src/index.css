@@ -228,9 +228,6 @@
   position: absolute;
   inset: 0 0 auto 0;
   height: 120px;
-  /* Never past the header's own edge: the header pins over the page, and a
-     wash hanging out of it would ride over the content underneath. */
-  max-height: 100%;
   z-index: -1;
   pointer-events: none;
   background: linear-gradient(
@@ -515,11 +512,8 @@
      --------------------------------------------------------------------- */
   .toc-dock {
     width: 24px;
-    /* Pinned just under the page header, which is pinned too. Sticky is its
-       own stacking context, so the panel's z-index counts only inside the
-       dock; this is what puts an open panel over the section heads (25). */
+    /* Pinned just under the page's name row, which is pinned too. */
     top: var(--page-header-h, 0px);
-    z-index: 26;
   }
   /* In flow, so the dock has a height to be hovered at all - what overlays is
      the WIDTH. The panel grows to 216px while its left margin goes equally
@@ -581,58 +575,26 @@
     -webkit-backdrop-filter: blur(8px);
   }
 
-  /* The strip an entity page opens with stays at the top of the page while
-     the page scrolls under it: the name of what is being read, its id and its
-     pin are the three things a reader reaches for from anywhere in a long
-     readme. It pins inside the page's own scroll box, not the shell - the top
-     bar above it is the shell's and never scrolled to begin with. Above the
-     table heads (z-20) and the toc panel, below the overlays (z-40). */
-  .page-header {
+  /* The name row of an entity page stays at the top of the page while the
+     page scrolls under it. Transparent in place, so the hero wash shows
+     through as it always did; opaque once pinned, so the row is read off
+     solid ground and not off whatever is passing beneath. The rule under it
+     is a shadow rather than a border: a border would be a pixel of height
+     that appears on pinning, and the page would jump by it. Above a table's
+     sticky head (z-20) and a readme heading (z-10), below the overlays (z-40). */
+  .page-bar {
     @apply sticky top-0 z-30;
-    /* Its own stacking context, so the wash can sit at z-index -1 behind the
-       text and nowhere else. Not `hero`: that utility pins the wash with
-       `position: relative`, which would win over the sticky here. */
-    isolation: isolate;
-    background: color-mix(in srgb, var(--bg) 80%, transparent);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    transition: background-color var(--dur-micro) var(--ease-out);
   }
-  /* The header measures itself into --page-header-h on the box it scrolls in,
+  .page-bar[data-stuck] {
+    background: var(--bg);
+    box-shadow: 0 1px 0 var(--border);
+  }
+  /* The row measures itself into --page-header-h on the box it scrolls in,
      and that box treats the covered strip as not-visible: an anchor scrolled
-     to lands under the header's bottom edge rather than behind it. */
-  :has(> .page-header) {
+     to lands under the row's bottom edge rather than behind it. */
+  :has(> .page-bar) {
     scroll-padding-top: var(--page-header-h, 0px);
-  }
-  /* The meta row folds by its grid track rather than its height, which is the
-     one way a row of unknown height animates shut. Visibility goes with it, at
-     the end of the fold, so nothing in a folded row can still take focus. */
-  .page-header-meta {
-    display: grid;
-    grid-template-rows: 1fr;
-    transition:
-      grid-template-rows var(--dur-micro) var(--ease-out),
-      visibility var(--dur-micro);
-  }
-  .page-header[data-compact] .page-header-meta {
-    grid-template-rows: 0fr;
-    visibility: hidden;
-  }
-
-  /* A section's heading stays at the top of its section while the section
-     scrolls under it, just below the page header - sticky within the section
-     because that is the parent it sits in, so it leaves when the section does.
-     Nearly opaque: two headings that share a parent overlap where the first
-     has nothing left to head, and the second must cover it. Above a table's
-     own sticky head (20), below the page header (30). */
-  .section-head {
-    position: sticky;
-    top: var(--page-header-h, 0px);
-    z-index: 25;
-    padding-block: 4px;
-    margin-top: -4px;
-    background: color-mix(in srgb, var(--bg) 92%, transparent);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
   }
 
   /* The flow page's one bar. Wraps rather than scrolls: a control that has
@@ -1139,7 +1101,15 @@ h3 {
   font-weight: 600;
   margin: 20px 0 8px;
 }
+/* A readme's section heading stays at the top of the readme while its
+   section scrolls under it, just below the page's pinned name row. Sticky
+   within the readme, so every heading pins at the same edge and the next one
+   simply covers the last - which is why it is opaque. */
 .prose h2 {
+  position: sticky;
+  top: var(--page-header-h, 0px);
+  z-index: 10;
+  background: var(--bg);
   font-size: var(--text-md);
   font-weight: 600;
   margin: 24px 0 8px;
