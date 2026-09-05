@@ -17,7 +17,7 @@ func registered(id string) event.Event {
 }
 
 func TestDeliversToNamedSubscribers(t *testing.T) {
-	b := bus.NewInProc()
+	b := bus.NewInProc("auth_user")
 	var got []string
 
 	b.Subscribe("auth.UserRegistered", func(_ context.Context, e event.Event) error {
@@ -40,7 +40,7 @@ func TestDeliversToNamedSubscribers(t *testing.T) {
 // The empty name is every event: a logger or an outbox does not want to list
 // them.
 func TestEmptyNameSubscribesToEverything(t *testing.T) {
-	b := bus.NewInProc()
+	b := bus.NewInProc("auth_user")
 	count := 0
 
 	b.Subscribe("", func(context.Context, event.Event) error {
@@ -59,7 +59,7 @@ func TestEmptyNameSubscribesToEverything(t *testing.T) {
 // adapter is for tests and local runs, where delivery quietly going missing is
 // the worst outcome.
 func TestSubscriberErrorReachesThePublisher(t *testing.T) {
-	b := bus.NewInProc()
+	b := bus.NewInProc("auth_user")
 	boom := errors.New("boom")
 
 	b.Subscribe("", func(context.Context, event.Event) error { return boom })
@@ -78,7 +78,7 @@ func TestSubscriberErrorReachesThePublisher(t *testing.T) {
 // Stopping at the first failure is deliberate: carrying on would leave one
 // error standing for an unknown number of them.
 func TestPublishStopsAtTheFirstFailure(t *testing.T) {
-	b := bus.NewInProc()
+	b := bus.NewInProc("auth_user")
 	delivered := 0
 
 	b.Subscribe("", func(_ context.Context, e event.Event) error {
@@ -100,7 +100,7 @@ func TestPublishStopsAtTheFirstFailure(t *testing.T) {
 // Handlers are copied out from under the lock before being called, so one that
 // subscribes while being called does not deadlock on a non-reentrant RWMutex.
 func TestSubscribingFromInsideAHandler(t *testing.T) {
-	b := bus.NewInProc()
+	b := bus.NewInProc("auth_user")
 	done := make(chan struct{})
 
 	b.Subscribe("", func(context.Context, event.Event) error {
@@ -121,7 +121,7 @@ func TestSubscribingFromInsideAHandler(t *testing.T) {
 }
 
 func TestNoSubscribers(t *testing.T) {
-	b := bus.NewInProc()
+	b := bus.NewInProc("auth_user")
 	if err := b.Publish(context.Background(), []event.Event{registered("u1")}); err != nil {
 		t.Errorf("publishing to nobody is not a failure: %v", err)
 	}

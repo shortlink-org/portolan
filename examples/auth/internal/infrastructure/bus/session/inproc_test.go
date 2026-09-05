@@ -21,7 +21,7 @@ func ended(id string) event.Event {
 }
 
 func TestDeliversByName(t *testing.T) {
-	b := bus.NewInProc()
+	b := bus.NewInProc("auth_session")
 	var starts, ends int
 
 	b.Subscribe("auth.SessionStarted", func(context.Context, event.Event) error {
@@ -42,7 +42,7 @@ func TestDeliversByName(t *testing.T) {
 }
 
 func TestEmptyNameSubscribesToEverything(t *testing.T) {
-	b := bus.NewInProc()
+	b := bus.NewInProc("auth_session")
 	count := 0
 
 	b.Subscribe("", func(context.Context, event.Event) error {
@@ -58,7 +58,7 @@ func TestEmptyNameSubscribesToEverything(t *testing.T) {
 }
 
 func TestSubscriberErrorReachesThePublisher(t *testing.T) {
-	b := bus.NewInProc()
+	b := bus.NewInProc("auth_session")
 	boom := errors.New("boom")
 
 	b.Subscribe("", func(context.Context, event.Event) error { return boom })
@@ -69,7 +69,7 @@ func TestSubscriberErrorReachesThePublisher(t *testing.T) {
 }
 
 func TestNoSubscribers(t *testing.T) {
-	b := bus.NewInProc()
+	b := bus.NewInProc("auth_session")
 	if err := b.Publish(context.Background(), []event.Event{started("s1")}); err != nil {
 		t.Errorf("publishing to nobody is not a failure: %v", err)
 	}

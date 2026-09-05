@@ -31,6 +31,6 @@ sequenceDiagram
 ## Steps
 
 1. **client** → **auth.auth** — getUser → User
-   `examples/auth/internal/infrastructure/transport/http/user/get.go:11` · Seen running in telemetry/traces.jsonl (2 traces).
+   `examples/auth/internal/infrastructure/transport/http/user/get.go:11` · Seen running in telemetry/traces.jsonl (3 traces).
 2. **auth.auth** → **auth-pg** — ByID
    status: declared · `examples/auth/internal/application/user/usecases/get/usecase.go:23`

@@ -35,7 +35,7 @@ func newHarness(t *testing.T, sessions map[string]time.Time) *harness {
 	h := &harness{}
 	ctx := context.Background()
 
-	b := bus.NewInProc()
+	b := bus.NewInProc("auth_session")
 	b.Subscribe("", func(_ context.Context, e sessionevent.Event) error {
 		h.events = append(h.events, e)
 		return nil

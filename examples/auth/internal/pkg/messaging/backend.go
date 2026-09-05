@@ -1,10 +1,11 @@
 // Package messaging holds what this service needs to talk over a message
 // router, and that no single domain owns.
 //
-// There is no broker here. Events reach their handlers through the outbox, and
-// the only reason a router needs a publisher at all is the poison queue - so
-// that is what this package supplies, and it writes dead letters back into the
-// outbox rather than into a broker that does not exist.
+// There is no broker here. An event is written to the outbox, read back by the
+// relay and handed to an in-process bus, which is where the policies listen
+// (docs/adr/0011). The only reason a router needs a publisher at all is the
+// poison queue - so that is what this package supplies, and it writes dead
+// letters back into the outbox rather than into a broker that does not exist.
 package messaging
 
 import (
@@ -20,8 +21,8 @@ import (
 // MetadataEventName is where a message says which event it carries, so a
 // subscriber can tell without unmarshalling it first.
 //
-// It lives here because both domains write it and the dispatcher reads it: a
-// constant agreed on by three packages belongs to none of them.
+// It lives here because every domain writes it and every relay handler reads
+// it: a constant agreed on by that many packages belongs to none of them.
 const MetadataEventName = "event_name"
 
 // TopicDLQ is where a message that has exhausted its retries ends up.

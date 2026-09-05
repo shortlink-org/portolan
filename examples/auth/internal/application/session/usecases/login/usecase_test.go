@@ -64,7 +64,7 @@ func newHarnessWith(t *testing.T, auth login.Authenticator, risk login.Risk) *ha
 	t.Helper()
 	h := &harness{}
 
-	b := bus.NewInProc()
+	b := bus.NewInProc("auth_session")
 	b.Subscribe("", func(_ context.Context, e event.Event) error {
 		h.events = append(h.events, e)
 		return nil
@@ -153,7 +153,7 @@ func TestAuthenticatorFailureIsNotRewritten(t *testing.T) {
 func TestEachLoginIsItsOwnSession(t *testing.T) {
 	ctx := context.Background()
 	router, unit := postgrestest.Store(t, postgrestest.Source{FS: repo.Migrations, Name: repo.Name})
-	store := repo.NewPostgres(router, unit, bus.NewInProc())
+	store := repo.NewPostgres(router, unit, bus.NewInProc("auth_session"))
 
 	ids := 0
 	uc := login.New(store, vouches("u1"), allows(), func() time.Time { return now }, func() string {

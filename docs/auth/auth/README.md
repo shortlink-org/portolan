@@ -49,6 +49,8 @@ authentication.
 - [auth.0007](docs/adr/0007-login-asks-risk-and-a-block-is-a-compromise.md) — Login asks a risk service, and a blocked attempt is treated as a compromise
 - [auth.0008](docs/adr/0008-a-cache-in-front-of-bytoken-only.md) — A cache in front of the token lookup, and nothing else
 - [auth.0009](docs/adr/0009-a-lock-answers-like-a-wrong-password.md) — A locked account answers exactly like a wrong password
+- [auth.0010](docs/adr/0010-a-revocation-is-written-to-the-cache.md) — A revocation is written to the cache, not only dropped from it
+- [auth.0011](docs/adr/0011-the-relay-feeds-a-bus-and-policies-subscribe-to-the-bus.md) — The relay reads every topic and hands it to a bus; policies subscribe to the bus
 
 ## Running it
 

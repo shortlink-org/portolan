@@ -14,6 +14,7 @@ import (
 	"go.opentelemetry.io/otel"
 
 	userevent "github.com/shortlink-org/portolan/examples/auth/internal/domain/user/event"
+	userbus "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/bus/user"
 	repo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/user"
 	"github.com/shortlink-org/portolan/examples/auth/internal/pkg/messaging"
 	"github.com/shortlink-org/portolan/examples/auth/internal/pkg/postgrestest"
@@ -157,11 +158,9 @@ func delivered(t *testing.T, h *outboxHarness, want int) []userevent.Event {
 		return nil
 	}
 
-	err := repo.Handle(h.relay, map[string]repo.Handler{
-		userevent.TopicUserRegistered:  collect,
-		userevent.TopicPasswordChanged: collect,
-	})
-	if err != nil {
+	bus := userbus.NewInProc("test")
+	bus.Subscribe("", collect)
+	if err := repo.Handle(h.relay, bus); err != nil {
 		t.Fatalf("handle: %v", err)
 	}
 

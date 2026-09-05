@@ -12,3 +12,4 @@
 | [auth.0008](0008-a-cache-in-front-of-bytoken-only.md) | A cache in front of the token lookup, and nothing else | accepted | 2026-09-01 |
 | [auth.0009](0009-a-lock-answers-like-a-wrong-password.md) | A locked account answers exactly like a wrong password | accepted | 2026-09-04 |
 | [auth.0010](0010-a-revocation-is-written-to-the-cache.md) | A revocation is written to the cache, not only dropped from it | accepted | 2026-09-05 |
+| [auth.0011](0011-the-relay-feeds-a-bus-and-policies-subscribe-to-the-bus.md) | The relay reads every topic and hands it to a bus; policies subscribe to the bus | accepted | 2026-09-05 |

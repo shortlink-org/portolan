@@ -22,10 +22,16 @@ import the user ones, and the knowledge that both exist has one home. The
 adapter passes failures through untouched.
 
 **Subscription is assembly, not behaviour.** A policy says what to do with an
-event; assembly says that it is listening, as a map from event name to
-handler. Putting the subscribe call inside the policy would mean the policy
-has to know the bus, and two policies for one topic would compete for the
-same messages.
+event; assembly says that it is listening, by subscribing it to the bus by
+event name where the bus is built. Putting the subscribe call inside the
+policy would mean the policy has to know the bus, and two readers of one
+outbox topic would compete for the same messages.
+
+**Every topic the outbox is written to is read.** The relay registers each
+domain's topic and hands what it reads to that domain's bus - all of them,
+not only the ones a policy listens to. A topic nobody reads is rows that
+stay pending for good. What happens to an event afterwards is the bus's
+business; a bus with no subscriber says so in the code.
 
 **Every use case is provided, including the ones no endpoint serves.**
 Authenticate has no route, but login needs it through the adapter; it is in
@@ -54,7 +60,7 @@ because the next person to touch it will not see it fail.
 
 - Provider files by concern; each binds adapter to port.
 - Cross-domain adapters are here and nowhere else.
-- Event name to policy map is here.
+- Every outbox topic is handed to a bus; event name to policy subscriptions are here.
 - App exposes handler, opened resources, and background processes.
 - No use case, adapter or policy imports assembly.
 

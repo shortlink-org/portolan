@@ -53,43 +53,48 @@ func (p *Publisher) Publish(ctx context.Context, events []event.Event) error {
 	return p.outbox.Publish(ctx, dto.Topic, messages...)
 }
 
-// Handler is what reacts to an event once it has come back out of the outbox.
+// Bus is what the relay hands an event to once it is back out of the outbox:
+// the domain's own Publisher port, plus a name for the trace.
 //
-// It takes a domain event, not a message: whatever reacts to a fact should not
-// have to know it spent time in a table.
-type Handler func(ctx context.Context, e event.Event) error
+// It takes domain events, not messages. Whatever reacts to a fact should not
+// have to know it spent time in a table - and the in-process bus assembly
+// wires here is the same type the tests bind straight to the port.
+type Bus interface {
+	user.Publisher
 
-// Handle registers this domain's topic with the relay, dispatching by event
-// name.
+	// System names the bus on a span, as messaging.system.
+	System() string
+}
+
+// Handle registers this domain's topic with the relay and hands every event
+// on it to the bus.
 //
-// One registration per topic, because the relay allows one - so the dispatch is
-// here rather than in several handlers competing for the same messages. The map
-// is the caller's: assembly is the only place that knows which rule listens to
-// which fact.
-func Handle(relay *sdkoutbox.Relay, byName map[string]Handler) error {
-	return relay.Handle(dto.Topic, func(ctx context.Context, msg *message.Message) error {
+// One registration per topic, because the relay allows one: a topic has one
+// cursor, and a second reader would take messages the first never saw. So
+// nothing is dispatched by name here - who listens to what is the bus's
+// business, and is decided where the bus is built (docs/adr/0011). Every
+// event that was written comes through, including the ones nothing in this
+// service reacts to: handed over and acknowledged, rather than left pending
+// forever for a reader that does not exist.
+func Handle(relay *sdkoutbox.Relay, bus Bus) error {
+	return relay.Handle(dto.Topic, func(ctx context.Context, msg *message.Message) (err error) {
 		name := msg.Metadata.Get(messaging.MetadataEventName)
 
-		handle, listening := byName[name]
-		if !listening {
-			// Nothing reacts to this one. Acknowledged rather than failed:
-			// leaving it would block every message behind it, and it is not
-			// broken, just uninteresting.
-			return nil
-		}
-
-		ctx, span := messaging.StartConsume(ctx, dto.Topic, name)
-		defer span.End()
+		ctx, span := messaging.StartRelay(ctx, bus.System(), dto.Topic, name)
+		defer func() { messaging.EndWith(span, err) }()
 
 		e, err := dto.Unmarshal(msg)
 		if err != nil {
 			return fmt.Errorf("user: %s: %w", name, err)
 		}
 		if e == nil {
-			// A name this build does not know. Same treatment: let it pass.
+			// A name this build does not know - almost always one a newer
+			// version wrote. Acknowledged rather than failed: leaving it would
+			// block every message behind it, and it is not broken, just
+			// unreadable here.
 			return nil
 		}
 
-		return handle(ctx, e)
+		return bus.Publish(ctx, []event.Event{e})
 	})
 }

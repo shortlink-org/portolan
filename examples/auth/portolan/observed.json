@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-09-05T01:13:04+07:00",
-  "commit": "80e6873",
+  "generatedAt": "2026-09-05T06:45:08+07:00",
+  "commit": "a7cf7a4",
   "contexts": [
     {
       "id": "auth",
@@ -191,7 +191,7 @@
           "kind": "rpc",
           "label": "getUser",
           "status": "verified",
-          "note": "Seen running in telemetry/traces.jsonl (2 traces).",
+          "note": "Seen running in telemetry/traces.jsonl (3 traces).",
           "line": "examples/auth/internal/infrastructure/transport/http/user/get.go:11"
         },
         {

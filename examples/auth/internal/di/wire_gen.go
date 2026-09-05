@@ -106,7 +106,8 @@ func New() (App, error) {
 	}
 	end_after_credential_changeUseCase := end_after_credential_change.New(repository, v)
 	revokeSessionsOnPasswordChange := policy.New(end_after_credential_changeUseCase)
-	relay, err := provider.ProvideRelay(store, logger, client, revokeSessionsOnPasswordChange)
+	buses := provider.ProvideBuses(revokeSessionsOnPasswordChange)
+	relay, err := provider.ProvideRelay(store, logger, client, buses)
 	if err != nil {
 		return App{}, err
 	}

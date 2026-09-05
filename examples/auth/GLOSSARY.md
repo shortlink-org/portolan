@@ -11,6 +11,10 @@ correct.
 **Authenticate.** Check an email address and a password and answer with a user
 id or one refusal. Not login: authenticating issues nothing.
 
+**Bus.** What the relay hands an event to once it is out of the outbox, and
+what a policy subscribes to. One per domain, in-process today. Not the outbox:
+the outbox is a table, the bus is who is listening.
+
 **Conflict.** The copy of an aggregate in hand is not what is stored; somebody
 wrote it since it was read. Not an error to report to a person: read again,
 redo, save again.
@@ -40,8 +44,9 @@ Not authenticate, which is one step of it.
 `logout`. Not revocation by somebody else.
 
 **Outbox.** The table a domain event is written to in the same transaction as
-the change it describes, and read back out of by the relay. Not the bus: the
-bus is what the relay hands the event to.
+the change it describes, and read back out of by the relay - every topic of
+it, whether or not anything listens. Not the bus: the bus is what the relay
+hands the event to.
 
 **Password hash.** What is stored in place of a password: algorithm, cost,
 salt and digest. Not the password; the plaintext never lives on an aggregate.
@@ -50,8 +55,8 @@ salt and digest. Not the password; the plaintext never lives on an aggregate.
 password is created, never when one is checked.
 
 **Policy.** A rule of the form "when this fact happened, do that", spanning two
-aggregates: revoke sessions on password change. Not a use case; nobody calls
-it, an event does.
+aggregates: revoke sessions on password change. Subscribed to the bus by
+assembly. Not a use case; nobody calls it, an event does.
 
 **Reason.** Why a session ended: `logout`, `revoked`, `password-changed`,
 `risk-blocked`. A closed set. Not free text.

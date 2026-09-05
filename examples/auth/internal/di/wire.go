@@ -29,6 +29,7 @@ func New() (App, error) {
 		provider.Ambient,
 		provider.Repository,
 		provider.Outbox,
+		provider.Bus,
 		provider.UseCase,
 		provider.Authenticator,
 		provider.Lockout,

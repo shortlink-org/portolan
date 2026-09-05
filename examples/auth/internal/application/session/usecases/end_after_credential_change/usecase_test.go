@@ -90,7 +90,7 @@ func TestEachSessionIsSavedOnItsOwn(t *testing.T) {
 func TestOneEventPerSessionEnded(t *testing.T) {
 	ctx := context.Background()
 	var got []event.Event
-	b := bus.NewInProc()
+	b := bus.NewInProc("auth_session")
 	b.Subscribe("", func(_ context.Context, e event.Event) error {
 		got = append(got, e)
 		return nil
@@ -123,7 +123,7 @@ func TestOneEventPerSessionEnded(t *testing.T) {
 func TestSessionEndedBysomebodyElse(t *testing.T) {
 	ctx := context.Background()
 	var got []event.Event
-	b := bus.NewInProc()
+	b := bus.NewInProc("auth_session")
 	b.Subscribe("", func(_ context.Context, e event.Event) error {
 		got = append(got, e)
 		return nil

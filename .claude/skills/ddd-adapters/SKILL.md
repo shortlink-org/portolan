@@ -40,10 +40,12 @@ domain; the domain does not know infrastructure exists.
   transaction it refuses rather than quietly writing on its own connection.
 - Sits beside the repository because both are adapters for the same domain's
   ports; neither knows about the other.
-- The consumer side takes a domain event, not a message: whatever reacts to
-  a fact should not have to know it spent time in a table. Unknown event
-  names are acknowledged and passed over, not failed: leaving them would
-  block everything behind them, and they are not broken, just uninteresting.
+- The consumer side reads the domain's topic back and hands every event to
+  the domain's bus, as a domain event, not a message: whatever reacts to a
+  fact should not have to know it spent time in a table. It does not
+  dispatch by name; who listens is the bus's business. Unknown event names
+  are acknowledged and passed over, not failed: leaving them would block
+  everything behind them, and they are not broken, just unreadable here.
 
 ## Cache (decorator)
 

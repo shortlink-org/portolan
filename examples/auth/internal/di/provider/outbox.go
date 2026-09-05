@@ -14,11 +14,9 @@ import (
 	sdkwatermill "github.com/shortlink-org/go-sdk/watermill"
 	"go.opentelemetry.io/otel"
 
-	"github.com/shortlink-org/portolan/examples/auth/internal/application/policy"
 	lockoutdomain "github.com/shortlink-org/portolan/examples/auth/internal/domain/lockout"
 	sessiondomain "github.com/shortlink-org/portolan/examples/auth/internal/domain/session"
 	userdomain "github.com/shortlink-org/portolan/examples/auth/internal/domain/user"
-	userevent "github.com/shortlink-org/portolan/examples/auth/internal/domain/user/event"
 	lockoutrepo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/lockout"
 	sessionrepo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/session"
 	userrepo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/user"
@@ -30,7 +28,8 @@ import (
 //
 // This is where the last gap closes. An event reaches durable storage inside
 // the transaction that produced it, so a change cannot commit while the fact of
-// it is lost - and nothing above this line had to be told.
+// it is lost - and nothing above this line had to be told. What the relay
+// reads it hands to the buses in bus.go; the policies are subscribed there.
 var Outbox = wire.NewSet(
 	ProvideOutboxPublisher,
 	messaging.NewBackend,
@@ -78,31 +77,34 @@ func ProvideWatermill(
 	return client, nil
 }
 
-// ProvideRelay builds the reader and subscribes the policies to it.
+// ProvideRelay builds the reader and connects every topic to its bus.
 //
-// Subscription is assembly, not behaviour: a policy says what to do, this says
-// that it is listening. Putting the subscribe call inside the policy would mean
-// a rule that switches itself on, and no one place to look to find out what
-// this service reacts to.
+// Every topic, not only the ones a policy listens to. The outbox is written by
+// three domains and read by one relay, and a topic nobody registered is a
+// topic nobody reads: its rows would stay pending for good, growing with every
+// login and every lock, while the reaper only ever clears delivered rows. So
+// each domain that can write here is read here, and what happens to an event
+// afterwards - a policy, nothing yet - is the bus's business, decided in
+// ProvideBuses.
 func ProvideRelay(
 	store *sdkdb.Store,
 	log sdklogger.Logger,
 	client *sdkwatermill.Client,
-	revokeSessions *policy.RevokeSessionsOnPasswordChange,
+	buses *Buses,
 ) (*sdkoutbox.Relay, error) {
 	relay, err := sdkoutbox.NewRelay(store, log, client.Router)
 	if err != nil {
 		return nil, fmt.Errorf("provider: relay: %w", err)
 	}
 
-	// Which rule listens to which fact. This is the whole answer to "what does
-	// this service react to", and it is one map rather than a Subscribe call
-	// hidden in each policy.
-	err = userrepo.Handle(relay, map[string]userrepo.Handler{
-		userevent.TopicPasswordChanged: revokeSessions.Handle,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("provider: subscribing: %w", err)
+	if err := userrepo.Handle(relay, buses.Users); err != nil {
+		return nil, fmt.Errorf("provider: relay: %w", err)
+	}
+	if err := sessionrepo.Handle(relay, buses.Sessions); err != nil {
+		return nil, fmt.Errorf("provider: relay: %w", err)
+	}
+	if err := lockoutrepo.Handle(relay, buses.Lockouts); err != nil {
+		return nil, fmt.Errorf("provider: relay: %w", err)
 	}
 
 	return relay, nil
