@@ -307,5 +307,5 @@ func parseInsert(sql string) (string, []string, []nodes.Node) {
 		}
 	}
 
-	return insert.Relation.Relname, columns, insertValues(insert)
+	return relationName(insert.Relation), columns, insertValues(insert)
 }

@@ -44,7 +44,7 @@ type viewColumn struct {
 }
 
 func readView(stmt *nodes.ViewStmt, sql string) view {
-	return selectInto(stmt.View.Relname, stmt.Query, false, sql)
+	return selectInto(relationName(stmt.View), stmt.Query, false, sql)
 }
 
 // readMaterializedView reads the other spelling. The grammar calls it a CREATE
@@ -59,7 +59,7 @@ func readMaterializedView(stmt *nodes.CreateTableAsStmt, sql string) (view, bool
 		query = stmt.Into.ViewQuery
 	}
 
-	return selectInto(stmt.Into.Rel.Relname, query, true, sql), true
+	return selectInto(relationName(stmt.Into.Rel), query, true, sql), true
 }
 
 func selectInto(name string, node nodes.Node, materialized bool, sql string) view {
@@ -109,7 +109,8 @@ func readFrom(list *nodes.List, relations map[string]string, reads *[]string) {
 func readFromItem(item nodes.Node, relations map[string]string, reads *[]string) {
 	switch node := item.(type) {
 	case *nodes.RangeVar:
-		name := node.Relname
+		name := relationName(node)
+		relations[node.Relname] = name
 		relations[name] = name
 		if node.Alias != nil && node.Alias.Aliasname != "" {
 			relations[node.Alias.Aliasname] = name
@@ -135,9 +136,16 @@ func columnRefs(node nodes.Node, relations map[string]string, into *[]string) {
 		relation := ""
 		if len(fields) > 1 {
 			relation = relations[fields[len(fields)-2]]
-		} else if len(relations) == 1 {
-			for _, only := range relations {
-				relation = only
+		} else {
+			// A qualified relation has two lookup keys (base name and full
+			// name), but it is still only one FROM source.
+			for _, candidate := range relations {
+				if relation == "" {
+					relation = candidate
+				} else if relation != candidate {
+					relation = ""
+					break
+				}
 			}
 		}
 		if relation == "" || column == "*" {
@@ -221,7 +229,11 @@ func (v view) asCatalog(storeID, source string, tables []catalog.Table) catalog.
 			held.From = append(held.From, storeID+"."+from)
 		}
 		if len(column.from) == 1 {
-			relation, name, _ := strings.Cut(column.from[0], ".")
+			at := strings.LastIndex(column.from[0], ".")
+			if at < 0 {
+				continue
+			}
+			relation, name := column.from[0][:at], column.from[0][at+1:]
 			if source := columnOf(tables, storeID+"."+relation, name); source != nil {
 				held.Type = source.Type
 				held.Nullable = source.Nullable

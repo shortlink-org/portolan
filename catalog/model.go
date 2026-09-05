@@ -147,8 +147,21 @@ const (
 )
 
 type RpcMessage struct {
-	Name   string  `json:"name"`
-	Fields []Field `json:"fields"`
+	Name          string            `json:"name"`
+	Fields        []Field           `json:"fields"`
+	Discriminator *RpcDiscriminator `json:"discriminator,omitempty"`
+}
+
+// RpcDiscriminator explains how a polymorphic OpenAPI message selects its
+// concrete shape on the wire.
+type RpcDiscriminator struct {
+	Property string       `json:"property"`
+	Variants []RpcVariant `json:"variants"`
+}
+
+type RpcVariant struct {
+	Value   string `json:"value"`
+	Message string `json:"message"`
 }
 
 type RpcCall struct {

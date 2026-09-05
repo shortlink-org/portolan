@@ -163,10 +163,101 @@ func messages(doc *document, refs []schemaRef, seen, visited map[string]bool, b 
 		// Anything this schema refers to joins the queue behind it.
 		ref.doc.schemaRefs(ref.node, &refs, seen, visited)
 
-		out = append(out, catalog.RpcMessage{Name: ref.name, Fields: schemaFields(ref.doc, ref.node)})
+		out = append(out, catalog.RpcMessage{
+			Name:          ref.name,
+			Fields:        schemaFields(ref.doc, ref.node),
+			Discriminator: schemaDiscriminator(ref.doc, ref.node),
+		})
 	}
 
 	return out
+}
+
+func schemaDiscriminator(doc *document, node *yaml.Node) *catalog.RpcDiscriminator {
+	return discriminatorIn(doc, node, map[string]bool{})
+}
+
+func discriminatorIn(doc *document, node *yaml.Node, resolving map[string]bool) *catalog.RpcDiscriminator {
+	if node == nil {
+		return nil
+	}
+	if ref := text(child(node, "$ref")); ref != "" {
+		if targetDoc, target, pointer, ok := doc.resolve(ref); ok {
+			key := targetDoc.path + "#" + pointer
+			if !resolving[key] {
+				resolving[key] = true
+				found := discriminatorIn(targetDoc, target, resolving)
+				delete(resolving, key)
+				if found != nil {
+					return found
+				}
+			}
+		}
+	}
+
+	discriminator := child(node, "discriminator")
+	property := text(child(discriminator, "propertyName"))
+	if property != "" {
+		byMessage := map[string][]string{}
+		var mapped []catalog.RpcVariant
+		for _, entry := range entries(child(discriminator, "mapping")) {
+			if message := schemaMessageName(doc, text(entry.value)); message != "" {
+				byMessage[message] = append(byMessage[message], entry.key)
+				mapped = append(mapped, catalog.RpcVariant{Value: entry.key, Message: message})
+			}
+		}
+
+		var variants []catalog.RpcVariant
+		seen := map[string]bool{}
+		appendVariant := func(variant catalog.RpcVariant) {
+			key := variant.Value + "\x00" + variant.Message
+			if !seen[key] {
+				variants = append(variants, variant)
+				seen[key] = true
+			}
+		}
+		for _, keyword := range []string{"oneOf", "anyOf"} {
+			for _, branch := range itemsOf(child(node, keyword)) {
+				message := schemaMessageName(doc, text(child(branch, "$ref")))
+				if message == "" {
+					continue
+				}
+				values := byMessage[message]
+				if len(values) == 0 {
+					values = []string{message}
+				}
+				for _, value := range values {
+					appendVariant(catalog.RpcVariant{Value: value, Message: message})
+				}
+			}
+		}
+		for _, variant := range mapped {
+			appendVariant(variant)
+		}
+		return &catalog.RpcDiscriminator{Property: property, Variants: variants}
+	}
+
+	for _, branch := range itemsOf(child(node, "allOf")) {
+		if found := discriminatorIn(doc, branch, resolving); found != nil {
+			return found
+		}
+	}
+	return nil
+}
+
+func schemaMessageName(doc *document, ref string) string {
+	if ref == "" {
+		return ""
+	}
+	if _, _, pointer, ok := doc.resolve(ref); ok {
+		if name, schema := schemaName(pointer); schema {
+			return name
+		}
+	}
+	if name, ok := strings.CutPrefix(ref, schemaRefPrefix); ok {
+		return name
+	}
+	return ""
 }
 
 func schemaFields(doc *document, node *yaml.Node) []catalog.Field {

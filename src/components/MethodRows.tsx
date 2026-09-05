@@ -11,7 +11,12 @@
 
 import { ChevronDown, ChevronRight } from "lucide-react";
 import type { ReactNode } from "react";
-import type { Field, RpcMethod, RpcService } from "../catalog";
+import type {
+  Field,
+  RpcDiscriminator,
+  RpcMethod,
+  RpcService,
+} from "../catalog";
 import { catalog } from "../data";
 import { streamingKind } from "../lib/api";
 import { Ident } from "./Ident";
@@ -45,6 +50,35 @@ export function shapeFor(
   if (!name) return null;
 
   return provided.messages?.find((m) => m.name === name)?.fields ?? null;
+}
+
+function discriminatorFor(
+  provided: RpcService,
+  name: string | undefined,
+): RpcDiscriminator | undefined {
+  if (!name) return undefined;
+  return provided.messages?.find((message) => message.name === name)
+    ?.discriminator;
+}
+
+function DiscriminatorRows({
+  discriminator,
+}: {
+  discriminator: RpcDiscriminator | undefined;
+}) {
+  if (!discriminator) return null;
+  return (
+    <div className="mono mb-2 border-l-2 border-line pl-2 text-muted">
+      <div>
+        discriminator <span className="text-ink">{discriminator.property}</span>
+      </div>
+      {discriminator.variants.map((variant) => (
+        <div key={`${variant.value}:${variant.message}`}>
+          {variant.value} → <span className="text-ink">{variant.message}</span>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function Shape({
@@ -115,6 +149,8 @@ export function MethodRows({
           method.response,
           method.responseRef,
         );
+        const reqDiscriminator = discriminatorFor(provided, method.request);
+        const resDiscriminator = discriminatorFor(provided, method.response);
 
         return (
           <li
@@ -170,11 +206,13 @@ export function MethodRows({
 
               {open.has(reqKey) && reqFields ? (
                 <div className="mt-2">
+                  <DiscriminatorRows discriminator={reqDiscriminator} />
                   <ShapeRows fields={reqFields} />
                 </div>
               ) : null}
               {open.has(resKey) && resFields ? (
                 <div className="mt-2">
+                  <DiscriminatorRows discriminator={resDiscriminator} />
                   <ShapeRows fields={resFields} />
                 </div>
               ) : null}
@@ -236,6 +274,7 @@ export function MessageList({
             </button>
             {shown ? (
               <div className="px-3 pb-3">
+                <DiscriminatorRows discriminator={message.discriminator} />
                 <ShapeRows fields={message.fields} />
               </div>
             ) : null}

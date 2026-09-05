@@ -101,11 +101,14 @@ func readStore(root, repositories, storeID, owner string, b *plugin.Builder) ([]
 			table := relation.table
 			table.ID = storeID + "." + table.Name
 			table.Indexes = relation.indexes
+			for i := range table.Columns {
+				table.Columns[i].Type = state.renderType(table.Columns[i].Type)
+			}
 			// An outbox holds messages on their way out, not the
 			// aggregate: it is created beside the aggregate because the
 			// repository writes both in one transaction, and that is all
 			// the layout says about it.
-			if isOutbox(table.Name) {
+			if isOutbox(lastNamePart(table.Name)) {
 				table.Role = catalog.TableRoleOutbox
 				tables = append(tables, table)
 
@@ -118,13 +121,23 @@ func readStore(root, repositories, storeID, owner string, b *plugin.Builder) ([]
 			table.Persists = &catalog.Persists{Aggregate: aggregateID}
 
 			for i := range table.Columns {
-				if field, ok := mapped[table.Name][table.Columns[i].Name]; ok {
+				mapping := mapped[table.Name]
+				copying := copies[table.Name]
+				if at := strings.LastIndex(table.Name, "."); at >= 0 {
+					if mapping == nil {
+						mapping = mapped[table.Name[at+1:]]
+					}
+					if copying == nil {
+						copying = copies[table.Name[at+1:]]
+					}
+				}
+				if field, ok := mapping[table.Columns[i].Name]; ok {
 					table.Columns[i].Maps = field
 				}
 				// Where the value came from, when the migration says. A
 				// table cannot show a copy the way a view shows a select,
 				// so the copy is declared beside the column it lands in.
-				if from, ok := copies[table.Name][table.Columns[i].Name]; ok {
+				if from, ok := copying[table.Columns[i].Name]; ok {
 					table.Columns[i].From = from
 				}
 			}

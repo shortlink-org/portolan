@@ -167,7 +167,7 @@ func readInsert(call *ast.CallExpr, constants map[string]string) (string, string
 			}
 		}
 
-		return insert.Relation.Relname, sql, columns, insertValues(insert), call.Args[i+1:]
+		return relationName(insert.Relation), sql, columns, insertValues(insert), call.Args[i+1:]
 	}
 
 	return "", "", nil, nil, nil

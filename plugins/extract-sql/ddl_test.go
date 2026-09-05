@@ -196,6 +196,96 @@ func TestMigrationsBuildFinalSchemaState(t *testing.T) {
 	}
 }
 
+func TestPostgresSchemasKeepRelationsDistinct(t *testing.T) {
+	state := newDDLState()
+	unread, err := state.apply(`
+CREATE SCHEMA sales;
+CREATE SCHEMA audit;
+CREATE TABLE sales.orders (id uuid PRIMARY KEY, tenant_id uuid NOT NULL);
+CREATE TABLE audit.orders (id uuid PRIMARY KEY, payload jsonb NOT NULL);
+CREATE TABLE sales.order_lines (
+    id uuid PRIMARY KEY,
+    order_id uuid NOT NULL REFERENCES sales.orders (id)
+);
+CREATE INDEX orders_tenant_idx ON sales.orders (tenant_id);
+CREATE VIEW sales.order_ids AS SELECT id FROM sales.orders;
+`, "001.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(unread) != 0 {
+		t.Fatalf("nothing should be left unread: %v", unread)
+	}
+	if len(state.relations) != 3 {
+		t.Fatalf("relations = %+v", state.relations)
+	}
+	if state.relations[state.relationAt["sales.orders"]].table.Name != "sales.orders" ||
+		state.relations[state.relationAt["audit.orders"]].table.Name != "audit.orders" {
+		t.Fatalf("schema-qualified relations were merged: %+v", state.relationAt)
+	}
+	if got := state.relations[state.relationAt["sales.orders"]].indexes; len(got) != 1 || got[0].Name != "orders_tenant_idx" {
+		t.Errorf("schema-qualified index was not attached: %+v", got)
+	}
+
+	unread, err = state.apply(`ALTER TABLE sales.orders SET SCHEMA archive;`, "002.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(unread) != 0 {
+		t.Fatalf("SET SCHEMA should be applied: %v", unread)
+	}
+	if _, exists := state.relationAt["sales.orders"]; exists {
+		t.Error("old qualified table name still exists")
+	}
+	if _, exists := state.relationAt["archive.orders"]; !exists {
+		t.Fatalf("moved table is missing: %+v", state.relationAt)
+	}
+	lines := state.relations[state.relationAt["sales.order_lines"]]
+	if fk := lines.table.Columns[1].FK; fk == nil || fk.Table != "archive.orders" {
+		t.Errorf("foreign key did not follow SET SCHEMA: %+v", fk)
+	}
+	if got := strings.Join(state.views[0].reads, ","); got != "archive.orders" {
+		t.Errorf("view lineage did not follow SET SCHEMA: %q", got)
+	}
+}
+
+func TestPostgresEnumsAreRenderedInColumnTypes(t *testing.T) {
+	state := newDDLState()
+	steps := []string{
+		`CREATE SCHEMA billing;
+         CREATE TYPE billing.payment_status AS ENUM ('pending', 'paid');
+         CREATE TABLE billing.payments (
+             id uuid PRIMARY KEY,
+             status billing.payment_status NOT NULL,
+             history billing.payment_status[] NOT NULL
+         );`,
+		`ALTER TYPE billing.payment_status ADD VALUE 'authorized' BEFORE 'paid';
+         ALTER TYPE billing.payment_status RENAME VALUE 'pending' TO 'created';`,
+		`ALTER TYPE billing.payment_status SET SCHEMA public;`,
+	}
+	for i, sql := range steps {
+		unread, err := state.apply(sql, fmt.Sprintf("%03d.sql", i+1))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(unread) != 0 {
+			t.Fatalf("migration %d left unread DDL: %v", i+1, unread)
+		}
+	}
+
+	table := state.relations[state.relationAt["billing.payments"]].table
+	got := map[string]string{}
+	for _, column := range table.Columns {
+		got[column.Name] = state.renderType(column.Type)
+	}
+	if got["status"] != "payment_status enum(created | authorized | paid)" {
+		t.Errorf("status type = %q", got["status"])
+	}
+	if got["history"] != "payment_status enum(created | authorized | paid)[]" {
+		t.Errorf("history type = %q", got["history"])
+	}
+}
+
 // A view is the other half of what a migration builds, and the half a table
 // cannot express: no key, no constraints, and what it reads instead.
 func TestReadsAViewAndWhereItsColumnsComeFrom(t *testing.T) {

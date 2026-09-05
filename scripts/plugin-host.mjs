@@ -13,6 +13,7 @@ import {
   mkdirSync,
   readFileSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { mkdtemp } from "node:fs/promises";
@@ -21,11 +22,13 @@ import { isAbsolute, join } from "node:path";
 import { Worker } from "node:worker_threads";
 
 const PORTOLAN_VERSION = "0.1.0";
-const MAX_REQUEST_BYTES = 4 * 1024 * 1024;
-const MAX_RESPONSE_BYTES = 16 * 1024 * 1024;
-const MAX_STDERR_BYTES = 1024 * 1024;
-const MAX_WASM_BYTES = 64 * 1024 * 1024;
-const PLUGIN_TIMEOUT_MS = 120_000;
+const HOST_LIMITS = Object.freeze({
+  requestBytes: 4 * 1024 * 1024,
+  responseBytes: 16 * 1024 * 1024,
+  stderrBytes: 1024 * 1024,
+  wasmBytes: 64 * 1024 * 1024,
+  timeoutMs: 120_000,
+});
 
 /**
  * Runs one plugin.
@@ -34,7 +37,8 @@ const PLUGIN_TIMEOUT_MS = 120_000;
  * @param {unknown} request
  * @returns {Promise<{files: {name: string, contents: string}[], describe?: object}>}
  */
-export async function runPlugin(plugin, request) {
+export async function runPlugin(plugin, request, requestedLimits = {}) {
+  const limits = lowerLimits(requestedLimits);
   let payload;
   try {
     payload = JSON.stringify(request);
@@ -44,13 +48,13 @@ export async function runPlugin(plugin, request) {
   if (typeof payload !== "string") {
     throw new Error(`plugin ${plugin.name}: request is not a JSON value`);
   }
-  if (Buffer.byteLength(payload) > MAX_REQUEST_BYTES) {
-    throw new Error(`plugin ${plugin.name}: request exceeds ${MAX_REQUEST_BYTES} bytes`);
+  if (Buffer.byteLength(payload) > limits.requestBytes) {
+    throw new Error(`plugin ${plugin.name}: request exceeds ${limits.requestBytes} bytes`);
   }
 
   const result = plugin.wasm
-    ? await runWasm(plugin, payload)
-    : await runProcess(plugin, payload);
+    ? await runWasm(plugin, payload, limits)
+    : await runProcess(plugin, payload, limits);
   if (result.stderr) process.stderr.write(result.stderr);
 
   let response;
@@ -63,6 +67,17 @@ export async function runPlugin(plugin, request) {
   }
 
   return validateResponse(plugin.name, response);
+}
+
+function lowerLimits(requested) {
+  const limits = {};
+  for (const [name, maximum] of Object.entries(HOST_LIMITS)) {
+    const value = requested[name];
+    limits[name] = Number.isSafeInteger(value) && value > 0
+      ? Math.min(value, maximum)
+      : maximum;
+  }
+  return limits;
 }
 
 /** Reject malformed or over-broad responses before they reach the filesystem. */
@@ -157,8 +172,8 @@ export async function describePlugin(plugin) {
 // `preopens` stays empty, so the module cannot open a path even if it tries.
 // ---------------------------------------------------------------------------
 
-async function runWasm(plugin, payload) {
-  const bytes = await loadWasm(plugin);
+async function runWasm(plugin, payload, limits) {
+  const bytes = await loadWasm(plugin, limits);
 
   const dir = await mkdtemp(join(tmpdir(), "portolan-plugin-"));
   const inPath = join(dir, "request.json");
@@ -182,9 +197,15 @@ async function runWasm(plugin, payload) {
         cause ? reject(cause) : resolve(value);
       };
       const timer = setTimeout(async () => {
-        await worker.terminate();
-        finish(new Error(`plugin ${plugin.name}: timed out after ${PLUGIN_TIMEOUT_MS} ms`));
-      }, PLUGIN_TIMEOUT_MS);
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        try {
+          await worker.terminate();
+        } finally {
+          reject(new Error(`plugin ${plugin.name}: timed out after ${limits.timeoutMs} ms`));
+        }
+      }, limits.timeoutMs);
       worker.once("message", (message) => {
         if (message.error) finish(new Error(`plugin ${plugin.name}: ${message.error}`));
         else finish(null, message.code);
@@ -202,21 +223,21 @@ async function runWasm(plugin, payload) {
       );
     }
 
+    if (statSync(outPath).size > limits.responseBytes) {
+      throw new Error(`plugin ${plugin.name}: response exceeds ${limits.responseBytes} bytes`);
+    }
+    if (statSync(errPath).size > limits.stderrBytes) {
+      throw new Error(`plugin ${plugin.name}: stderr exceeds ${limits.stderrBytes} bytes`);
+    }
     const stdoutText = readFileSync(outPath, "utf8");
     const stderrText = readFileSync(errPath, "utf8");
-    if (Buffer.byteLength(stdoutText) > MAX_RESPONSE_BYTES) {
-      throw new Error(`plugin ${plugin.name}: response exceeds ${MAX_RESPONSE_BYTES} bytes`);
-    }
-    if (Buffer.byteLength(stderrText) > MAX_STDERR_BYTES) {
-      throw new Error(`plugin ${plugin.name}: stderr exceeds ${MAX_STDERR_BYTES} bytes`);
-    }
     return { stdout: stdoutText, stderr: stderrText };
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
 }
 
-async function loadWasm(plugin) {
+async function loadWasm(plugin, limits) {
   const { url, sha256 } = plugin.wasm;
 
   if (url.startsWith("file://")) {
@@ -228,7 +249,7 @@ async function loadWasm(plugin) {
     // module that was just built from the source next to it.
     if (sha256) verifyDigest(plugin.name, bytes, sha256);
 
-    verifyWasmSize(plugin.name, bytes);
+    verifyWasmSize(plugin.name, bytes, limits.wasmBytes);
     return bytes;
   }
 
@@ -249,7 +270,7 @@ async function loadWasm(plugin) {
     const bytes = readFileSync(cached);
     verifyDigest(plugin.name, bytes, sha256);
 
-    verifyWasmSize(plugin.name, bytes);
+    verifyWasmSize(plugin.name, bytes, limits.wasmBytes);
     return bytes;
   } catch {
     // Not cached yet, or cached wrongly. Either way, fetch it again.
@@ -257,7 +278,7 @@ async function loadWasm(plugin) {
 
   const response = await fetch(url, {
     redirect: "error",
-    signal: AbortSignal.timeout(PLUGIN_TIMEOUT_MS),
+    signal: AbortSignal.timeout(limits.timeoutMs),
   });
   if (!response.ok) {
     throw new Error(
@@ -266,20 +287,20 @@ async function loadWasm(plugin) {
   }
 
   const declaredSize = Number(response.headers.get("content-length"));
-  if (Number.isFinite(declaredSize) && declaredSize > MAX_WASM_BYTES) {
-    throw new Error(`plugin ${plugin.name}: wasm module exceeds ${MAX_WASM_BYTES} bytes`);
+  if (Number.isFinite(declaredSize) && declaredSize > limits.wasmBytes) {
+    throw new Error(`plugin ${plugin.name}: wasm module exceeds ${limits.wasmBytes} bytes`);
   }
   const chunks = [];
   let size = 0;
   for await (const chunk of response.body) {
     size += chunk.byteLength;
-    if (size > MAX_WASM_BYTES) {
-      throw new Error(`plugin ${plugin.name}: wasm module exceeds ${MAX_WASM_BYTES} bytes`);
+    if (size > limits.wasmBytes) {
+      throw new Error(`plugin ${plugin.name}: wasm module exceeds ${limits.wasmBytes} bytes`);
     }
     chunks.push(Buffer.from(chunk));
   }
   const bytes = Buffer.concat(chunks);
-  verifyWasmSize(plugin.name, bytes);
+  verifyWasmSize(plugin.name, bytes, limits.wasmBytes);
   verifyDigest(plugin.name, bytes, sha256);
 
   mkdirSync(cacheDir, { recursive: true });
@@ -288,9 +309,9 @@ async function loadWasm(plugin) {
   return bytes;
 }
 
-function verifyWasmSize(name, bytes) {
-  if (bytes.byteLength > MAX_WASM_BYTES) {
-    throw new Error(`plugin ${name}: wasm module exceeds ${MAX_WASM_BYTES} bytes`);
+function verifyWasmSize(name, bytes, maximum) {
+  if (bytes.byteLength > maximum) {
+    throw new Error(`plugin ${name}: wasm module exceeds ${maximum} bytes`);
   }
 }
 
@@ -312,7 +333,7 @@ function verifyDigest(name, bytes, expected) {
 // reason it is not the default.
 // ---------------------------------------------------------------------------
 
-function runProcess(plugin, payload) {
+function runProcess(plugin, payload, limits) {
   const { command, args = [] } = plugin.process ?? {};
   if (typeof command !== "string" || command.length === 0 || !Array.isArray(args) || args.some((arg) => typeof arg !== "string")) {
     throw new Error(`plugin ${plugin.name}: process must declare command and string args`);
@@ -340,19 +361,19 @@ function runProcess(plugin, payload) {
 
     child.stdout.on("data", (chunk) => {
       stdoutBytes += chunk.length;
-      if (stdoutBytes > MAX_RESPONSE_BYTES) return stopForLimit("response", MAX_RESPONSE_BYTES);
+      if (stdoutBytes > limits.responseBytes) return stopForLimit("response", limits.responseBytes);
       stdout.push(chunk);
     });
     child.stderr.on("data", (chunk) => {
       stderrBytes += chunk.length;
-      if (stderrBytes > MAX_STDERR_BYTES) return stopForLimit("stderr", MAX_STDERR_BYTES);
+      if (stderrBytes > limits.stderrBytes) return stopForLimit("stderr", limits.stderrBytes);
       stderr.push(chunk);
     });
 
     const timer = setTimeout(() => {
       child.kill("SIGKILL");
-      finish(new Error(`plugin ${plugin.name}: timed out after ${PLUGIN_TIMEOUT_MS} ms`));
-    }, PLUGIN_TIMEOUT_MS);
+      finish(new Error(`plugin ${plugin.name}: timed out after ${limits.timeoutMs} ms`));
+    }, limits.timeoutMs);
 
     child.on("error", (cause) => finish(new Error(`plugin ${plugin.name} did not start: ${cause.message}`)));
     child.on("close", (code) => {

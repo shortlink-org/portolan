@@ -79,6 +79,14 @@ func (s *site) providesBlock(from string, svc *catalog.Service) string {
 		for j := range rpc.Messages {
 			msg := &rpc.Messages[j]
 			b.WriteString("\n<details><summary>" + msg.Name + "</summary>\n\n")
+			if msg.Discriminator != nil {
+				b.WriteString("Discriminator " + code(msg.Discriminator.Property) + ": ")
+				variants := make([]string, 0, len(msg.Discriminator.Variants))
+				for _, variant := range msg.Discriminator.Variants {
+					variants = append(variants, code(variant.Value)+" → "+code(variant.Message))
+				}
+				b.WriteString(strings.Join(variants, ", ") + "\n\n")
+			}
 			b.WriteString(s.fieldTable(from, msg.Fields))
 			b.WriteString("\n</details>\n")
 		}

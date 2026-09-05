@@ -192,6 +192,78 @@ components:
 	}
 }
 
+func TestDiscriminatorKeepsPolymorphicMessagesVisible(t *testing.T) {
+	doc := testDocument(t, `
+openapi: 3.1.0
+info: {title: animals, version: 1.0.0}
+paths:
+  /pets/{id}:
+    get:
+      operationId: getPet
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Pet'}
+components:
+  schemas:
+    Pet:
+      oneOf:
+        - {$ref: '#/components/schemas/Cat'}
+        - {$ref: '#/components/schemas/Dog'}
+      discriminator:
+        propertyName: kind
+        mapping:
+          feline: '#/components/schemas/Cat'
+    Cat:
+      type: object
+      required: [kind, lives]
+      properties:
+        kind: {type: string}
+        lives: {type: integer}
+    Dog:
+      type: object
+      required: [kind, good]
+      properties:
+        kind: {type: string}
+        good: {type: boolean}
+`)
+	services := rpcServices(doc, "animals.v1", "test.yaml", &plugin.Builder{})
+	if len(services) != 1 || len(services[0].Methods) != 1 {
+		t.Fatalf("services = %+v", services)
+	}
+	if got := services[0].Methods[0].Response; got != "Pet" {
+		t.Fatalf("response = %q, want Pet", got)
+	}
+
+	byName := map[string]catalog.RpcMessage{}
+	for _, message := range services[0].Messages {
+		byName[message.Name] = message
+	}
+	pet, ok := byName["Pet"]
+	if !ok || pet.Discriminator == nil {
+		t.Fatalf("Pet discriminator is missing: %+v", pet)
+	}
+	if pet.Discriminator.Property != "kind" {
+		t.Errorf("property = %q", pet.Discriminator.Property)
+	}
+	if len(pet.Discriminator.Variants) != 2 {
+		t.Fatalf("variants = %+v", pet.Discriminator.Variants)
+	}
+	if got := pet.Discriminator.Variants[0]; got.Value != "feline" || got.Message != "Cat" {
+		t.Errorf("mapped variant = %+v", got)
+	}
+	if got := pet.Discriminator.Variants[1]; got.Value != "Dog" || got.Message != "Dog" {
+		t.Errorf("implicit variant = %+v", got)
+	}
+	if _, ok := byName["Cat"]; !ok {
+		t.Error("Cat concrete message is missing")
+	}
+	if _, ok := byName["Dog"]; !ok {
+		t.Error("Dog concrete message is missing")
+	}
+}
+
 func TestRelativeExternalSchemaRefsAreLoaded(t *testing.T) {
 	dir := t.TempDir()
 	common := filepath.Join(dir, "common.yaml")

@@ -9,20 +9,23 @@
 // refuses a commit where they no longer follow from the catalog.
 
 import {
-  mkdirSync,
   lstatSync,
   readdirSync,
   readFileSync,
   rmSync,
   statSync,
-  writeFileSync,
 } from "node:fs";
 import { execFileSync } from "node:child_process";
-import { dirname, join, normalize, relative, resolve, sep } from "node:path";
+import { join } from "node:path";
 
 import { loadCatalog } from "./catalog-sources.mjs";
 import { loadManifest } from "./manifest.mjs";
 import { runPlugin } from "./plugin-host.mjs";
+import {
+  removeOutputFile,
+  safeOutputPath,
+  writeOutputFile,
+} from "./output-path.mjs";
 
 const PORTOLAN_VERSION = "0.1.0";
 
@@ -248,8 +251,11 @@ function apply(files, out, step, checkOnly) {
     changes.push(`${current === null ? "added   " : "changed "} ${join(out, file.name)}`);
     if (checkOnly) continue;
 
-    mkdirSync(dirname(target), { recursive: true });
-    writeFileSync(target, file.contents);
+    try {
+      writeOutputFile(out, file.name, file.contents);
+    } catch (cause) {
+      fail(cause.message);
+    }
   }
 
   const listing = previous(out);
@@ -265,13 +271,20 @@ function apply(files, out, step, checkOnly) {
     changes.push(`removed  ${join(out, stale)}`);
     if (checkOnly) continue;
 
-    rmSync(safeJoin(out, stale), { force: true });
+    try {
+      removeOutputFile(out, stale);
+    } catch (cause) {
+      fail(cause.message);
+    }
   }
 
   if (!checkOnly) {
     listing[step] = [...written].sort();
-    mkdirSync(out, { recursive: true });
-    writeFileSync(join(out, MANIFEST), `${JSON.stringify(listing, null, 2)}\n`);
+    try {
+      writeOutputFile(out, MANIFEST, `${JSON.stringify(listing, null, 2)}\n`);
+    } catch (cause) {
+      fail(cause.message);
+    }
     pruneEmptyDirs(out);
   }
 
@@ -298,32 +311,11 @@ function previous(out) {
  * back are still not allowed to point anywhere they like.
  */
 function safeJoin(out, name) {
-  if (name.startsWith("/") || /^[a-zA-Z]:/.test(name) || name.includes("\\")) {
-    fail(`plugin asked to write ${JSON.stringify(name)}, which is not a relative path`);
+  try {
+    return safeOutputPath(out, name);
+  } catch (cause) {
+    fail(cause.message);
   }
-
-  const target = resolve(out, normalize(name));
-  const inside = relative(resolve(out), target);
-  if (inside.startsWith("..") || inside.startsWith(sep)) {
-    fail(`plugin asked to write ${JSON.stringify(name)}, which is outside ${out}`);
-  }
-
-  // A lexically safe name can still escape through an existing symlink in the
-  // output tree. Refuse every symlink component before reading, writing or
-  // deleting the target.
-  let current = resolve(out);
-  for (const part of ["", ...inside.split(sep)]) {
-    if (part) current = join(current, part);
-    try {
-      if (lstatSync(current).isSymbolicLink()) {
-        fail(`plugin asked to use ${JSON.stringify(name)}, but ${current} is a symlink`);
-      }
-    } catch (cause) {
-      if (cause?.code !== "ENOENT") throw cause;
-    }
-  }
-
-  return target;
 }
 
 /** Removes directories left behind by files that are no longer generated. */
@@ -339,7 +331,9 @@ function pruneEmptyDirs(root) {
     let empty = true;
     for (const entry of entries) {
       const path = join(dir, entry);
-      if (statSync(path).isDirectory()) {
+      if (lstatSync(path).isSymbolicLink()) {
+        empty = false;
+      } else if (statSync(path).isDirectory()) {
         if (walk(path)) rmSync(path, { recursive: true, force: true });
         else empty = false;
       } else {

@@ -49,10 +49,11 @@ type ddlState struct {
 	relationAt map[string]int
 	views      []declaredView
 	viewAt     map[string]int
+	enums      map[string][]string
 }
 
 func newDDLState() *ddlState {
-	return &ddlState{relationAt: map[string]int{}, viewAt: map[string]int{}}
+	return &ddlState{relationAt: map[string]int{}, viewAt: map[string]int{}, enums: map[string][]string{}}
 }
 
 // readDDL turns one migration into the tables and views it creates, in the
@@ -83,6 +84,18 @@ func (s *ddlState) apply(sql, source string) ([]string, error) {
 		case *nodes.CreateStmt:
 			s.addRelation(readRelation(stmt))
 
+		case *nodes.CreateSchemaStmt:
+			// Schemas namespace the relations and types below; they do not need
+			// a catalog object of their own.
+
+		case *nodes.CreateEnumStmt:
+			s.enums[qualifiedName(stringList(stmt.TypeName))] = stringList(stmt.Vals)
+
+		case *nodes.AlterEnumStmt:
+			if note := s.alterEnum(stmt); note != "" {
+				unread = append(unread, note)
+			}
+
 		case *nodes.ViewStmt:
 			s.addView(declaredView{view: readView(stmt, sql), source: source})
 
@@ -96,9 +109,10 @@ func (s *ddlState) apply(sql, source string) ([]string, error) {
 			s.addView(declaredView{view: materialized, source: source})
 
 		case *nodes.IndexStmt:
-			at, known := s.relationAt[stmt.Relation.Relname]
+			name := relationName(stmt.Relation)
+			at, known := s.relationAt[name]
 			if !known {
-				unread = append(unread, fmt.Sprintf("index %q is on unknown table %q", stmt.Idxname, stmt.Relation.Relname))
+				unread = append(unread, fmt.Sprintf("index %q is on unknown table %q", stmt.Idxname, name))
 
 				continue
 			}
@@ -114,6 +128,11 @@ func (s *ddlState) apply(sql, source string) ([]string, error) {
 
 		case *nodes.DropStmt:
 			if note := s.drop(stmt); note != "" {
+				unread = append(unread, note)
+			}
+
+		case *nodes.AlterObjectSchemaStmt:
+			if note := s.moveSchema(stmt); note != "" {
 				unread = append(unread, note)
 			}
 
@@ -173,9 +192,10 @@ func (s *ddlState) alter(stmt *nodes.AlterTableStmt) []string {
 	if stmt.Relation == nil {
 		return []string{"ALTER TABLE without a relation is not read"}
 	}
-	at, known := s.relationAt[stmt.Relation.Relname]
+	name := relationName(stmt.Relation)
+	at, known := s.relationAt[name]
 	if !known {
-		return []string{fmt.Sprintf("ALTER TABLE refers to unknown table %q", stmt.Relation.Relname)}
+		return []string{fmt.Sprintf("ALTER TABLE refers to unknown table %q", name)}
 	}
 	r := &s.relations[at]
 	var unread []string
@@ -233,7 +253,7 @@ func (s *ddlState) alter(stmt *nodes.AlterTableStmt) []string {
 				unread = append(unread, fmt.Sprintf("DROP CONSTRAINT %q cannot be resolved", cmd.Name))
 			}
 		default:
-			unread = append(unread, fmt.Sprintf("ALTER TABLE %q subcommand %d is not read", stmt.Relation.Relname, cmd.Subtype))
+			unread = append(unread, fmt.Sprintf("ALTER TABLE %q subcommand %d is not read", name, cmd.Subtype))
 		}
 	}
 	return unread
@@ -256,7 +276,7 @@ func (r *relation) applyConstraint(c *nodes.Constraint) bool {
 		remote := stringList(c.PkAttrs)
 		for i, name := range columns {
 			if column := relationColumn(r, name); column != nil && c.Pktable != nil {
-				column.FK = &catalog.FK{Table: c.Pktable.Relname, OnDelete: deleteAction(c.FkDelaction)}
+				column.FK = &catalog.FK{Table: relationName(c.Pktable), OnDelete: deleteAction(c.FkDelaction)}
 				if i < len(remote) {
 					column.FK.Column = remote[i]
 				}
@@ -336,10 +356,30 @@ func relationColumn(r *relation, name string) *catalog.Column {
 }
 
 func (s *ddlState) rename(stmt *nodes.RenameStmt) string {
+	if stmt.RenameType == nodes.OBJECT_TYPE {
+		parts, ok := stmt.Object.(*nodes.List)
+		if !ok {
+			return "RENAME TYPE without a qualified name is not read"
+		}
+		oldName := qualifiedName(stringList(parts))
+		values, known := s.enums[oldName]
+		if !known {
+			return fmt.Sprintf("RENAME TYPE refers to unknown enum %q", oldName)
+		}
+		newName := qualifyLike(oldName, stmt.Newname)
+		delete(s.enums, oldName)
+		s.enums[newName] = values
+		for i := range s.relations {
+			for j := range s.relations[i].table.Columns {
+				s.relations[i].table.Columns[j].Type = replaceBaseType(s.relations[i].table.Columns[j].Type, oldName, newName)
+			}
+		}
+		return ""
+	}
 	if stmt.Relation == nil {
 		return fmt.Sprintf("%T without a relation is not read", stmt)
 	}
-	oldTable := stmt.Relation.Relname
+	oldTable := relationName(stmt.Relation)
 	at, known := s.relationAt[oldTable]
 	if !known {
 		return fmt.Sprintf("RENAME refers to unknown table %q", oldTable)
@@ -382,30 +422,11 @@ func (s *ddlState) rename(stmt *nodes.RenameStmt) string {
 	if stmt.RenameType != nodes.OBJECT_TABLE {
 		return fmt.Sprintf("RENAME object type %d is not read", stmt.RenameType)
 	}
-	s.relations[at].table.Name = stmt.Newname
+	newTable := qualifyLike(oldTable, stmt.Newname)
+	s.relations[at].table.Name = newTable
 	delete(s.relationAt, oldTable)
-	s.relationAt[stmt.Newname] = at
-	for i := range s.relations {
-		for j := range s.relations[i].table.Columns {
-			if fk := s.relations[i].table.Columns[j].FK; fk != nil && fk.Table == oldTable {
-				fk.Table = stmt.Newname
-			}
-		}
-	}
-	for i := range s.views {
-		for j, read := range s.views[i].reads {
-			if read == oldTable {
-				s.views[i].reads[j] = stmt.Newname
-			}
-		}
-		for j := range s.views[i].columns {
-			for k, from := range s.views[i].columns[j].from {
-				if strings.HasPrefix(from, oldTable+".") {
-					s.views[i].columns[j].from[k] = stmt.Newname + strings.TrimPrefix(from, oldTable)
-				}
-			}
-		}
-	}
+	s.relationAt[newTable] = at
+	s.renameRelationReferences(oldTable, newTable)
 	return ""
 }
 
@@ -422,6 +443,7 @@ func (s *ddlState) drop(stmt *nodes.DropStmt) string {
 		}
 	case nodes.OBJECT_INDEX:
 		for _, name := range names {
+			name = lastNamePart(name)
 			for i := range s.relations {
 				indexes := s.relations[i].indexes[:0]
 				for _, index := range s.relations[i].indexes {
@@ -431,6 +453,10 @@ func (s *ddlState) drop(stmt *nodes.DropStmt) string {
 				}
 				s.relations[i].indexes = indexes
 			}
+		}
+	case nodes.OBJECT_TYPE:
+		for _, name := range names {
+			delete(s.enums, name)
 		}
 	default:
 		return fmt.Sprintf("DROP object type %d is not read", stmt.RemoveType)
@@ -445,9 +471,9 @@ func objectNames(list *nodes.List) []string {
 		if !ok {
 			continue
 		}
-		name := stringList(parts)
-		if len(name) > 0 {
-			out = append(out, name[len(name)-1])
+		name := qualifiedName(stringList(parts))
+		if name != "" {
+			out = append(out, name)
 		}
 	}
 	return out
@@ -482,7 +508,7 @@ func (s *ddlState) removeView(name string) {
 }
 
 func readTable(stmt *nodes.CreateStmt) catalog.Table {
-	table := catalog.Table{Name: stmt.Relation.Relname, Columns: []catalog.Column{}}
+	table := catalog.Table{Name: relationName(stmt.Relation), Columns: []catalog.Column{}}
 
 	// A table constraint sits in the same list as the columns, so PRIMARY KEY
 	// (a, b) is collected first and applied to the columns it names.
@@ -543,7 +569,7 @@ func readForeignKey(constraint *nodes.Constraint) *catalog.FK {
 		return nil
 	}
 
-	fk := &catalog.FK{Table: constraint.Pktable.Relname, OnDelete: deleteAction(constraint.FkDelaction)}
+	fk := &catalog.FK{Table: relationName(constraint.Pktable), OnDelete: deleteAction(constraint.FkDelaction)}
 	if referenced := stringList(constraint.PkAttrs); len(referenced) > 0 {
 		fk.Column = referenced[0]
 	}
@@ -604,7 +630,7 @@ func typeName(name *nodes.TypeName) string {
 		parts = parts[1:]
 	}
 
-	rendered := strings.Join(parts, ".")
+	rendered := qualifiedName(parts)
 	if spelled, ok := spelling[rendered]; ok {
 		rendered = spelled
 	}
@@ -612,8 +638,192 @@ func typeName(name *nodes.TypeName) string {
 	if mods := typeMods(name.Typmods); mods != "" {
 		rendered += "(" + mods + ")"
 	}
+	for range items(name.ArrayBounds) {
+		rendered += "[]"
+	}
 
 	return rendered
+}
+
+func relationName(relation *nodes.RangeVar) string {
+	if relation == nil {
+		return ""
+	}
+	if relation.Schemaname == "" || relation.Schemaname == "public" {
+		return relation.Relname
+	}
+	return relation.Schemaname + "." + relation.Relname
+}
+
+func qualifiedName(parts []string) string {
+	if len(parts) > 1 && parts[0] == "public" {
+		parts = parts[1:]
+	}
+	return strings.Join(parts, ".")
+}
+
+func qualifyLike(oldName, newBase string) string {
+	if at := strings.LastIndex(oldName, "."); at >= 0 {
+		return oldName[:at+1] + newBase
+	}
+	return newBase
+}
+
+func replaceBaseType(held, oldName, newName string) string {
+	base, arrays := arrayType(held)
+	if base == oldName {
+		return newName + arrays
+	}
+	return held
+}
+
+func (s *ddlState) renderType(held string) string {
+	base, arrays := arrayType(held)
+	values, ok := s.enums[base]
+	if !ok {
+		return held
+	}
+	return base + " enum(" + strings.Join(values, " | ") + ")" + arrays
+}
+
+func arrayType(held string) (string, string) {
+	base := held
+	arrays := ""
+	for strings.HasSuffix(base, "[]") {
+		base = strings.TrimSuffix(base, "[]")
+		arrays += "[]"
+	}
+	return base, arrays
+}
+
+func (s *ddlState) alterEnum(stmt *nodes.AlterEnumStmt) string {
+	name := qualifiedName(stringList(stmt.Typname))
+	values, known := s.enums[name]
+	if !known {
+		return fmt.Sprintf("ALTER TYPE refers to unknown enum %q", name)
+	}
+	if stmt.Oldval != "" {
+		for i, value := range values {
+			if value == stmt.Oldval {
+				values[i] = stmt.Newval
+				s.enums[name] = values
+				return ""
+			}
+		}
+		return fmt.Sprintf("ALTER TYPE %q refers to unknown enum value %q", name, stmt.Oldval)
+	}
+	for _, value := range values {
+		if value == stmt.Newval {
+			if stmt.SkipIfNewvalExists {
+				return ""
+			}
+			return fmt.Sprintf("ALTER TYPE %q adds duplicate enum value %q", name, stmt.Newval)
+		}
+	}
+	at := len(values)
+	if stmt.NewvalNeighbor != "" {
+		at = -1
+		for i, value := range values {
+			if value == stmt.NewvalNeighbor {
+				at = i
+				if stmt.NewvalIsAfter {
+					at++
+				}
+				break
+			}
+		}
+		if at < 0 {
+			return fmt.Sprintf("ALTER TYPE %q names unknown neighbor %q", name, stmt.NewvalNeighbor)
+		}
+	}
+	values = append(values, "")
+	copy(values[at+1:], values[at:])
+	values[at] = stmt.Newval
+	s.enums[name] = values
+	return ""
+}
+
+func (s *ddlState) moveSchema(stmt *nodes.AlterObjectSchemaStmt) string {
+	if stmt.ObjectType == nodes.OBJECT_TYPE {
+		parts, ok := stmt.Object.(*nodes.List)
+		if !ok {
+			return "ALTER TYPE SET SCHEMA without a qualified name is not read"
+		}
+		oldName := qualifiedName(stringList(parts))
+		values, known := s.enums[oldName]
+		if !known {
+			return fmt.Sprintf("ALTER TYPE SET SCHEMA refers to unknown enum %q", oldName)
+		}
+		newName := qualifyInSchema(stmt.Newschema, lastNamePart(oldName))
+		delete(s.enums, oldName)
+		s.enums[newName] = values
+		for i := range s.relations {
+			for j := range s.relations[i].table.Columns {
+				s.relations[i].table.Columns[j].Type = replaceBaseType(s.relations[i].table.Columns[j].Type, oldName, newName)
+			}
+		}
+		return ""
+	}
+	if stmt.Relation == nil {
+		return "ALTER ... SET SCHEMA without a relation is not read"
+	}
+	oldName := relationName(stmt.Relation)
+	if stmt.ObjectType != nodes.OBJECT_TABLE && stmt.ObjectType != nodes.OBJECT_VIEW && stmt.ObjectType != nodes.OBJECT_MATVIEW {
+		return fmt.Sprintf("ALTER object type %d SET SCHEMA is not read", stmt.ObjectType)
+	}
+	newName := qualifyInSchema(stmt.Newschema, stmt.Relation.Relname)
+	if at, known := s.relationAt[oldName]; known {
+		s.relations[at].table.Name = newName
+		delete(s.relationAt, oldName)
+		s.relationAt[newName] = at
+		s.renameRelationReferences(oldName, newName)
+		return ""
+	}
+	if at, known := s.viewAt[oldName]; known {
+		s.views[at].name = newName
+		delete(s.viewAt, oldName)
+		s.viewAt[newName] = at
+		return ""
+	}
+	return fmt.Sprintf("ALTER SET SCHEMA refers to unknown relation %q", oldName)
+}
+
+func qualifyInSchema(schema, base string) string {
+	if schema == "" || schema == "public" {
+		return base
+	}
+	return schema + "." + base
+}
+
+func lastNamePart(name string) string {
+	if at := strings.LastIndex(name, "."); at >= 0 {
+		return name[at+1:]
+	}
+	return name
+}
+
+func (s *ddlState) renameRelationReferences(oldName, newName string) {
+	for i := range s.relations {
+		for j := range s.relations[i].table.Columns {
+			if fk := s.relations[i].table.Columns[j].FK; fk != nil && fk.Table == oldName {
+				fk.Table = newName
+			}
+		}
+	}
+	for i := range s.views {
+		for j, read := range s.views[i].reads {
+			if read == oldName {
+				s.views[i].reads[j] = newName
+			}
+		}
+		for j := range s.views[i].columns {
+			for k, from := range s.views[i].columns[j].from {
+				if strings.HasPrefix(from, oldName+".") {
+					s.views[i].columns[j].from[k] = newName + strings.TrimPrefix(from, oldName)
+				}
+			}
+		}
+	}
 }
 
 // spelling puts back the words a migration was written with.

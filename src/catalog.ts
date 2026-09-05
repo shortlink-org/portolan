@@ -159,6 +159,21 @@ export const STREAMING: readonly Streaming[] = [
 export interface RpcMessage {
   name: string; // "PlaceOrderRequest"
   fields: Field[];
+  /** How this OpenAPI message selects one concrete variant on the wire. */
+  discriminator?: RpcDiscriminator;
+}
+
+export interface RpcDiscriminator {
+  /** JSON property carrying the discriminator value. */
+  property: string;
+  variants: RpcVariant[];
+}
+
+export interface RpcVariant {
+  /** Value carried in `property`. */
+  value: string;
+  /** Concrete message selected by that value. */
+  message: string;
 }
 /**
  * Where a derived edge was read from: the flow step that implies it. A
@@ -1447,7 +1462,41 @@ export function validateCatalog(catalog: Catalog): Catalog {
             );
           }
         }
+        const messageNames = new Set(
+          (provided.messages ?? []).map((message) => message.name),
+        );
         for (const message of provided.messages ?? []) {
+          if (message.discriminator !== undefined) {
+            const discriminator = message.discriminator;
+            if (discriminator.property === "") {
+              fail(
+                `rpc message "${provided.id}.${message.name}" has an empty discriminator property`,
+                `service ${service.id} / rpc ${provided.id}.${message.name}`,
+              );
+            }
+            const values = new Set<string>();
+            for (const variant of discriminator.variants) {
+              if (variant.value === "" || variant.message === "") {
+                fail(
+                  `rpc message "${provided.id}.${message.name}" has an incomplete discriminator variant`,
+                  `service ${service.id} / rpc ${provided.id}.${message.name}`,
+                );
+              }
+              if (values.has(variant.value)) {
+                fail(
+                  `rpc message "${provided.id}.${message.name}" maps discriminator value "${variant.value}" more than once`,
+                  `service ${service.id} / rpc ${provided.id}.${message.name}`,
+                );
+              }
+              values.add(variant.value);
+              if (!messageNames.has(variant.message)) {
+                fail(
+                  `rpc message "${provided.id}.${message.name}" discriminator references unknown message "${variant.message}"`,
+                  `service ${service.id} / rpc ${provided.id}.${message.name}`,
+                );
+              }
+            }
+          }
           for (const field of message.fields) {
             if (field.ref !== undefined && !(field.ref in catalog.defs)) {
               fail(
