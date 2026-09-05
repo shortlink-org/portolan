@@ -29,13 +29,13 @@ export class RouteHandlers {
     const route = await this.lookup.handle(routeId);
 
     return {
-      routeId: route.id,
+      routeId: route.routeId,
       vehicle: route.vehicle,
       status: route.status,
       stops: route.stops.map((stop) => ({
         seq: stop.seq,
         shipmentId: stop.shipmentId,
-        address: stop.address.toString(),
+        address: stop.address,
         done: stop.done,
       })),
     };

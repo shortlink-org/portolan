@@ -60,7 +60,7 @@ public class PaymentGrpcService extends PaymentServiceGrpc.PaymentServiceImplBas
     public void getPayment(GetPaymentRequest request, StreamObserver<GetPaymentResponse> observer) {
         var payment = getPayment.handle(request.getPaymentId()).orElseThrow();
         observer.onNext(GetPaymentResponse.newBuilder()
-                .setPaymentId(payment.id())
+                .setPaymentId(payment.paymentId())
                 .setOrderId(payment.orderId())
                 .setStatus(payment.status().name())
                 .setAmountMinor(payment.amount().amountMinor())

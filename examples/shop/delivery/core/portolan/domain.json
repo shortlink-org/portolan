@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-09-05T03:58:04Z",
-  "commit": "4577548",
+  "generatedAt": "2026-09-05T15:27:17+07:00",
+  "commit": "20016ba",
   "contexts": [
     {
       "id": "delivery",
@@ -750,7 +750,7 @@
           "kind": "call",
           "label": "byId",
           "status": "declared",
-          "line": "examples/shop/delivery/core/src/application/shipment/usecases/get_shipment/usecase.ts:9"
+          "line": "examples/shop/delivery/core/src/application/shipment/usecases/get_shipment/usecase.ts:24"
         }
       ]
     },
@@ -797,7 +797,7 @@
           "kind": "call",
           "label": "byId",
           "status": "declared",
-          "line": "examples/shop/delivery/core/src/application/route/usecases/get_route/usecase.ts:9"
+          "line": "examples/shop/delivery/core/src/application/route/usecases/get_route/usecase.ts:22"
         }
       ]
     },
@@ -844,7 +844,7 @@
           "kind": "call",
           "label": "byId",
           "status": "declared",
-          "line": "examples/shop/delivery/core/src/application/shipment/usecases/get_shipment/usecase.ts:9"
+          "line": "examples/shop/delivery/core/src/application/shipment/usecases/get_shipment/usecase.ts:24"
         }
       ]
     },

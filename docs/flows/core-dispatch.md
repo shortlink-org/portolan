@@ -1,6 +1,6 @@
 # Dispatch
 
-*Generated from the portolan catalog · commit `4 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `5 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
 
 - **Id:** `flow.core-dispatch`
 - **Owner:** [delivery](../delivery/README.md)
@@ -64,4 +64,4 @@ sequenceDiagram
 6. **delivery.core** → **bus** — ShipmentDispatched
    [delivery.core.shipment.ShipmentDispatched](../delivery/core/aggregates/shipment.md) · status: declared · `examples/shop/delivery/core/src/application/shipment/usecases/dispatch/usecase.ts:37`
 7. **delivery.core** → **core-pg** — byId
-   status: declared · `examples/shop/delivery/core/src/application/shipment/usecases/get_shipment/usecase.ts:9`
+   status: declared · `examples/shop/delivery/core/src/application/shipment/usecases/get_shipment/usecase.ts:24`

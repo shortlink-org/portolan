@@ -46,14 +46,6 @@ export class ShipmentHandlers {
 
   /** One shipment, for whoever is asking about an order. */
   async getShipment(shipmentId: string): Promise<unknown> {
-    const shipment = await this.lookup.handle(shipmentId);
-
-    return {
-      shipmentId: shipment.id,
-      orderId: shipment.orderId,
-      status: shipment.status,
-      tracking: shipment.tracking?.toString() ?? "",
-      parcels: shipment.parcels.length,
-    };
+    return this.lookup.handle(shipmentId);
   }
 }

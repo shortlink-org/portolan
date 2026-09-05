@@ -47,7 +47,7 @@ public class RefundGrpcService extends RefundServiceGrpc.RefundServiceImplBase {
         var response = ListRefundsResponse.newBuilder();
         for (var refund : refunds) {
             response.addRefunds(RefundView.newBuilder()
-                    .setRefundId(refund.id())
+                    .setRefundId(refund.refundId())
                     .setAmountMinor(refund.amount().amountMinor())
                     .setCurrency(refund.amount().currency())
                     .setStatus(refund.status().name())
