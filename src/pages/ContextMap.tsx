@@ -20,9 +20,12 @@ import { PATTERN_LABEL, PATTERN_MEANING, contextMap } from "../lib/context-map";
 import type {
   ContextDependency,
   ContextRelation,
+  MapLink,
   MapPattern,
   SharedKernel,
 } from "../lib/context-map";
+import type { Status } from "../catalog";
+import { EventIcon } from "../components/ddd-icons";
 import { contextName, ctxStyle } from "../lib/context-color";
 import { staggerStyle } from "../lib/motion";
 import { statusVar } from "../components/primitives";
@@ -88,74 +91,136 @@ function ContextLink({ id }: { id: string }) {
   );
 }
 
-/** Everything taken in one direction, with each thing linked to where it lives. */
-function Dependency({ dependency }: { dependency: ContextDependency }) {
-  const events = dependency.links.filter((l) => l.kind === "event");
-  const calls = dependency.links.filter((l) => l.kind === "rpc");
+/** How many links share one id - two callers of one method are one chip with a count. */
+interface Grouped {
+  link: MapLink;
+  /** The downstream services taking it, one per link folded in. */
+  takers: string[];
+}
+
+function groupLinks(links: readonly MapLink[]): Grouped[] {
+  const out: Grouped[] = [];
+  for (const link of links) {
+    const seen = out.find((g) => g.link.id === link.id);
+    if (seen) seen.takers.push(link.to);
+    else out.push({ link, takers: [link.to] });
+  }
+  return out;
+}
+
+/** "2 events · 1 call" - a count that is zero is not said. */
+function counts(links: readonly MapLink[]): string {
+  const events = links.filter((l) => l.kind === "event").length;
+  const calls = links.length - events;
+  const parts: string[] = [];
+  if (events > 0) parts.push(`${events} ${plural(events, "event")}`);
+  if (calls > 0) parts.push(`${calls} ${plural(calls, "call")}`);
+  return parts.join(" · ");
+}
+
+/** The status square every link carries, in the app's three colours. */
+function StatusMark({ status }: { status: Status }) {
+  return (
+    <span
+      aria-hidden
+      className="size-1.5 shrink-0 rounded-[1px]"
+      style={{ background: statusVar(status) }}
+    />
+  );
+}
+
+/** A small right-hand count on a chip that stands for more than one link. */
+function Times({ n }: { n: number }) {
+  if (n < 2) return null;
+  return <span className="tnum opacity-70">×{n}</span>;
+}
+
+/**
+ * An event, as a tinted pill - the same paint the dependency graph gives an
+ * event, so a reader knows the kind before reading the name. Calls stay
+ * outlined: two kinds of link, two shapes, and the eye sorts them without
+ * being asked to.
+ */
+function EventChip({ group }: { group: Grouped }) {
+  const { link, takers } = group;
+  const to = eventPath(link.id);
+  const title = `${link.id} — ${link.from} → ${takers.join(", ")} (${link.status})`;
+  const body = (
+    <>
+      <EventIcon size={11} aria-hidden />
+      <StatusMark status={link.status} />
+      {link.label}
+      <Times n={takers.length} />
+    </>
+  );
+  const style = {
+    color: "var(--kind-event)",
+    background: "color-mix(in srgb, var(--kind-event) 12%, transparent)",
+    borderColor: "transparent",
+  };
+  return to ? (
+    <Link to={to} className="chip" style={style} title={title}>
+      {body}
+    </Link>
+  ) : (
+    <span className="chip" style={style} title={title}>
+      {body}
+    </span>
+  );
+}
+
+function CallChip({ group }: { group: Grouped }) {
+  const { link, takers } = group;
+  return (
+    <Ident
+      value={link.id}
+      className="chip border-line-strong text-muted"
+      title={`${link.id} — ${takers.join(", ")} ${takers.length === 1 ? "calls" : "call"} ${link.from} (${link.status})`}
+    >
+      <StatusMark status={link.status} />
+      {link.id}
+      <Times n={takers.length} />
+    </Ident>
+  );
+}
+
+/**
+ * Everything taken in one direction, with each thing linked to where it lives.
+ *
+ * The pair is already in the card's title, so a one-way card does not spell it
+ * again: the eyebrow says who takes, the count says how much, and the chips
+ * say what. A partnership has two of these, and only there does the eyebrow
+ * name the other side - that is the line a reader is telling apart.
+ */
+function Dependency({
+  dependency,
+  named,
+}: {
+  dependency: ContextDependency;
+  /** Say the upstream in the eyebrow - needed when the card holds two directions. */
+  named: boolean;
+}) {
+  const groups = groupLinks(dependency.links);
+  const events = groups.filter((g) => g.link.kind === "event");
+  const calls = groups.filter((g) => g.link.kind === "rpc");
 
   return (
-    <div className="mt-2">
-      <div className="mono flex flex-wrap items-center gap-1.5 text-muted">
-        <ContextLink id={dependency.upstream} />
-        <ArrowRight size={12} aria-hidden />
-        <ContextLink id={dependency.downstream} />
-        <span className="ml-1">
-          {dependency.downstream} takes {events.length}{" "}
-          {events.length === 1 ? "event" : "events"}
-          {calls.length > 0
-            ? ` and ${calls.length} ${calls.length === 1 ? "call" : "calls"}`
-            : ""}
+    <div className="mt-3">
+      <div className="flex items-baseline gap-2">
+        <span className="label">
+          {dependency.downstream} takes
+          {named ? ` from ${dependency.upstream}` : ""}
+        </span>
+        <span className="mono ml-auto shrink-0 text-faint">
+          {counts(dependency.links)}
         </span>
       </div>
-
       <div className="mt-1.5 flex flex-wrap gap-1">
-        {events.map((link) => {
-          const to = eventPath(link.id);
-          const body = (
-            <>
-              <span
-                aria-hidden
-                className="size-1.5 shrink-0 rounded-[1px]"
-                style={{ background: statusVar(link.status) }}
-              />
-              {link.label}
-            </>
-          );
-          const title = `${link.id} — ${link.from} → ${link.to} (${link.status})`;
-          return to ? (
-            <Link
-              key={`${link.id}:${link.to}`}
-              to={to}
-              className="chip border-line-strong"
-              style={{ color: "var(--kind-event)" }}
-              title={title}
-            >
-              {body}
-            </Link>
-          ) : (
-            <span
-              key={`${link.id}:${link.to}`}
-              className="chip border-line-strong text-muted"
-              title={title}
-            >
-              {body}
-            </span>
-          );
-        })}
-        {calls.map((link) => (
-          <Ident
-            key={`${link.id}:${link.to}`}
-            value={link.id}
-            className="chip border-line-strong text-muted"
-            title={`${link.id} — ${link.to} calls ${link.from} (${link.status})`}
-          >
-            <span
-              aria-hidden
-              className="size-1.5 shrink-0 rounded-[1px]"
-              style={{ background: statusVar(link.status) }}
-            />
-            {link.id}
-          </Ident>
+        {events.map((group) => (
+          <EventChip key={group.link.id} group={group} />
+        ))}
+        {calls.map((group) => (
+          <CallChip key={group.link.id} group={group} />
         ))}
       </div>
     </div>
@@ -282,47 +347,87 @@ function Relation({ relation, at }: { relation: ContextRelation; at: number }) {
       </div>
 
       {/* Every chip's reason, spelled out. The chip is the word; this is the
-          measurement it was read from, and it is what makes the word checkable. */}
-      <ul className="mt-3 flex flex-col gap-1">
+          measurement it was read from, and it is what makes the word
+          checkable. Prose, not a list: it is a sentence about the pair, and
+          only when there are several does each get the word it explains. */}
+      <div className="mt-2 flex flex-col gap-0.5 text-muted">
         {relation.patterns.map((pattern) => (
-          <li
-            key={`why:${pattern.name}:${pattern.downstream ?? ""}`}
-            className="mono flex gap-2 text-muted"
-          >
-            <span
-              aria-hidden
-              className="mt-1.5 size-1 shrink-0 rounded-[1px]"
-              style={{
-                background:
-                  pattern.basis === "counted"
-                    ? "var(--accent)"
-                    : "var(--border-strong)",
-              }}
-            />
-            <span className="min-w-0">{pattern.why}</span>
-          </li>
+          <p key={`why:${pattern.name}:${pattern.downstream ?? ""}`}>
+            {relation.patterns.length > 1 ? (
+              <span className="label mr-2">{PATTERN_LABEL[pattern.name]}</span>
+            ) : null}
+            {pattern.why}
+          </p>
         ))}
-      </ul>
+      </div>
 
-      {relation.dependencies.map((dependency) => (
-        <Dependency
-          key={`${dependency.upstream}->${dependency.downstream}`}
-          dependency={dependency}
-        />
-      ))}
-
-      {relation.shared.length > 0 ? (
-        <Kernel shared={relation.shared} a={relation.a} b={relation.b} />
+      {relation.dependencies.length > 0 || relation.shared.length > 0 ? (
+        <div className="mt-3 border-t border-line">
+          {relation.dependencies.map((dependency) => (
+            <Dependency
+              key={`${dependency.upstream}->${dependency.downstream}`}
+              dependency={dependency}
+              named={both}
+            />
+          ))}
+          {relation.shared.length > 0 ? (
+            <Kernel shared={relation.shared} a={relation.a} b={relation.b} />
+          ) : null}
+        </div>
       ) : null}
+    </section>
+  );
+}
+
+/**
+ * The pairs nothing joins, in one card. A finding each, but the same finding,
+ * and three cards saying "nothing" weigh the same on the page as a
+ * partnership does - so they share one, and keep their anchors inside it.
+ */
+function SeparateWays({
+  relations,
+  at,
+}: {
+  relations: readonly ContextRelation[];
+  at: number;
+}) {
+  const why = relations[0]?.patterns[0]?.why ?? "";
+  return (
+    <section
+      className="card card-static stagger-in scroll-mt-4"
+      style={staggerStyle(at)}
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="label">
+          {PATTERN_LABEL["separate-ways"]} · {relations.length}{" "}
+          {plural(relations.length, "pair")}
+        </span>
+        <span className="mono ml-auto text-faint">{why}</span>
+      </div>
+      <div className="mt-2 flex flex-wrap gap-x-6 gap-y-2">
+        {relations.map((relation) => (
+          <span
+            key={relation.id}
+            id={relationAnchor(relation.id)}
+            className="flex items-center gap-2 scroll-mt-4"
+          >
+            <ContextLink id={relation.a} />
+            <Minus size={14} aria-hidden className="text-muted" />
+            <ContextLink id={relation.b} />
+          </span>
+        ))}
+      </div>
     </section>
   );
 }
 
 export function ContextMap() {
   const relations = useMemo(() => contextMap(catalog), []);
-  const wired = relations.filter(
+  const joined = relations.filter(
     (r) => r.dependencies.length > 0 || r.shared.length > 0,
-  ).length;
+  );
+  const apart = relations.filter((r) => !joined.includes(r));
+  const wired = joined.length;
 
   return (
     <div className="h-full overflow-y-auto">
@@ -396,9 +501,12 @@ export function ContextMap() {
               </Empty>
             ) : (
               <div className="flex flex-col gap-grid">
-                {relations.map((relation, i) => (
+                {joined.map((relation, i) => (
                   <Relation key={relation.id} relation={relation} at={i} />
                 ))}
+                {apart.length > 0 ? (
+                  <SeparateWays relations={apart} at={joined.length} />
+                ) : null}
               </div>
             )}
           </section>
