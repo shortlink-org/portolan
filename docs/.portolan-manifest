@@ -28,6 +28,7 @@
     "adr/oms.0005.md",
     "adr/org.0001.md",
     "adr/org.0002.md",
+    "adr/org.0003.md",
     "adr/payments.0004.md",
     "auth/README.md",
     "auth/auth/README.md",

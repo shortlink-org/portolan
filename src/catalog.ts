@@ -99,6 +99,21 @@ export interface Service {
    * not the same as a service that speaks to nobody.
    */
   channels?: Channel[];
+  /**
+   * Who to ask about it, as CODEOWNERS spells them: `@acme/oms-team`,
+   * `@someone`, `dev@acme.io`.
+   *
+   * Handles, and deliberately nothing more. Resolving one to the people in it
+   * is a call to a forge's API, which needs a credential, answers differently
+   * tomorrow, and would put the estate's documentation behind an outage. A
+   * handle is what the reviewer types and what the file says, so a handle is
+   * what the page shows.
+   *
+   * Absent means nobody was named, which is not the same as nobody owning it -
+   * an estate that keeps no CODEOWNERS has an owner for everything and has
+   * written it down nowhere.
+   */
+  owners?: string[];
 }
 export interface RpcService {
   id: string;
@@ -878,6 +893,11 @@ export function allRepos(catalog: Catalog): RepoPin[] {
   return catalog.repos ?? [];
 }
 
+/** Who to ask about a service, without the caller having to know the field is optional. */
+export function ownersOf(service: Service): string[] {
+  return service.owners ?? [];
+}
+
 export function allTables(catalog: Catalog): Table[] {
   return allStores(catalog).flatMap((s) => s.tables);
 }
@@ -1523,6 +1543,25 @@ export function validateCatalog(catalog: Catalog): Catalog {
           `service "${service.id}" in context "${context.id}" must have id "${context.id}.${service.slug}"`,
           `service ${service.id}`,
         );
+      }
+      // Owners are opaque - the estate's business is who to ask, not what a
+      // handle resolves to - so only the two things that would render as a
+      // hole are checked: a blank chip, and one name shown twice.
+      const handles = new Set<string>();
+      for (const handle of service.owners ?? []) {
+        if (!handle.trim()) {
+          fail(
+            `service "${service.id}" has an owner with no name`,
+            `service ${service.id}`,
+          );
+        }
+        if (handles.has(handle)) {
+          fail(
+            `service "${service.id}" names owner "${handle}" twice`,
+            `service ${service.id}`,
+          );
+        }
+        handles.add(handle);
       }
       for (const call of service.consumes) rpcIds.add(call.id);
       for (const provided of service.provides) {

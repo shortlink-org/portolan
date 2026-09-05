@@ -1,0 +1,15 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "file": {
+      "type": "string",
+      "description": "The CODEOWNERS to read, relative to the input root. Left out, the three places a forge looks, in order: CODEOWNERS, .github/CODEOWNERS, docs/CODEOWNERS. Its patterns are matched against each service's path as the catalog holds it, so they are repository-relative wherever the file itself sits.",
+      "examples": ["CODEOWNERS", ".github/CODEOWNERS"]
+    },
+    "out": {
+      "type": "string",
+      "description": "Name of the fragment file, inside the step's output directory. Left out, owners.json."
+    }
+  }
+}

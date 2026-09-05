@@ -1,0 +1,140 @@
+{
+  "generatedAt": "2026-09-05T13:34:51+07:00",
+  "commit": "23087ef",
+  "contexts": [
+    {
+      "id": "auth",
+      "slug": "auth",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "auth.auth",
+          "slug": "auth",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "owners": [
+            "@shortlink-org/identity"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "payments",
+      "slug": "payments",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "payments.ledger",
+          "slug": "ledger",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "owners": [
+            "@shortlink-org/platform"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.billing",
+          "slug": "billing",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "owners": [
+            "@shortlink-org/shop"
+          ]
+        },
+        {
+          "id": "shop.cart",
+          "slug": "cart",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "owners": [
+            "@shortlink-org/shop"
+          ]
+        },
+        {
+          "id": "shop.oms",
+          "slug": "oms",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "owners": [
+            "@shortlink-org/shop-oms",
+            "@shortlink-org/platform"
+          ]
+        },
+        {
+          "id": "shop.pricing",
+          "slug": "pricing",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "owners": [
+            "@shortlink-org/shop"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "delivery",
+      "slug": "delivery",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "delivery.core",
+          "slug": "core",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "owners": [
+            "@shortlink-org/delivery"
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": []
+}

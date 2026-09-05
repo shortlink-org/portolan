@@ -7,7 +7,7 @@
       "slug": "payments",
       "name": "Payments",
       "summary": "Money, and the record of every movement of it. Nothing here decides whether to charge - it is asked, and it writes down what happened either way.",
-      "classification": "core",
+      "classification": "supporting",
       "services": [
         {
           "id": "payments.ledger",

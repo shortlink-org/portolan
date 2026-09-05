@@ -6,6 +6,7 @@
 | --- | --- | --- | --- | --- |
 | [org.0001](org.0001.md) | Client proto copies live in the consumer's infrastructure layer | accepted | 2025-03-11 | org |
 | [org.0002](org.0002.md) | Domain event schema version is encoded in the package path (events/v1) | accepted | 2025-05-02 | org |
+| [org.0003](org.0003.md) | Ownership is read from CODEOWNERS, never typed and never resolved | accepted | 2026-09-05 | org |
 | [payments.0004](payments.0004.md) | Journal entries are idempotent by (order_id, attempt) | proposed | 2026-02-09 | [payments](../payments/README.md) |
 | [auth.0001](auth.0001.md) | Aggregates return their events; they do not buffer them | accepted | 2026-08-20 | [auth.auth](../auth/auth/README.md) |
 | [auth.0002](auth.0002.md) | Session is its own aggregate, linked to User by id | accepted | 2026-08-20 | [auth.auth](../auth/auth/README.md) |

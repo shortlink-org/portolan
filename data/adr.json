@@ -43,6 +43,20 @@
       "source": "data/adr/0002-event-version-in-package-path.md"
     },
     {
+      "id": "org.0003",
+      "slug": "org-0003-ownership-is-read-from-codeowners",
+      "number": 3,
+      "title": "Ownership is read from CODEOWNERS, never typed and never resolved",
+      "status": "accepted",
+      "date": "2026-09-05",
+      "scope": {
+        "kind": "org"
+      },
+      "body": "## Context and Problem Statement\n\n\"Who do I ask about this service?\" is the question a catalog is opened for, and\nuntil now the estate had no answer to it. `owner` on a flow, a store or a\nmodule means the bounded context that holds it — a grouping, not a team — so a\nreader who found the page they wanted still had to go and ask somebody where to\nask.\n\nEvery repository in the estate already answers it. Review rules are a file the\nforge enforces: GitHub, GitLab and Gitea all read `CODEOWNERS` from the root,\nfrom `.github/` and from `docs/`, and a team that owns a directory is a team\nthat gets the pull request. The answer exists; it was simply not in the catalog.\n\n## Decision Drivers\n\n- The answer must not be typed twice. A copy in the manifest is a copy that\n  goes stale while the file the forge enforces moves on, and the stale one is\n  the one on the page.\n- It must work without a credential. The estate's documentation is built in CI,\n  in forks, and offline; a step that needs a token is a step that fails for the\n  contributor who most needs the page.\n- It must not turn a red build into a question about a third party being up.\n\n## Considered Options\n\n1. **Read the file.** A step reads `CODEOWNERS` and matches its rules against\n   the paths the catalog already holds.\n2. **Ask the forge.** Call the API for a repository's teams and their members,\n   and record people.\n3. **Write owners in the manifest**, service by service.\n\n## Decision Outcome\n\nChosen option: **read the file**, and record the handles it names — nothing\nmore.\n\nA handle is what the file says and what a reviewer types into a request. It is\nalso all that can be known without a credential: turning `@acme/oms-team` into\nthe four people currently in it is option 2, which needs a token, answers\ndifferently tomorrow, and puts a page nobody can rebuild behind somebody else's\noutage. The catalog records `@acme/oms-team` and stops there.\n\nOption 3 was rejected for the reason the whole estate is extracted rather than\nauthored: a fact typed in a second place is a fact that will disagree with the\nfirst.\n\nThe step is a verifier rather than an extractor, because a rule is a path and\nonly the merged catalog knows where each service is. It earns the name twice\nover: a service no rule matches, and a rule that matches no service, are both\nreported — the second being the failure a `CODEOWNERS` file has and can never\nreport about itself, a team believing it owns something that is not there.\n\n### Consequences\n\n- Good: ownership costs nothing to maintain. The file is already correct,\n  because the forge enforces it on every pull request.\n- Good: forge-agnostic. The same file means the same thing on three forges, and\n  nothing here talks to any of them.\n- Good: a rule that owns nothing is now visible, which it never was.\n- Bad: a handle is opaque. The page cannot say who is in a team, and a reader\n  who needs the people has to open the forge.\n- Bad: GitLab's sections change whose rule wins, and the file is read the\n  flatter way GitHub means. A file that uses them is warned about rather than\n  half-understood in silence.\n- Bad: an estate that keeps no `CODEOWNERS` gets no owners, and there is\n  nothing to fall back on. That is the honest answer — ownership that is\n  nowhere written down is ownership the estate cannot report.\n",
+      "relates": {},
+      "source": "data/adr/0003-ownership-is-read-from-codeowners.md"
+    },
+    {
       "id": "payments.0004",
       "slug": "payments-0004-idempotent-journal-entries",
       "number": 4,

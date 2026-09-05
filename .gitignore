@@ -43,6 +43,10 @@ plugins/extract-java/build
 /extract-flows
 /extract-asyncapi
 /extract-adr
+/extract-glossary
+/extract-csr
 /fetch-bsr
 /fetch-git
+/fetch-csr
 /verify-otel
+/verify-codeowners

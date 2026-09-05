@@ -3,7 +3,7 @@
 *Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `payments`
-- **Classification:** core
+- **Classification:** supporting
 
 Money, and the record of every movement of it. Nothing here decides whether to charge - it is asked, and it writes down what happened either way.
 

@@ -6,6 +6,7 @@
 - **Context:** [Delivery](../README.md)
 - **Repo:** `github.com/shortlink-org/portolan`
 - **Path:** `examples/shop/delivery/core`
+- **Owners:** `@shortlink-org/delivery`
 
 Service `core` — bounded context **delivery**. TypeScript on Node.
 

@@ -6,6 +6,7 @@
 - **Context:** [Shop](../README.md)
 - **Repo:** `github.com/shortlink-org/portolan`
 - **Path:** `examples/shop/oms`
+- **Owners:** `@shortlink-org/shop-oms`, `@shortlink-org/platform`
 
 Service `oms` — bounded context **shop**. Rust on Tokio.
 

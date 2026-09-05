@@ -4,5 +4,8 @@
   ],
   "adr": [
     "adr.json"
+  ],
+  "codeowners": [
+    "owners.json"
   ]
 }

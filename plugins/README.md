@@ -404,6 +404,69 @@ otherwise where an estate's names differ. A publish span whose
 `messaging.destination.name` is not the event's `wire.channel` is a warning:
 the event went out, but not where the code says it does.
 
+### verify-codeowners
+
+Reads the `CODEOWNERS` a repository already keeps and says who to ask about
+each service.
+
+"Who do I ask about `shop.oms`" was the question the estate answered worst.
+`owner` on a flow, a store or a module means the bounded context that holds it
+- a grouping, not a team - and there was nothing on any page a reader could act
+on. The answer was already written down, in the one file the forge itself
+enforces: a team that owns a directory is a team that gets the pull request.
+
+```json
+{
+  "plugins": [{ "name": "codeowners", "process": { "command": "go", "args": ["run", "./plugins/verify-codeowners"] } }],
+  "verify": [
+    { "plugin": "codeowners", "in": ".github", "out": "data", "options": { "out": "owners.json" } }
+  ]
+}
+```
+
+Point `in` at the directory the file is in, not at the repository root: the
+host dates a fragment from the last commit to touch the step's input, and the
+subject of this one is the `CODEOWNERS` file. Rooted at the repository, it
+would be restamped by every commit ever made. Left with no `file`, the three
+places a forge looks are tried in order - `CODEOWNERS`, `.github/CODEOWNERS`,
+`docs/CODEOWNERS` - and a `file` that names something absent fails the run,
+because answering "nobody owns anything" to a typo is only noticed a month
+later.
+
+It is a verifier and not an extractor because a rule is a path and only the
+merged catalog knows where each service is; an extractor would have to be told,
+service by service, in the manifest, what the catalog already says. It earns
+the name twice over. A service no rule matches is reported, and so is a rule
+that matches no service - a team believing it owns something the estate does
+not have, which is the one failure a `CODEOWNERS` file can never report about
+itself. A rule that matches and never wins is reported differently, because the
+fix is different: nothing is wrong with the path, everything it covers is just
+claimed by a rule below it.
+
+What lands on the catalog is `owners` on the service: handles exactly as the
+file spells them, `@acme/oms-team`, `@someone`, `dev@acme.io`. Deliberately
+nothing more - resolving a handle to the people currently in it is a call to a
+forge's API, which needs a credential this does not have and answers
+differently tomorrow, and a handle is what a reviewer types anyway. Two sources
+naming owners are unioned, because two rules that both matched are two facts
+and not two answers.
+
+The grammar is gitignore's, minus the parts CODEOWNERS does not have. A
+pattern owns a directory when it names the directory or anything above it, and
+does not when it names only something inside it: `services/oms/internal` is a
+rule about part of a service, and reading it as ownership of the whole would
+hand a team a page it never asked for. Later rules win. A pattern with no
+owners after it wins too - taking ownership back is the only reason anybody
+writes one. GitLab's sections change which rule wins and are read the flatter
+way GitHub means, with a warning saying so, because the difference only ever
+shows up as an owner quietly missing from a page.
+
+The demo estate's file is `data/codeowners/CODEOWNERS`, which is deliberately
+not one of the three places a forge reads: this repository is both the tool and
+the estate it describes, and a real `CODEOWNERS` here would ask GitHub to
+request reviews from teams that do not exist. A real repository puts it where
+the forge looks.
+
 ## wasm or process
 
 `wasm` is the default and should stay that way. The module gets no filesystem,

@@ -324,6 +324,7 @@ function mergeService(
       ...(incoming.channels
         ? { channels: incoming.channels.map(copyChannel) }
         : {}),
+      ...(incoming.owners ? { owners: [...incoming.owners] } : {}),
     });
     origin.set(incoming.id, path);
 
@@ -363,6 +364,18 @@ function mergeService(
     for (const id of incoming.modules)
       if (!modules.includes(id)) modules.push(id);
     existing.modules = modules;
+  }
+
+  // Unioned like stores and modules, and for the same reason: two sources
+  // naming owners are two rules that both matched, not two answers to one
+  // question. A service owned by the platform team and by the team that wrote
+  // it is owned by both, which is what the file says and what a reviewer sees.
+  if (incoming.owners?.length) {
+    const owners = existing.owners ?? [];
+    for (const handle of incoming.owners) {
+      if (!owners.includes(handle)) owners.push(handle);
+    }
+    existing.owners = owners;
   }
 
   if (incoming.channels?.length) {

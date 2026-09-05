@@ -129,6 +129,13 @@
       }
     },
     {
+      "name": "codeowners",
+      "process": {
+        "command": "go",
+        "args": ["run", "./plugins/verify-codeowners"]
+      }
+    },
+    {
       "name": "flows",
       "process": {
         "command": "go",
@@ -609,6 +616,14 @@
           "telemetry/traces.jsonl"
         ],
         "out": "observed.json"
+      }
+    },
+    {
+      "plugin": "codeowners",
+      "in": "data/codeowners",
+      "out": "data",
+      "options": {
+        "out": "owners.json"
       }
     }
   ],

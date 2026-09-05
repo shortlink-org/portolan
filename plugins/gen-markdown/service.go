@@ -13,12 +13,23 @@ func (s *site) renderService(ctx *catalog.BoundedContext, svc *catalog.Service) 
 	b.WriteString("# " + svc.Name + "\n\n")
 	b.WriteString(s.stamp() + "\n")
 
-	b.WriteString(defList([][]string{
+	rows := [][]string{
 		{"Id", code(svc.ID)},
 		{"Context", s.ref(self, ctx.ID, ctx.Name)},
 		{"Repo", code(svc.Repo)},
 		{"Path", code(svc.Path)},
-	}))
+	}
+	// Who to ask, when the estate keeps a CODEOWNERS. Left out entirely when
+	// it does not: a line reading "Owners: none" is a claim, and nobody made
+	// it.
+	if len(svc.Owners) > 0 {
+		handles := make([]string, 0, len(svc.Owners))
+		for _, handle := range svc.Owners {
+			handles = append(handles, code(handle))
+		}
+		rows = append(rows, []string{"Owners", strings.Join(handles, ", ")})
+	}
+	b.WriteString(defList(rows))
 
 	// The readme is a whole document of its own, so it goes in one level down
 	// rather than being paraphrased.

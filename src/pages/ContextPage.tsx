@@ -1,6 +1,7 @@
 import { Link, useParams } from "react-router";
 import { AlertTriangle } from "lucide-react";
 import { catalog } from "../data";
+import { ownersOf } from "../catalog";
 import { contextStats } from "../lib/derive";
 import { ctxStyle } from "../lib/context-color";
 import { middleTruncate, plural } from "../lib/format";
@@ -169,6 +170,17 @@ export function ContextPage() {
                   >
                     {middleTruncate(`${service.repo}/${service.path}`)}
                   </div>
+                  {/* Who to ask, when the estate's CODEOWNERS says. Absent is
+                      absent: a card that read "owned by nobody" would be
+                      making a claim the file never makes. */}
+                  {ownersOf(service).length > 0 ? (
+                    <div
+                      className="mono trunc mt-1 text-muted"
+                      title={`Who to ask: ${ownersOf(service).join(", ")}`}
+                    >
+                      {middleTruncate(ownersOf(service).join(" · "))}
+                    </div>
+                  ) : null}
                 </div>
               ))}
             </div>

@@ -6,6 +6,7 @@
 - **Context:** [Shop](../README.md)
 - **Repo:** `github.com/shortlink-org/portolan`
 - **Path:** `examples/shop/pricing`
+- **Owners:** `@shortlink-org/shop`
 
 Service `pricing` — bounded context **shop**. Go.
 

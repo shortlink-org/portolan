@@ -6,6 +6,7 @@
 - **Context:** [Shop](../README.md)
 - **Repo:** `github.com/shortlink-org/portolan`
 - **Path:** `examples/shop/billing`
+- **Owners:** `@shortlink-org/shop`
 
 Service `billing` — bounded context **shop**. Python on Django.
 

@@ -421,6 +421,46 @@ describe("mergeCatalogs: glossary terms", () => {
   });
 });
 
+describe("mergeCatalogs: owners", () => {
+  const owned = (id: string, owners: string[]) => {
+    const c = context("shop", [id]);
+    c.services[0]!.owners = owners;
+
+    return c;
+  };
+
+  // Two rules that both matched are two facts, not two answers: a service
+  // owned by the team that wrote it and by the platform team is owned by both,
+  // which is what a reviewer sees on the pull request.
+  it("unions owners from two sources", () => {
+    const merged = mergeCatalogs([
+      source("a.json", { contexts: [owned("shop.oms", ["@acme/oms"])] }),
+      source("b.json", { contexts: [owned("shop.oms", ["@acme/platform"])] }),
+    ]);
+
+    const service = merged.catalog.contexts[0]?.services[0];
+    expect(service?.owners).toEqual(["@acme/oms", "@acme/platform"]);
+    expect(merged.conflicts).toEqual([]);
+  });
+
+  it("says a handle once when both sources name it", () => {
+    const merged = mergeCatalogs([
+      source("a.json", { contexts: [owned("shop.oms", ["@acme/oms"])] }),
+      source("b.json", { contexts: [owned("shop.oms", ["@acme/oms"])] }),
+    ]);
+
+    expect(merged.catalog.contexts[0]?.services[0]?.owners).toEqual(["@acme/oms"]);
+  });
+
+  it("leaves owners off a service nobody claimed", () => {
+    const merged = mergeCatalogs([
+      source("a.json", { contexts: [context("shop", ["shop.oms"])] }),
+    ]);
+
+    expect(merged.catalog.contexts[0]?.services[0]?.owners).toBeUndefined();
+  });
+});
+
 describe("mergeCatalogs: repo pins", () => {
   const shop = { repo: "github.com/acme/shop", commit: "c1d2e3f" };
 

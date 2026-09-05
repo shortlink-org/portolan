@@ -847,6 +847,35 @@ function withModule(catalog: Catalog): Catalog {
   return catalog;
 }
 
+describe("validateCatalog: owners", () => {
+  const withOwners = (owners: string[]) => {
+    const c = clone();
+    const service = c.contexts[0]?.services[0];
+    if (!service) throw new Error("no service to own");
+    service.owners = owners;
+
+    return c;
+  };
+
+  it("takes a handle as it is written, whatever shape it is", () => {
+    expect(() =>
+      validateCatalog(withOwners(["@acme/oms-team", "@someone", "dev@acme.io"])),
+    ).not.toThrow();
+  });
+
+  it("rejects an owner with no name", () => {
+    expect(() => validateCatalog(withOwners(["@acme/oms-team", " "]))).toThrow(
+      /owner with no name/,
+    );
+  });
+
+  it("rejects one owner named twice", () => {
+    expect(() => validateCatalog(withOwners(["@acme/oms", "@acme/oms"]))).toThrow(
+      /twice/,
+    );
+  });
+});
+
 describe("validateCatalog: repo pins", () => {
   it("accepts a pin for a repository no service claims to live in", () => {
     // A repository fetched for its protos before anything reads its code is a

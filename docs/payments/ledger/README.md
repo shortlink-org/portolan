@@ -6,6 +6,7 @@
 - **Context:** [Payments](../README.md)
 - **Repo:** `github.com/shortlink-org/portolan`
 - **Path:** `examples/payments/ledger`
+- **Owners:** `@shortlink-org/platform`
 
 Service `ledger` — bounded context **payments**. Java on Spring Boot.
 

@@ -6,6 +6,7 @@
 - **Context:** [Authentication](../README.md)
 - **Repo:** `github.com/shortlink-org/portolan`
 - **Path:** `examples/auth`
+- **Owners:** `@shortlink-org/identity`
 
 Service `auth` — bounded context **auth**.
 

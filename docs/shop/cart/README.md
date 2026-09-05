@@ -6,6 +6,7 @@
 - **Context:** [Shop](../README.md)
 - **Repo:** `github.com/shortlink-org/portolan`
 - **Path:** `examples/shop/cart`
+- **Owners:** `@shortlink-org/shop`
 
 Service `cart` — bounded context **shop**. TypeScript on Node.js.
 

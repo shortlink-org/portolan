@@ -1,0 +1,18 @@
+# Who to ask about each part of the estate.
+#
+# This is the demo estate's copy, not this repository's. A forge reads
+# CODEOWNERS from the root, from .github/ and from docs/, and reads nowhere
+# else - so a file here states ownership for the estate portolan describes
+# without asking GitHub to request a review from a team that does not exist.
+# A real repository puts it in one of those three places and points the
+# manifest's `in` at the directory it is in.
+#
+# The patterns are repository-relative, matched against each service's path as
+# the catalog holds it. Later rules win, so the catch-all comes first.
+
+*                               @shortlink-org/platform
+
+examples/auth                   @shortlink-org/identity
+examples/shop                   @shortlink-org/shop
+examples/shop/oms               @shortlink-org/shop-oms  @shortlink-org/platform
+examples/shop/delivery          @shortlink-org/delivery

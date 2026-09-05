@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { catalog } from "../data";
-import { allRepos } from "../catalog";
+import { allRepos, ownersOf } from "../catalog";
 import { flowRoles } from "../lib/derive";
 import { treeHref } from "../lib/source-link";
 import { flowHealth } from "../lib/flow-tree";
@@ -100,6 +100,7 @@ export function ServicePage() {
   const stores = storesOfService(index, service.id);
   const flows = flowRoles(catalog, service.id);
   const tree = treeHref(service.path, service, allRepos(catalog));
+  const owners = ownersOf(service);
   const adrs = adrsForService(catalog, service.id, context.id);
   const current = adrs.filter(isCurrent);
   const retired = adrs.filter((a) => !isCurrent(a));
@@ -161,6 +162,19 @@ export function ServicePage() {
             >
               open ↗
             </a>
+          ) : null}
+          {/* Who to ask, read out of CODEOWNERS. A handle is copied rather
+              than linked: it is what a reviewer types into a request, and a
+              link to a team page is a page most readers cannot open. */}
+          {owners.length > 0 ? (
+            <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="text-muted">owned by</span>
+              {owners.map((handle) => (
+                <Ident key={handle} value={handle}>
+                  {middleTruncate(handle, 28)}
+                </Ident>
+              ))}
+            </span>
           ) : null}
           <span aria-hidden className="h-4 w-px bg-line-strong" />
           {/* Both counts land in the section that lists what they counted;

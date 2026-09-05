@@ -102,6 +102,11 @@ type Service struct {
 	// an AsyncAPI document. Absent for a service that has no such document,
 	// which is not the same as a service that speaks to nobody.
 	Channels []Channel `json:"channels,omitempty"`
+
+	// Owners is who to ask about it, as CODEOWNERS spells them. Handles and
+	// nothing more: resolving one to people is a call to a forge, and the
+	// handle is what a reviewer types anyway.
+	Owners []string `json:"owners,omitempty"`
 }
 
 type RpcService struct {
