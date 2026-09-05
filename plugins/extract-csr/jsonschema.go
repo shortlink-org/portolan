@@ -31,21 +31,27 @@ func jsonSchema(raw []byte, fallback string) (string, map[string]catalog.TypeDef
 		return "", nil, fmt.Errorf("not a JSON Schema: %w", err)
 	}
 
-	r := &jsonReader{defs: map[string]catalog.TypeDef{}}
+	name := firstNonEmpty(node.Title, fallback)
+	r := &jsonReader{defs: map[string]catalog.TypeDef{}, prefix: name}
 
 	// The named shapes a document keeps to one side are read first, so a `$ref`
 	// pointing at one resolves to a def rather than to a bare label.
+	//
+	// They are filed under the document's own name. `definitions` is local to
+	// the document by definition, and `defs` in the catalog is not: two
+	// services that both keep a "Carrier" to one side, meaning different
+	// things, would otherwise collide in the merge and be reported as a
+	// disagreement neither of them is having.
 	for _, held := range []map[string]json.RawMessage{node.Definitions, node.Defs} {
-		for _, name := range keysInOrder(held) {
+		for _, key := range keysInOrder(held) {
 			var nested jsonNode
-			if err := json.Unmarshal(held[name], &nested); err != nil {
+			if err := json.Unmarshal(held[key], &nested); err != nil {
 				continue
 			}
-			r.shape(nested, name)
+			r.shape(nested, r.qualify(key))
 		}
 	}
 
-	name := firstNonEmpty(node.Title, fallback)
 	r.shape(node, name)
 
 	return name, r.defs, nil
@@ -73,6 +79,30 @@ type jsonNode struct {
 type jsonReader struct {
 	defs map[string]catalog.TypeDef
 	open map[string]bool
+
+	// prefix is the document's own shape name, which is what makes a
+	// document-local definition globally addressable.
+	prefix string
+}
+
+// qualify files a document-local name under the document.
+func (r *jsonReader) qualify(name string) string {
+	if r.prefix == "" || name == "" {
+		return name
+	}
+
+	return r.prefix + "." + name
+}
+
+// declared says whether a shape is one this reader wrote down, including one
+// still being read further up the stack.
+func (r *jsonReader) declared(name string) bool {
+	if r.open[name] {
+		return true
+	}
+	_, written := r.defs[name]
+
+	return written
 }
 
 // shape writes down one object's fields, under the name given, and returns
@@ -136,9 +166,13 @@ func (r *jsonReader) shape(node jsonNode, name string) bool {
 // "OrderPlaced.shipping" is the name it gave it.
 func (r *jsonReader) typeOf(node jsonNode, path string) (label, ref string) {
 	if node.Ref != "" {
+		// The label stays the name the document uses - "Carrier" is what a
+		// reader of the schema sees - while the ref carries the qualified key
+		// the catalog files it under. The two are allowed to differ, and here
+		// they have to.
 		name := refName(node.Ref)
-		if _, known := r.defs[name]; known {
-			return name, name
+		if key := r.qualify(name); r.declared(key) {
+			return name, key
 		}
 
 		return name, ""

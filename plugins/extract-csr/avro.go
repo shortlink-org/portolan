@@ -54,10 +54,17 @@ type avroReader struct {
 func (r *avroReader) typeOf(node any, enclosing string) (label, ref string) {
 	switch value := node.(type) {
 	case string:
-		// A bare name is either a primitive or a reference to a record named
+		// A bare name is either a primitive or a reference to a shape named
 		// earlier - possibly in another subject entirely, which is what a
-		// registry reference is for. Either way the label is the name.
-		return qualify(value, enclosing), ""
+		// registry reference is for. The reference is claimed here and cleared
+		// later if nothing in the estate turns out to declare it, because only
+		// the whole step can say whether the other subject was vendored too.
+		name := qualify(value, enclosing)
+		if primitive(value) {
+			return name, ""
+		}
+
+		return name, name
 
 	case []any:
 		return r.union(value, enclosing), ""

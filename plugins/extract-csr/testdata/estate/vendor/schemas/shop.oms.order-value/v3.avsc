@@ -1,0 +1,20 @@
+{
+  "type": "record",
+  "namespace": "shop.oms",
+  "name": "OrderPlaced",
+  "doc": "An order the customer has paid for.",
+  "fields": [
+    { "name": "order_id", "type": "string", "doc": "The order's own id." },
+    { "name": "buyer", "type": "shop.oms.Party" },
+    { "name": "note", "type": ["null", "string"], "doc": "What the customer wrote in the box." },
+    { "name": "lines", "type": { "type": "array", "items": {
+        "type": "record", "name": "Line",
+        "fields": [
+          { "name": "sku", "type": "string" },
+          { "name": "quantity", "type": "int" }
+        ] } } },
+    { "name": "labels", "type": { "type": "map", "values": "string" } },
+    { "name": "placed_at", "type": { "type": "long", "logicalType": "timestamp-millis" } },
+    { "name": "total", "type": { "type": "bytes", "logicalType": "decimal", "precision": 12, "scale": 2 } }
+  ]
+}

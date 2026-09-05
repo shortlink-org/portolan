@@ -38,14 +38,14 @@ type registration struct {
 	Key bool
 }
 
-// read resolves a subject.
+// resolve reads a subject name into what it registers.
 //
 // declared is the record's full name as the schema itself gives it, which is
 // the only reliable way to split a TopicRecordNameStrategy subject: the
 // separator is a hyphen and both halves may contain one, so the suffix is
 // matched rather than searched for. Under the other two strategies it is a
 // fallback for a schema that names itself nothing.
-func read(subject, declared, strategy string) registration {
+func resolve(subject, declared, strategy string) registration {
 	switch strategy {
 	case StrategyRecord:
 		return registration{Record: firstNonEmpty(declared, subject)}

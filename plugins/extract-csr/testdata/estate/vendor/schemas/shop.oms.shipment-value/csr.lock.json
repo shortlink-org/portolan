@@ -1,0 +1,18 @@
+{
+  "registry": "http://localhost:8081",
+  "subjects": [
+    {
+      "subject": "shop.oms.shipment-value",
+      "version": 2,
+      "id": 100033,
+      "schemaType": "JSON",
+      "files": [
+        {
+          "path": "v2.json",
+          "sha256": "61588ddbaa4ec86eab2b1ae1a4e1159de9011229b77a70fcd43359d0d3db465d",
+          "size": 886
+        }
+      ]
+    }
+  ]
+}

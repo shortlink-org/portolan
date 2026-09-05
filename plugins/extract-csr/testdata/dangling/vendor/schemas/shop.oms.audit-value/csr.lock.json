@@ -1,0 +1,25 @@
+{
+  "registry": "http://localhost:8081",
+  "subjects": [
+    {
+      "subject": "shop.oms.audit-value",
+      "version": 1,
+      "id": 100077,
+      "schemaType": "AVRO",
+      "references": [
+        {
+          "name": "shop.identity.Actor",
+          "subject": "shop.identity.Actor",
+          "version": 4
+        }
+      ],
+      "files": [
+        {
+          "path": "v1.avsc",
+          "sha256": "7ac86b4ba6b4cc4bcf38aea3cb72be327cd35658de4336718c18b35e4e5c22c2",
+          "size": 190
+        }
+      ]
+    }
+  ]
+}

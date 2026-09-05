@@ -1,0 +1,9 @@
+{
+  "type": "record",
+  "namespace": "shop.oms",
+  "name": "AuditWritten",
+  "fields": [
+    { "name": "actor", "type": "shop.identity.Actor" },
+    { "name": "at", "type": "string" }
+  ]
+}

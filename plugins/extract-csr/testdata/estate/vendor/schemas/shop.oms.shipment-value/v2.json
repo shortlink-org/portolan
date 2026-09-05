@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "shop.oms.ShipmentBooked",
+  "type": "object",
+  "required": ["shipment_id", "carrier"],
+  "properties": {
+    "shipment_id": { "type": "string", "description": "The booking's own id." },
+    "carrier": { "$ref": "#/definitions/Carrier" },
+    "booked_at": { "type": "string", "format": "date-time" },
+    "weight_kg": { "type": ["number", "null"] },
+    "stops": { "type": "array", "items": { "type": "string" } },
+    "address": {
+      "type": "object",
+      "properties": {
+        "line1": { "type": "string" },
+        "postcode": { "type": "string" }
+      },
+      "required": ["line1"]
+    }
+  },
+  "definitions": {
+    "Carrier": {
+      "type": "object",
+      "required": ["code"],
+      "properties": {
+        "code": { "type": "string" },
+        "name": { "type": "string" }
+      }
+    }
+  }
+}

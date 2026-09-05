@@ -1,0 +1,18 @@
+{
+  "registry": "http://localhost:8081",
+  "subjects": [
+    {
+      "subject": "shop.oms.Party",
+      "version": 1,
+      "id": 100014,
+      "schemaType": "AVRO",
+      "files": [
+        {
+          "path": "v1.avsc",
+          "sha256": "5d0d67c290205f66fe6ec83bcc827b31dcb0a7041a53e194881dc63a617493b7",
+          "size": 169
+        }
+      ]
+    }
+  ]
+}
