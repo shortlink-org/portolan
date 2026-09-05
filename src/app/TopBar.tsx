@@ -10,6 +10,7 @@ import {
   Rows2,
   Rows4,
   Search,
+  Settings2,
   Sun,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -18,6 +19,7 @@ import { BuildStamp } from "./BuildStamp";
 import { useDensity } from "./density";
 import { usePhone } from "./responsive";
 import { useTheme } from "./theme";
+import { paths } from "../routes";
 
 export function TopBar({
   onOpenPalette,
@@ -203,6 +205,17 @@ function Wide({ onOpenHelp }: { onOpenHelp: () => void }) {
           <Moon size={16} aria-hidden />
         )}
       </button>
+      {/* The page the three controls above are the shortcuts to: what this
+          catalog was built from, and where the same two preferences are set
+          in words. Last, because it is the only one that navigates. */}
+      <Link
+        to={paths.settings()}
+        aria-label="Settings"
+        title="Settings — projects, plugins and appearance"
+        className="flex items-center"
+      >
+        <Settings2 size={16} aria-hidden />
+      </Link>
     </div>
   );
 }
@@ -278,6 +291,14 @@ function OverflowMenu({ onOpenHelp }: { onOpenHelp: () => void }) {
             >
               keyboard shortcuts
             </MenuButton>
+            <Link
+              to={paths.settings()}
+              onClick={() => close()}
+              className={ROW}
+            >
+              <Settings2 size={16} aria-hidden className="shrink-0" />
+              settings
+            </Link>
           </>
         )}
       </PopoverPanel>

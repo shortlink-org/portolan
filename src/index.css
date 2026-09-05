@@ -683,13 +683,20 @@
      readme's h2 has. Sticky within the section, so it leaves when the section
      does; opaque, so where two share a parent the later one simply covers the
      first. The padding is what keeps the text off the row's rule when pinned,
-     and the negative margin gives it back, so nothing moves in place. */
+     and the negative margin gives it back, so nothing moves in place.
+
+     It pins a gutter higher than it reads, because sticky measures from the
+     scrollport's padding box: at `top: 0` a page with no header of its own
+     leaves the box's own gutter uncovered, and the rows scrolling through that
+     strip are the one thing a pinned heading exists to stop. Padding puts the
+     text back where it was, so a page that does have a header - which covers
+     the strip anyway, being the higher layer - is unchanged. */
   .section-head {
     position: sticky;
-    top: var(--page-header-h, 0px);
+    top: calc(var(--page-header-h, 0px) - var(--gutter));
     z-index: 10;
-    padding-top: 4px;
-    margin-top: -4px;
+    padding-top: calc(var(--gutter) + 4px);
+    margin-top: calc(-1 * (var(--gutter) + 4px));
     background: var(--bg);
   }
 

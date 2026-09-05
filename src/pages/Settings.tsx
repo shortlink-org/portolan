@@ -142,13 +142,27 @@ function BuildHealth() {
             </p>
           </div>
         </div>
+        {/* Three readings of one run, set as a strip rather than a pair of
+            right-aligned columns: the labels are short and the values are not,
+            and ranging both right left a ragged channel down the middle that
+            read as a mistake. Label over value, ranged left, is how the metrics
+            under this block are already set. */}
         {run ? (
-          <dl className="mono grid shrink-0 grid-cols-[auto_auto] gap-x-3 gap-y-0.5 text-muted sm:text-right">
-            <dt>steps</dt>
-            <dd className="text-ink">{completed}/{setupInfo.steps.length}</dd>
-            <dt>run</dt>
-            <dd className="text-ink">{run.mode} · {duration(run.durationMs)}</dd>
-            {finished ? <><dt>finished</dt><dd className="text-ink" title={absoluteTime(finished)}>{relativeTime(finished)}</dd></> : null}
+          <dl className="flex shrink-0 gap-x-6 gap-y-2 max-sm:flex-wrap">
+            <div>
+              <dt className="label">steps</dt>
+              <dd className="mono tnum mt-0.5 text-ink">{completed}/{setupInfo.steps.length}</dd>
+            </div>
+            <div>
+              <dt className="label">run</dt>
+              <dd className="mono mt-0.5 text-ink">{run.mode} · {duration(run.durationMs)}</dd>
+            </div>
+            {finished ? (
+              <div>
+                <dt className="label">finished</dt>
+                <dd className="mono mt-0.5 text-ink" title={absoluteTime(finished)}>{relativeTime(finished)}</dd>
+              </div>
+            ) : null}
           </dl>
         ) : (
           <code className="mono shrink-0 rounded-control border border-line bg-canvas px-2 py-1 text-ink">
@@ -284,56 +298,114 @@ function ProjectCard({ project }: { project: SetupProject }) {
 
 const PHASE_LABEL: Record<SetupPhase, string> = { extract: "extract", verify: "verify", generate: "generate" };
 
-function Runtime({ plugin }: { plugin: SetupPlugin }) {
-  return plugin.runtime === "wasm" ? (
-    <span className="inline-flex items-center gap-1.5 text-verified"><ShieldCheck size={14} aria-hidden /> WASM sandbox</span>
+/* Fifteen of sixteen plugins run as a host process, so spelling it out on
+   every row was fifteen repetitions of the word to make the one that differs
+   findable. The icon carries it on the row and the legend under the list says
+   what the two mean; the name stays for the reader who opens a row. */
+function Runtime({ plugin, icon = false }: { plugin: SetupPlugin; icon?: boolean }) {
+  const [Icon, tone, name] =
+    plugin.runtime === "wasm"
+      ? ([ShieldCheck, "text-verified", "WASM sandbox"] as const)
+      : ([Terminal, "text-declared", "host process"] as const);
+  return icon ? (
+    <span className={tone} title={name}>
+      <Icon size={14} aria-hidden />
+      <span className="sr-only">{name}</span>
+    </span>
   ) : (
-    <span className="inline-flex items-center gap-1.5 text-declared"><Terminal size={14} aria-hidden /> host process</span>
+    <span className={`inline-flex items-center gap-1.5 ${tone}`}><Icon size={14} aria-hidden /> {name}</span>
   );
 }
 
+/* Health is the same word on nearly every row too. A dot states it without
+   spending a column on it, and the badge comes back the moment it is not
+   "healthy" - which is the only time anyone is reading this column. */
+function HealthDot({ health }: { health: Health }) {
+  const tone =
+    health === "healthy"
+      ? "bg-verified"
+      : health === "changed"
+        ? "bg-declared"
+        : health === "failed"
+          ? "bg-unresolved"
+          : "bg-line-strong";
+  return (
+    <span className={`size-1.5 shrink-0 rounded-full ${tone}`} title={HEALTH_LABEL[health]}>
+      <span className="sr-only">{HEALTH_LABEL[health]}</span>
+    </span>
+  );
+}
+
+const PHASE_ORDER: SetupPhase[] = ["extract", "verify", "generate"];
+
+/**
+ * The sixteen plugins, grouped by the phase they run in.
+ *
+ * It was a five-column table, and four of the columns said the same thing on
+ * nearly every row: the phase (thirteen say "extract"), the runtime (fifteen
+ * say "host process"), the status (sixteen say "healthy"). A table is for
+ * columns that differ. The phase became the group it sorts into, the runtime
+ * and the status became a mark, and what is left on the row is the name and
+ * the one number that varies. The detail every row could open is unchanged.
+ */
 function PluginsList() {
   if (setupInfo.plugins.length === 0) return <Empty>this build ran no plugins</Empty>;
   const projectNames = new Map(setupInfo.projects.map((project) => [project.id, project.name]));
+  const groups = [
+    ...PHASE_ORDER.map((phase) => ({
+      key: phase as string,
+      label: PHASE_LABEL[phase],
+      plugins: setupInfo.plugins.filter((plugin) => plugin.phases[0] === phase),
+    })),
+    // A plugin the manifest declares and no step uses. There are none today,
+    // and the row that says so is the only place anyone would find out.
+    { key: "unused", label: "declared, unused", plugins: setupInfo.plugins.filter((plugin) => plugin.phases.length === 0) },
+  ].filter((group) => group.plugins.length > 0);
 
   return (
     <div className="overflow-hidden rounded-card border border-line shadow-xs">
-      <div className="label hidden grid-cols-[minmax(10rem,1.5fr)_1fr_1.2fr_5rem_auto] gap-3 bg-surface px-4 py-2 md:grid">
-        <span>plugin</span><span>phase</span><span>runtime</span><span>used by</span><span>status</span>
-      </div>
-      {setupInfo.plugins.map((plugin) => {
-        const declared = setupInfo.steps.filter((step) => step.plugin === plugin.name);
-        const runSteps = setupInfo.run?.steps.filter((step) => step.plugin === plugin.name) ?? [];
-        const health = plugin.stepCount === 0 ? "unchecked" : healthFor(runSteps, declared.length);
-        const outputs = [...new Set(runSteps.flatMap((step) => step.files))];
-        return (
-          <details key={plugin.name} id={`plugin-${plugin.name}`} className="group scroll-mt-4 border-t border-line first:border-t-0">
-            <summary className="grid cursor-pointer list-none gap-2 px-4 py-3 md:grid-cols-[minmax(10rem,1.5fr)_1fr_1.2fr_5rem_auto] md:items-center md:gap-3">
-              <div className="flex min-w-0 items-center justify-between gap-2">
-                <span className="mono truncate text-ink" title={plugin.name}>{plugin.name}</span>
-                <ChevronDown size={15} aria-hidden className="shrink-0 text-muted transition-transform group-open:rotate-180 md:hidden" />
-              </div>
-              <span className="flex flex-wrap gap-1">{plugin.phases.map((phase) => <span key={phase} className="chip">{PHASE_LABEL[phase]}</span>)}{plugin.phases.length === 0 ? <span className="text-muted">unused</span> : null}</span>
-              <span className="mono"><Runtime plugin={plugin} /></span>
-              <span className="text-muted">
-                {plugin.projectIds.length > 0 ? (
-                  <><span className="md:hidden">used by </span>{plugin.projectIds.length} <span className="md:hidden">{plural(plugin.projectIds.length, "project")}</span></>
-                ) : plugin.stepCount > 0 ? "estate" : "—"}
-              </span>
-              <div className="flex items-center justify-between gap-2 md:justify-end"><HealthBadge health={health} /><ChevronDown size={15} aria-hidden className="hidden shrink-0 text-muted transition-transform group-open:rotate-180 md:block" /></div>
-            </summary>
-            <div className="border-t border-line bg-surface/50 px-4 py-4">
-              <div className="grid gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(14rem,1fr)]">
-                <div><div className="label mb-2">last run</div><PipelineSteps steps={runSteps} /></div>
-                <div className="space-y-4">
-                  <div><div className="label mb-2">used by</div>{plugin.projectIds.length > 0 ? <div className="flex flex-wrap gap-1.5">{plugin.projectIds.map((id) => <a key={id} href={`#project-${id}`} className="chip border-line-strong hover:border-accent hover:text-accent">{projectNames.get(id) ?? id}</a>)}</div> : <p className="mono text-muted">{plugin.stepCount > 0 ? "Estate-wide catalog" : "No pipeline step uses this plugin."}</p>}</div>
-                  {outputs.length > 0 ? <div><div className="label mb-2">outputs</div><ul className="mono space-y-1 text-muted">{outputs.map((output) => <li key={output} className="truncate"><FileLink path={output} /></li>)}</ul></div> : null}
+      {groups.map((group) => (
+        <section key={group.key} className="border-t border-line first:border-t-0">
+          <h3 className="label flex items-center gap-2 bg-surface px-3 py-1.5">
+            {group.label}
+            <span className="text-muted/70">{group.plugins.length}</span>
+          </h3>
+          {group.plugins.map((plugin) => {
+            const declared = setupInfo.steps.filter((step) => step.plugin === plugin.name);
+            const runSteps = setupInfo.run?.steps.filter((step) => step.plugin === plugin.name) ?? [];
+            const health = plugin.stepCount === 0 ? "unchecked" : healthFor(runSteps, declared.length);
+            const outputs = [...new Set(runSteps.flatMap((step) => step.files))];
+            return (
+              <details key={plugin.name} id={`plugin-${plugin.name}`} className="group scroll-mt-4 border-t border-line">
+                <summary className="flex cursor-pointer list-none items-center gap-2.5 px-3 py-1.5 hover:bg-surface/60">
+                  {health === "healthy" ? <HealthDot health={health} /> : null}
+                  <span className="mono truncate text-ink" title={plugin.name}>{plugin.name}</span>
+                  <Runtime plugin={plugin} icon />
+                  {health === "healthy" ? null : <HealthBadge health={health} />}
+                  <span className="mono ml-auto shrink-0 text-muted">
+                    {plugin.projectIds.length > 0
+                      ? `${plugin.projectIds.length} ${plural(plugin.projectIds.length, "project")}`
+                      : plugin.stepCount > 0
+                        ? "estate"
+                        : "—"}
+                  </span>
+                  <ChevronDown size={15} aria-hidden className="shrink-0 text-muted transition-transform group-open:rotate-180" />
+                </summary>
+                <div className="border-t border-line bg-surface/50 px-4 py-4">
+                  <div className="grid gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(14rem,1fr)]">
+                    <div><div className="label mb-2">last run</div><PipelineSteps steps={runSteps} /></div>
+                    <div className="space-y-4">
+                      <div><div className="label mb-2">runtime</div><p className="mono"><Runtime plugin={plugin} /></p></div>
+                      <div><div className="label mb-2">used by</div>{plugin.projectIds.length > 0 ? <div className="flex flex-wrap gap-1.5">{plugin.projectIds.map((id) => <a key={id} href={`#project-${id}`} className="chip border-line-strong hover:border-accent hover:text-accent">{projectNames.get(id) ?? id}</a>)}</div> : <p className="mono text-muted">{plugin.stepCount > 0 ? "Estate-wide catalog" : "No pipeline step uses this plugin."}</p>}</div>
+                      {outputs.length > 0 ? <div><div className="label mb-2">outputs</div><ul className="mono space-y-1 text-muted">{outputs.map((output) => <li key={output} className="truncate"><FileLink path={output} /></li>)}</ul></div> : null}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          </details>
-        );
-      })}
+              </details>
+            );
+          })}
+        </section>
+      ))}
     </div>
   );
 }
