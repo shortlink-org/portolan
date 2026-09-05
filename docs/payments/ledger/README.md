@@ -1,6 +1,6 @@
 # Ledger
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `payments.ledger`
 - **Context:** [Payments](../README.md)
@@ -232,7 +232,7 @@ nothing leaves. `OMS_ADDRESS` is where `shop.v1.OrderService` answers.
 | --- | --- | --- |
 | [PaymentAuthorized](aggregates/payment.md) | v1 | [shop.oms (declared)](../../shop/oms/README.md) |
 | [PaymentCaptured](aggregates/payment.md) | v1 | [shop.billing (declared)](../../shop/billing/README.md), [delivery.core (declared)](../../delivery/core/README.md) |
-| [PaymentDeclined](aggregates/payment.md) | v1 | [shop.oms (declared)](../../shop/oms/README.md) |
+| [PaymentDeclined](aggregates/payment.md) | v1 | — |
 | [RefundIssued](aggregates/refund.md) | v1 | — |
 
 ## Stores

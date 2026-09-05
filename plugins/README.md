@@ -114,8 +114,11 @@ built yet, the reconstruction after an incident, the path no test pins. The
 catalog's JSON is the wrong place to write one - a tree of nodes, a unique id
 per step, every lane declared twice - so `extract-flows` reads a text form
 that reads like the sequence diagram it becomes: one file per flow, one line
-per hop, frames closed by `end`. The demo estate's flows live in `data/flows`
-and are read by the step declared for it in `portolan.json`.
+per hop, frames closed by `end`. The estate here declares no such step: every
+flow it shows is read out of code that runs, and one written by hand over files
+nobody wrote would be the single page in the catalog nothing holds to account.
+A repository that has a real one points an `extract-flows` step at the directory
+the files live in.
 
 ```markdown
 # Order accepted
@@ -253,14 +256,12 @@ claim only the merged catalog can check, and the validator checks it. The same
 goes for `Scope` and `Relates`: an extractor sees one root, so it validates the
 shape of a name and leaves whether the thing exists to the far side.
 
-The demo estate's org-wide and context-wide records live in `data/adr`, beside
-the hand-written flows in `data/flows`, and are read by a step that points at
-that directory with a glob of its own. Root `docs/` is where `gen-markdown`
-writes, so nothing hand-written can live there. `in` is the directory of
-records rather than `data` itself for the reason the flows step gives it the
-same shape: a step's fragment is only left out of its own stamp when the output
-is *inside* the input root, and `in: data` with `out: data` would be stamped
-from the file it writes.
+The demo estate's org-wide and context-wide records live in `data/adr`, and are
+read by a step that points at that directory with a glob of its own. Root
+`docs/` is where `gen-markdown` writes, so nothing hand-written can live there.
+`in` is the directory of records rather than `data` itself: a step's fragment is
+only left out of its own stamp when the output is *inside* the input root, and
+`in: data` with `out: data` would be stamped from the file it writes.
 
 ```json
 {

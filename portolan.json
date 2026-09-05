@@ -143,13 +143,6 @@
       }
     },
     {
-      "name": "flows",
-      "process": {
-        "command": "go",
-        "args": ["run", "./plugins/extract-flows"]
-      }
-    },
-    {
       "name": "adr",
       "process": {
         "command": "go",
@@ -185,14 +178,6 @@
     }
   ],
   "extract": [
-    {
-      "plugin": "flows",
-      "in": "data/flows",
-      "out": "data",
-      "options": {
-        "out": "flows.json"
-      }
-    },
     {
       "plugin": "adr",
       "in": "data/adr",

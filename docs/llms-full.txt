@@ -1,12 +1,12 @@
 *llms-full.txt: every page of Example estate, one after another. A page begins with a comment naming its file, and the links inside it are relative to that file's directory.*
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 <!-- README.md -->
 
 # Example estate
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 
 ## Contexts
@@ -23,8 +23,6 @@
 
 | Flow | Owner | Summary |
 | --- | --- | --- |
-| [Gateway webhook](flows/gateway-webhook.md) | [payments](payments/README.md) | The gateway's side of the story, arriving after the fact. One signed callback, four ways to read it: a replay to ignore, a capture to record, a charge with no local payment to adopt, and a failure to pass on. The adopt branch is the only repair for a checkout that timed out mid-authorization, and it is the one branch no test covers. |
-| [Shipment tracking](flows/shipment-tracking.md) | [delivery](delivery/README.md) | Reconstructed from production traces over a 24 hour window: the tracking page, the carrier's scan webhook, and what each scan code sets off. Two things only the traces know about — a consumer no repository accounts for, and an exception path whose reader emits no spans at all. |
 | [Change password](flows/auth-change-password.md) | [auth](auth/README.md) | Replaces the password of a user, given the current one. |
 | [Get user](flows/auth-get-user.md) | [auth](auth/README.md) | Reads a user by id. |
 | [Login](flows/auth-login.md) | [auth](auth/README.md) | Turns credentials into a session. |
@@ -119,7 +117,7 @@
 
 # Shared types
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 Types named by more than one aggregate, event or message. A field that
 refers to one of these is knowably the same shape everywhere it appears.
@@ -178,7 +176,7 @@ refers to one of these is knowably the same shape everywhere it appears.
 
 # Authentication
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `auth`
 - **Classification:** generic
@@ -199,7 +197,7 @@ Who someone is, and whether they are still logged in. The only service in the es
 
 # Glossary — Authentication
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Context:** [Authentication](README.md)
 - **Terms:** 27
@@ -241,7 +239,7 @@ One meaning per word inside this context, as the glossary beside the code states
 
 # Authentication & Sessions
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `auth.auth`
 - **Context:** [Authentication](../README.md)
@@ -447,7 +445,7 @@ without Docker the packages that need Postgres or redis are skipped.
 
 # Lockout
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `auth.auth.lockout`
 - **Service:** [Authentication & Sessions](../README.md)
@@ -567,7 +565,7 @@ Source: `examples/auth/internal/domain/lockout/event/account_locked.go`
 
 # Session
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `auth.auth.session`
 - **Service:** [Authentication & Sessions](../README.md)
@@ -711,7 +709,7 @@ Source: `examples/auth/internal/domain/session/event/session_started.go`
 
 # User
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `auth.auth.user`
 - **Service:** [Authentication & Sessions](../README.md)
@@ -836,7 +834,7 @@ Source: `examples/auth/internal/domain/user/event/user_registered.go`
 
 # Storefront
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `storefront`
 - **Classification:** supporting
@@ -857,7 +855,7 @@ One graph in front of the estate, for one kind of client. It owns nothing: every
 
 # Glossary — Storefront
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Context:** [Storefront](README.md)
 - **Terms:** 13
@@ -885,7 +883,7 @@ One meaning per word inside this context, as the glossary beside the code states
 
 # Storefront BFF
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `storefront.bff`
 - **Context:** [Storefront](../README.md)
@@ -1194,7 +1192,7 @@ schema. `npm run generate` reproduces them.
 
 # Payments
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `payments`
 - **Classification:** supporting
@@ -1217,7 +1215,7 @@ Money, and the record of every movement of it. Nothing here decides whether to c
 
 # Ledger
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `payments.ledger`
 - **Context:** [Payments](../README.md)
@@ -1449,7 +1447,7 @@ nothing leaves. `OMS_ADDRESS` is where `shop.v1.OrderService` answers.
 | --- | --- | --- |
 | [PaymentAuthorized](aggregates/payment.md) | v1 | [shop.oms (declared)](../../shop/oms/README.md) |
 | [PaymentCaptured](aggregates/payment.md) | v1 | [shop.billing (declared)](../../shop/billing/README.md), [delivery.core (declared)](../../delivery/core/README.md) |
-| [PaymentDeclined](aggregates/payment.md) | v1 | [shop.oms (declared)](../../shop/oms/README.md) |
+| [PaymentDeclined](aggregates/payment.md) | v1 | — |
 | [RefundIssued](aggregates/refund.md) | v1 | — |
 
 ## Stores
@@ -1462,7 +1460,7 @@ nothing leaves. `OMS_ADDRESS` is where `shop.v1.OrderService` answers.
 
 # Payment
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `payments.ledger.payment`
 - **Service:** [Ledger](../README.md)
@@ -1592,10 +1590,6 @@ Source: `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/dom
 
 On the wire as `ledger.PaymentDeclined`, on `payments.ledger.payment`.
 
-| Consumer | Status |
-| --- | --- |
-| [shop.oms](../../../shop/oms/README.md) | declared |
-
 #### v1 — current
 
 The gateway refused, and it says why in its own words rather than ours.
@@ -1612,7 +1606,7 @@ Source: `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/dom
 
 # Refund
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `payments.ledger.refund`
 - **Service:** [Ledger](../README.md)
@@ -1685,7 +1679,7 @@ Source: `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/dom
 
 # Shop
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `shop`
 - **Classification:** core
@@ -1709,7 +1703,7 @@ What a customer is buying, what it costs and what they owe for it: the basket wh
 
 # Glossary — Shop
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Context:** [Shop](README.md)
 - **Terms:** 11
@@ -1735,7 +1729,7 @@ One meaning per word inside this context, as the glossary beside the code states
 
 # Billing
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `shop.billing`
 - **Context:** [Shop](../README.md)
@@ -1868,7 +1862,7 @@ python manage.py migrate && python manage.py runserver
 
 # Invoice
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `shop.billing.invoice`
 - **Service:** [Billing](../README.md)
@@ -2016,7 +2010,7 @@ Source: `examples/shop/billing/invoices/events.py`
 
 # Shopping Cart
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `shop.cart`
 - **Context:** [Shop](../README.md)
@@ -2208,7 +2202,7 @@ Docker the tests that need Postgres or NATS are skipped.
 
 # Basket
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `shop.cart.basket`
 - **Service:** [Shopping Cart](../README.md)
@@ -2463,7 +2457,7 @@ Source: `examples/shop/cart/src/domain/basket/events/basket-merged.ts`
 
 # Order Management
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `shop.oms`
 - **Context:** [Shop](../README.md)
@@ -2628,7 +2622,7 @@ skipped.
 
 # Order
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `shop.oms.order`
 - **Service:** [Order Management](../README.md)
@@ -2793,7 +2787,7 @@ Source: `examples/shop/oms/src/domain/order/event/order_placed.rs`
 
 # Pricing
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `shop.pricing`
 - **Context:** [Shop](../README.md)
@@ -3007,7 +3001,7 @@ module, into the `gen` directory beside the code that uses it.
 
 # Price List
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `shop.pricing.price-list`
 - **Service:** [Pricing](../README.md)
@@ -3056,7 +3050,7 @@ Row is one price in a list. An entity rather than a value: it is tracked over th
 
 # Quote
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `shop.pricing.quote`
 - **Service:** [Pricing](../README.md)
@@ -3159,7 +3153,7 @@ Source: `examples/shop/pricing/internal/domain/quote/event/quote_issued.go`
 
 # Delivery
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `delivery`
 - **Classification:** supporting
@@ -3176,7 +3170,7 @@ Parcels, vans and the day they are driven. Told what to carry and asked where it
 
 # Delivery Core
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `delivery.core`
 - **Context:** [Delivery](../README.md)
@@ -3433,11 +3427,11 @@ npm install && npm run gen && npm run build
 
 ## Publishes
 
-| Event | Latest | Consumers |
-| --- | --- | --- |
-| [RoutePlanned](aggregates/route.md) | v1 | — |
-| [ShipmentDelivered](aggregates/shipment.md) | v1 | [shop.oms (declared)](../../shop/oms/README.md), `analytics-sink (unresolved)` |
-| [ShipmentDispatched](aggregates/shipment.md) | v1 | — |
+| Event | Latest |
+| --- | --- |
+| [RoutePlanned](aggregates/route.md) | v1 |
+| [ShipmentDelivered](aggregates/shipment.md) | v1 |
+| [ShipmentDispatched](aggregates/shipment.md) | v1 |
 
 ## Stores
 
@@ -3449,7 +3443,7 @@ npm install && npm run gen && npm run build
 
 # Route
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `delivery.core.route`
 - **Service:** [Delivery Core](../README.md)
@@ -3557,7 +3551,7 @@ Source: `examples/shop/delivery/core/src/domain/route/events/route-planned.ts`
 
 # Shipment
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `delivery.core.shipment`
 - **Service:** [Delivery Core](../README.md)
@@ -3691,11 +3685,6 @@ stateDiagram-v2
 
 On the wire as `delivery.ShipmentDelivered`, on `delivery.core.shipment`.
 
-| Consumer | Status |
-| --- | --- |
-| [shop.oms](../../../shop/oms/README.md) | declared |
-| `analytics-sink` | unresolved |
-
 #### v1 — current
 
 It arrived, and who signed. The order is finished from this service's side;
@@ -3738,7 +3727,7 @@ Source: `examples/shop/delivery/core/src/domain/shipment/events/shipment-dispatc
 
 # Auth database
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `auth.auth.pg`
 - **Kind:** postgres
@@ -3797,7 +3786,7 @@ aggregate-root · persists [auth.auth.user](../aggregates/user.md)
 
 # Ledger database
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `payments.ledger.pg`
 - **Kind:** postgres
@@ -3894,7 +3883,7 @@ Source: `src/main/java/org/portolan/payments/ledger/infrastructure/repository/re
 
 # Billing database
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `shop.billing.pg`
 - **Kind:** postgres
@@ -3947,7 +3936,7 @@ child · persists [shop.billing.invoice](../aggregates/invoice.md) · block `sho
 
 # Cart database
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `shop.cart.pg`
 - **Kind:** postgres
@@ -4009,7 +3998,7 @@ outbox
 
 # Delivery database
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `delivery.core.pg`
 - **Kind:** postgres
@@ -4124,7 +4113,7 @@ Source: `src/infrastructure/repository/route/migrations/0002_route_load.sql`
 
 # Order database
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `shop.oms.pg`
 - **Kind:** postgres
@@ -4182,7 +4171,7 @@ outbox
 
 # Pricing database
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `shop.pricing.pg`
 - **Kind:** postgres
@@ -4295,12 +4284,10 @@ Source: `internal/infrastructure/repository/price_list/migrations/0002_price_lis
 
 # Flows
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 | Flow | Owner | Summary |
 | --- | --- | --- |
-| [Gateway webhook](gateway-webhook.md) | [payments](../payments/README.md) | The gateway's side of the story, arriving after the fact. One signed callback, four ways to read it: a replay to ignore, a capture to record, a charge with no local payment to adopt, and a failure to pass on. The adopt branch is the only repair for a checkout that timed out mid-authorization, and it is the one branch no test covers. |
-| [Shipment tracking](shipment-tracking.md) | [delivery](../delivery/README.md) | Reconstructed from production traces over a 24 hour window: the tracking page, the carrier's scan webhook, and what each scan code sets off. Two things only the traces know about — a consumer no repository accounts for, and an exception path whose reader emits no spans at all. |
 | [Change password](auth-change-password.md) | [auth](../auth/README.md) | Replaces the password of a user, given the current one. |
 | [Get user](auth-get-user.md) | [auth](../auth/README.md) | Reads a user by id. |
 | [Login](auth-login.md) | [auth](../auth/README.md) | Turns credentials into a session. |
@@ -4354,199 +4341,11 @@ Source: `internal/infrastructure/repository/price_list/migrations/0002_price_lis
 | [List price lists](pricing-list-price-lists.md) | [shop](../shop/README.md) | Package list_price_lists reads every price list there is. |
 | [Expire quote on checkout](pricing-expire-quote-on-checkout.md) | [shop](../shop/README.md) | Ends the promise once the basket it priced is checked out. |
 
-<!-- flows/gateway-webhook.md -->
-
-# Gateway webhook
-
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
-
-- **Id:** `flow.gateway-webhook`
-- **Owner:** [payments](../payments/README.md)
-- **Source:** `services/ledger/test/integration/webhook_test.go`
-
-The gateway's side of the story, arriving after the fact. One signed callback, four ways to read it: a replay to ignore, a capture to record, a charge with no local payment to adopt, and a failure to pass on. The adopt branch is the only repair for a checkout that timed out mid-authorization, and it is the one branch no test covers.
-
-## Participants
-
-| Participant | Kind | Context | Label |
-| --- | --- | --- | --- |
-| `psp-gateway` | external | — | psp-gateway (external) |
-| `payments.ledger` | service | [payments](../payments/README.md) | — |
-| `bus` | broker | — | — |
-| `shop.oms` | service | [shop](../shop/README.md) | — |
-
-## Sequence
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant p0 as psp-gateway (external)
-    participant p1 as payments.ledger
-    participant p2 as bus
-    participant p3 as shop.oms
-    p0->>p1: POST /webhooks/psp/v2
-    p1->>p1: verifySignatureAndParse
-    alt event id already applied
-        p1->>p1: dropDuplicate
-    else charge.succeeded, matching a local authorization
-        p1->>p1: markCaptured
-        p1-)p2: PaymentCaptured
-    else charge.succeeded, no local payment
-        p1->>p3: GetOrder → GetOrderResponse
-        p1->>p1: adoptOrphanCharge
-        p1-)p2: PaymentAuthorized
-    else charge.failed
-        p1-)p2: PaymentDeclined
-        p2-)p3: PaymentDeclined
-    end
-    p1->>p0: ack 200
-```
-
-## Steps
-
-1. **psp-gateway** → **payments.ledger** — POST /webhooks/psp/v2
-   `webhook_test.go:38` · HMAC-signed body. The gateway retries for three days with backoff until it gets a 2xx, so every branch below has to tolerate being run twice.
-2. **payments.ledger** ↺ **payments.ledger** — verifySignatureAndParse
-   `internal/ledger/adapter/psp/webhook.go:44` · A bad signature is answered 401 and never reaches the dedup table. The test drives a tampered body for this.
-
-> **One of**
->
-> *event id already applied*
->
-> 3. **payments.ledger** ↺ **payments.ledger** — dropDuplicate
->    `webhook_test.go:71` · Dedup table keyed by the gateway's event id, rows kept 30 days. A replay older than that would be applied again; nothing guards it.
->
-> *charge.succeeded, matching a local authorization*
->
-> 4. **payments.ledger** ↺ **payments.ledger** — markCaptured
->    `internal/ledger/app/webhook.go:96`
-> 5. **payments.ledger** → **bus** — PaymentCaptured
->    [payments.ledger.payment.PaymentCaptured](../payments/ledger/aggregates/payment.md) · `webhook_test.go:104`
->
-> *charge.succeeded, no local payment*
->
-> 6. **payments.ledger** → **shop.oms** — GetOrder → GetOrderResponse
->    `shop.v1.OrderService/GetOrder` · status: declared · `internal/ledger/app/webhook.go:132` · The order reference travels in the gateway's metadata. The ledger reads the order back to decide whether the charge belongs to this estate at all.
-> 7. **payments.ledger** ↺ **payments.ledger** — adoptOrphanCharge
->    status: declared · `internal/ledger/app/webhook.go:151` · Closes the gap left when the synchronous Authorize in checkout timed out after the gateway had already charged. Read from the code; the integration suite has no fixture for it, and it is the only path that keeps a customer from being charged for an order the estate never opened.
-> 8. **payments.ledger** → **bus** — PaymentAuthorized
->    [payments.ledger.payment.PaymentAuthorized](../payments/ledger/aggregates/payment.md) · status: declared · `internal/ledger/app/webhook.go:168` · Published late and out of order — consumers see the authorization after the charge already settled.
->
-> *charge.failed*
->
-> 9. **payments.ledger** → **bus** — PaymentDeclined
->    [payments.ledger.payment.PaymentDeclined](../payments/ledger/aggregates/payment.md) · `webhook_test.go:126`
-> 10. **bus** → **shop.oms** — PaymentDeclined
->    [payments.ledger.payment.PaymentDeclined](../payments/ledger/aggregates/payment.md) · status: declared · `webhook_test.go:131`
-
-11. **payments.ledger** → **psp-gateway** — ack 200
-   `webhook_test.go:142` · Acked only after the branch above has committed. Anything else and the gateway replays, which is what makes the dedup table load-bearing.
-
-<!-- flows/shipment-tracking.md -->
-
-# Shipment tracking
-
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
-
-- **Id:** `flow.shipment-tracking`
-- **Owner:** [delivery](../delivery/README.md)
-- **Source:** `data/flows/shipment-tracking.flow.md`
-
-Reconstructed from production traces over a 24 hour window: the tracking page, the carrier's scan webhook, and what each scan code sets off. Two things only the traces know about — a consumer no repository accounts for, and an exception path whose reader emits no spans at all.
-
-## Participants
-
-| Participant | Kind | Context | Label |
-| --- | --- | --- | --- |
-| `customer` | actor | — | — |
-| `carrier-api` | external | — | carrier-api (external) |
-| `delivery.core` | service | [delivery](../delivery/README.md) | — |
-| `shop.oms` | service | [shop](../shop/README.md) | — |
-| `bus` | broker | — | — |
-| `analytics-sink` | unknown | — | analytics-sink (unknown) |
-
-## Sequence
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor p0 as customer
-    participant p1 as carrier-api (external)
-    participant p2 as delivery.core
-    participant p3 as shop.oms
-    participant p4 as bus
-    participant p5 as analytics-sink (unknown)
-    p0->>p2: TrackShipment → TrackShipmentResponse
-    p2->>p3: GetOrder → GetOrderResponse
-    loop one iteration per carrier scan, 4 scans per shipment at p50 over the window
-        p1->>p2: POST /webhooks/carrier/scan
-        p2->>p2: RecordScan
-    end
-    alt scan code DELIVERED
-        p2-)p4: ShipmentDelivered
-        par ShipmentDelivered fan-out
-            p4-)p3: ShipmentDelivered
-        and
-            p4-)p5: ShipmentDelivered
-        end
-    else scan code EXCEPTION
-        p2->>p2: openDeliveryException
-        Note over p2: flow ends here
-    else scan code IN_TRANSIT
-        p2->>p2: updateEta
-    end
-```
-
-## Steps
-
-1. **customer** → **delivery.core** — TrackShipment → TrackShipmentResponse
-   `trace 9f2c1a../span 04` · Storefront tracking page. 41k calls in the window, p95 180 ms.
-2. **delivery.core** → **shop.oms** — GetOrder → GetOrderResponse
-   `shop.v1.OrderService/GetOrder` · status: declared · `trace 9f2c1a../span 06` · Resolves the order reference shown beside the parcel. Present in 96% of the traces; the rest are served from the tracking cache.
-
-> **Repeats** — one iteration per carrier scan; 4 scans per shipment at p50 over the window
->
-> 3. **carrier-api** → **delivery.core** — POST /webhooks/carrier/scan
->    `trace 7be40d../span 01` · Signed with the carrier's shared secret. 1.3% of scans in the window are retries after a 5xx, and the traces show the retry landing on the same shipment without a second state change.
-> 4. **delivery.core** ↺ **delivery.core** — RecordScan
->    `trace 7be40d../span 03`
-
-
-> **One of**
->
-> *scan code DELIVERED*
->
-> 5. **delivery.core** → **bus** — ShipmentDelivered
->    [delivery.core.shipment.ShipmentDelivered](../delivery/core/aggregates/shipment.md) · `trace 7be40d../span 27`
->
-> > **In parallel** — ShipmentDelivered fan-out
-> >
-> > *Branch 1*
-> >
-> > 6. **bus** → **shop.oms** — ShipmentDelivered
-> >    [delivery.core.shipment.ShipmentDelivered](../delivery/core/aggregates/shipment.md) · status: declared · `trace 7be40d../span 29` · Closes the order and starts the 30-day refund window the refund flow reads.
-> >
-> > *Branch 2*
-> >
-> > 7. **bus** → **analytics-sink** — ShipmentDelivered
-> >    [delivery.core.shipment.ShipmentDelivered](../delivery/core/aggregates/shipment.md) · status: unresolved · `trace 7be40d../span 31` · Seen in traces only, under client id `analytics-sink-2`. No subscription registration exists in any indexed repository, so the owning team is unknown and nobody can be told before this topic changes shape.
->
->
-> *scan code EXCEPTION — *ends the flow**
->
-> 8. **delivery.core** ↺ **delivery.core** — openDeliveryException
->    `trace 4c81f3../span 09` · The trace ends here. Whatever reads the exception queue emits no spans, so the catalog cannot say what happens to the parcel next.
->
-> *scan code IN_TRANSIT*
->
-> 9. **delivery.core** ↺ **delivery.core** — updateEta
->    `trace 7be40d../span 12` · No event is published for an in-transit scan; the tracking page reads the shipment directly. 83% of the scans in the window end here.
-
 <!-- flows/auth-change-password.md -->
 
 # Change password
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.auth-change-password`
 - **Owner:** [auth](../auth/README.md)
@@ -4596,7 +4395,7 @@ sequenceDiagram
 
 # Get user
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.auth-get-user`
 - **Owner:** [auth](../auth/README.md)
@@ -4635,7 +4434,7 @@ sequenceDiagram
 
 # Login
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.auth-login`
 - **Owner:** [auth](../auth/README.md)
@@ -4747,7 +4546,7 @@ sequenceDiagram
 
 # Logout
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.auth-logout`
 - **Owner:** [auth](../auth/README.md)
@@ -4794,7 +4593,7 @@ sequenceDiagram
 
 # Register user
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.auth-register-user`
 - **Owner:** [auth](../auth/README.md)
@@ -4841,7 +4640,7 @@ sequenceDiagram
 
 # Validate session
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.auth-validate-session`
 - **Owner:** [auth](../auth/README.md)
@@ -4880,7 +4679,7 @@ sequenceDiagram
 
 # Revoke sessions on password change
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.auth-revoke-sessions-on-password-change`
 - **Owner:** [auth](../auth/README.md)
@@ -4931,7 +4730,7 @@ sequenceDiagram
 
 # Query basket
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.bff-query-basket`
 - **Owner:** [storefront](../storefront/README.md)
@@ -4970,7 +4769,7 @@ sequenceDiagram
 
 # Query shipment
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.bff-query-shipment`
 - **Owner:** [storefront](../storefront/README.md)
@@ -5007,7 +4806,7 @@ sequenceDiagram
 
 # Query order
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.bff-query-order`
 - **Owner:** [storefront](../storefront/README.md)
@@ -5044,7 +4843,7 @@ sequenceDiagram
 
 # Query viewer
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.bff-query-viewer`
 - **Owner:** [storefront](../storefront/README.md)
@@ -5083,7 +4882,7 @@ sequenceDiagram
 
 # Mutation add item
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.bff-mutation-add-item`
 - **Owner:** [storefront](../storefront/README.md)
@@ -5122,7 +4921,7 @@ sequenceDiagram
 
 # Mutation checkout
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.bff-mutation-checkout`
 - **Owner:** [storefront](../storefront/README.md)
@@ -5161,7 +4960,7 @@ sequenceDiagram
 
 # Mutation remove item
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.bff-mutation-remove-item`
 - **Owner:** [storefront](../storefront/README.md)
@@ -5198,7 +4997,7 @@ sequenceDiagram
 
 # Mutation cancel order
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.bff-mutation-cancel-order`
 - **Owner:** [storefront](../storefront/README.md)
@@ -5237,7 +5036,7 @@ sequenceDiagram
 
 # Subscription order status
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.bff-subscription-order-status`
 - **Owner:** [storefront](../storefront/README.md)
@@ -5271,7 +5070,7 @@ sequenceDiagram
 
 # Authorize
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.ledger-authorize`
 - **Owner:** [payments](../payments/README.md)
@@ -5343,7 +5142,7 @@ sequenceDiagram
 
 # Capture
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.ledger-capture`
 - **Owner:** [payments](../payments/README.md)
@@ -5395,7 +5194,7 @@ sequenceDiagram
 
 # Get payment
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.ledger-get-payment`
 - **Owner:** [payments](../payments/README.md)
@@ -5434,7 +5233,7 @@ sequenceDiagram
 
 # Issue refund
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.ledger-issue-refund`
 - **Owner:** [payments](../payments/README.md)
@@ -5501,7 +5300,7 @@ sequenceDiagram
 
 # List refunds
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.ledger-list-refunds`
 - **Owner:** [payments](../payments/README.md)
@@ -5540,7 +5339,7 @@ sequenceDiagram
 
 # Void payment on order cancelled
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.ledger-void-payment-on-order-cancelled`
 - **Owner:** [payments](../payments/README.md)
@@ -5587,7 +5386,7 @@ sequenceDiagram
 
 # Invoice create
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.billing-invoice-create`
 - **Owner:** [shop](../shop/README.md)
@@ -5629,7 +5428,7 @@ sequenceDiagram
 
 # Invoice destroy
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.billing-invoice-destroy`
 - **Owner:** [shop](../shop/README.md)
@@ -5676,7 +5475,7 @@ sequenceDiagram
 
 # Invoice issue
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.billing-invoice-issue`
 - **Owner:** [shop](../shop/README.md)
@@ -5728,7 +5527,7 @@ sequenceDiagram
 
 # Invoice retrieve
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.billing-invoice-retrieve`
 - **Owner:** [shop](../shop/README.md)
@@ -5767,7 +5566,7 @@ sequenceDiagram
 
 # Close invoice on payment
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.billing-close-invoice-on-payment`
 - **Owner:** [shop](../shop/README.md)
@@ -5812,7 +5611,7 @@ sequenceDiagram
 
 # Add item
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.cart-add-item`
 - **Owner:** [shop](../shop/README.md)
@@ -5854,7 +5653,7 @@ sequenceDiagram
 
 # Checkout
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.cart-checkout`
 - **Owner:** [shop](../shop/README.md)
@@ -5909,7 +5708,7 @@ sequenceDiagram
 
 # Create basket
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.cart-create-basket`
 - **Owner:** [shop](../shop/README.md)
@@ -5951,7 +5750,7 @@ sequenceDiagram
 
 # Get basket
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.cart-get-basket`
 - **Owner:** [shop](../shop/README.md)
@@ -5983,7 +5782,7 @@ sequenceDiagram
 
 # Merge baskets
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.cart-merge-baskets`
 - **Owner:** [shop](../shop/README.md)
@@ -6042,7 +5841,7 @@ sequenceDiagram
 
 # Remove item
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.cart-remove-item`
 - **Owner:** [shop](../shop/README.md)
@@ -6084,7 +5883,7 @@ sequenceDiagram
 
 # Close route
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.core-close-route`
 - **Owner:** [delivery](../delivery/README.md)
@@ -6126,7 +5925,7 @@ sequenceDiagram
 
 # Dispatch
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.core-dispatch`
 - **Owner:** [delivery](../delivery/README.md)
@@ -6196,7 +5995,7 @@ sequenceDiagram
 
 # Get route
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.core-get-route`
 - **Owner:** [delivery](../delivery/README.md)
@@ -6235,7 +6034,7 @@ sequenceDiagram
 
 # Get shipment
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.core-get-shipment`
 - **Owner:** [delivery](../delivery/README.md)
@@ -6274,7 +6073,7 @@ sequenceDiagram
 
 # Plan route
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.core-plan-route`
 - **Owner:** [delivery](../delivery/README.md)
@@ -6327,7 +6126,7 @@ sequenceDiagram
 
 # Record delivery
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.core-record-delivery`
 - **Owner:** [delivery](../delivery/README.md)
@@ -6374,7 +6173,7 @@ sequenceDiagram
 
 # Record scan
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.core-record-scan`
 - **Owner:** [delivery](../delivery/README.md)
@@ -6416,7 +6215,7 @@ sequenceDiagram
 
 # Track shipment
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.core-track-shipment`
 - **Owner:** [delivery](../delivery/README.md)
@@ -6455,7 +6254,7 @@ sequenceDiagram
 
 # Plan shipment on payment captured
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.core-plan-shipment-on-payment-captured`
 - **Owner:** [delivery](../delivery/README.md)
@@ -6497,7 +6296,7 @@ sequenceDiagram
 
 # Cancel order
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.oms-cancel-order`
 - **Owner:** [shop](../shop/README.md)
@@ -6559,7 +6358,7 @@ sequenceDiagram
 
 # Get order
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.oms-get-order`
 - **Owner:** [shop](../shop/README.md)
@@ -6598,7 +6397,7 @@ sequenceDiagram
 
 # Confirm order on payment authorized
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.oms-confirm-order-on-payment-authorized`
 - **Owner:** [shop](../shop/README.md)
@@ -6651,7 +6450,7 @@ sequenceDiagram
 
 # Place order on basket checked out
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.oms-place-order-on-basket-checked-out`
 - **Owner:** [shop](../shop/README.md)
@@ -6699,7 +6498,7 @@ sequenceDiagram
 
 # Archive price list
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.pricing-archive-price-list`
 - **Owner:** [shop](../shop/README.md)
@@ -6741,7 +6540,7 @@ sequenceDiagram
 
 # Get quote
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.pricing-get-quote`
 - **Owner:** [shop](../shop/README.md)
@@ -6794,7 +6593,7 @@ sequenceDiagram
 
 # Import price list
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.pricing-import-price-list`
 - **Owner:** [shop](../shop/README.md)
@@ -6833,7 +6632,7 @@ sequenceDiagram
 
 # Issue quote
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.pricing-issue-quote`
 - **Owner:** [shop](../shop/README.md)
@@ -6880,7 +6679,7 @@ sequenceDiagram
 
 # List price lists
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.pricing-list-price-lists`
 - **Owner:** [shop](../shop/README.md)
@@ -6919,7 +6718,7 @@ sequenceDiagram
 
 # Expire quote on checkout
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.pricing-expire-quote-on-checkout`
 - **Owner:** [shop](../shop/README.md)
@@ -6964,7 +6763,7 @@ sequenceDiagram
 
 # Decision records
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 | ADR | Title | Status | Date | Scope |
 | --- | --- | --- | --- | --- |
@@ -7005,7 +6804,7 @@ sequenceDiagram
 
 # org.0001 — Client proto copies live in the consumer's infrastructure layer
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2025-03-11
@@ -7079,7 +6878,7 @@ compiling.
 
 # org.0002 — Domain event schema version is encoded in the package path (events/v1)
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2025-05-02
@@ -7142,7 +6941,7 @@ are not willing to take yet.
 
 # org.0003 — Ownership is read from CODEOWNERS, never typed and never resolved
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-05
@@ -7221,7 +7020,7 @@ report about itself, a team believing it owns something that is not there.
 
 # payments.0004 — Journal entries are idempotent by (order_id, attempt)
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Status:** proposed
 - **Date:** 2026-02-09
@@ -7290,7 +7089,7 @@ to protect against.
 
 # auth.0001 — Aggregates return their events; they do not buffer them
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-08-20
@@ -7350,7 +7149,7 @@ tests assert on it, and there is no way to store without offering it.
 
 # auth.0002 — Session is its own aggregate, linked to User by id
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-08-20
@@ -7403,7 +7202,7 @@ than the use case, so every way a password can change gets it.
 
 # auth.0003 — Session expiry publishes no event
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-08-22
@@ -7458,7 +7257,7 @@ can do its own arithmetic.
 
 # auth.0004 — Lockout is its own aggregate, keyed by user id
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-04
@@ -7530,7 +7329,7 @@ assembly adapts the lockout's use cases to it, the same shape as `login`'s
 
 # auth.0005 — Validation lives in constructors, as specifications, and applies when a value is made
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-08-22
@@ -7567,7 +7366,7 @@ the old one, whose stored hash is still perfectly good.
 
 # auth.0006 — A password change ends sessions through a policy, and the domains never import each other
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-08-22
@@ -7610,7 +7409,7 @@ than ended again with an event that reports nothing.
 
 # auth.0007 — Login asks a risk service, and a blocked attempt is treated as a compromise
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-04
@@ -7652,7 +7451,7 @@ thing the attacker came to learn.
 
 # auth.0008 — A cache in front of the token lookup, and nothing else
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-01
@@ -7695,7 +7494,7 @@ write that committed.
 
 # auth.0009 — A locked account answers exactly like a wrong password
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-04
@@ -7731,7 +7530,7 @@ means somebody has *not* got the password, and the sessions are the owner's.
 
 # auth.0010 — A revocation is written to the cache, not only dropped from it
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-05
@@ -7828,7 +7627,7 @@ is the number the ttl was chosen by.
 
 # auth.0011 — The relay reads every topic and hands it to a bus; policies subscribe to the bus
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-05
@@ -7921,7 +7720,7 @@ later subscriber would reverse.
 
 # bff.0001 — GraphQL over Yoga, and the schema comes first
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-05
@@ -7975,7 +7774,7 @@ once the server was up.
 
 # bff.0002 — The storefront owns no state
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-05
@@ -8020,7 +7819,7 @@ schema and the clients. Two things follow, and both are deliberate:
 
 # bff.0003 — The schema speaks the client's words, not the peers'
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-05
@@ -8066,7 +7865,7 @@ service owns.
 
 # bff.0004 — A subscription is the bus, forwarded
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-05
@@ -8113,7 +7912,7 @@ shows a screen that waits rather than a field that errors.
 
 # cart.0001 — TypeScript on Node.js, and the stack around it
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-04
@@ -8170,7 +7969,7 @@ catalog can read, and its decorators are annotations by another name.
 
 # cart.0002 — A basket freezes its currency at the first item
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-04
@@ -8208,7 +8007,7 @@ makes the running total shown on every page a lie until then.
 
 # cart.0003 — Line prices are captured when added, never recomputed
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-04
@@ -8246,7 +8045,7 @@ between the captured lines and the quote is the storefront's to show.
 
 # cart.0004 — Checkout confirms the session with `auth` and the total with `pricing`
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-04
@@ -8290,7 +8089,7 @@ is assembly's choice and the use case cannot tell.
 
 # cart.0005 — A merge moves every line or none
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-04
@@ -8333,7 +8132,7 @@ they picked and not the rest, with nothing saying which.
 
 # cart.0006 — Abandonment is a sweep inside the service, and it publishes
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-04
@@ -8368,7 +8167,7 @@ what is unusual is only that nothing calls it from outside.
 
 # cart.0007 — An anonymous basket is owned by whoever holds its token
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-04
@@ -8400,7 +8199,7 @@ operations where being someone matters - and by the token everywhere else.
 
 # cart.0008 — Events leave the service over NATS JetStream, and the outbox stays
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-05
@@ -8469,7 +8268,7 @@ the job and costs a JVM-sized process for an estate of three services.
 
 # oms.0001 — Rust on Tokio, and the stack around it
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-05
@@ -8512,7 +8311,7 @@ Adapter`. The catalog reads the bindings off those.
 
 # oms.0002 — An order is placed from a checked-out basket, not by a call
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-05
@@ -8549,7 +8348,7 @@ the second time.
 
 # oms.0003 — Lines and the total are copied from the basket, never repriced
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-05
@@ -8579,7 +8378,7 @@ total's. Everything else about the numbers is the cart's and pricing's.
 
 # oms.0004 — Cancelling is allowed until the parcel moves
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-05
@@ -8610,7 +8409,7 @@ so today every cancellation is before dispatch, and the table has no
 
 # oms.0005 — Confirmation waits for a payment service that does not exist yet
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-05

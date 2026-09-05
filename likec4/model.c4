@@ -1,12 +1,8 @@
 // GENERATED — do not edit.
 model {
-  psp_gateway = external 'psp-gateway (external)'
-  bus = broker 'bus'
-  customer = actor 'customer'
-  carrier_api = external 'carrier-api (external)'
-  analytics_sink = unknown 'analytics-sink (unknown)'
   client = actor 'client'
   auth_pg = store 'auth-pg'
+  bus = broker 'bus'
   risk_v1 = unknown 'risk.v1'
   psp = unknown 'psp'
   ledger_pg = store 'ledger-pg'
@@ -236,9 +232,6 @@ shown it and nobody should have to come back for it.'
   payments.ledger -> delivery.core 'PaymentCaptured' {
     style { color declared  line dashed  head onormal }
   }
-  payments.ledger -> shop.oms 'PaymentDeclined' {
-    style { color declared  line dashed  head onormal }
-  }
   payments.ledger -> psp 'giveBack' {
     style { color unresolved  line dotted  head normal }
   }
@@ -274,12 +267,6 @@ shown it and nobody should have to come back for it.'
   }
   shop.oms -> payments.ledger 'Authorize' {
     style { color declared  line dashed  head normal }
-  }
-  delivery.core -> shop.oms 'ShipmentDelivered' {
-    style { color declared  line dashed  head onormal }
-  }
-  delivery.core -> analytics_sink 'ShipmentDelivered' {
-    style { color unresolved  line dotted  head onormal }
   }
   delivery.core -> shop.oms 'GetOrder' {
     style { color declared  line dashed  head normal }
@@ -319,9 +306,6 @@ shown it and nobody should have to come back for it.'
   }
   shop.pricing.quote -> shop.pricing.pg 'quotes, quote_lines' {
     style { color declared  line dashed  head normal }
-  }
-  customer -> delivery.core 'Shipment tracking' {
-    style { color verified  line solid  head normal }
   }
   client -> auth.auth '6 flows' {
     style { color verified  line solid  head normal }

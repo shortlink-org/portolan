@@ -1,6 +1,6 @@
 # Shipment
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `delivery.core.shipment`
 - **Service:** [Delivery Core](../README.md)
@@ -133,11 +133,6 @@ stateDiagram-v2
 `delivery.core.shipment.ShipmentDelivered`
 
 On the wire as `delivery.ShipmentDelivered`, on `delivery.core.shipment`.
-
-| Consumer | Status |
-| --- | --- |
-| [shop.oms](../../../shop/oms/README.md) | declared |
-| `analytics-sink` | unresolved |
 
 #### v1 — current
 

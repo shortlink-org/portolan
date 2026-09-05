@@ -1,6 +1,6 @@
 # Payment
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `payments.ledger.payment`
 - **Service:** [Ledger](../README.md)
@@ -129,10 +129,6 @@ Source: `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/dom
 `payments.ledger.payment.PaymentDeclined`
 
 On the wire as `ledger.PaymentDeclined`, on `payments.ledger.payment`.
-
-| Consumer | Status |
-| --- | --- |
-| [shop.oms](../../../shop/oms/README.md) | declared |
 
 #### v1 — current
 
