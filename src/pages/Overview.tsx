@@ -193,8 +193,10 @@ export function Overview() {
                   />
                 </div>
                 {/* The classification and the problem count, on their own
-                    line under the name, at the same height in every card. */}
-                <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                    line under the name, at the same height in every card and
+                    on the right, under the actions, so the left edge is the
+                    name's and the summary's alone. */}
+                <div className="mt-1.5 flex flex-wrap items-center justify-end gap-2">
                   <ClassificationBadge
                     classification={context.classification}
                   />
