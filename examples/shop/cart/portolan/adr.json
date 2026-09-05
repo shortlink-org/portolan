@@ -1,0 +1,129 @@
+{
+  "generatedAt": "2026-09-05T04:57:06+07:00",
+  "commit": "56b139f",
+  "contexts": [],
+  "defs": {},
+  "flows": [],
+  "adrs": [
+    {
+      "id": "cart.0001",
+      "slug": "cart-0001-typescript-on-node",
+      "number": 1,
+      "title": "TypeScript on Node.js, and the stack around it",
+      "status": "accepted",
+      "date": "2026-09-04",
+      "scope": {
+        "kind": "service",
+        "service": "shop.cart"
+      },
+      "body": "## Context and Problem Statement\n\nEvery service in the estate so far is Go, and the catalog's extractors were\nwritten against Go's layout. The cart is the first service with a different\nteam behind it and a different runtime, and it is also the test of whether the\ncatalog describes an estate or a language.\n\n## Decision Drivers\n\n- The catalog must read this service without annotations, as it reads the Go\n  ones: the layout is the claim.\n- Peers are called the way their contracts are written - OpenAPI for HTTP,\n  proto for gRPC - so the call is named the way the callee names the method.\n- The service must run on a laptop with one Postgres and nothing else.\n\n## Considered Options\n\n1. **Go**, like the rest.\n2. **TypeScript on Node.js**, with the same layout one directory over.\n3. **TypeScript** with a framework that owns the layout (NestJS).\n\n## Decision Outcome\n\nChosen option: **TypeScript on Node.js**, plain.\n\nNode 24 with strict TypeScript and ESM; Fastify for HTTP; `pg` with a small\nSQL migration runner; zod at the edges; `openapi-typescript` for the server's\ntypes and `openapi-fetch` for the client of `auth`; Connect-ES for gRPC; an\noutbox and a relay of the service's own; `@opentelemetry/sdk-node` with the\nhttp and pg instrumentations; vitest with testcontainers. Dependencies are\nwired by hand in `src/di`, as functions that build one thing from the things\nit needs.\n\nOption 3 was declined because a framework that owns the layout owns what the\ncatalog can read, and its decorators are annotations by another name.\n\n### Consequences\n\n- Good: the catalog gets a second extractor, `extract-ts`, held to the same\n  contract as `extract-go`, and the estate stops being a Go estate.\n- Good: the assembly is readable, so a port bound to an adapter is a fact in\n  one function rather than in a container's registration order.\n- Bad: two runtimes to keep instrumented and traced alike; the trace context\n  on outbox messages uses the keys the Go services use, so a consumer in\n  either language reads the other's messages.\n",
+      "relates": {},
+      "source": "examples/shop/cart/docs/adr/0001-typescript-on-node.md"
+    },
+    {
+      "id": "cart.0002",
+      "slug": "cart-0002-currency-frozen-at-the-first-item",
+      "number": 2,
+      "title": "A basket freezes its currency at the first item",
+      "status": "accepted",
+      "date": "2026-09-04",
+      "scope": {
+        "kind": "service",
+        "service": "shop.cart"
+      },
+      "body": "## Context and Problem Statement\n\nA storefront can show prices in more than one currency, and a customer can\nchange the presentment currency mid-session. A basket with lines in two\ncurrencies has no total.\n\n## Considered Options\n\n1. **Freeze the currency at the first line**; refuse a line in another.\n2. **Convert** the incoming line at the current rate.\n3. **Allow mixed lines** and convert at checkout.\n\n## Decision Outcome\n\nChosen option: **freeze at the first line**. A line priced in another currency\nis refused with `409` and the storefront empties the basket or asks.\n\nA conversion is a rate, and a rate is a fact `pricing` owns and the cart has\nno business inventing. Option 3 defers the same invention to checkout and\nmakes the running total shown on every page a lie until then.\n\n### Consequences\n\n- Good: a basket always has one total that is a sum, not a computation.\n- Bad: switching currency with a full basket means starting over; the\n  storefront has to say so rather than quietly converting.\n",
+      "relates": {},
+      "source": "examples/shop/cart/docs/adr/0002-currency-frozen-at-the-first-item.md"
+    },
+    {
+      "id": "cart.0003",
+      "slug": "cart-0003-prices-captured-never-recomputed",
+      "number": 3,
+      "title": "Line prices are captured when added, never recomputed",
+      "status": "accepted",
+      "date": "2026-09-04",
+      "scope": {
+        "kind": "service",
+        "service": "shop.cart"
+      },
+      "body": "## Context and Problem Statement\n\nA price can change between a customer adding an item and checking out. The\ncart could hold SKUs and look prices up each time, or hold the price it was\ngiven at the moment of adding.\n\n## Considered Options\n\n1. **Capture the price on the line** as `Money`, from what the storefront sent.\n2. **Look prices up** from `pricing` on every read.\n\n## Decision Outcome\n\nChosen option: **capture on the line**.\n\nWhat the customer saw is what the basket holds. The total the customer is\ncharged is `pricing`'s business at checkout (cart.0004), and the difference\nbetween the captured lines and the quote is the storefront's to show.\n\n### Consequences\n\n- Good: the cart calls nobody to render itself; a read is a read.\n- Good: a price change is visible as a difference at checkout rather than as\n  a basket that silently changed under the customer.\n- Bad: the cart trusts the storefront's price at the moment of adding; the\n  quote at checkout is what catches a stale or wrong one.\n",
+      "relates": {},
+      "source": "examples/shop/cart/docs/adr/0003-prices-captured-never-recomputed.md"
+    },
+    {
+      "id": "cart.0004",
+      "slug": "cart-0004-checkout-confirms-with-auth-and-pricing",
+      "number": 4,
+      "title": "Checkout confirms the session with `auth` and the total with `pricing`",
+      "status": "accepted",
+      "date": "2026-09-04",
+      "scope": {
+        "kind": "service",
+        "service": "shop.cart"
+      },
+      "body": "## Context and Problem Statement\n\nCheckout is the moment a basket becomes something money will move for. Two\nquestions have to be answered before it does: is this still the signed-in\ncustomer, and what is the total. Neither answer is the cart's to give.\n\n## Decision Outcome\n\nAt checkout, and only there, the cart calls out, in this order: `auth`,\n`GET /v1/sessions/current`, to confirm the bearer token is a live session;\nthen `pricing`, `shop.v1.Pricing/GetQuote`, for the total over the lines,\npromotions and tax included. Only then is the basket frozen and\n`BasketCheckedOut` written, in the same transaction, carrying the lines, the\ntotal and the quote id.\n\nEvery other operation stays local. Adding to a basket costing a call to\n`auth` would make the cart the estate's hottest client of it; the session\nmatters when the basket is about to become an order, not before.\n\nWithout `AUTH_URL` or `PRICING_ADDR` in the environment the port is filled\nwith a permissive stand-in - every session live, the quote equal to the sum\nof the lines - so the service runs on a laptop with only Postgres. A stand-in\nis assembly's choice and the use case cannot tell.\n\n### Consequences\n\n- Good: a session that ended between page load and click is refused here,\n  by the service that knows, rather than discovered downstream.\n- Good: the total on `BasketCheckedOut` is `pricing`'s, so whoever places the\n  order does not price it again.\n- Bad: checkout has two remote calls on its path and fails when either peer is\n  down; that is the honest answer, and the stand-ins are for laptops only.\n",
+      "relates": {},
+      "source": "examples/shop/cart/docs/adr/0004-checkout-confirms-with-auth-and-pricing.md"
+    },
+    {
+      "id": "cart.0005",
+      "slug": "cart-0005-a-merge-moves-every-line-or-none",
+      "number": 5,
+      "title": "A merge moves every line or none",
+      "status": "accepted",
+      "date": "2026-09-04",
+      "scope": {
+        "kind": "service",
+        "service": "shop.cart"
+      },
+      "body": "## Context and Problem Statement\n\nAfter login the storefront holds two baskets: the visitor's, by token, and\nwhatever the customer already had. The lines have to end up in one basket,\nand a line from the visitor's basket can break a rule of the customer's -\nanother currency, too many SKUs.\n\n## Considered Options\n\n1. **All or nothing**: refuse the merge at the first line that would break a\n   rule, with nothing moved.\n2. **Best effort**: move what fits, report the rest.\n3. **Replace**: the visitor's basket wins, the customer's is dropped.\n\n## Decision Outcome\n\nChosen option: **all or nothing**. The lines are moved one by one under the\nsame rules as `addItem`, inside one transaction; the first refusal rolls the\nwhole merge back and is answered with `409` naming the line.\n\nA half-merged basket is worse than a refusal: the customer sees some of what\nthey picked and not the rest, with nothing saying which.\n\n### Consequences\n\n- Good: after a merge either both baskets are as they were, or one holds\n  everything and the other is marked `merged` and says so with\n  `BasketMerged`, naming the basket that now holds its lines - so a listener\n  following a visitor's basket knows where it went, not only that it stopped.\n- Bad: a customer with a basket in one currency and a visitor's basket in\n  another has to choose; the storefront has to offer the choice.\n",
+      "relates": {},
+      "source": "examples/shop/cart/docs/adr/0005-a-merge-moves-every-line-or-none.md"
+    },
+    {
+      "id": "cart.0006",
+      "slug": "cart-0006-abandonment-is-a-sweep-that-publishes",
+      "number": 6,
+      "title": "Abandonment is a sweep inside the service, and it publishes",
+      "status": "accepted",
+      "date": "2026-09-04",
+      "scope": {
+        "kind": "service",
+        "service": "shop.cart"
+      },
+      "body": "## Context and Problem Statement\n\nA basket untouched for a day is abandoned. `auth` lets a session expire with\nnothing running and no event, on the grounds that nobody decided anything.\nIs a basket the same?\n\n## Decision Outcome\n\nNo. An abandoned basket is a question somebody asks - what do customers leave\nbehind, and why - so abandonment is decided, recorded and published. A sweep\nruns inside the service once a minute, marks every open basket untouched for\n24 hours as `abandoned`, and publishes `BasketAbandoned` for each, through\nthe outbox like any other event. The sweep is a use case, `ExpireIdleBaskets`;\nwhat is unusual is only that nothing calls it from outside.\n\n### Consequences\n\n- Good: abandonment has one author and one timestamp, and a consumer can\n  react to it.\n- Bad: a sweep is a second process inside the service, alongside the relay,\n  and has to be shut down with it.\n- Note: the catalog reads no flow for the sweep, because no endpoint or\n  event opens it; the operation is in the model, the sequence is not.\n",
+      "relates": {},
+      "source": "examples/shop/cart/docs/adr/0006-abandonment-is-a-sweep-that-publishes.md"
+    },
+    {
+      "id": "cart.0007",
+      "slug": "cart-0007-an-anonymous-basket-is-owned-by-its-token",
+      "number": 7,
+      "title": "An anonymous basket is owned by whoever holds its token",
+      "status": "accepted",
+      "date": "2026-09-04",
+      "scope": {
+        "kind": "service",
+        "service": "shop.cart"
+      },
+      "body": "## Context and Problem Statement\n\nA visitor has no session. Something has to say which basket is theirs and\nstop anyone else from changing it, without a login and without the cart\nbecoming an identity provider.\n\n## Decision Outcome\n\nCreating a basket answers with an opaque token, and the token is the\ncapability to read and change that basket: sent as `X-Basket-Token`, compared\nin constant time, never listed. A signed-in customer's basket is theirs by\ncustomer id, which `auth` vouched for at checkout and merge - the two\noperations where being someone matters - and by the token everywhere else.\n\n### Consequences\n\n- Good: adding to a basket costs no call to `auth`, and a visitor never has\n  to sign in to shop.\n- Bad: a leaked token is a leaked basket; it is scoped to one basket and dies\n  with it, which is the whole of the exposure.\n",
+      "relates": {},
+      "source": "examples/shop/cart/docs/adr/0007-an-anonymous-basket-is-owned-by-its-token.md"
+    },
+    {
+      "id": "cart.0008",
+      "slug": "cart-0008-events-leave-over-nats-jetstream",
+      "number": 8,
+      "title": "Events leave the service over NATS JetStream, and the outbox stays",
+      "status": "accepted",
+      "date": "2026-09-05",
+      "scope": {
+        "kind": "service",
+        "service": "shop.cart"
+      },
+      "body": "## Context and Problem Statement\n\nUntil now every event the cart published was delivered in process: the relay\nread the outbox and handed each row to subscribers in the same Node process,\nof which there were none. `BasketCheckedOut` is the event the order service\nis placed from, and that service is another process in another language. How\ndoes an event get from this process to that one?\n\n## Decision Drivers\n\n- The outbox is the commit boundary (cart.0001): an event is recorded in the\n  same transaction as the change that caused it, and nothing about crossing a\n  process may weaken that.\n- A consumer may be down when the event is published, and may start later.\n- One request should read as one trace across both services.\n- Without a broker the service must still run, alone, with the tests it has.\n\n## Considered Options\n\n1. NATS JetStream: the relay publishes each row to a stream; a consumer is a\n   durable subscription.\n2. Kafka, through Redpanda locally.\n3. The consumer reads this service's outbox table.\n\n## Decision Outcome\n\nOption 1. One stream per service, `shop-cart`, over every subject under\n`shop.cart.`; the outbox row's topic is the subject, so the same name is on\nthe row and on the wire and there is nothing to map. The row's uuid is the\nmessage id: the relay stays at least once, and the stream drops a repeat\ninside its two-hour window, so a crash between the publish and the mark is a\nduplicate the broker absorbs rather than one a consumer has to. The row's\nmetadata rides as headers - the event's name and the trace context, the\nlatter under the keys the Go services use and as `traceparent` for a client\nwith a standard propagator - so a subscriber dispatches and continues the\ntrace without opening the payload.\n\nThe bus is an interface. `NATS_URL` set, it is the stream; unset, it is the\nin-process bus it always was, and the relay cannot tell which it holds. The\ntests that need a server start one in Docker and are skipped without it.\n\nOption 3 was rejected because it makes the outbox a contract, and a table\nsomebody else reads is one this service can no longer change. Option 2 does\nthe job and costs a JVM-sized process for an estate of three services.\n\n### Consequences\n\n- Good: a consumer that starts late reads what it missed, and the estate's\n  first cross-service event hop is observable end to end.\n- Good: the relay's span now says which bus it published to, and the consume\n  span is opened by the bus around the subscriber: before this the relay\n  opened it, and the catalog read the cart as a verified consumer of its own\n  events.\n- Bad: one more process to run, and one more thing to be told about in the\n  environment.\n- Note: the topic changed from `cart_basket` to `shop.cart.basket`. The\n  outbox is local and short-lived, so no row was migrated.\n",
+      "relates": {},
+      "source": "examples/shop/cart/docs/adr/0008-events-leave-over-nats-jetstream.md"
+    }
+  ]
+}

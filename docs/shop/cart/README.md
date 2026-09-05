@@ -1,6 +1,6 @@
 # Shopping Cart
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.cart`
 - **Context:** [Shop](../README.md)
@@ -173,3 +173,16 @@ Docker the tests that need Postgres or NATS are skipped.
 | Store | Kind | Access | Tables |
 | --- | --- | --- | --- |
 | [Cart database](stores/pg.md) | postgres | owns | 3 tables |
+
+## Decisions
+
+| ADR | Title | Status | Date |
+| --- | --- | --- | --- |
+| [cart.0001](../../adr/cart.0001.md) | TypeScript on Node.js, and the stack around it | accepted | 2026-09-04 |
+| [cart.0002](../../adr/cart.0002.md) | A basket freezes its currency at the first item | accepted | 2026-09-04 |
+| [cart.0003](../../adr/cart.0003.md) | Line prices are captured when added, never recomputed | accepted | 2026-09-04 |
+| [cart.0004](../../adr/cart.0004.md) | Checkout confirms the session with `auth` and the total with `pricing` | accepted | 2026-09-04 |
+| [cart.0005](../../adr/cart.0005.md) | A merge moves every line or none | accepted | 2026-09-04 |
+| [cart.0006](../../adr/cart.0006.md) | Abandonment is a sweep inside the service, and it publishes | accepted | 2026-09-04 |
+| [cart.0007](../../adr/cart.0007.md) | An anonymous basket is owned by whoever holds its token | accepted | 2026-09-04 |
+| [cart.0008](../../adr/cart.0008.md) | Events leave the service over NATS JetStream, and the outbox stays | accepted | 2026-09-05 |

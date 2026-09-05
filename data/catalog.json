@@ -130,63 +130,6 @@
   },
   "contexts": [],
   "flows": [],
-  "adrs": [
-    {
-      "id": "org.0001",
-      "slug": "org-0001-client-protos-in-consumer-infrastructure",
-      "number": 1,
-      "title": "Client proto copies live in the consumer's infrastructure layer",
-      "status": "accepted",
-      "date": "2025-03-11",
-      "scope": {
-        "kind": "org"
-      },
-      "relates": {
-        "services": [
-          "shop.oms",
-          "delivery.core"
-        ]
-      },
-      "source": "docs/adr/0001-client-protos-in-consumer-infrastructure.md",
-      "body": "# Client proto copies live in the consumer's infrastructure layer\n\n## Context and Problem Statement\n\nWhen `shop.oms` calls `payments.v1.Payments/Authorize`, it needs the payments\n`.proto`. Where does that file come from at build time?\n\nA shared schema repository consumed by every service is the obvious answer, and\nit is the one that couples every release to every other release: a change to a\nmessage nobody in `shop` uses still forces `shop` to bump, regenerate and\nretest.\n\n## Decision Drivers\n\n- A team must be able to release without waiting on another team's schema bump.\n- The boundary between contexts should be explicit in the code, not implicit in\n  a shared package.\n- Drift between a producer's schema and a consumer's copy must be **detectable**,\n  not merely hoped against.\n\n## Considered Options\n\n1. **A vendored copy of the producer's `.proto` under the consumer's\n   `internal/infrastructure/<peer>/`**, an anti-corruption layer in the DDD\n   sense: the copy is the consumer's translation boundary.\n2. **A shared schema repo** published as one versioned artifact for everyone.\n3. **Runtime reflection** — resolve descriptors from the server at startup.\n\n## Decision Outcome\n\nChosen option: **vendored copies in the consumer's infrastructure layer**.\n\nThis is the ACL trade-off taken deliberately:\n\n| | compile-time independence | drift risk |\n|---|---|---|\n| vendored copy | full — a consumer builds and ships alone | real — the copy can fall behind |\n| shared repo | none — every bump is everyone's bump | none |\n| reflection | full | moved to runtime, where it fails in production instead of in CI |\n\nWe take the drift risk because we can *measure* it, and we cannot measure the\ncost of coordinated releases until it has already been paid.\n\nThe mitigation is mechanical: **the catalog merge compares descriptors.** Each\nproducer publishes the descriptor set for the services it provides; each\nconsumer's vendored copy is parsed at catalog build time; a field, method or\nenum value that differs between the two is reported against the consuming\nservice and shows on its page as an unresolved call rather than silently\ncompiling.\n\n### Consequences\n\n- Good: `shop` and `delivery` release on their own cadence.\n- Good: the copy is a real boundary — a consumer may narrow a message to the\n  fields it actually uses, and that narrowing is visible in review.\n- Bad: the same `.proto` exists in several repositories. Someone reading two of\n  them may reasonably wonder which is authoritative. The producer's is; the\n  header comment on every vendored copy says so.\n- Bad: drift is caught at catalog build, which is after merge. It is not caught\n  at compile time, and it never will be.\n"
-    },
-    {
-      "id": "org.0002",
-      "slug": "org-0002-event-version-in-package-path",
-      "number": 2,
-      "title": "Domain event schema version is encoded in the package path (events/v1)",
-      "status": "accepted",
-      "date": "2025-05-02",
-      "scope": {
-        "kind": "org"
-      },
-      "relates": {
-        "events": [
-          "shop.cart.basket.BasketCheckedOut"
-        ]
-      },
-      "source": "docs/adr/0002-event-version-in-package-path.md",
-      "body": "# Domain event schema version is encoded in the package path (events/v1)\n\n## Context and Problem Statement\n\nA domain event outlives the code that published it. Consumers deserialize\nmessages written months earlier, and a consumer that is down for a day comes\nback to a backlog of the *old* shape. We need a versioning scheme that a\nconsumer can act on before it parses a single byte.\n\n## Decision Drivers\n\n- A consumer must be able to decide \"can I read this?\" from routing information\n  alone, without a registry lookup.\n- Two versions of one event must be publishable at the same time during a\n  migration.\n- The version must be visible in the source tree, in the topic name and in the\n  type URL — not only in a field.\n\n## Considered Options\n\n1. **Version in the package path**: `shop.events.v1.BasketCheckedOut`, file at\n   `proto/shop/events/v1/basket.proto`.\n2. **A `version` field inside the message.**\n3. **A schema registry** with subject-level compatibility rules.\n\n## Decision Outcome\n\nChosen option: **version in the package path**.\n\nThe version becomes part of the fully-qualified name, so it is part of the type\nURL, part of the generated Go package, and part of the topic name\n(`shop.events.v1.basket-checked-out`). A consumer subscribes to the versions it\nunderstands and is structurally incapable of receiving one it does not.\n\nOption 2 puts the version *inside* the payload, which means parsing an unknown\nshape to discover that it is unknown. Option 3 is the right answer at a\ndifferent scale; it adds an operational dependency on the publish path that we\nare not willing to take yet.\n\n### Consequences\n\n- Good: an unreadable version is never delivered — it is a different topic.\n- Good: v1 and v2 publish side by side during a migration; the producer emits\n  both until the v1 subscription drains.\n- Bad: a breaking change means a new package, a new topic and a period of dual\n  publishing. This is deliberate friction, and it is the point.\n- Bad: additive changes still land in v1. \"Is this additive?\" stays a judgement\n  call at review time, and the catalog's field diff per version is what makes\n  that call reviewable.\n"
-    },
-    {
-      "id": "payments.0004",
-      "slug": "payments-0004-idempotent-journal-entries",
-      "number": 4,
-      "title": "Journal entries are idempotent by (order_id, attempt)",
-      "status": "proposed",
-      "date": "2026-02-09",
-      "scope": {
-        "kind": "context",
-        "context": "payments"
-      },
-      "relates": {
-        "events": [
-          "payments.ledger.payment.PaymentCaptured"
-        ]
-      },
-      "source": "docs/adr/0004-idempotent-journal-entries.md",
-      "body": "# Journal entries are idempotent by (order_id, attempt)\n\n## Context and Problem Statement\n\nThe ledger writes a journal entry when a capture succeeds. The capture path is\nat-least-once end to end: the PSP retries its webhook, our own consumer retries\non redelivery, and an operator can replay a partition. Today a replayed capture\nwrites a second journal entry, and the ledger has to be repaired by hand.\n\nThe natural key is not `order_id` alone: a declined authorization is followed by\na second, legitimate attempt on the same order, and that attempt must produce\nits own entry.\n\n## Decision Drivers\n\n- Replaying the capture consumer must be safe, always, with no operator\n  ceremony.\n- A genuine retry by the customer is a distinct financial fact and must not be\n  collapsed into the first one.\n- The guarantee should be enforced by the database, not by application code that\n  can be bypassed by the next caller.\n\n## Considered Options\n\n1. **A unique constraint on `(order_id, attempt)`**, with `attempt` carried on\n   the capture command and echoed on the event.\n2. **A dedup table keyed by the message id** of the inbound event.\n3. **Application-level \"does an entry exist?\" check** before insert.\n\n## Decision Outcome\n\nProposed: **unique constraint on `(order_id, attempt)`**, with the insert\nwritten as `INSERT ... ON CONFLICT (order_id, attempt) DO NOTHING`.\n\nOption 2 dedups the *transport*, not the *fact*: the same capture arriving via a\nwebhook and via the event bus has two message ids and would write twice. Option\n3 is a read-then-write race that fails exactly under the concurrency it is meant\nto protect against.\n\n### Consequences\n\n- Good: replay is a no-op at the storage layer, whatever the caller does.\n- Good: the key is a domain fact, so it holds across transports.\n- Bad: `attempt` has to be threaded through the capture command and onto\n  `PaymentCaptured`; a producer that omits it cannot be made idempotent.\n- Bad: existing rows have no `attempt`. The backfill assigns `attempt = 1` and\n  is only correct if no order in history was captured twice — which has to be\n  checked before this is accepted, not after.\n\n## Open Questions\n\n- Does the PSP guarantee a stable attempt identifier across its own retries, or\n  do we mint it ourselves at authorization time?\n- What is the correct behaviour when a capture arrives for an attempt that was\n  never authorized? Currently it would insert; it should probably reject.\n"
-    }
-  ],
+  "adrs": [],
   "stores": []
 }

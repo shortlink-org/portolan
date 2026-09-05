@@ -50,6 +50,9 @@ func (s *site) renderAdr(adr *catalog.Adr) {
 		{"Scope", s.scopeRef(self, adr.Scope)},
 		{"Source", code(adr.Source)},
 	}
+	if adr.Note != "" {
+		meta = append(meta, []string{"Note", adr.Note})
+	}
 	if adr.SupersededBy != "" {
 		// Worth putting in the header rather than at the bottom: everything
 		// below it is history the moment this is set.

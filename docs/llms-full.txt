@@ -1,12 +1,12 @@
 *llms-full.txt: every page of Example estate, one after another. A page begins with a comment naming its file, and the links inside it are relative to that file's directory.*
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 <!-- README.md -->
 
 # Example estate
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 
 ## Contexts
@@ -75,12 +75,36 @@
 | [org.0001](adr/org.0001.md) | Client proto copies live in the consumer's infrastructure layer | accepted | 2025-03-11 |
 | [org.0002](adr/org.0002.md) | Domain event schema version is encoded in the package path (events/v1) | accepted | 2025-05-02 |
 | [payments.0004](adr/payments.0004.md) | Journal entries are idempotent by (order_id, attempt) | proposed | 2026-02-09 |
+| [auth.0001](adr/auth.0001.md) | Aggregates return their events; they do not buffer them | accepted | 2026-08-20 |
+| [auth.0002](adr/auth.0002.md) | Session is its own aggregate, linked to User by id | accepted | 2026-08-20 |
+| [auth.0003](adr/auth.0003.md) | Session expiry publishes no event | accepted | 2026-08-22 |
+| [auth.0004](adr/auth.0004.md) | Lockout is its own aggregate, keyed by user id | accepted | 2026-09-04 |
+| [auth.0005](adr/auth.0005.md) | Validation lives in constructors, as specifications, and applies when a value is made | accepted | 2026-08-22 |
+| [auth.0006](adr/auth.0006.md) | A password change ends sessions through a policy, and the domains never import each other | accepted | 2026-08-22 |
+| [auth.0007](adr/auth.0007.md) | Login asks a risk service, and a blocked attempt is treated as a compromise | accepted | 2026-09-04 |
+| [auth.0008](adr/auth.0008.md) | A cache in front of the token lookup, and nothing else | accepted | 2026-09-01 |
+| [auth.0009](adr/auth.0009.md) | A locked account answers exactly like a wrong password | accepted | 2026-09-04 |
+| [auth.0010](adr/auth.0010.md) | A revocation is written to the cache, not only dropped from it | accepted | 2026-09-05 |
+| [auth.0011](adr/auth.0011.md) | The relay reads every topic and hands it to a bus; policies subscribe to the bus | accepted | 2026-09-05 |
+| [cart.0001](adr/cart.0001.md) | TypeScript on Node.js, and the stack around it | accepted | 2026-09-04 |
+| [cart.0002](adr/cart.0002.md) | A basket freezes its currency at the first item | accepted | 2026-09-04 |
+| [cart.0003](adr/cart.0003.md) | Line prices are captured when added, never recomputed | accepted | 2026-09-04 |
+| [cart.0004](adr/cart.0004.md) | Checkout confirms the session with `auth` and the total with `pricing` | accepted | 2026-09-04 |
+| [cart.0005](adr/cart.0005.md) | A merge moves every line or none | accepted | 2026-09-04 |
+| [cart.0006](adr/cart.0006.md) | Abandonment is a sweep inside the service, and it publishes | accepted | 2026-09-04 |
+| [cart.0007](adr/cart.0007.md) | An anonymous basket is owned by whoever holds its token | accepted | 2026-09-04 |
+| [cart.0008](adr/cart.0008.md) | Events leave the service over NATS JetStream, and the outbox stays | accepted | 2026-09-05 |
+| [oms.0001](adr/oms.0001.md) | Rust on Tokio, and the stack around it | accepted | 2026-09-05 |
+| [oms.0002](adr/oms.0002.md) | An order is placed from a checked-out basket, not by a call | accepted | 2026-09-05 |
+| [oms.0003](adr/oms.0003.md) | Lines and the total are copied from the basket, never repriced | accepted | 2026-09-05 |
+| [oms.0004](adr/oms.0004.md) | Cancelling is allowed until the parcel moves | accepted | 2026-09-05 |
+| [oms.0005](adr/oms.0005.md) | Confirmation waits for a payment service that does not exist yet | accepted | 2026-09-05 |
 
 <!-- types.md -->
 
 # Shared types
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 Types named by more than one aggregate, event or message. A field that
 refers to one of these is knowably the same shape everywhere it appears.
@@ -139,7 +163,7 @@ refers to one of these is knowably the same shape everywhere it appears.
 
 # Authentication
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `auth`
 - **Classification:** core
@@ -156,7 +180,7 @@ Who someone is, and whether they are still logged in. The only service in the es
 
 # Authentication & Sessions
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `auth.auth`
 - **Context:** [Authentication](../README.md)
@@ -341,11 +365,27 @@ without Docker the packages that need Postgres or redis are skipped.
 | --- | --- | --- | --- |
 | [Auth database](stores/pg.md) | postgres | owns | 3 tables |
 
+## Decisions
+
+| ADR | Title | Status | Date |
+| --- | --- | --- | --- |
+| [auth.0001](../../adr/auth.0001.md) | Aggregates return their events; they do not buffer them | accepted | 2026-08-20 |
+| [auth.0002](../../adr/auth.0002.md) | Session is its own aggregate, linked to User by id | accepted | 2026-08-20 |
+| [auth.0003](../../adr/auth.0003.md) | Session expiry publishes no event | accepted | 2026-08-22 |
+| [auth.0004](../../adr/auth.0004.md) | Lockout is its own aggregate, keyed by user id | accepted | 2026-09-04 |
+| [auth.0005](../../adr/auth.0005.md) | Validation lives in constructors, as specifications, and applies when a value is made | accepted | 2026-08-22 |
+| [auth.0006](../../adr/auth.0006.md) | A password change ends sessions through a policy, and the domains never import each other | accepted | 2026-08-22 |
+| [auth.0007](../../adr/auth.0007.md) | Login asks a risk service, and a blocked attempt is treated as a compromise | accepted | 2026-09-04 |
+| [auth.0008](../../adr/auth.0008.md) | A cache in front of the token lookup, and nothing else | accepted | 2026-09-01 |
+| [auth.0009](../../adr/auth.0009.md) | A locked account answers exactly like a wrong password | accepted | 2026-09-04 |
+| [auth.0010](../../adr/auth.0010.md) | A revocation is written to the cache, not only dropped from it | accepted | 2026-09-05 |
+| [auth.0011](../../adr/auth.0011.md) | The relay reads every topic and hands it to a bus; policies subscribe to the bus | accepted | 2026-09-05 |
+
 <!-- auth/auth/aggregates/lockout.md -->
 
 # Lockout
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `auth.auth.lockout`
 - **Service:** [Authentication & Sessions](../README.md)
@@ -465,7 +505,7 @@ Source: `examples/auth/internal/domain/lockout/event/account_locked.go`
 
 # Session
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `auth.auth.session`
 - **Service:** [Authentication & Sessions](../README.md)
@@ -609,7 +649,7 @@ Source: `examples/auth/internal/domain/session/event/session_started.go`
 
 # User
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `auth.auth.user`
 - **Service:** [Authentication & Sessions](../README.md)
@@ -734,7 +774,7 @@ Source: `examples/auth/internal/domain/user/event/user_registered.go`
 
 # Payments
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `payments`
 - **Classification:** core
@@ -757,7 +797,7 @@ Money, and the record of every movement of it. Nothing here decides whether to c
 
 # Ledger
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `payments.ledger`
 - **Context:** [Payments](../README.md)
@@ -1001,7 +1041,7 @@ nothing leaves. `OMS_ADDRESS` is where `shop.v1.OrderService` answers.
 
 # Payment
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `payments.ledger.payment`
 - **Service:** [Ledger](../README.md)
@@ -1151,7 +1191,7 @@ Source: `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/dom
 
 # Refund
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `payments.ledger.refund`
 - **Service:** [Ledger](../README.md)
@@ -1224,7 +1264,7 @@ Source: `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/dom
 
 # Shop
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop`
 
@@ -1241,7 +1281,7 @@ Source: `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/dom
 
 # Billing
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.billing`
 - **Context:** [Shop](../README.md)
@@ -1373,7 +1413,7 @@ python manage.py migrate && python manage.py runserver
 
 # Invoice
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.billing.invoice`
 - **Service:** [Billing](../README.md)
@@ -1521,7 +1561,7 @@ Source: `examples/shop/billing/invoices/events.py`
 
 # Shopping Cart
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.cart`
 - **Context:** [Shop](../README.md)
@@ -1695,11 +1735,24 @@ Docker the tests that need Postgres or NATS are skipped.
 | --- | --- | --- | --- |
 | [Cart database](stores/pg.md) | postgres | owns | 3 tables |
 
+## Decisions
+
+| ADR | Title | Status | Date |
+| --- | --- | --- | --- |
+| [cart.0001](../../adr/cart.0001.md) | TypeScript on Node.js, and the stack around it | accepted | 2026-09-04 |
+| [cart.0002](../../adr/cart.0002.md) | A basket freezes its currency at the first item | accepted | 2026-09-04 |
+| [cart.0003](../../adr/cart.0003.md) | Line prices are captured when added, never recomputed | accepted | 2026-09-04 |
+| [cart.0004](../../adr/cart.0004.md) | Checkout confirms the session with `auth` and the total with `pricing` | accepted | 2026-09-04 |
+| [cart.0005](../../adr/cart.0005.md) | A merge moves every line or none | accepted | 2026-09-04 |
+| [cart.0006](../../adr/cart.0006.md) | Abandonment is a sweep inside the service, and it publishes | accepted | 2026-09-04 |
+| [cart.0007](../../adr/cart.0007.md) | An anonymous basket is owned by whoever holds its token | accepted | 2026-09-04 |
+| [cart.0008](../../adr/cart.0008.md) | Events leave the service over NATS JetStream, and the outbox stays | accepted | 2026-09-05 |
+
 <!-- shop/cart/aggregates/basket.md -->
 
 # Basket
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.cart.basket`
 - **Service:** [Shopping Cart](../README.md)
@@ -1954,7 +2007,7 @@ Source: `examples/shop/cart/src/domain/basket/events/basket-merged.ts`
 
 # Order Management
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.oms`
 - **Context:** [Shop](../README.md)
@@ -2104,11 +2157,21 @@ skipped.
 | --- | --- | --- | --- |
 | [Order database](stores/pg.md) | postgres | owns | 3 tables |
 
+## Decisions
+
+| ADR | Title | Status | Date |
+| --- | --- | --- | --- |
+| [oms.0001](../../adr/oms.0001.md) | Rust on Tokio, and the stack around it | accepted | 2026-09-05 |
+| [oms.0002](../../adr/oms.0002.md) | An order is placed from a checked-out basket, not by a call | accepted | 2026-09-05 |
+| [oms.0003](../../adr/oms.0003.md) | Lines and the total are copied from the basket, never repriced | accepted | 2026-09-05 |
+| [oms.0004](../../adr/oms.0004.md) | Cancelling is allowed until the parcel moves | accepted | 2026-09-05 |
+| [oms.0005](../../adr/oms.0005.md) | Confirmation waits for a payment service that does not exist yet | accepted | 2026-09-05 |
+
 <!-- shop/oms/aggregates/order.md -->
 
 # Order
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.oms.order`
 - **Service:** [Order Management](../README.md)
@@ -2273,7 +2336,7 @@ Source: `examples/shop/oms/src/domain/order/event/order_placed.rs`
 
 # Pricing
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.pricing`
 - **Context:** [Shop](../README.md)
@@ -2486,7 +2549,7 @@ module, into the `gen` directory beside the code that uses it.
 
 # Price List
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.pricing.price-list`
 - **Service:** [Pricing](../README.md)
@@ -2535,7 +2598,7 @@ Row is one price in a list. An entity rather than a value: it is tracked over th
 
 # Quote
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.pricing.quote`
 - **Service:** [Pricing](../README.md)
@@ -2638,7 +2701,7 @@ Source: `examples/shop/pricing/internal/domain/quote/event/quote_issued.go`
 
 # Delivery
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `delivery`
 - **Classification:** supporting
@@ -2655,7 +2718,7 @@ Parcels, vans and the day they are driven. Told what to carry and asked where it
 
 # Delivery Core
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `delivery.core`
 - **Context:** [Delivery](../README.md)
@@ -2927,7 +2990,7 @@ npm install && npm run gen && npm run build
 
 # Route
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `delivery.core.route`
 - **Service:** [Delivery Core](../README.md)
@@ -3035,7 +3098,7 @@ Source: `examples/shop/delivery/core/src/domain/route/events/route-planned.ts`
 
 # Shipment
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `delivery.core.shipment`
 - **Service:** [Delivery Core](../README.md)
@@ -3216,7 +3279,7 @@ Source: `examples/shop/delivery/core/src/domain/shipment/events/shipment-dispatc
 
 # Auth database
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `auth.auth.pg`
 - **Kind:** postgres
@@ -3275,7 +3338,7 @@ aggregate-root · persists [auth.auth.user](../aggregates/user.md)
 
 # Ledger database
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `payments.ledger.pg`
 - **Kind:** postgres
@@ -3371,7 +3434,7 @@ Source: `src/main/java/org/portolan/payments/ledger/infrastructure/repository/re
 
 # Billing database
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.billing.pg`
 - **Kind:** postgres
@@ -3424,7 +3487,7 @@ child · persists [shop.billing.invoice](../aggregates/invoice.md) · block `sho
 
 # Cart database
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.cart.pg`
 - **Kind:** postgres
@@ -3486,7 +3549,7 @@ outbox
 
 # Delivery database
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `delivery.core.pg`
 - **Kind:** postgres
@@ -3601,7 +3664,7 @@ Source: `src/infrastructure/repository/route/migrations/0002_route_load.sql`
 
 # Order database
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.oms.pg`
 - **Kind:** postgres
@@ -3659,7 +3722,7 @@ outbox
 
 # Pricing database
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `shop.pricing.pg`
 - **Kind:** postgres
@@ -3772,7 +3835,7 @@ Source: `internal/infrastructure/repository/price_list/migrations/0002_price_lis
 
 # Flows
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 | Flow | Owner | Summary |
 | --- | --- | --- |
@@ -3826,7 +3889,7 @@ Source: `internal/infrastructure/repository/price_list/migrations/0002_price_lis
 
 # Gateway webhook
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.gateway-webhook`
 - **Owner:** [payments](../payments/README.md)
@@ -3914,7 +3977,7 @@ sequenceDiagram
 
 # Shipment tracking
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.shipment-tracking`
 - **Owner:** [delivery](../delivery/README.md)
@@ -4014,7 +4077,7 @@ sequenceDiagram
 
 # Change password
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.auth-change-password`
 - **Owner:** [auth](../auth/README.md)
@@ -4064,7 +4127,7 @@ sequenceDiagram
 
 # Get user
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.auth-get-user`
 - **Owner:** [auth](../auth/README.md)
@@ -4103,7 +4166,7 @@ sequenceDiagram
 
 # Login
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.auth-login`
 - **Owner:** [auth](../auth/README.md)
@@ -4215,7 +4278,7 @@ sequenceDiagram
 
 # Logout
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.auth-logout`
 - **Owner:** [auth](../auth/README.md)
@@ -4262,7 +4325,7 @@ sequenceDiagram
 
 # Register user
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.auth-register-user`
 - **Owner:** [auth](../auth/README.md)
@@ -4309,7 +4372,7 @@ sequenceDiagram
 
 # Validate session
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.auth-validate-session`
 - **Owner:** [auth](../auth/README.md)
@@ -4348,7 +4411,7 @@ sequenceDiagram
 
 # Revoke sessions on password change
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.auth-revoke-sessions-on-password-change`
 - **Owner:** [auth](../auth/README.md)
@@ -4399,7 +4462,7 @@ sequenceDiagram
 
 # Authorize
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.ledger-authorize`
 - **Owner:** [payments](../payments/README.md)
@@ -4471,7 +4534,7 @@ sequenceDiagram
 
 # Capture
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.ledger-capture`
 - **Owner:** [payments](../payments/README.md)
@@ -4523,7 +4586,7 @@ sequenceDiagram
 
 # Get payment
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.ledger-get-payment`
 - **Owner:** [payments](../payments/README.md)
@@ -4562,7 +4625,7 @@ sequenceDiagram
 
 # Issue refund
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.ledger-issue-refund`
 - **Owner:** [payments](../payments/README.md)
@@ -4629,7 +4692,7 @@ sequenceDiagram
 
 # List refunds
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.ledger-list-refunds`
 - **Owner:** [payments](../payments/README.md)
@@ -4668,7 +4731,7 @@ sequenceDiagram
 
 # Void payment on order cancelled
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.ledger-void-payment-on-order-cancelled`
 - **Owner:** [payments](../payments/README.md)
@@ -4715,7 +4778,7 @@ sequenceDiagram
 
 # Invoice create
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.billing-invoice-create`
 - **Owner:** [shop](../shop/README.md)
@@ -4757,7 +4820,7 @@ sequenceDiagram
 
 # Invoice destroy
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.billing-invoice-destroy`
 - **Owner:** [shop](../shop/README.md)
@@ -4804,7 +4867,7 @@ sequenceDiagram
 
 # Invoice issue
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.billing-invoice-issue`
 - **Owner:** [shop](../shop/README.md)
@@ -4856,7 +4919,7 @@ sequenceDiagram
 
 # Invoice retrieve
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.billing-invoice-retrieve`
 - **Owner:** [shop](../shop/README.md)
@@ -4895,7 +4958,7 @@ sequenceDiagram
 
 # Close invoice on payment
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.billing-close-invoice-on-payment`
 - **Owner:** [shop](../shop/README.md)
@@ -4940,7 +5003,7 @@ sequenceDiagram
 
 # Add item
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.cart-add-item`
 - **Owner:** [shop](../shop/README.md)
@@ -4982,7 +5045,7 @@ sequenceDiagram
 
 # Checkout
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.cart-checkout`
 - **Owner:** [shop](../shop/README.md)
@@ -5037,7 +5100,7 @@ sequenceDiagram
 
 # Create basket
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.cart-create-basket`
 - **Owner:** [shop](../shop/README.md)
@@ -5079,7 +5142,7 @@ sequenceDiagram
 
 # Get basket
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.cart-get-basket`
 - **Owner:** [shop](../shop/README.md)
@@ -5111,7 +5174,7 @@ sequenceDiagram
 
 # Merge baskets
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.cart-merge-baskets`
 - **Owner:** [shop](../shop/README.md)
@@ -5170,7 +5233,7 @@ sequenceDiagram
 
 # Remove item
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.cart-remove-item`
 - **Owner:** [shop](../shop/README.md)
@@ -5212,7 +5275,7 @@ sequenceDiagram
 
 # Close route
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.core-close-route`
 - **Owner:** [delivery](../delivery/README.md)
@@ -5254,7 +5317,7 @@ sequenceDiagram
 
 # Dispatch
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.core-dispatch`
 - **Owner:** [delivery](../delivery/README.md)
@@ -5324,7 +5387,7 @@ sequenceDiagram
 
 # Get route
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.core-get-route`
 - **Owner:** [delivery](../delivery/README.md)
@@ -5363,7 +5426,7 @@ sequenceDiagram
 
 # Get shipment
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.core-get-shipment`
 - **Owner:** [delivery](../delivery/README.md)
@@ -5402,7 +5465,7 @@ sequenceDiagram
 
 # Plan route
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.core-plan-route`
 - **Owner:** [delivery](../delivery/README.md)
@@ -5455,7 +5518,7 @@ sequenceDiagram
 
 # Record delivery
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.core-record-delivery`
 - **Owner:** [delivery](../delivery/README.md)
@@ -5502,7 +5565,7 @@ sequenceDiagram
 
 # Record scan
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.core-record-scan`
 - **Owner:** [delivery](../delivery/README.md)
@@ -5544,7 +5607,7 @@ sequenceDiagram
 
 # Track shipment
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.core-track-shipment`
 - **Owner:** [delivery](../delivery/README.md)
@@ -5583,7 +5646,7 @@ sequenceDiagram
 
 # Plan shipment on payment captured
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.core-plan-shipment-on-payment-captured`
 - **Owner:** [delivery](../delivery/README.md)
@@ -5625,7 +5688,7 @@ sequenceDiagram
 
 # Cancel order
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.oms-cancel-order`
 - **Owner:** [shop](../shop/README.md)
@@ -5687,7 +5750,7 @@ sequenceDiagram
 
 # Get order
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.oms-get-order`
 - **Owner:** [shop](../shop/README.md)
@@ -5726,7 +5789,7 @@ sequenceDiagram
 
 # Confirm order on payment authorized
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.oms-confirm-order-on-payment-authorized`
 - **Owner:** [shop](../shop/README.md)
@@ -5779,7 +5842,7 @@ sequenceDiagram
 
 # Place order on basket checked out
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.oms-place-order-on-basket-checked-out`
 - **Owner:** [shop](../shop/README.md)
@@ -5827,7 +5890,7 @@ sequenceDiagram
 
 # Archive price list
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.pricing-archive-price-list`
 - **Owner:** [shop](../shop/README.md)
@@ -5869,7 +5932,7 @@ sequenceDiagram
 
 # Get quote
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.pricing-get-quote`
 - **Owner:** [shop](../shop/README.md)
@@ -5922,7 +5985,7 @@ sequenceDiagram
 
 # Import price list
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.pricing-import-price-list`
 - **Owner:** [shop](../shop/README.md)
@@ -5961,7 +6024,7 @@ sequenceDiagram
 
 # Issue quote
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.pricing-issue-quote`
 - **Owner:** [shop](../shop/README.md)
@@ -6008,7 +6071,7 @@ sequenceDiagram
 
 # List price lists
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.pricing-list-price-lists`
 - **Owner:** [shop](../shop/README.md)
@@ -6047,7 +6110,7 @@ sequenceDiagram
 
 # Expire quote on checkout
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `flow.pricing-expire-quote-on-checkout`
 - **Owner:** [shop](../shop/README.md)
@@ -6092,26 +6155,50 @@ sequenceDiagram
 
 # Decision records
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 | ADR | Title | Status | Date | Scope |
 | --- | --- | --- | --- | --- |
 | [org.0001](org.0001.md) | Client proto copies live in the consumer's infrastructure layer | accepted | 2025-03-11 | org |
 | [org.0002](org.0002.md) | Domain event schema version is encoded in the package path (events/v1) | accepted | 2025-05-02 | org |
 | [payments.0004](payments.0004.md) | Journal entries are idempotent by (order_id, attempt) | proposed | 2026-02-09 | [payments](../payments/README.md) |
+| [auth.0001](auth.0001.md) | Aggregates return their events; they do not buffer them | accepted | 2026-08-20 | [auth.auth](../auth/auth/README.md) |
+| [auth.0002](auth.0002.md) | Session is its own aggregate, linked to User by id | accepted | 2026-08-20 | [auth.auth](../auth/auth/README.md) |
+| [auth.0003](auth.0003.md) | Session expiry publishes no event | accepted | 2026-08-22 | [auth.auth](../auth/auth/README.md) |
+| [auth.0004](auth.0004.md) | Lockout is its own aggregate, keyed by user id | accepted | 2026-09-04 | [auth.auth](../auth/auth/README.md) |
+| [auth.0005](auth.0005.md) | Validation lives in constructors, as specifications, and applies when a value is made | accepted | 2026-08-22 | [auth.auth](../auth/auth/README.md) |
+| [auth.0006](auth.0006.md) | A password change ends sessions through a policy, and the domains never import each other | accepted | 2026-08-22 | [auth.auth](../auth/auth/README.md) |
+| [auth.0007](auth.0007.md) | Login asks a risk service, and a blocked attempt is treated as a compromise | accepted | 2026-09-04 | [auth.auth](../auth/auth/README.md) |
+| [auth.0008](auth.0008.md) | A cache in front of the token lookup, and nothing else | accepted | 2026-09-01 | [auth.auth](../auth/auth/README.md) |
+| [auth.0009](auth.0009.md) | A locked account answers exactly like a wrong password | accepted | 2026-09-04 | [auth.auth](../auth/auth/README.md) |
+| [auth.0010](auth.0010.md) | A revocation is written to the cache, not only dropped from it | accepted | 2026-09-05 | [auth.auth](../auth/auth/README.md) |
+| [auth.0011](auth.0011.md) | The relay reads every topic and hands it to a bus; policies subscribe to the bus | accepted | 2026-09-05 | [auth.auth](../auth/auth/README.md) |
+| [cart.0001](cart.0001.md) | TypeScript on Node.js, and the stack around it | accepted | 2026-09-04 | [shop.cart](../shop/cart/README.md) |
+| [cart.0002](cart.0002.md) | A basket freezes its currency at the first item | accepted | 2026-09-04 | [shop.cart](../shop/cart/README.md) |
+| [cart.0003](cart.0003.md) | Line prices are captured when added, never recomputed | accepted | 2026-09-04 | [shop.cart](../shop/cart/README.md) |
+| [cart.0004](cart.0004.md) | Checkout confirms the session with `auth` and the total with `pricing` | accepted | 2026-09-04 | [shop.cart](../shop/cart/README.md) |
+| [cart.0005](cart.0005.md) | A merge moves every line or none | accepted | 2026-09-04 | [shop.cart](../shop/cart/README.md) |
+| [cart.0006](cart.0006.md) | Abandonment is a sweep inside the service, and it publishes | accepted | 2026-09-04 | [shop.cart](../shop/cart/README.md) |
+| [cart.0007](cart.0007.md) | An anonymous basket is owned by whoever holds its token | accepted | 2026-09-04 | [shop.cart](../shop/cart/README.md) |
+| [cart.0008](cart.0008.md) | Events leave the service over NATS JetStream, and the outbox stays | accepted | 2026-09-05 | [shop.cart](../shop/cart/README.md) |
+| [oms.0001](oms.0001.md) | Rust on Tokio, and the stack around it | accepted | 2026-09-05 | [shop.oms](../shop/oms/README.md) |
+| [oms.0002](oms.0002.md) | An order is placed from a checked-out basket, not by a call | accepted | 2026-09-05 | [shop.oms](../shop/oms/README.md) |
+| [oms.0003](oms.0003.md) | Lines and the total are copied from the basket, never repriced | accepted | 2026-09-05 | [shop.oms](../shop/oms/README.md) |
+| [oms.0004](oms.0004.md) | Cancelling is allowed until the parcel moves | accepted | 2026-09-05 | [shop.oms](../shop/oms/README.md) |
+| [oms.0005](oms.0005.md) | Confirmation waits for a payment service that does not exist yet | accepted | 2026-09-05 | [shop.oms](../shop/oms/README.md) |
 
 <!-- adr/org.0001.md -->
 
 # org.0001 — Client proto copies live in the consumer's infrastructure layer
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2025-03-11
 - **Scope:** org
-- **Source:** `docs/adr/0001-client-protos-in-consumer-infrastructure.md`
+- **Source:** `data/adr/0001-client-protos-in-consumer-infrastructure.md`
 
-## Context and Problem Statement
+### Context and Problem Statement
 
 When `shop.oms` calls `payments.v1.Payments/Authorize`, it needs the payments
 `.proto`. Where does that file come from at build time?
@@ -6121,7 +6208,7 @@ it is the one that couples every release to every other release: a change to a
 message nobody in `shop` uses still forces `shop` to bump, regenerate and
 retest.
 
-## Decision Drivers
+### Decision Drivers
 
 - A team must be able to release without waiting on another team's schema bump.
 - The boundary between contexts should be explicit in the code, not implicit in
@@ -6129,7 +6216,7 @@ retest.
 - Drift between a producer's schema and a consumer's copy must be **detectable**,
   not merely hoped against.
 
-## Considered Options
+### Considered Options
 
 1. **A vendored copy of the producer's `.proto` under the consumer's
    `internal/infrastructure/<peer>/`**, an anti-corruption layer in the DDD
@@ -6137,7 +6224,7 @@ retest.
 2. **A shared schema repo** published as one versioned artifact for everyone.
 3. **Runtime reflection** — resolve descriptors from the server at startup.
 
-## Decision Outcome
+### Decision Outcome
 
 Chosen option: **vendored copies in the consumer's infrastructure layer**.
 
@@ -6159,7 +6246,7 @@ enum value that differs between the two is reported against the consuming
 service and shows on its page as an unresolved call rather than silently
 compiling.
 
-### Consequences
+#### Consequences
 
 - Good: `shop` and `delivery` release on their own cadence.
 - Good: the copy is a real boundary — a consumer may narrow a message to the
@@ -6178,21 +6265,21 @@ compiling.
 
 # org.0002 — Domain event schema version is encoded in the package path (events/v1)
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2025-05-02
 - **Scope:** org
-- **Source:** `docs/adr/0002-event-version-in-package-path.md`
+- **Source:** `data/adr/0002-event-version-in-package-path.md`
 
-## Context and Problem Statement
+### Context and Problem Statement
 
 A domain event outlives the code that published it. Consumers deserialize
 messages written months earlier, and a consumer that is down for a day comes
 back to a backlog of the *old* shape. We need a versioning scheme that a
 consumer can act on before it parses a single byte.
 
-## Decision Drivers
+### Decision Drivers
 
 - A consumer must be able to decide "can I read this?" from routing information
   alone, without a registry lookup.
@@ -6201,14 +6288,14 @@ consumer can act on before it parses a single byte.
 - The version must be visible in the source tree, in the topic name and in the
   type URL — not only in a field.
 
-## Considered Options
+### Considered Options
 
 1. **Version in the package path**: `shop.events.v1.BasketCheckedOut`, file at
    `proto/shop/events/v1/basket.proto`.
 2. **A `version` field inside the message.**
 3. **A schema registry** with subject-level compatibility rules.
 
-## Decision Outcome
+### Decision Outcome
 
 Chosen option: **version in the package path**.
 
@@ -6222,7 +6309,7 @@ shape to discover that it is unknown. Option 3 is the right answer at a
 different scale; it adds an operational dependency on the publish path that we
 are not willing to take yet.
 
-### Consequences
+#### Consequences
 
 - Good: an unreadable version is never delivered — it is a different topic.
 - Good: v1 and v2 publish side by side during a migration; the producer emits
@@ -6241,14 +6328,14 @@ are not willing to take yet.
 
 # payments.0004 — Journal entries are idempotent by (order_id, attempt)
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Status:** proposed
 - **Date:** 2026-02-09
 - **Scope:** [payments](../payments/README.md)
-- **Source:** `docs/adr/0004-idempotent-journal-entries.md`
+- **Source:** `data/adr/0004-idempotent-journal-entries.md`
 
-## Context and Problem Statement
+### Context and Problem Statement
 
 The ledger writes a journal entry when a capture succeeds. The capture path is
 at-least-once end to end: the PSP retries its webhook, our own consumer retries
@@ -6259,7 +6346,7 @@ The natural key is not `order_id` alone: a declined authorization is followed by
 a second, legitimate attempt on the same order, and that attempt must produce
 its own entry.
 
-## Decision Drivers
+### Decision Drivers
 
 - Replaying the capture consumer must be safe, always, with no operator
   ceremony.
@@ -6268,14 +6355,14 @@ its own entry.
 - The guarantee should be enforced by the database, not by application code that
   can be bypassed by the next caller.
 
-## Considered Options
+### Considered Options
 
 1. **A unique constraint on `(order_id, attempt)`**, with `attempt` carried on
    the capture command and echoed on the event.
 2. **A dedup table keyed by the message id** of the inbound event.
 3. **Application-level "does an entry exist?" check** before insert.
 
-## Decision Outcome
+### Decision Outcome
 
 Proposed: **unique constraint on `(order_id, attempt)`**, with the insert
 written as `INSERT ... ON CONFLICT (order_id, attempt) DO NOTHING`.
@@ -6285,7 +6372,7 @@ webhook and via the event bus has two message ids and would write twice. Option
 3 is a read-then-write race that fails exactly under the concurrency it is meant
 to protect against.
 
-### Consequences
+#### Consequences
 
 - Good: replay is a no-op at the storage layer, whatever the caller does.
 - Good: the key is a domain fact, so it holds across transports.
@@ -6295,7 +6382,7 @@ to protect against.
   is only correct if no order in history was captured twice — which has to be
   checked before this is accepted, not after.
 
-## Open Questions
+### Open Questions
 
 - Does the PSP guarantee a stable attempt identifier across its own retries, or
   do we mint it ourselves at authorization time?
@@ -6305,3 +6392,1165 @@ to protect against.
 ## Relates to
 
 - **Events:** [payments.ledger.payment.PaymentCaptured](../payments/ledger/aggregates/payment.md)
+
+<!-- adr/auth.0001.md -->
+
+# auth.0001 — Aggregates return their events; they do not buffer them
+
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-08-20
+- **Scope:** [auth.auth](../auth/auth/README.md)
+- **Source:** `examples/auth/docs/adr/0001-events-returned-not-buffered.md`
+
+### Context and Problem Statement
+
+A command on an aggregate produces a fact: `Register` produces
+`UserRegistered`, `Revoke` produces `SessionEnded`. Where does that fact go
+between the command running and the change being committed?
+
+The common answer is a list on the aggregate that the repository drains
+after saving. It is also the answer that gives the aggregate hidden state and
+a dependency on the word "committed".
+
+### Decision Drivers
+
+- What a command did must be visible where it is called.
+- Storing a change and publishing its fact must be impossible to do apart.
+- The domain must not know that transactions exist.
+
+### Considered Options
+
+1. **Return the event from the command**, alongside the aggregate or the
+   error, and hand it to `Save` as an argument.
+2. **Buffer events on the aggregate**; the repository reads and clears the
+   buffer after writing.
+3. **Publish from the command** through a port the aggregate holds.
+
+### Decision Outcome
+
+Chosen option: **return the event**.
+
+| | visible in the signature | store and publish inseparable | domain knows about commit |
+|---|---|---|---|
+| return | yes | yes: `Save(aggregate, events...)` | no |
+| buffer | no | only if every repository remembers to drain | yes: the buffer must be cleared on commit |
+| publish from command | no | no: publish can succeed and save fail | yes |
+
+A buffered event is state that is not part of the aggregate's meaning and
+has to be reasoned about on every path, including the one where the save
+failed. Returned, the fact is a value like any other: the caller sees it,
+tests assert on it, and there is no way to store without offering it.
+
+#### Consequences
+
+- Good: every command's signature says whether it produces a fact.
+- Good: a refused command returns no event, so "announces nothing" is
+  visible rather than a cleared buffer.
+- Bad: a command that produces several facts returns several values; there
+  is no such command here today.
+- Neutral: `Revoke` returns `(event, bool)` rather than `(event, error)`
+  because the second call is not a failure.
+
+<!-- adr/auth.0002.md -->
+
+# auth.0002 — Session is its own aggregate, linked to User by id
+
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-08-20
+- **Scope:** [auth.auth](../auth/auth/README.md)
+- **Source:** `examples/auth/docs/adr/0002-session-is-its-own-aggregate.md`
+
+### Context and Problem Statement
+
+A session belongs to a user. Is it part of the `User` aggregate, a list of
+sessions the user root owns, or an aggregate of its own?
+
+### Decision Drivers
+
+- A session is written on every login and every logout; a user is written
+  on registration and password change.
+- A session is revoked without the user changing at all.
+- A user with many devices must not have every login serialised on one row.
+
+### Considered Options
+
+1. **Two aggregates**, linked by user id only. Neither imports the other.
+2. **Sessions inside `User`**, as a collection the root guards.
+
+### Decision Outcome
+
+Chosen option: **two aggregates**.
+
+| | one lock per change | version conflicts | rule across both |
+|---|---|---|---|
+| two aggregates | yes | on the row that changed | a policy on `PasswordChanged` |
+| sessions inside user | no: every login bumps the user's version | every concurrent login on one account conflicts | free, inside the root |
+
+The one rule that needs both, a password change ending sessions, is what
+option 2 gets for free and option 1 has to write as a policy. That policy is
+the price, and it is paid once, in one package that hangs off the fact rather
+than the use case, so every way a password can change gets it.
+
+#### Consequences
+
+- Good: the session store is the hot path and never contends with the user
+  row.
+- Good: `session` never imports `user`; both domains can be read alone.
+- Bad: the credential-change rule is eventually consistent. For a moment the
+  other devices still work; `end_after_credential_change` says why that is
+  correct rather than a bug.
+- Neutral: login needs the user domain to vouch for a credential. It states
+  that as a port, and assembly adapts the authenticate use case to it.
+
+<!-- adr/auth.0003.md -->
+
+# auth.0003 — Session expiry publishes no event
+
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-08-22
+- **Scope:** [auth.auth](../auth/auth/README.md)
+- **Source:** `examples/auth/docs/adr/0003-expiry-publishes-nothing.md`
+
+### Context and Problem Statement
+
+A session stops being usable at `ExpiresAt`. `SessionEnded` exists for
+sessions that are ended. Should expiry publish one too, so that consumers
+have one event to watch for "this session is over"?
+
+### Decision Drivers
+
+- An event is a fact about something that happened in the domain.
+- Nothing should be published that no code decided.
+- Consumers must be able to know when a session stops working.
+
+### Considered Options
+
+1. **No event.** `SessionStarted` carries the expiry; consumers read it.
+2. **A sweep** that finds expired sessions and publishes `SessionEnded`
+   with reason `expired`.
+3. **Publish on first refusal**, when an expired token is presented.
+
+### Decision Outcome
+
+Chosen option: **no event**.
+
+| | who decided | when it fires | can be missed |
+|---|---|---|---|
+| no event | nobody; time passed | never | no: the expiry was in `SessionStarted` |
+| sweep | whichever sweep noticed first | minutes late, or never for a dead sweep | yes |
+| on refusal | a client that happened to try | only if somebody presents the token | yes |
+
+When a session runs out of time no code runs and nobody decides anything.
+An event there would be an invention with a timestamp chosen by whoever
+noticed. Every consumer already holds the expiry from the start event and
+can do its own arithmetic.
+
+#### Consequences
+
+- Good: `Reason` has no `expired` value, so a client is never told "your
+  session expired" about a session that was revoked.
+- Good: no sweep to run, monitor, or reason about.
+- Bad: a consumer that wants a notification at expiry has to schedule it
+  itself from `SessionStarted`.
+- Neutral: `Validate` refuses an expired token when it is presented; that is
+  a read, not a transition.
+
+<!-- adr/auth.0004.md -->
+
+# auth.0004 — Lockout is its own aggregate, keyed by user id
+
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-09-04
+- **Scope:** [auth.auth](../auth/auth/README.md)
+- **Source:** `examples/auth/docs/adr/0004-lockout-is-its-own-aggregate.md`
+
+### Context and Problem Statement
+
+Five wrong passwords in a row should lock an account for a while. Where does
+the count live, and what is it counted against?
+
+The obvious answer is two columns on the user: a counter and a locked-until.
+It is also the answer that writes the user row on every wrong password typed
+by anybody who knows the address.
+
+### Decision Drivers
+
+- A wrong password must not contend with a real change to the user.
+- Nobody must be able to lock somebody else by typing their address.
+- The answer outside must not change: one refusal, whatever the reason.
+- A lock must end by itself; nothing should have to run to end it.
+
+### Considered Options
+
+1. **A separate `Lockout` aggregate**, one row per user id, created on the
+   first wrong password, in its own table.
+2. **Two columns on `User`**: `failures` and `locked_until`, written by
+   `Authenticate`.
+3. **Counting by address or client** in a store keyed by what was typed, so
+   that unknown addresses count too.
+
+### Decision Outcome
+
+Chosen option: **a separate aggregate, keyed by user id**.
+
+| | contention with the user row | can lock somebody else | leaks that an address exists |
+|---|---|---|---|
+| separate aggregate by user id | none | no: no account, no count | no: same refusal |
+| columns on User | every guess bumps the user's version | no | no |
+| by address | none | yes: type their address with junk | no, but a stranger can lock the owner out |
+
+Option 2 is a third less code and breaks the rule every other aggregate here
+follows: what changes at a different rate is a different aggregate. A
+concurrent password change would fail on a stranger's typo. Option 3 counts
+the wrong thing: the account is what is being guessed at, and letting an
+unknown address accumulate anything lets anybody deny anybody.
+
+The price of option 1 is a port. `authenticate` in the user domain has to
+ask the lockout and tell it how the check went, and neither domain may
+import the other; so `authenticate` declares a three-method interface and
+assembly adapts the lockout's use cases to it, the same shape as `login`'s
+`Authenticator`.
+
+#### Consequences
+
+- Good: the users table is written only when the user changes.
+- Good: a lock is invisible from outside; the refusal is the same 401.
+- Good: the lock ends by time, like session expiry, with no sweep and no
+  event for it (auth.0003).
+- Bad: one more read on every login, and a write on every wrong password.
+  The read is by primary key; the write is the point.
+- Bad: a lockout store that is unreachable stops the credential check with
+  an error rather than letting it through. Letting it through would turn
+  the store being down into unlimited guessing, silently.
+- Neutral: sessions are untouched by a lock. A risk block ends them because
+  the attempt had the right password; a lockout means it did not.
+
+<!-- adr/auth.0005.md -->
+
+# auth.0005 — Validation lives in constructors, as specifications, and applies when a value is made
+
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-08-22
+- **Scope:** [auth.auth](../auth/auth/README.md)
+- **Source:** `examples/auth/docs/adr/0005-rules-are-specifications-at-construction.md`
+
+### Context and Problem Statement
+
+An email address, a password and a token each have rules. Where do the rules
+live, and when do they apply? A rule checked in a handler is skipped by the
+next caller; a rule checked on every read locks out everyone who registered
+before it was tightened.
+
+### Decision Outcome
+
+A value object's constructor is the only way to get one, so a value that
+exists is a value that passed. Each rule is a specification in a `rules/`
+package next to the value it governs, and the composite in that package is the
+policy: which rules currently apply.
+
+The password policy applies when a password is *created*, never when one is
+checked. Raising the minimum must not lock out everyone who registered under
+the old one, whose stored hash is still perfectly good.
+
+#### Consequences
+
+- Good: a use case never validates; it takes values, and the values are valid.
+- Good: a rule is one file with one name, and the policy is a list a reader
+  can see.
+- Bad: tightening a rule changes what new users can do and nothing for old
+  ones; if the old ones are the problem, that is a migration, not a rule.
+
+<!-- adr/auth.0006.md -->
+
+# auth.0006 — A password change ends sessions through a policy, and the domains never import each other
+
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-08-22
+- **Scope:** [auth.auth](../auth/auth/README.md)
+- **Source:** `examples/auth/docs/adr/0006-a-password-change-ends-sessions-through-a-policy.md`
+
+### Context and Problem Statement
+
+A password change should end the sessions issued against the old password.
+The rule spans two aggregates that are kept apart on purpose (auth.0002):
+`user` publishes the change, `session` holds what has to end.
+
+### Considered Options
+
+1. **The use case does both**: change the password, then end the sessions,
+   in one transaction.
+2. **A policy**: `user` publishes `PasswordChanged`; a policy in
+   `internal/application/policy` hears it and runs the session use case that
+   ends what the change invalidates.
+
+### Decision Outcome
+
+Chosen option: **a policy**. `session` never imports `user`, `user` never
+imports `session`; the one place that knows both exist is assembly, which
+subscribes the policy to the event.
+
+Which sessions end is a domain service in `session`: the one the change was
+made from is kept, anything started after the change was issued against the
+new credentials and survives, and anything already dead is left alone rather
+than ended again with an event that reports nothing.
+
+#### Consequences
+
+- Good: the rule is one policy with one trigger, and the catalog reads it as
+  a flow that opens on the bus.
+- Bad: the sessions end after the change commits, not with it; the window is
+  the relay's latency, and a token can validate once more inside it.
+
+<!-- adr/auth.0007.md -->
+
+# auth.0007 — Login asks a risk service, and a blocked attempt is treated as a compromise
+
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-09-04
+- **Scope:** [auth.auth](../auth/auth/README.md)
+- **Source:** `examples/auth/docs/adr/0007-login-asks-risk-and-a-block-is-a-compromise.md`
+
+### Context and Problem Statement
+
+A login with the right password can still be one the business does not want
+to allow. Somebody other than this service knows that; this service has to ask,
+and has to decide what a refusal means.
+
+### Decision Outcome
+
+Login asks `risk.v1.RiskService/Assess` after the credentials are checked and
+before a session is issued. The use case declares the need as a port of its
+own, `login.Risk`; assembly fills it with an adapter over the generated
+client, from a narrowed copy of the contract vendored under
+`internal/infrastructure/risk` - the same shape as the Authenticator, so that
+the knowledge that another service exists lives in one place, and it is not
+the domain. Without `RISK_ADDR` every attempt is allowed, so a laptop needs no
+risk service.
+
+A blocked attempt is treated as the account being compromised: whoever is
+trying has the right password. Every live session the account has is ended
+first - `SessionEnded` with reason `risk-blocked`, one transaction each - and
+only then is the attempt refused, with the same `401` as a wrong password. A
+`403` would say the account exists and is worth attacking, which is the one
+thing the attacker came to learn.
+
+#### Consequences
+
+- Good: a compromised account loses its sessions at the moment the compromise
+  is known, without anyone else having to react.
+- Bad: no service in the estate provides `risk.v1`; the catalog shows the
+  call as unresolved, which is the true state until one does.
+
+<!-- adr/auth.0008.md -->
+
+# auth.0008 — A cache in front of the token lookup, and nothing else
+
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-09-01
+- **Scope:** [auth.auth](../auth/auth/README.md)
+- **Source:** `examples/auth/docs/adr/0008-a-cache-in-front-of-bytoken-only.md`
+- **Note:** how a revocation is kept out of the cache was decided again in auth.0010; the drop described below turned out not to be enough.
+
+### Context and Problem Statement
+
+`ByToken` is the hot path: every authenticated request in the estate ends
+there, asking the same question about the same token over and over. Nothing
+else in this service is read often enough to keep an answer to.
+
+### Decision Outcome
+
+A decorator over the session repository caches `ByToken` and only `ByToken`.
+`ByID` is read by code about to write, and `ByUserID` answers a question about
+a set, which nothing can invalidate honestly. Assembly binds the port to the
+decorator wrapping the store; the domain and the use cases do not change,
+because a cache is a fact about how fast a deployment has to be, not about
+what a session is.
+
+What makes reading a session from somewhere other than the database safe:
+the version travels with the copy, so a write from a stale one is refused;
+nothing is read from the cache inside a transaction; revocation drops the
+entry before and after the write; an entry never outlives its session; the
+key is a hash of the token, never the token; and a cache that is down is not
+an outage - the database answers and a failed invalidation does not fail the
+write that committed.
+
+#### Consequences
+
+- Good: the estate's hottest read costs one cache hit, and turning the cache
+  off is a different adapter, not a different code path.
+- Bad: a stale entry can outlive a logout by the rest of its TTL when the
+  invalidation is the thing that broke; the TTL is how long the estate stays
+  wrong then, and it is a minute.
+
+<!-- adr/auth.0009.md -->
+
+# auth.0009 — A locked account answers exactly like a wrong password
+
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-09-04
+- **Scope:** [auth.auth](../auth/auth/README.md)
+- **Source:** `examples/auth/docs/adr/0009-a-lock-answers-like-a-wrong-password.md`
+
+### Context and Problem Statement
+
+Once an account is locked (auth.0004), what does a login attempt get back, and
+what counts towards the lock?
+
+### Decision Outcome
+
+While locked, a password is refused *unchecked*, with exactly the answer a
+wrong one gets, so a lock discloses nothing a wrong password would not. The
+count is per account: an unknown address is refused before anything is
+counted, so guessing at addresses locks nobody, and nobody can lock somebody
+else by typing their address with junk. The lock ends by time and nothing runs
+when it does; the next wrong password starts the count at one, and a right one
+clears it.
+
+A lock does not end the account's sessions. Unlike a risk block (auth.0007) it
+means somebody has *not* got the password, and the sessions are the owner's.
+
+#### Consequences
+
+- Good: an attacker cannot tell a locked account from a wrong guess, and
+  cannot lock an account they do not know the address of.
+- Bad: the owner cannot tell either; the storefront has to say "try again
+  later" on every refusal, and support has no way to lift a lock early.
+
+<!-- adr/auth.0010.md -->
+
+# auth.0010 — A revocation is written to the cache, not only dropped from it
+
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-09-05
+- **Scope:** [auth.auth](../auth/auth/README.md)
+- **Source:** `examples/auth/docs/adr/0010-a-revocation-is-written-to-the-cache.md`
+
+### Context and Problem Statement
+
+auth.0008 put a cache in front of `ByToken` and kept a revocation out of it
+by dropping the entry before and after the write. Is a drop enough to keep
+the cache from ever saying "live" about a session the store says is revoked?
+
+It is not, twice over. A reader that missed, read the store a moment before
+the revocation committed and stored its copy a moment after the drop leaves
+a live entry behind, and no drop can reach it: the reader cannot know it
+lost the race, and the writer has already run. And when the drop is the
+thing that fails while reads keep succeeding, the same entry survives for
+the rest of its ttl. In both cases a token that was logged out passes
+`Validate` for up to a minute, which contradicts the domain's rule that a
+revoked session never comes back - and means the cached repository is not
+the same port as the store it hides.
+
+### Decision Drivers
+
+- A revoked token is never answered "live" from the cache, in any
+  interleaving of a reader and a revoking writer.
+- The hot path stays cheap: one read of the cache on a hit.
+- A cache that is down stays an inconvenience, not an outage.
+- The cache does not need an operation the port does not have (no
+  compare-and-set, no set-if-absent).
+
+### Considered Options
+
+1. **Drop harder** — delete before and after the write, and again after a
+   delay. Narrows the window; never closes it, and does nothing for a drop
+   that fails.
+2. **Write the revoked copy through** — after the commit, store the revoked
+   snapshot under the same key instead of deleting it. The racing reader's
+   live copy overwrites it: the race, unchanged.
+3. **Record the revocation under its own key** — a second entry, written by
+   `Save` alone and read by `ByToken` first, for as long as the session
+   would have lived. Only a live session is ever stored under the first key.
+   Whatever a racing reader leaves there is not consulted while the
+   revocation stands.
+4. **Fail the write when the cache cannot be told** — return the drop's
+   error from `Save`. Turns a cache outage into a logout outage, and
+   reports as failed a revocation that committed.
+
+### Decision Outcome
+
+Chosen option: **record the revocation under its own key**.
+
+| | closes the race | survives a failed drop | hit cost | cache down is not an outage |
+|---|---|---|---|---|
+| drop harder | no | no | one read | yes |
+| write through | no | partly | one read | yes |
+| own key | yes | yes | two reads | yes |
+| fail the write | no | yes | one read | no |
+
+Two reads on a hit is what is given up: the revocation entry is checked
+before the live copy is believed. That is one more round trip to redis per
+authenticated request, and it buys the property the whole decision is for.
+The two facts cannot share a key, because a reader's write would then
+overwrite a revocation, which is the race again.
+
+The entry is written before the store is, so a process that dies between
+the commit and anything after it has still left the revocation where the
+next read finds it. A write the store then refuses leaves a revocation for
+a session that is still live; what that costs is one token read from the
+store for the rest of its life, never one that is wrong. The entry lives as
+long as the session would have: after expiry the store refuses the session
+on its own and nothing live is ever cached for it.
+
+The residual risk, accepted: a cache that answers reads while refusing
+every write can still hold a live copy for the rest of its ttl. That is
+narrower than before - the same cache also refuses the revocation - and it
+is the number the ttl was chosen by.
+
+#### Consequences
+
+- Good: a revoked token is not answered from the cache again, whichever of
+  a reader and a revoking writer got there first, and whether or not the
+  drop succeeded.
+- Good: the cached repository is again the same port as the store; nothing
+  above it changed.
+- Bad: one more cache read per hit on the estate's hottest path.
+- Bad: a revoked or refused-to-revoke token costs a store read every time
+  it is presented, for the rest of its life. A client that was logged out
+  stops presenting it, so in practice this is nothing.
+- Neutral: a session the store says is revoked or expired is no longer
+  stored at all; it never needed to be.
+
+<!-- adr/auth.0011.md -->
+
+# auth.0011 — The relay reads every topic and hands it to a bus; policies subscribe to the bus
+
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-09-05
+- **Scope:** [auth.auth](../auth/auth/README.md)
+- **Source:** `examples/auth/docs/adr/0011-the-relay-feeds-a-bus-and-policies-subscribe-to-the-bus.md`
+
+### Context and Problem Statement
+
+Three domains write their events to one outbox, on a topic each. What reads
+them back out, and what happens to an event nothing in this service reacts
+to?
+
+The first answer was: the relay registers the topics a policy listens to and
+dispatches by event name. That reads the `user` topic - `PasswordChanged` has
+a policy - and nothing else. A row on `auth_session` or `auth_lockout` was
+written in the same transaction as the login or the lock that produced it,
+and then never read: pending for good, one more row per login, with a reaper
+that only ever clears delivered rows. On the topic that was read,
+`UserRegistered` was acknowledged by the dispatcher because nobody was
+listed for it, which is the right thing to do with a row and the wrong thing
+to have decided in a relay.
+
+The outbox had two audiences on one cursor: the policies inside this
+service, and whatever outside it will one day want `UserRegistered` or
+`AccountLocked`. Served by one registration per interested topic, the
+second audience was invisible, and so was the fact that nothing served it.
+
+### Decision Drivers
+
+- Every topic the outbox is written to must be read. Rows that nobody reads
+  are not an event that went unnoticed; they are a table that grows.
+- What this service reacts to must be one list in one place, and a domain
+  with no subscriber must be visible as such rather than implied by absence.
+- The trace must say where an event was consumed and nowhere else: a
+  service that acknowledges a row is not consuming the event.
+- A broker, when one arrives, should replace one adapter and not the
+  wiring.
+
+### Considered Options
+
+1. **Register every topic, keep the dispatch map** — the relay reads all
+   three topics; two of the maps are empty.
+2. **The relay hands every event to a bus; policies subscribe to the bus** —
+   one registration per topic, no names in the relay, the in-process bus
+   the tests already use sits on the far side of it.
+3. **Two outboxes, or two tables** — one for domain events with policies,
+   one for integration events with a broker.
+
+### Decision Outcome
+
+Chosen option: **the relay hands every event to a bus**.
+
+| | rows read | where "who listens" lives | trace says consumed | a broker later |
+|---|---|---|---|---|
+| every topic, dispatch map | all | the relay's maps | on every read, listed or not | rewrite the relay |
+| relay to bus | all | the bus, in assembly | only under a subscriber | swap the bus |
+| two outboxes | all | split by table | per table | the domain chooses a table |
+
+The relay does one thing: what the outbox holds, the bus gets. It does not
+know event names, so it cannot have an opinion about which ones matter, and
+the map of names to policies moves to where the bus is built - the one place
+that already had to know both domains exist (auth.0006). An event nothing
+listens to leaves the outbox, reaches a bus with no subscriber and is done;
+the row is delivered, and the trace shows a publish with no consumer under
+it, which is the truth.
+
+What is given up: the split between "domain" and "integration" events is not
+in the schema. Both go through the same table, the same relay and the same
+bus, and the bus is where a broker will one day fan the second kind out. That
+is cheaper than deciding, at publish time and in the domain, which audience a
+fact is for - a decision the domain has no business making, and one that a
+later subscriber would reverse.
+
+#### Consequences
+
+- Good: no topic can be written and not read; the assembly test publishes
+  one event per domain and holds the table at zero pending rows.
+- Good: `ProvideBuses` is the whole answer to "what does this service react
+  to", and a bus with no subscriber says so in the code rather than in the
+  gap of a map.
+- Good: the spans follow cart's shape - outbox publish, relay publish, bus
+  consume - so the catalog reads auth as consuming `PasswordChanged` and
+  nothing else it wrote.
+- Bad: an event with no subscriber is acknowledged and gone, not held for a
+  broker that does not exist yet. That is deliberate: held rows were the bug.
+- Neutral: the in-process bus now takes its topic, for the trace only; the
+  tests that bind it straight to the port pass the same string.
+
+<!-- adr/cart.0001.md -->
+
+# cart.0001 — TypeScript on Node.js, and the stack around it
+
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-09-04
+- **Scope:** [shop.cart](../shop/cart/README.md)
+- **Source:** `examples/shop/cart/docs/adr/0001-typescript-on-node.md`
+
+### Context and Problem Statement
+
+Every service in the estate so far is Go, and the catalog's extractors were
+written against Go's layout. The cart is the first service with a different
+team behind it and a different runtime, and it is also the test of whether the
+catalog describes an estate or a language.
+
+### Decision Drivers
+
+- The catalog must read this service without annotations, as it reads the Go
+  ones: the layout is the claim.
+- Peers are called the way their contracts are written - OpenAPI for HTTP,
+  proto for gRPC - so the call is named the way the callee names the method.
+- The service must run on a laptop with one Postgres and nothing else.
+
+### Considered Options
+
+1. **Go**, like the rest.
+2. **TypeScript on Node.js**, with the same layout one directory over.
+3. **TypeScript** with a framework that owns the layout (NestJS).
+
+### Decision Outcome
+
+Chosen option: **TypeScript on Node.js**, plain.
+
+Node 24 with strict TypeScript and ESM; Fastify for HTTP; `pg` with a small
+SQL migration runner; zod at the edges; `openapi-typescript` for the server's
+types and `openapi-fetch` for the client of `auth`; Connect-ES for gRPC; an
+outbox and a relay of the service's own; `@opentelemetry/sdk-node` with the
+http and pg instrumentations; vitest with testcontainers. Dependencies are
+wired by hand in `src/di`, as functions that build one thing from the things
+it needs.
+
+Option 3 was declined because a framework that owns the layout owns what the
+catalog can read, and its decorators are annotations by another name.
+
+#### Consequences
+
+- Good: the catalog gets a second extractor, `extract-ts`, held to the same
+  contract as `extract-go`, and the estate stops being a Go estate.
+- Good: the assembly is readable, so a port bound to an adapter is a fact in
+  one function rather than in a container's registration order.
+- Bad: two runtimes to keep instrumented and traced alike; the trace context
+  on outbox messages uses the keys the Go services use, so a consumer in
+  either language reads the other's messages.
+
+<!-- adr/cart.0002.md -->
+
+# cart.0002 — A basket freezes its currency at the first item
+
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-09-04
+- **Scope:** [shop.cart](../shop/cart/README.md)
+- **Source:** `examples/shop/cart/docs/adr/0002-currency-frozen-at-the-first-item.md`
+
+### Context and Problem Statement
+
+A storefront can show prices in more than one currency, and a customer can
+change the presentment currency mid-session. A basket with lines in two
+currencies has no total.
+
+### Considered Options
+
+1. **Freeze the currency at the first line**; refuse a line in another.
+2. **Convert** the incoming line at the current rate.
+3. **Allow mixed lines** and convert at checkout.
+
+### Decision Outcome
+
+Chosen option: **freeze at the first line**. A line priced in another currency
+is refused with `409` and the storefront empties the basket or asks.
+
+A conversion is a rate, and a rate is a fact `pricing` owns and the cart has
+no business inventing. Option 3 defers the same invention to checkout and
+makes the running total shown on every page a lie until then.
+
+#### Consequences
+
+- Good: a basket always has one total that is a sum, not a computation.
+- Bad: switching currency with a full basket means starting over; the
+  storefront has to say so rather than quietly converting.
+
+<!-- adr/cart.0003.md -->
+
+# cart.0003 — Line prices are captured when added, never recomputed
+
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-09-04
+- **Scope:** [shop.cart](../shop/cart/README.md)
+- **Source:** `examples/shop/cart/docs/adr/0003-prices-captured-never-recomputed.md`
+
+### Context and Problem Statement
+
+A price can change between a customer adding an item and checking out. The
+cart could hold SKUs and look prices up each time, or hold the price it was
+given at the moment of adding.
+
+### Considered Options
+
+1. **Capture the price on the line** as `Money`, from what the storefront sent.
+2. **Look prices up** from `pricing` on every read.
+
+### Decision Outcome
+
+Chosen option: **capture on the line**.
+
+What the customer saw is what the basket holds. The total the customer is
+charged is `pricing`'s business at checkout (cart.0004), and the difference
+between the captured lines and the quote is the storefront's to show.
+
+#### Consequences
+
+- Good: the cart calls nobody to render itself; a read is a read.
+- Good: a price change is visible as a difference at checkout rather than as
+  a basket that silently changed under the customer.
+- Bad: the cart trusts the storefront's price at the moment of adding; the
+  quote at checkout is what catches a stale or wrong one.
+
+<!-- adr/cart.0004.md -->
+
+# cart.0004 — Checkout confirms the session with `auth` and the total with `pricing`
+
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-09-04
+- **Scope:** [shop.cart](../shop/cart/README.md)
+- **Source:** `examples/shop/cart/docs/adr/0004-checkout-confirms-with-auth-and-pricing.md`
+
+### Context and Problem Statement
+
+Checkout is the moment a basket becomes something money will move for. Two
+questions have to be answered before it does: is this still the signed-in
+customer, and what is the total. Neither answer is the cart's to give.
+
+### Decision Outcome
+
+At checkout, and only there, the cart calls out, in this order: `auth`,
+`GET /v1/sessions/current`, to confirm the bearer token is a live session;
+then `pricing`, `shop.v1.Pricing/GetQuote`, for the total over the lines,
+promotions and tax included. Only then is the basket frozen and
+`BasketCheckedOut` written, in the same transaction, carrying the lines, the
+total and the quote id.
+
+Every other operation stays local. Adding to a basket costing a call to
+`auth` would make the cart the estate's hottest client of it; the session
+matters when the basket is about to become an order, not before.
+
+Without `AUTH_URL` or `PRICING_ADDR` in the environment the port is filled
+with a permissive stand-in - every session live, the quote equal to the sum
+of the lines - so the service runs on a laptop with only Postgres. A stand-in
+is assembly's choice and the use case cannot tell.
+
+#### Consequences
+
+- Good: a session that ended between page load and click is refused here,
+  by the service that knows, rather than discovered downstream.
+- Good: the total on `BasketCheckedOut` is `pricing`'s, so whoever places the
+  order does not price it again.
+- Bad: checkout has two remote calls on its path and fails when either peer is
+  down; that is the honest answer, and the stand-ins are for laptops only.
+
+<!-- adr/cart.0005.md -->
+
+# cart.0005 — A merge moves every line or none
+
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-09-04
+- **Scope:** [shop.cart](../shop/cart/README.md)
+- **Source:** `examples/shop/cart/docs/adr/0005-a-merge-moves-every-line-or-none.md`
+
+### Context and Problem Statement
+
+After login the storefront holds two baskets: the visitor's, by token, and
+whatever the customer already had. The lines have to end up in one basket,
+and a line from the visitor's basket can break a rule of the customer's -
+another currency, too many SKUs.
+
+### Considered Options
+
+1. **All or nothing**: refuse the merge at the first line that would break a
+   rule, with nothing moved.
+2. **Best effort**: move what fits, report the rest.
+3. **Replace**: the visitor's basket wins, the customer's is dropped.
+
+### Decision Outcome
+
+Chosen option: **all or nothing**. The lines are moved one by one under the
+same rules as `addItem`, inside one transaction; the first refusal rolls the
+whole merge back and is answered with `409` naming the line.
+
+A half-merged basket is worse than a refusal: the customer sees some of what
+they picked and not the rest, with nothing saying which.
+
+#### Consequences
+
+- Good: after a merge either both baskets are as they were, or one holds
+  everything and the other is marked `merged` and says so with
+  `BasketMerged`, naming the basket that now holds its lines - so a listener
+  following a visitor's basket knows where it went, not only that it stopped.
+- Bad: a customer with a basket in one currency and a visitor's basket in
+  another has to choose; the storefront has to offer the choice.
+
+<!-- adr/cart.0006.md -->
+
+# cart.0006 — Abandonment is a sweep inside the service, and it publishes
+
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-09-04
+- **Scope:** [shop.cart](../shop/cart/README.md)
+- **Source:** `examples/shop/cart/docs/adr/0006-abandonment-is-a-sweep-that-publishes.md`
+
+### Context and Problem Statement
+
+A basket untouched for a day is abandoned. `auth` lets a session expire with
+nothing running and no event, on the grounds that nobody decided anything.
+Is a basket the same?
+
+### Decision Outcome
+
+No. An abandoned basket is a question somebody asks - what do customers leave
+behind, and why - so abandonment is decided, recorded and published. A sweep
+runs inside the service once a minute, marks every open basket untouched for
+24 hours as `abandoned`, and publishes `BasketAbandoned` for each, through
+the outbox like any other event. The sweep is a use case, `ExpireIdleBaskets`;
+what is unusual is only that nothing calls it from outside.
+
+#### Consequences
+
+- Good: abandonment has one author and one timestamp, and a consumer can
+  react to it.
+- Bad: a sweep is a second process inside the service, alongside the relay,
+  and has to be shut down with it.
+- Note: the catalog reads no flow for the sweep, because no endpoint or
+  event opens it; the operation is in the model, the sequence is not.
+
+<!-- adr/cart.0007.md -->
+
+# cart.0007 — An anonymous basket is owned by whoever holds its token
+
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-09-04
+- **Scope:** [shop.cart](../shop/cart/README.md)
+- **Source:** `examples/shop/cart/docs/adr/0007-an-anonymous-basket-is-owned-by-its-token.md`
+
+### Context and Problem Statement
+
+A visitor has no session. Something has to say which basket is theirs and
+stop anyone else from changing it, without a login and without the cart
+becoming an identity provider.
+
+### Decision Outcome
+
+Creating a basket answers with an opaque token, and the token is the
+capability to read and change that basket: sent as `X-Basket-Token`, compared
+in constant time, never listed. A signed-in customer's basket is theirs by
+customer id, which `auth` vouched for at checkout and merge - the two
+operations where being someone matters - and by the token everywhere else.
+
+#### Consequences
+
+- Good: adding to a basket costs no call to `auth`, and a visitor never has
+  to sign in to shop.
+- Bad: a leaked token is a leaked basket; it is scoped to one basket and dies
+  with it, which is the whole of the exposure.
+
+<!-- adr/cart.0008.md -->
+
+# cart.0008 — Events leave the service over NATS JetStream, and the outbox stays
+
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-09-05
+- **Scope:** [shop.cart](../shop/cart/README.md)
+- **Source:** `examples/shop/cart/docs/adr/0008-events-leave-over-nats-jetstream.md`
+
+### Context and Problem Statement
+
+Until now every event the cart published was delivered in process: the relay
+read the outbox and handed each row to subscribers in the same Node process,
+of which there were none. `BasketCheckedOut` is the event the order service
+is placed from, and that service is another process in another language. How
+does an event get from this process to that one?
+
+### Decision Drivers
+
+- The outbox is the commit boundary (cart.0001): an event is recorded in the
+  same transaction as the change that caused it, and nothing about crossing a
+  process may weaken that.
+- A consumer may be down when the event is published, and may start later.
+- One request should read as one trace across both services.
+- Without a broker the service must still run, alone, with the tests it has.
+
+### Considered Options
+
+1. NATS JetStream: the relay publishes each row to a stream; a consumer is a
+   durable subscription.
+2. Kafka, through Redpanda locally.
+3. The consumer reads this service's outbox table.
+
+### Decision Outcome
+
+Option 1. One stream per service, `shop-cart`, over every subject under
+`shop.cart.`; the outbox row's topic is the subject, so the same name is on
+the row and on the wire and there is nothing to map. The row's uuid is the
+message id: the relay stays at least once, and the stream drops a repeat
+inside its two-hour window, so a crash between the publish and the mark is a
+duplicate the broker absorbs rather than one a consumer has to. The row's
+metadata rides as headers - the event's name and the trace context, the
+latter under the keys the Go services use and as `traceparent` for a client
+with a standard propagator - so a subscriber dispatches and continues the
+trace without opening the payload.
+
+The bus is an interface. `NATS_URL` set, it is the stream; unset, it is the
+in-process bus it always was, and the relay cannot tell which it holds. The
+tests that need a server start one in Docker and are skipped without it.
+
+Option 3 was rejected because it makes the outbox a contract, and a table
+somebody else reads is one this service can no longer change. Option 2 does
+the job and costs a JVM-sized process for an estate of three services.
+
+#### Consequences
+
+- Good: a consumer that starts late reads what it missed, and the estate's
+  first cross-service event hop is observable end to end.
+- Good: the relay's span now says which bus it published to, and the consume
+  span is opened by the bus around the subscriber: before this the relay
+  opened it, and the catalog read the cart as a verified consumer of its own
+  events.
+- Bad: one more process to run, and one more thing to be told about in the
+  environment.
+- Note: the topic changed from `cart_basket` to `shop.cart.basket`. The
+  outbox is local and short-lived, so no row was migrated.
+
+<!-- adr/oms.0001.md -->
+
+# oms.0001 — Rust on Tokio, and the stack around it
+
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-09-05
+- **Scope:** [shop.oms](../shop/oms/README.md)
+- **Source:** `examples/shop/oms/docs/adr/0001-rust-on-tokio.md`
+
+### Context and Problem Statement
+
+The estate has a Go service and a TypeScript one, each read by an extractor
+of its own. A third service is a chance to hold the layered layout to a third
+language, and the catalog to a third reader. Which language, and on what?
+
+### Decision Outcome
+
+Rust, on Tokio. The edge is tonic over the contract published to the registry
+(`buf.build/shortlink-org/portolan-shop-order`), generated at the pinned
+commit and committed. The store is Postgres through sqlx, plain queries with
+`bind`, not the checked macros: those need a database or a cache at compile
+time, and the column maps the catalog reads come off the plain form. Events
+leave through an outbox and a relay, over NATS JetStream, the same shape as
+the cart's (cart.0008). Tracing is `tracing` with the OpenTelemetry layer,
+sent by OTLP when a collector is named.
+
+Ports are traits whose methods return `impl Future + Send`, because a use
+case runs wherever tonic puts it, and a future that may cross a thread has to
+say so. There is no container: main.rs builds every adapter and hands it in,
+and what fills a port is the one thing Rust makes explicit, `impl Port for
+Adapter`. The catalog reads the bindings off those.
+
+#### Consequences
+
+- Good: the same layout in a third language, read by a third extractor with
+  the same rules; a compile-time check on every port.
+- Bad: generics where the other services have interfaces: a use case is
+  `UseCase<O: Orders, P: Payments>`, and the assembly spells the types out.
+- Note: the lifecycle table is a slice of `(state, &[states])`; the enum
+  behind it is the type the code switches on.
+
+<!-- adr/oms.0002.md -->
+
+# oms.0002 — An order is placed from a checked-out basket, not by a call
+
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-09-05
+- **Scope:** [shop.oms](../shop/oms/README.md)
+- **Source:** `examples/shop/oms/docs/adr/0002-an-order-is-placed-from-a-checked-out-basket.md`
+
+### Context and Problem Statement
+
+The hand-written model this service replaces had `PlaceOrder` on its API:
+somebody called in with a basket snapshot and got an order. The cart, which
+is real, ends its job with `BasketCheckedOut` and places nothing. Who starts
+an order?
+
+### Decision Outcome
+
+The event does. A policy reacts to `BasketCheckedOut` off the bus and runs
+`PlaceOrder`; there is no rpc for it, and `shop.v1.OrderService` has
+`GetOrder` and `CancelOrder` only. The order takes the basket's id, and the
+basket is unique in the store, so the same checkout heard twice - the relay
+is at least once, and so is the bus - places one order and answers with it
+the second time.
+
+#### Consequences
+
+- Good: one owner for "an order exists": the checkout. No client can place an
+  order for a basket that was not checked out.
+- Good: the first cross-service event hop in the estate is one a trace can
+  show, `cart → bus → oms`.
+- Bad: a checkout with an empty basket, or lines in a currency other than
+  the total's, is refused here and nobody is told: the message is
+  redelivered until it is not, which is a gap a dead-letter would close.
+
+<!-- adr/oms.0003.md -->
+
+# oms.0003 — Lines and the total are copied from the basket, never repriced
+
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-09-05
+- **Scope:** [shop.oms](../shop/oms/README.md)
+- **Source:** `examples/shop/oms/docs/adr/0003-lines-are-copied-never-repriced.md`
+
+### Context and Problem Statement
+
+`BasketCheckedOut` carries the lines at the prices they were added at and the
+total the cart took from pricing at checkout. Does the order take those, or
+ask pricing again?
+
+### Decision Outcome
+
+It takes them. The customer agreed to this number at checkout, and an order
+that recomputed it could differ from what was agreed by the time the money
+moved. The order holds no price list and calls no pricing; it checks only
+that there is at least one line and that every line's currency is the
+total's. Everything else about the numbers is the cart's and pricing's.
+
+#### Consequences
+
+- Good: the order is a record of an agreement, and reads like one.
+- Bad: a basket priced wrongly is an order priced wrongly; the fix is upstream.
+
+<!-- adr/oms.0004.md -->
+
+# oms.0004 — Cancelling is allowed until the parcel moves
+
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-09-05
+- **Scope:** [shop.oms](../shop/oms/README.md)
+- **Source:** `examples/shop/oms/docs/adr/0004-cancel-is-allowed-until-dispatch.md`
+
+### Context and Problem Statement
+
+A customer may change their mind. Until when?
+
+### Decision Outcome
+
+Until the parcel moves. A placed or a confirmed order can be cancelled by
+`CancelOrder`; a cancelled one answers the same call with the order as it is,
+not an error. Once delivery says the shipment was dispatched the way back is
+a return, which is delivery's business and not this service's: `CancelOrder`
+will answer `FAILED_PRECONDITION` then. Nothing in the estate delivers yet,
+so today every cancellation is before dispatch, and the table has no
+`fulfilled` state to reach.
+
+#### Consequences
+
+- Good: the rule is one edge in the lifecycle table, and one status at the edge.
+- Note: `OrderCancelled` carries a reason, because a consumer unwinds a
+  customer's cancellation and a declined payment differently.
+
+<!-- adr/oms.0005.md -->
+
+# oms.0005 — Confirmation waits for a payment service that does not exist yet
+
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-09-05
+- **Scope:** [shop.oms](../shop/oms/README.md)
+- **Source:** `examples/shop/oms/docs/adr/0005-confirmation-waits-for-a-payment-that-does-not-exist-yet.md`
+
+### Context and Problem Statement
+
+An order is confirmed when its total is authorised. The service that does
+that, `payments`, is not written. Does confirmation wait for it, or is every
+order confirmed on placing?
+
+### Decision Outcome
+
+It waits, and the waiting is written down twice. `ConfirmOrder` asks a
+`Payments` port for an authorisation; the adapter over `payments.v1` is a
+narrowed copy of a contract nobody serves, so the catalog shows the call
+unresolved, and a stand-in that grants everything fills the port when no
+address is configured. A policy reacts to `payments.PaymentAuthorized`, an
+event nothing publishes, and the catalog shows that too. When the ledger
+arrives it fills both places and nothing here changes shape.
+
+#### Consequences
+
+- Good: the estate's gaps are in the catalog rather than in somebody's head.
+- Bad: with the stand-in, an order is confirmed by whoever calls
+  `ConfirmOrder` - which nothing does yet, so no order is confirmed at all
+  until the ledger exists.

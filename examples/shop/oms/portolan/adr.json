@@ -1,0 +1,84 @@
+{
+  "generatedAt": "2026-09-05T06:21:10+07:00",
+  "commit": "1b88f52",
+  "contexts": [],
+  "defs": {},
+  "flows": [],
+  "adrs": [
+    {
+      "id": "oms.0001",
+      "slug": "oms-0001-rust-on-tokio",
+      "number": 1,
+      "title": "Rust on Tokio, and the stack around it",
+      "status": "accepted",
+      "date": "2026-09-05",
+      "scope": {
+        "kind": "service",
+        "service": "shop.oms"
+      },
+      "body": "## Context and Problem Statement\n\nThe estate has a Go service and a TypeScript one, each read by an extractor\nof its own. A third service is a chance to hold the layered layout to a third\nlanguage, and the catalog to a third reader. Which language, and on what?\n\n## Decision Outcome\n\nRust, on Tokio. The edge is tonic over the contract published to the registry\n(`buf.build/shortlink-org/portolan-shop-order`), generated at the pinned\ncommit and committed. The store is Postgres through sqlx, plain queries with\n`bind`, not the checked macros: those need a database or a cache at compile\ntime, and the column maps the catalog reads come off the plain form. Events\nleave through an outbox and a relay, over NATS JetStream, the same shape as\nthe cart's (cart.0008). Tracing is `tracing` with the OpenTelemetry layer,\nsent by OTLP when a collector is named.\n\nPorts are traits whose methods return `impl Future + Send`, because a use\ncase runs wherever tonic puts it, and a future that may cross a thread has to\nsay so. There is no container: main.rs builds every adapter and hands it in,\nand what fills a port is the one thing Rust makes explicit, `impl Port for\nAdapter`. The catalog reads the bindings off those.\n\n### Consequences\n\n- Good: the same layout in a third language, read by a third extractor with\n  the same rules; a compile-time check on every port.\n- Bad: generics where the other services have interfaces: a use case is\n  `UseCase\u003cO: Orders, P: Payments\u003e`, and the assembly spells the types out.\n- Note: the lifecycle table is a slice of `(state, \u0026[states])`; the enum\n  behind it is the type the code switches on.\n",
+      "relates": {},
+      "source": "examples/shop/oms/docs/adr/0001-rust-on-tokio.md"
+    },
+    {
+      "id": "oms.0002",
+      "slug": "oms-0002-an-order-is-placed-from-a-checked-out-basket",
+      "number": 2,
+      "title": "An order is placed from a checked-out basket, not by a call",
+      "status": "accepted",
+      "date": "2026-09-05",
+      "scope": {
+        "kind": "service",
+        "service": "shop.oms"
+      },
+      "body": "## Context and Problem Statement\n\nThe hand-written model this service replaces had `PlaceOrder` on its API:\nsomebody called in with a basket snapshot and got an order. The cart, which\nis real, ends its job with `BasketCheckedOut` and places nothing. Who starts\nan order?\n\n## Decision Outcome\n\nThe event does. A policy reacts to `BasketCheckedOut` off the bus and runs\n`PlaceOrder`; there is no rpc for it, and `shop.v1.OrderService` has\n`GetOrder` and `CancelOrder` only. The order takes the basket's id, and the\nbasket is unique in the store, so the same checkout heard twice - the relay\nis at least once, and so is the bus - places one order and answers with it\nthe second time.\n\n### Consequences\n\n- Good: one owner for \"an order exists\": the checkout. No client can place an\n  order for a basket that was not checked out.\n- Good: the first cross-service event hop in the estate is one a trace can\n  show, `cart → bus → oms`.\n- Bad: a checkout with an empty basket, or lines in a currency other than\n  the total's, is refused here and nobody is told: the message is\n  redelivered until it is not, which is a gap a dead-letter would close.\n",
+      "relates": {},
+      "source": "examples/shop/oms/docs/adr/0002-an-order-is-placed-from-a-checked-out-basket.md"
+    },
+    {
+      "id": "oms.0003",
+      "slug": "oms-0003-lines-are-copied-never-repriced",
+      "number": 3,
+      "title": "Lines and the total are copied from the basket, never repriced",
+      "status": "accepted",
+      "date": "2026-09-05",
+      "scope": {
+        "kind": "service",
+        "service": "shop.oms"
+      },
+      "body": "## Context and Problem Statement\n\n`BasketCheckedOut` carries the lines at the prices they were added at and the\ntotal the cart took from pricing at checkout. Does the order take those, or\nask pricing again?\n\n## Decision Outcome\n\nIt takes them. The customer agreed to this number at checkout, and an order\nthat recomputed it could differ from what was agreed by the time the money\nmoved. The order holds no price list and calls no pricing; it checks only\nthat there is at least one line and that every line's currency is the\ntotal's. Everything else about the numbers is the cart's and pricing's.\n\n### Consequences\n\n- Good: the order is a record of an agreement, and reads like one.\n- Bad: a basket priced wrongly is an order priced wrongly; the fix is upstream.\n",
+      "relates": {},
+      "source": "examples/shop/oms/docs/adr/0003-lines-are-copied-never-repriced.md"
+    },
+    {
+      "id": "oms.0004",
+      "slug": "oms-0004-cancel-is-allowed-until-dispatch",
+      "number": 4,
+      "title": "Cancelling is allowed until the parcel moves",
+      "status": "accepted",
+      "date": "2026-09-05",
+      "scope": {
+        "kind": "service",
+        "service": "shop.oms"
+      },
+      "body": "## Context and Problem Statement\n\nA customer may change their mind. Until when?\n\n## Decision Outcome\n\nUntil the parcel moves. A placed or a confirmed order can be cancelled by\n`CancelOrder`; a cancelled one answers the same call with the order as it is,\nnot an error. Once delivery says the shipment was dispatched the way back is\na return, which is delivery's business and not this service's: `CancelOrder`\nwill answer `FAILED_PRECONDITION` then. Nothing in the estate delivers yet,\nso today every cancellation is before dispatch, and the table has no\n`fulfilled` state to reach.\n\n### Consequences\n\n- Good: the rule is one edge in the lifecycle table, and one status at the edge.\n- Note: `OrderCancelled` carries a reason, because a consumer unwinds a\n  customer's cancellation and a declined payment differently.\n",
+      "relates": {},
+      "source": "examples/shop/oms/docs/adr/0004-cancel-is-allowed-until-dispatch.md"
+    },
+    {
+      "id": "oms.0005",
+      "slug": "oms-0005-confirmation-waits-for-a-payment-that-does-not-exist-yet",
+      "number": 5,
+      "title": "Confirmation waits for a payment service that does not exist yet",
+      "status": "accepted",
+      "date": "2026-09-05",
+      "scope": {
+        "kind": "service",
+        "service": "shop.oms"
+      },
+      "body": "## Context and Problem Statement\n\nAn order is confirmed when its total is authorised. The service that does\nthat, `payments`, is not written. Does confirmation wait for it, or is every\norder confirmed on placing?\n\n## Decision Outcome\n\nIt waits, and the waiting is written down twice. `ConfirmOrder` asks a\n`Payments` port for an authorisation; the adapter over `payments.v1` is a\nnarrowed copy of a contract nobody serves, so the catalog shows the call\nunresolved, and a stand-in that grants everything fills the port when no\naddress is configured. A policy reacts to `payments.PaymentAuthorized`, an\nevent nothing publishes, and the catalog shows that too. When the ledger\narrives it fills both places and nothing here changes shape.\n\n### Consequences\n\n- Good: the estate's gaps are in the catalog rather than in somebody's head.\n- Bad: with the stand-in, an order is confirmed by whoever calls\n  `ConfirmOrder` - which nothing does yet, so no order is confirmed at all\n  until the ledger exists.\n",
+      "relates": {},
+      "source": "examples/shop/oms/docs/adr/0005-confirmation-waits-for-a-payment-that-does-not-exist-yet.md"
+    }
+  ]
+}

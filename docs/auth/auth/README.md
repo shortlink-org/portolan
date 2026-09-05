@@ -1,6 +1,6 @@
 # Authentication & Sessions
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Id:** `auth.auth`
 - **Context:** [Authentication](../README.md)
@@ -184,3 +184,19 @@ without Docker the packages that need Postgres or redis are skipped.
 | Store | Kind | Access | Tables |
 | --- | --- | --- | --- |
 | [Auth database](stores/pg.md) | postgres | owns | 3 tables |
+
+## Decisions
+
+| ADR | Title | Status | Date |
+| --- | --- | --- | --- |
+| [auth.0001](../../adr/auth.0001.md) | Aggregates return their events; they do not buffer them | accepted | 2026-08-20 |
+| [auth.0002](../../adr/auth.0002.md) | Session is its own aggregate, linked to User by id | accepted | 2026-08-20 |
+| [auth.0003](../../adr/auth.0003.md) | Session expiry publishes no event | accepted | 2026-08-22 |
+| [auth.0004](../../adr/auth.0004.md) | Lockout is its own aggregate, keyed by user id | accepted | 2026-09-04 |
+| [auth.0005](../../adr/auth.0005.md) | Validation lives in constructors, as specifications, and applies when a value is made | accepted | 2026-08-22 |
+| [auth.0006](../../adr/auth.0006.md) | A password change ends sessions through a policy, and the domains never import each other | accepted | 2026-08-22 |
+| [auth.0007](../../adr/auth.0007.md) | Login asks a risk service, and a blocked attempt is treated as a compromise | accepted | 2026-09-04 |
+| [auth.0008](../../adr/auth.0008.md) | A cache in front of the token lookup, and nothing else | accepted | 2026-09-01 |
+| [auth.0009](../../adr/auth.0009.md) | A locked account answers exactly like a wrong password | accepted | 2026-09-04 |
+| [auth.0010](../../adr/auth.0010.md) | A revocation is written to the cache, not only dropped from it | accepted | 2026-09-05 |
+| [auth.0011](../../adr/auth.0011.md) | The relay reads every topic and hands it to a bus; policies subscribe to the bus | accepted | 2026-09-05 |

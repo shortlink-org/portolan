@@ -642,6 +642,11 @@ export interface Adr {
   date: string; // decision date, ISO
   scope: AdrScope;
   body: string; // markdown, MADR structure
+  // Prose about the record that no other field holds - most often that part of
+  // it was decided again elsewhere without the whole of it being superseded.
+  // It sits in the header, above the frozen body, because it is the thing to
+  // read before the decision rather than after it.
+  note?: string;
   supersededBy?: string; // Adr.id
   supersedes?: string[];
   relates: { services?: string[]; events?: string[]; flows?: string[] };

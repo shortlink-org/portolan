@@ -1,20 +1,20 @@
 # org.0002 — Domain event schema version is encoded in the package path (events/v1)
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2025-05-02
 - **Scope:** org
-- **Source:** `docs/adr/0002-event-version-in-package-path.md`
+- **Source:** `data/adr/0002-event-version-in-package-path.md`
 
-## Context and Problem Statement
+### Context and Problem Statement
 
 A domain event outlives the code that published it. Consumers deserialize
 messages written months earlier, and a consumer that is down for a day comes
 back to a backlog of the *old* shape. We need a versioning scheme that a
 consumer can act on before it parses a single byte.
 
-## Decision Drivers
+### Decision Drivers
 
 - A consumer must be able to decide "can I read this?" from routing information
   alone, without a registry lookup.
@@ -23,14 +23,14 @@ consumer can act on before it parses a single byte.
 - The version must be visible in the source tree, in the topic name and in the
   type URL — not only in a field.
 
-## Considered Options
+### Considered Options
 
 1. **Version in the package path**: `shop.events.v1.BasketCheckedOut`, file at
    `proto/shop/events/v1/basket.proto`.
 2. **A `version` field inside the message.**
 3. **A schema registry** with subject-level compatibility rules.
 
-## Decision Outcome
+### Decision Outcome
 
 Chosen option: **version in the package path**.
 
@@ -44,7 +44,7 @@ shape to discover that it is unknown. Option 3 is the right answer at a
 different scale; it adds an operational dependency on the publish path that we
 are not willing to take yet.
 
-### Consequences
+#### Consequences
 
 - Good: an unreadable version is never delivered — it is a different topic.
 - Good: v1 and v2 publish side by side during a migration; the producer emits

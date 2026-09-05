@@ -1,0 +1,16 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "files": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "The record files to read, as globs relative to the input root. A README.md among them is an index rather than a record and is skipped. Left out, every docs/adr/*.md.",
+      "examples": [["docs/adr/*.md"], ["adr/*.md"]]
+    },
+    "out": {
+      "type": "string",
+      "description": "Name of the fragment file, inside the step's output directory. Left out, adr.json."
+    }
+  }
+}

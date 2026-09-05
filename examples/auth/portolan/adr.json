@@ -1,0 +1,175 @@
+{
+  "generatedAt": "2026-09-05T08:12:07+07:00",
+  "commit": "dab46a5",
+  "contexts": [],
+  "defs": {},
+  "flows": [],
+  "adrs": [
+    {
+      "id": "auth.0001",
+      "slug": "auth-0001-events-returned-not-buffered",
+      "number": 1,
+      "title": "Aggregates return their events; they do not buffer them",
+      "status": "accepted",
+      "date": "2026-08-20",
+      "scope": {
+        "kind": "service",
+        "service": "auth.auth"
+      },
+      "body": "## Context and Problem Statement\n\nA command on an aggregate produces a fact: `Register` produces\n`UserRegistered`, `Revoke` produces `SessionEnded`. Where does that fact go\nbetween the command running and the change being committed?\n\nThe common answer is a list on the aggregate that the repository drains\nafter saving. It is also the answer that gives the aggregate hidden state and\na dependency on the word \"committed\".\n\n## Decision Drivers\n\n- What a command did must be visible where it is called.\n- Storing a change and publishing its fact must be impossible to do apart.\n- The domain must not know that transactions exist.\n\n## Considered Options\n\n1. **Return the event from the command**, alongside the aggregate or the\n   error, and hand it to `Save` as an argument.\n2. **Buffer events on the aggregate**; the repository reads and clears the\n   buffer after writing.\n3. **Publish from the command** through a port the aggregate holds.\n\n## Decision Outcome\n\nChosen option: **return the event**.\n\n| | visible in the signature | store and publish inseparable | domain knows about commit |\n|---|---|---|---|\n| return | yes | yes: `Save(aggregate, events...)` | no |\n| buffer | no | only if every repository remembers to drain | yes: the buffer must be cleared on commit |\n| publish from command | no | no: publish can succeed and save fail | yes |\n\nA buffered event is state that is not part of the aggregate's meaning and\nhas to be reasoned about on every path, including the one where the save\nfailed. Returned, the fact is a value like any other: the caller sees it,\ntests assert on it, and there is no way to store without offering it.\n\n### Consequences\n\n- Good: every command's signature says whether it produces a fact.\n- Good: a refused command returns no event, so \"announces nothing\" is\n  visible rather than a cleared buffer.\n- Bad: a command that produces several facts returns several values; there\n  is no such command here today.\n- Neutral: `Revoke` returns `(event, bool)` rather than `(event, error)`\n  because the second call is not a failure.\n",
+      "relates": {},
+      "source": "examples/auth/docs/adr/0001-events-returned-not-buffered.md"
+    },
+    {
+      "id": "auth.0002",
+      "slug": "auth-0002-session-is-its-own-aggregate",
+      "number": 2,
+      "title": "Session is its own aggregate, linked to User by id",
+      "status": "accepted",
+      "date": "2026-08-20",
+      "scope": {
+        "kind": "service",
+        "service": "auth.auth"
+      },
+      "body": "## Context and Problem Statement\n\nA session belongs to a user. Is it part of the `User` aggregate, a list of\nsessions the user root owns, or an aggregate of its own?\n\n## Decision Drivers\n\n- A session is written on every login and every logout; a user is written\n  on registration and password change.\n- A session is revoked without the user changing at all.\n- A user with many devices must not have every login serialised on one row.\n\n## Considered Options\n\n1. **Two aggregates**, linked by user id only. Neither imports the other.\n2. **Sessions inside `User`**, as a collection the root guards.\n\n## Decision Outcome\n\nChosen option: **two aggregates**.\n\n| | one lock per change | version conflicts | rule across both |\n|---|---|---|---|\n| two aggregates | yes | on the row that changed | a policy on `PasswordChanged` |\n| sessions inside user | no: every login bumps the user's version | every concurrent login on one account conflicts | free, inside the root |\n\nThe one rule that needs both, a password change ending sessions, is what\noption 2 gets for free and option 1 has to write as a policy. That policy is\nthe price, and it is paid once, in one package that hangs off the fact rather\nthan the use case, so every way a password can change gets it.\n\n### Consequences\n\n- Good: the session store is the hot path and never contends with the user\n  row.\n- Good: `session` never imports `user`; both domains can be read alone.\n- Bad: the credential-change rule is eventually consistent. For a moment the\n  other devices still work; `end_after_credential_change` says why that is\n  correct rather than a bug.\n- Neutral: login needs the user domain to vouch for a credential. It states\n  that as a port, and assembly adapts the authenticate use case to it.\n",
+      "relates": {},
+      "source": "examples/auth/docs/adr/0002-session-is-its-own-aggregate.md"
+    },
+    {
+      "id": "auth.0003",
+      "slug": "auth-0003-expiry-publishes-nothing",
+      "number": 3,
+      "title": "Session expiry publishes no event",
+      "status": "accepted",
+      "date": "2026-08-22",
+      "scope": {
+        "kind": "service",
+        "service": "auth.auth"
+      },
+      "body": "## Context and Problem Statement\n\nA session stops being usable at `ExpiresAt`. `SessionEnded` exists for\nsessions that are ended. Should expiry publish one too, so that consumers\nhave one event to watch for \"this session is over\"?\n\n## Decision Drivers\n\n- An event is a fact about something that happened in the domain.\n- Nothing should be published that no code decided.\n- Consumers must be able to know when a session stops working.\n\n## Considered Options\n\n1. **No event.** `SessionStarted` carries the expiry; consumers read it.\n2. **A sweep** that finds expired sessions and publishes `SessionEnded`\n   with reason `expired`.\n3. **Publish on first refusal**, when an expired token is presented.\n\n## Decision Outcome\n\nChosen option: **no event**.\n\n| | who decided | when it fires | can be missed |\n|---|---|---|---|\n| no event | nobody; time passed | never | no: the expiry was in `SessionStarted` |\n| sweep | whichever sweep noticed first | minutes late, or never for a dead sweep | yes |\n| on refusal | a client that happened to try | only if somebody presents the token | yes |\n\nWhen a session runs out of time no code runs and nobody decides anything.\nAn event there would be an invention with a timestamp chosen by whoever\nnoticed. Every consumer already holds the expiry from the start event and\ncan do its own arithmetic.\n\n### Consequences\n\n- Good: `Reason` has no `expired` value, so a client is never told \"your\n  session expired\" about a session that was revoked.\n- Good: no sweep to run, monitor, or reason about.\n- Bad: a consumer that wants a notification at expiry has to schedule it\n  itself from `SessionStarted`.\n- Neutral: `Validate` refuses an expired token when it is presented; that is\n  a read, not a transition.\n",
+      "relates": {},
+      "source": "examples/auth/docs/adr/0003-expiry-publishes-nothing.md"
+    },
+    {
+      "id": "auth.0004",
+      "slug": "auth-0004-lockout-is-its-own-aggregate",
+      "number": 4,
+      "title": "Lockout is its own aggregate, keyed by user id",
+      "status": "accepted",
+      "date": "2026-09-04",
+      "scope": {
+        "kind": "service",
+        "service": "auth.auth"
+      },
+      "body": "## Context and Problem Statement\n\nFive wrong passwords in a row should lock an account for a while. Where does\nthe count live, and what is it counted against?\n\nThe obvious answer is two columns on the user: a counter and a locked-until.\nIt is also the answer that writes the user row on every wrong password typed\nby anybody who knows the address.\n\n## Decision Drivers\n\n- A wrong password must not contend with a real change to the user.\n- Nobody must be able to lock somebody else by typing their address.\n- The answer outside must not change: one refusal, whatever the reason.\n- A lock must end by itself; nothing should have to run to end it.\n\n## Considered Options\n\n1. **A separate `Lockout` aggregate**, one row per user id, created on the\n   first wrong password, in its own table.\n2. **Two columns on `User`**: `failures` and `locked_until`, written by\n   `Authenticate`.\n3. **Counting by address or client** in a store keyed by what was typed, so\n   that unknown addresses count too.\n\n## Decision Outcome\n\nChosen option: **a separate aggregate, keyed by user id**.\n\n| | contention with the user row | can lock somebody else | leaks that an address exists |\n|---|---|---|---|\n| separate aggregate by user id | none | no: no account, no count | no: same refusal |\n| columns on User | every guess bumps the user's version | no | no |\n| by address | none | yes: type their address with junk | no, but a stranger can lock the owner out |\n\nOption 2 is a third less code and breaks the rule every other aggregate here\nfollows: what changes at a different rate is a different aggregate. A\nconcurrent password change would fail on a stranger's typo. Option 3 counts\nthe wrong thing: the account is what is being guessed at, and letting an\nunknown address accumulate anything lets anybody deny anybody.\n\nThe price of option 1 is a port. `authenticate` in the user domain has to\nask the lockout and tell it how the check went, and neither domain may\nimport the other; so `authenticate` declares a three-method interface and\nassembly adapts the lockout's use cases to it, the same shape as `login`'s\n`Authenticator`.\n\n### Consequences\n\n- Good: the users table is written only when the user changes.\n- Good: a lock is invisible from outside; the refusal is the same 401.\n- Good: the lock ends by time, like session expiry, with no sweep and no\n  event for it (auth.0003).\n- Bad: one more read on every login, and a write on every wrong password.\n  The read is by primary key; the write is the point.\n- Bad: a lockout store that is unreachable stops the credential check with\n  an error rather than letting it through. Letting it through would turn\n  the store being down into unlimited guessing, silently.\n- Neutral: sessions are untouched by a lock. A risk block ends them because\n  the attempt had the right password; a lockout means it did not.\n",
+      "relates": {},
+      "source": "examples/auth/docs/adr/0004-lockout-is-its-own-aggregate.md"
+    },
+    {
+      "id": "auth.0005",
+      "slug": "auth-0005-rules-are-specifications-at-construction",
+      "number": 5,
+      "title": "Validation lives in constructors, as specifications, and applies when a value is made",
+      "status": "accepted",
+      "date": "2026-08-22",
+      "scope": {
+        "kind": "service",
+        "service": "auth.auth"
+      },
+      "body": "## Context and Problem Statement\n\nAn email address, a password and a token each have rules. Where do the rules\nlive, and when do they apply? A rule checked in a handler is skipped by the\nnext caller; a rule checked on every read locks out everyone who registered\nbefore it was tightened.\n\n## Decision Outcome\n\nA value object's constructor is the only way to get one, so a value that\nexists is a value that passed. Each rule is a specification in a `rules/`\npackage next to the value it governs, and the composite in that package is the\npolicy: which rules currently apply.\n\nThe password policy applies when a password is *created*, never when one is\nchecked. Raising the minimum must not lock out everyone who registered under\nthe old one, whose stored hash is still perfectly good.\n\n### Consequences\n\n- Good: a use case never validates; it takes values, and the values are valid.\n- Good: a rule is one file with one name, and the policy is a list a reader\n  can see.\n- Bad: tightening a rule changes what new users can do and nothing for old\n  ones; if the old ones are the problem, that is a migration, not a rule.\n",
+      "relates": {},
+      "source": "examples/auth/docs/adr/0005-rules-are-specifications-at-construction.md"
+    },
+    {
+      "id": "auth.0006",
+      "slug": "auth-0006-a-password-change-ends-sessions-through-a-policy",
+      "number": 6,
+      "title": "A password change ends sessions through a policy, and the domains never import each other",
+      "status": "accepted",
+      "date": "2026-08-22",
+      "scope": {
+        "kind": "service",
+        "service": "auth.auth"
+      },
+      "body": "## Context and Problem Statement\n\nA password change should end the sessions issued against the old password.\nThe rule spans two aggregates that are kept apart on purpose (auth.0002):\n`user` publishes the change, `session` holds what has to end.\n\n## Considered Options\n\n1. **The use case does both**: change the password, then end the sessions,\n   in one transaction.\n2. **A policy**: `user` publishes `PasswordChanged`; a policy in\n   `internal/application/policy` hears it and runs the session use case that\n   ends what the change invalidates.\n\n## Decision Outcome\n\nChosen option: **a policy**. `session` never imports `user`, `user` never\nimports `session`; the one place that knows both exist is assembly, which\nsubscribes the policy to the event.\n\nWhich sessions end is a domain service in `session`: the one the change was\nmade from is kept, anything started after the change was issued against the\nnew credentials and survives, and anything already dead is left alone rather\nthan ended again with an event that reports nothing.\n\n### Consequences\n\n- Good: the rule is one policy with one trigger, and the catalog reads it as\n  a flow that opens on the bus.\n- Bad: the sessions end after the change commits, not with it; the window is\n  the relay's latency, and a token can validate once more inside it.\n",
+      "relates": {},
+      "source": "examples/auth/docs/adr/0006-a-password-change-ends-sessions-through-a-policy.md"
+    },
+    {
+      "id": "auth.0007",
+      "slug": "auth-0007-login-asks-risk-and-a-block-is-a-compromise",
+      "number": 7,
+      "title": "Login asks a risk service, and a blocked attempt is treated as a compromise",
+      "status": "accepted",
+      "date": "2026-09-04",
+      "scope": {
+        "kind": "service",
+        "service": "auth.auth"
+      },
+      "body": "## Context and Problem Statement\n\nA login with the right password can still be one the business does not want\nto allow. Somebody other than this service knows that; this service has to ask,\nand has to decide what a refusal means.\n\n## Decision Outcome\n\nLogin asks `risk.v1.RiskService/Assess` after the credentials are checked and\nbefore a session is issued. The use case declares the need as a port of its\nown, `login.Risk`; assembly fills it with an adapter over the generated\nclient, from a narrowed copy of the contract vendored under\n`internal/infrastructure/risk` - the same shape as the Authenticator, so that\nthe knowledge that another service exists lives in one place, and it is not\nthe domain. Without `RISK_ADDR` every attempt is allowed, so a laptop needs no\nrisk service.\n\nA blocked attempt is treated as the account being compromised: whoever is\ntrying has the right password. Every live session the account has is ended\nfirst - `SessionEnded` with reason `risk-blocked`, one transaction each - and\nonly then is the attempt refused, with the same `401` as a wrong password. A\n`403` would say the account exists and is worth attacking, which is the one\nthing the attacker came to learn.\n\n### Consequences\n\n- Good: a compromised account loses its sessions at the moment the compromise\n  is known, without anyone else having to react.\n- Bad: no service in the estate provides `risk.v1`; the catalog shows the\n  call as unresolved, which is the true state until one does.\n",
+      "relates": {},
+      "source": "examples/auth/docs/adr/0007-login-asks-risk-and-a-block-is-a-compromise.md"
+    },
+    {
+      "id": "auth.0008",
+      "slug": "auth-0008-a-cache-in-front-of-bytoken-only",
+      "number": 8,
+      "title": "A cache in front of the token lookup, and nothing else",
+      "status": "accepted",
+      "date": "2026-09-01",
+      "scope": {
+        "kind": "service",
+        "service": "auth.auth"
+      },
+      "body": "## Context and Problem Statement\n\n`ByToken` is the hot path: every authenticated request in the estate ends\nthere, asking the same question about the same token over and over. Nothing\nelse in this service is read often enough to keep an answer to.\n\n## Decision Outcome\n\nA decorator over the session repository caches `ByToken` and only `ByToken`.\n`ByID` is read by code about to write, and `ByUserID` answers a question about\na set, which nothing can invalidate honestly. Assembly binds the port to the\ndecorator wrapping the store; the domain and the use cases do not change,\nbecause a cache is a fact about how fast a deployment has to be, not about\nwhat a session is.\n\nWhat makes reading a session from somewhere other than the database safe:\nthe version travels with the copy, so a write from a stale one is refused;\nnothing is read from the cache inside a transaction; revocation drops the\nentry before and after the write; an entry never outlives its session; the\nkey is a hash of the token, never the token; and a cache that is down is not\nan outage - the database answers and a failed invalidation does not fail the\nwrite that committed.\n\n### Consequences\n\n- Good: the estate's hottest read costs one cache hit, and turning the cache\n  off is a different adapter, not a different code path.\n- Bad: a stale entry can outlive a logout by the rest of its TTL when the\n  invalidation is the thing that broke; the TTL is how long the estate stays\n  wrong then, and it is a minute.\n",
+      "note": "how a revocation is kept out of the cache was decided again in auth.0010; the drop described below turned out not to be enough.",
+      "relates": {},
+      "source": "examples/auth/docs/adr/0008-a-cache-in-front-of-bytoken-only.md"
+    },
+    {
+      "id": "auth.0009",
+      "slug": "auth-0009-a-lock-answers-like-a-wrong-password",
+      "number": 9,
+      "title": "A locked account answers exactly like a wrong password",
+      "status": "accepted",
+      "date": "2026-09-04",
+      "scope": {
+        "kind": "service",
+        "service": "auth.auth"
+      },
+      "body": "## Context and Problem Statement\n\nOnce an account is locked (auth.0004), what does a login attempt get back, and\nwhat counts towards the lock?\n\n## Decision Outcome\n\nWhile locked, a password is refused *unchecked*, with exactly the answer a\nwrong one gets, so a lock discloses nothing a wrong password would not. The\ncount is per account: an unknown address is refused before anything is\ncounted, so guessing at addresses locks nobody, and nobody can lock somebody\nelse by typing their address with junk. The lock ends by time and nothing runs\nwhen it does; the next wrong password starts the count at one, and a right one\nclears it.\n\nA lock does not end the account's sessions. Unlike a risk block (auth.0007) it\nmeans somebody has *not* got the password, and the sessions are the owner's.\n\n### Consequences\n\n- Good: an attacker cannot tell a locked account from a wrong guess, and\n  cannot lock an account they do not know the address of.\n- Bad: the owner cannot tell either; the storefront has to say \"try again\n  later\" on every refusal, and support has no way to lift a lock early.\n",
+      "relates": {},
+      "source": "examples/auth/docs/adr/0009-a-lock-answers-like-a-wrong-password.md"
+    },
+    {
+      "id": "auth.0010",
+      "slug": "auth-0010-a-revocation-is-written-to-the-cache",
+      "number": 10,
+      "title": "A revocation is written to the cache, not only dropped from it",
+      "status": "accepted",
+      "date": "2026-09-05",
+      "scope": {
+        "kind": "service",
+        "service": "auth.auth"
+      },
+      "body": "## Context and Problem Statement\n\nauth.0008 put a cache in front of `ByToken` and kept a revocation out of it\nby dropping the entry before and after the write. Is a drop enough to keep\nthe cache from ever saying \"live\" about a session the store says is revoked?\n\nIt is not, twice over. A reader that missed, read the store a moment before\nthe revocation committed and stored its copy a moment after the drop leaves\na live entry behind, and no drop can reach it: the reader cannot know it\nlost the race, and the writer has already run. And when the drop is the\nthing that fails while reads keep succeeding, the same entry survives for\nthe rest of its ttl. In both cases a token that was logged out passes\n`Validate` for up to a minute, which contradicts the domain's rule that a\nrevoked session never comes back - and means the cached repository is not\nthe same port as the store it hides.\n\n## Decision Drivers\n\n- A revoked token is never answered \"live\" from the cache, in any\n  interleaving of a reader and a revoking writer.\n- The hot path stays cheap: one read of the cache on a hit.\n- A cache that is down stays an inconvenience, not an outage.\n- The cache does not need an operation the port does not have (no\n  compare-and-set, no set-if-absent).\n\n## Considered Options\n\n1. **Drop harder** — delete before and after the write, and again after a\n   delay. Narrows the window; never closes it, and does nothing for a drop\n   that fails.\n2. **Write the revoked copy through** — after the commit, store the revoked\n   snapshot under the same key instead of deleting it. The racing reader's\n   live copy overwrites it: the race, unchanged.\n3. **Record the revocation under its own key** — a second entry, written by\n   `Save` alone and read by `ByToken` first, for as long as the session\n   would have lived. Only a live session is ever stored under the first key.\n   Whatever a racing reader leaves there is not consulted while the\n   revocation stands.\n4. **Fail the write when the cache cannot be told** — return the drop's\n   error from `Save`. Turns a cache outage into a logout outage, and\n   reports as failed a revocation that committed.\n\n## Decision Outcome\n\nChosen option: **record the revocation under its own key**.\n\n| | closes the race | survives a failed drop | hit cost | cache down is not an outage |\n|---|---|---|---|---|\n| drop harder | no | no | one read | yes |\n| write through | no | partly | one read | yes |\n| own key | yes | yes | two reads | yes |\n| fail the write | no | yes | one read | no |\n\nTwo reads on a hit is what is given up: the revocation entry is checked\nbefore the live copy is believed. That is one more round trip to redis per\nauthenticated request, and it buys the property the whole decision is for.\nThe two facts cannot share a key, because a reader's write would then\noverwrite a revocation, which is the race again.\n\nThe entry is written before the store is, so a process that dies between\nthe commit and anything after it has still left the revocation where the\nnext read finds it. A write the store then refuses leaves a revocation for\na session that is still live; what that costs is one token read from the\nstore for the rest of its life, never one that is wrong. The entry lives as\nlong as the session would have: after expiry the store refuses the session\non its own and nothing live is ever cached for it.\n\nThe residual risk, accepted: a cache that answers reads while refusing\nevery write can still hold a live copy for the rest of its ttl. That is\nnarrower than before - the same cache also refuses the revocation - and it\nis the number the ttl was chosen by.\n\n### Consequences\n\n- Good: a revoked token is not answered from the cache again, whichever of\n  a reader and a revoking writer got there first, and whether or not the\n  drop succeeded.\n- Good: the cached repository is again the same port as the store; nothing\n  above it changed.\n- Bad: one more cache read per hit on the estate's hottest path.\n- Bad: a revoked or refused-to-revoke token costs a store read every time\n  it is presented, for the rest of its life. A client that was logged out\n  stops presenting it, so in practice this is nothing.\n- Neutral: a session the store says is revoked or expired is no longer\n  stored at all; it never needed to be.\n",
+      "relates": {},
+      "source": "examples/auth/docs/adr/0010-a-revocation-is-written-to-the-cache.md"
+    },
+    {
+      "id": "auth.0011",
+      "slug": "auth-0011-the-relay-feeds-a-bus-and-policies-subscribe-to-the-bus",
+      "number": 11,
+      "title": "The relay reads every topic and hands it to a bus; policies subscribe to the bus",
+      "status": "accepted",
+      "date": "2026-09-05",
+      "scope": {
+        "kind": "service",
+        "service": "auth.auth"
+      },
+      "body": "## Context and Problem Statement\n\nThree domains write their events to one outbox, on a topic each. What reads\nthem back out, and what happens to an event nothing in this service reacts\nto?\n\nThe first answer was: the relay registers the topics a policy listens to and\ndispatches by event name. That reads the `user` topic - `PasswordChanged` has\na policy - and nothing else. A row on `auth_session` or `auth_lockout` was\nwritten in the same transaction as the login or the lock that produced it,\nand then never read: pending for good, one more row per login, with a reaper\nthat only ever clears delivered rows. On the topic that was read,\n`UserRegistered` was acknowledged by the dispatcher because nobody was\nlisted for it, which is the right thing to do with a row and the wrong thing\nto have decided in a relay.\n\nThe outbox had two audiences on one cursor: the policies inside this\nservice, and whatever outside it will one day want `UserRegistered` or\n`AccountLocked`. Served by one registration per interested topic, the\nsecond audience was invisible, and so was the fact that nothing served it.\n\n## Decision Drivers\n\n- Every topic the outbox is written to must be read. Rows that nobody reads\n  are not an event that went unnoticed; they are a table that grows.\n- What this service reacts to must be one list in one place, and a domain\n  with no subscriber must be visible as such rather than implied by absence.\n- The trace must say where an event was consumed and nowhere else: a\n  service that acknowledges a row is not consuming the event.\n- A broker, when one arrives, should replace one adapter and not the\n  wiring.\n\n## Considered Options\n\n1. **Register every topic, keep the dispatch map** — the relay reads all\n   three topics; two of the maps are empty.\n2. **The relay hands every event to a bus; policies subscribe to the bus** —\n   one registration per topic, no names in the relay, the in-process bus\n   the tests already use sits on the far side of it.\n3. **Two outboxes, or two tables** — one for domain events with policies,\n   one for integration events with a broker.\n\n## Decision Outcome\n\nChosen option: **the relay hands every event to a bus**.\n\n| | rows read | where \"who listens\" lives | trace says consumed | a broker later |\n|---|---|---|---|---|\n| every topic, dispatch map | all | the relay's maps | on every read, listed or not | rewrite the relay |\n| relay to bus | all | the bus, in assembly | only under a subscriber | swap the bus |\n| two outboxes | all | split by table | per table | the domain chooses a table |\n\nThe relay does one thing: what the outbox holds, the bus gets. It does not\nknow event names, so it cannot have an opinion about which ones matter, and\nthe map of names to policies moves to where the bus is built - the one place\nthat already had to know both domains exist (auth.0006). An event nothing\nlistens to leaves the outbox, reaches a bus with no subscriber and is done;\nthe row is delivered, and the trace shows a publish with no consumer under\nit, which is the truth.\n\nWhat is given up: the split between \"domain\" and \"integration\" events is not\nin the schema. Both go through the same table, the same relay and the same\nbus, and the bus is where a broker will one day fan the second kind out. That\nis cheaper than deciding, at publish time and in the domain, which audience a\nfact is for - a decision the domain has no business making, and one that a\nlater subscriber would reverse.\n\n### Consequences\n\n- Good: no topic can be written and not read; the assembly test publishes\n  one event per domain and holds the table at zero pending rows.\n- Good: `ProvideBuses` is the whole answer to \"what does this service react\n  to\", and a bus with no subscriber says so in the code rather than in the\n  gap of a map.\n- Good: the spans follow cart's shape - outbox publish, relay publish, bus\n  consume - so the catalog reads auth as consuming `PasswordChanged` and\n  nothing else it wrote.\n- Bad: an event with no subscriber is acknowledged and gone, not held for a\n  broker that does not exist yet. That is deliberate: held rows were the bug.\n- Neutral: the in-process bus now takes its topic, for the trace only; the\n  tests that bind it straight to the port pass the same string.\n",
+      "relates": {},
+      "source": "examples/auth/docs/adr/0011-the-relay-feeds-a-bus-and-policies-subscribe-to-the-bus.md"
+    }
+  ]
+}
