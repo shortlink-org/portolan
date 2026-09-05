@@ -2,11 +2,9 @@ import { FileText } from "lucide-react";
 
 // The site as a language model reads it. The build (scripts/site-docs.mjs)
 // places the generated markdown under docs/ and llms.txt at the root, in the
-// shape llmstxt.org asks for. Plain anchors, not router links: these are
-// files beside the app, and a full navigation is the point.
-//
-// Vite's dev server does not place them, so in development they 404; the
-// built site is where they exist.
+// shape llmstxt.org asks for, and the same script's Vite plugin answers the
+// paths in development. Plain anchors, not router links: these are files
+// beside the app, and a full navigation is the point.
 
 const base = import.meta.env.BASE_URL;
 

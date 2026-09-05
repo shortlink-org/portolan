@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { docsDirectory, mountLinks, siteDocs } from "./site-docs.mjs";
+import { docsDirectory, docsRequest, mountLinks, readDocsRequest, siteDocs } from "./site-docs.mjs";
 
 describe("mountLinks", () => {
   it("points a relative link into the mount", () => {
@@ -70,5 +70,52 @@ describe("siteDocs", () => {
 
     expect(siteDocs({ manifest: { generate: [{ plugin: "markdown", out: join(root, "missing") }] }, dist })).toEqual([]);
     expect(existsSync(join(dist, "llms.txt"))).toBe(false);
+  });
+});
+
+describe("docsRequest", () => {
+  it("names the three files under the base", () => {
+    expect(docsRequest("/llms.txt")).toEqual({ kind: "index" });
+    expect(docsRequest("/portolan/llms-full.txt", "/portolan/")).toEqual({ kind: "full" });
+    expect(docsRequest("/portolan/docs/auth/README.md", "/portolan/")).toEqual({ kind: "page", path: "auth/README.md" });
+  });
+
+  it("sends a directory to its index and a bare docs to its slash", () => {
+    expect(docsRequest("/docs/")).toEqual({ kind: "page", path: "README.md" });
+    expect(docsRequest("/docs/auth/")).toEqual({ kind: "page", path: "auth/README.md" });
+    expect(docsRequest("/docs", "/")).toEqual({ kind: "redirect", to: "/docs/" });
+  });
+
+  it("is not for the app's routes, another base, or a path that climbs out", () => {
+    expect(docsRequest("/flows")).toBeNull();
+    expect(docsRequest("/llms.txt", "/portolan/")).toBeNull();
+    expect(docsRequest("/docs/../portolan.json")).toBeNull();
+    expect(docsRequest("/docs/%2e%2e/portolan.json")).toBeNull();
+    expect(docsRequest("/docs/.portolan-manifest")).toBeNull();
+  });
+});
+
+describe("readDocsRequest", () => {
+  const root = mkdtempSync(join(tmpdir(), "site-docs-"));
+  const docs = join(root, "docs");
+  mkdirSync(join(docs, "auth"), { recursive: true });
+  writeFileSync(join(docs, "auth", "README.md"), "# Auth\n");
+  writeFileSync(join(docs, ".portolan-manifest"), "{}");
+  writeFileSync(join(docs, "llms.txt"), "- [Auth](auth/README.md)\n");
+  writeFileSync(join(docs, "llms-full.txt"), "all\n");
+
+  it("mounts the index and passes the rest through with a type", () => {
+    expect(readDocsRequest(docs, { kind: "index" })).toEqual({ type: "text/plain; charset=utf-8", body: "- [Auth](docs/auth/README.md)\n" });
+    expect(readDocsRequest(docs, { kind: "full" })?.body.toString()).toBe("all\n");
+    const page = readDocsRequest(docs, { kind: "page", path: "auth/README.md" });
+    expect(page?.type).toBe("text/markdown; charset=utf-8");
+    expect(page?.body.toString()).toBe("# Auth\n");
+  });
+
+  it("answers a directory with its index, and nothing for what is not there", () => {
+    expect(readDocsRequest(docs, { kind: "page", path: "auth" })?.body.toString()).toBe("# Auth\n");
+    expect(readDocsRequest(docs, { kind: "page", path: "missing.md" })).toBeNull();
+    expect(readDocsRequest(docs, { kind: "page", path: ".portolan-manifest" })).toBeNull();
+    expect(readDocsRequest(docs, { kind: "redirect", to: "/docs/" })).toBeNull();
   });
 });

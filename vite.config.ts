@@ -10,6 +10,10 @@ import { publicSetupFrom } from "./src/lib/setup-info.ts";
 // pure discovery functions can also be tested directly.
 // @ts-expect-error plain JavaScript module intentionally has no browser types
 import { localApiPlugin } from "./scripts/local-api.mjs";
+// The generated docs and llms.txt, served in development from where the
+// generator wrote them; the build copies the same files into dist.
+// @ts-expect-error plain JavaScript module intentionally has no browser types
+import { siteDocsPlugin } from "./scripts/site-docs.mjs";
 
 /** A git answer, or "" when there is nothing to answer with (no repo, no git). */
 function git(args: string): string {
@@ -142,6 +146,7 @@ export default defineConfig({
   },
   plugins: [
     localApiPlugin(),
+    siteDocsPlugin(),
     react(),
     tailwindcss(),
     // The AsyncAPI reference brings a parser written for Node, and it calls
