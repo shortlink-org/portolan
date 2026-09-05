@@ -313,6 +313,19 @@ function Kernel({
   );
 }
 
+/**
+ * A counted reason ends in the numbers it was counted from - "storefront takes
+ * 6 calls from shop" - and on the card those numbers are already the eyebrow
+ * and the count under it. So the sentence stops at the dash. A read reason
+ * keeps its tail: nothing under it says the same thing twice, and the tail is
+ * the whole of its evidence.
+ */
+function whyShown(pattern: MapPattern): string {
+  if (pattern.basis !== "counted") return pattern.why;
+  const cut = pattern.why.indexOf(" — ");
+  return cut < 0 ? pattern.why : pattern.why.slice(0, cut);
+}
+
 function Relation({ relation, at }: { relation: ContextRelation; at: number }) {
   const both = relation.dependencies.length === 2;
   const one = relation.dependencies.length === 1;
@@ -356,7 +369,7 @@ function Relation({ relation, at }: { relation: ContextRelation; at: number }) {
             {relation.patterns.length > 1 ? (
               <span className="label mr-2">{PATTERN_LABEL[pattern.name]}</span>
             ) : null}
-            {pattern.why}
+            {whyShown(pattern)}
           </p>
         ))}
       </div>
