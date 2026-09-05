@@ -4,7 +4,7 @@
 
 - **Id:** `flow.bff-subscription-order-status`
 - **Owner:** [storefront](../storefront/README.md)
-- **Source:** `examples/bff/src/schema/order/resolvers/Subscription/orderStatus.ts`
+- **Source:** [`examples/bff/src/schema/order/resolvers/Subscription/orderStatus.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/order/resolvers/Subscription/orderStatus.ts)
 
 Every move of one order, for as long as somebody is watching it.
 
@@ -27,5 +27,6 @@ sequenceDiagram
 
 ## Steps
 
+<a id="step-s1"></a>
 1. **client** → **storefront.bff** — Subscription.orderStatus → OrderMoved
-   status: declared · `examples/bff/src/schema/order/resolvers/Subscription/orderStatus.ts:11`
+   status: declared · [`examples/bff/src/schema/order/resolvers/Subscription/orderStatus.ts:11`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/order/resolvers/Subscription/orderStatus.ts#L11)

@@ -60,6 +60,7 @@ Money never rounds: everything is an integer of minor units, and two amounts are
 
 ## Events
 
+<a id="event-shop-pricing-quote-quoteexpired"></a>
 ### QuoteExpired
 
 `shop.pricing.quote.QuoteExpired`
@@ -70,7 +71,7 @@ On the wire as `pricing.QuoteExpired`, on `shop.pricing.quote`.
 
 QuoteExpired says the price is no longer promised. Nothing is refunded and nothing is cancelled: whoever holds the quote has to ask for another one.
 
-Source: `examples/shop/pricing/internal/domain/quote/event/quote_expired.go`
+Source: [`examples/shop/pricing/internal/domain/quote/event/quote_expired.go`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/domain/quote/event/quote_expired.go)
 
 | Field | Type |
 | --- | --- |
@@ -78,6 +79,7 @@ Source: `examples/shop/pricing/internal/domain/quote/event/quote_expired.go`
 | `basketID` | `string` |
 | `occurredAt` | `time.Time` |
 
+<a id="event-shop-pricing-quote-quoteissued"></a>
 ### QuoteIssued
 
 `shop.pricing.quote.QuoteIssued`
@@ -88,7 +90,7 @@ On the wire as `pricing.QuoteIssued`, on `shop.pricing.quote`.
 
 QuoteIssued says a basket has a price, and for how long. Whoever places the order needs both, so both are on the event rather than fetched again.
 
-Source: `examples/shop/pricing/internal/domain/quote/event/quote_issued.go`
+Source: [`examples/shop/pricing/internal/domain/quote/event/quote_issued.go`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/domain/quote/event/quote_issued.go)
 
 | Field | Type |
 | --- | --- |

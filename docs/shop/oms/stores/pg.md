@@ -5,10 +5,11 @@
 - **Id:** `shop.oms.pg`
 - **Kind:** postgres
 - **Owner:** [shop.oms](../README.md)
-- **Source:** `examples/shop/oms/src/infrastructure/repository`
+- **Source:** [`examples/shop/oms/src/infrastructure/repository`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/infrastructure/repository)
 
 ## Tables
 
+<a id="relation-shop-oms-pg-orders"></a>
 ### orders
 
 aggregate-root · persists [shop.oms.order](../aggregates/order.md)
@@ -24,6 +25,7 @@ aggregate-root · persists [shop.oms.order](../aggregates/order.md)
 | `placed_at` | `timestamptz` | not null | — | Order.placed_at | — |
 | `version` | `integer` | not null | — | — | — |
 
+<a id="relation-shop-oms-pg-order-lines"></a>
 ### order_lines
 
 child · persists [shop.oms.order](../aggregates/order.md)
@@ -36,6 +38,7 @@ child · persists [shop.oms.order](../aggregates/order.md)
 | `unit_price_minor` | `bigint` | not null | — | Order.unit_price.amount_minor |
 | `currency` | `text` | not null | — | Order.unit_price.currency |
 
+<a id="relation-shop-oms-pg-outbox"></a>
 ### outbox
 
 outbox

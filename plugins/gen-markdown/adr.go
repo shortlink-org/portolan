@@ -48,7 +48,7 @@ func (s *site) renderAdr(adr *catalog.Adr) {
 		{"Status", string(adr.Status)},
 		{"Date", adr.Date},
 		{"Scope", s.scopeRef(self, adr.Scope)},
-		{"Source", code(adr.Source)},
+		{"Source", s.source(self, adr.Source, s.adrOwner(adr))},
 	}
 	if adr.Note != "" {
 		meta = append(meta, []string{"Note", adr.Note})
@@ -78,6 +78,13 @@ func (s *site) renderAdr(adr *catalog.Adr) {
 	s.b.file(self, b.String())
 }
 
+func (s *site) adrOwner(adr *catalog.Adr) *catalog.Service {
+	if adr.Scope.Kind == "service" {
+		return s.services[adr.Scope.Service]
+	}
+	return s.serviceForSource(adr.Source)
+}
+
 func (s *site) relatesList(from string, relates catalog.AdrRelates) string {
 	var b strings.Builder
 
@@ -99,8 +106,8 @@ func (s *site) relatesList(from string, relates catalog.AdrRelates) string {
 		for _, id := range group.ids {
 			// An event id belongs to the aggregate page that publishes it, so
 			// it is resolved through its owner rather than looked up directly.
-			if page, ok := s.eventPage[id]; ok {
-				refs = append(refs, s.ref(from, page, id))
+			if _, ok := s.eventPage[id]; ok {
+				refs = append(refs, s.eventRef(from, id, id))
 
 				continue
 			}

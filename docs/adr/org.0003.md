@@ -5,7 +5,7 @@
 - **Status:** accepted
 - **Date:** 2026-09-05
 - **Scope:** org
-- **Source:** `data/adr/0003-ownership-is-read-from-codeowners.md`
+- **Source:** [`data/adr/0003-ownership-is-read-from-codeowners.md`](https://github.com/shortlink-org/portolan/blob/main/data/adr/0003-ownership-is-read-from-codeowners.md)
 
 ### Context and Problem Statement
 

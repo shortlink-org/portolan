@@ -5,7 +5,7 @@
 - **Status:** accepted
 - **Date:** 2026-08-22
 - **Scope:** [auth.auth](../auth/auth/README.md)
-- **Source:** `examples/auth/docs/adr/0003-expiry-publishes-nothing.md`
+- **Source:** [`examples/auth/docs/adr/0003-expiry-publishes-nothing.md`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/docs/adr/0003-expiry-publishes-nothing.md)
 
 ### Context and Problem Statement
 

@@ -5,10 +5,11 @@
 - **Id:** `shop.billing.pg`
 - **Kind:** postgres
 - **Owner:** [shop.billing](../README.md)
-- **Source:** `examples/shop/billing`
+- **Source:** [`examples/shop/billing`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing)
 
 ## Tables
 
+<a id="relation-shop-billing-pg-invoices"></a>
 ### invoices
 
 aggregate-root · persists [shop.billing.invoice](../aggregates/invoice.md) · block `shop.billing.invoice.invoice`
@@ -33,6 +34,7 @@ aggregate-root · persists [shop.billing.invoice](../aggregates/invoice.md) · b
 | `invoices_number_key` | number | unique |
 | `invoices_by_customer` | customer_id, status | index |
 
+<a id="relation-shop-billing-pg-invoice-lines"></a>
 ### invoice_lines
 
 child · persists [shop.billing.invoice](../aggregates/invoice.md) · block `shop.billing.invoice.invoice-line`
@@ -40,7 +42,7 @@ child · persists [shop.billing.invoice](../aggregates/invoice.md) · block `sho
 | Column | Type | Null | Key | Maps | Doc |
 | --- | --- | --- | --- | --- | --- |
 | `id` | `bigserial` | not null | PK | — | — |
-| `invoice_id` | `uuid` | not null | → [`shop.billing.pg.invoices`](pg.md#invoices).id (cascade) | Invoice.id | — |
+| `invoice_id` | `uuid` | not null | → [`shop.billing.pg.invoices`](pg.md#relation-shop-billing-pg-invoices).id (cascade) | Invoice.id | — |
 | `sku` | `varchar(64)` | not null | — | InvoiceLine.sku | — |
 | `quantity` | `integer` | not null | — | InvoiceLine.quantity | — |
 | `unit_price` | `bigint` | not null | — | InvoiceLine.unit_price_minor | Captured when the line is drawn up, never recomputed. |

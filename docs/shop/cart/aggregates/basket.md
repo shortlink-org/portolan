@@ -110,9 +110,9 @@ stateDiagram-v2
 
 | From | To | On | Emits | Source |
 | --- | --- | --- | --- | --- |
-| `open` | `checked-out` | `checkout` | `BasketCheckedOut` | `examples/shop/cart/src/domain/basket/basket.ts:92` |
-| `open` | `abandoned` | `abandon` | `BasketAbandoned` | `examples/shop/cart/src/domain/basket/basket.ts:100` |
-| `open` | `merged` | `mergeInto` | `BasketMerged` | `examples/shop/cart/src/domain/basket/basket.ts:111` |
+| `open` | `checked-out` | `checkout` | `BasketCheckedOut` | [`examples/shop/cart/src/domain/basket/basket.ts:92`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/domain/basket/basket.ts#L92) |
+| `open` | `abandoned` | `abandon` | `BasketAbandoned` | [`examples/shop/cart/src/domain/basket/basket.ts:100`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/domain/basket/basket.ts#L100) |
+| `open` | `merged` | `mergeInto` | `BasketMerged` | [`examples/shop/cart/src/domain/basket/basket.ts:111`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/domain/basket/basket.ts#L111) |
 
 ## Operations
 
@@ -128,6 +128,7 @@ stateDiagram-v2
 
 ## Events
 
+<a id="event-shop-cart-basket-basketabandoned"></a>
 ### BasketAbandoned
 
 `shop.cart.basket.BasketAbandoned`
@@ -138,7 +139,7 @@ On the wire as `cart.BasketAbandoned`, on `shop.cart.basket`.
 
 Nobody touched the basket for a day, and the sweep said so (cart.0006).
 
-Source: `examples/shop/cart/src/domain/basket/events/basket-abandoned.ts`
+Source: [`examples/shop/cart/src/domain/basket/events/basket-abandoned.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/domain/basket/events/basket-abandoned.ts)
 
 | Field | Type |
 | --- | --- |
@@ -147,23 +148,24 @@ Source: `examples/shop/cart/src/domain/basket/events/basket-abandoned.ts`
 | `idleSince` | `Date` |
 | `occurredAt` | `Date` |
 
+<a id="event-shop-cart-basket-basketcheckedout"></a>
 ### BasketCheckedOut
 
 `shop.cart.basket.BasketCheckedOut`
 
 On the wire as `cart.BasketCheckedOut`, on `shop.cart.basket`.
 
-| Consumer | Status | Note |
-| --- | --- | --- |
-| [shop.oms](../../oms/README.md) | verified | Seen consuming it in telemetry/traces.jsonl. |
-| [shop.pricing](../../pricing/README.md) | declared | — |
+| Consumer | Status | Via | Note |
+| --- | --- | --- | --- |
+| [shop.oms](../../oms/README.md) | verified | — | Seen consuming it in telemetry/traces.jsonl. |
+| [shop.pricing](../../pricing/README.md) | declared | `pricing-expire-quote-on-checkout#s1` | — |
 
 #### v1 — current
 
 The basket is frozen. This is the handoff: whoever places the order listens
 for it, and pricing expires the quote it issued.
 
-Source: `examples/shop/cart/src/domain/basket/events/basket-checked-out.ts`
+Source: [`examples/shop/cart/src/domain/basket/events/basket-checked-out.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/domain/basket/events/basket-checked-out.ts)
 
 | Field | Type |
 | --- | --- |
@@ -174,6 +176,7 @@ Source: `examples/shop/cart/src/domain/basket/events/basket-checked-out.ts`
 | `quoteId` | `string` |
 | `occurredAt` | `Date` |
 
+<a id="event-shop-cart-basket-basketcreated"></a>
 ### BasketCreated
 
 `shop.cart.basket.BasketCreated`
@@ -184,7 +187,7 @@ On the wire as `cart.BasketCreated`, on `shop.cart.basket`.
 
 A basket exists, for a visitor or for a customer.
 
-Source: `examples/shop/cart/src/domain/basket/events/basket-created.ts`
+Source: [`examples/shop/cart/src/domain/basket/events/basket-created.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/domain/basket/events/basket-created.ts)
 
 | Field | Type |
 | --- | --- |
@@ -192,6 +195,7 @@ Source: `examples/shop/cart/src/domain/basket/events/basket-created.ts`
 | `customerId` | `string \| undefined` |
 | `occurredAt` | `Date` |
 
+<a id="event-shop-cart-basket-basketitemadded"></a>
 ### BasketItemAdded
 
 `shop.cart.basket.BasketItemAdded`
@@ -202,7 +206,7 @@ On the wire as `cart.BasketItemAdded`, on `shop.cart.basket`.
 
 A line went in, or grew; `quantity` is the line's after the add.
 
-Source: `examples/shop/cart/src/domain/basket/events/basket-item-added.ts`
+Source: [`examples/shop/cart/src/domain/basket/events/basket-item-added.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/domain/basket/events/basket-item-added.ts)
 
 | Field | Type |
 | --- | --- |
@@ -212,6 +216,7 @@ Source: `examples/shop/cart/src/domain/basket/events/basket-item-added.ts`
 | `unitPrice` | `Money` |
 | `occurredAt` | `Date` |
 
+<a id="event-shop-cart-basket-basketitemremoved"></a>
 ### BasketItemRemoved
 
 `shop.cart.basket.BasketItemRemoved`
@@ -222,7 +227,7 @@ On the wire as `cart.BasketItemRemoved`, on `shop.cart.basket`.
 
 A line went out.
 
-Source: `examples/shop/cart/src/domain/basket/events/basket-item-removed.ts`
+Source: [`examples/shop/cart/src/domain/basket/events/basket-item-removed.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/domain/basket/events/basket-item-removed.ts)
 
 | Field | Type |
 | --- | --- |
@@ -230,6 +235,7 @@ Source: `examples/shop/cart/src/domain/basket/events/basket-item-removed.ts`
 | `sku` | `string` |
 | `occurredAt` | `Date` |
 
+<a id="event-shop-cart-basket-basketmerged"></a>
 ### BasketMerged
 
 `shop.cart.basket.BasketMerged`
@@ -242,7 +248,7 @@ The visitor's basket has given its lines to the customer's and is done
 (cart.0005). `basketId` is the one that emptied; `intoBasketId` the one
 that now holds everything.
 
-Source: `examples/shop/cart/src/domain/basket/events/basket-merged.ts`
+Source: [`examples/shop/cart/src/domain/basket/events/basket-merged.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/domain/basket/events/basket-merged.ts)
 
 | Field | Type |
 | --- | --- |

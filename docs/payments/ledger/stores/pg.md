@@ -5,10 +5,11 @@
 - **Id:** `payments.ledger.pg`
 - **Kind:** postgres
 - **Owner:** [payments.ledger](../README.md)
-- **Source:** `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/repository`
+- **Source:** [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/repository`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/repository)
 
 ## Tables
 
+<a id="relation-payments-ledger-pg-payments"></a>
 ### payments
 
 aggregate-root · persists [payments.ledger.payment](../aggregates/payment.md)
@@ -29,6 +30,7 @@ aggregate-root · persists [payments.ledger.payment](../aggregates/payment.md)
 | `payments_order_attempt_key` | order_id, attempt | unique |
 | `payments_status_idx` | status | index |
 
+<a id="relation-payments-ledger-pg-postings"></a>
 ### postings
 
 child · persists [payments.ledger.payment](../aggregates/payment.md)
@@ -36,7 +38,7 @@ child · persists [payments.ledger.payment](../aggregates/payment.md)
 | Column | Type | Null | Key | Maps |
 | --- | --- | --- | --- | --- |
 | `id` | `bigserial` | not null | PK | Posting.id |
-| `payment_id` | `text` | not null | → [`payments.ledger.pg.payments`](pg.md#payments).id (restrict) | Posting.paymentId |
+| `payment_id` | `text` | not null | → [`payments.ledger.pg.payments`](pg.md#relation-payments-ledger-pg-payments).id (restrict) | Posting.paymentId |
 | `account` | `text` | not null | — | Posting.account |
 | `amount_minor` | `bigint` | not null | — | Posting.amountMinor |
 | `currency` | `char(3)` | not null | — | Posting.currency |
@@ -46,6 +48,7 @@ child · persists [payments.ledger.payment](../aggregates/payment.md)
 | --- | --- | --- |
 | `postings_by_payment` | payment_id | index |
 
+<a id="relation-payments-ledger-pg-refunds"></a>
 ### refunds
 
 aggregate-root · persists [payments.ledger.refund](../aggregates/refund.md)
@@ -53,7 +56,7 @@ aggregate-root · persists [payments.ledger.refund](../aggregates/refund.md)
 | Column | Type | Null | Key | Maps |
 | --- | --- | --- | --- | --- |
 | `id` | `text` | not null | PK | Refund.id |
-| `payment_id` | `text` | not null | → [`payments.ledger.pg.payments`](pg.md#payments).id (restrict) | Refund.paymentId |
+| `payment_id` | `text` | not null | → [`payments.ledger.pg.payments`](pg.md#relation-payments-ledger-pg-payments).id (restrict) | Refund.paymentId |
 | `order_id` | `text` | not null | — | Refund.orderId |
 | `amount_minor` | `bigint` | not null | — | Refund.amountMinor |
 | `currency` | `char(3)` | not null | — | Refund.currency |
@@ -67,9 +70,10 @@ aggregate-root · persists [payments.ledger.refund](../aggregates/refund.md)
 
 ## Views
 
+<a id="relation-payments-ledger-pg-v-payment-state"></a>
 ### v_payment_state
 
-computed on read · reads [`payments.ledger.pg.payments`](pg.md#payments), [`payments.ledger.pg.refunds`](pg.md#refunds)
+computed on read · reads [`payments.ledger.pg.payments`](pg.md#relation-payments-ledger-pg-payments), [`payments.ledger.pg.refunds`](pg.md#relation-payments-ledger-pg-refunds)
 
 | Column | Type | Null | Maps | From |
 | --- | --- | --- | --- | --- |
@@ -91,4 +95,4 @@ SELECT p.id           AS payment_id,
  GROUP BY p.id;
 ```
 
-Source: `src/main/java/org/portolan/payments/ledger/infrastructure/repository/refund/migrations/0002_payment_state.sql`
+Source: [`src/main/java/org/portolan/payments/ledger/infrastructure/repository/refund/migrations/0002_payment_state.sql`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/repository/refund/migrations/0002_payment_state.sql)

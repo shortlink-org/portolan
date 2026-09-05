@@ -4,8 +4,8 @@
 
 - **Id:** `shop.billing`
 - **Context:** [Shop](../README.md)
-- **Repo:** `github.com/shortlink-org/portolan`
-- **Path:** `examples/shop/billing`
+- **Repo:** [`github.com/shortlink-org/portolan`](https://github.com/shortlink-org/portolan)
+- **Path:** [`examples/shop/billing/`](https://github.com/shortlink-org/portolan/tree/main/examples/shop/billing)
 - **Owners:** `@shortlink-org/shop`
 
 Service `billing` — bounded context **shop**. Python on Django.
@@ -57,13 +57,18 @@ python manage.py migrate && python manage.py runserver
 
 ## Provides
 
-**`billing.v1.Invoices`** — `examples/shop/billing/invoices/schema/openapi.yaml`
+### billing.v1.Invoices
 
-- `invoice_create` — `POST /v1/invoices`
-- `invoice_retrieve` — `GET /v1/invoices/{id}`
-- `invoice_destroy` — `DELETE /v1/invoices/{id}`
-- `invoice_issue` — `POST /v1/invoices/{id}/issue`
+- **Source:** [`examples/shop/billing/invoices/schema/openapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/schema/openapi.yaml)
 
+| Method | Route | Request | Response |
+| --- | --- | --- | --- |
+| `invoice_create` | `POST /v1/invoices` | `DrawUpRequest` | `InvoiceId` |
+| `invoice_destroy` | `DELETE /v1/invoices/{id}` | — | `204` |
+| `invoice_issue` | `POST /v1/invoices/{id}/issue` | — | `InvoiceId` |
+| `invoice_retrieve` | `GET /v1/invoices/{id}` | — | `Invoice` |
+
+<a id="message-drawuprequest"></a>
 <details><summary>DrawUpRequest</summary>
 
 | Field | Type | Doc |
@@ -76,15 +81,7 @@ python manage.py migrate && python manage.py runserver
 
 </details>
 
-<details><summary>InvoiceId</summary>
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `invoiceId` | `string (uuid)` | Optional. |
-| `number` | `string` | Optional. |
-
-</details>
-
+<a id="message-invoice"></a>
 <details><summary>Invoice</summary>
 
 | Field | Type | Doc |
@@ -99,6 +96,17 @@ python manage.py migrate && python manage.py runserver
 
 </details>
 
+<a id="message-invoiceid"></a>
+<details><summary>InvoiceId</summary>
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `invoiceId` | `string (uuid)` | Optional. |
+| `number` | `string` | Optional. |
+
+</details>
+
+<a id="message-line"></a>
 <details><summary>Line</summary>
 
 | Field | Type |
@@ -113,15 +121,31 @@ python manage.py migrate && python manage.py runserver
 
 | Call | Peer | Status | Source |
 | --- | --- | --- | --- |
-| `auth.v1.Sessions/validateSession` | [auth.auth](../../auth/auth/README.md) | declared | `examples/shop/billing/invoices/clients/auth/openapi.yaml` |
+| `auth.v1.Sessions/validateSession` | [auth.auth](../../auth/auth/README.md) | declared | [`examples/shop/billing/invoices/clients/auth/openapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/clients/auth/openapi.yaml) |
 
 ## Publishes
 
 | Event | Latest |
 | --- | --- |
-| [InvoiceIssued](aggregates/invoice.md) | v1 |
-| [InvoicePaid](aggregates/invoice.md) | v1 |
-| [InvoiceVoided](aggregates/invoice.md) | v1 |
+| [`InvoiceIssued`](aggregates/invoice.md#event-shop-billing-invoice-invoiceissued) | v1 |
+| [`InvoicePaid`](aggregates/invoice.md#event-shop-billing-invoice-invoicepaid) | v1 |
+| [`InvoiceVoided`](aggregates/invoice.md#event-shop-billing-invoice-invoicevoided) | v1 |
+
+## Channels
+
+### shop.billing.invoice
+
+**Invoice**
+
+The subject every invoice event leaves on. The event's name is on the message metadata, so a subscriber dispatches without parsing the payload.
+
+Source: [`examples/shop/billing/invoices/bus/asyncapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/bus/asyncapi.yaml)
+
+| Direction | Message | Title | Doc |
+| --- | --- | --- | --- |
+| send | [`billing.InvoiceIssued`](aggregates/invoice.md#event-shop-billing-invoice-invoiceissued) | Invoice issued | The invoice is final and the customer has been asked to pay it. |
+| send | [`billing.InvoicePaid`](aggregates/invoice.md#event-shop-billing-invoice-invoicepaid) | Invoice paid | The money arrived and the invoice is closed. |
+| send | [`billing.InvoiceVoided`](aggregates/invoice.md#event-shop-billing-invoice-invoicevoided) | Invoice voided | The invoice was ended without payment. |
 
 ## Stores
 

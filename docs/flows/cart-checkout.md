@@ -4,7 +4,7 @@
 
 - **Id:** `flow.cart-checkout`
 - **Owner:** [shop](../shop/README.md)
-- **Source:** `examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts`
+- **Source:** [`examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts)
 
 ## Participants
 
@@ -38,15 +38,21 @@ sequenceDiagram
 
 ## Steps
 
+<a id="step-s1"></a>
 1. **client** → **shop.cart** — checkout → CheckedOut
-   `examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:60` · Seen running in telemetry/traces.jsonl (1 trace).
+   [`examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:60`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts#L60) · Seen running in telemetry/traces.jsonl (1 trace).
+<a id="step-s2"></a>
 2. **shop.cart** → **auth.auth** — validateSession → SessionInfo
-   `auth.v1.Sessions/validateSession` · `examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:44` · Seen running in telemetry/traces.jsonl (1 trace).
+   `auth.v1.Sessions/validateSession` · [`examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:44`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts#L44) · Seen running in telemetry/traces.jsonl (1 trace).
+<a id="step-s3"></a>
 3. **shop.cart** → **cart-pg** — byId
-   status: declared · `examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:48`
+   status: declared · [`examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:48`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts#L48)
+<a id="step-s4"></a>
 4. **shop.cart** → **shop.pricing** — GetQuote → GetQuoteResponse
-   `shop.v1.Pricing/GetQuote` · status: declared · `examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:55`
+   `shop.v1.Pricing/GetQuote` · status: declared · [`examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:55`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts#L55)
+<a id="step-s5"></a>
 5. **shop.cart** → **cart-pg** — save
-   status: declared · `examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:57`
+   status: declared · [`examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:57`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts#L57)
+<a id="step-s6"></a>
 6. **shop.cart** → **bus** — BasketCheckedOut
-   [shop.cart.basket.BasketCheckedOut](../shop/cart/aggregates/basket.md) · `examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:57` · Seen running in telemetry/traces.jsonl (1 trace).
+   [`shop.cart.basket.BasketCheckedOut`](../shop/cart/aggregates/basket.md#event-shop-cart-basket-basketcheckedout) · [`examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:57`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts#L57) · Seen running in telemetry/traces.jsonl (1 trace).

@@ -4,7 +4,7 @@
 
 - **Id:** `flow.pricing-get-quote`
 - **Owner:** [shop](../shop/README.md)
-- **Source:** `examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go`
+- **Source:** [`examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go)
 
 Package get_quote reads one quote.
 
@@ -34,17 +34,20 @@ sequenceDiagram
 
 ## Steps
 
+<a id="step-s1"></a>
 1. **client** → **shop.pricing** — GetQuote → GetQuoteResponse
-   status: declared · `examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go:52`
+   status: declared · [`examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go:52`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go#L52)
 
 > **One of**
 >
 > *in.QuoteID != ""*
 >
+> <a id="step-s2"></a>
 > 2. **shop.pricing** → **pricing-pg** — ByID
->    status: declared · `examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go:27`
+>    status: declared · [`examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go:27`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go#L27)
 >
 > *otherwise*
 >
+> <a id="step-s3"></a>
 > 3. **shop.pricing** → **pricing-pg** — ByBasket
->    status: declared · `examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go:29`
+>    status: declared · [`examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go:29`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go#L29)

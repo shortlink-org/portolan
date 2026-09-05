@@ -10,10 +10,15 @@ The card network the invoices are settled through. Nobody here builds it; the co
 
 ## Provides
 
-**`psp.v1.Charges`** — `internal/psp/openapi/openapi.yaml`
+### psp.v1.Charges
 
-- `Create` — `POST /v1/charges`
+- **Source:** `internal/psp/openapi/openapi.yaml`
 
+| Method | Route | Request | Response |
+| --- | --- | --- | --- |
+| `Create` | `POST /v1/charges` | `CreateChargeRequest` | `Charge` |
+
+<a id="message-charge"></a>
 <details><summary>Charge</summary>
 
 | Field | Type | Doc |
@@ -25,6 +30,6 @@ The card network the invoices are settled through. Nobody here builds it; the co
 
 ## Called by
 
-| Service | Call | Status | Source |
-| --- | --- | --- | --- |
-| [Invoices](../billing/invoices/README.md) | `psp.v1.Charges/Create` | declared | `internal/psp/client.go:20` |
+| Service | Call | Status | Source | Via |
+| --- | --- | --- | --- | --- |
+| [Invoices](../billing/invoices/README.md) | `psp.v1.Charges/Create` | declared | `internal/psp/client.go:20` | [`flow.raise-invoice#s3`](../flows/raise-invoice.md#step-s3) |

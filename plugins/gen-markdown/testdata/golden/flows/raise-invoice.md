@@ -44,10 +44,12 @@ sequenceDiagram
 
 ## Steps
 
+<a id="step-s1"></a>
 1. **operator** → **billing.invoices** — Raise → Invoice
-   `raise_test.go:31`
+   `test/e2e/raise_test.go:31`
+<a id="step-s2"></a>
 2. **billing.invoices** → **bus** — billing.invoices.invoice.InvoiceRaised
-   [billing.invoices.invoice.InvoiceRaised](../billing/invoices/aggregates/invoice.md)
+   [`billing.invoices.invoice.InvoiceRaised`](../billing/invoices/aggregates/invoice.md#event-billing-invoices-invoice-invoiceraised)
 
 > **Repeats** — until paid or written off
 >
@@ -61,15 +63,18 @@ sequenceDiagram
 > > >
 > > > *Branch 1*
 > > >
+> > > <a id="step-s3"></a>
 > > > 3. **billing.invoices** → **psp-gateway** — psp.v1.Charges/Create → Charge
 > > >    `psp.v1.Charges/Create` · status: declared · The gateway is outside this catalog.
 > > >
 > > > *Branch 2*
 > > >
+> > > <a id="step-s4"></a>
 > > > 4. **billing.invoices** ↺ **billing.invoices** — markPaid #1
 > >
 > >
 > > *written off — *ends the flow**
 > >
+> > <a id="step-s5"></a>
 > > 5. **billing.invoices** → **operator** — write-off notice
 > >    status: declared

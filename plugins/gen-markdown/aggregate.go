@@ -30,9 +30,9 @@ func (s *site) renderAggregate(svc *catalog.Service, agg *catalog.Aggregate) {
 
 	section(&b, "Entities", s.blocks(self, agg.Entities, agg.Root))
 	section(&b, "Value objects", s.blocks(self, agg.ValueObjects, ""))
-	section(&b, "Lifecycle", s.lifecycle(self, agg))
+	section(&b, "Lifecycle", s.lifecycle(self, svc, agg))
 	section(&b, "Operations", s.operationsTable(agg))
-	section(&b, "Events", s.eventsBlock(self, agg))
+	section(&b, "Events", s.eventsBlock(self, svc, agg))
 
 	s.b.file(self, b.String())
 }
@@ -40,7 +40,7 @@ func (s *site) renderAggregate(svc *catalog.Service, agg *catalog.Aggregate) {
 // lifecycle draws the root's state machine as the code wrote it down, and
 // lists the moves under it with the event each one publishes. The first
 // state is where a new root starts; a state nothing leads out of ends.
-func (s *site) lifecycle(from string, agg *catalog.Aggregate) string {
+func (s *site) lifecycle(from string, svc *catalog.Service, agg *catalog.Aggregate) string {
 	lc := agg.Lifecycle
 	if lc == nil || len(lc.States) == 0 {
 		return ""
@@ -98,7 +98,7 @@ func (s *site) lifecycle(from string, agg *catalog.Aggregate) string {
 		if t.Emits != "" {
 			emits = s.ref(from, t.Emits, eventName(t.Emits))
 		}
-		rows = append(rows, []string{code(t.From), code(t.To), code(t.On), emits, code(t.Source)})
+		rows = append(rows, []string{code(t.From), code(t.To), code(t.On), emits, s.source(from, t.Source, svc)})
 	}
 
 	return fence("mermaid", d.String()) + "\n" + table([]string{"From", "To", "On", "Emits", "Source"}, rows)
@@ -193,11 +193,12 @@ func (s *site) operationsTable(agg *catalog.Aggregate) string {
 // Older versions are kept rather than collapsed into the latest: a consumer
 // reading this page is very often the one still on v1, and a page that shows
 // only what the publisher sends today cannot answer their question.
-func (s *site) eventsBlock(from string, agg *catalog.Aggregate) string {
+func (s *site) eventsBlock(from string, svc *catalog.Service, agg *catalog.Aggregate) string {
 	var b strings.Builder
 
 	for i := range agg.Events {
 		event := &agg.Events[i]
+		b.WriteString("<a id=\"event-" + anchorID(event.ID) + "\"></a>\n")
 		b.WriteString("### " + event.Name + "\n\n")
 		b.WriteString(code(event.ID) + "\n")
 
@@ -218,10 +219,11 @@ func (s *site) eventsBlock(from string, agg *catalog.Aggregate) string {
 			consumers = append(consumers, []string{
 				s.ref(from, consumer.Service, consumer.Service),
 				string(consumer.Status),
+				s.viaRef(from, consumer.Via),
 				consumer.Note,
 			})
 		}
-		if rendered := table([]string{"Consumer", "Status", "Note"}, consumers); rendered != "" {
+		if rendered := table([]string{"Consumer", "Status", "Via", "Note"}, consumers); rendered != "" {
 			b.WriteString("\n" + rendered)
 		}
 
@@ -238,7 +240,7 @@ func (s *site) eventsBlock(from string, agg *catalog.Aggregate) string {
 				b.WriteString(version.Doc + "\n\n")
 			}
 			if version.Source != "" {
-				b.WriteString("Source: " + code(version.Source) + "\n\n")
+				b.WriteString("Source: " + s.source(from, version.Source, svc) + "\n\n")
 			}
 			b.WriteString(s.fieldTable(from, version.Fields))
 		}
@@ -271,7 +273,7 @@ func (s *site) defRef(from, key string) string {
 		return code(key)
 	}
 
-	return "[" + code(key) + "](" + rel(from, typesPage) + "#" + anchor(key) + ")"
+	return "[" + code(key) + "](" + rel(from, typesPage) + "#type-" + anchorID(key) + ")"
 }
 
 const typesPage = "types.md"
@@ -305,6 +307,7 @@ func (s *site) renderTypes() {
 
 	for _, key := range sortedDefKeys(s.cat.Defs) {
 		def := s.cat.Defs[key]
+		b.WriteString("\n<a id=\"type-" + anchorID(key) + "\"></a>\n")
 		b.WriteString("\n## " + key + "\n\n")
 		b.WriteString(s.fieldTable(typesPage, def.Fields))
 	}

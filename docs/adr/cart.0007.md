@@ -5,7 +5,7 @@
 - **Status:** accepted
 - **Date:** 2026-09-04
 - **Scope:** [shop.cart](../shop/cart/README.md)
-- **Source:** `examples/shop/cart/docs/adr/0007-an-anonymous-basket-is-owned-by-its-token.md`
+- **Source:** [`examples/shop/cart/docs/adr/0007-an-anonymous-basket-is-owned-by-its-token.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/docs/adr/0007-an-anonymous-basket-is-owned-by-its-token.md)
 
 ### Context and Problem Statement
 

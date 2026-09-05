@@ -4,8 +4,8 @@
 
 - **Id:** `shop.pricing`
 - **Context:** [Shop](../README.md)
-- **Repo:** `github.com/shortlink-org/portolan`
-- **Path:** `examples/shop/pricing`
+- **Repo:** [`github.com/shortlink-org/portolan`](https://github.com/shortlink-org/portolan)
+- **Path:** [`examples/shop/pricing/`](https://github.com/shortlink-org/portolan/tree/main/examples/shop/pricing)
 - **Owners:** `@shortlink-org/shop`
 
 Service `pricing` — bounded context **shop**. Go.
@@ -64,32 +64,106 @@ module, into the `gen` directory beside the code that uses it.
 
 ## Provides
 
-**`shop.v1.Pricing`** — `examples/shop/pricing/internal/infrastructure/transport/grpc/quote/proto/shop/v1/pricing.proto:11`
+### shop.v1.PriceLists
 
-- `IssueQuote`
-- `GetQuote`
+- **Source:** [`examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/proto/shop/v1/price_lists.proto:9`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/proto/shop/v1/price_lists.proto#L9)
+- **Module:** [buf.build/shortlink-org/portolan-shop-price-list](../../modules/shortlink-org-portolan-shop-price-list.md)
 
-<details><summary>IssueQuoteRequest</summary>
+| Method | Request | Response | Doc |
+| --- | --- | --- | --- |
+| `ArchivePriceList` | `ArchivePriceListRequest` | `ArchivePriceListResponse` | Take a list out of use without losing it. |
+| `ImportPriceList` | `ImportPriceListRequest` | `ImportPriceListResponse` | Take in a whole list. |
+| `ListPriceLists` | `ListPriceListsRequest` | `ListPriceListsResponse` | Every list there is, archived ones included. |
 
-| Field | Type |
-| --- | --- |
-| `basket_id` | `string` |
-| `currency` | `string` |
-| `items` | `[]Item` |
-
-</details>
-
-<details><summary>IssueQuoteResponse</summary>
+<a id="message-archivepricelistrequest"></a>
+<details><summary>ArchivePriceListRequest</summary>
 
 | Field | Type |
 | --- | --- |
-| `quote_id` | `string` |
-| `total_minor` | `int64` |
-| `currency` | `string` |
-| `expires_at` | `string` |
+| `price_list_id` | `string` |
 
 </details>
 
+<a id="message-archivepricelistresponse"></a>
+<details><summary>ArchivePriceListResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `price_list_id` | `string` |
+
+</details>
+
+<a id="message-importpricelistrequest"></a>
+<details><summary>ImportPriceListRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `name` | `string` |
+| `currency` | `string` |
+| `valid_from` | `string` |
+| `rows` | `[]PriceRow` |
+
+</details>
+
+<a id="message-importpricelistresponse"></a>
+<details><summary>ImportPriceListResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `price_list_id` | `string` |
+| `rows` | `int32` |
+
+</details>
+
+<a id="message-listpricelistsrequest"></a>
+<details><summary>ListPriceListsRequest</summary>
+
+
+</details>
+
+<a id="message-listpricelistsresponse"></a>
+<details><summary>ListPriceListsResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `lists` | `[]PriceListSummary` |
+
+</details>
+
+<a id="message-pricelistsummary"></a>
+<details><summary>PriceListSummary</summary>
+
+| Field | Type |
+| --- | --- |
+| `price_list_id` | `string` |
+| `name` | `string` |
+| `currency` | `string` |
+| `rows` | `int32` |
+| `archived` | `bool` |
+
+</details>
+
+<a id="message-pricerow"></a>
+<details><summary>PriceRow</summary>
+
+| Field | Type |
+| --- | --- |
+| `sku` | `string` |
+| `amount_minor` | `int64` |
+
+</details>
+
+### shop.v1.Pricing
+
+- **Source:** [`examples/shop/pricing/internal/infrastructure/transport/grpc/quote/proto/shop/v1/pricing.proto:11`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/quote/proto/shop/v1/pricing.proto#L11)
+- **Module:** [buf.build/shortlink-org/portolan-shop-quote](../../modules/shortlink-org-portolan-shop-quote.md)
+
+| Method | Request | Response | Doc |
+| --- | --- | --- | --- |
+| `GetQuote` | `GetQuoteRequest` | `GetQuoteResponse` | Read a quote, by its own id or by the basket it priced. |
+| `IssueQuote` | `IssueQuoteRequest` | `IssueQuoteResponse` | Price a basket and promise the price for a window. |
+
+<a id="message-getquoterequest"></a>
 <details><summary>GetQuoteRequest</summary>
 
 | Field | Type |
@@ -99,6 +173,7 @@ module, into the `gen` directory beside the code that uses it.
 
 </details>
 
+<a id="message-getquoteresponse"></a>
 <details><summary>GetQuoteResponse</summary>
 
 | Field | Type |
@@ -112,6 +187,30 @@ module, into the `gen` directory beside the code that uses it.
 
 </details>
 
+<a id="message-issuequoterequest"></a>
+<details><summary>IssueQuoteRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `basket_id` | `string` |
+| `currency` | `string` |
+| `items` | `[]Item` |
+
+</details>
+
+<a id="message-issuequoteresponse"></a>
+<details><summary>IssueQuoteResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `quote_id` | `string` |
+| `total_minor` | `int64` |
+| `currency` | `string` |
+| `expires_at` | `string` |
+
+</details>
+
+<a id="message-item"></a>
 <details><summary>Item</summary>
 
 | Field | Type |
@@ -121,88 +220,19 @@ module, into the `gen` directory beside the code that uses it.
 
 </details>
 
-**`shop.v1.PriceLists`** — `examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/proto/shop/v1/price_lists.proto:9`
-
-- `ImportPriceList`
-- `ArchivePriceList`
-- `ListPriceLists`
-
-<details><summary>ImportPriceListRequest</summary>
-
-| Field | Type |
-| --- | --- |
-| `name` | `string` |
-| `currency` | `string` |
-| `valid_from` | `string` |
-| `rows` | `[]PriceRow` |
-
-</details>
-
-<details><summary>ImportPriceListResponse</summary>
-
-| Field | Type |
-| --- | --- |
-| `price_list_id` | `string` |
-| `rows` | `int32` |
-
-</details>
-
-<details><summary>ArchivePriceListRequest</summary>
-
-| Field | Type |
-| --- | --- |
-| `price_list_id` | `string` |
-
-</details>
-
-<details><summary>ArchivePriceListResponse</summary>
-
-| Field | Type |
-| --- | --- |
-| `price_list_id` | `string` |
-
-</details>
-
-<details><summary>ListPriceListsRequest</summary>
-
-
-</details>
-
-<details><summary>ListPriceListsResponse</summary>
-
-| Field | Type |
-| --- | --- |
-| `lists` | `[]PriceListSummary` |
-
-</details>
-
-<details><summary>PriceRow</summary>
-
-| Field | Type |
-| --- | --- |
-| `sku` | `string` |
-| `amount_minor` | `int64` |
-
-</details>
-
-<details><summary>PriceListSummary</summary>
-
-| Field | Type |
-| --- | --- |
-| `price_list_id` | `string` |
-| `name` | `string` |
-| `currency` | `string` |
-| `rows` | `int32` |
-| `archived` | `bool` |
-
-</details>
-
 ## Publishes
 
 | Event | Latest |
 | --- | --- |
-| [QuoteExpired](aggregates/quote.md) | v1 |
-| [QuoteIssued](aggregates/quote.md) | v1 |
+| [`QuoteExpired`](aggregates/quote.md#event-shop-pricing-quote-quoteexpired) | v1 |
+| [`QuoteIssued`](aggregates/quote.md#event-shop-pricing-quote-quoteissued) | v1 |
+
+## Schema modules
+
+| Module | Access | Packages |
+| --- | --- | --- |
+| [shortlink-org/portolan-shop-price-list](../../modules/shortlink-org-portolan-shop-price-list.md) | publishes | shop.v1 |
+| [shortlink-org/portolan-shop-quote](../../modules/shortlink-org-portolan-shop-quote.md) | publishes | shop.v1 |
 
 ## Stores
 

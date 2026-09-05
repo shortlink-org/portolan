@@ -4,7 +4,7 @@
 
 - **Id:** `flow.bff-query-shipment`
 - **Owner:** [storefront](../storefront/README.md)
-- **Source:** `examples/bff/src/schema/delivery/resolvers/Query/shipment.ts`
+- **Source:** [`examples/bff/src/schema/delivery/resolvers/Query/shipment.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/delivery/resolvers/Query/shipment.ts)
 
 ## Participants
 
@@ -28,7 +28,9 @@ sequenceDiagram
 
 ## Steps
 
+<a id="step-s1"></a>
 1. **client** → **storefront.bff** — Query.shipment → Shipment
-   status: declared · `examples/bff/src/schema/delivery/resolvers/Query/shipment.ts:3`
+   status: declared · [`examples/bff/src/schema/delivery/resolvers/Query/shipment.ts:3`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/delivery/resolvers/Query/shipment.ts#L3)
+<a id="step-s2"></a>
 2. **storefront.bff** → **delivery.core** — GetShipment → GetShipmentResponse
-   `delivery.v1.Delivery/GetShipment` · status: declared · `examples/bff/src/schema/delivery/resolvers/Query/shipment.ts:4`
+   `delivery.v1.Delivery/GetShipment` · status: declared · [`examples/bff/src/schema/delivery/resolvers/Query/shipment.ts:4`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/delivery/resolvers/Query/shipment.ts#L4)

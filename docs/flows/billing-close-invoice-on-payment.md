@@ -4,7 +4,7 @@
 
 - **Id:** `flow.billing-close-invoice-on-payment`
 - **Owner:** [shop](../shop/README.md)
-- **Source:** `examples/shop/billing/invoices/handlers.py`
+- **Source:** [`examples/shop/billing/invoices/handlers.py`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/handlers.py)
 
 Closes the invoice for an order once the ledger says the money arrived.
 
@@ -32,11 +32,15 @@ sequenceDiagram
 
 ## Steps
 
+<a id="step-s1"></a>
 1. **bus** → **shop.billing** — PaymentCaptured
-   [payments.ledger.payment.PaymentCaptured](../payments/ledger/aggregates/payment.md) · status: declared · `examples/shop/billing/invoices/handlers.py:10`
+   [`payments.ledger.payment.PaymentCaptured`](../payments/ledger/aggregates/payment.md#event-payments-ledger-payment-paymentcaptured) · status: declared · [`examples/shop/billing/invoices/handlers.py:10`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/handlers.py#L10)
+<a id="step-s2"></a>
 2. **shop.billing** → **billing-pg** — Invoice.objects.filter
-   status: declared · `examples/shop/billing/invoices/services.py:48`
+   status: declared · [`examples/shop/billing/invoices/services.py:48`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L48)
+<a id="step-s3"></a>
 3. **shop.billing** → **billing-pg** — Invoice.save
-   status: declared · `examples/shop/billing/invoices/services.py:52`
+   status: declared · [`examples/shop/billing/invoices/services.py:52`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L52)
+<a id="step-s4"></a>
 4. **shop.billing** → **bus** — InvoicePaid
-   [shop.billing.invoice.InvoicePaid](../shop/billing/aggregates/invoice.md) · status: declared · `examples/shop/billing/invoices/services.py:53`
+   [`shop.billing.invoice.InvoicePaid`](../shop/billing/aggregates/invoice.md#event-shop-billing-invoice-invoicepaid) · status: declared · [`examples/shop/billing/invoices/services.py:53`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L53)

@@ -37,8 +37,8 @@ stateDiagram-v2
 
 | From | To | On | Emits | Source |
 | --- | --- | --- | --- | --- |
-| `REQUESTED` | `ISSUED` | `issue` | `RefundIssued` | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/refund/Refund.java:57` |
-| `REQUESTED` | `REJECTED` | `reject` | — | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/refund/Refund.java:65` |
+| `REQUESTED` | `ISSUED` | `issue` | `RefundIssued` | [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/refund/Refund.java:57`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/refund/Refund.java#L57) |
+| `REQUESTED` | `REJECTED` | `reject` | — | [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/refund/Refund.java:65`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/refund/Refund.java#L65) |
 
 ## Operations
 
@@ -49,6 +49,7 @@ stateDiagram-v2
 
 ## Events
 
+<a id="event-payments-ledger-refund-refundissued"></a>
 ### RefundIssued
 
 `payments.ledger.refund.RefundIssued`
@@ -59,7 +60,7 @@ On the wire as `ledger.RefundIssued`, on `payments.ledger.refund`.
 
 Money went back to the customer, against a payment that had been captured.
 
-Source: `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/refund/event/RefundIssued.java`
+Source: [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/refund/event/RefundIssued.java`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/refund/event/RefundIssued.java)
 
 | Field | Type |
 | --- | --- |

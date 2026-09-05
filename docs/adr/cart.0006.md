@@ -5,7 +5,7 @@
 - **Status:** accepted
 - **Date:** 2026-09-04
 - **Scope:** [shop.cart](../shop/cart/README.md)
-- **Source:** `examples/shop/cart/docs/adr/0006-abandonment-is-a-sweep-that-publishes.md`
+- **Source:** [`examples/shop/cart/docs/adr/0006-abandonment-is-a-sweep-that-publishes.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/docs/adr/0006-abandonment-is-a-sweep-that-publishes.md)
 
 ### Context and Problem Statement
 

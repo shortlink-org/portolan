@@ -5,7 +5,7 @@
 - **Status:** accepted
 - **Date:** 2026-09-04
 - **Scope:** [shop.cart](../shop/cart/README.md)
-- **Source:** `examples/shop/cart/docs/adr/0002-currency-frozen-at-the-first-item.md`
+- **Source:** [`examples/shop/cart/docs/adr/0002-currency-frozen-at-the-first-item.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/docs/adr/0002-currency-frozen-at-the-first-item.md)
 
 ### Context and Problem Statement
 

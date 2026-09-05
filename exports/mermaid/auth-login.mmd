@@ -1,0 +1,32 @@
+sequenceDiagram
+    autonumber
+    actor p0 as client
+    participant p1 as auth.auth
+    participant p2 as auth-pg
+    participant p3 as risk.v1
+    participant p4 as bus
+    p0->>p1: login → Session
+    p1->>p1: Authenticate
+    p1->>p2: ByEmail
+    p1->>p1: Check
+    p1->>p2: ByUserID
+    alt err != nil
+        p1->>p1: RecordFailure
+        p1->>p2: ByUserID
+        p1->>p2: Save
+        Note over p2: flow ends here
+    else otherwise
+    end
+    p1->>p1: RecordSuccess
+    p1->>p2: ByUserID
+    p1->>p2: Save
+    p1->>p3: Assess
+    alt verdict == VerdictBlock
+        p1->>p2: ByUserID
+        p1->>p2: Save
+        p1-)p4: SessionEnded
+        Note over p4: flow ends here
+    else otherwise
+    end
+    p1->>p2: Save
+    p1-)p4: SessionStarted

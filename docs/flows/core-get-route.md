@@ -4,7 +4,7 @@
 
 - **Id:** `flow.core-get-route`
 - **Owner:** [delivery](../delivery/README.md)
-- **Source:** `examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts`
+- **Source:** [`examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts)
 
 One route, as the depot reads it.
 
@@ -30,7 +30,9 @@ sequenceDiagram
 
 ## Steps
 
+<a id="step-s1"></a>
 1. **client** → **delivery.core** — GetRoute → GetRouteResponse
-   status: declared · `examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:37`
+   status: declared · [`examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:37`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts#L37)
+<a id="step-s2"></a>
 2. **delivery.core** → **core-pg** — byId
-   status: declared · `examples/shop/delivery/core/src/application/route/usecases/get_route/usecase.ts:22`
+   status: declared · [`examples/shop/delivery/core/src/application/route/usecases/get_route/usecase.ts:22`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/route/usecases/get_route/usecase.ts#L22)

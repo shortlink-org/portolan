@@ -1,7 +1,8 @@
 # Generators
 
-A generator turns the catalog into something else — markdown here, and
-whatever comes next in its own directory beside it.
+A generator turns the catalog into something else. The built-in generators
+produce Markdown and LLM indexes, standalone Mermaid diagrams, and a Backstage
+Software Catalog bundle; each lives in its own directory beside the plugin.
 
 The contract is one JSON message in and one JSON message out:
 
@@ -46,6 +47,11 @@ Three obligations, and they are the whole of it:
    unsafe filename or invalid response fails the run. Non-fatal extraction
    notes go to stderr; there is no advisory response property a caller may
    accidentally ignore.
+
+The repository enforces those obligations with schema/field coverage tests,
+byte-for-byte permutation tests, generated-link and anchor checks, Mermaid
+parser checks, and Backstage relationship validation. A new catalog field must
+either be rendered or be explicitly acknowledged by the relevant exporter.
 
 ## Adding one
 

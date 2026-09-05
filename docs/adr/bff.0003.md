@@ -5,7 +5,7 @@
 - **Status:** accepted
 - **Date:** 2026-09-05
 - **Scope:** [storefront.bff](../storefront/bff/README.md)
-- **Source:** `examples/bff/docs/adr/0003-the-schema-speaks-the-clients-words.md`
+- **Source:** [`examples/bff/docs/adr/0003-the-schema-speaks-the-clients-words.md`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/docs/adr/0003-the-schema-speaks-the-clients-words.md)
 
 ### Context and Problem Statement
 

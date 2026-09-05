@@ -1,0 +1,10 @@
+sequenceDiagram
+    autonumber
+    participant p0 as bus
+    participant p1 as shop.oms
+    participant p2 as oms-pg
+    p0-)p1: BasketCheckedOut
+    p1->>p1: PlaceOrder
+    p1->>p2: by_basket
+    p1->>p2: save
+    p1-)p0: OrderPlaced

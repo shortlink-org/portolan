@@ -1,0 +1,9 @@
+sequenceDiagram
+    autonumber
+    participant p0 as bus
+    participant p1 as shop.billing
+    participant p2 as billing-pg
+    p0-)p1: PaymentCaptured
+    p1->>p2: Invoice.objects.filter
+    p1->>p2: Invoice.save
+    p1-)p0: InvoicePaid

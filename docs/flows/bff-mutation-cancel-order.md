@@ -4,7 +4,7 @@
 
 - **Id:** `flow.bff-mutation-cancel-order`
 - **Owner:** [storefront](../storefront/README.md)
-- **Source:** `examples/bff/src/schema/order/resolvers/Mutation/cancelOrder.ts`
+- **Source:** [`examples/bff/src/schema/order/resolvers/Mutation/cancelOrder.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/order/resolvers/Mutation/cancelOrder.ts)
 
 Cancel an order. Whether it is too late to is the order service's judgement and its refusal travels back unchanged; this service does not know what dispatch means.
 
@@ -30,7 +30,9 @@ sequenceDiagram
 
 ## Steps
 
+<a id="step-s1"></a>
 1. **client** → **storefront.bff** — Mutation.cancelOrder → Order
-   status: declared · `examples/bff/src/schema/order/resolvers/Mutation/cancelOrder.ts:8`
+   status: declared · [`examples/bff/src/schema/order/resolvers/Mutation/cancelOrder.ts:8`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/order/resolvers/Mutation/cancelOrder.ts#L8)
+<a id="step-s2"></a>
 2. **storefront.bff** → **shop.oms** — CancelOrder → CancelOrderResponse
-   `shop.v1.OrderService/CancelOrder` · status: declared · `examples/bff/src/schema/order/resolvers/Mutation/cancelOrder.ts:9`
+   `shop.v1.OrderService/CancelOrder` · status: declared · [`examples/bff/src/schema/order/resolvers/Mutation/cancelOrder.ts:9`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/order/resolvers/Mutation/cancelOrder.ts#L9)

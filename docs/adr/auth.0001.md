@@ -5,7 +5,7 @@
 - **Status:** accepted
 - **Date:** 2026-08-20
 - **Scope:** [auth.auth](../auth/auth/README.md)
-- **Source:** `examples/auth/docs/adr/0001-events-returned-not-buffered.md`
+- **Source:** [`examples/auth/docs/adr/0001-events-returned-not-buffered.md`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/docs/adr/0001-events-returned-not-buffered.md)
 
 ### Context and Problem Statement
 

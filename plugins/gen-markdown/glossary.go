@@ -42,7 +42,7 @@ func (s *site) renderGlossary(ctx *catalog.BoundedContext) {
 	b.WriteString(defList([][]string{
 		{"Context", s.ref(self, ctx.ID, ctx.Name)},
 		{"Terms", strconv.Itoa(len(terms))},
-		{"Read from", strings.Join(sources(terms), ", ")},
+		{"Read from", strings.Join(s.termSources(self, terms), ", ")},
 	}))
 
 	b.WriteString("\nOne meaning per word inside this context, as the glossary" +
@@ -60,23 +60,17 @@ func (s *site) renderGlossary(ctx *catalog.BoundedContext) {
 	s.b.file(self, b.String())
 }
 
-// sources names the files a vocabulary was read from, without their line
-// numbers and without repeating one file per term.
-func sources(terms []*catalog.Term) []string {
+func (s *site) termSources(from string, terms []*catalog.Term) []string {
 	seen := map[string]bool{}
 	var out []string
 	for _, term := range terms {
-		file := term.Source
-		if at := strings.LastIndex(file, ":"); at > 0 {
-			file = file[:at]
-		}
+		file := sourceFile(term.Source)
 		if file == "" || seen[file] {
 			continue
 		}
 		seen[file] = true
-		out = append(out, code(file))
+		out = append(out, s.source(from, file, s.serviceForSource(file)))
 	}
 	sort.Strings(out)
-
 	return out
 }

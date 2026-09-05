@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { globToRegExp, render } from "./diff.mjs";
+import { globToRegExp, parseArgs, render, renderJson, renderSarif } from "./diff.mjs";
 
 describe("globToRegExp", () => {
   // The manifest's own patterns, which is the whole reason this exists: the
@@ -62,5 +62,31 @@ describe("render", () => {
 
     expect(out).toContain("1 change.");
     expect(out).not.toContain("Breaking");
+  });
+});
+
+describe("machine formats", () => {
+  const changes = [
+    { kind: "event.removed", severity: "breaking", where: "shop.order", summary: "event is gone" },
+    { kind: "owner.added", severity: "change", where: "shop.cart", summary: "owner changed" },
+  ];
+
+  it("parses a ref, format and output in either option spelling", () => {
+    expect(parseArgs(["main", "--format=json", "--output", "report.json"])).toEqual({
+      ref: "main", format: "json", output: "report.json",
+    });
+  });
+
+  it("exports a versioned JSON report with counts", () => {
+    const report = JSON.parse(renderJson("main", changes));
+    expect(report).toMatchObject({ version: 1, base: "main", counts: { breaking: 1, change: 1, addition: 0 } });
+    expect(report.changes).toEqual(changes);
+  });
+
+  it("maps breaking changes to SARIF errors", () => {
+    const report = JSON.parse(renderSarif("main", changes));
+    expect(report.version).toBe("2.1.0");
+    expect(report.runs[0].results[0]).toMatchObject({ ruleId: "event.removed", level: "error" });
+    expect(report.runs[0].results[0].properties.where).toBe("shop.order");
   });
 });

@@ -4,7 +4,7 @@
 
 - **Id:** `flow.core-record-delivery`
 - **Owner:** [delivery](../delivery/README.md)
-- **Source:** `examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts`
+- **Source:** [`examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts)
 
 Ends a shipment at the door.
 
@@ -34,11 +34,15 @@ sequenceDiagram
 
 ## Steps
 
+<a id="step-s1"></a>
 1. **client** → **delivery.core** — RecordDelivery → RecordDeliveryResponse
-   status: declared · `examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:36`
+   status: declared · [`examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:36`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts#L36)
+<a id="step-s2"></a>
 2. **delivery.core** → **core-pg** — byId
-   status: declared · `examples/shop/delivery/core/src/application/shipment/usecases/record_delivery/usecase.ts:11`
+   status: declared · [`examples/shop/delivery/core/src/application/shipment/usecases/record_delivery/usecase.ts:11`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/shipment/usecases/record_delivery/usecase.ts#L11)
+<a id="step-s3"></a>
 3. **delivery.core** → **core-pg** — save
-   status: declared · `examples/shop/delivery/core/src/application/shipment/usecases/record_delivery/usecase.ts:13`
+   status: declared · [`examples/shop/delivery/core/src/application/shipment/usecases/record_delivery/usecase.ts:13`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/shipment/usecases/record_delivery/usecase.ts#L13)
+<a id="step-s4"></a>
 4. **delivery.core** → **bus** — ShipmentDelivered
-   [delivery.core.shipment.ShipmentDelivered](../delivery/core/aggregates/shipment.md) · status: declared · `examples/shop/delivery/core/src/application/shipment/usecases/record_delivery/usecase.ts:13`
+   [`delivery.core.shipment.ShipmentDelivered`](../delivery/core/aggregates/shipment.md#event-delivery-core-shipment-shipmentdelivered) · status: declared · [`examples/shop/delivery/core/src/application/shipment/usecases/record_delivery/usecase.ts:13`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/shipment/usecases/record_delivery/usecase.ts#L13)

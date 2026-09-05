@@ -38,6 +38,7 @@ import {
 import type { ColumnDef, Row, RowData } from "@tanstack/react-table";
 import type { ReactNode } from "react";
 import { useDensity } from "../app/density";
+import { useToastStore } from "../app/toast";
 import { useUiStore } from "../app/ui-store";
 import { useSelectionStore } from "../selection/store";
 import { toClipboard } from "../lib/clipboard";
@@ -45,7 +46,7 @@ import { comparatorFor } from "./compare";
 import { defaultCell } from "./cells";
 import { Toolbar } from "./Toolbar";
 import type { ExportActions, FacetGroup } from "./Toolbar";
-import { csvFilename, toCsv, toMarkdown } from "./export";
+import { csvFilename, toCsv, toExcelCsv, toMarkdown } from "./export";
 import { applyUpdater, useTableState } from "./useTableState";
 import type { SortEntry } from "./sort-url";
 import type { CellValue, ColumnSpec } from "./types";
@@ -142,6 +143,7 @@ export function DataTable<T extends RowData>({
   const zebra = useUiStore((s) => s.zebra);
   const toggleZebra = useUiStore((s) => s.toggleZebra);
   const selection = useSelectionStore((s) => s.selection);
+  const say = useToastStore((s) => s.say);
 
   const tableRef = useRef<HTMLTableElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -335,21 +337,24 @@ export function DataTable<T extends RowData>({
 
   const exports = useMemo<ExportActions>(
     () => ({
-      copyMarkdown: () => void toClipboard(toMarkdown(sheet())),
-      copyCsv: () => void toClipboard(toCsv(sheet())),
+      copyMarkdown: () => void toClipboard(toMarkdown(sheet())).then((ok) => say(ok ? "Markdown table copied" : "could not reach the clipboard")),
+      copyCsv: () => void toClipboard(toCsv(sheet())).then((ok) => say(ok ? "CSV table copied" : "could not reach the clipboard")),
       downloadCsv: () => {
-        const blob = new Blob([toCsv(sheet())], {
+        const blob = new Blob([toExcelCsv(sheet())], {
           type: "text/csv;charset=utf-8",
         });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
         link.download = csvFilename(tableId);
+        document.body.append(link);
         link.click();
-        URL.revokeObjectURL(url);
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 0);
+        say(`CSV downloaded — ${link.download}`);
       },
     }),
-    [sheet, tableId],
+    [sheet, tableId, say],
   );
 
   const columnToggles = useMemo(

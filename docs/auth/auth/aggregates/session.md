@@ -89,7 +89,7 @@ stateDiagram-v2
 
 | From | To | On | Emits | Source |
 | --- | --- | --- | --- | --- |
-| `live` | `revoked` | `Revoke` | `SessionEnded` | `examples/auth/internal/domain/session/session.go:88` |
+| `live` | `revoked` | `Revoke` | `SessionEnded` | [`examples/auth/internal/domain/session/session.go:88`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/domain/session/session.go#L88) |
 
 ## Operations
 
@@ -102,6 +102,7 @@ stateDiagram-v2
 
 ## Events
 
+<a id="event-auth-auth-session-sessionended"></a>
 ### SessionEnded
 
 `auth.auth.session.SessionEnded`
@@ -112,7 +113,7 @@ On the wire as `auth.SessionEnded`, on `auth_session`.
 
 SessionEnded is published when a session is deliberately ended.
 
-Source: `examples/auth/internal/domain/session/event/session_ended.go`
+Source: [`examples/auth/internal/domain/session/event/session_ended.go`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/domain/session/event/session_ended.go)
 
 | Field | Type |
 | --- | --- |
@@ -121,6 +122,7 @@ Source: `examples/auth/internal/domain/session/event/session_ended.go`
 | `reason` | `Reason` |
 | `occurredAt` | `time.Time` |
 
+<a id="event-auth-auth-session-sessionstarted"></a>
 ### SessionStarted
 
 `auth.auth.session.SessionStarted`
@@ -131,7 +133,7 @@ On the wire as `auth.SessionStarted`, on `auth_session`.
 
 SessionStarted is published on a successful login. ExpiresAt is on the event so a consumer can reason about the session's lifetime without asking auth again on every check.
 
-Source: `examples/auth/internal/domain/session/event/session_started.go`
+Source: [`examples/auth/internal/domain/session/event/session_started.go`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/domain/session/event/session_started.go)
 
 | Field | Type |
 | --- | --- |

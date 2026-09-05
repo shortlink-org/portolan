@@ -81,10 +81,10 @@ stateDiagram-v2
 
 | From | To | On | Emits | Source |
 | --- | --- | --- | --- | --- |
-| `PENDING` | `AUTHORIZED` | `authorize` | `PaymentAuthorized` | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:75` |
-| `AUTHORIZED` | `CAPTURED` | `capture` | `PaymentCaptured` | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:86` |
-| `PENDING` | `DECLINED` | `decline` | `PaymentDeclined` | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:95` |
-| `AUTHORIZED` | `VOIDED` | `voidAuthorization` | — | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:102` |
+| `PENDING` | `AUTHORIZED` | `authorize` | `PaymentAuthorized` | [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:75`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java#L75) |
+| `AUTHORIZED` | `CAPTURED` | `capture` | `PaymentCaptured` | [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:86`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java#L86) |
+| `PENDING` | `DECLINED` | `decline` | `PaymentDeclined` | [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:95`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java#L95) |
+| `AUTHORIZED` | `VOIDED` | `voidAuthorization` | — | [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:102`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java#L102) |
 
 ## Operations
 
@@ -97,21 +97,22 @@ stateDiagram-v2
 
 ## Events
 
+<a id="event-payments-ledger-payment-paymentauthorized"></a>
 ### PaymentAuthorized
 
 `payments.ledger.payment.PaymentAuthorized`
 
 On the wire as `ledger.PaymentAuthorized`, on `payments.ledger.payment`.
 
-| Consumer | Status |
-| --- | --- |
-| [shop.oms](../../../shop/oms/README.md) | declared |
+| Consumer | Status | Via |
+| --- | --- | --- |
+| [shop.oms](../../../shop/oms/README.md) | declared | `oms-confirm-order-on-payment-authorized#s1` |
 
 #### v1 — current
 
 The gateway agreed to hold the money. Nothing has moved yet.
 
-Source: `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/event/PaymentAuthorized.java`
+Source: [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/event/PaymentAuthorized.java`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/event/PaymentAuthorized.java)
 
 | Field | Type |
 | --- | --- |
@@ -120,22 +121,23 @@ Source: `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/dom
 | `amount` | `Money` |
 | `occurredAt` | `Instant` |
 
+<a id="event-payments-ledger-payment-paymentcaptured"></a>
 ### PaymentCaptured
 
 `payments.ledger.payment.PaymentCaptured`
 
 On the wire as `ledger.PaymentCaptured`, on `payments.ledger.payment`.
 
-| Consumer | Status |
-| --- | --- |
-| [shop.billing](../../../shop/billing/README.md) | declared |
-| [delivery.core](../../../delivery/core/README.md) | declared |
+| Consumer | Status | Via |
+| --- | --- | --- |
+| [shop.billing](../../../shop/billing/README.md) | declared | `billing-close-invoice-on-payment#s1` |
+| [delivery.core](../../../delivery/core/README.md) | declared | `core-release-shipment-on-payment-captured#s1` |
 
 #### v1 — current
 
 The money moved. Whoever is owed something for this order - the invoice, the warehouse - waits for this one and nothing earlier.
 
-Source: `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/event/PaymentCaptured.java`
+Source: [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/event/PaymentCaptured.java`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/event/PaymentCaptured.java)
 
 | Field | Type |
 | --- | --- |
@@ -144,6 +146,7 @@ Source: `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/dom
 | `amount` | `Money` |
 | `occurredAt` | `Instant` |
 
+<a id="event-payments-ledger-payment-paymentdeclined"></a>
 ### PaymentDeclined
 
 `payments.ledger.payment.PaymentDeclined`
@@ -154,7 +157,7 @@ On the wire as `ledger.PaymentDeclined`, on `payments.ledger.payment`.
 
 The money was not held, and the reason is one of a closed set a consumer can switch on.
 
-Source: `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/event/PaymentDeclined.java`
+Source: [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/event/PaymentDeclined.java`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/event/PaymentDeclined.java)
 
 | Field | Type |
 | --- | --- |

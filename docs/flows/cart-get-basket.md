@@ -4,7 +4,7 @@
 
 - **Id:** `flow.cart-get-basket`
 - **Owner:** [shop](../shop/README.md)
-- **Source:** `examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts`
+- **Source:** [`examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts)
 
 ## Participants
 
@@ -25,5 +25,6 @@ sequenceDiagram
 
 ## Steps
 
+<a id="step-s1"></a>
 1. **client** → **shop.cart** — getBasket → Basket
-   `examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:38` · Seen running in telemetry/traces.jsonl (2 traces).
+   [`examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:38`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts#L38) · Seen running in telemetry/traces.jsonl (2 traces).

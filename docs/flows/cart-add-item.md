@@ -4,7 +4,7 @@
 
 - **Id:** `flow.cart-add-item`
 - **Owner:** [shop](../shop/README.md)
-- **Source:** `examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts`
+- **Source:** [`examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts)
 
 ## Participants
 
@@ -31,9 +31,12 @@ sequenceDiagram
 
 ## Steps
 
+<a id="step-s1"></a>
 1. **client** → **shop.cart** — addItem → Basket
-   `examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:43` · Seen running in telemetry/traces.jsonl (3 traces).
+   [`examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:43`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts#L43) · Seen running in telemetry/traces.jsonl (3 traces).
+<a id="step-s2"></a>
 2. **shop.cart** → **cart-pg** — save
-   status: declared · `examples/shop/cart/src/application/basket/usecases/add_item/usecase.ts:27`
+   status: declared · [`examples/shop/cart/src/application/basket/usecases/add_item/usecase.ts:27`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/add_item/usecase.ts#L27)
+<a id="step-s3"></a>
 3. **shop.cart** → **bus** — BasketItemAdded
-   [shop.cart.basket.BasketItemAdded](../shop/cart/aggregates/basket.md) · `examples/shop/cart/src/application/basket/usecases/add_item/usecase.ts:27` · Seen running in telemetry/traces.jsonl (3 traces).
+   [`shop.cart.basket.BasketItemAdded`](../shop/cart/aggregates/basket.md#event-shop-cart-basket-basketitemadded) · [`examples/shop/cart/src/application/basket/usecases/add_item/usecase.ts:27`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/add_item/usecase.ts#L27) · Seen running in telemetry/traces.jsonl (3 traces).

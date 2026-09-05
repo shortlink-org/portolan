@@ -1,0 +1,30 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "domain": {
+      "type": "string",
+      "description": "Backstage metadata.name for the domain containing the exported systems.",
+      "default": "architecture"
+    },
+    "domainTitle": {
+      "type": "string",
+      "description": "Human-readable title of the Backstage domain.",
+      "default": "Architecture"
+    },
+    "owner": {
+      "type": "string",
+      "description": "Fallback Backstage owner for entities without a CODEOWNERS handle.",
+      "default": "architecture"
+    },
+    "lifecycle": {
+      "type": "string",
+      "description": "Lifecycle written on Backstage Components and APIs.",
+      "default": "production"
+    },
+    "sourceBaseUrl": {
+      "type": "string",
+      "description": "Stable forge tree URL used for Backstage source-location annotations."
+    }
+  }
+}

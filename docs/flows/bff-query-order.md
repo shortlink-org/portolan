@@ -4,7 +4,7 @@
 
 - **Id:** `flow.bff-query-order`
 - **Owner:** [storefront](../storefront/README.md)
-- **Source:** `examples/bff/src/schema/order/resolvers/Query/order.ts`
+- **Source:** [`examples/bff/src/schema/order/resolvers/Query/order.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/order/resolvers/Query/order.ts)
 
 ## Participants
 
@@ -28,7 +28,9 @@ sequenceDiagram
 
 ## Steps
 
+<a id="step-s1"></a>
 1. **client** → **storefront.bff** — Query.order → Order
-   status: declared · `examples/bff/src/schema/order/resolvers/Query/order.ts:3`
+   status: declared · [`examples/bff/src/schema/order/resolvers/Query/order.ts:3`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/order/resolvers/Query/order.ts#L3)
+<a id="step-s2"></a>
 2. **storefront.bff** → **shop.oms** — GetOrder → GetOrderResponse
-   `shop.v1.OrderService/GetOrder` · status: declared · `examples/bff/src/schema/order/resolvers/Query/order.ts:4`
+   `shop.v1.OrderService/GetOrder` · status: declared · [`examples/bff/src/schema/order/resolvers/Query/order.ts:4`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/order/resolvers/Query/order.ts#L4)

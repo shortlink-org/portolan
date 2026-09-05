@@ -5,10 +5,11 @@
 - **Id:** `delivery.core.pg`
 - **Kind:** postgres
 - **Owner:** [delivery.core](../README.md)
-- **Source:** `examples/shop/delivery/core/src/infrastructure/repository`
+- **Source:** [`examples/shop/delivery/core/src/infrastructure/repository`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/repository)
 
 ## Tables
 
+<a id="relation-delivery-core-pg-routes"></a>
 ### routes
 
 aggregate-root · persists [delivery.core.route](../aggregates/route.md)
@@ -24,6 +25,7 @@ aggregate-root · persists [delivery.core.route](../aggregates/route.md)
 | --- | --- | --- |
 | `routes_by_day` | planned_for, status | index |
 
+<a id="relation-delivery-core-pg-route-stops"></a>
 ### route_stops
 
 child · persists [delivery.core.route](../aggregates/route.md)
@@ -32,12 +34,13 @@ child · persists [delivery.core.route](../aggregates/route.md)
 | --- | --- | --- | --- | --- |
 | `route_id` | `text` | not null | PK | — |
 | `seq` | `integer` | not null | PK | — |
-| `shipment_id` | `text` | not null | → [`delivery.core.pg.packages`](pg.md#packages).id (restrict) | — |
+| `shipment_id` | `text` | not null | → [`delivery.core.pg.packages`](pg.md#relation-delivery-core-pg-packages).id (restrict) | — |
 | `address` | `text` | not null | — | `delivery.core.pg.packages.ship_to` |
 | `window_from` | `timestamptz` | not null | — | — |
 | `window_to` | `timestamptz` | not null | — | — |
 | `done` | `boolean` | not null | — | — |
 
+<a id="relation-delivery-core-pg-packages"></a>
 ### packages
 
 aggregate-root · persists [delivery.core.shipment](../aggregates/shipment.md)
@@ -45,7 +48,7 @@ aggregate-root · persists [delivery.core.shipment](../aggregates/shipment.md)
 | Column | Type | Null | Key |
 | --- | --- | --- | --- |
 | `id` | `text` | not null | PK |
-| `order_id` | `text` | not null | → [`shop.oms.pg.orders`](../../../shop/oms/stores/pg.md#orders).id (restrict) |
+| `order_id` | `text` | not null | → [`shop.oms.pg.orders`](../../../shop/oms/stores/pg.md#relation-shop-oms-pg-orders).id (restrict) |
 | `ship_to` | `text` | not null | — |
 | `status` | `text` | not null | — |
 | `tracking` | `text` | null | — |
@@ -57,6 +60,7 @@ aggregate-root · persists [delivery.core.shipment](../aggregates/shipment.md)
 | `packages_by_order` | order_id | index |
 | `packages_by_tracking` | tracking | unique |
 
+<a id="relation-delivery-core-pg-parcels"></a>
 ### parcels
 
 child · persists [delivery.core.shipment](../aggregates/shipment.md)
@@ -64,10 +68,11 @@ child · persists [delivery.core.shipment](../aggregates/shipment.md)
 | Column | Type | Null | Key |
 | --- | --- | --- | --- |
 | `id` | `text` | not null | PK |
-| `package_id` | `text` | not null | → [`delivery.core.pg.packages`](pg.md#packages).id (cascade) |
+| `package_id` | `text` | not null | → [`delivery.core.pg.packages`](pg.md#relation-delivery-core-pg-packages).id (cascade) |
 | `weight_g` | `integer` | not null | — |
 | `contents` | `text` | not null | — |
 
+<a id="relation-delivery-core-pg-scans"></a>
 ### scans
 
 child · persists [delivery.core.shipment](../aggregates/shipment.md)
@@ -75,7 +80,7 @@ child · persists [delivery.core.shipment](../aggregates/shipment.md)
 | Column | Type | Null | Key |
 | --- | --- | --- | --- |
 | `id` | `bigserial` | not null | PK |
-| `parcel_id` | `text` | not null | → [`delivery.core.pg.parcels`](pg.md#parcels).id (cascade) |
+| `parcel_id` | `text` | not null | → [`delivery.core.pg.parcels`](pg.md#relation-delivery-core-pg-parcels).id (cascade) |
 | `location` | `text` | not null | — |
 | `scanned_at` | `timestamptz` | not null | — |
 
@@ -85,9 +90,10 @@ child · persists [delivery.core.shipment](../aggregates/shipment.md)
 
 ## Views
 
+<a id="relation-delivery-core-pg-mv-route-load"></a>
 ### mv_route_load
 
-**materialized** — rows are stored, and can be stale · reads [`delivery.core.pg.routes`](pg.md#routes), [`delivery.core.pg.route_stops`](pg.md#route_stops)
+**materialized** — rows are stored, and can be stale · reads [`delivery.core.pg.routes`](pg.md#relation-delivery-core-pg-routes), [`delivery.core.pg.route_stops`](pg.md#relation-delivery-core-pg-route-stops)
 
 | Column | Type | Null | From |
 | --- | --- | --- | --- |
@@ -109,4 +115,4 @@ SELECT r.id          AS route_id,
  GROUP BY r.id;
 ```
 
-Source: `src/infrastructure/repository/route/migrations/0002_route_load.sql`
+Source: [`src/infrastructure/repository/route/migrations/0002_route_load.sql`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/repository/route/migrations/0002_route_load.sql)

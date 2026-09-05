@@ -4,7 +4,7 @@
 
 - **Id:** `flow.billing-invoice-destroy`
 - **Owner:** [shop](../shop/README.md)
-- **Source:** `examples/shop/billing/invoices/views.py`
+- **Source:** [`examples/shop/billing/invoices/views.py`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/views.py)
 
 Ends an invoice nobody is going to pay.
 
@@ -34,11 +34,15 @@ sequenceDiagram
 
 ## Steps
 
+<a id="step-s1"></a>
 1. **client** → **shop.billing** — invoice_destroy → 204
-   status: declared · `examples/shop/billing/invoices/views.py:34`
+   status: declared · [`examples/shop/billing/invoices/views.py:34`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/views.py#L34)
+<a id="step-s2"></a>
 2. **shop.billing** → **billing-pg** — Invoice.objects.get
-   status: declared · `examples/shop/billing/invoices/services.py:59`
+   status: declared · [`examples/shop/billing/invoices/services.py:59`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L59)
+<a id="step-s3"></a>
 3. **shop.billing** → **billing-pg** — Invoice.save
-   status: declared · `examples/shop/billing/invoices/services.py:61`
+   status: declared · [`examples/shop/billing/invoices/services.py:61`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L61)
+<a id="step-s4"></a>
 4. **shop.billing** → **bus** — InvoiceVoided
-   [shop.billing.invoice.InvoiceVoided](../shop/billing/aggregates/invoice.md) · status: declared · `examples/shop/billing/invoices/services.py:62`
+   [`shop.billing.invoice.InvoiceVoided`](../shop/billing/aggregates/invoice.md#event-shop-billing-invoice-invoicevoided) · status: declared · [`examples/shop/billing/invoices/services.py:62`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L62)

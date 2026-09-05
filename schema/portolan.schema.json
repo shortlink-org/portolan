@@ -437,7 +437,9 @@
         "properties": {
           "plugin": {
             "enum": [
-              "markdown"
+              "markdown",
+              "mermaid",
+              "backstage"
             ],
             "description": "A plugin declared above, one that belongs in this phase."
           },
@@ -466,6 +468,44 @@
               "properties": {
                 "options": {
                   "$ref": "#/$defs/options.markdown"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "plugin"
+              ],
+              "properties": {
+                "plugin": {
+                  "const": "mermaid"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "options": {
+                  "$ref": "#/$defs/options.mermaid"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "plugin"
+              ],
+              "properties": {
+                "plugin": {
+                  "const": "backstage"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "options": {
+                  "$ref": "#/$defs/options.backstage"
                 }
               }
             }
@@ -1302,6 +1342,53 @@
           "examples": [
             "Example estate"
           ]
+        },
+        "sourceBaseUrl": {
+          "type": "string",
+          "description": "Stable forge tree URL used to link source locations, for example https://github.com/acme/shop/blob/main. External repositories use their immutable catalog pins.",
+          "examples": [
+            "https://github.com/acme/shop/blob/main"
+          ]
+        }
+      }
+    },
+    "options.mermaid": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Heading of the Mermaid bundle index."
+        }
+      }
+    },
+    "options.backstage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "domain": {
+          "type": "string",
+          "description": "Backstage metadata.name for the domain containing the exported systems.",
+          "default": "architecture"
+        },
+        "domainTitle": {
+          "type": "string",
+          "description": "Human-readable title of the Backstage domain.",
+          "default": "Architecture"
+        },
+        "owner": {
+          "type": "string",
+          "description": "Fallback Backstage owner for entities without a CODEOWNERS handle.",
+          "default": "architecture"
+        },
+        "lifecycle": {
+          "type": "string",
+          "description": "Lifecycle written on Backstage Components and APIs.",
+          "default": "production"
+        },
+        "sourceBaseUrl": {
+          "type": "string",
+          "description": "Stable forge tree URL used for Backstage source-location annotations."
         }
       }
     },

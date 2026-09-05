@@ -1,0 +1,12 @@
+sequenceDiagram
+    autonumber
+    actor p0 as client
+    participant p1 as payments.ledger
+    participant p2 as ledger-pg
+    participant p3 as stripe
+    participant p4 as bus
+    p0->>p1: Capture → CaptureResponse
+    p1->>p2: byId
+    p1->>p3: PostPaymentIntentsIntentCapture → payment_intent
+    p1->>p2: save
+    p1-)p4: PaymentCaptured

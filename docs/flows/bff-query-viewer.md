@@ -4,7 +4,7 @@
 
 - **Id:** `flow.bff-query-viewer`
 - **Owner:** [storefront](../storefront/README.md)
-- **Source:** `examples/bff/src/schema/viewer/resolvers/Query/viewer.ts`
+- **Source:** [`examples/bff/src/schema/viewer/resolvers/Query/viewer.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/viewer/resolvers/Query/viewer.ts)
 
 Who the request belongs to. Auth is asked on every call rather than a token being read here: this service holds no key and could not tell a forged one from a live one.
 
@@ -30,7 +30,9 @@ sequenceDiagram
 
 ## Steps
 
+<a id="step-s1"></a>
 1. **client** → **storefront.bff** — Query.viewer → Viewer
-   status: declared · `examples/bff/src/schema/viewer/resolvers/Query/viewer.ts:8`
+   status: declared · [`examples/bff/src/schema/viewer/resolvers/Query/viewer.ts:8`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/viewer/resolvers/Query/viewer.ts#L8)
+<a id="step-s2"></a>
 2. **storefront.bff** → **auth.auth** — validateSession → SessionInfo
-   `auth.v1.Sessions/validateSession` · status: declared · `examples/bff/src/schema/viewer/resolvers/Query/viewer.ts:9`
+   `auth.v1.Sessions/validateSession` · status: declared · [`examples/bff/src/schema/viewer/resolvers/Query/viewer.ts:9`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/viewer/resolvers/Query/viewer.ts#L9)

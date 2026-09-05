@@ -27,9 +27,13 @@ type site struct {
 	services  map[string]*catalog.Service
 	contextOf map[string]*catalog.BoundedContext
 	stores    map[string]*catalog.Store
+	modules   map[string]*catalog.ProtoModule
 	// eventPage maps an event id to the aggregate that publishes it, which is
 	// the page that actually documents it.
 	eventPage map[string]string
+	// wireEvent resolves the message name used by an AsyncAPI channel to the
+	// event page that documents that message's versions.
+	wireEvent map[string]string
 	// relationStore and relationName resolve a table or view id, which is what
 	// foreign keys and lineage are written in, to the store that holds it and
 	// the heading that documents it.
@@ -49,14 +53,16 @@ type site struct {
 
 func render(req plugin.Request, opts Options) plugin.Response {
 	s := &site{
-		cat:       req.Catalog,
+		cat:       canonicalCatalog(req.Catalog),
 		opts:      opts,
 		b:         &builder{},
 		pathOf:    map[string]string{},
 		services:  map[string]*catalog.Service{},
 		contextOf: map[string]*catalog.BoundedContext{},
 		stores:    map[string]*catalog.Store{},
+		modules:   map[string]*catalog.ProtoModule{},
 		eventPage: map[string]string{},
+		wireEvent: map[string]string{},
 		adrsFor:   map[string][]*catalog.Adr{},
 		termsOf:   map[string][]*catalog.Term{},
 		methodOf:  map[string]catalog.RpcMethod{},
@@ -68,6 +74,7 @@ func render(req plugin.Request, opts Options) plugin.Response {
 	s.layout()
 	s.renderIndex()
 	s.renderTypes()
+	s.renderModules()
 	for i := range s.cat.Contexts {
 		s.renderContext(&s.cat.Contexts[i])
 	}
@@ -108,9 +115,18 @@ func (s *site) layout() {
 
 				for e := range agg.Events {
 					s.eventPage[agg.Events[e].ID] = agg.ID
+					if wire := agg.Events[e].Wire; wire != nil && wire.Name != "" {
+						s.wireEvent[wire.Name] = agg.Events[e].ID
+					}
 				}
 			}
 		}
+	}
+
+	for i := range s.cat.Modules {
+		module := &s.cat.Modules[i]
+		s.modules[module.ID] = module
+		s.pathOf[module.ID] = "modules/" + module.Slug + ".md"
 	}
 
 	for i := range s.cat.Stores {
@@ -234,6 +250,18 @@ func (s *site) renderIndex() {
 		})
 	}
 	section(&b, "Outside the estate", table([]string{"System", "Interfaces", "Summary"}, externals))
+
+	modules := make([][]string, 0, len(s.cat.Modules))
+	for i := range s.cat.Modules {
+		module := &s.cat.Modules[i]
+		modules = append(modules, []string{
+			s.ref(self, module.ID, orDefault(module.Name, module.ID)),
+			s.ref(self, module.Owner, module.Owner),
+			module.Registry,
+			plural(len(module.Packages), "package"),
+		})
+	}
+	section(&b, "Schema modules", table([]string{"Module", "Publisher", "Registry", "Packages"}, modules))
 
 	flows := make([][]string, 0, len(s.cat.Flows))
 	for i := range s.cat.Flows {

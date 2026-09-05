@@ -5,10 +5,11 @@
 - **Id:** `shop.cart.pg`
 - **Kind:** postgres
 - **Owner:** [shop.cart](../README.md)
-- **Source:** `examples/shop/cart/src/infrastructure/repository`
+- **Source:** [`examples/shop/cart/src/infrastructure/repository`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/repository)
 
 ## Tables
 
+<a id="relation-shop-cart-pg-baskets"></a>
 ### baskets
 
 aggregate-root · persists [shop.cart.basket](../aggregates/basket.md)
@@ -28,6 +29,7 @@ aggregate-root · persists [shop.cart.basket](../aggregates/basket.md)
 | `baskets_open_by_customer` | customer_id | index |
 | `baskets_idle` | touched_at | index |
 
+<a id="relation-shop-cart-pg-basket-items"></a>
 ### basket_items
 
 child · persists [shop.cart.basket](../aggregates/basket.md)
@@ -40,6 +42,7 @@ child · persists [shop.cart.basket](../aggregates/basket.md)
 | `unit_price_minor` | `bigint` | not null | — | Basket.unitPrice.amountMinor |
 | `currency` | `char(3)` | not null | — | Basket.unitPrice.currency.code |
 
+<a id="relation-shop-cart-pg-outbox"></a>
 ### outbox
 
 outbox

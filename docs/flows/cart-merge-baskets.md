@@ -4,7 +4,7 @@
 
 - **Id:** `flow.cart-merge-baskets`
 - **Owner:** [shop](../shop/README.md)
-- **Source:** `examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts`
+- **Source:** [`examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts)
 
 ## Participants
 
@@ -38,19 +38,27 @@ sequenceDiagram
 
 ## Steps
 
+<a id="step-s1"></a>
 1. **client** → **shop.cart** — mergeBaskets → Basket
-   `examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:54` · Seen running in telemetry/traces.jsonl (1 trace).
+   [`examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:54`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts#L54) · Seen running in telemetry/traces.jsonl (1 trace).
+<a id="step-s2"></a>
 2. **shop.cart** → **auth.auth** — validateSession → SessionInfo
-   `auth.v1.Sessions/validateSession` · `examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:28` · Seen running in telemetry/traces.jsonl (1 trace).
+   `auth.v1.Sessions/validateSession` · [`examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:28`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts#L28) · Seen running in telemetry/traces.jsonl (1 trace).
+<a id="step-s3"></a>
 3. **shop.cart** → **cart-pg** — openFor
-   status: declared · `examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:35`
+   status: declared · [`examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:35`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts#L35)
+<a id="step-s4"></a>
 4. **shop.cart** → **cart-pg** — save
-   status: declared · `examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46`
+   status: declared · [`examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts#L46)
+<a id="step-s5"></a>
 5. **shop.cart** → **bus** — BasketCreated
-   [shop.cart.basket.BasketCreated](../shop/cart/aggregates/basket.md) · `examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46` · Seen running in telemetry/traces.jsonl (1 trace).
+   [`shop.cart.basket.BasketCreated`](../shop/cart/aggregates/basket.md#event-shop-cart-basket-basketcreated) · [`examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts#L46) · Seen running in telemetry/traces.jsonl (1 trace).
+<a id="step-s6"></a>
 6. **shop.cart** → **bus** — BasketItemAdded
-   [shop.cart.basket.BasketItemAdded](../shop/cart/aggregates/basket.md) · `examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46` · Seen running in telemetry/traces.jsonl (1 trace).
+   [`shop.cart.basket.BasketItemAdded`](../shop/cart/aggregates/basket.md#event-shop-cart-basket-basketitemadded) · [`examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:46`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts#L46) · Seen running in telemetry/traces.jsonl (1 trace).
+<a id="step-s7"></a>
 7. **shop.cart** → **cart-pg** — save
-   status: declared · `examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:47`
+   status: declared · [`examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:47`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts#L47)
+<a id="step-s8"></a>
 8. **shop.cart** → **bus** — BasketMerged
-   [shop.cart.basket.BasketMerged](../shop/cart/aggregates/basket.md) · `examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:47` · Seen running in telemetry/traces.jsonl (1 trace).
+   [`shop.cart.basket.BasketMerged`](../shop/cart/aggregates/basket.md#event-shop-cart-basket-basketmerged) · [`examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:47`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts#L47) · Seen running in telemetry/traces.jsonl (1 trace).

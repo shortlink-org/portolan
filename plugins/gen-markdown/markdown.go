@@ -78,8 +78,22 @@ func code(s string) string {
 	if s == "" {
 		return ""
 	}
-
-	return "`" + s + "`"
+	longest, run := 0, 0
+	for _, r := range s {
+		if r == '`' {
+			run++
+			if run > longest {
+				longest = run
+			}
+		} else {
+			run = 0
+		}
+	}
+	marks := strings.Repeat("`", longest+1)
+	if longest > 0 || strings.HasPrefix(s, " ") || strings.HasSuffix(s, " ") {
+		return marks + " " + s + " " + marks
+	}
+	return marks + s + marks
 }
 
 func fence(lang, body string) string {

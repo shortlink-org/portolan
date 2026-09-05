@@ -54,26 +54,6 @@ The catalog draws the same diagram off the code: see the aggregate page.
 
 ## Entities
 
-### Shipment — aggregate root
-
-What is being carried to one address for one order.
-
-The address is copied from the order at dispatch and never refreshed: a
-parcel on a van does not move because somebody edited their profile. The
-status only ever moves the way `TRANSITIONS` allows, and `moveTo` is the one
-way through it; every move that is a fact hands back the event that says so.
-
-| Field | Type |
-| --- | --- |
-| `id` | `string` |
-| `orderId` | `string` |
-| `shipTo` | `Address` |
-| `parcels` | `Parcel[]` |
-| `scans` | `Scan[]` |
-| `status` | `ShipmentStatus` |
-| `tracking` | `TrackingCode \| undefined` |
-| `routeId` | `string \| undefined` |
-
 ### Parcel
 
 One box. A shipment is one or more of them, and each is scanned on its own -
@@ -97,6 +77,26 @@ one, and the pair is the history.
 | `parcelId` | `string` |
 | `location` | `string` |
 | `scannedAt` | `Date` |
+
+### Shipment — aggregate root
+
+What is being carried to one address for one order.
+
+The address is copied from the order at dispatch and never refreshed: a
+parcel on a van does not move because somebody edited their profile. The
+status only ever moves the way `TRANSITIONS` allows, and `moveTo` is the one
+way through it; every move that is a fact hands back the event that says so.
+
+| Field | Type |
+| --- | --- |
+| `id` | `string` |
+| `orderId` | `string` |
+| `shipTo` | `Address` |
+| `parcels` | `Parcel[]` |
+| `scans` | `Scan[]` |
+| `status` | `ShipmentStatus` |
+| `tracking` | `TrackingCode \| undefined` |
+| `routeId` | `string \| undefined` |
 
 ## Value objects
 
@@ -149,15 +149,15 @@ stateDiagram-v2
 
 | From | To | On | Emits | Source |
 | --- | --- | --- | --- | --- |
-| `awaiting-payment` | `planned` | `release` | `ShipmentReleased` | `examples/shop/delivery/core/src/domain/shipment/shipment.ts:48` |
-| `awaiting-payment` | `lost` | `lose` | `ShipmentLost` | `examples/shop/delivery/core/src/domain/shipment/shipment.ts:83` |
-| `planned` | `dispatched` | `dispatch` | `ShipmentDispatched` | `examples/shop/delivery/core/src/domain/shipment/shipment.ts:56` |
-| `planned` | `lost` | `lose` | `ShipmentLost` | `examples/shop/delivery/core/src/domain/shipment/shipment.ts:83` |
-| `dispatched` | `in-transit` | `record` | `ShipmentInTransit` | `examples/shop/delivery/core/src/domain/shipment/shipment.ts:69` |
-| `dispatched` | `delivered` | `deliver` | `ShipmentDelivered` | `examples/shop/delivery/core/src/domain/shipment/shipment.ts:76` |
-| `dispatched` | `lost` | `lose` | `ShipmentLost` | `examples/shop/delivery/core/src/domain/shipment/shipment.ts:83` |
-| `in-transit` | `delivered` | `deliver` | `ShipmentDelivered` | `examples/shop/delivery/core/src/domain/shipment/shipment.ts:76` |
-| `in-transit` | `lost` | `lose` | `ShipmentLost` | `examples/shop/delivery/core/src/domain/shipment/shipment.ts:83` |
+| `awaiting-payment` | `planned` | `release` | `ShipmentReleased` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:48`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L48) |
+| `awaiting-payment` | `lost` | `lose` | `ShipmentLost` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:83`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L83) |
+| `planned` | `dispatched` | `dispatch` | `ShipmentDispatched` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:56`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L56) |
+| `planned` | `lost` | `lose` | `ShipmentLost` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:83`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L83) |
+| `dispatched` | `in-transit` | `record` | `ShipmentInTransit` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:69`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L69) |
+| `dispatched` | `delivered` | `deliver` | `ShipmentDelivered` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:76`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L76) |
+| `dispatched` | `lost` | `lose` | `ShipmentLost` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:83`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L83) |
+| `in-transit` | `delivered` | `deliver` | `ShipmentDelivered` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:76`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L76) |
+| `in-transit` | `lost` | `lose` | `ShipmentLost` | [`examples/shop/delivery/core/src/domain/shipment/shipment.ts:83`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/shipment.ts#L83) |
 
 ## Operations
 
@@ -172,6 +172,7 @@ stateDiagram-v2
 
 ## Events
 
+<a id="event-delivery-core-shipment-shipmentdelivered"></a>
 ### ShipmentDelivered
 
 `delivery.core.shipment.ShipmentDelivered`
@@ -183,7 +184,7 @@ On the wire as `delivery.ShipmentDelivered`, on `delivery.core.shipment`.
 It arrived, and who signed. The order is finished from this service's side;
 whether the money is settled is somebody else's question.
 
-Source: `examples/shop/delivery/core/src/domain/shipment/events/shipment-delivered.ts`
+Source: [`examples/shop/delivery/core/src/domain/shipment/events/shipment-delivered.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/events/shipment-delivered.ts)
 
 | Field | Type |
 | --- | --- |
@@ -193,6 +194,7 @@ Source: `examples/shop/delivery/core/src/domain/shipment/events/shipment-deliver
 | `signedBy` | `string` |
 | `occurredAt` | `Date` |
 
+<a id="event-delivery-core-shipment-shipmentdispatched"></a>
 ### ShipmentDispatched
 
 `delivery.core.shipment.ShipmentDispatched`
@@ -205,7 +207,7 @@ The parcels are with the carrier. Whoever is waiting on the order hears this
 and stops asking; the tracking code is on the event because the customer is
 shown it and nobody should have to come back for it.
 
-Source: `examples/shop/delivery/core/src/domain/shipment/events/shipment-dispatched.ts`
+Source: [`examples/shop/delivery/core/src/domain/shipment/events/shipment-dispatched.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/events/shipment-dispatched.ts)
 
 | Field | Type |
 | --- | --- |
@@ -216,6 +218,7 @@ Source: `examples/shop/delivery/core/src/domain/shipment/events/shipment-dispatc
 | `parcels` | `number` |
 | `occurredAt` | `Date` |
 
+<a id="event-delivery-core-shipment-shipmentintransit"></a>
 ### ShipmentInTransit
 
 `delivery.core.shipment.ShipmentInTransit`
@@ -227,7 +230,7 @@ On the wire as `delivery.ShipmentInTransit`, on `delivery.core.shipment`.
 The first sighting after dispatch: the parcels are moving. Later scans add
 to the history and say nothing, because "seen again" is not a change.
 
-Source: `examples/shop/delivery/core/src/domain/shipment/events/shipment-in-transit.ts`
+Source: [`examples/shop/delivery/core/src/domain/shipment/events/shipment-in-transit.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/events/shipment-in-transit.ts)
 
 | Field | Type |
 | --- | --- |
@@ -237,6 +240,7 @@ Source: `examples/shop/delivery/core/src/domain/shipment/events/shipment-in-tran
 | `location` | `string` |
 | `occurredAt` | `Date` |
 
+<a id="event-delivery-core-shipment-shipmentlost"></a>
 ### ShipmentLost
 
 `delivery.core.shipment.ShipmentLost`
@@ -245,7 +249,7 @@ On the wire as `delivery.ShipmentLost`, on `delivery.core.shipment`.
 
 #### v1 — current
 
-Source: `examples/shop/delivery/core/src/domain/shipment/events/shipment-lost.ts`
+Source: [`examples/shop/delivery/core/src/domain/shipment/events/shipment-lost.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/events/shipment-lost.ts)
 
 | Field | Type |
 | --- | --- |
@@ -255,6 +259,7 @@ Source: `examples/shop/delivery/core/src/domain/shipment/events/shipment-lost.ts
 | `reason` | `LostReason` |
 | `occurredAt` | `Date` |
 
+<a id="event-delivery-core-shipment-shipmentreleased"></a>
 ### ShipmentReleased
 
 `delivery.core.shipment.ShipmentReleased`
@@ -267,7 +272,7 @@ The money moved, and the shipment may now be planned onto a route and
 dispatched. Said by this service, not by the ledger: the ledger says a
 payment was captured, and what that means for a parcel is decided here.
 
-Source: `examples/shop/delivery/core/src/domain/shipment/events/shipment-released.ts`
+Source: [`examples/shop/delivery/core/src/domain/shipment/events/shipment-released.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/shipment/events/shipment-released.ts)
 
 | Field | Type |
 | --- | --- |

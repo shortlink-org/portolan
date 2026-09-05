@@ -4,7 +4,7 @@
 
 - **Id:** `flow.auth-revoke-sessions-on-password-change`
 - **Owner:** [auth](../auth/README.md)
-- **Source:** `examples/auth/internal/application/policy/revoke_sessions_on_password_change.go`
+- **Source:** [`examples/auth/internal/application/policy/revoke_sessions_on_password_change.go`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/application/policy/revoke_sessions_on_password_change.go)
 
 Ends the sessions issued against a password that has just been replaced.
 
@@ -34,15 +34,21 @@ sequenceDiagram
 
 ## Steps
 
+<a id="step-s1"></a>
 1. **bus** → **auth.auth** — PasswordChanged
-   [auth.auth.user.PasswordChanged](../auth/auth/aggregates/user.md) · `examples/auth/internal/application/policy/revoke_sessions_on_password_change.go:41` · Seen running in telemetry/traces.jsonl (1 trace).
+   [`auth.auth.user.PasswordChanged`](../auth/auth/aggregates/user.md#event-auth-auth-user-passwordchanged) · [`examples/auth/internal/application/policy/revoke_sessions_on_password_change.go:41`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/application/policy/revoke_sessions_on_password_change.go#L41) · Seen running in telemetry/traces.jsonl (1 trace).
+<a id="step-s2"></a>
 2. **auth.auth** ↺ **auth.auth** — EndAfterCredentialChange
-   status: declared · `examples/auth/internal/application/policy/revoke_sessions_on_password_change.go:47`
+   status: declared · [`examples/auth/internal/application/policy/revoke_sessions_on_password_change.go:47`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/application/policy/revoke_sessions_on_password_change.go#L47)
+<a id="step-s3"></a>
 3. **auth.auth** → **auth-pg** — ByUserID
-   status: declared · `examples/auth/internal/application/session/usecases/end_after_credential_change/usecase.go:40`
+   status: declared · [`examples/auth/internal/application/session/usecases/end_after_credential_change/usecase.go:40`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/application/session/usecases/end_after_credential_change/usecase.go#L40)
+<a id="step-s4"></a>
 4. **auth.auth** → **auth-pg** — ByID
-   status: declared · `examples/auth/internal/application/session/usecases/end_after_credential_change/usecase.go:62` · inside a loop over `change.Ends(sessions, uc.now())`, inside a loop over `retries`.
+   status: declared · [`examples/auth/internal/application/session/usecases/end_after_credential_change/usecase.go:62`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/application/session/usecases/end_after_credential_change/usecase.go#L62) · inside a loop over `change.Ends(sessions, uc.now())`, inside a loop over `retries`.
+<a id="step-s5"></a>
 5. **auth.auth** → **auth-pg** — Save
-   status: declared · `examples/auth/internal/application/session/usecases/end_after_credential_change/usecase.go:77` · inside a loop over `change.Ends(sessions, uc.now())`, inside a loop over `retries`.
+   status: declared · [`examples/auth/internal/application/session/usecases/end_after_credential_change/usecase.go:77`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/application/session/usecases/end_after_credential_change/usecase.go#L77) · inside a loop over `change.Ends(sessions, uc.now())`, inside a loop over `retries`.
+<a id="step-s6"></a>
 6. **auth.auth** → **bus** — SessionEnded
-   [auth.auth.session.SessionEnded](../auth/auth/aggregates/session.md) · `examples/auth/internal/application/session/usecases/end_after_credential_change/usecase.go:77` · inside a loop over `change.Ends(sessions, uc.now())`, inside a loop over `retries`.
+   [`auth.auth.session.SessionEnded`](../auth/auth/aggregates/session.md#event-auth-auth-session-sessionended) · [`examples/auth/internal/application/session/usecases/end_after_credential_change/usecase.go:77`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/application/session/usecases/end_after_credential_change/usecase.go#L77) · inside a loop over `change.Ends(sessions, uc.now())`, inside a loop over `retries`.

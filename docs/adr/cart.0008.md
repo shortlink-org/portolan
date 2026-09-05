@@ -5,7 +5,7 @@
 - **Status:** accepted
 - **Date:** 2026-09-05
 - **Scope:** [shop.cart](../shop/cart/README.md)
-- **Source:** `examples/shop/cart/docs/adr/0008-events-leave-over-nats-jetstream.md`
+- **Source:** [`examples/shop/cart/docs/adr/0008-events-leave-over-nats-jetstream.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/docs/adr/0008-events-leave-over-nats-jetstream.md)
 
 ### Context and Problem Statement
 

@@ -12,6 +12,8 @@ const FILES = [
   { href: `${base}llms.txt`, label: "llms.txt", title: "An index of every page, for a model that fetches on demand" },
   { href: `${base}llms-full.txt`, label: "llms-full.txt", title: "Every page in one file, for a model with a context window" },
   { href: `${base}docs/`, label: "docs/", title: "The generated markdown, page by page" },
+  { href: `${base}exports/mermaid/`, label: "Mermaid", title: "Standalone sequence diagrams for every architecture flow" },
+  { href: `${base}exports/backstage/catalog-info.yaml`, label: "Backstage", title: "Components, systems, APIs and resources for a Backstage catalog" },
 ];
 
 /** Links to the generated documentation, one line. */

@@ -5,7 +5,7 @@
 - **Status:** accepted
 - **Date:** 2026-09-06
 - **Scope:** [payments.ledger](../payments/ledger/README.md)
-- **Source:** `examples/payments/ledger/docs/adr/0003-the-card-network-is-stripe-and-stays-outside-the-estate.md`
+- **Source:** [`examples/payments/ledger/docs/adr/0003-the-card-network-is-stripe-and-stays-outside-the-estate.md`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/docs/adr/0003-the-card-network-is-stripe-and-stays-outside-the-estate.md)
 
 ### Context and Problem Statement
 

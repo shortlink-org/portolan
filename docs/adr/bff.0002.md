@@ -5,7 +5,7 @@
 - **Status:** accepted
 - **Date:** 2026-09-05
 - **Scope:** [storefront.bff](../storefront/bff/README.md)
-- **Source:** `examples/bff/docs/adr/0002-the-storefront-owns-no-state.md`
+- **Source:** [`examples/bff/docs/adr/0002-the-storefront-owns-no-state.md`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/docs/adr/0002-the-storefront-owns-no-state.md)
 
 ### Context and Problem Statement
 

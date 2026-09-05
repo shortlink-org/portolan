@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { toPng } from "html-to-image";
+import { toPng, toSvg } from "html-to-image";
 import { allRepos, flowContexts, walkSteps } from "../catalog";
 import type { Flow, Status, Step } from "../catalog";
 import { catalog, index } from "../data";
@@ -11,6 +11,7 @@ import { toClipboard } from "../lib/clipboard";
 import { flowRepoService } from "../lib/derive";
 import { statusCounts } from "../lib/flow-tree";
 import { sourceHref } from "../lib/source-link";
+import { artifactFilename } from "../lib/export-file";
 import { flowAnswers } from "../flow/answers";
 import { flowMermaid } from "../flow/mermaid";
 import { useToastStore } from "../app/toast";
@@ -364,7 +365,7 @@ export function FlowDetail() {
     });
   };
 
-  const exportPng = async (): Promise<void> => {
+  const exportImage = async (kind: "png" | "svg"): Promise<void> => {
     const viewport = canvas.current
       ?.node()
       ?.querySelector<HTMLElement>(".react-flow__viewport");
@@ -374,14 +375,18 @@ export function FlowDetail() {
     }
     setExporting(true);
     try {
-      const url = await toPng(viewport, {
+      const render = kind === "png" ? toPng : toSvg;
+      const url = await render(viewport, {
         backgroundColor: getComputedStyle(document.body).backgroundColor,
-        pixelRatio: 2,
+        ...(kind === "png" ? { pixelRatio: 2 } : {}),
       });
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${flow.slug}.png`;
+      a.download = artifactFilename(flow.slug, kind);
       a.click();
+      say(`${kind.toUpperCase()} downloaded — ${a.download}`);
+    } catch (cause) {
+      say(`could not export ${kind.toUpperCase()}: ${cause instanceof Error ? cause.message : String(cause)}`);
     } finally {
       setExporting(false);
     }
@@ -509,7 +514,8 @@ export function FlowDetail() {
           onStatusFilter={setStatusFilter}
           statusCounts={counts}
           onCopyMermaid={copyMermaid}
-          onExportPng={() => void exportPng()}
+          onExportPng={() => void exportImage("png")}
+          onExportSvg={() => void exportImage("svg")}
           exporting={exporting}
         />
       </div>

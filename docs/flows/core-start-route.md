@@ -4,7 +4,7 @@
 
 - **Id:** `flow.core-start-route`
 - **Owner:** [delivery](../delivery/README.md)
-- **Source:** `examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts`
+- **Source:** [`examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts)
 
 The van is out.
 
@@ -34,11 +34,15 @@ sequenceDiagram
 
 ## Steps
 
+<a id="step-s1"></a>
 1. **client** → **delivery.core** — StartRoute → StartRouteResponse
-   status: declared · `examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:23`
+   status: declared · [`examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:23`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts#L23)
+<a id="step-s2"></a>
 2. **delivery.core** → **core-pg** — byId
-   status: declared · `examples/shop/delivery/core/src/application/route/usecases/start_route/usecase.ts:11`
+   status: declared · [`examples/shop/delivery/core/src/application/route/usecases/start_route/usecase.ts:11`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/route/usecases/start_route/usecase.ts#L11)
+<a id="step-s3"></a>
 3. **delivery.core** → **core-pg** — save
-   status: declared · `examples/shop/delivery/core/src/application/route/usecases/start_route/usecase.ts:13`
+   status: declared · [`examples/shop/delivery/core/src/application/route/usecases/start_route/usecase.ts:13`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/route/usecases/start_route/usecase.ts#L13)
+<a id="step-s4"></a>
 4. **delivery.core** → **bus** — RouteStarted
-   [delivery.core.route.RouteStarted](../delivery/core/aggregates/route.md) · status: declared · `examples/shop/delivery/core/src/application/route/usecases/start_route/usecase.ts:13`
+   [`delivery.core.route.RouteStarted`](../delivery/core/aggregates/route.md#event-delivery-core-route-routestarted) · status: declared · [`examples/shop/delivery/core/src/application/route/usecases/start_route/usecase.ts:13`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/route/usecases/start_route/usecase.ts#L13)

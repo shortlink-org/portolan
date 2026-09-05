@@ -5,6 +5,8 @@
 Types named by more than one aggregate, event or message. A field that
 refers to one of these is knowably the same shape everywhere it appears.
 
+<a id="type-money"></a>
+
 ## Money
 
 | Field | Type | Doc |

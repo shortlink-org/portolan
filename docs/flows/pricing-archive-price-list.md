@@ -4,7 +4,7 @@
 
 - **Id:** `flow.pricing-archive-price-list`
 - **Owner:** [shop](../shop/README.md)
-- **Source:** `examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go`
+- **Source:** [`examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go)
 
 Package archive_price_list takes a price list out of use without losing it.
 
@@ -31,9 +31,12 @@ sequenceDiagram
 
 ## Steps
 
+<a id="step-s1"></a>
 1. **client** → **shop.pricing** — ArchivePriceList → ArchivePriceListResponse
-   status: declared · `examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:50`
+   status: declared · [`examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:50`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go#L50)
+<a id="step-s2"></a>
 2. **shop.pricing** → **pricing-pg** — ByID
-   status: declared · `examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:22`
+   status: declared · [`examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:22`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go#L22)
+<a id="step-s3"></a>
 3. **shop.pricing** → **pricing-pg** — Save
-   status: declared · `examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:28`
+   status: declared · [`examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:28`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go#L28)

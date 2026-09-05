@@ -39,14 +39,22 @@
                 {
                   "name": "Raise",
                   "request": "RaiseRequest",
-                  "response": "Invoice"
+                  "response": "Invoice",
+                  "streaming": "server",
+                  "doc": "Raises and follows one invoice."
                 },
                 {
                   "name": "Get",
-                  "response": "Invoice"
+                  "response": "Invoice",
+                  "deprecated": true,
+                  "http": {
+                    "method": "GET",
+                    "path": "/v1/invoices/{id}"
+                  }
                 }
               ],
               "source": "api/invoices.proto",
+              "module": "buf.build/example/billing",
               "messages": [
                 {
                   "name": "RaiseRequest",
@@ -68,11 +76,33 @@
               "peer": "psp-gateway",
               "status": "declared",
               "source": "internal/psp/client.go:20",
+              "via": {
+                "flow": "flow.raise-invoice",
+                "step": "s3"
+              },
               "note": "The gateway is outside the estate; the copy beside the client says what it answers on."
             }
           ],
           "stores": [
             "billing.invoices.pg"
+          ],
+          "modules": [
+            "buf.build/example/billing"
+          ],
+          "channels": [
+            {
+              "address": "billing_invoice",
+              "title": "Invoice events",
+              "doc": "Changes to an invoice.",
+              "source": "api/asyncapi.yaml",
+              "messages": [
+                {
+                  "name": "billing.InvoiceRaised",
+                  "title": "Invoice raised",
+                  "direction": "send"
+                }
+              ]
+            }
           ],
           "aggregates": [
             {
@@ -157,6 +187,10 @@
                     {
                       "service": "billing.ledger",
                       "status": "declared",
+                      "via": {
+                        "flow": "flow.raise-invoice",
+                        "step": "s2"
+                      },
                       "note": "Not observed."
                     }
                   ],
@@ -198,6 +232,20 @@
           ]
         }
       ]
+    }
+  ],
+  "modules": [
+    {
+      "id": "buf.build/example/billing",
+      "slug": "example-billing",
+      "name": "Billing contracts",
+      "registry": "buf.build",
+      "owner": "billing.invoices",
+      "commit": "0123456789012345678901234567890123456789",
+      "digest": "b5:example",
+      "packages": ["billing.v1"],
+      "files": ["api/invoices.proto"],
+      "source": "api"
     }
   ],
   "stores": [

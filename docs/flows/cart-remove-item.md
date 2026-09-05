@@ -4,7 +4,7 @@
 
 - **Id:** `flow.cart-remove-item`
 - **Owner:** [shop](../shop/README.md)
-- **Source:** `examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts`
+- **Source:** [`examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts)
 
 ## Participants
 
@@ -31,9 +31,12 @@ sequenceDiagram
 
 ## Steps
 
+<a id="step-s1"></a>
 1. **client** → **shop.cart** — removeItem → Basket
-   `examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:49` · Seen running in telemetry/traces.jsonl (1 trace).
+   [`examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:49`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts#L49) · Seen running in telemetry/traces.jsonl (1 trace).
+<a id="step-s2"></a>
 2. **shop.cart** → **cart-pg** — save
-   status: declared · `examples/shop/cart/src/application/basket/usecases/remove_item/usecase.ts:22`
+   status: declared · [`examples/shop/cart/src/application/basket/usecases/remove_item/usecase.ts:22`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/remove_item/usecase.ts#L22)
+<a id="step-s3"></a>
 3. **shop.cart** → **bus** — BasketItemRemoved
-   [shop.cart.basket.BasketItemRemoved](../shop/cart/aggregates/basket.md) · `examples/shop/cart/src/application/basket/usecases/remove_item/usecase.ts:22` · Seen running in telemetry/traces.jsonl (1 trace).
+   [`shop.cart.basket.BasketItemRemoved`](../shop/cart/aggregates/basket.md#event-shop-cart-basket-basketitemremoved) · [`examples/shop/cart/src/application/basket/usecases/remove_item/usecase.ts:22`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/remove_item/usecase.ts#L22) · Seen running in telemetry/traces.jsonl (1 trace).

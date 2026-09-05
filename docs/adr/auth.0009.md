@@ -5,7 +5,7 @@
 - **Status:** accepted
 - **Date:** 2026-09-04
 - **Scope:** [auth.auth](../auth/auth/README.md)
-- **Source:** `examples/auth/docs/adr/0009-a-lock-answers-like-a-wrong-password.md`
+- **Source:** [`examples/auth/docs/adr/0009-a-lock-answers-like-a-wrong-password.md`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/docs/adr/0009-a-lock-answers-like-a-wrong-password.md)
 
 ### Context and Problem Statement
 

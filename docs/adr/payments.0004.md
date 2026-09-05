@@ -5,7 +5,7 @@
 - **Status:** proposed
 - **Date:** 2026-02-09
 - **Scope:** [payments](../payments/README.md)
-- **Source:** `data/adr/0004-idempotent-journal-entries.md`
+- **Source:** [`data/adr/0004-idempotent-journal-entries.md`](https://github.com/shortlink-org/portolan/blob/main/data/adr/0004-idempotent-journal-entries.md)
 
 ### Context and Problem Statement
 
@@ -63,4 +63,4 @@ to protect against.
 
 ## Relates to
 
-- **Events:** [payments.ledger.payment.PaymentCaptured](../payments/ledger/aggregates/payment.md)
+- **Events:** [`payments.ledger.payment.PaymentCaptured`](../payments/ledger/aggregates/payment.md#event-payments-ledger-payment-paymentcaptured)

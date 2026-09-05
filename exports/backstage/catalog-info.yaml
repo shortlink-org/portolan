@@ -1,0 +1,2910 @@
+apiVersion: backstage.io/v1alpha1
+kind: Domain
+metadata:
+    name: example-estate
+    title: Example estate
+    description: Architecture catalog exported by Portolan
+    annotations:
+        portolan.io/id: portolan.domain
+spec:
+    owner: architecture
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+    name: stripe
+    title: Stripe
+    description: The card network the ledger moves money through. Nobody in the estate provides it; the copy of its document beside the ledger's adapter is narrowed to the four operations the ledger calls, and is all the catalog claims about it.
+    annotations:
+        portolan.io/id: stripe
+spec:
+    lifecycle: production
+    owner: architecture
+    providesApis:
+        - api:default/stripe-v1
+    type: external-service
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+    name: stripe-v1
+    title: stripe.v1
+    description: Interface provided by Stripe
+    annotations:
+        portolan.io/id: stripe.v1
+spec:
+    definition: |-
+        {
+          "id": "stripe.v1",
+          "messages": [
+            {
+              "name": "payment_intent",
+              "fields": [
+                {
+                  "name": "id",
+                  "type": "string",
+                  "doc": "Unique identifier for the object."
+                },
+                {
+                  "name": "object",
+                  "type": "string enum(payment_intent)",
+                  "doc": "String representing the object's type. Objects of the same type share the same value."
+                },
+                {
+                  "name": "amount",
+                  "type": "integer",
+                  "doc": "Optional. Amount intended to be collected by this PaymentIntent. A positive integer representing how much to charge in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal) (e.g., 100 cents to charge $1.00 or 100 to charge ¥100, a zero-decimal currency). The minimum amount is $0.50 US or [equivalent in charge currency](https://docs.stripe.com/currencies#minimum-and-maximum-charge-amounts). The amount value supports up to eight digits (e.g., a value of 99999999 for a USD charge of $999,999.99)."
+                },
+                {
+                  "name": "amount_capturable",
+                  "type": "integer",
+                  "doc": "Optional. Amount that can be captured from this PaymentIntent."
+                },
+                {
+                  "name": "amount_received",
+                  "type": "integer",
+                  "doc": "Optional. Amount that this PaymentIntent collects."
+                },
+                {
+                  "name": "capture_method",
+                  "type": "string enum(automatic | automatic_async | manual)",
+                  "doc": "Optional. Controls when the funds will be captured from the customer's account."
+                },
+                {
+                  "name": "currency",
+                  "type": "string (currency)",
+                  "doc": "Optional. Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies)."
+                },
+                {
+                  "name": "description",
+                  "type": "string | null",
+                  "doc": "Optional. An arbitrary string attached to the object. Often useful for displaying to users."
+                },
+                {
+                  "name": "metadata",
+                  "type": "map[string]string",
+                  "doc": "Optional. Set of [key-value pairs](https://docs.stripe.com/api/metadata) that you can attach to an object. This can be useful for storing additional information about the object in a structured format. Learn more about [storing information in metadata](https://docs.stripe.com/payments/payment-intents/creating-payment-intents#storing-information-in-metadata)."
+                },
+                {
+                  "name": "status",
+                  "type": "string enum(canceled | processing | requires_action | requires_capture | requires_confirmation | requires_payment_method | succeeded)",
+                  "doc": "Status of this PaymentIntent, one of `requires_payment_method`, `requires_confirmation`, `requires_action`, `processing`, `requires_capture`, `canceled`, or `succeeded`. Read more about each PaymentIntent [status](https://docs.stripe.com/payments/intents#intent-statuses)."
+                }
+              ]
+            },
+            {
+              "name": "error",
+              "fields": [
+                {
+                  "name": "error",
+                  "type": "api_errors",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "refund",
+              "fields": [
+                {
+                  "name": "id",
+                  "type": "string",
+                  "doc": "Unique identifier for the object."
+                },
+                {
+                  "name": "object",
+                  "type": "string enum(refund)",
+                  "doc": "String representing the object's type. Objects of the same type share the same value."
+                },
+                {
+                  "name": "amount",
+                  "type": "integer",
+                  "doc": "Amount, in cents (or local equivalent)."
+                },
+                {
+                  "name": "currency",
+                  "type": "string (currency)",
+                  "doc": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies)."
+                },
+                {
+                  "name": "metadata",
+                  "type": "map[string]string | null",
+                  "doc": "Optional. Set of [key-value pairs](https://docs.stripe.com/api/metadata) that you can attach to an object. This can be useful for storing additional information about the object in a structured format."
+                },
+                {
+                  "name": "payment_intent",
+                  "type": "string | payment_intent | null",
+                  "doc": "Optional. ID of the PaymentIntent that's refunded."
+                },
+                {
+                  "name": "reason",
+                  "type": "string enum(duplicate | expired_uncaptured_charge | fraudulent | requested_by_customer) | null",
+                  "doc": "Optional. Reason for the refund, which is either user-provided (`duplicate`, `fraudulent`, or `requested_by_customer`) or generated by Stripe internally (`expired_uncaptured_charge`)."
+                },
+                {
+                  "name": "status",
+                  "type": "string | null",
+                  "doc": "Optional. Status of the refund. This can be `pending`, `requires_action`, `succeeded`, `failed`, or `canceled`. Learn more about [failed refunds](https://docs.stripe.com/refunds#failed-refunds)."
+                }
+              ]
+            },
+            {
+              "name": "api_errors",
+              "fields": [
+                {
+                  "name": "type",
+                  "type": "string enum(api_error | card_error | idempotency_error | invalid_request_error)",
+                  "doc": "The type of error returned. One of `api_error`, `card_error`, `idempotency_error`, or `invalid_request_error`"
+                },
+                {
+                  "name": "code",
+                  "type": "string",
+                  "doc": "Optional. For some errors that could be handled programmatically, a short string indicating the [error code](https://docs.stripe.com/error-codes) reported."
+                },
+                {
+                  "name": "decline_code",
+                  "type": "string",
+                  "doc": "Optional. For card errors resulting from a card issuer decline, a short string indicating the [card issuer's reason for the decline](https://docs.stripe.com/declines#issuer-declines) if they provide one."
+                },
+                {
+                  "name": "message",
+                  "type": "string",
+                  "doc": "Optional. A human-readable message providing more details about the error. For card errors, these messages can be shown to your users."
+                },
+                {
+                  "name": "param",
+                  "type": "string",
+                  "doc": "Optional. If the error is parameter-specific, the parameter related to the error. For example, you can use this to display a message near the correct form field."
+                }
+              ]
+            }
+          ],
+          "methods": [
+            {
+              "name": "PostPaymentIntents",
+              "response": "payment_intent",
+              "http": {
+                "method": "POST",
+                "path": "/v1/payment_intents"
+              }
+            },
+            {
+              "name": "PostPaymentIntentsIntentCapture",
+              "response": "payment_intent",
+              "http": {
+                "method": "POST",
+                "path": "/v1/payment_intents/{intent}/capture"
+              }
+            },
+            {
+              "name": "PostPaymentIntentsIntentCancel",
+              "response": "payment_intent",
+              "http": {
+                "method": "POST",
+                "path": "/v1/payment_intents/{intent}/cancel"
+              }
+            },
+            {
+              "name": "PostRefunds",
+              "response": "refund",
+              "http": {
+                "method": "POST",
+                "path": "/v1/refunds"
+              }
+            }
+          ]
+        }
+    lifecycle: production
+    owner: architecture
+    type: portolan
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+    name: auth
+    title: Authentication
+    description: Who someone is, and whether they are still logged in. The only service in the estate that stores credentials, and the only one allowed to mint or revoke a session.
+    annotations:
+        portolan.io/id: auth
+spec:
+    domain: example-estate
+    owner: architecture
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+    name: auth-auth
+    title: Authentication & Sessions
+    description: Authentication & Sessions
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/examples/auth
+        portolan.io/id: auth.auth
+spec:
+    dependsOn:
+        - resource:default/auth-auth-pg
+    lifecycle: production
+    owner: shortlink-org/identity
+    providesApis:
+        - api:default/auth-v1-sessions
+        - api:default/auth-v1-users
+    system: auth
+    type: service
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+    name: auth-v1-users
+    title: auth.v1.Users
+    description: Interface provided by Authentication & Sessions
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/infrastructure/transport/http/gen/openapi.yaml
+        portolan.io/id: auth.v1.Users
+spec:
+    definition: |-
+        {
+          "id": "auth.v1.Users",
+          "messages": [
+            {
+              "name": "RegisterRequest",
+              "fields": [
+                {
+                  "name": "email",
+                  "type": "string (email)",
+                  "doc": ""
+                },
+                {
+                  "name": "password",
+                  "type": "string (password)",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "User",
+              "fields": [
+                {
+                  "name": "userId",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "email",
+                  "type": "string (email)",
+                  "doc": ""
+                },
+                {
+                  "name": "createdAt",
+                  "type": "string (date-time)",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "Error",
+              "fields": [
+                {
+                  "name": "message",
+                  "type": "string",
+                  "doc": "One sentence, always present. A client that shows the user a single\nline shows this one."
+                },
+                {
+                  "name": "reasons",
+                  "type": "[]string",
+                  "doc": "Optional. One entry per rule the request broke, present only where rules\napply - a 404 or a 500 has none. Each entry names its own field, so\nit can be shown on its own without knowing what it referred to."
+                }
+              ]
+            },
+            {
+              "name": "ChangePasswordRequest",
+              "fields": [
+                {
+                  "name": "currentPassword",
+                  "type": "string (password)",
+                  "doc": ""
+                },
+                {
+                  "name": "newPassword",
+                  "type": "string (password)",
+                  "doc": ""
+                }
+              ]
+            }
+          ],
+          "methods": [
+            {
+              "name": "registerUser",
+              "request": "RegisterRequest",
+              "response": "User",
+              "http": {
+                "method": "POST",
+                "path": "/v1/users"
+              }
+            },
+            {
+              "name": "getUser",
+              "response": "User",
+              "http": {
+                "method": "GET",
+                "path": "/v1/users/{userId}"
+              }
+            },
+            {
+              "name": "changePassword",
+              "request": "ChangePasswordRequest",
+              "response": "204",
+              "http": {
+                "method": "POST",
+                "path": "/v1/users/me/password"
+              }
+            }
+          ],
+          "module": ""
+        }
+    lifecycle: production
+    owner: shortlink-org/identity
+    system: auth
+    type: portolan
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+    name: auth-v1-sessions
+    title: auth.v1.Sessions
+    description: Interface provided by Authentication & Sessions
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/infrastructure/transport/http/gen/openapi.yaml
+        portolan.io/id: auth.v1.Sessions
+spec:
+    definition: |-
+        {
+          "id": "auth.v1.Sessions",
+          "messages": [
+            {
+              "name": "LoginRequest",
+              "fields": [
+                {
+                  "name": "email",
+                  "type": "string (email)",
+                  "doc": ""
+                },
+                {
+                  "name": "password",
+                  "type": "string (password)",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "Session",
+              "fields": [
+                {
+                  "name": "token",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "expiresAt",
+                  "type": "string (date-time)",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "Error",
+              "fields": [
+                {
+                  "name": "message",
+                  "type": "string",
+                  "doc": "One sentence, always present. A client that shows the user a single\nline shows this one."
+                },
+                {
+                  "name": "reasons",
+                  "type": "[]string",
+                  "doc": "Optional. One entry per rule the request broke, present only where rules\napply - a 404 or a 500 has none. Each entry names its own field, so\nit can be shown on its own without knowing what it referred to."
+                }
+              ]
+            },
+            {
+              "name": "SessionInfo",
+              "fields": [
+                {
+                  "name": "userId",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "expiresAt",
+                  "type": "string (date-time)",
+                  "doc": ""
+                }
+              ]
+            }
+          ],
+          "methods": [
+            {
+              "name": "login",
+              "request": "LoginRequest",
+              "response": "Session",
+              "http": {
+                "method": "POST",
+                "path": "/v1/sessions"
+              }
+            },
+            {
+              "name": "validateSession",
+              "response": "SessionInfo",
+              "http": {
+                "method": "GET",
+                "path": "/v1/sessions/current"
+              }
+            },
+            {
+              "name": "logout",
+              "response": "204",
+              "http": {
+                "method": "DELETE",
+                "path": "/v1/sessions/current"
+              }
+            }
+          ],
+          "module": ""
+        }
+    lifecycle: production
+    owner: shortlink-org/identity
+    system: auth
+    type: portolan
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+    name: delivery
+    title: Delivery
+    description: Parcels, vans and the day they are driven. Told what to carry and asked where it got to; it decides neither.
+    annotations:
+        portolan.io/id: delivery
+spec:
+    domain: example-estate
+    owner: architecture
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+    name: delivery-core
+    title: Delivery Core
+    description: Delivery Core
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/examples/shop/delivery/core
+        portolan.io/id: delivery.core
+spec:
+    consumesApis:
+        - api:default/shop-v1-orderservice
+    dependsOn:
+        - component:default/shop-oms
+        - resource:default/buf-build-shortlink-org-portolan-delivery-route
+        - resource:default/buf-build-shortlink-org-portolan-delivery-shipment
+        - resource:default/delivery-core-pg
+    lifecycle: production
+    owner: shortlink-org/delivery
+    providesApis:
+        - api:default/delivery-v1-delivery
+        - api:default/delivery-v1-routeservice
+    system: delivery
+    type: service
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+    name: delivery-v1-delivery
+    title: delivery.v1.Delivery
+    description: Interface provided by Delivery Core
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/proto/delivery/v1/delivery.proto
+        portolan.io/id: delivery.v1.Delivery
+spec:
+    definition: |-
+        {
+          "id": "delivery.v1.Delivery",
+          "messages": [
+            {
+              "name": "DispatchRequest",
+              "fields": [
+                {
+                  "name": "shipment_id",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "tracking",
+                  "type": "string",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "DispatchResponse",
+              "fields": [
+                {
+                  "name": "shipment_id",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "status",
+                  "type": "string",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "RecordScanRequest",
+              "fields": [
+                {
+                  "name": "shipment_id",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "parcel_id",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "location",
+                  "type": "string",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "RecordScanResponse",
+              "fields": [
+                {
+                  "name": "shipment_id",
+                  "type": "string",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "RecordDeliveryRequest",
+              "fields": [
+                {
+                  "name": "shipment_id",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "signed_by",
+                  "type": "string",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "RecordDeliveryResponse",
+              "fields": [
+                {
+                  "name": "shipment_id",
+                  "type": "string",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "TrackShipmentRequest",
+              "fields": [
+                {
+                  "name": "tracking",
+                  "type": "string",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "TrackShipmentResponse",
+              "fields": [
+                {
+                  "name": "shipment_id",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "status",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "scans",
+                  "type": "[]ScanView",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "GetShipmentRequest",
+              "fields": [
+                {
+                  "name": "shipment_id",
+                  "type": "string",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "GetShipmentResponse",
+              "fields": [
+                {
+                  "name": "shipment_id",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "order_id",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "status",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "tracking",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "parcels",
+                  "type": "int32",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "ScanView",
+              "fields": [
+                {
+                  "name": "parcel_id",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "location",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "scanned_at",
+                  "type": "string",
+                  "doc": ""
+                }
+              ]
+            }
+          ],
+          "methods": [
+            {
+              "name": "Dispatch",
+              "doc": "Hand a planned shipment to the carrier.",
+              "request": "DispatchRequest",
+              "response": "DispatchResponse"
+            },
+            {
+              "name": "RecordScan",
+              "doc": "Write down that a parcel was seen somewhere.",
+              "request": "RecordScanRequest",
+              "response": "RecordScanResponse"
+            },
+            {
+              "name": "RecordDelivery",
+              "doc": "End a shipment at the door.",
+              "request": "RecordDeliveryRequest",
+              "response": "RecordDeliveryResponse"
+            },
+            {
+              "name": "TrackShipment",
+              "doc": "What the customer sees when they paste a tracking code.",
+              "request": "TrackShipmentRequest",
+              "response": "TrackShipmentResponse"
+            },
+            {
+              "name": "GetShipment",
+              "doc": "One shipment, for whoever is asking about an order.",
+              "request": "GetShipmentRequest",
+              "response": "GetShipmentResponse"
+            }
+          ],
+          "module": "buf.build/shortlink-org/portolan-delivery-shipment"
+        }
+    lifecycle: production
+    owner: shortlink-org/delivery
+    system: delivery
+    type: portolan
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+    name: delivery-v1-routeservice
+    title: delivery.v1.RouteService
+    description: Interface provided by Delivery Core
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/route/proto/delivery/v1/routes.proto
+        portolan.io/id: delivery.v1.RouteService
+spec:
+    definition: |-
+        {
+          "id": "delivery.v1.RouteService",
+          "messages": [
+            {
+              "name": "PlanRouteRequest",
+              "fields": [
+                {
+                  "name": "vehicle",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "planned_for",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "shipment_ids",
+                  "type": "[]string",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "PlanRouteResponse",
+              "fields": [
+                {
+                  "name": "route_id",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "stops",
+                  "type": "int32",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "StartRouteRequest",
+              "fields": [
+                {
+                  "name": "route_id",
+                  "type": "string",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "StartRouteResponse",
+              "fields": [
+                {
+                  "name": "route_id",
+                  "type": "string",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "CloseRouteRequest",
+              "fields": [
+                {
+                  "name": "route_id",
+                  "type": "string",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "CloseRouteResponse",
+              "fields": [
+                {
+                  "name": "route_id",
+                  "type": "string",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "GetRouteRequest",
+              "fields": [
+                {
+                  "name": "route_id",
+                  "type": "string",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "GetRouteResponse",
+              "fields": [
+                {
+                  "name": "route_id",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "vehicle",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "status",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "stops",
+                  "type": "[]StopView",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "StopView",
+              "fields": [
+                {
+                  "name": "seq",
+                  "type": "int32",
+                  "doc": ""
+                },
+                {
+                  "name": "shipment_id",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "address",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "done",
+                  "type": "bool",
+                  "doc": ""
+                }
+              ]
+            }
+          ],
+          "methods": [
+            {
+              "name": "PlanRoute",
+              "doc": "Build a day out of the shipments waiting to go out.",
+              "request": "PlanRouteRequest",
+              "response": "PlanRouteResponse"
+            },
+            {
+              "name": "StartRoute",
+              "doc": "The van is out.",
+              "request": "StartRouteRequest",
+              "response": "StartRouteResponse"
+            },
+            {
+              "name": "CloseRoute",
+              "doc": "End the day, whatever is left undone.",
+              "request": "CloseRouteRequest",
+              "response": "CloseRouteResponse"
+            },
+            {
+              "name": "GetRoute",
+              "doc": "One route, in the order it is driven.",
+              "request": "GetRouteRequest",
+              "response": "GetRouteResponse"
+            }
+          ],
+          "module": "buf.build/shortlink-org/portolan-delivery-route"
+        }
+    lifecycle: production
+    owner: shortlink-org/delivery
+    system: delivery
+    type: portolan
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+    name: payments
+    title: Payments
+    description: Money, and the record of every movement of it. Nothing here decides whether to charge - it is asked, and it writes down what happened either way.
+    annotations:
+        portolan.io/id: payments
+spec:
+    domain: example-estate
+    owner: architecture
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+    name: payments-ledger
+    title: Ledger
+    description: Ledger
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/examples/payments/ledger
+        portolan.io/id: payments.ledger
+spec:
+    consumesApis:
+        - api:default/shop-v1-orderservice
+        - api:default/stripe-v1
+    dependsOn:
+        - component:default/shop-oms
+        - component:default/stripe
+        - resource:default/buf-build-shortlink-org-portolan-payments-payment
+        - resource:default/buf-build-shortlink-org-portolan-payments-refund
+        - resource:default/payments-ledger-pg
+    lifecycle: production
+    owner: shortlink-org/platform
+    providesApis:
+        - api:default/payments-v1-paymentservice
+        - api:default/payments-v1-refundservice
+    system: payments
+    type: service
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+    name: payments-v1-paymentservice
+    title: payments.v1.PaymentService
+    description: Interface provided by Ledger
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/proto/payments/v1/payment.proto
+        portolan.io/id: payments.v1.PaymentService
+spec:
+    definition: |-
+        {
+          "id": "payments.v1.PaymentService",
+          "messages": [
+            {
+              "name": "AuthorizeRequest",
+              "fields": [
+                {
+                  "name": "payment_id",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "order_id",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "amount_minor",
+                  "type": "int64",
+                  "doc": ""
+                },
+                {
+                  "name": "currency",
+                  "type": "string",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "AuthorizeResponse",
+              "fields": [
+                {
+                  "name": "payment_id",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "authorized",
+                  "type": "bool",
+                  "doc": ""
+                },
+                {
+                  "name": "reason",
+                  "type": "string",
+                  "doc": "Why not, when not: a name from the ledger's closed set (CARD_REFUSED,\nORDER_CANCELLED). Empty when authorized."
+                }
+              ]
+            },
+            {
+              "name": "CaptureRequest",
+              "fields": [
+                {
+                  "name": "payment_id",
+                  "type": "string",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "CaptureResponse",
+              "fields": [
+                {
+                  "name": "payment_id",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "captured_at",
+                  "type": "string",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "GetPaymentRequest",
+              "fields": [
+                {
+                  "name": "payment_id",
+                  "type": "string",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "GetPaymentResponse",
+              "fields": [
+                {
+                  "name": "payment_id",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "order_id",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "status",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "amount_minor",
+                  "type": "int64",
+                  "doc": ""
+                },
+                {
+                  "name": "currency",
+                  "type": "string",
+                  "doc": ""
+                }
+              ]
+            }
+          ],
+          "methods": [
+            {
+              "name": "Authorize",
+              "doc": "Ask the gateway to hold the money for an order.",
+              "request": "AuthorizeRequest",
+              "response": "AuthorizeResponse"
+            },
+            {
+              "name": "Capture",
+              "doc": "Move what is being held. Only an authorized payment can be captured.",
+              "request": "CaptureRequest",
+              "response": "CaptureResponse"
+            },
+            {
+              "name": "GetPayment",
+              "doc": "What happened to the money for one payment.",
+              "request": "GetPaymentRequest",
+              "response": "GetPaymentResponse"
+            }
+          ],
+          "module": "buf.build/shortlink-org/portolan-payments-payment"
+        }
+    lifecycle: production
+    owner: shortlink-org/platform
+    system: payments
+    type: portolan
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+    name: payments-v1-refundservice
+    title: payments.v1.RefundService
+    description: Interface provided by Ledger
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/proto/payments/v1/refund.proto
+        portolan.io/id: payments.v1.RefundService
+spec:
+    definition: |-
+        {
+          "id": "payments.v1.RefundService",
+          "messages": [
+            {
+              "name": "IssueRefundRequest",
+              "fields": [
+                {
+                  "name": "refund_id",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "payment_id",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "amount_minor",
+                  "type": "int64",
+                  "doc": ""
+                },
+                {
+                  "name": "currency",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "reason",
+                  "type": "string",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "IssueRefundResponse",
+              "fields": [
+                {
+                  "name": "refund_id",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "issued",
+                  "type": "bool",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "ListRefundsRequest",
+              "fields": [
+                {
+                  "name": "payment_id",
+                  "type": "string",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "ListRefundsResponse",
+              "fields": [
+                {
+                  "name": "refunds",
+                  "type": "[]RefundView",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "RefundView",
+              "fields": [
+                {
+                  "name": "refund_id",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "amount_minor",
+                  "type": "int64",
+                  "doc": ""
+                },
+                {
+                  "name": "currency",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "status",
+                  "type": "string",
+                  "doc": ""
+                }
+              ]
+            }
+          ],
+          "methods": [
+            {
+              "name": "IssueRefund",
+              "doc": "Send money back against a captured payment, in full or in part.",
+              "request": "IssueRefundRequest",
+              "response": "IssueRefundResponse"
+            },
+            {
+              "name": "ListRefunds",
+              "doc": "Every refund against one payment.",
+              "request": "ListRefundsRequest",
+              "response": "ListRefundsResponse"
+            }
+          ],
+          "module": "buf.build/shortlink-org/portolan-payments-refund"
+        }
+    lifecycle: production
+    owner: shortlink-org/platform
+    system: payments
+    type: portolan
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+    name: shop
+    title: Shop
+    description: 'What a customer is buying, what it costs and what they owe for it: the basket while it is still changing, the price it was promised at, the order it became, and the invoice for it. It moves no money and delivers nothing.'
+    annotations:
+        portolan.io/id: shop
+spec:
+    domain: example-estate
+    owner: architecture
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+    name: shop-billing
+    title: Billing
+    description: Billing
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/examples/shop/billing
+        portolan.io/id: shop.billing
+spec:
+    consumesApis:
+        - api:default/auth-v1-sessions
+    dependsOn:
+        - component:default/auth-auth
+        - resource:default/shop-billing-pg
+    lifecycle: production
+    owner: shortlink-org/shop
+    providesApis:
+        - api:default/billing-v1-invoices
+    system: shop
+    type: service
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+    name: billing-v1-invoices
+    title: billing.v1.Invoices
+    description: Interface provided by Billing
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/schema/openapi.yaml
+        portolan.io/id: billing.v1.Invoices
+spec:
+    definition: |-
+        {
+          "id": "billing.v1.Invoices",
+          "messages": [
+            {
+              "name": "DrawUpRequest",
+              "fields": [
+                {
+                  "name": "orderId",
+                  "type": "string (uuid)",
+                  "doc": ""
+                },
+                {
+                  "name": "customerId",
+                  "type": "string (uuid)",
+                  "doc": ""
+                },
+                {
+                  "name": "currency",
+                  "type": "string",
+                  "doc": "ISO 4217."
+                },
+                {
+                  "name": "taxRate",
+                  "type": "string",
+                  "doc": "A decimal, as a string, so nothing rounds on the way in."
+                },
+                {
+                  "name": "lines",
+                  "type": "[]Line",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "InvoiceId",
+              "fields": [
+                {
+                  "name": "invoiceId",
+                  "type": "string (uuid)",
+                  "doc": "Optional."
+                },
+                {
+                  "name": "number",
+                  "type": "string",
+                  "doc": "Optional."
+                }
+              ]
+            },
+            {
+              "name": "Invoice",
+              "fields": [
+                {
+                  "name": "invoiceId",
+                  "type": "string (uuid)",
+                  "doc": "Optional."
+                },
+                {
+                  "name": "orderId",
+                  "type": "string (uuid)",
+                  "doc": "Optional."
+                },
+                {
+                  "name": "number",
+                  "type": "string",
+                  "doc": "Optional."
+                },
+                {
+                  "name": "currency",
+                  "type": "string",
+                  "doc": "Optional."
+                },
+                {
+                  "name": "totalMinor",
+                  "type": "integer (int64)",
+                  "doc": "Optional."
+                },
+                {
+                  "name": "status",
+                  "type": "string enum(draft | issued | paid | void)",
+                  "doc": "Optional."
+                },
+                {
+                  "name": "lines",
+                  "type": "[]Line",
+                  "doc": "Optional."
+                }
+              ]
+            },
+            {
+              "name": "Line",
+              "fields": [
+                {
+                  "name": "sku",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "quantity",
+                  "type": "integer",
+                  "doc": ""
+                },
+                {
+                  "name": "unitPriceMinor",
+                  "type": "integer (int64)",
+                  "doc": ""
+                }
+              ]
+            }
+          ],
+          "methods": [
+            {
+              "name": "invoice_create",
+              "request": "DrawUpRequest",
+              "response": "InvoiceId",
+              "http": {
+                "method": "POST",
+                "path": "/v1/invoices"
+              }
+            },
+            {
+              "name": "invoice_retrieve",
+              "response": "Invoice",
+              "http": {
+                "method": "GET",
+                "path": "/v1/invoices/{id}"
+              }
+            },
+            {
+              "name": "invoice_destroy",
+              "response": "204",
+              "http": {
+                "method": "DELETE",
+                "path": "/v1/invoices/{id}"
+              }
+            },
+            {
+              "name": "invoice_issue",
+              "response": "InvoiceId",
+              "http": {
+                "method": "POST",
+                "path": "/v1/invoices/{id}/issue"
+              }
+            }
+          ],
+          "module": ""
+        }
+    lifecycle: production
+    owner: shortlink-org/shop
+    system: shop
+    type: portolan
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+    name: shop-cart
+    title: Shopping Cart
+    description: Shopping Cart
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/examples/shop/cart
+        portolan.io/id: shop.cart
+spec:
+    consumesApis:
+        - api:default/auth-v1-sessions
+        - api:default/shop-v1-pricing
+    dependsOn:
+        - component:default/auth-auth
+        - component:default/shop-pricing
+        - resource:default/shop-cart-pg
+    lifecycle: production
+    owner: shortlink-org/shop
+    providesApis:
+        - api:default/cart-v1-baskets
+    system: shop
+    type: service
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+    name: cart-v1-baskets
+    title: cart.v1.Baskets
+    description: Interface provided by Shopping Cart
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/http/gen/openapi.yaml
+        portolan.io/id: cart.v1.Baskets
+spec:
+    definition: |-
+        {
+          "id": "cart.v1.Baskets",
+          "messages": [
+            {
+              "name": "BasketCreated",
+              "fields": [
+                {
+                  "name": "basketId",
+                  "type": "string (uuid)",
+                  "doc": ""
+                },
+                {
+                  "name": "token",
+                  "type": "string",
+                  "doc": "The capability to change this basket; sent back as X-Basket-Token."
+                }
+              ]
+            },
+            {
+              "name": "Basket",
+              "fields": [
+                {
+                  "name": "basketId",
+                  "type": "string (uuid)",
+                  "doc": ""
+                },
+                {
+                  "name": "customerId",
+                  "type": "string",
+                  "doc": "Optional. Present once the basket belongs to a signed-in customer."
+                },
+                {
+                  "name": "currency",
+                  "type": "string",
+                  "doc": "Optional. Set by the first line; absent while the basket is empty."
+                },
+                {
+                  "name": "status",
+                  "type": "string enum(open | checked-out | abandoned | merged)",
+                  "doc": ""
+                },
+                {
+                  "name": "items",
+                  "type": "[]LineItem",
+                  "doc": ""
+                },
+                {
+                  "name": "subtotal",
+                  "type": "Money",
+                  "doc": "Optional."
+                },
+                {
+                  "name": "touchedAt",
+                  "type": "string (date-time)",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "Error",
+              "fields": [
+                {
+                  "name": "message",
+                  "type": "string",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "AddItemRequest",
+              "fields": [
+                {
+                  "name": "sku",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "quantity",
+                  "type": "integer",
+                  "doc": ""
+                },
+                {
+                  "name": "unitPrice",
+                  "type": "Money",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "MergeRequest",
+              "fields": [
+                {
+                  "name": "fromBasketId",
+                  "type": "string (uuid)",
+                  "doc": ""
+                },
+                {
+                  "name": "fromToken",
+                  "type": "string",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "CheckedOut",
+              "fields": [
+                {
+                  "name": "basketId",
+                  "type": "string (uuid)",
+                  "doc": ""
+                },
+                {
+                  "name": "quoteId",
+                  "type": "string",
+                  "doc": "The quote pricing issued; the order is placed against it."
+                },
+                {
+                  "name": "total",
+                  "type": "Money",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "LineItem",
+              "fields": [
+                {
+                  "name": "sku",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "quantity",
+                  "type": "integer",
+                  "doc": ""
+                },
+                {
+                  "name": "unitPrice",
+                  "type": "Money",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "Money",
+              "fields": [
+                {
+                  "name": "amountMinor",
+                  "type": "integer (int64)",
+                  "doc": "Amount in the minor unit of the currency."
+                },
+                {
+                  "name": "currency",
+                  "type": "string",
+                  "doc": "ISO 4217 code"
+                }
+              ]
+            }
+          ],
+          "methods": [
+            {
+              "name": "createBasket",
+              "response": "BasketCreated",
+              "http": {
+                "method": "POST",
+                "path": "/v1/baskets"
+              }
+            },
+            {
+              "name": "getBasket",
+              "response": "Basket",
+              "http": {
+                "method": "GET",
+                "path": "/v1/baskets/{basketId}"
+              }
+            },
+            {
+              "name": "addItem",
+              "request": "AddItemRequest",
+              "response": "Basket",
+              "http": {
+                "method": "POST",
+                "path": "/v1/baskets/{basketId}/items"
+              }
+            },
+            {
+              "name": "removeItem",
+              "response": "Basket",
+              "http": {
+                "method": "DELETE",
+                "path": "/v1/baskets/{basketId}/items/{sku}"
+              }
+            },
+            {
+              "name": "mergeBaskets",
+              "request": "MergeRequest",
+              "response": "Basket",
+              "http": {
+                "method": "POST",
+                "path": "/v1/baskets/{basketId}/merge"
+              }
+            },
+            {
+              "name": "checkout",
+              "response": "CheckedOut",
+              "http": {
+                "method": "POST",
+                "path": "/v1/baskets/{basketId}/checkout"
+              }
+            }
+          ],
+          "module": ""
+        }
+    lifecycle: production
+    owner: shortlink-org/shop
+    system: shop
+    type: portolan
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+    name: shop-oms
+    title: Order Management
+    description: Order Management
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/examples/shop/oms
+        portolan.io/id: shop.oms
+spec:
+    consumesApis:
+        - api:default/payments-v1-paymentservice
+    dependsOn:
+        - component:default/payments-ledger
+        - resource:default/buf-build-shortlink-org-portolan-shop-order
+        - resource:default/shop-oms-pg
+    lifecycle: production
+    owner: shortlink-org/shop-oms
+    providesApis:
+        - api:default/shop-v1-orderservice
+    system: shop
+    type: service
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+    name: shop-v1-orderservice
+    title: shop.v1.OrderService
+    description: Interface provided by Order Management
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/vendor/proto/shortlink-org/portolan-shop-order/shop/v1/orders.proto
+        portolan.io/id: shop.v1.OrderService
+spec:
+    definition: |-
+        {
+          "id": "shop.v1.OrderService",
+          "messages": [
+            {
+              "name": "GetOrderRequest",
+              "fields": [
+                {
+                  "name": "order_id",
+                  "type": "string",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "GetOrderResponse",
+              "fields": [
+                {
+                  "name": "order",
+                  "type": "Order",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "CancelOrderRequest",
+              "fields": [
+                {
+                  "name": "order_id",
+                  "type": "string",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "CancelOrderResponse",
+              "fields": [
+                {
+                  "name": "order",
+                  "type": "Order",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "Order",
+              "fields": [
+                {
+                  "name": "id",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "customer_id",
+                  "type": "string",
+                  "doc": "The customer auth vouched for at checkout. Opaque here, as everywhere."
+                },
+                {
+                  "name": "basket_id",
+                  "type": "string",
+                  "doc": "The basket this order was placed from, so a reader can walk back to it."
+                },
+                {
+                  "name": "status",
+                  "type": "OrderStatus",
+                  "doc": ""
+                },
+                {
+                  "name": "lines",
+                  "type": "[]Line",
+                  "doc": ""
+                },
+                {
+                  "name": "total",
+                  "type": "Money",
+                  "doc": "The quoted total, tax and promotions included."
+                },
+                {
+                  "name": "placed_at",
+                  "type": "Timestamp",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "Line",
+              "fields": [
+                {
+                  "name": "sku",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "quantity",
+                  "type": "int32",
+                  "doc": ""
+                },
+                {
+                  "name": "unit_price",
+                  "type": "Money",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "Money",
+              "fields": [
+                {
+                  "name": "amount_minor",
+                  "type": "int64",
+                  "doc": ""
+                },
+                {
+                  "name": "currency",
+                  "type": "string",
+                  "doc": ""
+                }
+              ]
+            }
+          ],
+          "methods": [
+            {
+              "name": "GetOrder",
+              "doc": "GetOrder answers with the order as it is now. NOT_FOUND for an id the\nservice has never seen; a cancelled order is still found.",
+              "request": "GetOrderRequest",
+              "response": "GetOrderResponse"
+            },
+            {
+              "name": "CancelOrder",
+              "doc": "CancelOrder cancels an order that has not been dispatched yet.\nFAILED_PRECONDITION once it has: from then on the way back is a return,\nwhich is delivery's business, not this service's. Cancelling twice is\nnot an error; the second call answers with the already cancelled order.",
+              "request": "CancelOrderRequest",
+              "response": "CancelOrderResponse"
+            }
+          ],
+          "module": "buf.build/shortlink-org/portolan-shop-order"
+        }
+    lifecycle: production
+    owner: shortlink-org/shop-oms
+    system: shop
+    type: portolan
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+    name: shop-pricing
+    title: Pricing
+    description: Pricing
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/examples/shop/pricing
+        portolan.io/id: shop.pricing
+spec:
+    dependsOn:
+        - resource:default/buf-build-shortlink-org-portolan-shop-price-list
+        - resource:default/buf-build-shortlink-org-portolan-shop-quote
+        - resource:default/shop-pricing-pg
+    lifecycle: production
+    owner: shortlink-org/shop
+    providesApis:
+        - api:default/shop-v1-pricelists
+        - api:default/shop-v1-pricing
+    system: shop
+    type: service
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+    name: shop-v1-pricing
+    title: shop.v1.Pricing
+    description: Interface provided by Pricing
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/quote/proto/shop/v1/pricing.proto
+        portolan.io/id: shop.v1.Pricing
+spec:
+    definition: |-
+        {
+          "id": "shop.v1.Pricing",
+          "messages": [
+            {
+              "name": "IssueQuoteRequest",
+              "fields": [
+                {
+                  "name": "basket_id",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "currency",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "items",
+                  "type": "[]Item",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "IssueQuoteResponse",
+              "fields": [
+                {
+                  "name": "quote_id",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "total_minor",
+                  "type": "int64",
+                  "doc": ""
+                },
+                {
+                  "name": "currency",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "expires_at",
+                  "type": "string",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "GetQuoteRequest",
+              "fields": [
+                {
+                  "name": "quote_id",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "basket_id",
+                  "type": "string",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "GetQuoteResponse",
+              "fields": [
+                {
+                  "name": "quote_id",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "basket_id",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "total_minor",
+                  "type": "int64",
+                  "doc": ""
+                },
+                {
+                  "name": "currency",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "state",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "expires_at",
+                  "type": "string",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "Item",
+              "fields": [
+                {
+                  "name": "sku",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "quantity",
+                  "type": "int32",
+                  "doc": ""
+                }
+              ]
+            }
+          ],
+          "methods": [
+            {
+              "name": "IssueQuote",
+              "doc": "Price a basket and promise the price for a window.",
+              "request": "IssueQuoteRequest",
+              "response": "IssueQuoteResponse"
+            },
+            {
+              "name": "GetQuote",
+              "doc": "Read a quote, by its own id or by the basket it priced.",
+              "request": "GetQuoteRequest",
+              "response": "GetQuoteResponse"
+            }
+          ],
+          "module": "buf.build/shortlink-org/portolan-shop-quote"
+        }
+    lifecycle: production
+    owner: shortlink-org/shop
+    system: shop
+    type: portolan
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+    name: shop-v1-pricelists
+    title: shop.v1.PriceLists
+    description: Interface provided by Pricing
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/proto/shop/v1/price_lists.proto
+        portolan.io/id: shop.v1.PriceLists
+spec:
+    definition: |-
+        {
+          "id": "shop.v1.PriceLists",
+          "messages": [
+            {
+              "name": "ImportPriceListRequest",
+              "fields": [
+                {
+                  "name": "name",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "currency",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "valid_from",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "rows",
+                  "type": "[]PriceRow",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "ImportPriceListResponse",
+              "fields": [
+                {
+                  "name": "price_list_id",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "rows",
+                  "type": "int32",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "ArchivePriceListRequest",
+              "fields": [
+                {
+                  "name": "price_list_id",
+                  "type": "string",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "ArchivePriceListResponse",
+              "fields": [
+                {
+                  "name": "price_list_id",
+                  "type": "string",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "ListPriceListsRequest",
+              "fields": []
+            },
+            {
+              "name": "ListPriceListsResponse",
+              "fields": [
+                {
+                  "name": "lists",
+                  "type": "[]PriceListSummary",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "PriceRow",
+              "fields": [
+                {
+                  "name": "sku",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "amount_minor",
+                  "type": "int64",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "PriceListSummary",
+              "fields": [
+                {
+                  "name": "price_list_id",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "name",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "currency",
+                  "type": "string",
+                  "doc": ""
+                },
+                {
+                  "name": "rows",
+                  "type": "int32",
+                  "doc": ""
+                },
+                {
+                  "name": "archived",
+                  "type": "bool",
+                  "doc": ""
+                }
+              ]
+            }
+          ],
+          "methods": [
+            {
+              "name": "ImportPriceList",
+              "doc": "Take in a whole list.",
+              "request": "ImportPriceListRequest",
+              "response": "ImportPriceListResponse"
+            },
+            {
+              "name": "ArchivePriceList",
+              "doc": "Take a list out of use without losing it.",
+              "request": "ArchivePriceListRequest",
+              "response": "ArchivePriceListResponse"
+            },
+            {
+              "name": "ListPriceLists",
+              "doc": "Every list there is, archived ones included.",
+              "request": "ListPriceListsRequest",
+              "response": "ListPriceListsResponse"
+            }
+          ],
+          "module": "buf.build/shortlink-org/portolan-shop-price-list"
+        }
+    lifecycle: production
+    owner: shortlink-org/shop
+    system: shop
+    type: portolan
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+    name: storefront
+    title: Storefront
+    description: 'One graph in front of the estate, for one kind of client. It owns nothing: everything it answers with it asked somebody else for a moment earlier, and translated into the words a shopper''s screen uses.'
+    annotations:
+        portolan.io/id: storefront
+spec:
+    domain: example-estate
+    owner: architecture
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+    name: storefront-bff
+    title: Storefront BFF
+    description: Storefront BFF
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/examples/bff
+        portolan.io/id: storefront.bff
+spec:
+    consumesApis:
+        - api:default/auth-v1-sessions
+        - api:default/cart-v1-baskets
+        - api:default/delivery-v1-delivery
+        - api:default/shop-v1-orderservice
+    dependsOn:
+        - component:default/auth-auth
+        - component:default/delivery-core
+        - component:default/shop-cart
+        - component:default/shop-oms
+    lifecycle: production
+    owner: shortlink-org/platform
+    providesApis:
+        - api:default/storefront-v1-basket
+        - api:default/storefront-v1-delivery
+        - api:default/storefront-v1-order
+        - api:default/storefront-v1-viewer
+    system: storefront
+    type: service
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+    name: storefront-v1-basket
+    title: storefront.v1.Basket
+    description: Interface provided by Storefront BFF
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/schema.graphql
+        portolan.io/id: storefront.v1.Basket
+spec:
+    definition: |-
+        {
+          "id": "storefront.v1.Basket",
+          "messages": [
+            {
+              "name": "QueryBasketArgs",
+              "fields": [
+                {
+                  "name": "id",
+                  "type": "ID",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "Basket",
+              "fields": [
+                {
+                  "name": "id",
+                  "type": "ID",
+                  "doc": ""
+                },
+                {
+                  "name": "status",
+                  "type": "BasketStatus enum(OPEN | CHECKED_OUT | ABANDONED | MERGED)",
+                  "doc": ""
+                },
+                {
+                  "name": "lines",
+                  "type": "[]Line",
+                  "doc": ""
+                },
+                {
+                  "name": "subtotal",
+                  "type": "Money",
+                  "doc": "Optional. Absent while the basket is empty: nothing has been added to add up."
+                }
+              ]
+            },
+            {
+              "name": "AddItemInput",
+              "fields": [
+                {
+                  "name": "basketId",
+                  "type": "ID",
+                  "doc": ""
+                },
+                {
+                  "name": "sku",
+                  "type": "String",
+                  "doc": ""
+                },
+                {
+                  "name": "quantity",
+                  "type": "Int",
+                  "doc": ""
+                },
+                {
+                  "name": "unitPrice",
+                  "type": "MoneyInput",
+                  "doc": "The price the customer is looking at. Captured as sent, never recomputed."
+                }
+              ]
+            },
+            {
+              "name": "RemoveItemInput",
+              "fields": [
+                {
+                  "name": "basketId",
+                  "type": "ID",
+                  "doc": ""
+                },
+                {
+                  "name": "sku",
+                  "type": "String",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "CheckoutInput",
+              "fields": [
+                {
+                  "name": "basketId",
+                  "type": "ID",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "Checkout",
+              "fields": [
+                {
+                  "name": "basketId",
+                  "type": "ID",
+                  "doc": ""
+                },
+                {
+                  "name": "quoteId",
+                  "type": "String",
+                  "doc": ""
+                },
+                {
+                  "name": "total",
+                  "type": "Money",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "Line",
+              "fields": [
+                {
+                  "name": "sku",
+                  "type": "String",
+                  "doc": ""
+                },
+                {
+                  "name": "quantity",
+                  "type": "Int",
+                  "doc": ""
+                },
+                {
+                  "name": "unitPrice",
+                  "type": "Money",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "Money",
+              "fields": [
+                {
+                  "name": "amountMinor",
+                  "type": "Int",
+                  "doc": ""
+                },
+                {
+                  "name": "currency",
+                  "type": "String",
+                  "doc": "ISO 4217, upper case."
+                }
+              ]
+            },
+            {
+              "name": "MoneyInput",
+              "fields": [
+                {
+                  "name": "amountMinor",
+                  "type": "Int",
+                  "doc": ""
+                },
+                {
+                  "name": "currency",
+                  "type": "String",
+                  "doc": ""
+                }
+              ]
+            }
+          ],
+          "methods": [
+            {
+              "name": "Query.basket",
+              "doc": "The basket as it stands, or null when there is no such basket to show.",
+              "request": "QueryBasketArgs",
+              "response": "Basket"
+            },
+            {
+              "name": "Mutation.addItem",
+              "doc": "Add a line, or increase one already there.",
+              "request": "AddItemInput",
+              "response": "Basket"
+            },
+            {
+              "name": "Mutation.removeItem",
+              "doc": "Remove a line outright.",
+              "request": "RemoveItemInput",
+              "response": "Basket"
+            },
+            {
+              "name": "Mutation.checkout",
+              "doc": "Freeze the basket and hand it on.\n\nNo order exists when this answers. The cart publishes that the basket was\nchecked out, and the order service places one when it hears; ask for\n`order` a moment later, or listen to `orderStatus`.",
+              "request": "CheckoutInput",
+              "response": "Checkout"
+            }
+          ],
+          "module": ""
+        }
+    lifecycle: production
+    owner: shortlink-org/platform
+    system: storefront
+    type: portolan
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+    name: storefront-v1-delivery
+    title: storefront.v1.Delivery
+    description: Interface provided by Storefront BFF
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/delivery/schema.graphql
+        portolan.io/id: storefront.v1.Delivery
+spec:
+    definition: |-
+        {
+          "id": "storefront.v1.Delivery",
+          "messages": [
+            {
+              "name": "QueryShipmentArgs",
+              "fields": [
+                {
+                  "name": "id",
+                  "type": "ID",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "Shipment",
+              "fields": [
+                {
+                  "name": "id",
+                  "type": "ID",
+                  "doc": ""
+                },
+                {
+                  "name": "orderId",
+                  "type": "ID",
+                  "doc": ""
+                },
+                {
+                  "name": "state",
+                  "type": "String",
+                  "doc": "What delivery calls the state of this parcel.\n\nA string rather than an enum on purpose: delivery answers with one, and a\nset of values invented here would be a promise this service cannot keep."
+                },
+                {
+                  "name": "trackingCode",
+                  "type": "String",
+                  "doc": "Optional. The code a customer pastes into a carrier's site."
+                },
+                {
+                  "name": "parcels",
+                  "type": "Int",
+                  "doc": ""
+                }
+              ]
+            }
+          ],
+          "methods": [
+            {
+              "name": "Query.shipment",
+              "doc": "Where the parcel is, or null when nothing has been handed to a carrier yet.",
+              "request": "QueryShipmentArgs",
+              "response": "Shipment"
+            }
+          ],
+          "module": ""
+        }
+    lifecycle: production
+    owner: shortlink-org/platform
+    system: storefront
+    type: portolan
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+    name: storefront-v1-order
+    title: storefront.v1.Order
+    description: Interface provided by Storefront BFF
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/order/schema.graphql
+        portolan.io/id: storefront.v1.Order
+spec:
+    definition: |-
+        {
+          "id": "storefront.v1.Order",
+          "messages": [
+            {
+              "name": "QueryOrderArgs",
+              "fields": [
+                {
+                  "name": "id",
+                  "type": "ID",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "SubscriptionOrderStatusArgs",
+              "fields": [
+                {
+                  "name": "id",
+                  "type": "ID",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "Order",
+              "fields": [
+                {
+                  "name": "id",
+                  "type": "ID",
+                  "doc": ""
+                },
+                {
+                  "name": "state",
+                  "type": "OrderState enum(PLACED | CONFIRMED | CANCELLED)",
+                  "doc": ""
+                },
+                {
+                  "name": "lines",
+                  "type": "[]Line",
+                  "doc": ""
+                },
+                {
+                  "name": "total",
+                  "type": "Money",
+                  "doc": "What the customer agreed to at checkout, and not a penny recomputed since."
+                },
+                {
+                  "name": "placedAt",
+                  "type": "DateTime",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "CancelOrderInput",
+              "fields": [
+                {
+                  "name": "id",
+                  "type": "ID",
+                  "doc": ""
+                },
+                {
+                  "name": "reason",
+                  "type": "String",
+                  "doc": "Optional."
+                }
+              ]
+            },
+            {
+              "name": "OrderMoved",
+              "fields": [
+                {
+                  "name": "orderId",
+                  "type": "ID",
+                  "doc": ""
+                },
+                {
+                  "name": "state",
+                  "type": "OrderState enum(PLACED | CONFIRMED | CANCELLED)",
+                  "doc": ""
+                },
+                {
+                  "name": "at",
+                  "type": "DateTime",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "Line",
+              "fields": [
+                {
+                  "name": "sku",
+                  "type": "String",
+                  "doc": ""
+                },
+                {
+                  "name": "quantity",
+                  "type": "Int",
+                  "doc": ""
+                },
+                {
+                  "name": "unitPrice",
+                  "type": "Money",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "Money",
+              "fields": [
+                {
+                  "name": "amountMinor",
+                  "type": "Int",
+                  "doc": ""
+                },
+                {
+                  "name": "currency",
+                  "type": "String",
+                  "doc": "ISO 4217, upper case."
+                }
+              ]
+            }
+          ],
+          "methods": [
+            {
+              "name": "Query.order",
+              "doc": "The order, or null when the storefront has never been told of one.",
+              "request": "QueryOrderArgs",
+              "response": "Order"
+            },
+            {
+              "name": "Mutation.cancelOrder",
+              "doc": "Cancel an order that has not been dispatched. Cancelling twice is not an error.",
+              "request": "CancelOrderInput",
+              "response": "Order"
+            },
+            {
+              "name": "Subscription.orderStatus",
+              "doc": "Every move an order makes, until it stops moving.\n\nThe storefront does not poll the order service for this: the moves are on\nthe bus already, and this is the same events, forwarded to whoever is\nwatching this order.",
+              "request": "SubscriptionOrderStatusArgs",
+              "response": "OrderMoved",
+              "streaming": "server"
+            }
+          ],
+          "module": ""
+        }
+    lifecycle: production
+    owner: shortlink-org/platform
+    system: storefront
+    type: portolan
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+    name: storefront-v1-viewer
+    title: storefront.v1.Viewer
+    description: Interface provided by Storefront BFF
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/viewer/schema.graphql
+        portolan.io/id: storefront.v1.Viewer
+spec:
+    definition: |-
+        {
+          "id": "storefront.v1.Viewer",
+          "messages": [
+            {
+              "name": "Viewer",
+              "fields": [
+                {
+                  "name": "userId",
+                  "type": "ID",
+                  "doc": ""
+                },
+                {
+                  "name": "expiresAt",
+                  "type": "DateTime",
+                  "doc": "When the session stops being live."
+                }
+              ]
+            }
+          ],
+          "methods": [
+            {
+              "name": "Query.viewer",
+              "doc": "Who the request belongs to, or null when it belongs to nobody.\n\nThere is no `login` here. Sessions are minted by auth and nowhere else, and\na BFF that took a password would be a second place credentials go.",
+              "response": "Viewer"
+            }
+          ],
+          "module": ""
+        }
+    lifecycle: production
+    owner: shortlink-org/platform
+    system: storefront
+    type: portolan
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+    name: auth-auth-pg
+    title: Auth database
+    description: State owned by auth.auth
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/examples/auth/internal/infrastructure/repository
+        portolan.io/id: auth.auth.pg
+spec:
+    owner: shortlink-org/identity
+    system: auth
+    type: postgres
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+    name: delivery-core-pg
+    title: Delivery database
+    description: State owned by delivery.core
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/examples/shop/delivery/core/src/infrastructure/repository
+        portolan.io/id: delivery.core.pg
+spec:
+    owner: shortlink-org/delivery
+    system: delivery
+    type: postgres
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+    name: payments-ledger-pg
+    title: Ledger database
+    description: State owned by payments.ledger
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/repository
+        portolan.io/id: payments.ledger.pg
+spec:
+    owner: shortlink-org/platform
+    system: payments
+    type: postgres
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+    name: shop-billing-pg
+    title: Billing database
+    description: State owned by shop.billing
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/examples/shop/billing
+        portolan.io/id: shop.billing.pg
+spec:
+    owner: shortlink-org/shop
+    system: shop
+    type: postgres
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+    name: shop-cart-pg
+    title: Cart database
+    description: State owned by shop.cart
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/examples/shop/cart/src/infrastructure/repository
+        portolan.io/id: shop.cart.pg
+spec:
+    owner: shortlink-org/shop
+    system: shop
+    type: postgres
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+    name: shop-oms-pg
+    title: Order database
+    description: State owned by shop.oms
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/examples/shop/oms/src/infrastructure/repository
+        portolan.io/id: shop.oms.pg
+spec:
+    owner: shortlink-org/shop-oms
+    system: shop
+    type: postgres
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+    name: shop-pricing-pg
+    title: Pricing database
+    description: State owned by shop.pricing
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/examples/shop/pricing/internal/infrastructure/repository
+        portolan.io/id: shop.pricing.pg
+spec:
+    owner: shortlink-org/shop
+    system: shop
+    type: postgres
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+    name: buf-build-shortlink-org-portolan-delivery-route
+    title: shortlink-org/portolan-delivery-route
+    description: Schema module buf.build/shortlink-org/portolan-delivery-route
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/route/proto
+        portolan.io/id: buf.build/shortlink-org/portolan-delivery-route
+spec:
+    owner: shortlink-org/delivery
+    system: delivery
+    type: schema-module
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+    name: buf-build-shortlink-org-portolan-delivery-shipment
+    title: shortlink-org/portolan-delivery-shipment
+    description: Schema module buf.build/shortlink-org/portolan-delivery-shipment
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/proto
+        portolan.io/id: buf.build/shortlink-org/portolan-delivery-shipment
+spec:
+    owner: shortlink-org/delivery
+    system: delivery
+    type: schema-module
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+    name: buf-build-shortlink-org-portolan-payments-payment
+    title: shortlink-org/portolan-payments-payment
+    description: Schema module buf.build/shortlink-org/portolan-payments-payment
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/proto
+        portolan.io/id: buf.build/shortlink-org/portolan-payments-payment
+spec:
+    owner: shortlink-org/platform
+    system: payments
+    type: schema-module
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+    name: buf-build-shortlink-org-portolan-payments-refund
+    title: shortlink-org/portolan-payments-refund
+    description: Schema module buf.build/shortlink-org/portolan-payments-refund
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/proto
+        portolan.io/id: buf.build/shortlink-org/portolan-payments-refund
+spec:
+    owner: shortlink-org/platform
+    system: payments
+    type: schema-module
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+    name: buf-build-shortlink-org-portolan-shop-order
+    title: shortlink-org/portolan-shop-order
+    description: Schema module buf.build/shortlink-org/portolan-shop-order
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/examples/shop/oms/vendor/proto/shortlink-org/portolan-shop-order
+        portolan.io/id: buf.build/shortlink-org/portolan-shop-order
+spec:
+    owner: shortlink-org/shop-oms
+    system: shop
+    type: schema-module
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+    name: buf-build-shortlink-org-portolan-shop-price-list
+    title: shortlink-org/portolan-shop-price-list
+    description: Schema module buf.build/shortlink-org/portolan-shop-price-list
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/proto
+        portolan.io/id: buf.build/shortlink-org/portolan-shop-price-list
+spec:
+    owner: shortlink-org/shop
+    system: shop
+    type: schema-module
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+    name: buf-build-shortlink-org-portolan-shop-quote
+    title: shortlink-org/portolan-shop-quote
+    description: Schema module buf.build/shortlink-org/portolan-shop-quote
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/examples/shop/pricing/internal/infrastructure/transport/grpc/quote/proto
+        portolan.io/id: buf.build/shortlink-org/portolan-shop-quote
+spec:
+    owner: shortlink-org/shop
+    system: shop
+    type: schema-module

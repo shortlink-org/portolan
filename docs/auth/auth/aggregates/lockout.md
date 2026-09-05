@@ -84,9 +84,9 @@ stateDiagram-v2
 
 | From | To | On | Emits | Source |
 | --- | --- | --- | --- | --- |
-| `open` | `locked` | `Fail` | `AccountLocked` | `examples/auth/internal/domain/lockout/lockout.go:95` |
-| `locked` | `open` | `Fail` | — | `examples/auth/internal/domain/lockout/lockout.go:88` |
-| `locked` | `open` | `Succeed` | — | `examples/auth/internal/domain/lockout/lockout.go:121` |
+| `open` | `locked` | `Fail` | `AccountLocked` | [`examples/auth/internal/domain/lockout/lockout.go:95`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/domain/lockout/lockout.go#L95) |
+| `locked` | `open` | `Fail` | — | [`examples/auth/internal/domain/lockout/lockout.go:88`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/domain/lockout/lockout.go#L88) |
+| `locked` | `open` | `Succeed` | — | [`examples/auth/internal/domain/lockout/lockout.go:121`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/domain/lockout/lockout.go#L121) |
 
 ## Operations
 
@@ -98,6 +98,7 @@ stateDiagram-v2
 
 ## Events
 
+<a id="event-auth-auth-lockout-accountlocked"></a>
 ### AccountLocked
 
 `auth.auth.lockout.AccountLocked`
@@ -108,7 +109,7 @@ On the wire as `auth.AccountLocked`, on `auth_lockout`.
 
 AccountLocked is published when an account starts refusing logins because of too many wrong passwords in a row. Until says when it stops.
 
-Source: `examples/auth/internal/domain/lockout/event/account_locked.go`
+Source: [`examples/auth/internal/domain/lockout/event/account_locked.go`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/domain/lockout/event/account_locked.go)
 
 | Field | Type |
 | --- | --- |

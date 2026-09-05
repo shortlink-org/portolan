@@ -4,7 +4,7 @@
 
 - **Context:** [Storefront](README.md)
 - **Terms:** 13
-- **Read from:** `examples/bff/GLOSSARY.md`
+- **Read from:** [`examples/bff/GLOSSARY.md`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/GLOSSARY.md)
 
 One meaning per word inside this context, as the glossary beside the code states it.
 

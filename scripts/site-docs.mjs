@@ -23,7 +23,7 @@
 // regenerated shows on the next request.
 
 import { cpSync, existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import { extname, join, normalize, posix, resolve, sep } from "node:path";
+import { extname, isAbsolute, join, normalize, posix, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { loadManifest } from "./manifest.mjs";
@@ -81,28 +81,54 @@ export function docsDirectory(manifest) {
  */
 export function siteDocs({ manifest, dist }) {
   const docs = docsDirectory(manifest);
-  if (docs === null || !existsSync(docs)) return [];
+  const written = [];
 
-  const mount = DOCS_MOUNT.replace(/\/$/, "");
-  cpSync(docs, join(dist, mount), {
-    recursive: true,
-    filter: (source) => !source.endsWith(`/${GENERATOR_MANIFEST}`),
-  });
-  const written = [`${mount}/`];
+  if (docs !== null && existsSync(docs)) {
+    const mount = DOCS_MOUNT.replace(/\/$/, "");
+    cpSync(docs, join(dist, mount), {
+      recursive: true,
+      filter: (source) => !source.endsWith(`/${GENERATOR_MANIFEST}`),
+    });
+    written.push(`${mount}/`);
 
-  const index = join(docs, LLMS);
-  if (existsSync(index)) {
-    writeFileSync(join(dist, LLMS), mountLinks(readFileSync(index, "utf8"), DOCS_MOUNT));
-    written.push(LLMS);
+    const index = join(docs, LLMS);
+    if (existsSync(index)) {
+      writeFileSync(join(dist, LLMS), mountLinks(readFileSync(index, "utf8"), DOCS_MOUNT));
+      written.push(LLMS);
+    }
+
+    const full = join(docs, LLMS_FULL);
+    if (existsSync(full)) {
+      cpSync(full, join(dist, LLMS_FULL));
+      written.push(LLMS_FULL);
+    }
   }
 
-  const full = join(docs, LLMS_FULL);
-  if (existsSync(full)) {
-    cpSync(full, join(dist, LLMS_FULL));
-    written.push(LLMS_FULL);
+  for (const step of manifest.generate ?? []) {
+    const mount = generatedMount(step);
+    if (mount === null || !existsSync(mount)) continue;
+    cpSync(mount, join(dist, mount), {
+      recursive: true,
+      filter: (source) => !source.endsWith(`/${GENERATOR_MANIFEST}`),
+    });
+    written.push(`${mount}/`);
   }
 
   return written;
+}
+
+/** A generated output that can safely be mounted below the built site's root. */
+export function generatedMount(step) {
+  if (
+    step.plugin === "markdown" ||
+    typeof step.out !== "string" ||
+    step.out === "" ||
+    isAbsolute(step.out) ||
+    step.out.includes("\\")
+  ) return null;
+  const mount = posix.normalize(step.out).replace(/^\.\//, "").replace(/\/$/, "");
+  if (mount === "." || mount === ".." || mount.startsWith("../")) return null;
+  return mount;
 }
 
 /**
@@ -146,6 +172,9 @@ const TYPES = {
   ".md": "text/markdown; charset=utf-8",
   ".txt": "text/plain; charset=utf-8",
   ".json": "application/json; charset=utf-8",
+  ".yaml": "application/yaml; charset=utf-8",
+  ".yml": "application/yaml; charset=utf-8",
+  ".mmd": "text/plain; charset=utf-8",
   ".svg": "image/svg+xml",
   ".png": "image/png",
 };
@@ -190,6 +219,33 @@ function isFile(path) {
   return existsSync(path) && !path.endsWith(`${sep}${GENERATOR_MANIFEST}`);
 }
 
+/** A safe request for a non-markdown generator output in development. */
+export function generatedRequest(pathname, manifest, base = "/") {
+  const root = base.endsWith("/") ? base : `${base}/`;
+  if (!pathname.startsWith(root)) return null;
+  const rest = pathname.slice(root.length);
+  for (const step of manifest.generate ?? []) {
+    const mount = generatedMount(step);
+    if (mount === null) continue;
+    if (rest !== mount && !rest.startsWith(`${mount}/`)) continue;
+    if (rest === mount) return { kind: "redirect", to: `${root}${mount}/` };
+    let inside;
+    try { inside = decodeURIComponent(rest.slice(mount.length + 1)); } catch { return null; }
+    if (inside.includes("\\") || inside.split("/").some((part) => part === ".." || part.startsWith("."))) return null;
+    if (inside === "" || inside.endsWith("/")) inside += "README.md";
+    return { kind: "artifact", path: posix.join(mount, inside) };
+  }
+  return null;
+}
+
+export function readGeneratedRequest(workspace, request) {
+  if (request === null || request.kind !== "artifact") return null;
+  const root = resolve(workspace);
+  const file = resolve(root, normalize(request.path));
+  if (!file.startsWith(root + sep) || !isFile(file)) return null;
+  return { type: TYPES[extname(file)] ?? "application/octet-stream", body: readFileSync(file) };
+}
+
 /**
  * The dev server's side of the build step: llms.txt, llms-full.txt and docs/
  * under the site's base, answered from the workspace as it is now. Vite's
@@ -203,22 +259,23 @@ export function siteDocsPlugin(workspace = process.cwd()) {
       server.middlewares.use((req, res, next) => {
         if (req.method !== "GET" && req.method !== "HEAD") return next();
         const url = new URL(req.url ?? "/", "http://localhost");
-        const request = docsRequest(url.pathname, server.config.base);
+        let manifest;
+        try {
+          manifest = JSON.parse(readFileSync(join(workspace, "portolan.json"), "utf8"));
+        } catch {
+          return next();
+        }
+        const request = docsRequest(url.pathname, server.config.base) ?? generatedRequest(url.pathname, manifest, server.config.base);
         if (request === null) return next();
         if (request.kind === "redirect") {
           res.writeHead(301, { Location: request.to });
           return res.end();
         }
 
-        let docs;
-        try {
-          docs = docsDirectory(JSON.parse(readFileSync(join(workspace, "portolan.json"), "utf8")));
-        } catch {
-          return next();
-        }
-        if (docs === null) return next();
-
-        const answer = readDocsRequest(join(workspace, docs), request);
+        const docs = docsDirectory(manifest);
+        const answer = request.kind === "artifact"
+          ? readGeneratedRequest(workspace, request)
+          : docs === null ? null : readDocsRequest(join(workspace, docs), request);
         if (answer === null) return next();
         res.writeHead(200, { "Content-Type": answer.type, "Cache-Control": "no-cache" });
         res.end(req.method === "HEAD" ? undefined : answer.body);

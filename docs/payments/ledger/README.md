@@ -4,8 +4,8 @@
 
 - **Id:** `payments.ledger`
 - **Context:** [Payments](../README.md)
-- **Repo:** `github.com/shortlink-org/portolan`
-- **Path:** `examples/payments/ledger`
+- **Repo:** [`github.com/shortlink-org/portolan`](https://github.com/shortlink-org/portolan)
+- **Path:** [`examples/payments/ledger/`](https://github.com/shortlink-org/portolan/tree/main/examples/payments/ledger)
 - **Owners:** `@shortlink-org/platform`
 
 Service `ledger` — bounded context **payments**. Java on Spring Boot.
@@ -104,7 +104,7 @@ Stripe's routes instead of at Stripe.
 - [ledger.0002](../../adr/ledger.0002.md)
   — the order service's events are read off the bus by an adapter and handed
   to the policies in process.
-- [ledger.0003](docs/adr/0003-the-card-network-is-stripe-and-stays-outside-the-estate.md)
+- [ledger.0003](../../adr/ledger.0003.md)
   — the gateway is Stripe, kept outside the estate with a narrow copy of its
   contract beside the adapter, so the calls resolve and nothing is invented.
 
@@ -128,12 +128,18 @@ gap, not an oversight, and none of them changes what the catalog shows.
 
 ## Provides
 
-**`payments.v1.PaymentService`** — `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/proto/payments/v1/payment.proto:12`
+### payments.v1.PaymentService
 
-- `Authorize`
-- `Capture`
-- `GetPayment`
+- **Source:** [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/proto/payments/v1/payment.proto:12`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/proto/payments/v1/payment.proto#L12)
+- **Module:** [buf.build/shortlink-org/portolan-payments-payment](../../modules/shortlink-org-portolan-payments-payment.md)
 
+| Method | Request | Response | Doc |
+| --- | --- | --- | --- |
+| `Authorize` | `AuthorizeRequest` | `AuthorizeResponse` | Ask the gateway to hold the money for an order. |
+| `Capture` | `CaptureRequest` | `CaptureResponse` | Move what is being held. Only an authorized payment can be captured. |
+| `GetPayment` | `GetPaymentRequest` | `GetPaymentResponse` | What happened to the money for one payment. |
+
+<a id="message-authorizerequest"></a>
 <details><summary>AuthorizeRequest</summary>
 
 | Field | Type |
@@ -145,6 +151,7 @@ gap, not an oversight, and none of them changes what the catalog shows.
 
 </details>
 
+<a id="message-authorizeresponse"></a>
 <details><summary>AuthorizeResponse</summary>
 
 | Field | Type | Doc |
@@ -155,6 +162,7 @@ gap, not an oversight, and none of them changes what the catalog shows.
 
 </details>
 
+<a id="message-capturerequest"></a>
 <details><summary>CaptureRequest</summary>
 
 | Field | Type |
@@ -163,6 +171,7 @@ gap, not an oversight, and none of them changes what the catalog shows.
 
 </details>
 
+<a id="message-captureresponse"></a>
 <details><summary>CaptureResponse</summary>
 
 | Field | Type |
@@ -172,6 +181,7 @@ gap, not an oversight, and none of them changes what the catalog shows.
 
 </details>
 
+<a id="message-getpaymentrequest"></a>
 <details><summary>GetPaymentRequest</summary>
 
 | Field | Type |
@@ -180,6 +190,7 @@ gap, not an oversight, and none of them changes what the catalog shows.
 
 </details>
 
+<a id="message-getpaymentresponse"></a>
 <details><summary>GetPaymentResponse</summary>
 
 | Field | Type |
@@ -192,11 +203,17 @@ gap, not an oversight, and none of them changes what the catalog shows.
 
 </details>
 
-**`payments.v1.RefundService`** — `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/proto/payments/v1/refund.proto:10`
+### payments.v1.RefundService
 
-- `IssueRefund`
-- `ListRefunds`
+- **Source:** [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/proto/payments/v1/refund.proto:10`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/proto/payments/v1/refund.proto#L10)
+- **Module:** [buf.build/shortlink-org/portolan-payments-refund](../../modules/shortlink-org-portolan-payments-refund.md)
 
+| Method | Request | Response | Doc |
+| --- | --- | --- | --- |
+| `IssueRefund` | `IssueRefundRequest` | `IssueRefundResponse` | Send money back against a captured payment, in full or in part. |
+| `ListRefunds` | `ListRefundsRequest` | `ListRefundsResponse` | Every refund against one payment. |
+
+<a id="message-issuerefundrequest"></a>
 <details><summary>IssueRefundRequest</summary>
 
 | Field | Type |
@@ -209,6 +226,7 @@ gap, not an oversight, and none of them changes what the catalog shows.
 
 </details>
 
+<a id="message-issuerefundresponse"></a>
 <details><summary>IssueRefundResponse</summary>
 
 | Field | Type |
@@ -218,6 +236,7 @@ gap, not an oversight, and none of them changes what the catalog shows.
 
 </details>
 
+<a id="message-listrefundsrequest"></a>
 <details><summary>ListRefundsRequest</summary>
 
 | Field | Type |
@@ -226,6 +245,7 @@ gap, not an oversight, and none of them changes what the catalog shows.
 
 </details>
 
+<a id="message-listrefundsresponse"></a>
 <details><summary>ListRefundsResponse</summary>
 
 | Field | Type |
@@ -234,6 +254,7 @@ gap, not an oversight, and none of them changes what the catalog shows.
 
 </details>
 
+<a id="message-refundview"></a>
 <details><summary>RefundView</summary>
 
 | Field | Type |
@@ -249,20 +270,27 @@ gap, not an oversight, and none of them changes what the catalog shows.
 
 | Call | Peer | Status | Source |
 | --- | --- | --- | --- |
-| `shop.v1.OrderService/GetOrder` | [shop.oms](../../shop/oms/README.md) | declared | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/oms/proto/shop/v1/order.proto` |
-| `stripe.v1/PostPaymentIntents` | [stripe](../../externals/stripe.md) | declared | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml` |
-| `stripe.v1/PostPaymentIntentsIntentCancel` | [stripe](../../externals/stripe.md) | declared | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml` |
-| `stripe.v1/PostPaymentIntentsIntentCapture` | [stripe](../../externals/stripe.md) | declared | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml` |
-| `stripe.v1/PostRefunds` | [stripe](../../externals/stripe.md) | declared | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml` |
+| `shop.v1.OrderService/GetOrder` | [shop.oms](../../shop/oms/README.md) | declared | [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/oms/proto/shop/v1/order.proto`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/oms/proto/shop/v1/order.proto) |
+| `stripe.v1/PostPaymentIntents` | [stripe](../../externals/stripe.md) | declared | [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml) |
+| `stripe.v1/PostPaymentIntentsIntentCancel` | [stripe](../../externals/stripe.md) | declared | [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml) |
+| `stripe.v1/PostPaymentIntentsIntentCapture` | [stripe](../../externals/stripe.md) | declared | [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml) |
+| `stripe.v1/PostRefunds` | [stripe](../../externals/stripe.md) | declared | [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml) |
 
 ## Publishes
 
 | Event | Latest | Consumers |
 | --- | --- | --- |
-| [PaymentAuthorized](aggregates/payment.md) | v1 | [shop.oms (declared)](../../shop/oms/README.md) |
-| [PaymentCaptured](aggregates/payment.md) | v1 | [shop.billing (declared)](../../shop/billing/README.md), [delivery.core (declared)](../../delivery/core/README.md) |
-| [PaymentDeclined](aggregates/payment.md) | v1 | — |
-| [RefundIssued](aggregates/refund.md) | v1 | — |
+| [`PaymentAuthorized`](aggregates/payment.md#event-payments-ledger-payment-paymentauthorized) | v1 | [shop.oms (declared)](../../shop/oms/README.md) |
+| [`PaymentCaptured`](aggregates/payment.md#event-payments-ledger-payment-paymentcaptured) | v1 | [shop.billing (declared)](../../shop/billing/README.md), [delivery.core (declared)](../../delivery/core/README.md) |
+| [`PaymentDeclined`](aggregates/payment.md#event-payments-ledger-payment-paymentdeclined) | v1 | — |
+| [`RefundIssued`](aggregates/refund.md#event-payments-ledger-refund-refundissued) | v1 | — |
+
+## Schema modules
+
+| Module | Access | Packages |
+| --- | --- | --- |
+| [shortlink-org/portolan-payments-payment](../../modules/shortlink-org-portolan-payments-payment.md) | publishes | payments.v1 |
+| [shortlink-org/portolan-payments-refund](../../modules/shortlink-org-portolan-payments-refund.md) | publishes | payments.v1 |
 
 ## Stores
 

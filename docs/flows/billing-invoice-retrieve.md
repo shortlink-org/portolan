@@ -4,7 +4,7 @@
 
 - **Id:** `flow.billing-invoice-retrieve`
 - **Owner:** [shop](../shop/README.md)
-- **Source:** `examples/shop/billing/invoices/views.py`
+- **Source:** [`examples/shop/billing/invoices/views.py`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/views.py)
 
 Reads one invoice and the lines it is made of.
 
@@ -30,7 +30,9 @@ sequenceDiagram
 
 ## Steps
 
+<a id="step-s1"></a>
 1. **client** → **shop.billing** — invoice_retrieve → Invoice
-   status: declared · `examples/shop/billing/invoices/views.py:24`
+   status: declared · [`examples/shop/billing/invoices/views.py:24`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/views.py#L24)
+<a id="step-s2"></a>
 2. **shop.billing** → **billing-pg** — Invoice.objects.get
-   status: declared · `examples/shop/billing/invoices/services.py:68`
+   status: declared · [`examples/shop/billing/invoices/services.py:68`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L68)

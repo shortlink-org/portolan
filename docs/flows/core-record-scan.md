@@ -4,7 +4,7 @@
 
 - **Id:** `flow.core-record-scan`
 - **Owner:** [delivery](../delivery/README.md)
-- **Source:** `examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts`
+- **Source:** [`examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts)
 
 Writes down that a parcel was seen somewhere.
 
@@ -39,21 +39,26 @@ sequenceDiagram
 
 ## Steps
 
+<a id="step-s1"></a>
 1. **client** → **delivery.core** — RecordScan → RecordScanResponse
-   status: declared · `examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:29`
+   status: declared · [`examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:29`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts#L29)
+<a id="step-s2"></a>
 2. **delivery.core** → **core-pg** — byId
-   status: declared · `examples/shop/delivery/core/src/application/shipment/usecases/record_scan/usecase.ts:17`
+   status: declared · [`examples/shop/delivery/core/src/application/shipment/usecases/record_scan/usecase.ts:17`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/shipment/usecases/record_scan/usecase.ts#L17)
 
 > **One of**
 >
 > *moved — *ends the flow**
 >
+> <a id="step-s3"></a>
 > 3. **delivery.core** → **core-pg** — save
->    status: declared · `examples/shop/delivery/core/src/application/shipment/usecases/record_scan/usecase.ts:20`
+>    status: declared · [`examples/shop/delivery/core/src/application/shipment/usecases/record_scan/usecase.ts:20`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/shipment/usecases/record_scan/usecase.ts#L20)
+> <a id="step-s4"></a>
 > 4. **delivery.core** → **bus** — ShipmentInTransit
->    [delivery.core.shipment.ShipmentInTransit](../delivery/core/aggregates/shipment.md) · status: declared · `examples/shop/delivery/core/src/application/shipment/usecases/record_scan/usecase.ts:20`
+>    [`delivery.core.shipment.ShipmentInTransit`](../delivery/core/aggregates/shipment.md#event-delivery-core-shipment-shipmentintransit) · status: declared · [`examples/shop/delivery/core/src/application/shipment/usecases/record_scan/usecase.ts:20`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/shipment/usecases/record_scan/usecase.ts#L20)
 >
 > *otherwise*
 
+<a id="step-s6"></a>
 5. **delivery.core** → **core-pg** — save
-   status: declared · `examples/shop/delivery/core/src/application/shipment/usecases/record_scan/usecase.ts:23`
+   status: declared · [`examples/shop/delivery/core/src/application/shipment/usecases/record_scan/usecase.ts:23`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/application/shipment/usecases/record_scan/usecase.ts#L23)

@@ -4,7 +4,7 @@
 
 - **Context:** [Authentication](README.md)
 - **Terms:** 27
-- **Read from:** `examples/auth/GLOSSARY.md`
+- **Read from:** [`examples/auth/GLOSSARY.md`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/GLOSSARY.md)
 
 One meaning per word inside this context, as the glossary beside the code states it.
 

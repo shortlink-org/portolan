@@ -5,7 +5,7 @@
 - **Status:** accepted
 - **Date:** 2026-09-05
 - **Scope:** [payments.ledger](../payments/ledger/README.md)
-- **Source:** `examples/payments/ledger/docs/adr/0002-foreign-events-arrive-over-nats-and-are-republished-in-process.md`
+- **Source:** [`examples/payments/ledger/docs/adr/0002-foreign-events-arrive-over-nats-and-are-republished-in-process.md`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/docs/adr/0002-foreign-events-arrive-over-nats-and-are-republished-in-process.md)
 
 ### Context and Problem Statement
 

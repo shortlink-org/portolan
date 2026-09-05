@@ -39,6 +39,11 @@ export function toMarkdown({ headers, rows }: Sheet): string {
 
 /** RFC 4180: quote when the cell holds a comma, a quote, or a line break. */
 function csvCell(value: string): string {
+	// A CSV is often opened as a spreadsheet. Keep text that starts like a
+	// formula as text; negative numbers remain numbers.
+	if (/^[\t\r ]*[=+@]/.test(value) || /^[\t\r ]*-(?!\d+(?:[.,]\d+)?$)/.test(value)) {
+		value = `'${value}`;
+	}
   if (!/[",\r\n]/.test(value)) return value;
   return `"${value.replace(/"/g, '""')}"`;
 }
@@ -47,6 +52,11 @@ export function toCsv({ headers, rows }: Sheet): string {
   const line = (cells: string[]) =>
     headers.map((_, i) => csvCell(cells[i] ?? "")).join(",");
   return [line(headers), ...rows.map(line)].join("\r\n");
+}
+
+/** UTF-8 CSV as Excel expects it when opened directly from a download. */
+export function toExcelCsv(sheet: Sheet): string {
+  return `\uFEFF${toCsv(sheet)}`;
 }
 
 /** A filename a download can carry without quoting anything. */

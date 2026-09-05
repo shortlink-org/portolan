@@ -9,6 +9,7 @@
 
 ## Tables
 
+<a id="relation-billing-invoices-pg-invoices"></a>
 ### invoices
 
 aggregate-root · persists [billing.invoices.invoice](../aggregates/invoice.md)
@@ -24,6 +25,7 @@ One row per invoice.
 | --- | --- | --- |
 | `invoices_pkey` | id | unique |
 
+<a id="relation-billing-invoices-pg-invoice-lines"></a>
 ### invoice_lines
 
 child
@@ -31,13 +33,14 @@ child
 | Column | Type | Null | Key |
 | --- | --- | --- | --- |
 | `id` | `uuid` | not null | PK |
-| `invoice_id` | `uuid` | not null | → [`billing.invoices.pg.invoices`](pg.md#invoices).id (cascade) |
+| `invoice_id` | `uuid` | not null | → [`billing.invoices.pg.invoices`](pg.md#relation-billing-invoices-pg-invoices).id (cascade) |
 
 ## Views
 
+<a id="relation-billing-invoices-pg-invoice-totals"></a>
 ### invoice_totals
 
-**materialized** — rows are stored, and can be stale · reads [`billing.invoices.pg.invoices`](pg.md#invoices)
+**materialized** — rows are stored, and can be stale · reads [`billing.invoices.pg.invoices`](pg.md#relation-billing-invoices-pg-invoices)
 
 Totals, refreshed nightly.
 

@@ -21,6 +21,12 @@
 | --- | --- | --- |
 | [PSP gateway](externals/psp-gateway.md) | `psp.v1.Charges` | The card network the invoices are settled through. Nobody here builds it; the copy of its document vendored beside the client is all the catalog may claim. |
 
+## Schema modules
+
+| Module | Publisher | Registry | Packages |
+| --- | --- | --- | --- |
+| [Billing contracts](modules/example-billing.md) | [billing.invoices](billing/invoices/README.md) | buf.build | 1 package |
+
 ## Flows
 
 | Flow | Owner | Summary |
@@ -42,12 +48,76 @@
 Types named by more than one aggregate, event or message. A field that
 refers to one of these is knowably the same shape everywhere it appears.
 
+<a id="type-money"></a>
+
 ## Money
 
 | Field | Type | Doc |
 | --- | --- | --- |
 | `amountMinor` | `int64` | Amount in the minor unit. |
 | `currency` | `string` | ISO 4217, upper case. |
+
+<!-- modules/README.md -->
+
+# Schema modules
+
+*Generated from the portolan catalog · commit `abc1234` · at 2026-01-02T03:04:05Z. Do not edit by hand.*
+
+| Module | Publisher | Registry | Commit | Packages |
+| --- | --- | --- | --- | --- |
+| [Billing contracts](example-billing.md) | [billing.invoices](../billing/invoices/README.md) | buf.build | 0123456789012345678901234567890123456789 | 1 package |
+
+<!-- modules/example-billing.md -->
+
+# Billing contracts
+
+*Generated from the portolan catalog · commit `abc1234` · at 2026-01-02T03:04:05Z. Do not edit by hand.*
+
+- **Id:** `buf.build/example/billing`
+- **Registry:** buf.build
+- **Publisher:** [billing.invoices](../billing/invoices/README.md)
+- **Commit:** `0123456789012345678901234567890123456789`
+- **Digest:** `b5:example`
+- **Source:** `api`
+
+## Packages
+
+| Package |
+| --- |
+| `billing.v1` |
+
+## Files
+
+| File |
+| --- |
+| `api/invoices.proto` |
+
+## Used by
+
+| Service | Access |
+| --- | --- |
+| [Invoices](../billing/invoices/README.md) | publishes |
+
+## Interfaces
+
+### billing.v1.Invoices
+
+- **Source:** `api/invoices.proto`
+- **Module:** [buf.build/example/billing](example-billing.md)
+
+| Method | Route | Request | Response | Mode | Doc |
+| --- | --- | --- | --- | --- | --- |
+| `Get` | `GET /v1/invoices/{id}` | — | `Invoice` | deprecated | — |
+| `Raise` | — | `RaiseRequest` | `Invoice` | server | Raises and follows one invoice. |
+
+<a id="message-raiserequest"></a>
+<details><summary>RaiseRequest</summary>
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `total` | [`Money`](../types.md#type-money) | What is owed. |
+
+</details>
 
 <!-- billing/README.md -->
 
@@ -101,8 +171,8 @@ One meaning per word inside this context, as the glossary beside the code states
 
 - **Id:** `billing.invoices`
 - **Context:** [Billing](../README.md)
-- **Repo:** `github.com/example/billing`
-- **Path:** `examples/billing`
+- **Repo:** [`github.com/example/billing`](https://github.com/example/billing)
+- **Path:** `examples/billing/`
 
 Raises invoices and chases them. The vocabulary is [GLOSSARY.md](../glossary.md).
 
@@ -120,30 +190,56 @@ No dunning.
 
 ## Provides
 
-**`billing.v1.Invoices`** — `api/invoices.proto`
+### billing.v1.Invoices
 
-- `Raise`
-- `Get`
+- **Source:** `api/invoices.proto`
+- **Module:** [buf.build/example/billing](../../modules/example-billing.md)
 
+| Method | Route | Request | Response | Mode | Doc |
+| --- | --- | --- | --- | --- | --- |
+| `Get` | `GET /v1/invoices/{id}` | — | `Invoice` | deprecated | — |
+| `Raise` | — | `RaiseRequest` | `Invoice` | server | Raises and follows one invoice. |
+
+<a id="message-raiserequest"></a>
 <details><summary>RaiseRequest</summary>
 
 | Field | Type | Doc |
 | --- | --- | --- |
-| `total` | [`Money`](../../types.md#money) | What is owed. |
+| `total` | [`Money`](../../types.md#type-money) | What is owed. |
 
 </details>
 
 ## Consumes
 
-| Call | Peer | Status | Source | Note |
-| --- | --- | --- | --- | --- |
-| `psp.v1.Charges/Create` | [psp-gateway](../../externals/psp-gateway.md) | declared | `internal/psp/client.go:20` | The gateway is outside the estate; the copy beside the client says what it answers on. |
+| Call | Peer | Status | Source | Via | Note |
+| --- | --- | --- | --- | --- | --- |
+| `psp.v1.Charges/Create` | [psp-gateway](../../externals/psp-gateway.md) | declared | `internal/psp/client.go:20` | [`flow.raise-invoice#s3`](../../flows/raise-invoice.md#step-s3) | The gateway is outside the estate; the copy beside the client says what it answers on. |
 
 ## Publishes
 
 | Event | Latest | Consumers |
 | --- | --- | --- |
-| [InvoiceRaised](aggregates/invoice.md) | v2 | `billing.ledger (declared)` |
+| [`InvoiceRaised`](aggregates/invoice.md#event-billing-invoices-invoice-invoiceraised) | v2 | `billing.ledger (declared)` |
+
+## Channels
+
+### billing_invoice
+
+**Invoice events**
+
+Changes to an invoice.
+
+Source: `api/asyncapi.yaml`
+
+| Direction | Message | Title |
+| --- | --- | --- |
+| send | [`billing.InvoiceRaised`](aggregates/invoice.md#event-billing-invoices-invoice-invoiceraised) | Invoice raised |
+
+## Schema modules
+
+| Module | Access | Commit | Packages |
+| --- | --- | --- | --- |
+| [Billing contracts](../../modules/example-billing.md) | publishes | 0123456789012345678901234567890123456789 | billing.v1 |
 
 ## Stores
 
@@ -172,7 +268,7 @@ The invoice itself.
 | Field | Type | Doc |
 | --- | --- | --- |
 | `id` | `string` | Invoice id. |
-| `total` | [`Money`](../../../types.md#money) | What is owed. |
+| `total` | [`Money`](../../../types.md#type-money) | What is owed. |
 
 ## Value objects
 
@@ -180,7 +276,7 @@ The invoice itself.
 
 An amount in one currency.
 
-Shared type [`Money`](../../../types.md#money).
+Shared type [`Money`](../../../types.md#type-money).
 
 | Field | Type | Doc |
 | --- | --- | --- |
@@ -206,20 +302,21 @@ stateDiagram-v2
 
 | Operation | Kind | Doc |
 | --- | --- | --- |
-| `RaiseInvoice` | command | Raises one. |
 | `GetInvoice` | query | — |
+| `RaiseInvoice` | command | Raises one. |
 
 ## Events
 
+<a id="event-billing-invoices-invoice-invoiceraised"></a>
 ### InvoiceRaised
 
 `billing.invoices.invoice.InvoiceRaised`
 
 On the wire as `billing.InvoiceRaised`, on `billing_invoice`.
 
-| Consumer | Status | Note |
-| --- | --- | --- |
-| `billing.ledger` | declared | Not observed. |
+| Consumer | Status | Via | Note |
+| --- | --- | --- | --- |
+| `billing.ledger` | declared | [`flow.raise-invoice#s2`](../../../flows/raise-invoice.md#step-s2) | Not observed. |
 
 #### v1
 
@@ -240,7 +337,7 @@ Source: `api/events/v2/invoice_raised.proto`
 | Field | Type | Doc |
 | --- | --- | --- |
 | `invoiceId` | `string` | Which invoice. |
-| `total` | [`Money`](../../../types.md#money) | What is owed. |
+| `total` | [`Money`](../../../types.md#type-money) | What is owed. |
 
 <!-- billing/invoices/stores/pg.md -->
 
@@ -255,6 +352,7 @@ Source: `api/events/v2/invoice_raised.proto`
 
 ## Tables
 
+<a id="relation-billing-invoices-pg-invoices"></a>
 ### invoices
 
 aggregate-root · persists [billing.invoices.invoice](../aggregates/invoice.md)
@@ -270,6 +368,7 @@ One row per invoice.
 | --- | --- | --- |
 | `invoices_pkey` | id | unique |
 
+<a id="relation-billing-invoices-pg-invoice-lines"></a>
 ### invoice_lines
 
 child
@@ -277,13 +376,14 @@ child
 | Column | Type | Null | Key |
 | --- | --- | --- | --- |
 | `id` | `uuid` | not null | PK |
-| `invoice_id` | `uuid` | not null | → [`billing.invoices.pg.invoices`](pg.md#invoices).id (cascade) |
+| `invoice_id` | `uuid` | not null | → [`billing.invoices.pg.invoices`](pg.md#relation-billing-invoices-pg-invoices).id (cascade) |
 
 ## Views
 
+<a id="relation-billing-invoices-pg-invoice-totals"></a>
 ### invoice_totals
 
-**materialized** — rows are stored, and can be stale · reads [`billing.invoices.pg.invoices`](pg.md#invoices)
+**materialized** — rows are stored, and can be stale · reads [`billing.invoices.pg.invoices`](pg.md#relation-billing-invoices-pg-invoices)
 
 Totals, refreshed nightly.
 
@@ -310,10 +410,15 @@ The card network the invoices are settled through. Nobody here builds it; the co
 
 ## Provides
 
-**`psp.v1.Charges`** — `internal/psp/openapi/openapi.yaml`
+### psp.v1.Charges
 
-- `Create` — `POST /v1/charges`
+- **Source:** `internal/psp/openapi/openapi.yaml`
 
+| Method | Route | Request | Response |
+| --- | --- | --- | --- |
+| `Create` | `POST /v1/charges` | `CreateChargeRequest` | `Charge` |
+
+<a id="message-charge"></a>
 <details><summary>Charge</summary>
 
 | Field | Type | Doc |
@@ -325,9 +430,9 @@ The card network the invoices are settled through. Nobody here builds it; the co
 
 ## Called by
 
-| Service | Call | Status | Source |
-| --- | --- | --- | --- |
-| [Invoices](../billing/invoices/README.md) | `psp.v1.Charges/Create` | declared | `internal/psp/client.go:20` |
+| Service | Call | Status | Source | Via |
+| --- | --- | --- | --- | --- |
+| [Invoices](../billing/invoices/README.md) | `psp.v1.Charges/Create` | declared | `internal/psp/client.go:20` | [`flow.raise-invoice#s3`](../flows/raise-invoice.md#step-s3) |
 
 <!-- flows/README.md -->
 
@@ -387,10 +492,12 @@ sequenceDiagram
 
 ## Steps
 
+<a id="step-s1"></a>
 1. **operator** → **billing.invoices** — Raise → Invoice
-   `raise_test.go:31`
+   `test/e2e/raise_test.go:31`
+<a id="step-s2"></a>
 2. **billing.invoices** → **bus** — billing.invoices.invoice.InvoiceRaised
-   [billing.invoices.invoice.InvoiceRaised](../billing/invoices/aggregates/invoice.md)
+   [`billing.invoices.invoice.InvoiceRaised`](../billing/invoices/aggregates/invoice.md#event-billing-invoices-invoice-invoiceraised)
 
 > **Repeats** — until paid or written off
 >
@@ -404,16 +511,19 @@ sequenceDiagram
 > > >
 > > > *Branch 1*
 > > >
+> > > <a id="step-s3"></a>
 > > > 3. **billing.invoices** → **psp-gateway** — psp.v1.Charges/Create → Charge
 > > >    `psp.v1.Charges/Create` · status: declared · The gateway is outside this catalog.
 > > >
 > > > *Branch 2*
 > > >
+> > > <a id="step-s4"></a>
 > > > 4. **billing.invoices** ↺ **billing.invoices** — markPaid #1
 > >
 > >
 > > *written off — *ends the flow**
 > >
+> > <a id="step-s5"></a>
 > > 5. **billing.invoices** → **operator** — write-off notice
 > >    status: declared
 
@@ -445,5 +555,5 @@ An invoice is in one currency.
 ## Relates to
 
 - **Services:** [billing.invoices](../billing/invoices/README.md)
-- **Events:** [billing.invoices.invoice.InvoiceRaised](../billing/invoices/aggregates/invoice.md)
+- **Events:** [`billing.invoices.invoice.InvoiceRaised`](../billing/invoices/aggregates/invoice.md#event-billing-invoices-invoice-invoiceraised)
 - **Flows:** [flow.raise-invoice](../flows/raise-invoice.md)

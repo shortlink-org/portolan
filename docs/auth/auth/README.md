@@ -4,8 +4,8 @@
 
 - **Id:** `auth.auth`
 - **Context:** [Authentication](../README.md)
-- **Repo:** `github.com/shortlink-org/portolan`
-- **Path:** `examples/auth`
+- **Repo:** [`github.com/shortlink-org/portolan`](https://github.com/shortlink-org/portolan)
+- **Path:** [`examples/auth/`](https://github.com/shortlink-org/portolan/tree/main/examples/auth)
 - **Owners:** `@shortlink-org/identity`
 
 Service `auth` — bounded context **auth**.
@@ -79,12 +79,87 @@ without Docker the packages that need Postgres or redis are skipped.
 
 ## Provides
 
-**`auth.v1.Users`** — `examples/auth/internal/infrastructure/transport/http/gen/openapi.yaml`
+### auth.v1.Sessions
 
-- `registerUser` — `POST /v1/users`
-- `getUser` — `GET /v1/users/{userId}`
-- `changePassword` — `POST /v1/users/me/password`
+- **Source:** [`examples/auth/internal/infrastructure/transport/http/gen/openapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/infrastructure/transport/http/gen/openapi.yaml)
 
+| Method | Route | Request | Response |
+| --- | --- | --- | --- |
+| `login` | `POST /v1/sessions` | `LoginRequest` | `Session` |
+| `logout` | `DELETE /v1/sessions/current` | — | `204` |
+| `validateSession` | `GET /v1/sessions/current` | — | `SessionInfo` |
+
+<a id="message-error"></a>
+<details><summary>Error</summary>
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `message` | `string` | One sentence, always present. A client that shows the user a single line shows this one. |
+| `reasons` | `[]string` | Optional. One entry per rule the request broke, present only where rules apply - a 404 or a 500 has none. Each entry names its own field, so it can be shown on its own without knowing what it referred to. |
+
+</details>
+
+<a id="message-loginrequest"></a>
+<details><summary>LoginRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `email` | `string (email)` |
+| `password` | `string (password)` |
+
+</details>
+
+<a id="message-session"></a>
+<details><summary>Session</summary>
+
+| Field | Type |
+| --- | --- |
+| `token` | `string` |
+| `expiresAt` | `string (date-time)` |
+
+</details>
+
+<a id="message-sessioninfo"></a>
+<details><summary>SessionInfo</summary>
+
+| Field | Type |
+| --- | --- |
+| `userId` | `string` |
+| `expiresAt` | `string (date-time)` |
+
+</details>
+
+### auth.v1.Users
+
+- **Source:** [`examples/auth/internal/infrastructure/transport/http/gen/openapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/infrastructure/transport/http/gen/openapi.yaml)
+
+| Method | Route | Request | Response |
+| --- | --- | --- | --- |
+| `changePassword` | `POST /v1/users/me/password` | `ChangePasswordRequest` | `204` |
+| `getUser` | `GET /v1/users/{userId}` | — | `User` |
+| `registerUser` | `POST /v1/users` | `RegisterRequest` | `User` |
+
+<a id="message-changepasswordrequest"></a>
+<details><summary>ChangePasswordRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `currentPassword` | `string (password)` |
+| `newPassword` | `string (password)` |
+
+</details>
+
+<a id="message-error"></a>
+<details><summary>Error</summary>
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `message` | `string` | One sentence, always present. A client that shows the user a single line shows this one. |
+| `reasons` | `[]string` | Optional. One entry per rule the request broke, present only where rules apply - a 404 or a 500 has none. Each entry names its own field, so it can be shown on its own without knowing what it referred to. |
+
+</details>
+
+<a id="message-registerrequest"></a>
 <details><summary>RegisterRequest</summary>
 
 | Field | Type |
@@ -94,6 +169,7 @@ without Docker the packages that need Postgres or redis are skipped.
 
 </details>
 
+<a id="message-user"></a>
 <details><summary>User</summary>
 
 | Field | Type |
@@ -104,81 +180,21 @@ without Docker the packages that need Postgres or redis are skipped.
 
 </details>
 
-<details><summary>Error</summary>
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `message` | `string` | One sentence, always present. A client that shows the user a single line shows this one. |
-| `reasons` | `[]string` | Optional. One entry per rule the request broke, present only where rules apply - a 404 or a 500 has none. Each entry names its own field, so it can be shown on its own without knowing what it referred to. |
-
-</details>
-
-<details><summary>ChangePasswordRequest</summary>
-
-| Field | Type |
-| --- | --- |
-| `currentPassword` | `string (password)` |
-| `newPassword` | `string (password)` |
-
-</details>
-
-**`auth.v1.Sessions`** — `examples/auth/internal/infrastructure/transport/http/gen/openapi.yaml`
-
-- `login` — `POST /v1/sessions`
-- `validateSession` — `GET /v1/sessions/current`
-- `logout` — `DELETE /v1/sessions/current`
-
-<details><summary>LoginRequest</summary>
-
-| Field | Type |
-| --- | --- |
-| `email` | `string (email)` |
-| `password` | `string (password)` |
-
-</details>
-
-<details><summary>Session</summary>
-
-| Field | Type |
-| --- | --- |
-| `token` | `string` |
-| `expiresAt` | `string (date-time)` |
-
-</details>
-
-<details><summary>Error</summary>
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `message` | `string` | One sentence, always present. A client that shows the user a single line shows this one. |
-| `reasons` | `[]string` | Optional. One entry per rule the request broke, present only where rules apply - a 404 or a 500 has none. Each entry names its own field, so it can be shown on its own without knowing what it referred to. |
-
-</details>
-
-<details><summary>SessionInfo</summary>
-
-| Field | Type |
-| --- | --- |
-| `userId` | `string` |
-| `expiresAt` | `string (date-time)` |
-
-</details>
-
 ## Consumes
 
 | Call | Peer | Status | Source |
 | --- | --- | --- | --- |
-| `risk.v1.RiskService/Assess` | `risk.v1` | unresolved | `examples/auth/internal/infrastructure/risk/gen/riskpb/risk_grpc.pb.go` |
+| `risk.v1.RiskService/Assess` | `risk.v1` | unresolved | [`examples/auth/internal/infrastructure/risk/gen/riskpb/risk_grpc.pb.go`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/infrastructure/risk/gen/riskpb/risk_grpc.pb.go) |
 
 ## Publishes
 
 | Event | Latest | Consumers |
 | --- | --- | --- |
-| [AccountLocked](aggregates/lockout.md) | v1 | — |
-| [SessionEnded](aggregates/session.md) | v1 | — |
-| [SessionStarted](aggregates/session.md) | v1 | — |
-| [PasswordChanged](aggregates/user.md) | v1 | [auth.auth](README.md) |
-| [UserRegistered](aggregates/user.md) | v1 | — |
+| [`AccountLocked`](aggregates/lockout.md#event-auth-auth-lockout-accountlocked) | v1 | — |
+| [`SessionEnded`](aggregates/session.md#event-auth-auth-session-sessionended) | v1 | — |
+| [`SessionStarted`](aggregates/session.md#event-auth-auth-session-sessionstarted) | v1 | — |
+| [`PasswordChanged`](aggregates/user.md#event-auth-auth-user-passwordchanged) | v1 | [auth.auth](README.md) |
+| [`UserRegistered`](aggregates/user.md#event-auth-auth-user-userregistered) | v1 | — |
 
 ## Stores
 

@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { docsDirectory, docsRequest, mountLinks, readDocsRequest, siteDocs } from "./site-docs.mjs";
+import { docsDirectory, docsRequest, generatedMount, generatedRequest, mountLinks, readDocsRequest, readGeneratedRequest, siteDocs } from "./site-docs.mjs";
 
 describe("mountLinks", () => {
   it("points a relative link into the mount", () => {
@@ -71,6 +71,47 @@ describe("siteDocs", () => {
     expect(siteDocs({ manifest: { generate: [{ plugin: "markdown", out: join(root, "missing") }] }, dist })).toEqual([]);
     expect(existsSync(join(dist, "llms.txt"))).toBe(false);
   });
+
+  it("places non-markdown generator outputs at their declared paths", () => {
+    const root = mkdtempSync(join(tmpdir(), "site-exports-"));
+    const previous = process.cwd();
+    const dist = join(root, "dist");
+    mkdirSync(join(root, "exports", "mermaid"), { recursive: true });
+    mkdirSync(dist);
+    writeFileSync(join(root, "exports", "mermaid", "checkout.mmd"), "sequenceDiagram\n");
+    process.chdir(root);
+    try {
+      expect(siteDocs({ manifest: { generate: [{ plugin: "mermaid", out: "exports/mermaid" }] }, dist })).toEqual(["exports/mermaid/"]);
+      expect(readFileSync(join(dist, "exports", "mermaid", "checkout.mmd"), "utf8")).toBe("sequenceDiagram\n");
+    } finally {
+      process.chdir(previous);
+    }
+  });
+
+  it("never copies a generator output outside the site root", () => {
+    const root = mkdtempSync(join(tmpdir(), "site-exports-"));
+    const previous = process.cwd();
+    const dist = join(root, "dist");
+    mkdirSync(join(root, "outside"));
+    mkdirSync(dist);
+    writeFileSync(join(root, "outside", "secret.txt"), "secret\n");
+    process.chdir(root);
+    try {
+      expect(siteDocs({ manifest: { generate: [{ plugin: "unsafe", out: "../outside" }] }, dist })).toEqual([]);
+      expect(existsSync(join(dist, "outside", "secret.txt"))).toBe(false);
+    } finally {
+      process.chdir(previous);
+    }
+  });
+});
+
+describe("generatedMount", () => {
+  it("normalizes safe paths and rejects absolute or escaping paths", () => {
+    expect(generatedMount({ plugin: "mermaid", out: "./exports/mermaid/" })).toBe("exports/mermaid");
+    expect(generatedMount({ plugin: "other", out: "../outside" })).toBeNull();
+    expect(generatedMount({ plugin: "other", out: "/tmp/outside" })).toBeNull();
+    expect(generatedMount({ plugin: "other", out: "exports\\outside" })).toBeNull();
+  });
 });
 
 describe("docsRequest", () => {
@@ -117,5 +158,24 @@ describe("readDocsRequest", () => {
     expect(readDocsRequest(docs, { kind: "page", path: "missing.md" })).toBeNull();
     expect(readDocsRequest(docs, { kind: "page", path: ".portolan-manifest" })).toBeNull();
     expect(readDocsRequest(docs, { kind: "redirect", to: "/docs/" })).toBeNull();
+  });
+});
+
+describe("generated outputs in development", () => {
+  const manifest = { generate: [{ plugin: "mermaid", out: "exports/mermaid" }] };
+
+  it("routes an index and a file without allowing traversal", () => {
+    expect(generatedRequest("/exports/mermaid/", manifest)).toEqual({ kind: "artifact", path: "exports/mermaid/README.md" });
+    expect(generatedRequest("/exports/mermaid/a.mmd", manifest)).toEqual({ kind: "artifact", path: "exports/mermaid/a.mmd" });
+    expect(generatedRequest("/exports/mermaid/%2e%2e/secret", manifest)).toBeNull();
+  });
+
+  it("reads only a generated file under the workspace", () => {
+    const root = mkdtempSync(join(tmpdir(), "generated-request-"));
+    mkdirSync(join(root, "exports", "mermaid"), { recursive: true });
+    writeFileSync(join(root, "exports", "mermaid", "a.mmd"), "sequenceDiagram\n");
+    const answer = readGeneratedRequest(root, { kind: "artifact", path: "exports/mermaid/a.mmd" });
+    expect(answer?.type).toBe("text/plain; charset=utf-8");
+    expect(answer?.body.toString()).toBe("sequenceDiagram\n");
   });
 });

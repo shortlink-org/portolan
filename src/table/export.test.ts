@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { csvFilename, toCsv, toMarkdown } from "./export";
+import { csvFilename, toCsv, toExcelCsv, toMarkdown } from "./export";
 
 const SHEET = {
   headers: ["name", "consumers"],
@@ -63,6 +63,17 @@ describe("toCsv", () => {
     expect(toCsv({ headers: ["a"], rows: [["one\ntwo"]] })).toBe(
       'a\r\n"one\ntwo"',
     );
+  });
+
+  it("neutralizes spreadsheet formulas without changing negative numbers", () => {
+    expect(toCsv({ headers: ["a"], rows: [["=CMD()"], ["@SUM(A:A)"], ["-42"], ["-SUM(A:A)"]] })).toBe(
+      "a\r\n'=CMD()\r\n'@SUM(A:A)\r\n-42\r\n'-SUM(A:A)",
+    );
+  });
+
+  it("adds a UTF-8 BOM only for the Excel download", () => {
+    expect(toExcelCsv(SHEET).charCodeAt(0)).toBe(0xfeff);
+    expect(toCsv(SHEET).charCodeAt(0)).not.toBe(0xfeff);
   });
 });
 

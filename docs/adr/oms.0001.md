@@ -5,7 +5,7 @@
 - **Status:** accepted
 - **Date:** 2026-09-05
 - **Scope:** [shop.oms](../shop/oms/README.md)
-- **Source:** `examples/shop/oms/docs/adr/0001-rust-on-tokio.md`
+- **Source:** [`examples/shop/oms/docs/adr/0001-rust-on-tokio.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/docs/adr/0001-rust-on-tokio.md)
 
 ### Context and Problem Statement
 

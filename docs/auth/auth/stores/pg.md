@@ -5,10 +5,11 @@
 - **Id:** `auth.auth.pg`
 - **Kind:** postgres
 - **Owner:** [auth.auth](../README.md)
-- **Source:** `examples/auth/internal/infrastructure/repository`
+- **Source:** [`examples/auth/internal/infrastructure/repository`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/infrastructure/repository)
 
 ## Tables
 
+<a id="relation-auth-auth-pg-lockouts"></a>
 ### lockouts
 
 aggregate-root · persists [auth.auth.lockout](../aggregates/lockout.md)
@@ -20,6 +21,7 @@ aggregate-root · persists [auth.auth.lockout](../aggregates/lockout.md)
 | `locked_until` | `timestamptz` | null | — | Lockout.LockedUntil |
 | `version` | `bigint` | not null | — | — |
 
+<a id="relation-auth-auth-pg-sessions"></a>
 ### sessions
 
 aggregate-root · persists [auth.auth.session](../aggregates/session.md)
@@ -39,6 +41,7 @@ aggregate-root · persists [auth.auth.session](../aggregates/session.md)
 | `sessions_token_key` | token | unique |
 | `sessions_user_id_idx` | user_id, issued_at | index |
 
+<a id="relation-auth-auth-pg-users"></a>
 ### users
 
 aggregate-root · persists [auth.auth.user](../aggregates/user.md)

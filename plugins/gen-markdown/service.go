@@ -18,8 +18,8 @@ func (s *site) renderService(ctx *catalog.BoundedContext, svc *catalog.Service) 
 	rows := [][]string{
 		{"Id", code(svc.ID)},
 		{"Context", s.ref(self, ctx.ID, ctx.Name)},
-		{"Repo", code(svc.Repo)},
-		{"Path", code(svc.Path)},
+		{"Repo", repoLink(svc.Repo)},
+		{"Path", s.source(self, strings.TrimSuffix(svc.Path, "/")+"/", svc)},
 	}
 	// Who to ask, when the estate keeps a CODEOWNERS. Left out entirely when
 	// it does not: a line reading "Owners: none" is a claim, and nobody made
@@ -40,9 +40,11 @@ func (s *site) renderService(ctx *catalog.BoundedContext, svc *catalog.Service) 
 	}
 
 	section(&b, "Aggregates", s.aggregateTable(self, svc))
-	section(&b, "Provides", s.providesBlock(self, svc.Provides))
+	section(&b, "Provides", s.providesBlock(self, svc.Provides, svc))
 	section(&b, "Consumes", s.consumesTable(self, svc))
 	section(&b, "Publishes", s.publishesTable(self, svc))
+	section(&b, "Channels", s.channelsBlock(self, svc))
+	section(&b, "Schema modules", s.modulesTable(self, svc))
 	section(&b, "Stores", s.storesTable(self, svc))
 	section(&b, "Decisions", s.adrTable(self, s.adrsFor[svc.ID]))
 
@@ -159,25 +161,42 @@ func (s *site) aggregateTable(from string, svc *catalog.Service) string {
 // providesBlock lists interfaces and their methods, for a service of the
 // estate and for a system outside it alike: what something answers on is the
 // same kind of fact whoever owns the far end.
-func (s *site) providesBlock(from string, provides []catalog.RpcService) string {
+func (s *site) providesBlock(from string, provides []catalog.RpcService, owner *catalog.Service) string {
 	var b strings.Builder
 
 	for i := range provides {
 		rpc := &provides[i]
-		b.WriteString("**" + code(rpc.ID) + "** — " + code(rpc.Source) + "\n\n")
-		for _, method := range rpc.Methods {
-			line := "- " + code(method.Name)
-			// The route, when the document named one: an HTTP operation is
-			// found by its route as often as by its name.
+		b.WriteString("### " + rpc.ID + "\n\n")
+		meta := [][]string{{"Source", s.source(from, rpc.Source, owner)}}
+		if rpc.Module != "" {
+			meta = append(meta, []string{"Module", s.ref(from, rpc.Module, rpc.Module)})
+		}
+		b.WriteString(defList(meta))
+
+		methods := make([][]string, 0, len(rpc.Methods))
+		for j := range rpc.Methods {
+			method := &rpc.Methods[j]
+			route := ""
 			if method.HTTP != nil {
-				line += " — " + code(method.HTTP.Method+" "+method.HTTP.Path)
+				route = code(method.HTTP.Method + " " + method.HTTP.Path)
 			}
-			b.WriteString(line + "\n")
+			streaming := string(method.Streaming)
+			if method.Deprecated {
+				streaming = strings.TrimSpace(streaming + " deprecated")
+			}
+			methods = append(methods, []string{
+				code(method.Name), route, s.methodShape(from, method.Request, method.RequestRef),
+				s.methodShape(from, method.Response, method.ResponseRef), streaming, method.Doc,
+			})
+		}
+		if rendered := table([]string{"Method", "Route", "Request", "Response", "Mode", "Doc"}, methods); rendered != "" {
+			b.WriteString("\n" + rendered)
 		}
 
 		for j := range rpc.Messages {
 			msg := &rpc.Messages[j]
-			b.WriteString("\n<details><summary>" + msg.Name + "</summary>\n\n")
+			b.WriteString("\n<a id=\"message-" + anchorID(msg.Name) + "\"></a>\n")
+			b.WriteString("<details><summary>" + msg.Name + "</summary>\n\n")
 			if msg.Discriminator != nil {
 				b.WriteString("Discriminator " + code(msg.Discriminator.Property) + ": ")
 				variants := make([]string, 0, len(msg.Discriminator.Variants))
@@ -195,6 +214,16 @@ func (s *site) providesBlock(from string, provides []catalog.RpcService) string 
 	return b.String()
 }
 
+func (s *site) methodShape(from, local, shared string) string {
+	if shared != "" {
+		return s.defRef(from, shared)
+	}
+	if local != "" {
+		return code(local)
+	}
+	return ""
+}
+
 func (s *site) consumesTable(from string, svc *catalog.Service) string {
 	rows := make([][]string, 0, len(svc.Consumes))
 	for i := range svc.Consumes {
@@ -202,8 +231,10 @@ func (s *site) consumesTable(from string, svc *catalog.Service) string {
 		rows = append(rows, []string{
 			code(call.ID),
 			s.ref(from, call.Peer, call.Peer),
+			s.ref(from, call.Module, call.Module),
 			string(call.Status),
-			code(call.Source),
+			s.source(from, call.Source, svc),
+			s.viaRef(from, call.Via),
 			call.Note,
 		})
 
@@ -212,7 +243,55 @@ func (s *site) consumesTable(from string, svc *catalog.Service) string {
 		}
 	}
 
-	return table([]string{"Call", "Peer", "Status", "Source", "Note"}, rows)
+	return table([]string{"Call", "Peer", "Module", "Status", "Source", "Via", "Note"}, rows)
+}
+
+func (s *site) channelsBlock(from string, svc *catalog.Service) string {
+	var b strings.Builder
+	for i := range svc.Channels {
+		channel := &svc.Channels[i]
+		b.WriteString("### " + channel.Address + "\n\n")
+		if channel.Title != "" {
+			b.WriteString("**" + channel.Title + "**\n\n")
+		}
+		if channel.Doc != "" {
+			b.WriteString(channel.Doc + "\n\n")
+		}
+		if channel.Source != "" {
+			b.WriteString("Source: " + s.source(from, channel.Source, svc) + "\n\n")
+		}
+		rows := make([][]string, 0, len(channel.Messages))
+		for j := range channel.Messages {
+			message := &channel.Messages[j]
+			name := code(message.Name)
+			if eventID := s.wireEvent[message.Name]; eventID != "" {
+				name = s.eventRef(from, eventID, message.Name)
+			}
+			rows = append(rows, []string{string(message.Direction), name, message.Title, message.Doc})
+		}
+		if rendered := table([]string{"Direction", "Message", "Title", "Doc"}, rows); rendered != "" {
+			b.WriteString(rendered)
+		}
+		b.WriteString("\n")
+	}
+	return b.String()
+}
+
+func (s *site) modulesTable(from string, svc *catalog.Service) string {
+	rows := make([][]string, 0, len(svc.Modules))
+	for _, id := range svc.Modules {
+		module, ok := s.modules[id]
+		if !ok {
+			rows = append(rows, []string{code(id), "unknown", "", ""})
+			continue
+		}
+		access := "reads"
+		if module.Owner == svc.ID {
+			access = "publishes"
+		}
+		rows = append(rows, []string{s.ref(from, id, module.Name), access, module.Commit, strings.Join(module.Packages, ", ")})
+	}
+	return table([]string{"Module", "Access", "Commit", "Packages"}, rows)
 }
 
 // publishesTable is the service's events gathered from every aggregate, which
@@ -240,7 +319,7 @@ func (s *site) publishesTable(from string, svc *catalog.Service) string {
 			}
 
 			rows = append(rows, []string{
-				s.ref(from, agg.ID, event.Name),
+				s.eventRef(from, event.ID, event.Name),
 				latest,
 				strings.Join(consumers, ", "),
 			})

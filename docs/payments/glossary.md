@@ -4,7 +4,7 @@
 
 - **Context:** [Payments](README.md)
 - **Terms:** 12
-- **Read from:** `examples/payments/ledger/GLOSSARY.md`
+- **Read from:** [`examples/payments/ledger/GLOSSARY.md`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/GLOSSARY.md)
 
 One meaning per word inside this context, as the glossary beside the code states it.
 

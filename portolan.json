@@ -131,6 +131,18 @@
       }
     },
     {
+      "name": "mermaid",
+      "wasm": {
+        "url": "file://plugins/gen-mermaid.wasm"
+      }
+    },
+    {
+      "name": "backstage",
+      "wasm": {
+        "url": "file://plugins/gen-backstage.wasm"
+      }
+    },
+    {
       "name": "otel",
       "process": {
         "command": "go",
@@ -745,7 +757,26 @@
       "plugin": "markdown",
       "out": "docs",
       "options": {
-        "title": "Example estate"
+        "title": "Example estate",
+        "sourceBaseUrl": "https://github.com/shortlink-org/portolan/blob/main"
+      }
+    },
+    {
+      "plugin": "mermaid",
+      "out": "exports/mermaid",
+      "options": {
+        "title": "Example estate flows"
+      }
+    },
+    {
+      "plugin": "backstage",
+      "out": "exports/backstage",
+      "options": {
+        "domain": "example-estate",
+        "domainTitle": "Example estate",
+        "owner": "architecture",
+        "lifecycle": "production",
+        "sourceBaseUrl": "https://github.com/shortlink-org/portolan/blob/main"
       }
     }
   ]

@@ -8,16 +8,28 @@
 | Context | Class | Services | Summary |
 | --- | --- | --- | --- |
 | [Authentication](auth/README.md) | generic | [Authentication & Sessions](auth/auth/README.md) | Who someone is, and whether they are still logged in. The only service in the estate that stores credentials, and the only one allowed to mint or revoke a session. |
-| [Storefront](storefront/README.md) | supporting | [Storefront BFF](storefront/bff/README.md) | One graph in front of the estate, for one kind of client. It owns nothing: everything it answers with it asked somebody else for a moment earlier, and translated into the words a shopper's screen uses. |
+| [Delivery](delivery/README.md) | supporting | [Delivery Core](delivery/core/README.md) | Parcels, vans and the day they are driven. Told what to carry and asked where it got to; it decides neither. |
 | [Payments](payments/README.md) | supporting | [Ledger](payments/ledger/README.md) | Money, and the record of every movement of it. Nothing here decides whether to charge - it is asked, and it writes down what happened either way. |
 | [Shop](shop/README.md) | core | [Billing](shop/billing/README.md), [Shopping Cart](shop/cart/README.md), [Order Management](shop/oms/README.md), [Pricing](shop/pricing/README.md) | What a customer is buying, what it costs and what they owe for it: the basket while it is still changing, the price it was promised at, the order it became, and the invoice for it. It moves no money and delivers nothing. |
-| [Delivery](delivery/README.md) | supporting | [Delivery Core](delivery/core/README.md) | Parcels, vans and the day they are driven. Told what to carry and asked where it got to; it decides neither. |
+| [Storefront](storefront/README.md) | supporting | [Storefront BFF](storefront/bff/README.md) | One graph in front of the estate, for one kind of client. It owns nothing: everything it answers with it asked somebody else for a moment earlier, and translated into the words a shopper's screen uses. |
 
 ## Outside the estate
 
 | System | Interfaces | Summary |
 | --- | --- | --- |
 | [Stripe](externals/stripe.md) | `stripe.v1` | The card network the ledger moves money through. Nobody in the estate provides it; the copy of its document beside the ledger's adapter is narrowed to the four operations the ledger calls, and is all the catalog claims about it. |
+
+## Schema modules
+
+| Module | Publisher | Registry | Packages |
+| --- | --- | --- | --- |
+| [shortlink-org/portolan-delivery-route](modules/shortlink-org-portolan-delivery-route.md) | [delivery.core](delivery/core/README.md) | buf.build | 1 package |
+| [shortlink-org/portolan-delivery-shipment](modules/shortlink-org-portolan-delivery-shipment.md) | [delivery.core](delivery/core/README.md) | buf.build | 1 package |
+| [shortlink-org/portolan-payments-payment](modules/shortlink-org-portolan-payments-payment.md) | [payments.ledger](payments/ledger/README.md) | buf.build | 1 package |
+| [shortlink-org/portolan-payments-refund](modules/shortlink-org-portolan-payments-refund.md) | [payments.ledger](payments/ledger/README.md) | buf.build | 1 package |
+| [shortlink-org/portolan-shop-order](modules/shortlink-org-portolan-shop-order.md) | [shop.oms](shop/oms/README.md) | buf.build | 1 package |
+| [shortlink-org/portolan-shop-price-list](modules/shortlink-org-portolan-shop-price-list.md) | [shop.pricing](shop/pricing/README.md) | buf.build | 1 package |
+| [shortlink-org/portolan-shop-quote](modules/shortlink-org-portolan-shop-quote.md) | [shop.pricing](shop/pricing/README.md) | buf.build | 1 package |
 
 ## Flows
 
@@ -28,28 +40,22 @@
 | [Login](flows/auth-login.md) | [auth](auth/README.md) | Turns credentials into a session. |
 | [Logout](flows/auth-logout.md) | [auth](auth/README.md) | Ends the session behind a token. |
 | [Register user](flows/auth-register-user.md) | [auth](auth/README.md) | Creates a user from an email address and a password. |
-| [Validate session](flows/auth-validate-session.md) | [auth](auth/README.md) | Resolves a token to a live session: who is calling, and how long the answer stays good. |
 | [Revoke sessions on password change](flows/auth-revoke-sessions-on-password-change.md) | [auth](auth/README.md) | Ends the sessions issued against a password that has just been replaced. |
-| [Query basket](flows/bff-query-basket.md) | [storefront](storefront/README.md) | The basket as the cart has it, in the storefront's words. |
-| [Query shipment](flows/bff-query-shipment.md) | [storefront](storefront/README.md) | — |
-| [Query order](flows/bff-query-order.md) | [storefront](storefront/README.md) | — |
-| [Query viewer](flows/bff-query-viewer.md) | [storefront](storefront/README.md) | Who the request belongs to. Auth is asked on every call rather than a token being read here: this service holds no key and could not tell a forged one from a live one. |
+| [Validate session](flows/auth-validate-session.md) | [auth](auth/README.md) | Resolves a token to a live session: who is calling, and how long the answer stays good. |
 | [Mutation add item](flows/bff-mutation-add-item.md) | [storefront](storefront/README.md) | Add a line. The price travels as the customer was shown it; the cart captures it and never recomputes it, and nothing here checks it - a storefront that priced things would be a second place prices live. |
+| [Mutation cancel order](flows/bff-mutation-cancel-order.md) | [storefront](storefront/README.md) | Cancel an order. Whether it is too late to is the order service's judgement and its refusal travels back unchanged; this service does not know what dispatch means. |
 | [Mutation checkout](flows/bff-mutation-checkout.md) | [storefront](storefront/README.md) | Freeze the basket and hand it on. |
 | [Mutation remove item](flows/bff-mutation-remove-item.md) | [storefront](storefront/README.md) | — |
-| [Mutation cancel order](flows/bff-mutation-cancel-order.md) | [storefront](storefront/README.md) | Cancel an order. Whether it is too late to is the order service's judgement and its refusal travels back unchanged; this service does not know what dispatch means. |
+| [Query basket](flows/bff-query-basket.md) | [storefront](storefront/README.md) | The basket as the cart has it, in the storefront's words. |
+| [Query order](flows/bff-query-order.md) | [storefront](storefront/README.md) | — |
+| [Query shipment](flows/bff-query-shipment.md) | [storefront](storefront/README.md) | — |
+| [Query viewer](flows/bff-query-viewer.md) | [storefront](storefront/README.md) | Who the request belongs to. Auth is asked on every call rather than a token being read here: this service holds no key and could not tell a forged one from a live one. |
 | [Subscription order status](flows/bff-subscription-order-status.md) | [storefront](storefront/README.md) | Every move of one order, for as long as somebody is watching it. |
-| [Authorize](flows/ledger-authorize.md) | [payments](payments/README.md) | Asks the gateway to hold the money for an order, and records either that it agreed or that it refused. |
-| [Capture](flows/ledger-capture.md) | [payments](payments/README.md) | Moves the money the gateway was holding, writes the pair of postings for it, and says so on the bus. |
-| [Get payment](flows/ledger-get-payment.md) | [payments](payments/README.md) | Reads one payment, for whoever is asking what happened to the money. |
-| [Issue refund](flows/ledger-issue-refund.md) | [payments](payments/README.md) | Sends money back against a captured payment, in full or in part. |
-| [List refunds](flows/ledger-list-refunds.md) | [payments](payments/README.md) | Every refund against one payment, newest first. |
-| [Void payment on order cancelled](flows/ledger-void-payment-on-order-cancelled.md) | [payments](payments/README.md) | Gives back what was held once the order it was held for is gone. |
+| [Close invoice on payment](flows/billing-close-invoice-on-payment.md) | [shop](shop/README.md) | Closes the invoice for an order once the ledger says the money arrived. |
 | [Invoice create](flows/billing-invoice-create.md) | [shop](shop/README.md) | Draws up a draft invoice for an order, with a line for each thing sold. |
 | [Invoice destroy](flows/billing-invoice-destroy.md) | [shop](shop/README.md) | Ends an invoice nobody is going to pay. |
 | [Invoice issue](flows/billing-invoice-issue.md) | [shop](shop/README.md) | Confirms the session, freezes the invoice and asks the customer to pay. |
 | [Invoice retrieve](flows/billing-invoice-retrieve.md) | [shop](shop/README.md) | Reads one invoice and the lines it is made of. |
-| [Close invoice on payment](flows/billing-close-invoice-on-payment.md) | [shop](shop/README.md) | Closes the invoice for an order once the ledger says the money arrived. |
 | [Add item](flows/cart-add-item.md) | [shop](shop/README.md) | — |
 | [Checkout](flows/cart-checkout.md) | [shop](shop/README.md) | — |
 | [Create basket](flows/cart-create-basket.md) | [shop](shop/README.md) | — |
@@ -63,28 +69,30 @@
 | [Plan route](flows/core-plan-route.md) | [delivery](delivery/README.md) | Builds a van's day out of the shipments waiting to go out. |
 | [Record delivery](flows/core-record-delivery.md) | [delivery](delivery/README.md) | Ends a shipment at the door. |
 | [Record scan](flows/core-record-scan.md) | [delivery](delivery/README.md) | Writes down that a parcel was seen somewhere. |
+| [Release shipment on payment captured](flows/core-release-shipment-on-payment-captured.md) | [delivery](delivery/README.md) | Nothing leaves the warehouse before the money has moved (ADR core.0002). |
 | [Start route](flows/core-start-route.md) | [delivery](delivery/README.md) | The van is out. |
 | [Track shipment](flows/core-track-shipment.md) | [delivery](delivery/README.md) | What the customer sees when they paste a tracking code. |
-| [Release shipment on payment captured](flows/core-release-shipment-on-payment-captured.md) | [delivery](delivery/README.md) | Nothing leaves the warehouse before the money has moved (ADR core.0002). |
+| [Authorize](flows/ledger-authorize.md) | [payments](payments/README.md) | Asks the gateway to hold the money for an order, and records either that it agreed or that it refused. |
+| [Capture](flows/ledger-capture.md) | [payments](payments/README.md) | Moves the money the gateway was holding, writes the pair of postings for it, and says so on the bus. |
+| [Get payment](flows/ledger-get-payment.md) | [payments](payments/README.md) | Reads one payment, for whoever is asking what happened to the money. |
+| [Issue refund](flows/ledger-issue-refund.md) | [payments](payments/README.md) | Sends money back against a captured payment, in full or in part. |
+| [List refunds](flows/ledger-list-refunds.md) | [payments](payments/README.md) | Every refund against one payment, newest first. |
+| [Void payment on order cancelled](flows/ledger-void-payment-on-order-cancelled.md) | [payments](payments/README.md) | Gives back what was held once the order it was held for is gone. |
 | [Cancel order](flows/oms-cancel-order.md) | [shop](shop/README.md) | Reads one order by id. |
-| [Get order](flows/oms-get-order.md) | [shop](shop/README.md) | Reads one order by id. |
 | [Confirm order on payment authorized](flows/oms-confirm-order-on-payment-authorized.md) | [shop](shop/README.md) | Confirms the order once the payment for it is authorised (ADR oms.0005). The publisher is `payments.ledger`, and the name is the one it puts on the message: every service on this bus names its events after itself. |
+| [Get order](flows/oms-get-order.md) | [shop](shop/README.md) | Reads one order by id. |
 | [Place order on basket checked out](flows/oms-place-order-on-basket-checked-out.md) | [shop](shop/README.md) | Places the order the basket was checked out for (ADR oms.0002). The order takes the basket's id, so the same checkout heard twice places one order. |
 | [Archive price list](flows/pricing-archive-price-list.md) | [shop](shop/README.md) | Package archive_price_list takes a price list out of use without losing it. |
+| [Expire quote on checkout](flows/pricing-expire-quote-on-checkout.md) | [shop](shop/README.md) | Ends the promise once the basket it priced is checked out. |
 | [Get quote](flows/pricing-get-quote.md) | [shop](shop/README.md) | Package get_quote reads one quote. |
 | [Import price list](flows/pricing-import-price-list.md) | [shop](shop/README.md) | Package import_price_list takes in a whole price list. |
 | [Issue quote](flows/pricing-issue-quote.md) | [shop](shop/README.md) | Package issue_quote prices a basket and promises the price for a while. |
 | [List price lists](flows/pricing-list-price-lists.md) | [shop](shop/README.md) | Package list_price_lists reads every price list there is. |
-| [Expire quote on checkout](flows/pricing-expire-quote-on-checkout.md) | [shop](shop/README.md) | Ends the promise once the basket it priced is checked out. |
 
 ## Decisions
 
 | ADR | Title | Status | Date |
 | --- | --- | --- | --- |
-| [org.0001](adr/org.0001.md) | Client proto copies live in the consumer's infrastructure layer | accepted | 2025-03-11 |
-| [org.0002](adr/org.0002.md) | Domain event schema version is encoded in the package path (events/v1) | accepted | 2025-05-02 |
-| [org.0003](adr/org.0003.md) | Ownership is read from CODEOWNERS, never typed and never resolved | accepted | 2026-09-05 |
-| [payments.0004](adr/payments.0004.md) | Journal entries are idempotent by (order_id, attempt) | proposed | 2026-02-09 |
 | [auth.0001](adr/auth.0001.md) | Aggregates return their events; they do not buffer them | accepted | 2026-08-20 |
 | [auth.0002](adr/auth.0002.md) | Session is its own aggregate, linked to User by id | accepted | 2026-08-20 |
 | [auth.0003](adr/auth.0003.md) | Session expiry publishes no event | accepted | 2026-08-22 |
@@ -100,9 +108,6 @@
 | [bff.0002](adr/bff.0002.md) | The storefront owns no state | accepted | 2026-09-05 |
 | [bff.0003](adr/bff.0003.md) | The schema speaks the client's words, not the peers' | accepted | 2026-09-05 |
 | [bff.0004](adr/bff.0004.md) | A subscription is the bus, forwarded | accepted | 2026-09-05 |
-| [ledger.0001](adr/ledger.0001.md) | A gateway that did not answer has not refused | accepted | 2026-09-05 |
-| [ledger.0002](adr/ledger.0002.md) | Another service's events are read off the bus by an adapter and republished in process | accepted | 2026-09-05 |
-| [ledger.0003](adr/ledger.0003.md) | The card network is Stripe, and stays outside the estate | accepted | 2026-09-06 |
 | [cart.0001](adr/cart.0001.md) | TypeScript on Node.js, and the stack around it | accepted | 2026-09-04 |
 | [cart.0002](adr/cart.0002.md) | A basket freezes its currency at the first item | accepted | 2026-09-04 |
 | [cart.0003](adr/cart.0003.md) | Line prices are captured when added, never recomputed | accepted | 2026-09-04 |
@@ -113,8 +118,15 @@
 | [cart.0008](adr/cart.0008.md) | Events leave the service over NATS JetStream, and the outbox stays | accepted | 2026-09-05 |
 | [core.0001](adr/core.0001.md) | `packages.order_id` is a foreign key into the order service's table | accepted | 2026-09-05 |
 | [core.0002](adr/core.0002.md) | A shipment waits for the money, and the ledger's fact releases it | accepted | 2026-09-05 |
+| [ledger.0001](adr/ledger.0001.md) | A gateway that did not answer has not refused | accepted | 2026-09-05 |
+| [ledger.0002](adr/ledger.0002.md) | Another service's events are read off the bus by an adapter and republished in process | accepted | 2026-09-05 |
+| [ledger.0003](adr/ledger.0003.md) | The card network is Stripe, and stays outside the estate | accepted | 2026-09-06 |
 | [oms.0001](adr/oms.0001.md) | Rust on Tokio, and the stack around it | accepted | 2026-09-05 |
 | [oms.0002](adr/oms.0002.md) | An order is placed from a checked-out basket, not by a call | accepted | 2026-09-05 |
 | [oms.0003](adr/oms.0003.md) | Lines and the total are copied from the basket, never repriced | accepted | 2026-09-05 |
 | [oms.0004](adr/oms.0004.md) | Cancelling is allowed until the parcel moves | accepted | 2026-09-05 |
 | [oms.0005](adr/oms.0005.md) | Confirmation waits for a payment service that does not exist yet | accepted | 2026-09-05 |
+| [org.0001](adr/org.0001.md) | Client proto copies live in the consumer's infrastructure layer | accepted | 2025-03-11 |
+| [org.0002](adr/org.0002.md) | Domain event schema version is encoded in the package path (events/v1) | accepted | 2025-05-02 |
+| [org.0003](adr/org.0003.md) | Ownership is read from CODEOWNERS, never typed and never resolved | accepted | 2026-09-05 |
+| [payments.0004](adr/payments.0004.md) | Journal entries are idempotent by (order_id, attempt) | proposed | 2026-02-09 |

@@ -5,7 +5,7 @@
 - **Status:** accepted
 - **Date:** 2026-09-05
 - **Scope:** [shop.oms](../shop/oms/README.md)
-- **Source:** `examples/shop/oms/docs/adr/0002-an-order-is-placed-from-a-checked-out-basket.md`
+- **Source:** [`examples/shop/oms/docs/adr/0002-an-order-is-placed-from-a-checked-out-basket.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/docs/adr/0002-an-order-is-placed-from-a-checked-out-basket.md)
 
 ### Context and Problem Statement
 

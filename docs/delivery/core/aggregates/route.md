@@ -91,9 +91,9 @@ stateDiagram-v2
 
 | From | To | On | Emits | Source |
 | --- | --- | --- | --- | --- |
-| `planned` | `driving` | `start` | `RouteStarted` | `examples/shop/delivery/core/src/domain/route/route.ts:52` |
-| `planned` | `closed` | `close` | `RouteClosed` | `examples/shop/delivery/core/src/domain/route/route.ts:59` |
-| `driving` | `closed` | `close` | `RouteClosed` | `examples/shop/delivery/core/src/domain/route/route.ts:59` |
+| `planned` | `driving` | `start` | `RouteStarted` | [`examples/shop/delivery/core/src/domain/route/route.ts:52`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/route/route.ts#L52) |
+| `planned` | `closed` | `close` | `RouteClosed` | [`examples/shop/delivery/core/src/domain/route/route.ts:59`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/route/route.ts#L59) |
+| `driving` | `closed` | `close` | `RouteClosed` | [`examples/shop/delivery/core/src/domain/route/route.ts:59`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/route/route.ts#L59) |
 
 ## Operations
 
@@ -106,6 +106,7 @@ stateDiagram-v2
 
 ## Events
 
+<a id="event-delivery-core-route-routeclosed"></a>
 ### RouteClosed
 
 `delivery.core.route.RouteClosed`
@@ -118,7 +119,7 @@ The day is over. How many stops were left undone is on the event, because
 that is the one number whoever plans tomorrow needs and should not have to
 come back for.
 
-Source: `examples/shop/delivery/core/src/domain/route/events/route-closed.ts`
+Source: [`examples/shop/delivery/core/src/domain/route/events/route-closed.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/route/events/route-closed.ts)
 
 | Field | Type |
 | --- | --- |
@@ -128,6 +129,7 @@ Source: `examples/shop/delivery/core/src/domain/route/events/route-closed.ts`
 | `undone` | `number` |
 | `occurredAt` | `Date` |
 
+<a id="event-delivery-core-route-routeplanned"></a>
 ### RoutePlanned
 
 `delivery.core.route.RoutePlanned`
@@ -139,7 +141,7 @@ On the wire as `delivery.RoutePlanned`, on `delivery.core.route`.
 A van has a day's work. The stops are not on the event: whoever cares reads
 the route, and a list that long on the bus would go stale in flight.
 
-Source: `examples/shop/delivery/core/src/domain/route/events/route-planned.ts`
+Source: [`examples/shop/delivery/core/src/domain/route/events/route-planned.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/route/events/route-planned.ts)
 
 | Field | Type |
 | --- | --- |
@@ -149,6 +151,7 @@ Source: `examples/shop/delivery/core/src/domain/route/events/route-planned.ts`
 | `stops` | `number` |
 | `occurredAt` | `Date` |
 
+<a id="event-delivery-core-route-routestarted"></a>
 ### RouteStarted
 
 `delivery.core.route.RouteStarted`
@@ -159,7 +162,7 @@ On the wire as `delivery.RouteStarted`, on `delivery.core.route`.
 
 The van is out. The depot board stops showing the route as tomorrow's.
 
-Source: `examples/shop/delivery/core/src/domain/route/events/route-started.ts`
+Source: [`examples/shop/delivery/core/src/domain/route/events/route-started.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/domain/route/events/route-started.ts)
 
 | Field | Type |
 | --- | --- |

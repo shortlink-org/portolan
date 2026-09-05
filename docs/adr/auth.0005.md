@@ -5,7 +5,7 @@
 - **Status:** accepted
 - **Date:** 2026-08-22
 - **Scope:** [auth.auth](../auth/auth/README.md)
-- **Source:** `examples/auth/docs/adr/0005-rules-are-specifications-at-construction.md`
+- **Source:** [`examples/auth/docs/adr/0005-rules-are-specifications-at-construction.md`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/docs/adr/0005-rules-are-specifications-at-construction.md)
 
 ### Context and Problem Statement
 

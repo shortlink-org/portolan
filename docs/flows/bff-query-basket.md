@@ -4,7 +4,7 @@
 
 - **Id:** `flow.bff-query-basket`
 - **Owner:** [storefront](../storefront/README.md)
-- **Source:** `examples/bff/src/schema/basket/resolvers/Query/basket.ts`
+- **Source:** [`examples/bff/src/schema/basket/resolvers/Query/basket.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Query/basket.ts)
 
 The basket as the cart has it, in the storefront's words.
 
@@ -30,7 +30,9 @@ sequenceDiagram
 
 ## Steps
 
+<a id="step-s1"></a>
 1. **client** → **storefront.bff** — Query.basket → Basket
-   status: declared · `examples/bff/src/schema/basket/resolvers/Query/basket.ts:4`
+   status: declared · [`examples/bff/src/schema/basket/resolvers/Query/basket.ts:4`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Query/basket.ts#L4)
+<a id="step-s2"></a>
 2. **storefront.bff** → **shop.cart** — getBasket → Basket
-   `cart.v1.Baskets/getBasket` · status: declared · `examples/bff/src/schema/basket/resolvers/Query/basket.ts:5`
+   `cart.v1.Baskets/getBasket` · status: declared · [`examples/bff/src/schema/basket/resolvers/Query/basket.ts:5`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Query/basket.ts#L5)

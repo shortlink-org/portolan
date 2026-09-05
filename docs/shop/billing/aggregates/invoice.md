@@ -71,10 +71,10 @@ stateDiagram-v2
 
 | From | To | On | Emits | Source |
 | --- | --- | --- | --- | --- |
-| `draft` | `issued` | `issue` | `InvoiceIssued` | `examples/shop/billing/invoices/models.py:48` |
-| `issued` | `paid` | `pay` | `InvoicePaid` | `examples/shop/billing/invoices/models.py:54` |
-| `draft` | `void` | `void` | `InvoiceVoided` | `examples/shop/billing/invoices/models.py:60` |
-| `issued` | `void` | `void` | `InvoiceVoided` | `examples/shop/billing/invoices/models.py:60` |
+| `draft` | `issued` | `issue` | `InvoiceIssued` | [`examples/shop/billing/invoices/models.py:48`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/models.py#L48) |
+| `issued` | `paid` | `pay` | `InvoicePaid` | [`examples/shop/billing/invoices/models.py:54`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/models.py#L54) |
+| `draft` | `void` | `void` | `InvoiceVoided` | [`examples/shop/billing/invoices/models.py:60`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/models.py#L60) |
+| `issued` | `void` | `void` | `InvoiceVoided` | [`examples/shop/billing/invoices/models.py:60`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/models.py#L60) |
 
 ## Operations
 
@@ -88,6 +88,7 @@ stateDiagram-v2
 
 ## Events
 
+<a id="event-shop-billing-invoice-invoiceissued"></a>
 ### InvoiceIssued
 
 `shop.billing.invoice.InvoiceIssued`
@@ -98,7 +99,7 @@ On the wire as `billing.InvoiceIssued`, on `shop.billing.invoice`.
 
 The invoice is final and the customer has been asked to pay it.
 
-Source: `examples/shop/billing/invoices/events.py`
+Source: [`examples/shop/billing/invoices/events.py`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/events.py)
 
 | Field | Type |
 | --- | --- |
@@ -108,6 +109,7 @@ Source: `examples/shop/billing/invoices/events.py`
 | `total_minor` | `int` |
 | `currency` | `str` |
 
+<a id="event-shop-billing-invoice-invoicepaid"></a>
 ### InvoicePaid
 
 `shop.billing.invoice.InvoicePaid`
@@ -118,7 +120,7 @@ On the wire as `billing.InvoicePaid`, on `shop.billing.invoice`.
 
 The money arrived and the invoice is closed. Nothing is owed on the order.
 
-Source: `examples/shop/billing/invoices/events.py`
+Source: [`examples/shop/billing/invoices/events.py`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/events.py)
 
 | Field | Type |
 | --- | --- |
@@ -126,6 +128,7 @@ Source: `examples/shop/billing/invoices/events.py`
 | `order_id` | `str` |
 | `paid_at` | `str` |
 
+<a id="event-shop-billing-invoice-invoicevoided"></a>
 ### InvoiceVoided
 
 `shop.billing.invoice.InvoiceVoided`
@@ -136,7 +139,7 @@ On the wire as `billing.InvoiceVoided`, on `shop.billing.invoice`.
 
 The invoice was ended without payment, and nobody will be asked again.
 
-Source: `examples/shop/billing/invoices/events.py`
+Source: [`examples/shop/billing/invoices/events.py`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/events.py)
 
 | Field | Type |
 | --- | --- |

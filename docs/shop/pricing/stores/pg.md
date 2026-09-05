@@ -5,10 +5,11 @@
 - **Id:** `shop.pricing.pg`
 - **Kind:** postgres
 - **Owner:** [shop.pricing](../README.md)
-- **Source:** `examples/shop/pricing/internal/infrastructure/repository`
+- **Source:** [`examples/shop/pricing/internal/infrastructure/repository`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/repository)
 
 ## Tables
 
+<a id="relation-shop-pricing-pg-price-lists"></a>
 ### price_lists
 
 aggregate-root · persists [shop.pricing.price-list](../aggregates/price-list.md)
@@ -25,6 +26,7 @@ aggregate-root · persists [shop.pricing.price-list](../aggregates/price-list.md
 | --- | --- | --- |
 | `price_lists_in_force` | currency, valid_from | index |
 
+<a id="relation-shop-pricing-pg-price-rows"></a>
 ### price_rows
 
 child · persists [shop.pricing.price-list](../aggregates/price-list.md)
@@ -35,6 +37,7 @@ child · persists [shop.pricing.price-list](../aggregates/price-list.md)
 | `sku` | `text` | not null | PK |
 | `amount_minor` | `bigint` | not null | — |
 
+<a id="relation-shop-pricing-pg-quotes"></a>
 ### quotes
 
 aggregate-root · persists [shop.pricing.quote](../aggregates/quote.md)
@@ -54,6 +57,7 @@ aggregate-root · persists [shop.pricing.quote](../aggregates/quote.md)
 | `quotes_open_by_expiry` | state, expires_at | index |
 | `quotes_by_basket` | basket_id | index |
 
+<a id="relation-shop-pricing-pg-quote-lines"></a>
 ### quote_lines
 
 child · persists [shop.pricing.quote](../aggregates/quote.md)
@@ -66,6 +70,7 @@ child · persists [shop.pricing.quote](../aggregates/quote.md)
 | `unit_price_minor` | `bigint` | not null | — |
 | `currency` | `char(3)` | not null | — |
 
+<a id="relation-shop-pricing-pg-outbox"></a>
 ### outbox
 
 outbox
@@ -85,9 +90,10 @@ outbox
 
 ## Views
 
+<a id="relation-shop-pricing-pg-v-price-list-use"></a>
 ### v_price_list_use
 
-computed on read · reads [`shop.pricing.pg.price_lists`](pg.md#price_lists), [`shop.pricing.pg.price_rows`](pg.md#price_rows)
+computed on read · reads [`shop.pricing.pg.price_lists`](pg.md#relation-shop-pricing-pg-price-lists), [`shop.pricing.pg.price_rows`](pg.md#relation-shop-pricing-pg-price-rows)
 
 | Column | Type | Null | From |
 | --- | --- | --- | --- |
@@ -107,4 +113,4 @@ SELECT l.id        AS price_list_id,
  GROUP BY l.id;
 ```
 
-Source: `internal/infrastructure/repository/price_list/migrations/0002_price_list_use.sql`
+Source: [`internal/infrastructure/repository/price_list/migrations/0002_price_list_use.sql`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/repository/price_list/migrations/0002_price_list_use.sql)

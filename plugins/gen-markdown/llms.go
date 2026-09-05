@@ -99,6 +99,17 @@ func (s *site) llmsIndex() string {
 	}
 	section(&b, "Outside the estate", list(externals))
 
+	modules := make([]string, 0, len(s.cat.Modules))
+	for i := range s.cat.Modules {
+		module := &s.cat.Modules[i]
+		modules = append(modules, entry(
+			s.ref(self, module.ID, orDefault(module.Name, module.ID)),
+			"schema module", "published by "+s.ref(self, module.Owner, module.Owner),
+			strings.Join(module.Packages, ", "),
+		))
+	}
+	section(&b, "Schema modules", list(modules))
+
 	flows := make([]string, 0, len(s.cat.Flows))
 	for i := range s.cat.Flows {
 		flow := &s.cat.Flows[i]
@@ -165,6 +176,9 @@ func (s *site) llmsSummary() string {
 		plural(services, "service"),
 		plural(aggregates, "aggregate"),
 		plural(len(s.cat.Stores), "store"),
+	}
+	if len(s.cat.Modules) > 0 {
+		parts = append(parts, plural(len(s.cat.Modules), "schema module"))
 	}
 	// Named only when there is one: an estate that calls nobody outside has
 	// nothing to count, and "0 systems outside" reads as a claim about the

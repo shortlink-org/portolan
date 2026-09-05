@@ -4,8 +4,8 @@
 
 - **Id:** `shop.cart`
 - **Context:** [Shop](../README.md)
-- **Repo:** `github.com/shortlink-org/portolan`
-- **Path:** `examples/shop/cart`
+- **Repo:** [`github.com/shortlink-org/portolan`](https://github.com/shortlink-org/portolan)
+- **Path:** [`examples/shop/cart/`](https://github.com/shortlink-org/portolan/tree/main/examples/shop/cart)
 - **Owners:** `@shortlink-org/shop`
 
 Service `cart` — bounded context **shop**. TypeScript on Node.js.
@@ -63,24 +63,31 @@ Docker the tests that need Postgres or NATS are skipped.
 
 ## Provides
 
-**`cart.v1.Baskets`** — `examples/shop/cart/src/infrastructure/transport/http/gen/openapi.yaml`
+### cart.v1.Baskets
 
-- `createBasket` — `POST /v1/baskets`
-- `getBasket` — `GET /v1/baskets/{basketId}`
-- `addItem` — `POST /v1/baskets/{basketId}/items`
-- `removeItem` — `DELETE /v1/baskets/{basketId}/items/{sku}`
-- `mergeBaskets` — `POST /v1/baskets/{basketId}/merge`
-- `checkout` — `POST /v1/baskets/{basketId}/checkout`
+- **Source:** [`examples/shop/cart/src/infrastructure/transport/http/gen/openapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/http/gen/openapi.yaml)
 
-<details><summary>BasketCreated</summary>
+| Method | Route | Request | Response |
+| --- | --- | --- | --- |
+| `addItem` | `POST /v1/baskets/{basketId}/items` | `AddItemRequest` | `Basket` |
+| `checkout` | `POST /v1/baskets/{basketId}/checkout` | — | `CheckedOut` |
+| `createBasket` | `POST /v1/baskets` | — | `BasketCreated` |
+| `getBasket` | `GET /v1/baskets/{basketId}` | — | `Basket` |
+| `mergeBaskets` | `POST /v1/baskets/{basketId}/merge` | `MergeRequest` | `Basket` |
+| `removeItem` | `DELETE /v1/baskets/{basketId}/items/{sku}` | — | `Basket` |
 
-| Field | Type | Doc |
-| --- | --- | --- |
-| `basketId` | `string (uuid)` | — |
-| `token` | `string` | The capability to change this basket; sent back as X-Basket-Token. |
+<a id="message-additemrequest"></a>
+<details><summary>AddItemRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `sku` | `string` |
+| `quantity` | `integer` |
+| `unitPrice` | `Money` |
 
 </details>
 
+<a id="message-basket"></a>
 <details><summary>Basket</summary>
 
 | Field | Type | Doc |
@@ -95,33 +102,17 @@ Docker the tests that need Postgres or NATS are skipped.
 
 </details>
 
-<details><summary>Error</summary>
+<a id="message-basketcreated"></a>
+<details><summary>BasketCreated</summary>
 
-| Field | Type |
-| --- | --- |
-| `message` | `string` |
-
-</details>
-
-<details><summary>AddItemRequest</summary>
-
-| Field | Type |
-| --- | --- |
-| `sku` | `string` |
-| `quantity` | `integer` |
-| `unitPrice` | `Money` |
+| Field | Type | Doc |
+| --- | --- | --- |
+| `basketId` | `string (uuid)` | — |
+| `token` | `string` | The capability to change this basket; sent back as X-Basket-Token. |
 
 </details>
 
-<details><summary>MergeRequest</summary>
-
-| Field | Type |
-| --- | --- |
-| `fromBasketId` | `string (uuid)` |
-| `fromToken` | `string` |
-
-</details>
-
+<a id="message-checkedout"></a>
 <details><summary>CheckedOut</summary>
 
 | Field | Type | Doc |
@@ -132,6 +123,16 @@ Docker the tests that need Postgres or NATS are skipped.
 
 </details>
 
+<a id="message-error"></a>
+<details><summary>Error</summary>
+
+| Field | Type |
+| --- | --- |
+| `message` | `string` |
+
+</details>
+
+<a id="message-lineitem"></a>
 <details><summary>LineItem</summary>
 
 | Field | Type |
@@ -142,6 +143,17 @@ Docker the tests that need Postgres or NATS are skipped.
 
 </details>
 
+<a id="message-mergerequest"></a>
+<details><summary>MergeRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `fromBasketId` | `string (uuid)` |
+| `fromToken` | `string` |
+
+</details>
+
+<a id="message-money"></a>
 <details><summary>Money</summary>
 
 | Field | Type | Doc |
@@ -155,19 +167,38 @@ Docker the tests that need Postgres or NATS are skipped.
 
 | Call | Peer | Status | Source |
 | --- | --- | --- | --- |
-| `auth.v1.Sessions/validateSession` | [auth.auth](../../auth/auth/README.md) | verified | `examples/shop/cart/src/infrastructure/auth/gen/openapi.yaml` |
-| `shop.v1.Pricing/GetQuote` | [shop.pricing](../pricing/README.md) | declared | `examples/shop/cart/src/infrastructure/pricing/proto/shop/v1/pricing.proto` |
+| `auth.v1.Sessions/validateSession` | [auth.auth](../../auth/auth/README.md) | verified | [`examples/shop/cart/src/infrastructure/auth/gen/openapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/auth/gen/openapi.yaml) |
+| `shop.v1.Pricing/GetQuote` | [shop.pricing](../pricing/README.md) | declared | [`examples/shop/cart/src/infrastructure/pricing/proto/shop/v1/pricing.proto`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/pricing/proto/shop/v1/pricing.proto) |
 
 ## Publishes
 
 | Event | Latest | Consumers |
 | --- | --- | --- |
-| [BasketAbandoned](aggregates/basket.md) | v1 | — |
-| [BasketCheckedOut](aggregates/basket.md) | v1 | [shop.oms](../oms/README.md), [shop.pricing (declared)](../pricing/README.md) |
-| [BasketCreated](aggregates/basket.md) | v1 | — |
-| [BasketItemAdded](aggregates/basket.md) | v1 | — |
-| [BasketItemRemoved](aggregates/basket.md) | v1 | — |
-| [BasketMerged](aggregates/basket.md) | v1 | — |
+| [`BasketAbandoned`](aggregates/basket.md#event-shop-cart-basket-basketabandoned) | v1 | — |
+| [`BasketCheckedOut`](aggregates/basket.md#event-shop-cart-basket-basketcheckedout) | v1 | [shop.oms](../oms/README.md), [shop.pricing (declared)](../pricing/README.md) |
+| [`BasketCreated`](aggregates/basket.md#event-shop-cart-basket-basketcreated) | v1 | — |
+| [`BasketItemAdded`](aggregates/basket.md#event-shop-cart-basket-basketitemadded) | v1 | — |
+| [`BasketItemRemoved`](aggregates/basket.md#event-shop-cart-basket-basketitemremoved) | v1 | — |
+| [`BasketMerged`](aggregates/basket.md#event-shop-cart-basket-basketmerged) | v1 | — |
+
+## Channels
+
+### shop.cart.basket
+
+**Basket**
+
+One subject per aggregate, dotted the way a NATS subject is. The subject is the topic the outbox row held, and the event's name is on the message metadata, so a subscriber dispatches without parsing the payload.
+
+Source: [`examples/shop/cart/src/infrastructure/transport/bus/asyncapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/bus/asyncapi.yaml)
+
+| Direction | Message | Title | Doc |
+| --- | --- | --- | --- |
+| send | [`cart.BasketCreated`](aggregates/basket.md#event-shop-cart-basket-basketcreated) | Basket created | A basket exists, for a visitor or for a customer. |
+| send | [`cart.BasketItemAdded`](aggregates/basket.md#event-shop-cart-basket-basketitemadded) | Item added | A line was added, or an existing line grew. |
+| send | [`cart.BasketItemRemoved`](aggregates/basket.md#event-shop-cart-basket-basketitemremoved) | Item removed | A line is gone from the basket. |
+| send | [`cart.BasketCheckedOut`](aggregates/basket.md#event-shop-cart-basket-basketcheckedout) | Basket checked out | The basket is closed and an order is expected. This is the message anything downstream of the cart waits for. |
+| send | [`cart.BasketAbandoned`](aggregates/basket.md#event-shop-cart-basket-basketabandoned) | Basket abandoned | Nobody touched the basket for long enough that it was let go. |
+| send | [`cart.BasketMerged`](aggregates/basket.md#event-shop-cart-basket-basketmerged) | Basket merged | A visitor signed in and their basket was folded into their own. |
 
 ## Stores
 

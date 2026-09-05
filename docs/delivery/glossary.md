@@ -4,7 +4,7 @@
 
 - **Context:** [Delivery](README.md)
 - **Terms:** 13
-- **Read from:** `examples/shop/delivery/core/GLOSSARY.md`
+- **Read from:** [`examples/shop/delivery/core/GLOSSARY.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/GLOSSARY.md)
 
 One meaning per word inside this context, as the glossary beside the code states it.
 

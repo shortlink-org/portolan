@@ -16,6 +16,7 @@
 // working tree's side is read the way the app reads it.
 
 import { execFileSync } from "node:child_process";
+import { writeFileSync } from "node:fs";
 
 import { validateCatalog } from "../src/catalog.ts";
 import { enrichCatalog } from "../src/enrich.ts";
@@ -30,15 +31,54 @@ const HEADINGS = {
 };
 
 async function main() {
-  const ref = process.argv[2] || defaultBase();
+  const options = parseArgs(process.argv.slice(2));
+  const ref = options.ref || defaultBase();
   const before = catalogAt(ref);
   const { catalog: after } = await loadCatalog("portolan.json");
-
-  process.stdout.write(render(ref, diffCatalogs(before, after)));
+  const changes = diffCatalogs(before, after);
+  const output = renderFormat(options.format, ref, changes);
+  if (options.output) {
+    writeFileSync(options.output, output);
+    console.log(`architecture diff: ${options.format} → ${options.output}`);
+  } else {
+    process.stdout.write(output);
+  }
 
   // Zero either way. This describes a change; it does not judge one, and a
   // non-zero exit would make every pull request that touches the estate look
   // like a failure.
+}
+
+export function parseArgs(args) {
+  const options = { ref: "", format: "markdown", output: "" };
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === "--format" || arg === "--output") {
+      const value = args[++i];
+      if (!value) throw new Error(`${arg} needs a value`);
+      options[arg.slice(2)] = value;
+    } else if (arg.startsWith("--format=")) {
+      options.format = arg.slice("--format=".length);
+    } else if (arg.startsWith("--output=")) {
+      options.output = arg.slice("--output=".length);
+    } else if (arg.startsWith("-")) {
+      throw new Error(`unknown option ${arg}`);
+    } else if (options.ref) {
+      throw new Error(`more than one base ref: ${options.ref}, ${arg}`);
+    } else {
+      options.ref = arg;
+    }
+  }
+  if (!["markdown", "json", "sarif"].includes(options.format)) {
+    throw new Error(`unknown diff format ${options.format}; use markdown, json or sarif`);
+  }
+  return options;
+}
+
+export function renderFormat(format, ref, changes) {
+  if (format === "json") return renderJson(ref, changes);
+  if (format === "sarif") return renderSarif(ref, changes);
+  return render(ref, changes);
 }
 
 /**
@@ -147,6 +187,42 @@ export function render(ref, changes) {
   }
 
   return lines.join("\n");
+}
+
+function counts(changes) {
+  return Object.fromEntries(SEVERITIES.map((severity) => [severity, changes.filter((change) => change.severity === severity).length]));
+}
+
+/** Stable machine output for CI, bots and downstream reports. */
+export function renderJson(ref, changes) {
+  return `${JSON.stringify({ version: 1, base: ref, counts: counts(changes), changes }, null, 2)}\n`;
+}
+
+/** SARIF 2.1.0: breaking changes are errors; everything else remains reviewable. */
+export function renderSarif(ref, changes) {
+  const kinds = [...new Set(changes.map((change) => change.kind))].sort();
+  const rules = kinds.map((kind) => ({
+    id: kind,
+    name: kind.replace(/[^a-zA-Z0-9]+/g, "_"),
+    shortDescription: { text: `Portolan architecture change: ${kind}` },
+    helpUri: "https://github.com/shortlink-org/portolan",
+  }));
+  const level = { breaking: "error", change: "warning", addition: "note" };
+  const sarif = {
+    version: "2.1.0",
+    $schema: "https://json.schemastore.org/sarif-2.1.0.json",
+    runs: [{
+      tool: { driver: { name: "Portolan", informationUri: "https://github.com/shortlink-org/portolan", rules } },
+      automationDetails: { id: `architecture-diff/${ref}` },
+      results: changes.map((change) => ({
+        ruleId: change.kind,
+        level: level[change.severity],
+        message: { text: change.summary },
+        properties: { severity: change.severity, where: change.where, base: ref },
+      })),
+    }],
+  };
+  return `${JSON.stringify(sarif, null, 2)}\n`;
 }
 
 // Only when run, not when imported: the tests below this reach for the two

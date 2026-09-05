@@ -5,7 +5,7 @@
 - **Status:** accepted
 - **Date:** 2026-09-05
 - **Scope:** [storefront.bff](../storefront/bff/README.md)
-- **Source:** `examples/bff/docs/adr/0001-graphql-yoga-schema-first.md`
+- **Source:** [`examples/bff/docs/adr/0001-graphql-yoga-schema-first.md`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/docs/adr/0001-graphql-yoga-schema-first.md)
 
 ### Context and Problem Statement
 

@@ -4,7 +4,7 @@
 
 - **Id:** `flow.pricing-import-price-list`
 - **Owner:** [shop](../shop/README.md)
-- **Source:** `examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go`
+- **Source:** [`examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go)
 
 Package import_price_list takes in a whole price list.
 
@@ -30,7 +30,9 @@ sequenceDiagram
 
 ## Steps
 
+<a id="step-s1"></a>
 1. **client** → **shop.pricing** — ImportPriceList → ImportPriceListResponse
-   status: declared · `examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:30`
+   status: declared · [`examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:30`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go#L30)
+<a id="step-s2"></a>
 2. **shop.pricing** → **pricing-pg** — Save
-   status: declared · `examples/shop/pricing/internal/application/price_list/usecases/import_price_list/usecase.go:43`
+   status: declared · [`examples/shop/pricing/internal/application/price_list/usecases/import_price_list/usecase.go:43`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/import_price_list/usecase.go#L43)

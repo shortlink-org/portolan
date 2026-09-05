@@ -5,7 +5,7 @@
 - **Status:** accepted
 - **Date:** 2026-09-05
 - **Scope:** [shop.oms](../shop/oms/README.md)
-- **Source:** `examples/shop/oms/docs/adr/0004-cancel-is-allowed-until-dispatch.md`
+- **Source:** [`examples/shop/oms/docs/adr/0004-cancel-is-allowed-until-dispatch.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/docs/adr/0004-cancel-is-allowed-until-dispatch.md)
 
 ### Context and Problem Statement
 

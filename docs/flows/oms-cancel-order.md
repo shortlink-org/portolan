@@ -4,7 +4,7 @@
 
 - **Id:** `flow.oms-cancel-order`
 - **Owner:** [shop](../shop/README.md)
-- **Source:** `examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs`
+- **Source:** [`examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs)
 
 Reads one order by id.
 
@@ -38,10 +38,12 @@ sequenceDiagram
 
 ## Steps
 
+<a id="step-s1"></a>
 1. **client** → **shop.oms** — CancelOrder → CancelOrderResponse
-   `examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:41` · Seen running in telemetry/traces.jsonl (1 trace).
+   [`examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:41`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs#L41) · Seen running in telemetry/traces.jsonl (1 trace).
+<a id="step-s2"></a>
 2. **shop.oms** → **oms-pg** — by_id
-   status: declared · `examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:21`
+   status: declared · [`examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:21`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs#L21)
 
 > **One of**
 >
@@ -50,10 +52,13 @@ sequenceDiagram
 >
 > *otherwise*
 >
+> <a id="step-s3"></a>
 > 3. **shop.oms** → **oms-pg** — save
->    status: declared · `examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:26`
+>    status: declared · [`examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:26`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs#L26)
+> <a id="step-s4"></a>
 > 4. **shop.oms** → **bus** — OrderCancelled
->    [shop.oms.order.OrderCancelled](../shop/oms/aggregates/order.md) · `examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:26` · Seen running in telemetry/traces.jsonl (1 trace).
+>    [`shop.oms.order.OrderCancelled`](../shop/oms/aggregates/order.md#event-shop-oms-order-ordercancelled) · [`examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:26`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs#L26) · Seen running in telemetry/traces.jsonl (1 trace).
 
+<a id="step-s6"></a>
 5. **shop.oms** → **oms-pg** — by_id
-   status: declared · `examples/shop/oms/src/application/order/usecases/get_order/mod.rs:42`
+   status: declared · [`examples/shop/oms/src/application/order/usecases/get_order/mod.rs:42`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/get_order/mod.rs#L42)

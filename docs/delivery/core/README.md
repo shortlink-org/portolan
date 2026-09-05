@@ -4,8 +4,8 @@
 
 - **Id:** `delivery.core`
 - **Context:** [Delivery](../README.md)
-- **Repo:** `github.com/shortlink-org/portolan`
-- **Path:** `examples/shop/delivery/core`
+- **Repo:** [`github.com/shortlink-org/portolan`](https://github.com/shortlink-org/portolan)
+- **Path:** [`examples/shop/delivery/core/`](https://github.com/shortlink-org/portolan/tree/main/examples/shop/delivery/core)
 - **Owners:** `@shortlink-org/delivery`
 
 Service `core` — bounded context **delivery**. TypeScript on Node.
@@ -95,14 +95,20 @@ npm install && npm run gen && npm run build
 
 ## Provides
 
-**`delivery.v1.Delivery`** — `examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/proto/delivery/v1/delivery.proto:9`
+### delivery.v1.Delivery
 
-- `Dispatch`
-- `RecordScan`
-- `RecordDelivery`
-- `TrackShipment`
-- `GetShipment`
+- **Source:** [`examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/proto/delivery/v1/delivery.proto:9`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/proto/delivery/v1/delivery.proto#L9)
+- **Module:** [buf.build/shortlink-org/portolan-delivery-shipment](../../modules/shortlink-org-portolan-delivery-shipment.md)
 
+| Method | Request | Response | Doc |
+| --- | --- | --- | --- |
+| `Dispatch` | `DispatchRequest` | `DispatchResponse` | Hand a planned shipment to the carrier. |
+| `GetShipment` | `GetShipmentRequest` | `GetShipmentResponse` | One shipment, for whoever is asking about an order. |
+| `RecordDelivery` | `RecordDeliveryRequest` | `RecordDeliveryResponse` | End a shipment at the door. |
+| `RecordScan` | `RecordScanRequest` | `RecordScanResponse` | Write down that a parcel was seen somewhere. |
+| `TrackShipment` | `TrackShipmentRequest` | `TrackShipmentResponse` | What the customer sees when they paste a tracking code. |
+
+<a id="message-dispatchrequest"></a>
 <details><summary>DispatchRequest</summary>
 
 | Field | Type |
@@ -112,6 +118,7 @@ npm install && npm run gen && npm run build
 
 </details>
 
+<a id="message-dispatchresponse"></a>
 <details><summary>DispatchResponse</summary>
 
 | Field | Type |
@@ -121,59 +128,7 @@ npm install && npm run gen && npm run build
 
 </details>
 
-<details><summary>RecordScanRequest</summary>
-
-| Field | Type |
-| --- | --- |
-| `shipment_id` | `string` |
-| `parcel_id` | `string` |
-| `location` | `string` |
-
-</details>
-
-<details><summary>RecordScanResponse</summary>
-
-| Field | Type |
-| --- | --- |
-| `shipment_id` | `string` |
-
-</details>
-
-<details><summary>RecordDeliveryRequest</summary>
-
-| Field | Type |
-| --- | --- |
-| `shipment_id` | `string` |
-| `signed_by` | `string` |
-
-</details>
-
-<details><summary>RecordDeliveryResponse</summary>
-
-| Field | Type |
-| --- | --- |
-| `shipment_id` | `string` |
-
-</details>
-
-<details><summary>TrackShipmentRequest</summary>
-
-| Field | Type |
-| --- | --- |
-| `tracking` | `string` |
-
-</details>
-
-<details><summary>TrackShipmentResponse</summary>
-
-| Field | Type |
-| --- | --- |
-| `shipment_id` | `string` |
-| `status` | `string` |
-| `scans` | `[]ScanView` |
-
-</details>
-
+<a id="message-getshipmentrequest"></a>
 <details><summary>GetShipmentRequest</summary>
 
 | Field | Type |
@@ -182,6 +137,7 @@ npm install && npm run gen && npm run build
 
 </details>
 
+<a id="message-getshipmentresponse"></a>
 <details><summary>GetShipmentResponse</summary>
 
 | Field | Type |
@@ -194,6 +150,46 @@ npm install && npm run gen && npm run build
 
 </details>
 
+<a id="message-recorddeliveryrequest"></a>
+<details><summary>RecordDeliveryRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `shipment_id` | `string` |
+| `signed_by` | `string` |
+
+</details>
+
+<a id="message-recorddeliveryresponse"></a>
+<details><summary>RecordDeliveryResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `shipment_id` | `string` |
+
+</details>
+
+<a id="message-recordscanrequest"></a>
+<details><summary>RecordScanRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `shipment_id` | `string` |
+| `parcel_id` | `string` |
+| `location` | `string` |
+
+</details>
+
+<a id="message-recordscanresponse"></a>
+<details><summary>RecordScanResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `shipment_id` | `string` |
+
+</details>
+
+<a id="message-scanview"></a>
 <details><summary>ScanView</summary>
 
 | Field | Type |
@@ -204,48 +200,39 @@ npm install && npm run gen && npm run build
 
 </details>
 
-**`delivery.v1.RouteService`** — `examples/shop/delivery/core/src/infrastructure/transport/grpc/route/proto/delivery/v1/routes.proto:6`
-
-- `PlanRoute`
-- `StartRoute`
-- `CloseRoute`
-- `GetRoute`
-
-<details><summary>PlanRouteRequest</summary>
+<a id="message-trackshipmentrequest"></a>
+<details><summary>TrackShipmentRequest</summary>
 
 | Field | Type |
 | --- | --- |
-| `vehicle` | `string` |
-| `planned_for` | `string` |
-| `shipment_ids` | `[]string` |
+| `tracking` | `string` |
 
 </details>
 
-<details><summary>PlanRouteResponse</summary>
+<a id="message-trackshipmentresponse"></a>
+<details><summary>TrackShipmentResponse</summary>
 
 | Field | Type |
 | --- | --- |
-| `route_id` | `string` |
-| `stops` | `int32` |
+| `shipment_id` | `string` |
+| `status` | `string` |
+| `scans` | `[]ScanView` |
 
 </details>
 
-<details><summary>StartRouteRequest</summary>
+### delivery.v1.RouteService
 
-| Field | Type |
-| --- | --- |
-| `route_id` | `string` |
+- **Source:** [`examples/shop/delivery/core/src/infrastructure/transport/grpc/route/proto/delivery/v1/routes.proto:6`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/transport/grpc/route/proto/delivery/v1/routes.proto#L6)
+- **Module:** [buf.build/shortlink-org/portolan-delivery-route](../../modules/shortlink-org-portolan-delivery-route.md)
 
-</details>
+| Method | Request | Response | Doc |
+| --- | --- | --- | --- |
+| `CloseRoute` | `CloseRouteRequest` | `CloseRouteResponse` | End the day, whatever is left undone. |
+| `GetRoute` | `GetRouteRequest` | `GetRouteResponse` | One route, in the order it is driven. |
+| `PlanRoute` | `PlanRouteRequest` | `PlanRouteResponse` | Build a day out of the shipments waiting to go out. |
+| `StartRoute` | `StartRouteRequest` | `StartRouteResponse` | The van is out. |
 
-<details><summary>StartRouteResponse</summary>
-
-| Field | Type |
-| --- | --- |
-| `route_id` | `string` |
-
-</details>
-
+<a id="message-closerouterequest"></a>
 <details><summary>CloseRouteRequest</summary>
 
 | Field | Type |
@@ -254,6 +241,7 @@ npm install && npm run gen && npm run build
 
 </details>
 
+<a id="message-closerouteresponse"></a>
 <details><summary>CloseRouteResponse</summary>
 
 | Field | Type |
@@ -262,6 +250,7 @@ npm install && npm run gen && npm run build
 
 </details>
 
+<a id="message-getrouterequest"></a>
 <details><summary>GetRouteRequest</summary>
 
 | Field | Type |
@@ -270,6 +259,7 @@ npm install && npm run gen && npm run build
 
 </details>
 
+<a id="message-getrouteresponse"></a>
 <details><summary>GetRouteResponse</summary>
 
 | Field | Type |
@@ -281,6 +271,46 @@ npm install && npm run gen && npm run build
 
 </details>
 
+<a id="message-planrouterequest"></a>
+<details><summary>PlanRouteRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `vehicle` | `string` |
+| `planned_for` | `string` |
+| `shipment_ids` | `[]string` |
+
+</details>
+
+<a id="message-planrouteresponse"></a>
+<details><summary>PlanRouteResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `route_id` | `string` |
+| `stops` | `int32` |
+
+</details>
+
+<a id="message-startrouterequest"></a>
+<details><summary>StartRouteRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `route_id` | `string` |
+
+</details>
+
+<a id="message-startrouteresponse"></a>
+<details><summary>StartRouteResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `route_id` | `string` |
+
+</details>
+
+<a id="message-stopview"></a>
 <details><summary>StopView</summary>
 
 | Field | Type |
@@ -296,20 +326,27 @@ npm install && npm run gen && npm run build
 
 | Call | Peer | Status | Source |
 | --- | --- | --- | --- |
-| `shop.v1.OrderService/GetOrder` | [shop.oms](../../shop/oms/README.md) | declared | `examples/shop/delivery/core/src/infrastructure/oms/proto/shop/v1/orders.proto` |
+| `shop.v1.OrderService/GetOrder` | [shop.oms](../../shop/oms/README.md) | declared | [`examples/shop/delivery/core/src/infrastructure/oms/proto/shop/v1/orders.proto`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/src/infrastructure/oms/proto/shop/v1/orders.proto) |
 
 ## Publishes
 
 | Event | Latest |
 | --- | --- |
-| [RouteClosed](aggregates/route.md) | v1 |
-| [RoutePlanned](aggregates/route.md) | v1 |
-| [RouteStarted](aggregates/route.md) | v1 |
-| [ShipmentDelivered](aggregates/shipment.md) | v1 |
-| [ShipmentDispatched](aggregates/shipment.md) | v1 |
-| [ShipmentInTransit](aggregates/shipment.md) | v1 |
-| [ShipmentLost](aggregates/shipment.md) | v1 |
-| [ShipmentReleased](aggregates/shipment.md) | v1 |
+| [`RouteClosed`](aggregates/route.md#event-delivery-core-route-routeclosed) | v1 |
+| [`RoutePlanned`](aggregates/route.md#event-delivery-core-route-routeplanned) | v1 |
+| [`RouteStarted`](aggregates/route.md#event-delivery-core-route-routestarted) | v1 |
+| [`ShipmentDelivered`](aggregates/shipment.md#event-delivery-core-shipment-shipmentdelivered) | v1 |
+| [`ShipmentDispatched`](aggregates/shipment.md#event-delivery-core-shipment-shipmentdispatched) | v1 |
+| [`ShipmentInTransit`](aggregates/shipment.md#event-delivery-core-shipment-shipmentintransit) | v1 |
+| [`ShipmentLost`](aggregates/shipment.md#event-delivery-core-shipment-shipmentlost) | v1 |
+| [`ShipmentReleased`](aggregates/shipment.md#event-delivery-core-shipment-shipmentreleased) | v1 |
+
+## Schema modules
+
+| Module | Access | Packages |
+| --- | --- | --- |
+| [shortlink-org/portolan-delivery-route](../../modules/shortlink-org-portolan-delivery-route.md) | publishes | delivery.v1 |
+| [shortlink-org/portolan-delivery-shipment](../../modules/shortlink-org-portolan-delivery-shipment.md) | publishes | delivery.v1 |
 
 ## Stores
 

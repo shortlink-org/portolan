@@ -19,7 +19,7 @@ func (s *site) renderStore(store *catalog.Store) {
 		{"Owner", s.ref(self, store.Owner, store.Owner)},
 	}
 	if store.Source != "" {
-		meta = append(meta, []string{"Source", code(store.Source)})
+		meta = append(meta, []string{"Source", s.source(self, store.Source, s.services[store.Owner])})
 	}
 	b.WriteString(defList(meta))
 
@@ -39,6 +39,7 @@ func (s *site) renderStore(store *catalog.Store) {
 }
 
 func (s *site) renderTable(b *strings.Builder, self string, store *catalog.Store, tbl *catalog.Table) {
+	b.WriteString("<a id=\"relation-" + anchorID(tbl.ID) + "\"></a>\n")
 	b.WriteString("### " + tbl.Name + "\n\n")
 
 	meta := []string{}
@@ -77,6 +78,7 @@ func (s *site) renderTable(b *strings.Builder, self string, store *catalog.Store
 }
 
 func (s *site) renderView(b *strings.Builder, self string, store *catalog.Store, view *catalog.View) {
+	b.WriteString("<a id=\"relation-" + anchorID(view.ID) + "\"></a>\n")
 	b.WriteString("### " + view.Name + "\n\n")
 
 	meta := []string{}
@@ -106,7 +108,7 @@ func (s *site) renderView(b *strings.Builder, self string, store *catalog.Store,
 		b.WriteString("\n" + fence("sql", view.Definition))
 	}
 	if view.Source != "" {
-		b.WriteString("\nSource: " + code(view.Source) + "\n")
+		b.WriteString("\nSource: " + s.source(self, view.Source, s.services[store.Owner]) + "\n")
 	}
 	b.WriteString("\n")
 }
@@ -168,7 +170,7 @@ func (s *site) relationRef(from, id string) string {
 		return code(id)
 	}
 
-	return "[" + code(id) + "](" + rel(from, page) + "#" + anchor(s.relationName[id]) + ")"
+	return "[" + code(id) + "](" + rel(from, page) + "#relation-" + anchorID(id) + ")"
 }
 
 // relationOf strips the trailing column from a lineage reference,

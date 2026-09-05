@@ -14,5 +14,5 @@ An invoice is in one currency.
 ## Relates to
 
 - **Services:** [billing.invoices](../billing/invoices/README.md)
-- **Events:** [billing.invoices.invoice.InvoiceRaised](../billing/invoices/aggregates/invoice.md)
+- **Events:** [`billing.invoices.invoice.InvoiceRaised`](../billing/invoices/aggregates/invoice.md#event-billing-invoices-invoice-invoiceraised)
 - **Flows:** [flow.raise-invoice](../flows/raise-invoice.md)

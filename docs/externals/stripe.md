@@ -10,13 +10,40 @@ The card network the ledger moves money through. Nobody in the estate provides i
 
 ## Provides
 
-**`stripe.v1`** — `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml`
+### stripe.v1
 
-- `PostPaymentIntents` — `POST /v1/payment_intents`
-- `PostPaymentIntentsIntentCapture` — `POST /v1/payment_intents/{intent}/capture`
-- `PostPaymentIntentsIntentCancel` — `POST /v1/payment_intents/{intent}/cancel`
-- `PostRefunds` — `POST /v1/refunds`
+- **Source:** [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml)
 
+| Method | Route | Response |
+| --- | --- | --- |
+| `PostPaymentIntents` | `POST /v1/payment_intents` | `payment_intent` |
+| `PostPaymentIntentsIntentCancel` | `POST /v1/payment_intents/{intent}/cancel` | `payment_intent` |
+| `PostPaymentIntentsIntentCapture` | `POST /v1/payment_intents/{intent}/capture` | `payment_intent` |
+| `PostRefunds` | `POST /v1/refunds` | `refund` |
+
+<a id="message-api-errors"></a>
+<details><summary>api_errors</summary>
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `type` | `string enum(api_error \| card_error \| idempotency_error \| invalid_request_error)` | The type of error returned. One of `api_error`, `card_error`, `idempotency_error`, or `invalid_request_error` |
+| `code` | `string` | Optional. For some errors that could be handled programmatically, a short string indicating the [error code](https://docs.stripe.com/error-codes) reported. |
+| `decline_code` | `string` | Optional. For card errors resulting from a card issuer decline, a short string indicating the [card issuer's reason for the decline](https://docs.stripe.com/declines#issuer-declines) if they provide one. |
+| `message` | `string` | Optional. A human-readable message providing more details about the error. For card errors, these messages can be shown to your users. |
+| `param` | `string` | Optional. If the error is parameter-specific, the parameter related to the error. For example, you can use this to display a message near the correct form field. |
+
+</details>
+
+<a id="message-error"></a>
+<details><summary>error</summary>
+
+| Field | Type |
+| --- | --- |
+| `error` | `api_errors` |
+
+</details>
+
+<a id="message-payment-intent"></a>
 <details><summary>payment_intent</summary>
 
 | Field | Type | Doc |
@@ -34,14 +61,7 @@ The card network the ledger moves money through. Nobody in the estate provides i
 
 </details>
 
-<details><summary>error</summary>
-
-| Field | Type |
-| --- | --- |
-| `error` | `api_errors` |
-
-</details>
-
+<a id="message-refund"></a>
 <details><summary>refund</summary>
 
 | Field | Type | Doc |
@@ -57,23 +77,11 @@ The card network the ledger moves money through. Nobody in the estate provides i
 
 </details>
 
-<details><summary>api_errors</summary>
-
-| Field | Type | Doc |
-| --- | --- | --- |
-| `type` | `string enum(api_error \| card_error \| idempotency_error \| invalid_request_error)` | The type of error returned. One of `api_error`, `card_error`, `idempotency_error`, or `invalid_request_error` |
-| `code` | `string` | Optional. For some errors that could be handled programmatically, a short string indicating the [error code](https://docs.stripe.com/error-codes) reported. |
-| `decline_code` | `string` | Optional. For card errors resulting from a card issuer decline, a short string indicating the [card issuer's reason for the decline](https://docs.stripe.com/declines#issuer-declines) if they provide one. |
-| `message` | `string` | Optional. A human-readable message providing more details about the error. For card errors, these messages can be shown to your users. |
-| `param` | `string` | Optional. If the error is parameter-specific, the parameter related to the error. For example, you can use this to display a message near the correct form field. |
-
-</details>
-
 ## Called by
 
 | Service | Call | Status | Source |
 | --- | --- | --- | --- |
-| [Ledger](../payments/ledger/README.md) | `stripe.v1/PostPaymentIntents` | declared | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml` |
-| [Ledger](../payments/ledger/README.md) | `stripe.v1/PostPaymentIntentsIntentCancel` | declared | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml` |
-| [Ledger](../payments/ledger/README.md) | `stripe.v1/PostPaymentIntentsIntentCapture` | declared | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml` |
-| [Ledger](../payments/ledger/README.md) | `stripe.v1/PostRefunds` | declared | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml` |
+| [Ledger](../payments/ledger/README.md) | `stripe.v1/PostPaymentIntents` | declared | [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml) |
+| [Ledger](../payments/ledger/README.md) | `stripe.v1/PostPaymentIntentsIntentCancel` | declared | [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml) |
+| [Ledger](../payments/ledger/README.md) | `stripe.v1/PostPaymentIntentsIntentCapture` | declared | [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml) |
+| [Ledger](../payments/ledger/README.md) | `stripe.v1/PostRefunds` | declared | [`examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml) |

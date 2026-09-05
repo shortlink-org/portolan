@@ -4,7 +4,7 @@
 
 - **Id:** `flow.pricing-issue-quote`
 - **Owner:** [shop](../shop/README.md)
-- **Source:** `examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go`
+- **Source:** [`examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go)
 
 Package issue_quote prices a basket and promises the price for a while.
 
@@ -34,11 +34,15 @@ sequenceDiagram
 
 ## Steps
 
+<a id="step-s1"></a>
 1. **client** → **shop.pricing** — IssueQuote → IssueQuoteResponse
-   status: declared · `examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go:28`
+   status: declared · [`examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go:28`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go#L28)
+<a id="step-s2"></a>
 2. **shop.pricing** → **pricing-pg** — Current
-   status: declared · `examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:35`
+   status: declared · [`examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:35`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go#L35)
+<a id="step-s3"></a>
 3. **shop.pricing** → **pricing-pg** — Save
-   status: declared · `examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:55`
+   status: declared · [`examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:55`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go#L55)
+<a id="step-s4"></a>
 4. **shop.pricing** → **bus** — QuoteIssued
-   [shop.pricing.quote.QuoteIssued](../shop/pricing/aggregates/quote.md) · status: declared · `examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:55`
+   [`shop.pricing.quote.QuoteIssued`](../shop/pricing/aggregates/quote.md#event-shop-pricing-quote-quoteissued) · status: declared · [`examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:55`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go#L55)

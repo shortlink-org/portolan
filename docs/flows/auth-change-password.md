@@ -4,7 +4,7 @@
 
 - **Id:** `flow.auth-change-password`
 - **Owner:** [auth](../auth/README.md)
-- **Source:** `examples/auth/internal/infrastructure/transport/http/user/change_password.go`
+- **Source:** [`examples/auth/internal/infrastructure/transport/http/user/change_password.go`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/infrastructure/transport/http/user/change_password.go)
 
 Replaces the password of a user, given the current one.
 
@@ -35,13 +35,18 @@ sequenceDiagram
 
 ## Steps
 
+<a id="step-s1"></a>
 1. **client** → **auth.auth** — changePassword → 204
-   `examples/auth/internal/infrastructure/transport/http/user/change_password.go:20` · Seen running in telemetry/traces.jsonl (1 trace).
+   [`examples/auth/internal/infrastructure/transport/http/user/change_password.go:20`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/infrastructure/transport/http/user/change_password.go#L20) · Seen running in telemetry/traces.jsonl (1 trace).
+<a id="step-s2"></a>
 2. **auth.auth** → **auth-pg** — ByToken
-   status: declared · `examples/auth/internal/application/session/usecases/validate/usecase.go:34`
+   status: declared · [`examples/auth/internal/application/session/usecases/validate/usecase.go:34`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/application/session/usecases/validate/usecase.go#L34)
+<a id="step-s3"></a>
 3. **auth.auth** → **auth-pg** — ByID
-   status: declared · `examples/auth/internal/application/user/usecases/change_password/usecase.go:31`
+   status: declared · [`examples/auth/internal/application/user/usecases/change_password/usecase.go:31`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/application/user/usecases/change_password/usecase.go#L31)
+<a id="step-s4"></a>
 4. **auth.auth** → **auth-pg** — Save
-   status: declared · `examples/auth/internal/application/user/usecases/change_password/usecase.go:40`
+   status: declared · [`examples/auth/internal/application/user/usecases/change_password/usecase.go:40`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/application/user/usecases/change_password/usecase.go#L40)
+<a id="step-s5"></a>
 5. **auth.auth** → **bus** — PasswordChanged
-   [auth.auth.user.PasswordChanged](../auth/auth/aggregates/user.md) · `examples/auth/internal/application/user/usecases/change_password/usecase.go:40` · Seen running in telemetry/traces.jsonl (1 trace).
+   [`auth.auth.user.PasswordChanged`](../auth/auth/aggregates/user.md#event-auth-auth-user-passwordchanged) · [`examples/auth/internal/application/user/usecases/change_password/usecase.go:40`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/application/user/usecases/change_password/usecase.go#L40) · Seen running in telemetry/traces.jsonl (1 trace).

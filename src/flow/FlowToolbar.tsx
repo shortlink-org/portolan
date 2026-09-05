@@ -16,6 +16,7 @@ import {
   Copy,
   Filter,
   ImageDown,
+  FileCode2,
   Maximize2,
   Network,
   Pause,
@@ -91,6 +92,7 @@ export function FlowToolbar({
   statusCounts,
   onCopyMermaid,
   onExportPng,
+  onExportSvg,
   exporting,
 }: {
   variant: Variant;
@@ -125,6 +127,8 @@ export function FlowToolbar({
   onCopyMermaid: () => void;
   /** The canvas as it stands, to a file. */
   onExportPng: () => void;
+  /** The canvas as scalable vector artwork. */
+  onExportSvg: () => void;
   exporting: boolean;
 }) {
   return (
@@ -350,6 +354,16 @@ export function FlowToolbar({
           >
             <ImageDown size={14} aria-hidden />
             {exporting ? "saving…" : "png"}
+          </button>
+          <button
+            type="button"
+            onClick={onExportSvg}
+            disabled={exporting}
+            title="Save the canvas as an SVG"
+            className="flex items-center gap-1.5"
+          >
+            <FileCode2 size={14} aria-hidden />
+            svg
           </button>
         </div>
       </div>

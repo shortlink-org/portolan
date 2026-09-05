@@ -1,0 +1,57 @@
+# Example estate flows
+
+Standalone Mermaid sequence diagrams generated from the portolan catalog.
+
+- [Change password](auth-change-password.mmd) — `flow.auth-change-password`
+- [Get user](auth-get-user.mmd) — `flow.auth-get-user`
+- [Login](auth-login.mmd) — `flow.auth-login`
+- [Logout](auth-logout.mmd) — `flow.auth-logout`
+- [Register user](auth-register-user.mmd) — `flow.auth-register-user`
+- [Revoke sessions on password change](auth-revoke-sessions-on-password-change.mmd) — `flow.auth-revoke-sessions-on-password-change`
+- [Validate session](auth-validate-session.mmd) — `flow.auth-validate-session`
+- [Mutation add item](bff-mutation-add-item.mmd) — `flow.bff-mutation-add-item`
+- [Mutation cancel order](bff-mutation-cancel-order.mmd) — `flow.bff-mutation-cancel-order`
+- [Mutation checkout](bff-mutation-checkout.mmd) — `flow.bff-mutation-checkout`
+- [Mutation remove item](bff-mutation-remove-item.mmd) — `flow.bff-mutation-remove-item`
+- [Query basket](bff-query-basket.mmd) — `flow.bff-query-basket`
+- [Query order](bff-query-order.mmd) — `flow.bff-query-order`
+- [Query shipment](bff-query-shipment.mmd) — `flow.bff-query-shipment`
+- [Query viewer](bff-query-viewer.mmd) — `flow.bff-query-viewer`
+- [Subscription order status](bff-subscription-order-status.mmd) — `flow.bff-subscription-order-status`
+- [Close invoice on payment](billing-close-invoice-on-payment.mmd) — `flow.billing-close-invoice-on-payment`
+- [Invoice create](billing-invoice-create.mmd) — `flow.billing-invoice-create`
+- [Invoice destroy](billing-invoice-destroy.mmd) — `flow.billing-invoice-destroy`
+- [Invoice issue](billing-invoice-issue.mmd) — `flow.billing-invoice-issue`
+- [Invoice retrieve](billing-invoice-retrieve.mmd) — `flow.billing-invoice-retrieve`
+- [Add item](cart-add-item.mmd) — `flow.cart-add-item`
+- [Checkout](cart-checkout.mmd) — `flow.cart-checkout`
+- [Create basket](cart-create-basket.mmd) — `flow.cart-create-basket`
+- [Get basket](cart-get-basket.mmd) — `flow.cart-get-basket`
+- [Merge baskets](cart-merge-baskets.mmd) — `flow.cart-merge-baskets`
+- [Remove item](cart-remove-item.mmd) — `flow.cart-remove-item`
+- [Close route](core-close-route.mmd) — `flow.core-close-route`
+- [Dispatch](core-dispatch.mmd) — `flow.core-dispatch`
+- [Get route](core-get-route.mmd) — `flow.core-get-route`
+- [Get shipment](core-get-shipment.mmd) — `flow.core-get-shipment`
+- [Plan route](core-plan-route.mmd) — `flow.core-plan-route`
+- [Record delivery](core-record-delivery.mmd) — `flow.core-record-delivery`
+- [Record scan](core-record-scan.mmd) — `flow.core-record-scan`
+- [Release shipment on payment captured](core-release-shipment-on-payment-captured.mmd) — `flow.core-release-shipment-on-payment-captured`
+- [Start route](core-start-route.mmd) — `flow.core-start-route`
+- [Track shipment](core-track-shipment.mmd) — `flow.core-track-shipment`
+- [Authorize](ledger-authorize.mmd) — `flow.ledger-authorize`
+- [Capture](ledger-capture.mmd) — `flow.ledger-capture`
+- [Get payment](ledger-get-payment.mmd) — `flow.ledger-get-payment`
+- [Issue refund](ledger-issue-refund.mmd) — `flow.ledger-issue-refund`
+- [List refunds](ledger-list-refunds.mmd) — `flow.ledger-list-refunds`
+- [Void payment on order cancelled](ledger-void-payment-on-order-cancelled.mmd) — `flow.ledger-void-payment-on-order-cancelled`
+- [Cancel order](oms-cancel-order.mmd) — `flow.oms-cancel-order`
+- [Confirm order on payment authorized](oms-confirm-order-on-payment-authorized.mmd) — `flow.oms-confirm-order-on-payment-authorized`
+- [Get order](oms-get-order.mmd) — `flow.oms-get-order`
+- [Place order on basket checked out](oms-place-order-on-basket-checked-out.mmd) — `flow.oms-place-order-on-basket-checked-out`
+- [Archive price list](pricing-archive-price-list.mmd) — `flow.pricing-archive-price-list`
+- [Expire quote on checkout](pricing-expire-quote-on-checkout.mmd) — `flow.pricing-expire-quote-on-checkout`
+- [Get quote](pricing-get-quote.mmd) — `flow.pricing-get-quote`
+- [Import price list](pricing-import-price-list.mmd) — `flow.pricing-import-price-list`
+- [Issue quote](pricing-issue-quote.mmd) — `flow.pricing-issue-quote`
+- [List price lists](pricing-list-price-lists.mmd) — `flow.pricing-list-price-lists`

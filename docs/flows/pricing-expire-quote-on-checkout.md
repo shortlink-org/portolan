@@ -4,7 +4,7 @@
 
 - **Id:** `flow.pricing-expire-quote-on-checkout`
 - **Owner:** [shop](../shop/README.md)
-- **Source:** `examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go`
+- **Source:** [`examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go)
 
 Ends the promise once the basket it priced is checked out.
 
@@ -32,11 +32,15 @@ sequenceDiagram
 
 ## Steps
 
+<a id="step-s1"></a>
 1. **bus** → **shop.pricing** — BasketCheckedOut
-   [shop.cart.basket.BasketCheckedOut](../shop/cart/aggregates/basket.md) · status: declared · `examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:35`
+   [`shop.cart.basket.BasketCheckedOut`](../shop/cart/aggregates/basket.md#event-shop-cart-basket-basketcheckedout) · status: declared · [`examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:35`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go#L35)
+<a id="step-s2"></a>
 2. **shop.pricing** → **pricing-pg** — ByBasket
-   status: declared · `examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:41`
+   status: declared · [`examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:41`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go#L41)
+<a id="step-s3"></a>
 3. **shop.pricing** → **pricing-pg** — Save
-   status: declared · `examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:55`
+   status: declared · [`examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:55`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go#L55)
+<a id="step-s4"></a>
 4. **shop.pricing** → **bus** — QuoteExpired
-   [shop.pricing.quote.QuoteExpired](../shop/pricing/aggregates/quote.md) · status: declared · `examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:55`
+   [`shop.pricing.quote.QuoteExpired`](../shop/pricing/aggregates/quote.md#event-shop-pricing-quote-quoteexpired) · status: declared · [`examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:55`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go#L55)

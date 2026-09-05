@@ -27,6 +27,18 @@ will arrive with the service that does.
 
 ## Entities
 
+### Line
+
+One line of the order: a SKU, how many, and the price it was added to the
+basket at. The price is copied from the basket and never recomputed (ADR
+oms.0003); the customer agreed to this number.
+
+| Field | Type |
+| --- | --- |
+| `sku` | `String` |
+| `quantity` | `u32` |
+| `unit_price` | `Money` |
+
 ### Order — aggregate root
 
 The root. Everything about an order changes through a method here, and
@@ -43,18 +55,6 @@ the caller records both in one transaction, or neither.
 | `status` | `Status` | — |
 | `placed_at` | `DateTime<Utc>` | — |
 | `version` | `u32` | Bumped on every save; a save from a stale read is refused (Error::Conflict). |
-
-### Line
-
-One line of the order: a SKU, how many, and the price it was added to the
-basket at. The price is copied from the basket and never recomputed (ADR
-oms.0003); the customer agreed to this number.
-
-| Field | Type |
-| --- | --- |
-| `sku` | `String` |
-| `quantity` | `u32` |
-| `unit_price` | `Money` |
 
 ## Value objects
 
@@ -82,9 +82,9 @@ stateDiagram-v2
 
 | From | To | On | Emits | Source |
 | --- | --- | --- | --- | --- |
-| `placed` | `confirmed` | `confirm` | `OrderConfirmed` | `examples/shop/oms/src/domain/order/order.rs:65` |
-| `placed` | `cancelled` | `cancel` | `OrderCancelled` | `examples/shop/oms/src/domain/order/order.rs:76` |
-| `confirmed` | `cancelled` | `cancel` | `OrderCancelled` | `examples/shop/oms/src/domain/order/order.rs:76` |
+| `placed` | `confirmed` | `confirm` | `OrderConfirmed` | [`examples/shop/oms/src/domain/order/order.rs:65`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/domain/order/order.rs#L65) |
+| `placed` | `cancelled` | `cancel` | `OrderCancelled` | [`examples/shop/oms/src/domain/order/order.rs:76`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/domain/order/order.rs#L76) |
+| `confirmed` | `cancelled` | `cancel` | `OrderCancelled` | [`examples/shop/oms/src/domain/order/order.rs:76`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/domain/order/order.rs#L76) |
 
 ## Operations
 
@@ -97,15 +97,16 @@ stateDiagram-v2
 
 ## Events
 
+<a id="event-shop-oms-order-ordercancelled"></a>
 ### OrderCancelled
 
 `shop.oms.order.OrderCancelled`
 
 On the wire as `oms.OrderCancelled`, on `shop.oms.order`.
 
-| Consumer | Status |
-| --- | --- |
-| [payments.ledger](../../../payments/ledger/README.md) | declared |
+| Consumer | Status | Via |
+| --- | --- | --- |
+| [payments.ledger](../../../payments/ledger/README.md) | declared | `ledger-void-payment-on-order-cancelled#s1` |
 
 #### v1 — current
 
@@ -113,7 +114,7 @@ The order will not be fulfilled. The reason says whether the customer
 asked or the payment was declined, because a consumer unwinds them
 differently: a hold is voided, a capture is refunded.
 
-Source: `examples/shop/oms/src/domain/order/event/order_cancelled.rs`
+Source: [`examples/shop/oms/src/domain/order/event/order_cancelled.rs`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/domain/order/event/order_cancelled.rs)
 
 | Field | Type |
 | --- | --- |
@@ -121,6 +122,7 @@ Source: `examples/shop/oms/src/domain/order/event/order_cancelled.rs`
 | `reason` | `String` |
 | `occurred_at` | `DateTime<Utc>` |
 
+<a id="event-shop-oms-order-orderconfirmed"></a>
 ### OrderConfirmed
 
 `shop.oms.order.OrderConfirmed`
@@ -132,7 +134,7 @@ On the wire as `oms.OrderConfirmed`, on `shop.oms.order`.
 The payment is authorised and the order may be fulfilled. Whoever ships
 listens for this.
 
-Source: `examples/shop/oms/src/domain/order/event/order_confirmed.rs`
+Source: [`examples/shop/oms/src/domain/order/event/order_confirmed.rs`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/domain/order/event/order_confirmed.rs)
 
 | Field | Type |
 | --- | --- |
@@ -140,6 +142,7 @@ Source: `examples/shop/oms/src/domain/order/event/order_confirmed.rs`
 | `authorization_id` | `String` |
 | `occurred_at` | `DateTime<Utc>` |
 
+<a id="event-shop-oms-order-orderplaced"></a>
 ### OrderPlaced
 
 `shop.oms.order.OrderPlaced`
@@ -151,7 +154,7 @@ On the wire as `oms.OrderPlaced`, on `shop.oms.order`.
 An order came into being from a checked-out basket. Placed, not yet paid
 for: whoever moves money listens for this.
 
-Source: `examples/shop/oms/src/domain/order/event/order_placed.rs`
+Source: [`examples/shop/oms/src/domain/order/event/order_placed.rs`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/domain/order/event/order_placed.rs)
 
 | Field | Type |
 | --- | --- |

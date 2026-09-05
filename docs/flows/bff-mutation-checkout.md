@@ -4,7 +4,7 @@
 
 - **Id:** `flow.bff-mutation-checkout`
 - **Owner:** [storefront](../storefront/README.md)
-- **Source:** `examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts`
+- **Source:** [`examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts)
 
 Freeze the basket and hand it on.
 
@@ -30,7 +30,9 @@ sequenceDiagram
 
 ## Steps
 
+<a id="step-s1"></a>
 1. **client** → **storefront.bff** — Mutation.checkout → Checkout
-   status: declared · `examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts:11`
+   status: declared · [`examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts:11`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts#L11)
+<a id="step-s2"></a>
 2. **storefront.bff** → **shop.cart** — checkout → CheckedOut
-   `cart.v1.Baskets/checkout` · status: declared · `examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts:12`
+   `cart.v1.Baskets/checkout` · status: declared · [`examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts:12`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts#L12)

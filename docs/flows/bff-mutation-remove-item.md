@@ -4,7 +4,7 @@
 
 - **Id:** `flow.bff-mutation-remove-item`
 - **Owner:** [storefront](../storefront/README.md)
-- **Source:** `examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts`
+- **Source:** [`examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts)
 
 ## Participants
 
@@ -28,7 +28,9 @@ sequenceDiagram
 
 ## Steps
 
+<a id="step-s1"></a>
 1. **client** → **storefront.bff** — Mutation.removeItem → Basket
-   status: declared · `examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts:3`
+   status: declared · [`examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts:3`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts#L3)
+<a id="step-s2"></a>
 2. **storefront.bff** → **shop.cart** — removeItem → Basket
-   `cart.v1.Baskets/removeItem` · status: declared · `examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts:4`
+   `cart.v1.Baskets/removeItem` · status: declared · [`examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts:4`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts#L4)

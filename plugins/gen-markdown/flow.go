@@ -1,10 +1,12 @@
 package main
 
 import (
+	"path"
 	"strconv"
 	"strings"
 
 	"github.com/shortlink-org/portolan/catalog"
+	flowmermaid "github.com/shortlink-org/portolan/render/mermaid"
 )
 
 func (s *site) renderFlows() {
@@ -43,14 +45,6 @@ func (s *site) renderFlows() {
 func (s *site) renderFlow(flow *catalog.Flow) {
 	self := s.pathOf[flow.ID]
 
-	// Participants are aliased before anything is drawn. Mermaid takes an
-	// identifier where the catalog has a dotted service id, and the alias is
-	// also what the step list uses, so both readings name the lanes the same.
-	alias := make(map[string]string, len(flow.Participants))
-	for i := range flow.Participants {
-		alias[flow.Participants[i].ID] = "p" + strconv.Itoa(i)
-	}
-
 	var b strings.Builder
 	b.WriteString("# " + flow.Name + "\n\n")
 	b.WriteString(s.stamp() + "\n")
@@ -64,7 +58,7 @@ func (s *site) renderFlow(flow *catalog.Flow) {
 	// Source is the file the flow was read out of, which is the only thing a
 	// reader can go and check for themselves.
 	if flow.Source != "" {
-		meta = append(meta, []string{"Source", code(flow.Source)})
+		meta = append(meta, []string{"Source", s.source(self, flow.Source, s.serviceForSource(flow.Source))})
 	}
 	b.WriteString(defList(meta))
 
@@ -83,93 +77,12 @@ func (s *site) renderFlow(flow *catalog.Flow) {
 	}
 	section(&b, "Participants", table([]string{"Participant", "Kind", "Context", "Label"}, participants))
 
-	section(&b, "Sequence", fence("mermaid", s.mermaid(flow, alias)))
+	section(&b, "Sequence", fence("mermaid", flowmermaid.Sequence(flow, s.labelWithAnswer)))
 
 	counter := 0
 	section(&b, "Steps", s.stepList(self, flow, flow.Steps, &counter))
 
 	s.b.file(self, b.String())
-}
-
-func (s *site) mermaid(flow *catalog.Flow, alias map[string]string) string {
-	var b strings.Builder
-	b.WriteString("sequenceDiagram\n")
-	// autonumber so the diagram and the step list below carry the same numbers.
-	b.WriteString("    autonumber\n")
-
-	for i := range flow.Participants {
-		p := &flow.Participants[i]
-
-		keyword := "participant"
-		if p.Kind == catalog.ParticipantActor {
-			keyword = "actor"
-		}
-
-		label := p.Label
-		if label == "" {
-			label = p.ID
-		}
-		b.WriteString("    " + keyword + " " + alias[p.ID] + " as " + mermaidText(label) + "\n")
-	}
-
-	s.mermaidNodes(&b, flow.Steps, alias, 1)
-
-	return b.String()
-}
-
-func (s *site) mermaidNodes(b *strings.Builder, nodes catalog.FlowNodes, alias map[string]string, depth int) {
-	indent := strings.Repeat("    ", depth)
-
-	for _, node := range nodes {
-		switch n := node.(type) {
-		case *catalog.Step:
-			// An event is drawn with the async arrow. A reader who cannot tell
-			// a call from a publication is reading a different flow.
-			arrow := "->>"
-			if n.Kind == catalog.StepEvent {
-				arrow = "-)"
-			}
-			// The reply rides on the hop's own label rather than coming back
-			// as a second message: autonumber counts messages, and these are
-			// the numbers the step list below carries.
-			b.WriteString(indent + alias[n.From] + arrow + alias[n.To] + ": " + mermaidText(s.labelWithAnswer(n)) + "\n")
-
-		case *catalog.Parallel:
-			b.WriteString(indent + "par " + mermaidText(orDefault(n.Title, "in parallel")) + "\n")
-			for i, branch := range n.Branches {
-				if i > 0 {
-					b.WriteString(indent + "and\n")
-				}
-				s.mermaidNodes(b, branch, alias, depth+1)
-			}
-			b.WriteString(indent + "end\n")
-
-		case *catalog.Alt:
-			for i, branch := range n.Branches {
-				keyword := "else "
-				if i == 0 {
-					keyword = "alt "
-				}
-				b.WriteString(indent + keyword + mermaidText(branch.Title) + "\n")
-				s.mermaidNodes(b, branch.Steps, alias, depth+1)
-
-				// A branch that ends the flow has to say so inside the diagram.
-				// Without it the steps drawn after the alt read as if they
-				// follow this branch too.
-				if branch.Terminal {
-					if last := lastParticipant(branch.Steps); last != "" {
-						b.WriteString(strings.Repeat("    ", depth+1) + "Note over " + alias[last] + ": flow ends here\n")
-					}
-				}
-			}
-			b.WriteString(indent + "end\n")
-
-		case *catalog.Loop:
-			b.WriteString(indent + "loop " + mermaidText(n.Title) + "\n")
-			s.mermaidNodes(b, n.Steps, alias, depth+1)
-			b.WriteString(indent + "end\n")
-		}
-	}
 }
 
 // stepList is the same walk again, in prose. The diagram shows the shape and
@@ -186,6 +99,7 @@ func (s *site) stepList(self string, flow *catalog.Flow, nodes catalog.FlowNodes
 		switch n := node.(type) {
 		case *catalog.Step:
 			*counter++
+			b.WriteString("<a id=\"step-" + anchorID(n.ID) + "\"></a>\n")
 
 			arrow := " → "
 			if n.From == n.To {
@@ -201,7 +115,11 @@ func (s *site) stepList(self string, flow *catalog.Flow, nodes catalog.FlowNodes
 				notes = append(notes, "status: "+string(n.Status))
 			}
 			if n.Line != "" {
-				notes = append(notes, code(n.Line))
+				location := n.Line
+				if flow.Source != "" && path.Dir(sourceFile(n.Line)) == "." {
+					location = path.Join(path.Dir(sourceFile(flow.Source)), n.Line)
+				}
+				notes = append(notes, s.source(self, location, s.serviceForSource(flow.Source)))
 			}
 			if n.Note != "" {
 				notes = append(notes, n.Note)
@@ -270,8 +188,8 @@ func quote(block string) string {
 // aggregate page that publishes it; anything else is shown as written.
 func (s *site) stepRef(self string, step *catalog.Step) string {
 	if step.Kind == catalog.StepEvent {
-		if page, ok := s.eventPage[step.Ref]; ok {
-			return s.ref(self, page, step.Ref)
+		if _, ok := s.eventPage[step.Ref]; ok {
+			return s.eventRef(self, step.Ref, step.Ref)
 		}
 		if step.Status != catalog.StatusUnresolved {
 			s.b.warn(step.Ref, "step %q refers to event %q, which no service in this catalog publishes", step.ID, step.Ref)
@@ -292,44 +210,10 @@ func stepLabel(step *catalog.Step) string {
 	}
 }
 
-func lastParticipant(nodes catalog.FlowNodes) string {
-	for i := len(nodes) - 1; i >= 0; i-- {
-		switch n := nodes[i].(type) {
-		case *catalog.Step:
-			return n.To
-		case *catalog.Parallel:
-			for j := len(n.Branches) - 1; j >= 0; j-- {
-				if p := lastParticipant(n.Branches[j]); p != "" {
-					return p
-				}
-			}
-		case *catalog.Alt:
-			for j := len(n.Branches) - 1; j >= 0; j-- {
-				if p := lastParticipant(n.Branches[j].Steps); p != "" {
-					return p
-				}
-			}
-		case *catalog.Loop:
-			if p := lastParticipant(n.Steps); p != "" {
-				return p
-			}
-		}
-	}
-
-	return ""
-}
-
 // mermaidText makes a label safe on a mermaid line. A newline ends the
 // statement, a semicolon ends it too, and a bare # opens an entity code.
 func mermaidText(s string) string {
-	s = strings.ReplaceAll(s, "\r\n", "\n")
-	s = strings.ReplaceAll(s, "\n", " ")
-	// Order matters: the escape for # ends in a semicolon, so semicolons go
-	// first or the escape is mangled into text.
-	s = strings.ReplaceAll(s, ";", ",")
-	s = strings.ReplaceAll(s, "#", "#35;")
-
-	return strings.TrimSpace(s)
+	return flowmermaid.Text(s)
 }
 
 func orDefault(s, fallback string) string {

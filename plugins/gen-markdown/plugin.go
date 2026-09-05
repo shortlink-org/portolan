@@ -20,6 +20,9 @@ type Options struct {
 	// Title heads the index page. The catalog does not name the estate, so
 	// this is the one thing the plugin cannot derive.
 	Title string `json:"title,omitempty"`
+	// SourceBaseURL is the stable tree URL for this repository, such as a
+	// default branch. External repositories still use their immutable RepoPin.
+	SourceBaseURL string `json:"sourceBaseUrl,omitempty"`
 }
 
 // builder is plugin.Builder with the formatting the render code wants. The

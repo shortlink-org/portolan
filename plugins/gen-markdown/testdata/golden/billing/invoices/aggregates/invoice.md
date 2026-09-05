@@ -17,7 +17,7 @@ The invoice itself.
 | Field | Type | Doc |
 | --- | --- | --- |
 | `id` | `string` | Invoice id. |
-| `total` | [`Money`](../../../types.md#money) | What is owed. |
+| `total` | [`Money`](../../../types.md#type-money) | What is owed. |
 
 ## Value objects
 
@@ -25,7 +25,7 @@ The invoice itself.
 
 An amount in one currency.
 
-Shared type [`Money`](../../../types.md#money).
+Shared type [`Money`](../../../types.md#type-money).
 
 | Field | Type | Doc |
 | --- | --- | --- |
@@ -51,20 +51,21 @@ stateDiagram-v2
 
 | Operation | Kind | Doc |
 | --- | --- | --- |
-| `RaiseInvoice` | command | Raises one. |
 | `GetInvoice` | query | — |
+| `RaiseInvoice` | command | Raises one. |
 
 ## Events
 
+<a id="event-billing-invoices-invoice-invoiceraised"></a>
 ### InvoiceRaised
 
 `billing.invoices.invoice.InvoiceRaised`
 
 On the wire as `billing.InvoiceRaised`, on `billing_invoice`.
 
-| Consumer | Status | Note |
-| --- | --- | --- |
-| `billing.ledger` | declared | Not observed. |
+| Consumer | Status | Via | Note |
+| --- | --- | --- | --- |
+| `billing.ledger` | declared | [`flow.raise-invoice#s2`](../../../flows/raise-invoice.md#step-s2) | Not observed. |
 
 #### v1
 
@@ -85,4 +86,4 @@ Source: `api/events/v2/invoice_raised.proto`
 | Field | Type | Doc |
 | --- | --- | --- |
 | `invoiceId` | `string` | Which invoice. |
-| `total` | [`Money`](../../../types.md#money) | What is owed. |
+| `total` | [`Money`](../../../types.md#type-money) | What is owed. |

@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestRel(t *testing.T) {
 	cases := []struct{ from, to, want string }{
@@ -73,4 +76,25 @@ func TestAnchor(t *testing.T) {
 	if got := anchor("Gateway Ref"); got != "gateway-ref" {
 		t.Errorf("anchor = %q", got)
 	}
+}
+
+func TestCodeUsesALongerFenceAroundBackticks(t *testing.T) {
+	if got := code("run `gen`"); got != "`` run `gen` ``" {
+		t.Fatalf("code() = %q", got)
+	}
+}
+
+func FuzzMarkdownPrimitives(f *testing.F) {
+	f.Add("a | b\nnext `tick`")
+	f.Add("обычный текст")
+	f.Fuzz(func(t *testing.T, value string) {
+		got := cell(value)
+		if strings.ContainsAny(got, "\r\n") {
+			t.Fatalf("cell kept a line break: %q", got)
+		}
+		wrapped := code(value)
+		if value != "" && !strings.HasPrefix(wrapped, "`") {
+			t.Fatalf("code is not fenced: %q", wrapped)
+		}
+	})
 }

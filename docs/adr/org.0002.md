@@ -5,7 +5,7 @@
 - **Status:** accepted
 - **Date:** 2025-05-02
 - **Scope:** org
-- **Source:** `data/adr/0002-event-version-in-package-path.md`
+- **Source:** [`data/adr/0002-event-version-in-package-path.md`](https://github.com/shortlink-org/portolan/blob/main/data/adr/0002-event-version-in-package-path.md)
 
 ### Context and Problem Statement
 
@@ -57,4 +57,4 @@ are not willing to take yet.
 
 ## Relates to
 
-- **Events:** [shop.cart.basket.BasketCheckedOut](../shop/cart/aggregates/basket.md)
+- **Events:** [`shop.cart.basket.BasketCheckedOut`](../shop/cart/aggregates/basket.md#event-shop-cart-basket-basketcheckedout)

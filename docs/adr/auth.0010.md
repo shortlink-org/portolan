@@ -5,7 +5,7 @@
 - **Status:** accepted
 - **Date:** 2026-09-05
 - **Scope:** [auth.auth](../auth/auth/README.md)
-- **Source:** `examples/auth/docs/adr/0010-a-revocation-is-written-to-the-cache.md`
+- **Source:** [`examples/auth/docs/adr/0010-a-revocation-is-written-to-the-cache.md`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/docs/adr/0010-a-revocation-is-written-to-the-cache.md)
 
 ### Context and Problem Statement
 

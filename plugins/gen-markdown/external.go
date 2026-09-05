@@ -36,7 +36,7 @@ func (s *site) renderExternal(ext *catalog.External) {
 		b.WriteString("\n" + ext.Summary + "\n")
 	}
 
-	section(&b, "Provides", s.providesBlock(self, ext.Provides))
+	section(&b, "Provides", s.providesBlock(self, ext.Provides, nil))
 	section(&b, "Called by", s.calledByTable(self, ext.ID))
 
 	s.b.file(self, b.String())
@@ -60,11 +60,12 @@ func (s *site) calledByTable(from, externalID string) string {
 					s.ref(from, svc.ID, svc.Name),
 					code(call.ID),
 					string(call.Status),
-					code(call.Source),
+					s.source(from, call.Source, svc),
+					s.viaRef(from, call.Via),
 				})
 			}
 		}
 	}
 
-	return table([]string{"Service", "Call", "Status", "Source"}, rows)
+	return table([]string{"Service", "Call", "Status", "Source", "Via"}, rows)
 }

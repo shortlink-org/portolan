@@ -5,7 +5,7 @@
 - **Status:** accepted
 - **Date:** 2026-08-22
 - **Scope:** [auth.auth](../auth/auth/README.md)
-- **Source:** `examples/auth/docs/adr/0006-a-password-change-ends-sessions-through-a-policy.md`
+- **Source:** [`examples/auth/docs/adr/0006-a-password-change-ends-sessions-through-a-policy.md`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/docs/adr/0006-a-password-change-ends-sessions-through-a-policy.md)
 
 ### Context and Problem Statement
 

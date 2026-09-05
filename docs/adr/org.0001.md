@@ -5,7 +5,7 @@
 - **Status:** accepted
 - **Date:** 2025-03-11
 - **Scope:** org
-- **Source:** `data/adr/0001-client-protos-in-consumer-infrastructure.md`
+- **Source:** [`data/adr/0001-client-protos-in-consumer-infrastructure.md`](https://github.com/shortlink-org/portolan/blob/main/data/adr/0001-client-protos-in-consumer-infrastructure.md)
 
 ### Context and Problem Statement
 

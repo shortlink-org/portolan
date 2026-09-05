@@ -6,6 +6,11 @@
       "type": "string",
       "description": "Heading of the index page. The catalog does not name the estate, so this is the one thing the generator cannot derive.",
       "examples": ["Example estate"]
+    },
+    "sourceBaseUrl": {
+      "type": "string",
+      "description": "Stable forge tree URL used to link source locations, for example https://github.com/acme/shop/blob/main. External repositories use their immutable catalog pins.",
+      "examples": ["https://github.com/acme/shop/blob/main"]
     }
   }
 }

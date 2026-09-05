@@ -81,6 +81,7 @@ Hash is what the user domain stores in place of a password. The plaintext never 
 
 ## Events
 
+<a id="event-auth-auth-user-passwordchanged"></a>
 ### PasswordChanged
 
 `auth.auth.user.PasswordChanged`
@@ -95,7 +96,7 @@ On the wire as `auth.PasswordChanged`, on `auth_user`.
 
 PasswordChanged is published when a user's password is replaced. It says the password is different now; it does not carry the password, old or new, in any form.
 
-Source: `examples/auth/internal/domain/user/event/password_changed.go`
+Source: [`examples/auth/internal/domain/user/event/password_changed.go`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/domain/user/event/password_changed.go)
 
 | Field | Type |
 | --- | --- |
@@ -103,6 +104,7 @@ Source: `examples/auth/internal/domain/user/event/password_changed.go`
 | `by` | `string` |
 | `occurredAt` | `time.Time` |
 
+<a id="event-auth-auth-user-userregistered"></a>
 ### UserRegistered
 
 `auth.auth.user.UserRegistered`
@@ -113,7 +115,7 @@ On the wire as `auth.UserRegistered`, on `auth_user`.
 
 UserRegistered is published once per user, at registration. It carries the address because consumers routinely need to reach the person, and asking auth for it on every event would make the bus useless.
 
-Source: `examples/auth/internal/domain/user/event/user_registered.go`
+Source: [`examples/auth/internal/domain/user/event/user_registered.go`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/domain/user/event/user_registered.go)
 
 | Field | Type |
 | --- | --- |

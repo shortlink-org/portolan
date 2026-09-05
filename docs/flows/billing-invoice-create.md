@@ -4,7 +4,7 @@
 
 - **Id:** `flow.billing-invoice-create`
 - **Owner:** [shop](../shop/README.md)
-- **Source:** `examples/shop/billing/invoices/views.py`
+- **Source:** [`examples/shop/billing/invoices/views.py`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/views.py)
 
 Draws up a draft invoice for an order, with a line for each thing sold.
 
@@ -31,9 +31,12 @@ sequenceDiagram
 
 ## Steps
 
+<a id="step-s1"></a>
 1. **client** → **shop.billing** — invoice_create → InvoiceId
-   status: declared · `examples/shop/billing/invoices/views.py:13`
+   status: declared · [`examples/shop/billing/invoices/views.py:13`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/views.py#L13)
+<a id="step-s2"></a>
 2. **shop.billing** → **billing-pg** — Invoice.objects.create
-   status: declared · `examples/shop/billing/invoices/services.py:16` · in one transaction.
+   status: declared · [`examples/shop/billing/invoices/services.py:16`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L16) · in one transaction.
+<a id="step-s3"></a>
 3. **shop.billing** → **billing-pg** — InvoiceLine.objects.create
-   status: declared · `examples/shop/billing/invoices/services.py:25` · in one transaction, for each line.
+   status: declared · [`examples/shop/billing/invoices/services.py:25`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L25) · in one transaction, for each line.

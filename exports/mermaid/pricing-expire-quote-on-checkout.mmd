@@ -1,0 +1,9 @@
+sequenceDiagram
+    autonumber
+    participant p0 as bus
+    participant p1 as shop.pricing
+    participant p2 as pricing-pg
+    p0-)p1: BasketCheckedOut
+    p1->>p2: ByBasket
+    p1->>p2: Save
+    p1-)p0: QuoteExpired

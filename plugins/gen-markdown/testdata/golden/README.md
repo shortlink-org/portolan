@@ -15,6 +15,12 @@
 | --- | --- | --- |
 | [PSP gateway](externals/psp-gateway.md) | `psp.v1.Charges` | The card network the invoices are settled through. Nobody here builds it; the copy of its document vendored beside the client is all the catalog may claim. |
 
+## Schema modules
+
+| Module | Publisher | Registry | Packages |
+| --- | --- | --- | --- |
+| [Billing contracts](modules/example-billing.md) | [billing.invoices](billing/invoices/README.md) | buf.build | 1 package |
+
 ## Flows
 
 | Flow | Owner | Summary |

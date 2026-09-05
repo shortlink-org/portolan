@@ -21,6 +21,7 @@ flowchart TB
   merged["merge + validate"]
   site["the site<br/>React SPA"]
   docs["docs/<br/>markdown, llms.txt"]
+  exports["exports/<br/>Backstage + Mermaid"]
   c4["likec4/<br/>C4 + one view per flow"]
 
   code -- extract --> frag
@@ -29,6 +30,7 @@ flowchart TB
   frag --> merged
   merged --> site
   merged -- generate --> docs
+  merged -- generate --> exports
   merged -- likec4:gen --> c4 --> site
 ```
 
@@ -85,7 +87,7 @@ Plugins, one JSON message in and one out (`plugins/README.md`), declared in
 | --- | --- |
 | extract | `extract-go`, `extract-ts`, `extract-rust`, `extract-java`, `extract-django`, `extract-openapi`, `extract-asyncapi`, `extract-graphql`, `extract-proto`, `extract-csr`, `extract-sql`, `extract-flows`, `extract-adr`, `extract-glossary` |
 | verify | `verify-otel` — reads traces, marks the hops they show as `verified`; `verify-codeowners` — reads CODEOWNERS, says who to ask about each service |
-| generate | `gen-markdown` — `docs/`, including `llms.txt` / `llms-full.txt` |
+| generate | `gen-markdown` — `docs/`, `gen-mermaid` — standalone flow diagrams, `gen-backstage` — Backstage entities |
 
 `fetch-git`, `fetch-bsr` and `fetch-csr` bring in sources from other
 repositories, the Buf Schema Registry and a Confluent Schema Registry, against a
@@ -111,8 +113,23 @@ npm test             # vitest; npm run test:go for the Go catalog mirror
 npm run build        # likec4:gen + tsc --noEmit + vite build
 ```
 
+The same diff can leave CI as stable JSON or SARIF:
+
+```bash
+npm run diff -- origin/main --format=json --output=architecture-diff.json
+npm run diff -- origin/main --format=sarif --output=architecture-diff.sarif
+```
+
 Generated output is committed, so a change to it shows up in a diff; CI runs the
 `--check` variants to keep it honest.
+
+The Markdown pages preserve modules, channels, RPC routes and message shapes,
+consumer transport (`via`), and deep links to events, relations and flow steps.
+When `sourceBaseUrl` is configured, those facts link back to their forge source;
+sources fetched from another repository use the immutable revision in the
+catalog lock. `exports/mermaid/` contains one reusable `.mmd` file per flow and
+a machine-readable index, while `exports/backstage/catalog-info.yaml` contains
+the Domain, Systems, Components, APIs and Resources with validated references.
 
 ## Reviewing a change
 

@@ -4,8 +4,8 @@
 
 - **Id:** `shop.oms`
 - **Context:** [Shop](../README.md)
-- **Repo:** `github.com/shortlink-org/portolan`
-- **Path:** `examples/shop/oms`
+- **Repo:** [`github.com/shortlink-org/portolan`](https://github.com/shortlink-org/portolan)
+- **Path:** [`examples/shop/oms/`](https://github.com/shortlink-org/portolan/tree/main/examples/shop/oms)
 - **Owners:** `@shortlink-org/shop-oms`, `@shortlink-org/platform`
 
 Service `oms` — bounded context **shop**. Rust on Tokio.
@@ -61,27 +61,17 @@ skipped.
 
 ## Provides
 
-**`shop.v1.OrderService`** — `examples/shop/oms/vendor/proto/shortlink-org/portolan-shop-order/shop/v1/orders.proto:14`
+### shop.v1.OrderService
 
-- `GetOrder`
-- `CancelOrder`
+- **Source:** [`examples/shop/oms/vendor/proto/shortlink-org/portolan-shop-order/shop/v1/orders.proto:14`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/vendor/proto/shortlink-org/portolan-shop-order/shop/v1/orders.proto#L14)
+- **Module:** [buf.build/shortlink-org/portolan-shop-order](../../modules/shortlink-org-portolan-shop-order.md)
 
-<details><summary>GetOrderRequest</summary>
+| Method | Request | Response | Doc |
+| --- | --- | --- | --- |
+| `CancelOrder` | `CancelOrderRequest` | `CancelOrderResponse` | CancelOrder cancels an order that has not been dispatched yet. FAILED_PRECONDITION once it has: from then on the way back is a return, which is delivery's business, not this service's. Cancelling twice is not an error; the second call answers with the already cancelled order. |
+| `GetOrder` | `GetOrderRequest` | `GetOrderResponse` | GetOrder answers with the order as it is now. NOT_FOUND for an id the service has never seen; a cancelled order is still found. |
 
-| Field | Type |
-| --- | --- |
-| `order_id` | `string` |
-
-</details>
-
-<details><summary>GetOrderResponse</summary>
-
-| Field | Type |
-| --- | --- |
-| `order` | `Order` |
-
-</details>
-
+<a id="message-cancelorderrequest"></a>
 <details><summary>CancelOrderRequest</summary>
 
 | Field | Type |
@@ -90,6 +80,7 @@ skipped.
 
 </details>
 
+<a id="message-cancelorderresponse"></a>
 <details><summary>CancelOrderResponse</summary>
 
 | Field | Type |
@@ -98,6 +89,46 @@ skipped.
 
 </details>
 
+<a id="message-getorderrequest"></a>
+<details><summary>GetOrderRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `order_id` | `string` |
+
+</details>
+
+<a id="message-getorderresponse"></a>
+<details><summary>GetOrderResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `order` | `Order` |
+
+</details>
+
+<a id="message-line"></a>
+<details><summary>Line</summary>
+
+| Field | Type |
+| --- | --- |
+| `sku` | `string` |
+| `quantity` | `int32` |
+| `unit_price` | `Money` |
+
+</details>
+
+<a id="message-money"></a>
+<details><summary>Money</summary>
+
+| Field | Type |
+| --- | --- |
+| `amount_minor` | `int64` |
+| `currency` | `string` |
+
+</details>
+
+<a id="message-order"></a>
 <details><summary>Order</summary>
 
 | Field | Type | Doc |
@@ -112,38 +143,25 @@ skipped.
 
 </details>
 
-<details><summary>Line</summary>
-
-| Field | Type |
-| --- | --- |
-| `sku` | `string` |
-| `quantity` | `int32` |
-| `unit_price` | `Money` |
-
-</details>
-
-<details><summary>Money</summary>
-
-| Field | Type |
-| --- | --- |
-| `amount_minor` | `int64` |
-| `currency` | `string` |
-
-</details>
-
 ## Consumes
 
 | Call | Peer | Status | Source |
 | --- | --- | --- | --- |
-| `payments.v1.PaymentService/Authorize` | [payments.ledger](../../payments/ledger/README.md) | declared | `examples/shop/oms/src/infrastructure/payments/proto/payments/v1/payments.proto` |
+| `payments.v1.PaymentService/Authorize` | [payments.ledger](../../payments/ledger/README.md) | declared | [`examples/shop/oms/src/infrastructure/payments/proto/payments/v1/payments.proto`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/infrastructure/payments/proto/payments/v1/payments.proto) |
 
 ## Publishes
 
 | Event | Latest | Consumers |
 | --- | --- | --- |
-| [OrderCancelled](aggregates/order.md) | v1 | [payments.ledger (declared)](../../payments/ledger/README.md) |
-| [OrderConfirmed](aggregates/order.md) | v1 | — |
-| [OrderPlaced](aggregates/order.md) | v1 | — |
+| [`OrderCancelled`](aggregates/order.md#event-shop-oms-order-ordercancelled) | v1 | [payments.ledger (declared)](../../payments/ledger/README.md) |
+| [`OrderConfirmed`](aggregates/order.md#event-shop-oms-order-orderconfirmed) | v1 | — |
+| [`OrderPlaced`](aggregates/order.md#event-shop-oms-order-orderplaced) | v1 | — |
+
+## Schema modules
+
+| Module | Access | Commit | Packages |
+| --- | --- | --- | --- |
+| [shortlink-org/portolan-shop-order](../../modules/shortlink-org-portolan-shop-order.md) | publishes | 6ae5e6ade8a547a59553b3aae02a2335 | shop.v1 |
 
 ## Stores
 

@@ -5,7 +5,7 @@
 - **Status:** accepted
 - **Date:** 2026-09-04
 - **Scope:** [shop.cart](../shop/cart/README.md)
-- **Source:** `examples/shop/cart/docs/adr/0005-a-merge-moves-every-line-or-none.md`
+- **Source:** [`examples/shop/cart/docs/adr/0005-a-merge-moves-every-line-or-none.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/docs/adr/0005-a-merge-moves-every-line-or-none.md)
 
 ### Context and Problem Statement
 
