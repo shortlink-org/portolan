@@ -6,7 +6,7 @@
 - **Owner:** [shop](../shop/README.md)
 - **Source:** `examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs`
 
-Answers with the order as it is now; a cancelled order is still found.
+Reads one order by id.
 
 ## Participants
 
@@ -56,4 +56,4 @@ sequenceDiagram
 >    [shop.oms.order.OrderCancelled](../shop/oms/aggregates/order.md) · `examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:26` · Seen running in telemetry/traces.jsonl (1 trace).
 
 5. **shop.oms** → **oms-pg** — by_id
-   status: declared · `examples/shop/oms/src/application/order/usecases/get_order/mod.rs:14`
+   status: declared · `examples/shop/oms/src/application/order/usecases/get_order/mod.rs:42`

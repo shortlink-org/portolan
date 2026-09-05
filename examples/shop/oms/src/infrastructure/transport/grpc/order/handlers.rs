@@ -69,9 +69,11 @@ fn status(e: order::Error) -> Status {
     }
 }
 
-fn to_proto(o: &order::Order) -> Order {
+/// The read DTO, as the wire spells it. It is the query's `Output` that is
+/// mapped, not the aggregate: the root never reaches this file.
+fn to_proto(o: &get_order::Output) -> Order {
     Order {
-        id: o.id.clone(),
+        id: o.order_id.clone(),
         customer_id: o.customer_id.clone(),
         basket_id: o.basket_id.clone(),
         status: match o.status {

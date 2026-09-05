@@ -65,8 +65,8 @@
 | [Record scan](flows/core-record-scan.md) | [delivery](delivery/README.md) | Writes down that a parcel was seen somewhere. |
 | [Track shipment](flows/core-track-shipment.md) | [delivery](delivery/README.md) | What the customer sees when they paste a tracking code. |
 | [Plan shipment on payment captured](flows/core-plan-shipment-on-payment-captured.md) | [delivery](delivery/README.md) | Nothing leaves the warehouse before the money has moved. |
-| [Cancel order](flows/oms-cancel-order.md) | [shop](shop/README.md) | Answers with the order as it is now; a cancelled order is still found. |
-| [Get order](flows/oms-get-order.md) | [shop](shop/README.md) | Answers with the order as it is now; a cancelled order is still found. |
+| [Cancel order](flows/oms-cancel-order.md) | [shop](shop/README.md) | Reads one order by id. |
+| [Get order](flows/oms-get-order.md) | [shop](shop/README.md) | Reads one order by id. |
 | [Confirm order on payment authorized](flows/oms-confirm-order-on-payment-authorized.md) | [shop](shop/README.md) | Confirms the order once the payment for it is authorised (ADR oms.0005). The publisher is `payments.ledger`, and the name is the one it puts on the message: every service on this bus names its events after itself. |
 | [Place order on basket checked out](flows/oms-place-order-on-basket-checked-out.md) | [shop](shop/README.md) | Places the order the basket was checked out for (ADR oms.0002). The order takes the basket's id, so the same checkout heard twice places one order. |
 | [Archive price list](flows/pricing-archive-price-list.md) | [shop](shop/README.md) | Package archive_price_list takes a price list out of use without losing it. |
@@ -2655,7 +2655,7 @@ stateDiagram-v2
 | --- | --- | --- | --- |
 | `CancelOrder` | command | `CancelOrder` | Cancels an order that has not been dispatched, and says so with `OrderCancelled`. Cancelling twice is not an error: the second call finds a cancelled order and changes nothing. |
 | `ConfirmOrder` | command | *internal* | Confirms a placed order once its total is authorised with payments, and says so with `OrderConfirmed`. Payments is asked synchronously, because the answer is what decides; no service in the estate provides `payments.v1` yet, so the call is a stand-in until one does (ADR oms.0005). |
-| `GetOrder` | query | `CancelOrder`, `GetOrder` | Answers with the order as it is now; a cancelled order is still found. |
+| `GetOrder` | query | `CancelOrder`, `GetOrder` | Reads one order by id. |
 | `PlaceOrder` | command | *internal* | Places an order from a checked-out basket, once: a second `BasketCheckedOut` for the same basket places nothing and answers with the order already there. The lines and the total are the basket's, copied and never repriced. |
 
 ## Events
@@ -4271,8 +4271,8 @@ Source: `internal/infrastructure/repository/price_list/migrations/0002_price_lis
 | [Record scan](core-record-scan.md) | [delivery](../delivery/README.md) | Writes down that a parcel was seen somewhere. |
 | [Track shipment](core-track-shipment.md) | [delivery](../delivery/README.md) | What the customer sees when they paste a tracking code. |
 | [Plan shipment on payment captured](core-plan-shipment-on-payment-captured.md) | [delivery](../delivery/README.md) | Nothing leaves the warehouse before the money has moved. |
-| [Cancel order](oms-cancel-order.md) | [shop](../shop/README.md) | Answers with the order as it is now; a cancelled order is still found. |
-| [Get order](oms-get-order.md) | [shop](../shop/README.md) | Answers with the order as it is now; a cancelled order is still found. |
+| [Cancel order](oms-cancel-order.md) | [shop](../shop/README.md) | Reads one order by id. |
+| [Get order](oms-get-order.md) | [shop](../shop/README.md) | Reads one order by id. |
 | [Confirm order on payment authorized](oms-confirm-order-on-payment-authorized.md) | [shop](../shop/README.md) | Confirms the order once the payment for it is authorised (ADR oms.0005). The publisher is `payments.ledger`, and the name is the one it puts on the message: every service on this bus names its events after itself. |
 | [Place order on basket checked out](oms-place-order-on-basket-checked-out.md) | [shop](../shop/README.md) | Places the order the basket was checked out for (ADR oms.0002). The order takes the basket's id, so the same checkout heard twice places one order. |
 | [Archive price list](pricing-archive-price-list.md) | [shop](../shop/README.md) | Package archive_price_list takes a price list out of use without losing it. |
@@ -6006,7 +6006,7 @@ sequenceDiagram
 ## Steps
 
 1. **client** → **delivery.core** — GetShipment → GetShipmentResponse
-   status: declared · `examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:58`
+   status: declared · `examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:48`
 2. **delivery.core** → **core-pg** — byId
    status: declared · `examples/shop/delivery/core/src/application/shipment/usecases/get_shipment/usecase.ts:9`
 
@@ -6189,7 +6189,7 @@ sequenceDiagram
 1. **client** → **delivery.core** — TrackShipment → TrackShipmentResponse
    status: declared · `examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:43`
 2. **delivery.core** → **core-pg** — byTracking
-   status: declared · `examples/shop/delivery/core/src/application/shipment/usecases/track_shipment/usecase.ts:9`
+   status: declared · `examples/shop/delivery/core/src/application/shipment/usecases/track_shipment/usecase.ts:23`
 
 <!-- flows/core-plan-shipment-on-payment-captured.md -->
 
@@ -6243,7 +6243,7 @@ sequenceDiagram
 - **Owner:** [shop](../shop/README.md)
 - **Source:** `examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs`
 
-Answers with the order as it is now; a cancelled order is still found.
+Reads one order by id.
 
 ## Participants
 
@@ -6293,7 +6293,7 @@ sequenceDiagram
 >    [shop.oms.order.OrderCancelled](../shop/oms/aggregates/order.md) · `examples/shop/oms/src/application/order/usecases/cancel_order/mod.rs:26` · Seen running in telemetry/traces.jsonl (1 trace).
 
 5. **shop.oms** → **oms-pg** — by_id
-   status: declared · `examples/shop/oms/src/application/order/usecases/get_order/mod.rs:14`
+   status: declared · `examples/shop/oms/src/application/order/usecases/get_order/mod.rs:42`
 
 <!-- flows/oms-get-order.md -->
 
@@ -6305,7 +6305,7 @@ sequenceDiagram
 - **Owner:** [shop](../shop/README.md)
 - **Source:** `examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs`
 
-Answers with the order as it is now; a cancelled order is still found.
+Reads one order by id.
 
 ## Participants
 
@@ -6332,7 +6332,7 @@ sequenceDiagram
 1. **client** → **shop.oms** — GetOrder → GetOrderResponse
    `examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:31` · Seen running in telemetry/traces.jsonl (2 traces).
 2. **shop.oms** → **oms-pg** — by_id
-   status: declared · `examples/shop/oms/src/application/order/usecases/get_order/mod.rs:14`
+   status: declared · `examples/shop/oms/src/application/order/usecases/get_order/mod.rs:42`
 
 <!-- flows/oms-confirm-order-on-payment-authorized.md -->
 

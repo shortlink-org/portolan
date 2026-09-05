@@ -834,7 +834,7 @@
           "kind": "rpc",
           "label": "GetShipment",
           "status": "declared",
-          "line": "examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:58"
+          "line": "examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:48"
         },
         {
           "type": "step",
@@ -1117,7 +1117,7 @@
           "kind": "call",
           "label": "byTracking",
           "status": "declared",
-          "line": "examples/shop/delivery/core/src/application/shipment/usecases/track_shipment/usecase.ts:9"
+          "line": "examples/shop/delivery/core/src/application/shipment/usecases/track_shipment/usecase.ts:23"
         }
       ]
     },

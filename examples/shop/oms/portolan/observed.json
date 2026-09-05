@@ -92,7 +92,7 @@
       "id": "flow.oms-cancel-order",
       "slug": "oms-cancel-order",
       "name": "Cancel order",
-      "summary": "Answers with the order as it is now; a cancelled order is still found.",
+      "summary": "Reads one order by id.",
       "source": "examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs",
       "owner": "shop",
       "participants": [
@@ -185,7 +185,7 @@
           "kind": "call",
           "label": "by_id",
           "status": "declared",
-          "line": "examples/shop/oms/src/application/order/usecases/get_order/mod.rs:14"
+          "line": "examples/shop/oms/src/application/order/usecases/get_order/mod.rs:42"
         }
       ]
     },
@@ -193,7 +193,7 @@
       "id": "flow.oms-get-order",
       "slug": "oms-get-order",
       "name": "Get order",
-      "summary": "Answers with the order as it is now; a cancelled order is still found.",
+      "summary": "Reads one order by id.",
       "source": "examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs",
       "owner": "shop",
       "participants": [
@@ -233,7 +233,7 @@
           "kind": "call",
           "label": "by_id",
           "status": "declared",
-          "line": "examples/shop/oms/src/application/order/usecases/get_order/mod.rs:14"
+          "line": "examples/shop/oms/src/application/order/usecases/get_order/mod.rs:42"
         }
       ]
     },

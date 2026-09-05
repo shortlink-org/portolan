@@ -31,6 +31,6 @@ sequenceDiagram
 ## Steps
 
 1. **client** → **delivery.core** — GetShipment → GetShipmentResponse
-   status: declared · `examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:58`
+   status: declared · `examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:48`
 2. **delivery.core** → **core-pg** — byId
    status: declared · `examples/shop/delivery/core/src/application/shipment/usecases/get_shipment/usecase.ts:9`

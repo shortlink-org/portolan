@@ -33,4 +33,4 @@ sequenceDiagram
 1. **client** → **delivery.core** — TrackShipment → TrackShipmentResponse
    status: declared · `examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:43`
 2. **delivery.core** → **core-pg** — byTracking
-   status: declared · `examples/shop/delivery/core/src/application/shipment/usecases/track_shipment/usecase.ts:9`
+   status: declared · `examples/shop/delivery/core/src/application/shipment/usecases/track_shipment/usecase.ts:23`

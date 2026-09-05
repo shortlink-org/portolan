@@ -6,7 +6,7 @@
 - **Owner:** [shop](../shop/README.md)
 - **Source:** `examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs`
 
-Answers with the order as it is now; a cancelled order is still found.
+Reads one order by id.
 
 ## Participants
 
@@ -33,4 +33,4 @@ sequenceDiagram
 1. **client** → **shop.oms** — GetOrder → GetOrderResponse
    `examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:31` · Seen running in telemetry/traces.jsonl (2 traces).
 2. **shop.oms** → **oms-pg** — by_id
-   status: declared · `examples/shop/oms/src/application/order/usecases/get_order/mod.rs:14`
+   status: declared · `examples/shop/oms/src/application/order/usecases/get_order/mod.rs:42`

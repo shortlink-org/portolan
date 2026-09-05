@@ -41,17 +41,7 @@ export class ShipmentHandlers {
 
   /** What the customer sees when they paste a tracking code. */
   async trackShipment(code: string): Promise<unknown> {
-    const shipment = await this.tracking.handle(code);
-
-    return {
-      shipmentId: shipment.id,
-      status: shipment.status,
-      scans: shipment.scans.map((scan) => ({
-        parcelId: scan.parcelId,
-        location: scan.location,
-        scannedAt: scan.scannedAt.toISOString(),
-      })),
-    };
+    return this.tracking.handle(code);
   }
 
   /** One shipment, for whoever is asking about an order. */
