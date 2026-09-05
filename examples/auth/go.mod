@@ -13,7 +13,7 @@ require (
 	github.com/shortlink-org/go-sdk/config v0.0.0-20260901155230-945620b3fa49
 	github.com/shortlink-org/go-sdk/db v0.0.0-20260829181537-766b3331c5e3
 	github.com/shortlink-org/go-sdk/fsm v0.0.0-20260901155230-945620b3fa49
-	github.com/shortlink-org/go-sdk/logger v0.0.0-20260829181537-766b3331c5e3
+	github.com/shortlink-org/go-sdk/logger v0.0.0-20260905174857-b5c27a825ef6
 	github.com/shortlink-org/go-sdk/observability v0.0.0-20260905203440-c7a4f3ba3610
 	github.com/shortlink-org/go-sdk/outbox v0.0.0-20260901121657-d7eab0200634
 	github.com/shortlink-org/go-sdk/specification v0.0.0-20260829181537-766b3331c5e3
