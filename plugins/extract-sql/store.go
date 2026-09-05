@@ -14,38 +14,26 @@ import (
 	"github.com/shortlink-org/portolan/plugin"
 )
 
-// readStore builds one store out of every migration in the repository layer.
+// readStore builds one store out of every migration in the infrastructure
+// layer: the repository packages, and the projector packages beside them.
 //
 // One store, not one per aggregate: the migrations are numbered inside their
 // own package and each keeps its own schema_migrations table, but they are all
 // applied to the same database. The numbering is about who waits for whom, not
 // about where the rows live.
-func readStore(root, repositories, storeID, owner string, b *plugin.Builder) ([]catalog.Table, []catalog.View) {
+func readStore(root, repositories, projectors, storeID, owner string, b *plugin.Builder) ([]catalog.Table, []catalog.View) {
 	tables := []catalog.Table{}
 	views := []catalog.View{}
 
 	for _, aggregate := range subdirs(root, repositories) {
 		dir := path.Join(repositories, aggregate, "migrations")
 
-		files, err := os.ReadDir(filepath.Join(root, filepath.FromSlash(dir)))
-		if err != nil {
+		state, copies, _, ok := readMigrations(root, dir, storeID, owner, b)
+		if !ok {
 			// A repository package with no migrations of its own is normal:
 			// not every adapter keeps rows.
 			continue
 		}
-
-		names := make([]string, 0, len(files))
-		for _, file := range files {
-			// Only the up direction describes the schema. A down migration
-			// says how to lose it; a migration with no direction in its name
-			// only goes up.
-			if !file.IsDir() && strings.HasSuffix(file.Name(), ".sql") && !strings.HasSuffix(file.Name(), ".down.sql") {
-				names = append(names, file.Name())
-			}
-		}
-		// Applied in name order, so read in name order: a later migration is
-		// allowed to know about an earlier one.
-		sort.Strings(names)
 
 		// The directory names the aggregate, and an id spells it the way every
 		// extractor spells one: price_list is price-list.
@@ -64,46 +52,10 @@ func readStore(root, repositories, storeID, owner string, b *plugin.Builder) ([]
 				}
 			}
 		}
-		state := newDDLState()
-		copies := map[string]map[string][]string{}
-
-		for _, name := range names {
-			source := path.Join(dir, name)
-
-			sql, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(source)))
-			if err != nil {
-				b.Warn(storeID, source+" could not be read: "+err.Error())
-
-				continue
-			}
-
-			for table, columns := range readCopies(string(sql), storeID) {
-				if copies[table] == nil {
-					copies[table] = map[string][]string{}
-				}
-				for column, from := range columns {
-					copies[table][column] = from
-				}
-			}
-			unread, err := state.apply(string(sql), source)
-			if err != nil {
-				b.Warn(storeID, "could not parse "+source+": "+err.Error())
-
-				continue
-			}
-			for _, note := range unread {
-				b.Warn(storeID, source+": "+note)
-			}
-		}
 
 		first := true
 		for _, relation := range state.relations {
-			table := relation.table
-			table.ID = storeID + "." + table.Name
-			table.Indexes = relation.indexes
-			for i := range table.Columns {
-				table.Columns[i].Type = state.renderType(table.Columns[i].Type)
-			}
+			table := finishTable(relation, state, storeID)
 			// An outbox holds messages on their way out, not the
 			// aggregate: it is created beside the aggregate because the
 			// repository writes both in one transaction, and that is all
@@ -120,27 +72,13 @@ func readStore(root, repositories, storeID, owner string, b *plugin.Builder) ([]
 			// reads it.
 			table.Persists = &catalog.Persists{Aggregate: aggregateID}
 
+			mapping := forTable(mapped, table.Name)
 			for i := range table.Columns {
-				mapping := mapped[table.Name]
-				copying := copies[table.Name]
-				if at := strings.LastIndex(table.Name, "."); at >= 0 {
-					if mapping == nil {
-						mapping = mapped[table.Name[at+1:]]
-					}
-					if copying == nil {
-						copying = copies[table.Name[at+1:]]
-					}
-				}
 				if field, ok := mapping[table.Columns[i].Name]; ok {
 					table.Columns[i].Maps = field
 				}
-				// Where the value came from, when the migration says. A
-				// table cannot show a copy the way a view shows a select,
-				// so the copy is declared beside the column it lands in.
-				if from, ok := copying[table.Columns[i].Name]; ok {
-					table.Columns[i].From = from
-				}
 			}
+			applyCopies(&table, copies)
 
 			// The first table an aggregate creates holds the aggregate
 			// itself; anything it creates afterwards hangs off it.
@@ -158,6 +96,39 @@ func readStore(root, repositories, storeID, owner string, b *plugin.Builder) ([]
 		}
 	}
 
+	// A projector package holds one projection: rows assembled from events,
+	// kept by a subscriber that writes and nothing else. The layout says the
+	// role. It does not say whose rows these are a picture of - a projection
+	// of another service's aggregate lives here too, and its name is not in
+	// any directory of this tree - so the link is taken from the migration
+	// when it is written there (`-- aggregate:`) and left out when it is not.
+	for _, projection := range subdirs(root, projectors) {
+		dir := path.Join(projectors, projection, "migrations")
+
+		state, copies, projected, ok := readMigrations(root, dir, storeID, owner, b)
+		if !ok {
+			continue
+		}
+
+		for _, relation := range state.relations {
+			table := finishTable(relation, state, storeID)
+			table.Role = catalog.TableRoleProjection
+			if aggregate := forTable(projected, table.Name); aggregate != "" {
+				table.Persists = &catalog.Persists{Aggregate: aggregate}
+			}
+			// No `maps`: the upsert in a projector writes what an event
+			// carries, and an event's field is not a field of the aggregate
+			// the way a repository's insert argument is. Where a value came
+			// from is said by `-- from:`, which is read.
+			applyCopies(&table, copies)
+
+			tables = append(tables, table)
+		}
+		for _, declared := range state.views {
+			views = append(views, declared.asCatalog(storeID, declared.source, tables))
+		}
+	}
+
 	// A view is read where it is written, which may be before the tables it
 	// reads are: the second pass is what lets a column take its type from the
 	// column it comes from wherever that was created.
@@ -166,6 +137,104 @@ func readStore(root, repositories, storeID, owner string, b *plugin.Builder) ([]
 	}
 
 	return tables, views
+}
+
+// readMigrations applies every up migration under dir, in name order, and
+// reads the comments the grammar drops: which columns are copies (`-- from:`)
+// and which aggregate a table is a picture of (`-- aggregate:`). ok is false
+// when there is no such directory.
+func readMigrations(root, dir, storeID, owner string, b *plugin.Builder) (*ddlState, map[string]map[string][]string, map[string]string, bool) {
+	files, err := os.ReadDir(filepath.Join(root, filepath.FromSlash(dir)))
+	if err != nil {
+		return nil, nil, nil, false
+	}
+
+	names := make([]string, 0, len(files))
+	for _, file := range files {
+		// Only the up direction describes the schema. A down migration
+		// says how to lose it; a migration with no direction in its name
+		// only goes up.
+		if !file.IsDir() && strings.HasSuffix(file.Name(), ".sql") && !strings.HasSuffix(file.Name(), ".down.sql") {
+			names = append(names, file.Name())
+		}
+	}
+	// Applied in name order, so read in name order: a later migration is
+	// allowed to know about an earlier one.
+	sort.Strings(names)
+
+	state := newDDLState()
+	copies := map[string]map[string][]string{}
+	projected := map[string]string{}
+
+	for _, name := range names {
+		source := path.Join(dir, name)
+
+		sql, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(source)))
+		if err != nil {
+			b.Warn(storeID, source+" could not be read: "+err.Error())
+
+			continue
+		}
+
+		for table, columns := range readCopies(string(sql), storeID) {
+			if copies[table] == nil {
+				copies[table] = map[string][]string{}
+			}
+			for column, from := range columns {
+				copies[table][column] = from
+			}
+		}
+		for table, aggregate := range readProjected(string(sql), owner) {
+			projected[table] = aggregate
+		}
+		unread, err := state.apply(string(sql), source)
+		if err != nil {
+			b.Warn(storeID, "could not parse "+source+": "+err.Error())
+
+			continue
+		}
+		for _, note := range unread {
+			b.Warn(storeID, source+": "+note)
+		}
+	}
+
+	return state, copies, projected, true
+}
+
+// finishTable gives a relation its place in the catalog: an id under the
+// store, its indexes, and its column types spelled the way the migration
+// spelled them.
+func finishTable(relation relation, state *ddlState, storeID string) catalog.Table {
+	table := relation.table
+	table.ID = storeID + "." + table.Name
+	table.Indexes = relation.indexes
+	for i := range table.Columns {
+		table.Columns[i].Type = state.renderType(table.Columns[i].Type)
+	}
+
+	return table
+}
+
+// applyCopies writes onto each column where its value came from, when the
+// migration says. A table cannot show a copy the way a view shows a select,
+// so the copy is declared beside the column it lands in.
+func applyCopies(table *catalog.Table, copies map[string]map[string][]string) {
+	copying := forTable(copies, table.Name)
+	for i := range table.Columns {
+		if from, ok := copying[table.Columns[i].Name]; ok {
+			table.Columns[i].From = from
+		}
+	}
+}
+
+// forTable looks a table up by the name the migration used, then by its
+// unqualified name: a comment says `orders`, the grammar says `sales.orders`.
+func forTable[T any](byName map[string]T, name string) T {
+	if held, ok := byName[name]; ok {
+		return held
+	}
+
+	return byName[lastNamePart(name)]
 }
 
 // resolveView fills in what a view could not know when it was read: the type,

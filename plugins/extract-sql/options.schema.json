@@ -41,6 +41,11 @@
       "description": "Where the adapters live, relative to the input root: one package per aggregate, its migrations under migrations/ (every .sql that is not a .down.sql). The migrations are read from there, and so is which aggregate a table persists and which field a column carries - off the statements that write the rows, in Go, in TypeScript or in Rust.",
       "default": "internal/infrastructure/repository"
     },
+    "projectors": {
+      "type": "string",
+      "description": "Where the projectors live, relative to the input root: one package per projection, its migrations under migrations/ (every .sql that is not a .down.sql), numbered from 1 like an aggregate's. Every table created there gets the role projection. Which aggregate it is a picture of is not in the layout, so it is read from a `-- aggregate: <id>` line above the CREATE TABLE when the migration has one - a bare slug is an aggregate of this service, a dotted name is a full id - and left out when it does not. Columns copied from elsewhere carry `-- from:` as anywhere else.",
+      "default": "internal/infrastructure/projector"
+    },
     "out": {
       "type": "string",
       "description": "Name of the fragment file, inside the step's output directory.",
