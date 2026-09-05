@@ -16,6 +16,7 @@ import { LANDSCAPE_VIEW } from "../likec4/ids";
 import { LevelBadge } from "../likec4/levels";
 import { CatalogStamp } from "../components/CatalogStamp";
 import { RowActions } from "../components/RowActions";
+import { MachineDocs } from "../components/MachineDocs";
 import {
   ClassificationBadge,
   ContextPill,
@@ -297,6 +298,8 @@ export function Overview() {
           })}
         </div>
       </section>
+
+      <MachineDocs className="mt-section pb-section" />
     </div>
   );
 }

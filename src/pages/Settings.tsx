@@ -47,6 +47,7 @@ import { sourceHref, treeHref } from "../lib/source-link";
 import { paths } from "../routes";
 import { Empty, SectionTitle } from "../components/PageHeader";
 import { Modal } from "../components/Overlay";
+import { MachineDocs } from "../components/MachineDocs";
 
 type Health = "healthy" | "changed" | "failed" | "unchecked";
 
@@ -659,6 +660,8 @@ function SettingsContent({ local, onAdd, onGenerate }: { local: boolean; onAdd: 
             {setupInfo.sources.length === 0 ? <Empty>no source patterns declared</Empty> : <ul className="mono space-y-1 text-muted">{setupInfo.sources.map((source) => <li key={source}>{source}</li>)}</ul>}
             <div className="label mt-5 mb-2">pipeline</div>
             {setupInfo.steps.length === 0 ? <Empty>no pipeline steps declared</Empty> : <div className="space-y-1">{setupInfo.steps.map((step, index) => <div key={`${step.phase}:${step.plugin}:${step.input ?? "catalog"}:${index}`} className="mono grid gap-x-3 text-muted sm:grid-cols-[5rem_9rem_1fr]"><span>{step.phase}</span><span className="text-ink">{step.plugin}</span><span className="truncate" title={step.input ?? "merged catalog"}>{step.input ?? "merged catalog"} → {step.output}</span></div>)}</div>}
+            <div className="label mt-5 mb-2">generated documentation</div>
+            <MachineDocs />
           </div>
         </details>
 
