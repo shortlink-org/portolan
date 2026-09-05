@@ -275,6 +275,23 @@ const STATUS_RANK = { verified: 0, declared: 1, unresolved: 2 };
 const actorIds = new Set(
   [...rootParticipants].filter(([, meta]) => meta.kind === "actor").map(([id]) => id),
 );
+//
+// The lane is a fallback, though: an extractor opens every inbound endpoint
+// with `client` because it has no way to see who is on the other end. Once a
+// service inside the estate is known to call the same service, "somebody
+// outside" is no longer the best explanation for its endpoints, and a declared
+// actor arrow beside a real caller would only repeat the guess. An observed
+// crossing is different: the collector saw a call with nobody of ours behind
+// it, and that stays drawn whoever else calls the service.
+const calledFromInside = new Set(); // service ids some other service calls over rpc
+for (const context of catalog.contexts) {
+  for (const service of context.services) {
+    for (const call of service.consumes) {
+      const peer = peerParticipant(call.peer);
+      if (peer && peer !== service.id) calledFromInside.add(peer);
+    }
+  }
+}
 const actorEdges = new Map(); // "from|to" -> { from, to, flows:Set, status }
 for (const flow of catalog.flows) {
   walkFlowSteps(flow.steps, (step) => {
@@ -295,6 +312,7 @@ for (const flow of catalog.flows) {
   });
 }
 for (const edge of actorEdges.values()) {
+  if (edge.status !== "verified" && calledFromInside.has(edge.to)) continue;
   const names = [...edge.flows];
   const label = names.length === 1 ? names[0] : `${names.length} flows`;
   relations.push(

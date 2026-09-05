@@ -336,22 +336,13 @@ payment was captured, and what that means for a parcel is decided here.'
   client -> storefront.bff '9 flows' {
     style { color declared  line dashed  head normal }
   }
-  client -> payments.ledger '5 flows' {
-    style { color declared  line dashed  head normal }
-  }
   client -> shop.billing '4 flows' {
     style { color declared  line dashed  head normal }
   }
   client -> shop.cart '6 flows' {
     style { color verified  line solid  head normal }
   }
-  client -> delivery.core '9 flows' {
-    style { color declared  line dashed  head normal }
-  }
   client -> shop.oms '2 flows' {
     style { color verified  line solid  head normal }
-  }
-  client -> shop.pricing '5 flows' {
-    style { color declared  line dashed  head normal }
   }
 }
