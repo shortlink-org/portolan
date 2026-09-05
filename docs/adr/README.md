@@ -1,6 +1,6 @@
 # Decision records
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 | ADR | Title | Status | Date | Scope |
 | --- | --- | --- | --- | --- |
@@ -18,6 +18,10 @@
 | [auth.0009](auth.0009.md) | A locked account answers exactly like a wrong password | accepted | 2026-09-04 | [auth.auth](../auth/auth/README.md) |
 | [auth.0010](auth.0010.md) | A revocation is written to the cache, not only dropped from it | accepted | 2026-09-05 | [auth.auth](../auth/auth/README.md) |
 | [auth.0011](auth.0011.md) | The relay reads every topic and hands it to a bus; policies subscribe to the bus | accepted | 2026-09-05 | [auth.auth](../auth/auth/README.md) |
+| [bff.0001](bff.0001.md) | GraphQL over Yoga, and the schema comes first | accepted | 2026-09-05 | [storefront.bff](../storefront/bff/README.md) |
+| [bff.0002](bff.0002.md) | The storefront owns no state | accepted | 2026-09-05 | [storefront.bff](../storefront/bff/README.md) |
+| [bff.0003](bff.0003.md) | The schema speaks the client's words, not the peers' | accepted | 2026-09-05 | [storefront.bff](../storefront/bff/README.md) |
+| [bff.0004](bff.0004.md) | A subscription is the bus, forwarded | accepted | 2026-09-05 | [storefront.bff](../storefront/bff/README.md) |
 | [cart.0001](cart.0001.md) | TypeScript on Node.js, and the stack around it | accepted | 2026-09-04 | [shop.cart](../shop/cart/README.md) |
 | [cart.0002](cart.0002.md) | A basket freezes its currency at the first item | accepted | 2026-09-04 | [shop.cart](../shop/cart/README.md) |
 | [cart.0003](cart.0003.md) | Line prices are captured when added, never recomputed | accepted | 2026-09-04 | [shop.cart](../shop/cart/README.md) |

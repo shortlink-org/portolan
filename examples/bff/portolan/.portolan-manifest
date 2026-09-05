@@ -1,0 +1,17 @@
+{
+  "ts-domain": [
+    "domain.json"
+  ],
+  "graphql": [
+    "api.json"
+  ],
+  "asyncapi": [
+    "bus.json"
+  ],
+  "adr": [
+    "adr.json"
+  ],
+  "glossary": [
+    "glossary.json"
+  ]
+}

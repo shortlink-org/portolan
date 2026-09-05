@@ -1,0 +1,12 @@
+openapi: 3.0.3
+info:
+  title: auth
+  version: 1.0.0
+paths:
+  /v1/sessions/current:
+    get:
+      operationId: validateSession
+      tags: [sessions]
+      responses:
+        "200":
+          description: The session is live

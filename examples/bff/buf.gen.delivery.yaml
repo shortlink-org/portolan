@@ -1,0 +1,12 @@
+# The client of delivery, from the narrowed copy of its contract vendored
+# under src/infrastructure/delivery/proto. One template per peer because each
+# generated client belongs beside the contract it was generated from.
+version: v2
+inputs:
+  - directory: src/infrastructure/delivery/proto
+plugins:
+  - local: protoc-gen-es
+    out: src/infrastructure/delivery/gen
+    opt:
+      - target=ts
+      - import_extension=.ts

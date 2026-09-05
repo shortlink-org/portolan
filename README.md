@@ -15,7 +15,7 @@ Live: <https://shortlink-org.github.io/portolan/> (the example estate in
 ```mermaid
 flowchart TB
   code["Go · TypeScript · Rust<br/>Java · Django"]
-  specs["OpenAPI · AsyncAPI<br/>proto · SQL"]
+  specs["OpenAPI · AsyncAPI · GraphQL<br/>proto · SQL"]
   traces["OTel traces"]
   frag["catalog fragments<br/>beside each service<br/>*/portolan/*.json"]
   merged["merge + validate"]
@@ -57,7 +57,8 @@ reference).
 - **ER canvases** — per store: tables, views, keys and crow's feet, plus column
   lineage (`from`) drawn dashed; hovering a column lights the whole chain back
   to where the value came from.
-- **API specs** — OpenAPI via Scalar, AsyncAPI via its React component.
+- **API specs** — OpenAPI via Scalar, AsyncAPI via its React component, a
+  GraphQL schema as the SDL it was written as.
 - **Navigation** — ⌘K palette over everything the catalog names (`e:` events,
   `vo:` value objects, …), sidebar tree, breadcrumbs, "what links here", a
   trail of recent pages, pins, keyboard shortcuts, light/dark and density.
@@ -82,7 +83,7 @@ Plugins, one JSON message in and one out (`plugins/README.md`), declared in
 
 | phase | plugins |
 | --- | --- |
-| extract | `extract-go`, `extract-ts`, `extract-rust`, `extract-java`, `extract-django`, `extract-openapi`, `extract-asyncapi`, `extract-proto`, `extract-sql`, `extract-flows` |
+| extract | `extract-go`, `extract-ts`, `extract-rust`, `extract-java`, `extract-django`, `extract-openapi`, `extract-asyncapi`, `extract-graphql`, `extract-proto`, `extract-sql`, `extract-flows` |
 | verify | `verify-otel` — reads traces, marks the hops they show as `verified` |
 | generate | `gen-markdown` — `docs/`, including `llms.txt` / `llms-full.txt` |
 

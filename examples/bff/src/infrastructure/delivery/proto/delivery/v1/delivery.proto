@@ -1,0 +1,24 @@
+// A narrowed copy of delivery's contract, kept beside the client generated
+// from it (ADR org.0001): the one rpc the storefront calls. Dispatching a
+// parcel and recording a scan are the carrier's side of the estate and are
+// not here.
+syntax = "proto3";
+
+package delivery.v1;
+
+service Delivery {
+  // One shipment, for whoever is asking about an order.
+  rpc GetShipment(GetShipmentRequest) returns (GetShipmentResponse);
+}
+
+message GetShipmentRequest {
+  string shipment_id = 1;
+}
+
+message GetShipmentResponse {
+  string shipment_id = 1;
+  string order_id = 2;
+  string status = 3;
+  string tracking = 4;
+  int32 parcels = 5;
+}

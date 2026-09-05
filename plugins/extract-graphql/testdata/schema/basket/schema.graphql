@@ -1,0 +1,31 @@
+type Query {
+  """
+  The basket this session is filling.
+  """
+  basket(id: ID!): Basket
+  legacyBasket(id: ID!): Basket @deprecated(reason: "Ask for `basket` instead.")
+}
+
+type Mutation {
+  addItem(input: AddItemInput!): Basket!
+}
+
+input AddItemInput {
+  basketId: ID!
+  sku: String!
+  quantity: Int!
+}
+
+type Basket implements Node {
+  id: ID!
+  lines: [Line!]!
+  total: Money!
+  "Nothing has been priced yet when the basket is empty."
+  quote: Money
+}
+
+type Line {
+  sku: String!
+  quantity: Int!
+  unitPrice: Money!
+}

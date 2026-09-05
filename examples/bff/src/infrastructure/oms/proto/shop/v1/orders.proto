@@ -1,0 +1,61 @@
+// A narrowed copy of the order service's contract, kept beside the client
+// generated from it (ADR org.0001): the two rpcs the storefront calls and the
+// shapes they carry.
+syntax = "proto3";
+
+package shop.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// OrderService reads and cancels orders. It is the only writer of order state;
+// every other service holds a copy of what it was told.
+service OrderService {
+  // GetOrder answers with the order as it is now.
+  rpc GetOrder(GetOrderRequest) returns (GetOrderResponse);
+  // CancelOrder cancels an order that has not been dispatched yet.
+  rpc CancelOrder(CancelOrderRequest) returns (CancelOrderResponse);
+}
+
+message GetOrderRequest {
+  string order_id = 1;
+}
+
+message GetOrderResponse {
+  Order order = 1;
+}
+
+message CancelOrderRequest {
+  string order_id = 1;
+}
+
+message CancelOrderResponse {
+  Order order = 1;
+}
+
+message Order {
+  string id = 1;
+  string customer_id = 2;
+  string basket_id = 3;
+  OrderStatus status = 4;
+  repeated Line lines = 5;
+  Money total = 6;
+  google.protobuf.Timestamp placed_at = 7;
+}
+
+enum OrderStatus {
+  ORDER_STATUS_UNSPECIFIED = 0;
+  ORDER_STATUS_PLACED = 1;
+  ORDER_STATUS_CONFIRMED = 2;
+  ORDER_STATUS_CANCELLED = 3;
+}
+
+message Line {
+  string sku = 1;
+  int32 quantity = 2;
+  Money unit_price = 3;
+}
+
+message Money {
+  int64 amount_minor = 1;
+  string currency = 2;
+}

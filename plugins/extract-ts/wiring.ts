@@ -12,7 +12,7 @@ import { isCall, isIdent, isMember, isNew, isReturn, isTypeRef, memberName, walk
 import { useCaseKeyOf } from "./operations.ts";
 
 export interface Binding {
-  /** "<usecase key>.<PortName>" */
+  /** "<usecase key>.<PortName>", or "ports.<PortName>" for a port nobody's use case declares. */
   port: string;
   /** The use case that fills it, when one does. */
   useCase?: string;
@@ -117,9 +117,8 @@ function containerBinding(src: Source, bind: CallExpression, implName: string): 
   if (!portName) return undefined;
   const portImport = src.imports.find((i) => i.local === portName);
   if (!portImport?.file) return undefined;
-  const key = useCaseKeyOf(portImport.file);
-  if (!key) return undefined;
-  const port = `${key}.${portImport.imported}`;
+  const port = portKeyOf(portImport.file, portImport.imported);
+  if (!port) return undefined;
 
   const impl = src.imports.find((i) => i.local === implName);
   if (impl?.file && impl.imported === "UseCase") {
@@ -139,9 +138,8 @@ function bindingOf(src: Source, fn: FunctionNode): Binding | undefined {
   if (!typeName) return undefined;
   const portImport = src.imports.find((i) => i.local === typeName);
   if (!portImport?.file) return undefined;
-  const key = useCaseKeyOf(portImport.file);
-  if (!key) return undefined;
-  const port = `${key}.${portImport.imported}`;
+  const port = portKeyOf(portImport.file, portImport.imported);
+  if (!port) return undefined;
 
   // A parameter that is another use case binds the port to it.
   for (const p of fn.params) {
@@ -170,3 +168,22 @@ function lastReturn(body: BlockStatement): Node | undefined {
   const last = body.body[body.body.length - 1];
   return isReturn(last) ? (last.argument ?? undefined) : undefined;
 }
+
+/**
+ * What a binding is filed under.
+ *
+ * A port is usually declared by the use case that needs it, and the use case
+ * is what makes the name unique: two of them may each want `Sessions` and mean
+ * different interfaces. A service with no use cases at all - a BFF, whose
+ * resolvers hold ports directly - declares them on their own under src/ports,
+ * where the name is already unique because there is only one of it.
+ */
+function portKeyOf(file: string, name: string): string | undefined {
+  const useCase = useCaseKeyOf(file);
+  if (useCase) return `${useCase}.${name}`;
+
+  return /[\\/]ports[\\/][^\\/]+\.ts$/.test(file) ? `${PORTS}.${name}` : undefined;
+}
+
+/** The key ports that belong to no use case are filed under. */
+export const PORTS = "ports";

@@ -1,0 +1,15 @@
+"""
+An amount in the smallest unit of its currency: 1999 EUR is 19.99.
+
+Every service in the estate has its own spelling of this - `amountMinor` over
+HTTP, `amount_minor` over gRPC - and the storefront has one. Which one a peer
+uses is the adapter's business, and stops at the adapter.
+"""
+type Money {
+  amountMinor: Int!
+  "ISO 4217, upper case."
+  currency: String!
+}
+
+"An instant, ISO 8601 with an offset."
+scalar DateTime

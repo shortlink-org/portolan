@@ -1,0 +1,175 @@
+# A narrowed copy of the cart's contract, kept beside the client generated
+# from it (ADR org.0001): the four operations the storefront calls and the
+# shapes they carry. Creating a basket and merging two are the cart's own
+# business and are not here.
+openapi: 3.0.3
+info:
+  title: cart
+  version: 1.0.0
+paths:
+  /v1/baskets/{basketId}:
+    parameters:
+      - $ref: "#/components/parameters/basketId"
+    get:
+      operationId: getBasket
+      tags: [baskets]
+      summary: The basket as it stands
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: The basket
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Basket" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/baskets/{basketId}/items:
+    parameters:
+      - $ref: "#/components/parameters/basketId"
+    post:
+      operationId: addItem
+      tags: [baskets]
+      summary: Add a line, or increment one already there
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AddItemRequest" }
+      responses:
+        "200":
+          description: The basket after the add
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Basket" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Refused"
+
+  /v1/baskets/{basketId}/items/{sku}:
+    parameters:
+      - $ref: "#/components/parameters/basketId"
+      - name: sku
+        in: path
+        required: true
+        schema: { type: string }
+    delete:
+      operationId: removeItem
+      tags: [baskets]
+      summary: Remove a line outright
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: The basket after the removal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Basket" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/baskets/{basketId}/checkout:
+    parameters:
+      - $ref: "#/components/parameters/basketId"
+    post:
+      operationId: checkout
+      tags: [baskets]
+      summary: Freeze the basket and hand it on
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: The frozen basket, with the quote
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CheckedOut" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Refused"
+
+components:
+  parameters:
+    basketId:
+      name: basketId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+
+  responses:
+    NotFound:
+      description: No such basket, or not yours
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Refused:
+      description: The basket is not open, or the change would break a rule
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unauthorized:
+      description: No live session
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    Money:
+      type: object
+      required: [amountMinor, currency]
+      properties:
+        amountMinor: { type: integer, format: int64 }
+        currency: { type: string }
+
+    LineItem:
+      type: object
+      required: [sku, quantity, unitPrice]
+      properties:
+        sku: { type: string }
+        quantity: { type: integer }
+        unitPrice: { $ref: "#/components/schemas/Money" }
+
+    Basket:
+      type: object
+      required: [basketId, status, items, touchedAt]
+      properties:
+        basketId: { type: string, format: uuid }
+        customerId: { type: string }
+        currency: { type: string }
+        status: { type: string, enum: [open, checked-out, abandoned, merged] }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/LineItem" }
+        subtotal: { $ref: "#/components/schemas/Money" }
+        touchedAt: { type: string, format: date-time }
+
+    AddItemRequest:
+      type: object
+      required: [sku, quantity, unitPrice]
+      properties:
+        sku: { type: string }
+        quantity: { type: integer }
+        unitPrice: { $ref: "#/components/schemas/Money" }
+
+    CheckedOut:
+      type: object
+      required: [basketId, quoteId, total]
+      properties:
+        basketId: { type: string, format: uuid }
+        quoteId: { type: string }
+        total: { $ref: "#/components/schemas/Money" }
+
+    Error:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string }

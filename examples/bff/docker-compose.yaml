@@ -1,0 +1,20 @@
+# The one thing this service needs a container for: the bus a subscription is
+# answered from. There is no database - this service owns nothing to write
+# down (ADR bff.0002) - and no collector, because the estate has one already:
+# point TRACER_URI at whichever is running.
+#
+# One NATS server on 4222 for the whole estate; the cart's compose and the
+# order service's name the same port, and whichever came up first is the one
+# all three talk to.
+services:
+  nats:
+    image: nats:2.12-alpine
+    command: ["-js", "-m", "8222"]
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8222/healthz"]
+      interval: 1s
+      timeout: 3s
+      retries: 30

@@ -1,0 +1,27 @@
+extend type Query {
+  order(id: ID!, at: DateTime): OrderResult!
+}
+
+type Subscription {
+  "Every move the order makes, until it stops moving."
+  orderStatus(id: ID!): Order!
+}
+
+union OrderResult = Order | OrderNotFound
+
+type Order implements Node {
+  id: ID!
+  status: OrderStatus!
+  total: Money!
+  placedAt: DateTime!
+}
+
+type OrderNotFound {
+  id: ID!
+}
+
+enum OrderStatus {
+  PLACED
+  CONFIRMED
+  CANCELLED
+}
