@@ -18,6 +18,13 @@ export type BuildInfo = {
   buildNumber: string; // the number a human reads off that pipeline
   dirty: boolean; // local build with uncommitted changes
   repoUrl: string; // the repository's page on the forge, for links into the tree
+  branches: BranchInfo[]; // refs visible to the build, reduced to public metadata
+};
+
+export type BranchInfo = {
+  name: string;
+  commit: string;
+  committedAt: string;
 };
 
 declare const __BUILD_INFO__: BuildInfo | undefined;
@@ -32,6 +39,7 @@ const UNKNOWN: BuildInfo = {
   buildNumber: "",
   dirty: false,
   repoUrl: "",
+  branches: [],
 };
 
 // The define substitutes an object literal, which `typeof` is happy to take,

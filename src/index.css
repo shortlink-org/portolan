@@ -321,6 +321,13 @@
 }
 
 @layer components {
+  /* Floating UI publishes the whole available viewport as an inline maximum.
+     A branch list may contain a hundred refs; cap it to a readable picker and
+     let the list scroll instead of turning the picker into a page-sized veil. */
+  .branch-options {
+    max-height: min(28rem, calc(100vh - 64px)) !important;
+  }
+
   /* The bordered monospace token used for status, contexts and classes. */
   .chip {
     @apply mono inline-flex items-center gap-1 rounded-control border px-1.5 py-px leading-4;
