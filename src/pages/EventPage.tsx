@@ -26,6 +26,7 @@ import { Toc } from "../components/Toc";
 import type { TocItem } from "../components/Toc";
 import { StatusChip } from "../components/primitives";
 import { useBacklinks, WhatLinksHere } from "../components/WhatLinksHere";
+import { InLanguage } from "../language/InLanguage";
 import { NotFound } from "./NotFound";
 import { FocusedEventGraphPane } from "../graph/FocusedEventGraph";
 import { eventChain } from "../flow/chain";
@@ -322,6 +323,8 @@ export function EventPage() {
 
       <div className="flex gap-section p-gutter">
         <div className="min-w-0 flex-1">
+          <InLanguage id={event.id} />
+
           {/* --- Schema ------------------------------------------------- */}
           <section id={EVENT_ANCHOR.schema}>
             <SectionTitle

@@ -26,6 +26,7 @@ import {
   tablePath,
 } from "../routes";
 import { useBacklinks, WhatLinksHere } from "../components/WhatLinksHere";
+import { InLanguage } from "../language/InLanguage";
 import { NotFound } from "./NotFound";
 
 /**
@@ -190,6 +191,8 @@ export function BlockPage({ kind }: { kind: BlockKind }) {
 
       <div className="flex gap-section p-gutter">
         <div className="min-w-0 flex-1">
+          <InLanguage id={block.id} />
+
           <section id={BLOCK_ANCHOR.shape}>
             <SectionTitle
               anchor={BLOCK_ANCHOR.shape}

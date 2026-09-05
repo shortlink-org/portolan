@@ -60,11 +60,32 @@ Money owed and money taken.
 | --- | --- | --- |
 | [Invoices](invoices/README.md) | `services/invoices` | Invoice |
 
+## Language
+
+- [Glossary](glossary.md) — 2 terms this context spells one way
+
 ## Decisions
 
 | ADR | Title | Status | Date |
 | --- | --- | --- | --- |
 | [billing.0001](../adr/billing.0001.md) | One currency per invoice | accepted | 2026-01-01 |
+
+<!-- billing/glossary.md -->
+
+# Glossary — Billing
+
+*Generated from the portolan catalog · commit `abc1234` · at 2026-01-02T03:04:05Z. Do not edit by hand.*
+
+- **Context:** [Billing](README.md)
+- **Terms:** 2
+- **Read from:** `examples/billing/GLOSSARY.md`
+
+One meaning per word inside this context, as the glossary beside the code states it.
+
+## Terms
+
+- **Dunning** — Asking again, on a schedule, for an invoice nobody has paid.
+- **Invoice** — What a customer is asked to pay for one order, and what happened to it between being drawn up and being settled.
 
 <!-- billing/invoices/README.md -->
 

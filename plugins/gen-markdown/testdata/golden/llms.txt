@@ -10,6 +10,10 @@ Every link below is a markdown page beside this file. [llms-full.txt](llms-full.
 
 - [Billing](billing/README.md): core. Money owed and money taken
 
+## Glossaries
+
+- [Glossary of Billing](billing/glossary.md): 2 terms. Dunning, Invoice
+
 ## Services
 
 - [Invoices](billing/invoices/README.md): in Billing. Aggregates: Invoice

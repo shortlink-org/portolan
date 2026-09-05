@@ -68,9 +68,15 @@ export function TopBar({
 
       <Breadcrumbs />
 
+      {/* Off the phone the group may NARROW, which is what lets it wrap. Held
+          at shrink-0 it is laid out at its max-content width - search box,
+          five controls and the stamp, side by side - and a window a few pixels
+          short of that gets a horizontal scrollbar on every page instead of a
+          second row of chrome on one. On the phone it keeps shrink-0: there
+          the row is not allowed to wrap at all. */}
       <div
-        className={`ml-auto flex shrink-0 items-center justify-end ${
-          phone ? "gap-1" : "flex-wrap gap-3"
+        className={`ml-auto flex items-center justify-end ${
+          phone ? "shrink-0 gap-1" : "min-w-0 flex-wrap gap-3"
         }`}
       >
         {/* Opens the palette rather than filtering in place: the sidebar box

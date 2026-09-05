@@ -14,10 +14,11 @@
 // a URL — a Backlink says WHAT points at the target and routes.ts says where
 // that thing lives, which keeps this file testable without a router.
 
-import type { Adr, Catalog, CatalogIndex, Flow, Status } from "../catalog";
+import type { Adr, Catalog, CatalogIndex, Flow, Status, Term } from "../catalog";
 import { allServices, walkSteps } from "../catalog";
 import { sortAdrs, adrNumber } from "./adr";
 import { flowsForService, usagesOfDef } from "./derive";
+import { bindTerms } from "./terms";
 import type { DefUsage } from "./derive";
 import type { Kind } from "./kinds";
 
@@ -73,6 +74,10 @@ const GROUP_ORDER: readonly Kind[] = [
   "vo",
   "def",
   "context",
+  // Last. A term does not depend on this page in the sense every row above
+  // does - nothing breaks when the aggregate changes - it is what the thing
+  // is CALLED, which a reader wants after they know who breaks.
+  "term",
 ] as const;
 
 function grouped(links: Backlink[]): BacklinkGroup[] {
@@ -113,6 +118,18 @@ function serviceLink(
     context: context?.id ?? null,
     via,
     ...(status ? { status } : {}),
+  };
+}
+
+/** The word the context's glossary uses for this thing. */
+function termLink(term: Term): Backlink {
+  return {
+    kind: "term",
+    id: term.id,
+    name: term.name,
+    owner: `glossary of ${term.context}`,
+    context: term.context,
+    via: "names it",
   };
 }
 
@@ -455,6 +472,13 @@ function flowBacklinks(
  * the top of its page as a banner — a warning that the record is no longer in
  * force says more than a row in a list can.
  */
+/** The rows, plus the word the glossary uses for the thing they point at. */
+function named(catalog: Catalog, id: string, links: Backlink[]): Backlink[] {
+  const term = bindTerms(catalog).byTarget.get(id);
+
+  return term ? [...links, termLink(term)] : links;
+}
+
 export function backlinksFor(
   catalog: Catalog,
   index: CatalogIndex,
@@ -465,13 +489,15 @@ export function backlinksFor(
       return grouped(contextBacklinks(catalog, index, target.id));
     case "service":
       return grouped(serviceBacklinks(catalog, index, target.id));
+    // The three kinds a glossary can name. A context, a service and a flow are
+    // not words in a vocabulary - they are places the words are spoken.
     case "aggregate":
-      return grouped(aggregateBacklinks(catalog, index, target.id));
+      return grouped(named(catalog, target.id, aggregateBacklinks(catalog, index, target.id)));
     case "event":
-      return grouped(eventBacklinks(catalog, index, target.id));
+      return grouped(named(catalog, target.id, eventBacklinks(catalog, index, target.id)));
     case "vo":
     case "entity":
-      return grouped(blockBacklinks(catalog, index, target.id));
+      return grouped(named(catalog, target.id, blockBacklinks(catalog, index, target.id)));
     case "flow":
       return grouped(flowBacklinks(catalog, index, target.id));
     default:

@@ -311,6 +311,8 @@ export function backlinkPath(link: Backlink): string | null {
         : null;
     case "adr":
       return adrPath(link.id);
+    case "term":
+      return index.termById.has(link.id) ? paths.term(link.id) : null;
     // A shared type is only ever seen through the blocks that name it, and a
     // command or a query is a line on its aggregate's page.
     default:
