@@ -11,7 +11,7 @@ require (
 	github.com/oapi-codegen/runtime v1.7.0
 	github.com/shortlink-org/go-sdk/cache v0.0.0-20260901152415-9e3c69cd3556
 	github.com/shortlink-org/go-sdk/config v0.0.0-20260901155230-945620b3fa49
-	github.com/shortlink-org/go-sdk/db v0.0.0-20260829181537-766b3331c5e3
+	github.com/shortlink-org/go-sdk/db v0.0.0-20260905174857-b5c27a825ef6
 	github.com/shortlink-org/go-sdk/fsm v0.0.0-20260901155230-945620b3fa49
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20260829181537-766b3331c5e3
 	github.com/shortlink-org/go-sdk/observability v0.0.0-20260905203440-c7a4f3ba3610
@@ -75,7 +75,7 @@ require (
 	github.com/mdelapenya/tlscert v0.2.0 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/go-archive v0.3.0 // indirect
-	github.com/moby/moby/api v1.55.0 // indirect
+	github.com/moby/moby/api v1.56.0 // indirect
 	github.com/moby/moby/client v0.5.0 // indirect
 	github.com/moby/patternmatcher v0.6.1 // indirect
 	github.com/moby/sys/sequential v0.7.0 // indirect
