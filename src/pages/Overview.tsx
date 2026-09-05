@@ -15,7 +15,6 @@ import { C4View } from "../likec4/C4View";
 import { LANDSCAPE_VIEW } from "../likec4/ids";
 import { LevelBadge } from "../likec4/levels";
 import { CatalogStamp } from "../components/CatalogStamp";
-import { Ident } from "../components/Ident";
 import { RowActions } from "../components/RowActions";
 import {
   ClassificationBadge,
@@ -171,10 +170,12 @@ export function Overview() {
                 className="card card-tagged stagger-in grid grid-rows-subgrid row-span-3 gap-y-0"
                 style={{ ...staggerStyle(i), ...ctxStyle(context.id) }}
               >
-                {/* Wraps: with a name, an id, the row actions and up to two
-                    chips on one line, a 300px card runs out of room before the
-                    grid does, and an unwrapped row would push the whole column
-                    wider than its track. */}
+                {/* Wraps: with a name, the row actions and up to two chips on
+                    one line, a 300px card runs out of room before the grid
+                    does, and an unwrapped row would push the whole column
+                    wider than its track. The id is not shown next to the name:
+                    "Authentication auth" says one thing twice, and the copy
+                    action already carries it. */}
                 <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                   <Link
                     to={paths.context(context.id)}
@@ -184,11 +185,6 @@ export function Overview() {
                   >
                     {context.name}
                   </Link>
-                  <Ident
-                    value={context.id}
-                    className="ctx"
-                    style={ctxStyle(context.id)}
-                  />
                   {/* The actions ride on the title row, where there is room
                       for them: on the counts row they squeeze three links
                       into two lines each. */}
