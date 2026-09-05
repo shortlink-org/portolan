@@ -274,9 +274,12 @@ function ProjectCard({ project }: { project: SetupProject }) {
       </div>
 
       <details className="group mt-4 border-t border-line pt-3">
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-control font-medium text-ink">
+        {/* Clickable, so it answers the pointer. The plugin rows below tint
+            their whole row; a disclosure inside a card has no edges to tint, so
+            it says the same thing in the colour a link uses. */}
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-control font-medium text-ink transition-colors group-hover:text-accent">
           Pipeline and sources
-          <ChevronDown size={16} aria-hidden className="shrink-0 text-muted transition-transform group-open:rotate-180" />
+          <ChevronDown size={16} aria-hidden className="shrink-0 text-muted transition-transform group-hover:text-accent group-open:rotate-180" />
         </summary>
         <div className="mt-3 space-y-4">
           <PipelineSteps steps={runSteps} />
