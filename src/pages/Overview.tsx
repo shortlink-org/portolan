@@ -161,53 +161,53 @@ export function Overview() {
             return (
               <div
                 key={context.id}
-                /* A subgrid of the row it sits in: the title, the summary and
-                   the counts each take one track, so the counts stand on the
-                   same line in every card of a row instead of hanging under
-                   each summary's own last sentence. The inner gap is zeroed
-                   because a subgrid inherits the grid's, and the margins on
-                   the rows already say how far apart they sit. */
-                className="card card-tagged stagger-in grid grid-rows-subgrid row-span-3 gap-y-0"
+                /* A subgrid of the row it sits in: the name, the chips, the
+                   summary and the counts each take one track, so the same
+                   line stands at the same height in every card of a row
+                   instead of hanging under each card's own previous line.
+                   The inner gap is zeroed because a subgrid inherits the
+                   grid's, and the margins on the rows already say how far
+                   apart they sit. */
+                className="card card-tagged stagger-in grid grid-rows-subgrid row-span-4 gap-y-0"
                 style={{ ...staggerStyle(i), ...ctxStyle(context.id) }}
               >
-                {/* Wraps: with a name, the row actions and up to two chips on
-                    one line, a 300px card runs out of room before the grid
-                    does, and an unwrapped row would push the whole column
-                    wider than its track. The id is not shown next to the name:
+                {/* The name and its actions, alone on the first line. With the
+                    chips on the same line the row wrapped in some cards and
+                    not in others, and the copy button landed wherever the
+                    wrap left it. The id is not shown next to the name:
                     "Authentication auth" says one thing twice, and the copy
                     action already carries it. */}
-                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                <div className="flex items-baseline gap-x-2">
                   <Link
                     to={paths.context(context.id)}
                     data-nav-item
-                    className="card-link rounded-control font-semibold"
+                    className="card-link min-w-0 rounded-control font-semibold"
                     title={context.name}
                   >
                     {context.name}
                   </Link>
-                  {/* The actions ride on the title row, where there is room
-                      for them: on the counts row they squeeze three links
-                      into two lines each. */}
                   <RowActions
                     copy={context.id}
                     reveal={context.id}
                     label={context.name}
                   />
-                  <span className="ml-auto flex items-center gap-2">
-                    <ClassificationBadge
-                      classification={context.classification}
-                    />
-                    {stats.unresolved > 0 ? (
-                      <Link
-                        to={paths.problems()}
-                        className="chip status-unresolved"
-                        title="unresolved rpc calls and unresolved event consumers — open Problems"
-                      >
-                        <AlertTriangle size={12} aria-hidden />
-                        {stats.unresolved}
-                      </Link>
-                    ) : null}
-                  </span>
+                </div>
+                {/* The classification and the problem count, on their own
+                    line under the name, at the same height in every card. */}
+                <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                  <ClassificationBadge
+                    classification={context.classification}
+                  />
+                  {stats.unresolved > 0 ? (
+                    <Link
+                      to={paths.problems()}
+                      className="chip status-unresolved"
+                      title="unresolved rpc calls and unresolved event consumers — open Problems"
+                    >
+                      <AlertTriangle size={12} aria-hidden />
+                      {stats.unresolved}
+                    </Link>
+                  ) : null}
                 </div>
                 <p className="mt-2 text-muted">{context.summary}</p>
                 <div className="mono mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 self-end whitespace-nowrap text-muted">
