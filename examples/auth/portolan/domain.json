@@ -1,13 +1,13 @@
 {
-  "generatedAt": "2026-09-05T08:12:07+07:00",
-  "commit": "dab46a5",
+  "generatedAt": "2026-09-05T13:03:40+07:00",
+  "commit": "ef2d6e5",
   "contexts": [
     {
       "id": "auth",
       "slug": "auth",
       "name": "Authentication",
       "summary": "Who someone is, and whether they are still logged in. The only service in the estate that stores credentials, and the only one allowed to mint or revoke a session.",
-      "classification": "core",
+      "classification": "generic",
       "services": [
         {
           "id": "auth.auth",
