@@ -3,7 +3,7 @@ views {
   view landscape {
     title 'Estate'
     description 'Every bounded context, and everything outside the estate that touches one.'
-    include auth, payments, shop, delivery, psp_gateway, customer, carrier_api, analytics_sink, client, risk_v1, psp
+    include auth, storefront, payments, shop, delivery, psp_gateway, customer, carrier_api, analytics_sink, client, risk_v1, psp
   }
 
   view ctx_auth of auth {
@@ -17,6 +17,18 @@ views {
   }
   view svc_auth_auth_inside of auth.auth {
     title 'Authentication & Sessions — inside'
+    include *
+  }
+  view ctx_storefront of storefront {
+    title 'Storefront'
+    include *
+  }
+  view svc_storefront_bff of storefront.bff {
+    title 'Storefront BFF — neighbours'
+    include *, -> *, * ->
+  }
+  view svc_storefront_bff_inside of storefront.bff {
+    title 'Storefront BFF — inside'
     include *
   }
   view ctx_payments of payments {
@@ -574,6 +586,223 @@ views {
     auth.auth -> bus 'SessionEnded' {
       color verified  line solid  head onormal
       notes 'inside a loop over `change.Ends(sessions, uc.now())`, inside a loop over `retries`. — examples/auth/internal/application/session/usecases/end_after_credential_change/usecase.go:77'
+    }
+  }
+
+  dynamic view flow_bff_query_basket {
+    title 'Query basket'
+    description 'The basket as the cart has it, in the storefront\'s words.'
+    client -> storefront.bff 'Query.basket → Basket' {
+      color declared  line dashed  head normal
+      notes 'examples/bff/src/schema/basket/resolvers/Query/basket.ts:4'
+    }
+    storefront.bff -> shop.cart 'getBasket → Basket' {
+      color declared  line dashed  head normal
+      notes 'examples/bff/src/schema/basket/resolvers/Query/basket.ts:5'
+    }
+  }
+
+  dynamic view flow_bff_query_basket_cross {
+    title 'Query basket — crossings only'
+    client -> storefront.bff 'Query.basket → Basket' {
+      color declared  line dashed  head normal
+      notes 'examples/bff/src/schema/basket/resolvers/Query/basket.ts:4'
+    }
+    storefront.bff -> shop.cart 'getBasket → Basket' {
+      color declared  line dashed  head normal
+      notes 'examples/bff/src/schema/basket/resolvers/Query/basket.ts:5'
+    }
+  }
+
+  dynamic view flow_bff_query_shipment {
+    title 'Query shipment'
+    description ''
+    client -> storefront.bff 'Query.shipment → Shipment' {
+      color declared  line dashed  head normal
+      notes 'examples/bff/src/schema/delivery/resolvers/Query/shipment.ts:3'
+    }
+    storefront.bff -> delivery.core 'GetShipment → GetShipmentResponse' {
+      color declared  line dashed  head normal
+      notes 'examples/bff/src/schema/delivery/resolvers/Query/shipment.ts:4'
+    }
+  }
+
+  dynamic view flow_bff_query_shipment_cross {
+    title 'Query shipment — crossings only'
+    client -> storefront.bff 'Query.shipment → Shipment' {
+      color declared  line dashed  head normal
+      notes 'examples/bff/src/schema/delivery/resolvers/Query/shipment.ts:3'
+    }
+    storefront.bff -> delivery.core 'GetShipment → GetShipmentResponse' {
+      color declared  line dashed  head normal
+      notes 'examples/bff/src/schema/delivery/resolvers/Query/shipment.ts:4'
+    }
+  }
+
+  dynamic view flow_bff_query_order {
+    title 'Query order'
+    description ''
+    client -> storefront.bff 'Query.order → Order' {
+      color declared  line dashed  head normal
+      notes 'examples/bff/src/schema/order/resolvers/Query/order.ts:3'
+    }
+    storefront.bff -> shop.oms 'GetOrder → GetOrderResponse' {
+      color declared  line dashed  head normal
+      notes 'examples/bff/src/schema/order/resolvers/Query/order.ts:4'
+    }
+  }
+
+  dynamic view flow_bff_query_order_cross {
+    title 'Query order — crossings only'
+    client -> storefront.bff 'Query.order → Order' {
+      color declared  line dashed  head normal
+      notes 'examples/bff/src/schema/order/resolvers/Query/order.ts:3'
+    }
+    storefront.bff -> shop.oms 'GetOrder → GetOrderResponse' {
+      color declared  line dashed  head normal
+      notes 'examples/bff/src/schema/order/resolvers/Query/order.ts:4'
+    }
+  }
+
+  dynamic view flow_bff_query_viewer {
+    title 'Query viewer'
+    description 'Who the request belongs to. Auth is asked on every call rather than a token being read here: this service holds no key and could not tell a forged one from a live one.'
+    client -> storefront.bff 'Query.viewer → Viewer' {
+      color declared  line dashed  head normal
+      notes 'examples/bff/src/schema/viewer/resolvers/Query/viewer.ts:8'
+    }
+    storefront.bff -> auth.auth 'validateSession → SessionInfo' {
+      color declared  line dashed  head normal
+      notes 'examples/bff/src/schema/viewer/resolvers/Query/viewer.ts:9'
+    }
+  }
+
+  dynamic view flow_bff_query_viewer_cross {
+    title 'Query viewer — crossings only'
+    client -> storefront.bff 'Query.viewer → Viewer' {
+      color declared  line dashed  head normal
+      notes 'examples/bff/src/schema/viewer/resolvers/Query/viewer.ts:8'
+    }
+    storefront.bff -> auth.auth 'validateSession → SessionInfo' {
+      color declared  line dashed  head normal
+      notes 'examples/bff/src/schema/viewer/resolvers/Query/viewer.ts:9'
+    }
+  }
+
+  dynamic view flow_bff_mutation_add_item {
+    title 'Mutation add item'
+    description 'Add a line. The price travels as the customer was shown it; the cart captures it and never recomputes it, and nothing here checks it - a storefront that priced things would be a second place prices live.'
+    client -> storefront.bff 'Mutation.addItem → Basket' {
+      color declared  line dashed  head normal
+      notes 'examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts:8'
+    }
+    storefront.bff -> shop.cart 'addItem → Basket' {
+      color declared  line dashed  head normal
+      notes 'examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts:9'
+    }
+  }
+
+  dynamic view flow_bff_mutation_add_item_cross {
+    title 'Mutation add item — crossings only'
+    client -> storefront.bff 'Mutation.addItem → Basket' {
+      color declared  line dashed  head normal
+      notes 'examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts:8'
+    }
+    storefront.bff -> shop.cart 'addItem → Basket' {
+      color declared  line dashed  head normal
+      notes 'examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts:9'
+    }
+  }
+
+  dynamic view flow_bff_mutation_checkout {
+    title 'Mutation checkout'
+    description 'Freeze the basket and hand it on.'
+    client -> storefront.bff 'Mutation.checkout → Checkout' {
+      color declared  line dashed  head normal
+      notes 'examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts:11'
+    }
+    storefront.bff -> shop.cart 'checkout → CheckedOut' {
+      color declared  line dashed  head normal
+      notes 'examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts:12'
+    }
+  }
+
+  dynamic view flow_bff_mutation_checkout_cross {
+    title 'Mutation checkout — crossings only'
+    client -> storefront.bff 'Mutation.checkout → Checkout' {
+      color declared  line dashed  head normal
+      notes 'examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts:11'
+    }
+    storefront.bff -> shop.cart 'checkout → CheckedOut' {
+      color declared  line dashed  head normal
+      notes 'examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts:12'
+    }
+  }
+
+  dynamic view flow_bff_mutation_remove_item {
+    title 'Mutation remove item'
+    description ''
+    client -> storefront.bff 'Mutation.removeItem → Basket' {
+      color declared  line dashed  head normal
+      notes 'examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts:3'
+    }
+    storefront.bff -> shop.cart 'removeItem → Basket' {
+      color declared  line dashed  head normal
+      notes 'examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts:4'
+    }
+  }
+
+  dynamic view flow_bff_mutation_remove_item_cross {
+    title 'Mutation remove item — crossings only'
+    client -> storefront.bff 'Mutation.removeItem → Basket' {
+      color declared  line dashed  head normal
+      notes 'examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts:3'
+    }
+    storefront.bff -> shop.cart 'removeItem → Basket' {
+      color declared  line dashed  head normal
+      notes 'examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts:4'
+    }
+  }
+
+  dynamic view flow_bff_mutation_cancel_order {
+    title 'Mutation cancel order'
+    description 'Cancel an order. Whether it is too late to is the order service\'s judgement and its refusal travels back unchanged; this service does not know what dispatch means.'
+    client -> storefront.bff 'Mutation.cancelOrder → Order' {
+      color declared  line dashed  head normal
+      notes 'examples/bff/src/schema/order/resolvers/Mutation/cancelOrder.ts:8'
+    }
+    storefront.bff -> shop.oms 'CancelOrder → CancelOrderResponse' {
+      color declared  line dashed  head normal
+      notes 'examples/bff/src/schema/order/resolvers/Mutation/cancelOrder.ts:9'
+    }
+  }
+
+  dynamic view flow_bff_mutation_cancel_order_cross {
+    title 'Mutation cancel order — crossings only'
+    client -> storefront.bff 'Mutation.cancelOrder → Order' {
+      color declared  line dashed  head normal
+      notes 'examples/bff/src/schema/order/resolvers/Mutation/cancelOrder.ts:8'
+    }
+    storefront.bff -> shop.oms 'CancelOrder → CancelOrderResponse' {
+      color declared  line dashed  head normal
+      notes 'examples/bff/src/schema/order/resolvers/Mutation/cancelOrder.ts:9'
+    }
+  }
+
+  dynamic view flow_bff_subscription_order_status {
+    title 'Subscription order status'
+    description 'Every move of one order, for as long as somebody is watching it.'
+    client -> storefront.bff 'Subscription.orderStatus → OrderMoved' {
+      color declared  line dashed  head normal
+      notes 'examples/bff/src/schema/order/resolvers/Subscription/orderStatus.ts:11'
+    }
+  }
+
+  dynamic view flow_bff_subscription_order_status_cross {
+    title 'Subscription order status — crossings only'
+    client -> storefront.bff 'Subscription.orderStatus → OrderMoved' {
+      color declared  line dashed  head normal
+      notes 'examples/bff/src/schema/order/resolvers/Subscription/orderStatus.ts:11'
     }
   }
 

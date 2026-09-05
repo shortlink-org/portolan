@@ -1,0 +1,31 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "context": {
+      "type": "string",
+      "description": "Slug of the bounded context that owns the service this schema belongs to. Defaults to the name of the input directory.",
+      "examples": ["storefront"]
+    },
+    "service": {
+      "type": "string",
+      "description": "Slug of the service the schema describes. Defaults to the name of the input directory.",
+      "examples": ["bff"]
+    },
+    "schema": {
+      "type": "string",
+      "description": "The schema, relative to the input root: one .graphql document, or a directory of them read together. Left out, the extractor looks for them.",
+      "examples": ["src/schema"]
+    },
+    "api": {
+      "type": "string",
+      "description": "Prefix for the ids of the interfaces this produces. Left out, it is the service and a major version: bff gives bff.v1, and a module called basket gives bff.v1.Basket.",
+      "examples": ["storefront.v1"]
+    },
+    "out": {
+      "type": "string",
+      "description": "Name of the fragment file, inside the step's output directory.",
+      "default": "graphql.json"
+    }
+  }
+}

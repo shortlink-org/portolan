@@ -5,7 +5,10 @@
 // every row in this app has.
 
 import { Fragment } from "react";
+import { Link } from "react-router";
 import type { Term } from "../catalog";
+import { KindIcon } from "../components/kind";
+import type { TermTarget } from "../lib/terms";
 import { RowActions } from "../components/RowActions";
 import { ContextPill } from "../components/primitives";
 import { ctxStyle } from "../lib/context-color";
@@ -35,10 +38,18 @@ function inline(text: string) {
 
 export function TermCard({
   term,
+  targets = [],
   index = 0,
   showContext = false,
 }: {
   term: Term;
+  /**
+   * What the word names in the model, when the two spell it the same way.
+   * Empty is the ordinary case for the words worth defining - Bus, Refusal,
+   * Conflict name no type - so the row simply does not appear, and nothing on
+   * the card says anything is missing.
+   */
+  targets?: readonly TermTarget[];
   /** Position in the list, for the staggered entrance. */
   index?: number;
   /**
@@ -70,6 +81,29 @@ export function TermCard({
       </div>
 
       <p className="mt-1.5">{inline(term.definition)}</p>
+
+      {targets.length > 0 ? (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          {targets.map((target) => (
+            <Link
+              key={target.id}
+              to={target.path}
+              className="chip hover:border-line-strong hover:text-ink"
+              title={`${target.kind} ${target.id}`}
+            >
+              {/* A state is not one of the app's kinds - it has no page and no
+                  mark of its own - so it wears a dot rather than borrowing an
+                  icon that would say it was something it is not. */}
+              {target.kind === "state" ? (
+                <span aria-hidden className="dot" />
+              ) : (
+                <KindIcon kind={target.kind} />
+              )}
+              {target.name}
+            </Link>
+          ))}
+        </div>
+      ) : null}
 
       {/* Where the entry was written, and the button that copies its id, on one
           line under the definition. The copy sat in the heading before, which

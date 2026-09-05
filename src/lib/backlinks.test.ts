@@ -254,3 +254,40 @@ describe("grouping", () => {
     expect(backlinkCount(g)).toBe(g.reduce((n, x) => n + x.links.length, 0));
   });
 });
+
+describe("the word that names it", () => {
+  it("is a backlink on the thing the glossary names", () => {
+    const links = backlinksFor(catalog, index, {
+      kind: "aggregate",
+      id: "auth.auth.session",
+    });
+    const terms = links.find((g) => g.kind === "term");
+
+    expect(terms?.links).toHaveLength(1);
+    expect(terms?.links[0]?.name).toBe("Session");
+    expect(terms?.links[0]?.via).toBe("names it");
+  });
+
+  // Last group on the page. Every other row answers "who breaks when this
+  // changes"; this one answers "what is it called", which is read after.
+  it("comes after everything that depends on the thing", () => {
+    const links = backlinksFor(catalog, index, {
+      kind: "aggregate",
+      id: "auth.auth.session",
+    });
+
+    expect(links[links.length - 1]?.kind).toBe("term");
+  });
+
+  // Most of the estate. Only two contexts keep a glossary, and inside them the
+  // pairing is exact - so a page with no word on it is the ordinary page, and
+  // it says nothing rather than reporting a gap.
+  it("says nothing about a thing no word names", () => {
+    const links = backlinksFor(catalog, index, {
+      kind: "aggregate",
+      id: "payments.ledger.payment",
+    });
+
+    expect(links.some((g) => g.kind === "term")).toBe(false);
+  });
+});

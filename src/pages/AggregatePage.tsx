@@ -35,6 +35,7 @@ import type { TocItem } from "../components/Toc";
 import { WhatLinksHere } from "../components/WhatLinksHere";
 import { LifecycleDiagram } from "../components/LifecycleDiagram";
 import { isTerminal } from "../lib/lifecycle";
+import { InLanguage } from "../language/InLanguage";
 import { NotFound } from "./NotFound";
 
 /**
@@ -303,6 +304,8 @@ export function AggregatePage() {
 
       <div className="flex gap-section p-gutter">
         <div className="min-w-0 flex-1">
+          <InLanguage id={aggregate.id} />
+
           <BuildingBlocks
             aggregate={aggregate}
             rootTo={root ? entityPath(root) : null}

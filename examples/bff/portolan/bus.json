@@ -1,0 +1,53 @@
+{
+  "generatedAt": "2026-09-05T13:08:38+07:00",
+  "commit": "7dfc88c",
+  "contexts": [
+    {
+      "id": "storefront",
+      "slug": "storefront",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "storefront.bff",
+          "slug": "bff",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "channels": [
+            {
+              "address": "shop.oms.order",
+              "title": "Order moves",
+              "doc": "Every move an order makes, published by the order service.",
+              "messages": [
+                {
+                  "name": "oms.OrderPlaced",
+                  "title": "An order came into being from a checked-out basket",
+                  "direction": "receive"
+                },
+                {
+                  "name": "oms.OrderConfirmed",
+                  "title": "The payment was authorised and the order may be fulfilled",
+                  "direction": "receive"
+                },
+                {
+                  "name": "oms.OrderCancelled",
+                  "title": "The order will not be fulfilled",
+                  "direction": "receive"
+                }
+              ],
+              "source": "examples/bff/src/infrastructure/bus/asyncapi.yaml"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": []
+}

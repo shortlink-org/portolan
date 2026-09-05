@@ -23,6 +23,7 @@ import {
 } from "../components/AsyncApiReference";
 import { ChannelRows } from "../components/ChannelRows";
 import { ModuleSpec } from "../components/SourceDoc";
+import { hasSchema, SchemaDocument } from "../components/SchemaDocument";
 import { methodCount, operationsExposedBy } from "../lib/api";
 import { KindIcon } from "../components/kind";
 import { RowActions } from "../components/RowActions";
@@ -106,7 +107,7 @@ export function ServicePage() {
   const retired = adrs.filter((a) => !isCurrent(a));
   // What the spec tab has to show: a document this repository holds, else the
   // schema module the interfaces were declared in, else nothing.
-  const spec = pickSpec(service, hasSpec);
+  const spec = pickSpec(service, (source) => hasSpec(source) || hasSchema(source));
   // The channels the service declares, and the document behind them when this
   // repository holds it. A channel names its own source, so the tab does not
   // have to be told where to look.
@@ -468,6 +469,8 @@ export function ServicePage() {
             </Empty>
           ) : spec.kind === "openapi" ? (
             <ApiReference source={spec.source} />
+          ) : spec.kind === "graphql" ? (
+            <SchemaDocument source={spec.source} />
           ) : (
             /* A proto is drawn from the catalog rather than as raw text. The
                rule ApiReference states - draw the document because the catalog

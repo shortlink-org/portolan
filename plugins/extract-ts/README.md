@@ -37,6 +37,16 @@ src/
   infrastructure/transport/http/
     gen/openapi.yaml      the document; operationIds name the handlers
     <pkg>/*.ts            handlers: `async <operationId>(...)` methods on a class holding use cases
+  schema/<module>/
+    schema.graphql        the contract, read by extract-graphql rather than here
+    resolvers/<Root>/<field>.ts
+                          one file per field of Query, Mutation or Subscription,
+                          exporting the field's own name; the third parameter is
+                          the context, and `ctx.<port>.<method>(...)` is a hop
+  <anywhere>/context.ts   `export interface GraphQLContext` - the ports every
+                          resolver may reach, which is what a use case says in
+                          its constructor
+  ports/*.ts              ports a service with no use cases declares on their own
   infrastructure/<peer>/
     gen/openapi.yaml + gen/types.ts     an HTTP peer: the vendored document and `openapi-typescript` output
     proto/**/*.proto + gen/*_pb.ts       a gRPC peer: the vendored contract and Connect-ES output
@@ -50,6 +60,31 @@ src/
                           peer; a use case's constructor may carry `@inject(TOKENS.X)`, the type
                           beside it is still the port
 ```
+
+## A service whose way in is a graph
+
+A BFF has no aggregates, no store and no use cases: it composes what other
+services decided, and there is nothing left for it to decide. Told where the
+schema is - the `graphql` option, `src/schema` by convention - this reader
+opens a flow on each resolver instead of on an HTTP or gRPC endpoint, and does
+not report the missing domain.
+
+A resolver's ports do not arrive in a constructor. The signature comes from
+the generated resolver type, so the context parameter is typed by where it
+sits rather than by anything written in the file, and the ports are read once
+from the one exported `GraphQLContext` interface - the name codegen's own
+`contextType` conventionally points at. From there everything is the same as
+inside a use case: `ctx.baskets.byId(...)` is a port call, assembly says what
+fills the port, and the adapter behind it names the peer.
+
+The field is called what `extract-graphql` calls it - `Query.basket`,
+`Mutation.checkout` - because the directory a resolver sits in is the root
+type and the file is the field. That is why nothing here parses a schema: the
+layout already says what the SDL would.
+
+An adapter over the bus is the one port call that draws no step. It calls
+nobody - it waits - and what it hears is said by the channel the service
+declares in its AsyncAPI document, not by a step in a flow.
 
 ## What becomes what
 

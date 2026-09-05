@@ -38,9 +38,16 @@ func (s *site) renderContext(ctx *catalog.BoundedContext) {
 	}
 	section(&b, "Services", table([]string{"Service", "Path", "Aggregates"}, rows))
 
+	// Before the decisions, because the decisions are written in these words.
+	if terms := s.termsOf[ctx.ID]; len(terms) > 0 {
+		section(&b, "Language", "- "+link("Glossary", self, s.glossaryPath(ctx))+
+			" — "+plural(len(terms), "term")+" this context spells one way\n")
+	}
+
 	section(&b, "Decisions", s.adrTable(self, s.adrsFor[ctx.ID]))
 
 	s.b.file(self, b.String())
+	s.renderGlossary(ctx)
 
 	for i := range ctx.Services {
 		s.renderService(ctx, &ctx.Services[i])

@@ -62,6 +62,29 @@ func (s *site) llmsIndex() string {
 		}
 	}
 	section(&b, "Contexts", list(contexts))
+
+	// Straight after the contexts and before anything that uses the words. A
+	// model reading this estate cold has the same problem a person has: every
+	// page below is written in a vocabulary it has not been told yet.
+	var glossaries []string
+	for i := range s.cat.Contexts {
+		ctx := &s.cat.Contexts[i]
+		terms := s.termsOf[ctx.ID]
+		if len(terms) == 0 {
+			continue
+		}
+		names := make([]string, 0, len(terms))
+		for _, term := range terms {
+			names = append(names, term.Name)
+		}
+		glossaries = append(glossaries, entry(
+			link("Glossary of "+ctx.Name, self, s.glossaryPath(ctx)),
+			plural(len(terms), "term"),
+			strings.Join(names, ", "),
+		))
+	}
+	section(&b, "Glossaries", list(glossaries))
+
 	section(&b, "Services", list(services))
 
 	flows := make([]string, 0, len(s.cat.Flows))

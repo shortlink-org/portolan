@@ -13,6 +13,10 @@ Money owed and money taken.
 | --- | --- | --- |
 | [Invoices](invoices/README.md) | `services/invoices` | Invoice |
 
+## Language
+
+- [Glossary](glossary.md) — 2 terms this context spells one way
+
 ## Decisions
 
 | ADR | Title | Status | Date |

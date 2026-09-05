@@ -9,6 +9,7 @@ import { readAggregates, type WarningSink } from "./domain.ts";
 import { operationOf, readUseCases } from "./operations.ts";
 import { readBindings } from "./wiring.ts";
 import { readGrpcTransport, readTransport } from "./transport.ts";
+import { readResolvers } from "./graphql.ts";
 import { FlowReader } from "./flows.ts";
 import { serviceID, title } from "./ids.ts";
 
@@ -24,6 +25,13 @@ export interface Options {
   peers?: Record<string, string>;
   events?: Record<string, string>;
   source?: string;
+  /**
+   * Where the GraphQL schema is, for a service whose way in is a graph. Its
+   * resolvers are read as endpoints, and a service that says this is not
+   * expected to have a domain: composing what other services decided is the
+   * whole of what it does.
+   */
+  graphql?: string;
   out?: string;
 }
 
@@ -68,6 +76,7 @@ export function extract(input: Input, opts: Options, cwd = process.cwd()): Respo
   const useCases = readUseCases(join(src, "application"), rel, b);
   const bindings = readBindings(join(src, "di"));
   const transport = readTransport(join(src, "infrastructure", "transport", "http"), rel, b);
+  const resolvers = opts.graphql ? readResolvers(join(root, opts.graphql), src, rel, b) : [];
   // A service may answer over both, and a service that answers over neither is
   // read the same way with nothing to show for it.
   transport.endpoints.push(...readGrpcTransport(join(src, "infrastructure", "transport", "grpc"), rel, b));
@@ -103,6 +112,10 @@ export function extract(input: Input, opts: Options, cwd = process.cwd()): Respo
     const flow = reader.endpointFlow(endpoint);
     if (flow) flows.push(flow);
   }
+  for (const resolver of resolvers) {
+    const flow = reader.resolverFlow(resolver);
+    if (flow) flows.push(flow);
+  }
   flows.push(...reader.policyFlows(join(src, "application", "policy")));
   for (const agg of aggregates) {
     for (const [, id] of agg.events) {
@@ -121,7 +134,10 @@ export function extract(input: Input, opts: Options, cwd = process.cwd()): Respo
     consumes: reader.consumes(),
     aggregates: aggregates.map((a) => a.aggregate),
   };
-  if (aggregates.length === 0) b.warn(svcID, "no aggregates found under domain; the fragment describes a service with no model");
+  // A service with a graph for an edge is expected to have no model: it
+  // composes what other services decided (see the `graphql` option). Saying so
+  // about that service every run would be noise nobody can act on.
+  if (aggregates.length === 0 && !opts.graphql) b.warn(svcID, "no aggregates found under domain; the fragment describes a service with no model");
 
   const fragment: Catalog = {
     generatedAt: input.generatedAt,

@@ -20,8 +20,9 @@ import type {
   SetupPlugin,
   SetupProject,
 } from "../lib/setup-info";
+import { treeHref } from "../lib/source-link";
 import { paths } from "../routes";
-import { SectionTitle } from "../components/PageHeader";
+import { Empty, SectionTitle } from "../components/PageHeader";
 
 function Metric({ value, label }: { value: number; label: string }) {
   return (
@@ -46,6 +47,29 @@ function projectHref(project: SetupProject): string | null {
     : paths.context(context.id);
 }
 
+/**
+ * Where the project's source can be opened. A project in the repository this
+ * was built from opens at its own directory, at the built commit. One that
+ * names another repository opens at that repository instead: this build knows
+ * neither its default branch nor what a root of ours means inside it, and a
+ * link that 404s is worse than none.
+ */
+function forge(project: SetupProject): { href: string; title: string } | null {
+  if (project.repository) {
+    return {
+      href: project.repository,
+      title: "Open the project's repository",
+    };
+  }
+  const tree = treeHref(project.root, null);
+  return tree
+    ? {
+        href: tree,
+        title: "Open the project's directory on the forge, at the built commit",
+      }
+    : null;
+}
+
 function ProjectCard({ project }: { project: SetupProject }) {
   const steps = setupInfo.steps.filter((step) => step.projectId === project.id);
   const pluginNames = [
@@ -60,6 +84,7 @@ function ProjectCard({ project }: { project: SetupProject }) {
     ...new Set(sources.map((source) => source.commit).filter(Boolean)),
   ];
   const href = projectHref(project);
+  const sourceLink = forge(project);
   const title = <span className="font-semibold text-ink">{project.name}</span>;
 
   return (
@@ -83,8 +108,21 @@ function ProjectCard({ project }: { project: SetupProject }) {
               <span className="chip status-declared">no fragments</span>
             )}
           </div>
-          <div className="mono mt-0.5 truncate text-muted" title={project.root}>
-            {project.root}
+          <div className="mono mt-0.5 flex items-center gap-2 text-muted">
+            <span className="truncate" title={project.root}>
+              {project.root}
+            </span>
+            {sourceLink ? (
+              <a
+                href={sourceLink.href}
+                target="_blank"
+                rel="noreferrer"
+                className="shrink-0 rounded-control text-accent hover:underline"
+                title={sourceLink.title}
+              >
+                open ↗
+              </a>
+            ) : null}
           </div>
         </div>
       </div>
@@ -141,6 +179,10 @@ function Runtime({ plugin }: { plugin: SetupPlugin }) {
 }
 
 function PluginsTable() {
+  if (setupInfo.plugins.length === 0) {
+    return <Empty>this build ran no plugins</Empty>;
+  }
+
   const projectNames = new Map(
     setupInfo.projects.map((project) => [project.id, project.name]),
   );
@@ -219,7 +261,7 @@ function Appearance() {
             type="button"
             aria-pressed={theme === "dark"}
             onClick={() => theme !== "dark" && toggleTheme()}
-            className="flex items-center gap-1.5"
+            className={`flex items-center gap-1.5 ${theme === "dark" ? "is-on" : ""}`}
           >
             <Moon size={15} aria-hidden /> dark
           </button>
@@ -227,7 +269,7 @@ function Appearance() {
             type="button"
             aria-pressed={theme === "light"}
             onClick={() => theme !== "light" && toggleTheme()}
-            className="flex items-center gap-1.5"
+            className={`flex items-center gap-1.5 ${theme === "light" ? "is-on" : ""}`}
           >
             <Sun size={15} aria-hidden /> light
           </button>
@@ -240,7 +282,7 @@ function Appearance() {
             type="button"
             aria-pressed={density === "comfortable"}
             onClick={() => density !== "comfortable" && toggleDensity()}
-            className="flex items-center gap-1.5"
+            className={`flex items-center gap-1.5 ${density === "comfortable" ? "is-on" : ""}`}
           >
             <Rows4 size={15} aria-hidden /> comfortable
           </button>
@@ -248,7 +290,7 @@ function Appearance() {
             type="button"
             aria-pressed={density === "compact"}
             onClick={() => density !== "compact" && toggleDensity()}
-            className="flex items-center gap-1.5"
+            className={`flex items-center gap-1.5 ${density === "compact" ? "is-on" : ""}`}
           >
             <Rows2 size={15} aria-hidden /> compact
           </button>
@@ -283,11 +325,18 @@ export function Settings() {
 
         <section className="mt-section">
           <SectionTitle right="declared in portolan.json">Projects</SectionTitle>
-          <div className="grid gap-grid xl:grid-cols-2">
-            {setupInfo.projects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
-            ))}
-          </div>
+          {setupInfo.projects.length === 0 ? (
+            <Empty>
+              portolan.json names no projects — every input here is the
+              estate's own
+            </Empty>
+          ) : (
+            <div className="grid gap-grid xl:grid-cols-2">
+              {setupInfo.projects.map((project) => (
+                <ProjectCard key={project.id} project={project} />
+              ))}
+            </div>
+          )}
         </section>
 
         <section className="mt-section">
@@ -314,27 +363,38 @@ export function Settings() {
           </summary>
           <div className="border-t border-line p-4">
             <div className="label mb-2">catalog source patterns</div>
-            <ul className="mono space-y-1 text-muted">
-              {setupInfo.sources.map((source) => (
-                <li key={source}>{source}</li>
-              ))}
-            </ul>
+            {setupInfo.sources.length === 0 ? (
+              <Empty>no source patterns declared</Empty>
+            ) : (
+              <ul className="mono space-y-1 text-muted">
+                {setupInfo.sources.map((source) => (
+                  <li key={source}>{source}</li>
+                ))}
+              </ul>
+            )}
 
             <div className="label mt-5 mb-2">pipeline</div>
-            <div className="space-y-1">
-              {setupInfo.steps.map((step, index) => (
-                <div
-                  key={`${step.phase}:${step.plugin}:${step.input ?? "catalog"}:${index}`}
-                  className="mono grid gap-x-3 text-muted sm:grid-cols-[5rem_9rem_1fr]"
-                >
-                  <span>{step.phase}</span>
-                  <span className="text-ink">{step.plugin}</span>
-                  <span className="truncate" title={step.input ?? "merged catalog"}>
-                    {step.input ?? "merged catalog"} → {step.output}
-                  </span>
-                </div>
-              ))}
-            </div>
+            {setupInfo.steps.length === 0 ? (
+              <Empty>no pipeline steps declared</Empty>
+            ) : (
+              <div className="space-y-1">
+                {setupInfo.steps.map((step, index) => (
+                  <div
+                    key={`${step.phase}:${step.plugin}:${step.input ?? "catalog"}:${index}`}
+                    className="mono grid gap-x-3 text-muted sm:grid-cols-[5rem_9rem_1fr]"
+                  >
+                    <span>{step.phase}</span>
+                    <span className="text-ink">{step.plugin}</span>
+                    <span
+                      className="truncate"
+                      title={step.input ?? "merged catalog"}
+                    >
+                      {step.input ?? "merged catalog"} → {step.output}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </details>
 

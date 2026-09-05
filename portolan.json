@@ -109,6 +109,13 @@
       }
     },
     {
+      "name": "graphql",
+      "process": {
+        "command": "go",
+        "args": ["run", "./plugins/extract-graphql"]
+      }
+    },
+    {
       "name": "sql",
       "process": {
         "command": "go",
@@ -580,6 +587,68 @@
       "out": "examples/shop/oms/portolan",
       "options": {
         "context": "shop",
+        "out": "glossary.json"
+      }
+    },
+    {
+      "plugin": "ts-domain",
+      "in": "examples/bff",
+      "out": "examples/bff/portolan",
+      "options": {
+        "context": "storefront",
+        "contextName": "Storefront",
+        "contextSummary": "One graph in front of the estate, for one kind of client. It owns nothing: everything it answers with it asked somebody else for a moment earlier, and translated into the words a shopper's screen uses.",
+        "classification": "supporting",
+        "service": "bff",
+        "serviceName": "Storefront BFF",
+        "repo": "github.com/shortlink-org/portolan",
+        "graphql": "src/schema",
+        "peers": {
+          "auth.v1": "auth.auth",
+          "cart.v1": "shop.cart",
+          "shop.v1": "shop.oms",
+          "delivery.v1": "delivery.core"
+        },
+        "out": "domain.json"
+      }
+    },
+    {
+      "plugin": "graphql",
+      "in": "examples/bff",
+      "out": "examples/bff/portolan",
+      "options": {
+        "context": "storefront",
+        "service": "bff",
+        "schema": "src/schema",
+        "api": "storefront.v1",
+        "out": "api.json"
+      }
+    },
+    {
+      "plugin": "asyncapi",
+      "in": "examples/bff",
+      "out": "examples/bff/portolan",
+      "options": {
+        "context": "storefront",
+        "service": "bff",
+        "spec": "src/infrastructure/bus/asyncapi.yaml",
+        "out": "bus.json"
+      }
+    },
+    {
+      "plugin": "adr",
+      "in": "examples/bff",
+      "out": "examples/bff/portolan",
+      "options": {
+        "out": "adr.json"
+      }
+    },
+    {
+      "plugin": "glossary",
+      "in": "examples/bff",
+      "out": "examples/bff/portolan",
+      "options": {
+        "context": "storefront",
         "out": "glossary.json"
       }
     }

@@ -1,0 +1,114 @@
+{
+  "generatedAt": "2026-09-05T13:08:38+07:00",
+  "commit": "7dfc88c",
+  "contexts": [],
+  "defs": {},
+  "flows": [],
+  "adrs": [],
+  "terms": [
+    {
+      "id": "storefront.adapter",
+      "slug": "adapter",
+      "context": "storefront",
+      "name": "Adapter",
+      "definition": "The one file that knows both a port and a peer's generated client, and turns each into the other. Nothing else in the service knows a peer exists.",
+      "source": "examples/bff/GLOSSARY.md:7"
+    },
+    {
+      "id": "storefront.basket",
+      "slug": "basket",
+      "context": "storefront",
+      "name": "Basket",
+      "definition": "What the customer is filling, as the cart holds it. The cart calls its lines `items`; the storefront calls them lines, and neither is wrong.",
+      "source": "examples/bff/GLOSSARY.md:11"
+    },
+    {
+      "id": "storefront.checkout",
+      "slug": "checkout",
+      "context": "storefront",
+      "name": "Checkout",
+      "definition": "Freezing a basket at the price it was frozen at. Not an order: the order service places one when it hears the basket was checked out, and a checkout that answered with an order id would be promising something that has not happened.",
+      "source": "examples/bff/GLOSSARY.md:15"
+    },
+    {
+      "id": "storefront.line",
+      "slug": "line",
+      "context": "storefront",
+      "name": "Line",
+      "definition": "One SKU in a basket or an order, how many of it, and the unit price it was added at.",
+      "source": "examples/bff/GLOSSARY.md:20"
+    },
+    {
+      "id": "storefront.money",
+      "slug": "money",
+      "context": "storefront",
+      "name": "Money",
+      "definition": "An amount in the smallest unit of a currency, and the currency. Spelled once here, whichever of the three spellings the peers used.",
+      "source": "examples/bff/GLOSSARY.md:23"
+    },
+    {
+      "id": "storefront.order",
+      "slug": "order",
+      "context": "storefront",
+      "name": "Order",
+      "definition": "What a basket became. Read from the order service and never written here.",
+      "source": "examples/bff/GLOSSARY.md:26"
+    },
+    {
+      "id": "storefront.order-move",
+      "slug": "order-move",
+      "context": "storefront",
+      "name": "Order move",
+      "definition": "One change of an order's state, as it happened. What a subscription yields, and what the bus carried.",
+      "source": "examples/bff/GLOSSARY.md:29"
+    },
+    {
+      "id": "storefront.order-state",
+      "slug": "order-state",
+      "context": "storefront",
+      "name": "Order state",
+      "definition": "Placed, confirmed or cancelled — the three the order service publishes, and no fourth invented for a screen.",
+      "source": "examples/bff/GLOSSARY.md:32"
+    },
+    {
+      "id": "storefront.peer",
+      "slug": "peer",
+      "context": "storefront",
+      "name": "Peer",
+      "definition": "Another service in the estate: auth, the cart, the order service, delivery. The storefront talks to four and belongs to none.",
+      "source": "examples/bff/GLOSSARY.md:35"
+    },
+    {
+      "id": "storefront.port",
+      "slug": "port",
+      "context": "storefront",
+      "name": "Port",
+      "definition": "What a resolver may reach: an interface in `src/ports`, filled at assembly. A resolver holds ports the way a use case elsewhere holds them.",
+      "source": "examples/bff/GLOSSARY.md:38"
+    },
+    {
+      "id": "storefront.shipment",
+      "slug": "shipment",
+      "context": "storefront",
+      "name": "Shipment",
+      "definition": "The parcel on its way, as delivery has it. Its state is delivery's own word, passed on unchanged.",
+      "source": "examples/bff/GLOSSARY.md:41"
+    },
+    {
+      "id": "storefront.storefront",
+      "slug": "storefront",
+      "context": "storefront",
+      "name": "Storefront",
+      "definition": "The context this service belongs to: what a shopper sees, and nothing that decides anything.",
+      "source": "examples/bff/GLOSSARY.md:44"
+    },
+    {
+      "id": "storefront.viewer",
+      "slug": "viewer",
+      "context": "storefront",
+      "name": "Viewer",
+      "definition": "Who the request belongs to. A live session, resolved by auth on every call; nobody, for somebody browsing.",
+      "source": "examples/bff/GLOSSARY.md:47"
+    }
+  ]
+}

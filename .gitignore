@@ -50,3 +50,4 @@ plugins/extract-java/build
 /fetch-csr
 /verify-otel
 /verify-codeowners
+/gen-markdown

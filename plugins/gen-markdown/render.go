@@ -38,6 +38,10 @@ type site struct {
 	// adrsFor is keyed by what an ADR is scoped to: "org", a context id, or a
 	// service id.
 	adrsFor map[string][]*catalog.Adr
+	// termsOf is a context's vocabulary, alphabetical. Keyed by context and
+	// not by service: a glossary belongs to the boundary, and the file it was
+	// read from happens to sit beside one of the services inside it.
+	termsOf map[string][]*catalog.Term
 	// methodOf is every interface method by "<interface>/<method>", which is
 	// how a flow step names the call it makes.
 	methodOf map[string]catalog.RpcMethod
@@ -54,6 +58,7 @@ func render(req plugin.Request, opts Options) plugin.Response {
 		stores:    map[string]*catalog.Store{},
 		eventPage: map[string]string{},
 		adrsFor:   map[string][]*catalog.Adr{},
+		termsOf:   map[string][]*catalog.Term{},
 		methodOf:  map[string]catalog.RpcMethod{},
 
 		relationStore: map[string]string{},
@@ -133,6 +138,16 @@ func (s *site) layout() {
 
 	for i := range s.cat.Flows {
 		s.pathOf[s.cat.Flows[i].ID] = "flows/" + s.cat.Flows[i].Slug + ".md"
+	}
+
+	for i := range s.cat.Terms {
+		term := &s.cat.Terms[i]
+		s.termsOf[term.Context] = append(s.termsOf[term.Context], term)
+	}
+	for _, terms := range s.termsOf {
+		sort.Slice(terms, func(a, b int) bool {
+			return strings.ToLower(terms[a].Name) < strings.ToLower(terms[b].Name)
+		})
 	}
 
 	for i := range s.cat.Adrs {

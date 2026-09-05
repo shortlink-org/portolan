@@ -1,21 +1,29 @@
 # Example estate
 
-> Architecture catalog of Example estate: 4 bounded contexts, 7 services, 12 aggregates, 7 stores, 45 flows and 28 decision records, read from the code, the specs and the traces of the estate.
+> Architecture catalog of Example estate: 5 bounded contexts, 8 services, 12 aggregates, 7 stores, 54 flows and 32 decision records, read from the code, the specs and the traces of the estate.
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 Every link below is a markdown page beside this file. [llms-full.txt](llms-full.txt) is all of those pages in one file, in the order the site lists them.
 
 ## Contexts
 
 - [Authentication](auth/README.md): generic. Who someone is, and whether they are still logged in. The only service in the estate that stores credentials, and the only one allowed to mint or revoke a session
+- [Storefront](storefront/README.md): supporting. One graph in front of the estate, for one kind of client. It owns nothing: everything it answers with it asked somebody else for a moment earlier, and translated into the words a shopper's screen uses
 - [Payments](payments/README.md): supporting. Money, and the record of every movement of it. Nothing here decides whether to charge - it is asked, and it writes down what happened either way
 - [Shop](shop/README.md): core. What a customer is buying, what it costs and what they owe for it: the basket while it is still changing, the price it was promised at, the order it became, and the invoice for it. It moves no money and delivers nothing
 - [Delivery](delivery/README.md): supporting. Parcels, vans and the day they are driven. Told what to carry and asked where it got to; it decides neither
 
+## Glossaries
+
+- [Glossary of Authentication](auth/glossary.md): 27 terms. Attempt, Authenticate, Bus, Conflict, Credential, Email address, Expiry, Locked, Lockout, Login, Logout, Outbox, Password hash, Password policy, Policy, Reason, Refusal, Register, Revoke, Risk, Session, Threshold, Token, User, Validate, Verdict, Version
+- [Glossary of Storefront](storefront/glossary.md): 13 terms. Adapter, Basket, Checkout, Line, Money, Order, Order move, Order state, Peer, Port, Shipment, Storefront, Viewer
+- [Glossary of Shop](shop/glossary.md): 11 terms. Basket, Bus, Cancelled, Confirmed, Line, Money, Order, Outbox, Payments, Placed, Relay
+
 ## Services
 
 - [Authentication & Sessions](auth/auth/README.md): in Authentication. Aggregates: Lockout, Session, User
+- [Storefront BFF](storefront/bff/README.md): in Storefront
 - [Ledger](payments/ledger/README.md): in Payments. Aggregates: Payment, Refund
 - [Billing](shop/billing/README.md): in Shop. Aggregates: Invoice
 - [Shopping Cart](shop/cart/README.md): in Shop. Aggregates: Basket
@@ -34,6 +42,15 @@ Every link below is a markdown page beside this file. [llms-full.txt](llms-full.
 - [Register user](flows/auth-register-user.md): owned by [auth](auth/README.md). Creates a user from an email address and a password
 - [Validate session](flows/auth-validate-session.md): owned by [auth](auth/README.md). Resolves a token to a live session: who is calling, and how long the answer stays good
 - [Revoke sessions on password change](flows/auth-revoke-sessions-on-password-change.md): owned by [auth](auth/README.md). Ends the sessions issued against a password that has just been replaced
+- [Query basket](flows/bff-query-basket.md): owned by [storefront](storefront/README.md). The basket as the cart has it, in the storefront's words
+- [Query shipment](flows/bff-query-shipment.md): owned by [storefront](storefront/README.md)
+- [Query order](flows/bff-query-order.md): owned by [storefront](storefront/README.md)
+- [Query viewer](flows/bff-query-viewer.md): owned by [storefront](storefront/README.md). Who the request belongs to. Auth is asked on every call rather than a token being read here: this service holds no key and could not tell a forged one from a live one
+- [Mutation add item](flows/bff-mutation-add-item.md): owned by [storefront](storefront/README.md). Add a line. The price travels as the customer was shown it; the cart captures it and never recomputes it, and nothing here checks it - a storefront that priced things would be a second place prices live
+- [Mutation checkout](flows/bff-mutation-checkout.md): owned by [storefront](storefront/README.md). Freeze the basket and hand it on
+- [Mutation remove item](flows/bff-mutation-remove-item.md): owned by [storefront](storefront/README.md)
+- [Mutation cancel order](flows/bff-mutation-cancel-order.md): owned by [storefront](storefront/README.md). Cancel an order. Whether it is too late to is the order service's judgement and its refusal travels back unchanged; this service does not know what dispatch means
+- [Subscription order status](flows/bff-subscription-order-status.md): owned by [storefront](storefront/README.md). Every move of one order, for as long as somebody is watching it
 - [Authorize](flows/ledger-authorize.md): owned by [payments](payments/README.md). Asks the gateway to hold the money for an order, and records either that it agreed or that it refused
 - [Capture](flows/ledger-capture.md): owned by [payments](payments/README.md). Moves the money the gateway was holding, writes the pair of postings for it, and says so on the bus
 - [Get payment](flows/ledger-get-payment.md): owned by [payments](payments/README.md). Reads one payment, for whoever is asking what happened to the money
@@ -88,6 +105,10 @@ Every link below is a markdown page beside this file. [llms-full.txt](llms-full.
 - [auth.0009](adr/auth.0009.md): A locked account answers exactly like a wrong password (accepted, 2026-09-04)
 - [auth.0010](adr/auth.0010.md): A revocation is written to the cache, not only dropped from it (accepted, 2026-09-05)
 - [auth.0011](adr/auth.0011.md): The relay reads every topic and hands it to a bus; policies subscribe to the bus (accepted, 2026-09-05)
+- [bff.0001](adr/bff.0001.md): GraphQL over Yoga, and the schema comes first (accepted, 2026-09-05)
+- [bff.0002](adr/bff.0002.md): The storefront owns no state (accepted, 2026-09-05)
+- [bff.0003](adr/bff.0003.md): The schema speaks the client's words, not the peers' (accepted, 2026-09-05)
+- [bff.0004](adr/bff.0004.md): A subscription is the bus, forwarded (accepted, 2026-09-05)
 - [cart.0001](adr/cart.0001.md): TypeScript on Node.js, and the stack around it (accepted, 2026-09-04)
 - [cart.0002](adr/cart.0002.md): A basket freezes its currency at the first item (accepted, 2026-09-04)
 - [cart.0003](adr/cart.0003.md): Line prices are captured when added, never recomputed (accepted, 2026-09-04)

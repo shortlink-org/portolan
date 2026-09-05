@@ -21,6 +21,7 @@ import { plural } from "../lib/format";
 import { paths } from "../routes";
 import { TermCard } from "../language/TermCard";
 import { homonyms, matchTerms, vocabularies } from "../language/cards";
+import { bindTerms } from "../lib/terms";
 
 export function Language() {
   // `?context=` is how the sidebar arrives here: the reader clicked one
@@ -44,6 +45,7 @@ export function Language() {
 
   const all = useMemo(() => vocabularies(catalog), []);
   const shared = useMemo(() => homonyms(catalog), []);
+  const bound = useMemo(() => bindTerms(catalog), []);
   const total = allTerms(catalog).length;
 
   const shown = useMemo(
@@ -153,7 +155,7 @@ export function Language() {
             </span>
           </SectionTitle>
           <div className="grid gap-grid grid-cols-[repeat(auto-fill,minmax(340px,1fr))]">
-            <TermCard term={focused} />
+            <TermCard term={focused} targets={bound.byTerm.get(focused.id)} />
           </div>
         </div>
       ) : null}
@@ -180,7 +182,13 @@ export function Language() {
                 className="grid gap-grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))]"
               >
                 {homonym.terms.map((term, i) => (
-                  <TermCard key={term.id} term={term} index={i} showContext />
+                  <TermCard
+                    key={term.id}
+                    term={term}
+                    targets={bound.byTerm.get(term.id)}
+                    index={i}
+                    showContext
+                  />
                 ))}
               </div>
             ))}
@@ -231,7 +239,12 @@ export function Language() {
               data-nav-list
             >
               {vocabulary.terms.map((term, i) => (
-                <TermCard key={term.id} term={term} index={i} />
+                <TermCard
+                  key={term.id}
+                  term={term}
+                  targets={bound.byTerm.get(term.id)}
+                  index={i}
+                />
               ))}
             </div>
           </div>

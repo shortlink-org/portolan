@@ -1,6 +1,6 @@
 # Shop
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `shop`
 - **Classification:** core
@@ -15,3 +15,7 @@ What a customer is buying, what it costs and what they owe for it: the basket wh
 | [Shopping Cart](cart/README.md) | `examples/shop/cart` | Basket |
 | [Order Management](oms/README.md) | `examples/shop/oms` | Order |
 | [Pricing](pricing/README.md) | `examples/shop/pricing` | Price List, Quote |
+
+## Language
+
+- [Glossary](glossary.md) — 11 terms this context spells one way

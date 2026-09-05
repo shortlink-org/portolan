@@ -1,6 +1,6 @@
 # Example estate
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 
 ## Contexts
@@ -8,6 +8,7 @@
 | Context | Class | Services | Summary |
 | --- | --- | --- | --- |
 | [Authentication](auth/README.md) | generic | [Authentication & Sessions](auth/auth/README.md) | Who someone is, and whether they are still logged in. The only service in the estate that stores credentials, and the only one allowed to mint or revoke a session. |
+| [Storefront](storefront/README.md) | supporting | [Storefront BFF](storefront/bff/README.md) | One graph in front of the estate, for one kind of client. It owns nothing: everything it answers with it asked somebody else for a moment earlier, and translated into the words a shopper's screen uses. |
 | [Payments](payments/README.md) | supporting | [Ledger](payments/ledger/README.md) | Money, and the record of every movement of it. Nothing here decides whether to charge - it is asked, and it writes down what happened either way. |
 | [Shop](shop/README.md) | core | [Billing](shop/billing/README.md), [Shopping Cart](shop/cart/README.md), [Order Management](shop/oms/README.md), [Pricing](shop/pricing/README.md) | What a customer is buying, what it costs and what they owe for it: the basket while it is still changing, the price it was promised at, the order it became, and the invoice for it. It moves no money and delivers nothing. |
 | [Delivery](delivery/README.md) | supporting | [Delivery Core](delivery/core/README.md) | Parcels, vans and the day they are driven. Told what to carry and asked where it got to; it decides neither. |
@@ -25,6 +26,15 @@
 | [Register user](flows/auth-register-user.md) | [auth](auth/README.md) | Creates a user from an email address and a password. |
 | [Validate session](flows/auth-validate-session.md) | [auth](auth/README.md) | Resolves a token to a live session: who is calling, and how long the answer stays good. |
 | [Revoke sessions on password change](flows/auth-revoke-sessions-on-password-change.md) | [auth](auth/README.md) | Ends the sessions issued against a password that has just been replaced. |
+| [Query basket](flows/bff-query-basket.md) | [storefront](storefront/README.md) | The basket as the cart has it, in the storefront's words. |
+| [Query shipment](flows/bff-query-shipment.md) | [storefront](storefront/README.md) | — |
+| [Query order](flows/bff-query-order.md) | [storefront](storefront/README.md) | — |
+| [Query viewer](flows/bff-query-viewer.md) | [storefront](storefront/README.md) | Who the request belongs to. Auth is asked on every call rather than a token being read here: this service holds no key and could not tell a forged one from a live one. |
+| [Mutation add item](flows/bff-mutation-add-item.md) | [storefront](storefront/README.md) | Add a line. The price travels as the customer was shown it; the cart captures it and never recomputes it, and nothing here checks it - a storefront that priced things would be a second place prices live. |
+| [Mutation checkout](flows/bff-mutation-checkout.md) | [storefront](storefront/README.md) | Freeze the basket and hand it on. |
+| [Mutation remove item](flows/bff-mutation-remove-item.md) | [storefront](storefront/README.md) | — |
+| [Mutation cancel order](flows/bff-mutation-cancel-order.md) | [storefront](storefront/README.md) | Cancel an order. Whether it is too late to is the order service's judgement and its refusal travels back unchanged; this service does not know what dispatch means. |
+| [Subscription order status](flows/bff-subscription-order-status.md) | [storefront](storefront/README.md) | Every move of one order, for as long as somebody is watching it. |
 | [Authorize](flows/ledger-authorize.md) | [payments](payments/README.md) | Asks the gateway to hold the money for an order, and records either that it agreed or that it refused. |
 | [Capture](flows/ledger-capture.md) | [payments](payments/README.md) | Moves the money the gateway was holding, writes the pair of postings for it, and says so on the bus. |
 | [Get payment](flows/ledger-get-payment.md) | [payments](payments/README.md) | Reads one payment, for whoever is asking what happened to the money. |
@@ -81,6 +91,10 @@
 | [auth.0009](adr/auth.0009.md) | A locked account answers exactly like a wrong password | accepted | 2026-09-04 |
 | [auth.0010](adr/auth.0010.md) | A revocation is written to the cache, not only dropped from it | accepted | 2026-09-05 |
 | [auth.0011](adr/auth.0011.md) | The relay reads every topic and hands it to a bus; policies subscribe to the bus | accepted | 2026-09-05 |
+| [bff.0001](adr/bff.0001.md) | GraphQL over Yoga, and the schema comes first | accepted | 2026-09-05 |
+| [bff.0002](adr/bff.0002.md) | The storefront owns no state | accepted | 2026-09-05 |
+| [bff.0003](adr/bff.0003.md) | The schema speaks the client's words, not the peers' | accepted | 2026-09-05 |
+| [bff.0004](adr/bff.0004.md) | A subscription is the bus, forwarded | accepted | 2026-09-05 |
 | [cart.0001](adr/cart.0001.md) | TypeScript on Node.js, and the stack around it | accepted | 2026-09-04 |
 | [cart.0002](adr/cart.0002.md) | A basket freezes its currency at the first item | accepted | 2026-09-04 |
 | [cart.0003](adr/cart.0003.md) | Line prices are captured when added, never recomputed | accepted | 2026-09-04 |

@@ -1,0 +1,69 @@
+{
+  "generatedAt": "2026-09-05T13:08:38+07:00",
+  "commit": "7dfc88c",
+  "contexts": [],
+  "defs": {},
+  "flows": [],
+  "adrs": [
+    {
+      "id": "bff.0001",
+      "slug": "bff-0001-graphql-yoga-schema-first",
+      "number": 1,
+      "title": "GraphQL over Yoga, and the schema comes first",
+      "status": "accepted",
+      "date": "2026-09-05",
+      "scope": {
+        "kind": "service",
+        "service": "storefront.bff"
+      },
+      "body": "## Context and Problem Statement\n\nA storefront screen is four services deep: who the customer is, what is in\nthe basket, what became of the order, where the parcel got to. Asking a\nbrowser to make four calls, in order, over two protocols, and to know which\nof them may fail without the screen failing, is asking the browser to hold\nthe estate's shape. Something has to hold it instead.\n\nThe estate already speaks two contract languages - OpenAPI over HTTP,\nprotobuf over gRPC - and both are written first and generated from. A third\nedge should not be a third way of working.\n\n## Decision Outcome\n\nGraphQL, schema-first, served by Yoga.\n\nThe schema is SDL on disk, one module per directory under `src/schema`, and\nit is the source: `graphql-codegen` with `server-preset` reads it and writes\nthe resolver types and the file each resolver lives in. A field added to the\nSDL is a file that appears; a field removed is a resolver that stops being\nwired in. Nothing is written by hand that the schema already says.\n\nYoga rather than Apollo Server or Mercurius: it is the smallest of the three\nthat still has an envelop plugin chain and subscriptions without a second\nprotocol, and it is a request handler over the Fetch API rather than a\nframework, so the transport file stays a page long.\n\nWhat this buys the catalog is the same thing an OpenAPI document buys it: a\ndocument to read. `extract-graphql` reads the SDL for what the service\nprovides, and `extract-ts` reads the resolvers beside it for what each field\ngoes on to call. Neither could be written against a schema that only existed\nonce the server was up.\n\n### Consequences\n\n- Good: one round trip for a screen, and the fan-out is a fact in the\n  catalog rather than a diagram in a wiki.\n- Good: the client contract is reviewed as a diff of the SDL.\n- Bad: a fourth generator in the estate, and a resolver file whose head is\n  generated and whose body is not - a reader has to know which half is which.\n- Note: the resolvers are scaffolded once and then owned by people. Codegen\n  regenerates only the `*.generated.ts` files beside them.\n",
+      "relates": {},
+      "source": "examples/bff/docs/adr/0001-graphql-yoga-schema-first.md"
+    },
+    {
+      "id": "bff.0002",
+      "slug": "bff-0002-the-storefront-owns-no-state",
+      "number": 2,
+      "title": "The storefront owns no state",
+      "status": "accepted",
+      "date": "2026-09-05",
+      "scope": {
+        "kind": "service",
+        "service": "storefront.bff"
+      },
+      "body": "## Context and Problem Statement\n\nEvery other service in the estate has an aggregate and a database. This one\nis asked for a basket and an order it did not create and cannot change on its\nown. The obvious next step - a table of \"storefront sessions\", a cache of\nbaskets, a copy of the order for the screen - is the step that turns a\ncomposition layer into a service with a domain, and then into a second writer\nof somebody else's facts.\n\n## Decision Outcome\n\nNo aggregate, no store, no outbox, no event of its own.\n\nThe service holds ports and adapters and nothing else. A resolver reaches a\npeer and translates the answer; that is the whole of the code between the\nschema and the clients. Two things follow, and both are deliberate:\n\n- **There is no `login` and no password anywhere in this tree.** Sessions are\n  minted by auth and nowhere else, and this service asks auth on every\n  request rather than reading a token it holds no key for.\n- **A refusal belongs to whoever refused.** The cart decides whether a basket\n  may be changed and the order service whether an order may be cancelled;\n  their answers travel back unchanged. The only error this service invents is\n  `PeerError`, which says that a peer did not answer at all.\n\n### Consequences\n\n- Good: nothing here can drift from the estate, because there is nothing here\n  to drift.\n- Good: the catalog shows the service as what it is - one that provides an\n  interface, consumes four, and owns no store.\n- Bad: every screen costs a fan-out; there is no cache to answer from and\n  adding one would need this decision revisited, not just a library.\n",
+      "relates": {},
+      "source": "examples/bff/docs/adr/0002-the-storefront-owns-no-state.md"
+    },
+    {
+      "id": "bff.0003",
+      "slug": "bff-0003-the-schema-speaks-the-clients-words",
+      "number": 3,
+      "title": "The schema speaks the client's words, not the peers'",
+      "status": "accepted",
+      "date": "2026-09-05",
+      "scope": {
+        "kind": "service",
+        "service": "storefront.bff"
+      },
+      "body": "## Context and Problem Statement\n\nThe same amount of money is `amountMinor` in the cart's document and\n`amount_minor` in the order service's proto. A basket's lines are `items`\nover HTTP and `lines` over gRPC. A basket is `checked-out` in one place and\nwould be `CHECKED_OUT` in a GraphQL enum. Three vocabularies meet in this\nservice, and there are two ways to handle it: generate the schema from the\npeers' documents and let a client learn all three, or write one and translate.\n\nGenerating would have been cheap: `openapi-to-graphql` and the mesh tools do\nexactly that, and the schema would follow the peers for free.\n\n## Decision Outcome\n\nOne vocabulary, written by hand in the SDL, and translated at the adapter.\n\n`Money` is spelled once. `Basket.lines` is `lines` whichever peer the lines\ncame from. `BasketStatus` is upper case because that is what a GraphQL enum\nlooks like, not because the cart says so. Every one of those renamings\nhappens in `src/infrastructure/\u003cpeer\u003e/client.ts` and nowhere else, which is\nthe same rule the cart follows for auth and pricing.\n\nWhat is not translated is what this service has no opinion about. Delivery\nanswers with its own word for where a parcel is, and `Shipment.state` is a\n`String`: an enum here would be a promise about a set of values that another\nservice owns.\n\n### Consequences\n\n- Good: a client reads one vocabulary, and the glossary is short enough to\n  read in a minute.\n- Good: a peer renaming a field is one adapter changing, not every client.\n- Bad: a field a peer adds does not appear until somebody adds it here; the\n  schema is a decision, not a mirror.\n",
+      "relates": {},
+      "source": "examples/bff/docs/adr/0003-the-schema-speaks-the-clients-words.md"
+    },
+    {
+      "id": "bff.0004",
+      "slug": "bff-0004-subscriptions-are-the-bus-forwarded",
+      "number": 4,
+      "title": "A subscription is the bus, forwarded",
+      "status": "accepted",
+      "date": "2026-09-05",
+      "scope": {
+        "kind": "service",
+        "service": "storefront.bff"
+      },
+      "body": "## Context and Problem Statement\n\nA confirmation screen wants to know when the order it just caused comes into\nbeing, and then when it is confirmed. The order service will not call this\none - nothing in the estate calls the storefront - so there are two ways to\nanswer `Subscription.orderStatus`: poll `GetOrder` on a timer, or listen to\nthe moves the order service already publishes for the ledger and delivery.\n\n## Decision Outcome\n\nListen. One ephemeral JetStream consumer per subscribed client, filtered to\n`shop.oms.order`, with the order id matched in this process; the moves are\nmapped onto the schema's `OrderState` by the event's name, which rides as a\nheader, so nothing parses a payload to decide what it is.\n\nEphemeral, not durable: a client watching one order on one screen should\nleave nothing behind on the server when it closes the tab, and a move it\nmissed while away is not worth replaying - the screen asks for `order` when\nit opens.\n\nThe transport is server-sent events, which is what Yoga does by default. A\nsecond protocol on a second port, for one field, would have to earn itself.\n\nWithout `NATS_URL` the port is filled by a stand-in that answers the\nsubscription and never yields, so a storefront running alone in a terminal\nshows a screen that waits rather than a field that errors.\n\n### Consequences\n\n- Good: no polling, and the storefront is a subscriber to `shop.oms.order`\n  in the catalog like any other - the arrow is a fact, not a comment.\n- Bad: a consumer per client is fine for a demo estate and would need a\n  shared consumer with in-process fan-out before it was fine anywhere else.\n- Note: this is the only reason the service touches the bus. It publishes\n  nothing (bff.0002).\n",
+      "relates": {},
+      "source": "examples/bff/docs/adr/0004-subscriptions-are-the-bus-forwarded.md"
+    }
+  ]
+}

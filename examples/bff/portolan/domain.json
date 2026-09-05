@@ -1,0 +1,495 @@
+{
+  "generatedAt": "2026-09-05T13:08:38+07:00",
+  "commit": "7dfc88c",
+  "contexts": [
+    {
+      "id": "storefront",
+      "slug": "storefront",
+      "name": "Storefront",
+      "summary": "One graph in front of the estate, for one kind of client. It owns nothing: everything it answers with it asked somebody else for a moment earlier, and translated into the words a shopper's screen uses.",
+      "classification": "supporting",
+      "services": [
+        {
+          "id": "storefront.bff",
+          "slug": "bff",
+          "name": "Storefront BFF",
+          "repo": "github.com/shortlink-org/portolan",
+          "path": "examples/bff",
+          "readme": "# Storefront BFF\n\nService `bff` — bounded context **storefront**. TypeScript on Node, GraphQL\nover Yoga.\n\nOne graph in front of four services, for one kind of client: the storefront.\nIt holds no data of its own. Everything it answers with, it asked somebody\nelse for a moment earlier, in that somebody's own vocabulary, and translated.\n\n## What it does\n\n- Answers `viewer`, `basket`, `order` and `shipment` over one GraphQL\n  endpoint, so a screen costs one round trip instead of four.\n- Takes `addItem`, `removeItem`, `checkout` and `cancelOrder`, and passes the\n  refusals back from whoever made them.\n- Forwards the order's moves to `Subscription.orderStatus`, off the bus the\n  order service already publishes to (bff.0004).\n- Speaks one vocabulary at its edge and translates each peer's at the adapter\n  (bff.0003).\n\n## What it does not do\n\nOwns nothing: no aggregate, no database, no event of its own (bff.0002).\nMints no session and holds no credential - auth is asked on every request.\nPrices nothing, places no order, ships nothing: the cart, the order service\nand delivery each decide their own, and this service carries the answers.\n\n## Decisions\n\n- [bff.0001](docs/adr/0001-graphql-yoga-schema-first.md) — GraphQL over Yoga, and the schema comes first\n- [bff.0002](docs/adr/0002-the-storefront-owns-no-state.md) — The storefront owns no state\n- [bff.0003](docs/adr/0003-the-schema-speaks-the-clients-words.md) — The schema speaks the client's words, not the peers'\n- [bff.0004](docs/adr/0004-subscriptions-are-the-bus-forwarded.md) — A subscription is the bus, forwarded\n\n## The tree\n\n```\nsrc/\n  schema/<module>/schema.graphql        the contract; read by extract-graphql\n  schema/<module>/resolvers/<Root>/<field>.ts\n                                        one file per field, scaffolded by codegen,\n                                        body written here; read by extract-ts\n  ports/*.ts                            what a resolver may reach\n  infrastructure/<peer>/                the vendored contract, the generated client,\n                                        and the adapter that translates\n  infrastructure/bus/                   the one subject this service listens to\n  infrastructure/transport/graphql/     the context, and Yoga\n  di/container.ts                       which adapter fills which port\n```\n\n## Running it\n\n```bash\nnpm install\nnpm run generate     # resolvers from the schema, clients from the peers' contracts\nnpm start\n```\n\n`AUTH_URL`, `CART_URL`, `OMS_ADDR` and `DELIVERY_ADDR` say where the peers\nare; each defaults to the port that service listens on locally. `NATS_URL`\nswitches subscriptions on - without it a subscription is answered and nothing\never arrives on it. `TRACER_URI` switches tracing on and points at whichever collector in the\nestate is running - this service brings none of its own. `PORT` defaults to\n8085, and the endpoint is `/graphql`.\n\n```bash\nnpm test             # the schema over the transport, with the peers stood in for\nnpm run typecheck\n```\n\nGenerated files are committed, as everywhere in this repository: the clients\nunder `src/infrastructure/*/gen`, and every `*.generated.ts` beside the\nschema. `npm run generate` reproduces them.",
+          "provides": [],
+          "consumes": [
+            {
+              "id": "auth.v1.Sessions/validateSession",
+              "peer": "auth.auth",
+              "status": "declared",
+              "source": "examples/bff/src/infrastructure/auth/gen/openapi.yaml"
+            },
+            {
+              "id": "cart.v1.Baskets/addItem",
+              "peer": "shop.cart",
+              "status": "declared",
+              "source": "examples/bff/src/infrastructure/cart/gen/openapi.yaml"
+            },
+            {
+              "id": "cart.v1.Baskets/checkout",
+              "peer": "shop.cart",
+              "status": "declared",
+              "source": "examples/bff/src/infrastructure/cart/gen/openapi.yaml"
+            },
+            {
+              "id": "cart.v1.Baskets/getBasket",
+              "peer": "shop.cart",
+              "status": "declared",
+              "source": "examples/bff/src/infrastructure/cart/gen/openapi.yaml"
+            },
+            {
+              "id": "cart.v1.Baskets/removeItem",
+              "peer": "shop.cart",
+              "status": "declared",
+              "source": "examples/bff/src/infrastructure/cart/gen/openapi.yaml"
+            },
+            {
+              "id": "delivery.v1.Delivery/GetShipment",
+              "peer": "delivery.core",
+              "status": "declared",
+              "source": "examples/bff/src/infrastructure/delivery/proto/delivery/v1/delivery.proto"
+            },
+            {
+              "id": "shop.v1.OrderService/CancelOrder",
+              "peer": "shop.oms",
+              "status": "declared",
+              "source": "examples/bff/src/infrastructure/oms/proto/shop/v1/orders.proto"
+            },
+            {
+              "id": "shop.v1.OrderService/GetOrder",
+              "peer": "shop.oms",
+              "status": "declared",
+              "source": "examples/bff/src/infrastructure/oms/proto/shop/v1/orders.proto"
+            }
+          ],
+          "aggregates": []
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [
+    {
+      "id": "flow.bff-query-basket",
+      "slug": "bff-query-basket",
+      "name": "Query basket",
+      "summary": "The basket as the cart has it, in the storefront's words.",
+      "source": "examples/bff/src/schema/basket/resolvers/Query/basket.ts",
+      "owner": "storefront",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "storefront.bff",
+          "kind": "service",
+          "context": "storefront"
+        },
+        {
+          "id": "shop.cart",
+          "kind": "service",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "storefront.bff",
+          "kind": "rpc",
+          "label": "Query.basket",
+          "status": "declared",
+          "line": "examples/bff/src/schema/basket/resolvers/Query/basket.ts:4"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "storefront.bff",
+          "to": "shop.cart",
+          "kind": "rpc",
+          "label": "getBasket",
+          "status": "declared",
+          "ref": "cart.v1.Baskets/getBasket",
+          "line": "examples/bff/src/schema/basket/resolvers/Query/basket.ts:5"
+        }
+      ]
+    },
+    {
+      "id": "flow.bff-query-shipment",
+      "slug": "bff-query-shipment",
+      "name": "Query shipment",
+      "summary": "",
+      "source": "examples/bff/src/schema/delivery/resolvers/Query/shipment.ts",
+      "owner": "storefront",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "storefront.bff",
+          "kind": "service",
+          "context": "storefront"
+        },
+        {
+          "id": "delivery.core",
+          "kind": "service",
+          "context": "delivery"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "storefront.bff",
+          "kind": "rpc",
+          "label": "Query.shipment",
+          "status": "declared",
+          "line": "examples/bff/src/schema/delivery/resolvers/Query/shipment.ts:3"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "storefront.bff",
+          "to": "delivery.core",
+          "kind": "rpc",
+          "label": "GetShipment",
+          "status": "declared",
+          "ref": "delivery.v1.Delivery/GetShipment",
+          "line": "examples/bff/src/schema/delivery/resolvers/Query/shipment.ts:4"
+        }
+      ]
+    },
+    {
+      "id": "flow.bff-query-order",
+      "slug": "bff-query-order",
+      "name": "Query order",
+      "summary": "",
+      "source": "examples/bff/src/schema/order/resolvers/Query/order.ts",
+      "owner": "storefront",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "storefront.bff",
+          "kind": "service",
+          "context": "storefront"
+        },
+        {
+          "id": "shop.oms",
+          "kind": "service",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "storefront.bff",
+          "kind": "rpc",
+          "label": "Query.order",
+          "status": "declared",
+          "line": "examples/bff/src/schema/order/resolvers/Query/order.ts:3"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "storefront.bff",
+          "to": "shop.oms",
+          "kind": "rpc",
+          "label": "GetOrder",
+          "status": "declared",
+          "ref": "shop.v1.OrderService/GetOrder",
+          "line": "examples/bff/src/schema/order/resolvers/Query/order.ts:4"
+        }
+      ]
+    },
+    {
+      "id": "flow.bff-query-viewer",
+      "slug": "bff-query-viewer",
+      "name": "Query viewer",
+      "summary": "Who the request belongs to. Auth is asked on every call rather than a token being read here: this service holds no key and could not tell a forged one from a live one.",
+      "source": "examples/bff/src/schema/viewer/resolvers/Query/viewer.ts",
+      "owner": "storefront",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "storefront.bff",
+          "kind": "service",
+          "context": "storefront"
+        },
+        {
+          "id": "auth.auth",
+          "kind": "service",
+          "context": "auth"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "storefront.bff",
+          "kind": "rpc",
+          "label": "Query.viewer",
+          "status": "declared",
+          "line": "examples/bff/src/schema/viewer/resolvers/Query/viewer.ts:8"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "storefront.bff",
+          "to": "auth.auth",
+          "kind": "rpc",
+          "label": "validateSession",
+          "status": "declared",
+          "ref": "auth.v1.Sessions/validateSession",
+          "line": "examples/bff/src/schema/viewer/resolvers/Query/viewer.ts:9"
+        }
+      ]
+    },
+    {
+      "id": "flow.bff-mutation-add-item",
+      "slug": "bff-mutation-add-item",
+      "name": "Mutation add item",
+      "summary": "Add a line. The price travels as the customer was shown it; the cart captures it and never recomputes it, and nothing here checks it - a storefront that priced things would be a second place prices live.",
+      "source": "examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts",
+      "owner": "storefront",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "storefront.bff",
+          "kind": "service",
+          "context": "storefront"
+        },
+        {
+          "id": "shop.cart",
+          "kind": "service",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "storefront.bff",
+          "kind": "rpc",
+          "label": "Mutation.addItem",
+          "status": "declared",
+          "line": "examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts:8"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "storefront.bff",
+          "to": "shop.cart",
+          "kind": "rpc",
+          "label": "addItem",
+          "status": "declared",
+          "ref": "cart.v1.Baskets/addItem",
+          "line": "examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts:9"
+        }
+      ]
+    },
+    {
+      "id": "flow.bff-mutation-checkout",
+      "slug": "bff-mutation-checkout",
+      "name": "Mutation checkout",
+      "summary": "Freeze the basket and hand it on.",
+      "source": "examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts",
+      "owner": "storefront",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "storefront.bff",
+          "kind": "service",
+          "context": "storefront"
+        },
+        {
+          "id": "shop.cart",
+          "kind": "service",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "storefront.bff",
+          "kind": "rpc",
+          "label": "Mutation.checkout",
+          "status": "declared",
+          "line": "examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts:11"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "storefront.bff",
+          "to": "shop.cart",
+          "kind": "rpc",
+          "label": "checkout",
+          "status": "declared",
+          "ref": "cart.v1.Baskets/checkout",
+          "line": "examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts:12"
+        }
+      ]
+    },
+    {
+      "id": "flow.bff-mutation-remove-item",
+      "slug": "bff-mutation-remove-item",
+      "name": "Mutation remove item",
+      "summary": "",
+      "source": "examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts",
+      "owner": "storefront",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "storefront.bff",
+          "kind": "service",
+          "context": "storefront"
+        },
+        {
+          "id": "shop.cart",
+          "kind": "service",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "storefront.bff",
+          "kind": "rpc",
+          "label": "Mutation.removeItem",
+          "status": "declared",
+          "line": "examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts:3"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "storefront.bff",
+          "to": "shop.cart",
+          "kind": "rpc",
+          "label": "removeItem",
+          "status": "declared",
+          "ref": "cart.v1.Baskets/removeItem",
+          "line": "examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts:4"
+        }
+      ]
+    },
+    {
+      "id": "flow.bff-mutation-cancel-order",
+      "slug": "bff-mutation-cancel-order",
+      "name": "Mutation cancel order",
+      "summary": "Cancel an order. Whether it is too late to is the order service's judgement and its refusal travels back unchanged; this service does not know what dispatch means.",
+      "source": "examples/bff/src/schema/order/resolvers/Mutation/cancelOrder.ts",
+      "owner": "storefront",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "storefront.bff",
+          "kind": "service",
+          "context": "storefront"
+        },
+        {
+          "id": "shop.oms",
+          "kind": "service",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "storefront.bff",
+          "kind": "rpc",
+          "label": "Mutation.cancelOrder",
+          "status": "declared",
+          "line": "examples/bff/src/schema/order/resolvers/Mutation/cancelOrder.ts:8"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "storefront.bff",
+          "to": "shop.oms",
+          "kind": "rpc",
+          "label": "CancelOrder",
+          "status": "declared",
+          "ref": "shop.v1.OrderService/CancelOrder",
+          "line": "examples/bff/src/schema/order/resolvers/Mutation/cancelOrder.ts:9"
+        }
+      ]
+    },
+    {
+      "id": "flow.bff-subscription-order-status",
+      "slug": "bff-subscription-order-status",
+      "name": "Subscription order status",
+      "summary": "Every move of one order, for as long as somebody is watching it.",
+      "source": "examples/bff/src/schema/order/resolvers/Subscription/orderStatus.ts",
+      "owner": "storefront",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "storefront.bff",
+          "kind": "service",
+          "context": "storefront"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "storefront.bff",
+          "kind": "rpc",
+          "label": "Subscription.orderStatus",
+          "status": "declared",
+          "line": "examples/bff/src/schema/order/resolvers/Subscription/orderStatus.ts:11"
+        }
+      ]
+    }
+  ],
+  "adrs": []
+}

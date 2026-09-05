@@ -25,6 +25,28 @@
       ]
     },
     {
+      "id": "storefront",
+      "slug": "storefront",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "storefront.bff",
+          "slug": "bff",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "owners": [
+            "@shortlink-org/platform"
+          ]
+        }
+      ]
+    },
+    {
       "id": "payments",
       "slug": "payments",
       "name": "",

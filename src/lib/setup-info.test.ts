@@ -63,6 +63,42 @@ describe("publicSetupFrom", () => {
     expect(JSON.stringify(setup)).not.toContain("command");
   });
 
+  it("claims the sandbox only for a plugin that declares a module", () => {
+    const setup = publicSetupFrom({
+      plugins: [
+        { name: "real", wasm: { url: "file://gen.wasm" } },
+        { name: "null", wasm: null },
+        { name: "bare", wasm: true },
+        { name: "half", wasm: {} },
+      ],
+    });
+
+    expect(setup.plugins.map((plugin) => plugin.runtime)).toEqual([
+      "wasm",
+      "process",
+      "process",
+      "process",
+    ]);
+  });
+
+  it("publishes a repository only as a page a browser can open", () => {
+    const setup = publicSetupFrom({
+      projects: [
+        { id: "a", name: "A", root: "a", repository: "git@github.com:org/a.git" },
+        { id: "b", name: "B", root: "b", repository: "https://example.com/b/" },
+        { id: "c", name: "C", root: "c", repository: "javascript:alert(1)" },
+        { id: "d", name: "D", root: "d" },
+      ],
+    });
+
+    expect(setup.projects.map((project) => project.repository)).toEqual([
+      "https://github.com/org/a",
+      "https://example.com/b",
+      undefined,
+      undefined,
+    ]);
+  });
+
   it("turns malformed optional collections into an empty snapshot", () => {
     expect(publicSetupFrom({ projects: null, plugins: "no" })).toEqual({
       projects: [],
