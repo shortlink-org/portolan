@@ -19,23 +19,31 @@ from domain import Aggregate
 from ids import camel
 from source import Module, doc, dotted
 
-# What a write looks like through the ORM, and the publish that goes with one.
-WRITES = {
+# The same core port-write vocabulary as the Go, TS, Rust and Java extractors.
+PORT_WRITES = {
     "save",
     "delete",
     "create",
     "update",
+    "publish",
+    "remove",
+    "insert",
+    "upsert",
+}
+
+# Django adds explicit ORM and signal mutations; these are framework syntax,
+# not a competing definition of command/query.
+FRAMEWORK_WRITES = {
     "get_or_create",
     "update_or_create",
     "bulk_create",
     "bulk_update",
     "add",
-    "remove",
     "set",
     "send",
     "send_robust",
-    "publish",
 }
+WRITES = PORT_WRITES | FRAMEWORK_WRITES
 
 
 @dataclass
@@ -58,8 +66,6 @@ def writes(node: ast.AST) -> bool:
         if isinstance(child, ast.Call):
             name = dotted(child.func)
             if name.split(".")[-1] in WRITES:
-                return True
-            if name.endswith("atomic"):
                 return True
     return False
 

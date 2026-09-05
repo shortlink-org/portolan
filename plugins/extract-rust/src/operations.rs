@@ -28,7 +28,7 @@ pub struct UseCase<'a> {
 }
 
 /// The verbs that make a use case a command: what it does to a port that changes the world.
-const WRITES: &[&str] = &["save", "delete", "create", "update", "publish", "remove", "insert", "upsert"];
+pub const WRITE_METHODS: &[&str] = &["save", "delete", "create", "update", "publish", "remove", "insert", "upsert"];
 
 pub fn read_use_cases<'a>(krate: &'a Crate, application: &Path, rel: &dyn Fn(&Path) -> String, b: &mut Builder) -> Vec<UseCase<'a>> {
     let Ok(entries) = fs::read_dir(application) else { return vec![] };
@@ -160,7 +160,7 @@ fn is_command(uc: &UseCase) -> bool {
     impl<'ast> Visit<'ast> for Writes<'_> {
         fn visit_expr_method_call(&mut self, call: &'ast syn::ExprMethodCall) {
             let method = call.method.to_string().to_lowercase();
-            if WRITES.contains(&method.as_str())
+            if WRITE_METHODS.contains(&method.as_str())
                 && let Expr::Field(f) = &*call.receiver
                 && let syn::Member::Named(port) = &f.member
                 && matches!(&*f.base, Expr::Path(p) if p.path.is_ident("self"))

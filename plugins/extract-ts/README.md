@@ -164,9 +164,9 @@ with the vendored document as its source.
 `source` is the directory the layout starts in, `src` unless said otherwise.
 Everything else means what it means for `extract-go`.
 
-## Diagnostics
+## Extraction limits
 
-Reported beside the fragment, never papered over inside it:
+These cases do not become facts in the fragment:
 
 - a domain directory with no root class of its name;
 - a use case directory with no `UseCase`, or a `UseCase` with no `handle`;
@@ -183,7 +183,7 @@ Reported beside the fragment, never papered over inside it:
 
 ```json
 {
-  "plugins": [{ "name": "ts-domain", "process": { "cmd": "node plugins/extract-ts/main.ts" } }],
+  "plugins": [{ "name": "ts-domain", "process": { "command": "node", "args": ["plugins/extract-ts/main.ts"] } }],
   "extract": [
     { "plugin": "ts-domain", "in": "examples/shop/cart", "out": "examples/shop/cart/portolan",
       "options": { "context": "shop", "service": "cart", "store": "pg",

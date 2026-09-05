@@ -32,8 +32,12 @@ public final class Main {
 
     static String serve(String raw) throws IOException {
         Map<String, Object> request = Json.object(Json.parse(raw));
+        String version = Json.string(request.get("portolanVersion"));
+        if (!version.isEmpty() && !"0.1.0".equals(version)) {
+            throw new IllegalArgumentException("unsupported portolan protocol " + version + " (plugin supports 0.1.0)");
+        }
         if ("describe".equals(Json.string(request.get("kind")))) {
-            return Json.write(Catalog.map("files", List.of(), "diagnostics", List.of(), "describe", descriptor()));
+            return Json.write(Catalog.map("files", List.of(), "describe", descriptor()));
         }
         Protocol.Input input = Protocol.Input.of(request.get("input"));
         if (input.root().isEmpty()) {
@@ -41,6 +45,10 @@ public final class Main {
         }
         Protocol.Builder b = new Protocol.Builder();
         Extract.run(input, Protocol.Options.of(request.get("options")), b, Path.of("").toAbsolutePath());
+        for (Map<String, Object> warning : b.warnings()) {
+            String ref = Json.string(warning.get("ref"));
+            System.err.println("warning: " + (ref.isEmpty() ? "" : ref + ": ") + Json.string(warning.get("message")));
+        }
         return Json.write(b.response());
     }
 

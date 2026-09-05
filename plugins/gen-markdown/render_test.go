@@ -100,8 +100,8 @@ func TestGoldenDiagnostics(t *testing.T) {
 		`flow.raise-invoice: flow.raise-invoice step "s3" is unresolved: psp.v1.Charges/Create`,
 	}
 
-	got := make([]string, 0, len(resp.Diagnostics))
-	for _, d := range resp.Diagnostics {
+	got := make([]string, 0, len(resp.Warnings()))
+	for _, d := range resp.Warnings() {
 		got = append(got, d.Ref+": "+d.Message)
 	}
 	sort.Strings(got)

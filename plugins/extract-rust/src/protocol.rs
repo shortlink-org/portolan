@@ -31,7 +31,8 @@ pub struct Input {
 #[derive(Debug, Default, Serialize)]
 pub struct Response {
     pub files: Vec<File>,
-    pub diagnostics: Vec<Diagnostic>,
+    #[serde(skip_serializing)]
+    pub warnings: Vec<Warning>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub describe: Option<Descriptor>,
 }
@@ -43,7 +44,7 @@ pub struct File {
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct Diagnostic {
+pub struct Warning {
     pub severity: String,
     pub message: String,
     #[serde(rename = "ref")]
@@ -94,12 +95,12 @@ pub struct Options {
 #[derive(Debug, Default)]
 pub struct Builder {
     pub files: Vec<File>,
-    pub diagnostics: Vec<Diagnostic>,
+    pub warnings: Vec<Warning>,
 }
 
 impl Builder {
     pub fn warn(&mut self, reference: &str, message: impl Into<String>) {
-        self.diagnostics.push(Diagnostic {
+        self.warnings.push(Warning {
             severity: "warning".into(),
             message: message.into(),
             reference: reference.into(),

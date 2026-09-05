@@ -25,9 +25,9 @@ describe("the fixture, as a whole", () => {
   });
 
   it("reports the operation with no handler, and nothing else", () => {
-    const { diagnostics } = run();
-    expect(diagnostics.map((d) => d.ref)).toEqual(["getBasket"]);
-    expect(diagnostics[0]!.message).toContain("no handler");
+    const { warnings } = run();
+    expect(warnings.map((d) => d.ref)).toEqual(["getBasket"]);
+    expect(warnings[0]!.message).toContain("no handler");
   });
 });
 

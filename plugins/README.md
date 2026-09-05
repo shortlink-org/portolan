@@ -7,8 +7,7 @@ The contract is one JSON message in and one JSON message out:
 
 ```
 → { "portolanVersion": "0.1.0", "catalog": { ... }, "options": { ... } }
-← { "files": [{ "name": "shop/oms/README.md", "contents": "..." }],
-    "diagnostics": [{ "severity": "warning", "message": "...", "ref": "..." }] }
+← { "files": [{ "name": "shop/oms/README.md", "contents": "..." }] }
 ```
 
 There is a second question, asked with `"kind": "describe"`, and the answer is
@@ -43,9 +42,10 @@ Three obligations, and they are the whole of it:
 2. **Determinism.** The same catalog produces byte-identical output, so
    reviewing generated documentation is reviewing a diff. Sort anything that
    comes out of a map; never read a clock.
-3. **Diagnostics over silence.** Something that cannot be rendered faithfully —
-   a dangling reference, an event with no versions — is reported beside the
-   output, not papered over inside it.
+3. **One decisive response.** A malformed request, incompatible protocol,
+   unsafe filename or invalid response fails the run. Non-fatal extraction
+   notes go to stderr; there is no advisory response property a caller may
+   accidentally ignore.
 
 ## Adding one
 
@@ -193,7 +193,7 @@ against a clean run.
 
 ```json
 {
-  "plugins": [{ "name": "otel", "process": { "cmd": "go run ./plugins/verify-otel" } }],
+  "plugins": [{ "name": "otel", "process": { "command": "go", "args": ["run", "./plugins/verify-otel"] } }],
   "verify": [
     {
       "plugin": "otel",
@@ -251,11 +251,17 @@ run over your source tree without reading it.
 `process` is the escape hatch for a generator that needs a toolchain — one
 reading Go source has to run `go list`, and no wasm module can spawn anything.
 It gets the same protocol and none of the sandbox, which is the trade being made
-and the reason it is not the default.
+and the reason it is not the default. It declares `command` and an `args` array;
+the host never feeds a command string through a shell.
 
 A plugin fetched over `https://` must declare its `sha256`; the host verifies it
 and caches by digest. A `file://` plugin may declare one, but a checksum
 protects a download, not a module built from the source next to it.
+Downloads do not follow redirects and are bounded in time and size. Every run
+has a deadline and bounded stdout/stderr; wasm runs in a worker so even a module
+stuck in a loop can be terminated. Responses reject unknown properties,
+duplicate or unsafe filenames, and non-string contents before anything is
+written.
 
 ## Services in other repositories: fetch-git
 
@@ -270,7 +276,7 @@ it exactly as it would read that service's checkout.
 
 ```json
 {
-  "plugins": [{ "name": "git", "process": { "cmd": "go run ./plugins/fetch-git" } }],
+  "plugins": [{ "name": "git", "process": { "command": "go", "args": ["run", "./plugins/fetch-git"] } }],
   "extract": [
     {
       "plugin": "git",
@@ -334,8 +340,8 @@ its protos and locks are on disk by the time the parser reads them.
 ```json
 {
   "plugins": [
-    { "name": "bsr",   "process": { "cmd": "go run ./plugins/fetch-bsr" } },
-    { "name": "proto", "process": { "cmd": "go run ./plugins/extract-proto" } }
+    { "name": "bsr",   "process": { "command": "go", "args": ["run", "./plugins/fetch-bsr"] } },
+    { "name": "proto", "process": { "command": "go", "args": ["run", "./plugins/extract-proto"] } }
   ],
   "extract": [
     {

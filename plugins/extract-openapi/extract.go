@@ -83,7 +83,7 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 func rpcServices(doc *document, api, source string, b *plugin.Builder) []catalog.RpcService {
 	type group struct {
 		methods []catalog.RpcMethod
-		schemas []string
+		schemas []schemaRef
 		seen    map[string]bool
 		visited map[string]bool
 	}
@@ -156,58 +156,121 @@ func rpcServices(doc *document, api, source string, b *plugin.Builder) []catalog
 // The list grows while it is walked: a request body names a schema, that schema
 // names another, and a reader who has to follow three links to find out what
 // comes back has been given a worse document than the yaml.
-func messages(doc *document, names []string, seen, visited map[string]bool, b *plugin.Builder) []catalog.RpcMessage {
-	schemas := child(doc.root, "components", "schemas")
-
+func messages(doc *document, refs []schemaRef, seen, visited map[string]bool, b *plugin.Builder) []catalog.RpcMessage {
 	out := []catalog.RpcMessage{}
-	for i := 0; i < len(names); i++ {
-		name := names[i]
-
-		node := child(schemas, name)
-		if node == nil {
-			b.Warn(name, "the document refers to schema "+name+", which it does not define")
-
-			continue
-		}
-
+	for i := 0; i < len(refs); i++ {
+		ref := refs[i]
 		// Anything this schema refers to joins the queue behind it.
-		doc.schemaRefs(node, &names, seen, visited)
+		ref.doc.schemaRefs(ref.node, &refs, seen, visited)
 
-		out = append(out, catalog.RpcMessage{Name: name, Fields: schemaFields(node)})
+		out = append(out, catalog.RpcMessage{Name: ref.name, Fields: schemaFields(ref.doc, ref.node)})
 	}
 
 	return out
 }
 
-func schemaFields(node *yaml.Node) []catalog.Field {
+func schemaFields(doc *document, node *yaml.Node) []catalog.Field {
+	fields, required := schemaShape(doc, node, map[string]bool{})
+	for i := range fields {
+		if !required[fields[i].Name] {
+			fields[i].Doc = strings.TrimSpace("Optional. " + fields[i].Doc)
+		}
+	}
+	return fields
+}
+
+// schemaShape flattens object composition into the field model the catalog
+// has. allOf contributes every required field; oneOf/anyOf contributes the
+// union, with a field required only when every variant requires it.
+func schemaShape(doc *document, node *yaml.Node, resolving map[string]bool) ([]catalog.Field, map[string]bool) {
+	fields := []catalog.Field{}
 	required := map[string]bool{}
+	merge := func(more []catalog.Field, moreRequired map[string]bool, requireMode bool) {
+		for _, field := range more {
+			at := -1
+			for i := range fields {
+				if fields[i].Name == field.Name {
+					at = i
+					break
+				}
+			}
+			if at < 0 {
+				fields = append(fields, field)
+			} else {
+				if fields[at].Type != field.Type && field.Type != "" {
+					fields[at].Type = unionTypes(fields[at].Type, field.Type)
+				}
+				if fields[at].Doc == "" {
+					fields[at].Doc = field.Doc
+				}
+			}
+			if requireMode && moreRequired[field.Name] {
+				required[field.Name] = true
+			}
+		}
+	}
+	if ref := text(child(node, "$ref")); ref != "" {
+		if targetDoc, target, pointer, ok := doc.resolve(ref); ok {
+			key := targetDoc.path + "#" + pointer
+			if !resolving[key] {
+				resolving[key] = true
+				more, moreRequired := schemaShape(targetDoc, target, resolving)
+				delete(resolving, key)
+				merge(more, moreRequired, true)
+			}
+		}
+	}
+
 	for _, name := range list(child(node, "required")) {
 		required[name] = true
 	}
-
-	out := []catalog.Field{}
 	for _, property := range entries(child(node, "properties")) {
-		doc := text(child(property.value, "description"))
-		if !required[property.key] {
-			// Which fields must be sent is the first thing a caller needs and
-			// the schema has nowhere else to put it.
-			doc = strings.TrimSpace("Optional. " + doc)
-		}
-
-		out = append(out, catalog.Field{
-			Name: property.key,
-			Type: typeOf(property.value),
-			Doc:  doc,
-		})
+		fields = append(fields, catalog.Field{Name: property.key, Type: typeOf(doc, property.value), Doc: text(child(property.value, "description"))})
 	}
 
-	return out
+	for _, branch := range itemsOf(child(node, "allOf")) {
+		more, moreRequired := schemaShape(doc, branch, resolving)
+		merge(more, moreRequired, true)
+	}
+
+	for _, keyword := range []string{"oneOf", "anyOf"} {
+		variants := itemsOf(child(node, keyword))
+		if len(variants) == 0 {
+			continue
+		}
+		counts := map[string]int{}
+		for _, branch := range variants {
+			more, moreRequired := schemaShape(doc, branch, resolving)
+			merge(more, moreRequired, false)
+			for name := range moreRequired {
+				counts[name]++
+			}
+		}
+		for name, count := range counts {
+			if count == len(variants) {
+				required[name] = true
+			}
+		}
+	}
+	return fields, required
 }
 
-// typeOf renders a schema as a type a reader recognises: `string (email)`,
-// `[]Session`, `User`.
-func typeOf(node *yaml.Node) string {
+func itemsOf(node *yaml.Node) []*yaml.Node {
+	if node == nil || node.Kind != yaml.SequenceNode {
+		return nil
+	}
+	return node.Content
+}
+
+// typeOf renders composed schemas, enums, maps and OpenAPI 3.1 nullable type
+// arrays while keeping the compact spelling used elsewhere in the catalog.
+func typeOf(doc *document, node *yaml.Node) string {
 	if ref := text(child(node, "$ref")); ref != "" {
+		if _, _, pointer, ok := doc.resolve(ref); ok {
+			if name, schema := schemaName(pointer); schema {
+				return name
+			}
+		}
 		if name, ok := strings.CutPrefix(ref, schemaRefPrefix); ok {
 			return name
 		}
@@ -215,20 +278,87 @@ func typeOf(node *yaml.Node) string {
 		return ref
 	}
 
+	for _, keyword := range []string{"oneOf", "anyOf"} {
+		var variants []string
+		for _, branch := range itemsOf(child(node, keyword)) {
+			variants = append(variants, typeOf(doc, branch))
+		}
+		if len(variants) > 0 {
+			return nullableType(strings.Join(unique(variants), " | "), node)
+		}
+	}
+	if branches := itemsOf(child(node, "allOf")); len(branches) > 0 {
+		var variants []string
+		for _, branch := range branches {
+			variants = append(variants, typeOf(doc, branch))
+		}
+		return nullableType(strings.Join(unique(variants), " & "), node)
+	}
+
 	kind := text(child(node, "type"))
+	if child(node, "type") != nil && child(node, "type").Kind == yaml.SequenceNode {
+		kinds := unique(list(child(node, "type")))
+		if format := text(child(node, "format")); format != "" {
+			for i := range kinds {
+				if kinds[i] != "null" {
+					kinds[i] += " (" + format + ")"
+				}
+			}
+		}
+		kind = strings.Join(kinds, " | ")
+		if values := list(child(node, "enum")); len(values) > 0 {
+			kind += " enum(" + strings.Join(values, " | ") + ")"
+		}
+		return nullableType(kind, node)
+	}
 	if kind == "array" {
-		return "[]" + typeOf(child(node, "items"))
+		return nullableType("[]"+typeOf(doc, child(node, "items")), node)
+	}
+	if kind == "object" {
+		additional := child(node, "additionalProperties")
+		if additional != nil && (additional.Kind == yaml.MappingNode || text(additional) == "true") {
+			value := "any"
+			if additional.Kind == yaml.MappingNode {
+				value = typeOf(doc, additional)
+			}
+			return nullableType("map[string]"+value, node)
+		}
 	}
 
 	if format := text(child(node, "format")); format != "" {
-		return kind + " (" + format + ")"
+		kind += " (" + format + ")"
 	}
 
 	if kind == "" {
-		return "object"
+		kind = "object"
 	}
+	if values := list(child(node, "enum")); len(values) > 0 {
+		kind += " enum(" + strings.Join(values, " | ") + ")"
+	}
+	return nullableType(kind, node)
+}
 
+func nullableType(kind string, node *yaml.Node) string {
+	if text(child(node, "nullable")) == "true" && !strings.Contains(kind, "null") {
+		return kind + " | null"
+	}
 	return kind
+}
+
+func unique(values []string) []string {
+	seen := map[string]bool{}
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		if value != "" && !seen[value] {
+			seen[value] = true
+			out = append(out, value)
+		}
+	}
+	return out
+}
+
+func unionTypes(left, right string) string {
+	return strings.Join(unique(append(strings.Split(left, " | "), strings.Split(right, " | ")...)), " | ")
 }
 
 // apiID is the document's title and major version: `auth` 1.0.0 gives

@@ -11,49 +11,57 @@
     {
       "name": "go-domain",
       "process": {
-        "cmd": "go run ./plugins/extract-go"
+        "command": "go",
+        "args": ["run", "./plugins/extract-go"]
       }
     },
     {
       "name": "ts-domain",
       "process": {
-        "cmd": "node plugins/extract-ts/main.ts"
+        "command": "node",
+        "args": ["plugins/extract-ts/main.ts"]
       }
     },
     {
       "name": "rust-domain",
       "process": {
-        "cmd": "cargo run --quiet --manifest-path plugins/extract-rust/Cargo.toml"
+        "command": "cargo",
+        "args": ["run", "--quiet", "--manifest-path", "plugins/extract-rust/Cargo.toml"]
       }
     },
     {
       "name": "java-domain",
       "process": {
-        "cmd": "java -cp plugins/extract-java/build org.portolan.extract.Main"
+        "command": "java",
+        "args": ["-cp", "plugins/extract-java/build", "org.portolan.extract.Main"]
       }
     },
     {
       "name": "django-domain",
       "process": {
-        "cmd": "python3 plugins/extract-django/main.py"
+        "command": "python3",
+        "args": ["plugins/extract-django/main.py"]
       }
     },
     {
       "name": "openapi",
       "process": {
-        "cmd": "go run ./plugins/extract-openapi"
+        "command": "go",
+        "args": ["run", "./plugins/extract-openapi"]
       }
     },
     {
       "name": "asyncapi",
       "process": {
-        "cmd": "go run ./plugins/extract-asyncapi"
+        "command": "go",
+        "args": ["run", "./plugins/extract-asyncapi"]
       }
     },
     {
       "name": "sql",
       "process": {
-        "cmd": "go run ./plugins/extract-sql"
+        "command": "go",
+        "args": ["run", "./plugins/extract-sql"]
       }
     },
     {
@@ -65,25 +73,29 @@
     {
       "name": "otel",
       "process": {
-        "cmd": "go run ./plugins/verify-otel"
+        "command": "go",
+        "args": ["run", "./plugins/verify-otel"]
       }
     },
     {
       "name": "flows",
       "process": {
-        "cmd": "go run ./plugins/extract-flows"
+        "command": "go",
+        "args": ["run", "./plugins/extract-flows"]
       }
     },
     {
       "name": "bsr",
       "process": {
-        "cmd": "go run ./plugins/fetch-bsr"
+        "command": "go",
+        "args": ["run", "./plugins/fetch-bsr"]
       }
     },
     {
       "name": "proto",
       "process": {
-        "cmd": "go run ./plugins/extract-proto"
+        "command": "go",
+        "args": ["run", "./plugins/extract-proto"]
       }
     }
   ],

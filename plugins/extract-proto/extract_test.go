@@ -400,7 +400,7 @@ func TestGoldenFragment(t *testing.T) {
 }
 
 func warned(resp plugin.Response, substring string) bool {
-	for _, d := range resp.Diagnostics {
+	for _, d := range resp.Warnings() {
 		if strings.Contains(d.Message, substring) {
 			return true
 		}

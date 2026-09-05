@@ -2,11 +2,14 @@ package main
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/shortlink-org/portolan/catalog"
 	"github.com/shortlink-org/portolan/plugin"
+	"gopkg.in/yaml.v3"
 )
 
 func fragment(t *testing.T) catalog.Catalog {
@@ -29,6 +32,16 @@ func fragment(t *testing.T) catalog.Catalog {
 	}
 
 	return out
+}
+
+func testDocument(t *testing.T, source string) *document {
+	t.Helper()
+	var root yaml.Node
+	if err := yaml.Unmarshal([]byte(source), &root); err != nil {
+		t.Fatal(err)
+	}
+	node := root.Content[0]
+	return &document{root: node, path: "test.yaml", cache: map[string]*document{}}
 }
 
 func provided(t *testing.T) []catalog.RpcService {
@@ -129,6 +142,95 @@ func TestFieldTypesAndOptionality(t *testing.T) {
 	// catalog has nowhere else to put it.
 	if got := fields["lines"].Doc; !strings.HasPrefix(got, "Optional.") {
 		t.Errorf("an optional field should say so, got %q", got)
+	}
+}
+
+func TestComposedSchemasMapsEnumsAndNullableTypes(t *testing.T) {
+	doc := testDocument(t, `
+components:
+  schemas:
+    Base:
+      type: object
+      required: [id]
+      properties:
+        id: {type: string, format: uuid}
+    Account:
+      allOf:
+        - $ref: '#/components/schemas/Base'
+        - type: object
+          required: [labels]
+          properties:
+            labels:
+              type: object
+              additionalProperties: {type: string}
+            state:
+              type: string
+              enum: [active, disabled]
+            contact:
+              nullable: true
+              oneOf:
+                - {type: string, format: email}
+                - {type: string, format: phone}
+`)
+	account := child(doc.root, "components", "schemas", "Account")
+	fields := map[string]catalog.Field{}
+	for _, field := range schemaFields(doc, account) {
+		fields[field.Name] = field
+	}
+
+	if fields["id"].Type != "string (uuid)" || strings.HasPrefix(fields["id"].Doc, "Optional.") {
+		t.Errorf("allOf required field = %+v", fields["id"])
+	}
+	if fields["labels"].Type != "map[string]string" || strings.HasPrefix(fields["labels"].Doc, "Optional.") {
+		t.Errorf("map field = %+v", fields["labels"])
+	}
+	if fields["state"].Type != "string enum(active | disabled)" || !strings.HasPrefix(fields["state"].Doc, "Optional.") {
+		t.Errorf("enum field = %+v", fields["state"])
+	}
+	if fields["contact"].Type != "string (email) | string (phone) | null" {
+		t.Errorf("oneOf nullable field type = %q", fields["contact"].Type)
+	}
+}
+
+func TestRelativeExternalSchemaRefsAreLoaded(t *testing.T) {
+	dir := t.TempDir()
+	common := filepath.Join(dir, "common.yaml")
+	root := filepath.Join(dir, "openapi.yaml")
+	if err := os.WriteFile(common, []byte(`components:
+  schemas:
+    External:
+      type: object
+      required: [code]
+      properties:
+        code: {type: integer, format: int64}
+`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(root, []byte(`openapi: 3.1.0
+info: {title: external, version: 1.0.0}
+paths:
+  /external:
+    get:
+      operationId: getExternal
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {$ref: './common.yaml#/components/schemas/External'}
+`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	doc, err := load(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	services := rpcServices(doc, "external.v1", root, &plugin.Builder{})
+	if len(services) != 1 || len(services[0].Messages) != 1 {
+		t.Fatalf("services = %+v", services)
+	}
+	message := services[0].Messages[0]
+	if message.Name != "External" || len(message.Fields) != 1 || message.Fields[0].Type != "integer (int64)" {
+		t.Errorf("external message = %+v", message)
 	}
 }
 

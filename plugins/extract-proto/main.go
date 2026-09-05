@@ -12,7 +12,7 @@
 //
 //	{
 //	  "plugins": [
-//	    { "name": "proto", "process": { "cmd": "go run ./plugins/extract-proto" } }
+//	    { "name": "proto", "process": { "command": "go", "args": ["run", "./plugins/extract-proto"] } }
 //	  ],
 //	  "extract": [
 //	    {

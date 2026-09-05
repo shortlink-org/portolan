@@ -195,7 +195,7 @@ func TestATraceRaisesTheHopsItShows(t *testing.T) {
 	if len(login.Participants) != 4 {
 		t.Errorf("participants changed: %+v", login.Participants)
 	}
-	for _, d := range resp.Diagnostics {
+	for _, d := range resp.Warnings() {
 		if strings.Contains(d.Message, "no service in the catalog") && !strings.Contains(d.Message, "billing") && !strings.Contains(d.Message, "profile") {
 			t.Errorf("unexpected diagnostic: %s", d.Message)
 		}
@@ -230,13 +230,13 @@ func TestTheWireIsMatchedByNameAndHeldToItsChannel(t *testing.T) {
 	}
 
 	warned := 0
-	for _, d := range resp.Diagnostics {
+	for _, d := range resp.Warnings() {
 		if strings.Contains(d.Message, `on "auth_session"`) && strings.Contains(d.Message, `it goes on "sessions"`) {
 			warned++
 		}
 	}
 	if warned != 1 {
-		t.Errorf("the channel the trace shows should be held against the declared one, once: %+v", resp.Diagnostics)
+		t.Errorf("the channel the trace shows should be held against the declared one, once: %+v", resp.Warnings())
 	}
 }
 
@@ -304,13 +304,13 @@ func TestAnHTTPCallIsNamedByTheRouteItHit(t *testing.T) {
 		t.Errorf("consumes = %+v", calls)
 	}
 	var warned bool
-	for _, d := range resp.Diagnostics {
+	for _, d := range resp.Warnings() {
 		if strings.Contains(d.Message, "GET /v1/profiles/42") && strings.Contains(d.Message, "profile") {
 			warned = true
 		}
 	}
 	if !warned {
-		t.Errorf("a call to a host nobody in the catalog is should be reported: %+v", resp.Diagnostics)
+		t.Errorf("a call to a host nobody in the catalog is should be reported: %+v", resp.Warnings())
 	}
 }
 
@@ -336,7 +336,7 @@ func TestASequenceNobodyDeclaredIsObserved(t *testing.T) {
 	}
 
 	var warned bool
-	for _, d := range resp.Diagnostics {
+	for _, d := range resp.Warnings() {
 		if strings.Contains(d.Message, "GET /v1/health") {
 			warned = true
 		}
@@ -357,7 +357,7 @@ func TestAnUnknownServiceIsReportedNotInvented(t *testing.T) {
 		}
 	}
 	var n int
-	for _, d := range resp.Diagnostics {
+	for _, d := range resp.Warnings() {
 		if strings.Contains(d.Message, `"billing"`) {
 			n++
 		}
@@ -400,8 +400,8 @@ func TestNoRecordingIsAWarningAndAnEmptyFragment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(resp.Diagnostics) != 1 || !strings.Contains(resp.Diagnostics[0].Message, "no trace files") {
-		t.Errorf("diagnostics = %+v", resp.Diagnostics)
+	if len(resp.Warnings()) != 1 || !strings.Contains(resp.Warnings()[0].Message, "no trace files") {
+		t.Errorf("diagnostics = %+v", resp.Warnings())
 	}
 	var out catalog.Catalog
 	if err := json.Unmarshal([]byte(resp.Files[0].Contents), &out); err != nil || len(out.Flows) != 0 {
@@ -449,12 +449,12 @@ func TestARelayedPublishIsOneHop(t *testing.T) {
 	// The inner span is the one that says which bus, so it is the one the
 	// channel is read off.
 	warned := false
-	for _, d := range resp.Diagnostics {
+	for _, d := range resp.Warnings() {
 		if strings.Contains(d.Message, `on "sessions"`) {
 			warned = true
 		}
 	}
 	if !warned {
-		t.Errorf("the relay's destination should be held against the declared channel: %+v", resp.Diagnostics)
+		t.Errorf("the relay's destination should be held against the declared channel: %+v", resp.Warnings())
 	}
 }

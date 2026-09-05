@@ -436,13 +436,21 @@
           "type": "object",
           "additionalProperties": false,
           "required": [
-            "cmd"
+            "command"
           ],
           "description": "The escape hatch for a plugin that needs a toolchain. Same protocol, none of the sandbox, which is the trade being made.",
           "properties": {
-            "cmd": {
+            "command": {
               "type": "string",
-              "description": "The command to run, as in `go run ./plugins/extract-go`."
+              "minLength": 1,
+              "description": "The executable to run. It is passed directly to the OS, never through a shell."
+            },
+            "args": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Arguments passed to the executable without shell parsing."
             }
           }
         }

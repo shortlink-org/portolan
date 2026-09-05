@@ -64,7 +64,7 @@ class Transitions(unittest.TestCase):
     def test_a_table_and_its_methods_that_have_drifted_apart_are_reported(self):
         aggregates, registry, b = read("drift", "support")
         life = lifecycle.read(aggregates[0], registry, b)
-        messages = [d.message for d in b.diagnostics]
+        messages = [d.message for d in b.warnings]
         self.assertIn("archive moves to 'archived', which the table does not list", messages)
         self.assertIn("the table has closed -> open and no method of Ticket makes it", messages)
         # Reported, and still drawn: the state a method reaches is a state.

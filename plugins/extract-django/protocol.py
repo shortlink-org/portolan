@@ -93,25 +93,23 @@ class File:
 
 
 @dataclass
-class Diagnostic:
+class Warning:
     severity: str
     message: str
     ref: str
 
 
 class Builder:
-    """Collects what the run produces: the fragments, and every diagnostic
-    beside them. Reported, never papered over inside the output."""
+    """Collects output files and internal extraction warnings."""
 
     def __init__(self) -> None:
         self.files: List[File] = []
-        self.diagnostics: List[Diagnostic] = []
+        self.warnings: List[Warning] = []
 
     def warn(self, ref: str, message: str) -> None:
-        self.diagnostics.append(Diagnostic("warning", message, ref))
+        self.warnings.append(Warning("warning", message, ref))
 
     def response(self) -> Dict[str, Any]:
         return {
             "files": [{"name": f.name, "contents": f.contents} for f in self.files],
-            "diagnostics": [{"severity": d.severity, "message": d.message, "ref": d.ref} for d in self.diagnostics],
         }

@@ -139,7 +139,7 @@ func (h *Users) Healthz(ctx context.Context, request gen.HealthzRequestObject) (
 	b := &plugin.Builder{}
 	operationsRunning(pkg, "Users", handlerFields(pkg)["Users"], isHandler, lowerFirst, b)
 
-	if len(b.Diagnostics) != 1 || !strings.Contains(b.Diagnostics[0].Message, "runs no use case") {
-		t.Errorf("diagnostics = %+v", b.Diagnostics)
+	if len(b.Warnings) != 1 || !strings.Contains(b.Warnings[0].Message, "runs no use case") {
+		t.Errorf("diagnostics = %+v", b.Warnings)
 	}
 }

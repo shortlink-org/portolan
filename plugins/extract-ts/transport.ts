@@ -12,7 +12,7 @@ import { readProtos } from "./clients.ts";
 import { readSource, type ClassInfo, type Source, at } from "./source.ts";
 import { isCall, isMember, memberName, thisMember, walk, type Node } from "./ast.ts";
 import { useCaseKeyOf } from "./operations.ts";
-import type { Diagnostics } from "./domain.ts";
+import type { WarningSink } from "./domain.ts";
 
 export interface Endpoint {
   /** The operationId. */
@@ -35,7 +35,7 @@ export interface Transport {
  * is called what the proto calls it, which is the name `extract-proto` puts in
  * `provides`, so an operation and the interface that exposes it meet.
  */
-export function readGrpcTransport(grpcDir: string, rel: (abs: string) => string, b: Diagnostics): Endpoint[] {
+export function readGrpcTransport(grpcDir: string, rel: (abs: string) => string, b: WarningSink): Endpoint[] {
   if (!existsSync(grpcDir)) return [];
   const endpoints: Endpoint[] = [];
 
@@ -84,7 +84,7 @@ export function readGrpcTransport(grpcDir: string, rel: (abs: string) => string,
   return endpoints.sort((a, c) => a.id.localeCompare(c.id));
 }
 
-export function readTransport(httpDir: string, rel: (abs: string) => string, b: Diagnostics): Transport {
+export function readTransport(httpDir: string, rel: (abs: string) => string, b: WarningSink): Transport {
   const specPath = join(httpDir, "gen", "openapi.yaml");
   if (!existsSync(specPath)) return { spec: undefined, endpoints: [] };
   const spec = readSpec(specPath);

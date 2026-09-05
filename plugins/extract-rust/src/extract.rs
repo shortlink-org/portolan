@@ -147,7 +147,7 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
     });
     Response {
         files: b.files,
-        diagnostics: b.diagnostics,
+        warnings: b.warnings,
         describe: None,
     }
 }

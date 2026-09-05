@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -136,19 +137,62 @@ CREATE INDEX sessions_user_id_idx ON sessions (user_id, issued_at);`)
 // A migration this reader does not model is reported. Quietly skipping one
 // would leave the catalog confidently wrong about the schema.
 func TestUnreadStatementsAreReported(t *testing.T) {
-	_, unread := read(t, `
+	relations, unread := read(t, `
 CREATE TABLE t (id text PRIMARY KEY);
 ALTER TABLE t ADD COLUMN extra text;
 CREATE INDEX elsewhere_idx ON other_table (id);`)
 
-	if len(unread) != 2 {
-		t.Fatalf("expected two notes, got %v", unread)
+	if len(unread) != 1 {
+		t.Fatalf("expected one note, got %v", unread)
 	}
-	if !strings.Contains(strings.Join(unread, " "), "AlterTableStmt") {
-		t.Errorf("the ALTER should be named: %v", unread)
+	if got := relations[0].table.Columns[1].Name; got != "extra" {
+		t.Errorf("ALTER ADD COLUMN was not applied: %q", got)
 	}
 	if !strings.Contains(strings.Join(unread, " "), "other_table") {
 		t.Errorf("an index on a table from another file should be named: %v", unread)
+	}
+}
+
+func TestMigrationsBuildFinalSchemaState(t *testing.T) {
+	state := newDDLState()
+	steps := []string{
+		`CREATE TABLE accounts (id uuid PRIMARY KEY, email text, obsolete text);`,
+		`ALTER TABLE accounts ADD COLUMN version integer NOT NULL;
+         ALTER TABLE accounts ALTER COLUMN email SET NOT NULL;
+         CREATE UNIQUE INDEX accounts_email_key ON accounts (email);`,
+		`ALTER TABLE accounts RENAME COLUMN email TO login;
+         ALTER TABLE accounts ALTER COLUMN version TYPE bigint;
+         ALTER TABLE accounts DROP COLUMN obsolete;
+         ALTER TABLE accounts RENAME TO users;`,
+	}
+	for i, sql := range steps {
+		unread, err := state.apply(sql, fmt.Sprintf("%03d.sql", i+1))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(unread) != 0 {
+			t.Fatalf("migration %d left unread DDL: %v", i+1, unread)
+		}
+	}
+
+	if len(state.relations) != 1 || state.relations[0].table.Name != "users" {
+		t.Fatalf("relations = %+v", state.relations)
+	}
+	r := state.relations[0]
+	if len(r.table.Columns) != 3 {
+		t.Fatalf("columns = %+v", r.table.Columns)
+	}
+	want := map[string]string{"id": "uuid", "login": "text", "version": "bigint"}
+	for _, column := range r.table.Columns {
+		if column.Type != want[column.Name] {
+			t.Errorf("column %s type = %q, want %q", column.Name, column.Type, want[column.Name])
+		}
+		if column.Name == "login" && column.Nullable {
+			t.Error("renamed login column lost NOT NULL")
+		}
+	}
+	if len(r.indexes) != 1 || strings.Join(r.indexes[0].Columns, ",") != "login" {
+		t.Errorf("index did not follow renamed column: %+v", r.indexes)
 	}
 }
 

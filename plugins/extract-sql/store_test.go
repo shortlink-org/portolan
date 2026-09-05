@@ -9,7 +9,7 @@ import (
 	"github.com/shortlink-org/portolan/plugin"
 )
 
-func fragment(t *testing.T) (catalog.Catalog, []plugin.Diagnostic) {
+func fragment(t *testing.T) (catalog.Catalog, []plugin.Warning) {
 	t.Helper()
 
 	resp := extract(
@@ -25,7 +25,7 @@ func fragment(t *testing.T) (catalog.Catalog, []plugin.Diagnostic) {
 		t.Fatal(err)
 	}
 
-	return out, resp.Diagnostics
+	return out, resp.Warnings()
 }
 
 // One store, not one per aggregate: the migrations are numbered inside their

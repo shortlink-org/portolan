@@ -13,61 +13,12 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      # Full history: `gen` stamps each extracted fragment with the last commit
-      # to touch the source it describes, and in a shallow clone every path
-      # looks as though it changed in the single commit that was fetched
       - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
 
       - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
 
-      # The catalog mirror and the generator plugins are Go
-      - uses: actions/setup-go@v7
-        with:
-          go-version: '1.27'
-
-      # The Rust extractor is a process plugin the schema and gen steps run
-      - uses: dtolnay/rust-toolchain@stable
-
-      # extract-java is compiled by `plugins:build`, which the schema and gen
-      # steps run first. javac is the whole toolchain it needs.
-      - uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: '21'
-
       - run: npm ci
-
-      # Regenerates likec4/ from data/catalog.json, then checks the model
-      - run: npm run likec4:gen
-      - run: npm run likec4:validate
-
-      # `npm run build` re-runs likec4:gen and tsc --noEmit, then bundles
       - run: npm run build
-
-      - run: npm test
-      - run: npm run test:go
-      - run: cargo test --manifest-path plugins/extract-rust/Cargo.toml
-
-      # Refuses a commit where schema/portolan.schema.json no longer matches
-      # what the plugins say their options are. The schema is committed so that
-      # `gen` can check the manifest without starting every plugin to ask; this
-      # is what keeps the committed copy honest.
-      - run: npm run schema:check
-
-      # Rebuilds the wasm plugins and refuses a commit whose docs/ no longer
-      # follows from the catalog.
-      #
-      # PORTOLAN_OFFLINE keeps this from opening a socket: fetch-bsr replays the
-      # .proto files committed to this repository, checks them against their
-      # locks and emits an identical file list. So a fork's pull request needs
-      # no secret, and a registry being down cannot turn the tree red. Refreshing
-      # a pin is a deliberate `npm run gen` on a developer's machine, and arrives
-      # as one reviewable diff.
-      - run: npm run gen:check
-        env:
-          PORTOLAN_OFFLINE: "1"

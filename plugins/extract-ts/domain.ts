@@ -9,7 +9,7 @@ import { isExportNamed, isIdent, isString, isVarDecl } from "./ast.ts";
 import { readLifecycle } from "./lifecycle.ts";
 import { readSource, type ClassInfo, type Source } from "./source.ts";
 
-export interface Diagnostics {
+export interface WarningSink {
   warn(ref: string, message: string): void;
 }
 
@@ -23,7 +23,7 @@ export interface AggregateRead {
   own: Set<string>;
 }
 
-export function readAggregates(domainDir: string, svcID: string, rel: (abs: string) => string, b: Diagnostics): AggregateRead[] {
+export function readAggregates(domainDir: string, svcID: string, rel: (abs: string) => string, b: WarningSink): AggregateRead[] {
   if (!existsSync(domainDir)) return [];
   const out: AggregateRead[] = [];
   for (const name of readdirSync(domainDir).sort()) {
@@ -43,7 +43,7 @@ function tsFiles(dir: string): string[] {
     .map((f) => join(dir, f));
 }
 
-function readAggregate(dir: string, name: string, svcID: string, rel: (abs: string) => string, b: Diagnostics): AggregateRead | null {
+function readAggregate(dir: string, name: string, svcID: string, rel: (abs: string) => string, b: WarningSink): AggregateRead | null {
   const id = aggregateID(svcID, name);
   const rootName = pascal(name);
   const own = new Set<string>();

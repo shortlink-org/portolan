@@ -17,12 +17,12 @@ import { join } from "node:path";
 import type { Lifecycle, Transition } from "../../src/catalog.ts";
 import { readSource, at, bareType, type ClassInfo } from "./source.ts";
 import { isArray, isAssign, isCall, isExportNamed, isIdent, isMember, isObject, isProp, isString, isVarDecl, keyName, thisMember, unwrap, walk, type Node, type ObjectExpression } from "./ast.ts";
-import type { Diagnostics } from "./domain.ts";
+import type { WarningSink } from "./domain.ts";
 
 /** The exported constant the table is looked for under. */
 export const TABLE = "TRANSITIONS";
 
-export function readLifecycle(dir: string, root: ClassInfo, rootFile: string, events: Map<string, string>, id: string, rel: (abs: string) => string, b: Diagnostics): Lifecycle | undefined {
+export function readLifecycle(dir: string, root: ClassInfo, rootFile: string, events: Map<string, string>, id: string, rel: (abs: string) => string, b: WarningSink): Lifecycle | undefined {
   const table = readTable(dir);
   if (!table) return undefined;
   const states = [...table.keys()];

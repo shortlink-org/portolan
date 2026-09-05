@@ -84,7 +84,7 @@ func TestLifecycleIsReadOffTheRuleSetAndTheMover(t *testing.T) {
 	}
 
 	var messages []string
-	for _, d := range b.Diagnostics {
+	for _, d := range b.Warnings {
 		messages = append(messages, d.Message)
 	}
 	joined := strings.Join(messages, "\n")

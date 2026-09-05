@@ -1,6 +1,7 @@
 package main
 
 import (
+	"go/ast"
 	"os"
 	"path"
 	"path/filepath"
@@ -63,13 +64,62 @@ func extractOperations(root string, exposures map[string][]string, b *plugin.Bui
 // exactly when a use case mutates through a name this does not know - which is
 // a rule that can be read here, over an annotation nobody would keep current.
 func operationKind(pkg *pkg) catalog.OperationKind {
+	ports := map[string]bool{}
+	for _, held := range pkg.structs() {
+		if held.name != "UseCase" || held.fields == nil || held.fields.Fields == nil {
+			continue
+		}
+		for _, field := range held.fields.Fields.List {
+			for _, name := range field.Names {
+				ports[name.Name] = true
+			}
+		}
+	}
 	for _, fn := range pkg.methods("UseCase") {
-		if calls(fn, "Save", "Delete", "Create", "Update", "Publish") {
+		if callsWritePort(fn, ports) {
 			return catalog.OperationCommand
 		}
 	}
 
 	return catalog.OperationQuery
+}
+
+// All language extractors share this core vocabulary. Framework extractors
+// may add native write verbs (Django's bulk_update, for example), but a helper
+// method or an unrelated value called Save is not enough: the call has to be
+// made through a dependency held by the use case.
+var writeMethods = map[string]bool{
+	"save": true, "delete": true, "create": true, "update": true,
+	"publish": true, "remove": true, "insert": true, "upsert": true,
+}
+
+func callsWritePort(fn *ast.FuncDecl, ports map[string]bool) bool {
+	if fn == nil || fn.Body == nil {
+		return false
+	}
+	receiver := receiverIdent(fn)
+	found := false
+	ast.Inspect(fn.Body, func(node ast.Node) bool {
+		call, ok := node.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		method, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok || !writeMethods[strings.ToLower(method.Sel.Name)] {
+			return true
+		}
+		field, ok := method.X.(*ast.SelectorExpr)
+		if !ok || !ports[field.Sel.Name] {
+			return true
+		}
+		base, ok := field.X.(*ast.Ident)
+		if ok && base.Name == receiver {
+			found = true
+			return false
+		}
+		return true
+	})
+	return found
 }
 
 // operationDoc prefers the use case's README, which is written for a reader,

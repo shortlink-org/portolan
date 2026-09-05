@@ -36,13 +36,18 @@ def descriptor():
 
 def serve(raw: str) -> str:
     request = json.loads(raw)
+    version = request.get("portolanVersion", "")
+    if version and version != "0.1.0":
+        raise ValueError("unsupported portolan protocol %r (plugin supports 0.1.0)" % version)
     if request.get("kind") == "describe":
-        return json.dumps({"files": [], "diagnostics": [], "describe": descriptor()})
+        return json.dumps({"files": [], "describe": descriptor()})
     input_ = Input.of(request.get("input"))
     if not input_.root:
         raise ValueError("no input root: an extractor has nothing to read")
     builder = Builder()
     extract(input_, Options.of(request.get("options")), builder)
+    for warning in builder.warnings:
+        sys.stderr.write("warning: %s%s\n" % ((warning.ref + ": ") if warning.ref else "", warning.message))
     return json.dumps(builder.response(), indent=2)
 
 

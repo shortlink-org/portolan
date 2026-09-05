@@ -37,12 +37,12 @@ def run(options):
         b,
         cwd=ROOT,
     )
-    return {f.name: f.contents for f in b.files}, b.diagnostics
+    return {f.name: f.contents for f in b.files}, b.warnings
 
 
 class Fragment(unittest.TestCase):
     def setUp(self):
-        self.files, self.diagnostics = run(OPTIONS)
+        self.files, self.warnings = run(OPTIONS)
 
     def golden(self, name, contents):
         path = os.path.join(HERE, "testdata", "billing", name)
@@ -60,17 +60,17 @@ class Fragment(unittest.TestCase):
 
     def test_what_it_reports_beside_them(self):
         self.assertEqual(
-            [(d.severity, d.ref) for d in self.diagnostics],
+            [(d.severity, d.ref) for d in self.warnings],
             [("warning", "shop.billing.invoice.InvoiceVoided")],
         )
-        self.assertIn("a signal declares no payload", self.diagnostics[0].message)
+        self.assertIn("a signal declares no payload", self.warnings[0].message)
 
     def test_without_a_store_the_models_describe_no_database(self):
         options = dict(OPTIONS)
         del options["store"]
-        files, diagnostics = run(options)
+        files, warnings = run(options)
         self.assertEqual(list(files), ["domain.json"])
-        self.assertIn("`store` is what says which one they are the schema of", " ".join(d.message for d in diagnostics))
+        self.assertIn("`store` is what says which one they are the schema of", " ".join(d.message for d in warnings))
 
     def test_an_option_nobody_reads_is_refused_rather_than_dropped(self):
         with self.assertRaises(ValueError):

@@ -131,13 +131,13 @@ func TestChannelWithNoOperationIsReportedNotDropped(t *testing.T) {
 	}
 
 	var said bool
-	for _, d := range resp.Diagnostics {
+	for _, d := range resp.Warnings() {
 		if strings.Contains(d.Message, "shop.cart.telemetry") {
 			said = true
 		}
 	}
 	if !said {
-		t.Errorf("nothing was said about it: %v", resp.Diagnostics)
+		t.Errorf("nothing was said about it: %v", resp.Warnings())
 	}
 }
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -22,11 +23,21 @@ import (
 var verbs = []string{"get", "post", "put", "patch", "delete", "head", "options", "trace"}
 
 type document struct {
-	root *yaml.Node
-	path string
+	root  *yaml.Node
+	path  string
+	cache map[string]*document
 }
 
 func load(path string) (*document, error) {
+	cache := map[string]*document{}
+	return loadCached(path, cache)
+}
+
+func loadCached(path string, cache map[string]*document) (*document, error) {
+	path = filepath.Clean(path)
+	if held := cache[path]; held != nil {
+		return held, nil
+	}
 	contents, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -43,7 +54,9 @@ func load(path string) (*document, error) {
 		node = node.Content[0]
 	}
 
-	return &document{root: node, path: path}, nil
+	doc := &document{root: node, path: path, cache: cache}
+	cache[path] = doc
+	return doc, nil
 }
 
 // entry is one key/value pair of a mapping, in document order.
@@ -108,8 +121,14 @@ func list(node *yaml.Node) []string {
 
 const (
 	schemaRefPrefix = "#/components/schemas/"
-	componentPrefix = "#/components/"
 )
+
+type schemaRef struct {
+	doc  *document
+	node *yaml.Node
+	name string
+	key  string
+}
 
 // schemaRefs collects every component schema a subtree names, in the order they
 // are met.
@@ -118,7 +137,7 @@ const (
 // followed rather than ignored, because that is how a spec says "the same error
 // body as everywhere else", and a reader who is not shown it is being told this
 // endpoint returns nothing on failure.
-func (d *document) schemaRefs(node *yaml.Node, into *[]string, seen, visited map[string]bool) {
+func (d *document) schemaRefs(node *yaml.Node, into *[]schemaRef, seen, visited map[string]bool) {
 	if node == nil {
 		return
 	}
@@ -133,21 +152,23 @@ func (d *document) schemaRefs(node *yaml.Node, into *[]string, seen, visited map
 			}
 
 			ref := text(e.value)
-			if name, ok := strings.CutPrefix(ref, schemaRefPrefix); ok {
-				if !seen[name] {
-					seen[name] = true
-					*into = append(*into, name)
+			targetDoc, target, pointer, ok := d.resolve(ref)
+			if !ok {
+				continue
+			}
+			key := targetDoc.path + "#" + pointer
+			if name, schema := schemaName(pointer); schema {
+				if !seen[key] {
+					seen[key] = true
+					*into = append(*into, schemaRef{doc: targetDoc, node: target, name: name, key: key})
 				}
-
 				continue
 			}
-
-			// Some other component. Follow it once.
-			if !strings.HasPrefix(ref, componentPrefix) || visited[ref] {
+			if visited[key] {
 				continue
 			}
-			visited[ref] = true
-			d.schemaRefs(child(d.root, strings.Split(strings.TrimPrefix(ref, "#/"), "/")...), into, seen, visited)
+			visited[key] = true
+			targetDoc.schemaRefs(target, into, seen, visited)
 		}
 	case yaml.SequenceNode:
 		for _, item := range node.Content {
@@ -192,26 +213,96 @@ func (d *document) shapes(operation *yaml.Node) (string, string) {
 // with brackets: the message is the item, and the reader wants to see there are
 // several.
 func (d *document) bodyName(node *yaml.Node) string {
-	for _, e := range entries(child(d.follow(node), "content")) {
-		schema := child(d.follow(e.value), "schema")
-		if name, ok := strings.CutPrefix(text(child(schema, "$ref")), schemaRefPrefix); ok {
+	bodyDoc, body := d.follow(node)
+	for _, e := range entries(child(body, "content")) {
+		mediaDoc, media := bodyDoc.follow(e.value)
+		schema := child(media, "schema")
+		if name := mediaDoc.schemaTypeName(schema); name != "" {
 			return name
-		}
-		if name, ok := strings.CutPrefix(text(child(schema, "items", "$ref")), schemaRefPrefix); ok {
-			return name + "[]"
 		}
 	}
 
 	return ""
 }
 
-// follow resolves a $ref into another component, once. Twice would be a
-// document referring a reference to a reference, which none of these do.
-func (d *document) follow(node *yaml.Node) *yaml.Node {
-	ref := text(child(node, "$ref"))
-	if !strings.HasPrefix(ref, componentPrefix) {
-		return node
+func (d *document) schemaTypeName(node *yaml.Node) string {
+	if _, _, pointer, ok := d.resolve(text(child(node, "$ref"))); ok {
+		if name, schema := schemaName(pointer); schema {
+			return name
+		}
 	}
+	if text(child(node, "type")) == "array" {
+		if name := d.schemaTypeName(child(node, "items")); name != "" {
+			return name + "[]"
+		}
+	}
+	for _, keyword := range []string{"oneOf", "anyOf"} {
+		var names []string
+		for _, branch := range itemsOf(child(node, keyword)) {
+			if name := d.schemaTypeName(branch); name != "" {
+				names = append(names, name)
+			}
+		}
+		if len(names) > 0 {
+			return strings.Join(unique(names), " | ")
+		}
+	}
+	return ""
+}
 
-	return child(d.root, strings.Split(strings.TrimPrefix(ref, "#/"), "/")...)
+// follow resolves chains of local or relative-file component references.
+func (d *document) follow(node *yaml.Node) (*document, *yaml.Node) {
+	seen := map[string]bool{}
+	for {
+		ref := text(child(node, "$ref"))
+		nextDoc, next, pointer, ok := d.resolve(ref)
+		if !ok {
+			return d, node
+		}
+		key := nextDoc.path + "#" + pointer
+		if seen[key] {
+			return d, node
+		}
+		seen[key] = true
+		d, node = nextDoc, next
+	}
+}
+
+// resolve follows JSON Pointer refs in this document or in a relative YAML/
+// JSON file. Remote refs are intentionally not fetched by an extractor.
+func (d *document) resolve(ref string) (*document, *yaml.Node, string, bool) {
+	if ref == "" || strings.HasPrefix(ref, "http://") || strings.HasPrefix(ref, "https://") {
+		return nil, nil, "", false
+	}
+	file, fragment, hasFragment := strings.Cut(ref, "#")
+	if !hasFragment {
+		return nil, nil, "", false
+	}
+	target := d
+	if file != "" {
+		loaded, err := loadCached(filepath.Join(filepath.Dir(d.path), filepath.FromSlash(file)), d.cache)
+		if err != nil {
+			return nil, nil, "", false
+		}
+		target = loaded
+	}
+	pointer := strings.TrimPrefix(fragment, "/")
+	if pointer == "" {
+		return target, target.root, pointer, true
+	}
+	parts := strings.Split(pointer, "/")
+	for i := range parts {
+		parts[i] = strings.ReplaceAll(strings.ReplaceAll(parts[i], "~1", "/"), "~0", "~")
+	}
+	node := child(target.root, parts...)
+	return target, node, pointer, node != nil
+}
+
+func schemaName(pointer string) (string, bool) {
+	const prefix = "components/schemas/"
+	name, ok := strings.CutPrefix(pointer, prefix)
+	if !ok || name == "" || strings.Contains(name, "/") {
+		return "", false
+	}
+	return strings.ReplaceAll(strings.ReplaceAll(name, "~1", "/"), "~0", "~"), true
 }

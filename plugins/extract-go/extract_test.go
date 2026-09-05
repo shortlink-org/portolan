@@ -76,7 +76,8 @@ func TestFirstParagraphAfterTitle(t *testing.T) {
 func TestOperationKindFollowsHelpers(t *testing.T) {
 	pkg := mustParse(t, `package usecase
 
-type UseCase struct{}
+type UseCase struct{ repo Repository }
+type Repository interface{ Save(any, string) error }
 
 func (uc *UseCase) Handle(ctx any, in any) error {
 	for _, id := range uc.list() {
@@ -105,6 +106,24 @@ func (uc *UseCase) Handle(ctx any, in any) (any, error) { return uc.repo.ByID(ct
 
 	if got := operationKind(pkg); got != catalog.OperationQuery {
 		t.Errorf("a use case that only reads is a query, got %q", got)
+	}
+}
+
+func TestOperationKindIgnoresWriteNamedCallsOutsidePorts(t *testing.T) {
+	pkg := mustParse(t, `package usecase
+
+type helper struct{}
+func (helper) Save() {}
+type UseCase struct{ repo Repository }
+type Repository interface{ ByID(any, string) (any, error) }
+func (uc *UseCase) Handle(ctx any) (any, error) {
+  helper{}.Save()
+  return uc.repo.ByID(ctx, "id")
+}
+`)
+
+	if got := operationKind(pkg); got != catalog.OperationQuery {
+		t.Errorf("a Save call outside a use-case port must not make a command, got %q", got)
 	}
 }
 

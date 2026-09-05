@@ -10,6 +10,7 @@
 
 import {
   mkdirSync,
+  lstatSync,
   readdirSync,
   readFileSync,
   rmSync,
@@ -59,13 +60,12 @@ for (const step of manifest.extract ?? []) {
   const plugin = pluginNamed(step.plugin);
   const stamp = stampFor(step.in, step.out);
 
-  const { files, diagnostics } = await runPlugin(plugin, {
+  const { files } = await runPlugin(plugin, {
     portolanVersion: PORTOLAN_VERSION,
     input: { root: step.in, commit: stamp.commit, generatedAt: stamp.generatedAt },
     options: step.options ?? {},
   });
 
-  report(diagnostics);
   drifted = summarise(`${step.plugin} ← ${step.in}`, files, apply(files, step.out, step.plugin, check)) || drifted;
 }
 
@@ -81,13 +81,12 @@ for (const step of manifest.verify ?? []) {
   const stamp = stampFor(step.in, step.out);
   const own = (previous(step.out)[step.plugin] ?? []).map((name) => join(step.out, name));
   const { catalog } = await loadSources({ exclude: own });
-  const { files, diagnostics } = await runPlugin(plugin, {
+  const { files } = await runPlugin(plugin, {
     portolanVersion: PORTOLAN_VERSION,
     input: { root: step.in, commit: stamp.commit, generatedAt: stamp.generatedAt },
     catalog,
     options: step.options ?? {},
   });
-  report(diagnostics);
   drifted = summarise(`${step.plugin} ⇐ ${step.in}`, files, apply(files, step.out, step.plugin, check)) || drifted;
 }
 
@@ -106,13 +105,12 @@ for (const conflict of conflicts) {
 for (const step of manifest.generate ?? []) {
   const plugin = pluginNamed(step.plugin);
 
-  const { files, diagnostics } = await runPlugin(plugin, {
+  const { files } = await runPlugin(plugin, {
     portolanVersion: PORTOLAN_VERSION,
     catalog,
     options: step.options ?? {},
   });
 
-  report(diagnostics);
   drifted = summarise(`${step.plugin} → ${step.out}`, files, apply(files, step.out, step.plugin, check)) || drifted;
 }
 
@@ -128,13 +126,6 @@ function pluginNamed(name) {
   }
 
   return plugin;
-}
-
-function report(diagnostics) {
-  for (const diagnostic of diagnostics) {
-    const where = diagnostic.ref ? `${diagnostic.ref}: ` : "";
-    console.warn(`  ${diagnostic.severity.padEnd(8)}${where}${diagnostic.message}`);
-  }
 }
 
 /** Prints what a step did, and says whether it left the tree out of date. */
@@ -315,6 +306,21 @@ function safeJoin(out, name) {
   const inside = relative(resolve(out), target);
   if (inside.startsWith("..") || inside.startsWith(sep)) {
     fail(`plugin asked to write ${JSON.stringify(name)}, which is outside ${out}`);
+  }
+
+  // A lexically safe name can still escape through an existing symlink in the
+  // output tree. Refuse every symlink component before reading, writing or
+  // deleting the target.
+  let current = resolve(out);
+  for (const part of ["", ...inside.split(sep)]) {
+    if (part) current = join(current, part);
+    try {
+      if (lstatSync(current).isSymbolicLink()) {
+        fail(`plugin asked to use ${JSON.stringify(name)}, but ${current} is a symlink`);
+      }
+    } catch (cause) {
+      if (cause?.code !== "ENOENT") throw cause;
+    }
   }
 
   return target;

@@ -22,7 +22,7 @@ import { readSource, at, bareType, text, type ClassInfo, type Source } from "./s
 import { isArrayPattern, isBinary, isBlock, isCall, isForEach, isFor, isFunctionType, isIdent, isIf, isMember, isMethodSig, isPropertySig, isReturn, isSpread, isString, isSwitch, isSwitchCase, isThis, isThrow, isTry, isVarDecl, isWhile, isAssign, keyName, memberName, paramIdent, thisMember, typeText, unwrap, walk, type CallExpression, type ForEachStatement, type IfStatement, type Node, type SwitchStatement } from "./ast.ts";
 import type { UseCase } from "./operations.ts";
 import type { Binding } from "./wiring.ts";
-import type { AggregateRead, Diagnostics } from "./domain.ts";
+import type { AggregateRead, WarningSink } from "./domain.ts";
 import type { Endpoint } from "./transport.ts";
 
 export const LANE_CLIENT = "client";
@@ -119,9 +119,9 @@ export class FlowReader {
   readonly bindings: Map<string, Binding[]>;
   readonly aggregates: AggregateRead[];
   readonly rel: (abs: string) => string;
-  readonly b: Diagnostics;
+  readonly b: WarningSink;
 
-  constructor(opts: FlowOptions, useCases: Map<string, UseCase>, bindings: Map<string, Binding[]>, aggregates: AggregateRead[], rel: (abs: string) => string, b: Diagnostics) {
+  constructor(opts: FlowOptions, useCases: Map<string, UseCase>, bindings: Map<string, Binding[]>, aggregates: AggregateRead[], rel: (abs: string) => string, b: WarningSink) {
     this.opts = opts;
     this.useCases = useCases;
     this.bindings = bindings;

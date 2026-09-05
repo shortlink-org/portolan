@@ -22,7 +22,7 @@ function check(manifest) {
 
 const good = {
   sources: ["data/*.json"],
-  plugins: [{ name: "go-domain", process: { cmd: "go run ./plugins/extract-go" } }],
+  plugins: [{ name: "go-domain", process: { command: "go", args: ["run", "./plugins/extract-go"] } }],
   extract: [
     {
       plugin: "go-domain",

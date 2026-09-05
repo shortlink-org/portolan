@@ -8,7 +8,7 @@ import type { Operation } from "../../src/catalog.ts";
 import { camel } from "./ids.ts";
 import { readSource, type ClassInfo, type Source } from "./source.ts";
 import { isCall, isMember, memberName, thisMember, walk } from "./ast.ts";
-import type { Diagnostics } from "./domain.ts";
+import type { WarningSink } from "./domain.ts";
 
 /** A use case: where it is, what it is called, and what it holds. */
 export interface UseCase {
@@ -22,9 +22,10 @@ export interface UseCase {
 }
 
 /** The verbs that make a use case a command: what it does to a port that changes the world. */
-const WRITES = new Set(["save", "delete", "create", "update", "publish", "remove", "insert", "upsert"]);
+export const WRITE_METHODS = ["save", "delete", "create", "update", "publish", "remove", "insert", "upsert"] as const;
+const WRITES = new Set<string>(WRITE_METHODS);
 
-export function readUseCases(applicationDir: string, rel: (abs: string) => string, b: Diagnostics): UseCase[] {
+export function readUseCases(applicationDir: string, rel: (abs: string) => string, b: WarningSink): UseCase[] {
   if (!existsSync(applicationDir)) return [];
   const out: UseCase[] = [];
   for (const aggregate of readdirSync(applicationDir).sort()) {

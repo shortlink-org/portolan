@@ -2,6 +2,7 @@ package org.portolan.extract;
 
 import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.MethodInvocationTree;
+import com.sun.source.tree.MemberSelectTree;
 import com.sun.source.tree.MethodTree;
 import com.sun.source.tree.NewClassTree;
 import com.sun.source.tree.VariableTree;
@@ -9,7 +10,10 @@ import com.sun.source.util.TreeScanner;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 import javax.lang.model.element.Modifier;
 
@@ -44,8 +48,8 @@ final class Operations {
         }
     }
 
-    /** What a write looks like, whichever port it goes through. */
-    private static final List<String> WRITES = List.of("save", "delete", "remove", "create", "update", "add", "publish", "send", "settle", "reserve");
+    /** The same core port-write vocabulary used by the Go, TS and Rust extractors. */
+    static final List<String> WRITE_METHODS = List.of("save", "delete", "create", "update", "publish", "remove", "insert", "upsert");
 
     private Operations() {}
 
@@ -76,7 +80,7 @@ final class Operations {
                         unit,
                         aggregateOf(unit.packageName),
                         unit.doc(type),
-                        writes(entry) ? "command" : "query"));
+                        writes(type) ? "command" : "query"));
             }
         }
         out.sort(Comparator.comparing(u -> u.id));
@@ -110,14 +114,24 @@ final class Operations {
         return cut < 0 ? rest : rest.substring(0, cut);
     }
 
-    private static boolean writes(MethodTree entry) {
+    private static boolean writes(ClassTree type) {
         boolean[] found = {false};
+        Set<String> ports = new HashSet<>();
+        for (VariableTree port : ports(type)) {
+            ports.add(port.getName().toString());
+        }
         new TreeScanner<Void, Void>() {
             @Override
             public Void visitMethodInvocation(MethodInvocationTree node, Void ignored) {
-                String name = Source.simple(node.getMethodSelect().toString());
-                if (WRITES.contains(name)) {
-                    found[0] = true;
+                if (node.getMethodSelect() instanceof MemberSelectTree method) {
+                    String name = method.getIdentifier().toString().toLowerCase(Locale.ROOT);
+                    String receiver = method.getExpression().toString();
+                    if (receiver.startsWith("this.")) {
+                        receiver = receiver.substring("this.".length());
+                    }
+                    if (WRITE_METHODS.contains(name) && ports.contains(receiver)) {
+                        found[0] = true;
+                    }
                 }
                 return super.visitMethodInvocation(node, ignored);
             }
@@ -126,7 +140,7 @@ final class Operations {
             public Void visitNewClass(NewClassTree node, Void ignored) {
                 return super.visitNewClass(node, ignored);
             }
-        }.scan(entry, null);
+        }.scan(type, null);
         return found[0];
     }
 

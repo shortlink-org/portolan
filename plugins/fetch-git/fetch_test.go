@@ -134,8 +134,8 @@ func TestFetchWritesTheNarrowedCopyAndALock(t *testing.T) {
 	if !strings.Contains(lock, `"commit": "`+r.commit+`"`) || !strings.Contains(lock, `"sha256"`) || !strings.Contains(lock, `"services/oms"`) {
 		t.Errorf("lock = %s", lock)
 	}
-	if len(resp.Diagnostics) != 0 {
-		t.Errorf("diagnostics = %+v", resp.Diagnostics)
+	if len(resp.Warnings()) != 0 {
+		t.Errorf("diagnostics = %+v", resp.Warnings())
 	}
 }
 
@@ -163,8 +163,8 @@ func TestOfflineReplayIsByteIdentical(t *testing.T) {
 			t.Errorf("%s differs offline", f.Name)
 		}
 	}
-	if len(replayed.Diagnostics) != 1 || !strings.Contains(replayed.Diagnostics[0].Message, "offline") {
-		t.Errorf("diagnostics = %+v, want the one saying the copy was used", replayed.Diagnostics)
+	if len(replayed.Warnings()) != 1 || !strings.Contains(replayed.Warnings()[0].Message, "offline") {
+		t.Errorf("diagnostics = %+v, want the one saying the copy was used", replayed.Warnings())
 	}
 }
 
@@ -183,8 +183,8 @@ func TestCiImpliesOffline(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(replayed.Diagnostics) != 1 {
-		t.Errorf("CI should replay and say so: %+v", replayed.Diagnostics)
+	if len(replayed.Warnings()) != 1 {
+		t.Errorf("CI should replay and say so: %+v", replayed.Warnings())
 	}
 }
 
@@ -253,8 +253,8 @@ func TestFailedFetchFallsBackToTheCommittedCopy(t *testing.T) {
 	if strings.Join(names(fallback), "\n") != strings.Join(names(online), "\n") {
 		t.Errorf("fallback = %v", names(fallback))
 	}
-	if len(fallback.Diagnostics) != 1 || !strings.Contains(fallback.Diagnostics[0].Message, "not fetched") {
-		t.Errorf("diagnostics = %+v", fallback.Diagnostics)
+	if len(fallback.Warnings()) != 1 || !strings.Contains(fallback.Warnings()[0].Message, "not fetched") {
+		t.Errorf("diagnostics = %+v", fallback.Warnings())
 	}
 }
 
@@ -267,8 +267,8 @@ func TestUnpinnedRepositoryIsResolvedOnlineAndRefusedOffline(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(resp.Diagnostics) != 1 || !strings.Contains(resp.Diagnostics[0].Message, "not pinned") || !strings.Contains(resp.Diagnostics[0].Message, r.commit) {
-		t.Errorf("diagnostics = %+v", resp.Diagnostics)
+	if len(resp.Warnings()) != 1 || !strings.Contains(resp.Warnings()[0].Message, "not pinned") || !strings.Contains(resp.Warnings()[0].Message, r.commit) {
+		t.Errorf("diagnostics = %+v", resp.Warnings())
 	}
 
 	t.Setenv(OfflineEnv, "1")

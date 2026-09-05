@@ -195,8 +195,8 @@ func TestOfflineReplayIsByteIdentical(t *testing.T) {
 			t.Errorf("%s differs between an online and an offline run", f.Name)
 		}
 	}
-	if len(replayed.Diagnostics) != 1 || !strings.Contains(replayed.Diagnostics[0].Message, "not fetched") {
-		t.Errorf("an offline run said nothing about not fetching: %+v", replayed.Diagnostics)
+	if len(replayed.Warnings()) != 1 || !strings.Contains(replayed.Warnings()[0].Message, "not fetched") {
+		t.Errorf("an offline run said nothing about not fetching: %+v", replayed.Warnings())
 	}
 }
 
@@ -341,8 +341,8 @@ func TestUnpinnedModuleWarnsOnline(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(resp.Diagnostics) == 0 || !strings.Contains(resp.Diagnostics[0].Message, "not pinned") {
-		t.Errorf("an unpinned module was resolved silently: %+v", resp.Diagnostics)
+	if len(resp.Warnings()) == 0 || !strings.Contains(resp.Warnings()[0].Message, "not pinned") {
+		t.Errorf("an unpinned module was resolved silently: %+v", resp.Warnings())
 	}
 }
 

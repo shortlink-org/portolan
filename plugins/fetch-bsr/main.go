@@ -20,8 +20,8 @@
 //
 //	{
 //	  "plugins": [
-//	    { "name": "bsr",   "process": { "cmd": "go run ./plugins/fetch-bsr" } },
-//	    { "name": "proto", "process": { "cmd": "go run ./plugins/extract-proto" } }
+//	    { "name": "bsr",   "process": { "command": "go", "args": ["run", "./plugins/fetch-bsr"] } },
+//	    { "name": "proto", "process": { "command": "go", "args": ["run", "./plugins/extract-proto"] } }
 //	  ],
 //	  "extract": [
 //	    {

@@ -5,7 +5,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { basename, join, relative, resolve } from "node:path";
 import type { Catalog, Service } from "../../src/catalog.ts";
-import { readAggregates, type Diagnostics } from "./domain.ts";
+import { readAggregates, type WarningSink } from "./domain.ts";
 import { operationOf, readUseCases } from "./operations.ts";
 import { readBindings } from "./wiring.ts";
 import { readGrpcTransport, readTransport } from "./transport.ts";
@@ -33,7 +33,7 @@ export interface Input {
   generatedAt: string;
 }
 
-export interface Diagnostic {
+export interface Warning {
   severity: "warning" | "error";
   message: string;
   ref?: string;
@@ -41,14 +41,15 @@ export interface Diagnostic {
 
 export interface Response {
   files: { name: string; contents: string }[];
-  diagnostics: Diagnostic[];
+  /** Internal extraction warnings. The process protocol serializes only files. */
+  warnings: Warning[];
 }
 
-class Builder implements Diagnostics {
+class Builder implements WarningSink {
   files: { name: string; contents: string }[] = [];
-  diagnostics: Diagnostic[] = [];
+  warnings: Warning[] = [];
   warn(ref: string, message: string): void {
-    this.diagnostics.push({ severity: "warning", message, ref });
+    this.warnings.push({ severity: "warning", message, ref });
   }
 }
 
@@ -140,7 +141,7 @@ export function extract(input: Input, opts: Options, cwd = process.cwd()): Respo
     adrs: [],
   };
   b.files.push({ name: opts.out || "domain.json", contents: `${JSON.stringify(fragment, null, 2)}\n` });
-  return { files: b.files, diagnostics: b.diagnostics };
+  return { files: b.files, warnings: b.warnings };
 }
 
 function readmeTitle(md: string): string {

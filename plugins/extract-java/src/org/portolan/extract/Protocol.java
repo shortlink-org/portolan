@@ -80,24 +80,23 @@ final class Protocol {
         }
     }
 
-    /**
-     * Collects what the run produces: the fragment, and every diagnostic beside
-     * it. Reported, never papered over inside the output.
-     */
+    /** Collects files and internal extraction warnings. Warnings are not wire data. */
     static final class Builder {
         private final List<Map<String, Object>> files = new ArrayList<>();
-        private final List<Map<String, Object>> diagnostics = new ArrayList<>();
+        private final List<Map<String, Object>> warnings = new ArrayList<>();
 
         void file(String name, String contents) {
             files.add(Catalog.map("name", name, "contents", contents));
         }
 
         void warn(String ref, String message) {
-            diagnostics.add(Catalog.map("severity", "warning", "message", message, "ref", ref));
+            warnings.add(Catalog.map("severity", "warning", "message", message, "ref", ref));
         }
 
         Map<String, Object> response() {
-            return Catalog.map("files", files, "diagnostics", diagnostics);
+            return Catalog.map("files", files);
         }
+
+        List<Map<String, Object>> warnings() { return warnings; }
     }
 }

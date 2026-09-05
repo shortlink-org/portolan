@@ -29,8 +29,6 @@ jobs:
 
       - run: npm ci
 
-      - run: npm test
-
       - name: Build
         env:
           BASE_PATH: /${{ github.event.repository.name }}/

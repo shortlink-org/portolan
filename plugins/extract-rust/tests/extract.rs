@@ -17,12 +17,7 @@ fn reads_the_fixture_into_the_golden_fragment() {
     let want: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(cwd.join("testdata/oms/expected.json")).unwrap()).unwrap();
     assert_eq!(got, want, "the fragment differs from testdata/oms/expected.json");
 
-    // The one thing the fixture does wrong on purpose: a policy that reacts
-    // to a message by a name no event of its own is called.
-    let diagnostics = response["diagnostics"].as_array().unwrap();
-    assert_eq!(diagnostics.len(), 1, "{diagnostics:?}");
-    assert_eq!(diagnostics[0]["ref"], "ConfirmOrderOnPaymentAuthorized");
-    assert!(diagnostics[0]["message"].as_str().unwrap().contains("payments.PaymentAuthorized"));
+    assert!(response.get("warnings").is_none(), "warnings are not part of the plugin protocol");
 }
 
 #[test]

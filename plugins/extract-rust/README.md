@@ -152,9 +152,9 @@ service's `consumes` with the vendored proto as its source.
 `events` is keyed by the module path another service's events are decoded
 in. Everything else means what it means for `extract-go`.
 
-## Diagnostics
+## Extraction limits
 
-Reported beside the fragment, never papered over inside it:
+These cases do not become facts in the fragment:
 
 - a domain directory with no root struct of its name;
 - a use case directory with no `UseCase`, or a `UseCase` with no `handle`;
@@ -171,7 +171,7 @@ Reported beside the fragment, never papered over inside it:
 
 ```json
 {
-  "plugins": [{ "name": "rust-domain", "process": { "cmd": "cargo run --quiet --manifest-path plugins/extract-rust/Cargo.toml" } }],
+  "plugins": [{ "name": "rust-domain", "process": { "command": "cargo", "args": ["run", "--quiet", "--manifest-path", "plugins/extract-rust/Cargo.toml"] } }],
   "extract": [
     { "plugin": "rust-domain", "in": "examples/shop/oms", "out": "examples/shop/oms/portolan",
       "options": { "context": "shop", "service": "oms", "store": "pg",

@@ -93,7 +93,7 @@ func TestThePeerIsTheManifestsToName(t *testing.T) {
 	if calls := unnamed.consumes(); len(calls) != 1 || calls[0].Status != catalog.StatusUnresolved || calls[0].Peer != "risk.v1" {
 		t.Errorf("consumes = %+v", calls)
 	}
-	if n := len(b.Response().Diagnostics); n != 1 {
+	if n := len(b.Response().Warnings()); n != 1 {
 		t.Errorf("diagnostics = %d, want the one warning about the unnamed peer, said once", n)
 	}
 }
@@ -260,7 +260,7 @@ func (uc *UseCase) Handle(ctx context.Context, in dto.Input) error {
 	if len(calls) != 1 || calls[0].ID != "risk.v1.RiskService/Assess" || calls[0].Peer != "shop.risk" {
 		t.Errorf("consumes = %+v", calls)
 	}
-	if diags := b.Response().Diagnostics; len(diags) != 0 {
+	if diags := b.Response().Warnings(); len(diags) != 0 {
 		t.Errorf("diagnostics = %+v", diags)
 	}
 }

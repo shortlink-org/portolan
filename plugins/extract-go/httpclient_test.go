@@ -215,7 +215,7 @@ func (uc *UseCase) Handle(ctx context.Context, in dto.Input) (dto.Output, error)
 	if len(calls) != 2 || calls[0].ID != "auth.v1.Sessions/login" || calls[1].ID != "auth.v1.Users/getUser" || calls[0].Peer != "auth.auth" {
 		t.Errorf("consumes = %+v", calls)
 	}
-	for _, diag := range b.Response().Diagnostics {
+	for _, diag := range b.Response().Warnings() {
 		if strings.Contains(diag.Message, "/v1/ping") {
 			continue
 		}

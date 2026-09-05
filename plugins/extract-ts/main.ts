@@ -24,9 +24,14 @@ interface Request {
 
 export function serve(raw: string): string {
   const req = JSON.parse(raw) as Request;
+  if (req.portolanVersion && req.portolanVersion !== "0.1.0") {
+    throw new Error(`unsupported portolan protocol ${JSON.stringify(req.portolanVersion)} (plugin supports 0.1.0)`);
+  }
   if (req.kind === "describe") return JSON.stringify({ files: [], describe: descriptor });
   if (!req.input?.root) throw new Error("no input root: an extractor has nothing to read");
-  return JSON.stringify(extract(req.input, req.options ?? {}), null, 2);
+  const { files, warnings } = extract(req.input, req.options ?? {});
+  for (const warning of warnings) process.stderr.write(`warning: ${warning.ref ? `${warning.ref}: ` : ""}${warning.message}\n`);
+  return JSON.stringify({ files }, null, 2);
 }
 
 if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href) {

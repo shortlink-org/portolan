@@ -64,7 +64,8 @@ func readStore(root, repositories, storeID, owner string, b *plugin.Builder) ([]
 				}
 			}
 		}
-		first := true
+		state := newDDLState()
+		copies := map[string]map[string][]string{}
 
 		for _, name := range names {
 			source := path.Join(dir, name)
@@ -76,8 +77,15 @@ func readStore(root, repositories, storeID, owner string, b *plugin.Builder) ([]
 				continue
 			}
 
-			copies := readCopies(string(sql), storeID)
-			relations, declared, unread, err := readDDL(string(sql), source)
+			for table, columns := range readCopies(string(sql), storeID) {
+				if copies[table] == nil {
+					copies[table] = map[string][]string{}
+				}
+				for column, from := range columns {
+					copies[table][column] = from
+				}
+			}
+			unread, err := state.apply(string(sql), source)
 			if err != nil {
 				b.Warn(storeID, "could not parse "+source+": "+err.Error())
 
@@ -86,54 +94,54 @@ func readStore(root, repositories, storeID, owner string, b *plugin.Builder) ([]
 			for _, note := range unread {
 				b.Warn(storeID, source+": "+note)
 			}
+		}
 
-			for _, declaredView := range declared {
-				views = append(views, declaredView.asCatalog(storeID, source, tables))
-			}
-
-			for _, relation := range relations {
-				table := relation.table
-				table.ID = storeID + "." + table.Name
-				table.Indexes = relation.indexes
-				// An outbox holds messages on their way out, not the
-				// aggregate: it is created beside the aggregate because the
-				// repository writes both in one transaction, and that is all
-				// the layout says about it.
-				if isOutbox(table.Name) {
-					table.Role = catalog.TableRoleOutbox
-					tables = append(tables, table)
-
-					continue
-				}
-
-				// The layout is the claim: these rows exist because this
-				// aggregate exists, and its schema lives beside the code that
-				// reads it.
-				table.Persists = &catalog.Persists{Aggregate: aggregateID}
-
-				for i := range table.Columns {
-					if field, ok := mapped[table.Name][table.Columns[i].Name]; ok {
-						table.Columns[i].Maps = field
-					}
-					// Where the value came from, when the migration says. A
-					// table cannot show a copy the way a view shows a select,
-					// so the copy is declared beside the column it lands in.
-					if from, ok := copies[table.Name][table.Columns[i].Name]; ok {
-						table.Columns[i].From = from
-					}
-				}
-
-				// The first table an aggregate creates holds the aggregate
-				// itself; anything it creates afterwards hangs off it.
-				if first {
-					table.Role = catalog.TableRoleAggregateRoot
-					first = false
-				} else {
-					table.Role = catalog.TableRoleChild
-				}
-
+		first := true
+		for _, relation := range state.relations {
+			table := relation.table
+			table.ID = storeID + "." + table.Name
+			table.Indexes = relation.indexes
+			// An outbox holds messages on their way out, not the
+			// aggregate: it is created beside the aggregate because the
+			// repository writes both in one transaction, and that is all
+			// the layout says about it.
+			if isOutbox(table.Name) {
+				table.Role = catalog.TableRoleOutbox
 				tables = append(tables, table)
+
+				continue
 			}
+
+			// The layout is the claim: these rows exist because this
+			// aggregate exists, and its schema lives beside the code that
+			// reads it.
+			table.Persists = &catalog.Persists{Aggregate: aggregateID}
+
+			for i := range table.Columns {
+				if field, ok := mapped[table.Name][table.Columns[i].Name]; ok {
+					table.Columns[i].Maps = field
+				}
+				// Where the value came from, when the migration says. A
+				// table cannot show a copy the way a view shows a select,
+				// so the copy is declared beside the column it lands in.
+				if from, ok := copies[table.Name][table.Columns[i].Name]; ok {
+					table.Columns[i].From = from
+				}
+			}
+
+			// The first table an aggregate creates holds the aggregate
+			// itself; anything it creates afterwards hangs off it.
+			if first {
+				table.Role = catalog.TableRoleAggregateRoot
+				first = false
+			} else {
+				table.Role = catalog.TableRoleChild
+			}
+
+			tables = append(tables, table)
+		}
+		for _, declared := range state.views {
+			views = append(views, declared.asCatalog(storeID, declared.source, tables))
 		}
 	}
 

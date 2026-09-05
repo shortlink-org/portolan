@@ -9,6 +9,8 @@ package plugin
 
 import (
 	"encoding/json"
+	"fmt"
+	"os"
 
 	"github.com/shortlink-org/portolan/catalog"
 )
@@ -58,8 +60,8 @@ type Input struct {
 // output directory, and that rejection is the whole of a plugin's authority
 // over the tree.
 type Response struct {
-	Files       []File       `json:"files"`
-	Diagnostics []Diagnostic `json:"diagnostics,omitempty"`
+	Files    []File `json:"files"`
+	warnings []Warning
 
 	// Describe answers KindDescribe and is absent otherwise. A plugin written
 	// against an older version of this protocol answers without it, which the
@@ -72,11 +74,9 @@ type File struct {
 	Contents string `json:"contents"`
 }
 
-// Diagnostic is something the plugin could not do faithfully. It travels
-// beside the output rather than inside it: a dangling reference or a shape the
-// extractor did not recognise is a fact worth surfacing, and burying it in a
-// generated page is how it stays unnoticed.
-type Diagnostic struct {
+// Warning is an in-process extraction note. It is intentionally not serialized
+// into Response: the wire contract has one decisive outcome, files or error.
+type Warning struct {
 	Severity string `json:"severity"` // "warning" | "error"
 	Message  string `json:"message"`
 	Ref      string `json:"ref,omitempty"`
@@ -85,8 +85,8 @@ type Diagnostic struct {
 // Builder accumulates a response. Every plugin needs exactly this and nothing
 // more, so it lives here rather than being written twice.
 type Builder struct {
-	Files       []File
-	Diagnostics []Diagnostic
+	Files    []File
+	Warnings []Warning
 }
 
 func (b *Builder) File(name, contents string) {
@@ -94,9 +94,19 @@ func (b *Builder) File(name, contents string) {
 }
 
 func (b *Builder) Warn(ref, message string) {
-	b.Diagnostics = append(b.Diagnostics, Diagnostic{Severity: "warning", Message: message, Ref: ref})
+	b.Warnings = append(b.Warnings, Warning{Severity: "warning", Message: message, Ref: ref})
+	where := ""
+	if ref != "" {
+		where = ref + ": "
+	}
+	fmt.Fprintln(os.Stderr, "warning:", where+message)
 }
 
 func (b *Builder) Response() Response {
-	return Response{Files: b.Files, Diagnostics: b.Diagnostics}
+	return Response{Files: b.Files, warnings: b.Warnings}
 }
+
+// Warnings exposes extraction notes to in-process tests and embedders. They
+// are deliberately absent from the JSON protocol: a caller's result is files
+// or an error, not files plus an advisory property nobody is required to act on.
+func (r Response) Warnings() []Warning { return r.warnings }

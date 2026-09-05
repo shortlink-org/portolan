@@ -21,7 +21,7 @@
 //
 //	{
 //	  "plugins": [
-//	    { "name": "git", "process": { "cmd": "go run ./plugins/fetch-git" } }
+//	    { "name": "git", "process": { "command": "go", "args": ["run", "./plugins/fetch-git"] } }
 //	  ],
 //	  "extract": [
 //	    {

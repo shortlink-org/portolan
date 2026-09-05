@@ -14,7 +14,7 @@ import { basename, dirname, join } from "node:path";
 import { callID, findOperation, readSpec, type Spec } from "./openapi.ts";
 import type { Source } from "./source.ts";
 import { isCall, isMember, isTemplate, memberName, stringOf, templateShape, walk, type CallExpression, type Node } from "./ast.ts";
-import type { Diagnostics } from "./domain.ts";
+import type { WarningSink } from "./domain.ts";
 
 /** One call the adapter makes, in the catalog's terms. */
 export interface RpcHop {
@@ -47,7 +47,7 @@ class Peer {
 
 const peers = new Map<string, Peer>();
 
-function peerOf(src: Source, rel: (abs: string) => string, b: Diagnostics): Peer {
+function peerOf(src: Source, rel: (abs: string) => string, b: WarningSink): Peer {
   const hit = peers.get(src.path);
   if (hit) return hit;
 
@@ -126,7 +126,7 @@ function protoServices(text: string, source: string): ProtoService[] {
  * The calls one method of an adapter makes to its peer, in order. Read off
  * the method's body: `x.GET("/route")` for HTTP, `x.getQuote(...)` for gRPC.
  */
-export function adapterCalls(src: Source, cls: string, method: string, rel: (abs: string) => string, b: Diagnostics): RpcHop[] {
+export function adapterCalls(src: Source, cls: string, method: string, rel: (abs: string) => string, b: WarningSink): RpcHop[] {
   const c = src.classes.find((k) => k.name === cls);
   const m = c?.methods.get(method);
   if (!m?.body) return [];
@@ -146,7 +146,7 @@ export function adapterCalls(src: Source, cls: string, method: string, rel: (abs
 }
 
 /** Calls from any body that reaches a generated client directly, by the same reading. */
-export function callsIn(src: Source, node: Node, rel: (abs: string) => string, b: Diagnostics): RpcHop[] {
+export function callsIn(src: Source, node: Node, rel: (abs: string) => string, b: WarningSink): RpcHop[] {
   const peer = peerOf(src, rel, b);
   if (!peer.spec && peer.protos.length === 0) return [];
   const out: RpcHop[] = [];
@@ -159,7 +159,7 @@ export function callsIn(src: Source, node: Node, rel: (abs: string) => string, b
   return out;
 }
 
-function hopOf(peer: Peer, name: string, call: CallExpression, rel: (abs: string) => string, b: Diagnostics): RpcHop | undefined {
+function hopOf(peer: Peer, name: string, call: CallExpression, rel: (abs: string) => string, b: WarningSink): RpcHop | undefined {
   if (HTTP_VERBS.has(name)) {
     if (!peer.spec) return undefined;
     const first = call.arguments[0];

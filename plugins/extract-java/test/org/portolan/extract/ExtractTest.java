@@ -49,7 +49,7 @@ public final class ExtractTest {
         String fragment = String.valueOf(((Map<?, ?>) files.get(0)).get("contents"));
 
         golden(cwd.resolve("plugins/extract-java/testdata/ledger/expected.json"), fragment);
-        claims(Json.object(Json.parse(fragment)), (List<?>) response.get("diagnostics"));
+        claims(Json.object(Json.parse(fragment)), b.warnings());
 
         if (FAILURES.isEmpty()) {
             System.out.println("extract-java: every claim holds");
@@ -73,7 +73,7 @@ public final class ExtractTest {
     }
 
     /** The claims the golden holds, named one at a time. */
-    private static void claims(Map<String, Object> fragment, List<?> diagnostics) {
+    private static void claims(Map<String, Object> fragment, List<?> warnings) {
         Map<String, Object> service = Json.object(Json.array(Json.object(Json.array(fragment.get("contexts")).get(0)).get("services")).get(0));
         Map<String, Object> aggregate = Json.object(Json.array(service.get("aggregates")).get(0));
 
@@ -117,7 +117,7 @@ public final class ExtractTest {
         is("a gateway call lands on the peer's lane", "psp", Json.object(steps.get(2)).get("to"));
         is("and stays unresolved, because nothing in the catalog answers it", "unresolved", Json.object(steps.get(2)).get("status"));
 
-        is("what it reports beside the fragment", 2, diagnostics.size());
+        is("what it reports beside the fragment", 2, warnings.size());
     }
 
     private static String names(Object blocks) {

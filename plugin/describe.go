@@ -68,6 +68,9 @@ func Serve[O any](stdin io.Reader, stdout io.Writer, d Descriptor, run func(Requ
 	if err := json.Unmarshal(in, &req); err != nil {
 		return fmt.Errorf("the request is not a portolan plugin request: %w", err)
 	}
+	if req.PortolanVersion != "" && req.PortolanVersion != Version {
+		return fmt.Errorf("unsupported portolan protocol %q (plugin supports %s)", req.PortolanVersion, Version)
+	}
 
 	resp := Response{}
 	switch req.Kind {

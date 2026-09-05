@@ -92,3 +92,23 @@ func TestServeRefusesAnUnknownKind(t *testing.T) {
 		t.Errorf("an unknown kind gave %v", err)
 	}
 }
+
+func TestServeRefusesAnIncompatibleProtocol(t *testing.T) {
+	err := plugin.Serve(strings.NewReader(`{"portolanVersion":"9.0.0","kind":"describe"}`), &bytes.Buffer{}, descriptor(),
+		func(plugin.Request, options) (plugin.Response, error) { return plugin.Response{}, nil })
+	if err == nil || !strings.Contains(err.Error(), "unsupported portolan protocol") {
+		t.Errorf("incompatible version gave %v", err)
+	}
+}
+
+func TestWarningsAreNotAResponseProperty(t *testing.T) {
+	b := &plugin.Builder{}
+	b.Warn("fixture", "not represented")
+	out, err := json.Marshal(b.Response())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(out), "diagnostics") || strings.Contains(string(out), "warning") {
+		t.Errorf("warning leaked into wire response: %s", out)
+	}
+}

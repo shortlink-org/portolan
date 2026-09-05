@@ -170,9 +170,9 @@ database the models are the schema of — without it they describe none, and
 calls into the ORM stay on the service's own lane. Everything else means what
 it means for `extract-ts`.
 
-## Diagnostics
+## Extraction limits
 
-Reported beside the fragment, never papered over inside it:
+These cases do not become facts in the fragment:
 
 - an application with no models, or with several and no root among them named
   after it;
@@ -195,7 +195,7 @@ Reported beside the fragment, never papered over inside it:
 
 ```json
 {
-  "plugins": [{ "name": "django-domain", "process": { "cmd": "python3 plugins/extract-django/main.py" } }],
+  "plugins": [{ "name": "django-domain", "process": { "command": "python3", "args": ["plugins/extract-django/main.py"] } }],
   "extract": [
     {
       "plugin": "django-domain",
