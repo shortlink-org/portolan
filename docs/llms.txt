@@ -2,7 +2,7 @@
 
 > Architecture catalog of Example estate: 5 bounded contexts, 8 services, 12 aggregates, 7 stores, 52 flows and 32 decision records, read from the code, the specs and the traces of the estate.
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
 
 Every link below is a markdown page beside this file. [llms-full.txt](llms-full.txt) is all of those pages in one file, in the order the site lists them.
 
