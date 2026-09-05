@@ -64,14 +64,16 @@ alternative go to `docs/adr/` ([ddd-adr](../ddd-adr/SKILL.md)).
 | a rule about a value on its own | the value object's rules |
 | a decision that needs several aggregates but no I/O | a domain service |
 | "when X happened, do Y" across aggregates | a policy |
-| a scenario a caller asks for | a use case |
+| a scenario a caller asks for, that changes something | a command use case |
+| a question a caller asks, that changes nothing | a query use case; its read port in its package ([ddd-cqrs](../ddd-cqrs/SKILL.md)) |
+| rows assembled from events, for a query, across aggregates or services | a projection, kept by a projector in infrastructure |
 | something that talks to a database, bus, other service, or the network | infrastructure |
 | the knowledge that two things exist and fit together | assembly |
 
 ## Checklist
 
 - No file in the domain imports a driver, a framework, a client, or another aggregate.
-- Every use case names exactly the ports it uses, and no more.
+- Every use case names exactly the ports it uses, and no more; a query names no publisher and no unit of work.
 - Every infrastructure package names the one port it implements.
 - Only policy and assembly mention two domains in one file.
 

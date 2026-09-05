@@ -78,6 +78,22 @@ domain; the domain does not know infrastructure exists.
 - The contract copy (proto, schema) lives in the consumer's infrastructure,
   next to the generated client.
 
+## Reader and projector
+
+The read side of [ddd-cqrs](../ddd-cqrs/SKILL.md), in two adapters:
+
+- **A reader implements a query's `Reader` port** and scans straight into
+  the query's DTOs. It has no `Save`, hands out no aggregate and joins no
+  unit of work; it reads the tables the repository writes, and that is
+  its whole coupling to the domain.
+- **A projector is a bus subscriber that writes rows.** Same handler type
+  as a policy, subscribed beside them at assembly; it calls no use case and
+  no repository. Idempotent: upsert by aggregate id, skip an event older
+  than the row, pass over events it does not know. Its migrations live in
+  its own package, numbered from 1 under the projection's name.
+- **Neither joins the unit of work.** A query opens none; a projector runs
+  behind the outbox, after the transaction it would have wanted committed.
+
 ## In-process bus
 
 For tests and local runs. Delivery is synchronous, a subscriber's error fails
@@ -94,5 +110,6 @@ for a retry and an outbox, not for a log line.
 - Storage errors mapped to domain sentinels by constraint.
 - Cache: same port, hot path only, bypass in transaction, failures swallowed, misses not stored.
 - External client: unknown enum is an error; stub is a client.
+- Reader: scans into the query's DTOs, no `Save`. Projector: idempotent, skips older events, passes over unknown ones, own migrations.
 
 Language-specific: [references/go.md](references/go.md).

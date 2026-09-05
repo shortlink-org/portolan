@@ -55,6 +55,16 @@ reason is a preference.
 - Output carries nothing a client could build on by mistake.
 - README: what it does / what follows / answers / sequence as a link to the derived flow page; a hand-drawn diagram only where no tooling derives one, and then naming ports, not adapters.
 
+## Queries and read models
+
+- Every use case is a command or a query; the name says which; a query holds no publisher, no unit of work, no clock it does not read from.
+- A query returns a DTO from its own `dto`, never the aggregate root.
+- A read only a screen needs is a `Reader` in the query package, not a method on the repository.
+- The form is the cheapest that answers; the README names it and states freshness under Answers.
+- Projection: rebuilt by replay from events alone; projector idempotent, skips older events, passes over unknown ones, subscribed at assembly; migrations in its own package.
+- No command reads a projection; no projection refreshed inside a command's transaction.
+- A copy of another service's fact is a projection column with `-- from:`; the storefront keeps none.
+
 ## Domain services and policies
 
 - Domain service is pure, imports the aggregate, takes time from the event.

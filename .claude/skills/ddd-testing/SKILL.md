@@ -48,6 +48,13 @@ test that fails should tell the reader which rule broke.
 Docker still runs the domain tests, and the run stays honest about what it
 did not do.
 
+**A query is tested on the same store as a command, without a bus.** Rows
+are written through the repository, the DTO is asserted, and no recording
+bus is subscribed: a query publishes nothing, and the test says so by not
+listening. A projector is tested by replay: its migrations on a per-test
+schema, the handler called with events built by their constructors, the
+same event twice and then an older one, and the rows asserted unchanged.
+
 **Adapters are tested against their backend.** Repository against Postgres,
 cache against Redis, with the same harnesses. The cache test checks the
 rules that are about caching: bypass inside a transaction, survival of a
@@ -61,6 +68,8 @@ cache outage, a miss not being stored.
 | use case | repository over a real database, in-proc bus | other domains' ports, external services, clock |
 | adapter | its backend | nothing |
 | policy | the use case it calls, over a real database | the event, built by its constructor |
+| query | repository or reader over a real database | nothing; no bus |
+| projector | its table over a real database | the events, built by their constructors |
 | transport | the generated server | the use cases, as interfaces |
 
 ## Checklist
@@ -70,5 +79,6 @@ cache outage, a miss not being stored.
 - Ports faked as function types with intention-revealing helpers.
 - Use case harness: real store, recording bus, per-test database.
 - Every test names a rule; refused paths assert no events.
+- Projector: the same event twice and an older one leave the rows unchanged.
 
 Language-specific: [references/go.md](references/go.md).

@@ -38,6 +38,7 @@ depends on exists.
 | 6 | Domain services for decisions across aggregates, pure | [ddd-policy](../ddd-policy/SKILL.md) |
 | 7 | Use cases, one package each, with dto and the ports only they need; README with sequence diagram per use case | [ddd-use-case](../ddd-use-case/SKILL.md) |
 | 8 | Policies for "when X happened, do Y" across aggregates | [ddd-policy](../ddd-policy/SKILL.md) |
+| 8a | Queries, one package each, answering with a DTO; a `Reader` port where the repository's reads do not answer; a projector only where events must be assembled | [ddd-cqrs](../ddd-cqrs/SKILL.md) |
 | 9 | Unit of work, repositories with their migrations, outbox publisher, in-process bus | [ddd-unit-of-work](../ddd-unit-of-work/SKILL.md), [ddd-adapters](../ddd-adapters/SKILL.md) |
 | 10 | Use case tests on a real store with ports faked inline | [ddd-testing](../ddd-testing/SKILL.md) |
 | 11 | Adapters for other services, over a contract copy and generated client | [ddd-adapters](../ddd-adapters/SKILL.md) |
@@ -60,6 +61,15 @@ A command on the aggregate if the rule is new (step 3), then step 7, its
 test (step 10), its endpoint (step 12), and its line in assembly (step 13).
 If the use case needs another domain, declare the port in the use case and
 adapt in assembly; never import.
+
+## Adding a query
+
+A query is a use case that changes nothing, so steps 7, 10, 12 and 13
+apply and nothing else does: no command, no event, no policy. Choose the
+cheapest form that answers ([ddd-cqrs](../ddd-cqrs/SKILL.md)); a read the
+domain does not need for a command is a `Reader` in the query package, not
+a method on the repository. A projection adds a projector, its migrations,
+and a subscription at assembly, beside the policies.
 
 ## Done when
 

@@ -13,6 +13,11 @@ refusal out. It orchestrates; the rules are in the aggregate.
 **One package per use case.** The package holds the use case, its `dto`
 (input and output as separate types), the ports only it needs, and a README.
 
+**A use case is a command or a query, never both.** A command changes one
+aggregate; a query changes nothing and answers with a DTO, never the root.
+The read side, from the repository's own reads to a projection, is
+[ddd-cqrs](../ddd-cqrs/SKILL.md).
+
 **The use case holds exactly the ports it uses, and no others.** Storage for
 its aggregate, and whatever else the scenario needs stated as the smallest
 interface that says it. Time and id generation are injected too, so a test
@@ -104,6 +109,7 @@ See `examples/auth/internal/application/session/usecases/login/README.md`.
 ## Checklist
 
 - Package per use case; `dto/input` and `dto/output` separate.
+- Command or query; a query returns a DTO and holds no publisher or unit of work.
 - Constructor takes ports and clocks; struct has nothing else.
 - Cross-domain need is an interface declared here, satisfied at assembly.
 - Refusals pass through; external failures are not decisions.

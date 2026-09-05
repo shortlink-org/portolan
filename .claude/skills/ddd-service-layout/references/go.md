@@ -25,6 +25,8 @@ internal/
   infrastructure/
     repository/<aggregate>/           postgres.go, cached.go, publisher.go, dto/, migrations/
     bus/<aggregate>/                  in-process bus for tests and local runs
+    reader/<query>/                   SQL reader for one query's Reader port, scanning into its dto
+    projector/<projection>/           bus subscriber that keeps one projection; its migrations/ beside it
     <external-service>/               adapter over a generated client; proto/ and gen/ beside it
     transport/http/                   server.go, gen/ (from openapi.yaml), <aggregate>/ handlers
   di/

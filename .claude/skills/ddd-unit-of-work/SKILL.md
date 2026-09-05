@@ -71,6 +71,8 @@ thing most worth not getting wrong.
 | cache decorator | bypassed on reads |
 | second repository | joins; commit is shared |
 | external service call | not transactional; make it before the write, treat failure as no decision |
+| query use case, reader | opens none and joins none; a query changes nothing ([ddd-cqrs](../ddd-cqrs/SKILL.md)) |
+| projector | never inside; it runs behind the outbox, after the commit it reflects |
 
 ## Checklist
 
@@ -78,7 +80,7 @@ thing most worth not getting wrong.
 - Re-entrant `Do`; repositories never handle transactions in statements.
 - `Save` = aggregate + events, one unit; a saved copy is stale, re-read before writing again.
 - Loops over independent aggregates: one unit each, conflicts retried per item.
-- Cache bypassed when a transaction is in flight.
+- Cache bypassed when a transaction is in flight; no command reads a projection.
 - Test harness uses the same lookup.
 
 Language-specific: [references/go.md](references/go.md).
