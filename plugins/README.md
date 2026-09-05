@@ -596,6 +596,81 @@ this extractor knows the package, not the aggregate; a guess would collide with
 the event `extract-go` already emits, or invent a ghost aggregate that would sit
 beside the real one forever.
 
+## Schema registry subjects: the same split, one topic further
+
+`fetch-csr` and `extract-csr` are the Confluent Schema Registry half of the same
+argument, and they are shaped like `fetch-bsr` and `extract-proto` on purpose:
+one owns the socket and the credential, the other owns the reading, and CI runs
+the reading over a tree it can verify without a registry existing at all.
+
+| | `fetch-csr` | `extract-csr` |
+| --- | --- | --- |
+| job | registry wire → schema files | schema files → catalog fragment |
+| network | yes | never |
+| environment | reads `CSR_API_KEY`/`CSR_API_SECRET`, or `CSR_TOKEN` | never |
+| output | one schema and a `csr.lock.json` per subject | one catalog fragment |
+| deterministic | only because it is pinned and cached | absolutely |
+
+A registered version is immutable: subject `orders-value` at version 3 is the
+same bytes today and next year, and re-registering a changed schema makes
+version 4. That is the promise a BSR commit makes, so the same four rules govern
+a fetch that does not happen, and `PORTOLAN_OFFLINE=1` replays the committed
+copies against their locks exactly as it does there.
+
+A subject a fetched schema **references** is fetched too, pinned by the
+reference rather than by the manifest, and needs no entry of its own — the
+version is part of the bytes we already have, so following one adds no lottery.
+Each lands in its own directory, and the referring subject's lock is what an
+offline run follows to find them.
+
+Avro and JSON schemas arrive minified onto one line. They are written out
+indented — with `json.Indent`, which reformats without reordering, so the file
+still says what the registry said in the order it said it — because a version
+bump that is one unreadable line is a review nobody can do. The digest is over
+the bytes as written, so verifying needs no reformatting of anything.
+
+### The strategy the registry does not record
+
+A subject name is whatever the producer's serializer decided to call the
+registration, and the rule it used — the `SubjectNameStrategy` — is nowhere in
+the registry's answer. `shop.oms.order-value` is a topic plus a suffix under
+`TopicNameStrategy` and a record's full name under `RecordNameStrategy`, and
+nothing but the manifest can say which. So `strategy` is an option, and
+everything `extract-csr` does with a name follows from being told it.
+
+Under `topic-record` the separator is a hyphen and both halves may contain one,
+so the split is made by matching the **schema's own full name** as the suffix
+rather than by searching for a delimiter.
+
+A `-key` subject is kept as a shape and put on no channel: a key is part of
+every message on the topic, not a message on it. Under `record` there is no
+topic at all, and a fragment with no channels is the right answer rather than a
+gap — that strategy exists so a record can be reused across many.
+
+### What extract-csr will not claim
+
+**It emits no events.** An `Event` in the catalog belongs to an aggregate, and a
+registry holds schemas, not domains — it has no idea which aggregate raises
+what. So the shapes land in `defs`, where a shared shape belongs, and the topics
+land in the service's channels beside the ones an AsyncAPI document declares.
+The domain extractor says an aggregate raises `OrderPlaced` and calls it
+`shop.oms.OrderPlaced` on the wire; this says a schema by that name is
+registered against topic `shop.oms.order` and has these fields. Neither knows
+the other exists, and the pages hold the two against each other.
+
+**It does not say who produces.** A registry records no producer and no
+consumer. `direction` is told, per step and per subject, or it would be invented.
+
+**It does not parse protobuf.** That is `extract-proto`'s whole job, and a
+second, worse parser here would be a second answer to one question. A `PROTOBUF`
+subject still names its topic — which is the one thing a `.proto` file cannot
+say — and a diagnostic points at `extract-proto` for the fields.
+
+A field referencing a shape nothing in the estate vendored keeps its **name**
+and loses its **ref**. The catalog validates that every ref resolves, and
+failing a run over a reference that is genuinely true — the shape really does
+live in another estate — would be the wrong end of the trade.
+
 ## The bus: a channel is a claim, not an event
 
 `extract-asyncapi` reads an AsyncAPI document and answers with the channels a

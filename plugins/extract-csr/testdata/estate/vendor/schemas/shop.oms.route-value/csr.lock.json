@@ -1,0 +1,18 @@
+{
+  "registry": "http://localhost:8081",
+  "subjects": [
+    {
+      "subject": "shop.oms.route-value",
+      "version": 1,
+      "id": 100041,
+      "schemaType": "PROTOBUF",
+      "files": [
+        {
+          "path": "v1.proto",
+          "sha256": "9d229b3ddac93d84ed443765d7926ce6d22542e2d75d62db82fe49c9a69367f4",
+          "size": 88
+        }
+      ]
+    }
+  ]
+}

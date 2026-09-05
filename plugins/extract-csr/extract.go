@@ -138,7 +138,7 @@ func readSubject(
 		}
 	}
 
-	registered := read(entry.Subject, declared, strategy)
+	registered := resolve(entry.Subject, declared, strategy)
 	if registered.Topic == "" {
 		// RecordNameStrategy says nothing about topics on purpose, so this is
 		// not a gap to report. The shape is still the fact worth having.

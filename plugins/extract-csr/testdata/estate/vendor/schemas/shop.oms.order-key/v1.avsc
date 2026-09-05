@@ -1,0 +1,6 @@
+{
+  "type": "record",
+  "namespace": "shop.oms",
+  "name": "OrderKey",
+  "fields": [{ "name": "order_id", "type": "string" }]
+}

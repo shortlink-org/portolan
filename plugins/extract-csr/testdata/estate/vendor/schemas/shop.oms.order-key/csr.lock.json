@@ -1,0 +1,18 @@
+{
+  "registry": "http://localhost:8081",
+  "subjects": [
+    {
+      "subject": "shop.oms.order-key",
+      "version": 1,
+      "id": 100009,
+      "schemaType": "AVRO",
+      "files": [
+        {
+          "path": "v1.avsc",
+          "sha256": "3fd2e45ba1812668a27bb77dd71f131a44baf5e420eec8728cc730eec2d22e17",
+          "size": 128
+        }
+      ]
+    }
+  ]
+}
