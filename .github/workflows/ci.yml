@@ -35,7 +35,7 @@ jobs:
 
       # extract-java is compiled by `plugins:build`, which the schema and gen
       # steps run first. javac is the whole toolchain it needs.
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'

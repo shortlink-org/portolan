@@ -318,7 +318,7 @@ views {
     description 'Reads a user by id.'
     client -> auth.auth 'getUser → User' {
       color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/auth/internal/infrastructure/transport/http/user/get.go:11'
+      notes 'Seen running in telemetry/traces.jsonl (3 traces). — examples/auth/internal/infrastructure/transport/http/user/get.go:11'
     }
     auth.auth -> auth_pg 'ByID' {
       color declared  line dashed  head none
@@ -330,7 +330,7 @@ views {
     title 'Get user — crossings only'
     client -> auth.auth 'getUser → User' {
       color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/auth/internal/infrastructure/transport/http/user/get.go:11'
+      notes 'Seen running in telemetry/traces.jsonl (3 traces). — examples/auth/internal/infrastructure/transport/http/user/get.go:11'
     }
   }
 
