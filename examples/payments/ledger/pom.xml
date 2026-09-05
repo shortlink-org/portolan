@@ -23,7 +23,7 @@
 
   <properties>
     <java.version>21</java.version>
-    <grpc.version>1.72.0</grpc.version>
+    <grpc.version>1.84.0</grpc.version>
     <protobuf.version>3.25.5</protobuf.version>
     <jmolecules.version>1.10.0</jmolecules.version>
   </properties>
