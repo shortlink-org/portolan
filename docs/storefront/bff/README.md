@@ -35,10 +35,10 @@ and delivery each decide their own, and this service carries the answers.
 
 ## Decisions
 
-- [bff.0001](docs/adr/0001-graphql-yoga-schema-first.md) — GraphQL over Yoga, and the schema comes first
-- [bff.0002](docs/adr/0002-the-storefront-owns-no-state.md) — The storefront owns no state
-- [bff.0003](docs/adr/0003-the-schema-speaks-the-clients-words.md) — The schema speaks the client's words, not the peers'
-- [bff.0004](docs/adr/0004-subscriptions-are-the-bus-forwarded.md) — A subscription is the bus, forwarded
+- [bff.0001](../../adr/bff.0001.md) — GraphQL over Yoga, and the schema comes first
+- [bff.0002](../../adr/bff.0002.md) — The storefront owns no state
+- [bff.0003](../../adr/bff.0003.md) — The schema speaks the client's words, not the peers'
+- [bff.0004](../../adr/bff.0004.md) — A subscription is the bus, forwarded
 
 ## The tree
 

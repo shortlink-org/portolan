@@ -60,7 +60,7 @@ cd ../../refund/proto && buf push
 
 ## How the catalog reads it
 
-The vocabulary is [GLOSSARY.md](GLOSSARY.md). Nothing here is annotated for
+The vocabulary is [GLOSSARY.md](../glossary.md). Nothing here is annotated for
 the catalog, but plenty is annotated for the model: `@AggregateRoot`, `@Entity`, `@ValueObject`, `@Repository`,
 `@SecondaryPort` and `@DomainEvent` are jMolecules, and `extract-java` reads
 what they say rather than guessing from the layout. The rules are in
@@ -95,13 +95,13 @@ Stripe's routes instead of at Stripe.
 
 ## Decisions
 
-- [payments.0004](../../../docs/adr/payments.0004.md) — journal rows are
+- [payments.0004](../../adr/payments.0004.md) — journal rows are
   idempotent by `(order_id, attempt)`, which is why `payments` carries an
   `attempt` and a unique key over the pair. The attempt is minted here, one
   past the last recorded for the order, and the key's refusal is a sentinel.
-- [ledger.0001](docs/adr/0001-a-gateway-outage-records-nothing.md) — a
+- [ledger.0001](../../adr/ledger.0001.md) — a
   gateway that did not answer has not refused; nothing is recorded.
-- [ledger.0002](docs/adr/0002-foreign-events-arrive-over-nats-and-are-republished-in-process.md)
+- [ledger.0002](../../adr/ledger.0002.md)
   — the order service's events are read off the bus by an adapter and handed
   to the policies in process.
 - [ledger.0003](docs/adr/0003-the-card-network-is-stripe-and-stays-outside-the-estate.md)

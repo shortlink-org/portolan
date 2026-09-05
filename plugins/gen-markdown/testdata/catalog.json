@@ -30,8 +30,8 @@
           "slug": "invoices",
           "name": "Invoices",
           "repo": "github.com/example/billing",
-          "path": "services/invoices",
-          "readme": "# Invoices\n\nRaises invoices and chases them.\n\n## Not here\n\nNo dunning.",
+          "path": "examples/billing",
+          "readme": "# Invoices\n\nRaises invoices and chases them. The vocabulary is [GLOSSARY.md](GLOSSARY.md).\n\nThe currency rule is recorded in [billing.0001](../../docs/adr/0001.md).\n\n## Not here\n\nNo dunning.",
           "provides": [
             {
               "id": "billing.v1.Invoices",

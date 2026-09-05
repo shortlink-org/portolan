@@ -64,7 +64,7 @@ Money owed and money taken.
 
 | Service | Path | Aggregates |
 | --- | --- | --- |
-| [Invoices](invoices/README.md) | `services/invoices` | Invoice |
+| [Invoices](invoices/README.md) | `examples/billing` | Invoice |
 
 ## Language
 
@@ -102,9 +102,11 @@ One meaning per word inside this context, as the glossary beside the code states
 - **Id:** `billing.invoices`
 - **Context:** [Billing](../README.md)
 - **Repo:** `github.com/example/billing`
-- **Path:** `services/invoices`
+- **Path:** `examples/billing`
 
-Raises invoices and chases them.
+Raises invoices and chases them. The vocabulary is [GLOSSARY.md](../glossary.md).
+
+The currency rule is recorded in [billing.0001](../../adr/billing.0001.md).
 
 ## Not here
 

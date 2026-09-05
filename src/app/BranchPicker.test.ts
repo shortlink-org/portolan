@@ -30,6 +30,16 @@ describe("branchCompareHref", () => {
     ).toBe("https://gitlab.com/acme/portolan/-/compare/main...feature");
   });
 
+  it("uses GitLab's route for self-hosted repositories", () => {
+    expect(
+      branchCompareHref("main", "feature", {
+        ...BUILD,
+        forge: "gitlab",
+        repoUrl: "https://code.example.com/acme/portolan",
+      }),
+    ).toBe("https://code.example.com/acme/portolan/-/compare/main...feature");
+  });
+
   it("does not offer a comparison for the same branch", () => {
     expect(branchCompareHref("main", "main", BUILD)).toBeNull();
   });

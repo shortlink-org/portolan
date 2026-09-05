@@ -89,6 +89,22 @@ func TestTheContextPageLinksItsGlossary(t *testing.T) {
 	}
 }
 
+func TestServiceReadmeLinksUseGeneratedAdrAndGlossaryPages(t *testing.T) {
+	body := page(t, "billing/invoices/README.md")
+
+	for _, want := range []string{
+		"[GLOSSARY.md](../glossary.md)",
+		"[billing.0001](../../adr/billing.0001.md)",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the service README does not rewrite %q:\n%s", want, body)
+		}
+	}
+	if strings.Contains(body, "](GLOSSARY.md)") || strings.Contains(body, "](../../docs/adr/0001.md)") {
+		t.Errorf("the copied source links survived unchanged:\n%s", body)
+	}
+}
+
 // Straight after the contexts, before the pages that are written in these
 // words. A model reading the estate cold has the same problem a person has.
 func TestLlmsListsTheGlossaries(t *testing.T) {

@@ -51,6 +51,7 @@ import { useNarrow } from "./responsive";
 import { ShortcutsSheet, useShortcuts } from "./shortcuts";
 import { Toaster } from "./toast";
 import { useUiStore } from "./ui-store";
+import { ForgeAccessProvider } from "./forge-access";
 
 /** Every route, once. Rendered inside a pane on wide layouts and alone below. */
 function AppRoutes() {
@@ -342,11 +343,13 @@ export function App() {
   return (
     <ThemeProvider>
       <DensityProvider>
-        <SearchProvider>
-          <BrowserRouter basename={import.meta.env.BASE_URL}>
-            <Shell />
-          </BrowserRouter>
-        </SearchProvider>
+        <ForgeAccessProvider>
+          <SearchProvider>
+            <BrowserRouter basename={import.meta.env.BASE_URL}>
+              <Shell />
+            </BrowserRouter>
+          </SearchProvider>
+        </ForgeAccessProvider>
       </DensityProvider>
     </ThemeProvider>
   );

@@ -233,17 +233,17 @@ authentication.
 
 ## Decisions
 
-- [auth.0001](docs/adr/0001-events-returned-not-buffered.md) — Aggregates return their events; they do not buffer them
-- [auth.0002](docs/adr/0002-session-is-its-own-aggregate.md) — Session is its own aggregate, linked to User by id
-- [auth.0003](docs/adr/0003-expiry-publishes-nothing.md) — Session expiry publishes no event
-- [auth.0004](docs/adr/0004-lockout-is-its-own-aggregate.md) — Lockout is its own aggregate, keyed by user id
-- [auth.0005](docs/adr/0005-rules-are-specifications-at-construction.md) — Validation lives in constructors, as specifications, and applies when a value is made
-- [auth.0006](docs/adr/0006-a-password-change-ends-sessions-through-a-policy.md) — A password change ends sessions through a policy, and the domains never import each other
-- [auth.0007](docs/adr/0007-login-asks-risk-and-a-block-is-a-compromise.md) — Login asks a risk service, and a blocked attempt is treated as a compromise
-- [auth.0008](docs/adr/0008-a-cache-in-front-of-bytoken-only.md) — A cache in front of the token lookup, and nothing else
-- [auth.0009](docs/adr/0009-a-lock-answers-like-a-wrong-password.md) — A locked account answers exactly like a wrong password
-- [auth.0010](docs/adr/0010-a-revocation-is-written-to-the-cache.md) — A revocation is written to the cache, not only dropped from it
-- [auth.0011](docs/adr/0011-the-relay-feeds-a-bus-and-policies-subscribe-to-the-bus.md) — The relay reads every topic and hands it to a bus; policies subscribe to the bus
+- [auth.0001](../../adr/auth.0001.md) — Aggregates return their events; they do not buffer them
+- [auth.0002](../../adr/auth.0002.md) — Session is its own aggregate, linked to User by id
+- [auth.0003](../../adr/auth.0003.md) — Session expiry publishes no event
+- [auth.0004](../../adr/auth.0004.md) — Lockout is its own aggregate, keyed by user id
+- [auth.0005](../../adr/auth.0005.md) — Validation lives in constructors, as specifications, and applies when a value is made
+- [auth.0006](../../adr/auth.0006.md) — A password change ends sessions through a policy, and the domains never import each other
+- [auth.0007](../../adr/auth.0007.md) — Login asks a risk service, and a blocked attempt is treated as a compromise
+- [auth.0008](../../adr/auth.0008.md) — A cache in front of the token lookup, and nothing else
+- [auth.0009](../../adr/auth.0009.md) — A locked account answers exactly like a wrong password
+- [auth.0010](../../adr/auth.0010.md) — A revocation is written to the cache, not only dropped from it
+- [auth.0011](../../adr/auth.0011.md) — The relay reads every topic and hands it to a bus; policies subscribe to the bus
 
 ## Running it
 
@@ -871,10 +871,10 @@ and delivery each decide their own, and this service carries the answers.
 
 ## Decisions
 
-- [bff.0001](docs/adr/0001-graphql-yoga-schema-first.md) — GraphQL over Yoga, and the schema comes first
-- [bff.0002](docs/adr/0002-the-storefront-owns-no-state.md) — The storefront owns no state
-- [bff.0003](docs/adr/0003-the-schema-speaks-the-clients-words.md) — The schema speaks the client's words, not the peers'
-- [bff.0004](docs/adr/0004-subscriptions-are-the-bus-forwarded.md) — A subscription is the bus, forwarded
+- [bff.0001](../../adr/bff.0001.md) — GraphQL over Yoga, and the schema comes first
+- [bff.0002](../../adr/bff.0002.md) — The storefront owns no state
+- [bff.0003](../../adr/bff.0003.md) — The schema speaks the client's words, not the peers'
+- [bff.0004](../../adr/bff.0004.md) — A subscription is the bus, forwarded
 
 ## The tree
 
@@ -1259,7 +1259,7 @@ cd ../../refund/proto && buf push
 
 ## How the catalog reads it
 
-The vocabulary is [GLOSSARY.md](GLOSSARY.md). Nothing here is annotated for
+The vocabulary is [GLOSSARY.md](../glossary.md). Nothing here is annotated for
 the catalog, but plenty is annotated for the model: `@AggregateRoot`, `@Entity`, `@ValueObject`, `@Repository`,
 `@SecondaryPort` and `@DomainEvent` are jMolecules, and `extract-java` reads
 what they say rather than guessing from the layout. The rules are in
@@ -1294,13 +1294,13 @@ Stripe's routes instead of at Stripe.
 
 ## Decisions
 
-- [payments.0004](../../../docs/adr/payments.0004.md) — journal rows are
+- [payments.0004](../../adr/payments.0004.md) — journal rows are
   idempotent by `(order_id, attempt)`, which is why `payments` carries an
   `attempt` and a unique key over the pair. The attempt is minted here, one
   past the last recorded for the order, and the key's refusal is a sentinel.
-- [ledger.0001](docs/adr/0001-a-gateway-outage-records-nothing.md) — a
+- [ledger.0001](../../adr/ledger.0001.md) — a
   gateway that did not answer has not refused; nothing is recorded.
-- [ledger.0002](docs/adr/0002-foreign-events-arrive-over-nats-and-are-republished-in-process.md)
+- [ledger.0002](../../adr/ledger.0002.md)
   — the order service's events are read off the bus by an adapter and handed
   to the policies in process.
 - [ledger.0003](docs/adr/0003-the-card-network-is-stripe-and-stays-outside-the-estate.md)
@@ -2086,14 +2086,14 @@ opaque id `auth` vouched for.
 
 ## Decisions
 
-- [cart.0001](docs/adr/0001-typescript-on-node.md) — TypeScript on Node.js, and the stack around it
-- [cart.0002](docs/adr/0002-currency-frozen-at-the-first-item.md) — A basket freezes its currency at the first item
-- [cart.0003](docs/adr/0003-prices-captured-never-recomputed.md) — Line prices are captured when added, never recomputed
-- [cart.0004](docs/adr/0004-checkout-confirms-with-auth-and-pricing.md) — Checkout confirms the session with `auth` and the total with `pricing`
-- [cart.0005](docs/adr/0005-a-merge-moves-every-line-or-none.md) — A merge moves every line or none
-- [cart.0006](docs/adr/0006-abandonment-is-a-sweep-that-publishes.md) — Abandonment is a sweep inside the service, and it publishes
-- [cart.0007](docs/adr/0007-an-anonymous-basket-is-owned-by-its-token.md) — An anonymous basket is owned by whoever holds its token
-- [cart.0008](docs/adr/0008-events-leave-over-nats-jetstream.md) — Events leave the service over NATS JetStream, and the outbox stays
+- [cart.0001](../../adr/cart.0001.md) — TypeScript on Node.js, and the stack around it
+- [cart.0002](../../adr/cart.0002.md) — A basket freezes its currency at the first item
+- [cart.0003](../../adr/cart.0003.md) — Line prices are captured when added, never recomputed
+- [cart.0004](../../adr/cart.0004.md) — Checkout confirms the session with `auth` and the total with `pricing`
+- [cart.0005](../../adr/cart.0005.md) — A merge moves every line or none
+- [cart.0006](../../adr/cart.0006.md) — Abandonment is a sweep inside the service, and it publishes
+- [cart.0007](../../adr/cart.0007.md) — An anonymous basket is owned by whoever holds its token
+- [cart.0008](../../adr/cart.0008.md) — Events leave the service over NATS JetStream, and the outbox stays
 
 ## Running it
 
@@ -2534,11 +2534,11 @@ stand-in until something does, and the catalog says so.
 
 ## Decisions
 
-- [oms.0001](docs/adr/0001-rust-on-tokio.md) — Rust on Tokio, and the stack around it
-- [oms.0002](docs/adr/0002-an-order-is-placed-from-a-checked-out-basket.md) — An order is placed from a checked-out basket, not by a call
-- [oms.0003](docs/adr/0003-lines-are-copied-never-repriced.md) — Lines and the total are copied from the basket, never repriced
-- [oms.0004](docs/adr/0004-cancel-is-allowed-until-dispatch.md) — Cancelling is allowed until the parcel moves
-- [oms.0005](docs/adr/0005-confirmation-waits-for-a-payment-that-does-not-exist-yet.md) — Confirmation waits for a payment service that does not exist yet
+- [oms.0001](../../adr/oms.0001.md) — Rust on Tokio, and the stack around it
+- [oms.0002](../../adr/oms.0002.md) — An order is placed from a checked-out basket, not by a call
+- [oms.0003](../../adr/oms.0003.md) — Lines and the total are copied from the basket, never repriced
+- [oms.0004](../../adr/oms.0004.md) — Cancelling is allowed until the parcel moves
+- [oms.0005](../../adr/oms.0005.md) — Confirmation waits for a payment service that does not exist yet
 
 ## Running it
 
@@ -3257,7 +3257,7 @@ Service `core` — bounded context **delivery**. TypeScript on Node.
 
 Owns the shipment: what is being carried, where it is, and which van is taking
 it there. It is told what to ship and asked where it got to; it never decides
-whether something should ship at all. The vocabulary is [GLOSSARY.md](GLOSSARY.md).
+whether something should ship at all. The vocabulary is [GLOSSARY.md](../glossary.md).
 
 ## What it does
 
@@ -3305,10 +3305,10 @@ arrow of both lifecycle tables is one of these.
 
 ## Decisions
 
-- [core.0001](docs/adr/0001-packages-order-id-is-a-foreign-key-into-another-service.md)
+- [core.0001](../../adr/core.0001.md)
   — `packages.order_id` is a foreign key into the order service's table,
   knowingly.
-- [core.0002](docs/adr/0002-a-shipment-waits-for-the-money.md) — a shipment
+- [core.0002](../../adr/core.0002.md) — a shipment
   waits for the money, and the ledger's fact releases it.
 
 ## Status

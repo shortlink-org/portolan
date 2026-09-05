@@ -50,6 +50,16 @@ const origin = git("remote get-url origin")
   .replace(/\.git$/, "");
 const repoUrl =
   env.BUILD_REPO_URL || gh || gl || (/^https?:\/\//.test(origin) ? origin : "");
+const forge =
+  env.BUILD_FORGE === "github" || env.BUILD_FORGE === "gitlab"
+    ? env.BUILD_FORGE
+    : gh
+      ? "github"
+      : gl || /gitlab/i.test(repoUrl)
+        ? "gitlab"
+        : /github/i.test(repoUrl)
+          ? "github"
+          : undefined;
 
 const commit =
   env.BUILD_COMMIT ||
@@ -88,6 +98,7 @@ const buildInfo = {
   dirty:
     !env.GITHUB_SHA && !env.CI_COMMIT_SHA && git("status --porcelain") !== "",
   repoUrl,
+  forge,
 };
 
 // The deployed site may explain how it was assembled, but it must not publish

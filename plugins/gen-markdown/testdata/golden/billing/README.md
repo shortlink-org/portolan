@@ -11,7 +11,7 @@ Money owed and money taken.
 
 | Service | Path | Aggregates |
 | --- | --- | --- |
-| [Invoices](invoices/README.md) | `services/invoices` | Invoice |
+| [Invoices](invoices/README.md) | `examples/billing` | Invoice |
 
 ## Language
 

@@ -5,9 +5,11 @@
 - **Id:** `billing.invoices`
 - **Context:** [Billing](../README.md)
 - **Repo:** `github.com/example/billing`
-- **Path:** `services/invoices`
+- **Path:** `examples/billing`
 
-Raises invoices and chases them.
+Raises invoices and chases them. The vocabulary is [GLOSSARY.md](../glossary.md).
+
+The currency rule is recorded in [billing.0001](../../adr/billing.0001.md).
 
 ## Not here
 

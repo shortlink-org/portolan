@@ -34,11 +34,11 @@ stand-in until something does, and the catalog says so.
 
 ## Decisions
 
-- [oms.0001](docs/adr/0001-rust-on-tokio.md) — Rust on Tokio, and the stack around it
-- [oms.0002](docs/adr/0002-an-order-is-placed-from-a-checked-out-basket.md) — An order is placed from a checked-out basket, not by a call
-- [oms.0003](docs/adr/0003-lines-are-copied-never-repriced.md) — Lines and the total are copied from the basket, never repriced
-- [oms.0004](docs/adr/0004-cancel-is-allowed-until-dispatch.md) — Cancelling is allowed until the parcel moves
-- [oms.0005](docs/adr/0005-confirmation-waits-for-a-payment-that-does-not-exist-yet.md) — Confirmation waits for a payment service that does not exist yet
+- [oms.0001](../../adr/oms.0001.md) — Rust on Tokio, and the stack around it
+- [oms.0002](../../adr/oms.0002.md) — An order is placed from a checked-out basket, not by a call
+- [oms.0003](../../adr/oms.0003.md) — Lines and the total are copied from the basket, never repriced
+- [oms.0004](../../adr/oms.0004.md) — Cancelling is allowed until the parcel moves
+- [oms.0005](../../adr/oms.0005.md) — Confirmation waits for a payment service that does not exist yet
 
 ## Running it
 

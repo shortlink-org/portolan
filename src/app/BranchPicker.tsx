@@ -6,40 +6,46 @@ import {
 } from "@headlessui/react";
 import { Check, ChevronDown, ExternalLink, GitBranch, LoaderCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate, useSearchParams } from "react-router";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
 import { branchCompareHref } from "../lib/branch-compare";
 import { buildInfo } from "../lib/build-info";
-import { githubRepoFromUrl, listGitHubBranches } from "../lib/github-catalog";
-import type { GitHubBranch } from "../lib/github-catalog";
+import { forgeRepoFromUrl, listForgeBranches } from "../lib/github-catalog";
+import type { ForgeBranch } from "../lib/github-catalog";
 import { forgetComparison, rememberComparison } from "../lib/comparison-memory";
 import { paths } from "../routes";
+import { useForgeAccess } from "./forge-access";
 
-function branchNote(branch: GitHubBranch, current: string): string {
+function branchNote(branch: ForgeBranch, current: string): string {
   if (branch.name === current) return `${branch.commit.slice(0, 7)} · current catalog`;
   return `${branch.commit.slice(0, 7)}${branch.protected ? " · protected" : ""}`;
 }
 
 /**
- * Selects the comparison head. Branches are read from GitHub at runtime; a
+ * Selects the comparison head. Branches are read from the configured forge at runtime; a
  * choice opens the first-class changes route, whose URL carries both heads.
  */
 export function BranchPicker({ compact = false }: { compact?: boolean }) {
   const current = buildInfo.branch || "main";
-  const repo = githubRepoFromUrl(buildInfo.repoUrl);
+  const repo = forgeRepoFromUrl(buildInfo.repoUrl, buildInfo.forge);
+  const access = useForgeAccess();
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [search] = useSearchParams();
-  const [remote, setRemote] = useState<GitHubBranch[]>([]);
+  const [remote, setRemote] = useState<ForgeBranch[]>([]);
   const [loading, setLoading] = useState(Boolean(repo));
   const [error, setError] = useState("");
 
   useEffect(() => {
     let live = true;
     if (!repo) {
+      setRemote([]);
       setLoading(false);
       return;
     }
-    listGitHubBranches(repo)
+    setRemote([]);
+    setLoading(true);
+    setError("");
+    listForgeBranches(repo, { token: access.token })
       .then((branches) => {
         if (live) setRemote(branches);
       })
@@ -52,7 +58,7 @@ export function BranchPicker({ compact = false }: { compact?: boolean }) {
     return () => {
       live = false;
     };
-  }, [repo?.owner, repo?.repo]);
+  }, [access.token, repo?.provider, repo?.webUrl]);
 
   const branches = useMemo(() => {
     const byName = new Map(remote.map((branch) => [branch.name, branch]));
@@ -131,17 +137,22 @@ export function BranchPicker({ compact = false }: { compact?: boolean }) {
         ))}
         {loading ? (
           <div className="mono flex items-center gap-2 border-t border-line px-3 py-2 text-muted" role="status">
-            <LoaderCircle size={13} aria-hidden className="animate-spin" /> Loading GitHub branches…
+            <LoaderCircle size={13} aria-hidden className="animate-spin" /> Loading {repo?.provider === "gitlab" ? "GitLab" : "GitHub"} branches…
           </div>
         ) : error ? (
-          <div className="border-t border-line px-3 py-2 text-sm text-unresolved">{error}</div>
+          <div className="border-t border-line px-3 py-2 text-sm">
+            <div className="text-unresolved">{error}</div>
+            <Link to={paths.changes()} className="mt-1 inline-block text-accent hover:underline">
+              repository access →
+            </Link>
+          </div>
         ) : !repo ? (
-          <div className="border-t border-line px-3 py-2 text-sm text-muted">Runtime comparison needs a github.com repository.</div>
+          <div className="border-t border-line px-3 py-2 text-sm text-muted">Runtime comparison needs a GitHub or GitLab repository.</div>
         ) : null}
         {compareHref ? (
           <div className="sticky bottom-0 mt-1 border-t border-line bg-canvas px-3 py-2">
             <a href={compareHref} target="_blank" rel="noreferrer" className="mono flex items-center gap-1.5 rounded-control text-accent hover:underline">
-              open comparison on GitHub <ExternalLink size={12} aria-hidden />
+              open comparison on {repo?.provider === "gitlab" ? "GitLab" : "GitHub"} <ExternalLink size={12} aria-hidden />
             </a>
           </div>
         ) : null}

@@ -146,3 +146,14 @@ handful of `git show`s away, needing no checkout, no toolchain and no second
 run of the extractors. `src/lib/catalog-diff.ts` is the comparison itself, kept
 apart from the command that prints it because "what did this break" is the same
 question a page will want to ask.
+
+The site's branch picker provides the same comparison against live GitHub or
+GitLab branch heads. Public repositories work without configuration. For a
+private repository, open **Changes → Repository access** and provide a
+read-only token (`Contents: read` on GitHub, `read_api` or `read_repository` on
+GitLab). The token and private catalogs stay only in the current tab's memory:
+they are not put in the URL, Web Storage, Cache Storage, or the built site.
+
+GitHub.com and GitLab.com are detected from the repository URL. For a
+self-hosted GitLab whose hostname does not contain `gitlab`, build with
+`BUILD_FORGE=gitlab` and `BUILD_REPO_URL=https://forge.example/group/project`.

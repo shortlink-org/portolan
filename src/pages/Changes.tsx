@@ -7,6 +7,7 @@ import {
   Search,
 } from "lucide-react";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import type { FormEvent } from "react";
 import { useSearchParams } from "react-router";
 import type { Catalog } from "../catalog";
 import { catalog } from "../data";
@@ -16,13 +17,14 @@ import { diffCatalogs, SEVERITIES } from "../lib/catalog-diff";
 import type { Change, Severity } from "../lib/catalog-diff";
 import { rememberComparison, rememberedComparison } from "../lib/comparison-memory";
 import {
-  clearGitHubCatalogCache,
-  githubRepoFromUrl,
-  listGitHubBranches,
-  loadGitHubCatalog,
+  clearForgeCatalogCache,
+  forgeRepoFromUrl,
+  listForgeBranches,
+  loadForgeCatalog,
 } from "../lib/github-catalog";
-import type { GitHubBranch, GitHubRepo } from "../lib/github-catalog";
+import type { ForgeBranch, ForgeRepo } from "../lib/github-catalog";
 import { plural } from "../lib/format";
+import { useForgeAccess } from "../app/forge-access";
 
 const LABEL: Record<Severity, string> = {
   breaking: "Breaking",
@@ -49,13 +51,82 @@ function short(sha: string): string {
 async function catalogFor(
   name: string,
   current: string,
-  repo: GitHubRepo,
-  branches: GitHubBranch[],
+  repo: ForgeRepo,
+  branches: ForgeBranch[],
+  token: string,
 ): Promise<{ catalog: Catalog; sha: string }> {
   if (name === current) return { catalog, sha: buildInfo.commit };
   const branch = branches.find((candidate) => candidate.name === name);
-  if (!branch) throw new Error(`Branch “${name}” no longer exists on GitHub.`);
-  return { catalog: await loadGitHubCatalog(repo, branch.commit), sha: branch.commit };
+  if (!branch) throw new Error(`Branch “${name}” no longer exists on ${repo.provider === "gitlab" ? "GitLab" : "GitHub"}.`);
+  return {
+    catalog: await loadForgeCatalog(repo, branch.commit, { token }),
+    sha: branch.commit,
+  };
+}
+
+function RepositoryAccess({ repo, reveal }: { repo: ForgeRepo; reveal: boolean }) {
+  const access = useForgeAccess();
+  const [draft, setDraft] = useState("");
+  const provider = repo.provider === "gitlab" ? "GitLab" : "GitHub";
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    if (!draft.trim()) return;
+    access.connect(draft);
+    setDraft("");
+  };
+
+  return (
+    <details
+      className="mt-4 rounded-control border border-line bg-surface px-3 py-2"
+      open={reveal && !access.connected ? true : undefined}
+    >
+      <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-medium text-ink">
+        Repository access
+        <span className={`chip ml-auto ${access.connected ? "status-verified" : "text-muted"}`}>
+          {access.connected ? "token in memory" : "public access"}
+        </span>
+      </summary>
+      <div className="mt-3 border-t border-line pt-3">
+        <p className="max-w-prose text-sm text-muted">
+          {access.connected
+            ? `${provider} requests from this tab are authenticated. The token is never persisted or included in a URL.`
+            : `For a private ${provider} repository, provide a read-only access token. It is kept only in this tab's memory and private catalogs are not written to Cache Storage.`}
+        </p>
+        {access.connected ? (
+          <button
+            type="button"
+            onClick={access.disconnect}
+            className="mono mt-3 rounded-control border border-line px-3 py-2 text-sm text-muted hover:border-line-strong hover:text-ink"
+          >
+            Forget token
+          </button>
+        ) : (
+          <form onSubmit={submit} className="mt-3 flex flex-col gap-2 sm:flex-row">
+            <label className="min-w-0 flex-1">
+              <span className="sr-only">{provider} access token</span>
+              <input
+                type="password"
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                autoComplete="off"
+                spellCheck={false}
+                placeholder={`${provider} read-only access token`}
+                className="mono w-full rounded-control border border-line bg-canvas px-3 py-2 text-sm text-ink outline-none placeholder:text-muted focus:border-accent"
+              />
+            </label>
+            <button
+              type="submit"
+              disabled={!draft.trim()}
+              className="mono rounded-control border border-accent px-3 py-2 text-sm text-accent disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Use token
+            </button>
+          </form>
+        )}
+      </div>
+    </details>
+  );
 }
 
 export function Changes() {
@@ -63,7 +134,8 @@ export function Changes() {
   const current = buildInfo.branch || "main";
   const base = params.get("base") || current;
   const head = params.get("head") || "";
-  const repo = githubRepoFromUrl(buildInfo.repoUrl);
+  const repo = forgeRepoFromUrl(buildInfo.repoUrl, buildInfo.forge);
+  const access = useForgeAccess();
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -87,15 +159,15 @@ export function Changes() {
     setError("");
     if (!head) return;
     if (!repo) {
-      setError("Runtime comparison currently supports public github.com repositories.");
+      setError("Runtime comparison needs a GitHub or GitLab repository URL in the build metadata.");
       return;
     }
     setLoading(true);
-    listGitHubBranches(repo)
+    listForgeBranches(repo, { token: access.token })
       .then(async (branches) => {
         const [before, after] = await Promise.all([
-          catalogFor(base, current, repo, branches),
-          catalogFor(head, current, repo, branches),
+          catalogFor(base, current, repo, branches, access.token),
+          catalogFor(head, current, repo, branches, access.token),
         ]);
         return {
           changes: diffCatalogs(before.catalog, after.catalog),
@@ -115,7 +187,7 @@ export function Changes() {
     return () => {
       live = false;
     };
-  }, [base, current, head, repo?.owner, repo?.repo, retry]);
+  }, [access.token, base, current, head, repo?.provider, repo?.webUrl, retry]);
 
   const shown = useMemo(() => {
     if (!loaded) return [];
@@ -136,7 +208,7 @@ export function Changes() {
   };
 
   const reload = () => {
-    clearGitHubCatalogCache();
+    clearForgeCatalogCache();
     setRetry((value) => value + 1);
   };
 
@@ -169,12 +241,14 @@ export function Changes() {
           ) : null}
         </div>
 
+        {repo ? <RepositoryAccess repo={repo} reveal={Boolean(error)} /> : null}
+
         {!head ? (
           <div className="empty mt-section">
             <GitCompare size={24} aria-hidden className="mx-auto mb-3 text-muted" />
             <div className="font-medium text-ink">Choose a branch in the header</div>
             <p className="mx-auto mt-1 max-w-prose text-muted">
-              Portolan will load that branch from GitHub and compare its catalog with {current}.
+              Portolan will load that branch from {repo?.provider === "gitlab" ? "GitLab" : "GitHub"} and compare its catalog with {current}.
             </p>
           </div>
         ) : loading ? (
@@ -262,7 +336,7 @@ export function Changes() {
             <div className="mono mt-4 flex flex-wrap gap-x-4 gap-y-1 border-t border-line pt-3 text-xs text-muted">
               <span>{base} · {short(loaded.baseSha)}</span>
               <span>{head} · {short(loaded.headSha)}</span>
-              <span className="ml-auto">loaded from GitHub at runtime</span>
+              <span className="ml-auto">loaded from {repo?.provider === "gitlab" ? "GitLab" : "GitHub"} at runtime</span>
             </div>
           </>
         ) : null}

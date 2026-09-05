@@ -41,17 +41,17 @@ authentication.
 
 ## Decisions
 
-- [auth.0001](docs/adr/0001-events-returned-not-buffered.md) — Aggregates return their events; they do not buffer them
-- [auth.0002](docs/adr/0002-session-is-its-own-aggregate.md) — Session is its own aggregate, linked to User by id
-- [auth.0003](docs/adr/0003-expiry-publishes-nothing.md) — Session expiry publishes no event
-- [auth.0004](docs/adr/0004-lockout-is-its-own-aggregate.md) — Lockout is its own aggregate, keyed by user id
-- [auth.0005](docs/adr/0005-rules-are-specifications-at-construction.md) — Validation lives in constructors, as specifications, and applies when a value is made
-- [auth.0006](docs/adr/0006-a-password-change-ends-sessions-through-a-policy.md) — A password change ends sessions through a policy, and the domains never import each other
-- [auth.0007](docs/adr/0007-login-asks-risk-and-a-block-is-a-compromise.md) — Login asks a risk service, and a blocked attempt is treated as a compromise
-- [auth.0008](docs/adr/0008-a-cache-in-front-of-bytoken-only.md) — A cache in front of the token lookup, and nothing else
-- [auth.0009](docs/adr/0009-a-lock-answers-like-a-wrong-password.md) — A locked account answers exactly like a wrong password
-- [auth.0010](docs/adr/0010-a-revocation-is-written-to-the-cache.md) — A revocation is written to the cache, not only dropped from it
-- [auth.0011](docs/adr/0011-the-relay-feeds-a-bus-and-policies-subscribe-to-the-bus.md) — The relay reads every topic and hands it to a bus; policies subscribe to the bus
+- [auth.0001](../../adr/auth.0001.md) — Aggregates return their events; they do not buffer them
+- [auth.0002](../../adr/auth.0002.md) — Session is its own aggregate, linked to User by id
+- [auth.0003](../../adr/auth.0003.md) — Session expiry publishes no event
+- [auth.0004](../../adr/auth.0004.md) — Lockout is its own aggregate, keyed by user id
+- [auth.0005](../../adr/auth.0005.md) — Validation lives in constructors, as specifications, and applies when a value is made
+- [auth.0006](../../adr/auth.0006.md) — A password change ends sessions through a policy, and the domains never import each other
+- [auth.0007](../../adr/auth.0007.md) — Login asks a risk service, and a blocked attempt is treated as a compromise
+- [auth.0008](../../adr/auth.0008.md) — A cache in front of the token lookup, and nothing else
+- [auth.0009](../../adr/auth.0009.md) — A locked account answers exactly like a wrong password
+- [auth.0010](../../adr/auth.0010.md) — A revocation is written to the cache, not only dropped from it
+- [auth.0011](../../adr/auth.0011.md) — The relay reads every topic and hands it to a bus; policies subscribe to the bus
 
 ## Running it
 

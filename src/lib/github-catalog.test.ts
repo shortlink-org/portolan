@@ -2,12 +2,26 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   catalogGlob,
   clearGitHubCatalogCache,
+  forgeRepoFromUrl,
   githubRepoFromUrl,
+  listForgeBranches,
   listGitHubBranches,
+  loadForgeCatalog,
   loadGitHubCatalog,
 } from "./github-catalog";
 
-const REPO = { owner: "acme", repo: "portolan" };
+const REPO = {
+  provider: "github" as const,
+  owner: "acme",
+  repo: "portolan",
+  webUrl: "https://github.com/acme/portolan",
+};
+const GITLAB_REPO = {
+  provider: "gitlab" as const,
+  origin: "https://gitlab.com",
+  project: "acme/platform/portolan",
+  webUrl: "https://gitlab.com/acme/platform/portolan",
+};
 const SHA = "a".repeat(40);
 
 function memoryCacheStorage() {
@@ -34,6 +48,18 @@ describe("githubRepoFromUrl", () => {
     expect(githubRepoFromUrl("https://github.com/acme/portolan.git")).toEqual(REPO);
     expect(githubRepoFromUrl("https://gitlab.com/acme/portolan")).toBeNull();
     expect(githubRepoFromUrl("https://github.com/acme/portolan/issues")).toBeNull();
+  });
+
+  it("recognises GitLab subgroup projects and explicit self-hosted GitLab", () => {
+    expect(forgeRepoFromUrl("https://gitlab.com/acme/platform/portolan.git")).toEqual(GITLAB_REPO);
+    expect(
+      forgeRepoFromUrl("https://code.acme.test/platform/portolan", "gitlab"),
+    ).toEqual({
+      provider: "gitlab",
+      origin: "https://code.acme.test",
+      project: "platform/portolan",
+      webUrl: "https://code.acme.test/platform/portolan",
+    });
   });
 });
 
@@ -63,7 +89,22 @@ describe("listGitHubBranches", () => {
 
   it("explains the unauthenticated private-repository failure", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("", { status: 404 })));
-    await expect(listGitHubBranches(REPO)).rejects.toThrow("Private repositories need an authenticated integration");
+    await expect(listGitHubBranches(REPO)).rejects.toThrow("private repository needs an access token");
+  });
+
+  it("authenticates GitHub and GitLab branch requests without putting tokens in URLs", async () => {
+    const fetch = vi.fn()
+      .mockResolvedValueOnce(new Response("[]", { status: 200 }))
+      .mockResolvedValueOnce(new Response("[]", { status: 200 }));
+    vi.stubGlobal("fetch", fetch);
+
+    await listForgeBranches(REPO, { token: "github-secret" });
+    await listForgeBranches(GITLAB_REPO, { token: "gitlab-secret" });
+
+    expect(fetch.mock.calls[0]?.[0]).not.toContain("github-secret");
+    expect(new Headers(fetch.mock.calls[0]?.[1]?.headers).get("authorization")).toBe("Bearer github-secret");
+    expect(fetch.mock.calls[1]?.[0]).toContain("/api/v4/projects/acme%2Fplatform%2Fportolan/repository/branches");
+    expect(new Headers(fetch.mock.calls[1]?.[1]?.headers).get("private-token")).toBe("gitlab-secret");
   });
 });
 
@@ -166,5 +207,64 @@ describe("loadGitHubCatalog", () => {
     vi.stubGlobal("fetch", fetch);
 
     await expect(loadGitHubCatalog(REPO, SHA)).rejects.toThrow("truncated");
+  });
+
+  it("reads private GitHub blobs through the API and never persists the catalog", async () => {
+    const source = {
+      generatedAt: "2026-09-05T00:00:00Z",
+      commit: SHA,
+      contexts: [],
+      defs: {},
+      flows: [],
+      adrs: [],
+    };
+    const cache = memoryCacheStorage();
+    const fetch = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ sources: ["data/*.json"] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        truncated: false,
+        tree: [{ path: "data/catalog.json", type: "blob", sha: "blob-sha", size: 100 }],
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(source), { status: 200 }));
+    vi.stubGlobal("caches", cache);
+    vi.stubGlobal("fetch", fetch);
+
+    await loadForgeCatalog(REPO, SHA, { token: "secret" });
+
+    expect(fetch.mock.calls[0]?.[0]).toContain("/contents/portolan.json?ref=");
+    expect(fetch.mock.calls[2]?.[0]).toContain("/git/blobs/blob-sha");
+    for (const call of fetch.mock.calls) {
+      expect(new Headers(call[1]?.headers).get("authorization")).toBe("Bearer secret");
+      expect(String(call[0])).not.toContain("secret");
+    }
+    expect(cache.open).not.toHaveBeenCalled();
+  });
+
+  it("loads a private GitLab catalog through repository files", async () => {
+    const source = {
+      generatedAt: "2026-09-05T00:00:00Z",
+      commit: SHA,
+      contexts: [],
+      defs: {},
+      flows: [],
+      adrs: [],
+    };
+    const fetch = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ sources: ["data/*.json"] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([
+        { id: "blob-sha", path: "data/catalog.json", type: "blob" },
+      ]), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(source), { status: 200 }));
+    vi.stubGlobal("fetch", fetch);
+
+    await loadForgeCatalog(GITLAB_REPO, SHA, { token: "secret" });
+
+    expect(fetch.mock.calls[0]?.[0]).toContain("repository/files/portolan.json/raw?ref=");
+    expect(fetch.mock.calls[1]?.[0]).toContain("repository/tree?recursive=true");
+    expect(fetch.mock.calls[2]?.[0]).toContain("repository/files/data%2Fcatalog.json/raw?ref=");
+    for (const call of fetch.mock.calls) {
+      expect(new Headers(call[1]?.headers).get("private-token")).toBe("secret");
+      expect(String(call[0])).not.toContain("secret");
+    }
   });
 });

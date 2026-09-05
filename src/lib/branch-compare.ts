@@ -10,7 +10,7 @@ export function branchCompareHref(
   if (!info.repoUrl || !base || !head || base === head) return null;
   const pair = `${encodeURIComponent(base)}...${encodeURIComponent(head)}`;
   const root = info.repoUrl.replace(/\/$/, "");
-  return /gitlab/i.test(root)
+  return info.forge === "gitlab" || /gitlab/i.test(root)
     ? `${root}/-/compare/${pair}`
     : `${root}/compare/${pair}`;
 }

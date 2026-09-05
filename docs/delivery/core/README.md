@@ -12,7 +12,7 @@ Service `core` — bounded context **delivery**. TypeScript on Node.
 
 Owns the shipment: what is being carried, where it is, and which van is taking
 it there. It is told what to ship and asked where it got to; it never decides
-whether something should ship at all. The vocabulary is [GLOSSARY.md](GLOSSARY.md).
+whether something should ship at all. The vocabulary is [GLOSSARY.md](../glossary.md).
 
 ## What it does
 
@@ -60,10 +60,10 @@ arrow of both lifecycle tables is one of these.
 
 ## Decisions
 
-- [core.0001](docs/adr/0001-packages-order-id-is-a-foreign-key-into-another-service.md)
+- [core.0001](../../adr/core.0001.md)
   — `packages.order_id` is a foreign key into the order service's table,
   knowingly.
-- [core.0002](docs/adr/0002-a-shipment-waits-for-the-money.md) — a shipment
+- [core.0002](../../adr/core.0002.md) — a shipment
   waits for the money, and the ledger's fact releases it.
 
 ## Status

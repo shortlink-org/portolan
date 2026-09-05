@@ -1,6 +1,8 @@
 package main
 
 import (
+	"path"
+	"regexp"
 	"strings"
 
 	"github.com/shortlink-org/portolan/catalog"
@@ -33,7 +35,7 @@ func (s *site) renderService(ctx *catalog.BoundedContext, svc *catalog.Service) 
 
 	// The readme is a whole document of its own, so it goes in one level down
 	// rather than being paraphrased.
-	if readme := body(svc.Readme, svc.Name); readme != "" {
+	if readme := body(s.rewriteServiceReadmeLinks(self, ctx, svc), svc.Name); readme != "" {
 		b.WriteString("\n" + readme + "\n")
 	}
 
@@ -49,6 +51,83 @@ func (s *site) renderService(ctx *catalog.BoundedContext, svc *catalog.Service) 
 	for i := range svc.Aggregates {
 		s.renderAggregate(svc, &svc.Aggregates[i])
 	}
+}
+
+var markdownLink = regexp.MustCompile(`\]\(([^\s)]+)([^)]*)\)`)
+
+// rewriteServiceReadmeLinks keeps links copied from a service README useful
+// after that README moves into the generated tree. ADRs and glossaries have
+// canonical generated pages; linking back into the source tree would either
+// be broken or make a checked-in documentation bundle depend on its old
+// directory layout.
+func (s *site) rewriteServiceReadmeLinks(from string, ctx *catalog.BoundedContext, svc *catalog.Service) string {
+	if svc.Readme == "" || svc.Path == "" {
+		return svc.Readme
+	}
+
+	targets := map[string]string{}
+	for i := range s.cat.Adrs {
+		adr := &s.cat.Adrs[i]
+		if generated, ok := s.pathOf[adr.ID]; ok {
+			targets[sourceFile(adr.Source)] = generated
+			// A source README may already point at a repository-level docs/
+			// output. It still has to be made relative to its new page.
+			targets[path.Join("docs", generated)] = generated
+		}
+	}
+	if terms := s.termsOf[ctx.ID]; len(terms) > 0 {
+		generated := s.glossaryPath(ctx)
+		for _, term := range terms {
+			targets[sourceFile(term.Source)] = generated
+		}
+	}
+
+	readmeDir := path.Dir(path.Join(svc.Path, "README.md"))
+	return markdownLink.ReplaceAllStringFunc(svc.Readme, func(match string) string {
+		parts := markdownLink.FindStringSubmatch(match)
+		if len(parts) != 3 {
+			return match
+		}
+		destination, suffix := splitDestination(parts[1])
+		if destination == "" || strings.HasPrefix(destination, "#") || strings.Contains(destination, "://") || strings.HasPrefix(destination, "mailto:") {
+			return match
+		}
+
+		sourceTarget := path.Clean(path.Join(readmeDir, destination))
+		generated, ok := targets[sourceTarget]
+		if !ok {
+			return match
+		}
+		return "](" + rel(from, generated) + suffix + parts[2] + ")"
+	})
+}
+
+func sourceFile(source string) string {
+	if at := strings.LastIndex(source, ":"); at > 0 {
+		if isDigits(source[at+1:]) {
+			return source[:at]
+		}
+	}
+	return source
+}
+
+func isDigits(value string) bool {
+	if value == "" {
+		return false
+	}
+	for _, char := range value {
+		if char < '0' || char > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+func splitDestination(destination string) (string, string) {
+	if at := strings.IndexAny(destination, "#?"); at >= 0 {
+		return destination[:at], destination[at:]
+	}
+	return destination, ""
 }
 
 func (s *site) aggregateTable(from string, svc *catalog.Service) string {
