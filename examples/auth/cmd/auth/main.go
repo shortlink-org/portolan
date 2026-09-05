@@ -14,14 +14,8 @@ import (
 	"syscall"
 	"time"
 
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
-	"go.opentelemetry.io/otel/propagation"
-	"go.opentelemetry.io/otel/sdk/resource"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-
 	"github.com/shortlink-org/portolan/examples/auth/internal/di"
+	"github.com/shortlink-org/portolan/examples/auth/internal/pkg/tracing"
 )
 
 const (
@@ -35,18 +29,13 @@ func main() {
 		addr = defaultAddr
 	}
 
-	// Tracing is switched on by naming a collector, and it has to be set up
-	// before assembly: the database driver, the bus and the cache each take
-	// the global tracer provider as they are built, so one installed after
-	// them would trace nothing. With no TRACER_URI the provider stays the
-	// no-op one and every span below costs nothing.
-	if os.Getenv("TRACER_URI") != "" {
-		stopTracing, err := startTracing()
-		if err != nil {
-			log.Fatalf("auth: tracing: %v", err)
-		}
-		defer stopTracing()
+	// Tracing goes first: the parts assembled below take the global tracer
+	// provider as they are built. Why is in internal/pkg/tracing.
+	stopTracing, err := tracing.Start(context.Background(), tracing.FromEnv())
+	if err != nil {
+		log.Fatalf("auth: %v", err)
 	}
+	defer stopTracing()
 
 	app, err := di.New()
 	if err != nil {
@@ -95,50 +84,4 @@ func main() {
 		log.Printf("auth: shutdown: %v", err)
 	}
 	log.Print("auth: stopped")
-}
-
-// startTracing installs an OTLP tracer provider as the global one, sending to
-// the collector TRACER_URI names over plain gRPC, and names this service in
-// every span's resource. Everything is sampled: this switch is for recording
-// what the service does, not for watching it in production.
-func startTracing() (func(), error) {
-	ctx := context.Background()
-
-	exporter, err := otlptracegrpc.New(ctx,
-		otlptracegrpc.WithEndpoint(os.Getenv("TRACER_URI")),
-		otlptracegrpc.WithInsecure(),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	name := os.Getenv("SERVICE_NAME")
-	if name == "" {
-		name = "auth"
-	}
-	// Schemaless on purpose: merging two resources that name different schema
-	// versions is refused, and the default resource names whichever version
-	// the SDK was built against.
-	res, err := resource.Merge(resource.Default(), resource.NewSchemaless(
-		attribute.String("service.name", name),
-	))
-	if err != nil {
-		return nil, err
-	}
-
-	provider := sdktrace.NewTracerProvider(
-		sdktrace.WithBatcher(exporter),
-		sdktrace.WithResource(res),
-		sdktrace.WithSampler(sdktrace.AlwaysSample()),
-	)
-	otel.SetTracerProvider(provider)
-	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
-		propagation.TraceContext{}, propagation.Baggage{},
-	))
-
-	return func() {
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
-		defer cancel()
-		_ = provider.Shutdown(shutdownCtx)
-	}, nil
 }
