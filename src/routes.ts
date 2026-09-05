@@ -17,7 +17,28 @@ export const paths = {
       id: flowStepId(slug, stepId),
     })}`,
   adrs: () => "/adrs",
+  /**
+   * The estate's vocabulary. One page rather than one per context: the words
+   * a context means by itself are only half of what a reader needs, and the
+   * other half - the same word meant twice - has no context to live under.
+   */
+  language: () => "/language",
+  /** The vocabulary of one context, which is the page filtered to it. */
+  contextLanguage: (contextId: string) =>
+    `/language?context=${encodeURIComponent(contextId)}`,
+  /**
+   * One word, which is the page showing only it.
+   *
+   * A parameter and not an anchor. An anchor would have to be scrolled to, and
+   * the scroll runs two frames after the route commits - before this page's
+   * card grid has settled on how many columns it has, so the position it
+   * scrolls to is the position the card had in a layout that no longer exists.
+   * Shown instead of scrolled to, the card is simply the first thing on the
+   * page, and the reader is told what was narrowed and offered it back.
+   */
+  term: (termId: string) => `/language?term=${encodeURIComponent(termId)}`,
   problems: () => "/problems",
+  settings: () => "/settings",
   registry: () => "/registry",
   /**
    * A schema module sits at the estate level, not under a service.
@@ -303,7 +324,9 @@ const ROUTES: RegExp[] = [
   /^\/flows$/,
   /^\/flows\/[^/]+$/,
   /^\/adrs$/,
+  /^\/language$/,
   /^\/problems$/,
+  /^\/settings$/,
   /^\/map$/,
   /^\/adrs\/[^/]+$/,
   /^\/c\/[^/]+$/,
@@ -332,7 +355,9 @@ export function allCatalogPaths(catalog: Catalog): string[] {
     paths.graph(),
     paths.map(),
     paths.adrs(),
+    paths.language(),
     paths.problems(),
+    paths.settings(),
     paths.registry(),
   ];
   for (const module of catalog.modules ?? []) {

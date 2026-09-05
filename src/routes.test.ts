@@ -139,6 +139,12 @@ describe("routes", () => {
     expect(isRoutable("/nope/nope/nope/nope/nope")).toBe(false);
   });
 
+  it("routes the build settings page", () => {
+    expect(paths.settings()).toBe("/settings");
+    expect(isRoutable(paths.settings())).toBe(true);
+    expect(allCatalogPaths(catalog)).toContain(paths.settings());
+  });
+
   it("builds deep links to steps, carrying the step as a selection", () => {
     const link = paths.flowStep("cart-checkout", "s6");
     expect(link).toBe("/flows/cart-checkout#sel=flow-step:cart-checkout%2Fs6");

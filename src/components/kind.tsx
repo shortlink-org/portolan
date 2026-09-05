@@ -12,6 +12,7 @@ import {
   Shapes,
   Table2,
   Webhook,
+  WholeWord,
 } from "lucide-react";
 import type { Kind } from "../lib/kinds";
 import { KIND_LABEL } from "../lib/kinds";
@@ -67,6 +68,10 @@ export const KIND_ICON: Record<Kind, IconComponent> = {
   def: Shapes,
   flow: Route,
   adr: ScrollText,
+  // A term is a word, and the mark says so. It is deliberately NOT one of the
+  // five domain marks: the glossary names the building blocks, it is not one
+  // of them, and a term wearing an aggregate's hexagon would say it was.
+  term: WholeWord,
 };
 
 /**
@@ -91,6 +96,10 @@ export const KIND_COLOR: Record<Kind, string> = {
   def: "var(--fg-muted)",
   flow: "var(--fg-muted)",
   adr: "var(--fg-muted)",
+  // A term is painted by the context that means it, like a context row: which
+  // vocabulary a word belongs to is the whole of what distinguishes two
+  // entries that spell the same word.
+  term: "var(--ctx)",
 };
 
 /** Kinds whose names are identifiers in the source, and so are set in mono. */
@@ -114,6 +123,10 @@ export const KIND_MONO: Record<Kind, boolean> = {
   def: true,
   flow: true,
   adr: true,
+  // A term is a word in a sentence, not an identifier: the glossary spells it
+  // "Email address", and the code's spelling is derived from that, not the
+  // other way round.
+  term: false,
 };
 
 /**

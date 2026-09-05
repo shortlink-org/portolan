@@ -373,6 +373,54 @@ describe("mergeCatalogs", () => {
   });
 });
 
+describe("mergeCatalogs: glossary terms", () => {
+  const term = (id: string, context: string, slug: string) => ({
+    id,
+    slug,
+    context,
+    name: slug,
+    definition: "one sentence.",
+    source: "GLOSSARY.md:1",
+  });
+
+  // THE TEST THAT JUSTIFIES THE ID SCHEME.
+  //
+  // "One meaning per word inside this context" is a claim about a boundary,
+  // not about the estate: `User` in auth and `User` in shop are two different
+  // things, correctly, and the id is what keeps them from merging into one.
+  it("keeps one word in two contexts as two terms", () => {
+    const merged = mergeCatalogs([
+      source("auth.json", { terms: [term("auth.user", "auth", "user")] }),
+      source("shop.json", { terms: [term("shop.user", "shop", "user")] }),
+    ]);
+
+    expect(merged.catalog.terms).toHaveLength(2);
+    expect(merged.conflicts).toEqual([]);
+  });
+
+  // And the other half of it: two services of ONE context keeping glossaries
+  // that both define the word. Settling that by file order would hide exactly
+  // the disagreement the glossary exists to surface.
+  it("reports one word defined twice in one context", () => {
+    const merged = mergeCatalogs([
+      source("a.json", { terms: [term("shop.order", "shop", "order")] }),
+      source("b.json", { terms: [term("shop.order", "shop", "order")] }),
+    ]);
+
+    expect(merged.catalog.terms).toHaveLength(1);
+    expect(merged.conflicts).toHaveLength(1);
+    expect(merged.conflicts[0]?.message).toContain("term");
+    expect(merged.conflicts[0]?.message).toContain("a.json");
+  });
+
+  // Optional in the file and absent downstream, exactly like `stores`.
+  it("leaves terms off a catalog whose sources carried none", () => {
+    const merged = mergeCatalogs([source("a.json", {})]);
+
+    expect(merged.catalog.terms).toBeUndefined();
+  });
+});
+
 describe("mergeCatalogs: schema modules", () => {
   const shop = () => ({
     id: "buf.build/acme/shop",

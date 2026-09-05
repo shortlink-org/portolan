@@ -105,7 +105,8 @@ export function mergeCatalogs(sources: CatalogSource[]): MergeResult {
   const adrs: Catalog["adrs"] = [];
   const stores: NonNullable<Catalog["stores"]> = [];
   const modules: NonNullable<Catalog["modules"]> = [];
-  const seen = new Map<string, string>(); // flow/adr/store/module id -> source path
+  const terms: NonNullable<Catalog["terms"]> = [];
+  const seen = new Map<string, string>(); // flow/adr/store/module/term id -> source path
 
   const stamps: SourceStamp[] = ordered.map((source) => ({
     path: source.path,
@@ -228,6 +229,14 @@ export function mergeCatalogs(sources: CatalogSource[]): MergeResult {
       if (claim(seen, module.id, path, conflicts, "module"))
         modules.push(module);
     }
+    // A term's id carries its context, so the same word in two contexts is two
+    // entries and merges as two. What collides here is one word defined twice
+    // inside ONE context - two services of it keeping glossaries that disagree
+    // - which is the failure a glossary is written to prevent, reported where
+    // the reader can see both sources rather than settled by file order.
+    for (const term of catalog.terms ?? []) {
+      if (claim(seen, term.id, path, conflicts, "term")) terms.push(term);
+    }
   }
 
   // Services go back into their contexts once every source has been read, in
@@ -255,6 +264,7 @@ export function mergeCatalogs(sources: CatalogSource[]): MergeResult {
   };
   if (stores.length > 0) merged.stores = stores;
   if (modules.length > 0) merged.modules = modules;
+  if (terms.length > 0) merged.terms = terms;
 
   return { catalog: merged, sources: stamps, conflicts };
 }

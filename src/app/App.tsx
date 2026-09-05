@@ -16,6 +16,7 @@ import {
 import { FlowDetail } from "../pages/FlowDetail";
 import { FlowIndex } from "../pages/FlowIndex";
 import { AdrIndex } from "../pages/AdrIndex";
+import { Language } from "../pages/Language";
 import { AdrDetail } from "../pages/AdrDetail";
 import { Overview } from "../pages/Overview";
 import { ContextMap } from "../pages/ContextMap";
@@ -27,6 +28,7 @@ import { EventPage } from "../pages/EventPage";
 import { StorePage } from "../pages/StorePage";
 import { GraphPage } from "../pages/GraphPage";
 import { Problems } from "../pages/Problems";
+import { Settings } from "../pages/Settings";
 import { RegistryIndex } from "../pages/RegistryIndex";
 import { ModulePage } from "../pages/ModulePage";
 import { NotFoundPage } from "../pages/NotFound";
@@ -64,8 +66,10 @@ function AppRoutes() {
         }
       />
       <Route path="/adrs" element={<AdrIndex />} />
+      <Route path="/language" element={<Language />} />
       <Route path="/adrs/:adr" element={<AdrDetail />} />
       <Route path="/problems" element={<Problems />} />
+      <Route path="/settings" element={<Settings />} />
       {/* A module sits at the estate level, not under a service: it is
           published by one and read by four, so hanging it off a service would
           put one entity at four URLs. */}

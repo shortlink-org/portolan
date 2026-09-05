@@ -1,0 +1,98 @@
+{
+  "generatedAt": "2026-09-05T06:21:10+07:00",
+  "commit": "1b88f52",
+  "contexts": [],
+  "defs": {},
+  "flows": [],
+  "adrs": [],
+  "terms": [
+    {
+      "id": "shop.basket",
+      "slug": "basket",
+      "context": "shop",
+      "name": "Basket",
+      "definition": "The cart's aggregate. An order carries its basket's id and is placed from it exactly once.",
+      "source": "examples/shop/oms/GLOSSARY.md:5"
+    },
+    {
+      "id": "shop.bus",
+      "slug": "bus",
+      "context": "shop",
+      "name": "Bus",
+      "definition": "NATS JetStream when configured, in process otherwise. One stream per service, named for its subjects.",
+      "source": "examples/shop/oms/GLOSSARY.md:8"
+    },
+    {
+      "id": "shop.cancelled",
+      "slug": "cancelled",
+      "context": "shop",
+      "name": "Cancelled",
+      "definition": "The order will not be fulfilled. Terminal.",
+      "source": "examples/shop/oms/GLOSSARY.md:11"
+    },
+    {
+      "id": "shop.confirmed",
+      "slug": "confirmed",
+      "context": "shop",
+      "name": "Confirmed",
+      "definition": "The payment is authorised; the order may be fulfilled.",
+      "source": "examples/shop/oms/GLOSSARY.md:13"
+    },
+    {
+      "id": "shop.line",
+      "slug": "line",
+      "context": "shop",
+      "name": "Line",
+      "definition": "One SKU of the order, how many, and the unit price it was added to the basket at. Copied, never repriced.",
+      "source": "examples/shop/oms/GLOSSARY.md:15"
+    },
+    {
+      "id": "shop.money",
+      "slug": "money",
+      "context": "shop",
+      "name": "Money",
+      "definition": "An amount in the minor unit of a currency.",
+      "source": "examples/shop/oms/GLOSSARY.md:18"
+    },
+    {
+      "id": "shop.order",
+      "slug": "order",
+      "context": "shop",
+      "name": "Order",
+      "definition": "What a basket became at checkout: the lines and the total the customer agreed to, under one lock. The aggregate root.",
+      "source": "examples/shop/oms/GLOSSARY.md:20"
+    },
+    {
+      "id": "shop.outbox",
+      "slug": "outbox",
+      "context": "shop",
+      "name": "Outbox",
+      "definition": "The table an event waits in, written in the transaction that produced it, until the relay puts it on the bus.",
+      "source": "examples/shop/oms/GLOSSARY.md:23"
+    },
+    {
+      "id": "shop.payments",
+      "slug": "payments",
+      "context": "shop",
+      "name": "Payments",
+      "definition": "The ledger that authorises an order's total. A port here; nothing provides it yet.",
+      "source": "examples/shop/oms/GLOSSARY.md:26"
+    },
+    {
+      "id": "shop.placed",
+      "slug": "placed",
+      "context": "shop",
+      "name": "Placed",
+      "definition": "The order exists and is waiting for its payment to be authorised. Where every order starts.",
+      "source": "examples/shop/oms/GLOSSARY.md:29"
+    },
+    {
+      "id": "shop.relay",
+      "slug": "relay",
+      "context": "shop",
+      "name": "Relay",
+      "definition": "The loop that moves outbox rows to the bus and marks them published.",
+      "source": "examples/shop/oms/GLOSSARY.md:32"
+    }
+  ]
+}

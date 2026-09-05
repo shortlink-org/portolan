@@ -631,6 +631,69 @@ describe("sample data shape", () => {
   });
 });
 
+describe("glossary terms", () => {
+  function terms(bad: Catalog) {
+    const list = bad.terms;
+    if (!list || list.length === 0) throw new Error("fixture has no terms");
+    return list;
+  }
+
+  it("indexes a term by id and groups a context's vocabulary", () => {
+    const index = buildIndex(catalog);
+
+    expect(index.termById.get("auth.session")?.name).toBe("Session");
+    expect(index.termsByContext.get("auth")?.length).toBe(
+      (catalog.terms ?? []).filter((t) => t.context === "auth").length,
+    );
+    // The same word in two contexts is two terms, and neither shadows the
+    // other: the id carries the boundary the meaning belongs to.
+    expect(index.termById.get("auth.bus")?.definition).not.toBe(
+      index.termById.get("shop.bus")?.definition,
+    );
+  });
+
+  it("carries the glossary's own paragraph, whole", () => {
+    const session = buildIndex(catalog).termById.get("auth.session");
+
+    expect(session?.definition).toMatch(/^Proof that a user logged in/);
+  });
+
+  // The mistake this catches is one line of the manifest: a step that does not
+  // say which context the glossary belongs to falls back to the directory, and
+  // every term it writes then belongs to a context nothing else declares.
+  it("rejects a term whose context the catalog does not declare", () => {
+    const bad = clone();
+    const term = terms(bad)[0]!;
+    term.context = "oms";
+    term.id = `oms.${term.slug}`;
+
+    expect(() => validateCatalog(bad)).toThrowError(
+      /belongs to context "oms", which the catalog does not declare/,
+    );
+  });
+
+  it("rejects an id that is not its context and slug", () => {
+    const bad = clone();
+    terms(bad)[0]!.id = "auth.something-else";
+
+    expect(() => validateCatalog(bad)).toThrowError(/must have id/);
+  });
+
+  it("rejects a term that says nothing about what it is", () => {
+    const bad = clone();
+    terms(bad)[0]!.definition = "";
+
+    expect(() => validateCatalog(bad)).toThrowError(/says nothing about what it is/);
+  });
+
+  it("indexes a term whose definition is one short sentence", () => {
+    const ok = clone();
+    terms(ok)[0]!.definition = "One sentence.";
+
+    expect(() => validateCatalog(ok)).not.toThrow();
+  });
+});
+
 describe("validateCatalog: interfaces and modules", () => {
   it("rejects two methods of one interface sharing a name", () => {
     const bad = clone();

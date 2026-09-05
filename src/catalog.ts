@@ -26,6 +26,13 @@ export interface Catalog {
    * before anything read a proto still loads.
    */
   modules?: ProtoModule[];
+  /**
+   * The vocabulary each context speaks, read out of its `GLOSSARY.md`.
+   * Optional in the file and never optional downstream, exactly like `stores`
+   * and `modules`: an estate that has written no glossary renders as it did
+   * before there was one to read.
+   */
+  terms?: Term[];
 }
 /**
  * A bounded context: the estate's top grouping level, and nothing more. It owns
@@ -635,6 +642,31 @@ export interface Loop {
 }
 
 // ---------------------------------------------------------------------------
+// The ubiquitous language. One meaning per word inside a context, written down
+// where the code that uses the word lives, and the leaf everything else points
+// to: a term links nowhere, and nothing here is derived from the model.
+//
+// A word and a sentence, and nothing else. What the sentence says is the
+// author's business - the one thing in this catalog that no extractor could
+// have worked out from the code, and the one thing a parser has no business
+// taking apart.
+// ---------------------------------------------------------------------------
+
+export interface Term {
+  /** "<context>.<slug>" - auth.session. A word means one thing per context. */
+  id: string;
+  slug: string;
+  /** The context whose vocabulary this is, never the service the file sat in. */
+  context: string;
+  /** As the glossary spells it, which is how the code spells it: "Email address". */
+  name: string;
+  /** What it means, as the glossary's own paragraph: markdown, one line. */
+  definition: string;
+  /** `path:line` of the entry, as everything else in the catalog spells a source. */
+  source: string;
+}
+
+// ---------------------------------------------------------------------------
 // Decision records. An ADR is frozen history: it says what was decided and
 // when, not what the model looks like now. Nothing here is regenerated from
 // the current catalog, and nothing on an ADR page redraws from it.
@@ -807,6 +839,11 @@ export function allStores(catalog: Catalog): Store[] {
 
 export function allModules(catalog: Catalog): ProtoModule[] {
   return catalog.modules ?? [];
+}
+
+/** Every term in every glossary. Absent means none, exactly as with modules. */
+export function allTerms(catalog: Catalog): Term[] {
+  return catalog.terms ?? [];
 }
 
 export function allTables(catalog: Catalog): Table[] {
@@ -1040,6 +1077,9 @@ export interface CatalogIndex {
   adrBySlug: Map<string, Adr>;
   /** event id -> ADRs that name it in relates.events, newest first */
   adrsByEvent: Map<string, Adr[]>;
+  termById: Map<string, Term>;
+  /** context id -> its vocabulary, alphabetical, as the glossary was written */
+  termsByContext: Map<string, Term[]>;
 }
 
 /** An interface and the service that answers on it. */
@@ -1072,6 +1112,8 @@ export function buildIndex(catalog: Catalog): CatalogIndex {
   const adrById = new Map<string, Adr>();
   const adrBySlug = new Map<string, Adr>();
   const adrsByEvent = new Map<string, Adr[]>();
+  const termById = new Map<string, Term>();
+  const termsByContext = new Map<string, Term[]>();
   const storeById = new Map<string, Store>();
   const tableById = new Map<string, { table: Table; store: Store }>();
   const viewById = new Map<string, { view: View; store: Store }>();
@@ -1263,6 +1305,13 @@ export function buildIndex(catalog: Catalog): CatalogIndex {
     }
   }
 
+  for (const term of allTerms(catalog)) {
+    termById.set(term.id, term);
+    const list = termsByContext.get(term.context) ?? [];
+    list.push(term);
+    termsByContext.set(term.context, list);
+  }
+
   return {
     catalog,
     serviceById,
@@ -1281,6 +1330,8 @@ export function buildIndex(catalog: Catalog): CatalogIndex {
     adrById,
     adrBySlug,
     adrsByEvent,
+    termById,
+    termsByContext,
     storeById,
     tableById,
     viewById,
@@ -1660,6 +1711,7 @@ export function validateCatalog(catalog: Catalog): Catalog {
   validateStores(catalog);
   validateModules(catalog);
   validateAdrs(catalog, eventIds);
+  validateTerms(catalog);
 
   return catalog;
 }
@@ -2180,6 +2232,45 @@ function validateLifecycle(aggregate: Aggregate, lifecycle: Lifecycle): void {
     if (t.emits !== undefined && !events.has(t.emits)) {
       fail(
         `aggregate "${aggregate.id}" moves ${t.from} → ${t.to} emitting "${t.emits}", which is not one of its events`,
+        where,
+      );
+    }
+  }
+}
+
+/**
+ * A term belongs to a context that exists, and its id says which one.
+ *
+ * The composition check is the one that earns its place. A glossary sits
+ * beside a SERVICE and the words in it belong to a context, so the extractor
+ * has to be told which - and told nothing, it falls back to the directory's
+ * name. Left that way, `examples/shop/oms/GLOSSARY.md` produces `oms.order`
+ * in a context called `oms` that nothing else in the estate has heard of, and
+ * every one of its terms is a word the reader can never find from the page
+ * that uses it. Failing here names the step; the alternative is a vocabulary
+ * that loads and answers nothing.
+ */
+function validateTerms(catalog: Catalog): void {
+  const contextIds = new Set(catalog.contexts.map((c) => c.id));
+  const ids = new Set<string>();
+
+  for (const term of allTerms(catalog)) {
+    const where = `term ${term.id}`;
+    if (term.id !== `${term.context}.${term.slug}`) {
+      fail(
+        `term "${term.id}" must have id "${term.context}.${term.slug}"`,
+        where,
+      );
+    }
+    if (ids.has(term.id)) fail(`term id "${term.id}" is not unique`, where);
+    ids.add(term.id);
+    if (!term.name) fail(`term "${term.id}" has no name`, where);
+    if (!term.definition) {
+      fail(`term "${term.id}" says nothing about what it is`, where);
+    }
+    if (!contextIds.has(term.context)) {
+      fail(
+        `term "${term.id}" belongs to context "${term.context}", which the catalog does not declare`,
         where,
       );
     }

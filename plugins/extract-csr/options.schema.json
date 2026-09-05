@@ -1,0 +1,43 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "context": {
+      "type": "string",
+      "description": "Slug of the bounded context that owns the service these schemas belong to. Defaults to the name of the input directory.",
+      "examples": ["shop"]
+    },
+    "service": {
+      "type": "string",
+      "description": "Slug of the service that registers them. Defaults to the name of the input directory.",
+      "examples": ["oms"]
+    },
+    "paths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Directories fetch-csr vendored into, relative to the input root. Left out, the whole root is walked for locks.",
+      "examples": [["vendor/schemas"]]
+    },
+    "strategy": {
+      "enum": ["topic", "record", "topic-record"],
+      "default": "topic",
+      "description": "How a subject name relates to a topic and a record - the producer's SubjectNameStrategy. Nothing in the registry's answer says which one was used, so it is told here. `topic` reads \"<topic>-value\" and \"<topic>-key\"; `record` reads the whole subject as the record's full name and yields no topic; `topic-record` reads \"<topic>-<record full name>\"."
+    },
+    "direction": {
+      "enum": ["send", "receive"],
+      "default": "send",
+      "description": "Which way these channels travel, from this service's side. A registry records no producer and no consumer, so this cannot be read and has to be told."
+    },
+    "subjects": {
+      "type": "object",
+      "additionalProperties": { "enum": ["send", "receive"] },
+      "description": "Direction per subject, for a service that both publishes and listens. Overrides `direction`.",
+      "examples": [{ "shop.oms.order-value": "send", "payments.ledger.payment-value": "receive" }]
+    },
+    "out": {
+      "type": "string",
+      "description": "Name of the fragment file, inside the step's output directory.",
+      "default": "schemas.json"
+    }
+  }
+}

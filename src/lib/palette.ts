@@ -12,7 +12,7 @@
 // reader cannot see is a row they have to open to understand.
 
 import type { Block, Catalog, Event, Field } from "../catalog";
-import { walkSteps } from "../catalog";
+import { allTerms, walkSteps } from "../catalog";
 import { flowHealth } from "./flow-tree";
 import { parseQuery } from "./kinds";
 import type { Kind, ParsedQuery } from "./kinds";
@@ -51,7 +51,12 @@ function blockProse(block: Block): string {
 
 export interface PaletteItem {
   kind: Kind;
-  /** Row identity, unique across kinds; used as the React key. */
+  /**
+   * The catalog id of the thing. Rows are keyed by kind AND id downstream: a
+   * term's id has the same shape as a service's - `<context>.<name>` - so a
+   * context with a service called `billing` and a word called Billing would
+   * otherwise be two rows fighting over one key.
+   */
   id: string;
   /**
    * The catalog id to SELECT when picking this row, for the kinds the
@@ -323,6 +328,25 @@ export function paletteItems(catalog: Catalog): PaletteItem[] {
     });
   }
 
+  // Last, because a term is what everything above is CALLED rather than a
+  // thing to open. A reader who typed a word and got the sentence explaining
+  // it before the aggregate named after it would have to scroll past the
+  // dictionary to reach the model.
+  for (const term of allTerms(catalog)) {
+    items.push({
+      kind: "term",
+      id: term.id,
+      name: term.name,
+      detail: term.context,
+      // The page, showing this word. A term has no page of its own - it is one
+      // paragraph, and a route per paragraph is a route nobody can hold in
+      // their head.
+      path: paths.term(term.id),
+      context: term.context,
+      text: flattenProse(term.definition),
+    });
+  }
+
   for (const adr of catalog.adrs) {
     items.push({
       kind: "adr",
@@ -459,6 +483,10 @@ const KIND_RANK: Record<Kind, number> = {
   view: 13,
   flow: 14,
   adr: 15,
+  // Last, and on purpose. A reader typing "session" wants the aggregate they
+  // can open, not the sentence about what the word means; the term is what
+  // they fall back to when nothing they clicked explained it.
+  term: 16,
 };
 
 /**

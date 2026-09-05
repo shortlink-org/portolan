@@ -1,6 +1,57 @@
 {
   "$schema": "./schema/portolan.schema.json",
   "$comment": "Where the facts come from, what produces them, and what turns them into something to read.",
+  "projects": [
+    {
+      "id": "auth",
+      "name": "Authentication",
+      "root": "examples/auth",
+      "context": "auth",
+      "service": "auth"
+    },
+    {
+      "id": "shop-cart",
+      "name": "Shop / Cart",
+      "root": "examples/shop/cart",
+      "context": "shop",
+      "service": "cart"
+    },
+    {
+      "id": "shop-billing",
+      "name": "Shop / Billing",
+      "root": "examples/shop/billing",
+      "context": "shop",
+      "service": "billing"
+    },
+    {
+      "id": "shop-pricing",
+      "name": "Shop / Pricing",
+      "root": "examples/shop/pricing",
+      "context": "shop",
+      "service": "pricing"
+    },
+    {
+      "id": "delivery-core",
+      "name": "Delivery / Core",
+      "root": "examples/shop/delivery/core",
+      "context": "delivery",
+      "service": "core"
+    },
+    {
+      "id": "payments-ledger",
+      "name": "Payments / Ledger",
+      "root": "examples/payments/ledger",
+      "context": "payments",
+      "service": "ledger"
+    },
+    {
+      "id": "shop-oms",
+      "name": "Shop / OMS",
+      "root": "examples/shop/oms",
+      "context": "shop",
+      "service": "oms"
+    }
+  ],
   "sources": [
     "data/*.json",
     "examples/*/portolan/*.json",
@@ -102,6 +153,16 @@
       }
     },
     {
+      "name": "glossary",
+      "process": {
+        "command": "go",
+        "args": [
+          "run",
+          "./plugins/extract-glossary"
+        ]
+      }
+    },
+    {
       "name": "bsr",
       "process": {
         "command": "go",
@@ -144,7 +205,7 @@
         "context": "auth",
         "contextName": "Authentication",
         "contextSummary": "Who someone is, and whether they are still logged in. The only service in the estate that stores credentials, and the only one allowed to mint or revoke a session.",
-        "classification": "core",
+        "classification": "generic",
         "service": "auth",
         "repo": "github.com/shortlink-org/portolan",
         "store": "pg",
@@ -183,11 +244,23 @@
       }
     },
     {
+      "plugin": "glossary",
+      "in": "examples/auth",
+      "out": "examples/auth/portolan",
+      "options": {
+        "context": "auth",
+        "out": "glossary.json"
+      }
+    },
+    {
       "plugin": "ts-domain",
       "in": "examples/shop/cart",
       "out": "examples/shop/cart/portolan",
       "options": {
         "context": "shop",
+        "contextName": "Shop",
+        "contextSummary": "What a customer is buying, what it costs and what they owe for it: the basket while it is still changing, the price it was promised at, the order it became, and the invoice for it. It moves no money and delivers nothing.",
+        "classification": "core",
         "service": "cart",
         "repo": "github.com/shortlink-org/portolan",
         "store": "pg",
@@ -391,7 +464,7 @@
         "context": "payments",
         "contextName": "Payments",
         "contextSummary": "Money, and the record of every movement of it. Nothing here decides whether to charge - it is asked, and it writes down what happened either way.",
-        "classification": "core",
+        "classification": "supporting",
         "service": "ledger",
         "store": "pg",
         "peers": {
@@ -502,6 +575,15 @@
       }
     },
     {
+      "plugin": "glossary",
+      "in": "examples/shop/oms",
+      "out": "examples/shop/oms/portolan",
+      "options": {
+        "context": "shop",
+        "out": "glossary.json"
+      }
+    },
+    {
       "plugin": "ts-domain",
       "in": "examples/bff",
       "out": "examples/bff/portolan",
@@ -552,6 +634,15 @@
       "out": "examples/bff/portolan",
       "options": {
         "out": "adr.json"
+      }
+    },
+    {
+      "plugin": "glossary",
+      "in": "examples/bff",
+      "out": "examples/bff/portolan",
+      "options": {
+        "context": "storefront",
+        "out": "glossary.json"
       }
     }
   ],

@@ -1,0 +1,226 @@
+{
+  "generatedAt": "2026-09-05T08:12:07+07:00",
+  "commit": "dab46a5",
+  "contexts": [],
+  "defs": {},
+  "flows": [],
+  "adrs": [],
+  "terms": [
+    {
+      "id": "auth.attempt",
+      "slug": "attempt",
+      "context": "auth",
+      "name": "Attempt",
+      "definition": "What the risk service is told about a login it is asked to judge: the user id, once the credentials have been checked.",
+      "source": "examples/auth/GLOSSARY.md:6"
+    },
+    {
+      "id": "auth.authenticate",
+      "slug": "authenticate",
+      "context": "auth",
+      "name": "Authenticate",
+      "definition": "Check an email address and a password and answer with a user id or one refusal.",
+      "source": "examples/auth/GLOSSARY.md:9"
+    },
+    {
+      "id": "auth.bus",
+      "slug": "bus",
+      "context": "auth",
+      "name": "Bus",
+      "definition": "What the relay hands an event to once it is out of the outbox, and what a policy subscribes to. One per domain, in-process today.",
+      "source": "examples/auth/GLOSSARY.md:12"
+    },
+    {
+      "id": "auth.conflict",
+      "slug": "conflict",
+      "context": "auth",
+      "name": "Conflict",
+      "definition": "The copy of an aggregate in hand is not what is stored; somebody wrote it since it was read.",
+      "source": "examples/auth/GLOSSARY.md:15"
+    },
+    {
+      "id": "auth.credential",
+      "slug": "credential",
+      "context": "auth",
+      "name": "Credential",
+      "definition": "An email address and a password, presented together.",
+      "source": "examples/auth/GLOSSARY.md:18"
+    },
+    {
+      "id": "auth.email-address",
+      "slug": "email-address",
+      "context": "auth",
+      "name": "Email address",
+      "definition": "The address a user logs in with, normalised and validated on creation.",
+      "source": "examples/auth/GLOSSARY.md:20"
+    },
+    {
+      "id": "auth.expiry",
+      "slug": "expiry",
+      "context": "auth",
+      "name": "Expiry",
+      "definition": "The moment a session stops being usable because of time.",
+      "source": "examples/auth/GLOSSARY.md:23"
+    },
+    {
+      "id": "auth.locked",
+      "slug": "locked",
+      "context": "auth",
+      "name": "Locked",
+      "definition": "The state of a lockout while it refuses. Read off the time; nothing runs when it ends.",
+      "source": "examples/auth/GLOSSARY.md:25"
+    },
+    {
+      "id": "auth.lockout",
+      "slug": "lockout",
+      "context": "auth",
+      "name": "Lockout",
+      "definition": "An account refusing passwords for a while after too many wrong ones in a row: five, for fifteen minutes. One per user, from the first wrong password on.",
+      "source": "examples/auth/GLOSSARY.md:28"
+    },
+    {
+      "id": "auth.login",
+      "slug": "login",
+      "context": "auth",
+      "name": "Login",
+      "definition": "Turn a credential into a session: authenticate, ask risk, start.",
+      "source": "examples/auth/GLOSSARY.md:32"
+    },
+    {
+      "id": "auth.logout",
+      "slug": "logout",
+      "context": "auth",
+      "name": "Logout",
+      "definition": "End the session behind a token, at the user's request. Reason `logout`.",
+      "source": "examples/auth/GLOSSARY.md:34"
+    },
+    {
+      "id": "auth.outbox",
+      "slug": "outbox",
+      "context": "auth",
+      "name": "Outbox",
+      "definition": "The table a domain event is written to in the same transaction as the change it describes, and read back out of by the relay - every topic of it, whether or not anything listens.",
+      "source": "examples/auth/GLOSSARY.md:37"
+    },
+    {
+      "id": "auth.password-hash",
+      "slug": "password-hash",
+      "context": "auth",
+      "name": "Password hash",
+      "definition": "What is stored in place of a password: algorithm, cost, salt and digest.",
+      "source": "examples/auth/GLOSSARY.md:41"
+    },
+    {
+      "id": "auth.password-policy",
+      "slug": "password-policy",
+      "context": "auth",
+      "name": "Password policy",
+      "definition": "The rules a new password must satisfy. Applies when a password is created, never when one is checked.",
+      "source": "examples/auth/GLOSSARY.md:44"
+    },
+    {
+      "id": "auth.policy",
+      "slug": "policy",
+      "context": "auth",
+      "name": "Policy",
+      "definition": "A rule of the form \"when this fact happened, do that\", spanning two aggregates: revoke sessions on password change. Subscribed to the bus by assembly.",
+      "source": "examples/auth/GLOSSARY.md:47"
+    },
+    {
+      "id": "auth.reason",
+      "slug": "reason",
+      "context": "auth",
+      "name": "Reason",
+      "definition": "Why a session ended: `logout`, `revoked`, `password-changed`, `risk-blocked`. A closed set.",
+      "source": "examples/auth/GLOSSARY.md:51"
+    },
+    {
+      "id": "auth.refusal",
+      "slug": "refusal",
+      "context": "auth",
+      "name": "Refusal",
+      "definition": "The one answer every failed credential check gets: malformed address, unknown address, wrong password, locked account.",
+      "source": "examples/auth/GLOSSARY.md:54"
+    },
+    {
+      "id": "auth.register",
+      "slug": "register",
+      "context": "auth",
+      "name": "Register",
+      "definition": "Create a user from a credential.",
+      "source": "examples/auth/GLOSSARY.md:57"
+    },
+    {
+      "id": "auth.revoke",
+      "slug": "revoke",
+      "context": "auth",
+      "name": "Revoke",
+      "definition": "End a session deliberately, with a reason. Terminal; a revoked session never comes back.",
+      "source": "examples/auth/GLOSSARY.md:59"
+    },
+    {
+      "id": "auth.risk",
+      "slug": "risk",
+      "context": "auth",
+      "name": "Risk",
+      "definition": "The service asked whether a login attempt should go ahead.",
+      "source": "examples/auth/GLOSSARY.md:62"
+    },
+    {
+      "id": "auth.session",
+      "slug": "session",
+      "context": "auth",
+      "name": "Session",
+      "definition": "Proof that a user logged in, how long that proof is good for, and whether it has been taken away.",
+      "source": "examples/auth/GLOSSARY.md:64"
+    },
+    {
+      "id": "auth.threshold",
+      "slug": "threshold",
+      "context": "auth",
+      "name": "Threshold",
+      "definition": "The number of wrong passwords in a row that locks an account. One value for everybody.",
+      "source": "examples/auth/GLOSSARY.md:67"
+    },
+    {
+      "id": "auth.token",
+      "slug": "token",
+      "context": "auth",
+      "name": "Token",
+      "definition": "The opaque string a client presents instead of a credential. Carries no claims.",
+      "source": "examples/auth/GLOSSARY.md:70"
+    },
+    {
+      "id": "auth.user",
+      "slug": "user",
+      "context": "auth",
+      "name": "User",
+      "definition": "A person as this context knows them: an id, an email address and a password hash.",
+      "source": "examples/auth/GLOSSARY.md:73"
+    },
+    {
+      "id": "auth.validate",
+      "slug": "validate",
+      "context": "auth",
+      "name": "Validate",
+      "definition": "Resolve a token to a live session: who is calling and until when. Reads only.",
+      "source": "examples/auth/GLOSSARY.md:76"
+    },
+    {
+      "id": "auth.verdict",
+      "slug": "verdict",
+      "context": "auth",
+      "name": "Verdict",
+      "definition": "Risk's answer, in this context's words: `allow` or `block`.",
+      "source": "examples/auth/GLOSSARY.md:79"
+    },
+    {
+      "id": "auth.version",
+      "slug": "version",
+      "context": "auth",
+      "name": "Version",
+      "definition": "The number the store compares before writing an aggregate. Zero means never stored.",
+      "source": "examples/auth/GLOSSARY.md:81"
+    }
+  ]
+}

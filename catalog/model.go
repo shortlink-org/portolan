@@ -42,6 +42,7 @@ type Catalog struct {
 	Adrs        []Adr              `json:"adrs"`
 	Stores      []Store            `json:"stores,omitempty"`
 	Modules     []ProtoModule      `json:"modules,omitempty"`
+	Terms       []Term             `json:"terms,omitempty"`
 }
 
 type Classification string
@@ -673,4 +674,15 @@ type AdrRelates struct {
 	Services []string `json:"services,omitempty"`
 	Events   []string `json:"events,omitempty"`
 	Flows    []string `json:"flows,omitempty"`
+}
+
+// Term is one entry of a context's glossary: a word, and what it means inside
+// the boundary that means it.
+type Term struct {
+	ID         string `json:"id"`
+	Slug       string `json:"slug"`
+	Context    string `json:"context"`
+	Name       string `json:"name"`
+	Definition string `json:"definition"`
+	Source     string `json:"source"`
 }
