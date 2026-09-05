@@ -13,9 +13,12 @@ import { useSelectionStore } from "../selection/store";
 export function C4View({
   viewId,
   height = 320,
+  controls = false,
 }: {
   viewId: string;
-  height?: number;
+  height?: number | string;
+  /** Zoom controls, useful when a whole estate has to fit on a phone. */
+  controls?: boolean;
 }) {
   const selection = useSelectionStore((s) => s.selection);
   const source = useSelectionStore((s) => s.source);
@@ -42,6 +45,7 @@ export function C4View({
     >
       <InteractiveView
         viewId={viewId}
+        controls={controls}
         highlightNodes={marked}
         onNode={onNode}
         onCanvas={onCanvas}

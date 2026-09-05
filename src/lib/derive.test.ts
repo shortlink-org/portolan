@@ -11,6 +11,7 @@ import {
   markdownOutline,
   stepsReferencing,
   usagesOfDef,
+  widestFlows,
 } from "./derive";
 import { allEvents } from "../catalog";
 
@@ -41,6 +42,13 @@ describe("flowsByReach", () => {
     const counts = reach.map((r) => r.contexts.length);
     expect([...counts].sort((a, b) => b - a)).toEqual(counts);
     expect(reach[0]?.flow.slug).toBe("checkout");
+  });
+
+  it("keeps the overview to the eight widest flows", () => {
+    const all = flowsByReach(catalog);
+    const shown = widestFlows(catalog);
+    expect(shown).toHaveLength(Math.min(8, all.length));
+    expect(shown).toEqual(all.slice(0, 8));
   });
 });
 
