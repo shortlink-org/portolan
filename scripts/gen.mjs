@@ -16,8 +16,15 @@ import {
   statSync,
 } from "node:fs";
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { join } from "node:path";
 
+import {
+  addBuildStep,
+  createBuildReport,
+  finishBuildReport,
+  writeBuildReport,
+} from "./build-report.mjs";
 import { loadCatalog } from "./catalog-sources.mjs";
 import { loadManifest } from "./manifest.mjs";
 import { runPlugin } from "./plugin-host.mjs";
@@ -41,86 +48,138 @@ const PORTOLAN_VERSION = "0.1.0";
 const MANIFEST = ".portolan-manifest";
 
 const check = process.argv.includes("--check");
-
-// Checked before anything runs, against the schema the plugins describe. A
-// step with a misspelled option would otherwise run to completion and write a
-// fragment missing whatever that option was for, which is the kind of wrong
-// that is only noticed on the page weeks later.
-const { manifest, problems } = loadManifest("portolan.json");
-if (problems.length > 0) {
-  console.error("portolan.json does not match schema/portolan.schema.json:");
-  for (const problem of problems) console.error(`  ${problem}`);
-  process.exit(1);
-}
-
+const manifestSha256 = createHash("sha256")
+  .update(readFileSync("portolan.json"))
+  .digest("hex");
+const report = createBuildReport({
+  mode: check ? "check" : "write",
+  manifestSha256,
+});
+let manifest = {};
 let drifted = false;
 
-// Extractors run first and write catalog fragments; only then is there a
-// catalog for anything else to read. The phases are declared separately in
-// the manifest rather than ordered by hand, because "this step produces a
-// source and that one consumes it" is a fact about the step, not about where
-// somebody put it in a list.
-for (const step of manifest.extract ?? []) {
-  const plugin = pluginNamed(step.plugin);
-  const stamp = stampFor(step.in, step.out);
-
-  const { files } = await runPlugin(plugin, {
-    portolanVersion: PORTOLAN_VERSION,
-    input: { root: step.in, commit: stamp.commit, generatedAt: stamp.generatedAt },
-    options: step.options ?? {},
-  });
-
-  drifted = summarise(`${step.plugin} ← ${step.in}`, files, apply(files, step.out, step.plugin, check)) || drifted;
+try {
+  await generate();
+  finishBuildReport(report, drifted ? "drifted" : "ok");
+  persistReport();
+  if (drifted) {
+    console.error("\nGenerated documentation is out of date. Run `npm run gen`.");
+    process.exitCode = 1;
+  }
+} catch (cause) {
+  finishBuildReport(report, "failed");
+  persistReport();
+  console.error(`portolan gen: ${cause instanceof Error ? cause.message : String(cause)}`);
+  process.exitCode = 1;
 }
 
-// Verifiers run between the two. They read something observed - traces, a
-// test's record - and answer with a fragment too, but a fragment that only
-// makes sense against the merged catalog: "this hop was seen running" names a
-// hop somebody else declared. So a verifier is handed the catalog AND a root,
-// and the catalog it is handed leaves out the verifier's own last output.
-// Without that, what it wrote last time would count as evidence this time,
-// and the fragment could never be checked against a clean run.
-for (const step of manifest.verify ?? []) {
-  const plugin = pluginNamed(step.plugin);
-  const stamp = stampFor(step.in, step.out);
-  const own = (previous(step.out)[step.plugin] ?? []).map((name) => join(step.out, name));
-  const { catalog } = await loadSources({ exclude: own });
-  const { files } = await runPlugin(plugin, {
-    portolanVersion: PORTOLAN_VERSION,
-    input: { root: step.in, commit: stamp.commit, generatedAt: stamp.generatedAt },
-    catalog,
-    options: step.options ?? {},
-  });
-  drifted = summarise(`${step.plugin} ⇐ ${step.in}`, files, apply(files, step.out, step.plugin, check)) || drifted;
+async function generate() {
+  // Checked before anything runs, against the schema the plugins describe. A
+  // step with a misspelled option would otherwise run to completion and write a
+  // fragment missing whatever that option was for.
+  const loaded = loadManifest("portolan.json");
+  manifest = loaded.manifest;
+  if (loaded.problems.length > 0) {
+    throw new Error(
+      `portolan.json does not match schema/portolan.schema.json:\n${loaded.problems
+        .map((problem) => `  ${problem}`)
+        .join("\n")}`,
+    );
+  }
+
+  // Extractors run first and write catalog fragments; only then is there a
+  // catalog for anything else to read.
+  for (const step of manifest.extract ?? []) {
+    const plugin = pluginNamed(step.plugin);
+    const stamp = stampFor(step.in, step.out);
+    await executeStep("extract", step, `${step.plugin} ← ${step.in}`, async () =>
+      runPlugin(plugin, {
+        portolanVersion: PORTOLAN_VERSION,
+        input: { root: step.in, commit: stamp.commit, generatedAt: stamp.generatedAt },
+        options: step.options ?? {},
+      }),
+    );
+  }
+
+  // Verifiers read observed evidence against the merged catalog while leaving
+  // their own previous output out of that evidence.
+  for (const step of manifest.verify ?? []) {
+    const plugin = pluginNamed(step.plugin);
+    const stamp = stampFor(step.in, step.out);
+    const own = (previous(step.out)[step.plugin] ?? []).map((name) => join(step.out, name));
+    const { catalog } = await loadSources({ exclude: own });
+    await executeStep("verify", step, `${step.plugin} ⇐ ${step.in}`, async () =>
+      runPlugin(plugin, {
+        portolanVersion: PORTOLAN_VERSION,
+        input: { root: step.in, commit: stamp.commit, generatedAt: stamp.generatedAt },
+        catalog,
+        options: step.options ?? {},
+      }),
+    );
+  }
+
+  const { catalog, sources, conflicts } = await loadSources();
+  console.log(
+    `catalog: ${sources.length} source${sources.length === 1 ? "" : "s"} — ${sources
+      .map((source) => `${source.path} @ ${source.commit || "?"}`)
+      .join(", ")}`,
+  );
+  for (const conflict of conflicts) {
+    console.warn(`  conflict  ${conflict.where}: ${conflict.message}`);
+  }
+
+  for (const step of manifest.generate ?? []) {
+    const plugin = pluginNamed(step.plugin);
+    await executeStep("generate", step, `${step.plugin} → ${step.out}`, async () =>
+      runPlugin(plugin, {
+        portolanVersion: PORTOLAN_VERSION,
+        catalog,
+        options: step.options ?? {},
+      }),
+    );
+  }
 }
 
-const { catalog, sources, conflicts } = await loadSources();
-
-console.log(
-  `catalog: ${sources.length} source${sources.length === 1 ? "" : "s"} — ${sources
-    .map((s) => `${s.path} @ ${s.commit || "?"}`)
-    .join(", ")}`,
-);
-
-for (const conflict of conflicts) {
-  console.warn(`  conflict  ${conflict.where}: ${conflict.message}`);
+async function executeStep(phase, step, label, work) {
+  const startedAt = Date.now();
+  try {
+    const { files } = await work();
+    const changes = apply(files, step.out, step.plugin, check);
+    const changed = summarise(label, files, changes);
+    drifted = changed || drifted;
+    addBuildStep(report, {
+      phase,
+      plugin: step.plugin,
+      ...(step.in ? { input: step.in } : {}),
+      output: step.out,
+      status: changed ? "drifted" : changes.length > 0 ? "written" : "up-to-date",
+      durationMs: Date.now() - startedAt,
+      fileCount: files.length,
+      changedCount: changes.length,
+      files: files.map((file) => join(step.out, file.name)),
+    });
+  } catch (cause) {
+    addBuildStep(report, {
+      phase,
+      plugin: step.plugin,
+      ...(step.in ? { input: step.in } : {}),
+      output: step.out,
+      status: "failed",
+      durationMs: Date.now() - startedAt,
+      fileCount: 0,
+      changedCount: 0,
+      files: [],
+    });
+    throw cause;
+  }
 }
 
-for (const step of manifest.generate ?? []) {
-  const plugin = pluginNamed(step.plugin);
-
-  const { files } = await runPlugin(plugin, {
-    portolanVersion: PORTOLAN_VERSION,
-    catalog,
-    options: step.options ?? {},
-  });
-
-  drifted = summarise(`${step.plugin} → ${step.out}`, files, apply(files, step.out, step.plugin, check)) || drifted;
-}
-
-if (drifted) {
-  console.error("\nGenerated documentation is out of date. Run `npm run gen`.");
-  process.exit(1);
+function persistReport() {
+  try {
+    writeBuildReport(report);
+  } catch (cause) {
+    console.warn(`portolan gen: could not write build report: ${cause instanceof Error ? cause.message : String(cause)}`);
+  }
 }
 
 function pluginNamed(name) {
@@ -367,6 +426,5 @@ function pruneEmptyDirs(root) {
 }
 
 function fail(message) {
-  console.error(`portolan gen: ${message}`);
-  process.exit(1);
+  throw new Error(message);
 }

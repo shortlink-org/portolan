@@ -34,11 +34,38 @@ export interface SetupPlugin {
   projectIds: string[];
 }
 
+export type SetupRunStatus = "ok" | "drifted" | "failed" | "running";
+export type SetupRunStepStatus =
+  | "up-to-date"
+  | "written"
+  | "drifted"
+  | "failed";
+
+export interface SetupRunStep extends SetupStep {
+  ordinal: number;
+  status: SetupRunStepStatus;
+  durationMs: number;
+  fileCount: number;
+  changedCount: number;
+  files: string[];
+}
+
+export interface SetupRun {
+  mode: "check" | "write";
+  status: SetupRunStatus;
+  startedAt: string;
+  finishedAt: string;
+  durationMs: number;
+  steps: SetupRunStep[];
+}
+
 export interface SetupInfo {
   projects: SetupProject[];
   plugins: SetupPlugin[];
   steps: SetupStep[];
   sources: string[];
+  run?: SetupRun;
+  reportStale?: boolean;
 }
 
 interface ManifestPlugin {
@@ -72,9 +99,20 @@ interface Manifest {
 }
 
 const PHASES: SetupPhase[] = ["extract", "verify", "generate"];
+const RUN_STATUSES: SetupRunStatus[] = ["ok", "drifted", "failed", "running"];
+const STEP_STATUSES: SetupRunStepStatus[] = [
+  "up-to-date",
+  "written",
+  "drifted",
+  "failed",
+];
 
 /** Reduce an untrusted manifest to the fields the static UI may publish. */
-export function publicSetupFrom(value: unknown): SetupInfo {
+export function publicSetupFrom(
+  value: unknown,
+  reportValue?: unknown,
+  expectedManifestSha256?: string,
+): SetupInfo {
   const manifest = record(value) as Manifest;
   const projects = array(manifest.projects)
     .map((item) => projectFrom(item))
@@ -90,13 +128,118 @@ export function publicSetupFrom(value: unknown): SetupInfo {
     .map((item) => pluginFrom(item, steps))
     .filter((item): item is SetupPlugin => item !== null);
 
-  return {
+  const result: SetupInfo = {
     projects,
     plugins,
     steps,
     sources: array(manifest.sources).filter(
       (source): source is string => typeof source === "string",
     ),
+  };
+
+  const report = record(reportValue);
+  if (Object.keys(report).length > 0) {
+    const matchesManifest =
+      expectedManifestSha256 === undefined ||
+      report.manifestSha256 === expectedManifestSha256;
+    if (!matchesManifest) {
+      result.reportStale = true;
+    } else {
+      const run = runFrom(report, projects, steps);
+      if (run) result.run = run;
+    }
+  }
+
+  return result;
+}
+
+function runFrom(
+  value: Record<string, unknown>,
+  projects: SetupProject[],
+  declaredSteps: SetupStep[],
+): SetupRun | null {
+  if (
+    value.version !== 1 ||
+    (value.mode !== "check" && value.mode !== "write") ||
+    !RUN_STATUSES.includes(value.status as SetupRunStatus) ||
+    typeof value.startedAt !== "string" ||
+    !validDate(value.startedAt) ||
+    typeof value.finishedAt !== "string" ||
+    (value.finishedAt !== "" && !validDate(value.finishedAt)) ||
+    !finiteNumber(value.durationMs)
+  ) {
+    return null;
+  }
+
+  const steps = array(value.steps)
+    .map((item) => runStepFrom(item, projects, declaredSteps))
+    .filter((item): item is SetupRunStep => item !== null);
+
+  return {
+    mode: value.mode,
+    status: value.status as SetupRunStatus,
+    startedAt: value.startedAt,
+    finishedAt: value.finishedAt,
+    durationMs: value.durationMs,
+    steps,
+  };
+}
+
+function runStepFrom(
+  value: unknown,
+  projects: SetupProject[],
+  declaredSteps: SetupStep[],
+): SetupRunStep | null {
+  const item = record(value);
+  if (
+    !PHASES.includes(item.phase as SetupPhase) ||
+    typeof item.plugin !== "string" ||
+    typeof item.output !== "string" ||
+    !safeRelativePath(item.output) ||
+    !STEP_STATUSES.includes(item.status as SetupRunStepStatus) ||
+    !wholeNumber(item.ordinal) ||
+    !finiteNumber(item.durationMs) ||
+    !wholeNumber(item.fileCount) ||
+    !wholeNumber(item.changedCount)
+  ) {
+    return null;
+  }
+
+  const input =
+    typeof item.input === "string" && safeRelativePath(item.input)
+      ? cleanPath(item.input)
+      : undefined;
+  const project = input ? projectFor(input, projects) : undefined;
+  const declared = declaredSteps[item.ordinal];
+  if (
+    !declared ||
+    declared.phase !== item.phase ||
+    declared.plugin !== item.plugin ||
+    declared.input !== input ||
+    declared.output !== cleanPath(item.output)
+  ) {
+    return null;
+  }
+  const files = array(item.files).filter(
+    (file): file is string => typeof file === "string" && safeRelativePath(file),
+  );
+
+  return {
+    ordinal: item.ordinal,
+    phase: item.phase as SetupPhase,
+    plugin: item.plugin,
+    ...(input ? { input } : {}),
+    output: cleanPath(item.output),
+    ...(declared.projectId
+      ? { projectId: declared.projectId }
+      : project
+        ? { projectId: project.id }
+        : {}),
+    status: item.status as SetupRunStepStatus,
+    durationMs: item.durationMs,
+    fileCount: item.fileCount,
+    changedCount: item.changedCount,
+    files,
   };
 }
 
@@ -201,6 +344,28 @@ function projectFor(
 
 function cleanPath(path: string): string {
   return path.replace(/\/+$/, "");
+}
+
+function safeRelativePath(path: string): boolean {
+  return (
+    path.length > 0 &&
+    !path.startsWith("/") &&
+    !path.startsWith("\\") &&
+    !/^[a-z]:/i.test(path) &&
+    !path.split(/[\\/]/).includes("..")
+  );
+}
+
+function finiteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0;
+}
+
+function wholeNumber(value: unknown): value is number {
+  return finiteNumber(value) && Number.isInteger(value);
+}
+
+function validDate(value: string): boolean {
+  return !Number.isNaN(Date.parse(value));
 }
 
 function record(value: unknown): Record<string, unknown> {

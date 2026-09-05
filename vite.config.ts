@@ -1,4 +1,5 @@
 import { execSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
@@ -86,10 +87,25 @@ const buildInfo = {
 // the executable commands or arbitrary options in portolan.json. Reduce the
 // manifest here, while building, and expose only the read-only inventory the
 // Settings page needs.
+const manifestText = readFileSync(
+  new URL("./portolan.json", import.meta.url),
+  "utf8",
+);
+let buildReport: unknown;
+try {
+  buildReport = JSON.parse(
+    readFileSync(
+      new URL("./.portolan/build-report.json", import.meta.url),
+      "utf8",
+    ),
+  ) as unknown;
+} catch {
+  // A clean checkout has no run to report yet. Settings says so explicitly.
+}
 const setupInfo = publicSetupFrom(
-  JSON.parse(
-    readFileSync(new URL("./portolan.json", import.meta.url), "utf8"),
-  ) as unknown,
+  JSON.parse(manifestText) as unknown,
+  buildReport,
+  createHash("sha256").update(manifestText).digest("hex"),
 );
 
 // GitHub Pages serves the app from /<repo>/, so CI sets BASE_PATH.

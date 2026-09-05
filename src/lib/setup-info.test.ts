@@ -107,4 +107,71 @@ describe("publicSetupFrom", () => {
       sources: [],
     });
   });
+
+  it("publishes a matching build report without plugin error details", () => {
+    const setup = publicSetupFrom(
+      {
+        projects: [{ id: "shop", name: "Shop", root: "services/shop" }],
+        plugins: [{ name: "domain", process: { command: "private" } }],
+        extract: [
+          { plugin: "domain", in: "services/shop", out: "data/shop" },
+        ],
+      },
+      {
+        version: 1,
+        manifestSha256: "current",
+        mode: "check",
+        status: "failed",
+        startedAt: "2026-09-05T00:00:00.000Z",
+        finishedAt: "2026-09-05T00:00:01.000Z",
+        durationMs: 1000,
+        error: "secret token",
+        steps: [
+          {
+            ordinal: 0,
+            phase: "extract",
+            plugin: "domain",
+            input: "services/shop",
+            output: "data/shop",
+            status: "failed",
+            durationMs: 12,
+            fileCount: 0,
+            changedCount: 0,
+            files: ["data/shop/catalog.json", "../../private-key"],
+            error: "secret token",
+          },
+        ],
+      },
+      "current",
+    );
+
+    expect(setup.run?.steps[0]).toMatchObject({
+      projectId: "shop",
+      plugin: "domain",
+      status: "failed",
+      files: ["data/shop/catalog.json"],
+    });
+    expect(JSON.stringify(setup)).not.toContain("secret token");
+    expect(JSON.stringify(setup)).not.toContain("private-key");
+  });
+
+  it("marks a report for another manifest as stale", () => {
+    const setup = publicSetupFrom(
+      {},
+      {
+        version: 1,
+        manifestSha256: "old",
+        mode: "write",
+        status: "ok",
+        startedAt: "2026-09-05T00:00:00.000Z",
+        finishedAt: "2026-09-05T00:00:01.000Z",
+        durationMs: 1000,
+        steps: [],
+      },
+      "current",
+    );
+
+    expect(setup.run).toBeUndefined();
+    expect(setup.reportStale).toBe(true);
+  });
 });

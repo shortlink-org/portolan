@@ -3,6 +3,11 @@ dist
 *.local
 .DS_Store
 
+# Observation of the last generator run, read by Settings in local builds.
+# It carries clocks and durations, so committing it would make gen drift on
+# every run even when the catalog did not change.
+.portolan/
+
 # Scratch catalog fragments for looking at a surface before the estate has any
 # data for it. `*.local` does NOT match `foo.local.json`, and src/data.ts globs
 # every json in these directories, so without this line one `git add .` commits
