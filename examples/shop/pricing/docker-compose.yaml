@@ -1,7 +1,7 @@
 # The database the migrations build, and the service in front of it.
 services:
   db:
-    image: postgres:17-alpine
+    image: postgres:18-alpine
     environment:
       POSTGRES_DB: pricing
       POSTGRES_USER: pricing

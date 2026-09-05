@@ -21,7 +21,7 @@ services:
   # opened. One server on 4222 for the whole estate; oms's compose names the
   # same port, and whichever service came up first is the one both talk to.
   nats:
-    image: nats:2.12-alpine
+    image: nats:2.14-alpine
     command: ["-js", "-m", "8222"]
     ports:
       - "4222:4222"
