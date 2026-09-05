@@ -62,6 +62,7 @@ final class Extract {
         flowOptions.service = service;
         flowOptions.store = opts.store;
         flowOptions.peers = opts.peers;
+        flowOptions.externals = opts.externals;
         flowOptions.events = opts.events;
         Flows reader = new Flows(flowOptions, aggregates, useCases, clients, events, b);
 

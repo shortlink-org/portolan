@@ -22,6 +22,14 @@ func TestIDs(t *testing.T) {
 	if got := InterfaceID("auth.v1", ""); got != "auth.v1" {
 		t.Errorf("InterfaceID without a tag = %q", got)
 	}
+	// A vendored copy may say what the estate calls it; a document that says
+	// nothing is named the way it always was.
+	if got := DocumentAPIID(" stripe.v1 ", "Stripe API", "2026-08-26.dahlia"); got != "stripe.v1" {
+		t.Errorf("DocumentAPIID with x-portolan-api = %q", got)
+	}
+	if got := DocumentAPIID("", "Stripe API", "2026-08-26.dahlia"); got != "stripe-api.v2026-08-26" {
+		t.Errorf("DocumentAPIID without = %q", got)
+	}
 }
 
 const doc = `openapi: 3.0.3

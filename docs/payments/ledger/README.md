@@ -69,9 +69,13 @@ what they say rather than guessing from the layout. The rules are in
 Two things follow from that and are worth knowing when reading the pages:
 
 - A `@Repository` is the store, and any other port goes wherever its adapter
-  reaches. `PaymentGateway` is filled by `PspGateway`, which has no vendored
-  contract because the far end is a third party — so those calls are recorded
-  and left **unresolved**, which is the true answer to "who answers this".
+  reaches. `PaymentGateway` is filled by `StripeGateway`, and the far end is a
+  third party: nobody in the estate provides Stripe, and the catalog does not
+  pretend otherwise. What it has is a narrow copy of Stripe's own OpenAPI
+  document beside the adapter — the four operations the ledger calls — so each
+  call lands on the operation the copy declares (`stripe.v1/PostPaymentIntents`)
+  and is **declared**, while the lane says the far end is **outside the
+  estate** (ledger.0003).
 - The lifecycle is `PaymentStatus.TRANSITIONS`, not the branches of the methods.
   A move the table does not allow is a diagnostic, not a new arrow.
 
@@ -85,6 +89,9 @@ mvn -q spring-boot:run
 `NATS_URL` picks the bus: with a server named, events leave on their channel
 with their wire name in the headers; without one they are written to the log and
 nothing leaves. `OMS_ADDRESS` is where `shop.v1.OrderService` answers.
+`STRIPE_SECRET_KEY` is the account the money moves through — a test key
+locally — and `STRIPE_URL` points the gateway at a stand-in that answers on
+Stripe's routes instead of at Stripe.
 
 ## Decisions
 
@@ -97,6 +104,9 @@ nothing leaves. `OMS_ADDRESS` is where `shop.v1.OrderService` answers.
 - [ledger.0002](docs/adr/0002-foreign-events-arrive-over-nats-and-are-republished-in-process.md)
   — the order service's events are read off the bus by an adapter and handed
   to the policies in process.
+- [ledger.0003](docs/adr/0003-the-card-network-is-stripe-and-stays-outside-the-estate.md)
+  — the gateway is Stripe, kept outside the estate with a narrow copy of its
+  contract beside the adapter, so the calls resolve and nothing is invented.
 
 ## Status
 
@@ -239,11 +249,11 @@ gap, not an oversight, and none of them changes what the catalog shows.
 
 | Call | Peer | Status | Source |
 | --- | --- | --- | --- |
-| `psp/capture` | `psp` | unresolved | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java` |
-| `psp/hold` | `psp` | unresolved | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java` |
-| `psp/refund` | `psp` | unresolved | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java` |
-| `psp/voidHold` | `psp` | unresolved | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java` |
 | `shop.v1.OrderService/GetOrder` | [shop.oms](../../shop/oms/README.md) | declared | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/oms/proto/shop/v1/order.proto` |
+| `stripe.v1/PostPaymentIntents` | [stripe](../../externals/stripe.md) | declared | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml` |
+| `stripe.v1/PostPaymentIntentsIntentCancel` | [stripe](../../externals/stripe.md) | declared | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml` |
+| `stripe.v1/PostPaymentIntentsIntentCapture` | [stripe](../../externals/stripe.md) | declared | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml` |
+| `stripe.v1/PostRefunds` | [stripe](../../externals/stripe.md) | declared | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml` |
 
 ## Publishes
 
@@ -266,3 +276,4 @@ gap, not an oversight, and none of them changes what the catalog shows.
 | --- | --- | --- | --- |
 | [ledger.0001](../../adr/ledger.0001.md) | A gateway that did not answer has not refused | accepted | 2026-09-05 |
 | [ledger.0002](../../adr/ledger.0002.md) | Another service's events are read off the bus by an adapter and republished in process | accepted | 2026-09-05 |
+| [ledger.0003](../../adr/ledger.0003.md) | The card network is Stripe, and stays outside the estate | accepted | 2026-09-06 |

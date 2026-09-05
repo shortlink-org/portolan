@@ -18,22 +18,28 @@
           "provides": [],
           "consumes": [
             {
-              "id": "psp/reserve",
-              "peer": "psp",
+              "id": "risk/allows",
+              "peer": "risk",
               "status": "unresolved",
-              "source": "plugins/extract-java/testdata/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java"
-            },
-            {
-              "id": "psp/settle",
-              "peer": "psp",
-              "status": "unresolved",
-              "source": "plugins/extract-java/testdata/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java"
+              "source": "plugins/extract-java/testdata/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/risk/RiskClient.java"
             },
             {
               "id": "shop.v1.OrderService/GetOrder",
               "peer": "shop.oms",
               "status": "declared",
               "source": "plugins/extract-java/testdata/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/oms/proto/shop/v1/order.proto"
+            },
+            {
+              "id": "stripe.v1/PostPaymentIntents",
+              "peer": "stripe",
+              "status": "declared",
+              "source": "plugins/extract-java/testdata/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml"
+            },
+            {
+              "id": "stripe.v1/PostPaymentIntentsIntentCapture",
+              "peer": "stripe",
+              "status": "declared",
+              "source": "plugins/extract-java/testdata/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml"
             }
           ],
           "aggregates": [
@@ -336,10 +342,15 @@
           "context": "shop"
         },
         {
-          "id": "psp",
+          "id": "risk",
           "kind": "unknown",
           "context": null,
-          "label": "psp"
+          "label": "risk"
+        },
+        {
+          "id": "stripe",
+          "kind": "external",
+          "context": null
         },
         {
           "id": "ledger-pg",
@@ -372,45 +383,56 @@
           "label": "GetOrder",
           "status": "declared",
           "ref": "shop.v1.OrderService/GetOrder",
-          "line": "plugins/extract-java/testdata/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:29"
+          "line": "plugins/extract-java/testdata/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:31"
         },
         {
           "type": "step",
           "id": "s3",
           "from": "payments.ledger",
-          "to": "psp",
+          "to": "risk",
           "kind": "rpc",
-          "label": "reserve",
+          "label": "allows",
           "status": "unresolved",
-          "line": "plugins/extract-java/testdata/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:31"
+          "line": "plugins/extract-java/testdata/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:32"
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "payments.ledger",
+          "to": "stripe",
+          "kind": "rpc",
+          "label": "PostPaymentIntents",
+          "status": "declared",
+          "ref": "stripe.v1/PostPaymentIntents",
+          "line": "plugins/extract-java/testdata/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:34"
         },
         {
           "type": "alt",
-          "id": "alt6",
+          "id": "alt7",
           "branches": [
             {
               "title": "authCode.isEmpty()",
               "steps": [
                 {
                   "type": "step",
-                  "id": "s4",
+                  "id": "s5",
                   "from": "payments.ledger",
                   "to": "ledger-pg",
                   "kind": "call",
                   "label": "save",
                   "status": "declared",
-                  "line": "plugins/extract-java/testdata/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:34"
+                  "line": "plugins/extract-java/testdata/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:37"
                 },
                 {
                   "type": "step",
-                  "id": "s5",
+                  "id": "s6",
                   "from": "payments.ledger",
                   "to": "bus",
                   "kind": "event",
                   "label": "PaymentDeclined",
                   "status": "declared",
                   "ref": "payments.ledger.payment.PaymentDeclined",
-                  "line": "plugins/extract-java/testdata/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:35"
+                  "line": "plugins/extract-java/testdata/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:38"
                 }
               ],
               "terminal": true
@@ -423,24 +445,24 @@
         },
         {
           "type": "step",
-          "id": "s7",
+          "id": "s8",
           "from": "payments.ledger",
           "to": "ledger-pg",
           "kind": "call",
           "label": "save",
           "status": "declared",
-          "line": "plugins/extract-java/testdata/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:39"
+          "line": "plugins/extract-java/testdata/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:42"
         },
         {
           "type": "step",
-          "id": "s8",
+          "id": "s9",
           "from": "payments.ledger",
           "to": "bus",
           "kind": "event",
           "label": "PaymentAuthorized",
           "status": "declared",
           "ref": "payments.ledger.payment.PaymentAuthorized",
-          "line": "plugins/extract-java/testdata/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:40"
+          "line": "plugins/extract-java/testdata/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:43"
         }
       ]
     },
@@ -468,10 +490,9 @@
           "context": "payments"
         },
         {
-          "id": "psp",
-          "kind": "unknown",
-          "context": null,
-          "label": "psp"
+          "id": "stripe",
+          "kind": "external",
+          "context": null
         },
         {
           "id": "bus",
@@ -504,10 +525,11 @@
           "type": "step",
           "id": "s3",
           "from": "payments.ledger",
-          "to": "psp",
+          "to": "stripe",
           "kind": "rpc",
-          "label": "settle",
-          "status": "unresolved",
+          "label": "PostPaymentIntentsIntentCapture",
+          "status": "declared",
+          "ref": "stripe.v1/PostPaymentIntentsIntentCapture",
           "line": "plugins/extract-java/testdata/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:25"
         },
         {

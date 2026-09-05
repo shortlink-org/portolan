@@ -15,38 +15,38 @@
           "name": "Ledger",
           "repo": "github.com/shortlink-org/portolan",
           "path": "examples/payments/ledger",
-          "readme": "# Ledger\n\nService `ledger` — bounded context **payments**. Java on Spring Boot.\n\nOwns money. Every authorisation, capture and refund against an order passes\nthrough here, and what it writes is the record the business is audited on.\nNothing it holds is updated in place: a movement of money is a pair of postings\nthat sum to zero, and a correction is another pair.\n\n## What it does\n\n- Asks the gateway to hold the money for an order, and records either the hold\n  or the refusal — `PaymentAuthorized` or `PaymentDeclined`.\n- Captures what was held, writes the pair of postings for it, and says\n  `PaymentCaptured`. That is the message anything waiting to be paid listens for.\n- Sends money back against a captured payment, in full or in part, and says\n  `RefundIssued`.\n- Gives back a hold nobody will be charged for, when the order it was held for\n  is cancelled. The fact arrives from the order service over the bus.\n\n## What it does not do\n\nDoes not decide *whether* to charge — that is the order's business, and the\nledger is asked; a cancelled order is the one thing it refuses to charge on\nits own. Does not decide anything when the gateway does not answer: nothing\nis recorded, and the caller is told to try again (ledger.0001). Does not issue invoices: what a customer is *asked* to pay is\n`shop.billing`'s aggregate, and this one only says what happened to the money.\nDoes not store card data; the gateway holds the instrument and this holds a\ntoken for it.\n\n## Publishes\n\n`PaymentAuthorized`, `PaymentCaptured`, `PaymentDeclined` on\n`payments.ledger.payment`; `RefundIssued` on `payments.ledger.refund`.\n\n## Provides\n\n`payments.v1.PaymentService` — Authorize, Capture, GetPayment — and\n`payments.v1.RefundService` — IssueRefund, ListRefunds. One contract per\naggregate, under the transport package that answers it, each its own buf\nmodule with its own `buf.yaml`.\n\nBoth are published: `buf.build/shortlink-org/portolan-payments-payment` and\n`buf.build/shortlink-org/portolan-payments-refund`, one module per aggregate.\nA change to either is pushed from its own directory, and the estate reads the\nmodule name off `portolan.json`:\n\n```bash\ncd src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/proto && buf push\ncd ../../refund/proto && buf push\n```\n\n## How the catalog reads it\n\nThe vocabulary is [GLOSSARY.md](GLOSSARY.md). Nothing here is annotated for\nthe catalog, but plenty is annotated for the model: `@AggregateRoot`, `@Entity`, `@ValueObject`, `@Repository`,\n`@SecondaryPort` and `@DomainEvent` are jMolecules, and `extract-java` reads\nwhat they say rather than guessing from the layout. The rules are in\n[plugins/extract-java/README.md](../../../plugins/extract-java/README.md).\n\nTwo things follow from that and are worth knowing when reading the pages:\n\n- A `@Repository` is the store, and any other port goes wherever its adapter\n  reaches. `PaymentGateway` is filled by `PspGateway`, which has no vendored\n  contract because the far end is a third party — so those calls are recorded\n  and left **unresolved**, which is the true answer to \"who answers this\".\n- The lifecycle is `PaymentStatus.TRANSITIONS`, not the branches of the methods.\n  A move the table does not allow is a diagnostic, not a new arrow.\n\n## Running it\n\n```bash\ndocker compose up -d db\nmvn -q spring-boot:run\n```\n\n`NATS_URL` picks the bus: with a server named, events leave on their channel\nwith their wire name in the headers; without one they are written to the log and\nnothing leaves. `OMS_ADDRESS` is where `shop.v1.OrderService` answers.\n\n## Decisions\n\n- [payments.0004](../../../docs/adr/payments.0004.md) — journal rows are\n  idempotent by `(order_id, attempt)`, which is why `payments` carries an\n  `attempt` and a unique key over the pair. The attempt is minted here, one\n  past the last recorded for the order, and the key's refusal is a sentinel.\n- [ledger.0001](docs/adr/0001-a-gateway-outage-records-nothing.md) — a\n  gateway that did not answer has not refused; nothing is recorded.\n- [ledger.0002](docs/adr/0002-foreign-events-arrive-over-nats-and-are-republished-in-process.md)\n  — the order service's events are read off the bus by an adapter and handed\n  to the policies in process.\n\n## Status\n\nA sketch for the catalog, not the reference service; `examples/auth` is\nthat. What it has: the aggregates with their lifecycle tables enforced, the\nuse cases with closed answers, a policy fed from the bus, and the records\nabove. What it deliberately does not have yet, and the review skill will\nname: no version on the aggregates, so a stale copy is not refused; events\npublished after the save rather than with it, so there is no outbox and a\ncrash between the two loses the fact; no tests; no tracing. Each is a known\ngap, not an oversight, and none of them changes what the catalog shows.",
+          "readme": "# Ledger\n\nService `ledger` — bounded context **payments**. Java on Spring Boot.\n\nOwns money. Every authorisation, capture and refund against an order passes\nthrough here, and what it writes is the record the business is audited on.\nNothing it holds is updated in place: a movement of money is a pair of postings\nthat sum to zero, and a correction is another pair.\n\n## What it does\n\n- Asks the gateway to hold the money for an order, and records either the hold\n  or the refusal — `PaymentAuthorized` or `PaymentDeclined`.\n- Captures what was held, writes the pair of postings for it, and says\n  `PaymentCaptured`. That is the message anything waiting to be paid listens for.\n- Sends money back against a captured payment, in full or in part, and says\n  `RefundIssued`.\n- Gives back a hold nobody will be charged for, when the order it was held for\n  is cancelled. The fact arrives from the order service over the bus.\n\n## What it does not do\n\nDoes not decide *whether* to charge — that is the order's business, and the\nledger is asked; a cancelled order is the one thing it refuses to charge on\nits own. Does not decide anything when the gateway does not answer: nothing\nis recorded, and the caller is told to try again (ledger.0001). Does not issue invoices: what a customer is *asked* to pay is\n`shop.billing`'s aggregate, and this one only says what happened to the money.\nDoes not store card data; the gateway holds the instrument and this holds a\ntoken for it.\n\n## Publishes\n\n`PaymentAuthorized`, `PaymentCaptured`, `PaymentDeclined` on\n`payments.ledger.payment`; `RefundIssued` on `payments.ledger.refund`.\n\n## Provides\n\n`payments.v1.PaymentService` — Authorize, Capture, GetPayment — and\n`payments.v1.RefundService` — IssueRefund, ListRefunds. One contract per\naggregate, under the transport package that answers it, each its own buf\nmodule with its own `buf.yaml`.\n\nBoth are published: `buf.build/shortlink-org/portolan-payments-payment` and\n`buf.build/shortlink-org/portolan-payments-refund`, one module per aggregate.\nA change to either is pushed from its own directory, and the estate reads the\nmodule name off `portolan.json`:\n\n```bash\ncd src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/proto && buf push\ncd ../../refund/proto && buf push\n```\n\n## How the catalog reads it\n\nThe vocabulary is [GLOSSARY.md](GLOSSARY.md). Nothing here is annotated for\nthe catalog, but plenty is annotated for the model: `@AggregateRoot`, `@Entity`, `@ValueObject`, `@Repository`,\n`@SecondaryPort` and `@DomainEvent` are jMolecules, and `extract-java` reads\nwhat they say rather than guessing from the layout. The rules are in\n[plugins/extract-java/README.md](../../../plugins/extract-java/README.md).\n\nTwo things follow from that and are worth knowing when reading the pages:\n\n- A `@Repository` is the store, and any other port goes wherever its adapter\n  reaches. `PaymentGateway` is filled by `StripeGateway`, and the far end is a\n  third party: nobody in the estate provides Stripe, and the catalog does not\n  pretend otherwise. What it has is a narrow copy of Stripe's own OpenAPI\n  document beside the adapter — the four operations the ledger calls — so each\n  call lands on the operation the copy declares (`stripe.v1/PostPaymentIntents`)\n  and is **declared**, while the lane says the far end is **outside the\n  estate** (ledger.0003).\n- The lifecycle is `PaymentStatus.TRANSITIONS`, not the branches of the methods.\n  A move the table does not allow is a diagnostic, not a new arrow.\n\n## Running it\n\n```bash\ndocker compose up -d db\nmvn -q spring-boot:run\n```\n\n`NATS_URL` picks the bus: with a server named, events leave on their channel\nwith their wire name in the headers; without one they are written to the log and\nnothing leaves. `OMS_ADDRESS` is where `shop.v1.OrderService` answers.\n`STRIPE_SECRET_KEY` is the account the money moves through — a test key\nlocally — and `STRIPE_URL` points the gateway at a stand-in that answers on\nStripe's routes instead of at Stripe.\n\n## Decisions\n\n- [payments.0004](../../../docs/adr/payments.0004.md) — journal rows are\n  idempotent by `(order_id, attempt)`, which is why `payments` carries an\n  `attempt` and a unique key over the pair. The attempt is minted here, one\n  past the last recorded for the order, and the key's refusal is a sentinel.\n- [ledger.0001](docs/adr/0001-a-gateway-outage-records-nothing.md) — a\n  gateway that did not answer has not refused; nothing is recorded.\n- [ledger.0002](docs/adr/0002-foreign-events-arrive-over-nats-and-are-republished-in-process.md)\n  — the order service's events are read off the bus by an adapter and handed\n  to the policies in process.\n- [ledger.0003](docs/adr/0003-the-card-network-is-stripe-and-stays-outside-the-estate.md)\n  — the gateway is Stripe, kept outside the estate with a narrow copy of its\n  contract beside the adapter, so the calls resolve and nothing is invented.\n\n## Status\n\nA sketch for the catalog, not the reference service; `examples/auth` is\nthat. What it has: the aggregates with their lifecycle tables enforced, the\nuse cases with closed answers, a policy fed from the bus, and the records\nabove. What it deliberately does not have yet, and the review skill will\nname: no version on the aggregates, so a stale copy is not refused; events\npublished after the save rather than with it, so there is no outbox and a\ncrash between the two loses the fact; no tests; no tracing. Each is a known\ngap, not an oversight, and none of them changes what the catalog shows.",
           "provides": [],
           "consumes": [
-            {
-              "id": "psp/capture",
-              "peer": "psp",
-              "status": "unresolved",
-              "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java"
-            },
-            {
-              "id": "psp/hold",
-              "peer": "psp",
-              "status": "unresolved",
-              "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java"
-            },
-            {
-              "id": "psp/refund",
-              "peer": "psp",
-              "status": "unresolved",
-              "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java"
-            },
-            {
-              "id": "psp/voidHold",
-              "peer": "psp",
-              "status": "unresolved",
-              "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java"
-            },
             {
               "id": "shop.v1.OrderService/GetOrder",
               "peer": "shop.oms",
               "status": "declared",
               "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/oms/proto/shop/v1/order.proto"
+            },
+            {
+              "id": "stripe.v1/PostPaymentIntents",
+              "peer": "stripe",
+              "status": "declared",
+              "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml"
+            },
+            {
+              "id": "stripe.v1/PostPaymentIntentsIntentCancel",
+              "peer": "stripe",
+              "status": "declared",
+              "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml"
+            },
+            {
+              "id": "stripe.v1/PostPaymentIntentsIntentCapture",
+              "peer": "stripe",
+              "status": "declared",
+              "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml"
+            },
+            {
+              "id": "stripe.v1/PostRefunds",
+              "peer": "stripe",
+              "status": "declared",
+              "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml"
             }
           ],
           "aggregates": [
@@ -564,10 +564,9 @@
           "context": null
         },
         {
-          "id": "psp",
-          "kind": "unknown",
-          "context": null,
-          "label": "psp"
+          "id": "stripe",
+          "kind": "external",
+          "context": null
         }
       ],
       "steps": [
@@ -653,10 +652,11 @@
           "type": "step",
           "id": "s8",
           "from": "payments.ledger",
-          "to": "psp",
+          "to": "stripe",
           "kind": "rpc",
-          "label": "hold",
-          "status": "unresolved",
+          "label": "PostPaymentIntents",
+          "status": "declared",
+          "ref": "stripe.v1/PostPaymentIntents",
           "line": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:62"
         },
         {
@@ -743,10 +743,9 @@
           "context": "payments"
         },
         {
-          "id": "psp",
-          "kind": "unknown",
-          "context": null,
-          "label": "psp"
+          "id": "stripe",
+          "kind": "external",
+          "context": null
         },
         {
           "id": "bus",
@@ -779,10 +778,11 @@
           "type": "step",
           "id": "s3",
           "from": "payments.ledger",
-          "to": "psp",
+          "to": "stripe",
           "kind": "rpc",
-          "label": "capture",
-          "status": "unresolved",
+          "label": "PostPaymentIntentsIntentCapture",
+          "status": "declared",
+          "ref": "stripe.v1/PostPaymentIntentsIntentCapture",
           "line": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:43"
         },
         {
@@ -879,10 +879,9 @@
           "context": "payments"
         },
         {
-          "id": "psp",
-          "kind": "unknown",
-          "context": null,
-          "label": "psp"
+          "id": "stripe",
+          "kind": "external",
+          "context": null
         },
         {
           "id": "bus",
@@ -935,10 +934,11 @@
           "type": "step",
           "id": "s5",
           "from": "payments.ledger",
-          "to": "psp",
+          "to": "stripe",
           "kind": "rpc",
-          "label": "refund",
-          "status": "unresolved",
+          "label": "PostRefunds",
+          "status": "declared",
+          "ref": "stripe.v1/PostRefunds",
           "line": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:62"
         },
         {
@@ -1061,10 +1061,9 @@
           "context": "payments"
         },
         {
-          "id": "psp",
-          "kind": "unknown",
-          "context": null,
-          "label": "psp"
+          "id": "stripe",
+          "kind": "external",
+          "context": null
         }
       ],
       "steps": [
@@ -1093,10 +1092,11 @@
           "type": "step",
           "id": "s3",
           "from": "payments.ledger",
-          "to": "psp",
+          "to": "stripe",
           "kind": "rpc",
-          "label": "voidHold",
-          "status": "unresolved",
+          "label": "PostPaymentIntentsIntentCancel",
+          "status": "declared",
+          "ref": "stripe.v1/PostPaymentIntentsIntentCancel",
           "line": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/VoidPayment.java:35"
         },
         {

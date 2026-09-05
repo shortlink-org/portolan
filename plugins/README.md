@@ -342,6 +342,51 @@ is the point of the id; the same word twice in one context is an error.
 }
 ```
 
+## Outside the estate: an external with a contract
+
+A service calls things nobody here builds - a card network, a tax API, a
+carrier. The first answer the catalog gave was `unknown`: the call was
+recorded and left unresolved, the lane drawn dashed and red, and the Problems
+page listed it beside real defects. True, and unhelpful, once the far end is
+Stripe and Stripe publishes a document.
+
+An **external** is what the catalog may claim about such a system, and no
+more: what it answers on, read from the copy of its document vendored beside
+the adapter that calls it, and what the manifest says it is called and is
+for. It sits at the root beside the contexts (`catalog.externals`) with a bare
+id, no context, no aggregates and no repository, and the estate's picture
+draws it outside, muted, exactly where it is.
+
+Two steps describe one, and neither knows the other exists:
+
+```json
+{ "plugin": "openapi", "in": "examples/payments/ledger",
+  "out": "examples/payments/ledger/portolan",
+  "options": { "external": "stripe", "externalName": "Stripe",
+               "externalUrl": "https://docs.stripe.com/api",
+               "spec": "src/main/java/.../infrastructure/stripe/openapi/openapi.yaml",
+               "out": "stripe.json" } },
+{ "plugin": "java-domain", "in": "examples/payments/ledger", "...": "...",
+  "options": { "externals": { "stripe.v1": "stripe" } } }
+```
+
+The first reads the copy and says what `stripe` answers on. The second reads
+the adapter, finds the verb and the route in each call, looks the operation up
+in the same copy, and - told by `externals` that the copy's api id belongs to
+`stripe` - records the call as `stripe.v1/PostPaymentIntents`, declared, on a
+lane of kind `external`. The merge joins the two by the id; a call to an
+operation the copy declares resolves, one it does not is reported by the
+extractor and left out.
+
+The copy is **narrow** - the operations the service calls and the schemas they
+answer with, every field verbatim - for the reason org.0001 gives for a proto:
+what is vendored has to be reviewable, and Stripe's whole document is not. It
+carries one line the original does not, `x-portolan-api: stripe.v1` in
+`info`: the copy is already the consumer's translation boundary, so it is the
+one place the estate's name for the document is written, and every reader of
+the copy takes the id from there rather than from Stripe's title and version
+- or from two manifests that would have to agree.
+
 ## Verifiers: the third phase
 
 An extractor reads source and runs before there is a catalog; a generator

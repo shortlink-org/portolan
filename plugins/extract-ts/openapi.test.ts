@@ -2,13 +2,17 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { apiID, callID, findOperation, interfaceID, readSpec, tagTitle } from "./openapi.ts";
+import { apiID, callID, documentApiID, findOperation, interfaceID, readSpec, tagTitle } from "./openapi.ts";
 
 // The same cases plugins/openapi/ids_test.go holds the Go side to.
 describe("openapi ids", () => {
   it("names the api by title and major version", () => {
     expect(apiID("Auth", "1.2.3")).toBe("auth.v1");
     expect(apiID("", "")).toBe("api");
+  });
+  it("lets a vendored copy say what the estate calls it", () => {
+    expect(documentApiID(" stripe.v1 ", "Stripe API", "2026-08-26.dahlia")).toBe("stripe.v1");
+    expect(documentApiID("", "Stripe API", "2026-08-26.dahlia")).toBe("stripe-api.v2026-08-26");
   });
   it("titles tags and builds interface ids", () => {
     expect(tagTitle("price_list")).toBe("PriceList");
@@ -43,6 +47,11 @@ describe("readSpec and findOperation", () => {
   it("reads the api and its operations", () => {
     expect(spec.api).toBe("auth.v1");
     expect(spec.operations).toHaveLength(3);
+  });
+  it("takes the api id from x-portolan-api when the copy carries one", () => {
+    const named = join(dir, "named.yaml");
+    writeFileSync(named, doc.replace("  version: 1.0.0\n", "  version: 1.0.0\n  x-portolan-api: sessions.v9\n"));
+    expect(readSpec(named).api).toBe("sessions.v9");
   });
   it("finds a route however the parameter is spelled", () => {
     const login = findOperation(spec, "post", "/v1/sessions")!;

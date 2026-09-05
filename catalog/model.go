@@ -44,6 +44,20 @@ type Catalog struct {
 	Modules     []ProtoModule      `json:"modules,omitempty"`
 	Terms       []Term             `json:"terms,omitempty"`
 	Repos       []RepoPin          `json:"repos,omitempty"`
+	Externals   []External         `json:"externals,omitempty"`
+}
+
+// External is a system outside the estate with a contract: what it answers on,
+// read from the copy of its document vendored beside the adapter that calls it,
+// and nothing else. It sits at the root beside the contexts, so its id is its
+// slug and carries no dot.
+type External struct {
+	ID      string       `json:"id"`
+	Slug    string       `json:"slug"`
+	Name    string       `json:"name"`
+	Summary string       `json:"summary"`
+	URL     string       `json:"url,omitempty"`
+	Provides []RpcService `json:"provides"`
 }
 
 // RepoPin is a repository the estate was read at, and the commit it was read

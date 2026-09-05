@@ -307,6 +307,28 @@ describe("enrichCatalog: calls from rpc steps", () => {
     expect(() => validateCatalog(enrichCatalog(c).catalog)).not.toThrow();
   });
 
+  it("reads a call to a system outside the estate as declared when its contract answers on the method", () => {
+    const ASSESS = "risk.v1.Risk/Assess";
+    const c: Catalog = {
+      ...estate([flow("a", [step("shop.oms", "risk", "rpc", { ref: ASSESS })])]),
+      externals: [
+        {
+          id: "risk",
+          slug: "risk",
+          name: "Risk",
+          summary: "",
+          provides: [{ id: "risk.v1.Risk", methods: [{ name: "Assess" }], source: "risk/openapi.yaml" }],
+        },
+      ],
+    };
+    const { catalog, derived } = enrichCatalog(c);
+    expect(serviceOf(catalog, "shop.oms").consumes).toMatchObject([{ id: ASSESS, peer: "risk", status: "declared" }]);
+    expect(derived[0]).toMatchObject({ kind: "rpc", peer: "risk", status: "declared" });
+    expect(() => validateCatalog(catalog)).not.toThrow();
+    // Declared, so not a problem: the far end is outside, and it is known.
+    expect(problems(catalog)).toEqual([]);
+  });
+
   it("marks a call to a peer that does not provide the method as unresolved", () => {
     // Somebody declared the call id, so the ref resolves; the step points it at
     // an external that provides nothing.

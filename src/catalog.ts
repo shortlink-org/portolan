@@ -40,6 +40,34 @@ export interface Catalog {
    * to pin and renders as it did before there was anything to pin.
    */
   repos?: RepoPin[];
+  /**
+   * The systems outside the estate that a service calls on a contract: a
+   * payment provider, a tax API, a carrier. Nobody here builds one, so it has
+   * no context, no aggregates and no repository - only the interfaces it
+   * answers on, read from the copy of its document vendored beside the adapter
+   * that calls it. Optional in the file and never optional downstream, like
+   * `stores`: an estate that calls nobody outside renders as it did before.
+   */
+  externals?: External[];
+}
+/**
+ * A system outside the estate, with a contract.
+ *
+ * The difference from a service is what the catalog may claim about it: what it
+ * answers on, and nothing else. The difference from an `unknown` participant
+ * is that the calls land: a step to an external names an operation its
+ * document declares, so the arrow is `declared`, not `unresolved` - and the
+ * catalog still does not pretend to own the far end.
+ */
+export interface External {
+  /** Sits at the root beside the contexts, so its id is its slug and has no dot. */
+  id: string;
+  slug: string;
+  name: string;
+  summary: string;
+  /** Where the third party documents itself, for a reader who needs more than the copy. */
+  url?: string;
+  provides: RpcService[];
 }
 /**
  * A bounded context: the estate's top grouping level, and nothing more. It owns
@@ -860,6 +888,11 @@ export function allServices(catalog: Catalog): Service[] {
   return catalog.contexts.flatMap((c) => c.services);
 }
 
+/** Every system outside the estate with a contract, in catalog order. */
+export function allExternals(catalog: Catalog): External[] {
+  return catalog.externals ?? [];
+}
+
 export function allEvents(catalog: Catalog): Event[] {
   return allServices(catalog).flatMap((s) =>
     s.aggregates.flatMap((a) => a.events),
@@ -1085,6 +1118,13 @@ export interface CatalogIndex {
   blocksByDef: Map<string, string[]>;
   rpcById: Map<string, RpcCall>;
   rpcProviderByMethod: Map<string, Service>;
+  externalById: Map<string, External>;
+  /**
+   * "<interface>/<method>" -> the external answering on it. Kept apart from
+   * `rpcProviderByMethod` rather than widened into it: every reader of that map
+   * follows the provider to a service page, and an external has none.
+   */
+  externalProviderByMethod: Map<string, External>;
   storeById: Map<string, Store>;
   /** table id -> the table and the store holding it */
   tableById: Map<string, { table: Table; store: Store }>;
@@ -1159,6 +1199,16 @@ export function buildIndex(catalog: Catalog): CatalogIndex {
   const blocksByDef = new Map<string, string[]>();
   const rpcById = new Map<string, RpcCall>();
   const rpcProviderByMethod = new Map<string, Service>();
+  const externalById = new Map<string, External>();
+  const externalProviderByMethod = new Map<string, External>();
+  for (const external of allExternals(catalog)) {
+    externalById.set(external.id, external);
+    for (const provided of external.provides) {
+      for (const method of provided.methods) {
+        externalProviderByMethod.set(`${provided.id}/${method.name}`, external);
+      }
+    }
+  }
   const flowBySlug = new Map<string, Flow>();
   const flowsByEvent = new Map<string, string[]>();
   const adrById = new Map<string, Adr>();
@@ -1377,6 +1427,8 @@ export function buildIndex(catalog: Catalog): CatalogIndex {
     blocksByDef,
     rpcById,
     rpcProviderByMethod,
+    externalById,
+    externalProviderByMethod,
     flowBySlug,
     flowsByEvent,
     adrById,
@@ -1779,6 +1831,7 @@ export function validateCatalog(catalog: Catalog): Catalog {
     }
   }
 
+  validateExternals(catalog);
   validateStores(catalog);
   validateModules(catalog);
   validateAdrs(catalog, eventIds);
@@ -1859,6 +1912,63 @@ function validateModules(catalog: Catalog): void {
       if (call.module !== undefined) {
         refers(call.module, `call "${call.id}"`, `service ${service.id}`);
       }
+    }
+  }
+}
+
+/**
+ * An external sits at the root beside the contexts, so it is held to the same
+ * shape: id equal to slug, no dot, and a name nothing else at the root uses.
+ * The last rule is the one that matters - a flow lane, a call's `peer` and a
+ * LikeC4 node all address the root by a bare id, and an external called
+ * `shop` beside a context called `shop` would land every arrow on the wrong one.
+ *
+ * What is NOT checked: whether any service calls it. An external nobody calls
+ * is a copy vendored ahead of the adapter, which is a legitimate mid-migration
+ * state and shows on its page as "called by nobody" rather than failing the
+ * build.
+ */
+function validateExternals(catalog: Catalog): void {
+  const externals = allExternals(catalog);
+  if (externals.length === 0) return;
+
+  assertUniqueSlugs(
+    externals.map((e) => e.id),
+    "catalog",
+    "external",
+  );
+  const contextIds = new Set(catalog.contexts.map((c) => c.id));
+
+  for (const external of externals) {
+    if (external.slug !== external.id) {
+      fail(
+        `external "${external.id}" has slug "${external.slug}"; an external sits at the root, so its slug must equal its id`,
+        `external ${external.id}`,
+      );
+    }
+    if (external.id.includes(".")) {
+      fail(
+        `external "${external.id}" has a dot in its id; an external sits at the root and is addressed by a bare name`,
+        `external ${external.id}`,
+      );
+    }
+    if (contextIds.has(external.id)) {
+      fail(
+        `external "${external.id}" has the id of a bounded context; the root cannot hold both`,
+        `external ${external.id}`,
+      );
+    }
+    assertUniqueSlugs(
+      external.provides.map((p) => p.id),
+      `external "${external.id}"`,
+      "interface",
+    );
+    for (const provided of external.provides) {
+      assertUniqueSlugs(
+        provided.methods.map((method) => method.name),
+        `interface "${provided.id}"`,
+        "method",
+      );
     }
   }
 }

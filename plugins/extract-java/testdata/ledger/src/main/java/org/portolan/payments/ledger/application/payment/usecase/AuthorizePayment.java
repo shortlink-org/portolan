@@ -16,17 +16,20 @@ public class AuthorizePayment {
     private final PaymentRepository payments;
     private final PaymentGateway gateway;
     private final Orders orders;
+    private final Risk risk;
     private final Publisher bus;
 
-    public AuthorizePayment(PaymentRepository payments, PaymentGateway gateway, Orders orders, Publisher bus) {
+    public AuthorizePayment(PaymentRepository payments, PaymentGateway gateway, Orders orders, Risk risk, Publisher bus) {
         this.payments = payments;
         this.gateway = gateway;
         this.orders = orders;
+        this.risk = risk;
         this.bus = bus;
     }
 
     public PaymentAuthorized handle(String paymentId, String orderId, Money amount) {
         var stands = orders.stands(orderId);
+        var allowed = risk.allows(orderId);
         var payment = new Payment(paymentId, Association.forId(orderId), amount);
         String authCode = gateway.reserve(orderId, amount.amountMinor(), amount.currency());
         if (authCode.isEmpty()) {

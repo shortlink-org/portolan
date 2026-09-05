@@ -27,9 +27,9 @@ import org.portolan.payments.ledger.infrastructure.bus.NatsLink;
 import org.portolan.payments.ledger.infrastructure.oms.OrderClient;
 import org.portolan.payments.ledger.infrastructure.oms.OrderEvents;
 import org.portolan.payments.ledger.infrastructure.oms.gen.OrderServiceGrpc;
-import org.portolan.payments.ledger.infrastructure.psp.HttpPspClient;
-import org.portolan.payments.ledger.infrastructure.psp.PspGateway;
-import org.portolan.payments.ledger.infrastructure.psp.PspHttpClient;
+import org.portolan.payments.ledger.infrastructure.stripe.HttpStripeClient;
+import org.portolan.payments.ledger.infrastructure.stripe.StripeGateway;
+import org.portolan.payments.ledger.infrastructure.stripe.StripeHttpClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
@@ -60,14 +60,17 @@ public class Assembly {
                 .build();
     }
 
+    /** Stripe's HTTP. The secret is read here and handed to the client, and nothing else in the service sees it. */
     @Bean
-    PspHttpClient pspHttpClient(@Value("${ledger.psp-url:http://psp:8080}") String pspUrl) {
-        return new HttpPspClient(pspUrl);
+    StripeHttpClient stripeHttpClient(
+            @Value("${ledger.stripe-url:https://api.stripe.com}") String stripeUrl,
+            @Value("${ledger.stripe-secret-key:}") String secretKey) {
+        return new HttpStripeClient(stripeUrl, secretKey);
     }
 
     @Bean
-    PaymentGateway paymentGateway(PspHttpClient http, ObjectMapper json) {
-        return new PspGateway(http, json);
+    PaymentGateway paymentGateway(StripeHttpClient http, ObjectMapper json) {
+        return new StripeGateway(http, json);
     }
 
     /** The bus, or none: NATS when a server is named, nothing otherwise. Publisher and subscriber are told the same thing. */

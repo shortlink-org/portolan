@@ -10,13 +10,13 @@ Sends money back against a captured payment, in full or in part.
 
 ## Participants
 
-| Participant | Kind | Context | Label |
-| --- | --- | --- | --- |
-| `client` | actor | — | — |
-| `payments.ledger` | service | [payments](../payments/README.md) | — |
-| `ledger-pg` | store | [payments](../payments/README.md) | — |
-| `psp` | unknown | — | psp |
-| `bus` | broker | — | — |
+| Participant | Kind | Context |
+| --- | --- | --- |
+| `client` | actor | — |
+| `payments.ledger` | service | [payments](../payments/README.md) |
+| `ledger-pg` | store | [payments](../payments/README.md) |
+| `stripe` | external | — |
+| `bus` | broker | — |
 
 ## Sequence
 
@@ -26,13 +26,13 @@ sequenceDiagram
     actor p0 as client
     participant p1 as payments.ledger
     participant p2 as ledger-pg
-    participant p3 as psp
+    participant p3 as stripe
     participant p4 as bus
     p0->>p1: IssueRefund → IssueRefundResponse
     p1->>p2: byId
     p1->>p2: byId
     p1->>p2: byPayment
-    p1->>p3: refund
+    p1->>p3: PostRefunds → refund
     alt !answer.sent()
         p1->>p2: save
         Note over p2: flow ends here
@@ -52,8 +52,8 @@ sequenceDiagram
    status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:52`
 4. **payments.ledger** → **ledger-pg** — byPayment
    status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:56`
-5. **payments.ledger** → **psp** — refund
-   status: unresolved · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:62`
+5. **payments.ledger** → **stripe** — PostRefunds → refund
+   `stripe.v1/PostRefunds` · status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:62`
 
 > **One of**
 >

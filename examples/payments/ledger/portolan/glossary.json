@@ -35,7 +35,7 @@
       "slug": "gateway",
       "context": "payments",
       "name": "Gateway",
-      "definition": "The card network, as this service asks it: hold, capture, void, refund. A third party behind a port; its own words for those four things stay in the adapter. When it does not answer, nothing is decided and nothing is written.",
+      "definition": "The card network, as this service asks it: hold, capture, void, refund. A third party behind a port — Stripe, today — and its own words for those four things (a PaymentIntent confirmed, captured, cancelled; a Refund) stay in the adapter. When it does not answer, nothing is decided and nothing is written.",
       "source": "examples/payments/ledger/GLOSSARY.md:17"
     },
     {
@@ -44,7 +44,7 @@
       "context": "payments",
       "name": "Hold",
       "definition": "The gateway has reserved the money against an instrument and given back a code that names the reservation. The code is the gateway's handle on the money and never leaves this service: not on an event, not on the wire.",
-      "source": "examples/payments/ledger/GLOSSARY.md:22"
+      "source": "examples/payments/ledger/GLOSSARY.md:23"
     },
     {
       "id": "payments.journal",
@@ -52,7 +52,7 @@
       "context": "payments",
       "name": "Journal",
       "definition": "The postings, in the order they were written. Append-only; nothing in it is ever updated, and a correction is another pair.",
-      "source": "examples/payments/ledger/GLOSSARY.md:26"
+      "source": "examples/payments/ledger/GLOSSARY.md:27"
     },
     {
       "id": "payments.money",
@@ -60,7 +60,7 @@
       "context": "payments",
       "name": "Money",
       "definition": "An amount in the minor unit of a currency. The ledger never rounds.",
-      "source": "examples/payments/ledger/GLOSSARY.md:29"
+      "source": "examples/payments/ledger/GLOSSARY.md:30"
     },
     {
       "id": "payments.order",
@@ -68,7 +68,7 @@
       "context": "payments",
       "name": "Order",
       "definition": "What the payment is for. Another context owns it, so it is an id here and nothing more. Asked once, before a hold: a cancelled order is not charged.",
-      "source": "examples/payments/ledger/GLOSSARY.md:31"
+      "source": "examples/payments/ledger/GLOSSARY.md:32"
     },
     {
       "id": "payments.payment",
@@ -76,7 +76,7 @@
       "context": "payments",
       "name": "Payment",
       "definition": "What one order owes on one attempt, and everything that has happened to that money. The aggregate root; its status moves only the way its lifecycle table allows.",
-      "source": "examples/payments/ledger/GLOSSARY.md:35"
+      "source": "examples/payments/ledger/GLOSSARY.md:36"
     },
     {
       "id": "payments.posting",
@@ -84,7 +84,7 @@
       "context": "payments",
       "name": "Posting",
       "definition": "One side of one movement of money. Comes in balanced pairs.",
-      "source": "examples/payments/ledger/GLOSSARY.md:39"
+      "source": "examples/payments/ledger/GLOSSARY.md:40"
     },
     {
       "id": "payments.refund",
@@ -92,7 +92,7 @@
       "context": "payments",
       "name": "Refund",
       "definition": "Money going back against a payment that was captured. Its own aggregate: asked for by somebody else, at another time, for a reason of its own, and there may be several per payment, never adding up to more than was captured.",
-      "source": "examples/payments/ledger/GLOSSARY.md:41"
+      "source": "examples/payments/ledger/GLOSSARY.md:42"
     },
     {
       "id": "payments.void",
@@ -100,7 +100,7 @@
       "context": "payments",
       "name": "Void",
       "definition": "Giving back a hold nobody is going to be charged for. Happens when the order is cancelled; touches nothing that was captured.",
-      "source": "examples/payments/ledger/GLOSSARY.md:46"
+      "source": "examples/payments/ledger/GLOSSARY.md:47"
     }
   ]
 }

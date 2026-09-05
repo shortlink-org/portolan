@@ -22,6 +22,7 @@ import type {
   BoundedContext,
   Catalog,
   Channel,
+  External,
   Flow,
   FlowNode,
   Loop,
@@ -108,6 +109,8 @@ export function mergeCatalogs(sources: CatalogSource[]): MergeResult {
   const terms: NonNullable<Catalog["terms"]> = [];
   const repos: NonNullable<Catalog["repos"]> = [];
   const repoOrigin = new Map<string, string>();
+  const externals = new Map<string, External>();
+  const externalOrigin = new Map<string, string>();
   const seen = new Map<string, string>(); // flow/adr/store/module/term id -> source path
 
   const stamps: SourceStamp[] = ordered.map((source) => ({
@@ -262,6 +265,13 @@ export function mergeCatalogs(sources: CatalogSource[]): MergeResult {
         message: `repository "${pin.repo}" is pinned to ${pin.commit} here and to ${held.commit} in ${owner}; the first one is used`,
       });
     }
+    // Merged like a service rather than claimed like a store, and for the
+    // same reason a service is: one source reads the document a third party
+    // publishes and knows what it answers on, another names it and says what
+    // it is for, and neither has to know the other exists.
+    for (const external of catalog.externals ?? []) {
+      mergeExternal(externals, externalOrigin, external, path, conflicts);
+    }
   }
 
   // Services go back into their contexts once every source has been read, in
@@ -291,6 +301,7 @@ export function mergeCatalogs(sources: CatalogSource[]): MergeResult {
   if (modules.length > 0) merged.modules = modules;
   if (terms.length > 0) merged.terms = terms;
   if (repos.length > 0) merged.repos = repos;
+  if (externals.size > 0) merged.externals = [...externals.values()];
 
   return { catalog: merged, sources: stamps, conflicts };
 }
@@ -406,6 +417,51 @@ function mergeService(
 
 function copyChannel(channel: Channel): Channel {
   return { ...channel, messages: [...channel.messages] };
+}
+
+/**
+ * Merges one external into the set, the way a service is merged: interfaces
+ * unioned by id, scalars keeping the first non-empty value with the loser
+ * recorded. There is less to merge - no aggregates, no consumes, no stores -
+ * because there is less the catalog may claim about a system it does not own.
+ */
+function mergeExternal(
+  externals: Map<string, External>,
+  origin: Map<string, string>,
+  incoming: External,
+  path: string,
+  conflicts: MergeConflict[],
+): void {
+  const existing = externals.get(incoming.id);
+  if (!existing) {
+    externals.set(incoming.id, {
+      ...incoming,
+      provides: [...incoming.provides],
+    });
+    origin.set(incoming.id, path);
+
+    return;
+  }
+
+  const owner = origin.get(incoming.id) ?? "";
+  for (const field of ["name", "summary", "url"] as const) {
+    const theirs = incoming[field];
+    if (!theirs) continue;
+    if (!existing[field]) {
+      existing[field] = theirs;
+
+      continue;
+    }
+    if (theirs !== existing[field]) {
+      conflicts.push({
+        path,
+        where: incoming.id,
+        message: `external "${incoming.id}" has a different ${field} here than in ${owner}; the first one is used`,
+      });
+    }
+  }
+
+  appendNew(existing.provides, incoming.provides, (p) => p.id);
 }
 
 /**

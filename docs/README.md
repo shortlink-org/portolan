@@ -13,6 +13,12 @@
 | [Shop](shop/README.md) | core | [Billing](shop/billing/README.md), [Shopping Cart](shop/cart/README.md), [Order Management](shop/oms/README.md), [Pricing](shop/pricing/README.md) | What a customer is buying, what it costs and what they owe for it: the basket while it is still changing, the price it was promised at, the order it became, and the invoice for it. It moves no money and delivers nothing. |
 | [Delivery](delivery/README.md) | supporting | [Delivery Core](delivery/core/README.md) | Parcels, vans and the day they are driven. Told what to carry and asked where it got to; it decides neither. |
 
+## Outside the estate
+
+| System | Interfaces | Summary |
+| --- | --- | --- |
+| [Stripe](externals/stripe.md) | `stripe.v1` | The card network the ledger moves money through. Nobody in the estate provides it; the copy of its document beside the ledger's adapter is narrowed to the four operations the ledger calls, and is all the catalog claims about it. |
+
 ## Flows
 
 | Flow | Owner | Summary |
@@ -96,6 +102,7 @@
 | [bff.0004](adr/bff.0004.md) | A subscription is the bus, forwarded | accepted | 2026-09-05 |
 | [ledger.0001](adr/ledger.0001.md) | A gateway that did not answer has not refused | accepted | 2026-09-05 |
 | [ledger.0002](adr/ledger.0002.md) | Another service's events are read off the bus by an adapter and republished in process | accepted | 2026-09-05 |
+| [ledger.0003](adr/ledger.0003.md) | The card network is Stripe, and stays outside the estate | accepted | 2026-09-06 |
 | [cart.0001](adr/cart.0001.md) | TypeScript on Node.js, and the stack around it | accepted | 2026-09-04 |
 | [cart.0002](adr/cart.0002.md) | A basket freezes its currency at the first item | accepted | 2026-09-04 |
 | [cart.0003](adr/cart.0003.md) | Line prices are captured when added, never recomputed | accepted | 2026-09-04 |

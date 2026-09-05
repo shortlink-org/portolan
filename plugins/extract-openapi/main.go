@@ -30,6 +30,16 @@ type Options struct {
 	// `auth.v1`, and a tag called `users` gives `auth.v1.Users`.
 	API string `json:"api,omitempty"`
 
+	// External names a system outside the estate the document belongs to,
+	// when it is not one of ours: the copy vendored beside an adapter, read
+	// for what the third party answers on. Set, the fragment carries no
+	// context and no service, only the external, and `context` and `service`
+	// are not read.
+	External        string `json:"external,omitempty"`
+	ExternalName    string `json:"externalName,omitempty"`
+	ExternalSummary string `json:"externalSummary,omitempty"`
+	ExternalURL     string `json:"externalUrl,omitempty"`
+
 	Out string `json:"out,omitempty"`
 }
 

@@ -24,7 +24,10 @@ function methodOf(index: CatalogIndex, step: Step): RpcMethod | undefined {
     const cut = step.ref.lastIndexOf("/");
     if (cut < 0) return undefined;
     const [interfaceId, name] = [step.ref.slice(0, cut), step.ref.slice(cut + 1)];
-    const provider = index.rpcProviderByMethod.get(step.ref);
+    // A service of ours, or a system outside the estate whose vendored
+    // document names the operation: what comes back is written down either way.
+    const provider =
+      index.rpcProviderByMethod.get(step.ref) ?? index.externalProviderByMethod.get(step.ref);
     const provided = provider?.provides.find((p) => p.id === interfaceId);
     return provided?.methods.find((m) => m.name === name);
   }

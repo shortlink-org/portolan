@@ -979,3 +979,69 @@ describe("validateCatalog: channels", () => {
     expect(() => validateCatalog(bad)).toThrow(/neither send nor receive/);
   });
 });
+
+// A system outside the estate with a contract sits at the root beside the
+// contexts, and is held to the same shape as anything else that does.
+describe("externals", () => {
+  function calling(): Catalog {
+    const with_ = clone();
+    with_.externals = [
+      {
+        id: "psp",
+        slug: "psp",
+        name: "PSP",
+        summary: "the card network",
+        url: "https://psp.example/docs",
+        provides: [
+          {
+            id: "psp.v1.Charges",
+            methods: [{ name: "Create", http: { method: "POST", path: "/v1/charges" } }],
+            source: "psp/openapi.yaml",
+          },
+        ],
+      },
+    ];
+    return with_;
+  }
+
+  it("accepts one, and indexes what it answers on", () => {
+    const good = calling();
+    expect(() => validateCatalog(good)).not.toThrow();
+    const index = buildIndex(good);
+    expect(index.externalById.get("psp")?.name).toBe("PSP");
+    expect(index.externalProviderByMethod.get("psp.v1.Charges/Create")?.id).toBe("psp");
+    // Never widened into the service map: every reader of that one opens a service page.
+    expect(index.rpcProviderByMethod.has("psp.v1.Charges/Create")).toBe(false);
+  });
+
+  it("rejects a slug that is not the id", () => {
+    const bad = calling();
+    bad.externals![0]!.slug = "gateway";
+    expect(() => validateCatalog(bad)).toThrow(/slug must equal its id/);
+  });
+
+  it("rejects a dotted id", () => {
+    const bad = calling();
+    bad.externals![0]!.id = "shop.psp";
+    bad.externals![0]!.slug = "shop.psp";
+    expect(() => validateCatalog(bad)).toThrow(/dot in its id/);
+  });
+
+  it("rejects the id of a bounded context", () => {
+    const bad = calling();
+    const taken = bad.contexts[0]!.id;
+    bad.externals![0]!.id = taken;
+    bad.externals![0]!.slug = taken;
+    expect(() => validateCatalog(bad)).toThrow(/id of a bounded context/);
+  });
+
+  it("rejects two with one id, and one interface listing a method twice", () => {
+    const twice = calling();
+    twice.externals!.push({ ...twice.externals![0]! });
+    expect(() => validateCatalog(twice)).toThrow(CatalogError);
+
+    const doubled = calling();
+    doubled.externals![0]!.provides[0]!.methods.push({ name: "Create" });
+    expect(() => validateCatalog(doubled)).toThrow(/method/);
+  });
+});

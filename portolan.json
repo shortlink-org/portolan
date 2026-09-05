@@ -488,10 +488,26 @@
         "peers": {
           "shop.v1": "shop.oms"
         },
+        "externals": {
+          "stripe.v1": "stripe"
+        },
         "events": {
           "org.portolan.payments.ledger.application.oms": "shop.oms.order"
         },
         "out": "domain.json"
+      }
+    },
+    {
+      "plugin": "openapi",
+      "in": "examples/payments/ledger",
+      "out": "examples/payments/ledger/portolan",
+      "options": {
+        "external": "stripe",
+        "externalName": "Stripe",
+        "externalSummary": "The card network the ledger moves money through. Nobody in the estate provides it; the copy of its document beside the ledger's adapter is narrowed to the four operations the ledger calls, and is all the catalog claims about it.",
+        "externalUrl": "https://docs.stripe.com/api",
+        "spec": "src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml",
+        "out": "stripe.json"
       }
     },
     {

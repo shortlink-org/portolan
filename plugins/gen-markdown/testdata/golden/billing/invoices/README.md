@@ -38,7 +38,7 @@ No dunning.
 
 | Call | Peer | Status | Source | Note |
 | --- | --- | --- | --- | --- |
-| `psp.v1.Charges/Create` | `psp-gateway` | unresolved | `internal/psp/client.go:20` | Nothing in this catalog owns the gateway. |
+| `psp.v1.Charges/Create` | [psp-gateway](../../externals/psp-gateway.md) | declared | `internal/psp/client.go:20` | The gateway is outside the estate; the copy beside the client says what it answers on. |
 
 ## Publishes
 

@@ -10,14 +10,14 @@ Asks the gateway to hold the money for an order, and records either that it agre
 
 ## Participants
 
-| Participant | Kind | Context | Label |
-| --- | --- | --- | --- |
-| `client` | actor | — | — |
-| `payments.ledger` | service | [payments](../payments/README.md) | — |
-| `ledger-pg` | store | [payments](../payments/README.md) | — |
-| `shop.oms` | service | [shop](../shop/README.md) | — |
-| `bus` | broker | — | — |
-| `psp` | unknown | — | psp |
+| Participant | Kind | Context |
+| --- | --- | --- |
+| `client` | actor | — |
+| `payments.ledger` | service | [payments](../payments/README.md) |
+| `ledger-pg` | store | [payments](../payments/README.md) |
+| `shop.oms` | service | [shop](../shop/README.md) |
+| `bus` | broker | — |
+| `stripe` | external | — |
 
 ## Sequence
 
@@ -29,7 +29,7 @@ sequenceDiagram
     participant p2 as ledger-pg
     participant p3 as shop.oms
     participant p4 as bus
-    participant p5 as psp
+    participant p5 as stripe
     p0->>p1: Authorize → AuthorizeResponse
     p1->>p2: byId
     p1->>p2: byOrder
@@ -40,7 +40,7 @@ sequenceDiagram
         Note over p4: flow ends here
     else otherwise
     end
-    p1->>p5: hold
+    p1->>p5: PostPaymentIntents → payment_intent
     alt !hold.held()
         p1->>p2: save
         p1-)p4: PaymentDeclined
@@ -73,8 +73,8 @@ sequenceDiagram
 >
 > *otherwise*
 
-7. **payments.ledger** → **psp** — hold
-   status: unresolved · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:62`
+7. **payments.ledger** → **stripe** — PostPaymentIntents → payment_intent
+   `stripe.v1/PostPaymentIntents` · status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:62`
 
 > **One of**
 >

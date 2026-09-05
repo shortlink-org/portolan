@@ -43,6 +43,7 @@ src/main/java/<package>/
   infrastructure/<peer>/
     OrderClient.java          the adapter, @SecondaryAdapter or a class filling a port
     proto/**/*.proto          the callee's contract, vendored narrow
+    openapi/openapi.yaml      or, for an HTTP peer, its document, vendored narrow
   infrastructure/bus/Bus.java  how an event leaves
 ```
 
@@ -88,14 +89,29 @@ domain, and what a call on it means depends on which one it is. A `@Repository`
 service's own database. Any other port is filled by an adapter under
 `infrastructure/<peer>/`, and the call goes wherever that adapter reaches — an
 rpc named by the contract vendored beside it, or, when there is no contract
-because the far end is a third party, the adapter's own method, recorded and
-left unresolved. A port nothing fills at all is reported. A port a use case
-declares for itself, under `application`, is filled the same way, by the
-adapter that implements it; and an adapter's method is the rpc it is named
-after or, when the port speaks the use case's words rather than the
-contract's, the rpc its body invokes on the stub. A port named for publishing
-- `Publisher`, `Bus`, or a name ending in `Events` - is the bus wherever it is
-declared, and a call on it is an event leaving.
+at all, the adapter's own method, recorded and left unresolved. A port nothing
+fills at all is reported. A port a use case declares for itself, under
+`application`, is filled the same way, by the adapter that implements it; and
+an adapter's method is the rpc it is named after or, when the port speaks the
+use case's words rather than the contract's, the rpc its body invokes on the
+stub. A port named for publishing - `Publisher`, `Bus`, or a name ending in
+`Events` - is the bus wherever it is declared, and a call on it is an event
+leaving.
+
+**HTTP peer.** Nothing in the code names the operation, so it is read the
+other way round: the method's body calls `http.post("/v1/payment_intents/" + id + "/capture", …)`,
+the verb and the route are in the call, and the OpenAPI document vendored
+beside the adapter says which operation answers there. Every non-literal part
+of the route stands in as a parameter, so that call lands on
+`/v1/payment_intents/{intent}/capture`, and the call is recorded as
+`stripe.v1/PostPaymentIntentsIntentCapture` - the api id the document goes by
+(its `x-portolan-api`, or its title and major version) and the operationId,
+spelled the way `extract-openapi` spells it. A route the document does not
+declare is reported and left out. The peer is then the manifest's `peers`
+entry for the api id when a service of ours answers, or its `externals` entry
+when the far end is outside the estate: the lane is `external`, the step is
+declared, and the catalog says where the call lands without pretending to own
+it. A method that makes two calls is the first one it makes.
 
 A call made inside the condition of an `if` is a hop before the branch it
 decides. **Flow, from an endpoint.** Each handler method opens one: `client → service :
@@ -127,15 +143,18 @@ what ran** — every step here is a claim about behaviour, not a recording.
   "service": "ledger",
   "store": "pg",
   "peers": { "shop.v1": "shop.oms" },
+  "externals": { "stripe.v1": "stripe" },
   "events": { "org.portolan.payments.ledger.infrastructure.oms.event": "shop.oms.order" },
   "source": "src/main/java",
   "out": "domain.json"
 }
 ```
 
-`peers` is keyed by the proto package of the contract vendored beside an
-adapter; `events` by the package a listener reads a foreign event from.
-Everything else means what it means for `extract-ts`.
+`peers` is keyed by the proto package, or the api id, of the contract vendored
+beside an adapter; `externals` by the api id of a document vendored from
+outside the estate, to the id the `openapi` extractor was given under
+`external` for the same copy; `events` by the package a listener reads a
+foreign event from. Everything else means what it means for `extract-ts`.
 
 ## Building, and running it
 

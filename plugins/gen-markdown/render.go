@@ -74,6 +74,7 @@ func render(req plugin.Request, opts Options) plugin.Response {
 	for i := range s.cat.Stores {
 		s.renderStore(&s.cat.Stores[i])
 	}
+	s.renderExternals()
 	s.renderFlows()
 	s.renderAdrs()
 	s.renderLlms()
@@ -133,6 +134,19 @@ func (s *site) layout() {
 		} else {
 			s.pathOf[store.ID] = "stores/" + store.ID + ".md"
 			s.b.warn(store.ID, "store %q is owned by %q, which is not in this catalog; its page sits at the root", store.ID, store.Owner)
+		}
+	}
+
+	// An external sits at the root of the tree as it sits at the root of the
+	// catalog: no context owns it, so no context's directory holds it.
+	for i := range s.cat.Externals {
+		ext := &s.cat.Externals[i]
+		s.pathOf[ext.ID] = "externals/" + ext.Slug + ".md"
+		for j := range ext.Provides {
+			provided := &ext.Provides[j]
+			for k := range provided.Methods {
+				s.methodOf[provided.ID+"/"+provided.Methods[k].Name] = provided.Methods[k]
+			}
 		}
 	}
 
@@ -202,6 +216,24 @@ func (s *site) renderIndex() {
 		})
 	}
 	section(&b, "Contexts", table([]string{"Context", "Class", "Services", "Summary"}, rows))
+
+	// The systems the estate calls and does not build, beside the contexts
+	// rather than inside one: the reader asking "what do we depend on out
+	// there" should not have to open every service to find out.
+	externals := make([][]string, 0, len(s.cat.Externals))
+	for i := range s.cat.Externals {
+		ext := &s.cat.Externals[i]
+		interfaces := make([]string, 0, len(ext.Provides))
+		for j := range ext.Provides {
+			interfaces = append(interfaces, code(ext.Provides[j].ID))
+		}
+		externals = append(externals, []string{
+			s.ref(self, ext.ID, orDefault(ext.Name, ext.ID)),
+			strings.Join(interfaces, ", "),
+			firstLine(ext.Summary),
+		})
+	}
+	section(&b, "Outside the estate", table([]string{"System", "Interfaces", "Summary"}, externals))
 
 	flows := make([][]string, 0, len(s.cat.Flows))
 	for i := range s.cat.Flows {

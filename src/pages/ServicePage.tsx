@@ -488,6 +488,10 @@ export function ServicePage() {
             ) : null}
             {service.consumes.map((call) => {
               const to = servicePath(call.peer);
+              // A peer outside the estate with a contract is neither a page
+              // to open nor a hole in the catalog: it is named, and it says
+              // where it documents itself.
+              const external = to ? undefined : index.externalById.get(call.peer);
               return (
                 <div
                   key={call.id}
@@ -513,6 +517,23 @@ export function ServicePage() {
                       <Link to={to} className="text-accent">
                         {call.peer}
                       </Link>
+                    ) : external ? (
+                      <span>
+                        {external.name || external.id} — outside the estate
+                        {external.url ? (
+                          <>
+                            {", "}
+                            <a
+                              href={external.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-accent"
+                            >
+                              documented here
+                            </a>
+                          </>
+                        ) : null}
+                      </span>
                     ) : (
                       <span className="text-unresolved">
                         {call.peer} — not in the catalog

@@ -38,7 +38,7 @@ func (s *site) renderService(ctx *catalog.BoundedContext, svc *catalog.Service) 
 	}
 
 	section(&b, "Aggregates", s.aggregateTable(self, svc))
-	section(&b, "Provides", s.providesBlock(self, svc))
+	section(&b, "Provides", s.providesBlock(self, svc.Provides))
 	section(&b, "Consumes", s.consumesTable(self, svc))
 	section(&b, "Publishes", s.publishesTable(self, svc))
 	section(&b, "Stores", s.storesTable(self, svc))
@@ -77,14 +77,23 @@ func (s *site) aggregateTable(from string, svc *catalog.Service) string {
 	return table([]string{"Aggregate", "Root", "Commands", "Queries", "Events"}, rows)
 }
 
-func (s *site) providesBlock(from string, svc *catalog.Service) string {
+// providesBlock lists interfaces and their methods, for a service of the
+// estate and for a system outside it alike: what something answers on is the
+// same kind of fact whoever owns the far end.
+func (s *site) providesBlock(from string, provides []catalog.RpcService) string {
 	var b strings.Builder
 
-	for i := range svc.Provides {
-		rpc := &svc.Provides[i]
+	for i := range provides {
+		rpc := &provides[i]
 		b.WriteString("**" + code(rpc.ID) + "** — " + code(rpc.Source) + "\n\n")
 		for _, method := range rpc.Methods {
-			b.WriteString("- " + code(method.Name) + "\n")
+			line := "- " + code(method.Name)
+			// The route, when the document named one: an HTTP operation is
+			// found by its route as often as by its name.
+			if method.HTTP != nil {
+				line += " — " + code(method.HTTP.Method+" "+method.HTTP.Path)
+			}
+			b.WriteString(line + "\n")
 		}
 
 		for j := range rpc.Messages {

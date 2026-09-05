@@ -19,8 +19,27 @@
     },
     "api": {
       "type": "string",
-      "description": "Prefix for the ids of the rpc services this produces. Left out, it is built from the document's title and major version: auth 1.0.0 gives auth.v1, and a tag called users gives auth.v1.Users.",
+      "description": "Prefix for the ids of the rpc services this produces. Left out, it is the document's own x-portolan-api when it carries one, and otherwise built from its title and major version: auth 1.0.0 gives auth.v1, and a tag called users gives auth.v1.Users.",
       "examples": ["auth.v1"]
+    },
+    "external": {
+      "type": "string",
+      "description": "Id of a system outside the estate the document belongs to, when it is not one of ours: a copy vendored beside the adapter that calls it, read for what the third party answers on. A bare name with no dot, the same one the caller's extractor is given under externals. Set, the fragment carries the external and no service, and context and service are not read.",
+      "examples": ["stripe"]
+    },
+    "externalName": {
+      "type": "string",
+      "description": "What the external is called on the page.",
+      "examples": ["Stripe"]
+    },
+    "externalSummary": {
+      "type": "string",
+      "description": "A sentence or two on what the estate uses it for."
+    },
+    "externalUrl": {
+      "type": "string",
+      "description": "Where the third party documents itself, for a reader who needs more than the vendored copy.",
+      "examples": ["https://docs.stripe.com/api"]
     },
     "out": {
       "type": "string",

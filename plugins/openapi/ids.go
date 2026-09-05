@@ -31,6 +31,23 @@ func APIID(title, version string) string {
 	return name
 }
 
+// DocumentAPIID is the id a document says it goes by in the estate, or the one
+// built from its title and version when it says nothing.
+//
+// `x-portolan-api` in `info` is for a copy vendored from outside the estate:
+// Stripe's document is titled "Stripe API" and versioned "2026-08-26.dahlia",
+// and `stripe-api.v2026-08-26` on every arrow would be the document's words
+// where the estate wants its own. The copy is the consumer's translation
+// boundary already, so it is the one place the estate's name may be written,
+// and both sides of a call read it from there rather than from two manifests.
+func DocumentAPIID(declared, title, version string) string {
+	if declared = strings.TrimSpace(declared); declared != "" {
+		return declared
+	}
+
+	return APIID(title, version)
+}
+
 // Title is the human form of a tag: users becomes Users, price_list becomes
 // PriceList, because it sits in an id beside a proto-shaped service name.
 func Title(name string) string {
@@ -100,7 +117,7 @@ func Read(path string) (*Spec, error) {
 	}
 
 	info := child(node, "info")
-	spec := &Spec{API: APIID(text(child(info, "title")), text(child(info, "version")))}
+	spec := &Spec{API: DocumentAPIID(text(child(info, "x-portolan-api")), text(child(info, "title")), text(child(info, "version")))}
 	for _, p := range entries(child(node, "paths")) {
 		for _, verb := range Verbs {
 			operation := child(p.value, verb)

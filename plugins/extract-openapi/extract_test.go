@@ -346,3 +346,42 @@ func TestShapesOnEitherSide(t *testing.T) {
 		t.Errorf("health sends %q and returns %q", health.Request, health.Response)
 	}
 }
+
+// The same document, read as a copy vendored from outside the estate: the
+// fragment carries no context and no service, only the external and what it
+// answers on, under the id the manifest gave it.
+func TestExternalCarriesNoService(t *testing.T) {
+	resp, err := extract(
+		plugin.Input{Root: "testdata", Commit: "abc1234", GeneratedAt: "2026-01-01T00:00:00Z"},
+		Options{External: "psp", ExternalName: "PSP", ExternalURL: "https://psp.example/docs", API: "psp.v1"},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out catalog.Catalog
+	if err := json.Unmarshal([]byte(resp.Files[0].Contents), &out); err != nil {
+		t.Fatal(err)
+	}
+	if len(out.Contexts) != 0 {
+		t.Errorf("an external's fragment names %d contexts", len(out.Contexts))
+	}
+	if len(out.Externals) != 1 {
+		t.Fatalf("externals = %+v", out.Externals)
+	}
+	ext := out.Externals[0]
+	if ext.ID != "psp" || ext.Slug != "psp" || ext.Name != "PSP" || ext.URL != "https://psp.example/docs" {
+		t.Errorf("external = %+v", ext)
+	}
+	var ids []string
+	for _, p := range ext.Provides {
+		ids = append(ids, p.ID)
+	}
+	if strings.Join(ids, ",") != "psp.v1.Invoices,psp.v1" {
+		t.Errorf("interfaces = %v", ids)
+	}
+
+	// A dotted id would put the external inside a context nobody declared.
+	if _, err := extract(plugin.Input{Root: "testdata"}, Options{External: "shop.psp"}); err == nil {
+		t.Error("an external with a dot in its id was accepted")
+	}
+}

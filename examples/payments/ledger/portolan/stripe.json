@@ -1,0 +1,199 @@
+{
+  "generatedAt": "2026-09-05T16:29:13+07:00",
+  "commit": "d5acf38",
+  "contexts": [],
+  "defs": {},
+  "flows": [],
+  "adrs": [],
+  "externals": [
+    {
+      "id": "stripe",
+      "slug": "stripe",
+      "name": "Stripe",
+      "summary": "The card network the ledger moves money through. Nobody in the estate provides it; the copy of its document beside the ledger's adapter is narrowed to the four operations the ledger calls, and is all the catalog claims about it.",
+      "url": "https://docs.stripe.com/api",
+      "provides": [
+        {
+          "id": "stripe.v1",
+          "methods": [
+            {
+              "name": "PostPaymentIntents",
+              "response": "payment_intent",
+              "http": {
+                "method": "POST",
+                "path": "/v1/payment_intents"
+              }
+            },
+            {
+              "name": "PostPaymentIntentsIntentCapture",
+              "response": "payment_intent",
+              "http": {
+                "method": "POST",
+                "path": "/v1/payment_intents/{intent}/capture"
+              }
+            },
+            {
+              "name": "PostPaymentIntentsIntentCancel",
+              "response": "payment_intent",
+              "http": {
+                "method": "POST",
+                "path": "/v1/payment_intents/{intent}/cancel"
+              }
+            },
+            {
+              "name": "PostRefunds",
+              "response": "refund",
+              "http": {
+                "method": "POST",
+                "path": "/v1/refunds"
+              }
+            }
+          ],
+          "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml",
+          "messages": [
+            {
+              "name": "payment_intent",
+              "fields": [
+                {
+                  "name": "id",
+                  "type": "string",
+                  "doc": "Unique identifier for the object."
+                },
+                {
+                  "name": "object",
+                  "type": "string enum(payment_intent)",
+                  "doc": "String representing the object's type. Objects of the same type share the same value."
+                },
+                {
+                  "name": "amount",
+                  "type": "integer",
+                  "doc": "Optional. Amount intended to be collected by this PaymentIntent. A positive integer representing how much to charge in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal) (e.g., 100 cents to charge $1.00 or 100 to charge ¥100, a zero-decimal currency). The minimum amount is $0.50 US or [equivalent in charge currency](https://docs.stripe.com/currencies#minimum-and-maximum-charge-amounts). The amount value supports up to eight digits (e.g., a value of 99999999 for a USD charge of $999,999.99)."
+                },
+                {
+                  "name": "amount_capturable",
+                  "type": "integer",
+                  "doc": "Optional. Amount that can be captured from this PaymentIntent."
+                },
+                {
+                  "name": "amount_received",
+                  "type": "integer",
+                  "doc": "Optional. Amount that this PaymentIntent collects."
+                },
+                {
+                  "name": "capture_method",
+                  "type": "string enum(automatic | automatic_async | manual)",
+                  "doc": "Optional. Controls when the funds will be captured from the customer's account."
+                },
+                {
+                  "name": "currency",
+                  "type": "string (currency)",
+                  "doc": "Optional. Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies)."
+                },
+                {
+                  "name": "description",
+                  "type": "string | null",
+                  "doc": "Optional. An arbitrary string attached to the object. Often useful for displaying to users."
+                },
+                {
+                  "name": "metadata",
+                  "type": "map[string]string",
+                  "doc": "Optional. Set of [key-value pairs](https://docs.stripe.com/api/metadata) that you can attach to an object. This can be useful for storing additional information about the object in a structured format. Learn more about [storing information in metadata](https://docs.stripe.com/payments/payment-intents/creating-payment-intents#storing-information-in-metadata)."
+                },
+                {
+                  "name": "status",
+                  "type": "string enum(canceled | processing | requires_action | requires_capture | requires_confirmation | requires_payment_method | succeeded)",
+                  "doc": "Status of this PaymentIntent, one of `requires_payment_method`, `requires_confirmation`, `requires_action`, `processing`, `requires_capture`, `canceled`, or `succeeded`. Read more about each PaymentIntent [status](https://docs.stripe.com/payments/intents#intent-statuses)."
+                }
+              ]
+            },
+            {
+              "name": "error",
+              "fields": [
+                {
+                  "name": "error",
+                  "type": "api_errors",
+                  "doc": ""
+                }
+              ]
+            },
+            {
+              "name": "refund",
+              "fields": [
+                {
+                  "name": "id",
+                  "type": "string",
+                  "doc": "Unique identifier for the object."
+                },
+                {
+                  "name": "object",
+                  "type": "string enum(refund)",
+                  "doc": "String representing the object's type. Objects of the same type share the same value."
+                },
+                {
+                  "name": "amount",
+                  "type": "integer",
+                  "doc": "Amount, in cents (or local equivalent)."
+                },
+                {
+                  "name": "currency",
+                  "type": "string (currency)",
+                  "doc": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies)."
+                },
+                {
+                  "name": "metadata",
+                  "type": "map[string]string | null",
+                  "doc": "Optional. Set of [key-value pairs](https://docs.stripe.com/api/metadata) that you can attach to an object. This can be useful for storing additional information about the object in a structured format."
+                },
+                {
+                  "name": "payment_intent",
+                  "type": "string | payment_intent | null",
+                  "doc": "Optional. ID of the PaymentIntent that's refunded."
+                },
+                {
+                  "name": "reason",
+                  "type": "string enum(duplicate | expired_uncaptured_charge | fraudulent | requested_by_customer) | null",
+                  "doc": "Optional. Reason for the refund, which is either user-provided (`duplicate`, `fraudulent`, or `requested_by_customer`) or generated by Stripe internally (`expired_uncaptured_charge`)."
+                },
+                {
+                  "name": "status",
+                  "type": "string | null",
+                  "doc": "Optional. Status of the refund. This can be `pending`, `requires_action`, `succeeded`, `failed`, or `canceled`. Learn more about [failed refunds](https://docs.stripe.com/refunds#failed-refunds)."
+                }
+              ]
+            },
+            {
+              "name": "api_errors",
+              "fields": [
+                {
+                  "name": "type",
+                  "type": "string enum(api_error | card_error | idempotency_error | invalid_request_error)",
+                  "doc": "The type of error returned. One of `api_error`, `card_error`, `idempotency_error`, or `invalid_request_error`"
+                },
+                {
+                  "name": "code",
+                  "type": "string",
+                  "doc": "Optional. For some errors that could be handled programmatically, a short string indicating the [error code](https://docs.stripe.com/error-codes) reported."
+                },
+                {
+                  "name": "decline_code",
+                  "type": "string",
+                  "doc": "Optional. For card errors resulting from a card issuer decline, a short string indicating the [card issuer's reason for the decline](https://docs.stripe.com/declines#issuer-declines) if they provide one."
+                },
+                {
+                  "name": "message",
+                  "type": "string",
+                  "doc": "Optional. A human-readable message providing more details about the error. For card errors, these messages can be shown to your users."
+                },
+                {
+                  "name": "param",
+                  "type": "string",
+                  "doc": "Optional. If the error is parameter-specific, the parameter related to the error. For example, you can use this to display a message near the correct form field."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

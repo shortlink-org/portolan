@@ -35,6 +35,7 @@ public final class ExtractTest {
                   "service": "ledger",
                   "store": "pg",
                   "peers": { "shop.v1": "shop.oms" },
+                  "externals": { "stripe.v1": "stripe" },
                   "events": { "org.portolan.payments.ledger.infrastructure.oms.event": "shop.oms.order" }
                 }
                 """));
@@ -100,9 +101,12 @@ public final class ExtractTest {
                 "[PENDING->AUTHORIZED by authorize, AUTHORIZED->CAPTURED by capture, PENDING->DECLINED by decline, AUTHORIZED->VOIDED by voidAuthorization]",
                 moves(lifecycle.get("transitions")));
 
-        is("a call to another service is the id the callee would give it",
-                "[psp/reserve=unresolved, psp/settle=unresolved, shop.v1.OrderService/GetOrder=declared]",
+        is("a call to another service is the id the callee would give it, and an HTTP call is the operation the vendored document declares on its route",
+                "[risk/allows=unresolved, shop.v1.OrderService/GetOrder=declared, stripe.v1/PostPaymentIntents=declared, stripe.v1/PostPaymentIntentsIntentCapture=declared]",
                 pairs(service.get("consumes"), "id", "status"));
+        is("a call to a system outside the estate names the external as its peer",
+                "[risk/allows=risk, shop.v1.OrderService/GetOrder=shop.oms, stripe.v1/PostPaymentIntents=stripe, stripe.v1/PostPaymentIntentsIntentCapture=stripe]",
+                pairs(service.get("consumes"), "id", "peer"));
 
         List<?> flows = Json.array(fragment.get("flows"));
         is("an endpoint opens a flow and a listener opens one from the bus",
@@ -113,9 +117,13 @@ public final class ExtractTest {
         // repository is the store, a gateway is somebody else's system.
         Map<String, Object> authorize = Json.object(flows.get(0));
         List<?> steps = Json.array(authorize.get("steps"));
-        is("a repository call lands in the store", "ledger-pg", Json.object(steps.get(4)).get("to"));
-        is("a gateway call lands on the peer's lane", "psp", Json.object(steps.get(2)).get("to"));
+        is("a repository call lands in the store", "ledger-pg", Json.object(steps.get(5)).get("to"));
+        is("a call with no contract lands on an unknown lane", "risk", Json.object(steps.get(2)).get("to"));
         is("and stays unresolved, because nothing in the catalog answers it", "unresolved", Json.object(steps.get(2)).get("status"));
+        is("a call on a vendored document lands on the external's lane", "stripe", Json.object(steps.get(3)).get("to"));
+        is("and is declared, because the document says which operation answers", "declared", Json.object(steps.get(3)).get("status"));
+        is("under the id the document's own extractor gives it", "stripe.v1/PostPaymentIntents", Json.object(steps.get(3)).get("ref"));
+        is("the lane says the far end is outside the estate", "external", kindOf(authorize.get("participants"), "stripe"));
 
         is("what it reports beside the fragment", 2, warnings.size());
     }
@@ -126,6 +134,16 @@ public final class ExtractTest {
             out.add(Json.string(Json.object(block).get("name")));
         }
         return out.toString();
+    }
+
+    private static String kindOf(Object participants, String id) {
+        for (Object participant : Json.array(participants)) {
+            Map<String, Object> map = Json.object(participant);
+            if (id.equals(map.get("id"))) {
+                return Json.string(map.get("kind"));
+            }
+        }
+        return "";
     }
 
     private static String slugs(Object flows) {

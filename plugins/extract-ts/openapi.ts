@@ -13,6 +13,17 @@ export function apiID(title: string, version: string): string {
   return major ? `${name}.v${major}` : name;
 }
 
+/**
+ * The id a document says it goes by in the estate, or the one built from its
+ * title and version when it says nothing. `x-portolan-api` in `info` is for a
+ * copy vendored from outside the estate, whose own title and version would put
+ * the third party's words on every arrow where the estate wants its own.
+ */
+export function documentApiID(declared: string, title: string, version: string): string {
+  const named = declared.trim();
+  return named ? named : apiID(title, version);
+}
+
 /** users → Users, price_list → PriceList. */
 export function tagTitle(name: string): string {
   return name
@@ -51,7 +62,7 @@ export function readSpec(path: string): Spec {
   const doc = parse(readFileSync(path, "utf8")) as Record<string, unknown> | null;
   const info = (doc?.info ?? {}) as Record<string, unknown>;
   const spec: Spec = {
-    api: apiID(String(info.title ?? ""), String(info.version ?? "")),
+    api: documentApiID(String(info["x-portolan-api"] ?? ""), String(info.title ?? ""), String(info.version ?? "")),
     operations: [],
     source: path,
   };

@@ -10,13 +10,13 @@ Moves the money the gateway was holding, writes the pair of postings for it, and
 
 ## Participants
 
-| Participant | Kind | Context | Label |
-| --- | --- | --- | --- |
-| `client` | actor | — | — |
-| `payments.ledger` | service | [payments](../payments/README.md) | — |
-| `ledger-pg` | store | [payments](../payments/README.md) | — |
-| `psp` | unknown | — | psp |
-| `bus` | broker | — | — |
+| Participant | Kind | Context |
+| --- | --- | --- |
+| `client` | actor | — |
+| `payments.ledger` | service | [payments](../payments/README.md) |
+| `ledger-pg` | store | [payments](../payments/README.md) |
+| `stripe` | external | — |
+| `bus` | broker | — |
 
 ## Sequence
 
@@ -26,11 +26,11 @@ sequenceDiagram
     actor p0 as client
     participant p1 as payments.ledger
     participant p2 as ledger-pg
-    participant p3 as psp
+    participant p3 as stripe
     participant p4 as bus
     p0->>p1: Capture → CaptureResponse
     p1->>p2: byId
-    p1->>p3: capture
+    p1->>p3: PostPaymentIntentsIntentCapture → payment_intent
     p1->>p2: save
     p1-)p4: PaymentCaptured
 ```
@@ -41,8 +41,8 @@ sequenceDiagram
    status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:53`
 2. **payments.ledger** → **ledger-pg** — byId
    status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:38`
-3. **payments.ledger** → **psp** — capture
-   status: unresolved · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:43`
+3. **payments.ledger** → **stripe** — PostPaymentIntentsIntentCapture → payment_intent
+   `stripe.v1/PostPaymentIntentsIntentCapture` · status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:43`
 4. **payments.ledger** → **ledger-pg** — save
    status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:44`
 5. **payments.ledger** → **bus** — PaymentCaptured

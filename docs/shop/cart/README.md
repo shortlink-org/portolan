@@ -65,12 +65,12 @@ Docker the tests that need Postgres or NATS are skipped.
 
 **`cart.v1.Baskets`** — `examples/shop/cart/src/infrastructure/transport/http/gen/openapi.yaml`
 
-- `createBasket`
-- `getBasket`
-- `addItem`
-- `removeItem`
-- `mergeBaskets`
-- `checkout`
+- `createBasket` — `POST /v1/baskets`
+- `getBasket` — `GET /v1/baskets/{basketId}`
+- `addItem` — `POST /v1/baskets/{basketId}/items`
+- `removeItem` — `DELETE /v1/baskets/{basketId}/items/{sku}`
+- `mergeBaskets` — `POST /v1/baskets/{basketId}/merge`
+- `checkout` — `POST /v1/baskets/{basketId}/checkout`
 
 <details><summary>BasketCreated</summary>
 

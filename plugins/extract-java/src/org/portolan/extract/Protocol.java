@@ -49,6 +49,7 @@ final class Protocol {
         String source = "src/main/java";
         String out = "domain.json";
         Map<String, String> peers = new LinkedHashMap<>();
+        Map<String, String> externals = new LinkedHashMap<>();
         Map<String, String> events = new LinkedHashMap<>();
 
         static Options of(Object raw) {
@@ -66,6 +67,7 @@ final class Protocol {
                     case "source" -> opts.source = Json.string(e.getValue());
                     case "out" -> opts.out = Json.string(e.getValue());
                     case "peers" -> opts.peers = strings(e.getValue());
+                    case "externals" -> opts.externals = strings(e.getValue());
                     case "events" -> opts.events = strings(e.getValue());
                     default -> throw new IllegalArgumentException("unknown option " + e.getKey());
                 }

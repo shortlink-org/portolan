@@ -3,7 +3,7 @@ views {
   view landscape {
     title 'Estate'
     description 'Every bounded context, and everything outside the estate that touches one.'
-    include auth, storefront, payments, shop, delivery, client, risk_v1, psp
+    include auth, storefront, payments, shop, delivery, client, risk_v1, stripe
   }
 
   view ctx_auth of auth {
@@ -651,8 +651,8 @@ views {
       else 'otherwise' {
       }
     }
-    payments.ledger -> psp 'hold' {
-      color unresolved  line dotted  head normal
+    payments.ledger -> stripe 'PostPaymentIntents → payment_intent' {
+      color declared  line dashed  head normal
       notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:62'
     }
     alt {
@@ -701,8 +701,8 @@ views {
         }
       }
     }
-    payments.ledger -> psp 'hold' {
-      color unresolved  line dotted  head normal
+    payments.ledger -> stripe 'PostPaymentIntents → payment_intent' {
+      color declared  line dashed  head normal
       notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:62'
     }
     alt {
@@ -732,8 +732,8 @@ views {
       color declared  line dashed  head none
       notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:38'
     }
-    payments.ledger -> psp 'capture' {
-      color unresolved  line dotted  head normal
+    payments.ledger -> stripe 'PostPaymentIntentsIntentCapture → payment_intent' {
+      color declared  line dashed  head normal
       notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:43'
     }
     payments.ledger -> ledger_pg 'save' {
@@ -752,8 +752,8 @@ views {
       color declared  line dashed  head normal
       notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:53'
     }
-    payments.ledger -> psp 'capture' {
-      color unresolved  line dotted  head normal
+    payments.ledger -> stripe 'PostPaymentIntentsIntentCapture → payment_intent' {
+      color declared  line dashed  head normal
       notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:43'
     }
     payments.ledger -> bus 'PaymentCaptured' {
@@ -802,8 +802,8 @@ views {
       color declared  line dashed  head none
       notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:56'
     }
-    payments.ledger -> psp 'refund' {
-      color unresolved  line dotted  head normal
+    payments.ledger -> stripe 'PostRefunds → refund' {
+      color declared  line dashed  head normal
       notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:62'
     }
     alt {
@@ -834,8 +834,8 @@ views {
       color declared  line dashed  head normal
       notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/RefundGrpcService.java:29'
     }
-    payments.ledger -> psp 'refund' {
-      color unresolved  line dotted  head normal
+    payments.ledger -> stripe 'PostRefunds → refund' {
+      color declared  line dashed  head normal
       notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:62'
     }
     payments.ledger -> bus 'RefundIssued' {
@@ -876,8 +876,8 @@ views {
       color declared  line dashed  head none
       notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/VoidPayment.java:29'
     }
-    payments.ledger -> psp 'voidHold' {
-      color unresolved  line dotted  head normal
+    payments.ledger -> stripe 'PostPaymentIntentsIntentCancel → payment_intent' {
+      color declared  line dashed  head normal
       notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/VoidPayment.java:35'
     }
     payments.ledger -> ledger_pg 'save' {
@@ -892,8 +892,8 @@ views {
       color declared  line dashed  head onormal
       notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/VoidPaymentOnOrderCancelled.java:25'
     }
-    payments.ledger -> psp 'voidHold' {
-      color unresolved  line dotted  head normal
+    payments.ledger -> stripe 'PostPaymentIntentsIntentCancel → payment_intent' {
+      color declared  line dashed  head normal
       notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/VoidPayment.java:35'
     }
   }

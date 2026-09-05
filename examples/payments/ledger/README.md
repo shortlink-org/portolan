@@ -61,9 +61,13 @@ what they say rather than guessing from the layout. The rules are in
 Two things follow from that and are worth knowing when reading the pages:
 
 - A `@Repository` is the store, and any other port goes wherever its adapter
-  reaches. `PaymentGateway` is filled by `PspGateway`, which has no vendored
-  contract because the far end is a third party — so those calls are recorded
-  and left **unresolved**, which is the true answer to "who answers this".
+  reaches. `PaymentGateway` is filled by `StripeGateway`, and the far end is a
+  third party: nobody in the estate provides Stripe, and the catalog does not
+  pretend otherwise. What it has is a narrow copy of Stripe's own OpenAPI
+  document beside the adapter — the four operations the ledger calls — so each
+  call lands on the operation the copy declares (`stripe.v1/PostPaymentIntents`)
+  and is **declared**, while the lane says the far end is **outside the
+  estate** (ledger.0003).
 - The lifecycle is `PaymentStatus.TRANSITIONS`, not the branches of the methods.
   A move the table does not allow is a diagnostic, not a new arrow.
 
@@ -77,6 +81,9 @@ mvn -q spring-boot:run
 `NATS_URL` picks the bus: with a server named, events leave on their channel
 with their wire name in the headers; without one they are written to the log and
 nothing leaves. `OMS_ADDRESS` is where `shop.v1.OrderService` answers.
+`STRIPE_SECRET_KEY` is the account the money moves through — a test key
+locally — and `STRIPE_URL` points the gateway at a stand-in that answers on
+Stripe's routes instead of at Stripe.
 
 ## Decisions
 
@@ -89,6 +96,9 @@ nothing leaves. `OMS_ADDRESS` is where `shop.v1.OrderService` answers.
 - [ledger.0002](docs/adr/0002-foreign-events-arrive-over-nats-and-are-republished-in-process.md)
   — the order service's events are read off the bus by an adapter and handed
   to the policies in process.
+- [ledger.0003](docs/adr/0003-the-card-network-is-stripe-and-stays-outside-the-estate.md)
+  — the gateway is Stripe, kept outside the estate with a narrow copy of its
+  contract beside the adapter, so the calls resolve and nothing is invented.
 
 ## Status
 

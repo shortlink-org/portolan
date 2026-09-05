@@ -17,11 +17,21 @@ import java.util.Map;
  * class that calls it. A method of that class answering an rpc of the contract
  * is that rpc: `getOrder` and `GetOrder` are one name, so the call is recorded
  * under the id the callee's own extractor gives it - `shop.v1.OrderService/GetOrder`.
+ *
+ * An HTTP peer is read the other way round, because nothing in the code names
+ * the operation: the method's body calls `http.post("/v1/charges/" + id + "/capture", …)`,
+ * the verb and the route are in the call, and the OpenAPI document vendored
+ * beside the adapter says which operation answers there - so the call is
+ * `stripe.v1/PostPaymentIntentsIntentCapture`, spelled the way the document's
+ * own extractor spells it.
  */
 final class Clients {
 
     /** One method of one adapter, in the catalog's terms. */
     record Call(String id, String pkg, String label, String source) {}
+
+    /** A verb and a route, as the body of a method spells them. */
+    record Route(String verb, String path) {}
 
     static final class Client {
         final String name;
@@ -59,6 +69,53 @@ final class Clients {
         return found[0];
     }
 
+    /** Every HTTP call in the method's body - `x.post("/v1/charges", …)` - with the route as far as the code spells it. */
+    static List<Route> routes(MethodTree method) {
+        List<Route> out = new ArrayList<>();
+        new com.sun.source.util.TreeScanner<Void, Void>() {
+            @Override
+            public Void visitMethodInvocation(com.sun.source.tree.MethodInvocationTree call, Void ignored) {
+                String name = switch (call.getMethodSelect()) {
+                    case com.sun.source.tree.MemberSelectTree select -> select.getIdentifier().toString();
+                    case com.sun.source.tree.IdentifierTree ident -> ident.getName().toString();
+                    default -> "";
+                };
+                if (OpenApi.VERBS.contains(name.toLowerCase()) && !call.getArguments().isEmpty()) {
+                    String path = routeOf(call.getArguments().get(0));
+                    if (path != null && path.startsWith("/")) {
+                        out.add(new Route(name.toUpperCase(), path));
+                    }
+                }
+                return super.visitMethodInvocation(call, ignored);
+            }
+        }.scan(method, null);
+        return out;
+    }
+
+    /**
+     * The route an expression spells: a literal as written, a concatenation with
+     * every non-literal part standing in as a parameter, so that
+     * `"/v1/payment_intents/" + id + "/capture"` is `/v1/payment_intents/{}/capture`
+     * and lands on `/v1/payment_intents/{intent}/capture`. Anything else is null.
+     */
+    private static String routeOf(com.sun.source.tree.ExpressionTree expression) {
+        return switch (expression) {
+            case com.sun.source.tree.LiteralTree literal when literal.getValue() instanceof String s -> s;
+            case com.sun.source.tree.ParenthesizedTree parens -> routeOf(parens.getExpression());
+            case com.sun.source.tree.BinaryTree binary when binary.getKind() == com.sun.source.tree.Tree.Kind.PLUS -> {
+                String left = routeOf(binary.getLeftOperand());
+                String right = routeOf(binary.getRightOperand());
+                if (left == null && right == null) {
+                    yield null;
+                }
+                yield (left == null ? "{}" : left) + (right == null ? "{}" : right);
+            }
+            case com.sun.source.tree.MethodInvocationTree call when call.getMethodSelect().toString().endsWith("format") && !call.getArguments().isEmpty() ->
+                    routeOf(call.getArguments().get(0));
+            default -> null;
+        };
+    }
+
     static List<Client> read(Source.Project project, java.util.Set<String> ports, java.util.function.Function<Path, String> rel, Protocol.Builder b) throws IOException {
         List<Client> out = new ArrayList<>();
         for (Source.Unit unit : project.units) {
@@ -74,6 +131,7 @@ final class Clients {
                 continue;
             }
             List<Proto.Service> contracts = Proto.under(unit.path.getParent().resolve("proto"), rel);
+            List<OpenApi.Spec> documents = OpenApi.under(unit.path.getParent(), rel);
             boolean sawAdapter = false;
             for (ClassTree type : unit.classes()) {
                 if (Source.isInterface(type) || Source.isRecord(type)) {
@@ -101,6 +159,20 @@ final class Clients {
                             }
                         }
                     }
+                    // An HTTP peer: the verb and the route are in the body, and
+                    // the document vendored beside the adapter says which
+                    // operation answers there. A method that makes two calls is
+                    // the first one it makes.
+                    for (OpenApi.Spec document : documents) {
+                        for (Route route : routes(method)) {
+                            OpenApi.Operation operation = document.find(route.verb(), route.path());
+                            if (operation == null) {
+                                b.warn(document.source(), own + " calls " + route.verb() + " " + route.path() + ", which the document does not declare; the call is left out");
+                                continue;
+                            }
+                            client.calls.putIfAbsent(own, new Call(document.callId(operation), document.api(), operation.id(), document.source()));
+                        }
+                    }
                 }
                 if (client.calls.isEmpty()) {
                     // A peer nobody wrote a contract for is still a peer: its
@@ -121,7 +193,7 @@ final class Clients {
                 }
                 out.add(client);
             }
-            if (contracts.isEmpty() && sawAdapter) {
+            if (contracts.isEmpty() && documents.isEmpty() && sawAdapter) {
                 b.warn(unit.rel, "no contract vendored beside this adapter, so nothing says which rpc its methods answer and every call through it is unresolved");
             }
         }

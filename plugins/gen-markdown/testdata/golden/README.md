@@ -9,6 +9,12 @@
 | --- | --- | --- | --- |
 | [Billing](billing/README.md) | core | [Invoices](billing/invoices/README.md) | Money owed and money taken. |
 
+## Outside the estate
+
+| System | Interfaces | Summary |
+| --- | --- | --- |
+| [PSP gateway](externals/psp-gateway.md) | `psp.v1.Charges` | The card network the invoices are settled through. Nobody here builds it; the copy of its document vendored beside the client is all the catalog may claim. |
+
 ## Flows
 
 | Flow | Owner | Summary |

@@ -15,6 +15,12 @@
 | --- | --- | --- | --- |
 | [Billing](billing/README.md) | core | [Invoices](billing/invoices/README.md) | Money owed and money taken. |
 
+## Outside the estate
+
+| System | Interfaces | Summary |
+| --- | --- | --- |
+| [PSP gateway](externals/psp-gateway.md) | `psp.v1.Charges` | The card network the invoices are settled through. Nobody here builds it; the copy of its document vendored beside the client is all the catalog may claim. |
+
 ## Flows
 
 | Flow | Owner | Summary |
@@ -129,7 +135,7 @@ No dunning.
 
 | Call | Peer | Status | Source | Note |
 | --- | --- | --- | --- | --- |
-| `psp.v1.Charges/Create` | `psp-gateway` | unresolved | `internal/psp/client.go:20` | Nothing in this catalog owns the gateway. |
+| `psp.v1.Charges/Create` | [psp-gateway](../../externals/psp-gateway.md) | declared | `internal/psp/client.go:20` | The gateway is outside the estate; the copy beside the client says what it answers on. |
 
 ## Publishes
 
@@ -288,6 +294,39 @@ Totals, refreshed nightly.
 SELECT id, total_minor FROM invoices
 ```
 
+<!-- externals/psp-gateway.md -->
+
+# PSP gateway
+
+*Generated from the portolan catalog · commit `abc1234` · at 2026-01-02T03:04:05Z. Do not edit by hand.*
+
+- **Id:** `psp-gateway`
+- **Where:** outside the estate
+- **Documented at:** <https://psp.example/docs>
+
+The card network the invoices are settled through. Nobody here builds it; the copy of its document vendored beside the client is all the catalog may claim.
+
+## Provides
+
+**`psp.v1.Charges`** — `internal/psp/openapi/openapi.yaml`
+
+- `Create` — `POST /v1/charges`
+
+<details><summary>Charge</summary>
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `id` | `string` | The charge, as the gateway names it. |
+| `amount` | `integer` | Minor units. |
+
+</details>
+
+## Called by
+
+| Service | Call | Status | Source |
+| --- | --- | --- | --- |
+| [Invoices](../billing/invoices/README.md) | `psp.v1.Charges/Create` | declared | `internal/psp/client.go:20` |
+
 <!-- flows/README.md -->
 
 # Flows
@@ -333,7 +372,7 @@ sequenceDiagram
     loop until paid or written off
         alt customer pays
             par settle and notify
-                p1->>p3: psp.v1.Charges/Create
+                p1->>p3: psp.v1.Charges/Create → Charge
             and
                 p1->>p1: markPaid #35;1
             end
@@ -363,8 +402,8 @@ sequenceDiagram
 > > >
 > > > *Branch 1*
 > > >
-> > > 3. **billing.invoices** → **psp-gateway** — psp.v1.Charges/Create
-> > >    `psp.v1.Charges/Create` · status: unresolved · The gateway is outside this catalog.
+> > > 3. **billing.invoices** → **psp-gateway** — psp.v1.Charges/Create → Charge
+> > >    `psp.v1.Charges/Create` · status: declared · The gateway is outside this catalog.
 > > >
 > > > *Branch 2*
 > > >

@@ -775,3 +775,39 @@ describe("a second source that has seen the flow run", () => {
     expect(consumer?.note).toBe("seen in traces");
   });
 });
+
+// An external is described the way a service is: by more than one source,
+// none of which knows the others exist.
+describe("externals", () => {
+  const charges = { id: "psp.v1.Charges", methods: [{ name: "Create" }], source: "psp/openapi.yaml" };
+  const refunds = { id: "psp.v1.Refunds", methods: [{ name: "Create" }], source: "psp/openapi.yaml" };
+
+  it("unions the interfaces two sources read, and keeps the first name", () => {
+    const merged = mergeCatalogs([
+      source("a.json", { externals: [{ id: "psp", slug: "psp", name: "", summary: "", provides: [charges] }] }),
+      source("b.json", { externals: [{ id: "psp", slug: "psp", name: "PSP", summary: "the network", url: "https://psp.example", provides: [refunds, charges] }] }),
+    ]);
+
+    expect(merged.conflicts).toEqual([]);
+    expect(merged.catalog.externals).toHaveLength(1);
+    const psp = merged.catalog.externals?.[0];
+    expect(psp?.name).toBe("PSP");
+    expect(psp?.url).toBe("https://psp.example");
+    expect(psp?.provides.map((p) => p.id)).toEqual(["psp.v1.Charges", "psp.v1.Refunds"]);
+  });
+
+  it("records a second name as a conflict rather than renaming", () => {
+    const merged = mergeCatalogs([
+      source("a.json", { externals: [{ id: "psp", slug: "psp", name: "PSP", summary: "", provides: [] }] }),
+      source("b.json", { externals: [{ id: "psp", slug: "psp", name: "Stripe", summary: "", provides: [] }] }),
+    ]);
+
+    expect(merged.catalog.externals?.[0]?.name).toBe("PSP");
+    expect(merged.conflicts.map((c) => c.where)).toEqual(["psp"]);
+  });
+
+  it("leaves the field out when no source names one", () => {
+    const merged = mergeCatalogs([source("a.json", { contexts: [context("shop", ["shop.oms"])] })]);
+    expect(merged.catalog.externals).toBeUndefined();
+  });
+});

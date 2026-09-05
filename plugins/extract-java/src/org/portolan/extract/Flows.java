@@ -42,6 +42,7 @@ final class Flows {
         String service = "";
         String store = "";
         Map<String, String> peers = Map.of();
+        Map<String, String> externals = Map.of();
         Map<String, String> events = Map.of();
     }
 
@@ -162,8 +163,15 @@ final class Flows {
         if (service != null && !service.isEmpty()) {
             return new String[] {d.lane(service, "service", service.substring(0, service.indexOf('.')), ""), service, Catalog.DECLARED};
         }
+        // A system outside the estate, with a contract: the call lands on an
+        // operation its document declares, so the step is declared, and the
+        // lane says what the far end is rather than pretending it is ours.
+        String external = opts.externals.get(pkg);
+        if (external != null && !external.isEmpty()) {
+            return new String[] {d.lane(external, "external", null, ""), external, Catalog.DECLARED};
+        }
         if (warnedPeers.add(pkg)) {
-            b.warn(opts.svcId, "calls " + pkg + " and the manifest names no peer for it; add it under `peers` to say which service answers, until then the calls are unresolved");
+            b.warn(opts.svcId, "calls " + pkg + " and the manifest names no peer for it; add it under `peers` to say which service answers, or under `externals` when the far end is outside the estate, until then the calls are unresolved");
         }
         return new String[] {d.lane(pkg.replace('.', '-'), "unknown", null, pkg), pkg, Catalog.UNRESOLVED};
     }

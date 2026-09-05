@@ -64,6 +64,12 @@ for (const flow of catalog.flows) {
     rootParticipants.set(p.id, { kind: p.kind, label: p.label ?? p.id });
   }
 }
+// A system outside the estate with a contract is a root participant whether or
+// not a flow has walked to it yet: a call recorded on `consumes` lands on it,
+// and the catalog knows what it is called, which a lane's bare id does not.
+for (const external of catalog.externals ?? []) {
+  rootParticipants.set(external.id, { kind: "external", label: external.name || external.id });
+}
 // Event consumers that no service accounts for are real dependencies too.
 for (const context of catalog.contexts) {
   for (const service of context.services) {
@@ -352,6 +358,14 @@ for (const context of catalog.contexts) {
       for (const method of provided.methods) {
         methodOf.set(`${provided.id}/${method.name}`, method);
       }
+    }
+  }
+}
+// What comes back from a third party is in its document too.
+for (const external of catalog.externals ?? []) {
+  for (const provided of external.provides) {
+    for (const method of provided.methods) {
+      methodOf.set(`${provided.id}/${method.name}`, method);
     }
   }
 }

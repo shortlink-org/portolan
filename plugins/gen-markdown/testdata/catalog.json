@@ -66,9 +66,9 @@
             {
               "id": "psp.v1.Charges/Create",
               "peer": "psp-gateway",
-              "status": "unresolved",
+              "status": "declared",
               "source": "internal/psp/client.go:20",
-              "note": "Nothing in this catalog owns the gateway."
+              "note": "The gateway is outside the estate; the copy beside the client says what it answers on."
             }
           ],
           "stores": [
@@ -374,7 +374,7 @@
                             "to": "psp-gateway",
                             "kind": "rpc",
                             "ref": "psp.v1.Charges/Create",
-                            "status": "unresolved",
+                            "status": "declared",
                             "note": "The gateway is outside this catalog."
                           }
                         ],
@@ -458,6 +458,49 @@
       "name": "Dunning",
       "definition": "Asking again, on a schedule, for an invoice nobody has paid.",
       "source": "examples/billing/GLOSSARY.md:9"
+    }
+  ],
+  "externals": [
+    {
+      "id": "psp-gateway",
+      "slug": "psp-gateway",
+      "name": "PSP gateway",
+      "summary": "The card network the invoices are settled through. Nobody here builds it; the copy of its document vendored beside the client is all the catalog may claim.",
+      "url": "https://psp.example/docs",
+      "provides": [
+        {
+          "id": "psp.v1.Charges",
+          "methods": [
+            {
+              "name": "Create",
+              "request": "CreateChargeRequest",
+              "response": "Charge",
+              "http": {
+                "method": "POST",
+                "path": "/v1/charges"
+              }
+            }
+          ],
+          "source": "internal/psp/openapi/openapi.yaml",
+          "messages": [
+            {
+              "name": "Charge",
+              "fields": [
+                {
+                  "name": "id",
+                  "type": "string",
+                  "doc": "The charge, as the gateway names it."
+                },
+                {
+                  "name": "amount",
+                  "type": "integer",
+                  "doc": "Minor units."
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ]
 }

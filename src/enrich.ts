@@ -61,10 +61,21 @@ export function enrichCatalog(input: Catalog): Enriched {
 
   const serviceById = new Map<string, Service>();
   const eventOwner = new Map<string, string>();
-  const providedMethods = new Set<string>(); // "<service>|<interface>/<method>"
+  const providedMethods = new Set<string>(); // "<provider>|<interface>/<method>"
   const declaredRpcIds = new Set<string>();
   const haveConsumer = new Set<string>(); // "<event>|<service>"
   const haveCall = new Set<string>(); // "<service>|<call>"
+
+  // A system outside the estate answers on a contract too, and a step reaching
+  // it on an operation its document declares is as resolvable as one reaching
+  // a service of ours. Keyed by the external's id, which is what the lane says.
+  for (const external of catalog.externals ?? []) {
+    for (const provided of external.provides) {
+      for (const method of provided.methods) {
+        providedMethods.add(`${external.id}|${provided.id}/${method.name}`);
+      }
+    }
+  }
 
   for (const context of catalog.contexts) {
     for (const service of context.services) {

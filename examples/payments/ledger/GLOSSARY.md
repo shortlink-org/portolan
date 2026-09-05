@@ -15,9 +15,10 @@ refused, or the order was already cancelled. Not what the gateway said in its
 own words.
 
 **Gateway.** The card network, as this service asks it: hold, capture, void,
-refund. A third party behind a port; its own words for those four things stay
-in the adapter. When it does not answer, nothing is decided and nothing is
-written.
+refund. A third party behind a port — Stripe, today — and its own words for
+those four things (a PaymentIntent confirmed, captured, cancelled; a Refund)
+stay in the adapter. When it does not answer, nothing is decided and nothing
+is written.
 
 **Hold.** The gateway has reserved the money against an instrument and given
 back a code that names the reservation. The code is the gateway's handle on

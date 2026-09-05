@@ -24,6 +24,9 @@ grpc:
     port: ${GRPC_PORT:9092}
 
 ledger:
-  psp-url: ${PSP_URL:http://psp:8080}
+  # Stripe, or a stand-in on the same routes. The secret is a test key locally
+  # and comes from the environment everywhere else; it is never in this file.
+  stripe-url: ${STRIPE_URL:https://api.stripe.com}
+  stripe-secret-key: ${STRIPE_SECRET_KEY:}
   oms-address: ${OMS_ADDRESS:oms:9090}
   nats-url: ${NATS_URL:}

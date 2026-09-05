@@ -81,9 +81,9 @@ without Docker the packages that need Postgres or redis are skipped.
 
 **`auth.v1.Users`** — `examples/auth/internal/infrastructure/transport/http/gen/openapi.yaml`
 
-- `registerUser`
-- `getUser`
-- `changePassword`
+- `registerUser` — `POST /v1/users`
+- `getUser` — `GET /v1/users/{userId}`
+- `changePassword` — `POST /v1/users/me/password`
 
 <details><summary>RegisterRequest</summary>
 
@@ -124,9 +124,9 @@ without Docker the packages that need Postgres or redis are skipped.
 
 **`auth.v1.Sessions`** — `examples/auth/internal/infrastructure/transport/http/gen/openapi.yaml`
 
-- `login`
-- `validateSession`
-- `logout`
+- `login` — `POST /v1/sessions`
+- `validateSession` — `GET /v1/sessions/current`
+- `logout` — `DELETE /v1/sessions/current`
 
 <details><summary>LoginRequest</summary>
 

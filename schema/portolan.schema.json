@@ -917,10 +917,23 @@
           "additionalProperties": {
             "type": "string"
           },
-          "description": "Which service answers for what this one calls, as the proto package of the contract vendored beside the adapter to the callee's service id. A package with no line here is called as unknown and its steps stay unresolved.",
+          "description": "Which service answers for what this one calls, as the contract vendored beside the adapter to the callee's service id: the proto package for a gRPC peer, the api id of the OpenAPI document (its x-portolan-api, or its title and major version) for an HTTP one. A package with no line here, and none under externals, is called as unknown and its steps stay unresolved.",
           "examples": [
             {
-              "shop.v1": "shop.oms"
+              "shop.v1": "shop.oms",
+              "pricing.v1": "shop.pricing"
+            }
+          ]
+        },
+        "externals": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Which system outside the estate answers for what this one calls, as the api id of the document vendored beside the adapter to the external's id - the same bare name the openapi extractor is given under external. The calls land on the operations the copy declares and are declared, not unresolved; the lane says the far end is outside.",
+          "examples": [
+            {
+              "stripe.v1": "stripe"
             }
           ]
         },
@@ -1110,9 +1123,34 @@
         },
         "api": {
           "type": "string",
-          "description": "Prefix for the ids of the rpc services this produces. Left out, it is built from the document's title and major version: auth 1.0.0 gives auth.v1, and a tag called users gives auth.v1.Users.",
+          "description": "Prefix for the ids of the rpc services this produces. Left out, it is the document's own x-portolan-api when it carries one, and otherwise built from its title and major version: auth 1.0.0 gives auth.v1, and a tag called users gives auth.v1.Users.",
           "examples": [
             "auth.v1"
+          ]
+        },
+        "external": {
+          "type": "string",
+          "description": "Id of a system outside the estate the document belongs to, when it is not one of ours: a copy vendored beside the adapter that calls it, read for what the third party answers on. A bare name with no dot, the same one the caller's extractor is given under externals. Set, the fragment carries the external and no service, and context and service are not read.",
+          "examples": [
+            "stripe"
+          ]
+        },
+        "externalName": {
+          "type": "string",
+          "description": "What the external is called on the page.",
+          "examples": [
+            "Stripe"
+          ]
+        },
+        "externalSummary": {
+          "type": "string",
+          "description": "A sentence or two on what the estate uses it for."
+        },
+        "externalUrl": {
+          "type": "string",
+          "description": "Where the third party documents itself, for a reader who needs more than the vendored copy.",
+          "examples": [
+            "https://docs.stripe.com/api"
           ]
         },
         "out": {
@@ -1241,6 +1279,11 @@
           "type": "string",
           "description": "Where the adapters live, relative to the input root: one package per aggregate, its migrations under migrations/ (every .sql that is not a .down.sql). The migrations are read from there, and so is which aggregate a table persists and which field a column carries - off the statements that write the rows, in Go, in TypeScript or in Rust.",
           "default": "internal/infrastructure/repository"
+        },
+        "projectors": {
+          "type": "string",
+          "description": "Where the projectors live, relative to the input root: one package per projection, its migrations under migrations/ (every .sql that is not a .down.sql), numbered from 1 like an aggregate's. Every table created there gets the role projection. Which aggregate it is a picture of is not in the layout, so it is read from a `-- aggregate: <id>` line above the CREATE TABLE when the migration has one - a bare slug is an aggregate of this service, a dotted name is a full id - and left out when it does not. Columns copied from elsewhere carry `-- from:` as anywhere else.",
+          "default": "internal/infrastructure/projector"
         },
         "out": {
           "type": "string",

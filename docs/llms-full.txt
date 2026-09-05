@@ -19,6 +19,12 @@
 | [Shop](shop/README.md) | core | [Billing](shop/billing/README.md), [Shopping Cart](shop/cart/README.md), [Order Management](shop/oms/README.md), [Pricing](shop/pricing/README.md) | What a customer is buying, what it costs and what they owe for it: the basket while it is still changing, the price it was promised at, the order it became, and the invoice for it. It moves no money and delivers nothing. |
 | [Delivery](delivery/README.md) | supporting | [Delivery Core](delivery/core/README.md) | Parcels, vans and the day they are driven. Told what to carry and asked where it got to; it decides neither. |
 
+## Outside the estate
+
+| System | Interfaces | Summary |
+| --- | --- | --- |
+| [Stripe](externals/stripe.md) | `stripe.v1` | The card network the ledger moves money through. Nobody in the estate provides it; the copy of its document beside the ledger's adapter is narrowed to the four operations the ledger calls, and is all the catalog claims about it. |
+
 ## Flows
 
 | Flow | Owner | Summary |
@@ -102,6 +108,7 @@
 | [bff.0004](adr/bff.0004.md) | A subscription is the bus, forwarded | accepted | 2026-09-05 |
 | [ledger.0001](adr/ledger.0001.md) | A gateway that did not answer has not refused | accepted | 2026-09-05 |
 | [ledger.0002](adr/ledger.0002.md) | Another service's events are read off the bus by an adapter and republished in process | accepted | 2026-09-05 |
+| [ledger.0003](adr/ledger.0003.md) | The card network is Stripe, and stays outside the estate | accepted | 2026-09-06 |
 | [cart.0001](adr/cart.0001.md) | TypeScript on Node.js, and the stack around it | accepted | 2026-09-04 |
 | [cart.0002](adr/cart.0002.md) | A basket freezes its currency at the first item | accepted | 2026-09-04 |
 | [cart.0003](adr/cart.0003.md) | Line prices are captured when added, never recomputed | accepted | 2026-09-04 |
@@ -266,9 +273,9 @@ without Docker the packages that need Postgres or redis are skipped.
 
 **`auth.v1.Users`** — `examples/auth/internal/infrastructure/transport/http/gen/openapi.yaml`
 
-- `registerUser`
-- `getUser`
-- `changePassword`
+- `registerUser` — `POST /v1/users`
+- `getUser` — `GET /v1/users/{userId}`
+- `changePassword` — `POST /v1/users/me/password`
 
 <details><summary>RegisterRequest</summary>
 
@@ -309,9 +316,9 @@ without Docker the packages that need Postgres or redis are skipped.
 
 **`auth.v1.Sessions`** — `examples/auth/internal/infrastructure/transport/http/gen/openapi.yaml`
 
-- `login`
-- `validateSession`
-- `logout`
+- `login` — `POST /v1/sessions`
+- `validateSession` — `GET /v1/sessions/current`
+- `logout` — `DELETE /v1/sessions/current`
 
 <details><summary>LoginRequest</summary>
 
@@ -1178,7 +1185,7 @@ One meaning per word inside this context, as the glossary beside the code states
 - **Attempt** — Which try at charging one order a payment is. A declined hold is followed by a second, legitimate attempt on the same order, and each is its own payment; the pair of order and attempt is unique (payments.0004).
 - **Capture** — Moving money the gateway was holding. Writes the pair of postings that accounts for it and says `PaymentCaptured`; the only thing anything waiting to be paid listens for.
 - **Decline** — The money was not held. Its reason is a closed set: the card was refused, or the order was already cancelled. Not what the gateway said in its own words.
-- **Gateway** — The card network, as this service asks it: hold, capture, void, refund. A third party behind a port; its own words for those four things stay in the adapter. When it does not answer, nothing is decided and nothing is written.
+- **Gateway** — The card network, as this service asks it: hold, capture, void, refund. A third party behind a port — Stripe, today — and its own words for those four things (a PaymentIntent confirmed, captured, cancelled; a Refund) stay in the adapter. When it does not answer, nothing is decided and nothing is written.
 - **Hold** — The gateway has reserved the money against an instrument and given back a code that names the reservation. The code is the gateway's handle on the money and never leaves this service: not on an event, not on the wire.
 - **Journal** — The postings, in the order they were written. Append-only; nothing in it is ever updated, and a correction is another pair.
 - **Money** — An amount in the minor unit of a currency. The ledger never rounds.
@@ -1261,9 +1268,13 @@ what they say rather than guessing from the layout. The rules are in
 Two things follow from that and are worth knowing when reading the pages:
 
 - A `@Repository` is the store, and any other port goes wherever its adapter
-  reaches. `PaymentGateway` is filled by `PspGateway`, which has no vendored
-  contract because the far end is a third party — so those calls are recorded
-  and left **unresolved**, which is the true answer to "who answers this".
+  reaches. `PaymentGateway` is filled by `StripeGateway`, and the far end is a
+  third party: nobody in the estate provides Stripe, and the catalog does not
+  pretend otherwise. What it has is a narrow copy of Stripe's own OpenAPI
+  document beside the adapter — the four operations the ledger calls — so each
+  call lands on the operation the copy declares (`stripe.v1/PostPaymentIntents`)
+  and is **declared**, while the lane says the far end is **outside the
+  estate** (ledger.0003).
 - The lifecycle is `PaymentStatus.TRANSITIONS`, not the branches of the methods.
   A move the table does not allow is a diagnostic, not a new arrow.
 
@@ -1277,6 +1288,9 @@ mvn -q spring-boot:run
 `NATS_URL` picks the bus: with a server named, events leave on their channel
 with their wire name in the headers; without one they are written to the log and
 nothing leaves. `OMS_ADDRESS` is where `shop.v1.OrderService` answers.
+`STRIPE_SECRET_KEY` is the account the money moves through — a test key
+locally — and `STRIPE_URL` points the gateway at a stand-in that answers on
+Stripe's routes instead of at Stripe.
 
 ## Decisions
 
@@ -1289,6 +1303,9 @@ nothing leaves. `OMS_ADDRESS` is where `shop.v1.OrderService` answers.
 - [ledger.0002](docs/adr/0002-foreign-events-arrive-over-nats-and-are-republished-in-process.md)
   — the order service's events are read off the bus by an adapter and handed
   to the policies in process.
+- [ledger.0003](docs/adr/0003-the-card-network-is-stripe-and-stays-outside-the-estate.md)
+  — the gateway is Stripe, kept outside the estate with a narrow copy of its
+  contract beside the adapter, so the calls resolve and nothing is invented.
 
 ## Status
 
@@ -1431,11 +1448,11 @@ gap, not an oversight, and none of them changes what the catalog shows.
 
 | Call | Peer | Status | Source |
 | --- | --- | --- | --- |
-| `psp/capture` | `psp` | unresolved | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java` |
-| `psp/hold` | `psp` | unresolved | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java` |
-| `psp/refund` | `psp` | unresolved | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java` |
-| `psp/voidHold` | `psp` | unresolved | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java` |
 | `shop.v1.OrderService/GetOrder` | [shop.oms](../../shop/oms/README.md) | declared | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/oms/proto/shop/v1/order.proto` |
+| `stripe.v1/PostPaymentIntents` | [stripe](../../externals/stripe.md) | declared | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml` |
+| `stripe.v1/PostPaymentIntentsIntentCancel` | [stripe](../../externals/stripe.md) | declared | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml` |
+| `stripe.v1/PostPaymentIntentsIntentCapture` | [stripe](../../externals/stripe.md) | declared | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml` |
+| `stripe.v1/PostRefunds` | [stripe](../../externals/stripe.md) | declared | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml` |
 
 ## Publishes
 
@@ -1458,6 +1475,7 @@ gap, not an oversight, and none of them changes what the catalog shows.
 | --- | --- | --- | --- |
 | [ledger.0001](../../adr/ledger.0001.md) | A gateway that did not answer has not refused | accepted | 2026-09-05 |
 | [ledger.0002](../../adr/ledger.0002.md) | Another service's events are read off the bus by an adapter and republished in process | accepted | 2026-09-05 |
+| [ledger.0003](../../adr/ledger.0003.md) | The card network is Stripe, and stays outside the estate | accepted | 2026-09-06 |
 
 <!-- payments/ledger/aggregates/payment.md -->
 
@@ -1813,10 +1831,10 @@ python manage.py migrate && python manage.py runserver
 
 **`billing.v1.Invoices`** — `examples/shop/billing/invoices/schema/openapi.yaml`
 
-- `invoice_create`
-- `invoice_retrieve`
-- `invoice_destroy`
-- `invoice_issue`
+- `invoice_create` — `POST /v1/invoices`
+- `invoice_retrieve` — `GET /v1/invoices/{id}`
+- `invoice_destroy` — `DELETE /v1/invoices/{id}`
+- `invoice_issue` — `POST /v1/invoices/{id}/issue`
 
 <details><summary>DrawUpRequest</summary>
 
@@ -2100,12 +2118,12 @@ Docker the tests that need Postgres or NATS are skipped.
 
 **`cart.v1.Baskets`** — `examples/shop/cart/src/infrastructure/transport/http/gen/openapi.yaml`
 
-- `createBasket`
-- `getBasket`
-- `addItem`
-- `removeItem`
-- `mergeBaskets`
-- `checkout`
+- `createBasket` — `POST /v1/baskets`
+- `getBasket` — `GET /v1/baskets/{basketId}`
+- `addItem` — `POST /v1/baskets/{basketId}/items`
+- `removeItem` — `DELETE /v1/baskets/{basketId}/items/{sku}`
+- `mergeBaskets` — `POST /v1/baskets/{basketId}/merge`
+- `checkout` — `POST /v1/baskets/{basketId}/checkout`
 
 <details><summary>BasketCreated</summary>
 
@@ -4560,6 +4578,88 @@ SELECT l.id        AS price_list_id,
 
 Source: `internal/infrastructure/repository/price_list/migrations/0002_price_list_use.sql`
 
+<!-- externals/stripe.md -->
+
+# Stripe
+
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
+
+- **Id:** `stripe`
+- **Where:** outside the estate
+- **Documented at:** <https://docs.stripe.com/api>
+
+The card network the ledger moves money through. Nobody in the estate provides it; the copy of its document beside the ledger's adapter is narrowed to the four operations the ledger calls, and is all the catalog claims about it.
+
+## Provides
+
+**`stripe.v1`** — `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml`
+
+- `PostPaymentIntents` — `POST /v1/payment_intents`
+- `PostPaymentIntentsIntentCapture` — `POST /v1/payment_intents/{intent}/capture`
+- `PostPaymentIntentsIntentCancel` — `POST /v1/payment_intents/{intent}/cancel`
+- `PostRefunds` — `POST /v1/refunds`
+
+<details><summary>payment_intent</summary>
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `id` | `string` | Unique identifier for the object. |
+| `object` | `string enum(payment_intent)` | String representing the object's type. Objects of the same type share the same value. |
+| `amount` | `integer` | Optional. Amount intended to be collected by this PaymentIntent. A positive integer representing how much to charge in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal) (e.g., 100 cents to charge $1.00 or 100 to charge ¥100, a zero-decimal currency). The minimum amount is $0.50 US or [equivalent in charge currency](https://docs.stripe.com/currencies#minimum-and-maximum-charge-amounts). The amount value supports up to eight digits (e.g., a value of 99999999 for a USD charge of $999,999.99). |
+| `amount_capturable` | `integer` | Optional. Amount that can be captured from this PaymentIntent. |
+| `amount_received` | `integer` | Optional. Amount that this PaymentIntent collects. |
+| `capture_method` | `string enum(automatic \| automatic_async \| manual)` | Optional. Controls when the funds will be captured from the customer's account. |
+| `currency` | `string (currency)` | Optional. Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies). |
+| `description` | `string \| null` | Optional. An arbitrary string attached to the object. Often useful for displaying to users. |
+| `metadata` | `map[string]string` | Optional. Set of [key-value pairs](https://docs.stripe.com/api/metadata) that you can attach to an object. This can be useful for storing additional information about the object in a structured format. Learn more about [storing information in metadata](https://docs.stripe.com/payments/payment-intents/creating-payment-intents#storing-information-in-metadata). |
+| `status` | `string enum(canceled \| processing \| requires_action \| requires_capture \| requires_confirmation \| requires_payment_method \| succeeded)` | Status of this PaymentIntent, one of `requires_payment_method`, `requires_confirmation`, `requires_action`, `processing`, `requires_capture`, `canceled`, or `succeeded`. Read more about each PaymentIntent [status](https://docs.stripe.com/payments/intents#intent-statuses). |
+
+</details>
+
+<details><summary>error</summary>
+
+| Field | Type |
+| --- | --- |
+| `error` | `api_errors` |
+
+</details>
+
+<details><summary>refund</summary>
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `id` | `string` | Unique identifier for the object. |
+| `object` | `string enum(refund)` | String representing the object's type. Objects of the same type share the same value. |
+| `amount` | `integer` | Amount, in cents (or local equivalent). |
+| `currency` | `string (currency)` | Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies). |
+| `metadata` | `map[string]string \| null` | Optional. Set of [key-value pairs](https://docs.stripe.com/api/metadata) that you can attach to an object. This can be useful for storing additional information about the object in a structured format. |
+| `payment_intent` | `string \| payment_intent \| null` | Optional. ID of the PaymentIntent that's refunded. |
+| `reason` | `string enum(duplicate \| expired_uncaptured_charge \| fraudulent \| requested_by_customer) \| null` | Optional. Reason for the refund, which is either user-provided (`duplicate`, `fraudulent`, or `requested_by_customer`) or generated by Stripe internally (`expired_uncaptured_charge`). |
+| `status` | `string \| null` | Optional. Status of the refund. This can be `pending`, `requires_action`, `succeeded`, `failed`, or `canceled`. Learn more about [failed refunds](https://docs.stripe.com/refunds#failed-refunds). |
+
+</details>
+
+<details><summary>api_errors</summary>
+
+| Field | Type | Doc |
+| --- | --- | --- |
+| `type` | `string enum(api_error \| card_error \| idempotency_error \| invalid_request_error)` | The type of error returned. One of `api_error`, `card_error`, `idempotency_error`, or `invalid_request_error` |
+| `code` | `string` | Optional. For some errors that could be handled programmatically, a short string indicating the [error code](https://docs.stripe.com/error-codes) reported. |
+| `decline_code` | `string` | Optional. For card errors resulting from a card issuer decline, a short string indicating the [card issuer's reason for the decline](https://docs.stripe.com/declines#issuer-declines) if they provide one. |
+| `message` | `string` | Optional. A human-readable message providing more details about the error. For card errors, these messages can be shown to your users. |
+| `param` | `string` | Optional. If the error is parameter-specific, the parameter related to the error. For example, you can use this to display a message near the correct form field. |
+
+</details>
+
+## Called by
+
+| Service | Call | Status | Source |
+| --- | --- | --- | --- |
+| [Ledger](../payments/ledger/README.md) | `stripe.v1/PostPaymentIntents` | declared | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml` |
+| [Ledger](../payments/ledger/README.md) | `stripe.v1/PostPaymentIntentsIntentCancel` | declared | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml` |
+| [Ledger](../payments/ledger/README.md) | `stripe.v1/PostPaymentIntentsIntentCapture` | declared | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml` |
+| [Ledger](../payments/ledger/README.md) | `stripe.v1/PostRefunds` | declared | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/stripe/openapi/openapi.yaml` |
+
 <!-- flows/README.md -->
 
 # Flows
@@ -5361,14 +5461,14 @@ Asks the gateway to hold the money for an order, and records either that it agre
 
 ## Participants
 
-| Participant | Kind | Context | Label |
-| --- | --- | --- | --- |
-| `client` | actor | — | — |
-| `payments.ledger` | service | [payments](../payments/README.md) | — |
-| `ledger-pg` | store | [payments](../payments/README.md) | — |
-| `shop.oms` | service | [shop](../shop/README.md) | — |
-| `bus` | broker | — | — |
-| `psp` | unknown | — | psp |
+| Participant | Kind | Context |
+| --- | --- | --- |
+| `client` | actor | — |
+| `payments.ledger` | service | [payments](../payments/README.md) |
+| `ledger-pg` | store | [payments](../payments/README.md) |
+| `shop.oms` | service | [shop](../shop/README.md) |
+| `bus` | broker | — |
+| `stripe` | external | — |
 
 ## Sequence
 
@@ -5380,7 +5480,7 @@ sequenceDiagram
     participant p2 as ledger-pg
     participant p3 as shop.oms
     participant p4 as bus
-    participant p5 as psp
+    participant p5 as stripe
     p0->>p1: Authorize → AuthorizeResponse
     p1->>p2: byId
     p1->>p2: byOrder
@@ -5391,7 +5491,7 @@ sequenceDiagram
         Note over p4: flow ends here
     else otherwise
     end
-    p1->>p5: hold
+    p1->>p5: PostPaymentIntents → payment_intent
     alt !hold.held()
         p1->>p2: save
         p1-)p4: PaymentDeclined
@@ -5424,8 +5524,8 @@ sequenceDiagram
 >
 > *otherwise*
 
-7. **payments.ledger** → **psp** — hold
-   status: unresolved · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:62`
+7. **payments.ledger** → **stripe** — PostPaymentIntents → payment_intent
+   `stripe.v1/PostPaymentIntents` · status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:62`
 
 > **One of**
 >
@@ -5457,13 +5557,13 @@ Moves the money the gateway was holding, writes the pair of postings for it, and
 
 ## Participants
 
-| Participant | Kind | Context | Label |
-| --- | --- | --- | --- |
-| `client` | actor | — | — |
-| `payments.ledger` | service | [payments](../payments/README.md) | — |
-| `ledger-pg` | store | [payments](../payments/README.md) | — |
-| `psp` | unknown | — | psp |
-| `bus` | broker | — | — |
+| Participant | Kind | Context |
+| --- | --- | --- |
+| `client` | actor | — |
+| `payments.ledger` | service | [payments](../payments/README.md) |
+| `ledger-pg` | store | [payments](../payments/README.md) |
+| `stripe` | external | — |
+| `bus` | broker | — |
 
 ## Sequence
 
@@ -5473,11 +5573,11 @@ sequenceDiagram
     actor p0 as client
     participant p1 as payments.ledger
     participant p2 as ledger-pg
-    participant p3 as psp
+    participant p3 as stripe
     participant p4 as bus
     p0->>p1: Capture → CaptureResponse
     p1->>p2: byId
-    p1->>p3: capture
+    p1->>p3: PostPaymentIntentsIntentCapture → payment_intent
     p1->>p2: save
     p1-)p4: PaymentCaptured
 ```
@@ -5488,8 +5588,8 @@ sequenceDiagram
    status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:53`
 2. **payments.ledger** → **ledger-pg** — byId
    status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:38`
-3. **payments.ledger** → **psp** — capture
-   status: unresolved · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:43`
+3. **payments.ledger** → **stripe** — PostPaymentIntentsIntentCapture → payment_intent
+   `stripe.v1/PostPaymentIntentsIntentCapture` · status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:43`
 4. **payments.ledger** → **ledger-pg** — save
    status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:44`
 5. **payments.ledger** → **bus** — PaymentCaptured
@@ -5548,13 +5648,13 @@ Sends money back against a captured payment, in full or in part.
 
 ## Participants
 
-| Participant | Kind | Context | Label |
-| --- | --- | --- | --- |
-| `client` | actor | — | — |
-| `payments.ledger` | service | [payments](../payments/README.md) | — |
-| `ledger-pg` | store | [payments](../payments/README.md) | — |
-| `psp` | unknown | — | psp |
-| `bus` | broker | — | — |
+| Participant | Kind | Context |
+| --- | --- | --- |
+| `client` | actor | — |
+| `payments.ledger` | service | [payments](../payments/README.md) |
+| `ledger-pg` | store | [payments](../payments/README.md) |
+| `stripe` | external | — |
+| `bus` | broker | — |
 
 ## Sequence
 
@@ -5564,13 +5664,13 @@ sequenceDiagram
     actor p0 as client
     participant p1 as payments.ledger
     participant p2 as ledger-pg
-    participant p3 as psp
+    participant p3 as stripe
     participant p4 as bus
     p0->>p1: IssueRefund → IssueRefundResponse
     p1->>p2: byId
     p1->>p2: byId
     p1->>p2: byPayment
-    p1->>p3: refund
+    p1->>p3: PostRefunds → refund
     alt !answer.sent()
         p1->>p2: save
         Note over p2: flow ends here
@@ -5590,8 +5690,8 @@ sequenceDiagram
    status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:52`
 4. **payments.ledger** → **ledger-pg** — byPayment
    status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:56`
-5. **payments.ledger** → **psp** — refund
-   status: unresolved · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:62`
+5. **payments.ledger** → **stripe** — PostRefunds → refund
+   `stripe.v1/PostRefunds` · status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:62`
 
 > **One of**
 >
@@ -5660,12 +5760,12 @@ Gives back what was held once the order it was held for is gone.
 
 ## Participants
 
-| Participant | Kind | Context | Label |
-| --- | --- | --- | --- |
-| `bus` | broker | — | — |
-| `payments.ledger` | service | [payments](../payments/README.md) | — |
-| `ledger-pg` | store | [payments](../payments/README.md) | — |
-| `psp` | unknown | — | psp |
+| Participant | Kind | Context |
+| --- | --- | --- |
+| `bus` | broker | — |
+| `payments.ledger` | service | [payments](../payments/README.md) |
+| `ledger-pg` | store | [payments](../payments/README.md) |
+| `stripe` | external | — |
 
 ## Sequence
 
@@ -5675,10 +5775,10 @@ sequenceDiagram
     participant p0 as bus
     participant p1 as payments.ledger
     participant p2 as ledger-pg
-    participant p3 as psp
+    participant p3 as stripe
     p0-)p1: OrderCancelled
     p1->>p2: byOrder
-    p1->>p3: voidHold
+    p1->>p3: PostPaymentIntentsIntentCancel → payment_intent
     p1->>p2: save
 ```
 
@@ -5688,8 +5788,8 @@ sequenceDiagram
    [shop.oms.order.OrderCancelled](../shop/oms/aggregates/order.md) · status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/VoidPaymentOnOrderCancelled.java:25`
 2. **payments.ledger** → **ledger-pg** — byOrder
    status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/VoidPayment.java:29`
-3. **payments.ledger** → **psp** — voidHold
-   status: unresolved · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/VoidPayment.java:35`
+3. **payments.ledger** → **stripe** — PostPaymentIntentsIntentCancel → payment_intent
+   `stripe.v1/PostPaymentIntentsIntentCancel` · status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/VoidPayment.java:35`
 4. **payments.ledger** → **ledger-pg** — save
    status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/VoidPayment.java:36`
 
@@ -7180,6 +7280,7 @@ sequenceDiagram
 | [bff.0004](bff.0004.md) | A subscription is the bus, forwarded | accepted | 2026-09-05 | [storefront.bff](../storefront/bff/README.md) |
 | [ledger.0001](ledger.0001.md) | A gateway that did not answer has not refused | accepted | 2026-09-05 | [payments.ledger](../payments/ledger/README.md) |
 | [ledger.0002](ledger.0002.md) | Another service's events are read off the bus by an adapter and republished in process | accepted | 2026-09-05 | [payments.ledger](../payments/ledger/README.md) |
+| [ledger.0003](ledger.0003.md) | The card network is Stripe, and stays outside the estate | accepted | 2026-09-06 | [payments.ledger](../payments/ledger/README.md) |
 | [cart.0001](cart.0001.md) | TypeScript on Node.js, and the stack around it | accepted | 2026-09-04 | [shop.cart](../shop/cart/README.md) |
 | [cart.0002](cart.0002.md) | A basket freezes its currency at the first item | accepted | 2026-09-04 | [shop.cart](../shop/cart/README.md) |
 | [cart.0003](cart.0003.md) | Line prices are captured when added, never recomputed | accepted | 2026-09-04 | [shop.cart](../shop/cart/README.md) |
@@ -8438,6 +8539,91 @@ order service does not know who needs to unwind what, and should not.
 - Bad: a second subscriber class per publishing service; the manifest has
   to say which aggregate the foreign shape belongs to.
 - Neutral: with no bus configured the adapter reads nothing and says so once.
+
+<!-- adr/ledger.0003.md -->
+
+# ledger.0003 — The card network is Stripe, and stays outside the estate
+
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-09-06
+- **Scope:** [payments.ledger](../payments/ledger/README.md)
+- **Source:** `examples/payments/ledger/docs/adr/0003-the-card-network-is-stripe-and-stays-outside-the-estate.md`
+
+### Context and Problem Statement
+
+The ledger holds, captures, voids and refunds money through a card network.
+The first cut called it `psp` and vendored nothing: the far end was a third
+party, no service of ours answered on it, and the catalog recorded every call
+as **unresolved** — which was true, and unhelpful. Four arrows on every
+picture pointed into open water, the Problems page listed them beside real
+defects, and a reader could not tell from the catalog which operation any of
+them was.
+
+The network is Stripe. Stripe publishes an OpenAPI document. How much of it
+does the estate take, and where does Stripe sit in the catalog?
+
+### Decision Drivers
+
+- The catalog must not claim to own what it does not: Stripe is nobody's
+  service here, has no context, no aggregates and no repository to read.
+- A call should land on the operation that answers it, so the page can say
+  what is sent and what comes back, and the arrow can be `declared` rather
+  than a warning.
+- Stripe's document is six megabytes and hundreds of operations; the ledger
+  calls four. What is vendored has to be reviewable.
+- Stripe's own naming — title "Stripe API", version "2026-08-26.dahlia" —
+  must not become the estate's ids.
+
+### Considered Options
+
+1. **Stripe as a context of the estate**, with a service `stripe.api` produced
+   by the OpenAPI extractor over the vendored copy. Everything existing works,
+   and the estate gains a service card for a system it will never build.
+2. **Stripe as an external with a contract.** A new kind at the root of the
+   catalog beside the contexts, holding only what it answers on, read from the
+   copy vendored beside the adapter. The caller's extractor is told the copy's
+   api id belongs to it under `externals`, the lane is `external`, and the
+   calls are `declared`.
+3. **Leave it unresolved** and describe Stripe in prose.
+
+### Decision Outcome
+
+Option 2. Stripe is `stripe` in `catalog.externals`, provides `stripe.v1`, and
+the ledger's four calls land on `PostPaymentIntents`,
+`PostPaymentIntentsIntentCapture`, `PostPaymentIntentsIntentCancel` and
+`PostRefunds`.
+
+The copy is **narrow**: those four operations and the schemas they answer
+with, every field verbatim, and nothing else. It sits at
+`infrastructure/stripe/openapi/openapi.yaml`, is regenerated from Stripe's
+repository when the version moves, and the narrowing is the only edit — the
+same rule org.0001 sets for a proto vendored from a peer.
+
+The copy carries one line Stripe's does not: `x-portolan-api: stripe.v1` in
+`info`. A vendored copy is already the consumer's translation boundary, so it
+is the one place the estate's name for the document may be written, and both
+readers of it — the extractor that says what Stripe answers on and the one
+that says what the ledger calls — take the id from there rather than from two
+manifests that would have to agree.
+
+#### Consequences
+
+- Good: the four arrows are `declared` and named; the Problems page is about
+  problems again; the Stripe page lists the shapes on either side of each call.
+- Good: the estate's picture still draws Stripe as outside, muted, with no
+  context around it — which is what it is.
+- Bad: the copy is a fifth place Stripe's version is written down, and moving
+  it is a deliberate commit. That is the cost of reviewability, and it is the
+  same cost the protos already pay.
+- Bad: an operation the adapter starts calling and the copy does not carry is
+  reported by the extractor and left out until the copy is widened. Also the
+  point.
+
+## Relates to
+
+- **Services:** [shop.oms](../shop/oms/README.md)
 
 <!-- adr/cart.0001.md -->
 

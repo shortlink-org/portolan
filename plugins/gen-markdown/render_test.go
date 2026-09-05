@@ -95,10 +95,11 @@ func TestGoldenDiagnostics(t *testing.T) {
 
 	resp := render(plugin.Request{Catalog: cat}, Options{})
 
-	want := []string{
-		`billing.invoices: billing.invoices calls "psp.v1.Charges/Create", which nothing in this catalog resolves`,
-		`flow.raise-invoice: flow.raise-invoice step "s3" is unresolved: psp.v1.Charges/Create`,
-	}
+	// The fixture's one call outward lands on an external with a contract, so
+	// nothing is unresolved and the render has nothing to report. The two
+	// warnings that used to stand here were about that same call before the
+	// gateway had a page.
+	want := []string{}
 
 	got := make([]string, 0, len(resp.Warnings()))
 	for _, d := range resp.Warnings() {

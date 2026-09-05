@@ -17,11 +17,25 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	b := &plugin.Builder{}
 	root := in.Root
 
-	if opts.Context == "" {
-		opts.Context = filepath.Base(root)
+	// Whose document this is: a service of the estate, or a system outside it
+	// whose copy is vendored beside the adapter that calls it. The two are told
+	// apart by the manifest and by nothing in the document, because a document
+	// does not know which side of the boundary it was read on.
+	external := opts.External != ""
+	if external && strings.Contains(opts.External, ".") {
+		return plugin.Response{}, fmt.Errorf("external %q has a dot in its id; an external sits at the root and is addressed by a bare name", opts.External)
 	}
-	if opts.Service == "" {
-		opts.Service = filepath.Base(root)
+	if !external {
+		if opts.Context == "" {
+			opts.Context = filepath.Base(root)
+		}
+		if opts.Service == "" {
+			opts.Service = filepath.Base(root)
+		}
+	}
+	owner := opts.Context + "." + opts.Service
+	if external {
+		owner = opts.External
 	}
 
 	specPath, err := findSpec(root, opts.Spec, b)
@@ -39,13 +53,30 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 
 	provides := rpcServices(doc, api, source, b)
 	if len(provides) == 0 {
-		b.Warn(opts.Context+"."+opts.Service, source+" declares no operations")
+		b.Warn(owner, source+" declares no operations")
 	}
 
 	fragment := catalog.Catalog{
 		GeneratedAt: in.GeneratedAt,
 		Commit:      in.Commit,
-		Contexts: []catalog.BoundedContext{{
+		Contexts:    []catalog.BoundedContext{},
+		Defs:        map[string]catalog.TypeDef{},
+		Flows:       []catalog.Flow{},
+		Adrs:        []catalog.Adr{},
+	}
+	if external {
+		// Everything the catalog may claim about a system it does not own: what
+		// it answers on, and what the manifest says it is called and is for.
+		fragment.Externals = []catalog.External{{
+			ID:       opts.External,
+			Slug:     opts.External,
+			Name:     opts.ExternalName,
+			Summary:  opts.ExternalSummary,
+			URL:      opts.ExternalURL,
+			Provides: provides,
+		}}
+	} else {
+		fragment.Contexts = []catalog.BoundedContext{{
 			ID:   opts.Context,
 			Slug: opts.Context,
 			// Named by whichever source knows the name. This one describes what
@@ -58,10 +89,7 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 				Consumes:   []catalog.RpcCall{},
 				Aggregates: []catalog.Aggregate{},
 			}},
-		}},
-		Defs:  map[string]catalog.TypeDef{},
-		Flows: []catalog.Flow{},
-		Adrs:  []catalog.Adr{},
+		}}
 	}
 
 	encoded, err := json.MarshalIndent(fragment, "", "  ")
@@ -458,7 +486,7 @@ func unionTypes(left, right string) string {
 func apiID(doc *document) string {
 	info := child(doc.root, "info")
 
-	return openapi.APIID(text(child(info, "title")), text(child(info, "version")))
+	return openapi.DocumentAPIID(text(child(info, "x-portolan-api")), text(child(info, "title")), text(child(info, "version")))
 }
 
 // findSpec locates the document. Told where it is, it looks there; otherwise it

@@ -59,10 +59,10 @@ python manage.py migrate && python manage.py runserver
 
 **`billing.v1.Invoices`** — `examples/shop/billing/invoices/schema/openapi.yaml`
 
-- `invoice_create`
-- `invoice_retrieve`
-- `invoice_destroy`
-- `invoice_issue`
+- `invoice_create` — `POST /v1/invoices`
+- `invoice_retrieve` — `GET /v1/invoices/{id}`
+- `invoice_destroy` — `DELETE /v1/invoices/{id}`
+- `invoice_issue` — `POST /v1/invoices/{id}/issue`
 
 <details><summary>DrawUpRequest</summary>
 

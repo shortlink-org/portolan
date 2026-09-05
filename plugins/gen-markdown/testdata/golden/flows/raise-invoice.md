@@ -31,7 +31,7 @@ sequenceDiagram
     loop until paid or written off
         alt customer pays
             par settle and notify
-                p1->>p3: psp.v1.Charges/Create
+                p1->>p3: psp.v1.Charges/Create → Charge
             and
                 p1->>p1: markPaid #35;1
             end
@@ -61,8 +61,8 @@ sequenceDiagram
 > > >
 > > > *Branch 1*
 > > >
-> > > 3. **billing.invoices** → **psp-gateway** — psp.v1.Charges/Create
-> > >    `psp.v1.Charges/Create` · status: unresolved · The gateway is outside this catalog.
+> > > 3. **billing.invoices** → **psp-gateway** — psp.v1.Charges/Create → Charge
+> > >    `psp.v1.Charges/Create` · status: declared · The gateway is outside this catalog.
 > > >
 > > > *Branch 2*
 > > >

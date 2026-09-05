@@ -1,6 +1,6 @@
 # Golden estate
 
-> Architecture catalog of Golden estate: 1 bounded context, 1 service, 1 aggregate, 1 store, 1 flow and 1 decision record, read from the code, the specs and the traces of the estate.
+> Architecture catalog of Golden estate: 1 bounded context, 1 service, 1 aggregate, 1 store, 1 system outside the estate, 1 flow and 1 decision record, read from the code, the specs and the traces of the estate.
 
 *Generated from the portolan catalog · commit `abc1234` · at 2026-01-02T03:04:05Z. Do not edit by hand.*
 
@@ -17,6 +17,10 @@ Every link below is a markdown page beside this file. [llms-full.txt](llms-full.
 ## Services
 
 - [Invoices](billing/invoices/README.md): in Billing. Aggregates: Invoice
+
+## Outside the estate
+
+- [PSP gateway](externals/psp-gateway.md): outside the estate. Answers on psp.v1.Charges. The card network the invoices are settled through. Nobody here builds it; the copy of its document vendored beside the client is all the catalog may claim
 
 ## Flows
 

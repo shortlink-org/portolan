@@ -13,7 +13,7 @@ One meaning per word inside this context, as the glossary beside the code states
 - **Attempt** — Which try at charging one order a payment is. A declined hold is followed by a second, legitimate attempt on the same order, and each is its own payment; the pair of order and attempt is unique (payments.0004).
 - **Capture** — Moving money the gateway was holding. Writes the pair of postings that accounts for it and says `PaymentCaptured`; the only thing anything waiting to be paid listens for.
 - **Decline** — The money was not held. Its reason is a closed set: the card was refused, or the order was already cancelled. Not what the gateway said in its own words.
-- **Gateway** — The card network, as this service asks it: hold, capture, void, refund. A third party behind a port; its own words for those four things stay in the adapter. When it does not answer, nothing is decided and nothing is written.
+- **Gateway** — The card network, as this service asks it: hold, capture, void, refund. A third party behind a port — Stripe, today — and its own words for those four things (a PaymentIntent confirmed, captured, cancelled; a Refund) stay in the adapter. When it does not answer, nothing is decided and nothing is written.
 - **Hold** — The gateway has reserved the money against an instrument and given back a code that names the reservation. The code is the gateway's handle on the money and never leaves this service: not on an event, not on the wire.
 - **Journal** — The postings, in the order they were written. Append-only; nothing in it is ever updated, and a correction is another pair.
 - **Money** — An amount in the minor unit of a currency. The ledger never rounds.

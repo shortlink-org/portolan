@@ -87,6 +87,18 @@ func (s *site) llmsIndex() string {
 
 	section(&b, "Services", list(services))
 
+	externals := make([]string, 0, len(s.cat.Externals))
+	for i := range s.cat.Externals {
+		ext := &s.cat.Externals[i]
+		interfaces := make([]string, 0, len(ext.Provides))
+		for j := range ext.Provides {
+			interfaces = append(interfaces, ext.Provides[j].ID)
+		}
+		externals = append(externals, entry(s.ref(self, ext.ID, orDefault(ext.Name, ext.ID)),
+			"outside the estate", "Answers on "+strings.Join(interfaces, ", "), firstLine(ext.Summary)))
+	}
+	section(&b, "Outside the estate", list(externals))
+
 	flows := make([]string, 0, len(s.cat.Flows))
 	for i := range s.cat.Flows {
 		flow := &s.cat.Flows[i]
@@ -153,9 +165,17 @@ func (s *site) llmsSummary() string {
 		plural(services, "service"),
 		plural(aggregates, "aggregate"),
 		plural(len(s.cat.Stores), "store"),
+	}
+	// Named only when there is one: an estate that calls nobody outside has
+	// nothing to count, and "0 systems outside" reads as a claim about the
+	// world rather than about the catalog.
+	if len(s.cat.Externals) > 0 {
+		parts = append(parts, plural(len(s.cat.Externals), "system outside the estate", "systems outside the estate"))
+	}
+	parts = append(parts,
 		plural(len(s.cat.Flows), "flow"),
 		plural(len(s.cat.Adrs), "decision record"),
-	}
+	)
 
 	return "Architecture catalog of " + s.title() + ": " + strings.Join(parts[:len(parts)-1], ", ") +
 		" and " + parts[len(parts)-1] + ", read from the code, the specs and the traces of the estate."
