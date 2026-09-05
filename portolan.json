@@ -56,7 +56,9 @@
     "data/*.json",
     "examples/*/portolan/*.json",
     "examples/*/*/portolan/*.json",
-    "examples/*/*/*/portolan/*.json"
+    "examples/*/*/*/portolan/*.json",
+    "vendor/repos/*/*/git.repo.json",
+    "vendor/repos/**/portolan/*.json"
   ],
   "plugins": [
     {
@@ -167,6 +169,13 @@
       "process": {
         "command": "go",
         "args": ["run", "./plugins/fetch-bsr"]
+      }
+    },
+    {
+      "name": "git",
+      "process": {
+        "command": "go",
+        "args": ["run", "./plugins/fetch-git"]
       }
     },
     {

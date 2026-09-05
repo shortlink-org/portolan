@@ -37,6 +37,8 @@ const SOURCE_GLOBS = [
   "examples/*/portolan/*.json",
   "examples/*/*/portolan/*.json",
   "examples/*/*/*/portolan/*.json",
+  "vendor/repos/*/*/git.repo.json",
+  "vendor/repos/**/portolan/*.json",
 ] as const;
 
 const modules: Record<string, unknown> = {
@@ -50,6 +52,14 @@ const modules: Record<string, unknown> = {
     import: "default",
   }),
   ...import.meta.glob("../examples/*/*/*/portolan/*.json", {
+    eager: true,
+    import: "default",
+  }),
+  ...import.meta.glob("../vendor/repos/*/*/git.repo.json", {
+    eager: true,
+    import: "default",
+  }),
+  ...import.meta.glob("../vendor/repos/**/portolan/*.json", {
     eager: true,
     import: "default",
   }),

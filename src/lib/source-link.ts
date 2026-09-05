@@ -58,6 +58,15 @@ function bare(repo: string): string {
     .toLowerCase();
 }
 
+/** Translate a path in the committed vendor copy back to the remote tree. */
+function repositoryPath(path: string, repo: string, info: BuildInfo): string {
+  if (!repo || sameRepo(repo, info)) return path;
+  const segments = bare(repo).split("/").filter(Boolean);
+  if (segments.length < 3) return path;
+  const prefix = `vendor/repos/${segments.at(-2)}/${segments.at(-1)}/`;
+  return path.startsWith(prefix) ? path.slice(prefix.length) : path;
+}
+
 /** GitLab keeps the tree under /-/; everything else uses /blob directly. */
 function blobPath(url: string): string {
   return /gitlab/i.test(url) ? "/-/blob/" : "/blob/";
@@ -104,7 +113,7 @@ export function sourceHref(
   const at = whereFor(service?.repo ?? "", pins, info);
   if (!at) return null;
 
-  return `${at.url}${blobPath(at.url)}${at.ref}/${path}${line ? `#L${line}` : ""}`;
+  return `${at.url}${blobPath(at.url)}${at.ref}/${repositoryPath(path, service?.repo ?? "", info)}${line ? `#L${line}` : ""}`;
 }
 
 /** A link to a directory of the repository, for a service's own path. */
@@ -118,5 +127,5 @@ export function treeHref(
   const at = whereFor(service?.repo ?? "", pins, info);
   if (!at) return null;
 
-  return `${at.url}${blobPath(at.url).replace("blob", "tree")}${at.ref}/${path.replace(/\/$/, "")}`;
+  return `${at.url}${blobPath(at.url).replace("blob", "tree")}${at.ref}/${repositoryPath(path.replace(/\/$/, ""), service?.repo ?? "", info)}`;
 }

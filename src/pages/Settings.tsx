@@ -36,6 +36,7 @@ import {
   addProject,
   cancelGeneration,
   discover,
+  inspectRepository,
   localStatus,
   previewProject,
   startGeneration,
@@ -211,7 +212,10 @@ function projectHref(project: SetupProject): string | null {
 
 function forge(project: SetupProject): { href: string; title: string } | null {
   if (project.repository) {
-    return { href: project.repository, title: "Open the project's repository" };
+    return {
+      href: treeHref(project.root, { repo: project.repository }, catalog.repos) ?? project.repository,
+      title: "Open the project's source at the fetched commit",
+    };
   }
   const tree = treeHref(project.root, null);
   return tree
@@ -478,16 +482,19 @@ function AddProjectCard({ onClick }: { onClick: () => void }) {
       <span className="flex max-w-72 flex-col items-center text-center">
         <span className="flex size-9 items-center justify-center rounded-full border border-line-strong text-muted group-hover:border-accent group-hover:text-accent"><Plus size={18} aria-hidden /></span>
         <span className="mt-3 font-semibold text-ink">Add a project</span>
-        <span className="mt-1 text-muted">Point Portolan at a local service and it will suggest the extractors to use.</span>
+        <span className="mt-1 text-muted">Point Portolan at a local service or repository and it will suggest the extractors to use.</span>
       </span>
     </button>
   );
 }
 
 function Wizard({ open, onClose, onAdded, onGenerate }: { open: boolean; onClose: () => void; onAdded: (setup: SetupInfo) => void; onGenerate: () => Promise<void> }) {
+  const [source, setSource] = useState<"local" | "external">("local");
   const [stage, setStage] = useState<"source" | "configure" | "review">("source");
   const [path, setPath] = useState("");
   const [repository, setRepository] = useState("");
+  const [ref, setRef] = useState("main");
+  const [sourcePath, setSourcePath] = useState("");
   const [discovery, setDiscovery] = useState<Discovery | null>(null);
   const [draft, setDraft] = useState<ProjectDraft | null>(null);
   const [plan, setPlan] = useState<ProjectPlan | null>(null);
@@ -496,16 +503,17 @@ function Wizard({ open, onClose, onAdded, onGenerate }: { open: boolean; onClose
 
   useEffect(() => {
     if (!open) {
-      setStage("source"); setPath(""); setRepository(""); setDiscovery(null); setDraft(null); setPlan(null); setError(""); setBusy(false);
+      setStage("source"); setSource("local"); setPath(""); setRepository(""); setRef("main"); setSourcePath(""); setDiscovery(null); setDraft(null); setPlan(null); setError(""); setBusy(false);
     }
   }, [open]);
 
   async function detect() {
     setBusy(true); setError("");
     try {
-      const found = await discover(path);
+      const inspection = source === "external" ? await inspectRepository(repository, ref, sourcePath) : null;
+      const found = inspection?.discovery ?? await discover(path);
       setDiscovery(found);
-      setDraft({ root: found.root, repository, ...found.defaults, plugins: found.detections.filter((item) => item.selected).map((item) => item.plugin) });
+      setDraft({ source, root: found.root, repository, ref, commit: inspection?.commit ?? "", sourcePath, ...found.defaults, plugins: found.detections.filter((item) => item.selected).map((item) => item.plugin) });
       setStage("configure");
     } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
     finally { setBusy(false); }
@@ -530,7 +538,7 @@ function Wizard({ open, onClose, onAdded, onGenerate }: { open: boolean; onClose
     } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); setBusy(false); }
   }
 
-  const heading = stage === "source" ? "Add a local project" : stage === "configure" ? "Configure discovery" : "Review changes";
+  const heading = stage === "source" ? "Add a project" : stage === "configure" ? "Configure discovery" : "Review changes";
   return (
     <Modal open={open} onClose={busy ? () => {} : onClose} label={heading} width="min(760px,94vw)">
       <div className="flex items-center gap-3 border-b border-line px-5 py-4">
@@ -541,13 +549,13 @@ function Wizard({ open, onClose, onAdded, onGenerate }: { open: boolean; onClose
       <div className="min-h-0 flex-1 overflow-y-auto p-5">
         {stage === "source" ? (
           <div className="space-y-5">
-            <p className="text-muted">Use a repository-relative path. Detection reads file names only and does not execute project code.</p>
-            <Field label="local path" value={path} onChange={setPath} placeholder="services/billing" required />
-            <Field label="repository URL · optional" value={repository} onChange={setRepository} placeholder="https://github.com/acme/billing" />
+            <div className="seg inline-flex" role="group" aria-label="Project source"><button type="button" className={source === "local" ? "is-on" : ""} aria-pressed={source === "local"} onClick={() => setSource("local")}>local directory</button><button type="button" className={source === "external" ? "is-on" : ""} aria-pressed={source === "external"} onClick={() => setSource("external")}>external repository</button></div>
+            <p className="text-muted">Detection reads project files but does not execute project code. External repositories are pinned and vendored through the built-in git fetcher.</p>
+            {source === "local" ? <><Field label="local path" value={path} onChange={setPath} placeholder="services/billing" required /><Field label="repository URL · optional" value={repository} onChange={setRepository} placeholder="https://github.com/acme/billing" /></> : <><Field label="repository URL" value={repository} onChange={setRepository} placeholder="https://github.com/acme/platform" required /><div className="grid gap-4 sm:grid-cols-2"><Field label="branch, tag or commit" value={ref} onChange={setRef} placeholder="main" /><Field label="service path · optional" value={sourcePath} onChange={setSourcePath} placeholder="services/billing" /></div></>}
           </div>
         ) : stage === "configure" && discovery && draft ? (
           <div className="space-y-5">
-            <div className="rounded-control border border-line bg-surface px-3 py-2 text-muted"><span className="mono text-ink">{discovery.root}</span> · scanned {discovery.filesScanned} files{discovery.truncated ? " (limit reached)" : ""}</div>
+            <div className="rounded-control border border-line bg-surface px-3 py-2 text-muted"><span className="mono text-ink">{draft.source === "external" ? `${draft.repository}@${draft.commit.slice(0, 7)}${draft.sourcePath ? `/${draft.sourcePath}` : ""}` : discovery.root}</span> · scanned {discovery.filesScanned} files{discovery.truncated ? " (limit reached)" : ""}</div>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="project name" value={draft.name} onChange={(name) => setDraft({ ...draft, name })} required />
               <Field label="project id" value={draft.id} onChange={(id) => setDraft({ ...draft, id })} required />
@@ -557,14 +565,14 @@ function Wizard({ open, onClose, onAdded, onGenerate }: { open: boolean; onClose
             <div><div className="label mb-2">detected plugins</div>
               {discovery.detections.length ? <div className="divide-y divide-line rounded-control border border-line">{discovery.detections.map((item) => {
                 const checked = draft.plugins.includes(item.plugin);
-                return <label key={item.plugin} className="flex cursor-pointer items-center gap-3 px-3 py-2 hover:bg-surface"><input type="checkbox" checked={checked} onChange={() => setDraft({ ...draft, plugins: checked ? draft.plugins.filter((name) => name !== item.plugin) : [...draft.plugins, item.plugin] })} /><span className="mono text-ink">{item.plugin}</span><span className="ml-auto text-muted">{item.evidence}</span><span className="chip status-verified">{item.confidence}</span></label>;
+                return <label key={item.plugin} className="flex cursor-pointer items-start gap-3 px-3 py-2 hover:bg-surface"><input className="mt-0.5" type="checkbox" checked={checked} onChange={() => setDraft({ ...draft, plugins: checked ? draft.plugins.filter((name) => name !== item.plugin) : [...draft.plugins, item.plugin] })} /><span className="mono text-ink">{item.plugin}</span><span className="ml-auto min-w-0 text-right"><span className="block truncate text-muted" title={item.evidence}>{item.evidence}</span>{Object.keys(item.options).length ? <code className="mono block truncate text-faint" title={JSON.stringify(item.options)}>{JSON.stringify(item.options)}</code> : null}</span><span className={`chip ${item.confidence === "high" ? "status-verified" : "status-declared"}`}>{item.confidence}</span></label>;
               })}</div> : <Empty>no supported project signals found</Empty>}
             </div>
           </div>
         ) : stage === "review" && plan ? (
           <div className="space-y-5">
             <div className="rounded-card border border-line bg-surface p-4"><div className="font-semibold text-ink">{plan.project.name}</div><div className="mono mt-1 text-muted">{plan.project.root}</div></div>
-            <div><div className="label mb-2">portolan.json changes</div><dl className="mono grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-muted"><dt>project</dt><dd className="text-ink">{plan.project.id}</dd><dt>source</dt><dd className="truncate text-ink">{plan.source}</dd><dt>pipeline</dt><dd className="text-ink">{plan.steps.length} {plural(plan.steps.length, "extract step")}</dd></dl></div>
+            <div><div className="label mb-2">portolan.json changes</div><dl className="mono grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-muted"><dt>project</dt><dd className="text-ink">{plan.project.id}</dd>{plan.fetch ? <><dt>pin</dt><dd className="truncate text-ink">{plan.fetch.commit.slice(0, 12)}</dd></> : null}<dt>source</dt><dd className="truncate text-ink">{plan.source}</dd><dt>pipeline</dt><dd className="text-ink">{plan.steps.length + (plan.fetch ? 1 : 0)} {plural(plan.steps.length + (plan.fetch ? 1 : 0), "extract step")}</dd></dl></div>
             <div className="divide-y divide-line rounded-control border border-line">{plan.steps.map((step) => <div key={step.plugin} className="mono grid gap-1 px-3 py-2 sm:grid-cols-[8rem_1fr]"><span className="text-ink">{step.plugin}</span><span className="truncate text-muted">{step.in} → {step.out}</span></div>)}</div>
           </div>
         ) : null}
@@ -572,15 +580,15 @@ function Wizard({ open, onClose, onAdded, onGenerate }: { open: boolean; onClose
       </div>
       <div className="flex flex-wrap justify-end gap-2 border-t border-line px-5 py-4">
         <button type="button" className="tbtn" onClick={onClose} disabled={busy}>Cancel</button>
-        {stage === "source" ? <button type="button" className="btn-accent" onClick={() => void detect()} disabled={busy || !path.trim()}>{busy ? <LoaderCircle size={15} className="animate-spin" /> : null} Detect project</button> : null}
+        {stage === "source" ? <button type="button" className="btn-accent" onClick={() => void detect()} disabled={busy || (source === "local" ? !path.trim() : !repository.trim())}>{busy ? <LoaderCircle size={15} className="animate-spin" /> : null} {source === "external" ? "Inspect repository" : "Detect project"}</button> : null}
         {stage === "configure" ? <button type="button" className="btn-accent" onClick={() => void review()} disabled={busy || !draft?.plugins.length}>{busy ? <LoaderCircle size={15} className="animate-spin" /> : null} Review</button> : null}
-        {stage === "review" ? <><button type="button" className="tbtn" onClick={() => void save(false)} disabled={busy}>Add only</button><button type="button" className="btn-accent" onClick={() => void save(true)} disabled={busy}>{busy ? <LoaderCircle size={15} className="animate-spin" /> : <Play size={15} />} Add & generate</button></> : null}
+        {stage === "review" ? <><button type="button" className="tbtn" onClick={() => void save(false)} disabled={busy}>Add only</button><button type="button" className="btn-accent" onClick={() => void save(true)} disabled={busy}>{busy ? <LoaderCircle size={15} className="animate-spin" /> : <Play size={15} />} Add & preview</button></> : null}
       </div>
     </Modal>
   );
 }
 
-function RunDialog({ runId, open, onClose, onFinished }: { runId: string | null; open: boolean; onClose: () => void; onFinished: () => void }) {
+function RunDialog({ runId, open, onClose, onFinished, onApply }: { runId: string | null; open: boolean; onClose: () => void; onFinished: () => void; onApply: (previewRunId: string) => void }) {
   const [events, setEvents] = useState<RunEvent[]>([]);
   const finished = events.slice().reverse().find(
     (event): event is Extract<RunEvent, { type: "process-finished" }> => event.type === "process-finished",
@@ -591,6 +599,8 @@ function RunDialog({ runId, open, onClose, onFinished }: { runId: string | null;
     (event): event is Extract<RunEvent, { type: "step-started" }> => event.type === "step-started",
   );
   const logs = events.filter((event) => event.type === "log");
+  const run = events.find((event): event is Extract<RunEvent, { type: "run-started" }> => event.type === "run-started");
+  const preview = events.find((event): event is Extract<RunEvent, { type: "preview-ready" }> => event.type === "preview-ready");
   useEffect(() => {
     if (!runId) return;
     setEvents([]);
@@ -600,14 +610,15 @@ function RunDialog({ runId, open, onClose, onFinished }: { runId: string | null;
   const percent = total ? Math.round((steps.length / total) * 100) : 0;
   return (
     <Modal open={open} onClose={finished ? onClose : () => {}} label="Generate documentation" width="min(720px,94vw)">
-      <div className="flex items-center gap-3 border-b border-line px-5 py-4"><div className="flex-1"><div className="font-semibold text-ink">Generate documentation</div><div className="mono mt-0.5 text-muted">{finished ? `finished · ${finished.status}` : active?.type === "step-started" ? `${active.phase} · ${active.plugin}` : "starting generator…"}</div></div>{finished ? <button className="tbtn p-1.5" onClick={onClose} aria-label="Close"><X size={16} /></button> : <LoaderCircle size={18} className="animate-spin text-accent" />}</div>
+      <div className="flex items-center gap-3 border-b border-line px-5 py-4"><div className="flex-1"><div className="font-semibold text-ink">{run?.mode === "preview" ? "Preview generated changes" : "Generate documentation"}</div><div className="mono mt-0.5 text-muted">{finished ? `finished · ${finished.status}` : active?.type === "step-started" ? `${active.phase} · ${active.plugin}` : run?.mode === "preview" ? "creating an isolated workspace…" : "starting generator…"}</div></div>{finished ? <button className="tbtn p-1.5" onClick={onClose} aria-label="Close"><X size={16} /></button> : <LoaderCircle size={18} className="animate-spin text-accent" />}</div>
       <div className="min-h-0 flex-1 overflow-y-auto p-5">
         <div className="h-1.5 overflow-hidden rounded-full bg-surface"><div className="h-full bg-accent transition-[width]" style={{ width: `${percent}%` }} /></div>
         <div className="mono mt-2 flex justify-between text-muted"><span>{steps.length} / {total || "?"} steps</span><span>{percent}%</span></div>
         <div className="mt-4 divide-y divide-line rounded-control border border-line">{steps.map((event) => event.type === "step-finished" ? <div key={`${event.ordinal}:${event.plugin}`} className="grid gap-1 px-3 py-2 sm:grid-cols-[8rem_1fr_auto]"><span className="mono text-muted">{event.phase}</span><span className="mono text-ink">{event.plugin}</span><span className={`chip ${event.status === "failed" ? "status-unresolved" : "status-verified"}`}>{event.status}</span></div> : null)}</div>
+        {preview ? <section className="mt-5"><div className="label mb-2">generated diff · {preview.totalFiles} {plural(preview.totalFiles, "file")}</div>{preview.files.length ? <div className="divide-y divide-line overflow-hidden rounded-control border border-line">{preview.files.map((file) => <details key={file.path} className="group"><summary className="flex cursor-pointer items-center gap-2 px-3 py-2 hover:bg-surface"><span className={`chip ${file.status === "removed" ? "status-unresolved" : file.status === "added" ? "status-verified" : "status-declared"}`}>{file.status}</span><span className="mono truncate text-ink">{file.path}</span><ChevronDown size={15} className="ml-auto shrink-0 text-muted transition-transform group-open:rotate-180" /></summary><pre className="mono max-h-80 overflow-auto whitespace-pre p-3 text-muted bg-surface">{file.diff || "Binary file changed"}</pre></details>)}</div> : <div className="rounded-control border border-line bg-surface px-3 py-3 text-muted">Generated documentation is already up to date.</div>}{preview.truncated ? <p className="mt-2 text-muted">Showing the first {preview.files.length} changed files.</p> : null}</section> : null}
         {logs.length ? <details className="mt-4"><summary className="cursor-pointer text-muted">Generator log · {logs.length} lines</summary><pre className="mono mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded-control bg-surface p-3 text-muted">{logs.map((event) => event.type === "log" ? event.message : "").join("\n")}</pre></details> : null}
       </div>
-      <div className="flex justify-end border-t border-line px-5 py-4">{finished ? <button type="button" className="btn-accent" onClick={onClose}>Done</button> : <button type="button" className="tbtn" onClick={() => runId && void cancelGeneration(runId)}>Cancel generation</button>}</div>
+      <div className="flex justify-end gap-2 border-t border-line px-5 py-4">{finished ? <><button type="button" className="tbtn" onClick={onClose}>{preview?.files.length ? "Cancel" : "Done"}</button>{preview?.files.length && finished.status === "ok" && runId ? <button type="button" className="btn-accent" onClick={() => onApply(runId)}><Play size={15} /> Apply changes</button> : null}</> : <button type="button" className="tbtn" onClick={() => runId && void cancelGeneration(runId)}>Cancel generation</button>}</div>
     </Modal>
   );
 }
@@ -618,7 +629,7 @@ function SettingsContent({ local, onAdd, onGenerate }: { local: boolean; onAdd: 
   return (
     <div className="h-full overflow-y-auto p-gutter">
       <div className="max-w-table">
-        <div className="flex flex-wrap items-start justify-between gap-3"><div><div className="flex items-center gap-2"><h1 className="text-lg font-semibold">Settings</h1>{local ? <span className="chip status-verified">local mode</span> : null}</div><p className="mt-1 max-w-prose text-muted">The projects, plugins and local preferences used by this catalog. {local ? "This local session can update portolan.json and run the generator." : "Build configuration is read-only here and comes from portolan.json."}</p></div>{local ? <button type="button" className="btn-accent" onClick={onGenerate}><Play size={15} /> Generate docs</button> : null}</div>
+        <div className="flex flex-wrap items-start justify-between gap-3"><div><div className="flex items-center gap-2"><h1 className="text-lg font-semibold">Settings</h1>{local ? <span className="chip status-verified">local mode</span> : null}</div><p className="mt-1 max-w-prose text-muted">The projects, plugins and local preferences used by this catalog. {local ? "This local session can update portolan.json and preview generator output." : "Build configuration is read-only here and comes from portolan.json."}</p></div>{local ? <button type="button" className="btn-accent" onClick={onGenerate}><Play size={15} /> Preview generated diff</button> : null}</div>
         <BuildHealth />
 
         <div className="mt-4 grid grid-cols-2 gap-grid lg:grid-cols-4">
@@ -669,9 +680,9 @@ export function Settings() {
     catch { setLocal(false); }
   }, []);
   useEffect(() => { void refresh(); }, [refresh]);
-  async function generate() {
+  async function generate(previewRunId?: string) {
     try {
-      const run = await startGeneration("write");
+      const run = await startGeneration(previewRunId ? "write" : "preview", previewRunId);
       setRunId(run.runId); setRunOpen(true);
     } catch (cause) {
       say(cause instanceof Error ? cause.message : String(cause));
@@ -681,7 +692,7 @@ export function Settings() {
     <SetupContext.Provider value={setup}>
       <SettingsContent local={local} onAdd={() => setWizard(true)} onGenerate={() => void generate()} />
       <Wizard open={wizard} onClose={() => setWizard(false)} onAdded={setSetup} onGenerate={generate} />
-      <RunDialog runId={runId} open={runOpen} onClose={() => setRunOpen(false)} onFinished={refresh} />
+      <RunDialog runId={runId} open={runOpen} onClose={() => setRunOpen(false)} onFinished={refresh} onApply={(preview) => void generate(preview)} />
     </SetupContext.Provider>
   );
 }

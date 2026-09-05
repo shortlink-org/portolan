@@ -7,6 +7,8 @@ export interface Detection {
   plugin: string;
   confidence: "high" | "medium";
   evidence: string;
+  candidates: string[];
+  options: Record<string, unknown>;
   selected: boolean;
 }
 
@@ -19,8 +21,12 @@ export interface Discovery {
 }
 
 export interface ProjectDraft {
+  source: "local" | "external";
   root: string;
   repository: string;
+  ref: string;
+  commit: string;
+  sourcePath: string;
   id: string;
   name: string;
   context: string;
@@ -34,13 +40,30 @@ export interface ProjectPlan {
   steps: Array<{ plugin: string; in: string; out: string; options: Record<string, unknown> }>;
   source: string;
   discovery: Discovery;
+  fetch: { repo: string; commit: string; paths: string[] } | null;
+}
+
+export interface RepositoryInspection {
+  repository: string;
+  ref: string;
+  commit: string;
+  sourcePath: string;
+  checkoutRoot: string;
+  discovery: Discovery;
+}
+
+export interface GeneratedFileDiff {
+  path: string;
+  status: "added" | "changed" | "removed";
+  diff: string;
 }
 
 export type RunEvent =
-  | { type: "run-started"; at: string; runId: string; mode: "write" | "check" }
+  | { type: "run-started"; at: string; runId: string; mode: "write" | "check" | "preview" }
   | { type: "pipeline-ready"; at: string; stepCount: number }
   | { type: "step-started"; at: string; ordinal: number; phase: SetupPhase; plugin: string; input?: string; output: string }
-  | { type: "step-finished"; at: string; ordinal: number; phase: SetupPhase; plugin: string; status: SetupRunStepStatus; durationMs: number; fileCount: number; changedCount: number; message?: string }
+  | { type: "step-finished"; at: string; ordinal: number; phase: SetupPhase; plugin: string; status: SetupRunStepStatus; durationMs: number; fileCount: number; changedCount: number; changes: Array<{ kind: "added" | "changed" | "removed"; path: string }>; files: string[]; message?: string }
+  | { type: "preview-ready"; at: string; files: GeneratedFileDiff[]; totalFiles: number; truncated: boolean }
   | { type: "run-finished"; at: string; status: string; durationMs?: number; message?: string }
   | { type: "process-finished"; at: string; status: string; durationMs?: number; message?: string }
   | { type: "log"; at: string; stream: "stdout" | "stderr"; message: string };
@@ -52,12 +75,16 @@ async function json<T>(path: string, init?: RequestInit): Promise<T> {
   return value;
 }
 
-export async function localStatus(): Promise<{ local: true; setup: SetupInfo; activeRun: { id: string; mode: "write" | "check" } | null }> {
+export async function localStatus(): Promise<{ local: true; setup: SetupInfo; activeRun: { id: string; mode: "write" | "check" | "preview" } | null }> {
   return json("/status");
 }
 
 export async function discover(path: string): Promise<Discovery> {
   return json("/discover", { method: "POST", headers: LOCAL_HEADER, body: JSON.stringify({ path }) });
+}
+
+export async function inspectRepository(repository: string, ref: string, sourcePath: string): Promise<RepositoryInspection> {
+  return json("/repositories/prepare", { method: "POST", headers: LOCAL_HEADER, body: JSON.stringify({ repository, ref, sourcePath }) });
 }
 
 export async function previewProject(draft: ProjectDraft): Promise<ProjectPlan> {
@@ -68,8 +95,8 @@ export async function addProject(draft: ProjectDraft): Promise<ProjectPlan & { s
   return json("/projects", { method: "POST", headers: LOCAL_HEADER, body: JSON.stringify(draft) });
 }
 
-export async function startGeneration(mode: "write" | "check" = "write"): Promise<{ runId: string; mode: "write" | "check" }> {
-  return json("/runs", { method: "POST", headers: LOCAL_HEADER, body: JSON.stringify({ mode }) });
+export async function startGeneration(mode: "write" | "check" | "preview" = "preview", previewRunId?: string): Promise<{ runId: string; mode: "write" | "check" | "preview" }> {
+  return json("/runs", { method: "POST", headers: LOCAL_HEADER, body: JSON.stringify({ mode, previewRunId }) });
 }
 
 export async function cancelGeneration(runId: string): Promise<void> {

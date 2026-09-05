@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { rmSync } from "node:fs";
 
-import { discoverProject, planProject, writeProject } from "./local-api.mjs";
+import { diffGeneratedFiles, discoverProject, inspectionRoot, planProject, writeProject } from "./local-api.mjs";
 
 const roots = [];
 afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
@@ -34,6 +34,9 @@ describe("local project setup", () => {
     const discovery = discoverProject(root, "services/billing");
     expect(discovery.defaults).toEqual({ id: "billing", name: "Billing", context: "billing", service: "billing" });
     expect(discovery.detections.map((item) => item.plugin)).toEqual(["go-domain", "openapi", "sql", "adr"]);
+    expect(discovery.detections.find((item) => item.plugin === "openapi")?.options).toEqual({ spec: "api/openapi.yaml" });
+    expect(discovery.detections.find((item) => item.plugin === "sql")?.options).toEqual({});
+    expect(discovery.detections.find((item) => item.plugin === "adr")?.options).toEqual({ files: ["docs/adr/*.md"] });
   });
 
   it("refuses paths that escape through a symlink", () => {
@@ -64,5 +67,45 @@ describe("local project setup", () => {
     expect(manifest.sources).toContain("services/billing/portolan/*.json");
     expect(manifest.extract.map((step) => step.plugin)).toEqual(["go-domain", "openapi"]);
     expect(() => writeProject(root, { ...request, id: "another" })).toThrow(/already exists/);
+  });
+
+  it("plans a pinned external repository through the built-in git fetcher", () => {
+    const root = workspace();
+    const repository = "https://github.com/acme/platform.git";
+    const commit = "a".repeat(40);
+    const sourcePath = "services/payments";
+    const inspected = join(root, inspectionRoot(repository, commit, sourcePath));
+    mkdirSync(inspected, { recursive: true });
+    writeFileSync(join(inspected, "go.mod"), "module github.com/acme/platform/services/payments\n");
+    const manifest = JSON.parse(readFileSync(join(root, "portolan.json"), "utf8"));
+    manifest.plugins.push({ name: "git", process: { command: "true" } });
+    writeFileSync(join(root, "portolan.json"), `${JSON.stringify(manifest, null, 2)}\n`);
+    const request = { source: "external", root: "", repository, ref: "main", commit, sourcePath, id: "payments", name: "Payments", context: "payments", service: "payments", plugins: ["go-domain"] };
+    const plan = planProject(root, manifest, request);
+    expect(plan.project.root).toBe("vendor/repos/acme/platform/services/payments");
+    expect(plan.fetch).toEqual({ repo: repository, commit, paths: [sourcePath] });
+    expect(plan.steps[0].options.repo).toBe("github.com/acme/platform");
+    writeProject(root, request);
+    const written = JSON.parse(readFileSync(join(root, "portolan.json"), "utf8"));
+    expect(written.extract[0].plugin).toBe("git");
+    expect(written.sources).toContain("vendor/repos/*/*/git.repo.json");
+  });
+
+  it("renders generated file additions and changes without touching the workspace", () => {
+    const root = workspace();
+    const snapshot = mkdtempSync(join(tmpdir(), "portolan-preview-snapshot-"));
+    roots.push(snapshot);
+    mkdirSync(join(root, "docs"), { recursive: true });
+    mkdirSync(join(snapshot, "docs"), { recursive: true });
+    writeFileSync(join(root, "docs/service.md"), "before\n");
+    writeFileSync(join(snapshot, "docs/service.md"), "after\n");
+    writeFileSync(join(snapshot, "docs/new.md"), "new\n");
+    const result = diffGeneratedFiles(root, snapshot, [{ type: "step-finished", changes: [{ kind: "changed", path: "docs/service.md" }, { kind: "added", path: "docs/new.md" }] }]);
+    expect(result.totalFiles).toBe(2);
+    expect(result.files[0].diff).toContain("diff --git a/docs/service.md b/docs/service.md");
+    expect(result.files[0].diff).toContain("-before");
+    expect(result.files[0].diff).toContain("+after");
+    expect(result.files[1]).toMatchObject({ path: "docs/new.md", status: "added" });
+    expect(readFileSync(join(root, "docs/service.md"), "utf8")).toBe("before\n");
   });
 });

@@ -119,6 +119,12 @@ const setupInfo = publicSetupFrom(
 // Locally (and for a root-domain deploy) it stays "/".
 export default defineConfig({
   base: env.BASE_PATH ?? "/",
+  server: {
+    // External repositories are inspected and generator previews run under
+    // .portolan. Their tsconfig files and generated output are inputs to the
+    // local control plane, not another Vite application to hot-reload.
+    watch: { ignored: ["**/.portolan/**"] },
+  },
   define: {
     __BUILD_INFO__: JSON.stringify(buildInfo),
     __SETUP_INFO__: JSON.stringify(setupInfo),

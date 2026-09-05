@@ -61,6 +61,12 @@ describe("sourceHref", () => {
     );
   });
 
+  it("removes the local vendoring prefix from an external source", () => {
+    expect(sourceHref("vendor/repos/acme/shop/services/oms/app/checkout.go:104", shop, PINS, GH)).toBe(
+      "https://github.com/acme/shop/blob/c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0/services/oms/app/checkout.go#L104",
+    );
+  });
+
   it("reads a pin however the repository was spelled", () => {
     const pins: RepoPin[] = [{ repo: "https://GitHub.com/acme/shop.git", commit: "abc1234" }];
     expect(sourceHref("services/oms/app/checkout.go", shop, pins, GH)).toBe(
@@ -99,6 +105,12 @@ describe("treeHref", () => {
 
   it("opens a vendored service's directory in the repository it came from", () => {
     expect(treeHref("services/oms", shop, PINS, GH)).toBe(
+      "https://github.com/acme/shop/tree/c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0/services/oms",
+    );
+  });
+
+  it("removes the local vendoring prefix from an external tree", () => {
+    expect(treeHref("vendor/repos/acme/shop/services/oms", shop, PINS, GH)).toBe(
       "https://github.com/acme/shop/tree/c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0/services/oms",
     );
   });

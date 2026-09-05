@@ -167,6 +167,7 @@ async function executeStep(phase, step, label, work) {
       durationMs: Date.now() - startedAt,
       fileCount: files.length,
       changedCount: changes.length,
+      changes,
       files: files.map((file) => join(step.out, file.name)),
     };
     addBuildStep(report, result);
@@ -182,6 +183,7 @@ async function executeStep(phase, step, label, work) {
       durationMs: Date.now() - startedAt,
       fileCount: 0,
       changedCount: 0,
+      changes: [],
       files: [],
     };
     addBuildStep(report, result);
@@ -225,7 +227,7 @@ function summarise(label, files, changes) {
   }
 
   console.error(`${summary}, ${changes.length} out of date:`);
-  for (const change of changes.slice(0, 20)) console.error(`  ${change}`);
+  for (const change of changes.slice(0, 20)) console.error(`  ${change.kind.padEnd(8)} ${change.path}`);
   if (changes.length > 20) console.error(`  ... and ${changes.length - 20} more`);
 
   return true;
@@ -298,7 +300,7 @@ function stampFor(root, out) {
     }
   }
 
-  return { commit: "uncommitted", generatedAt: new Date().toISOString() };
+  return { commit: "uncommitted", generatedAt: process.env.PORTOLAN_GENERATED_AT || new Date().toISOString() };
 }
 
 /** Whether the history this runs against is truncated. */
@@ -343,7 +345,7 @@ function apply(files, out, step, checkOnly) {
 
     if (current === file.contents) continue;
 
-    changes.push(`${current === null ? "added   " : "changed "} ${join(out, file.name)}`);
+    changes.push({ kind: current === null ? "added" : "changed", path: join(out, file.name) });
     if (checkOnly) continue;
 
     try {
@@ -363,7 +365,7 @@ function apply(files, out, step, checkOnly) {
   for (const stale of (listing[step] ?? []).filter(
     (name) => !written.has(name) && !claimedByOthers.has(name),
   )) {
-    changes.push(`removed  ${join(out, stale)}`);
+    changes.push({ kind: "removed", path: join(out, stale) });
     if (checkOnly) continue;
 
     try {
