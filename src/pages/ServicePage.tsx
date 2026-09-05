@@ -12,6 +12,7 @@ import { Markdown } from "../components/Markdown";
 import { middleTruncate, plural } from "../lib/format";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
 import { Ident } from "../components/Ident";
+import { TAB_CLASS, TabCount, TabRow } from "../components/TabRow";
 import { MessageList, MethodRows } from "../components/MethodRows";
 import { docPathOf, pickSpec } from "../lib/source-doc";
 import { ApiReference, hasSpec } from "../components/ApiReference";
@@ -182,26 +183,24 @@ export function ServicePage() {
         {/* Tabs keep the underline rather than becoming a segmented box: they
             switch the page under them, they do not filter a list beside them.
             The 2px rule is always drawn, transparent when idle, so selecting a
-            tab never lifts the row. */}
-        <TabList className="mt-4 flex gap-0">
-          {TABS.map((t) => (
-            <Tab
-              key={t}
-              className={({ selected }) =>
-                `mono rounded-t-control border-b-2 px-3 py-1.5 t-micro transition-colors focus:outline-none ${
-                  selected
-                    ? "border-accent text-ink"
-                    : "border-transparent text-muted hover:text-ink"
-                }`
-              }
-            >
-              {t}
-              {counts[t] !== null ? (
-                <span className="tnum ml-1.5 text-muted">{counts[t]}</span>
-              ) : null}
-            </Tab>
-          ))}
-        </TabList>
+            tab never lifts the row.
+
+            Eight of them do not fit a narrow window, so the row scrolls inside
+            `TabRow` and says at its edge that it does. */}
+        <div className="mt-4">
+          <TabRow active={tab}>
+            <TabList className="flex w-max gap-0">
+              {TABS.map((t) => (
+                <Tab key={t} className={({ selected }) => TAB_CLASS(selected)}>
+                  {t}
+                  {counts[t] !== null ? (
+                    <TabCount>{counts[t]}</TabCount>
+                  ) : null}
+                </Tab>
+              ))}
+            </TabList>
+          </TabRow>
+        </div>
       </PageHeader>
 
       <TabPanels className="p-gutter">

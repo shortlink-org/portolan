@@ -4,6 +4,7 @@ import { Link, useParams, useSearchParams } from "react-router";
 import { catalog, index } from "../data";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
 import { Ident } from "../components/Ident";
+import { TAB_CLASS, TabCount, TabRow } from "../components/TabRow";
 import { KindIcon } from "../components/kind";
 import { MessageList, MethodRows } from "../components/MethodRows";
 import { RowActions } from "../components/RowActions";
@@ -120,29 +121,26 @@ export function ModulePage() {
           )}
         </div>
 
-        {/* The same underline the service page uses: these tabs switch the page
-            under them rather than filtering a list beside it. */}
-        <TabList className="mt-4 flex gap-0">
-          {TABS.map((name) => (
-            <Tab
-              key={name}
-              className={({ selected }) =>
-                `mono rounded-t-control border-b-2 px-3 py-1.5 t-micro transition-colors focus:outline-none ${
-                  selected
-                    ? "border-accent text-ink"
-                    : "border-transparent text-muted hover:text-ink"
-                }`
-              }
-            >
-              {name}
-              {tabCounts[name] !== null ? (
-                <span className="tnum ml-1.5 text-muted">
-                  {tabCounts[name]}
-                </span>
-              ) : null}
-            </Tab>
-          ))}
-        </TabList>
+        {/* The same underline the service page uses, and the same scrolling
+            strip: these tabs switch the page under them rather than filtering
+            a list beside it, and they run out of row at the same width. */}
+        <div className="mt-4">
+          <TabRow active={tab}>
+            <TabList className="flex w-max gap-0">
+              {TABS.map((name) => (
+                <Tab
+                  key={name}
+                  className={({ selected }) => TAB_CLASS(selected)}
+                >
+                  {name}
+                  {tabCounts[name] !== null ? (
+                    <TabCount>{tabCounts[name]}</TabCount>
+                  ) : null}
+                </Tab>
+              ))}
+            </TabList>
+          </TabRow>
+        </div>
       </PageHeader>
 
       <TabPanels className="p-gutter">

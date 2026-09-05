@@ -1183,6 +1183,20 @@ h3 {
   scrollbar-color: var(--scroll-thumb) transparent;
 }
 
+/* One exception, and it sits after the rule it overrides rather than inside
+   the components layer, which an unlayered rule would outrank: the strip a tab
+   list scrolls inside has no scrollbar at all. The fade and the chevron at its
+   edge already say the row continues, and an 8px bar under eight tabs said it
+   a second time in the space the tabs were short of. */
+.tab-scroll,
+.tab-scroll[class*="overflow-x-auto"] {
+  scrollbar-width: none;
+}
+.tab-scroll::-webkit-scrollbar {
+  height: 0;
+  width: 0;
+}
+
 /* ---------------------------------------------------------------------------
    A document drawn by somebody else's component - the AsyncAPI reference.
    
