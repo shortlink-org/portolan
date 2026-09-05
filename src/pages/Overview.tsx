@@ -162,7 +162,13 @@ export function Overview() {
             return (
               <div
                 key={context.id}
-                className="card card-tagged stagger-in"
+                /* A subgrid of the row it sits in: the title, the summary and
+                   the counts each take one track, so the counts stand on the
+                   same line in every card of a row instead of hanging under
+                   each summary's own last sentence. The inner gap is zeroed
+                   because a subgrid inherits the grid's, and the margins on
+                   the rows already say how far apart they sit. */
+                className="card card-tagged stagger-in grid grid-rows-subgrid row-span-3 gap-y-0"
                 style={{ ...staggerStyle(i), ...ctxStyle(context.id) }}
               >
                 {/* Wraps: with a name, an id, the row actions and up to two
@@ -208,7 +214,7 @@ export function Overview() {
                   </span>
                 </div>
                 <p className="mt-2 text-muted">{context.summary}</p>
-                <div className="mono mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 whitespace-nowrap text-muted">
+                <div className="mono mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 self-end whitespace-nowrap text-muted">
                   <Count
                     value={stats.services}
                     unit="service"
