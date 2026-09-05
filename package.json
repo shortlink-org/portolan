@@ -18,7 +18,8 @@
     "schema": "npm run plugins:build && node scripts/schema.mjs",
     "schema:check": "npm run plugins:build && node scripts/schema.mjs --check",
     "gen": "npm run plugins:build && node scripts/gen.mjs",
-    "gen:check": "npm run plugins:build && node scripts/gen.mjs --check"
+    "gen:check": "npm run plugins:build && node scripts/gen.mjs --check",
+    "diff": "node scripts/diff.mjs"
   },
   "dependencies": {
     "@asyncapi/react-component": "^3.1.8",

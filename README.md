@@ -104,6 +104,7 @@ npm run dev
 ```bash
 npm run gen          # run extract → verify → generate over portolan.json
 npm run gen:check    # fail if what is committed no longer follows from the catalog
+npm run diff         # what this branch changes about the architecture
 npm run schema       # recompose the manifest schema from the plugins
 npm test             # vitest; npm run test:go for the Go catalog mirror
 npm run build        # likec4:gen + tsc --noEmit + vite build
@@ -111,3 +112,36 @@ npm run build        # likec4:gen + tsc --noEmit + vite build
 
 Generated output is committed, so a change to it shows up in a diff; CI runs the
 `--check` variants to keep it honest.
+
+## Reviewing a change
+
+`gen:check` proves the documentation follows from the catalog. It says nothing
+about what a change *does*, and the diff it leaves a reviewer with is a hundred
+markdown pages — a shape nobody reads and everybody approves.
+
+```bash
+npm run diff             # against origin/main
+npm run diff -- v0.3.0   # against any commit, tag or branch
+```
+
+```
+### Architecture, against `origin/main`
+
+3 changes.
+
+**Breaking** (1)
+
+- shop.oms.order.OrderPlaced is gone, and 2 consumed it
+
+**Added** (2)
+
+- shop.oms.order.OrderAccepted is published, and nothing consumes it
+- shop.oms/Confirm is new
+```
+
+Nothing is rebuilt to produce it. Every source a plugin writes is committed —
+that is what `gen:check` is for — so the estate as it stood at any commit is a
+handful of `git show`s away, needing no checkout, no toolchain and no second
+run of the extractors. `src/lib/catalog-diff.ts` is the comparison itself, kept
+apart from the command that prints it because "what did this break" is the same
+question a page will want to ask.
