@@ -705,6 +705,13 @@
     padding-top: calc(var(--gutter) + 4px);
     margin-top: calc(-1 * (var(--gutter) + 4px));
     background: var(--bg);
+    /* The rule a readme's h2 has had all along, which is the footing this
+       heading was written to share. Unpinned it divides the page; pinned it is
+       the edge the section passes under, without which the content slides
+       against the words. A shadow rather than a border, for the reason the
+       page bar gives: a border is a pixel of height, and the section would
+       move by it. */
+    box-shadow: 0 1px 0 var(--border);
   }
 
   /* The flow page's one bar. Wraps rather than scrolls: a control that has
@@ -1249,14 +1256,19 @@ h3 {
    section scrolls under it, just below the page's pinned name row. Sticky
    within the readme, so every heading pins at the same edge and the next one
    simply covers the last - which is why it is opaque. */
+/* Pinned a gutter higher than it reads, for the reason `.section-head` is:
+   sticky measures from the scrollport's padding box, so at `top: 0` the box's
+   own gutter is left uncovered and prose scrolls visibly through the strip
+   above the heading. The padding puts the text back where it was. */
 .prose h2 {
   position: sticky;
-  top: var(--page-header-h, 0px);
+  top: calc(var(--page-header-h, 0px) - var(--gutter));
   z-index: 10;
   background: var(--bg);
   font-size: var(--text-md);
   font-weight: 600;
-  margin: 24px 0 8px;
+  margin: calc(24px - var(--gutter)) 0 8px;
+  padding-top: var(--gutter);
   padding-bottom: 4px;
   border-bottom: 1px solid var(--border);
 }
