@@ -123,7 +123,6 @@ Every link below is a markdown page beside this file. [llms-full.txt](llms-full.
 
 ## Optional
 
-- [Shared types](types.md): types named by more than one aggregate, event or message
 - [Auth database](auth/auth/stores/pg.md): postgres store of [Authentication & Sessions](auth/auth/README.md). 3 tables
 - [Ledger database](payments/ledger/stores/pg.md): postgres store of [Ledger](payments/ledger/README.md). 3 tables
 - [Billing database](shop/billing/stores/pg.md): postgres store of [Billing](shop/billing/README.md). 2 tables

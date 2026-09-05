@@ -123,7 +123,6 @@
     "shop/pricing/stores/pg.md",
     "storefront/README.md",
     "storefront/bff/README.md",
-    "storefront/glossary.md",
-    "types.md"
+    "storefront/glossary.md"
   ]
 }

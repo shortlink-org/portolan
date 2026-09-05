@@ -177,11 +177,10 @@ func messagesFrom(ix *Index, queue []string, seen map[string]bool, sh *shared, w
 // promote records a message as a shared type and returns its defs key.
 //
 // The key is the message's BARE name - `Money`, not `shop.v1.Money`. That is
-// what data/catalog.json uses, and more importantly it is what src/merge.ts
-// argues for at length: bare keys are deliberate, so that two sources meaning
-// different things by `Money` produce a visible conflict instead of two quietly
-// coexisting entries. Fully-qualified keys would hide exactly the problem the
-// merge exists to expose.
+// what src/merge.ts argues for at length: bare keys are deliberate, so that two
+// sources meaning different things by `Money` produce a visible conflict
+// instead of two quietly coexisting entries. Fully-qualified keys would hide
+// exactly the problem the merge exists to expose.
 func (sh *shared) promote(ix *Index, fqn, where string, b *plugin.Builder) string {
 	key := shortName(fqn)
 
@@ -213,7 +212,7 @@ func (sh *shared) promote(ix *Index, fqn, where string, b *plugin.Builder) strin
 
 // sourceRef is where a declaration lives, as a reader would type it:
 // `proto/shop/v1/orders.proto:12`. Already the format `RpcService.source`
-// documents and the one data/catalog.json was hand-written with.
+// documents.
 func sourceRef(path string, line int) string {
 	return filepath.ToSlash(path) + ":" + strconv.Itoa(line)
 }

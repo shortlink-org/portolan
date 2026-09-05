@@ -14,9 +14,8 @@ import (
 // interfaceID is what a service in a .proto is called across the catalog:
 // its proto package and its name. `shop.v1.Orders`.
 //
-// This is already the spelling `RpcService.id` documents and the one
-// `data/catalog.json` was hand-written with, so a proto read here lands beside
-// interfaces that were typed by hand.
+// This is already the spelling `RpcService.id` documents, so a proto read here
+// lands beside interfaces every other extractor names the same way.
 func interfaceID(pkg, service string) string {
 	if pkg == "" {
 		return service

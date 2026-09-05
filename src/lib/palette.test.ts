@@ -14,11 +14,13 @@ const kinds = (raw: string) => new Set(rows(raw).map((i) => i.kind));
 describe("palette index", () => {
   it("indexes every kind, and every row goes somewhere real", () => {
     // Against what the app ships: the routes are built from the live catalog,
-    // and a row of the frozen estate has nowhere real to go.
+    // and a row of the frozen estate has nowhere real to go. `def` is absent
+    // because nothing in the estate shares a type yet - `extract-proto` promotes
+    // a message the moment two services name it, and until then the kind has no
+    // rows. The frozen estate below covers it.
     const items = paletteItems(shipped);
     expect(new Set(items.map((i) => i.kind))).toEqual(
       new Set([
-        "def",
         "endpoint",
         "context",
         "service",

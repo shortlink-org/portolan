@@ -77,8 +77,7 @@ func service(t *testing.T) catalog.Service {
 }
 
 // A proto service is an interface, named by its package and its own name -
-// already the spelling RpcService.id documents and the one data/catalog.json
-// was hand-written with.
+// already the spelling RpcService.id documents.
 func TestProtoServiceBecomesAnInterface(t *testing.T) {
 	provides := service(t).Provides
 

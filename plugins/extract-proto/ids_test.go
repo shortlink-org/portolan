@@ -42,7 +42,7 @@ func TestSlugIsUrlSafe(t *testing.T) {
 	}
 }
 
-// The ids the catalog joins on, spelled the way data/catalog.json spells them.
+// The ids the catalog joins on, spelled the way RpcService.id documents.
 func TestInterfaceAndCallIds(t *testing.T) {
 	if got := interfaceID("shop.v1", "Orders"); got != "shop.v1.Orders" {
 		t.Errorf("interface id: %q", got)
