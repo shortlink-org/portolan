@@ -7,6 +7,9 @@ service RouteService {
   // Build a day out of the shipments waiting to go out.
   rpc PlanRoute(PlanRouteRequest) returns (PlanRouteResponse);
 
+  // The van is out.
+  rpc StartRoute(StartRouteRequest) returns (StartRouteResponse);
+
   // End the day, whatever is left undone.
   rpc CloseRoute(CloseRouteRequest) returns (CloseRouteResponse);
 
@@ -23,6 +26,14 @@ message PlanRouteRequest {
 message PlanRouteResponse {
   string route_id = 1;
   int32 stops = 2;
+}
+
+message StartRouteRequest {
+  string route_id = 1;
+}
+
+message StartRouteResponse {
+  string route_id = 1;
 }
 
 message CloseRouteRequest {

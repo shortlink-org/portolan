@@ -1,6 +1,6 @@
 # Plan route
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
 
 - **Id:** `flow.core-plan-route`
 - **Owner:** [delivery](../delivery/README.md)
@@ -37,7 +37,7 @@ sequenceDiagram
 ## Steps
 
 1. **client** → **delivery.core** — PlanRoute → PlanRouteResponse
-   status: declared · `examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:14`
+   status: declared · `examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:16`
 2. **delivery.core** → **core-pg** — byId
    status: declared · `examples/shop/delivery/core/src/application/route/usecases/plan_route/usecase.ts:27` · inside a loop over `shipmentIds`.
 3. **delivery.core** → **core-pg** — save

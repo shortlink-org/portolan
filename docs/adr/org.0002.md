@@ -1,6 +1,6 @@
 # org.0002 — Domain event schema version is encoded in the package path (events/v1)
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2025-05-02

@@ -240,6 +240,12 @@
                   "response": "PlanRouteResponse"
                 },
                 {
+                  "name": "StartRoute",
+                  "doc": "The van is out.",
+                  "request": "StartRouteRequest",
+                  "response": "StartRouteResponse"
+                },
+                {
                   "name": "CloseRoute",
                   "doc": "End the day, whatever is left undone.",
                   "request": "CloseRouteRequest",
@@ -285,6 +291,26 @@
                     {
                       "name": "stops",
                       "type": "int32",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "StartRouteRequest",
+                  "fields": [
+                    {
+                      "name": "route_id",
+                      "type": "string",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "StartRouteResponse",
+                  "fields": [
+                    {
+                      "name": "route_id",
+                      "type": "string",
                       "doc": ""
                     }
                   ]

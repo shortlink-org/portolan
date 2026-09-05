@@ -1,6 +1,6 @@
 # auth.0009 — A locked account answers exactly like a wrong password
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-04

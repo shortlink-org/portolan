@@ -1,0 +1,114 @@
+{
+  "generatedAt": "2026-09-05T15:32:22+07:00",
+  "commit": "ef19b9c",
+  "contexts": [],
+  "defs": {},
+  "flows": [],
+  "adrs": [],
+  "terms": [
+    {
+      "id": "delivery.address",
+      "slug": "address",
+      "context": "delivery",
+      "name": "Address",
+      "definition": "Where a parcel is going, as the warehouse needs it. A value, copied from the order at dispatch and never refreshed: a parcel already on a van does not move because somebody edited their profile.",
+      "source": "examples/shop/delivery/core/GLOSSARY.md:5"
+    },
+    {
+      "id": "delivery.awaiting-payment",
+      "slug": "awaiting-payment",
+      "context": "delivery",
+      "name": "Awaiting payment",
+      "definition": "Where every shipment starts. Nothing leaves the warehouse before the ledger says the money moved (ADR core.0002).",
+      "source": "examples/shop/delivery/core/GLOSSARY.md:9"
+    },
+    {
+      "id": "delivery.dispatch",
+      "slug": "dispatch",
+      "context": "delivery",
+      "name": "Dispatch",
+      "definition": "Handing a planned shipment's parcels to the carrier, under a tracking code. The order is asked once more first; a cancelled order's shipment is written off instead.",
+      "source": "examples/shop/delivery/core/GLOSSARY.md:12"
+    },
+    {
+      "id": "delivery.order",
+      "slug": "order",
+      "context": "delivery",
+      "name": "Order",
+      "definition": "What the shipment is for. Another context owns it, so it is an id here and a question asked over its contract. The table `packages` keeps a foreign key into it, knowingly (ADR core.0001).",
+      "source": "examples/shop/delivery/core/GLOSSARY.md:16"
+    },
+    {
+      "id": "delivery.package",
+      "slug": "package",
+      "context": "delivery",
+      "name": "Package",
+      "definition": "The row a shipment is kept in. The table's word, not the domain's; the domain says shipment.",
+      "source": "examples/shop/delivery/core/GLOSSARY.md:20"
+    },
+    {
+      "id": "delivery.parcel",
+      "slug": "parcel",
+      "context": "delivery",
+      "name": "Parcel",
+      "definition": "One box. A shipment is one or more of them, and each is scanned on its own, which is why a parcel is an entity: it is followed over time.",
+      "source": "examples/shop/delivery/core/GLOSSARY.md:23"
+    },
+    {
+      "id": "delivery.released",
+      "slug": "released",
+      "context": "delivery",
+      "name": "Released",
+      "definition": "The money moved; the shipment may be planned onto a route and dispatched. Said by this service, not by the ledger.",
+      "source": "examples/shop/delivery/core/GLOSSARY.md:26"
+    },
+    {
+      "id": "delivery.route",
+      "slug": "route",
+      "context": "delivery",
+      "name": "Route",
+      "definition": "One van, one day, in the order the stops are driven. The order of the stops is the route: changing it is planning a new one.",
+      "source": "examples/shop/delivery/core/GLOSSARY.md:29"
+    },
+    {
+      "id": "delivery.scan",
+      "slug": "scan",
+      "context": "delivery",
+      "name": "Scan",
+      "definition": "One sighting of one parcel: where and when. Append-only; a wrong scan is followed by a right one, and the pair is the history. The first scan after dispatch moves the shipment; the rest do not.",
+      "source": "examples/shop/delivery/core/GLOSSARY.md:32"
+    },
+    {
+      "id": "delivery.shipment",
+      "slug": "shipment",
+      "context": "delivery",
+      "name": "Shipment",
+      "definition": "What is being carried to one address for one order. The aggregate root; its status moves only the way its lifecycle table allows.",
+      "source": "examples/shop/delivery/core/GLOSSARY.md:36"
+    },
+    {
+      "id": "delivery.stop",
+      "slug": "stop",
+      "context": "delivery",
+      "name": "Stop",
+      "definition": "One place a van stops and what it drops there. Carries a copy of the shipment's address, itself a copy of the order's.",
+      "source": "examples/shop/delivery/core/GLOSSARY.md:39"
+    },
+    {
+      "id": "delivery.tracking-code",
+      "slug": "tracking-code",
+      "context": "delivery",
+      "name": "Tracking code",
+      "definition": "What the customer types into a carrier's site. The carrier owns the format; this service only refuses what obviously cannot be one. Also the whole credential for the tracking page.",
+      "source": "examples/shop/delivery/core/GLOSSARY.md:42"
+    },
+    {
+      "id": "delivery.window",
+      "slug": "window",
+      "context": "delivery",
+      "name": "Window",
+      "definition": "When a van is expected somewhere, as the two ends of a promise to a person.",
+      "source": "examples/shop/delivery/core/GLOSSARY.md:46"
+    }
+  ]
+}

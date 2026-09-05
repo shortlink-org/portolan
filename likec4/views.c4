@@ -1266,15 +1266,19 @@ views {
     description 'Ends the day, whatever is left undone.'
     client -> delivery.core 'CloseRoute → CloseRouteResponse' {
       color declared  line dashed  head normal
-      notes 'examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:21'
+      notes 'examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:30'
     }
     delivery.core -> core_pg 'byId' {
       color declared  line dashed  head none
-      notes 'examples/shop/delivery/core/src/application/route/usecases/close_route/usecase.ts:8'
+      notes 'examples/shop/delivery/core/src/application/route/usecases/close_route/usecase.ts:11'
     }
     delivery.core -> core_pg 'save' {
       color declared  line dashed  head none
-      notes 'examples/shop/delivery/core/src/application/route/usecases/close_route/usecase.ts:10'
+      notes 'examples/shop/delivery/core/src/application/route/usecases/close_route/usecase.ts:13'
+    }
+    delivery.core -> bus 'RouteClosed' {
+      color declared  line dashed  head onormal
+      notes 'examples/shop/delivery/core/src/application/route/usecases/close_route/usecase.ts:13'
     }
   }
 
@@ -1282,7 +1286,11 @@ views {
     title 'Close route — crossings only'
     client -> delivery.core 'CloseRoute → CloseRouteResponse' {
       color declared  line dashed  head normal
-      notes 'examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:21'
+      notes 'examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:30'
+    }
+    delivery.core -> bus 'RouteClosed' {
+      color declared  line dashed  head onormal
+      notes 'examples/shop/delivery/core/src/application/route/usecases/close_route/usecase.ts:13'
     }
   }
 
@@ -1295,18 +1303,22 @@ views {
     }
     delivery.core -> core_pg 'byId' {
       color declared  line dashed  head none
-      notes 'examples/shop/delivery/core/src/application/shipment/usecases/dispatch/usecase.ts:27'
+      notes 'examples/shop/delivery/core/src/application/shipment/usecases/dispatch/usecase.ts:31'
     }
     delivery.core -> shop.oms 'GetOrder → GetOrderResponse' {
       color declared  line dashed  head normal
-      notes 'examples/shop/delivery/core/src/application/shipment/usecases/dispatch/usecase.ts:28'
+      notes 'examples/shop/delivery/core/src/application/shipment/usecases/dispatch/usecase.ts:32'
     }
     alt {
-      when 'order.status === "cancelled"' {
+      when 'standing === "cancelled"' {
         break 'ends the flow' {
           delivery.core -> core_pg 'save' {
             color declared  line dashed  head none
-            notes 'examples/shop/delivery/core/src/application/shipment/usecases/dispatch/usecase.ts:32'
+            notes 'examples/shop/delivery/core/src/application/shipment/usecases/dispatch/usecase.ts:36'
+          }
+          delivery.core -> bus 'ShipmentLost' {
+            color declared  line dashed  head onormal
+            notes 'examples/shop/delivery/core/src/application/shipment/usecases/dispatch/usecase.ts:36'
           }
         }
       }
@@ -1315,11 +1327,11 @@ views {
     }
     delivery.core -> core_pg 'save' {
       color declared  line dashed  head none
-      notes 'examples/shop/delivery/core/src/application/shipment/usecases/dispatch/usecase.ts:37'
+      notes 'examples/shop/delivery/core/src/application/shipment/usecases/dispatch/usecase.ts:41'
     }
     delivery.core -> bus 'ShipmentDispatched' {
       color declared  line dashed  head onormal
-      notes 'examples/shop/delivery/core/src/application/shipment/usecases/dispatch/usecase.ts:37'
+      notes 'examples/shop/delivery/core/src/application/shipment/usecases/dispatch/usecase.ts:41'
     }
     delivery.core -> core_pg 'byId' {
       color declared  line dashed  head none
@@ -1335,11 +1347,21 @@ views {
     }
     delivery.core -> shop.oms 'GetOrder → GetOrderResponse' {
       color declared  line dashed  head normal
-      notes 'examples/shop/delivery/core/src/application/shipment/usecases/dispatch/usecase.ts:28'
+      notes 'examples/shop/delivery/core/src/application/shipment/usecases/dispatch/usecase.ts:32'
+    }
+    alt {
+      when 'standing === "cancelled"' {
+        break 'ends the flow' {
+          delivery.core -> bus 'ShipmentLost' {
+            color declared  line dashed  head onormal
+            notes 'examples/shop/delivery/core/src/application/shipment/usecases/dispatch/usecase.ts:36'
+          }
+        }
+      }
     }
     delivery.core -> bus 'ShipmentDispatched' {
       color declared  line dashed  head onormal
-      notes 'examples/shop/delivery/core/src/application/shipment/usecases/dispatch/usecase.ts:37'
+      notes 'examples/shop/delivery/core/src/application/shipment/usecases/dispatch/usecase.ts:41'
     }
   }
 
@@ -1348,7 +1370,7 @@ views {
     description 'One route, as the depot reads it.'
     client -> delivery.core 'GetRoute → GetRouteResponse' {
       color declared  line dashed  head normal
-      notes 'examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:28'
+      notes 'examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:37'
     }
     delivery.core -> core_pg 'byId' {
       color declared  line dashed  head none
@@ -1360,7 +1382,7 @@ views {
     title 'Get route — crossings only'
     client -> delivery.core 'GetRoute → GetRouteResponse' {
       color declared  line dashed  head normal
-      notes 'examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:28'
+      notes 'examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:37'
     }
   }
 
@@ -1390,7 +1412,7 @@ views {
     description 'Builds a van\'s day out of the shipments waiting to go out.'
     client -> delivery.core 'PlanRoute → PlanRouteResponse' {
       color declared  line dashed  head normal
-      notes 'examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:14'
+      notes 'examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:16'
     }
     delivery.core -> core_pg 'byId' {
       color declared  line dashed  head none
@@ -1418,7 +1440,7 @@ views {
     title 'Plan route — crossings only'
     client -> delivery.core 'PlanRoute → PlanRouteResponse' {
       color declared  line dashed  head normal
-      notes 'examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:14'
+      notes 'examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:16'
     }
     delivery.core -> bus 'RoutePlanned' {
       color declared  line dashed  head onormal
@@ -1468,11 +1490,27 @@ views {
     }
     delivery.core -> core_pg 'byId' {
       color declared  line dashed  head none
-      notes 'examples/shop/delivery/core/src/application/shipment/usecases/record_scan/usecase.ts:16'
+      notes 'examples/shop/delivery/core/src/application/shipment/usecases/record_scan/usecase.ts:17'
+    }
+    alt {
+      when 'moved' {
+        break 'ends the flow' {
+          delivery.core -> core_pg 'save' {
+            color declared  line dashed  head none
+            notes 'examples/shop/delivery/core/src/application/shipment/usecases/record_scan/usecase.ts:20'
+          }
+          delivery.core -> bus 'ShipmentInTransit' {
+            color declared  line dashed  head onormal
+            notes 'examples/shop/delivery/core/src/application/shipment/usecases/record_scan/usecase.ts:20'
+          }
+        }
+      }
+      else 'otherwise' {
+      }
     }
     delivery.core -> core_pg 'save' {
       color declared  line dashed  head none
-      notes 'examples/shop/delivery/core/src/application/shipment/usecases/record_scan/usecase.ts:18'
+      notes 'examples/shop/delivery/core/src/application/shipment/usecases/record_scan/usecase.ts:23'
     }
   }
 
@@ -1481,6 +1519,49 @@ views {
     client -> delivery.core 'RecordScan → RecordScanResponse' {
       color declared  line dashed  head normal
       notes 'examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:29'
+    }
+    alt {
+      when 'moved' {
+        break 'ends the flow' {
+          delivery.core -> bus 'ShipmentInTransit' {
+            color declared  line dashed  head onormal
+            notes 'examples/shop/delivery/core/src/application/shipment/usecases/record_scan/usecase.ts:20'
+          }
+        }
+      }
+    }
+  }
+
+  dynamic view flow_core_start_route {
+    title 'Start route'
+    description 'The van is out.'
+    client -> delivery.core 'StartRoute → StartRouteResponse' {
+      color declared  line dashed  head normal
+      notes 'examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:23'
+    }
+    delivery.core -> core_pg 'byId' {
+      color declared  line dashed  head none
+      notes 'examples/shop/delivery/core/src/application/route/usecases/start_route/usecase.ts:11'
+    }
+    delivery.core -> core_pg 'save' {
+      color declared  line dashed  head none
+      notes 'examples/shop/delivery/core/src/application/route/usecases/start_route/usecase.ts:13'
+    }
+    delivery.core -> bus 'RouteStarted' {
+      color declared  line dashed  head onormal
+      notes 'examples/shop/delivery/core/src/application/route/usecases/start_route/usecase.ts:13'
+    }
+  }
+
+  dynamic view flow_core_start_route_cross {
+    title 'Start route — crossings only'
+    client -> delivery.core 'StartRoute → StartRouteResponse' {
+      color declared  line dashed  head normal
+      notes 'examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:23'
+    }
+    delivery.core -> bus 'RouteStarted' {
+      color declared  line dashed  head onormal
+      notes 'examples/shop/delivery/core/src/application/route/usecases/start_route/usecase.ts:13'
     }
   }
 
@@ -1505,28 +1586,40 @@ views {
     }
   }
 
-  dynamic view flow_core_plan_shipment_on_payment_captured {
-    title 'Plan shipment on payment captured'
-    description 'Nothing leaves the warehouse before the money has moved.'
+  dynamic view flow_core_release_shipment_on_payment_captured {
+    title 'Release shipment on payment captured'
+    description 'Nothing leaves the warehouse before the money has moved (ADR core.0002).'
     bus -> delivery.core 'PaymentCaptured' {
       color declared  line dashed  head onormal
-      notes 'examples/shop/delivery/core/src/application/policy/plan-shipment-on-payment-captured.ts:17'
+      notes 'examples/shop/delivery/core/src/application/policy/release-shipment-on-payment-captured.ts:15'
+    }
+    delivery.core -> delivery.core 'ReleaseShipment' {
+      color declared  line dashed  head none
+      notes 'examples/shop/delivery/core/src/application/policy/release-shipment-on-payment-captured.ts:18'
     }
     delivery.core -> core_pg 'byOrder' {
       color declared  line dashed  head none
-      notes 'examples/shop/delivery/core/src/application/policy/plan-shipment-on-payment-captured.ts:20'
+      notes 'examples/shop/delivery/core/src/application/shipment/usecases/release_shipment/usecase.ts:15'
     }
     delivery.core -> core_pg 'save' {
       color declared  line dashed  head none
-      notes 'examples/shop/delivery/core/src/application/policy/plan-shipment-on-payment-captured.ts:22'
+      notes 'examples/shop/delivery/core/src/application/shipment/usecases/release_shipment/usecase.ts:17'
+    }
+    delivery.core -> bus 'ShipmentReleased' {
+      color declared  line dashed  head onormal
+      notes 'examples/shop/delivery/core/src/application/shipment/usecases/release_shipment/usecase.ts:17'
     }
   }
 
-  dynamic view flow_core_plan_shipment_on_payment_captured_cross {
-    title 'Plan shipment on payment captured — crossings only'
+  dynamic view flow_core_release_shipment_on_payment_captured_cross {
+    title 'Release shipment on payment captured — crossings only'
     bus -> delivery.core 'PaymentCaptured' {
       color declared  line dashed  head onormal
-      notes 'examples/shop/delivery/core/src/application/policy/plan-shipment-on-payment-captured.ts:17'
+      notes 'examples/shop/delivery/core/src/application/policy/release-shipment-on-payment-captured.ts:15'
+    }
+    delivery.core -> bus 'ShipmentReleased' {
+      color declared  line dashed  head onormal
+      notes 'examples/shop/delivery/core/src/application/shipment/usecases/release_shipment/usecase.ts:17'
     }
   }
 

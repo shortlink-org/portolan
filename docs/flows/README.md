@@ -1,6 +1,6 @@
 # Flows
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
 
 | Flow | Owner | Summary |
 | --- | --- | --- |
@@ -44,8 +44,9 @@
 | [Plan route](core-plan-route.md) | [delivery](../delivery/README.md) | Builds a van's day out of the shipments waiting to go out. |
 | [Record delivery](core-record-delivery.md) | [delivery](../delivery/README.md) | Ends a shipment at the door. |
 | [Record scan](core-record-scan.md) | [delivery](../delivery/README.md) | Writes down that a parcel was seen somewhere. |
+| [Start route](core-start-route.md) | [delivery](../delivery/README.md) | The van is out. |
 | [Track shipment](core-track-shipment.md) | [delivery](../delivery/README.md) | What the customer sees when they paste a tracking code. |
-| [Plan shipment on payment captured](core-plan-shipment-on-payment-captured.md) | [delivery](../delivery/README.md) | Nothing leaves the warehouse before the money has moved. |
+| [Release shipment on payment captured](core-release-shipment-on-payment-captured.md) | [delivery](../delivery/README.md) | Nothing leaves the warehouse before the money has moved (ADR core.0002). |
 | [Cancel order](oms-cancel-order.md) | [shop](../shop/README.md) | Reads one order by id. |
 | [Get order](oms-get-order.md) | [shop](../shop/README.md) | Reads one order by id. |
 | [Confirm order on payment authorized](oms-confirm-order-on-payment-authorized.md) | [shop](../shop/README.md) | Confirms the order once the payment for it is authorised (ADR oms.0005). The publisher is `payments.ledger`, and the name is the one it puts on the message: every service on this bus names its events after itself. |

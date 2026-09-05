@@ -1,6 +1,6 @@
 # bff.0003 — The schema speaks the client's words, not the peers'
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-05

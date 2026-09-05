@@ -1,6 +1,9 @@
 import type { ShipmentRepository } from "../../../../domain/shipment/port.ts";
 import { TrackingCode } from "../../../../domain/shipment/vo/tracking-code.ts";
 
+/** Whether an order still stands. A closed set: a status this service does not know is an error in the adapter, never a default here. */
+export type OrderStanding = "live" | "cancelled";
+
 /**
  * What dispatching needs of the order service, declared here by the only code
  * that calls it rather than in the domain: no line of the shipment domain asks
@@ -8,7 +11,7 @@ import { TrackingCode } from "../../../../domain/shipment/vo/tracking-code.ts";
  * time.
  */
 export interface Orders {
-  getOrder(orderId: string): Promise<{ status: string }>;
+  standing(orderId: string): Promise<OrderStanding>;
 }
 
 /** Hands a planned shipment to the carrier and says so. */
@@ -21,15 +24,16 @@ export class UseCase {
 
   /**
    * The order is asked once more before the parcels leave: a cancelled order
-   * whose parcels went out anyway is the expensive mistake this prevents.
+   * whose parcels went out anyway is the expensive mistake this prevents. A
+   * cancelled order's shipment is written off, and says so.
    */
   async handle(shipmentId: string, tracking: string): Promise<void> {
     const shipment = await this.shipments.byId(shipmentId);
-    const order = await this.orders.getOrder(shipment.orderId);
+    const standing = await this.orders.standing(shipment.orderId);
 
-    if (order.status === "cancelled") {
-      shipment.lose();
-      await this.shipments.save(shipment);
+    if (standing === "cancelled") {
+      const lost = shipment.lose("order-cancelled", this.now());
+      await this.shipments.save(shipment, lost);
       return;
     }
 

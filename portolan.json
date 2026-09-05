@@ -412,7 +412,7 @@
           "shop.v1": "shop.oms"
         },
         "events": {
-          "../../infrastructure/ledger/events.ts": "payments.ledger.payment"
+          "../ledger/events.ts": "payments.ledger.payment"
         },
         "out": "domain.json"
       }
@@ -446,6 +446,23 @@
         "name": "Delivery database",
         "repositories": "src/infrastructure/repository",
         "out": "stores.json"
+      }
+    },
+    {
+      "plugin": "adr",
+      "in": "examples/shop/delivery/core",
+      "out": "examples/shop/delivery/core/portolan",
+      "options": {
+        "out": "adr.json"
+      }
+    },
+    {
+      "plugin": "glossary",
+      "in": "examples/shop/delivery/core",
+      "out": "examples/shop/delivery/core/portolan",
+      "options": {
+        "context": "delivery",
+        "out": "glossary.json"
       }
     },
     {

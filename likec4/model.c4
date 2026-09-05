@@ -177,9 +177,17 @@ for: whoever moves money listens for this.'
       description 'github.com/shortlink-org/portolan/examples/shop/delivery/core'
       style { color ctx4 }
       route = aggregate 'Route' {
+        RouteClosed = event 'RouteClosed' {
+          description 'The day is over. How many stops were left undone is on the event, because
+that is the one number whoever plans tomorrow needs and should not have to
+come back for.'
+        }
         RoutePlanned = event 'RoutePlanned' {
           description 'A van has a day\'s work. The stops are not on the event: whoever cares reads
 the route, and a list that long on the bus would go stale in flight.'
+        }
+        RouteStarted = event 'RouteStarted' {
+          description 'The van is out. The depot board stops showing the route as tomorrow\'s.'
         }
       }
       shipment = aggregate 'Shipment' {
@@ -191,6 +199,18 @@ whether the money is settled is somebody else\'s question.'
           description 'The parcels are with the carrier. Whoever is waiting on the order hears this
 and stops asking; the tracking code is on the event because the customer is
 shown it and nobody should have to come back for it.'
+        }
+        ShipmentInTransit = event 'ShipmentInTransit' {
+          description 'The first sighting after dispatch: the parcels are moving. Later scans add
+to the history and say nothing, because "seen again" is not a change.'
+        }
+        ShipmentLost = event 'ShipmentLost' {
+          description ''
+        }
+        ShipmentReleased = event 'ShipmentReleased' {
+          description 'The money moved, and the shipment may now be planned onto a route and
+dispatched. Said by this service, not by the ledger: the ledger says a
+payment was captured, and what that means for a parcel is decided here.'
         }
       }
       pg = store 'Delivery database' {
@@ -325,7 +345,7 @@ shown it and nobody should have to come back for it.'
   client -> shop.cart '6 flows' {
     style { color verified  line solid  head normal }
   }
-  client -> delivery.core '8 flows' {
+  client -> delivery.core '9 flows' {
     style { color declared  line dashed  head normal }
   }
   client -> shop.oms '2 flows' {

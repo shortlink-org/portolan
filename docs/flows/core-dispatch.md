@@ -1,6 +1,6 @@
 # Dispatch
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
 
 - **Id:** `flow.core-dispatch`
 - **Owner:** [delivery](../delivery/README.md)
@@ -31,9 +31,10 @@ sequenceDiagram
     p0->>p1: Dispatch → DispatchResponse
     p1->>p2: byId
     p1->>p3: GetOrder → GetOrderResponse
-    alt order.status === "cancelled"
+    alt standing === "cancelled"
         p1->>p2: save
-        Note over p2: flow ends here
+        p1-)p4: ShipmentLost
+        Note over p4: flow ends here
     else otherwise
     end
     p1->>p2: save
@@ -46,22 +47,24 @@ sequenceDiagram
 1. **client** → **delivery.core** — Dispatch → DispatchResponse
    status: declared · `examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:21`
 2. **delivery.core** → **core-pg** — byId
-   status: declared · `examples/shop/delivery/core/src/application/shipment/usecases/dispatch/usecase.ts:27`
+   status: declared · `examples/shop/delivery/core/src/application/shipment/usecases/dispatch/usecase.ts:31`
 3. **delivery.core** → **shop.oms** — GetOrder → GetOrderResponse
-   `shop.v1.OrderService/GetOrder` · status: declared · `examples/shop/delivery/core/src/application/shipment/usecases/dispatch/usecase.ts:28`
+   `shop.v1.OrderService/GetOrder` · status: declared · `examples/shop/delivery/core/src/application/shipment/usecases/dispatch/usecase.ts:32`
 
 > **One of**
 >
-> *order.status === "cancelled" — *ends the flow**
+> *standing === "cancelled" — *ends the flow**
 >
 > 4. **delivery.core** → **core-pg** — save
->    status: declared · `examples/shop/delivery/core/src/application/shipment/usecases/dispatch/usecase.ts:32`
+>    status: declared · `examples/shop/delivery/core/src/application/shipment/usecases/dispatch/usecase.ts:36`
+> 5. **delivery.core** → **bus** — ShipmentLost
+>    [delivery.core.shipment.ShipmentLost](../delivery/core/aggregates/shipment.md) · status: declared · `examples/shop/delivery/core/src/application/shipment/usecases/dispatch/usecase.ts:36`
 >
 > *otherwise*
 
-5. **delivery.core** → **core-pg** — save
-   status: declared · `examples/shop/delivery/core/src/application/shipment/usecases/dispatch/usecase.ts:37`
-6. **delivery.core** → **bus** — ShipmentDispatched
-   [delivery.core.shipment.ShipmentDispatched](../delivery/core/aggregates/shipment.md) · status: declared · `examples/shop/delivery/core/src/application/shipment/usecases/dispatch/usecase.ts:37`
-7. **delivery.core** → **core-pg** — byId
+6. **delivery.core** → **core-pg** — save
+   status: declared · `examples/shop/delivery/core/src/application/shipment/usecases/dispatch/usecase.ts:41`
+7. **delivery.core** → **bus** — ShipmentDispatched
+   [delivery.core.shipment.ShipmentDispatched](../delivery/core/aggregates/shipment.md) · status: declared · `examples/shop/delivery/core/src/application/shipment/usecases/dispatch/usecase.ts:41`
+8. **delivery.core** → **core-pg** — byId
    status: declared · `examples/shop/delivery/core/src/application/shipment/usecases/get_shipment/usecase.ts:24`

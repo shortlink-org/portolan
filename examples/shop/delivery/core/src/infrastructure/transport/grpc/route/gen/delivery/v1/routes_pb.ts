@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file delivery/v1/routes.proto.
  */
 export const file_delivery_v1_routes: GenFile = /*@__PURE__*/
-  fileDesc("ChhkZWxpdmVyeS92MS9yb3V0ZXMucHJvdG8SC2RlbGl2ZXJ5LnYxIk4KEFBsYW5Sb3V0ZVJlcXVlc3QSDwoHdmVoaWNsZRgBIAEoCRITCgtwbGFubmVkX2ZvchgCIAEoCRIUCgxzaGlwbWVudF9pZHMYAyADKAkiNAoRUGxhblJvdXRlUmVzcG9uc2USEAoIcm91dGVfaWQYASABKAkSDQoFc3RvcHMYAiABKAUiJQoRQ2xvc2VSb3V0ZVJlcXVlc3QSEAoIcm91dGVfaWQYASABKAkiJgoSQ2xvc2VSb3V0ZVJlc3BvbnNlEhAKCHJvdXRlX2lkGAEgASgJIiMKD0dldFJvdXRlUmVxdWVzdBIQCghyb3V0ZV9pZBgBIAEoCSJrChBHZXRSb3V0ZVJlc3BvbnNlEhAKCHJvdXRlX2lkGAEgASgJEg8KB3ZlaGljbGUYAiABKAkSDgoGc3RhdHVzGAMgASgJEiQKBXN0b3BzGAQgAygLMhUuZGVsaXZlcnkudjEuU3RvcFZpZXciSwoIU3RvcFZpZXcSCwoDc2VxGAEgASgFEhMKC3NoaXBtZW50X2lkGAIgASgJEg8KB2FkZHJlc3MYAyABKAkSDAoEZG9uZRgEIAEoCDLyAQoMUm91dGVTZXJ2aWNlEkoKCVBsYW5Sb3V0ZRIdLmRlbGl2ZXJ5LnYxLlBsYW5Sb3V0ZVJlcXVlc3QaHi5kZWxpdmVyeS52MS5QbGFuUm91dGVSZXNwb25zZRJNCgpDbG9zZVJvdXRlEh4uZGVsaXZlcnkudjEuQ2xvc2VSb3V0ZVJlcXVlc3QaHy5kZWxpdmVyeS52MS5DbG9zZVJvdXRlUmVzcG9uc2USRwoIR2V0Um91dGUSHC5kZWxpdmVyeS52MS5HZXRSb3V0ZVJlcXVlc3QaHS5kZWxpdmVyeS52MS5HZXRSb3V0ZVJlc3BvbnNlYgZwcm90bzM");
+  fileDesc("ChhkZWxpdmVyeS92MS9yb3V0ZXMucHJvdG8SC2RlbGl2ZXJ5LnYxIk4KEFBsYW5Sb3V0ZVJlcXVlc3QSDwoHdmVoaWNsZRgBIAEoCRITCgtwbGFubmVkX2ZvchgCIAEoCRIUCgxzaGlwbWVudF9pZHMYAyADKAkiNAoRUGxhblJvdXRlUmVzcG9uc2USEAoIcm91dGVfaWQYASABKAkSDQoFc3RvcHMYAiABKAUiJQoRU3RhcnRSb3V0ZVJlcXVlc3QSEAoIcm91dGVfaWQYASABKAkiJgoSU3RhcnRSb3V0ZVJlc3BvbnNlEhAKCHJvdXRlX2lkGAEgASgJIiUKEUNsb3NlUm91dGVSZXF1ZXN0EhAKCHJvdXRlX2lkGAEgASgJIiYKEkNsb3NlUm91dGVSZXNwb25zZRIQCghyb3V0ZV9pZBgBIAEoCSIjCg9HZXRSb3V0ZVJlcXVlc3QSEAoIcm91dGVfaWQYASABKAkiawoQR2V0Um91dGVSZXNwb25zZRIQCghyb3V0ZV9pZBgBIAEoCRIPCgd2ZWhpY2xlGAIgASgJEg4KBnN0YXR1cxgDIAEoCRIkCgVzdG9wcxgEIAMoCzIVLmRlbGl2ZXJ5LnYxLlN0b3BWaWV3IksKCFN0b3BWaWV3EgsKA3NlcRgBIAEoBRITCgtzaGlwbWVudF9pZBgCIAEoCRIPCgdhZGRyZXNzGAMgASgJEgwKBGRvbmUYBCABKAgywQIKDFJvdXRlU2VydmljZRJKCglQbGFuUm91dGUSHS5kZWxpdmVyeS52MS5QbGFuUm91dGVSZXF1ZXN0Gh4uZGVsaXZlcnkudjEuUGxhblJvdXRlUmVzcG9uc2USTQoKU3RhcnRSb3V0ZRIeLmRlbGl2ZXJ5LnYxLlN0YXJ0Um91dGVSZXF1ZXN0Gh8uZGVsaXZlcnkudjEuU3RhcnRSb3V0ZVJlc3BvbnNlEk0KCkNsb3NlUm91dGUSHi5kZWxpdmVyeS52MS5DbG9zZVJvdXRlUmVxdWVzdBofLmRlbGl2ZXJ5LnYxLkNsb3NlUm91dGVSZXNwb25zZRJHCghHZXRSb3V0ZRIcLmRlbGl2ZXJ5LnYxLkdldFJvdXRlUmVxdWVzdBodLmRlbGl2ZXJ5LnYxLkdldFJvdXRlUmVzcG9uc2ViBnByb3RvMw");
 
 /**
  * @generated from message delivery.v1.PlanRouteRequest
@@ -62,6 +62,40 @@ export const PlanRouteResponseSchema: GenMessage<PlanRouteResponse> = /*@__PURE_
   messageDesc(file_delivery_v1_routes, 1);
 
 /**
+ * @generated from message delivery.v1.StartRouteRequest
+ */
+export type StartRouteRequest = Message<"delivery.v1.StartRouteRequest"> & {
+  /**
+   * @generated from field: string route_id = 1;
+   */
+  routeId: string;
+};
+
+/**
+ * Describes the message delivery.v1.StartRouteRequest.
+ * Use `create(StartRouteRequestSchema)` to create a new message.
+ */
+export const StartRouteRequestSchema: GenMessage<StartRouteRequest> = /*@__PURE__*/
+  messageDesc(file_delivery_v1_routes, 2);
+
+/**
+ * @generated from message delivery.v1.StartRouteResponse
+ */
+export type StartRouteResponse = Message<"delivery.v1.StartRouteResponse"> & {
+  /**
+   * @generated from field: string route_id = 1;
+   */
+  routeId: string;
+};
+
+/**
+ * Describes the message delivery.v1.StartRouteResponse.
+ * Use `create(StartRouteResponseSchema)` to create a new message.
+ */
+export const StartRouteResponseSchema: GenMessage<StartRouteResponse> = /*@__PURE__*/
+  messageDesc(file_delivery_v1_routes, 3);
+
+/**
  * @generated from message delivery.v1.CloseRouteRequest
  */
 export type CloseRouteRequest = Message<"delivery.v1.CloseRouteRequest"> & {
@@ -76,7 +110,7 @@ export type CloseRouteRequest = Message<"delivery.v1.CloseRouteRequest"> & {
  * Use `create(CloseRouteRequestSchema)` to create a new message.
  */
 export const CloseRouteRequestSchema: GenMessage<CloseRouteRequest> = /*@__PURE__*/
-  messageDesc(file_delivery_v1_routes, 2);
+  messageDesc(file_delivery_v1_routes, 4);
 
 /**
  * @generated from message delivery.v1.CloseRouteResponse
@@ -93,7 +127,7 @@ export type CloseRouteResponse = Message<"delivery.v1.CloseRouteResponse"> & {
  * Use `create(CloseRouteResponseSchema)` to create a new message.
  */
 export const CloseRouteResponseSchema: GenMessage<CloseRouteResponse> = /*@__PURE__*/
-  messageDesc(file_delivery_v1_routes, 3);
+  messageDesc(file_delivery_v1_routes, 5);
 
 /**
  * @generated from message delivery.v1.GetRouteRequest
@@ -110,7 +144,7 @@ export type GetRouteRequest = Message<"delivery.v1.GetRouteRequest"> & {
  * Use `create(GetRouteRequestSchema)` to create a new message.
  */
 export const GetRouteRequestSchema: GenMessage<GetRouteRequest> = /*@__PURE__*/
-  messageDesc(file_delivery_v1_routes, 4);
+  messageDesc(file_delivery_v1_routes, 6);
 
 /**
  * @generated from message delivery.v1.GetRouteResponse
@@ -142,7 +176,7 @@ export type GetRouteResponse = Message<"delivery.v1.GetRouteResponse"> & {
  * Use `create(GetRouteResponseSchema)` to create a new message.
  */
 export const GetRouteResponseSchema: GenMessage<GetRouteResponse> = /*@__PURE__*/
-  messageDesc(file_delivery_v1_routes, 5);
+  messageDesc(file_delivery_v1_routes, 7);
 
 /**
  * @generated from message delivery.v1.StopView
@@ -174,7 +208,7 @@ export type StopView = Message<"delivery.v1.StopView"> & {
  * Use `create(StopViewSchema)` to create a new message.
  */
 export const StopViewSchema: GenMessage<StopView> = /*@__PURE__*/
-  messageDesc(file_delivery_v1_routes, 6);
+  messageDesc(file_delivery_v1_routes, 8);
 
 /**
  * A van's day, as the depot plans and closes it.
@@ -191,6 +225,16 @@ export const RouteService: GenService<{
     methodKind: "unary";
     input: typeof PlanRouteRequestSchema;
     output: typeof PlanRouteResponseSchema;
+  },
+  /**
+   * The van is out.
+   *
+   * @generated from rpc delivery.v1.RouteService.StartRoute
+   */
+  startRoute: {
+    methodKind: "unary";
+    input: typeof StartRouteRequestSchema;
+    output: typeof StartRouteResponseSchema;
   },
   /**
    * End the day, whatever is left undone.

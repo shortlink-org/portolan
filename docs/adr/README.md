@@ -1,6 +1,6 @@
 # Decision records
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
 
 | ADR | Title | Status | Date | Scope |
 | --- | --- | --- | --- | --- |
@@ -33,6 +33,8 @@
 | [cart.0006](cart.0006.md) | Abandonment is a sweep inside the service, and it publishes | accepted | 2026-09-04 | [shop.cart](../shop/cart/README.md) |
 | [cart.0007](cart.0007.md) | An anonymous basket is owned by whoever holds its token | accepted | 2026-09-04 | [shop.cart](../shop/cart/README.md) |
 | [cart.0008](cart.0008.md) | Events leave the service over NATS JetStream, and the outbox stays | accepted | 2026-09-05 | [shop.cart](../shop/cart/README.md) |
+| [core.0001](core.0001.md) | `packages.order_id` is a foreign key into the order service's table | accepted | 2026-09-05 | [delivery.core](../delivery/core/README.md) |
+| [core.0002](core.0002.md) | A shipment waits for the money, and the ledger's fact releases it | accepted | 2026-09-05 | [delivery.core](../delivery/core/README.md) |
 | [oms.0001](oms.0001.md) | Rust on Tokio, and the stack around it | accepted | 2026-09-05 | [shop.oms](../shop/oms/README.md) |
 | [oms.0002](oms.0002.md) | An order is placed from a checked-out basket, not by a call | accepted | 2026-09-05 | [shop.oms](../shop/oms/README.md) |
 | [oms.0003](oms.0003.md) | Lines and the total are copied from the basket, never repriced | accepted | 2026-09-05 | [shop.oms](../shop/oms/README.md) |

@@ -1,6 +1,6 @@
 # Route
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
 
 - **Id:** `delivery.core.route`
 - **Service:** [Delivery Core](../README.md)
@@ -12,6 +12,28 @@ The order is the route: changing it is planning another one rather than editing
 this. A stop knows which shipment it is dropping, and carries the address it
 was planned against - a copy of the shipment's, which is itself a copy of the
 order's.
+
+### States
+
+- **planned** - the day exists; where every route starts.
+- **driving** - the van is out.
+- **closed** - the day is over, whatever was left undone. Terminal. A
+  planned day can be closed without ever being driven: that is a cancelled
+  day, and the same event says so with every stop undone.
+
+### Transitions
+
+```mermaid
+stateDiagram-v2
+    [*] --> planned
+    planned --> driving: start · RouteStarted
+    planned --> closed: close · RouteClosed
+    driving --> closed: close · RouteClosed
+    closed --> [*]
+```
+
+A stop being done is not a state of the route: it is a fact about the stop,
+and the route reads it when it closes.
 
 ## Entities
 
@@ -61,17 +83,17 @@ When a van is expected somewhere, as the two ends of a promise to a person.
 ```mermaid
 stateDiagram-v2
     [*] --> planned
-    planned --> driving: start
-    planned --> closed: close
-    driving --> closed: close
+    planned --> driving: start · RouteStarted
+    planned --> closed: close · RouteClosed
+    driving --> closed: close · RouteClosed
     closed --> [*]
 ```
 
-| From | To | On | Source |
-| --- | --- | --- | --- |
-| `planned` | `driving` | `start` | `examples/shop/delivery/core/src/domain/route/route.ts:50` |
-| `planned` | `closed` | `close` | `examples/shop/delivery/core/src/domain/route/route.ts:55` |
-| `driving` | `closed` | `close` | `examples/shop/delivery/core/src/domain/route/route.ts:55` |
+| From | To | On | Emits | Source |
+| --- | --- | --- | --- | --- |
+| `planned` | `driving` | `start` | `RouteStarted` | `examples/shop/delivery/core/src/domain/route/route.ts:52` |
+| `planned` | `closed` | `close` | `RouteClosed` | `examples/shop/delivery/core/src/domain/route/route.ts:59` |
+| `driving` | `closed` | `close` | `RouteClosed` | `examples/shop/delivery/core/src/domain/route/route.ts:59` |
 
 ## Operations
 
@@ -80,8 +102,31 @@ stateDiagram-v2
 | `CloseRoute` | command | `CloseRoute` | Ends the day, whatever is left undone. |
 | `GetRoute` | query | `GetRoute` | One route, as the depot reads it. |
 | `PlanRoute` | command | `PlanRoute` | Builds a van's day out of the shipments waiting to go out. |
+| `StartRoute` | command | `StartRoute` | The van is out. |
 
 ## Events
+
+### RouteClosed
+
+`delivery.core.route.RouteClosed`
+
+On the wire as `delivery.RouteClosed`, on `delivery.core.route`.
+
+#### v1 — current
+
+The day is over. How many stops were left undone is on the event, because
+that is the one number whoever plans tomorrow needs and should not have to
+come back for.
+
+Source: `examples/shop/delivery/core/src/domain/route/events/route-closed.ts`
+
+| Field | Type |
+| --- | --- |
+| `channel` | `string` |
+| `routeId` | `string` |
+| `vehicle` | `string` |
+| `undone` | `number` |
+| `occurredAt` | `Date` |
 
 ### RoutePlanned
 
@@ -102,4 +147,23 @@ Source: `examples/shop/delivery/core/src/domain/route/events/route-planned.ts`
 | `routeId` | `string` |
 | `vehicle` | `string` |
 | `stops` | `number` |
+| `occurredAt` | `Date` |
+
+### RouteStarted
+
+`delivery.core.route.RouteStarted`
+
+On the wire as `delivery.RouteStarted`, on `delivery.core.route`.
+
+#### v1 — current
+
+The van is out. The depot board stops showing the route as tomorrow's.
+
+Source: `examples/shop/delivery/core/src/domain/route/events/route-started.ts`
+
+| Field | Type |
+| --- | --- |
+| `channel` | `string` |
+| `routeId` | `string` |
+| `vehicle` | `string` |
 | `occurredAt` | `Date` |

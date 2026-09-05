@@ -1,6 +1,6 @@
 # Example estate
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
 
 
 ## Contexts
@@ -57,8 +57,9 @@
 | [Plan route](flows/core-plan-route.md) | [delivery](delivery/README.md) | Builds a van's day out of the shipments waiting to go out. |
 | [Record delivery](flows/core-record-delivery.md) | [delivery](delivery/README.md) | Ends a shipment at the door. |
 | [Record scan](flows/core-record-scan.md) | [delivery](delivery/README.md) | Writes down that a parcel was seen somewhere. |
+| [Start route](flows/core-start-route.md) | [delivery](delivery/README.md) | The van is out. |
 | [Track shipment](flows/core-track-shipment.md) | [delivery](delivery/README.md) | What the customer sees when they paste a tracking code. |
-| [Plan shipment on payment captured](flows/core-plan-shipment-on-payment-captured.md) | [delivery](delivery/README.md) | Nothing leaves the warehouse before the money has moved. |
+| [Release shipment on payment captured](flows/core-release-shipment-on-payment-captured.md) | [delivery](delivery/README.md) | Nothing leaves the warehouse before the money has moved (ADR core.0002). |
 | [Cancel order](flows/oms-cancel-order.md) | [shop](shop/README.md) | Reads one order by id. |
 | [Get order](flows/oms-get-order.md) | [shop](shop/README.md) | Reads one order by id. |
 | [Confirm order on payment authorized](flows/oms-confirm-order-on-payment-authorized.md) | [shop](shop/README.md) | Confirms the order once the payment for it is authorised (ADR oms.0005). The publisher is `payments.ledger`, and the name is the one it puts on the message: every service on this bus names its events after itself. |
@@ -103,6 +104,8 @@
 | [cart.0006](adr/cart.0006.md) | Abandonment is a sweep inside the service, and it publishes | accepted | 2026-09-04 |
 | [cart.0007](adr/cart.0007.md) | An anonymous basket is owned by whoever holds its token | accepted | 2026-09-04 |
 | [cart.0008](adr/cart.0008.md) | Events leave the service over NATS JetStream, and the outbox stays | accepted | 2026-09-05 |
+| [core.0001](adr/core.0001.md) | `packages.order_id` is a foreign key into the order service's table | accepted | 2026-09-05 |
+| [core.0002](adr/core.0002.md) | A shipment waits for the money, and the ledger's fact releases it | accepted | 2026-09-05 |
 | [oms.0001](adr/oms.0001.md) | Rust on Tokio, and the stack around it | accepted | 2026-09-05 |
 | [oms.0002](adr/oms.0002.md) | An order is placed from a checked-out basket, not by a call | accepted | 2026-09-05 |
 | [oms.0003](adr/oms.0003.md) | Lines and the total are copied from the basket, never repriced | accepted | 2026-09-05 |

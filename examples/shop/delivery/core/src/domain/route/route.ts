@@ -1,4 +1,6 @@
+import { RouteClosed } from "./events/route-closed.ts";
 import { RoutePlanned } from "./events/route-planned.ts";
+import { RouteStarted } from "./events/route-started.ts";
 import { canMove, type RouteStatus } from "./status.ts";
 import { Stop } from "./stop.ts";
 
@@ -46,12 +48,16 @@ export class Route {
   }
 
   /** The van is out. */
-  start(): void {
+  start(at: Date): RouteStarted {
     this.moveTo("driving");
+
+    return new RouteStarted(this.id, this.vehicle, at);
   }
 
-  /** The day is over, whatever is left undone. */
-  close(): void {
+  /** The day is over, whatever is left undone; the event says how much. */
+  close(at: Date): RouteClosed {
     this.moveTo("closed");
+
+    return new RouteClosed(this.id, this.vehicle, this.stops.filter((stop) => !stop.done).length, at);
   }
 }

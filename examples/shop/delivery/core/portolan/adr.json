@@ -1,0 +1,39 @@
+{
+  "generatedAt": "2026-09-05T15:32:22+07:00",
+  "commit": "ef19b9c",
+  "contexts": [],
+  "defs": {},
+  "flows": [],
+  "adrs": [
+    {
+      "id": "core.0001",
+      "slug": "core-0001-packages-order-id-is-a-foreign-key-into-another-service",
+      "number": 1,
+      "title": "`packages.order_id` is a foreign key into the order service's table",
+      "status": "accepted",
+      "date": "2026-09-05",
+      "scope": {
+        "kind": "service",
+        "service": "delivery.core"
+      },
+      "body": "## Context and Problem Statement\n\nA shipment is for an order that another service owns, in another database.\nHow does the shipment's row say which order, and what does the schema\npromise about it?\n\nThe obvious answer - a plain text column - promises nothing: a shipment can\nbe written for an order that never existed, and nothing in either database\nwould notice. The stricter answer - a foreign key - promises a row exists on\nthe other side, at the cost of a constraint that crosses a boundary neither\nservice can migrate alone.\n\n## Decision Drivers\n\n- The catalog must show the coupling, not hide it.\n- A shipment for an order that does not exist must be impossible, or at\n  least visible.\n- The cost of the coupling must be paid knowingly, in one place.\n\n## Considered Options\n\n1. **A plain column** — `order_id text`, no promise; the order service is\n   asked at dispatch.\n2. **A foreign key into the order service's table** — `REFERENCES orders\n   (id)`, on the understanding that the two databases are one in this\n   example estate.\n3. **A projection of orders kept here** — the order service's events feed a\n   local `orders` table, and the key points at that.\n\n## Decision Outcome\n\nChosen option: **a foreign key into the order service's table**, for this\nsketch, and named as the thing the catalog reports.\n\n| | promise | who can migrate | catalog |\n|---|---|---|---|\n| plain column | none | either alone | nothing to show |\n| foreign key | a row exists | neither alone | shown on Problems, deliberately |\n| projection | a row exists here | delivery alone | a projection with `-- from:` |\n\nThe key is a claim the catalog can read and report, and reporting it is the\npoint: an estate that does this by accident should see it. What is given up\nis independence of migration, which this example estate does not have\nanyway. Option 3 is the right answer for a real estate and the shape\n[ddd-cqrs] names; it is not in this sketch because nothing here reads the\nbus yet.\n\n### Consequences\n\n- Good: the coupling is one line in one migration, with a comment, and the\n  catalog draws it.\n- Bad: neither service can drop or rename `orders` alone.\n- Neutral: the address is not taken from that row; it is handed over with\n  the dispatch and copied, because the order service holds no address.\n",
+      "relates": {},
+      "source": "examples/shop/delivery/core/docs/adr/0001-packages-order-id-is-a-foreign-key-into-another-service.md"
+    },
+    {
+      "id": "core.0002",
+      "slug": "core-0002-a-shipment-waits-for-the-money",
+      "number": 2,
+      "title": "A shipment waits for the money, and the ledger's fact releases it",
+      "status": "accepted",
+      "date": "2026-09-05",
+      "scope": {
+        "kind": "service",
+        "service": "delivery.core"
+      },
+      "body": "## Context and Problem Statement\n\nThe service's first rule is that nothing leaves the warehouse before the\nmoney has moved. Where does that rule live, and what does the ledger's\n`PaymentCaptured` do to a shipment?\n\nThe first answer was a policy that loaded the shipment and set its route to\nan empty string. It modelled nothing: a shipment started `planned`, could be\ndispatched at once, and the event changed no state a reader could see. The\nREADME led with a rule the code did not have.\n\n## Decision Drivers\n\n- The rule must be a state the lifecycle table shows, not a comment.\n- Dispatch must be refused by the table, not by a check somebody remembers.\n- The ledger's fact must arrive as a fact: however the money moves, the same\n  event releases the shipment.\n- The policy must not decide; a use case must.\n\n## Considered Options\n\n1. **Dispatch asks the ledger** — an rpc at dispatch time: \"is it paid?\"\n2. **A state `awaiting-payment`, left by a command the policy runs** — the\n   shipment starts there; `PaymentCaptured` runs `release_shipment`, which\n   moves it to `planned` and says `ShipmentReleased`.\n3. **A flag on the shipment** — `paid: boolean`, set by the policy.\n\n## Decision Outcome\n\nChosen option: **a state, left by a command the policy runs**.\n\n| | in the table | refuses dispatch | event |\n|---|---|---|---|\n| ask the ledger | no | by a call, every time | none |\n| a state | yes | by the table | `ShipmentReleased` |\n| a flag | no | by a check | none |\n\n`awaiting-payment` is the first state; `release` is the only way out of it\nother than being written off. Dispatch from it is refused by the same table\nthat refuses every other move nobody wrote down. The policy imports the fact\nin this service's own words, from the application layer, and calls the use\ncase; it knows nothing of the wire the fact came on.\n\nOption 1 was rejected because it asks a question whose answer was already\nannounced, and asks it on the hot path of every dispatch. Option 3 is a\nstate that is not in the table, which is the thing the table exists to\nprevent.\n\n### Consequences\n\n- Good: the README's first rule is the lifecycle's first state.\n- Good: `ShipmentReleased` is this service's fact about the money, so a\n  consumer waiting to plan a route hears delivery, not the ledger.\n- Bad: a second `PaymentCaptured` for the same order is refused by the\n  table; the policy lets that stand, and the catalog will show the refusal\n  when a bus adapter exists to deliver it.\n- Neutral: nothing in this sketch reads the bus yet; the policy is the shape,\n  and the adapter that feeds it is the same one the ledger has (ledger.0002).\n",
+      "relates": {},
+      "source": "examples/shop/delivery/core/docs/adr/0002-a-shipment-waits-for-the-money.md"
+    }
+  ]
+}

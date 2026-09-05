@@ -1,6 +1,6 @@
 # Delivery Core
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
 
 - **Id:** `delivery.core`
 - **Context:** [Delivery](../README.md)
@@ -10,9 +10,9 @@
 
 Service `core` — bounded context **delivery**. TypeScript on Node.
 
-Owns the parcel: what is being carried, where it is, and which van is taking it
-there. It is told what to ship and asked where it got to; it never decides
-whether something should ship at all.
+Owns the shipment: what is being carried, where it is, and which van is taking
+it there. It is told what to ship and asked where it got to; it never decides
+whether something should ship at all. The vocabulary is [GLOSSARY.md](GLOSSARY.md).
 
 ## What it does
 
@@ -21,8 +21,10 @@ whether something should ship at all.
 - Records every sighting of every parcel, append-only.
 - Ends a shipment at the door with who signed for it — `ShipmentDelivered`.
 - Plans a van's day out of the shipments waiting to go out, and closes it.
-- Waits for the money: nothing leaves the warehouse before the ledger says a
-  payment was captured.
+- Waits for the money: every shipment starts `awaiting-payment`, and nothing
+  leaves the warehouse before the ledger says the payment was captured. The
+  fact releases it - `ShipmentReleased` - and only then can it be planned and
+  dispatched (core.0002).
 
 ## What it does not do
 
@@ -32,8 +34,10 @@ written off.
 
 ## Publishes
 
-`ShipmentDispatched`, `ShipmentDelivered` on `delivery.core.shipment`;
-`RoutePlanned` on `delivery.core.route`.
+`ShipmentReleased`, `ShipmentDispatched`, `ShipmentInTransit`,
+`ShipmentDelivered`, `ShipmentLost` on `delivery.core.shipment`;
+`RoutePlanned`, `RouteStarted`, `RouteClosed` on `delivery.core.route`. Every
+arrow of both lifecycle tables is one of these.
 
 ## Provides
 
@@ -44,7 +48,8 @@ written off.
 
 - `packages.order_id` is a foreign key into `shop.oms.pg.orders`, another
   service's table. It crosses a boundary knowingly — neither service can
-  migrate that table alone — and the catalog reports it rather than hiding it.
+  migrate that table alone — and the catalog reports it rather than hiding it
+  (core.0001).
 - `route_stops.address` is a **copy** of `packages.ship_to`, which is itself the
   address handed over with the dispatch. A parcel on a van does not move because
   somebody edited their profile, which is why the value is copied and not looked
@@ -52,6 +57,27 @@ written off.
   beside the column, because a table cannot show it the way a view shows a
   select. The order service is asked about the order's state and nothing else:
   it holds no address, and asking it for one would be asking the wrong service.
+
+## Decisions
+
+- [core.0001](docs/adr/0001-packages-order-id-is-a-foreign-key-into-another-service.md)
+  — `packages.order_id` is a foreign key into the order service's table,
+  knowingly.
+- [core.0002](docs/adr/0002-a-shipment-waits-for-the-money.md) — a shipment
+  waits for the money, and the ledger's fact releases it.
+
+## Status
+
+A sketch for the catalog, not the reference service; `examples/auth` is
+that. What it has: two aggregates whose lifecycle tables are enforced and
+whose every move is an event, use cases that answer with what a caller may
+see, a policy that reacts to the ledger's fact through a use case, and the
+records above. What it deliberately does not have yet, and the review skill
+will name: no repository or server behind the ports, so nothing here runs;
+no version on the aggregates; no unit of work, so `plan_route` writes a
+route and its shipments one save at a time; no sentinel errors or status
+mapping at the edge; no tests; no tracing. Each is a known gap, not an
+oversight, and none of them changes what the catalog shows.
 
 ## Running it
 
@@ -64,8 +90,8 @@ npm install && npm run gen && npm run build
 
 | Aggregate | Root | Commands | Queries | Events |
 | --- | --- | --- | --- | --- |
-| [Route](aggregates/route.md) | `Route` | 2 commands | 1 query | 1 event |
-| [Shipment](aggregates/shipment.md) | `Shipment` | 3 commands | 2 queries | 2 events |
+| [Route](aggregates/route.md) | `Route` | 3 commands | 1 query | 3 events |
+| [Shipment](aggregates/shipment.md) | `Shipment` | 4 commands | 2 queries | 5 events |
 
 ## Provides
 
@@ -181,6 +207,7 @@ npm install && npm run gen && npm run build
 **`delivery.v1.RouteService`** — `examples/shop/delivery/core/src/infrastructure/transport/grpc/route/proto/delivery/v1/routes.proto:6`
 
 - `PlanRoute`
+- `StartRoute`
 - `CloseRoute`
 - `GetRoute`
 
@@ -200,6 +227,22 @@ npm install && npm run gen && npm run build
 | --- | --- |
 | `route_id` | `string` |
 | `stops` | `int32` |
+
+</details>
+
+<details><summary>StartRouteRequest</summary>
+
+| Field | Type |
+| --- | --- |
+| `route_id` | `string` |
+
+</details>
+
+<details><summary>StartRouteResponse</summary>
+
+| Field | Type |
+| --- | --- |
+| `route_id` | `string` |
 
 </details>
 
@@ -259,12 +302,24 @@ npm install && npm run gen && npm run build
 
 | Event | Latest |
 | --- | --- |
+| [RouteClosed](aggregates/route.md) | v1 |
 | [RoutePlanned](aggregates/route.md) | v1 |
+| [RouteStarted](aggregates/route.md) | v1 |
 | [ShipmentDelivered](aggregates/shipment.md) | v1 |
 | [ShipmentDispatched](aggregates/shipment.md) | v1 |
+| [ShipmentInTransit](aggregates/shipment.md) | v1 |
+| [ShipmentLost](aggregates/shipment.md) | v1 |
+| [ShipmentReleased](aggregates/shipment.md) | v1 |
 
 ## Stores
 
 | Store | Kind | Access | Tables |
 | --- | --- | --- | --- |
 | [Delivery database](stores/pg.md) | postgres | owns | 5 tables |
+
+## Decisions
+
+| ADR | Title | Status | Date |
+| --- | --- | --- | --- |
+| [core.0001](../../adr/core.0001.md) | `packages.order_id` is a foreign key into the order service's table | accepted | 2026-09-05 |
+| [core.0002](../../adr/core.0002.md) | A shipment waits for the money, and the ledger's fact releases it | accepted | 2026-09-05 |

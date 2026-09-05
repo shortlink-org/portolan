@@ -1,6 +1,6 @@
 # Get route
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
 
 - **Id:** `flow.core-get-route`
 - **Owner:** [delivery](../delivery/README.md)
@@ -31,6 +31,6 @@ sequenceDiagram
 ## Steps
 
 1. **client** → **delivery.core** — GetRoute → GetRouteResponse
-   status: declared · `examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:28`
+   status: declared · `examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts:37`
 2. **delivery.core** → **core-pg** — byId
    status: declared · `examples/shop/delivery/core/src/application/route/usecases/get_route/usecase.ts:22`
