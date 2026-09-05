@@ -110,16 +110,33 @@ function projectFrom(value: unknown): SetupProject | null {
     return null;
   }
 
+  const repository =
+    typeof item.repository === "string" ? repositoryUrl(item.repository) : null;
+
   return {
     id: item.id,
     name: item.name,
     root: cleanPath(item.root),
     ...(typeof item.context === "string" ? { context: item.context } : {}),
     ...(typeof item.service === "string" ? { service: item.service } : {}),
-    ...(typeof item.repository === "string"
-      ? { repository: item.repository }
-      : {}),
+    ...(repository ? { repository } : {}),
   };
+}
+
+/**
+ * A repository as a page a browser can open: a remote spelled for ssh is
+ * rewritten, the .git suffix dropped. Whatever is not http(s) after that is
+ * dropped rather than published - the value ends up in an href, and the
+ * manifest this reads is not trusted to only hold ones that are safe there.
+ */
+function repositoryUrl(raw: string): string | null {
+  const url = raw
+    .trim()
+    .replace(/^git@([^:]+):/, "https://$1/")
+    .replace(/^ssh:\/\/git@/, "https://")
+    .replace(/\.git$/, "")
+    .replace(/\/+$/, "");
+  return /^https?:\/\//i.test(url) ? url : null;
 }
 
 function stepFrom(
@@ -153,7 +170,11 @@ function pluginFrom(
 
   return {
     name: item.name,
-    runtime: item.wasm === undefined ? "process" : "wasm",
+    // The sandbox is claimed only where the manifest actually declares one.
+    // Settings prints this as a promise about filesystem, network and
+    // environment access, so a `wasm` that is not a module - null, a bare
+    // true, a half-written object - answers "process", which promises nothing.
+    runtime: typeof record(item.wasm)["url"] === "string" ? "wasm" : "process",
     phases: PHASES.filter((phase) => own.some((step) => step.phase === phase)),
     stepCount: own.length,
     projectIds: [
