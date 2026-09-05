@@ -55,6 +55,14 @@ export function flowsByReach(
     );
 }
 
+/** The widest flows that fit on an overview without turning it into an index. */
+export function widestFlows(
+  catalog: Catalog,
+  limit = 8,
+): { flow: Flow; contexts: string[] }[] {
+  return flowsByReach(catalog).slice(0, Math.max(0, limit));
+}
+
 /** Flows in which a service appears as a participant. */
 export function flowsForService(catalog: Catalog, serviceId: string): Flow[] {
   return catalog.flows.filter((f) =>

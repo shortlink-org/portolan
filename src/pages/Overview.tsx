@@ -1,10 +1,14 @@
 import { Link } from "react-router";
 import { AlertTriangle } from "lucide-react";
-import { CATALOG_PATH, catalog } from "../data";
-import { contextStats, flowsByReach } from "../lib/derive";
+import { CATALOG_PATH, catalog, index } from "../data";
+import { contextStats, problems, widestFlows } from "../lib/derive";
+import { dataProblems } from "../lib/data-problems";
+import { protoProblems } from "../lib/proto-problems";
+import { wireProblems } from "../lib/wire-problems";
 import { ctxStyle } from "../lib/context-color";
 import { plural } from "../lib/format";
 import { useCountUp, staggerStyle } from "../lib/motion";
+import { usePhone } from "../app/responsive";
 import { CONTEXT_ANCHOR, OVERVIEW_ANCHOR, paths } from "../routes";
 import { Blank, SectionTitle } from "../components/PageHeader";
 import { C4View } from "../likec4/C4View";
@@ -41,21 +45,91 @@ function Count({
   );
 }
 
+function HealthMetric({
+  value,
+  unit,
+  to,
+  problem = false,
+}: {
+  value: number;
+  unit: string;
+  to: string;
+  problem?: boolean;
+}) {
+  const shown = useCountUp(value);
+  return (
+    <Link
+      to={to}
+      className="group flex min-w-0 items-baseline gap-2 rounded-card border border-line bg-canvas px-3 py-2 shadow-xs transition-colors hover:bg-surface hover:border-line-strong"
+      title={`Open ${plural(value, unit)}`}
+    >
+      <span
+        className={`tnum text-lg font-semibold ${problem && value > 0 ? "text-unresolved" : "text-ink"}`}
+      >
+        {shown}
+      </span>
+      <span className="mono truncate text-muted group-hover:text-ink">
+        {plural(value, unit)}
+      </span>
+    </Link>
+  );
+}
+
 export function Overview() {
-  const reach = flowsByReach(catalog);
+  const phone = usePhone();
+  const reach = widestFlows(catalog);
+  const services = catalog.contexts.reduce(
+    (count, context) => count + context.services.length,
+    0,
+  );
+  const issueCount = [
+    ...problems(catalog),
+    ...protoProblems(catalog, index),
+    ...dataProblems(catalog, index),
+    ...wireProblems(catalog, index),
+  ].length;
 
   return (
     <div className="h-full overflow-y-auto p-gutter">
-      <div className="flex flex-wrap items-baseline gap-x-3">
-        <h1 className="text-lg font-semibold">portolan</h1>
-        <span className="text-muted">
-          the chart is drawn from measurements; the code is the territory
-        </span>
+      <div className="flex flex-col items-start gap-1 sm:flex-row sm:items-start sm:gap-x-4">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-lg font-semibold">Architecture overview</h1>
+          <p className="text-muted">
+            the chart is drawn from measurements; the code is the territory
+          </p>
+        </div>
         {/* The catalog's own provenance, not the app's: the top bar carries
             the build this bundle came from. It opens, because the stamp is a
             summary of many stamps and the reader who doubts it wants the
             parts. */}
         <CatalogStamp />
+      </div>
+
+      <div
+        className="mt-3 grid grid-cols-2 gap-grid sm:grid-cols-4"
+        aria-label="Catalog health"
+      >
+        <HealthMetric
+          value={catalog.contexts.length}
+          unit="context"
+          to={`#${OVERVIEW_ANCHOR.contexts}`}
+        />
+        <HealthMetric
+          value={services}
+          unit="service"
+          to={`#${OVERVIEW_ANCHOR.contexts}`}
+        />
+        <HealthMetric
+          value={catalog.flows.length}
+          unit="flow"
+          to={paths.flows()}
+        />
+        <HealthMetric
+          value={issueCount}
+          unit="problem"
+          to={paths.problems()}
+          problem
+        />
       </div>
 
       {/* C4 level 1, and the only picture in the app that draws the whole
@@ -70,7 +144,11 @@ export function Overview() {
         >
           Landscape
         </SectionTitle>
-        <C4View viewId={LANDSCAPE_VIEW} height={400} />
+        <C4View
+          viewId={LANDSCAPE_VIEW}
+          height={phone ? 300 : 400}
+          controls={phone}
+        />
       </section>
 
       <section id={OVERVIEW_ANCHOR.contexts} className="mt-section">
@@ -160,19 +238,26 @@ export function Overview() {
             /* With no flows the link leads to a page that says the same thing
                again, which is how a first catalog teaches a reader that this
                app is full of dead ends. */
-            reach.length > 0 ? (
-              <Link
-                to={paths.flows()}
-                className="rounded-control px-1 text-accent hover:underline"
-              >
-                all flows →
-              </Link>
+            catalog.flows.length > 0 ? (
+              <span className="flex items-center gap-2">
+                {catalog.flows.length > reach.length ? (
+                  <span className="section-aside">
+                    {reach.length} of {catalog.flows.length}
+                  </span>
+                ) : null}
+                <Link
+                  to={paths.flows()}
+                  className="rounded-control px-1 text-accent hover:underline"
+                >
+                  all flows →
+                </Link>
+              </span>
             ) : null
           }
         >
           Flows by reach
         </SectionTitle>
-        {reach.length === 0 ? (
+        {catalog.flows.length === 0 ? (
           <Blank where={CATALOG_PATH}>
             No flows yet — a flow is one run across the estate, reconstructed
             from an integration test or written down by hand. Either way it
