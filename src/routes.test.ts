@@ -145,6 +145,12 @@ describe("routes", () => {
     expect(allCatalogPaths(catalog)).toContain(paths.settings());
   });
 
+  it("routes the runtime catalog diff", () => {
+    expect(paths.changes()).toBe("/changes");
+    expect(isRoutable(`${paths.changes()}?base=main&head=feature`)).toBe(true);
+    expect(allCatalogPaths(catalog)).toContain(paths.changes());
+  });
+
   it("builds deep links to steps, carrying the step as a selection", () => {
     const link = paths.flowStep("cart-checkout", "s6");
     expect(link).toBe("/flows/cart-checkout#sel=flow-step:cart-checkout%2Fs6");

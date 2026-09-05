@@ -12,7 +12,6 @@ const BUILD: BuildInfo = {
   buildNumber: "",
   dirty: false,
   repoUrl: "https://github.com/acme/portolan/",
-  branches: [],
 };
 
 describe("branchCompareHref", () => {

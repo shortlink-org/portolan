@@ -21,10 +21,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-        with:
-          # BranchPicker is assembled without a browser-side GitHub token.
-          # Give the build the refs whose public metadata it embeds.
-          fetch-depth: 0
 
       - uses: actions/setup-node@v7
         with:

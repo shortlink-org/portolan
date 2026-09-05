@@ -4,86 +4,90 @@ import {
   ListboxOption,
   ListboxOptions,
 } from "@headlessui/react";
-import { Check, ChevronDown, ExternalLink, GitBranch } from "lucide-react";
-import { useEffect } from "react";
-import { useSearchParams } from "react-router";
+import { Check, ChevronDown, ExternalLink, GitBranch, LoaderCircle } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { branchCompareHref } from "../lib/branch-compare";
 import { buildInfo } from "../lib/build-info";
-import type { BranchInfo } from "../lib/build-info";
-import { relativeTime } from "../lib/format";
+import { githubRepoFromUrl, listGitHubBranches } from "../lib/github-catalog";
+import type { GitHubBranch } from "../lib/github-catalog";
+import { forgetComparison, rememberComparison } from "../lib/comparison-memory";
+import { paths } from "../routes";
 
-const COMPARE_PARAM = "compare";
-const MEMORY_KEY = "portolan:compare-branch";
-
-function rememberedBranch(): string {
-  try {
-    return sessionStorage.getItem(MEMORY_KEY) ?? "";
-  } catch {
-    return "";
-  }
-}
-
-function rememberBranch(branch: string): void {
-  try {
-    if (branch) sessionStorage.setItem(MEMORY_KEY, branch);
-    else sessionStorage.removeItem(MEMORY_KEY);
-  } catch {
-    // URL state still works where storage is unavailable.
-  }
-}
-
-function note(branch: BranchInfo, current: string): string {
-  const parts = [];
-  if (branch.name === current) parts.push("current catalog");
-  if (branch.commit) parts.push(branch.commit);
-  if (branch.committedAt) parts.push(relativeTime(branch.committedAt));
-  return parts.join(" · ") || "branch";
+function branchNote(branch: GitHubBranch, current: string): string {
+  if (branch.name === current) return `${branch.commit.slice(0, 7)} · current catalog`;
+  return `${branch.commit.slice(0, 7)}${branch.protected ? " · protected" : ""}`;
 }
 
 /**
- * Selects the base branch for the product's comparison mode. The catalog on
- * screen remains the build's head branch; `?compare=` is deliberately URL
- * state so the coming diff view is linkable and survives navigation/reload.
+ * Selects the comparison head. Branches are read from GitHub at runtime; a
+ * choice opens the first-class changes route, whose URL carries both heads.
  */
 export function BranchPicker({ compact = false }: { compact?: boolean }) {
-  const [search, setSearch] = useSearchParams();
-  const current = buildInfo.branch || buildInfo.branches[0]?.name || "current";
-  const branches = buildInfo.branches.length > 0
-    ? buildInfo.branches
-    : [{ name: current, commit: buildInfo.shortCommit, committedAt: buildInfo.builtAt }];
-  const requested = search.get(COMPARE_PARAM) ?? rememberedBranch();
-  const selected = branches.some((branch) => branch.name === requested)
-    ? requested
-    : current;
-  const comparing = selected !== current;
-  const compareHref = branchCompareHref(selected, current);
+  const current = buildInfo.branch || "main";
+  const repo = githubRepoFromUrl(buildInfo.repoUrl);
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const [search] = useSearchParams();
+  const [remote, setRemote] = useState<GitHubBranch[]>([]);
+  const [loading, setLoading] = useState(Boolean(repo));
+  const [error, setError] = useState("");
 
-  // Most catalog links own their own query parameters and should not need to
-  // know comparison mode exists. Restore the selected base after navigation;
-  // this also leaves every resulting location copyable as a complete URL.
   useEffect(() => {
-    if (!comparing || search.has(COMPARE_PARAM)) return;
-    const next = new URLSearchParams(search);
-    next.set(COMPARE_PARAM, selected);
-    setSearch(next, { replace: true });
-  }, [comparing, search, selected, setSearch]);
+    let live = true;
+    if (!repo) {
+      setLoading(false);
+      return;
+    }
+    listGitHubBranches(repo)
+      .then((branches) => {
+        if (live) setRemote(branches);
+      })
+      .catch((cause: unknown) => {
+        if (live) setError(cause instanceof Error ? cause.message : String(cause));
+      })
+      .finally(() => {
+        if (live) setLoading(false);
+      });
+    return () => {
+      live = false;
+    };
+  }, [repo?.owner, repo?.repo]);
+
+  const branches = useMemo(() => {
+    const byName = new Map(remote.map((branch) => [branch.name, branch]));
+    if (!byName.has(current)) {
+      byName.set(current, { name: current, commit: buildInfo.commit, protected: false });
+    }
+    return [...byName.values()].sort((a, b) => {
+      if (a.name === current) return -1;
+      if (b.name === current) return 1;
+      if (a.name === "main") return -1;
+      if (b.name === "main") return 1;
+      return a.name.localeCompare(b.name);
+    });
+  }, [current, remote]);
+
+  const requested = pathname === paths.changes() ? search.get("head") ?? "" : "";
+  const selected = branches.some((branch) => branch.name === requested) ? requested : current;
+  const comparing = selected !== current;
+  const compareHref = branchCompareHref(current, selected);
 
   const choose = (name: string) => {
-    const next = new URLSearchParams(search);
     if (name === current) {
-      next.delete(COMPARE_PARAM);
-      rememberBranch("");
-    } else {
-      next.set(COMPARE_PARAM, name);
-      rememberBranch(name);
+      forgetComparison();
+      navigate(paths.changes());
+      return;
     }
-    setSearch(next, { replace: true });
+    rememberComparison(current, name);
+    const next = new URLSearchParams({ base: current, head: name });
+    navigate(`${paths.changes()}?${next}`);
   };
 
   return (
     <Listbox value={selected} onChange={choose}>
       <ListboxButton
-        aria-label={comparing ? `Compare ${current} against ${selected}` : `Branch ${current}`}
+        aria-label={comparing ? `Compare ${current} with ${selected}` : `Branch ${current}`}
         title={comparing ? `${current} compared with ${selected}` : `Branch ${current}`}
         className={({ open }) =>
           compact
@@ -94,56 +98,53 @@ export function BranchPicker({ compact = false }: { compact?: boolean }) {
         {({ open }) => (
           <>
             <GitBranch size={16} aria-hidden className="shrink-0" />
+            {!compact ? <span className="min-w-0 truncate">{comparing ? `${current} → ${selected}` : current}</span> : null}
             {!compact ? (
-              <span className="min-w-0 truncate">
-                {comparing ? `${current} ← ${selected}` : current}
-              </span>
-            ) : null}
-            {!compact ? (
-              <ChevronDown
-                size={13}
-                aria-hidden
-                className={`shrink-0 t-micro transition-transform ${open ? "rotate-180" : ""}`}
-              />
+              <ChevronDown size={13} aria-hidden className={`shrink-0 t-micro transition-transform ${open ? "rotate-180" : ""}`} />
             ) : null}
           </>
         )}
       </ListboxButton>
 
       <ListboxOptions
-        aria-label="Comparison base branch"
+        aria-label="Comparison head branch"
         anchor={{ to: "bottom end", gap: 4, padding: 8 }}
         className="branch-options palette-in z-50 w-80 overflow-y-auto rounded-control border bg-canvas py-1 border-line-strong shadow-md focus:outline-none"
       >
-        <div className="label px-3 pt-2 pb-1">compare {current} against</div>
+        <div className="label px-3 pt-2 pb-1">compare {current} with</div>
         {branches.map((branch) => (
           <ListboxOption
             key={branch.name}
             value={branch.name}
-            className={({ focus }) =>
-              `mono flex cursor-pointer items-start gap-2 px-3 py-2 ${focus ? "bg-raised" : ""}`
-            }
+            className={({ focus }) => `mono flex cursor-pointer items-start gap-2 px-3 py-2 ${focus ? "bg-raised" : ""}`}
           >
             {({ selected: on }) => (
               <>
                 <Check size={13} aria-hidden className="mt-0.5 shrink-0 text-accent" style={{ opacity: on ? 1 : 0 }} />
                 <span className="min-w-0 flex-1">
                   <span className={`block truncate ${on ? "text-accent" : "text-ink"}`}>{branch.name}</span>
-                  <span className="block truncate text-muted">{note(branch, current)}</span>
+                  <span className="block truncate text-muted">{branchNote(branch, current)}</span>
                 </span>
               </>
             )}
           </ListboxOption>
         ))}
-        <div className="sticky bottom-0 mt-1 border-t border-line bg-canvas px-3 py-2">
-          {compareHref ? (
+        {loading ? (
+          <div className="mono flex items-center gap-2 border-t border-line px-3 py-2 text-muted" role="status">
+            <LoaderCircle size={13} aria-hidden className="animate-spin" /> Loading GitHub branches…
+          </div>
+        ) : error ? (
+          <div className="border-t border-line px-3 py-2 text-sm text-unresolved">{error}</div>
+        ) : !repo ? (
+          <div className="border-t border-line px-3 py-2 text-sm text-muted">Runtime comparison needs a github.com repository.</div>
+        ) : null}
+        {compareHref ? (
+          <div className="sticky bottom-0 mt-1 border-t border-line bg-canvas px-3 py-2">
             <a href={compareHref} target="_blank" rel="noreferrer" className="mono flex items-center gap-1.5 rounded-control text-accent hover:underline">
-              open this comparison on the forge <ExternalLink size={12} aria-hidden />
+              open comparison on GitHub <ExternalLink size={12} aria-hidden />
             </a>
-          ) : (
-            <span className="mono text-muted">Choose another branch as the comparison base.</span>
-          )}
-        </div>
+          </div>
+        ) : null}
       </ListboxOptions>
     </Listbox>
   );

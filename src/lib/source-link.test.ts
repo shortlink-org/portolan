@@ -13,7 +13,6 @@ const GH: BuildInfo = {
   buildNumber: "",
   dirty: false,
   repoUrl: "https://github.com/shortlink-org/portolan",
-  branches: [],
 };
 
 describe("splitLine", () => {

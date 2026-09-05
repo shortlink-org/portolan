@@ -17,9 +17,6 @@ const CI: BuildInfo = {
   buildNumber: "128",
   dirty: false,
   repoUrl: "https://gitlab.com/acme/portolan",
-  branches: [
-    { name: "main", commit: "4f1c9ae", committedAt: "2026-08-29T09:14:22Z" },
-  ],
 };
 
 const UNKNOWN: BuildInfo = {
@@ -32,7 +29,6 @@ const UNKNOWN: BuildInfo = {
   buildNumber: "",
   dirty: false,
   repoUrl: "",
-  branches: [],
 };
 
 describe("buildHref", () => {

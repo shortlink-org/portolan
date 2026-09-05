@@ -38,6 +38,7 @@ export const paths = {
    */
   term: (termId: string) => `/language?term=${encodeURIComponent(termId)}`,
   problems: () => "/problems",
+  changes: () => "/changes",
   settings: () => "/settings",
   registry: () => "/registry",
   /**
@@ -328,6 +329,7 @@ const ROUTES: RegExp[] = [
   /^\/adrs$/,
   /^\/language$/,
   /^\/problems$/,
+  /^\/changes$/,
   /^\/settings$/,
   /^\/map$/,
   /^\/adrs\/[^/]+$/,
@@ -359,6 +361,7 @@ export function allCatalogPaths(catalog: Catalog): string[] {
     paths.adrs(),
     paths.language(),
     paths.problems(),
+    paths.changes(),
     paths.settings(),
     paths.registry(),
   ];

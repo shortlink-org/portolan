@@ -1,4 +1,4 @@
-import { execFileSync, execSync } from "node:child_process";
+import { execSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { defineConfig } from "vite";
@@ -60,78 +60,6 @@ const branch =
   env.CI_COMMIT_REF_NAME ||
   git("rev-parse --abbrev-ref HEAD");
 
-/**
- * Branches are a build-time snapshot, not a browser-side GitHub API call. This
- * keeps a deployed catalog usable without a token and makes private/self-hosted
- * repositories behave the same way as GitHub. CI fetches the refs it wants to
- * expose; a local build naturally sees the developer's refs.
- */
-function branchSnapshot(current: string): Array<{
-  name: string;
-  commit: string;
-  committedAt: string;
-}> {
-  let output = "";
-  try {
-    output = execFileSync(
-      "git",
-      [
-        "for-each-ref",
-        "--format=%(refname)\t%(objectname:short)\t%(committerdate:iso-strict)",
-        "refs/heads",
-        "refs/remotes/origin",
-      ],
-      { encoding: "utf8" },
-    );
-  } catch {
-    // Not a repository. The current build branch is still useful on its own.
-  }
-
-  const branches = new Map<
-    string,
-    { name: string; commit: string; committedAt: string }
-  >();
-  for (const line of output.trim().split("\n")) {
-    if (!line) continue;
-    const [ref = "", short = "", committedAt = ""] = line.split("\t");
-    const name = ref
-      .replace(/^refs\/heads\//, "")
-      .replace(/^refs\/remotes\/origin\//, "");
-    if (!name || name === "HEAD") continue;
-    const candidate = { name, commit: short, committedAt };
-    // Local refs are emitted first and are the best spelling of duplicates.
-    if (!branches.has(name) || ref.startsWith("refs/heads/")) {
-      branches.set(name, candidate);
-    }
-  }
-
-  for (const name of [
-    ...(env.BUILD_BRANCHES ?? "").split(/[\n,]/),
-    env.GITHUB_BASE_REF,
-    env.GITHUB_HEAD_REF,
-    current,
-  ]) {
-    const clean = name?.trim();
-    if (clean && clean !== "HEAD" && !branches.has(clean)) {
-      branches.set(clean, {
-        name: clean,
-        commit: clean === current ? commit.slice(0, 7) : "",
-        committedAt: clean === current ? git("show -s --format=%cI HEAD") : "",
-      });
-    }
-  }
-
-  return [...branches.values()]
-    .sort((a, b) => {
-      if (a.name === current) return -1;
-      if (b.name === current) return 1;
-      if (a.name === "main") return -1;
-      if (b.name === "main") return 1;
-      return b.committedAt.localeCompare(a.committedAt) || a.name.localeCompare(b.name);
-    })
-    .slice(0, 100);
-}
-
 const buildInfo = {
   commit,
   shortCommit: commit.slice(0, 7),
@@ -156,7 +84,6 @@ const buildInfo = {
   dirty:
     !env.GITHUB_SHA && !env.CI_COMMIT_SHA && git("status --porcelain") !== "",
   repoUrl,
-  branches: branchSnapshot(branch),
 };
 
 // The deployed site may explain how it was assembled, but it must not publish
