@@ -31,7 +31,7 @@ func main() {
 
 	// Tracing goes first: the parts assembled below take the global tracer
 	// provider as they are built. Why is in internal/pkg/tracing.
-	stopTracing, err := tracing.Start(context.Background(), tracing.FromEnv())
+	stopTracing, err := tracing.Start(context.Background())
 	if err != nil {
 		log.Fatalf("auth: %v", err)
 	}
