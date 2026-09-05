@@ -513,6 +513,11 @@
   .btn-accent:hover {
     filter: brightness(1.06);
   }
+  .btn-accent:disabled,
+  .tbtn:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
 
   /* A group of related controls reads as one object: a single border around
      the set, hairlines only between its members. */

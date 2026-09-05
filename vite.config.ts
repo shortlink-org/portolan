@@ -6,6 +6,10 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { nodePolyfills } from "vite-plugin-node-polyfills";
 import { publicSetupFrom } from "./src/lib/setup-info.ts";
+// The local control plane is a Node-only Vite plugin kept as plain ESM so its
+// pure discovery functions can also be tested directly.
+// @ts-expect-error plain JavaScript module intentionally has no browser types
+import { localApiPlugin } from "./scripts/local-api.mjs";
 
 /** A git answer, or "" when there is nothing to answer with (no repo, no git). */
 function git(args: string): string {
@@ -120,6 +124,7 @@ export default defineConfig({
     __SETUP_INFO__: JSON.stringify(setupInfo),
   },
   plugins: [
+    localApiPlugin(),
     react(),
     tailwindcss(),
     // The AsyncAPI reference brings a parser written for Node, and it calls

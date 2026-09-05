@@ -36,6 +36,12 @@ import {
 } from "./output-path.mjs";
 
 const PORTOLAN_VERSION = "0.1.0";
+const EVENTS = process.env.PORTOLAN_EVENTS === "1";
+const EVENT_PREFIX = "::portolan-event::";
+
+function event(value) {
+  if (EVENTS) process.stdout.write(`${EVENT_PREFIX}${JSON.stringify(value)}\n`);
+}
 
 // Every file a generator wrote last time is listed here, so a page that stops
 // being generated is deleted instead of lingering as documentation of a service
@@ -59,9 +65,11 @@ let manifest = {};
 let drifted = false;
 
 try {
+  persistReport();
   await generate();
   finishBuildReport(report, drifted ? "drifted" : "ok");
   persistReport();
+  event({ type: "run-finished", status: report.status, durationMs: report.durationMs });
   if (drifted) {
     console.error("\nGenerated documentation is out of date. Run `npm run gen`.");
     process.exitCode = 1;
@@ -69,6 +77,7 @@ try {
 } catch (cause) {
   finishBuildReport(report, "failed");
   persistReport();
+  event({ type: "run-finished", status: "failed", durationMs: report.durationMs, message: cause instanceof Error ? cause.message : String(cause) });
   console.error(`portolan gen: ${cause instanceof Error ? cause.message : String(cause)}`);
   process.exitCode = 1;
 }
@@ -86,6 +95,7 @@ async function generate() {
         .join("\n")}`,
     );
   }
+  event({ type: "pipeline-ready", stepCount: (manifest.extract?.length ?? 0) + (manifest.verify?.length ?? 0) + (manifest.generate?.length ?? 0) });
 
   // Extractors run first and write catalog fragments; only then is there a
   // catalog for anything else to read.
@@ -142,12 +152,13 @@ async function generate() {
 
 async function executeStep(phase, step, label, work) {
   const startedAt = Date.now();
+  event({ type: "step-started", ordinal: report.steps.length, phase, plugin: step.plugin, input: step.in, output: step.out });
   try {
     const { files } = await work();
     const changes = apply(files, step.out, step.plugin, check);
     const changed = summarise(label, files, changes);
     drifted = changed || drifted;
-    addBuildStep(report, {
+    const result = {
       phase,
       plugin: step.plugin,
       ...(step.in ? { input: step.in } : {}),
@@ -157,9 +168,12 @@ async function executeStep(phase, step, label, work) {
       fileCount: files.length,
       changedCount: changes.length,
       files: files.map((file) => join(step.out, file.name)),
-    });
+    };
+    addBuildStep(report, result);
+    persistReport();
+    event({ type: "step-finished", ordinal: report.steps.length - 1, ...result });
   } catch (cause) {
-    addBuildStep(report, {
+    const result = {
       phase,
       plugin: step.plugin,
       ...(step.in ? { input: step.in } : {}),
@@ -169,7 +183,10 @@ async function executeStep(phase, step, label, work) {
       fileCount: 0,
       changedCount: 0,
       files: [],
-    });
+    };
+    addBuildStep(report, result);
+    persistReport();
+    event({ type: "step-finished", ordinal: report.steps.length - 1, ...result, message: cause instanceof Error ? cause.message : String(cause) });
     throw cause;
   }
 }

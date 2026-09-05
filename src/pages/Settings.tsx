@@ -1,34 +1,56 @@
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { Link } from "react-router";
 import {
+  ArrowLeft,
   Box,
   Check,
   ChevronDown,
   CircleAlert,
   FolderGit2,
+  LoaderCircle,
   Moon,
+  Play,
+  Plus,
   Rows2,
   Rows4,
   ShieldCheck,
   Sun,
   Terminal,
+  X,
 } from "lucide-react";
 import { catalog, catalogSources } from "../data";
 import { useDensity } from "../app/density";
 import { useTheme } from "../app/theme";
+import { useToastStore } from "../app/toast";
 import { absoluteTime, plural, relativeTime } from "../lib/format";
-import { setupInfo } from "../lib/setup-info";
+import { setupInfo as staticSetupInfo } from "../lib/setup-info";
 import type {
+  SetupInfo,
   SetupPhase,
   SetupPlugin,
   SetupProject,
   SetupRunStep,
   SetupRunStepStatus,
 } from "../lib/setup-info";
+import {
+  addProject,
+  cancelGeneration,
+  discover,
+  localStatus,
+  previewProject,
+  startGeneration,
+  subscribeToRun,
+} from "../lib/local-api";
+import type { Discovery, ProjectDraft, ProjectPlan, RunEvent } from "../lib/local-api";
 import { sourceHref, treeHref } from "../lib/source-link";
 import { paths } from "../routes";
 import { Empty, SectionTitle } from "../components/PageHeader";
+import { Modal } from "../components/Overlay";
 
 type Health = "healthy" | "changed" | "failed" | "unchecked";
+
+const SetupContext = createContext<SetupInfo>(staticSetupInfo);
+const useSetup = () => useContext(SetupContext);
 
 function Metric({ value, label }: { value: number; label: string }) {
   return (
@@ -45,7 +67,7 @@ function duration(milliseconds: number): string {
   return `${Math.floor(milliseconds / 60_000)}m ${Math.round((milliseconds % 60_000) / 1000)}s`;
 }
 
-function healthFor(steps: SetupRunStep[], expected: number): Health {
+function healthFor(steps: SetupRunStep[], expected: number, setupInfo: SetupInfo): Health {
   if (
     expected === 0 ||
     setupInfo.reportStale ||
@@ -94,6 +116,7 @@ function StepStatus({ status }: { status: SetupRunStepStatus }) {
 }
 
 function BuildHealth() {
+  const setupInfo = useSetup();
   const run = setupInfo.run;
   const stale = setupInfo.reportStale;
   const health: Health =
@@ -229,6 +252,7 @@ function PipelineSteps({ steps }: { steps: SetupRunStep[] }) {
 }
 
 function ProjectCard({ project }: { project: SetupProject }) {
+  const setupInfo = useSetup();
   const declared = setupInfo.steps.filter((step) => step.projectId === project.id);
   const runSteps = setupInfo.run?.steps.filter((step) => step.projectId === project.id) ?? [];
   const pluginNames = [...new Set(declared.map((step) => step.plugin))];
@@ -239,7 +263,7 @@ function ProjectCard({ project }: { project: SetupProject }) {
   const commits = [...new Set(sources.map((source) => source.commit).filter(Boolean))];
   const href = projectHref(project);
   const sourceLink = forge(project);
-  const health = healthFor(runSteps, declared.length);
+  const health = healthFor(runSteps, declared.length, setupInfo);
   const title = <span className="font-semibold text-ink">{project.name}</span>;
 
   return (
@@ -352,6 +376,7 @@ const PHASE_ORDER: SetupPhase[] = ["extract", "verify", "generate"];
  * the one number that varies. The detail every row could open is unchanged.
  */
 function PluginsList() {
+  const setupInfo = useSetup();
   if (setupInfo.plugins.length === 0) return <Empty>this build ran no plugins</Empty>;
   const projectNames = new Map(setupInfo.projects.map((project) => [project.id, project.name]));
   const groups = [
@@ -376,7 +401,7 @@ function PluginsList() {
           {group.plugins.map((plugin) => {
             const declared = setupInfo.steps.filter((step) => step.plugin === plugin.name);
             const runSteps = setupInfo.run?.steps.filter((step) => step.plugin === plugin.name) ?? [];
-            const health = plugin.stepCount === 0 ? "unchecked" : healthFor(runSteps, declared.length);
+            const health = plugin.stepCount === 0 ? "unchecked" : healthFor(runSteps, declared.length, setupInfo);
             const outputs = [...new Set(runSteps.flatMap((step) => step.files))];
             return (
               <details key={plugin.name} id={`plugin-${plugin.name}`} className="group scroll-mt-4 border-t border-line">
@@ -436,13 +461,164 @@ function Appearance() {
   );
 }
 
-export function Settings() {
+const FIELD = "mono w-full rounded-control border border-line bg-canvas px-3 py-2 text-ink outline-none focus:border-accent";
+
+function Field({ label, value, onChange, placeholder, required = false }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string; required?: boolean }) {
+  return (
+    <label className="block">
+      <span className="label mb-1.5 block">{label}</span>
+      <input className={FIELD} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} required={required} />
+    </label>
+  );
+}
+
+function AddProjectCard({ onClick }: { onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} className="group flex min-h-52 items-center justify-center rounded-card border border-dashed border-line-strong bg-canvas p-card text-left shadow-xs transition-colors hover:border-accent hover:bg-surface">
+      <span className="flex max-w-72 flex-col items-center text-center">
+        <span className="flex size-9 items-center justify-center rounded-full border border-line-strong text-muted group-hover:border-accent group-hover:text-accent"><Plus size={18} aria-hidden /></span>
+        <span className="mt-3 font-semibold text-ink">Add a project</span>
+        <span className="mt-1 text-muted">Point Portolan at a local service and it will suggest the extractors to use.</span>
+      </span>
+    </button>
+  );
+}
+
+function Wizard({ open, onClose, onAdded, onGenerate }: { open: boolean; onClose: () => void; onAdded: (setup: SetupInfo) => void; onGenerate: () => Promise<void> }) {
+  const [stage, setStage] = useState<"source" | "configure" | "review">("source");
+  const [path, setPath] = useState("");
+  const [repository, setRepository] = useState("");
+  const [discovery, setDiscovery] = useState<Discovery | null>(null);
+  const [draft, setDraft] = useState<ProjectDraft | null>(null);
+  const [plan, setPlan] = useState<ProjectPlan | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!open) {
+      setStage("source"); setPath(""); setRepository(""); setDiscovery(null); setDraft(null); setPlan(null); setError(""); setBusy(false);
+    }
+  }, [open]);
+
+  async function detect() {
+    setBusy(true); setError("");
+    try {
+      const found = await discover(path);
+      setDiscovery(found);
+      setDraft({ root: found.root, repository, ...found.defaults, plugins: found.detections.filter((item) => item.selected).map((item) => item.plugin) });
+      setStage("configure");
+    } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
+    finally { setBusy(false); }
+  }
+
+  async function review() {
+    if (!draft) return;
+    setBusy(true); setError("");
+    try { setPlan(await previewProject(draft)); setStage("review"); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
+    finally { setBusy(false); }
+  }
+
+  async function save(generate: boolean) {
+    if (!draft) return;
+    setBusy(true); setError("");
+    try {
+      const result = await addProject(draft);
+      onAdded(result.setup);
+      onClose();
+      if (generate) await onGenerate();
+    } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); setBusy(false); }
+  }
+
+  const heading = stage === "source" ? "Add a local project" : stage === "configure" ? "Configure discovery" : "Review changes";
+  return (
+    <Modal open={open} onClose={busy ? () => {} : onClose} label={heading} width="min(760px,94vw)">
+      <div className="flex items-center gap-3 border-b border-line px-5 py-4">
+        {stage !== "source" ? <button type="button" className="tbtn p-1.5" onClick={() => setStage(stage === "review" ? "configure" : "source")} aria-label="Back"><ArrowLeft size={16} /></button> : null}
+        <div className="min-w-0 flex-1"><div className="font-semibold text-ink">{heading}</div><div className="mono mt-0.5 text-muted">{stage === "source" ? "1 / 3 · source" : stage === "configure" ? "2 / 3 · plugins" : "3 / 3 · manifest"}</div></div>
+        <button type="button" className="tbtn p-1.5" onClick={onClose} aria-label="Close"><X size={16} /></button>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto p-5">
+        {stage === "source" ? (
+          <div className="space-y-5">
+            <p className="text-muted">Use a repository-relative path. Detection reads file names only and does not execute project code.</p>
+            <Field label="local path" value={path} onChange={setPath} placeholder="services/billing" required />
+            <Field label="repository URL · optional" value={repository} onChange={setRepository} placeholder="https://github.com/acme/billing" />
+          </div>
+        ) : stage === "configure" && discovery && draft ? (
+          <div className="space-y-5">
+            <div className="rounded-control border border-line bg-surface px-3 py-2 text-muted"><span className="mono text-ink">{discovery.root}</span> · scanned {discovery.filesScanned} files{discovery.truncated ? " (limit reached)" : ""}</div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="project name" value={draft.name} onChange={(name) => setDraft({ ...draft, name })} required />
+              <Field label="project id" value={draft.id} onChange={(id) => setDraft({ ...draft, id })} required />
+              <Field label="bounded context" value={draft.context} onChange={(context) => setDraft({ ...draft, context })} />
+              <Field label="service slug" value={draft.service} onChange={(service) => setDraft({ ...draft, service })} />
+            </div>
+            <div><div className="label mb-2">detected plugins</div>
+              {discovery.detections.length ? <div className="divide-y divide-line rounded-control border border-line">{discovery.detections.map((item) => {
+                const checked = draft.plugins.includes(item.plugin);
+                return <label key={item.plugin} className="flex cursor-pointer items-center gap-3 px-3 py-2 hover:bg-surface"><input type="checkbox" checked={checked} onChange={() => setDraft({ ...draft, plugins: checked ? draft.plugins.filter((name) => name !== item.plugin) : [...draft.plugins, item.plugin] })} /><span className="mono text-ink">{item.plugin}</span><span className="ml-auto text-muted">{item.evidence}</span><span className="chip status-verified">{item.confidence}</span></label>;
+              })}</div> : <Empty>no supported project signals found</Empty>}
+            </div>
+          </div>
+        ) : stage === "review" && plan ? (
+          <div className="space-y-5">
+            <div className="rounded-card border border-line bg-surface p-4"><div className="font-semibold text-ink">{plan.project.name}</div><div className="mono mt-1 text-muted">{plan.project.root}</div></div>
+            <div><div className="label mb-2">portolan.json changes</div><dl className="mono grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-muted"><dt>project</dt><dd className="text-ink">{plan.project.id}</dd><dt>source</dt><dd className="truncate text-ink">{plan.source}</dd><dt>pipeline</dt><dd className="text-ink">{plan.steps.length} {plural(plan.steps.length, "extract step")}</dd></dl></div>
+            <div className="divide-y divide-line rounded-control border border-line">{plan.steps.map((step) => <div key={step.plugin} className="mono grid gap-1 px-3 py-2 sm:grid-cols-[8rem_1fr]"><span className="text-ink">{step.plugin}</span><span className="truncate text-muted">{step.in} → {step.out}</span></div>)}</div>
+          </div>
+        ) : null}
+        {error ? <div role="alert" className="mt-4 rounded-control border border-unresolved px-3 py-2 text-unresolved">{error}</div> : null}
+      </div>
+      <div className="flex flex-wrap justify-end gap-2 border-t border-line px-5 py-4">
+        <button type="button" className="tbtn" onClick={onClose} disabled={busy}>Cancel</button>
+        {stage === "source" ? <button type="button" className="btn-accent" onClick={() => void detect()} disabled={busy || !path.trim()}>{busy ? <LoaderCircle size={15} className="animate-spin" /> : null} Detect project</button> : null}
+        {stage === "configure" ? <button type="button" className="btn-accent" onClick={() => void review()} disabled={busy || !draft?.plugins.length}>{busy ? <LoaderCircle size={15} className="animate-spin" /> : null} Review</button> : null}
+        {stage === "review" ? <><button type="button" className="tbtn" onClick={() => void save(false)} disabled={busy}>Add only</button><button type="button" className="btn-accent" onClick={() => void save(true)} disabled={busy}>{busy ? <LoaderCircle size={15} className="animate-spin" /> : <Play size={15} />} Add & generate</button></> : null}
+      </div>
+    </Modal>
+  );
+}
+
+function RunDialog({ runId, open, onClose, onFinished }: { runId: string | null; open: boolean; onClose: () => void; onFinished: () => void }) {
+  const [events, setEvents] = useState<RunEvent[]>([]);
+  const finished = events.slice().reverse().find(
+    (event): event is Extract<RunEvent, { type: "process-finished" }> => event.type === "process-finished",
+  );
+  const pipeline = events.find((event) => event.type === "pipeline-ready");
+  const steps = events.filter((event) => event.type === "step-finished");
+  const active = events.slice().reverse().find(
+    (event): event is Extract<RunEvent, { type: "step-started" }> => event.type === "step-started",
+  );
+  const logs = events.filter((event) => event.type === "log");
+  useEffect(() => {
+    if (!runId) return;
+    setEvents([]);
+    return subscribeToRun(runId, (event) => { setEvents((current) => [...current, event]); if (event.type === "process-finished") onFinished(); }, onFinished);
+  }, [runId, onFinished]);
+  const total = pipeline?.type === "pipeline-ready" ? pipeline.stepCount : 0;
+  const percent = total ? Math.round((steps.length / total) * 100) : 0;
+  return (
+    <Modal open={open} onClose={finished ? onClose : () => {}} label="Generate documentation" width="min(720px,94vw)">
+      <div className="flex items-center gap-3 border-b border-line px-5 py-4"><div className="flex-1"><div className="font-semibold text-ink">Generate documentation</div><div className="mono mt-0.5 text-muted">{finished ? `finished · ${finished.status}` : active?.type === "step-started" ? `${active.phase} · ${active.plugin}` : "starting generator…"}</div></div>{finished ? <button className="tbtn p-1.5" onClick={onClose} aria-label="Close"><X size={16} /></button> : <LoaderCircle size={18} className="animate-spin text-accent" />}</div>
+      <div className="min-h-0 flex-1 overflow-y-auto p-5">
+        <div className="h-1.5 overflow-hidden rounded-full bg-surface"><div className="h-full bg-accent transition-[width]" style={{ width: `${percent}%` }} /></div>
+        <div className="mono mt-2 flex justify-between text-muted"><span>{steps.length} / {total || "?"} steps</span><span>{percent}%</span></div>
+        <div className="mt-4 divide-y divide-line rounded-control border border-line">{steps.map((event) => event.type === "step-finished" ? <div key={`${event.ordinal}:${event.plugin}`} className="grid gap-1 px-3 py-2 sm:grid-cols-[8rem_1fr_auto]"><span className="mono text-muted">{event.phase}</span><span className="mono text-ink">{event.plugin}</span><span className={`chip ${event.status === "failed" ? "status-unresolved" : "status-verified"}`}>{event.status}</span></div> : null)}</div>
+        {logs.length ? <details className="mt-4"><summary className="cursor-pointer text-muted">Generator log · {logs.length} lines</summary><pre className="mono mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded-control bg-surface p-3 text-muted">{logs.map((event) => event.type === "log" ? event.message : "").join("\n")}</pre></details> : null}
+      </div>
+      <div className="flex justify-end border-t border-line px-5 py-4">{finished ? <button type="button" className="btn-accent" onClick={onClose}>Done</button> : <button type="button" className="tbtn" onClick={() => runId && void cancelGeneration(runId)}>Cancel generation</button>}</div>
+    </Modal>
+  );
+}
+
+function SettingsContent({ local, onAdd, onGenerate }: { local: boolean; onAdd: () => void; onGenerate: () => void }) {
+  const setupInfo = useSetup();
   const active = setupInfo.plugins.filter((plugin) => plugin.stepCount > 0);
   return (
     <div className="h-full overflow-y-auto p-gutter">
       <div className="max-w-table">
-        <h1 className="text-lg font-semibold">Settings</h1>
-        <p className="mt-1 max-w-prose text-muted">The projects, plugins and local preferences used by this catalog. Build configuration is read-only here and comes from portolan.json.</p>
+        <div className="flex flex-wrap items-start justify-between gap-3"><div><div className="flex items-center gap-2"><h1 className="text-lg font-semibold">Settings</h1>{local ? <span className="chip status-verified">local mode</span> : null}</div><p className="mt-1 max-w-prose text-muted">The projects, plugins and local preferences used by this catalog. {local ? "This local session can update portolan.json and run the generator." : "Build configuration is read-only here and comes from portolan.json."}</p></div>{local ? <button type="button" className="btn-accent" onClick={onGenerate}><Play size={15} /> Generate docs</button> : null}</div>
         <BuildHealth />
 
         <div className="mt-4 grid grid-cols-2 gap-grid lg:grid-cols-4">
@@ -453,8 +629,8 @@ export function Settings() {
         </div>
 
         <section className="mt-section">
-          <SectionTitle right="declared in portolan.json">Projects</SectionTitle>
-          {setupInfo.projects.length === 0 ? <Empty>portolan.json names no projects — every input here is the estate's own</Empty> : <div className="grid gap-grid xl:grid-cols-2">{setupInfo.projects.map((project) => <ProjectCard key={project.id} project={project} />)}</div>}
+          <SectionTitle right={local ? "editable in local mode" : "declared in portolan.json"}>Projects</SectionTitle>
+          {setupInfo.projects.length === 0 && !local ? <Empty>portolan.json names no projects — every input here is the estate's own</Empty> : <div className="grid gap-grid xl:grid-cols-2">{setupInfo.projects.map((project) => <ProjectCard key={project.id} project={project} />)}{local ? <AddProjectCard onClick={onAdd} /> : null}</div>}
         </section>
 
         <section className="mt-section">
@@ -475,8 +651,37 @@ export function Settings() {
           </div>
         </details>
 
-        <div className="mono mt-section flex items-center gap-2 pb-section text-muted"><Box size={14} aria-hidden />Configuration is embedded at build time; changing it requires a new catalog build.</div>
+        <div className="mono mt-section flex items-center gap-2 pb-section text-muted"><Box size={14} aria-hidden />{local ? "Changes are written to portolan.json; generated files remain reviewable in git." : "Configuration is embedded at build time; changing it requires a new catalog build."}</div>
       </div>
     </div>
+  );
+}
+
+export function Settings() {
+  const [setup, setSetup] = useState<SetupInfo>(staticSetupInfo);
+  const [local, setLocal] = useState(false);
+  const [wizard, setWizard] = useState(false);
+  const [runId, setRunId] = useState<string | null>(null);
+  const [runOpen, setRunOpen] = useState(false);
+  const say = useToastStore((state) => state.say);
+  const refresh = useCallback(async () => {
+    try { const status = await localStatus(); setLocal(true); setSetup(status.setup); if (status.activeRun) { setRunId(status.activeRun.id); setRunOpen(true); } }
+    catch { setLocal(false); }
+  }, []);
+  useEffect(() => { void refresh(); }, [refresh]);
+  async function generate() {
+    try {
+      const run = await startGeneration("write");
+      setRunId(run.runId); setRunOpen(true);
+    } catch (cause) {
+      say(cause instanceof Error ? cause.message : String(cause));
+    }
+  }
+  return (
+    <SetupContext.Provider value={setup}>
+      <SettingsContent local={local} onAdd={() => setWizard(true)} onGenerate={() => void generate()} />
+      <Wizard open={wizard} onClose={() => setWizard(false)} onAdded={setSetup} onGenerate={generate} />
+      <RunDialog runId={runId} open={runOpen} onClose={() => setRunOpen(false)} onFinished={refresh} />
+    </SetupContext.Provider>
   );
 }
