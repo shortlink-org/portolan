@@ -199,6 +199,9 @@ shown it and nobody should have to come back for it.'
     }
   }
 
+  auth.auth -> risk_v1 'Assess' {
+    style { color unresolved  line dotted  head normal }
+  }
   storefront.bff -> auth.auth 'validateSession' {
     style { color declared  line dashed  head normal }
   }

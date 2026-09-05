@@ -737,7 +737,7 @@ views {
     }
     payments.ledger -> ledger_pg 'byId' {
       color declared  line dashed  head none
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/GetPayment.java:20'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/GetPayment.java:27'
     }
   }
 
@@ -811,7 +811,7 @@ views {
     }
     payments.ledger -> ledger_pg 'byPayment' {
       color declared  line dashed  head none
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/ListRefunds.java:20'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/ListRefunds.java:27'
     }
   }
 
@@ -1281,7 +1281,7 @@ views {
     }
     delivery.core -> core_pg 'byId' {
       color declared  line dashed  head none
-      notes 'examples/shop/delivery/core/src/application/shipment/usecases/get_shipment/usecase.ts:9'
+      notes 'examples/shop/delivery/core/src/application/shipment/usecases/get_shipment/usecase.ts:24'
     }
   }
 
@@ -1310,7 +1310,7 @@ views {
     }
     delivery.core -> core_pg 'byId' {
       color declared  line dashed  head none
-      notes 'examples/shop/delivery/core/src/application/route/usecases/get_route/usecase.ts:9'
+      notes 'examples/shop/delivery/core/src/application/route/usecases/get_route/usecase.ts:22'
     }
   }
 
@@ -1327,11 +1327,11 @@ views {
     description 'One shipment, for whoever is asking about an order.'
     client -> delivery.core 'GetShipment → GetShipmentResponse' {
       color declared  line dashed  head normal
-      notes 'examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:58'
+      notes 'examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:48'
     }
     delivery.core -> core_pg 'byId' {
       color declared  line dashed  head none
-      notes 'examples/shop/delivery/core/src/application/shipment/usecases/get_shipment/usecase.ts:9'
+      notes 'examples/shop/delivery/core/src/application/shipment/usecases/get_shipment/usecase.ts:24'
     }
   }
 
@@ -1339,7 +1339,7 @@ views {
     title 'Get shipment — crossings only'
     client -> delivery.core 'GetShipment → GetShipmentResponse' {
       color declared  line dashed  head normal
-      notes 'examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:58'
+      notes 'examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts:48'
     }
   }
 
@@ -1451,7 +1451,7 @@ views {
     }
     delivery.core -> core_pg 'byTracking' {
       color declared  line dashed  head none
-      notes 'examples/shop/delivery/core/src/application/shipment/usecases/track_shipment/usecase.ts:9'
+      notes 'examples/shop/delivery/core/src/application/shipment/usecases/track_shipment/usecase.ts:23'
     }
   }
 
@@ -1490,7 +1490,7 @@ views {
 
   dynamic view flow_oms_cancel_order {
     title 'Cancel order'
-    description 'Answers with the order as it is now; a cancelled order is still found.'
+    description 'Reads one order by id.'
     client -> shop.oms 'CancelOrder → CancelOrderResponse' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:41'
@@ -1517,7 +1517,7 @@ views {
     }
     shop.oms -> oms_pg 'by_id' {
       color declared  line dashed  head none
-      notes 'examples/shop/oms/src/application/order/usecases/get_order/mod.rs:14'
+      notes 'examples/shop/oms/src/application/order/usecases/get_order/mod.rs:42'
     }
   }
 
@@ -1539,14 +1539,14 @@ views {
 
   dynamic view flow_oms_get_order {
     title 'Get order'
-    description 'Answers with the order as it is now; a cancelled order is still found.'
+    description 'Reads one order by id.'
     client -> shop.oms 'GetOrder → GetOrderResponse' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs:31'
     }
     shop.oms -> oms_pg 'by_id' {
       color declared  line dashed  head none
-      notes 'examples/shop/oms/src/application/order/usecases/get_order/mod.rs:14'
+      notes 'examples/shop/oms/src/application/order/usecases/get_order/mod.rs:42'
     }
   }
 

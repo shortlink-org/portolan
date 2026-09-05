@@ -82,6 +82,18 @@ for (const context of catalog.contexts) {
   }
 }
 
+// An unresolved call keeps the raw peer name, `risk.v1`, as its contract says;
+// the flow that made the same call put the peer on a lane whose id carries no
+// dot, `risk-v1`, because a dot would read as containment here. The two are
+// one participant, joined by the label the lane kept, so the call resolves to
+// the lane and not to a `v1` nested inside a `risk` that nobody declared.
+const participantByLabel = new Map();
+for (const [id, meta] of rootParticipants) participantByLabel.set(meta.label, id);
+function peerParticipant(peer) {
+  if (serviceIds.has(peer) || rootParticipants.has(peer)) return peer;
+  return participantByLabel.get(peer);
+}
+
 // A store is a container the estate keeps its state in, so it belongs inside
 // the service that owns it — not at the model root, where a flow's own store
 // participants sit. The two are different ids and the catalog says nothing
@@ -205,10 +217,11 @@ for (const context of catalog.contexts) {
       }
     }
     for (const call of service.consumes) {
-      if (!serviceIds.has(call.peer) && !rootParticipants.has(call.peer)) continue;
+      const peer = peerParticipant(call.peer);
+      if (!peer) continue;
       const method = call.id.split("/").pop() ?? call.id;
       relations.push(
-        `  ${fqn(service.id)} -> ${fqn(call.peer)} ${q(method)} {\n` +
+        `  ${fqn(service.id)} -> ${fqn(peer)} ${q(method)} {\n` +
           `    style { color ${call.status}  line ${STATUS_LINE[call.status]}  head normal }\n` +
           `  }`,
       );
