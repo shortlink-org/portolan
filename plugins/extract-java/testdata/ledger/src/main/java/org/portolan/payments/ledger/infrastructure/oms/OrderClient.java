@@ -1,6 +1,7 @@
 package org.portolan.payments.ledger.infrastructure.oms;
 
 import org.jmolecules.architecture.hexagonal.SecondaryAdapter;
+import org.portolan.payments.ledger.application.payment.usecase.Orders;
 import org.portolan.payments.ledger.infrastructure.oms.gen.OrderServiceGrpc;
 
 /**
@@ -9,7 +10,7 @@ import org.portolan.payments.ledger.infrastructure.oms.gen.OrderServiceGrpc;
  * callee's own extractor gives it.
  */
 @SecondaryAdapter
-public class OrderClient {
+public class OrderClient implements Orders {
 
     private final OrderServiceGrpc.OrderServiceBlockingStub stub;
 
@@ -18,7 +19,9 @@ public class OrderClient {
     }
 
     /** Asks the order service what the order says about itself. */
-    public GetOrderResponse getOrder(String orderId) {
-        return stub.getOrder(GetOrderRequest.newBuilder().setOrderId(orderId).build());
+    @Override
+    public boolean stands(String orderId) {
+        GetOrderResponse answer = stub.getOrder(GetOrderRequest.newBuilder().setOrderId(orderId).build());
+        return !answer.getStatus().equals("cancelled");
     }
 }

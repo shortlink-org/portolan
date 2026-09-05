@@ -1,0 +1,106 @@
+{
+  "generatedAt": "2026-09-05T15:32:22+07:00",
+  "commit": "ef19b9c",
+  "contexts": [],
+  "defs": {},
+  "flows": [],
+  "adrs": [],
+  "terms": [
+    {
+      "id": "payments.attempt",
+      "slug": "attempt",
+      "context": "payments",
+      "name": "Attempt",
+      "definition": "Which try at charging one order a payment is. A declined hold is followed by a second, legitimate attempt on the same order, and each is its own payment; the pair of order and attempt is unique (payments.0004).",
+      "source": "examples/payments/ledger/GLOSSARY.md:5"
+    },
+    {
+      "id": "payments.capture",
+      "slug": "capture",
+      "context": "payments",
+      "name": "Capture",
+      "definition": "Moving money the gateway was holding. Writes the pair of postings that accounts for it and says `PaymentCaptured`; the only thing anything waiting to be paid listens for.",
+      "source": "examples/payments/ledger/GLOSSARY.md:9"
+    },
+    {
+      "id": "payments.decline",
+      "slug": "decline",
+      "context": "payments",
+      "name": "Decline",
+      "definition": "The money was not held. Its reason is a closed set: the card was refused, or the order was already cancelled. Not what the gateway said in its own words.",
+      "source": "examples/payments/ledger/GLOSSARY.md:13"
+    },
+    {
+      "id": "payments.gateway",
+      "slug": "gateway",
+      "context": "payments",
+      "name": "Gateway",
+      "definition": "The card network, as this service asks it: hold, capture, void, refund. A third party behind a port; its own words for those four things stay in the adapter. When it does not answer, nothing is decided and nothing is written.",
+      "source": "examples/payments/ledger/GLOSSARY.md:17"
+    },
+    {
+      "id": "payments.hold",
+      "slug": "hold",
+      "context": "payments",
+      "name": "Hold",
+      "definition": "The gateway has reserved the money against an instrument and given back a code that names the reservation. The code is the gateway's handle on the money and never leaves this service: not on an event, not on the wire.",
+      "source": "examples/payments/ledger/GLOSSARY.md:22"
+    },
+    {
+      "id": "payments.journal",
+      "slug": "journal",
+      "context": "payments",
+      "name": "Journal",
+      "definition": "The postings, in the order they were written. Append-only; nothing in it is ever updated, and a correction is another pair.",
+      "source": "examples/payments/ledger/GLOSSARY.md:26"
+    },
+    {
+      "id": "payments.money",
+      "slug": "money",
+      "context": "payments",
+      "name": "Money",
+      "definition": "An amount in the minor unit of a currency. The ledger never rounds.",
+      "source": "examples/payments/ledger/GLOSSARY.md:29"
+    },
+    {
+      "id": "payments.order",
+      "slug": "order",
+      "context": "payments",
+      "name": "Order",
+      "definition": "What the payment is for. Another context owns it, so it is an id here and nothing more. Asked once, before a hold: a cancelled order is not charged.",
+      "source": "examples/payments/ledger/GLOSSARY.md:31"
+    },
+    {
+      "id": "payments.payment",
+      "slug": "payment",
+      "context": "payments",
+      "name": "Payment",
+      "definition": "What one order owes on one attempt, and everything that has happened to that money. The aggregate root; its status moves only the way its lifecycle table allows.",
+      "source": "examples/payments/ledger/GLOSSARY.md:35"
+    },
+    {
+      "id": "payments.posting",
+      "slug": "posting",
+      "context": "payments",
+      "name": "Posting",
+      "definition": "One side of one movement of money. Comes in balanced pairs.",
+      "source": "examples/payments/ledger/GLOSSARY.md:39"
+    },
+    {
+      "id": "payments.refund",
+      "slug": "refund",
+      "context": "payments",
+      "name": "Refund",
+      "definition": "Money going back against a payment that was captured. Its own aggregate: asked for by somebody else, at another time, for a reason of its own, and there may be several per payment, never adding up to more than was captured.",
+      "source": "examples/payments/ledger/GLOSSARY.md:41"
+    },
+    {
+      "id": "payments.void",
+      "slug": "void",
+      "context": "payments",
+      "name": "Void",
+      "definition": "Giving back a hold nobody is going to be charged for. Happens when the order is cancelled; touches nothing that was captured.",
+      "source": "examples/payments/ledger/GLOSSARY.md:46"
+    }
+  ]
+}

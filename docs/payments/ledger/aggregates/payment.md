@@ -33,9 +33,28 @@ One side of one movement of money.
 | --- | --- |
 | `account` | `String` |
 | `amount` | `Money` |
-| `writtenAt` | `String` |
+| `writtenAt` | `Instant` |
 
 ## Value objects
+
+### Giveback
+
+What the gateway answers when asked to send money back: it did, under a reference of its own, or it would not. Unreachable throws {@link GatewayUnavailable}, as with a hold.
+
+| Field | Type |
+| --- | --- |
+| `sent` | `boolean` |
+| `reference` | `String` |
+
+### Hold
+
+What the gateway answers when asked to hold money: it did, with the code that names the hold, or it refused, with a reason this service can act on.
+
+| Field | Type |
+| --- | --- |
+| `held` | `boolean` |
+| `authCode` | `String` |
+| `refusal` | `DeclineReason` |
 
 ### Money
 
@@ -62,10 +81,10 @@ stateDiagram-v2
 
 | From | To | On | Emits | Source |
 | --- | --- | --- | --- | --- |
-| `PENDING` | `AUTHORIZED` | `authorize` | `PaymentAuthorized` | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:61` |
-| `AUTHORIZED` | `CAPTURED` | `capture` | `PaymentCaptured` | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:72` |
-| `PENDING` | `DECLINED` | `decline` | `PaymentDeclined` | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:78` |
-| `AUTHORIZED` | `VOIDED` | `voidAuthorization` | — | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:84` |
+| `PENDING` | `AUTHORIZED` | `authorize` | `PaymentAuthorized` | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:75` |
+| `AUTHORIZED` | `CAPTURED` | `capture` | `PaymentCaptured` | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:86` |
+| `PENDING` | `DECLINED` | `decline` | `PaymentDeclined` | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:95` |
+| `AUTHORIZED` | `VOIDED` | `voidAuthorization` | — | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:102` |
 
 ## Operations
 
@@ -74,6 +93,7 @@ stateDiagram-v2
 | `AuthorizePayment` | command | `Authorize` | Asks the gateway to hold the money for an order, and records either that it agreed or that it refused. |
 | `CapturePayment` | command | `Capture` | Moves the money the gateway was holding, writes the pair of postings for it, and says so on the bus. |
 | `GetPayment` | query | `GetPayment` | Reads one payment, for whoever is asking what happened to the money. |
+| `VoidPayment` | command | *internal* | Gives back a hold nobody is going to be charged for. |
 
 ## Events
 
@@ -98,7 +118,7 @@ Source: `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/dom
 | `paymentId` | `String` |
 | `orderId` | `String` |
 | `amount` | `Money` |
-| `authCode` | `String` |
+| `occurredAt` | `Instant` |
 
 ### PaymentCaptured
 
@@ -122,7 +142,7 @@ Source: `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/dom
 | `paymentId` | `String` |
 | `orderId` | `String` |
 | `amount` | `Money` |
-| `capturedAt` | `String` |
+| `occurredAt` | `Instant` |
 
 ### PaymentDeclined
 
@@ -132,7 +152,7 @@ On the wire as `ledger.PaymentDeclined`, on `payments.ledger.payment`.
 
 #### v1 — current
 
-The gateway refused, and it says why in its own words rather than ours.
+The money was not held, and the reason is one of a closed set a consumer can switch on.
 
 Source: `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/event/PaymentDeclined.java`
 
@@ -140,4 +160,5 @@ Source: `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/dom
 | --- | --- |
 | `paymentId` | `String` |
 | `orderId` | `String` |
-| `reason` | `String` |
+| `reason` | `DeclineReason` |
+| `occurredAt` | `Instant` |

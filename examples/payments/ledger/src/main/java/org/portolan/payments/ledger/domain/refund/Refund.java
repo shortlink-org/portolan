@@ -4,6 +4,7 @@ import java.time.Instant;
 
 import org.jmolecules.ddd.annotation.AggregateRoot;
 import org.jmolecules.ddd.annotation.Identity;
+import org.portolan.payments.ledger.domain.payment.IllegalMove;
 import org.portolan.payments.ledger.domain.payment.vo.Money;
 import org.portolan.payments.ledger.domain.refund.event.RefundIssued;
 
@@ -12,7 +13,8 @@ import org.portolan.payments.ledger.domain.refund.event.RefundIssued;
  *
  * Its own aggregate rather than a method on the payment: a refund is asked for
  * by somebody else, at another time, for a reason of its own, and there may be
- * several against one payment.
+ * several against one payment. The status moves only the way
+ * {@link RefundStatus#TRANSITIONS} allows.
  */
 @AggregateRoot
 public final class Refund {
@@ -35,15 +37,31 @@ public final class Refund {
         this.reason = reason;
     }
 
+    /** Rebuilds a refund the store already holds; no move is made and nothing is published. */
+    public static Refund restore(String id, String paymentId, String orderId, Money amount, String reason, RefundStatus status, Instant settledAt) {
+        Refund refund = new Refund(id, paymentId, orderId, amount, reason);
+        refund.status = status;
+        refund.settledAt = settledAt;
+        return refund;
+    }
+
+    private void allow(RefundStatus next) {
+        if (!RefundStatus.TRANSITIONS.get(status).contains(next)) {
+            throw new IllegalMove(status.name(), next.name());
+        }
+    }
+
     /** The money is on its way back. */
     public RefundIssued issue(Instant at) {
-        this.settledAt = at;
+        allow(RefundStatus.ISSUED);
         this.status = RefundStatus.ISSUED;
-        return new RefundIssued(id, paymentId, orderId, amount, reason);
+        this.settledAt = at;
+        return new RefundIssued(id, paymentId, orderId, amount, reason, at);
     }
 
     /** The gateway would not take it back, and that is the end of this refund. */
     public void reject() {
+        allow(RefundStatus.REJECTED);
         this.status = RefundStatus.REJECTED;
     }
 

@@ -463,7 +463,7 @@
           "shop.v1": "shop.oms"
         },
         "events": {
-          "org.portolan.payments.ledger.infrastructure.oms.event": "shop.oms.order"
+          "org.portolan.payments.ledger.application.oms": "shop.oms.order"
         },
         "out": "domain.json"
       }
@@ -497,6 +497,23 @@
         "name": "Ledger database",
         "repositories": "src/main/java/org/portolan/payments/ledger/infrastructure/repository",
         "out": "stores.json"
+      }
+    },
+    {
+      "plugin": "adr",
+      "in": "examples/payments/ledger",
+      "out": "examples/payments/ledger/portolan",
+      "options": {
+        "out": "adr.json"
+      }
+    },
+    {
+      "plugin": "glossary",
+      "in": "examples/payments/ledger",
+      "out": "examples/payments/ledger/portolan",
+      "options": {
+        "context": "payments",
+        "out": "glossary.json"
       }
     },
     {

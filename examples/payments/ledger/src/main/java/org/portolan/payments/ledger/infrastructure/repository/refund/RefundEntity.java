@@ -75,4 +75,8 @@ public class RefundEntity {
     public String status() {
         return status;
     }
+
+    public java.time.Instant settledAt() {
+        return settledAt;
+    }
 }

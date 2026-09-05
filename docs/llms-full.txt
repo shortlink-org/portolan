@@ -99,6 +99,8 @@
 | [bff.0002](adr/bff.0002.md) | The storefront owns no state | accepted | 2026-09-05 |
 | [bff.0003](adr/bff.0003.md) | The schema speaks the client's words, not the peers' | accepted | 2026-09-05 |
 | [bff.0004](adr/bff.0004.md) | A subscription is the bus, forwarded | accepted | 2026-09-05 |
+| [ledger.0001](adr/ledger.0001.md) | A gateway that did not answer has not refused | accepted | 2026-09-05 |
+| [ledger.0002](adr/ledger.0002.md) | Another service's events are read off the bus by an adapter and republished in process | accepted | 2026-09-05 |
 | [cart.0001](adr/cart.0001.md) | TypeScript on Node.js, and the stack around it | accepted | 2026-09-04 |
 | [cart.0002](adr/cart.0002.md) | A basket freezes its currency at the first item | accepted | 2026-09-04 |
 | [cart.0003](adr/cart.0003.md) | Line prices are captured when added, never recomputed | accepted | 2026-09-04 |
@@ -1146,11 +1148,42 @@ Money, and the record of every movement of it. Nothing here decides whether to c
 | --- | --- | --- |
 | [Ledger](ledger/README.md) | `examples/payments/ledger` | Payment, Refund |
 
+## Language
+
+- [Glossary](glossary.md) — 12 terms this context spells one way
+
 ## Decisions
 
 | ADR | Title | Status | Date |
 | --- | --- | --- | --- |
 | [payments.0004](../adr/payments.0004.md) | Journal entries are idempotent by (order_id, attempt) | proposed | 2026-02-09 |
+
+<!-- payments/glossary.md -->
+
+# Glossary — Payments
+
+*Generated from the portolan catalog · commit `6 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
+
+- **Context:** [Payments](README.md)
+- **Terms:** 12
+- **Read from:** `examples/payments/ledger/GLOSSARY.md`
+
+One meaning per word inside this context, as the glossary beside the code states it.
+
+## Terms
+
+- **Attempt** — Which try at charging one order a payment is. A declined hold is followed by a second, legitimate attempt on the same order, and each is its own payment; the pair of order and attempt is unique (payments.0004).
+- **Capture** — Moving money the gateway was holding. Writes the pair of postings that accounts for it and says `PaymentCaptured`; the only thing anything waiting to be paid listens for.
+- **Decline** — The money was not held. Its reason is a closed set: the card was refused, or the order was already cancelled. Not what the gateway said in its own words.
+- **Gateway** — The card network, as this service asks it: hold, capture, void, refund. A third party behind a port; its own words for those four things stay in the adapter. When it does not answer, nothing is decided and nothing is written.
+- **Hold** — The gateway has reserved the money against an instrument and given back a code that names the reservation. The code is the gateway's handle on the money and never leaves this service: not on an event, not on the wire.
+- **Journal** — The postings, in the order they were written. Append-only; nothing in it is ever updated, and a correction is another pair.
+- **Money** — An amount in the minor unit of a currency. The ledger never rounds.
+- **Order** — What the payment is for. Another context owns it, so it is an id here and nothing more. Asked once, before a hold: a cancelled order is not charged.
+- **Payment** — What one order owes on one attempt, and everything that has happened to that money. The aggregate root; its status moves only the way its lifecycle table allows.
+- **Posting** — One side of one movement of money. Comes in balanced pairs.
+- **Refund** — Money going back against a payment that was captured. Its own aggregate: asked for by somebody else, at another time, for a reason of its own, and there may be several per payment, never adding up to more than was captured.
+- **Void** — Giving back a hold nobody is going to be charged for. Happens when the order is cancelled; touches nothing that was captured.
 
 <!-- payments/ledger/README.md -->
 
@@ -1180,12 +1213,14 @@ that sum to zero, and a correction is another pair.
 - Sends money back against a captured payment, in full or in part, and says
   `RefundIssued`.
 - Gives back a hold nobody will be charged for, when the order it was held for
-  is cancelled.
+  is cancelled. The fact arrives from the order service over the bus.
 
 ## What it does not do
 
 Does not decide *whether* to charge — that is the order's business, and the
-ledger is asked. Does not issue invoices: what a customer is *asked* to pay is
+ledger is asked; a cancelled order is the one thing it refuses to charge on
+its own. Does not decide anything when the gateway does not answer: nothing
+is recorded, and the caller is told to try again (ledger.0001). Does not issue invoices: what a customer is *asked* to pay is
 `shop.billing`'s aggregate, and this one only says what happened to the money.
 Does not store card data; the gateway holds the instrument and this holds a
 token for it.
@@ -1214,8 +1249,8 @@ cd ../../refund/proto && buf push
 
 ## How the catalog reads it
 
-Nothing here is annotated for the catalog, but plenty is annotated for the
-model: `@AggregateRoot`, `@Entity`, `@ValueObject`, `@Repository`,
+The vocabulary is [GLOSSARY.md](GLOSSARY.md). Nothing here is annotated for
+the catalog, but plenty is annotated for the model: `@AggregateRoot`, `@Entity`, `@ValueObject`, `@Repository`,
 `@SecondaryPort` and `@DomainEvent` are jMolecules, and `extract-java` reads
 what they say rather than guessing from the layout. The rules are in
 [plugins/extract-java/README.md](../../../plugins/extract-java/README.md).
@@ -1244,13 +1279,30 @@ nothing leaves. `OMS_ADDRESS` is where `shop.v1.OrderService` answers.
 
 - [payments.0004](../../../docs/adr/payments.0004.md) — journal rows are
   idempotent by `(order_id, attempt)`, which is why `payments` carries an
-  `attempt` and a unique key over the pair.
+  `attempt` and a unique key over the pair. The attempt is minted here, one
+  past the last recorded for the order, and the key's refusal is a sentinel.
+- [ledger.0001](docs/adr/0001-a-gateway-outage-records-nothing.md) — a
+  gateway that did not answer has not refused; nothing is recorded.
+- [ledger.0002](docs/adr/0002-foreign-events-arrive-over-nats-and-are-republished-in-process.md)
+  — the order service's events are read off the bus by an adapter and handed
+  to the policies in process.
+
+## Status
+
+A sketch for the catalog, not the reference service; `examples/auth` is
+that. What it has: the aggregates with their lifecycle tables enforced, the
+use cases with closed answers, a policy fed from the bus, and the records
+above. What it deliberately does not have yet, and the review skill will
+name: no version on the aggregates, so a stale copy is not refused; events
+published after the save rather than with it, so there is no outbox and a
+crash between the two loses the fact; no tests; no tracing. Each is a known
+gap, not an oversight, and none of them changes what the catalog shows.
 
 ## Aggregates
 
 | Aggregate | Root | Commands | Queries | Events |
 | --- | --- | --- | --- | --- |
-| [Payment](aggregates/payment.md) | `Payment` | 2 commands | 1 query | 3 events |
+| [Payment](aggregates/payment.md) | `Payment` | 3 commands | 1 query | 3 events |
 | [Refund](aggregates/refund.md) | `Refund` | 1 command | 1 query | 1 event |
 
 ## Provides
@@ -1274,11 +1326,11 @@ nothing leaves. `OMS_ADDRESS` is where `shop.v1.OrderService` answers.
 
 <details><summary>AuthorizeResponse</summary>
 
-| Field | Type |
-| --- | --- |
-| `payment_id` | `string` |
-| `auth_code` | `string` |
-| `authorized` | `bool` |
+| Field | Type | Doc |
+| --- | --- | --- |
+| `payment_id` | `string` | — |
+| `authorized` | `bool` | — |
+| `reason` | `string` | Why not, when not: a name from the ledger's closed set (CARD_REFUSED, ORDER_CANCELLED). Empty when authorized. |
 
 </details>
 
@@ -1376,10 +1428,10 @@ nothing leaves. `OMS_ADDRESS` is where `shop.v1.OrderService` answers.
 
 | Call | Peer | Status | Source |
 | --- | --- | --- | --- |
-| `psp/giveBack` | `psp` | unresolved | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java` |
-| `psp/release` | `psp` | unresolved | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java` |
-| `psp/reserve` | `psp` | unresolved | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java` |
-| `psp/settle` | `psp` | unresolved | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java` |
+| `psp/capture` | `psp` | unresolved | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java` |
+| `psp/hold` | `psp` | unresolved | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java` |
+| `psp/refund` | `psp` | unresolved | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java` |
+| `psp/voidHold` | `psp` | unresolved | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/psp/PspGateway.java` |
 | `shop.v1.OrderService/GetOrder` | [shop.oms](../../shop/oms/README.md) | declared | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/oms/proto/shop/v1/order.proto` |
 
 ## Publishes
@@ -1396,6 +1448,13 @@ nothing leaves. `OMS_ADDRESS` is where `shop.v1.OrderService` answers.
 | Store | Kind | Access | Tables |
 | --- | --- | --- | --- |
 | [Ledger database](stores/pg.md) | postgres | owns | 3 tables |
+
+## Decisions
+
+| ADR | Title | Status | Date |
+| --- | --- | --- | --- |
+| [ledger.0001](../../adr/ledger.0001.md) | A gateway that did not answer has not refused | accepted | 2026-09-05 |
+| [ledger.0002](../../adr/ledger.0002.md) | Another service's events are read off the bus by an adapter and republished in process | accepted | 2026-09-05 |
 
 <!-- payments/ledger/aggregates/payment.md -->
 
@@ -1434,9 +1493,28 @@ One side of one movement of money.
 | --- | --- |
 | `account` | `String` |
 | `amount` | `Money` |
-| `writtenAt` | `String` |
+| `writtenAt` | `Instant` |
 
 ## Value objects
+
+### Giveback
+
+What the gateway answers when asked to send money back: it did, under a reference of its own, or it would not. Unreachable throws {@link GatewayUnavailable}, as with a hold.
+
+| Field | Type |
+| --- | --- |
+| `sent` | `boolean` |
+| `reference` | `String` |
+
+### Hold
+
+What the gateway answers when asked to hold money: it did, with the code that names the hold, or it refused, with a reason this service can act on.
+
+| Field | Type |
+| --- | --- |
+| `held` | `boolean` |
+| `authCode` | `String` |
+| `refusal` | `DeclineReason` |
 
 ### Money
 
@@ -1463,10 +1541,10 @@ stateDiagram-v2
 
 | From | To | On | Emits | Source |
 | --- | --- | --- | --- | --- |
-| `PENDING` | `AUTHORIZED` | `authorize` | `PaymentAuthorized` | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:61` |
-| `AUTHORIZED` | `CAPTURED` | `capture` | `PaymentCaptured` | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:72` |
-| `PENDING` | `DECLINED` | `decline` | `PaymentDeclined` | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:78` |
-| `AUTHORIZED` | `VOIDED` | `voidAuthorization` | — | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:84` |
+| `PENDING` | `AUTHORIZED` | `authorize` | `PaymentAuthorized` | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:75` |
+| `AUTHORIZED` | `CAPTURED` | `capture` | `PaymentCaptured` | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:86` |
+| `PENDING` | `DECLINED` | `decline` | `PaymentDeclined` | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:95` |
+| `AUTHORIZED` | `VOIDED` | `voidAuthorization` | — | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java:102` |
 
 ## Operations
 
@@ -1475,6 +1553,7 @@ stateDiagram-v2
 | `AuthorizePayment` | command | `Authorize` | Asks the gateway to hold the money for an order, and records either that it agreed or that it refused. |
 | `CapturePayment` | command | `Capture` | Moves the money the gateway was holding, writes the pair of postings for it, and says so on the bus. |
 | `GetPayment` | query | `GetPayment` | Reads one payment, for whoever is asking what happened to the money. |
+| `VoidPayment` | command | *internal* | Gives back a hold nobody is going to be charged for. |
 
 ## Events
 
@@ -1499,7 +1578,7 @@ Source: `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/dom
 | `paymentId` | `String` |
 | `orderId` | `String` |
 | `amount` | `Money` |
-| `authCode` | `String` |
+| `occurredAt` | `Instant` |
 
 ### PaymentCaptured
 
@@ -1523,7 +1602,7 @@ Source: `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/dom
 | `paymentId` | `String` |
 | `orderId` | `String` |
 | `amount` | `Money` |
-| `capturedAt` | `String` |
+| `occurredAt` | `Instant` |
 
 ### PaymentDeclined
 
@@ -1533,7 +1612,7 @@ On the wire as `ledger.PaymentDeclined`, on `payments.ledger.payment`.
 
 #### v1 — current
 
-The gateway refused, and it says why in its own words rather than ours.
+The money was not held, and the reason is one of a closed set a consumer can switch on.
 
 Source: `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/payment/event/PaymentDeclined.java`
 
@@ -1541,7 +1620,8 @@ Source: `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/dom
 | --- | --- |
 | `paymentId` | `String` |
 | `orderId` | `String` |
-| `reason` | `String` |
+| `reason` | `DeclineReason` |
+| `occurredAt` | `Instant` |
 
 <!-- payments/ledger/aggregates/refund.md -->
 
@@ -1584,8 +1664,8 @@ stateDiagram-v2
 
 | From | To | On | Emits | Source |
 | --- | --- | --- | --- | --- |
-| `REQUESTED` | `ISSUED` | `issue` | `RefundIssued` | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/refund/Refund.java:41` |
-| `REQUESTED` | `REJECTED` | `reject` | — | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/refund/Refund.java:47` |
+| `REQUESTED` | `ISSUED` | `issue` | `RefundIssued` | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/refund/Refund.java:57` |
+| `REQUESTED` | `REJECTED` | `reject` | — | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/refund/Refund.java:65` |
 
 ## Operations
 
@@ -1615,6 +1695,7 @@ Source: `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/dom
 | `orderId` | `String` |
 | `amount` | `Money` |
 | `reason` | `String` |
+| `occurredAt` | `Instant` |
 
 <!-- shop/README.md -->
 
@@ -5025,10 +5106,10 @@ Asks the gateway to hold the money for an order, and records either that it agre
 | --- | --- | --- | --- |
 | `client` | actor | — | — |
 | `payments.ledger` | service | [payments](../payments/README.md) | — |
-| `shop.oms` | service | [shop](../shop/README.md) | — |
-| `psp` | unknown | — | psp |
 | `ledger-pg` | store | [payments](../payments/README.md) | — |
+| `shop.oms` | service | [shop](../shop/README.md) | — |
 | `bus` | broker | — | — |
+| `psp` | unknown | — | psp |
 
 ## Sequence
 
@@ -5037,47 +5118,71 @@ sequenceDiagram
     autonumber
     actor p0 as client
     participant p1 as payments.ledger
-    participant p2 as shop.oms
-    participant p3 as psp
-    participant p4 as ledger-pg
-    participant p5 as bus
+    participant p2 as ledger-pg
+    participant p3 as shop.oms
+    participant p4 as bus
+    participant p5 as psp
     p0->>p1: Authorize → AuthorizeResponse
-    p1->>p2: GetOrder → GetOrderResponse
-    p1->>p3: reserve
-    alt authCode.isEmpty()
-        p1->>p4: save
-        p1-)p5: PaymentDeclined
-        Note over p5: flow ends here
+    p1->>p2: byId
+    p1->>p2: byOrder
+    p1->>p3: GetOrder → GetOrderResponse
+    alt orders.standing(orderId) == Orders.Standing.CANCELLED
+        p1->>p2: save
+        p1-)p4: PaymentDeclined
+        Note over p4: flow ends here
     else otherwise
     end
-    p1->>p4: save
-    p1-)p5: PaymentAuthorized
+    p1->>p5: hold
+    alt !hold.held()
+        p1->>p2: save
+        p1-)p4: PaymentDeclined
+        Note over p4: flow ends here
+    else otherwise
+    end
+    p1->>p2: save
+    p1-)p4: PaymentAuthorized
 ```
 
 ## Steps
 
 1. **client** → **payments.ledger** — Authorize → AuthorizeResponse
-   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:33`
-2. **payments.ledger** → **shop.oms** — GetOrder → GetOrderResponse
-   `shop.v1.OrderService/GetOrder` · status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:37`
-3. **payments.ledger** → **psp** — reserve
-   status: unresolved · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:39`
+   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:34`
+2. **payments.ledger** → **ledger-pg** — byId
+   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:45`
+3. **payments.ledger** → **ledger-pg** — byOrder
+   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:50`
+4. **payments.ledger** → **shop.oms** — GetOrder → GetOrderResponse
+   `shop.v1.OrderService/GetOrder` · status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:54`
 
 > **One of**
 >
-> *authCode.isEmpty() — *ends the flow**
+> *orders.standing(orderId) == Orders.Standing.CANCELLED — *ends the flow**
 >
-> 4. **payments.ledger** → **ledger-pg** — save
->    status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:43`
-> 5. **payments.ledger** → **bus** — PaymentDeclined
->    [payments.ledger.payment.PaymentDeclined](../payments/ledger/aggregates/payment.md) · status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:44`
+> 5. **payments.ledger** → **ledger-pg** — save
+>    status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:56`
+> 6. **payments.ledger** → **bus** — PaymentDeclined
+>    [payments.ledger.payment.PaymentDeclined](../payments/ledger/aggregates/payment.md) · status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:57`
 >
 > *otherwise*
 
-6. **payments.ledger** → **ledger-pg** — save
-   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:49`
-7. **payments.ledger** → **bus** — PaymentAuthorized
-   [payments.ledger.payment.PaymentAuthorized](../payments/ledger/aggregates/payment.md) · status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:50`
+7. **payments.ledger** → **psp** — hold
+   status: unresolved · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:62`
+
+> **One of**
+>
+> *!hold.held() — *ends the flow**
+>
+> 8. **payments.ledger** → **ledger-pg** — save
+>    status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:65`
+> 9. **payments.ledger** → **bus** — PaymentDeclined
+>    [payments.ledger.payment.PaymentDeclined](../payments/ledger/aggregates/payment.md) · status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:66`
+>
+> *otherwise*
+
+10. **payments.ledger** → **ledger-pg** — save
+   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:70`
+11. **payments.ledger** → **bus** — PaymentAuthorized
+   [payments.ledger.payment.PaymentAuthorized](../payments/ledger/aggregates/payment.md) · status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:71`
 
 <!-- flows/ledger-capture.md -->
 
@@ -5113,7 +5218,7 @@ sequenceDiagram
     participant p4 as bus
     p0->>p1: Capture → CaptureResponse
     p1->>p2: byId
-    p1->>p3: settle
+    p1->>p3: capture
     p1->>p2: save
     p1-)p4: PaymentCaptured
 ```
@@ -5121,15 +5226,15 @@ sequenceDiagram
 ## Steps
 
 1. **client** → **payments.ledger** — Capture → CaptureResponse
-   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:48`
+   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:53`
 2. **payments.ledger** → **ledger-pg** — byId
-   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:32`
-3. **payments.ledger** → **psp** — settle
-   status: unresolved · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:33`
+   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:38`
+3. **payments.ledger** → **psp** — capture
+   status: unresolved · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:43`
 4. **payments.ledger** → **ledger-pg** — save
-   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:35`
+   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:44`
 5. **payments.ledger** → **bus** — PaymentCaptured
-   [payments.ledger.payment.PaymentCaptured](../payments/ledger/aggregates/payment.md) · status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:36`
+   [payments.ledger.payment.PaymentCaptured](../payments/ledger/aggregates/payment.md) · status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:45`
 
 <!-- flows/ledger-get-payment.md -->
 
@@ -5166,7 +5271,7 @@ sequenceDiagram
 ## Steps
 
 1. **client** → **payments.ledger** — GetPayment → GetPaymentResponse
-   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:59`
+   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:68`
 2. **payments.ledger** → **ledger-pg** — byId
    status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/GetPayment.java:27`
 
@@ -5204,8 +5309,10 @@ sequenceDiagram
     participant p4 as bus
     p0->>p1: IssueRefund → IssueRefundResponse
     p1->>p2: byId
-    p1->>p3: giveBack
-    alt reference.isEmpty()
+    p1->>p2: byId
+    p1->>p2: byPayment
+    p1->>p3: refund
+    alt !answer.sent()
         p1->>p2: save
         Note over p2: flow ends here
     else otherwise
@@ -5219,23 +5326,27 @@ sequenceDiagram
 1. **client** → **payments.ledger** — IssueRefund → IssueRefundResponse
    status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/RefundGrpcService.java:29`
 2. **payments.ledger** → **ledger-pg** — byId
-   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:34`
-3. **payments.ledger** → **psp** — giveBack
-   status: unresolved · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:36`
+   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:47`
+3. **payments.ledger** → **ledger-pg** — byId
+   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:52`
+4. **payments.ledger** → **ledger-pg** — byPayment
+   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:56`
+5. **payments.ledger** → **psp** — refund
+   status: unresolved · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:62`
 
 > **One of**
 >
-> *reference.isEmpty() — *ends the flow**
+> *!answer.sent() — *ends the flow**
 >
-> 4. **payments.ledger** → **ledger-pg** — save
->    status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:40`
+> 6. **payments.ledger** → **ledger-pg** — save
+>    status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:65`
 >
 > *otherwise*
 
-5. **payments.ledger** → **ledger-pg** — save
-   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:45`
-6. **payments.ledger** → **bus** — RefundIssued
-   [payments.ledger.refund.RefundIssued](../payments/ledger/aggregates/refund.md) · status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:46`
+7. **payments.ledger** → **ledger-pg** — save
+   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:69`
+8. **payments.ledger** → **bus** — RefundIssued
+   [payments.ledger.refund.RefundIssued](../payments/ledger/aggregates/refund.md) · status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:70`
 
 <!-- flows/ledger-list-refunds.md -->
 
@@ -5272,7 +5383,7 @@ sequenceDiagram
 ## Steps
 
 1. **client** → **payments.ledger** — ListRefunds → ListRefundsResponse
-   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/RefundGrpcService.java:44`
+   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/RefundGrpcService.java:48`
 2. **payments.ledger** → **ledger-pg** — byPayment
    status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/ListRefunds.java:27`
 
@@ -5308,7 +5419,7 @@ sequenceDiagram
     participant p3 as psp
     p0-)p1: OrderCancelled
     p1->>p2: byOrder
-    p1->>p3: release
+    p1->>p3: voidHold
     p1->>p2: save
 ```
 
@@ -5317,11 +5428,11 @@ sequenceDiagram
 1. **bus** → **payments.ledger** — OrderCancelled
    [shop.oms.order.OrderCancelled](../shop/oms/aggregates/order.md) · status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/VoidPaymentOnOrderCancelled.java:25`
 2. **payments.ledger** → **ledger-pg** — byOrder
-   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/VoidPaymentOnOrderCancelled.java:27`
-3. **payments.ledger** → **psp** — release
-   status: unresolved · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/VoidPaymentOnOrderCancelled.java:28`
+   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/VoidPayment.java:29`
+3. **payments.ledger** → **psp** — voidHold
+   status: unresolved · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/VoidPayment.java:35`
 4. **payments.ledger** → **ledger-pg** — save
-   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/VoidPaymentOnOrderCancelled.java:30`
+   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/VoidPayment.java:36`
 
 <!-- flows/billing-invoice-create.md -->
 
@@ -6727,6 +6838,8 @@ sequenceDiagram
 | [bff.0002](bff.0002.md) | The storefront owns no state | accepted | 2026-09-05 | [storefront.bff](../storefront/bff/README.md) |
 | [bff.0003](bff.0003.md) | The schema speaks the client's words, not the peers' | accepted | 2026-09-05 | [storefront.bff](../storefront/bff/README.md) |
 | [bff.0004](bff.0004.md) | A subscription is the bus, forwarded | accepted | 2026-09-05 | [storefront.bff](../storefront/bff/README.md) |
+| [ledger.0001](ledger.0001.md) | A gateway that did not answer has not refused | accepted | 2026-09-05 | [payments.ledger](../payments/ledger/README.md) |
+| [ledger.0002](ledger.0002.md) | Another service's events are read off the bus by an adapter and republished in process | accepted | 2026-09-05 | [payments.ledger](../payments/ledger/README.md) |
 | [cart.0001](cart.0001.md) | TypeScript on Node.js, and the stack around it | accepted | 2026-09-04 | [shop.cart](../shop/cart/README.md) |
 | [cart.0002](cart.0002.md) | A basket freezes its currency at the first item | accepted | 2026-09-04 | [shop.cart](../shop/cart/README.md) |
 | [cart.0003](cart.0003.md) | Line prices are captured when added, never recomputed | accepted | 2026-09-04 | [shop.cart](../shop/cart/README.md) |
@@ -7848,6 +7961,141 @@ shows a screen that waits rather than a field that errors.
   shared consumer with in-process fan-out before it was fine anywhere else.
 - Note: this is the only reason the service touches the bus. It publishes
   nothing (bff.0002).
+
+<!-- adr/ledger.0001.md -->
+
+# ledger.0001 — A gateway that did not answer has not refused
+
+*Generated from the portolan catalog · commit `6 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-09-05
+- **Scope:** [payments.ledger](../payments/ledger/README.md)
+- **Source:** `examples/payments/ledger/docs/adr/0001-a-gateway-outage-records-nothing.md`
+
+### Context and Problem Statement
+
+What does the ledger write down when the card network cannot be reached?
+
+The first answer was nothing in particular: the HTTP client turned every
+failure - a timeout, a refused connection, a 502 - into an empty string, and
+the use case read an empty string as "the gateway refused the card". A
+network outage produced a `PaymentDeclined` on the bus and a DECLINED row in
+the record the business is audited on. The order service heard a refusal and
+cancelled; the customer was told their card was declined. Nothing of the
+sort had happened.
+
+### Decision Drivers
+
+- The record must say what happened, and an outage is not a decision about a
+  card.
+- A consumer switching on a decline reason must be able to trust that a
+  reason was given by somebody.
+- The difference between "no" and "no answer" must be a type, not a string
+  the next reader has to know to check.
+
+### Considered Options
+
+1. **Record a decline** — the outage becomes a refusal; simplest to code, and
+   what the code did.
+2. **Record nothing and answer UNAVAILABLE** — the gateway port throws when it
+   gets no answer; no row, no event; the caller retries.
+3. **Record a PENDING row and reconcile later** — the attempt is written
+   before the gateway is asked and a sweep resolves it.
+
+### Decision Outcome
+
+Chosen option: **record nothing and answer UNAVAILABLE**.
+
+| | audit record | caller | code |
+|---|---|---|---|
+| record a decline | false | told the card failed | one line |
+| record nothing | true, by omission | told to try again | a sentinel and a sealed answer |
+| pending and reconcile | true, later | told to wait | a sweep and a state |
+
+The port answers with a closed set - held with its code, or refused with a
+reason - and throws `GatewayUnavailable` for everything else. The use case
+lets that pass through untouched: no save, no event, and the transport says
+UNAVAILABLE with a sentence that nothing was recorded. What is given up is
+an audit trail of attempts that never reached the network; that is the
+cheaper loss, because a false decline is worse than a missing attempt, and
+option 3 is the way to get the trail back if it is ever wanted.
+
+#### Consequences
+
+- Good: a `PaymentDeclined` on the bus was said by the network, every time.
+- Good: the refusal and the silence are different types, so a use case
+  cannot confuse them without the compiler noticing.
+- Bad: a hold the network made and a save that then failed is a hold the
+  ledger does not know about. The window is the same as before this
+  decision; an outbox and a reconciliation are the fix, and are not in this
+  sketch.
+- Neutral: the PSP's own words for a refusal never reach the domain; the
+  reason is this service's closed set.
+
+<!-- adr/ledger.0002.md -->
+
+# ledger.0002 — Another service's events are read off the bus by an adapter and republished in process
+
+*Generated from the portolan catalog · commit `6 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-09-05
+- **Scope:** [payments.ledger](../payments/ledger/README.md)
+- **Source:** `examples/payments/ledger/docs/adr/0002-foreign-events-arrive-over-nats-and-are-republished-in-process.md`
+
+### Context and Problem Statement
+
+The policy that voids a hold when an order is cancelled was written as a
+Spring listener on an in-process event. The order service publishes
+`oms.OrderCancelled` on NATS. Nothing in this service read NATS, so the
+listener never fired, and holds on cancelled orders were never released.
+
+How does a fact from another service reach a policy here, and what does the
+policy get to know about the wire it travelled on?
+
+### Decision Drivers
+
+- The policy must import nothing that knows about NATS, JSON or headers.
+- A ledger that was down must read what it missed.
+- The same fact arriving twice must not release two holds, or fail.
+- The catalog must see the policy hang off the order service's event.
+
+### Considered Options
+
+1. **The policy subscribes to NATS itself** — one class, direct.
+2. **An adapter subscribes and republishes in process; the policy listens in
+   process** — the shape the other services on this bus use.
+3. **The order service calls the ledger** — an rpc instead of an event.
+
+### Decision Outcome
+
+Chosen option: **an adapter subscribes and republishes in process**.
+
+| | policy knows the wire | missed while down | catalog reads it |
+|---|---|---|---|
+| policy on NATS | yes | with a durable consumer | as an adapter, not a policy |
+| adapter republishes | no | with a durable consumer | as a policy on the event |
+| rpc from the order | no | lost | as a call, not a reaction |
+
+The shape of the fact the policy needs - the order id, the reason - is
+declared in the application layer, beside the policy, in this service's
+words. The adapter holds a durable consumer on the order service's stream,
+filtered on its subject, reads the event's name off the header the estate
+agreed on, translates the JSON into that shape and hands it to Spring's
+in-process publisher. The policy listens with a plain `@EventListener` and
+calls a use case, which is idempotent because delivery is at least once.
+
+Option 3 was rejected because a cancellation is a fact, not a request: the
+order service does not know who needs to unwind what, and should not.
+
+#### Consequences
+
+- Good: the policy's imports are its own application layer and a use case.
+- Good: at least once, with a durable name, so downtime is not loss.
+- Bad: a second subscriber class per publishing service; the manifest has
+  to say which aggregate the foreign shape belongs to.
+- Neutral: with no bus configured the adapter reads nothing and says so once.
 
 <!-- adr/cart.0001.md -->
 

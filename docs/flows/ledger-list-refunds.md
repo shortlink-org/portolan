@@ -31,6 +31,6 @@ sequenceDiagram
 ## Steps
 
 1. **client** → **payments.ledger** — ListRefunds → ListRefundsResponse
-   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/RefundGrpcService.java:44`
+   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/RefundGrpcService.java:48`
 2. **payments.ledger** → **ledger-pg** — byPayment
    status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/ListRefunds.java:27`

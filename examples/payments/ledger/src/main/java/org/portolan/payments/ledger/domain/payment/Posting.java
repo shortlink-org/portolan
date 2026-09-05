@@ -1,5 +1,7 @@
 package org.portolan.payments.ledger.domain.payment;
 
+import java.time.Instant;
+
 import org.jmolecules.ddd.annotation.Entity;
 import org.portolan.payments.ledger.domain.payment.vo.Money;
 
@@ -14,9 +16,9 @@ public final class Posting {
 
     private final String account;
     private final Money amount;
-    private final String writtenAt;
+    private final Instant writtenAt;
 
-    public Posting(String account, Money amount, String writtenAt) {
+    public Posting(String account, Money amount, Instant writtenAt) {
         this.account = account;
         this.amount = amount;
         this.writtenAt = writtenAt;
@@ -30,7 +32,7 @@ public final class Posting {
         return amount;
     }
 
-    public String writtenAt() {
+    public Instant writtenAt() {
         return writtenAt;
     }
 }

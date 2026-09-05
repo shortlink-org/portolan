@@ -88,6 +88,15 @@
       <artifactId>grpc-netty-shaded</artifactId>
       <version>${grpc.version}</version>
     </dependency>
+    <!-- What leaves as JSON - events on the bus, requests to the gateway - is written by a writer, not glued from strings. -->
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.datatype</groupId>
+      <artifactId>jackson-datatype-jsr310</artifactId>
+    </dependency>
     <dependency>
       <groupId>io.nats</groupId>
       <artifactId>jnats</artifactId>

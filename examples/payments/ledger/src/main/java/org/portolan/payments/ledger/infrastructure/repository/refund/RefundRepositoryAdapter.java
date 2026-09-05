@@ -1,30 +1,25 @@
 package org.portolan.payments.ledger.infrastructure.repository.refund;
 
-import java.time.Clock;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 import org.jmolecules.architecture.hexagonal.SecondaryAdapter;
-import org.springframework.stereotype.Component;
-
 import org.portolan.payments.ledger.domain.payment.vo.Money;
 import org.portolan.payments.ledger.domain.refund.Refund;
 import org.portolan.payments.ledger.domain.refund.RefundRepository;
 import org.portolan.payments.ledger.domain.refund.RefundStatus;
+import org.springframework.stereotype.Component;
 
-/** The refund port over Spring Data. */
+/** The refund port over Spring Data. A row is restored as it was, never replayed through a command. */
 @SecondaryAdapter
 @Component
 public class RefundRepositoryAdapter implements RefundRepository {
 
     private final RefundJpaRepository refunds;
-    private final Clock clock;
 
-    public RefundRepositoryAdapter(RefundJpaRepository refunds, Clock clock) {
+    public RefundRepositoryAdapter(RefundJpaRepository refunds) {
         this.refunds = refunds;
-        this.clock = clock;
     }
 
     @Override
@@ -55,10 +50,13 @@ public class RefundRepositoryAdapter implements RefundRepository {
     }
 
     private Refund toDomain(RefundEntity row) {
-        Refund refund = new Refund(row.id(), row.paymentId(), row.orderId(), new Money(row.amountMinor(), row.currency()), row.reason());
-        if (RefundStatus.valueOf(row.status()) == RefundStatus.ISSUED) {
-            refund.issue(Instant.now(clock));
-        }
-        return refund;
+        return Refund.restore(
+                row.id(),
+                row.paymentId(),
+                row.orderId(),
+                new Money(row.amountMinor(), row.currency()),
+                row.reason(),
+                RefundStatus.valueOf(row.status()),
+                row.settledAt());
     }
 }

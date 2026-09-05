@@ -120,6 +120,12 @@ final class Domain {
         if (Source.annotated(modifiers, "DomainEvent")) {
             return; // events are read by Events, not here
         }
+        if (isThrowable(type)) {
+            return; // a sentinel: what a command refuses with, not something the aggregate holds
+        }
+        if (unit.packageName.endsWith(".services") || unit.packageName.endsWith(".service")) {
+            return; // a domain service: a decision across aggregates, pure, holding nothing
+        }
         if (Source.isInterface(type)) {
             // A port: the domain declaring what it needs from outside.
             aggregate.ports.add(type);
@@ -138,6 +144,16 @@ final class Domain {
         if (!unit.packageName.endsWith(".event") && !unit.packageName.endsWith(".events")) {
             aggregate.entities.add(type);
         }
+    }
+
+    /** Extends something named as an exception. Read off the clause, since nothing here resolves types. */
+    private static boolean isThrowable(ClassTree type) {
+        for (String parent : Source.supertypes(type)) {
+            if (parent.endsWith("Exception") || parent.endsWith("Error") || parent.equals("Throwable")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void build(Aggregate aggregate, String serviceId) {

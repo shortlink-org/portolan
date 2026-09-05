@@ -271,11 +271,18 @@ final class Flows {
         if (clients.containsKey(type)) {
             return new Binding("client", clients.get(type));
         }
+        // A type named for publishing is the bus wherever it is declared: the
+        // domain's own Publisher port as much as an infrastructure Bus.
+        if (type.equals("Bus") || type.endsWith("Publisher") || type.endsWith("Events")) {
+            return new Binding("bus", type);
+        }
         if (ports.containsKey(type)) {
             return new Binding("port", ports.get(type));
         }
-        if (type.equals("Bus") || type.endsWith("Publisher") || type.endsWith("Events")) {
-            return new Binding("bus", type);
+        // A port the use case declared for itself, filled by the adapter that
+        // implements it; the call lands wherever that adapter's contract says.
+        if (adapterOf.containsKey(type)) {
+            return new Binding("client", adapterOf.get(type));
         }
         return null;
     }
@@ -337,10 +344,24 @@ final class Flows {
         }
     }
 
+    /** The outermost calls in an expression, each valued for the hops it makes; what they return is not needed here. */
+    private void asked(Draft d, Frame frame, ExpressionTree expression, int depth, List<Operations.UseCase> ran) {
+        new com.sun.source.util.TreeScanner<Void, Void>() {
+            @Override
+            public Void visitMethodInvocation(MethodInvocationTree call, Void ignored) {
+                value(d, frame, call, depth, ran);
+                return null; // the invocation values its own arguments
+            }
+        }.scan(expression, null);
+    }
+
     private void choice(Draft d, Frame frame, IfTree branch, int depth, List<Operations.UseCase> ran) {
         List<Object> branches = new ArrayList<>();
         StatementTree current = branch;
         while (current instanceof IfTree node) {
+            // A call made to decide the branch is a hop before the branch:
+            // `if (orders.standing(id) == CANCELLED)` asks the order service.
+            asked(d, frame, node.getCondition(), depth, ran);
             d.push();
             walk(d, frame, block(node.getThenStatement()), depth, ran);
             branches.add(Catalog.branch(condition(node.getCondition()), d.pop(), terminal(node.getThenStatement())));

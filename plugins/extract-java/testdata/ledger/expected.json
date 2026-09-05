@@ -372,7 +372,7 @@
           "label": "GetOrder",
           "status": "declared",
           "ref": "shop.v1.OrderService/GetOrder",
-          "line": "plugins/extract-java/testdata/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:30"
+          "line": "plugins/extract-java/testdata/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:29"
         },
         {
           "type": "step",
@@ -382,7 +382,7 @@
           "kind": "rpc",
           "label": "reserve",
           "status": "unresolved",
-          "line": "plugins/extract-java/testdata/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:32"
+          "line": "plugins/extract-java/testdata/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:31"
         },
         {
           "type": "alt",
@@ -399,7 +399,7 @@
                   "kind": "call",
                   "label": "save",
                   "status": "declared",
-                  "line": "plugins/extract-java/testdata/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:35"
+                  "line": "plugins/extract-java/testdata/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:34"
                 },
                 {
                   "type": "step",
@@ -410,7 +410,7 @@
                   "label": "PaymentDeclined",
                   "status": "declared",
                   "ref": "payments.ledger.payment.PaymentDeclined",
-                  "line": "plugins/extract-java/testdata/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:36"
+                  "line": "plugins/extract-java/testdata/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:35"
                 }
               ],
               "terminal": true
@@ -429,7 +429,7 @@
           "kind": "call",
           "label": "save",
           "status": "declared",
-          "line": "plugins/extract-java/testdata/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:40"
+          "line": "plugins/extract-java/testdata/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:39"
         },
         {
           "type": "step",
@@ -440,7 +440,7 @@
           "label": "PaymentAuthorized",
           "status": "declared",
           "ref": "payments.ledger.payment.PaymentAuthorized",
-          "line": "plugins/extract-java/testdata/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:41"
+          "line": "plugins/extract-java/testdata/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:40"
         }
       ]
     },

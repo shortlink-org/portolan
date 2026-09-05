@@ -23,6 +23,8 @@
 | [bff.0002](bff.0002.md) | The storefront owns no state | accepted | 2026-09-05 | [storefront.bff](../storefront/bff/README.md) |
 | [bff.0003](bff.0003.md) | The schema speaks the client's words, not the peers' | accepted | 2026-09-05 | [storefront.bff](../storefront/bff/README.md) |
 | [bff.0004](bff.0004.md) | A subscription is the bus, forwarded | accepted | 2026-09-05 | [storefront.bff](../storefront/bff/README.md) |
+| [ledger.0001](ledger.0001.md) | A gateway that did not answer has not refused | accepted | 2026-09-05 | [payments.ledger](../payments/ledger/README.md) |
+| [ledger.0002](ledger.0002.md) | Another service's events are read off the bus by an adapter and republished in process | accepted | 2026-09-05 | [payments.ledger](../payments/ledger/README.md) |
 | [cart.0001](cart.0001.md) | TypeScript on Node.js, and the stack around it | accepted | 2026-09-04 | [shop.cart](../shop/cart/README.md) |
 | [cart.0002](cart.0002.md) | A basket freezes its currency at the first item | accepted | 2026-09-04 | [shop.cart](../shop/cart/README.md) |
 | [cart.0003](cart.0003.md) | Line prices are captured when added, never recomputed | accepted | 2026-09-04 | [shop.cart](../shop/cart/README.md) |

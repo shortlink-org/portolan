@@ -4,50 +4,79 @@ import java.time.Clock;
 import java.time.Instant;
 
 import org.jmolecules.ddd.annotation.Service;
+import org.portolan.payments.ledger.application.payment.usecase.dto.AuthorizeOutput;
+import org.portolan.payments.ledger.domain.payment.DeclineReason;
+import org.portolan.payments.ledger.domain.payment.Hold;
 import org.portolan.payments.ledger.domain.payment.Payment;
 import org.portolan.payments.ledger.domain.payment.PaymentGateway;
 import org.portolan.payments.ledger.domain.payment.PaymentRepository;
-import org.portolan.payments.ledger.domain.payment.event.PaymentAuthorized;
+import org.portolan.payments.ledger.domain.payment.PaymentStatus;
+import org.portolan.payments.ledger.domain.payment.PaymentPublisher;
 import org.portolan.payments.ledger.domain.payment.vo.Money;
-import org.portolan.payments.ledger.infrastructure.bus.Bus;
-import org.portolan.payments.ledger.infrastructure.oms.OrderClient;
 
 /**
  * Asks the gateway to hold the money for an order, and records either that it
  * agreed or that it refused.
+ *
+ * The order of steps is the rule. The same id asked twice answers from the
+ * record rather than asking the gateway again. A cancelled order is declined
+ * without asking the network: there is nothing to hold money for. Only then
+ * is the gateway asked, and only its answer is recorded; a gateway that did
+ * not answer leaves no row and no event (ADR ledger.0001).
  */
 @Service
 public class AuthorizePayment {
 
     private final PaymentRepository payments;
     private final PaymentGateway gateway;
-    private final OrderClient orders;
-    private final Bus bus;
+    private final Orders orders;
+    private final PaymentPublisher publisher;
     private final Clock clock;
 
-    public AuthorizePayment(PaymentRepository payments, PaymentGateway gateway, OrderClient orders, Bus bus, Clock clock) {
+    public AuthorizePayment(PaymentRepository payments, PaymentGateway gateway, Orders orders, PaymentPublisher publisher, Clock clock) {
         this.payments = payments;
         this.gateway = gateway;
         this.orders = orders;
-        this.bus = bus;
+        this.publisher = publisher;
         this.clock = clock;
     }
 
-    public PaymentAuthorized handle(String paymentId, String orderId, Money amount) {
-        var order = orders.getOrder(orderId);
-        var payment = new Payment(paymentId, orderId, amount, 1, Instant.now(clock));
-        String authCode = gateway.reserve(orderId, amount.amountMinor(), amount.currency());
-
-        if (authCode.isEmpty()) {
-            var declined = payment.decline("the gateway refused the card");
-            payments.save(payment);
-            bus.publish(declined);
-            return null;
+    public AuthorizeOutput handle(String paymentId, String orderId, Money amount) {
+        var already = payments.byId(paymentId);
+        if (already.isPresent()) {
+            return outcomeOf(already.get());
         }
 
-        var authorized = payment.authorize(authCode, Instant.now(clock));
+        int attempt = payments.byOrder(orderId).map(p -> p.attempt() + 1).orElse(1);
+        Instant now = Instant.now(clock);
+        var payment = new Payment(paymentId, orderId, amount, attempt, now);
+
+        if (orders.standing(orderId) == Orders.Standing.CANCELLED) {
+            var declined = payment.decline(DeclineReason.ORDER_CANCELLED, now);
+            payments.save(payment);
+            publisher.publish(declined);
+            return AuthorizeOutput.refused(paymentId, DeclineReason.ORDER_CANCELLED);
+        }
+
+        // GatewayUnavailable passes through here untouched: not a verdict.
+        Hold hold = gateway.hold(orderId, amount);
+        if (!hold.held()) {
+            var declined = payment.decline(hold.refusal(), now);
+            payments.save(payment);
+            publisher.publish(declined);
+            return AuthorizeOutput.refused(paymentId, hold.refusal());
+        }
+        var authorized = payment.authorize(hold.authCode(), now);
         payments.save(payment);
-        bus.publish(authorized);
-        return authorized;
+        publisher.publish(authorized);
+        return AuthorizeOutput.held(paymentId);
+    }
+
+    /** The answer a payment already on record gives, so a retry is a read. */
+    private static AuthorizeOutput outcomeOf(Payment payment) {
+        if (payment.status() == PaymentStatus.DECLINED) {
+            return AuthorizeOutput.refused(payment.id(), DeclineReason.CARD_REFUSED);
+        }
+        return AuthorizeOutput.held(payment.id());
     }
 }

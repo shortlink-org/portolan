@@ -13,6 +13,10 @@ Money, and the record of every movement of it. Nothing here decides whether to c
 | --- | --- | --- |
 | [Ledger](ledger/README.md) | `examples/payments/ledger` | Payment, Refund |
 
+## Language
+
+- [Glossary](glossary.md) — 12 terms this context spells one way
+
 ## Decisions
 
 | ADR | Title | Status | Date |

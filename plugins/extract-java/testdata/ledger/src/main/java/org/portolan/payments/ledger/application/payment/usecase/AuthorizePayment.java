@@ -7,8 +7,7 @@ import org.portolan.payments.ledger.domain.payment.PaymentGateway;
 import org.portolan.payments.ledger.domain.payment.PaymentRepository;
 import org.portolan.payments.ledger.domain.payment.event.PaymentAuthorized;
 import org.portolan.payments.ledger.domain.payment.vo.Money;
-import org.portolan.payments.ledger.infrastructure.oms.OrderClient;
-import org.portolan.payments.ledger.infrastructure.bus.Bus;
+import org.portolan.payments.ledger.domain.payment.Publisher;
 
 /** Reserves the money for an order, or records that the gateway refused. */
 @Service
@@ -16,10 +15,10 @@ public class AuthorizePayment {
 
     private final PaymentRepository payments;
     private final PaymentGateway gateway;
-    private final OrderClient orders;
-    private final Bus bus;
+    private final Orders orders;
+    private final Publisher bus;
 
-    public AuthorizePayment(PaymentRepository payments, PaymentGateway gateway, OrderClient orders, Bus bus) {
+    public AuthorizePayment(PaymentRepository payments, PaymentGateway gateway, Orders orders, Publisher bus) {
         this.payments = payments;
         this.gateway = gateway;
         this.orders = orders;
@@ -27,7 +26,7 @@ public class AuthorizePayment {
     }
 
     public PaymentAuthorized handle(String paymentId, String orderId, Money amount) {
-        var order = orders.getOrder(orderId);
+        var stands = orders.stands(orderId);
         var payment = new Payment(paymentId, Association.forId(orderId), amount);
         String authCode = gateway.reserve(orderId, amount.amountMinor(), amount.currency());
         if (authCode.isEmpty()) {

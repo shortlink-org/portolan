@@ -1,32 +1,29 @@
 package org.portolan.payments.ledger.application.policy;
 
-import org.springframework.modulith.events.ApplicationModuleListener;
-
-import org.portolan.payments.ledger.domain.payment.PaymentGateway;
-import org.portolan.payments.ledger.domain.payment.PaymentRepository;
-import org.portolan.payments.ledger.infrastructure.oms.event.OrderCancelled;
+import org.portolan.payments.ledger.application.payment.usecase.VoidPayment;
+import org.portolan.payments.ledger.application.oms.OrderCancelled;
+import org.springframework.context.event.EventListener;
 
 /**
  * Gives back what was held once the order it was held for is gone.
  *
- * Nothing is refunded here: a payment that was never captured has no money to
- * send back, and one that was is the refund aggregate's business.
+ * Hangs off the fact, not off a call: however the order comes to be cancelled,
+ * the same event says so and this behaviour comes with it. The event arrives
+ * from another service over the bus and is republished in process by the
+ * adapter that reads it (ADR ledger.0002); this listener does not know that.
+ * It calls a use case and decides nothing itself: what counts as "held" and
+ * what to do when nothing is are the use case's rules.
  */
 public class VoidPaymentOnOrderCancelled {
 
-    private final PaymentRepository payments;
-    private final PaymentGateway gateway;
+    private final VoidPayment voidPayment;
 
-    public VoidPaymentOnOrderCancelled(PaymentRepository payments, PaymentGateway gateway) {
-        this.payments = payments;
-        this.gateway = gateway;
+    public VoidPaymentOnOrderCancelled(VoidPayment voidPayment) {
+        this.voidPayment = voidPayment;
     }
 
-    @ApplicationModuleListener
+    @EventListener
     public void on(OrderCancelled event) {
-        var payment = payments.byOrder(event.orderId()).orElseThrow();
-        gateway.release(payment.authCode());
-        payment.voidAuthorization();
-        payments.save(payment);
+        voidPayment.handle(event.orderId());
     }
 }

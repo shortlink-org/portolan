@@ -37,8 +37,8 @@ stateDiagram-v2
 
 | From | To | On | Emits | Source |
 | --- | --- | --- | --- | --- |
-| `REQUESTED` | `ISSUED` | `issue` | `RefundIssued` | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/refund/Refund.java:41` |
-| `REQUESTED` | `REJECTED` | `reject` | — | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/refund/Refund.java:47` |
+| `REQUESTED` | `ISSUED` | `issue` | `RefundIssued` | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/refund/Refund.java:57` |
+| `REQUESTED` | `REJECTED` | `reject` | — | `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/domain/refund/Refund.java:65` |
 
 ## Operations
 
@@ -68,3 +68,4 @@ Source: `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/dom
 | `orderId` | `String` |
 | `amount` | `Money` |
 | `reason` | `String` |
+| `occurredAt` | `Instant` |

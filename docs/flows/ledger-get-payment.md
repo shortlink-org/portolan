@@ -31,6 +31,6 @@ sequenceDiagram
 ## Steps
 
 1. **client** → **payments.ledger** — GetPayment → GetPaymentResponse
-   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:59`
+   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:68`
 2. **payments.ledger** → **ledger-pg** — byId
    status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/GetPayment.java:27`

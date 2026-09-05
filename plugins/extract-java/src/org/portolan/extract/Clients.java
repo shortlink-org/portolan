@@ -26,7 +26,7 @@ final class Clients {
     static final class Client {
         final String name;
         final Source.Unit unit;
-        /** The ports of the domain this adapter fills, by simple name. */
+        /** Every interface this adapter implements, by simple name: the domain's ports and any a use case declared for itself. */
         final List<String> implemented;
         final Map<String, Call> calls = new LinkedHashMap<>();
 
@@ -38,6 +38,26 @@ final class Clients {
     }
 
     private Clients() {}
+
+    /** Whether the method's body calls something named like the rpc - `stub.getOrder(...)` for `GetOrder`. */
+    private static boolean invokes(MethodTree method, String rpc) {
+        boolean[] found = {false};
+        new com.sun.source.util.TreeScanner<Void, Void>() {
+            @Override
+            public Void visitMethodInvocation(com.sun.source.tree.MethodInvocationTree call, Void ignored) {
+                String name = switch (call.getMethodSelect()) {
+                    case com.sun.source.tree.MemberSelectTree select -> select.getIdentifier().toString();
+                    case com.sun.source.tree.IdentifierTree ident -> ident.getName().toString();
+                    default -> "";
+                };
+                if (Proto.sameName(name, rpc)) {
+                    found[0] = true;
+                }
+                return super.visitMethodInvocation(call, ignored);
+            }
+        }.scan(method, null);
+        return found[0];
+    }
 
     static List<Client> read(Source.Project project, java.util.Set<String> ports, java.util.function.Function<Path, String> rel, Protocol.Builder b) throws IOException {
         List<Client> out = new ArrayList<>();
@@ -66,13 +86,17 @@ final class Clients {
                     continue;
                 }
                 sawAdapter = true;
-                Client client = new Client(type.getSimpleName().toString(), unit, fills);
+                Client client = new Client(type.getSimpleName().toString(), unit, new ArrayList<>(Source.supertypes(type)));
                 for (MethodTree method : Source.methods(type)) {
+                    String own = method.getName().toString();
                     for (Proto.Service contract : contracts) {
                         for (Proto.Rpc rpc : contract.rpcs()) {
-                            if (Proto.sameName(method.getName().toString(), rpc.name())) {
-                                client.calls.put(
-                                        method.getName().toString(),
+                            // The adapter's method is the rpc it is named after or, when
+                            // the port it fills speaks the use case's words rather than
+                            // the contract's, the rpc its body invokes on the stub.
+                            if (Proto.sameName(own, rpc.name()) || invokes(method, rpc.name())) {
+                                client.calls.putIfAbsent(
+                                        own,
                                         new Call(contract.id() + "/" + rpc.name(), contract.pkg(), rpc.name(), contract.source()));
                             }
                         }

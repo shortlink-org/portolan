@@ -4,8 +4,8 @@ model {
   auth_pg = store 'auth-pg'
   bus = broker 'bus'
   risk_v1 = unknown 'risk.v1'
-  psp = unknown 'psp'
   ledger_pg = store 'ledger-pg'
+  psp = unknown 'psp'
   billing_pg = store 'billing-pg'
   cart_pg = store 'cart-pg'
   core_pg = store 'core-pg'
@@ -66,7 +66,7 @@ model {
           description 'The money moved. Whoever is owed something for this order - the invoice, the warehouse - waits for this one and nothing earlier.'
         }
         PaymentDeclined = event 'PaymentDeclined' {
-          description 'The gateway refused, and it says why in its own words rather than ours.'
+          description 'The money was not held, and the reason is one of a closed set a consumer can switch on.'
         }
       }
       refund = aggregate 'Refund' {
@@ -235,16 +235,16 @@ shown it and nobody should have to come back for it.'
   payments.ledger -> delivery.core 'PaymentCaptured' {
     style { color declared  line dashed  head onormal }
   }
-  payments.ledger -> psp 'giveBack' {
+  payments.ledger -> psp 'capture' {
     style { color unresolved  line dotted  head normal }
   }
-  payments.ledger -> psp 'release' {
+  payments.ledger -> psp 'hold' {
     style { color unresolved  line dotted  head normal }
   }
-  payments.ledger -> psp 'reserve' {
+  payments.ledger -> psp 'refund' {
     style { color unresolved  line dotted  head normal }
   }
-  payments.ledger -> psp 'settle' {
+  payments.ledger -> psp 'voidHold' {
     style { color unresolved  line dotted  head normal }
   }
   payments.ledger -> shop.oms 'GetOrder' {

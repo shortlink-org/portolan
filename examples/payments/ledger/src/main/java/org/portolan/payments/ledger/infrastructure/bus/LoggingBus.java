@@ -10,6 +10,6 @@ public class LoggingBus implements Bus {
 
     @Override
     public void publish(Object event) {
-        LOG.info("published {}", event);
+        LOG.info("published {} {}", Wire.name(event), event);
     }
 }

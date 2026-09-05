@@ -29,8 +29,15 @@ message AuthorizeRequest {
 
 message AuthorizeResponse {
   string payment_id = 1;
-  string auth_code = 2;
+  // Field 2 was the authorisation code. It is the gateway's handle on the
+  // money and leaves the ledger for nobody; the number is reserved so that no
+  // later field is ever read as it by an old client.
+  reserved 2;
+  reserved "auth_code";
   bool authorized = 3;
+  // Why not, when not: a name from the ledger's closed set (CARD_REFUSED,
+  // ORDER_CANCELLED). Empty when authorized.
+  string reason = 4;
 }
 
 message CaptureRequest {

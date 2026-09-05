@@ -1,5 +1,6 @@
 package org.portolan.payments.ledger.infrastructure.psp;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -17,7 +18,7 @@ public class HttpPspClient implements PspHttpClient {
     }
 
     @Override
-    public String post(String path, String body) {
+    public Response post(String path, String body) {
         return send(HttpRequest.newBuilder(URI.create(baseUrl + path))
                 .header("content-type", "application/json")
                 .timeout(Duration.ofSeconds(5))
@@ -25,19 +26,19 @@ public class HttpPspClient implements PspHttpClient {
     }
 
     @Override
-    public String delete(String path) {
+    public Response delete(String path) {
         return send(HttpRequest.newBuilder(URI.create(baseUrl + path)).timeout(Duration.ofSeconds(5)).DELETE());
     }
 
-    private String send(HttpRequest.Builder request) {
+    private Response send(HttpRequest.Builder request) {
         try {
             HttpResponse<String> response = http.send(request.build(), HttpResponse.BodyHandlers.ofString());
-            return response.statusCode() / 100 == 2 ? response.body() : "";
+            return new Response(response.statusCode(), response.body());
         } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
-            return "";
-        } catch (Exception failure) {
-            return "";
+            throw new PspUnavailable("interrupted while waiting for the gateway", interrupted);
+        } catch (IOException failure) {
+            throw new PspUnavailable("the gateway did not answer", failure);
         }
     }
 }

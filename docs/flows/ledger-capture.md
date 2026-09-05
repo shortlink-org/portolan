@@ -30,7 +30,7 @@ sequenceDiagram
     participant p4 as bus
     p0->>p1: Capture → CaptureResponse
     p1->>p2: byId
-    p1->>p3: settle
+    p1->>p3: capture
     p1->>p2: save
     p1-)p4: PaymentCaptured
 ```
@@ -38,12 +38,12 @@ sequenceDiagram
 ## Steps
 
 1. **client** → **payments.ledger** — Capture → CaptureResponse
-   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:48`
+   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:53`
 2. **payments.ledger** → **ledger-pg** — byId
-   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:32`
-3. **payments.ledger** → **psp** — settle
-   status: unresolved · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:33`
+   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:38`
+3. **payments.ledger** → **psp** — capture
+   status: unresolved · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:43`
 4. **payments.ledger** → **ledger-pg** — save
-   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:35`
+   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:44`
 5. **payments.ledger** → **bus** — PaymentCaptured
-   [payments.ledger.payment.PaymentCaptured](../payments/ledger/aggregates/payment.md) · status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:36`
+   [payments.ledger.payment.PaymentCaptured](../payments/ledger/aggregates/payment.md) · status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:45`

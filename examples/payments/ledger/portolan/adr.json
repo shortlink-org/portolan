@@ -1,0 +1,39 @@
+{
+  "generatedAt": "2026-09-05T15:32:22+07:00",
+  "commit": "ef19b9c",
+  "contexts": [],
+  "defs": {},
+  "flows": [],
+  "adrs": [
+    {
+      "id": "ledger.0001",
+      "slug": "ledger-0001-a-gateway-outage-records-nothing",
+      "number": 1,
+      "title": "A gateway that did not answer has not refused",
+      "status": "accepted",
+      "date": "2026-09-05",
+      "scope": {
+        "kind": "service",
+        "service": "payments.ledger"
+      },
+      "body": "## Context and Problem Statement\n\nWhat does the ledger write down when the card network cannot be reached?\n\nThe first answer was nothing in particular: the HTTP client turned every\nfailure - a timeout, a refused connection, a 502 - into an empty string, and\nthe use case read an empty string as \"the gateway refused the card\". A\nnetwork outage produced a `PaymentDeclined` on the bus and a DECLINED row in\nthe record the business is audited on. The order service heard a refusal and\ncancelled; the customer was told their card was declined. Nothing of the\nsort had happened.\n\n## Decision Drivers\n\n- The record must say what happened, and an outage is not a decision about a\n  card.\n- A consumer switching on a decline reason must be able to trust that a\n  reason was given by somebody.\n- The difference between \"no\" and \"no answer\" must be a type, not a string\n  the next reader has to know to check.\n\n## Considered Options\n\n1. **Record a decline** — the outage becomes a refusal; simplest to code, and\n   what the code did.\n2. **Record nothing and answer UNAVAILABLE** — the gateway port throws when it\n   gets no answer; no row, no event; the caller retries.\n3. **Record a PENDING row and reconcile later** — the attempt is written\n   before the gateway is asked and a sweep resolves it.\n\n## Decision Outcome\n\nChosen option: **record nothing and answer UNAVAILABLE**.\n\n| | audit record | caller | code |\n|---|---|---|---|\n| record a decline | false | told the card failed | one line |\n| record nothing | true, by omission | told to try again | a sentinel and a sealed answer |\n| pending and reconcile | true, later | told to wait | a sweep and a state |\n\nThe port answers with a closed set - held with its code, or refused with a\nreason - and throws `GatewayUnavailable` for everything else. The use case\nlets that pass through untouched: no save, no event, and the transport says\nUNAVAILABLE with a sentence that nothing was recorded. What is given up is\nan audit trail of attempts that never reached the network; that is the\ncheaper loss, because a false decline is worse than a missing attempt, and\noption 3 is the way to get the trail back if it is ever wanted.\n\n### Consequences\n\n- Good: a `PaymentDeclined` on the bus was said by the network, every time.\n- Good: the refusal and the silence are different types, so a use case\n  cannot confuse them without the compiler noticing.\n- Bad: a hold the network made and a save that then failed is a hold the\n  ledger does not know about. The window is the same as before this\n  decision; an outbox and a reconciliation are the fix, and are not in this\n  sketch.\n- Neutral: the PSP's own words for a refusal never reach the domain; the\n  reason is this service's closed set.\n",
+      "relates": {},
+      "source": "examples/payments/ledger/docs/adr/0001-a-gateway-outage-records-nothing.md"
+    },
+    {
+      "id": "ledger.0002",
+      "slug": "ledger-0002-foreign-events-arrive-over-nats-and-are-republished-in-process",
+      "number": 2,
+      "title": "Another service's events are read off the bus by an adapter and republished in process",
+      "status": "accepted",
+      "date": "2026-09-05",
+      "scope": {
+        "kind": "service",
+        "service": "payments.ledger"
+      },
+      "body": "## Context and Problem Statement\n\nThe policy that voids a hold when an order is cancelled was written as a\nSpring listener on an in-process event. The order service publishes\n`oms.OrderCancelled` on NATS. Nothing in this service read NATS, so the\nlistener never fired, and holds on cancelled orders were never released.\n\nHow does a fact from another service reach a policy here, and what does the\npolicy get to know about the wire it travelled on?\n\n## Decision Drivers\n\n- The policy must import nothing that knows about NATS, JSON or headers.\n- A ledger that was down must read what it missed.\n- The same fact arriving twice must not release two holds, or fail.\n- The catalog must see the policy hang off the order service's event.\n\n## Considered Options\n\n1. **The policy subscribes to NATS itself** — one class, direct.\n2. **An adapter subscribes and republishes in process; the policy listens in\n   process** — the shape the other services on this bus use.\n3. **The order service calls the ledger** — an rpc instead of an event.\n\n## Decision Outcome\n\nChosen option: **an adapter subscribes and republishes in process**.\n\n| | policy knows the wire | missed while down | catalog reads it |\n|---|---|---|---|\n| policy on NATS | yes | with a durable consumer | as an adapter, not a policy |\n| adapter republishes | no | with a durable consumer | as a policy on the event |\n| rpc from the order | no | lost | as a call, not a reaction |\n\nThe shape of the fact the policy needs - the order id, the reason - is\ndeclared in the application layer, beside the policy, in this service's\nwords. The adapter holds a durable consumer on the order service's stream,\nfiltered on its subject, reads the event's name off the header the estate\nagreed on, translates the JSON into that shape and hands it to Spring's\nin-process publisher. The policy listens with a plain `@EventListener` and\ncalls a use case, which is idempotent because delivery is at least once.\n\nOption 3 was rejected because a cancellation is a fact, not a request: the\norder service does not know who needs to unwind what, and should not.\n\n### Consequences\n\n- Good: the policy's imports are its own application layer and a use case.\n- Good: at least once, with a durable name, so downtime is not loss.\n- Bad: a second subscriber class per publishing service; the manifest has\n  to say which aggregate the foreign shape belongs to.\n- Neutral: with no bus configured the adapter reads nothing and says so once.\n",
+      "relates": {},
+      "source": "examples/payments/ledger/docs/adr/0002-foreign-events-arrive-over-nats-and-are-republished-in-process.md"
+    }
+  ]
+}

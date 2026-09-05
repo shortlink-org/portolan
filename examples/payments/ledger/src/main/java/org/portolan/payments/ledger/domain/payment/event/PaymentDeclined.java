@@ -1,10 +1,13 @@
 package org.portolan.payments.ledger.domain.payment.event;
 
-import org.jmolecules.event.annotation.DomainEvent;
+import java.time.Instant;
 
-/** The gateway refused, and it says why in its own words rather than ours. */
+import org.jmolecules.event.annotation.DomainEvent;
+import org.portolan.payments.ledger.domain.payment.DeclineReason;
+
+/** The money was not held, and the reason is one of a closed set a consumer can switch on. */
 @DomainEvent
-public record PaymentDeclined(String paymentId, String orderId, String reason) {
+public record PaymentDeclined(String paymentId, String orderId, DeclineReason reason, Instant occurredAt) {
 
     public static final String NAME = "ledger.PaymentDeclined";
     public static final String CHANNEL = "payments.ledger.payment";

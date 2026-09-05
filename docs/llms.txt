@@ -1,6 +1,6 @@
 # Example estate
 
-> Architecture catalog of Example estate: 5 bounded contexts, 8 services, 12 aggregates, 7 stores, 52 flows and 32 decision records, read from the code, the specs and the traces of the estate.
+> Architecture catalog of Example estate: 5 bounded contexts, 8 services, 12 aggregates, 7 stores, 52 flows and 34 decision records, read from the code, the specs and the traces of the estate.
 
 *Generated from the portolan catalog · commit `6 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
 
@@ -18,6 +18,7 @@ Every link below is a markdown page beside this file. [llms-full.txt](llms-full.
 
 - [Glossary of Authentication](auth/glossary.md): 27 terms. Attempt, Authenticate, Bus, Conflict, Credential, Email address, Expiry, Locked, Lockout, Login, Logout, Outbox, Password hash, Password policy, Policy, Reason, Refusal, Register, Revoke, Risk, Session, Threshold, Token, User, Validate, Verdict, Version
 - [Glossary of Storefront](storefront/glossary.md): 13 terms. Adapter, Basket, Checkout, Line, Money, Order, Order move, Order state, Peer, Port, Shipment, Storefront, Viewer
+- [Glossary of Payments](payments/glossary.md): 12 terms. Attempt, Capture, Decline, Gateway, Hold, Journal, Money, Order, Payment, Posting, Refund, Void
 - [Glossary of Shop](shop/glossary.md): 11 terms. Basket, Bus, Cancelled, Confirmed, Line, Money, Order, Outbox, Payments, Placed, Relay
 
 ## Services
@@ -107,6 +108,8 @@ Every link below is a markdown page beside this file. [llms-full.txt](llms-full.
 - [bff.0002](adr/bff.0002.md): The storefront owns no state (accepted, 2026-09-05)
 - [bff.0003](adr/bff.0003.md): The schema speaks the client's words, not the peers' (accepted, 2026-09-05)
 - [bff.0004](adr/bff.0004.md): A subscription is the bus, forwarded (accepted, 2026-09-05)
+- [ledger.0001](adr/ledger.0001.md): A gateway that did not answer has not refused (accepted, 2026-09-05)
+- [ledger.0002](adr/ledger.0002.md): Another service's events are read off the bus by an adapter and republished in process (accepted, 2026-09-05)
 - [cart.0001](adr/cart.0001.md): TypeScript on Node.js, and the stack around it (accepted, 2026-09-04)
 - [cart.0002](adr/cart.0002.md): A basket freezes its currency at the first item (accepted, 2026-09-04)
 - [cart.0003](adr/cart.0003.md): Line prices are captured when added, never recomputed (accepted, 2026-09-04)

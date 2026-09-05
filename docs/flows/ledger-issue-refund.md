@@ -30,8 +30,10 @@ sequenceDiagram
     participant p4 as bus
     p0->>p1: IssueRefund → IssueRefundResponse
     p1->>p2: byId
-    p1->>p3: giveBack
-    alt reference.isEmpty()
+    p1->>p2: byId
+    p1->>p2: byPayment
+    p1->>p3: refund
+    alt !answer.sent()
         p1->>p2: save
         Note over p2: flow ends here
     else otherwise
@@ -45,20 +47,24 @@ sequenceDiagram
 1. **client** → **payments.ledger** — IssueRefund → IssueRefundResponse
    status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/RefundGrpcService.java:29`
 2. **payments.ledger** → **ledger-pg** — byId
-   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:34`
-3. **payments.ledger** → **psp** — giveBack
-   status: unresolved · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:36`
+   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:47`
+3. **payments.ledger** → **ledger-pg** — byId
+   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:52`
+4. **payments.ledger** → **ledger-pg** — byPayment
+   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:56`
+5. **payments.ledger** → **psp** — refund
+   status: unresolved · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:62`
 
 > **One of**
 >
-> *reference.isEmpty() — *ends the flow**
+> *!answer.sent() — *ends the flow**
 >
-> 4. **payments.ledger** → **ledger-pg** — save
->    status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:40`
+> 6. **payments.ledger** → **ledger-pg** — save
+>    status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:65`
 >
 > *otherwise*
 
-5. **payments.ledger** → **ledger-pg** — save
-   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:45`
-6. **payments.ledger** → **bus** — RefundIssued
-   [payments.ledger.refund.RefundIssued](../payments/ledger/aggregates/refund.md) · status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:46`
+7. **payments.ledger** → **ledger-pg** — save
+   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:69`
+8. **payments.ledger** → **bus** — RefundIssued
+   [payments.ledger.refund.RefundIssued](../payments/ledger/aggregates/refund.md) · status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:70`

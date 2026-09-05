@@ -28,7 +28,7 @@ sequenceDiagram
     participant p3 as psp
     p0-)p1: OrderCancelled
     p1->>p2: byOrder
-    p1->>p3: release
+    p1->>p3: voidHold
     p1->>p2: save
 ```
 
@@ -37,8 +37,8 @@ sequenceDiagram
 1. **bus** → **payments.ledger** — OrderCancelled
    [shop.oms.order.OrderCancelled](../shop/oms/aggregates/order.md) · status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/VoidPaymentOnOrderCancelled.java:25`
 2. **payments.ledger** → **ledger-pg** — byOrder
-   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/VoidPaymentOnOrderCancelled.java:27`
-3. **payments.ledger** → **psp** — release
-   status: unresolved · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/VoidPaymentOnOrderCancelled.java:28`
+   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/VoidPayment.java:29`
+3. **payments.ledger** → **psp** — voidHold
+   status: unresolved · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/VoidPayment.java:35`
 4. **payments.ledger** → **ledger-pg** — save
-   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/VoidPaymentOnOrderCancelled.java:30`
+   status: declared · `examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/VoidPayment.java:36`

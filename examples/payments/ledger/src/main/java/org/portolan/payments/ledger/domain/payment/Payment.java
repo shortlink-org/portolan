@@ -3,6 +3,7 @@ package org.portolan.payments.ledger.domain.payment;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import org.jmolecules.ddd.annotation.AggregateRoot;
 import org.jmolecules.ddd.annotation.Identity;
@@ -15,9 +16,11 @@ import org.portolan.payments.ledger.domain.payment.vo.Money;
  * What one order owes, and everything that has happened to that money.
  *
  * Nothing here is updated in place except the status, and the status only ever
- * moves the way {@link PaymentStatus#TRANSITIONS} allows. A movement of money
- * is a pair of postings appended to the journal; the balance is what the pairs
- * add up to, never a column somebody writes.
+ * moves the way {@link PaymentStatus#TRANSITIONS} allows: every command asks
+ * {@link #allow} first, and a move the table does not list is refused with
+ * {@link IllegalMove}. A movement of money is a pair of postings appended to
+ * the journal; the balance is what the pairs add up to, never a column
+ * somebody writes.
  */
 @AggregateRoot
 public final class Payment {
@@ -55,11 +58,23 @@ public final class Payment {
         return payment;
     }
 
-    /** Records that the gateway is holding the money. */
+    /** Every command asks this first, and then assigns the status itself: a move the table does not allow is refused before anything else happens. */
+    private void allow(PaymentStatus next) {
+        if (!PaymentStatus.TRANSITIONS.get(status).contains(next)) {
+            throw new IllegalMove(status.name(), next.name());
+        }
+    }
+
+    /**
+     * Records that the gateway is holding the money. The code is the gateway's
+     * handle on the hold; it is kept here and never put on an event, because
+     * whoever holds it can move the money.
+     */
     public PaymentAuthorized authorize(String authCode, Instant at) {
-        this.authCode = authCode;
+        allow(PaymentStatus.AUTHORIZED);
         this.status = PaymentStatus.AUTHORIZED;
-        return new PaymentAuthorized(id, orderId, amount, authCode);
+        this.authCode = authCode;
+        return new PaymentAuthorized(id, orderId, amount, at);
     }
 
     /**
@@ -67,21 +82,29 @@ public final class Payment {
      * customer owes less, the merchant is owed more, and the two sum to zero.
      */
     public PaymentCaptured capture(Instant at) {
-        postings.add(new Posting("customer", amount.negated(), at.toString()));
-        postings.add(new Posting("merchant", amount, at.toString()));
+        allow(PaymentStatus.CAPTURED);
         this.status = PaymentStatus.CAPTURED;
-        return new PaymentCaptured(id, orderId, amount, at.toString());
+        postings.add(new Posting("customer", amount.negated(), at));
+        postings.add(new Posting("merchant", amount, at));
+        return new PaymentCaptured(id, orderId, amount, at);
     }
 
     /** Ends the payment before any money moved. */
-    public PaymentDeclined decline(String reason) {
+    public PaymentDeclined decline(DeclineReason reason, Instant at) {
+        allow(PaymentStatus.DECLINED);
         this.status = PaymentStatus.DECLINED;
-        return new PaymentDeclined(id, orderId, reason);
+        return new PaymentDeclined(id, orderId, reason, at);
     }
 
     /** Gives back what was held, once nobody is going to be charged for it. */
     public void voidAuthorization() {
+        allow(PaymentStatus.VOIDED);
         this.status = PaymentStatus.VOIDED;
+    }
+
+    /** When the money moved, if it has: the time on the last posting. */
+    public Optional<Instant> capturedAt() {
+        return postings.isEmpty() ? Optional.empty() : Optional.of(postings.get(postings.size() - 1).writtenAt());
     }
 
     public String id() {

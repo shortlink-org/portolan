@@ -621,26 +621,50 @@ views {
     description 'Asks the gateway to hold the money for an order, and records either that it agreed or that it refused.'
     client -> payments.ledger 'Authorize → AuthorizeResponse' {
       color declared  line dashed  head normal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:33'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:34'
+    }
+    payments.ledger -> ledger_pg 'byId' {
+      color declared  line dashed  head none
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:45'
+    }
+    payments.ledger -> ledger_pg 'byOrder' {
+      color declared  line dashed  head none
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:50'
     }
     payments.ledger -> shop.oms 'GetOrder → GetOrderResponse' {
       color declared  line dashed  head normal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:37'
-    }
-    payments.ledger -> psp 'reserve' {
-      color unresolved  line dotted  head normal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:39'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:54'
     }
     alt {
-      when 'authCode.isEmpty()' {
+      when 'orders.standing(orderId) == Orders.Standing.CANCELLED' {
         break 'ends the flow' {
           payments.ledger -> ledger_pg 'save' {
             color declared  line dashed  head none
-            notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:43'
+            notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:56'
           }
           payments.ledger -> bus 'PaymentDeclined' {
             color declared  line dashed  head onormal
-            notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:44'
+            notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:57'
+          }
+        }
+      }
+      else 'otherwise' {
+      }
+    }
+    payments.ledger -> psp 'hold' {
+      color unresolved  line dotted  head normal
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:62'
+    }
+    alt {
+      when '!hold.held()' {
+        break 'ends the flow' {
+          payments.ledger -> ledger_pg 'save' {
+            color declared  line dashed  head none
+            notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:65'
+          }
+          payments.ledger -> bus 'PaymentDeclined' {
+            color declared  line dashed  head onormal
+            notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:66'
           }
         }
       }
@@ -649,11 +673,11 @@ views {
     }
     payments.ledger -> ledger_pg 'save' {
       color declared  line dashed  head none
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:49'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:70'
     }
     payments.ledger -> bus 'PaymentAuthorized' {
       color declared  line dashed  head onormal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:50'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:71'
     }
   }
 
@@ -661,29 +685,39 @@ views {
     title 'Authorize — crossings only'
     client -> payments.ledger 'Authorize → AuthorizeResponse' {
       color declared  line dashed  head normal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:33'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:34'
     }
     payments.ledger -> shop.oms 'GetOrder → GetOrderResponse' {
       color declared  line dashed  head normal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:37'
-    }
-    payments.ledger -> psp 'reserve' {
-      color unresolved  line dotted  head normal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:39'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:54'
     }
     alt {
-      when 'authCode.isEmpty()' {
+      when 'orders.standing(orderId) == Orders.Standing.CANCELLED' {
         break 'ends the flow' {
           payments.ledger -> bus 'PaymentDeclined' {
             color declared  line dashed  head onormal
-            notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:44'
+            notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:57'
+          }
+        }
+      }
+    }
+    payments.ledger -> psp 'hold' {
+      color unresolved  line dotted  head normal
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:62'
+    }
+    alt {
+      when '!hold.held()' {
+        break 'ends the flow' {
+          payments.ledger -> bus 'PaymentDeclined' {
+            color declared  line dashed  head onormal
+            notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:66'
           }
         }
       }
     }
     payments.ledger -> bus 'PaymentAuthorized' {
       color declared  line dashed  head onormal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:50'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/AuthorizePayment.java:71'
     }
   }
 
@@ -692,23 +726,23 @@ views {
     description 'Moves the money the gateway was holding, writes the pair of postings for it, and says so on the bus.'
     client -> payments.ledger 'Capture → CaptureResponse' {
       color declared  line dashed  head normal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:48'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:53'
     }
     payments.ledger -> ledger_pg 'byId' {
       color declared  line dashed  head none
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:32'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:38'
     }
-    payments.ledger -> psp 'settle' {
+    payments.ledger -> psp 'capture' {
       color unresolved  line dotted  head normal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:33'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:43'
     }
     payments.ledger -> ledger_pg 'save' {
       color declared  line dashed  head none
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:35'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:44'
     }
     payments.ledger -> bus 'PaymentCaptured' {
       color declared  line dashed  head onormal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:36'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:45'
     }
   }
 
@@ -716,15 +750,15 @@ views {
     title 'Capture — crossings only'
     client -> payments.ledger 'Capture → CaptureResponse' {
       color declared  line dashed  head normal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:48'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:53'
     }
-    payments.ledger -> psp 'settle' {
+    payments.ledger -> psp 'capture' {
       color unresolved  line dotted  head normal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:33'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:43'
     }
     payments.ledger -> bus 'PaymentCaptured' {
       color declared  line dashed  head onormal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:36'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/CapturePayment.java:45'
     }
   }
 
@@ -733,7 +767,7 @@ views {
     description 'Reads one payment, for whoever is asking what happened to the money.'
     client -> payments.ledger 'GetPayment → GetPaymentResponse' {
       color declared  line dashed  head normal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:59'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:68'
     }
     payments.ledger -> ledger_pg 'byId' {
       color declared  line dashed  head none
@@ -745,7 +779,7 @@ views {
     title 'Get payment — crossings only'
     client -> payments.ledger 'GetPayment → GetPaymentResponse' {
       color declared  line dashed  head normal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:59'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java:68'
     }
   }
 
@@ -758,18 +792,26 @@ views {
     }
     payments.ledger -> ledger_pg 'byId' {
       color declared  line dashed  head none
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:34'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:47'
     }
-    payments.ledger -> psp 'giveBack' {
+    payments.ledger -> ledger_pg 'byId' {
+      color declared  line dashed  head none
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:52'
+    }
+    payments.ledger -> ledger_pg 'byPayment' {
+      color declared  line dashed  head none
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:56'
+    }
+    payments.ledger -> psp 'refund' {
       color unresolved  line dotted  head normal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:36'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:62'
     }
     alt {
-      when 'reference.isEmpty()' {
+      when '!answer.sent()' {
         break 'ends the flow' {
           payments.ledger -> ledger_pg 'save' {
             color declared  line dashed  head none
-            notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:40'
+            notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:65'
           }
         }
       }
@@ -778,11 +820,11 @@ views {
     }
     payments.ledger -> ledger_pg 'save' {
       color declared  line dashed  head none
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:45'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:69'
     }
     payments.ledger -> bus 'RefundIssued' {
       color declared  line dashed  head onormal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:46'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:70'
     }
   }
 
@@ -792,13 +834,13 @@ views {
       color declared  line dashed  head normal
       notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/RefundGrpcService.java:29'
     }
-    payments.ledger -> psp 'giveBack' {
+    payments.ledger -> psp 'refund' {
       color unresolved  line dotted  head normal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:36'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:62'
     }
     payments.ledger -> bus 'RefundIssued' {
       color declared  line dashed  head onormal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:46'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/refund/usecase/IssueRefund.java:70'
     }
   }
 
@@ -807,7 +849,7 @@ views {
     description 'Every refund against one payment, newest first.'
     client -> payments.ledger 'ListRefunds → ListRefundsResponse' {
       color declared  line dashed  head normal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/RefundGrpcService.java:44'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/RefundGrpcService.java:48'
     }
     payments.ledger -> ledger_pg 'byPayment' {
       color declared  line dashed  head none
@@ -819,7 +861,7 @@ views {
     title 'List refunds — crossings only'
     client -> payments.ledger 'ListRefunds → ListRefundsResponse' {
       color declared  line dashed  head normal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/RefundGrpcService.java:44'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/RefundGrpcService.java:48'
     }
   }
 
@@ -832,15 +874,15 @@ views {
     }
     payments.ledger -> ledger_pg 'byOrder' {
       color declared  line dashed  head none
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/VoidPaymentOnOrderCancelled.java:27'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/VoidPayment.java:29'
     }
-    payments.ledger -> psp 'release' {
+    payments.ledger -> psp 'voidHold' {
       color unresolved  line dotted  head normal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/VoidPaymentOnOrderCancelled.java:28'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/VoidPayment.java:35'
     }
     payments.ledger -> ledger_pg 'save' {
       color declared  line dashed  head none
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/VoidPaymentOnOrderCancelled.java:30'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/VoidPayment.java:36'
     }
   }
 
@@ -850,9 +892,9 @@ views {
       color declared  line dashed  head onormal
       notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/VoidPaymentOnOrderCancelled.java:25'
     }
-    payments.ledger -> psp 'release' {
+    payments.ledger -> psp 'voidHold' {
       color unresolved  line dotted  head normal
-      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/VoidPaymentOnOrderCancelled.java:28'
+      notes 'examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/payment/usecase/VoidPayment.java:35'
     }
   }
 

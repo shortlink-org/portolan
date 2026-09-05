@@ -54,7 +54,10 @@ diagnostic saying the role was read off the layout. Every `@Entity` beside it
 is an entity, the root included and first; every `@ValueObject` is a value
 object. Fields keep the type as written — `Association<Object, String>` stays
 that, because a typed reference to another aggregate is a fact worth seeing.
-The doc of anything is its javadoc, first paragraph.
+A class that extends an exception is a sentinel - what a command refuses with
+- and a class under the aggregate's `services` package is a domain service;
+neither holds anything of the aggregate, so neither is a block of it. The doc
+of anything is its javadoc, first paragraph.
 
 **Event.** A class saying `@DomainEvent`, or any class in the aggregate's
 `event` package. Its `NAME` constant is the name on the wire and `CHANNEL` is
@@ -86,11 +89,19 @@ service's own database. Any other port is filled by an adapter under
 `infrastructure/<peer>/`, and the call goes wherever that adapter reaches — an
 rpc named by the contract vendored beside it, or, when there is no contract
 because the far end is a third party, the adapter's own method, recorded and
-left unresolved. A port nothing fills at all is reported.
+left unresolved. A port nothing fills at all is reported. A port a use case
+declares for itself, under `application`, is filled the same way, by the
+adapter that implements it; and an adapter's method is the rpc it is named
+after or, when the port speaks the use case's words rather than the
+contract's, the rpc its body invokes on the stub. A port named for publishing
+- `Publisher`, `Bus`, or a name ending in `Events` - is the bus wherever it is
+declared, and a call on it is an event leaving.
 
-**Flow, from an endpoint.** Each handler method opens one: `client → service :
+A call made inside the condition of an `if` is a hop before the branch it
+decides. **Flow, from an endpoint.** Each handler method opens one: `client → service :
 rpc <rpc>`, then the steps of every use case it runs, in order. **Flow, from a
-policy.** Each `@ApplicationModuleListener` opens one on the bus: `bus → service
+policy.** Each `@ApplicationModuleListener`, `@EventListener` or
+`@DomainEventHandler` method opens one on the bus: `bus → service
 : event <ref>`, where the event is the type of its argument — one of this
 service's own, or another service's placed by the manifest's `events`.
 

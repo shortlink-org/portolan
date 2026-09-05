@@ -2,10 +2,10 @@ package org.portolan.payments.ledger.infrastructure.transport.grpc.refund;
 
 import io.grpc.stub.StreamObserver;
 import net.devh.boot.grpc.server.service.GrpcService;
-
 import org.portolan.payments.ledger.application.refund.usecase.IssueRefund;
 import org.portolan.payments.ledger.application.refund.usecase.ListRefunds;
 import org.portolan.payments.ledger.domain.payment.vo.Money;
+import org.portolan.payments.ledger.infrastructure.transport.grpc.Statuses;
 import org.portolan.payments.ledger.infrastructure.transport.grpc.refund.gen.IssueRefundRequest;
 import org.portolan.payments.ledger.infrastructure.transport.grpc.refund.gen.IssueRefundResponse;
 import org.portolan.payments.ledger.infrastructure.transport.grpc.refund.gen.ListRefundsRequest;
@@ -28,32 +28,40 @@ public class RefundGrpcService extends RefundServiceGrpc.RefundServiceImplBase {
     /** Sends money back against a captured payment. */
     @Override
     public void issueRefund(IssueRefundRequest request, StreamObserver<IssueRefundResponse> observer) {
-        var event = issueRefund.handle(
-                request.getRefundId(),
-                request.getPaymentId(),
-                new Money(request.getAmountMinor(), request.getCurrency()),
-                request.getReason());
-        observer.onNext(IssueRefundResponse.newBuilder()
-                .setRefundId(request.getRefundId())
-                .setIssued(event != null)
-                .build());
-        observer.onCompleted();
+        try {
+            var out = issueRefund.handle(
+                    request.getRefundId(),
+                    request.getPaymentId(),
+                    new Money(request.getAmountMinor(), request.getCurrency()),
+                    request.getReason());
+            observer.onNext(IssueRefundResponse.newBuilder()
+                    .setRefundId(out.refundId())
+                    .setIssued(out.issued())
+                    .build());
+            observer.onCompleted();
+        } catch (RuntimeException failure) {
+            observer.onError(Statuses.of(failure));
+        }
     }
 
     /** Every refund against one payment. */
     @Override
     public void listRefunds(ListRefundsRequest request, StreamObserver<ListRefundsResponse> observer) {
-        var refunds = listRefunds.handle(request.getPaymentId());
-        var response = ListRefundsResponse.newBuilder();
-        for (var refund : refunds) {
-            response.addRefunds(RefundView.newBuilder()
-                    .setRefundId(refund.refundId())
-                    .setAmountMinor(refund.amount().amountMinor())
-                    .setCurrency(refund.amount().currency())
-                    .setStatus(refund.status().name())
-                    .build());
+        try {
+            var refunds = listRefunds.handle(request.getPaymentId());
+            var response = ListRefundsResponse.newBuilder();
+            for (var refund : refunds) {
+                response.addRefunds(RefundView.newBuilder()
+                        .setRefundId(refund.refundId())
+                        .setAmountMinor(refund.amount().amountMinor())
+                        .setCurrency(refund.amount().currency())
+                        .setStatus(refund.status().name())
+                        .build());
+            }
+            observer.onNext(response.build());
+            observer.onCompleted();
+        } catch (RuntimeException failure) {
+            observer.onError(Statuses.of(failure));
         }
-        observer.onNext(response.build());
-        observer.onCompleted();
     }
 }

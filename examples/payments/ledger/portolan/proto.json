@@ -74,14 +74,14 @@
                       "doc": ""
                     },
                     {
-                      "name": "auth_code",
-                      "type": "string",
-                      "doc": ""
-                    },
-                    {
                       "name": "authorized",
                       "type": "bool",
                       "doc": ""
+                    },
+                    {
+                      "name": "reason",
+                      "type": "string",
+                      "doc": "Why not, when not: a name from the ledger's closed set (CARD_REFUSED,\nORDER_CANCELLED). Empty when authorized."
                     }
                   ]
                 },
