@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { Link, useParams } from "react-router";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { toPng } from "html-to-image";
-import { flowContexts, walkSteps } from "../catalog";
+import { allRepos, flowContexts, walkSteps } from "../catalog";
 import type { Flow, Status, Step } from "../catalog";
 import { catalog, index } from "../data";
 import { contextName, ctxStyle } from "../lib/context-color";
@@ -355,7 +355,7 @@ export function FlowDetail() {
   const viewId = crossOnly ? flowCrossViewId(flow) : flowViewId(flow);
   const hiddenCount = crossOnly ? hidden.size : 0;
   const sourceLink = flow.source
-    ? sourceHref(flow.source, flowRepoService(catalog, flow))
+    ? sourceHref(flow.source, flowRepoService(catalog, flow), allRepos(catalog))
     : null;
 
   const copyMermaid = () => {

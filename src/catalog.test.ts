@@ -847,6 +847,35 @@ function withModule(catalog: Catalog): Catalog {
   return catalog;
 }
 
+describe("validateCatalog: repo pins", () => {
+  it("accepts a pin for a repository no service claims to live in", () => {
+    // A repository fetched for its protos before anything reads its code is a
+    // normal intermediate state: the pin is simply never looked up. Failing
+    // here would refuse to render an estate mid-migration.
+    const good = clone();
+    good.repos = [{ repo: "github.com/acme/pay", commit: "c1d2e3f" }];
+
+    expect(() => validateCatalog(good)).not.toThrow();
+  });
+
+  it("rejects a pin with no commit", () => {
+    const bad = clone();
+    bad.repos = [{ repo: "github.com/acme/shop", commit: "" }];
+
+    expect(() => validateCatalog(bad)).toThrow(/pinned to nothing/);
+  });
+
+  it("rejects one repository pinned twice in one catalog", () => {
+    const bad = clone();
+    bad.repos = [
+      { repo: "github.com/acme/shop", commit: "c1d2e3f" },
+      { repo: "github.com/acme/shop", commit: "c1d2e3f" },
+    ];
+
+    expect(() => validateCatalog(bad)).toThrow(/pinned twice/);
+  });
+});
+
 describe("validateCatalog: channels", () => {
   function speaking(): Catalog {
     const good = clone();

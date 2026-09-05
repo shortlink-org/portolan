@@ -33,6 +33,13 @@ export interface Catalog {
    * before there was one to read.
    */
   terms?: Term[];
+  /**
+   * Where the estate's code was read, for the repositories that are not this
+   * one. Optional in the file and never optional downstream, exactly like
+   * `stores` and `modules`: an estate whose services all live here has nothing
+   * to pin and renders as it did before there was anything to pin.
+   */
+  repos?: RepoPin[];
 }
 /**
  * A bounded context: the estate's top grouping level, and nothing more. It owns
@@ -252,6 +259,26 @@ export interface ProtoModule {
   deps?: string[];
   /** Where the copy in this repository lives, as a reader would type it. */
   source: string;
+}
+
+/**
+ * A repository the estate was read at, and the commit it was read at.
+ *
+ * It exists so a source path can be a link when the code is not in this
+ * repository. A service says which repository it lives in; only whoever
+ * fetched that repository knows which commit the copy is of, and by the time
+ * an extractor runs, that fact is in a lock file no page ever reads.
+ *
+ * It is a list on the catalog rather than a field on `Service` because the pin
+ * is a fact about the estate and not about one service: a repository holding
+ * three services is fetched once, at one commit, and writing that commit three
+ * times would be three places for it to disagree with itself.
+ */
+export interface RepoPin {
+  /** The repository, spelled the way `Service.repo` spells it: "github.com/acme/shop". */
+  repo: string;
+  /** The commit the copy was made of. Full sha: it is not resolved locally, so there is nothing to expand it against. */
+  commit: string;
 }
 export interface Aggregate {
   id: string;
@@ -844,6 +871,11 @@ export function allModules(catalog: Catalog): ProtoModule[] {
 /** Every term in every glossary. Absent means none, exactly as with modules. */
 export function allTerms(catalog: Catalog): Term[] {
   return catalog.terms ?? [];
+}
+
+/** Every repository the estate was read at. Absent means none, exactly as with modules. */
+export function allRepos(catalog: Catalog): RepoPin[] {
+  return catalog.repos ?? [];
 }
 
 export function allTables(catalog: Catalog): Table[] {
@@ -1712,6 +1744,7 @@ export function validateCatalog(catalog: Catalog): Catalog {
   validateModules(catalog);
   validateAdrs(catalog, eventIds);
   validateTerms(catalog);
+  validateRepos(catalog);
 
   return catalog;
 }
@@ -2405,5 +2438,35 @@ function validateAdrs(catalog: Catalog, eventIds: Set<string>): void {
         );
       }
     }
+  }
+}
+
+/**
+ * A pin names a repository and a commit, and names each repository once.
+ *
+ * Nothing else is checked here, and one omission is deliberate: a pin for a
+ * repository no service claims to live in is NOT an error. The merge unions
+ * sources that do not know each other, and a repository fetched for its protos
+ * before anything reads its code is a normal intermediate state - the pin is
+ * simply never looked up. What would be a real problem is one repository
+ * pinned to two commits, and that is caught in the merge, where both sources
+ * are still known and the reader can be told which file lost.
+ */
+function validateRepos(catalog: Catalog): void {
+  const seen = new Set<string>();
+
+  for (const pin of allRepos(catalog)) {
+    const where = `repo ${pin.repo || "?"}`;
+    if (!pin.repo) fail("a repo pin names no repository", where);
+    if (!pin.commit) {
+      fail(
+        `repo "${pin.repo}" is pinned to nothing; a pin without a commit is not a place a link can point at`,
+        where,
+      );
+    }
+    if (seen.has(pin.repo)) {
+      fail(`repo "${pin.repo}" is pinned twice in one catalog`, where);
+    }
+    seen.add(pin.repo);
   }
 }

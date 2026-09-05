@@ -43,6 +43,21 @@ type Catalog struct {
 	Stores      []Store            `json:"stores,omitempty"`
 	Modules     []ProtoModule      `json:"modules,omitempty"`
 	Terms       []Term             `json:"terms,omitempty"`
+	Repos       []RepoPin          `json:"repos,omitempty"`
+}
+
+// RepoPin is a repository the estate was read at, and the commit it was read
+// at, so a source path in another repository can still be a link.
+//
+// A list on the catalog rather than a field on Service: the pin is a fact
+// about the estate, and a repository holding three services is fetched once.
+type RepoPin struct {
+	// Repo is spelled the way Service.Repo spells it: "github.com/acme/shop".
+	Repo string `json:"repo"`
+
+	// Commit is the full sha. Nothing resolves it locally, so there is
+	// nothing a short one could be expanded against.
+	Commit string `json:"commit"`
 }
 
 type Classification string

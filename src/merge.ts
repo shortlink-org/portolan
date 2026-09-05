@@ -106,6 +106,8 @@ export function mergeCatalogs(sources: CatalogSource[]): MergeResult {
   const stores: NonNullable<Catalog["stores"]> = [];
   const modules: NonNullable<Catalog["modules"]> = [];
   const terms: NonNullable<Catalog["terms"]> = [];
+  const repos: NonNullable<Catalog["repos"]> = [];
+  const repoOrigin = new Map<string, string>();
   const seen = new Map<string, string>(); // flow/adr/store/module/term id -> source path
 
   const stamps: SourceStamp[] = ordered.map((source) => ({
@@ -237,6 +239,29 @@ export function mergeCatalogs(sources: CatalogSource[]): MergeResult {
     for (const term of catalog.terms ?? []) {
       if (claim(seen, term.id, path, conflicts, "term")) terms.push(term);
     }
+    // Not claimed by id like the rest, because agreeing is the normal case
+    // rather than a collision: one fetch step writes one fragment per
+    // repository, and two extractors reading two services out of that one copy
+    // are describing the same pin. Saying the same thing twice is silence.
+    // Saying two different things is the conflict - the copy on disk is at one
+    // commit, so a second answer means a fragment left over from a pin that
+    // moved, and a link built from it would point at code the reader never saw.
+    for (const pin of catalog.repos ?? []) {
+      const owner = repoOrigin.get(pin.repo);
+      if (owner === undefined) {
+        repoOrigin.set(pin.repo, path);
+        repos.push(pin);
+
+        continue;
+      }
+      const held = repos.find((r) => r.repo === pin.repo)!;
+      if (held.commit === pin.commit) continue;
+      conflicts.push({
+        path,
+        where: pin.repo,
+        message: `repository "${pin.repo}" is pinned to ${pin.commit} here and to ${held.commit} in ${owner}; the first one is used`,
+      });
+    }
   }
 
   // Services go back into their contexts once every source has been read, in
@@ -265,6 +290,7 @@ export function mergeCatalogs(sources: CatalogSource[]): MergeResult {
   if (stores.length > 0) merged.stores = stores;
   if (modules.length > 0) merged.modules = modules;
   if (terms.length > 0) merged.terms = terms;
+  if (repos.length > 0) merged.repos = repos;
 
   return { catalog: merged, sources: stamps, conflicts };
 }

@@ -127,7 +127,7 @@ func emitFetched(b *plugin.Builder, dir string, want Repo, commit string, files 
 	}
 	b.File(path.Join(dir, LockName), lock)
 
-	return nil
+	return emitPin(b, dir, want.Repo, commit)
 }
 
 // emitCached re-emits the committed copy unchanged.
@@ -157,6 +157,13 @@ func emitCached(b *plugin.Builder, dir, at string, want Repo, why string) error 
 		return err
 	}
 	b.File(path.Join(dir, LockName), lock)
+
+	// From the LOCK's commit, not the manifest's. They are equal by the check
+	// above, and taking it from the copy is what keeps the fragment describing
+	// what is actually on disk rather than what was asked for.
+	if err := emitPin(b, dir, want.Repo, held.lock.Commit); err != nil {
+		return err
+	}
 
 	b.Warn(want.Repo, "not fetched ("+why+"); the copy committed in this repository is used unchanged")
 

@@ -421,6 +421,59 @@ describe("mergeCatalogs: glossary terms", () => {
   });
 });
 
+describe("mergeCatalogs: repo pins", () => {
+  const shop = { repo: "github.com/acme/shop", commit: "c1d2e3f" };
+
+  // The case that made the pins a union rather than a claim: one fetch step
+  // vendors a repository once, and every extractor that reads a service out of
+  // that copy answers with the same pin. Two sources agreeing is not a
+  // collision, and reporting it would put a conflict on the Problems page for
+  // every service the estate vendors.
+  it("takes one pin from two sources that agree", () => {
+    const merged = mergeCatalogs([
+      source("a.json", { repos: [shop] }),
+      source("b.json", { repos: [shop] }),
+    ]);
+
+    expect(merged.catalog.repos).toEqual([shop]);
+    expect(merged.conflicts).toEqual([]);
+  });
+
+  // Two commits for one repository means one of the fragments was written
+  // against a pin that has since moved. Both cannot be true - the copy on disk
+  // is at one commit - and a link built from the stale one points at code the
+  // reader never saw, so the reader is told rather than the newer one winning
+  // silently on file order.
+  it("reports one repository pinned to two commits", () => {
+    const merged = mergeCatalogs([
+      source("a.json", { repos: [shop] }),
+      source("b.json", { repos: [{ repo: "github.com/acme/shop", commit: "9999999" }] }),
+    ]);
+
+    expect(merged.catalog.repos).toEqual([shop]);
+    expect(merged.conflicts).toHaveLength(1);
+    expect(merged.conflicts[0]?.message).toContain("9999999");
+    expect(merged.conflicts[0]?.message).toContain("a.json");
+  });
+
+  it("unions pins for different repositories", () => {
+    const merged = mergeCatalogs([
+      source("a.json", { repos: [shop] }),
+      source("b.json", { repos: [{ repo: "github.com/acme/pay", commit: "abc0000" }] }),
+    ]);
+
+    expect(merged.catalog.repos).toHaveLength(2);
+    expect(merged.conflicts).toEqual([]);
+  });
+
+  // Optional in the file and absent downstream, exactly like `stores`.
+  it("leaves repos off a catalog whose sources carried none", () => {
+    const merged = mergeCatalogs([source("a.json", {})]);
+
+    expect(merged.catalog.repos).toBeUndefined();
+  });
+});
+
 describe("mergeCatalogs: schema modules", () => {
   const shop = () => ({
     id: "buf.build/acme/shop",

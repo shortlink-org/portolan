@@ -16,10 +16,21 @@
 // ONE pull request holding the pin bump, the source diff, the lock diff and
 // the fragment diff - which is the review worth having.
 //
+// Two files land beside each copy. `git.lock.json` is for the next run of this
+// step - the commit and every file's digest, which is what makes replaying it
+// equivalent to fetching again. `git.repo.json` is for the estate: a catalog
+// fragment naming the repository and the commit, which is the only way that
+// fact reaches a page. Nothing downstream can work it out - a service says
+// which repository it lives in, and an extractor reads a directory as a pure
+// function of what is on disk - so without it a vendored service's source
+// paths are text nobody can open. It has to be matched by `sources` in the
+// manifest, and by SOURCE_GLOBS in src/data.ts, to be read.
+//
 // It is not wired into portolan.json until there is a second repository. The
 // manifest it expects:
 //
 //	{
+//	  "sources": ["data/*.json", "vendor/repos/*/*/git.repo.json"],
 //	  "plugins": [
 //	    { "name": "git", "process": { "command": "go", "args": ["run", "./plugins/fetch-git"] } }
 //	  ],

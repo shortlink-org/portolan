@@ -123,6 +123,7 @@ func TestFetchWritesTheNarrowedCopyAndALock(t *testing.T) {
 	dir := filepath.Base(filepath.Dir(strings.TrimPrefix(r.url, "file://"))) + "/" + filepath.Base(strings.TrimPrefix(r.url, "file://"))
 	want := []string{
 		dir + "/git.lock.json",
+		dir + "/git.repo.json",
 		dir + "/proto/shop/v1/orders.proto",
 		dir + "/services/oms/README.md",
 		dir + "/services/oms/internal/domain/order/order.go",
@@ -136,6 +137,19 @@ func TestFetchWritesTheNarrowedCopyAndALock(t *testing.T) {
 	}
 	if len(resp.Warnings()) != 0 {
 		t.Errorf("diagnostics = %+v", resp.Warnings())
+	}
+
+	// The fragment is the lock's commit said in the shape the catalog reads,
+	// and it is a catalog: empty lists rather than absent ones, so the merge
+	// never has to tell "no contexts" from "not a source".
+	fragment := contentsOf(resp, dir+"/git.repo.json")
+	if !strings.Contains(fragment, `"commit": "`+r.commit+`"`) {
+		t.Errorf("fragment does not pin the fetched commit: %s", fragment)
+	}
+	for _, empty := range []string{`"contexts": []`, `"defs": {}`, `"flows": []`, `"adrs": []`} {
+		if !strings.Contains(fragment, empty) {
+			t.Errorf("fragment is missing %s: %s", empty, fragment)
+		}
 	}
 }
 
@@ -292,7 +306,8 @@ func TestACommitIsFetchedThroughItsBranchWhenTheRemoteRefusesIt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := names(resp); len(got) != 2 {
+	// The file, the lock, and the fragment naming the commit.
+	if got := names(resp); len(got) != 3 {
 		t.Errorf("files = %v", got)
 	}
 }

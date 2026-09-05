@@ -21,6 +21,7 @@ import { join } from "node:path";
 import { loadCatalog } from "./catalog-sources.mjs";
 import { loadManifest } from "./manifest.mjs";
 import { runPlugin } from "./plugin-host.mjs";
+import { vendoredCommit } from "./vendor-lock.mjs";
 import {
   removeOutputFile,
   safeOutputPath,
@@ -170,6 +171,24 @@ function summarise(label, files, changes) {
  * clean two runs in a row.
  */
 function stampFor(root, out) {
+  // A copy of another repository is dated by the commit it is a copy OF, which
+  // the fetch step wrote down beside it. Read before git, and without touching
+  // git at all: the local history of a vendored directory says when somebody
+  // ran the fetch, which is a fact about this repository and not about the
+  // service the fragment describes.
+  //
+  // Short, like every other stamp, because a stamp is read rather than
+  // resolved. The full sha travels separately, in the pin the fetch also
+  // wrote, where a link is built from it.
+  const vendored = vendoredCommit(root);
+  if (vendored) {
+    // No date. Nothing here knows when that commit was made - the lock records
+    // what was fetched, not when it was authored - and a date invented from
+    // the local clock would make the merge call this the stalest source in the
+    // estate every time it ran.
+    return { commit: vendored.slice(0, 7), generatedAt: "" };
+  }
+
   // A shallow clone has no history to read: the one commit that was fetched has
   // no parent, so every path looks as though it changed there and every fragment
   // is stamped with the checkout rather than with its subject. That is wrong

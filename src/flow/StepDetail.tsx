@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Link } from "react-router";
 import { AlertTriangle } from "lucide-react";
-import { stepFrames } from "../catalog";
+import { allRepos, stepFrames } from "../catalog";
 import type { Flow, Step, StepFrame } from "../catalog";
 import { catalog, index } from "../data";
 import { Ident } from "../components/Ident";
@@ -276,7 +276,7 @@ function Frames({ step, flow }: { step: Step; flow: Flow }) {
  */
 function Where({ step, flow }: { step: Step; flow: Flow }) {
   if (!step.line) return <div className="mono text-muted">not recorded</div>;
-  const href = sourceHref(step.line, flowRepoService(catalog, flow));
+  const href = sourceHref(step.line, flowRepoService(catalog, flow), allRepos(catalog));
   return (
     <div className="mono flex flex-wrap items-center gap-2 break-all text-muted">
       <Ident block value={step.line} className="text-muted" />

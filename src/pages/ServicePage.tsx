@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { catalog } from "../data";
+import { allRepos } from "../catalog";
 import { flowRoles } from "../lib/derive";
 import { treeHref } from "../lib/source-link";
 import { flowHealth } from "../lib/flow-tree";
@@ -98,7 +99,7 @@ export function ServicePage() {
   );
   const stores = storesOfService(index, service.id);
   const flows = flowRoles(catalog, service.id);
-  const tree = treeHref(service.path, service);
+  const tree = treeHref(service.path, service, allRepos(catalog));
   const adrs = adrsForService(catalog, service.id, context.id);
   const current = adrs.filter(isCurrent);
   const retired = adrs.filter((a) => !isCurrent(a));

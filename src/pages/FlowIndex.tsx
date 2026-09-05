@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { ArrowUpDown, X } from "lucide-react";
 import { CATALOG_PATH, catalog } from "../data";
-import { flowContexts, walkSteps } from "../catalog";
+import { allRepos, flowContexts, walkSteps } from "../catalog";
 import { FLOW_HEALTH_NOTE, flowHealth, flowOwner, statusCounts } from "../lib/flow-tree";
 import type { FlowHealth } from "../lib/flow-tree";
 import { statusVar } from "../components/primitives";
@@ -202,7 +202,9 @@ export function FlowIndex() {
           data-nav-list
         >
           {rows.map(({ flow, contexts, steps, health, counts }, i) => {
-            const source = flow.source ? sourceHref(flow.source, flowRepoService(catalog, flow)) : null;
+            const source = flow.source
+              ? sourceHref(flow.source, flowRepoService(catalog, flow), allRepos(catalog))
+              : null;
             return (
               <div
                 key={flow.slug}

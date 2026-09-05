@@ -438,6 +438,7 @@ it exactly as it would read that service's checkout.
 
 ```json
 {
+  "sources": ["data/*.json", "vendor/repos/*/*/git.repo.json"],
   "plugins": [{ "name": "git", "process": { "command": "go", "args": ["run", "./plugins/fetch-git"] } }],
   "extract": [
     {
@@ -470,6 +471,29 @@ replays the committed copies against their locks; a commit the manifest does
 not pin is resolved online with a warning and refused offline; a fetch that
 fails falls back to the committed copy when there is one, and is a red build
 when there is not; a vendored file edited by hand is reported by path.
+
+### What the copy says about itself
+
+Two files land beside every copy, and the difference between them is who reads
+them. `git.lock.json` is for the next run of this step: the commit, and the
+digest of every file, which is what makes replaying the copy equivalent to
+fetching it again. `git.repo.json` is for the estate - a catalog fragment
+holding one line, the repository and the commit it is a copy of - which is why
+it is in `sources` above.
+
+Nothing else can say it. A service says which repository it lives in, and an
+extractor reads a directory as a pure function of what is on disk; neither has
+any idea which commit somebody fetched. Without that line, every source path
+of every vendored service is dead text on the page - the file and the line are
+known, and there is nowhere to send a reader - and every fragment read out of
+the copy is stamped with the commit that VENDORED it, so the service looks
+fresh whenever the fetch is re-run and unchanged when its own repository
+moves. With it, `sourceHref` links the line at the commit it was read at and
+`stampFor` dates the fragment from the code rather than the vendoring.
+
+One more line is needed for the app itself: `SOURCE_GLOBS` in `src/data.ts`,
+where the same patterns are written out a second time because
+`import.meta.glob` resolves at build time and needs literals.
 
 ## Schema modules: fetch and parse, kept apart
 
