@@ -41,6 +41,15 @@ export function TopBar({
        and the shortcuts sheet away from exactly the window that has the least
        room to do without them.
 
+       The controls wrap as CONTROLS, not as a block. Held together in one box
+       they wrapped as one - a first row carrying nothing but the drawer and
+       the word `portolan`, and the search sixty pixels below it beside a
+       third of a row of white. Flat, each one takes the space left on the row
+       above it, and the bar is two rows where it used to be three. The
+       breadcrumbs keep the left with `mr-auto`; every line is justified to
+       the end, so a control that does drop to the next row drops to the right
+       edge rather than under the crumbs.
+
        On a phone wrapping is no longer the lesser evil: the bar wrapped to
        three rows of chrome above a page that had few enough of its own, and
        chrome that tall is not "reachable", it is in the way. So below the
@@ -50,7 +59,7 @@ export function TopBar({
        what a reader steers with: the drawer, where they are, and search. */
     <header
       className={`flex min-h-12 shrink-0 items-center border-b py-1 px-gutter border-line bg-canvas ${
-        phone ? "gap-x-2" : "flex-wrap gap-x-4 gap-y-2"
+        phone ? "gap-x-2" : "flex-wrap justify-end gap-x-3 gap-y-2"
       }`}
     >
       {narrow ? (
@@ -66,18 +75,21 @@ export function TopBar({
         </button>
       ) : null}
 
-      <Breadcrumbs />
+      {/* The one thing on the row that may be squeezed: a breadcrumb trail
+          truncates, a control does not. */}
+      <div className="mr-auto min-w-0">
+        <Breadcrumbs />
+      </div>
 
-      {/* Off the phone the group may NARROW, which is what lets it wrap. Held
-          at shrink-0 it is laid out at its max-content width - search box,
-          five controls and the stamp, side by side - and a window a few pixels
-          short of that gets a horizontal scrollbar on every page instead of a
-          second row of chrome on one. On the phone it keeps shrink-0: there
-          the row is not allowed to wrap at all. */}
+      {/* On the phone the controls stay one box that never wraps: three rows
+          of chrome above a short page is worse than a search box folded to
+          its icon. */}
       <div
-        className={`ml-auto flex items-center justify-end ${
-          phone ? "shrink-0 gap-1" : "min-w-0 flex-wrap gap-3"
-        }`}
+        className={
+          phone
+            ? "ml-auto flex shrink-0 items-center justify-end gap-1"
+            : "contents"
+        }
       >
         {/* Opens the palette rather than filtering in place: the sidebar box
             narrows the tree, this one searches the whole catalog. */}
