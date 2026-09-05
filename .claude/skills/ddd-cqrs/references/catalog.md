@@ -19,15 +19,26 @@ another service's schema is still a warning, deliberately: the coupling is
 invisible from the other side, and the rename that breaks it looks safe
 there.
 
-Today the SQL extractor (`plugins/extract-sql/store.go`) assigns three of
-the roles: a table named `outbox` or `*_outbox` is the outbox, the first
-table an aggregate's migrations create is the aggregate root, and every
-later one is a child. It does not yet recognise a projection. Until it
-does, a projection table declared in a projector package is not read by
-the extractor at all, and one declared in a repository package is read as
-that aggregate's child. Teaching the extractor a projector package, or a
-`-- role: projection` line, is a separate change; note the gap in the
-service README when a projection is added before it lands.
+The SQL extractor (`plugins/extract-sql/store.go`) assigns four of the
+roles, by layout. In a repository package a table named `outbox` or
+`*_outbox` is the outbox, the first table an aggregate's migrations create
+is the aggregate root, and every later one is a child. Every table a
+projector package creates - `internal/infrastructure/projector/<projection>/
+migrations/`, the `projectors` option of the plugin - is a projection. The
+layout cannot say whose rows a projection pictures (the aggregate may belong
+to another service), so that is written in the migration, above the
+`CREATE TABLE`, in the form a copied column already uses:
+
+```sql
+-- Planned stops, rebuilt from RoutePlanned.
+-- aggregate: shop.oms.order
+CREATE TABLE route_stops (
+```
+
+A bare slug (`route`) is an aggregate of the service that owns the store; a
+dotted name is a full id. Without the line the table is still a projection
+and `persists` is left out. A projection declared in a repository package is
+read as that aggregate's child: put it in a projector package.
 
 ## Lineage
 
