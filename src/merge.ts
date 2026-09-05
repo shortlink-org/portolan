@@ -32,11 +32,27 @@ import type {
   TypeDef,
 } from "./catalog";
 
+/**
+ * A catalog as a FILE may carry it, which is not quite a catalog as a reader
+ * gets one: the two stamps are optional here and required downstream.
+ *
+ * The host stamps what it generates, from the last commit that touched the
+ * input the fragment was read from. A file nobody generates - the estate's
+ * hand-written facts - is stamped by nobody, and a provenance typed in by hand
+ * is a claim no process keeps true: it stays where it was typed while the
+ * estate moves on, and being the oldest stamp in the corpus it then dates the
+ * whole merged catalog. So a source is allowed to carry no stamp at all, and
+ * saying nothing is treated as what it is - an absence of evidence, which
+ * drops out of the merge rather than voting in it.
+ */
+export type SourceCatalog = Omit<Catalog, "generatedAt" | "commit"> &
+  Partial<Pick<Catalog, "generatedAt" | "commit">>;
+
 /** One file, parsed. */
 export interface CatalogSource {
   /** Where it was read from, as a reader would type it. */
   path: string;
-  catalog: Catalog;
+  catalog: SourceCatalog;
 }
 
 /**
@@ -44,6 +60,9 @@ export interface CatalogSource {
  * merged into one number: a catalog whose domain facts are a day old and whose
  * schema facts are a month old is not "three weeks stale", it is two claims of
  * different ages, and averaging them hides the one that matters.
+ *
+ * Both fields are empty for a source that carries no stamp, so the shape of a
+ * stamp does not depend on whether there was one to read.
  */
 export interface SourceStamp {
   path: string;
@@ -90,8 +109,8 @@ export function mergeCatalogs(sources: CatalogSource[]): MergeResult {
 
   const stamps: SourceStamp[] = ordered.map((source) => ({
     path: source.path,
-    generatedAt: source.catalog.generatedAt,
-    commit: source.catalog.commit,
+    generatedAt: source.catalog.generatedAt ?? "",
+    commit: source.catalog.commit ?? "",
   }));
 
   for (const { path, catalog } of ordered) {
@@ -221,7 +240,12 @@ export function mergeCatalogs(sources: CatalogSource[]): MergeResult {
   const merged: Catalog = {
     // The oldest stamp, because a merged catalog is exactly as fresh as its
     // stalest part. Per-source stamps travel alongside for anything that wants
-    // to be precise about which part that is.
+    // to be precise about which part that is - the Overview stamp opens onto
+    // them, which is what makes "6 sources" a number a reader can go and read.
+    //
+    // Only stamped sources are counted. An unstamped one is not the stalest
+    // part of anything; it is a part with no age, and a merge that let it vote
+    // would report the age of the file nobody generates.
     generatedAt: oldest(stamps.map((s) => s.generatedAt)),
     commit: describeCommits(stamps),
     contexts: [...contexts.values()],
@@ -541,16 +565,46 @@ function claim(
   return false;
 }
 
+/**
+ * The earliest instant among the stamps, returned as the string the source
+ * itself wrote.
+ *
+ * Instants, not text. The corpus mixes offsets - the host writes `%cI`, so a
+ * fragment stamped in Bangkok says `+07:00` and one stamped on a runner says
+ * `Z` - and sorting ISO strings compares wall clocks while ignoring the offset
+ * that says which wall. `2026-09-05T05:57:24+07:00` sorts after
+ * `2026-09-05T00:00:00Z` and happened five hours before it.
+ *
+ * The winner keeps its own text rather than a normalised rendering of it,
+ * because this string is displayed and a reader comparing the header against
+ * the fragment on disk should find the same characters in both.
+ *
+ * A stamp nobody can parse does not win. It is not evidence of being old - it
+ * is evidence of being broken - and the alternative, letting it sort first,
+ * would date the whole estate from one corrupt file. It is still returned when
+ * NOTHING parses, because then it is all there is to show, and a garbled date
+ * on the page says "look at the stamps" where an empty one would fail the load
+ * with "generatedAt is missing" about a stamp that is plainly present.
+ */
 function oldest(stamps: string[]): string {
-  const known = stamps.filter(Boolean).sort();
+  const known = stamps.filter(Boolean);
+  const dated = known
+    .map((iso) => ({ iso, at: Date.parse(iso) }))
+    .filter((s) => !Number.isNaN(s.at))
+    .sort((a, b) => a.at - b.at);
 
-  return known[0] ?? "";
+  return dated[0]?.iso ?? known[0] ?? "";
 }
 
 /**
  * What to show where a single commit used to be. One source keeps its sha; more
  * than one, all agreeing, keeps it too - and a genuine spread says so rather
  * than picking a winner and looking precise.
+ *
+ * The count is of distinct commits, not of files: twenty-eight fragments
+ * written by one commit are one source of facts, and saying "28" would make a
+ * reader think the estate came from twenty-eight places. A source nobody
+ * stamped is not one of them.
  */
 function describeCommits(stamps: SourceStamp[]): string {
   const commits = [...new Set(stamps.map((s) => s.commit).filter(Boolean))];

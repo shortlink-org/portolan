@@ -1,6 +1,4 @@
 {
-  "generatedAt": "2026-08-29T09:14:22Z",
-  "commit": "4f1c9ae",
   "defs": {
     "Money": {
       "fields": [

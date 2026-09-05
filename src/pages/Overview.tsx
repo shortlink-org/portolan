@@ -3,13 +3,14 @@ import { AlertTriangle } from "lucide-react";
 import { CATALOG_PATH, catalog } from "../data";
 import { contextStats, flowsByReach } from "../lib/derive";
 import { ctxStyle } from "../lib/context-color";
-import { absoluteTime, plural, relativeTime } from "../lib/format";
+import { plural } from "../lib/format";
 import { useCountUp, staggerStyle } from "../lib/motion";
 import { CONTEXT_ANCHOR, OVERVIEW_ANCHOR, paths } from "../routes";
 import { Blank, SectionTitle } from "../components/PageHeader";
 import { C4View } from "../likec4/C4View";
 import { LANDSCAPE_VIEW } from "../likec4/ids";
 import { LevelBadge } from "../likec4/levels";
+import { CatalogStamp } from "../components/CatalogStamp";
 import { Ident } from "../components/Ident";
 import { RowActions } from "../components/RowActions";
 import {
@@ -51,13 +52,10 @@ export function Overview() {
           the chart is drawn from measurements; the code is the territory
         </span>
         {/* The catalog's own provenance, not the app's: the top bar carries
-            the build this bundle came from. */}
-        <span
-          className="mono ml-auto text-muted"
-          title={`catalog generated ${absoluteTime(catalog.generatedAt)} from commit ${catalog.commit}`}
-        >
-          catalog {catalog.commit} · {relativeTime(catalog.generatedAt)}
-        </span>
+            the build this bundle came from. It opens, because the stamp is a
+            summary of many stamps and the reader who doubts it wants the
+            parts. */}
+        <CatalogStamp />
       </div>
 
       {/* C4 level 1, and the only picture in the app that draws the whole

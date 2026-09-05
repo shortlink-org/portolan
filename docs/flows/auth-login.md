@@ -1,6 +1,6 @@
 # Login
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-08-29T09:14:22Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `flow.auth-login`
 - **Owner:** [auth](../auth/README.md)

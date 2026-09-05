@@ -27,8 +27,15 @@ const (
 // Catalog is one source of facts. The estate a reader sees is the merge of
 // several of these, so nothing in a plugin may assume it holds all of them.
 type Catalog struct {
-	GeneratedAt string             `json:"generatedAt"`
-	Commit      string             `json:"commit"`
+	// The stamp the HOST writes, from the last commit that touched the input
+	// this source was read from - never a plugin, which would have to read a
+	// clock and produce a different fragment on every run. Both are omitted
+	// when empty, because a source nobody generates carries no stamp at all
+	// and a mirror that wrote `"generatedAt": ""` would be inventing an answer
+	// to a question the file does not answer. The merge dates the estate from
+	// the sources that do carry one.
+	GeneratedAt string             `json:"generatedAt,omitempty"`
+	Commit      string             `json:"commit,omitempty"`
 	Contexts    []BoundedContext   `json:"contexts"`
 	Defs        map[string]TypeDef `json:"defs"`
 	Flows       []Flow             `json:"flows"`

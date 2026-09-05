@@ -18,7 +18,12 @@ import type { Catalog, CatalogIndex } from "./catalog";
 import { enrichCatalog } from "./enrich";
 import type { DerivedEdge } from "./enrich";
 import { mergeCatalogs } from "./merge";
-import type { CatalogSource, MergeConflict, SourceStamp } from "./merge";
+import type {
+  CatalogSource,
+  MergeConflict,
+  SourceCatalog,
+  SourceStamp,
+} from "./merge";
 
 /**
  * Where sources are looked for. The patterns are written out because
@@ -76,7 +81,9 @@ function load(): Loaded {
       // Vite keys a glob by its pattern-relative path; the leading ../ is an
       // artefact of this file's location, not part of where anything lives.
       path: path.replace(/^\.\.\//, ""),
-      catalog: catalog as Catalog,
+      // A SOURCE, not a catalog: the two stamps are optional in a file, and
+      // the estate's authored facts carry neither.
+      catalog: catalog as SourceCatalog,
     }),
   );
 
@@ -125,6 +132,13 @@ export const index: CatalogIndex = buildIndex(catalog);
 /**
  * The sources the catalog was built from, newest first by nothing at all -
  * they are in path order, which is the order the merge used.
+ *
+ * This is what the merged stamp is a summary of, and the summary is lossy in
+ * both halves: one date stands for the oldest of many, and "6 sources" stands
+ * for six shas the header has no room to print. The Overview stamp opens onto
+ * this list, so a reader who wants to know WHICH part is a week old can find
+ * out instead of being told a number and left with it. A source with an empty
+ * stamp is one nobody generated.
  */
 export const catalogSources: SourceStamp[] = loaded.sources;
 

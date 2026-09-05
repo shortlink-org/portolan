@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { BoundedContext, Catalog } from "./catalog";
 import { mergeCatalogs } from "./merge";
-import type { CatalogSource } from "./merge";
+import type { CatalogSource, SourceCatalog } from "./merge";
 
-function source(path: string, catalog: Partial<Catalog>): CatalogSource {
+// `Partial<SourceCatalog>`, so a case can hand in a source with no stamp at
+// all - which is what an authored file is, and what the merge has to survive.
+function source(path: string, catalog: Partial<SourceCatalog>): CatalogSource {
   return {
     path,
     catalog: {
@@ -310,6 +312,55 @@ describe("mergeCatalogs", () => {
       { path: "a.json", generatedAt: "2026-03-01T00:00:00Z", commit: "aaa" },
       { path: "b.json", generatedAt: "2026-01-01T00:00:00Z", commit: "bbb" },
     ]);
+  });
+
+  // The corpus mixes offsets, because the host stamps a fragment with the
+  // commit that touched it and a commit is dated where it was made. Sorting
+  // the text picks the wrong one whenever the two disagree, and this is the
+  // pair where they do: 05:57 in Bangkok is 22:57 the previous day in UTC.
+  it("takes the earliest instant, not the earliest string", () => {
+    const merged = mergeCatalogs([
+      source("a.json", { generatedAt: "2026-09-05T00:00:00Z", commit: "aaa" }),
+      source("b.json", {
+        generatedAt: "2026-09-05T05:57:24+07:00",
+        commit: "bbb",
+      }),
+    ]);
+
+    expect(merged.catalog.generatedAt).toBe("2026-09-05T05:57:24+07:00");
+  });
+
+  // Not evidence of being old, evidence of being broken - and the catalog is
+  // dated from the stamps that can be read rather than from the one that
+  // cannot.
+  it("does not let an unreadable stamp win", () => {
+    const merged = mergeCatalogs([
+      source("a.json", {
+        generatedAt: "1970-13-45T99:99:99Z",
+        commit: "aaa",
+      }),
+      source("b.json", { generatedAt: "2026-09-05T00:00:00Z", commit: "bbb" }),
+    ]);
+
+    expect(merged.catalog.generatedAt).toBe("2026-09-05T00:00:00Z");
+  });
+
+  // A file no plugin produces is stamped by nobody. It still merges - it is
+  // where the estate's authored facts live - and it dates and attributes
+  // nothing, which is the whole difference between a provenance and a guess.
+  it("ignores a source that carries no stamp", () => {
+    const merged = mergeCatalogs([
+      source("authored.json", { generatedAt: undefined, commit: undefined }),
+      source("b.json", { generatedAt: "2026-09-05T00:00:00Z", commit: "bbb" }),
+    ]);
+
+    expect(merged.catalog.generatedAt).toBe("2026-09-05T00:00:00Z");
+    expect(merged.catalog.commit).toBe("bbb");
+    expect(merged.sources[0]).toEqual({
+      path: "authored.json",
+      generatedAt: "",
+      commit: "",
+    });
   });
 
   it("keeps a single commit when every source agrees", () => {
