@@ -47,7 +47,7 @@
     "@types/pg": "^8.15.0",
     "openapi-typescript": "^7.13.0",
     "testcontainers": "^12.1.0",
-    "typescript": "^5.9.3",
+    "typescript": "^7.0.0",
     "vitest": "^5.0.0"
   }
 }
