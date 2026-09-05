@@ -26,6 +26,7 @@ aggregate-root · persists [payments.ledger.payment](../aggregates/payment.md)
 
 | Index | Columns | Kind |
 | --- | --- | --- |
+| `payments_order_attempt_key` | order_id, attempt | unique |
 | `payments_status_idx` | status | index |
 
 ### postings

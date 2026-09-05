@@ -87,7 +87,7 @@ Docker the tests that need Postgres or NATS are skipped.
 | `basketId` | `string (uuid)` | — |
 | `customerId` | `string` | Optional. Present once the basket belongs to a signed-in customer. |
 | `currency` | `string` | Optional. Set by the first line; absent while the basket is empty. |
-| `status` | `string` | — |
+| `status` | `string enum(open \| checked-out \| abandoned \| merged)` | — |
 | `items` | `[]LineItem` | — |
 | `subtotal` | `Money` | Optional. |
 | `touchedAt` | `string (date-time)` | — |

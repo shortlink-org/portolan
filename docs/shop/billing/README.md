@@ -93,7 +93,7 @@ python manage.py migrate && python manage.py runserver
 | `number` | `string` | Optional. |
 | `currency` | `string` | Optional. |
 | `totalMinor` | `integer (int64)` | Optional. |
-| `status` | `string` | Optional. |
+| `status` | `string enum(draft \| issued \| paid \| void)` | Optional. |
 | `lines` | `[]Line` | Optional. |
 
 </details>

@@ -92,6 +92,14 @@
           ],
           "indexes": [
             {
+              "name": "payments_order_attempt_key",
+              "columns": [
+                "order_id",
+                "attempt"
+              ],
+              "unique": true
+            },
+            {
               "name": "payments_status_idx",
               "columns": [
                 "status"

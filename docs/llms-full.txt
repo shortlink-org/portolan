@@ -1334,7 +1334,7 @@ python manage.py migrate && python manage.py runserver
 | `number` | `string` | Optional. |
 | `currency` | `string` | Optional. |
 | `totalMinor` | `integer (int64)` | Optional. |
-| `status` | `string` | Optional. |
+| `status` | `string enum(draft \| issued \| paid \| void)` | Optional. |
 | `lines` | `[]Line` | Optional. |
 
 </details>
@@ -1608,7 +1608,7 @@ Docker the tests that need Postgres or NATS are skipped.
 | `basketId` | `string (uuid)` | — |
 | `customerId` | `string` | Optional. Present once the basket belongs to a signed-in customer. |
 | `currency` | `string` | Optional. Set by the first line; absent while the basket is empty. |
-| `status` | `string` | — |
+| `status` | `string enum(open \| checked-out \| abandoned \| merged)` | — |
 | `items` | `[]LineItem` | — |
 | `subtotal` | `Money` | Optional. |
 | `touchedAt` | `string (date-time)` | — |
@@ -3301,6 +3301,7 @@ aggregate-root · persists [payments.ledger.payment](../aggregates/payment.md)
 
 | Index | Columns | Kind |
 | --- | --- | --- |
+| `payments_order_attempt_key` | order_id, attempt | unique |
 | `payments_status_idx` | status | index |
 
 ### postings

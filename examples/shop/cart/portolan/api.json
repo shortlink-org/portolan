@@ -107,7 +107,7 @@
                     },
                     {
                       "name": "status",
-                      "type": "string",
+                      "type": "string enum(open | checked-out | abandoned | merged)",
                       "doc": ""
                     },
                     {

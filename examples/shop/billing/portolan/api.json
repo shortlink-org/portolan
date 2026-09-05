@@ -130,7 +130,7 @@
                     },
                     {
                       "name": "status",
-                      "type": "string",
+                      "type": "string enum(draft | issued | paid | void)",
                       "doc": "Optional."
                     },
                     {
