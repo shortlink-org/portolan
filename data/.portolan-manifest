@@ -1,5 +1,8 @@
 {
   "flows": [
     "flows.json"
+  ],
+  "adr": [
+    "adr.json"
   ]
 }

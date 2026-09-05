@@ -1,6 +1,6 @@
 # Order Management
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Id:** `shop.oms`
 - **Context:** [Shop](../README.md)
@@ -149,3 +149,13 @@ skipped.
 | Store | Kind | Access | Tables |
 | --- | --- | --- | --- |
 | [Order database](stores/pg.md) | postgres | owns | 3 tables |
+
+## Decisions
+
+| ADR | Title | Status | Date |
+| --- | --- | --- | --- |
+| [oms.0001](../../adr/oms.0001.md) | Rust on Tokio, and the stack around it | accepted | 2026-09-05 |
+| [oms.0002](../../adr/oms.0002.md) | An order is placed from a checked-out basket, not by a call | accepted | 2026-09-05 |
+| [oms.0003](../../adr/oms.0003.md) | Lines and the total are copied from the basket, never repriced | accepted | 2026-09-05 |
+| [oms.0004](../../adr/oms.0004.md) | Cancelling is allowed until the parcel moves | accepted | 2026-09-05 |
+| [oms.0005](../../adr/oms.0005.md) | Confirmation waits for a payment service that does not exist yet | accepted | 2026-09-05 |

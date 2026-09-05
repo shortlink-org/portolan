@@ -649,6 +649,7 @@ type Adr struct {
 	Date         string     `json:"date"`
 	Scope        AdrScope   `json:"scope"`
 	Body         string     `json:"body"`
+	Note         string     `json:"note,omitempty"`
 	SupersededBy string     `json:"supersededBy,omitempty"`
 	Supersedes   []string   `json:"supersedes,omitempty"`
 	Relates      AdrRelates `json:"relates"`

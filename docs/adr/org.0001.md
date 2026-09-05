@@ -1,13 +1,13 @@
 # org.0001 — Client proto copies live in the consumer's infrastructure layer
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2025-03-11
 - **Scope:** org
-- **Source:** `docs/adr/0001-client-protos-in-consumer-infrastructure.md`
+- **Source:** `data/adr/0001-client-protos-in-consumer-infrastructure.md`
 
-## Context and Problem Statement
+### Context and Problem Statement
 
 When `shop.oms` calls `payments.v1.Payments/Authorize`, it needs the payments
 `.proto`. Where does that file come from at build time?
@@ -17,7 +17,7 @@ it is the one that couples every release to every other release: a change to a
 message nobody in `shop` uses still forces `shop` to bump, regenerate and
 retest.
 
-## Decision Drivers
+### Decision Drivers
 
 - A team must be able to release without waiting on another team's schema bump.
 - The boundary between contexts should be explicit in the code, not implicit in
@@ -25,7 +25,7 @@ retest.
 - Drift between a producer's schema and a consumer's copy must be **detectable**,
   not merely hoped against.
 
-## Considered Options
+### Considered Options
 
 1. **A vendored copy of the producer's `.proto` under the consumer's
    `internal/infrastructure/<peer>/`**, an anti-corruption layer in the DDD
@@ -33,7 +33,7 @@ retest.
 2. **A shared schema repo** published as one versioned artifact for everyone.
 3. **Runtime reflection** — resolve descriptors from the server at startup.
 
-## Decision Outcome
+### Decision Outcome
 
 Chosen option: **vendored copies in the consumer's infrastructure layer**.
 
@@ -55,7 +55,7 @@ enum value that differs between the two is reported against the consuming
 service and shows on its page as an unresolved call rather than silently
 compiling.
 
-### Consequences
+#### Consequences
 
 - Good: `shop` and `delivery` release on their own cadence.
 - Good: the copy is a real boundary — a consumer may narrow a message to the

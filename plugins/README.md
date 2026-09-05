@@ -179,6 +179,109 @@ compiler would: a flow silently left out is the kind of missing nobody
 notices. A ref that resolves to nothing is caught later, by the validator,
 because only the merged catalog can say.
 
+## Decisions written by hand
+
+Every decision worth keeping is already written down, in a file beside the code
+it constrains, in the MADR shape a person reads. Typing it a second time into
+the catalog's JSON - an id, a slug, a number, a scope and a body with every
+newline escaped - makes the JSON the source and the markdown a copy, and the
+copy is the one that goes stale: the three records that lived in
+`data/catalog.json` before `extract-adr` existed all named files that were
+never in the repository at all.
+
+So the markdown is the source and the fragment is the output. `extract-adr`
+reads `docs/adr/*.md` under a service's root - a `README.md` among them is the
+directory's index, not a decision, and is skipped - and answers with one
+fragment holding the records.
+
+```markdown
+# auth.0003 — Session expiry publishes no event
+
+- **Status:** accepted
+- **Date:** 2026-08-22
+- **Scope:** auth.auth
+- **Superseded by:** auth.0007
+- **Supersedes:** auth.0001, auth.0002
+- **Relates:** auth.auth.session.SessionEnded, shop.cart, checkout
+- **Note:** how a revocation is kept out of the cache was decided again in
+  auth.0010; the drop described below turned out not to be enough.
+
+## Context and Problem Statement
+…
+## Decision Outcome
+…
+```
+
+The title carries the record's id, an em dash, and the title. The id is a
+prefix and four padded digits, and the prefix is whatever the record is about -
+a service (`auth`, `cart`, `oms`), a context (`payments`) or the organisation
+(`org`). The file is named `NNNN-kebab-slug.md` with the same number, because
+the slug the catalog keeps is built from both: the id with its dots opened out,
+then the file's kebab, as in `auth-0003-expiry-publishes-nothing`. A file
+renamed away from its record would silently change the address of a decision
+somebody linked to, so the two are held against each other.
+
+`Status`, `Date` and `Scope` are required; the rest are written when there is
+something to write, and a bullet the format does not have fails the run rather
+than being dropped. A bullet may wrap onto the next line, indented under
+itself - the break is the author's line width and closes up into a space.
+`Scope` says what the record is about by how many segments it has: none, or
+`org`, for the organisation, one for a context, two for `<context>.<service>`.
+`Relates` names events, services and flows in one list and they are told apart
+by their shape - a flow by its slug, which has no dots, a service by
+`<context>.<service>`, an event by the aggregate and `Name` after that -
+because an author should not have to remember which of three lists a name
+belongs in. `Note` is prose no other field holds, most often that part of a
+record was decided again somewhere else without the whole of it being
+superseded; it sits in the page's header, above the frozen body.
+
+Everything from the first `##` onward is the record. It goes into the catalog
+exactly as written and comes back out onto the page the same way, headings and
+all: an ADR is frozen history, and nothing on its page is redrawn from the
+model as it stands now. Prose above that first `##` is a mistake - a paragraph
+that drifted up there would be read by a person and dropped by the extractor.
+
+`src/catalog.ts` fails the whole app on load if a record breaks any of its
+rules, so the extractor breaks first, where the file that caused it can be
+named: ids and slugs unique, an id ending in its own zero-padded number, a date
+that parses, a status from the five, and both halves of a supersession. That
+last one is the reason `Superseded by` and `Supersedes` are two bullets rather
+than one derived from the other - supersession is a two-way fact, and half of
+it recorded is a bug. The halves that live in one step's tree are held against
+each other there; a record superseded by one in another service's tree is a
+claim only the merged catalog can check, and the validator checks it. The same
+goes for `Scope` and `Relates`: an extractor sees one root, so it validates the
+shape of a name and leaves whether the thing exists to the far side.
+
+The demo estate's org-wide and context-wide records live in `data/adr`, beside
+the hand-written flows in `data/flows`, and are read by a step that points at
+that directory with a glob of its own. Root `docs/` is where `gen-markdown`
+writes, so nothing hand-written can live there. `in` is the directory of
+records rather than `data` itself for the reason the flows step gives it the
+same shape: a step's fragment is only left out of its own stamp when the output
+is *inside* the input root, and `in: data` with `out: data` would be stamped
+from the file it writes.
+
+```json
+{
+  "plugins": [{ "name": "adr", "process": { "cmd": "go run ./plugins/extract-adr" } }],
+  "extract": [
+    {
+      "plugin": "adr",
+      "in": "data/adr",
+      "out": "data",
+      "options": { "files": ["*.md"], "out": "adr.json" }
+    },
+    {
+      "plugin": "adr",
+      "in": "examples/auth",
+      "out": "examples/auth/portolan",
+      "options": { "out": "adr.json" }
+    }
+  ]
+}
+```
+
 ## Verifiers: the third phase
 
 An extractor reads source and runs before there is a catalog; a generator

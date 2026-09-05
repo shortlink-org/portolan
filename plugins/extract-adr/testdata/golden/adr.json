@@ -1,0 +1,83 @@
+{
+  "generatedAt": "2024-01-01T00:00:00Z",
+  "commit": "abc1234",
+  "contexts": [],
+  "defs": {},
+  "flows": [],
+  "adrs": [
+    {
+      "id": "acme.0001",
+      "slug": "acme-0001-the-first-decision",
+      "number": 1,
+      "title": "The first decision, later taken again",
+      "status": "superseded",
+      "date": "2026-01-04",
+      "scope": {
+        "kind": "service",
+        "service": "acme.core"
+      },
+      "body": "## Context and Problem Statement\n\nSomething had to be decided, and this is what was decided.\n\n## Decision Outcome\n\nIt held for two months.\n",
+      "supersededBy": "acme.0003",
+      "relates": {},
+      "source": "testdata/estate/docs/adr/0001-the-first-decision.md"
+    },
+    {
+      "id": "payments.0002",
+      "slug": "payments-0002-a-context-wide-decision",
+      "number": 2,
+      "title": "A decision the whole context keeps",
+      "status": "accepted",
+      "date": "2026-01-09",
+      "scope": {
+        "kind": "context",
+        "context": "payments"
+      },
+      "body": "## Context and Problem Statement\n\nA context is not a service, and a decision at that level binds every service\nin it.\n\n## Decision Outcome\n\nKept.\n",
+      "note": "the half of this about retries was decided again in acme.0003, which is not the same as this record being superseded.",
+      "relates": {
+        "services": [
+          "acme.core"
+        ],
+        "events": [
+          "acme.core.thing.ThingHappened"
+        ],
+        "flows": [
+          "a-flow-of-some-kind"
+        ]
+      },
+      "source": "testdata/estate/docs/adr/0002-a-context-wide-decision.md"
+    },
+    {
+      "id": "acme.0003",
+      "slug": "acme-0003-a-replacement",
+      "number": 3,
+      "title": "The decision that replaced the first one",
+      "status": "accepted",
+      "date": "2026-03-02",
+      "scope": {
+        "kind": "service",
+        "service": "acme.core"
+      },
+      "body": "## Context and Problem Statement\n\nTwo months of it holding was not the same as it being right.\n\n### A heading further down\n\nThe body is carried through untouched, headings and all.\n\n## Decision Outcome\n\nReplaced.\n",
+      "supersedes": [
+        "acme.0001"
+      ],
+      "relates": {},
+      "source": "testdata/estate/docs/adr/0003-a-replacement.md"
+    },
+    {
+      "id": "org.0004",
+      "slug": "org-0004-an-org-wide-decision",
+      "number": 4,
+      "title": "A decision nobody in particular owns",
+      "status": "proposed",
+      "date": "2026-04-01",
+      "scope": {
+        "kind": "org"
+      },
+      "body": "## Context and Problem Statement\n\nSome decisions belong to the organisation and to no service in it.\n\n## Decision Outcome\n\nProposed, and still open.\n",
+      "relates": {},
+      "source": "testdata/estate/docs/adr/0004-an-org-wide-decision.md"
+    }
+  ]
+}

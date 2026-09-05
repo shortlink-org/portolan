@@ -10,5 +10,8 @@
   ],
   "otel": [
     "observed.json"
+  ],
+  "adr": [
+    "adr.json"
   ]
 }

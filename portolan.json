@@ -85,6 +85,16 @@
       }
     },
     {
+      "name": "adr",
+      "process": {
+        "command": "go",
+        "args": [
+          "run",
+          "./plugins/extract-adr"
+        ]
+      }
+    },
+    {
       "name": "bsr",
       "process": {
         "command": "go",
@@ -106,6 +116,17 @@
       "out": "data",
       "options": {
         "out": "flows.json"
+      }
+    },
+    {
+      "plugin": "adr",
+      "in": "data/adr",
+      "out": "data",
+      "options": {
+        "files": [
+          "*.md"
+        ],
+        "out": "adr.json"
       }
     },
     {
@@ -144,6 +165,14 @@
         "store": "pg",
         "name": "Auth database",
         "out": "stores.json"
+      }
+    },
+    {
+      "plugin": "adr",
+      "in": "examples/auth",
+      "out": "examples/auth/portolan",
+      "options": {
+        "out": "adr.json"
       }
     },
     {
@@ -195,6 +224,14 @@
         "name": "Cart database",
         "repositories": "src/infrastructure/repository",
         "out": "stores.json"
+      }
+    },
+    {
+      "plugin": "adr",
+      "in": "examples/shop/cart",
+      "out": "examples/shop/cart/portolan",
+      "options": {
+        "out": "adr.json"
       }
     },
     {
@@ -447,6 +484,14 @@
         "name": "Order database",
         "repositories": "src/infrastructure/repository",
         "out": "stores.json"
+      }
+    },
+    {
+      "plugin": "adr",
+      "in": "examples/shop/oms",
+      "out": "examples/shop/oms/portolan",
+      "options": {
+        "out": "adr.json"
       }
     }
   ],

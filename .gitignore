@@ -42,6 +42,7 @@ plugins/extract-java/build
 /extract-proto
 /extract-flows
 /extract-asyncapi
+/extract-adr
 /fetch-bsr
 /fetch-git
 /verify-otel
