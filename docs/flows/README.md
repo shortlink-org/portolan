@@ -1,6 +1,6 @@
 # Flows
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 | Flow | Owner | Summary |
 | --- | --- | --- |
@@ -13,6 +13,15 @@
 | [Register user](auth-register-user.md) | [auth](../auth/README.md) | Creates a user from an email address and a password. |
 | [Validate session](auth-validate-session.md) | [auth](../auth/README.md) | Resolves a token to a live session: who is calling, and how long the answer stays good. |
 | [Revoke sessions on password change](auth-revoke-sessions-on-password-change.md) | [auth](../auth/README.md) | Ends the sessions issued against a password that has just been replaced. |
+| [Query basket](bff-query-basket.md) | [storefront](../storefront/README.md) | The basket as the cart has it, in the storefront's words. |
+| [Query shipment](bff-query-shipment.md) | [storefront](../storefront/README.md) | — |
+| [Query order](bff-query-order.md) | [storefront](../storefront/README.md) | — |
+| [Query viewer](bff-query-viewer.md) | [storefront](../storefront/README.md) | Who the request belongs to. Auth is asked on every call rather than a token being read here: this service holds no key and could not tell a forged one from a live one. |
+| [Mutation add item](bff-mutation-add-item.md) | [storefront](../storefront/README.md) | Add a line. The price travels as the customer was shown it; the cart captures it and never recomputes it, and nothing here checks it - a storefront that priced things would be a second place prices live. |
+| [Mutation checkout](bff-mutation-checkout.md) | [storefront](../storefront/README.md) | Freeze the basket and hand it on. |
+| [Mutation remove item](bff-mutation-remove-item.md) | [storefront](../storefront/README.md) | — |
+| [Mutation cancel order](bff-mutation-cancel-order.md) | [storefront](../storefront/README.md) | Cancel an order. Whether it is too late to is the order service's judgement and its refusal travels back unchanged; this service does not know what dispatch means. |
+| [Subscription order status](bff-subscription-order-status.md) | [storefront](../storefront/README.md) | Every move of one order, for as long as somebody is watching it. |
 | [Authorize](ledger-authorize.md) | [payments](../payments/README.md) | Asks the gateway to hold the money for an order, and records either that it agreed or that it refused. |
 | [Capture](ledger-capture.md) | [payments](../payments/README.md) | Moves the money the gateway was holding, writes the pair of postings for it, and says so on the bus. |
 | [Get payment](ledger-get-payment.md) | [payments](../payments/README.md) | Reads one payment, for whoever is asking what happened to the money. |

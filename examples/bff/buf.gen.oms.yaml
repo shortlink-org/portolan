@@ -1,0 +1,12 @@
+# The client of the order service, from the narrowed copy of its contract
+# vendored under src/infrastructure/oms/proto. `npm run generate:grpc`
+# regenerates the output; it is committed, as every generated file here is.
+version: v2
+inputs:
+  - directory: src/infrastructure/oms/proto
+plugins:
+  - local: protoc-gen-es
+    out: src/infrastructure/oms/gen
+    opt:
+      - target=ts
+      - import_extension=.ts

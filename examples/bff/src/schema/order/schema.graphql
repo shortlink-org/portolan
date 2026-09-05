@@ -1,0 +1,47 @@
+extend type Query {
+  "The order, or null when the storefront has never been told of one."
+  order(id: ID!): Order
+}
+
+extend type Mutation {
+  "Cancel an order that has not been dispatched. Cancelling twice is not an error."
+  cancelOrder(input: CancelOrderInput!): Order!
+}
+
+type Subscription {
+  """
+  Every move an order makes, until it stops moving.
+
+  The storefront does not poll the order service for this: the moves are on
+  the bus already, and this is the same events, forwarded to whoever is
+  watching this order.
+  """
+  orderStatus(id: ID!): OrderMoved!
+}
+
+input CancelOrderInput {
+  id: ID!
+  reason: String
+}
+
+type Order {
+  id: ID!
+  state: OrderState!
+  lines: [Line!]!
+  "What the customer agreed to at checkout, and not a penny recomputed since."
+  total: Money!
+  placedAt: DateTime!
+}
+
+enum OrderState {
+  PLACED
+  CONFIRMED
+  CANCELLED
+}
+
+"One move of one order, as it happened."
+type OrderMoved {
+  orderId: ID!
+  state: OrderState!
+  at: DateTime!
+}

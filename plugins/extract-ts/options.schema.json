@@ -5,7 +5,9 @@
     "context": {
       "type": "string",
       "description": "Slug of the bounded context this service belongs to. Defaults to the name of the input directory.",
-      "examples": ["shop"]
+      "examples": [
+        "shop"
+      ]
     },
     "contextName": {
       "type": "string",
@@ -16,13 +18,19 @@
       "description": "A sentence or two on what the context is responsible for."
     },
     "classification": {
-      "enum": ["core", "supporting", "generic"],
+      "enum": [
+        "core",
+        "supporting",
+        "generic"
+      ],
       "description": "Whether the context is core to the business, supports it, or is generic and could be bought."
     },
     "service": {
       "type": "string",
       "description": "Slug of the service. Defaults to the name of the input directory.",
-      "examples": ["cart"]
+      "examples": [
+        "cart"
+      ]
     },
     "serviceName": {
       "type": "string",
@@ -31,24 +39,41 @@
     "repo": {
       "type": "string",
       "description": "Where the source lives. Defaults to the repository field of package.json.",
-      "examples": ["github.com/shortlink-org/portolan"]
+      "examples": [
+        "github.com/shortlink-org/portolan"
+      ]
     },
     "store": {
       "type": "string",
       "description": "Slug of the database this service keeps its state in, the same one the sql extractor is given. It is here for the flows: a call on a repository lands somewhere, and only the manifest knows where.",
-      "examples": ["pg"]
+      "examples": [
+        "pg"
+      ]
     },
     "peers": {
       "type": "object",
-      "additionalProperties": { "type": "string" },
+      "additionalProperties": {
+        "type": "string"
+      },
       "description": "Which service answers for what this one calls, as the callee's package to its service id: the api id for an HTTP peer, the proto package for a gRPC one. A package with no line here is called as unknown and its steps stay unresolved.",
-      "examples": [{ "auth.v1": "auth.auth", "shop.v1": "shop.pricing" }]
+      "examples": [
+        {
+          "auth.v1": "auth.auth",
+          "shop.v1": "shop.pricing"
+        }
+      ]
     },
     "events": {
       "type": "object",
-      "additionalProperties": { "type": "string" },
+      "additionalProperties": {
+        "type": "string"
+      },
       "description": "Which aggregate another service's events belong to, as the import specifier a policy reads them from to the aggregate id, so a policy reacting to a foreign event resolves.",
-      "examples": [{ "@acme/payments-events": "payments.ledger.payment" }]
+      "examples": [
+        {
+          "@acme/payments-events": "payments.ledger.payment"
+        }
+      ]
     },
     "source": {
       "type": "string",
@@ -59,6 +84,13 @@
       "type": "string",
       "description": "Name of the fragment file, inside the step's output directory.",
       "default": "domain.json"
+    },
+    "graphql": {
+      "type": "string",
+      "description": "Where the GraphQL schema is, relative to the input root, for a service whose way in is a graph: its resolvers are read as endpoints, and no domain is expected under src/domain.",
+      "examples": [
+        "src/schema"
+      ]
     }
   }
 }

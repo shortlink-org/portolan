@@ -373,6 +373,7 @@ export const isWhile = (n: Node | null | undefined): n is WhileStatement => n?.t
 export const isTry = (n: Node | null | undefined): n is TryStatement => n?.type === "TryStatement";
 export const isClassDecl = (n: Node | null | undefined): n is ClassDeclaration => n?.type === "ClassDeclaration";
 export const isFunctionDecl = (n: Node | null | undefined): n is FunctionNode => n?.type === "FunctionDeclaration";
+export const isArrow = (n: Node | null | undefined): n is FunctionNode => n?.type === "ArrowFunctionExpression";
 export const isMethod = (n: Node | null | undefined): n is MethodDefinition => n?.type === "MethodDefinition";
 export const isPropertyDef = (n: Node | null | undefined): n is PropertyDefinition => n?.type === "PropertyDefinition";
 export const isParamProperty = (n: Node | null | undefined): n is ParameterProperty => n?.type === "TSParameterProperty";

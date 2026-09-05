@@ -1,6 +1,6 @@
 # Shared types
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-09-05T03:14:52+07:00. Do not edit by hand.*
 
 Types named by more than one aggregate, event or message. A field that
 refers to one of these is knowably the same shape everywhere it appears.

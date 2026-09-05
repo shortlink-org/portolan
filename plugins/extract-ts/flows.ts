@@ -21,9 +21,10 @@ import { camel, eventID, slug } from "./ids.ts";
 import { readSource, at, bareType, text, type ClassInfo, type Source } from "./source.ts";
 import { isArrayPattern, isBinary, isBlock, isCall, isForEach, isFor, isFunctionType, isIdent, isIf, isMember, isMethodSig, isPropertySig, isReturn, isSpread, isString, isSwitch, isSwitchCase, isThis, isThrow, isTry, isVarDecl, isWhile, isAssign, keyName, memberName, paramIdent, thisMember, typeText, unwrap, walk, type CallExpression, type ForEachStatement, type IfStatement, type Node, type SwitchStatement } from "./ast.ts";
 import type { UseCase } from "./operations.ts";
-import type { Binding } from "./wiring.ts";
+import { PORTS, type Binding } from "./wiring.ts";
 import type { AggregateRead, WarningSink } from "./domain.ts";
 import type { Endpoint } from "./transport.ts";
+import type { Resolver } from "./graphql.ts";
 
 export const LANE_CLIENT = "client";
 export const LANE_BUS = "bus";
@@ -44,6 +45,12 @@ interface Scope {
   src: Source;
   key: string;
   cls: ClassInfo;
+  /**
+   * The identifier the ports arrive on, for a body that is not a method: a
+   * resolver is handed a context rather than holding fields, so `ctx.baskets`
+   * is what `this.baskets` is to a use case. Empty for a method.
+   */
+  self?: string;
   /** Port name → type as written. */
   ports: Map<string, string>;
   /** Local name → what it holds, when it is an event or a domain object. */
@@ -180,6 +187,39 @@ export class FlowReader {
       name: sentence(name),
       summary: last ? this.useCaseSummary(last) : "",
       source: endpoint.source,
+      owner: this.opts.context,
+      participants: d.lanes,
+      steps: d.steps,
+    };
+  }
+
+  /**
+   * A field of the schema, opened by whoever asked for it.
+   *
+   * The counterpart of endpointFlow for a service whose way in is a graph:
+   * the step from the client is the field, named as the schema names it, and
+   * everything after it is the resolver's own body - a call on a port is a
+   * hop, exactly as it is inside a use case.
+   */
+  resolverFlow(resolver: Resolver): Flow | null {
+    const d = new Draft();
+    d.lane({ id: LANE_CLIENT, kind: "actor", context: null });
+    d.lane(this.serviceLane());
+    d.add({ from: LANE_CLIENT, to: this.opts.svcID, kind: "rpc", label: resolver.id, line: resolver.line });
+
+    const cls: ClassInfo = { name: resolver.id, node: null as never, doc: "", exported: true, fields: [], params: [], methods: new Map(), nameLiteral: undefined };
+    const scope: Scope = { src: resolver.src, key: `resolver/${resolver.id}`, cls, ports: resolver.ports, vars: new Map() };
+    if (resolver.self) scope.self = resolver.self;
+    this.walkBody(d, scope, resolver.body, 0);
+
+    const name = slug(resolver.id);
+    const id = `${this.opts.service}-${name}`;
+    return {
+      id: `flow.${id}`,
+      slug: id,
+      name: sentence(name),
+      summary: resolver.doc.split(/\n\s*\n/)[0]?.replace(/\s+/g, " ") ?? "",
+      source: this.rel(resolver.src.path),
       owner: this.opts.context,
       participants: d.lanes,
       steps: d.steps,
@@ -426,8 +466,10 @@ export class FlowReader {
       return;
     }
 
-    // this.<port>.<method>(...) — a hop.
-    const port = thisMember(target);
+    // this.<port>.<method>(...) — a hop. And `ctx.<port>.<method>(...)`, which
+    // is the same sentence in a resolver: the ports arrive on a parameter
+    // rather than on the instance.
+    const port = thisMember(target) ?? selfMember(s, target);
     if (port !== undefined) {
       const declared = s.ports.get(port);
       if (declared !== undefined) this.portCall(d, s, port, declared, method, call, lhs, depth);
@@ -463,7 +505,7 @@ export class FlowReader {
     // than say the same thing twice. And assembly may bind it more than once -
     // the adapter over a peer when the peer is named, a stand-in when it is
     // not - so the binding shown is the first that reaches a peer.
-    const bound = this.bindings.get(`${this.portOwner(src, bare) ?? s.key}.${bare}`) ?? [];
+    const bound = this.bindings.get(`${this.portOwner(src, bare) ?? s.key}.${bare}`) ?? this.bindings.get(`${PORTS}.${bare}`) ?? [];
     const toUseCase = bound.find((b) => b.useCase)?.useCase;
     if (toUseCase) {
       this.useCaseHop(d, toUseCase, `Port \`${bare}\`, bound at assembly to the ${camel(toUseCase.split("/")[1] ?? "")} use case.`, line, depth);
@@ -479,7 +521,12 @@ export class FlowReader {
         for (const hop of hops) this.rpcHop(d, hop, line);
         return;
       }
-      this.b.warn(s.key, `port \`${bare}\` is adapted by ${adapters.map((a) => `${a.cls}.${method}`).join(" and by ")}, which calls no peer; the call is left out of the flow`);
+      // An adapter over the bus calls nobody: it waits, and what it hears is
+      // said by the channel the service declares, not by a step in a flow.
+      // Every other adapter that reaches no peer is worth reporting.
+      if (!adapters.every((a) => isBusAdapter(a.file))) {
+        this.b.warn(s.key, `port \`${bare}\` is adapted by ${adapters.map((a) => `${a.cls}.${method}`).join(" and by ")}, which calls no peer; the call is left out of the flow`);
+      }
       return;
     }
 
@@ -720,3 +767,19 @@ export function sentence(s: string): string {
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 export { dirname as _dirname };
+
+/**
+ * `ctx.<port>` where `ctx` is what this body's ports arrive on.
+ *
+ * The resolver's counterpart of `this.<port>`. Nothing else on the context is
+ * a port, so a member that is not one is not found in the scope's map and the
+ * call is not a hop, exactly as it works for a use case's fields.
+ */
+function selfMember(s: Scope, n: Node): string | undefined {
+  return s.self && isMember(n) && isIdent(n.object) && n.object.name === s.self ? memberName(n) : undefined;
+}
+
+/** The bus, by where it sits: `infrastructure/bus` beside the peers, or `pkg/messaging` beside the rest of the plumbing. */
+function isBusAdapter(file: string): boolean {
+  return /[\\/](?:infrastructure[\\/]bus|pkg[\\/]messaging)[\\/]/.test(file);
+}

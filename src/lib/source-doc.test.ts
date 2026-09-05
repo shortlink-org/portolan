@@ -51,6 +51,7 @@ describe("sourceDocKind", () => {
     expect(sourceDocKind("proto/shop/v1/orders.proto:12")).toBe("proto");
     expect(sourceDocKind("examples/auth/openapi.yaml")).toBe("openapi");
     expect(sourceDocKind("examples/auth/openapi.yml")).toBe("openapi");
+    expect(sourceDocKind("examples/bff/src/schema/basket/schema.graphql")).toBe("graphql");
     expect(sourceDocKind("internal/handler.go")).toBeNull();
   });
 });
@@ -71,6 +72,17 @@ describe("pickSpec", () => {
       kind: "openapi",
       source: "examples/auth/openapi.yaml",
     });
+  });
+
+  // A schema is a document this repository holds like any other, and the tab
+  // draws it as written rather than as a second copy of the provides tab.
+  it("picks the graphql schema an interface was read from", () => {
+    expect(
+      pickSpec(
+        service([{ id: "storefront.v1.Basket", source: "examples/bff/src/schema/basket/schema.graphql" }]),
+        (source) => source.endsWith(".graphql"),
+      ),
+    ).toEqual({ kind: "graphql", source: "examples/bff/src/schema/basket/schema.graphql" });
   });
 
   it("falls back to the module the interfaces came from", () => {

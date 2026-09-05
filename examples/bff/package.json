@@ -1,0 +1,49 @@
+{
+  "name": "bff",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Storefront BFF \u2014 service `bff` of bounded context `storefront`",
+  "type": "module",
+  "repository": "git+https://github.com/shortlink-org/portolan.git",
+  "engines": {
+    "node": ">=26"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/main.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "generate": "npm run generate:resolvers && npm run generate:auth && npm run generate:cart && npm run generate:grpc",
+    "generate:resolvers": "graphql-codegen --config codegen.ts",
+    "generate:auth": "openapi-typescript src/infrastructure/auth/gen/openapi.yaml -o src/infrastructure/auth/gen/types.ts",
+    "generate:cart": "openapi-typescript src/infrastructure/cart/gen/openapi.yaml -o src/infrastructure/cart/gen/types.ts",
+    "generate:grpc": "buf generate --template buf.gen.oms.yaml && buf generate --template buf.gen.delivery.yaml"
+  },
+  "dependencies": {
+    "@bufbuild/protobuf": "^2.14.1",
+    "@connectrpc/connect": "^2.1.2",
+    "@connectrpc/connect-node": "^2.1.2",
+    "@nats-io/jetstream": "^3.4.0",
+    "@nats-io/transport-node": "^3.4.0",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/exporter-trace-otlp-grpc": "^0.222.0",
+    "@opentelemetry/instrumentation-http": "^0.222.0",
+    "@opentelemetry/instrumentation-undici": "^0.22.0",
+    "@opentelemetry/resources": "^2.0.0",
+    "@opentelemetry/sdk-node": "^0.222.0",
+    "@opentelemetry/sdk-trace-base": "^2.0.0",
+    "graphql": "^17.0.2",
+    "graphql-yoga": "^5.22.0",
+    "openapi-fetch": "^0.17.0"
+  },
+  "devDependencies": {
+    "@bufbuild/buf": "^1.72.0",
+    "@bufbuild/protoc-gen-es": "^2.14.1",
+    "@eddeee888/gcg-typescript-resolver-files": "^0.19.0",
+    "@graphql-codegen/cli": "^7.4.0",
+    "@types/node": "^26.0.0",
+    "openapi-typescript": "^7.13.0",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.0"
+  }
+}

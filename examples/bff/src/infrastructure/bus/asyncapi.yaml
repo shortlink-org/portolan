@@ -1,0 +1,70 @@
+# What the storefront listens to, and the only reason it touches the bus at
+# all: a subscription has to be answered by something, and the moves of an
+# order are already on the wire. Nothing is published here - a BFF that
+# published an event would be a service with a domain.
+asyncapi: 3.0.0
+info:
+  title: bff
+  version: 1.0.0
+  description: >-
+    The order service's moves, forwarded to whoever is watching one order
+    through `Subscription.orderStatus`.
+
+servers:
+  nats:
+    host: localhost:4222
+    protocol: nats
+
+channels:
+  shop.oms.order:
+    address: shop.oms.order
+    title: Order moves
+    description: Every move an order makes, published by the order service.
+    messages:
+      OrderPlaced:
+        $ref: "#/components/messages/OrderPlaced"
+      OrderConfirmed:
+        $ref: "#/components/messages/OrderConfirmed"
+      OrderCancelled:
+        $ref: "#/components/messages/OrderCancelled"
+
+operations:
+  watchOrders:
+    action: receive
+    channel:
+      $ref: "#/channels/shop.oms.order"
+    summary: Follow an order for as long as a client is watching it
+    messages:
+      - $ref: "#/channels/shop.oms.order/messages/OrderPlaced"
+      - $ref: "#/channels/shop.oms.order/messages/OrderConfirmed"
+      - $ref: "#/channels/shop.oms.order/messages/OrderCancelled"
+
+components:
+  messages:
+    OrderPlaced:
+      name: oms.OrderPlaced
+      title: An order came into being from a checked-out basket
+      payload:
+        $ref: "#/components/schemas/OrderMove"
+    OrderConfirmed:
+      name: oms.OrderConfirmed
+      title: The payment was authorised and the order may be fulfilled
+      payload:
+        $ref: "#/components/schemas/OrderMove"
+    OrderCancelled:
+      name: oms.OrderCancelled
+      title: The order will not be fulfilled
+      payload:
+        $ref: "#/components/schemas/OrderMove"
+
+  schemas:
+    OrderMove:
+      type: object
+      required: [orderId, occurredAt]
+      properties:
+        orderId:
+          type: string
+          format: uuid
+        occurredAt:
+          type: string
+          format: date-time

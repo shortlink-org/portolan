@@ -162,7 +162,7 @@ describe("the protocol", () => {
     expect(resp.describe.phases).toEqual(["extract"]);
     expect(resp.describe.options.additionalProperties).toBe(false);
     expect(Object.keys(resp.describe.options.properties).sort()).toEqual(
-      ["classification", "context", "contextName", "contextSummary", "events", "out", "peers", "repo", "service", "serviceName", "source", "store"],
+      ["classification", "context", "contextName", "contextSummary", "events", "graphql", "out", "peers", "repo", "service", "serviceName", "source", "store"],
     );
   });
 

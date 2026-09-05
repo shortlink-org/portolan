@@ -1,0 +1,14 @@
+"""
+An amount of money, in the currency's smallest unit.
+"""
+type Money {
+  "The amount, in minor units: 1250 is £12.50."
+  amountMinor: Int!
+  currency: String!
+}
+
+interface Node {
+  id: ID!
+}
+
+scalar DateTime

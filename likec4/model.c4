@@ -48,12 +48,20 @@ model {
       }
     }
   }
+  storefront = context 'Storefront' {
+    description 'One graph in front of the estate, for one kind of client. It owns nothing: everything it answers with it asked somebody else for a moment earlier, and translated into the words a shopper\'s screen uses.'
+    style { color ctx1 }
+    bff = service 'Storefront BFF' {
+      description 'github.com/shortlink-org/portolan/examples/bff'
+      style { color ctx1 }
+    }
+  }
   payments = context 'Payments' {
     description 'Money, and the record of every movement of it. Nothing here decides whether to charge - it is asked, and it writes down what happened either way.'
-    style { color ctx1 }
+    style { color ctx2 }
     ledger = service 'Ledger' {
       description 'github.com/shortlink-org/portolan/examples/payments/ledger'
-      style { color ctx1 }
+      style { color ctx2 }
       payment = aggregate 'Payment' {
         PaymentAuthorized = event 'PaymentAuthorized' {
           description 'The gateway agreed to hold the money. Nothing has moved yet.'
@@ -77,10 +85,10 @@ model {
   }
   shop = context 'Shop' {
     description ''
-    style { color ctx2 }
+    style { color ctx3 }
     billing = service 'Billing' {
       description 'github.com/shortlink-org/portolan/examples/shop/billing'
-      style { color ctx2 }
+      style { color ctx3 }
       invoice = aggregate 'Invoice' {
         InvoiceIssued = event 'InvoiceIssued' {
           description 'The invoice is final and the customer has been asked to pay it.'
@@ -98,7 +106,7 @@ model {
     }
     cart = service 'Shopping Cart' {
       description 'github.com/shortlink-org/portolan/examples/shop/cart'
-      style { color ctx2 }
+      style { color ctx3 }
       basket = aggregate 'Basket' {
         BasketAbandoned = event 'BasketAbandoned' {
           description 'Nobody touched the basket for a day, and the sweep said so (cart.0006).'
@@ -128,7 +136,7 @@ that now holds everything.'
     }
     oms = service 'Order Management' {
       description 'github.com/shortlink-org/portolan/examples/shop/oms'
-      style { color ctx2 }
+      style { color ctx3 }
       _order = aggregate 'Order' {
         OrderCancelled = event 'OrderCancelled' {
           description 'The order will not be fulfilled. The reason says whether the customer
@@ -150,7 +158,7 @@ for: whoever moves money listens for this.'
     }
     pricing = service 'Pricing' {
       description 'github.com/shortlink-org/portolan/examples/shop/pricing'
-      style { color ctx2 }
+      style { color ctx3 }
       price_list = aggregate 'Price List' {
       }
       quote = aggregate 'Quote' {
@@ -168,10 +176,10 @@ for: whoever moves money listens for this.'
   }
   delivery = context 'Delivery' {
     description 'Parcels, vans and the day they are driven. Told what to carry and asked where it got to; it decides neither.'
-    style { color ctx3 }
+    style { color ctx4 }
     core = service 'Delivery Core' {
       description 'github.com/shortlink-org/portolan/examples/shop/delivery/core'
-      style { color ctx3 }
+      style { color ctx4 }
       route = aggregate 'Route' {
         RoutePlanned = event 'RoutePlanned' {
           description 'A van has a day\'s work. The stops are not on the event: whoever cares reads
@@ -195,6 +203,30 @@ shown it and nobody should have to come back for it.'
     }
   }
 
+  storefront.bff -> auth.auth 'validateSession' {
+    style { color declared  line dashed  head normal }
+  }
+  storefront.bff -> shop.cart 'addItem' {
+    style { color declared  line dashed  head normal }
+  }
+  storefront.bff -> shop.cart 'checkout' {
+    style { color declared  line dashed  head normal }
+  }
+  storefront.bff -> shop.cart 'getBasket' {
+    style { color declared  line dashed  head normal }
+  }
+  storefront.bff -> shop.cart 'removeItem' {
+    style { color declared  line dashed  head normal }
+  }
+  storefront.bff -> delivery.core 'GetShipment' {
+    style { color declared  line dashed  head normal }
+  }
+  storefront.bff -> shop.oms 'CancelOrder' {
+    style { color declared  line dashed  head normal }
+  }
+  storefront.bff -> shop.oms 'GetOrder' {
+    style { color declared  line dashed  head normal }
+  }
   payments.ledger -> shop.oms 'PaymentAuthorized' {
     style { color declared  line dashed  head onormal }
   }
@@ -293,6 +325,9 @@ shown it and nobody should have to come back for it.'
   }
   client -> auth.auth '6 flows' {
     style { color verified  line solid  head normal }
+  }
+  client -> storefront.bff '9 flows' {
+    style { color declared  line dashed  head normal }
   }
   client -> payments.ledger '5 flows' {
     style { color declared  line dashed  head normal }

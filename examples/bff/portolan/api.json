@@ -1,0 +1,445 @@
+{
+  "generatedAt": "2026-09-05T12:14:40+07:00",
+  "commit": "77e4d93",
+  "contexts": [
+    {
+      "id": "storefront",
+      "slug": "storefront",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "storefront.bff",
+          "slug": "bff",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [
+            {
+              "id": "storefront.v1.Basket",
+              "methods": [
+                {
+                  "name": "Query.basket",
+                  "doc": "The basket as it stands, or null when there is no such basket to show.",
+                  "request": "QueryBasketArgs",
+                  "response": "Basket"
+                },
+                {
+                  "name": "Mutation.addItem",
+                  "doc": "Add a line, or increase one already there.",
+                  "request": "AddItemInput",
+                  "response": "Basket"
+                },
+                {
+                  "name": "Mutation.removeItem",
+                  "doc": "Remove a line outright.",
+                  "request": "RemoveItemInput",
+                  "response": "Basket"
+                },
+                {
+                  "name": "Mutation.checkout",
+                  "doc": "Freeze the basket and hand it on.\n\nNo order exists when this answers. The cart publishes that the basket was\nchecked out, and the order service places one when it hears; ask for\n`order` a moment later, or listen to `orderStatus`.",
+                  "request": "CheckoutInput",
+                  "response": "Checkout"
+                }
+              ],
+              "source": "examples/bff/src/schema/basket/schema.graphql",
+              "messages": [
+                {
+                  "name": "QueryBasketArgs",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "ID",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "Basket",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "ID",
+                      "doc": ""
+                    },
+                    {
+                      "name": "status",
+                      "type": "BasketStatus enum(OPEN | CHECKED_OUT | ABANDONED | MERGED)",
+                      "doc": ""
+                    },
+                    {
+                      "name": "lines",
+                      "type": "[]Line",
+                      "doc": ""
+                    },
+                    {
+                      "name": "subtotal",
+                      "type": "Money",
+                      "doc": "Optional. Absent while the basket is empty: nothing has been added to add up."
+                    }
+                  ]
+                },
+                {
+                  "name": "AddItemInput",
+                  "fields": [
+                    {
+                      "name": "basketId",
+                      "type": "ID",
+                      "doc": ""
+                    },
+                    {
+                      "name": "sku",
+                      "type": "String",
+                      "doc": ""
+                    },
+                    {
+                      "name": "quantity",
+                      "type": "Int",
+                      "doc": ""
+                    },
+                    {
+                      "name": "unitPrice",
+                      "type": "MoneyInput",
+                      "doc": "The price the customer is looking at. Captured as sent, never recomputed."
+                    }
+                  ]
+                },
+                {
+                  "name": "RemoveItemInput",
+                  "fields": [
+                    {
+                      "name": "basketId",
+                      "type": "ID",
+                      "doc": ""
+                    },
+                    {
+                      "name": "sku",
+                      "type": "String",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "CheckoutInput",
+                  "fields": [
+                    {
+                      "name": "basketId",
+                      "type": "ID",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "Checkout",
+                  "fields": [
+                    {
+                      "name": "basketId",
+                      "type": "ID",
+                      "doc": ""
+                    },
+                    {
+                      "name": "quoteId",
+                      "type": "String",
+                      "doc": ""
+                    },
+                    {
+                      "name": "total",
+                      "type": "Money",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "Line",
+                  "fields": [
+                    {
+                      "name": "sku",
+                      "type": "String",
+                      "doc": ""
+                    },
+                    {
+                      "name": "quantity",
+                      "type": "Int",
+                      "doc": ""
+                    },
+                    {
+                      "name": "unitPrice",
+                      "type": "Money",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "Money",
+                  "fields": [
+                    {
+                      "name": "amountMinor",
+                      "type": "Int",
+                      "doc": ""
+                    },
+                    {
+                      "name": "currency",
+                      "type": "String",
+                      "doc": "ISO 4217, upper case."
+                    }
+                  ]
+                },
+                {
+                  "name": "MoneyInput",
+                  "fields": [
+                    {
+                      "name": "amountMinor",
+                      "type": "Int",
+                      "doc": ""
+                    },
+                    {
+                      "name": "currency",
+                      "type": "String",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "storefront.v1.Delivery",
+              "methods": [
+                {
+                  "name": "Query.shipment",
+                  "doc": "Where the parcel is, or null when nothing has been handed to a carrier yet.",
+                  "request": "QueryShipmentArgs",
+                  "response": "Shipment"
+                }
+              ],
+              "source": "examples/bff/src/schema/delivery/schema.graphql",
+              "messages": [
+                {
+                  "name": "QueryShipmentArgs",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "ID",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "Shipment",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "ID",
+                      "doc": ""
+                    },
+                    {
+                      "name": "orderId",
+                      "type": "ID",
+                      "doc": ""
+                    },
+                    {
+                      "name": "state",
+                      "type": "String",
+                      "doc": "What delivery calls the state of this parcel.\n\nA string rather than an enum on purpose: delivery answers with one, and a\nset of values invented here would be a promise this service cannot keep."
+                    },
+                    {
+                      "name": "trackingCode",
+                      "type": "String",
+                      "doc": "Optional. The code a customer pastes into a carrier's site."
+                    },
+                    {
+                      "name": "parcels",
+                      "type": "Int",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "storefront.v1.Order",
+              "methods": [
+                {
+                  "name": "Query.order",
+                  "doc": "The order, or null when the storefront has never been told of one.",
+                  "request": "QueryOrderArgs",
+                  "response": "Order"
+                },
+                {
+                  "name": "Mutation.cancelOrder",
+                  "doc": "Cancel an order that has not been dispatched. Cancelling twice is not an error.",
+                  "request": "CancelOrderInput",
+                  "response": "Order"
+                },
+                {
+                  "name": "Subscription.orderStatus",
+                  "doc": "Every move an order makes, until it stops moving.\n\nThe storefront does not poll the order service for this: the moves are on\nthe bus already, and this is the same events, forwarded to whoever is\nwatching this order.",
+                  "request": "SubscriptionOrderStatusArgs",
+                  "response": "OrderMoved",
+                  "streaming": "server"
+                }
+              ],
+              "source": "examples/bff/src/schema/order/schema.graphql",
+              "messages": [
+                {
+                  "name": "QueryOrderArgs",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "ID",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "SubscriptionOrderStatusArgs",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "ID",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "Order",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "ID",
+                      "doc": ""
+                    },
+                    {
+                      "name": "state",
+                      "type": "OrderState enum(PLACED | CONFIRMED | CANCELLED)",
+                      "doc": ""
+                    },
+                    {
+                      "name": "lines",
+                      "type": "[]Line",
+                      "doc": ""
+                    },
+                    {
+                      "name": "total",
+                      "type": "Money",
+                      "doc": "What the customer agreed to at checkout, and not a penny recomputed since."
+                    },
+                    {
+                      "name": "placedAt",
+                      "type": "DateTime",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "CancelOrderInput",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "type": "ID",
+                      "doc": ""
+                    },
+                    {
+                      "name": "reason",
+                      "type": "String",
+                      "doc": "Optional."
+                    }
+                  ]
+                },
+                {
+                  "name": "OrderMoved",
+                  "fields": [
+                    {
+                      "name": "orderId",
+                      "type": "ID",
+                      "doc": ""
+                    },
+                    {
+                      "name": "state",
+                      "type": "OrderState enum(PLACED | CONFIRMED | CANCELLED)",
+                      "doc": ""
+                    },
+                    {
+                      "name": "at",
+                      "type": "DateTime",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "Line",
+                  "fields": [
+                    {
+                      "name": "sku",
+                      "type": "String",
+                      "doc": ""
+                    },
+                    {
+                      "name": "quantity",
+                      "type": "Int",
+                      "doc": ""
+                    },
+                    {
+                      "name": "unitPrice",
+                      "type": "Money",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "name": "Money",
+                  "fields": [
+                    {
+                      "name": "amountMinor",
+                      "type": "Int",
+                      "doc": ""
+                    },
+                    {
+                      "name": "currency",
+                      "type": "String",
+                      "doc": "ISO 4217, upper case."
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "storefront.v1.Viewer",
+              "methods": [
+                {
+                  "name": "Query.viewer",
+                  "doc": "Who the request belongs to, or null when it belongs to nobody.\n\nThere is no `login` here. Sessions are minted by auth and nowhere else, and\na BFF that took a password would be a second place credentials go.",
+                  "response": "Viewer"
+                }
+              ],
+              "source": "examples/bff/src/schema/viewer/schema.graphql",
+              "messages": [
+                {
+                  "name": "Viewer",
+                  "fields": [
+                    {
+                      "name": "userId",
+                      "type": "ID",
+                      "doc": ""
+                    },
+                    {
+                      "name": "expiresAt",
+                      "type": "DateTime",
+                      "doc": "When the session stops being live."
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "consumes": [],
+          "aggregates": []
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": []
+}

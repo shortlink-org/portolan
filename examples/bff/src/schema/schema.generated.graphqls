@@ -1,0 +1,180 @@
+input AddItemInput {
+  basketId: ID!
+  quantity: Int!
+  sku: String!
+
+  """
+  The price the customer is looking at. Captured as sent, never recomputed.
+  """
+  unitPrice: MoneyInput!
+}
+
+type Basket {
+  id: ID!
+  lines: [Line!]!
+  status: BasketStatus!
+
+  """Absent while the basket is empty: nothing has been added to add up."""
+  subtotal: Money
+}
+
+enum BasketStatus {
+  ABANDONED
+  CHECKED_OUT
+  MERGED
+  OPEN
+}
+
+input CancelOrderInput {
+  id: ID!
+  reason: String
+}
+
+"""
+What a checkout leaves behind: a frozen basket and the price it was frozen at.
+"""
+type Checkout {
+  basketId: ID!
+  quoteId: String!
+  total: Money!
+}
+
+input CheckoutInput {
+  basketId: ID!
+}
+
+"""An instant, ISO 8601 with an offset."""
+scalar DateTime
+
+type Line {
+  quantity: Int!
+  sku: String!
+  unitPrice: Money!
+}
+
+"""
+An amount in the smallest unit of its currency: 1999 EUR is 19.99.
+
+Every service in the estate has its own spelling of this - `amountMinor` over
+HTTP, `amount_minor` over gRPC - and the storefront has one. Which one a peer
+uses is the adapter's business, and stops at the adapter.
+"""
+type Money {
+  amountMinor: Int!
+
+  """ISO 4217, upper case."""
+  currency: String!
+}
+
+input MoneyInput {
+  amountMinor: Int!
+  currency: String!
+}
+
+type Mutation {
+  """Add a line, or increase one already there."""
+  addItem(input: AddItemInput!): Basket!
+
+  """
+  Cancel an order that has not been dispatched. Cancelling twice is not an error.
+  """
+  cancelOrder(input: CancelOrderInput!): Order!
+
+  """
+  Freeze the basket and hand it on.
+  
+  No order exists when this answers. The cart publishes that the basket was
+  checked out, and the order service places one when it hears; ask for
+  `order` a moment later, or listen to `orderStatus`.
+  """
+  checkout(input: CheckoutInput!): Checkout!
+
+  """Remove a line outright."""
+  removeItem(input: RemoveItemInput!): Basket!
+}
+
+type Order {
+  id: ID!
+  lines: [Line!]!
+  placedAt: DateTime!
+  state: OrderState!
+
+  """
+  What the customer agreed to at checkout, and not a penny recomputed since.
+  """
+  total: Money!
+}
+
+"""One move of one order, as it happened."""
+type OrderMoved {
+  at: DateTime!
+  orderId: ID!
+  state: OrderState!
+}
+
+enum OrderState {
+  CANCELLED
+  CONFIRMED
+  PLACED
+}
+
+type Query {
+  """The basket as it stands, or null when there is no such basket to show."""
+  basket(id: ID!): Basket
+
+  """The order, or null when the storefront has never been told of one."""
+  order(id: ID!): Order
+
+  """
+  Where the parcel is, or null when nothing has been handed to a carrier yet.
+  """
+  shipment(id: ID!): Shipment
+
+  """
+  Who the request belongs to, or null when it belongs to nobody.
+  
+  There is no `login` here. Sessions are minted by auth and nowhere else, and
+  a BFF that took a password would be a second place credentials go.
+  """
+  viewer: Viewer
+}
+
+input RemoveItemInput {
+  basketId: ID!
+  sku: String!
+}
+
+type Shipment {
+  id: ID!
+  orderId: ID!
+  parcels: Int!
+
+  """
+  What delivery calls the state of this parcel.
+  
+  A string rather than an enum on purpose: delivery answers with one, and a
+  set of values invented here would be a promise this service cannot keep.
+  """
+  state: String!
+
+  """The code a customer pastes into a carrier's site."""
+  trackingCode: String
+}
+
+type Subscription {
+  """
+  Every move an order makes, until it stops moving.
+  
+  The storefront does not poll the order service for this: the moves are on
+  the bus already, and this is the same events, forwarded to whoever is
+  watching this order.
+  """
+  orderStatus(id: ID!): OrderMoved!
+}
+
+"""A signed-in customer, as much of one as the storefront needs to know."""
+type Viewer {
+  """When the session stops being live."""
+  expiresAt: DateTime!
+  userId: ID!
+}

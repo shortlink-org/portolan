@@ -1,0 +1,69 @@
+extend type Query {
+  "The basket as it stands, or null when there is no such basket to show."
+  basket(id: ID!): Basket
+}
+
+type Mutation {
+  "Add a line, or increase one already there."
+  addItem(input: AddItemInput!): Basket!
+  "Remove a line outright."
+  removeItem(input: RemoveItemInput!): Basket!
+  """
+  Freeze the basket and hand it on.
+
+  No order exists when this answers. The cart publishes that the basket was
+  checked out, and the order service places one when it hears; ask for
+  `order` a moment later, or listen to `orderStatus`.
+  """
+  checkout(input: CheckoutInput!): Checkout!
+}
+
+input AddItemInput {
+  basketId: ID!
+  sku: String!
+  quantity: Int!
+  "The price the customer is looking at. Captured as sent, never recomputed."
+  unitPrice: MoneyInput!
+}
+
+input RemoveItemInput {
+  basketId: ID!
+  sku: String!
+}
+
+input CheckoutInput {
+  basketId: ID!
+}
+
+input MoneyInput {
+  amountMinor: Int!
+  currency: String!
+}
+
+type Basket {
+  id: ID!
+  status: BasketStatus!
+  lines: [Line!]!
+  "Absent while the basket is empty: nothing has been added to add up."
+  subtotal: Money
+}
+
+type Line {
+  sku: String!
+  quantity: Int!
+  unitPrice: Money!
+}
+
+enum BasketStatus {
+  OPEN
+  CHECKED_OUT
+  ABANDONED
+  MERGED
+}
+
+"What a checkout leaves behind: a frozen basket and the price it was frozen at."
+type Checkout {
+  basketId: ID!
+  quoteId: String!
+  total: Money!
+}
