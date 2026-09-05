@@ -15,7 +15,7 @@ require (
 	github.com/shortlink-org/go-sdk/fsm v0.0.0-20260901155230-945620b3fa49
 	github.com/shortlink-org/go-sdk/logger v0.0.0-20260829181537-766b3331c5e3
 	github.com/shortlink-org/go-sdk/outbox v0.0.0-20260901121657-d7eab0200634
-	github.com/shortlink-org/go-sdk/specification v0.0.0-20260829181537-766b3331c5e3
+	github.com/shortlink-org/go-sdk/specification v0.0.0-20260905174857-b5c27a825ef6
 	github.com/shortlink-org/go-sdk/uow v0.0.0-20260901121657-d7eab0200634
 	github.com/shortlink-org/go-sdk/watermill v0.0.0-20260901121657-d7eab0200634
 	github.com/testcontainers/testcontainers-go v0.44.0

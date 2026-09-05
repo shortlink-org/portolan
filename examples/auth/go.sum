@@ -419,6 +419,8 @@ github.com/shortlink-org/go-sdk/outbox v0.0.0-20260901121657-d7eab0200634 h1:3cE
 github.com/shortlink-org/go-sdk/outbox v0.0.0-20260901121657-d7eab0200634/go.mod h1:w2ClP6Lqiq820vhDMOYP++gL/GxMiuemYDNESffqH0U=
 github.com/shortlink-org/go-sdk/specification v0.0.0-20260829181537-766b3331c5e3 h1:zxVvAX7wDimeCGvQR/RsLc3MA3I62Z1XqWvhABS2h40=
 github.com/shortlink-org/go-sdk/specification v0.0.0-20260829181537-766b3331c5e3/go.mod h1:i54AlOCjETmkuFLCFTBJzwfC1xYMkwpfPwabRArq9rw=
+github.com/shortlink-org/go-sdk/specification v0.0.0-20260905174857-b5c27a825ef6 h1:tYVNgLhXXgfadXsca1HPEYFAhvj+wP/xrFQUP9CjVmM=
+github.com/shortlink-org/go-sdk/specification v0.0.0-20260905174857-b5c27a825ef6/go.mod h1:bpCKAwKXS88mjgA18hAUDom1sWtXk1rEb5sjYbykAHQ=
 github.com/shortlink-org/go-sdk/uow v0.0.0-20260901121657-d7eab0200634 h1:96s7oy5rnUVFa2aRCvczRvt8iAka+JYWlyGVOnGkBkw=
 github.com/shortlink-org/go-sdk/uow v0.0.0-20260901121657-d7eab0200634/go.mod h1:fgS7RxA35XdE3iQAzGjQaE/9m1rekgWrEVcshknAymM=
 github.com/shortlink-org/go-sdk/watermill v0.0.0-20260901121657-d7eab0200634 h1:fI+Yu2W+t8n49kI1O21nGCTa5dGk5u+f9ax2or51DhA=
