@@ -15,10 +15,10 @@ the diagram. A reader who learns the glossary can read the tree.
 one per bounded context. The README says what the service does; the glossary
 says what the words mean. Neither repeats the other.
 
-**One entry per term: the term, one sentence, and what it is not.** "Session:
-proof that a user logged in, how long it is good for, and whether it has been
-taken away. Not the token: the token is a secret the session carries, not
-what it is called." The negative half is where most confusion lives.
+**One entry per term: the term, and what it means.** "Session: proof that a
+user logged in, how long it is good for, and whether it has been taken away."
+As long as it needs to be and no longer; a reader who has to be told what the
+word is not is usually being told about two words.
 
 **A term is either in the glossary or not used.** A new noun in the code is a
 new entry, written first. A word that turns out to mean two things becomes
@@ -57,11 +57,21 @@ the same. See [references/likec4.md](references/likec4.md).
 ```
 # Glossary — <context>
 
-**Term.** One sentence saying what it is. Not <the thing it is confused with>.
+<a line or two on what the vocabulary covers, optional>
+
+**Term.** What it means, in the words a person would use.
 ```
 
-Alphabetical. Terms link nowhere; the glossary is the leaf everything else
-points to.
+One paragraph per term, a blank line between them, alphabetical. The
+paragraph opens with the term in bold, the full stop inside the bold, and
+everything after it is the definition.
+
+Prose, and only prose: no tables, no lists, no headings under the title. A
+definition is one or two sentences of English, and a table row is where a
+sentence goes to be truncated; prose also diffs by the sentence rather than
+by the row.
+
+Terms link nowhere; the glossary is the leaf everything else points to.
 
 ## Checklist
 

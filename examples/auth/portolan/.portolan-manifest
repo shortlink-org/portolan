@@ -13,5 +13,8 @@
   ],
   "adr": [
     "adr.json"
+  ],
+  "glossary": [
+    "glossary.json"
   ]
 }

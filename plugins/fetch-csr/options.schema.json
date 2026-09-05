@@ -1,0 +1,42 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["registry", "subjects", "cache"],
+  "properties": {
+    "registry": {
+      "type": "string",
+      "description": "Base URL of the schema registry. The credential for it is never written here: it comes from the environment, so this file stays committable.",
+      "examples": [
+        "http://localhost:8081",
+        "https://psrc-00000.eu-central-1.aws.confluent.cloud"
+      ]
+    },
+    "subjects": {
+      "type": "array",
+      "minItems": 1,
+      "description": "The subjects to fetch, each pinned to a version. A subject a fetched schema references is fetched too, pinned by the reference itself, and needs no entry here.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["subject"],
+        "properties": {
+          "subject": {
+            "type": "string",
+            "description": "The registry's own name for the registration: \"<topic>-value\" under TopicNameStrategy, the record's full name under RecordNameStrategy.",
+            "examples": ["shop.oms.order-value", "shop.oms.OrderPlaced"]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "The version to fetch. A registered version is immutable, so a pinned fetch is byte-reproducible, which is what lets an offline run replay it from the tree. Left out, `latest` is resolved online and warned about, and refused offline."
+          }
+        }
+      }
+    },
+    "cache": {
+      "type": "string",
+      "description": "Where the last run's files were written, repo-relative: the same path as the step's out. An offline run replays what is there and checks it against the lock beside it.",
+      "examples": ["examples/shop/oms/vendor/schemas"]
+    }
+  }
+}

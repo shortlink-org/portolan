@@ -8,6 +8,7 @@ import {
   GripVertical,
   PanelLeftOpen,
   PinOff,
+  Settings2,
   TriangleAlert,
 } from "lucide-react";
 import { catalog, index } from "../data";
@@ -25,13 +26,14 @@ import type {
   Table,
   View,
 } from "../catalog";
-import { allModules, storeViews } from "../catalog";
+import { allModules, allTerms, storeViews } from "../catalog";
 import { adrNumber, newestAccepted, sortAdrs } from "../lib/adr";
 import { contextName, ctxStyle } from "../lib/context-color";
 import { contextStats, problems } from "../lib/derive";
 import { dataProblems } from "../lib/data-problems";
 import { protoProblems } from "../lib/proto-problems";
 import { matchModules } from "../lib/registry";
+import { matchTerms, vocabularies } from "../language/cards";
 import {
   FLOW_HEALTH_NOTE,
   groupFlowsByOwner,
@@ -946,6 +948,23 @@ function BottomGroup() {
           </span>
         )}
       </NavLink>
+      <NavLink
+        to={paths.settings()}
+        end
+        data-nav-item
+        title="Settings — projects, plugins and appearance"
+        style={({ isActive }) => ({
+          paddingLeft: indent(0),
+          background: isActive ? "var(--surface-2)" : undefined,
+          borderLeftWidth: 2,
+          borderLeftStyle: "solid",
+          borderLeftColor: isActive ? "var(--accent)" : "transparent",
+        })}
+        className="tree-row flex items-center gap-1.5 py-[3px] pr-2 text-muted t-micro transition-colors hover:bg-surface hover:text-ink"
+      >
+        <Settings2 size={14} aria-hidden className="block shrink-0" />
+        <span className="truncate">Settings</span>
+      </NavLink>
     </div>
   );
 }
@@ -997,6 +1016,18 @@ function IconRail({ onExpand }: { onExpand: () => void }) {
           <KindIcon kind={kind} size={16} />
         </button>
       ))}
+      <NavLink
+        to={paths.settings()}
+        title="Settings"
+        aria-label="Settings"
+        className={({ isActive }) =>
+          `mt-auto flex size-8 items-center justify-center rounded-control t-micro transition-colors hover:bg-surface ${
+            isActive ? "bg-surface text-accent" : "text-muted hover:text-ink"
+          }`
+        }
+      >
+        <Settings2 size={16} aria-hidden />
+      </NavLink>
     </nav>
   );
 }
@@ -1060,6 +1091,19 @@ export function Sidebar({
     [query],
   );
   const flowCount = flowGroups.reduce((n, g) => n + g.entries.length, 0);
+
+  // One row per vocabulary, not per word: thirty-eight terms in the tree would
+  // be a dictionary nobody scrolls past to reach the model. The row opens the
+  // page already filtered to that context, and the filter box narrows to the
+  // contexts that still have a word in them.
+  const vocabs = useMemo(
+    () =>
+      vocabularies(catalog)
+        .map((v) => ({ ...v, terms: matchTerms(v.terms, query) }))
+        .filter((v) => v.terms.length > 0),
+    [query],
+  );
+  const termCount = vocabs.reduce((n, v) => n + v.terms.length, 0);
 
   // Core first, then supporting, then generic, then the ones nobody has rated;
   // alphabetical inside each. This is the only ordering classification does.
@@ -1549,6 +1593,39 @@ export function Sidebar({
             </NavLink>
           ) : null}
         </Section>
+
+        {/* Guarded on the count, like Registry: an estate that has written no
+            glossary would otherwise grow a permanent empty band teaching a
+            feature by taking up room. */}
+        {allTerms(catalog).length > 0 ? (
+          <Section
+            title="Language"
+            count={termCount}
+            open={filtering || sectionOpen("language")}
+            onToggle={() => toggleSection("language")}
+          >
+            {vocabs.length === 0 ? <TreeNote>no match</TreeNote> : null}
+            {vocabs.map((vocabulary) => (
+              <Leaf
+                key={vocabulary.contextId}
+                to={paths.contextLanguage(vocabulary.contextId)}
+                depth={0}
+                title={`${vocabulary.context?.name ?? vocabulary.contextId} — one meaning per word inside this context`}
+              >
+                <KindIcon kind="context" contextId={vocabulary.contextId} />
+                <span className="truncate">{vocabulary.contextId}</span>
+                <span className="sb-count">{vocabulary.terms.length}</span>
+              </Leaf>
+            ))}
+            <NavLink
+              to={paths.language()}
+              data-nav-item
+              className="tree-row mono flex items-center py-[3px] pr-2 pl-[8px] text-accent hover:bg-surface"
+            >
+              view all {allTerms(catalog).length} →
+            </NavLink>
+          </Section>
+        ) : null}
       </div>
 
       <BottomGroup />

@@ -93,6 +93,12 @@ function compose() {
         description:
           "Globs of the catalog fragments that make up the estate. They are merged, then validated as a union, so a fragment naming a peer it does not own is normal rather than broken.",
       },
+      projects: {
+        type: "array",
+        items: { $ref: "#/$defs/project" },
+        description:
+          "The source projects that make up the estate. A project gives repeated pipeline inputs one name for the generated site's Settings page; estate-wide inputs such as flows need no project.",
+      },
       plugins: {
         type: "array",
         items: { $ref: "#/$defs/plugin" },
@@ -116,6 +122,44 @@ function compose() {
       },
     },
     $defs: {
+      project: {
+        type: "object",
+        additionalProperties: false,
+        required: ["id", "name", "root"],
+        properties: {
+          id: {
+            type: "string",
+            minLength: 1,
+            pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            description: "Stable id used to associate pipeline inputs with this project.",
+          },
+          name: {
+            type: "string",
+            minLength: 1,
+            description: "Human-readable project name shown in the generated site.",
+          },
+          root: {
+            type: "string",
+            minLength: 1,
+            description: "Repository-relative root. A pipeline input at or below this path belongs to the project.",
+          },
+          context: {
+            type: "string",
+            minLength: 1,
+            description: "Bounded context this project contributes to, when it has one.",
+          },
+          service: {
+            type: "string",
+            minLength: 1,
+            description: "Service slug inside the context, when this is a service project.",
+          },
+          repository: {
+            type: "string",
+            minLength: 1,
+            description: "Repository page or clone URL, when the project comes from another repository.",
+          },
+        },
+      },
       plugin: {
         type: "object",
         additionalProperties: false,

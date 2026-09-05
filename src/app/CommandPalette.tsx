@@ -179,7 +179,7 @@ export function CommandPalette({
             <ComboboxOptions static className="min-h-0 flex-1 overflow-y-auto">
               {results.map(({ item, excerpt }) => (
                 <ComboboxOption
-                  key={item.id}
+                  key={`${item.kind}:${item.id}`}
                   value={{ item, ...(excerpt ? { excerpt } : {}) }}
                   /* The 2px edge is always drawn and only changes colour, so
                      the row under the cursor never nudges the text beside it. */

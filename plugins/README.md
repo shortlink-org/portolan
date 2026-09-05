@@ -282,6 +282,65 @@ from the file it writes.
 }
 ```
 
+## Vocabulary written by hand
+
+A context's glossary is the one file in a service written for a person and read
+by everyone: what a word means inside the boundary it is spoken in. Nothing
+generates it and nothing should - a definition is a decision about language,
+not a fact about a type - so `extract-glossary` only reads. It takes
+`GLOSSARY.md` at a service's root and answers with a fragment of terms.
+
+```markdown
+# Glossary — auth
+
+One meaning per word inside this context.
+
+**Session.** Proof that a user logged in, how long that proof is good for, and
+whether it has been taken away.
+```
+
+A title, an optional line or two saying what the vocabulary covers, then one
+paragraph per term in alphabetical order. The paragraph opens with the term in
+bold and the full stop inside the bold, so `**Email address.**` names a
+two-word term and nothing has to guess where the name ends. Everything after it
+is the definition, carried through as written. Hard wrapping is the author's
+business: a soft break inside a paragraph is a space, here as in every markdown
+renderer.
+
+Nothing reads the definition for structure. A glossary is a person explaining a
+word to another person, and a parser that went looking for shapes inside the
+explanation would be a parser telling an estate how to phrase itself.
+
+The shapes a glossary is otherwise written in are refused by name: a table, a
+bullet list, a heading per term. Also refused: a file that does not open with
+`# Glossary`, an entry that defines nothing, and one word defined twice -
+inside a file or across the files of one step - because a word with two
+meanings in one context is the failure the glossary exists to prevent.
+
+What is merely untidy comes back as a warning and the fragment is still
+written: a file that has drifted out of alphabetical order, a root with no
+glossary at all.
+
+The term's id is `<context>.<slug>` - `auth.session`, `shop.order` - so the
+context has to be told to the step rather than derived from the directory: a
+glossary sits beside a SERVICE, and `examples/shop/oms/GLOSSARY.md` holds
+words that belong to `shop`. The same word in two contexts is two terms, which
+is the point of the id; the same word twice in one context is an error.
+
+```json
+{
+  "plugins": [{ "name": "glossary", "process": { "cmd": "go run ./plugins/extract-glossary" } }],
+  "extract": [
+    {
+      "plugin": "glossary",
+      "in": "examples/auth",
+      "out": "examples/auth/portolan",
+      "options": { "context": "auth", "out": "glossary.json" }
+    }
+  ]
+}
+```
+
 ## Verifiers: the third phase
 
 An extractor reads source and runs before there is a catalog; a generator

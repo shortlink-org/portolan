@@ -34,6 +34,7 @@ describe("palette index", () => {
         "flow",
         "adr",
         "module",
+        "term",
       ]),
     );
     for (const item of items) {
@@ -46,8 +47,13 @@ describe("palette index", () => {
     }
   });
 
-  it("gives every row a unique id, so rows never collide as keys", () => {
-    expect(new Set(items.map((i) => i.id)).size).toBe(items.length);
+  // Kind AND id. The id alone stopped being unique when the glossary arrived:
+  // a term's id is `<context>.<word>` and a service's is `<context>.<slug>`,
+  // so an estate with a service called `order` and a word called Order has two
+  // rows spelling one id - both correct, and neither the other's duplicate.
+  it("gives every row a unique identity, so rows never collide as keys", () => {
+    const ids = items.map((i) => `${i.kind}:${i.id}`);
+    expect(new Set(ids).size).toBe(items.length);
   });
 
   it("indexes one row per event, badged with its latest version", () => {
@@ -296,6 +302,31 @@ describe("modules in the palette", () => {
       "buf.build/shortlink-org/portolan-shop-price-list",
       "buf.build/shortlink-org/portolan-shop-quote",
     ]);
+  });
+});
+
+describe("terms in the palette", () => {
+  it("restricts to terms, and finds one by its word", () => {
+    expect(kinds("t: session")).toEqual(new Set(["term"]));
+    expect(rows("t: session")[0]?.id).toBe("auth.session");
+  });
+
+  // The whole reason a glossary is worth indexing: a reader who cannot name
+  // the word can still describe what it meant.
+  it("finds a term by what its definition says", () => {
+    const found = rows("t: how long that proof is good for");
+    expect(found[0]?.name).toBe("Session");
+  });
+
+  // A word is what a thing is called; the thing is what a reader wants to
+  // open. Typing the word unrestricted must not put the dictionary first.
+  it("ranks the aggregate above the word for the same spelling", () => {
+    const first = rows("session")[0];
+    expect(first?.kind).not.toBe("term");
+  });
+
+  it("sends a term to the language page, showing that word", () => {
+    expect(rows("t: session")[0]?.path).toBe("/language?term=auth.session");
   });
 });
 

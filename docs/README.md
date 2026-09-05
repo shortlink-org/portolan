@@ -9,7 +9,7 @@
 | --- | --- | --- | --- |
 | [Authentication](auth/README.md) | core | [Authentication & Sessions](auth/auth/README.md) | Who someone is, and whether they are still logged in. The only service in the estate that stores credentials, and the only one allowed to mint or revoke a session. |
 | [Payments](payments/README.md) | core | [Ledger](payments/ledger/README.md) | Money, and the record of every movement of it. Nothing here decides whether to charge - it is asked, and it writes down what happened either way. |
-| [Shop](shop/README.md) | — | [Billing](shop/billing/README.md), [Shopping Cart](shop/cart/README.md), [Order Management](shop/oms/README.md), [Pricing](shop/pricing/README.md) | — |
+| [Shop](shop/README.md) | — | [Billing](shop/billing/README.md), [Shopping Cart](shop/cart/README.md), [Order Management](shop/oms/README.md), [Pricing](shop/pricing/README.md) | What a customer is buying, what it costs and what they owe for it: the basket while it is still changing, the price it was promised at, the order it became, and the invoice for it. It moves no money and delivers nothing. |
 | [Delivery](delivery/README.md) | supporting | [Delivery Core](delivery/core/README.md) | Parcels, vans and the day they are driven. Told what to carry and asked where it got to; it decides neither. |
 
 ## Flows

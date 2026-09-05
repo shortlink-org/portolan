@@ -1,0 +1,34 @@
+{
+  "generatedAt": "2024-01-01T00:00:00Z",
+  "commit": "abc1234",
+  "contexts": [],
+  "defs": {},
+  "flows": [],
+  "adrs": [],
+  "terms": [
+    {
+      "id": "auth.email-address",
+      "slug": "email-address",
+      "context": "auth",
+      "name": "Email address",
+      "definition": "The address a user logs in with, normalised and validated on creation.",
+      "source": "testdata/estate/GLOSSARY.md:5"
+    },
+    {
+      "id": "auth.session",
+      "slug": "session",
+      "context": "auth",
+      "name": "Session",
+      "definition": "Proof that a user logged in, and how long that proof is good for.",
+      "source": "testdata/estate/GLOSSARY.md:8"
+    },
+    {
+      "id": "auth.version",
+      "slug": "version",
+      "context": "auth",
+      "name": "Version",
+      "definition": "The number the store compares before writing an aggregate. Zero means never stored.",
+      "source": "testdata/estate/GLOSSARY.md:10"
+    }
+  ]
+}

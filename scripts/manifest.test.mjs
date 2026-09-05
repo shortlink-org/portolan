@@ -22,6 +22,15 @@ function check(manifest) {
 
 const good = {
   sources: ["data/*.json"],
+  projects: [
+    {
+      id: "auth",
+      name: "Authentication",
+      root: "examples/auth",
+      context: "auth",
+      service: "auth",
+    },
+  ],
   plugins: [{ name: "go-domain", process: { command: "go", args: ["run", "./plugins/extract-go"] } }],
   extract: [
     {
@@ -40,6 +49,15 @@ describe("the manifest schema", () => {
 
   it("accepts a well-formed manifest", () => {
     expect(check(good)).toEqual([]);
+  });
+
+  it("refuses an unstable project id", () => {
+    const problems = check({
+      ...good,
+      projects: [{ ...good.projects[0], id: "Auth Service" }],
+    });
+
+    expect(problems.join("\n")).toContain("projects/0/id");
   });
 
   it("names the option a typo was probably meant to be", () => {

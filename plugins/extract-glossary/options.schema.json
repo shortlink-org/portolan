@@ -1,0 +1,21 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "context": {
+      "type": "string",
+      "description": "Slug of the bounded context whose vocabulary this is. A glossary sits beside a service, and the words in it belong to the context that service is in, so shop/oms/GLOSSARY.md is read as shop. Left out, the name of the input directory.",
+      "examples": ["auth", "shop"]
+    },
+    "files": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "The glossaries to read, as globs relative to the input root. Left out, GLOSSARY.md at the root of it.",
+      "examples": [["GLOSSARY.md"], ["docs/GLOSSARY.md"]]
+    },
+    "out": {
+      "type": "string",
+      "description": "Name of the fragment file, inside the step's output directory. Left out, glossary.json."
+    }
+  }
+}

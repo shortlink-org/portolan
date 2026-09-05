@@ -23,6 +23,13 @@
       },
       "description": "Globs of the catalog fragments that make up the estate. They are merged, then validated as a union, so a fragment naming a peer it does not own is normal rather than broken."
     },
+    "projects": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/project"
+      },
+      "description": "The source projects that make up the estate. A project gives repeated pipeline inputs one name for the generated site's Settings page; estate-wide inputs such as flows need no project."
+    },
     "plugins": {
       "type": "array",
       "items": {
@@ -53,6 +60,7 @@
               "sql",
               "flows",
               "adr",
+              "glossary",
               "bsr",
               "proto"
             ],
@@ -269,6 +277,25 @@
               ],
               "properties": {
                 "plugin": {
+                  "const": "glossary"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "options": {
+                  "$ref": "#/$defs/options.glossary"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "plugin"
+              ],
+              "properties": {
+                "plugin": {
                   "const": "bsr"
                 }
               }
@@ -409,6 +436,48 @@
     }
   },
   "$defs": {
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "root"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "description": "Stable id used to associate pipeline inputs with this project."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable project name shown in the generated site."
+        },
+        "root": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Repository-relative root. A pipeline input at or below this path belongs to the project."
+        },
+        "context": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Bounded context this project contributes to, when it has one."
+        },
+        "service": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Service slug inside the context, when this is a service project."
+        },
+        "repository": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Repository page or clone URL, when the project comes from another repository."
+        }
+      }
+    },
     "plugin": {
       "type": "object",
       "additionalProperties": false,
@@ -1201,6 +1270,39 @@
         "out": {
           "type": "string",
           "description": "Name of the fragment file, inside the step's output directory. Left out, adr.json."
+        }
+      }
+    },
+    "options.glossary": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "Slug of the bounded context whose vocabulary this is. A glossary sits beside a service, and the words in it belong to the context that service is in, so shop/oms/GLOSSARY.md is read as shop. Left out, the name of the input directory.",
+          "examples": [
+            "auth",
+            "shop"
+          ]
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The glossaries to read, as globs relative to the input root. Left out, GLOSSARY.md at the root of it.",
+          "examples": [
+            [
+              "GLOSSARY.md"
+            ],
+            [
+              "docs/GLOSSARY.md"
+            ]
+          ]
+        },
+        "out": {
+          "type": "string",
+          "description": "Name of the fragment file, inside the step's output directory. Left out, glossary.json."
         }
       }
     },

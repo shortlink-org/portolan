@@ -1,8 +1,10 @@
 import { execSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { nodePolyfills } from "vite-plugin-node-polyfills";
+import { publicSetupFrom } from "./src/lib/setup-info.ts";
 
 /** A git answer, or "" when there is nothing to answer with (no repo, no git). */
 function git(args: string): string {
@@ -80,11 +82,24 @@ const buildInfo = {
   repoUrl,
 };
 
+// The deployed site may explain how it was assembled, but it must not publish
+// the executable commands or arbitrary options in portolan.json. Reduce the
+// manifest here, while building, and expose only the read-only inventory the
+// Settings page needs.
+const setupInfo = publicSetupFrom(
+  JSON.parse(
+    readFileSync(new URL("./portolan.json", import.meta.url), "utf8"),
+  ) as unknown,
+);
+
 // GitHub Pages serves the app from /<repo>/, so CI sets BASE_PATH.
 // Locally (and for a root-domain deploy) it stays "/".
 export default defineConfig({
   base: env.BASE_PATH ?? "/",
-  define: { __BUILD_INFO__: JSON.stringify(buildInfo) },
+  define: {
+    __BUILD_INFO__: JSON.stringify(buildInfo),
+    __SETUP_INFO__: JSON.stringify(setupInfo),
+  },
   plugins: [
     react(),
     tailwindcss(),

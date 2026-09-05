@@ -4,6 +4,8 @@
 
 - **Id:** `shop`
 
+What a customer is buying, what it costs and what they owe for it: the basket while it is still changing, the price it was promised at, the order it became, and the invoice for it. It moves no money and delivers nothing.
+
 ## Services
 
 | Service | Path | Aggregates |
