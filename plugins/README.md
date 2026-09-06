@@ -187,6 +187,11 @@ raw request whose peer or contract cannot be proved is still useful evidence:
 it is emitted as `unresolved`, with its method, path and source line, rather
 than being assigned to a guessed system. Conditions guarding a call and the
 opposite path after an early return are carried into the flow note.
+Calls through local wrappers retain their argument values, including closure
+arguments, so a path and HTTP method declared by a business operation survive
+the trip into the transport. URL-shaped configuration is followed through a
+constructor and client field to the request, and the resulting evidence chain
+is included in the flow instead of presenting a receiver field as an endpoint.
 
 ## Flows written by hand
 
