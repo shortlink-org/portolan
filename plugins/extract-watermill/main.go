@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/shortlink-org/portolan/internal/goscan"
 	"github.com/shortlink-org/portolan/plugin"
 )
 
@@ -30,10 +31,10 @@ func run(stdin io.Reader, stdout io.Writer) error {
 			return plugin.Response{}, fmt.Errorf("no input root: an extractor has nothing to read")
 		}
 		if opts.Context == "" {
-			opts.Context = slug(filepath.Base(req.Input.Root))
+			opts.Context = goscan.Slug(filepath.Base(req.Input.Root))
 		}
 		if opts.Service == "" {
-			opts.Service = slug(filepath.Base(req.Input.Root))
+			opts.Service = goscan.Slug(filepath.Base(req.Input.Root))
 		}
 		return extract(req.Input, opts)
 	})

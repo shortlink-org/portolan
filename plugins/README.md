@@ -59,7 +59,10 @@ either be rendered or be explicitly acknowledged by the relevant exporter.
 1. Write it. In Go, a new directory here with a `main` that hands its options
    type to `plugin.Serve`, which reads the request, answers a describe and calls
    the work; `catalog.Catalog` from `github.com/shortlink-org/portolan/catalog`
-   is the mirror of the schema. In Python, the same three things live in
+   is the mirror of the schema, and `internal/goscan` is the tree as syntax -
+   the files parsed once, the import path of each package, the string
+   constants followed to their literals - which River and Watermill share and
+   the next Go extractor should not copy. In Python, the same three things live in
    `pyplugin/` - `protocol.py`, `source.py` for the tree as syntax, and
    `catalog.py` for the fragment shapes - and `extract-django` and
    `extract-celery` are what using them looks like. In any other language,

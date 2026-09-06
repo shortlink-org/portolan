@@ -1,50 +1,27 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"go/ast"
-	"go/parser"
-	"go/printer"
 	"go/token"
-	"io/fs"
-	"os"
-	"path"
-	"path/filepath"
-	"reflect"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/shortlink-org/portolan/catalog"
+	"github.com/shortlink-org/portolan/internal/goscan"
 	"github.com/shortlink-org/portolan/plugin"
 )
 
 const riverImport = "github.com/riverqueue/river"
 
-type source struct {
-	file string
-	line int
-}
-
-func (s source) String() string {
-	if s.line == 0 {
-		return s.file
+// riverForeign is what River's own names are worth: QueueDefault is the
+// queue called "default", and nothing in the service's tree says so.
+func riverForeign(importPath, name string) (string, bool) {
+	if importPath == riverImport && name == "QueueDefault" {
+		return "default", true
 	}
-	return fmt.Sprintf("%s:%d", s.file, s.line)
-}
-
-type parsedFile struct {
-	name    string
-	pkg     string
-	imports map[string]string
-	node    *ast.File
-}
-
-type constExpr struct {
-	expr ast.Expr
-	file *parsedFile
+	return "", false
 }
 
 type argType struct {
@@ -53,21 +30,21 @@ type argType struct {
 	kind   string
 	doc    string
 	fields []string
-	at     source
+	at     goscan.Source
 }
 
 type worker struct {
 	key        string
 	name       string
 	args       string
-	at         source
+	at         goscan.Source
 	registered bool
 }
 
 type producer struct {
 	args  string
 	queue string
-	at    source
+	at    goscan.Source
 }
 
 type queueJob struct {
@@ -76,12 +53,10 @@ type queueJob struct {
 	producers []producer
 }
 
+// scanner is the tree, and what River leaves in it: the job argument types,
+// the workers over them, and every Insert that names one.
 type scanner struct {
-	root       string
-	module     string
-	fset       *token.FileSet
-	files      []*parsedFile
-	constants  map[string]constExpr
+	*goscan.Tree
 	args       map[string]*argType
 	workers    map[string]*worker
 	registered map[string]bool
@@ -90,17 +65,16 @@ type scanner struct {
 
 func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	b := &plugin.Builder{}
+	tree, err := goscan.Read(in.Root)
+	if err != nil {
+		return plugin.Response{}, err
+	}
+	tree.Foreign = riverForeign
 	s := &scanner{
-		root:       in.Root,
-		module:     modulePath(in.Root),
-		fset:       token.NewFileSet(),
-		constants:  map[string]constExpr{},
+		Tree:       tree,
 		args:       map[string]*argType{},
 		workers:    map[string]*worker{},
 		registered: map[string]bool{},
-	}
-	if err := s.read(); err != nil {
-		return plugin.Response{}, err
 	}
 	s.index()
 
@@ -133,87 +107,16 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	if err != nil {
 		return plugin.Response{}, err
 	}
-	b.File(firstNonEmpty(opts.Out, "river.json"), string(encoded)+"\n")
+	b.File(goscan.FirstNonEmpty(opts.Out, "river.json"), string(encoded)+"\n")
 
 	return b.Response(), nil
 }
 
-func (s *scanner) read() error {
-	var names []string
-	err := filepath.WalkDir(s.root, func(name string, entry fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if entry.IsDir() {
-			if name != s.root && strings.HasPrefix(entry.Name(), ".") {
-				return filepath.SkipDir
-			}
-			switch entry.Name() {
-			case ".git", ".portolan", "node_modules", "vendor":
-				if name != s.root {
-					return filepath.SkipDir
-				}
-			}
-			return nil
-		}
-		base := entry.Name()
-		if !strings.HasSuffix(base, ".go") || strings.HasSuffix(base, "_test.go") || strings.HasSuffix(base, ".gen.go") || strings.HasSuffix(base, "_generated.go") {
-			return nil
-		}
-		names = append(names, name)
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-	sort.Strings(names)
-	for _, name := range names {
-		node, err := parser.ParseFile(s.fset, name, nil, parser.ParseComments)
-		if err != nil {
-			return fmt.Errorf("parse %s: %w", name, err)
-		}
-		rel, _ := filepath.Rel(s.root, name)
-		file := &parsedFile{
-			name:    filepath.ToSlash(rel),
-			pkg:     s.packagePath(filepath.Dir(name)),
-			imports: importsOf(node),
-			node:    node,
-		}
-		s.files = append(s.files, file)
-	}
-	return nil
-}
-
-func (s *scanner) packagePath(dir string) string {
-	rel, err := filepath.Rel(s.root, dir)
-	if err != nil || rel == "." {
-		return s.module
-	}
-	return strings.TrimSuffix(s.module, "/") + "/" + filepath.ToSlash(rel)
-}
-
-func importsOf(node *ast.File) map[string]string {
-	out := map[string]string{}
-	for _, spec := range node.Imports {
-		value, err := strconv.Unquote(spec.Path.Value)
-		if err != nil {
-			continue
-		}
-		name := path.Base(value)
-		if spec.Name != nil && spec.Name.Name != "_" && spec.Name.Name != "." {
-			name = spec.Name.Name
-		}
-		out[name] = value
-	}
-	return out
-}
-
 func (s *scanner) index() {
-	for _, file := range s.files {
-		s.indexConstants(file)
+	for _, file := range s.Files {
 		s.indexTypes(file)
 	}
-	for _, file := range s.files {
+	for _, file := range s.Files {
 		s.indexKindMethods(file)
 		s.indexWorkers(file)
 		s.indexRegistrations(file)
@@ -223,39 +126,13 @@ func (s *scanner) index() {
 			found.registered = true
 		}
 	}
-	for _, file := range s.files {
+	for _, file := range s.Files {
 		s.indexProducers(file)
 	}
 }
 
-func (s *scanner) indexConstants(file *parsedFile) {
-	for _, decl := range file.node.Decls {
-		gen, ok := decl.(*ast.GenDecl)
-		if !ok || gen.Tok != token.CONST {
-			continue
-		}
-		var inherited []ast.Expr
-		for _, raw := range gen.Specs {
-			spec := raw.(*ast.ValueSpec)
-			values := spec.Values
-			if len(values) == 0 {
-				values = inherited
-			} else {
-				inherited = values
-			}
-			for i, name := range spec.Names {
-				if len(values) == 0 {
-					continue
-				}
-				expr := values[min(i, len(values)-1)]
-				s.constants[file.pkg+"."+name.Name] = constExpr{expr: expr, file: file}
-			}
-		}
-	}
-}
-
-func (s *scanner) indexTypes(file *parsedFile) {
-	for _, decl := range file.node.Decls {
+func (s *scanner) indexTypes(file *goscan.File) {
+	for _, decl := range file.Node.Decls {
 		gen, ok := decl.(*ast.GenDecl)
 		if !ok || gen.Tok != token.TYPE {
 			continue
@@ -266,25 +143,25 @@ func (s *scanner) indexTypes(file *parsedFile) {
 			if !ok {
 				continue
 			}
-			key := file.pkg + "." + spec.Name.Name
+			key := file.Pkg + "." + spec.Name.Name
 			doc := ""
 			if spec.Doc != nil {
 				doc = strings.TrimSpace(spec.Doc.Text())
 			} else if gen.Doc != nil {
 				doc = strings.TrimSpace(gen.Doc.Text())
 			}
-			s.args[key] = &argType{key: key, name: spec.Name.Name, doc: doc, fields: fieldsOf(s.fset, body), at: s.at(spec.Pos())}
+			s.args[key] = &argType{key: key, name: spec.Name.Name, doc: doc, fields: s.FieldsOf(body), at: s.At(spec.Pos())}
 		}
 	}
 }
 
-func (s *scanner) indexKindMethods(file *parsedFile) {
-	for _, decl := range file.node.Decls {
+func (s *scanner) indexKindMethods(file *goscan.File) {
+	for _, decl := range file.Node.Decls {
 		fn, ok := decl.(*ast.FuncDecl)
 		if !ok || fn.Recv == nil || fn.Name.Name != "Kind" || fn.Body == nil {
 			continue
 		}
-		key := s.typeKey(fn.Recv.List[0].Type, file)
+		key := s.TypeKey(fn.Recv.List[0].Type, file)
 		arg := s.args[key]
 		if arg == nil {
 			continue
@@ -294,17 +171,17 @@ func (s *scanner) indexKindMethods(file *parsedFile) {
 			if !ok || len(ret.Results) != 1 || arg.kind != "" {
 				return true
 			}
-			arg.kind = s.stringValue(ret.Results[0], file, map[string]bool{})
+			arg.kind = s.StringOf(ret.Results[0], file, map[string]bool{})
 			return false
 		})
 		if arg.kind != "" {
-			arg.at = s.at(fn.Pos())
+			arg.at = s.At(fn.Pos())
 		}
 	}
 }
 
-func (s *scanner) indexWorkers(file *parsedFile) {
-	for _, decl := range file.node.Decls {
+func (s *scanner) indexWorkers(file *goscan.File) {
+	for _, decl := range file.Node.Decls {
 		fn, ok := decl.(*ast.FuncDecl)
 		if !ok || fn.Recv == nil || fn.Name.Name != "Work" || fn.Type.Params == nil {
 			continue
@@ -319,13 +196,13 @@ func (s *scanner) indexWorkers(file *parsedFile) {
 		if args == "" {
 			continue
 		}
-		key := s.typeKey(fn.Recv.List[0].Type, file)
-		s.workers[key] = &worker{key: key, name: lastName(key), args: args, at: s.at(fn.Pos())}
+		key := s.TypeKey(fn.Recv.List[0].Type, file)
+		s.workers[key] = &worker{key: key, name: goscan.LastSegment(key), args: args, at: s.At(fn.Pos())}
 	}
 }
 
-func (s *scanner) indexRegistrations(file *parsedFile) {
-	ast.Inspect(file.node, func(node ast.Node) bool {
+func (s *scanner) indexRegistrations(file *goscan.File) {
+	ast.Inspect(file.Node, func(node ast.Node) bool {
 		call, ok := node.(*ast.CallExpr)
 		if !ok || len(call.Args) < 2 {
 			return true
@@ -335,7 +212,7 @@ func (s *scanner) indexRegistrations(file *parsedFile) {
 			return true
 		}
 		pkg, ok := sel.X.(*ast.Ident)
-		if !ok || file.imports[pkg.Name] != riverImport {
+		if !ok || file.Imports[pkg.Name] != riverImport {
 			return true
 		}
 		if key := s.compositeType(call.Args[1], file, nil); key != "" {
@@ -345,9 +222,9 @@ func (s *scanner) indexRegistrations(file *parsedFile) {
 	})
 }
 
-func (s *scanner) indexProducers(file *parsedFile) {
+func (s *scanner) indexProducers(file *goscan.File) {
 	usesRiver := false
-	for _, imported := range file.imports {
+	for _, imported := range file.Imports {
 		if imported == riverImport || strings.HasPrefix(imported, riverImport+"/") {
 			usesRiver = true
 		}
@@ -355,7 +232,7 @@ func (s *scanner) indexProducers(file *parsedFile) {
 	if !usesRiver {
 		return
 	}
-	for _, decl := range file.node.Decls {
+	for _, decl := range file.Node.Decls {
 		fn, ok := decl.(*ast.FuncDecl)
 		if !ok || fn.Body == nil {
 			continue
@@ -382,7 +259,7 @@ func (s *scanner) indexProducers(file *parsedFile) {
 				for _, raw := range gen.Specs {
 					spec := raw.(*ast.ValueSpec)
 					for i, name := range spec.Names {
-						key := s.typeKey(spec.Type, file)
+						key := s.TypeKey(spec.Type, file)
 						if key == "" && len(spec.Values) > 0 {
 							key = s.compositeType(spec.Values[min(i, len(spec.Values)-1)], file, locals)
 						}
@@ -413,7 +290,7 @@ func (s *scanner) indexProducers(file *parsedFile) {
 						queue = named
 					}
 				}
-				s.producers = append(s.producers, producer{args: key, queue: queue, at: s.at(item.Pos())})
+				s.producers = append(s.producers, producer{args: key, queue: queue, at: s.At(item.Pos())})
 			}
 			return true
 		})
@@ -451,7 +328,7 @@ func (s *scanner) catalog(serviceID, owner string, b *plugin.Builder) ([]catalog
 			}
 		}
 		if !seen {
-			b.Warn(found.at.String(), "registered River worker "+found.name+" handles "+lastName(args)+", but no local Insert call reveals which queue feeds it")
+			b.Warn(found.at.String(), "registered River worker "+found.name+" handles "+goscan.LastSegment(args)+", but no local Insert call reveals which queue feeds it")
 		}
 	}
 
@@ -497,16 +374,16 @@ func (s *scanner) catalog(serviceID, owner string, b *plugin.Builder) ([]catalog
 }
 
 func riverFlow(serviceID, owner, queue string, job *queueJob) catalog.Flow {
-	broker := "river." + slug(queue)
-	slugged := slug(lastSegment(serviceID) + "-river-" + job.args.kind)
+	broker := "river." + goscan.Slug(queue)
+	slugged := goscan.Slug(goscan.LastSegment(serviceID) + "-river-" + job.args.kind)
 	if queue != "default" {
-		slugged += "-" + slug(queue)
+		slugged += "-" + goscan.Slug(queue)
 	}
 	doc := jobDescription(job.args)
 	return catalog.Flow{
 		ID:      "flow." + slugged,
 		Slug:    slugged,
-		Name:    title(job.args.kind) + " job",
+		Name:    goscan.Title(job.args.kind) + " job",
 		Summary: "River job `" + job.args.kind + "` is inserted on `" + queue + "` and handled by `" + job.worker.name + ".Work`.",
 		Source:  job.producers[0].at.String(),
 		Owner:   owner,
@@ -521,8 +398,8 @@ func riverFlow(serviceID, owner, queue string, job *queueJob) catalog.Flow {
 	}
 }
 
-func (s *scanner) riverJobArg(expr ast.Expr, file *parsedFile) string {
-	expr = unwrap(expr)
+func (s *scanner) riverJobArg(expr ast.Expr, file *goscan.File) string {
+	expr = goscan.Unwrap(expr)
 	index, ok := expr.(*ast.IndexExpr)
 	if !ok {
 		return ""
@@ -532,58 +409,25 @@ func (s *scanner) riverJobArg(expr ast.Expr, file *parsedFile) string {
 		return ""
 	}
 	pkg, ok := sel.X.(*ast.Ident)
-	if !ok || file.imports[pkg.Name] != riverImport {
+	if !ok || file.Imports[pkg.Name] != riverImport {
 		return ""
 	}
-	return s.typeKey(index.Index, file)
+	return s.TypeKey(index.Index, file)
 }
 
-func (s *scanner) compositeType(expr ast.Expr, file *parsedFile, locals map[string]string) string {
-	expr = unwrap(expr)
+func (s *scanner) compositeType(expr ast.Expr, file *goscan.File, locals map[string]string) string {
+	expr = goscan.Unwrap(expr)
 	switch value := expr.(type) {
 	case *ast.CompositeLit:
-		return s.typeKey(value.Type, file)
+		return s.TypeKey(value.Type, file)
 	case *ast.Ident:
 		return locals[value.Name]
 	}
 	return ""
 }
 
-func unwrap(expr ast.Expr) ast.Expr {
-	for {
-		switch value := expr.(type) {
-		case *ast.ParenExpr:
-			expr = value.X
-		case *ast.UnaryExpr:
-			expr = value.X
-		case *ast.StarExpr:
-			expr = value.X
-		default:
-			return expr
-		}
-	}
-}
-
-func (s *scanner) typeKey(expr ast.Expr, file *parsedFile) string {
-	if expr == nil {
-		return ""
-	}
-	expr = unwrap(expr)
-	switch value := expr.(type) {
-	case *ast.Ident:
-		return file.pkg + "." + value.Name
-	case *ast.SelectorExpr:
-		pkg, ok := value.X.(*ast.Ident)
-		if !ok {
-			return ""
-		}
-		return file.imports[pkg.Name] + "." + value.Sel.Name
-	}
-	return ""
-}
-
-func (s *scanner) queueFrom(expr ast.Expr, file *parsedFile) string {
-	expr = unwrap(expr)
+func (s *scanner) queueFrom(expr ast.Expr, file *goscan.File) string {
+	expr = goscan.Unwrap(expr)
 	lit, ok := expr.(*ast.CompositeLit)
 	if !ok {
 		return ""
@@ -595,87 +439,10 @@ func (s *scanner) queueFrom(expr ast.Expr, file *parsedFile) string {
 		}
 		name, ok := field.Key.(*ast.Ident)
 		if ok && name.Name == "Queue" {
-			return s.stringValue(field.Value, file, map[string]bool{})
+			return s.StringOf(field.Value, file, map[string]bool{})
 		}
 	}
 	return ""
-}
-
-func (s *scanner) stringValue(expr ast.Expr, file *parsedFile, visiting map[string]bool) string {
-	switch value := expr.(type) {
-	case *ast.BasicLit:
-		if value.Kind == token.STRING {
-			text, _ := strconv.Unquote(value.Value)
-			return text
-		}
-	case *ast.Ident:
-		return s.constantValue(file.pkg+"."+value.Name, visiting)
-	case *ast.SelectorExpr:
-		pkg, ok := value.X.(*ast.Ident)
-		if !ok {
-			return ""
-		}
-		imported := file.imports[pkg.Name]
-		if imported == riverImport && value.Sel.Name == "QueueDefault" {
-			return "default"
-		}
-		return s.constantValue(imported+"."+value.Sel.Name, visiting)
-	}
-	return ""
-}
-
-func (s *scanner) constantValue(key string, visiting map[string]bool) string {
-	if visiting[key] {
-		return ""
-	}
-	found, ok := s.constants[key]
-	if !ok {
-		return ""
-	}
-	visiting[key] = true
-	value := s.stringValue(found.expr, found.file, visiting)
-	delete(visiting, key)
-	return value
-}
-
-func (s *scanner) at(pos token.Pos) source {
-	position := s.fset.Position(pos)
-	rel, err := filepath.Rel(s.root, position.Filename)
-	if err != nil {
-		rel = position.Filename
-	}
-	return source{file: filepath.ToSlash(rel), line: position.Line}
-}
-
-func fieldsOf(fset *token.FileSet, body *ast.StructType) []string {
-	var out []string
-	for _, field := range body.Fields.List {
-		if len(field.Names) == 0 {
-			continue
-		}
-		typeName := printNode(fset, field.Type)
-		for _, ident := range field.Names {
-			name := ident.Name
-			if field.Tag != nil {
-				tag, _ := strconv.Unquote(field.Tag.Value)
-				jsonName := strings.Split(reflect.StructTag(tag).Get("json"), ",")[0]
-				if jsonName == "-" {
-					continue
-				}
-				if jsonName != "" {
-					name = jsonName
-				}
-			}
-			out = append(out, name+" "+typeName)
-		}
-	}
-	return out
-}
-
-func printNode(fset *token.FileSet, node ast.Node) string {
-	var out bytes.Buffer
-	_ = printer.Fprint(&out, fset, node)
-	return out.String()
 }
 
 func jobDescription(args *argType) string {
@@ -691,65 +458,4 @@ func jobDescription(args *argType) string {
 	return "Arguments `" + args.name + "`: `" + strings.Join(fields, "`, `") + "`" + suffix + "."
 }
 
-func modulePath(root string) string {
-	data, err := os.ReadFile(filepath.Join(root, "go.mod"))
-	if err == nil {
-		for _, line := range strings.Split(string(data), "\n") {
-			if value, ok := strings.CutPrefix(strings.TrimSpace(line), "module "); ok {
-				return strings.TrimSpace(value)
-			}
-		}
-	}
-	return filepath.ToSlash(filepath.Clean(root))
-}
-
 func stringPtr(value string) *string { return &value }
-
-func lastName(key string) string {
-	if at := strings.LastIndex(key, "."); at >= 0 {
-		return key[at+1:]
-	}
-	return key
-}
-
-func lastSegment(value string) string {
-	if at := strings.LastIndex(value, "."); at >= 0 {
-		return value[at+1:]
-	}
-	return value
-}
-
-func slug(value string) string {
-	value = strings.ToLower(strings.TrimSpace(value))
-	var out strings.Builder
-	dash := false
-	for _, r := range value {
-		if r >= 'a' && r <= 'z' || r >= '0' && r <= '9' {
-			out.WriteRune(r)
-			dash = false
-		} else if out.Len() > 0 && !dash {
-			out.WriteByte('-')
-			dash = true
-		}
-	}
-	return strings.TrimSuffix(out.String(), "-")
-}
-
-func title(value string) string {
-	parts := strings.FieldsFunc(value, func(r rune) bool { return r == '-' || r == '_' || r == '.' })
-	for i := range parts {
-		if parts[i] != "" {
-			parts[i] = strings.ToUpper(parts[i][:1]) + parts[i][1:]
-		}
-	}
-	return strings.Join(parts, " ")
-}
-
-func firstNonEmpty(values ...string) string {
-	for _, value := range values {
-		if strings.TrimSpace(value) != "" {
-			return value
-		}
-	}
-	return ""
-}
