@@ -68,35 +68,36 @@ function RepositoryAccess({ repo, reveal }: { repo: ForgeRepo; reveal: boolean }
   const access = useForgeAccess();
   const [draft, setDraft] = useState("");
   const provider = repo.provider === "gitlab" ? "GitLab" : "GitHub";
+  const connected = access.connectedTo(repo);
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (!draft.trim()) return;
-    access.connect(draft);
+    access.connect(repo, draft);
     setDraft("");
   };
 
   return (
     <details
       className="mt-4 rounded-control border border-line bg-surface px-3 py-2"
-      open={reveal && !access.connected ? true : undefined}
+      open={reveal && !connected ? true : undefined}
     >
       <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-medium text-ink">
         Repository access
-        <span className={`chip ml-auto ${access.connected ? "status-verified" : "text-muted"}`}>
-          {access.connected ? "token in memory" : "public access"}
+        <span className={`chip ml-auto ${connected ? "status-verified" : "text-muted"}`}>
+          {connected ? "token in memory" : "public access"}
         </span>
       </summary>
       <div className="mt-3 border-t border-line pt-3">
         <p className="max-w-prose text-sm text-muted">
-          {access.connected
+          {connected
             ? `${provider} requests from this tab are authenticated. The token is never persisted or included in a URL.`
             : `For a private ${provider} repository, provide a read-only access token. It is kept only in this tab's memory and private catalogs are not written to Cache Storage.`}
         </p>
-        {access.connected ? (
+        {connected ? (
           <button
             type="button"
-            onClick={access.disconnect}
+            onClick={() => access.disconnect(repo)}
             className="mono mt-3 rounded-control border border-line px-3 py-2 text-sm text-muted hover:border-line-strong hover:text-ink"
           >
             Forget token
@@ -143,6 +144,7 @@ export function Changes() {
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query.trim().toLowerCase());
   const [active, setActive] = useState<Set<Severity>>(() => new Set(SEVERITIES));
+  const token = repo ? access.tokenFor(repo) : "";
 
   useEffect(() => {
     if (head) {
@@ -163,11 +165,11 @@ export function Changes() {
       return;
     }
     setLoading(true);
-    listForgeBranches(repo, { token: access.token })
+    listForgeBranches(repo, { token })
       .then(async (branches) => {
         const [before, after] = await Promise.all([
-          catalogFor(base, current, repo, branches, access.token),
-          catalogFor(head, current, repo, branches, access.token),
+          catalogFor(base, current, repo, branches, token),
+          catalogFor(head, current, repo, branches, token),
         ]);
         return {
           changes: diffCatalogs(before.catalog, after.catalog),
@@ -187,7 +189,7 @@ export function Changes() {
     return () => {
       live = false;
     };
-  }, [access.token, base, current, head, repo?.provider, repo?.webUrl, retry]);
+  }, [base, current, head, repo?.provider, repo?.webUrl, retry, token]);
 
   const shown = useMemo(() => {
     if (!loaded) return [];

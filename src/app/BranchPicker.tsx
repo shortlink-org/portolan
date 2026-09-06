@@ -34,6 +34,7 @@ export function BranchPicker({ compact = false }: { compact?: boolean }) {
   const [remote, setRemote] = useState<ForgeBranch[]>([]);
   const [loading, setLoading] = useState(Boolean(repo));
   const [error, setError] = useState("");
+  const token = repo ? access.tokenFor(repo) : "";
 
   useEffect(() => {
     let live = true;
@@ -45,7 +46,7 @@ export function BranchPicker({ compact = false }: { compact?: boolean }) {
     setRemote([]);
     setLoading(true);
     setError("");
-    listForgeBranches(repo, { token: access.token })
+    listForgeBranches(repo, { token })
       .then((branches) => {
         if (live) setRemote(branches);
       })
@@ -58,7 +59,7 @@ export function BranchPicker({ compact = false }: { compact?: boolean }) {
     return () => {
       live = false;
     };
-  }, [access.token, repo?.provider, repo?.webUrl]);
+  }, [repo?.provider, repo?.webUrl, token]);
 
   const branches = useMemo(() => {
     const byName = new Map(remote.map((branch) => [branch.name, branch]));

@@ -6,8 +6,9 @@ the code and specs that already describe them, and rendered as a navigable
 site. DDD enriches the model when a repository really uses it; it is not a
 prerequisite.
 
-Static end to end — no backend, no runtime queries. The catalog is the input,
-the site is the output.
+The catalog and site are static end to end and require no backend. Optional
+branch comparison and source previews read immutable files from GitHub or
+GitLab at runtime; local development uses a localhost-only control plane.
 
 Live: <https://shortlink-org.github.io/portolan/> (the example estate in
 `examples/`).
@@ -90,13 +91,15 @@ extractor is selected only when its expected model structure is present; a
 
 - **Entity pages** — context, service, aggregate (entities, value objects,
   lifecycle, events, commands, queries), event, store, schema module, ADR.
-- **Flows** — step-by-step walkthroughs with a step rail, cross-protocol chains that continue
-  across contexts, and per-step detail.
+- **Flows** — step-by-step walkthroughs with a step rail, cross-protocol chains
+  that continue across contexts, and per-step detail. Source locations open an
+  inline code window around the exact line; private forge tokens stay in tab
+  memory, and the external GitHub/GitLab link remains available.
 - **Diagrams** — LikeC4 C4 views (estate landscape, every container in the
   estate with its technology and the protocol on each edge, one per context,
-  two per service, one dynamic view per flow), an ELK-routed dependency
-  graph, and a context map. The app never draws these itself;
-  `npm run likec4:gen` writes the model from the catalog.
+  two per service, one dynamic view per flow), an ELK-routed dependency graph,
+  and a context map. The app never draws these itself; `npm run likec4:gen`
+  writes the model from the catalog.
 - **ER canvases** — per store: tables, views, keys and crow's feet, plus column
   lineage (`from`) drawn dashed; hovering a column lights the whole chain back
   to where the value came from.
