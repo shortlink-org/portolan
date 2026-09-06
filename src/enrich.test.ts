@@ -11,7 +11,7 @@ import type {
   Service,
   Status,
 } from "./catalog";
-import { validateCatalog } from "./catalog";
+import { validateCatalog, walkSteps } from "./catalog";
 import { enrichCatalog } from "./enrich";
 import { mergeCatalogs } from "./merge";
 import { problems } from "./lib/derive";
@@ -146,6 +146,66 @@ function consumersOf(catalog: Catalog) {
 function serviceOf(catalog: Catalog, id: string): Service {
   return catalog.contexts.flatMap((c) => c.services).find((s) => s.id === id)!;
 }
+
+// ---------------------------------------------------------------------------
+
+describe("enrichCatalog: asynchronous outbound continuations", () => {
+  function outbound(slug: string, entrypoint: string, path: string): Flow {
+    return {
+      ...flow(slug, [
+        step("shop.oms", "risk", "rpc", {
+          ref: `http-client/POST ${path}`,
+          label: `POST ${path}`,
+          status: "unresolved",
+        }),
+      ]),
+      entrypoint,
+    };
+  }
+
+  it("joins a dispatched worker to its uniquely proven outbound flow", () => {
+    const entrypoint = "jobs/email:SendWorker.Work";
+    const queued = flow("send-job", [
+      step("bus", "shop.oms", "call", {
+        label: "SendWorker.Work",
+        continuesAt: entrypoint,
+      }),
+    ]);
+    const once = enrichCatalog(
+      estate([queued, outbound("send-http", entrypoint, "/mail")]),
+    ).catalog;
+
+    expect(once.flows.map((item) => item.slug)).toEqual(["send-job"]);
+    expect(walkSteps(once.flows[0]!.steps).map((item) => item.label)).toEqual([
+      "SendWorker.Work",
+      "POST /mail",
+    ]);
+    expect(walkSteps(once.flows[0]!.steps)[1]!.id).toContain(
+      "continuation-send-http",
+    );
+    expect(once.flows[0]!.participants.some((item) => item.id === "risk")).toBe(
+      true,
+    );
+    expect(enrichCatalog(once).catalog).toEqual(once);
+  });
+
+  it("does not choose between duplicate entrypoint flows", () => {
+    const entrypoint = "jobs/email:SendWorker.Work";
+    const queued = flow("send-job", [
+      step("bus", "shop.oms", "call", { continuesAt: entrypoint }),
+    ]);
+    const result = enrichCatalog(
+      estate([
+        queued,
+        outbound("send-primary", entrypoint, "/one"),
+        outbound("send-secondary", entrypoint, "/two"),
+      ]),
+    ).catalog;
+
+    expect(result.flows).toHaveLength(3);
+    expect(walkSteps(result.flows[0]!.steps)).toHaveLength(1);
+  });
+});
 
 // ---------------------------------------------------------------------------
 

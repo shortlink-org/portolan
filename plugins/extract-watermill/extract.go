@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"path"
 	"reflect"
 	"sort"
 	"strconv"
@@ -64,6 +65,7 @@ type handler struct {
 	input         topic
 	inputPayload  string
 	consumerGroup string
+	entrypoint    string
 	publications  []publication
 	at            goscan.Source
 }
@@ -580,6 +582,7 @@ func (s *scanner) indexHandlers(fn *function, b *plugin.Builder) {
 		}
 		callbackState := cloneState(outer)
 		var body *ast.BlockStmt
+		entrypoint := ""
 		switch cb := goscan.Unwrap(call.Args[callbackIndex]).(type) {
 		case *ast.FuncLit:
 			body = cb.Body
@@ -594,6 +597,7 @@ func (s *scanner) indexHandlers(fn *function, b *plugin.Builder) {
 			if target := s.functions[fn.file.Pkg+"."+cb.Name]; target != nil {
 				body = target.decl.Body
 				callbackState = s.stateFor(target)
+				entrypoint = watermillFunctionKey(target)
 			}
 		}
 		if body == nil {
@@ -611,9 +615,21 @@ func (s *scanner) indexHandlers(fn *function, b *plugin.Builder) {
 		if subscriber, ok := call.Args[2].(*ast.Ident); ok {
 			group = s.subscriberGroup(fn.decl.Body, fn.file, outer, subscriber.Name)
 		}
-		s.handlers = append(s.handlers, handler{name: name, input: input, inputPayload: found.input, consumerGroup: group, publications: uniquePublications(found.publications), at: s.At(call.Pos())})
+		s.handlers = append(s.handlers, handler{name: name, input: input, inputPayload: found.input, consumerGroup: group, entrypoint: entrypoint, publications: uniquePublications(found.publications), at: s.At(call.Pos())})
 		return false
 	})
+}
+
+func watermillFunctionKey(fn *function) string {
+	name := fn.name
+	if fn.receiver != "" {
+		name = goscan.LastSegment(fn.receiver) + "." + name
+	}
+	dir := path.Dir(fn.file.Name)
+	if dir == "." || dir == "" {
+		return name
+	}
+	return dir + ":" + name
 }
 
 func (s *scanner) indexCQRS(fn *function, b *plugin.Builder) {
@@ -970,7 +986,7 @@ func (s *scanner) flow(serviceID, owner string, found handler, pub *publication)
 	if found.consumerGroup != "" {
 		note += " Consumer group `" + found.consumerGroup + "`."
 	}
-	steps := catalog.FlowNodes{&catalog.Step{Type: "step", ID: "receive", From: inputBroker, To: serviceID, Kind: catalog.StepEvent, Label: found.name, Status: catalog.StatusDeclared, Note: strings.TrimSpace(note), Line: found.at.String()}}
+	steps := catalog.FlowNodes{&catalog.Step{Type: "step", ID: "receive", From: inputBroker, To: serviceID, Kind: catalog.StepEvent, Label: found.name, Status: catalog.StatusDeclared, Note: strings.TrimSpace(note), Line: found.at.String(), ContinuesAt: found.entrypoint}}
 	if pub != nil {
 		ending = pub.topic.address
 		outputBroker := "watermill." + goscan.Slug(pub.topic.address)
@@ -1026,7 +1042,7 @@ func (s *scanner) branchedFlow(serviceID, owner string, found handler) catalog.F
 		note += " Consumer group `" + found.consumerGroup + "`."
 	}
 	steps := catalog.FlowNodes{
-		&catalog.Step{Type: "step", ID: "receive", From: inputBroker, To: serviceID, Kind: catalog.StepEvent, Label: found.name, Status: catalog.StatusDeclared, Note: strings.TrimSpace(note), Line: found.at.String()},
+		&catalog.Step{Type: "step", ID: "receive", From: inputBroker, To: serviceID, Kind: catalog.StepEvent, Label: found.name, Status: catalog.StatusDeclared, Note: strings.TrimSpace(note), Line: found.at.String(), ContinuesAt: found.entrypoint},
 		&catalog.Alt{Type: "alt", ID: "outcome", Branches: branches},
 	}
 	slugged := goscan.Slug(goscan.LastSegment(serviceID) + "-watermill-" + found.name)

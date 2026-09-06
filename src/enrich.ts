@@ -21,6 +21,7 @@ import type {
   Catalog,
   EdgeVia,
   EventConsumer,
+  Flow,
   FlowNode,
   RpcCall,
   Service,
@@ -57,7 +58,9 @@ export function enrichCatalog(input: Catalog): Enriched {
   // A step naming an event by the name it travels under is resolved first, so
   // everything below - and every consumer derived from it - sees the event
   // rather than the name.
-  const catalog = resolveForeignKeys(resolveWireNames(input));
+  const catalog = resolveForeignKeys(
+    resolveWireNames(composeOutboundContinuations(input)),
+  );
 
   const serviceById = new Map<string, Service>();
   const eventOwner = new Map<string, string>();
@@ -198,6 +201,150 @@ export function enrichCatalog(input: Catalog): Enriched {
   }));
 
   return { catalog: { ...catalog, contexts }, derived };
+}
+
+/**
+ * Joins an asynchronous entry flow to the outbound flow extracted from the
+ * function it dispatches.
+ *
+ * Both sides carry a source function key. That is deliberately stronger than
+ * matching display labels such as `Worker.Work`: two packages can use that
+ * name, while `jobs/email:Worker.Work` names the code the extractor actually
+ * entered. A duplicated entrypoint composes nothing rather than choosing one.
+ */
+function composeOutboundContinuations(input: Catalog): Catalog {
+  const byEntry = new Map<string, Flow | null>();
+  for (const flow of input.flows) {
+    if (!flow.entrypoint) continue;
+    byEntry.set(
+      flow.entrypoint,
+      byEntry.has(flow.entrypoint) ? null : flow,
+    );
+  }
+  if (byEntry.size === 0) return input;
+
+  const consumed = new Set<string>();
+  let any = false;
+  const flows = input.flows.map((flow) => {
+    // Entrypoint flows are the continuations, never their own roots.
+    if (flow.entrypoint) return flow;
+
+    const additions: Flow[] = [];
+    const steps = expandContinuations(flow.steps, (step) => {
+      if (!step.continuesAt) return null;
+      const continuation = byEntry.get(step.continuesAt);
+      if (!continuation) return null;
+      const entersService = continuation.participants.some(
+        (participant) =>
+          participant.id === step.to && participant.kind === "service",
+      );
+      if (!entersService || continuation.owner !== flow.owner) return null;
+      additions.push(continuation);
+      consumed.add(continuation.slug);
+      return prefixFlowNodes(
+        continuation.steps,
+        `continuation-${continuation.slug}`,
+      );
+    });
+    if (additions.length === 0) return flow;
+    any = true;
+
+    const participants = [...flow.participants];
+    const seen = new Set(participants.map((participant) => participant.id));
+    for (const continuation of additions) {
+      for (const participant of continuation.participants) {
+        if (seen.has(participant.id)) continue;
+        seen.add(participant.id);
+        participants.push(participant);
+      }
+    }
+    return {
+      ...flow,
+      summary:
+        flow.summary.replace(/\s*$/, "") +
+        " Source-backed outbound continuation is included.",
+      participants,
+      steps,
+    };
+  });
+
+  if (!any) return input;
+  return {
+    ...input,
+    flows: flows.filter(
+      (flow) => !flow.entrypoint || !consumed.has(flow.slug),
+    ),
+  };
+}
+
+function expandContinuations(
+  nodes: FlowNode[],
+  continuationOf: (step: Step) => FlowNode[] | null,
+): FlowNode[] {
+  const out: FlowNode[] = [];
+  for (const node of nodes) {
+    switch (node.type) {
+      case "step": {
+        out.push(node);
+        const continuation = continuationOf(node);
+        if (continuation) out.push(...continuation);
+        break;
+      }
+      case "alt":
+        out.push({
+          ...node,
+          branches: node.branches.map((branch) => ({
+            ...branch,
+            steps: expandContinuations(branch.steps, continuationOf),
+          })),
+        });
+        break;
+      case "parallel":
+        out.push({
+          ...node,
+          branches: node.branches.map((branch) =>
+            expandContinuations(branch, continuationOf),
+          ),
+        });
+        break;
+      case "loop":
+        out.push({
+          ...node,
+          steps: expandContinuations(node.steps, continuationOf),
+        });
+        break;
+    }
+  }
+  return out;
+}
+
+function prefixFlowNodes(nodes: FlowNode[], prefix: string): FlowNode[] {
+  return nodes.map((node) => {
+    const id = `${prefix}-${node.id}`;
+    switch (node.type) {
+      case "step":
+        return { ...node, id };
+      case "alt":
+        return {
+          ...node,
+          id,
+          branches: node.branches.map((branch) => ({
+            ...branch,
+            steps: prefixFlowNodes(branch.steps, prefix),
+          })),
+        };
+      case "parallel":
+        return {
+          ...node,
+          id,
+          branches: node.branches.map((branch) =>
+            prefixFlowNodes(branch, prefix),
+          ),
+        };
+      case "loop":
+        return { ...node, id, steps: prefixFlowNodes(node.steps, prefix) };
+    }
+  });
 }
 
 /**

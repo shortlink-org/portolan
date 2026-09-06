@@ -578,6 +578,10 @@ type Flow struct {
 	Name    string `json:"name"`
 	Summary string `json:"summary"`
 	Source  string `json:"source,omitempty"`
+	// EntryPoint is the source function this fragment expands. It is machine
+	// evidence for composing a queue handler with the outbound flow extracted
+	// independently from the same function; ordinary authored flows omit it.
+	EntryPoint string `json:"entrypoint,omitempty"`
 	// Owner is the bounded context the flow belongs to. The extractor knows it
 	// - it read the service's own tree to find the flow - so it says so rather
 	// than leaving a reader to work it back out of a path.
@@ -682,6 +686,9 @@ type Step struct {
 	Status Status `json:"status"`
 	Note   string `json:"note,omitempty"`
 	Line   string `json:"line,omitempty"`
+	// ContinuesAt names the source function execution enters after this step.
+	// The merge uses it only when exactly one flow declares that entry point.
+	ContinuesAt string `json:"continuesAt,omitempty"`
 }
 
 func (*Step) NodeType() string { return "step" }

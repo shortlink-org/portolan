@@ -249,7 +249,8 @@ func flowsOfGroupsExcept(serviceID, context string, groups []gohttp.FlowGroup, o
 			Slug:    serviceID + "-http-client-" + slug(function),
 			Name:    name + " → outbound APIs",
 			Summary: "Source-backed outbound calls made by '" + function + "'.",
-			Source:  flowSource, Owner: context, Participants: participants, Steps: steps,
+			Source:  flowSource, EntryPoint: function, Owner: context,
+			Participants: participants, Steps: steps,
 		})
 	}
 	return flows

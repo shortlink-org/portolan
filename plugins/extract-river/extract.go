@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"path"
 	"sort"
 	"strings"
 
@@ -37,6 +38,7 @@ type worker struct {
 	key        string
 	name       string
 	args       string
+	entrypoint string
 	at         goscan.Source
 	registered bool
 }
@@ -197,7 +199,11 @@ func (s *scanner) indexWorkers(file *goscan.File) {
 			continue
 		}
 		key := s.TypeKey(fn.Recv.List[0].Type, file)
-		s.workers[key] = &worker{key: key, name: goscan.LastSegment(key), args: args, at: s.At(fn.Pos())}
+		s.workers[key] = &worker{
+			key: key, name: goscan.LastSegment(key), args: args,
+			entrypoint: sourceFunctionKey(file, goscan.LastSegment(key)+"."+fn.Name.Name),
+			at:         s.At(fn.Pos()),
+		}
 	}
 }
 
@@ -393,9 +399,17 @@ func riverFlow(serviceID, owner, queue string, job *queueJob) catalog.Flow {
 		},
 		Steps: catalog.FlowNodes{
 			&catalog.Step{Type: "step", ID: "enqueue", From: serviceID, To: broker, Kind: catalog.StepCall, Label: "enqueue " + job.args.kind, Status: catalog.StatusDeclared, Note: doc, Line: job.producers[0].at.String()},
-			&catalog.Step{Type: "step", ID: "work", From: broker, To: serviceID, Kind: catalog.StepCall, Label: job.worker.name + ".Work", Status: catalog.StatusDeclared, Note: "River dispatches `" + job.args.kind + "` to the registered worker.", Line: job.worker.at.String()},
+			&catalog.Step{Type: "step", ID: "work", From: broker, To: serviceID, Kind: catalog.StepCall, Label: job.worker.name + ".Work", Status: catalog.StatusDeclared, Note: "River dispatches `" + job.args.kind + "` to the registered worker.", Line: job.worker.at.String(), ContinuesAt: job.worker.entrypoint},
 		},
 	}
+}
+
+func sourceFunctionKey(file *goscan.File, name string) string {
+	dir := path.Dir(file.Name)
+	if dir == "." || dir == "" {
+		return name
+	}
+	return dir + ":" + name
 }
 
 func (s *scanner) riverJobArg(expr ast.Expr, file *goscan.File) string {

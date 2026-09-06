@@ -91,6 +91,9 @@ func setup(workers *river.Workers, client interface { Insert(context.Context, ri
 	if out.Flows[0].Steps[0].(*catalog.Step).Label != "enqueue send_mail" || out.Flows[0].Steps[1].(*catalog.Step).Label != "SendWorker.Work" {
 		t.Fatalf("steps = %+v", out.Flows[0].Steps)
 	}
+	if got := out.Flows[0].Steps[1].(*catalog.Step).ContinuesAt; got != "jobs:SendWorker.Work" {
+		t.Fatalf("worker continuation = %q", got)
+	}
 }
 
 func TestProducerWithoutRegisteredWorkerStaysVisible(t *testing.T) {

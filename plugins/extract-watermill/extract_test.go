@@ -148,6 +148,9 @@ func Register(r *message.Router, sub message.Subscriber) {
 	if len(out.Flows) != 1 || len(out.Flows[0].Steps) != 1 {
 		t.Fatalf("flows = %+v", out.Flows)
 	}
+	if got := out.Flows[0].Steps[0].(*catalog.Step).ContinuesAt; got != "consume" {
+		t.Fatalf("handler continuation = %q", got)
+	}
 }
 
 func TestExtractsGenericCQRSProcessors(t *testing.T) {

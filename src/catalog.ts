@@ -709,6 +709,8 @@ export interface Flow {
   name: string;
   summary: string;
   source?: string; // the file the flow was read out of
+  /** Source function this flow expands, used for evidence-backed composition. */
+  entrypoint?: string;
   /**
    * The top-level group this flow belongs to. Whatever derived the flow read
    * one component's tree to find it and therefore knows the answer, so the flow
@@ -738,6 +740,8 @@ export interface Step {
   status: Status;
   note?: string;
   line?: string;
+  /** Source function execution enters here, when an extractor can prove it. */
+  continuesAt?: string;
 }
 export interface Parallel {
   type: "parallel";

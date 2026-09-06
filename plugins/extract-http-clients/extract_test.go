@@ -222,6 +222,9 @@ func (c *Client) Search(ctx context.Context) error {
 	if flow.Name != "Client Search → outbound APIs" {
 		t.Fatalf("flow name = %q", flow.Name)
 	}
+	if flow.EntryPoint != "client:Client.Search" {
+		t.Fatalf("flow entrypoint = %q", flow.EntryPoint)
+	}
 	step, ok := flow.Steps[0].(*catalog.Step)
 	if !ok {
 		t.Fatalf("step = %#v", flow.Steps[0])
