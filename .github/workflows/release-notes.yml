@@ -1,0 +1,42 @@
+# What a release changes about the architecture, written into the release
+# itself: the diff between this tag and the one before it, as a section of
+# the release notes that a later run replaces rather than repeats.
+name: Release notes
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write # a release is created for a tag that has none
+
+jobs:
+  describe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The previous tag and the catalog at it are read out of history.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Diff against the previous tag
+        env:
+          TAG: ${{ github.ref_name }}
+          SITE: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          previous=$(git describe --tags --abbrev=0 "$TAG^" 2>/dev/null || true)
+          if [ -z "$previous" ]; then
+            echo "release-notes: $TAG is the first tag; nothing earlier to compare against" >&2
+            exit 0
+          fi
+          node scripts/diff.mjs "$previous" --site "$SITE" --head "$TAG" --output .portolan/release.md
+          cat .portolan/release.md >> "$GITHUB_STEP_SUMMARY"
+          node scripts/forge-release.mjs .portolan/release.md "$TAG"

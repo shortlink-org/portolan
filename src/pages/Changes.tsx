@@ -19,10 +19,11 @@ import { rememberComparison, rememberedComparison } from "../lib/comparison-memo
 import {
   clearForgeCatalogCache,
   forgeRepoFromUrl,
-  listForgeBranches,
+  listForgeRefs,
   loadForgeCatalog,
 } from "../lib/github-catalog";
-import type { ForgeBranch, ForgeRepo } from "../lib/github-catalog";
+import type { ForgeRef, ForgeRepo } from "../lib/github-catalog";
+import { findRef } from "../lib/forge-refs";
 import { plural } from "../lib/format";
 import { useForgeAccess } from "../app/forge-access";
 
@@ -52,15 +53,15 @@ async function catalogFor(
   name: string,
   current: string,
   repo: ForgeRepo,
-  branches: ForgeBranch[],
+  refs: ForgeRef[],
   token: string,
 ): Promise<{ catalog: Catalog; sha: string }> {
   if (name === current) return { catalog, sha: buildInfo.commit };
-  const branch = branches.find((candidate) => candidate.name === name);
-  if (!branch) throw new Error(`Branch “${name}” no longer exists on ${repo.provider === "gitlab" ? "GitLab" : "GitHub"}.`);
+  const ref = findRef(refs, name);
+  if (!ref) throw new Error(`Branch or tag “${name}” no longer exists on ${repo.provider === "gitlab" ? "GitLab" : "GitHub"}.`);
   return {
-    catalog: await loadForgeCatalog(repo, branch.commit, { token }),
-    sha: branch.commit,
+    catalog: await loadForgeCatalog(repo, ref.commit, { token }),
+    sha: ref.commit,
   };
 }
 
@@ -165,11 +166,11 @@ export function Changes() {
       return;
     }
     setLoading(true);
-    listForgeBranches(repo, { token })
-      .then(async (branches) => {
+    listForgeRefs(repo, { token })
+      .then(async (refs) => {
         const [before, after] = await Promise.all([
-          catalogFor(base, current, repo, branches, token),
-          catalogFor(head, current, repo, branches, token),
+          catalogFor(base, current, repo, refs, token),
+          catalogFor(head, current, repo, refs, token),
         ]);
         return {
           changes: diffCatalogs(before.catalog, after.catalog),
