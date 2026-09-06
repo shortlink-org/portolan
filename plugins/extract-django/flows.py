@@ -19,19 +19,18 @@ from clients import Client
 from domain import Aggregate, ModelDef
 from ids import pascal, slug
 from operations import UseCase
-from source import Module, Project, assigned, decorator_named, doc, dotted, methods
+import celery_conf
+import celery_tasks
+from source import Module, Project, assigned, doc, dotted, keyword_str, methods
 
 LANE_CLIENT = "client"
 LANE_BUS = "bus"
-# One lane for everything handed to Celery. Which queue a task lands on is a
-# fact about the routes, and the routes are `extract-celery`'s to read; this
-# reader says only that the work left the request.
-LANE_CELERY = "celery"
 
 # What an enqueue looks like: the call, and the signature it may go through.
+# The queue it lands on is decided the way Celery decides it, by the same
+# reader `extract-celery` uses, so the lane here is the one its flow draws.
 ENQUEUE = {"delay", "apply_async"}
 SIGNATURE = {"s", "si", "signature", "subtask"}
-TASK_DECORATORS = ("task", "shared_task")
 
 # A call on the ORM that goes to the database. `objects.<anything>` does too,
 # and is caught by the manager rather than by this list.
@@ -49,6 +48,7 @@ class Options:
     store: str
     peers: Dict[str, str] = dc_field(default_factory=dict)
     events: Dict[str, str] = dc_field(default_factory=dict)
+    settings: str = ""  # the Django settings module Celery is configured from
 
 
 class Draft:
@@ -143,6 +143,7 @@ class FlowReader:
         self.events = events  # class or signal name -> EventDef
         self._warned_store = False
         self._warned_peers = set()
+        self._celery: Optional[Tuple[celery_conf.Config, Dict[Tuple[str, str], celery_tasks.Task]]] = None
 
     # --- lanes ---------------------------------------------------------------
 
@@ -399,8 +400,8 @@ class FlowReader:
             return None
         if last in ENQUEUE and isinstance(node.func, ast.Attribute):
             task = self.task_of(frame.module, node.func.value)
-            if task:
-                self.enqueue(d, task, line)
+            if task is not None:
+                self.enqueue(d, task, keyword_str(node, "queue"), line)
                 return None
 
         # An event handed to anything is the event leaving for the bus, which
@@ -469,41 +470,50 @@ class FlowReader:
             bound = node.args[0]
             if isinstance(bound, ast.Attribute) and bound.attr in ENQUEUE:
                 task = self.task_of(frame.module, bound.value)
-                if task:
-                    self.enqueue(d, task, frame.module.where(node))
+                if task is not None:
+                    self.enqueue(d, task, "", frame.module.where(node))
                     return
         self.value(d, frame, node, depth, ran)
 
-    def task_of(self, module: Module, receiver: ast.AST) -> str:
-        """The task `.delay` was called on, by name, when the name resolves by
-        import to a function decorated as one; "" for anything else."""
+    def celery(self) -> Tuple[celery_conf.Config, Dict[Tuple[str, str], celery_tasks.Task]]:
+        """The tasks of the tree and the configuration that places them, read
+        once, the first time an enqueue is met."""
+        if self._celery is None:
+            by_key, _ = celery_tasks.index(celery_tasks.read_tasks(self.project))
+            self._celery = (celery_conf.read_config(self.project, self.opts.settings), by_key)
+        return self._celery
+
+    def task_of(self, module: Module, receiver: ast.AST) -> Optional[celery_tasks.Task]:
+        """The task `.delay` was called on, when the name resolves by import to
+        a function decorated as one; None for anything else."""
         if isinstance(receiver, ast.Call) and isinstance(receiver.func, ast.Attribute) and receiver.func.attr in SIGNATURE:
             receiver = receiver.func.value
         name = dotted(receiver)
         if not name:
-            return ""
+            return None
         parts = name.split(".")
         if len(parts) == 1:
             hit = self.project.resolve(module, name)
             if hit is None:
-                return ""
+                return None
             target, local = hit
+            key = (celery_tasks.package_of(target), local)
         else:
             imported = module.imports.get(parts[0])
             if imported is None:
-                return ""
+                return None
             package = imported.module if imported.name == "*" else imported.module + "." + imported.name
-            found = self.project.module(".".join([package] + parts[1:-1]))
-            if found is None:
-                return ""
-            target, local = found, parts[-1]
-        for fn in target.functions():
-            if fn.name == local and decorator_named(fn, *TASK_DECORATORS) is not None:
-                return fn.name
-        return ""
+            key = (".".join([package] + parts[1:-1]), parts[-1])
+        _, by_key = self.celery()
+        return by_key.get(key)
 
-    def enqueue(self, d: Draft, task: str, line: str) -> None:
-        d.add(self.opts.svc_id, d.lane(LANE_CELERY, "broker", None, "Celery"), "call", "enqueue " + task, line=line)
+    def enqueue(self, d: Draft, task: celery_tasks.Task, at_call: str, line: str) -> None:
+        """One lane per queue, named as `extract-celery` names it, so the two
+        flows meet on the same participant."""
+        cfg, _ = self.celery()
+        address, _ = celery_conf.queue_for(task.name, at_call, task.queue, cfg)
+        lane = d.lane("celery-" + slug(address), "broker", None, "Celery · " + address)
+        d.add(self.opts.svc_id, lane, "call", "enqueue " + task.short, line=line)
 
     def publish(self, d: Draft, event_id: str, line: str) -> None:
         d.add(self.opts.svc_id, d.lane(LANE_BUS, "broker", None), "event", event_id.rsplit(".", 1)[-1], ref=event_id, line=line)

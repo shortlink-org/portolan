@@ -8,7 +8,10 @@ flow per task — the call that enqueues it, and the worker that runs it.
 Written in Python and run as a process plugin, `python3 plugins/extract-celery/main.py`.
 Python 3.9 or newer and nothing but the standard library; the protocol, the
 tree reader and the fragment shapes are `plugins/pyplugin`, shared with
-`extract-django`. **The project is never imported**, and neither is Celery:
+`extract-django` — and so are the task and configuration readers,
+`celery_tasks.py` and `celery_conf.py`, which is how an enqueue inside a
+Django flow lands on the same `celery-<queue>` participant this plugin's flow
+draws. **The project is never imported**, and neither is Celery:
 everything is read through `ast`, and names are resolved by import and by
 file.
 

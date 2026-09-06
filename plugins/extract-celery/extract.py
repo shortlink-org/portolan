@@ -17,14 +17,14 @@ import os
 from typing import Any, Dict, List, Optional, Tuple
 
 import catalog
-import conf
-import routes
+import celery_conf as conf
+import celery_conf as routes
 from names import slug, title
 from options import Options
 from producers import Producer, read_producers
 from protocol import Builder, File, Input
 from source import Project
-from tasks import Task, index, read_tasks
+from celery_tasks import Task, index, read_tasks
 
 JOB = "job"
 

@@ -398,10 +398,10 @@
           "context": "shop"
         },
         {
-          "id": "celery",
+          "id": "celery-billing-mail",
           "kind": "broker",
           "context": null,
-          "label": "Celery"
+          "label": "Celery · billing.mail"
         },
         {
           "id": "bus",
@@ -478,7 +478,7 @@
           "type": "step",
           "id": "s7",
           "from": "shop.billing",
-          "to": "celery",
+          "to": "celery-billing-mail",
           "kind": "call",
           "label": "enqueue send_invoice_email",
           "status": "declared",

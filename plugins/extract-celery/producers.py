@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
 from source import Module, Project, const_str, dotted, keyword, keyword_str
-from tasks import package_of
+from celery_tasks import package_of
 
 ENQUEUE = ("delay", "apply_async")
 SIGNATURE = ("s", "si", "signature", "subtask")

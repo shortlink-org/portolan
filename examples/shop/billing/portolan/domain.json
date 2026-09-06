@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-09-06T18:05:31+07:00",
-  "commit": "13c3092",
+  "generatedAt": "2026-09-06T17:09:23+07:00",
+  "commit": "b077ef9",
   "contexts": [
     {
       "id": "shop",
@@ -504,10 +504,16 @@
           "context": "shop"
         },
         {
-          "id": "celery",
+          "id": "celery-billing-mail",
           "kind": "broker",
           "context": null,
-          "label": "Celery"
+          "label": "Celery · billing.mail"
+        },
+        {
+          "id": "celery-billing",
+          "kind": "broker",
+          "context": null,
+          "label": "Celery · billing"
         },
         {
           "id": "bus",
@@ -562,7 +568,7 @@
           "type": "step",
           "id": "s5",
           "from": "shop.billing",
-          "to": "celery",
+          "to": "celery-billing-mail",
           "kind": "call",
           "label": "enqueue send_invoice_email",
           "status": "declared",
@@ -573,7 +579,7 @@
           "type": "step",
           "id": "s6",
           "from": "shop.billing",
-          "to": "celery",
+          "to": "celery-billing",
           "kind": "call",
           "label": "enqueue remind_unpaid_invoice",
           "status": "declared",

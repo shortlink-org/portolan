@@ -76,6 +76,11 @@
       "description": "The directory the applications are looked for in, relative to the input root.",
       "default": "."
     },
+    "settings": {
+      "type": "string",
+      "description": "The Django settings module Celery is configured from, as an import spells it, so an enqueue lands on the queue the routes give it. Defaults to what manage.py sets DJANGO_SETTINGS_MODULE to.",
+      "examples": ["config.settings"]
+    },
     "out": {
       "type": "string",
       "description": "Name of the fragment file, inside the step's output directory.",

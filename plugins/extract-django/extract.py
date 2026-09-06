@@ -62,7 +62,7 @@ def extract(input_: Input, opts: Options, b: Builder, cwd: str = "") -> None:
         clients += clients_module.read_clients(agg.app, dict(opts.peers), rel, b)
 
     reader = flows.FlowReader(
-        flows.Options(context=context, svc_id=svc_id, service=service, store=opts.store, peers=dict(opts.peers), events=dict(opts.events)),
+        flows.Options(context=context, svc_id=svc_id, service=service, store=opts.store, peers=dict(opts.peers), events=dict(opts.events), settings=opts.settings),
         project,
         aggregates,
         use_cases,

@@ -111,10 +111,11 @@ back; an event handed to anything — a signal's `send`, a project's own
 `publish` — is the event leaving for the bus; a call on a vendored client is an
 rpc to the peer; a `.delay()` or `.apply_async()` on a function decorated
 `@shared_task` or `@app.task`, directly or through `.s()`, is a hop to the
-`celery` lane — one lane, because which queue the task lands on is a fact about
-the routes, and the routes are `extract-celery`'s to read — and
-`transaction.on_commit(…)` around it, as a lambda or a `partial`, is the note
-that it waits for the commit. A call into `services.py` is followed, two deep at most, and
+queue it lands on, `celery-<queue>` — decided the way Celery decides it, by the
+reader `extract-celery` shares through `pyplugin`: the `queue=` at the call,
+then the decorator's, then `task_routes`, then `task_default_queue` — so the
+two flows meet on one participant; and `transaction.on_commit(…)` around it,
+as a lambda or a `partial`, is the note that it waits for the commit. A call into `services.py` is followed, two deep at most, and
 past that the call itself is the step. `if` becomes an alt when some arm holds
 a hop, and a branch ending in a `return` or a `raise` is terminal; a `for`, a
 `while`, a `with transaction.atomic()` and an `except` are a note on the steps
@@ -147,7 +148,7 @@ inventing the hash would be a name no database has.
 
 Named here rather than left to be discovered: **migrations** (the models are
 the schema; a migration is how it got there), **the bodies of Celery tasks**
-and **the queues they land on** (an enqueue is a hop, and the rest is
+(an enqueue is a hop to its queue, and what the worker does there is
 `extract-celery`'s), **admin**, **serializers**, **templates**, **middleware**, **management
 commands**, **signals connected outside a `@receiver`**, and a **many-to-many**
 field's join table — which is reported, since Django makes a table there that
@@ -165,6 +166,7 @@ this does not name.
   "peers": { "pricing.v1": "shop.pricing" },
   "events": { "payments.events": "payments.ledger.payment" },
   "source": ".",
+  "settings": "config.settings",
   "out": "domain.json",
   "storesOut": "stores.json"
 }
@@ -174,8 +176,9 @@ this does not name.
 unless said otherwise; `apps` names them outright for a project that keeps them
 somewhere a models module would not be found. `store` is what says which
 database the models are the schema of — without it they describe none, and
-calls into the ORM stay on the service's own lane. Everything else means what
-it means for `extract-ts`.
+calls into the ORM stay on the service's own lane. `settings` names the Django
+settings module Celery is configured from, only where `manage.py` does not.
+Everything else means what it means for `extract-ts`.
 
 ## Extraction limits
 

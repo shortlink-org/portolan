@@ -26,6 +26,7 @@ class Options:
     peers: Dict[str, str] = field(default_factory=dict)
     events: Dict[str, str] = field(default_factory=dict)
     source: str = "."
+    settings: str = ""
     out: str = "domain.json"
     stores_out: str = "stores.json"
 
@@ -46,6 +47,7 @@ class Options:
         "peers": "peers",
         "events": "events",
         "source": "source",
+        "settings": "settings",
         "out": "out",
         "storesOut": "stores_out",
     }

@@ -7,8 +7,8 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(1, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "pyplugin"))
 
-import conf  # noqa: E402
-import routes  # noqa: E402
+import celery_conf as conf  # noqa: E402
+import celery_conf as routes  # noqa: E402
 from source import Project  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))

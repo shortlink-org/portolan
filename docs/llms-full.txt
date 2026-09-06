@@ -6941,7 +6941,8 @@ Confirms the session, freezes the invoice and asks the customer to pay.
 | `shop.billing` | service | [shop](../shop/README.md) | — |
 | `auth.auth` | service | [auth](../auth/README.md) | — |
 | `billing-pg` | store | [shop](../shop/README.md) | — |
-| `celery` | broker | — | Celery |
+| `celery-billing-mail` | broker | — | Celery · billing.mail |
+| `celery-billing` | broker | — | Celery · billing |
 | `bus` | broker | — | — |
 
 ## Sequence
@@ -6953,15 +6954,16 @@ sequenceDiagram
     participant p1 as shop.billing
     participant p2 as auth.auth
     participant p3 as billing-pg
-    participant p4 as Celery
-    participant p5 as bus
+    participant p4 as Celery · billing.mail
+    participant p5 as Celery · billing
+    participant p6 as bus
     p0->>p1: invoice_issue → InvoiceId
     p1->>p2: validateSession → SessionInfo
     p1->>p3: Invoice.objects.get
     p1->>p3: Invoice.save
     p1->>p4: enqueue send_invoice_email
-    p1->>p4: enqueue remind_unpaid_invoice
-    p1-)p5: InvoiceIssued
+    p1->>p5: enqueue remind_unpaid_invoice
+    p1-)p6: InvoiceIssued
 ```
 
 ## Steps
@@ -6979,10 +6981,10 @@ sequenceDiagram
 4. **shop.billing** → **billing-pg** — Invoice.save
    status: declared · [`examples/shop/billing/invoices/services.py:46`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L46) · in one transaction.
 <a id="step-s5"></a>
-5. **shop.billing** → **celery** — enqueue send_invoice_email
+5. **shop.billing** → **celery-billing-mail** — enqueue send_invoice_email
    status: declared · [`examples/shop/billing/invoices/services.py:49`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L49) · in one transaction, after the transaction commits.
 <a id="step-s6"></a>
-6. **shop.billing** → **celery** — enqueue remind_unpaid_invoice
+6. **shop.billing** → **celery-billing** — enqueue remind_unpaid_invoice
    status: declared · [`examples/shop/billing/invoices/services.py:50`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L50) · in one transaction, after the transaction commits.
 <a id="step-s7"></a>
 7. **shop.billing** → **bus** — InvoiceIssued

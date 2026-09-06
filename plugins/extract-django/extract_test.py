@@ -132,9 +132,9 @@ class Reading(unittest.TestCase):
 
     def test_an_enqueue_is_a_hop_to_celery_and_on_commit_is_its_note(self):
         flow = {f["slug"]: f for f in self.fragment["flows"]}["billing-invoice-issue"]
-        self.assertIn("celery", [p["id"] for p in flow["participants"]])
+        self.assertIn("celery-billing-mail", [p["id"] for p in flow["participants"]])
         step = [s for s in flow["steps"] if s["type"] == "step" and s["label"] == "enqueue send_invoice_email"][0]
-        self.assertEqual(step["to"], "celery")
+        self.assertEqual(step["to"], "celery-billing-mail")
         self.assertEqual(step["note"], "in one transaction, after the transaction commits.")
         self.assertTrue(step["line"].endswith("invoices/services.py:31"))
 
