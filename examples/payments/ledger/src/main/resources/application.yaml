@@ -12,7 +12,10 @@ spring:
   flyway:
     enabled: true
     # One package per aggregate, its migrations beside the adapter that uses
-    # them; the build copies them onto the classpath from there.
+    # them; the build copies them onto the classpath from there. Flyway reads
+    # every location as one history, so each aggregate numbers from its own
+    # thousand - payment 1xxx, refund 2xxx - and the order across aggregates
+    # is the order of the blocks: refunds reference payments.
     locations:
       - classpath:org/portolan/payments/ledger/infrastructure/repository/payment/migrations
       - classpath:org/portolan/payments/ledger/infrastructure/repository/refund/migrations

@@ -4,6 +4,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /** The refund as a row. */
 @Entity
@@ -23,6 +25,9 @@ public class RefundEntity {
     @Column(name = "amount_minor", nullable = false)
     private long amountMinor;
 
+    // char(3) in the table: a currency code is exactly three letters, and the
+    // validator wants to hear CHAR from this side too.
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "currency", nullable = false, length = 3)
     private String currency;
 
