@@ -4,6 +4,7 @@ import {
   Keyboard,
   Map,
   Menu,
+  MessageSquare,
   MoreHorizontal,
   Moon,
   Network,
@@ -20,6 +21,8 @@ import { BuildStamp } from "./BuildStamp";
 import { useDensity } from "./density";
 import { usePhone } from "./responsive";
 import { useTheme } from "./theme";
+import { useChatAvailable } from "../chat/prefs";
+import { useChatUi } from "../chat/store";
 import { paths } from "../routes";
 
 export function TopBar({
@@ -143,6 +146,8 @@ function Wide({ onOpenHelp }: { onOpenHelp: () => void }) {
   const { theme, toggle } = useTheme();
   const { density, toggle: toggleDensity } = useDensity();
   const compact = density === "compact";
+  const chat = useChatAvailable();
+  const openChat = () => useChatUi.getState().setOpen(true);
 
   return (
     <div className="seg">
@@ -166,6 +171,18 @@ function Wide({ onOpenHelp }: { onOpenHelp: () => void }) {
         <Network size={16} aria-hidden />
         graph
       </Link>
+      {/* A question to the catalog, when something is set to answer it. */}
+      {chat ? (
+        <button
+          type="button"
+          onClick={openChat}
+          className="flex items-center gap-1.5"
+          title="Ask the catalog"
+        >
+          <MessageSquare size={16} aria-hidden />
+          ask
+        </button>
+      ) : null}
       {/* Density is a property of the whole app, so it lives beside the
           theme: both are "how portolan is set", not "what is on screen". */}
       <button
@@ -236,6 +253,7 @@ function OverflowMenu({ onOpenHelp }: { onOpenHelp: () => void }) {
   const { theme, toggle } = useTheme();
   const { density, toggle: toggleDensity } = useDensity();
   const compact = density === "compact";
+  const chat = useChatAvailable();
 
   return (
     <Popover className="shrink-0">
@@ -265,6 +283,17 @@ function OverflowMenu({ onOpenHelp }: { onOpenHelp: () => void }) {
               <Network size={16} aria-hidden className="shrink-0" />
               dependency graph
             </Link>
+            {chat ? (
+              <MenuButton
+                icon={MessageSquare}
+                onClick={() => {
+                  useChatUi.getState().setOpen(true);
+                  close();
+                }}
+              >
+                ask the catalog
+              </MenuButton>
+            ) : null}
 
             <div className="label mt-2 mb-1 px-2">how portolan is set</div>
             <MenuButton

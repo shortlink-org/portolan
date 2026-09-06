@@ -48,6 +48,8 @@ import { paths } from "../routes";
 import { Empty, SectionTitle } from "../components/PageHeader";
 import { Modal } from "../components/Overlay";
 import { MachineDocs } from "../components/MachineDocs";
+import { ChatSection } from "../chat/ChatSettings";
+import { BUILD as CHAT_BUILD } from "../chat/flags";
 
 type Health = "healthy" | "changed" | "failed" | "unchecked";
 
@@ -678,6 +680,8 @@ function SettingsContent({ local, onAdd, onGenerate }: { local: boolean; onAdd: 
         </section>
 
         <section className="mt-section"><SectionTitle right="stored in this browser">Appearance</SectionTitle><Appearance /></section>
+
+        {CHAT_BUILD.built ? <section className="mt-section"><SectionTitle right="stored in this browser">Ask the catalog</SectionTitle><ChatSection /></section> : null}
 
         <details className="mt-section rounded-card border border-line shadow-xs">
           <summary className="cursor-pointer select-none px-4 py-3 font-semibold text-ink">Advanced build inputs</summary>

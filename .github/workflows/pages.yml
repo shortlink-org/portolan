@@ -32,6 +32,10 @@ jobs:
       - name: Build
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
+          # The worker in proxy/ that answers "ask the catalog" with the demo's
+          # own key. Leave unset to ship the chat without an answerer; set
+          # VITE_CHAT=off to ship no chat at all.
+          VITE_CHAT_PROXY_URL: https://portolan-chat.batazor.workers.dev/chat
         run: npm run build
 
       - name: SPA fallback for client-side routes

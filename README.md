@@ -84,6 +84,13 @@ extractor is selected only when its expected model structure is present; a
 - **Navigation** — ⌘K palette over everything the catalog names (`e:` events,
   `vo:` value objects, …), sidebar tree, breadcrumbs, "what links here", a
   trail of recent pages, pins, keyboard shortcuts, light/dark and density.
+- **Ask the catalog** — a chat that answers from the generated pages: the
+  model gets `llms.txt` and opens pages one at a time, names things by their
+  ids (which become links), and can end an answer with a card drawn from the
+  catalog — a service, a flow's sequence diagram, what runs between two
+  contexts, an aggregate's state machine. The demo answers through the worker
+  in `proxy/`; a reader can bring their own OpenAI-compatible endpoint and key
+  from the panel's settings, kept in their browser.
 
 ## What it checks
 
@@ -135,3 +142,11 @@ npm run build        # likec4:gen + tsc --noEmit + vite build
 
 Generated output is committed, so a change to it shows up in a diff; CI runs the
 `--check` variants to keep it honest.
+
+Three build-time variables shape the chat:
+
+| variable | effect |
+|---|---|
+| `VITE_CHAT=off` | no chat at all: no button, no settings section, and its chunk is not built |
+| `VITE_CHAT_PROXY_URL` | the worker that answers with a key of its own (see `proxy/README.md`); unset, the chat waits for the reader's own model |
+| (a switch in Settings) | the reader turns the chat on or off in their browser; on by default when a proxy answers |

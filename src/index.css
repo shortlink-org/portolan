@@ -1074,6 +1074,12 @@
     transform: translateX(100%);
   }
 }
+/* The chat's waiting sprite: eight 24px frames in one SVG, stepped along. */
+@keyframes chat-sprite {
+  to {
+    transform: translateX(-192px);
+  }
+}
 
 /* Route content rises on mount. No exit: the outgoing route is simply gone. */
 @utility page-in {

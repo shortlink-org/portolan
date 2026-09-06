@@ -1,0 +1,12 @@
+{
+  "name": "portolan-chat",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@ai-sdk/google": "4.0.64",
+    "ai": "7.0.93"
+  }
+}
