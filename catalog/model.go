@@ -585,6 +585,9 @@ type Flow struct {
 	// evidence for composing a queue handler with the outbound flow extracted
 	// independently from the same function; ordinary authored flows omit it.
 	EntryPoint string `json:"entrypoint,omitempty"`
+	// Includes names source-backed flow fragments composed into this root flow.
+	// It makes composition idempotent and leaves visible provenance for readers.
+	Includes []string `json:"includes,omitempty"`
 	// Owner is the bounded context the flow belongs to. The extractor knows it
 	// - it read the service's own tree to find the flow - so it says so rather
 	// than leaving a reader to work it back out of a path.
@@ -698,9 +701,24 @@ type Step struct {
 	// ContinuesAt names the source function execution enters after this step.
 	// The merge uses it only when exactly one flow declares that entry point.
 	ContinuesAt string `json:"continuesAt,omitempty"`
+	// Reaches names source functions proven to execute on the path represented
+	// by this step. The merge may use them to attach independently extracted
+	// protocol fragments that expand those exact functions.
+	Reaches []string `json:"reaches,omitempty"`
+	// Handoff identifies a source-backed send or receive through an asynchronous
+	// channel. Matching is exact on kind, channel, and message.
+	Handoff *FlowHandoff `json:"handoff,omitempty"`
 }
 
 func (*Step) NodeType() string { return "step" }
+
+type FlowHandoff struct {
+	Kind      string `json:"kind"`
+	Transport string `json:"transport"`
+	Channel   string `json:"channel"`
+	Message   string `json:"message,omitempty"`
+	Direction string `json:"direction"`
+}
 
 type Parallel struct {
 	Type     string      `json:"type"`

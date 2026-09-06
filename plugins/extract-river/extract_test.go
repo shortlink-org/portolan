@@ -94,6 +94,14 @@ func setup(workers *river.Workers, client interface { Insert(context.Context, ri
 	if got := out.Flows[0].Steps[1].(*catalog.Step).ContinuesAt; got != "jobs:SendWorker.Work" {
 		t.Fatalf("worker continuation = %q", got)
 	}
+	if got := out.Flows[0].EntryPoint; got != "app:setup" {
+		t.Fatalf("producer entrypoint = %q", got)
+	}
+	enqueue := out.Flows[0].Steps[0].(*catalog.Step).Handoff
+	work := out.Flows[0].Steps[1].(*catalog.Step).Handoff
+	if enqueue == nil || work == nil || enqueue.Direction != "send" || work.Direction != "receive" || enqueue.Transport != "river" || enqueue.Channel != "critical_mail" || enqueue.Message != "send_mail" {
+		t.Fatalf("job handoffs = enqueue %+v, work %+v", enqueue, work)
+	}
 }
 
 func TestProducerWithoutRegisteredWorkerStaysVisible(t *testing.T) {

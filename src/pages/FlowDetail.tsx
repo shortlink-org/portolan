@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Link, useParams } from "react-router";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { saveCanvasImage } from "../lib/export-canvas";
@@ -14,7 +21,11 @@ import { sourceHref } from "../lib/source-link";
 import { flowAnswers } from "../flow/answers";
 import { flowMermaid } from "../flow/mermaid";
 import { useToastStore } from "../app/toast";
-import { contextResolver, hiddenStepIds, isCrossContext } from "../flow/cross-context";
+import {
+  contextResolver,
+  hiddenStepIds,
+  isCrossContext,
+} from "../flow/cross-context";
 import { StepRail } from "../flow/StepRail";
 import { FlowTable } from "../flow/FlowTable";
 import { FlowToolbar } from "../flow/FlowToolbar";
@@ -170,11 +181,16 @@ export function FlowDetail() {
   const liftedSteps = useMemo(() => {
     if (!path && !statusFilter) return null;
     return allSteps
-      .filter((s) => (!path || path.stepIds.has(s.id)) && (!statusFilter || s.status === statusFilter))
+      .filter(
+        (s) =>
+          (!path || path.stepIds.has(s.id)) &&
+          (!statusFilter || s.status === statusFilter),
+      )
       .map((s) => s.id);
   }, [allSteps, path, statusFilter]);
   const counts = useMemo(
-    () => (flow ? statusCounts(flow) : { verified: 0, declared: 0, unresolved: 0 }),
+    () =>
+      flow ? statusCounts(flow) : { verified: 0, declared: 0, unresolved: 0 },
     [flow],
   );
   const walkable = useMemo(() => outlineSteps(rows), [rows]);
@@ -343,9 +359,7 @@ export function FlowDetail() {
     return (
       <div className="p-6">
         <h1 className="text-lg font-semibold">Flow not found</h1>
-        <p className="meta mt-2">
-          no flow with slug “{slug}” in the catalog
-        </p>
+        <p className="meta mt-2">no flow with slug “{slug}” in the catalog</p>
         <Link to="/flows" className="mono mt-4 inline-block text-accent">
           ← all flows
         </Link>
@@ -379,7 +393,9 @@ export function FlowDetail() {
       const file = await saveCanvasImage(viewport, flow.slug, kind);
       say(`${kind.toUpperCase()} downloaded — ${file}`);
     } catch (cause) {
-      say(`could not export ${kind.toUpperCase()}: ${cause instanceof Error ? cause.message : String(cause)}`);
+      say(
+        `could not export ${kind.toUpperCase()}: ${cause instanceof Error ? cause.message : String(cause)}`,
+      );
     } finally {
       setExporting(false);
     }
@@ -455,6 +471,14 @@ export function FlowDetail() {
             right now, and they live with the controls that changed them. */}
         <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
           {flow.trigger ? <FlowTrigger trigger={flow.trigger} /> : null}
+          {flow.includes && flow.includes.length > 0 ? (
+            <span
+              className="chip mono"
+              title={`Composed from:\n${flow.includes.join("\n")}`}
+            >
+              cross-protocol · {flow.includes.length + 1} fragments
+            </span>
+          ) : null}
           {/* The file the flow was read out of, spelled in full rather than
               named: the point of putting it here is that a reader can copy it
               and go and look. */}

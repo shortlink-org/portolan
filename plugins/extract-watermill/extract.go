@@ -986,7 +986,7 @@ func (s *scanner) flow(serviceID, owner string, found handler, pub *publication)
 	if found.consumerGroup != "" {
 		note += " Consumer group `" + found.consumerGroup + "`."
 	}
-	steps := catalog.FlowNodes{&catalog.Step{Type: "step", ID: "receive", From: inputBroker, To: serviceID, Kind: catalog.StepEvent, Label: found.name, Status: catalog.StatusDeclared, Note: strings.TrimSpace(note), Line: found.at.String(), ContinuesAt: found.entrypoint}}
+	steps := catalog.FlowNodes{&catalog.Step{Type: "step", ID: "receive", From: inputBroker, To: serviceID, Kind: catalog.StepEvent, Label: found.name, Status: catalog.StatusDeclared, Note: strings.TrimSpace(note), Line: found.at.String(), ContinuesAt: found.entrypoint, Handoff: s.messageHandoff(found.input.address, "receive")}}
 	if pub != nil {
 		ending = pub.topic.address
 		outputBroker := "watermill." + goscan.Slug(pub.topic.address)
@@ -994,7 +994,7 @@ func (s *scanner) flow(serviceID, owner string, found handler, pub *publication)
 			participants = append(participants, catalog.Participant{ID: outputBroker, Kind: catalog.ParticipantBroker, Label: goscan.FirstNonEmpty(s.transport, "Watermill") + " · " + pub.topic.address})
 		}
 		payload := goscan.FirstNonEmpty(goscan.LastSegment(pub.payload), "message")
-		steps = append(steps, &catalog.Step{Type: "step", ID: "publish", From: serviceID, To: outputBroker, Kind: catalog.StepEvent, Label: "publish " + payload, Status: catalog.StatusDeclared, Note: s.payloadDescription(pub.payload, "Payload"), Line: pub.at.String()})
+		steps = append(steps, &catalog.Step{Type: "step", ID: "publish", From: serviceID, To: outputBroker, Kind: catalog.StepEvent, Label: "publish " + payload, Status: catalog.StatusDeclared, Note: s.payloadDescription(pub.payload, "Payload"), Line: pub.at.String(), Handoff: s.messageHandoff(pub.topic.address, "send")})
 		name += " → " + pub.topic.address
 		summary += " and may publish `" + pub.topic.address + "`"
 	}
@@ -1024,15 +1024,16 @@ func (s *scanner) branchedFlow(serviceID, owner string, found handler) catalog.F
 			Title:    conditions[i],
 			Terminal: pub.terminal,
 			Steps: catalog.FlowNodes{&catalog.Step{
-				Type:   "step",
-				ID:     fmt.Sprintf("publish-%d", i+1),
-				From:   serviceID,
-				To:     outputBroker,
-				Kind:   catalog.StepEvent,
-				Label:  "publish " + payload,
-				Status: catalog.StatusDeclared,
-				Note:   s.payloadDescription(pub.payload, "Payload"),
-				Line:   pub.at.String(),
+				Type:    "step",
+				ID:      fmt.Sprintf("publish-%d", i+1),
+				From:    serviceID,
+				To:      outputBroker,
+				Kind:    catalog.StepEvent,
+				Label:   "publish " + payload,
+				Status:  catalog.StatusDeclared,
+				Note:    s.payloadDescription(pub.payload, "Payload"),
+				Line:    pub.at.String(),
+				Handoff: s.messageHandoff(pub.topic.address, "send"),
 			}},
 		})
 		addresses = append(addresses, "`"+pub.topic.address+"`")
@@ -1042,7 +1043,7 @@ func (s *scanner) branchedFlow(serviceID, owner string, found handler) catalog.F
 		note += " Consumer group `" + found.consumerGroup + "`."
 	}
 	steps := catalog.FlowNodes{
-		&catalog.Step{Type: "step", ID: "receive", From: inputBroker, To: serviceID, Kind: catalog.StepEvent, Label: found.name, Status: catalog.StatusDeclared, Note: strings.TrimSpace(note), Line: found.at.String(), ContinuesAt: found.entrypoint},
+		&catalog.Step{Type: "step", ID: "receive", From: inputBroker, To: serviceID, Kind: catalog.StepEvent, Label: found.name, Status: catalog.StatusDeclared, Note: strings.TrimSpace(note), Line: found.at.String(), ContinuesAt: found.entrypoint, Handoff: s.messageHandoff(found.input.address, "receive")},
 		&catalog.Alt{Type: "alt", ID: "outcome", Branches: branches},
 	}
 	slugged := goscan.Slug(goscan.LastSegment(serviceID) + "-watermill-" + found.name)
@@ -1057,6 +1058,11 @@ func (s *scanner) branchedFlow(serviceID, owner string, found handler) catalog.F
 		Participants: participants,
 		Steps:        steps,
 	}
+}
+
+func (s *scanner) messageHandoff(channel, direction string) *catalog.FlowHandoff {
+	transport := strings.ToLower(goscan.FirstNonEmpty(s.transport, "watermill"))
+	return &catalog.FlowHandoff{Kind: "message", Transport: transport, Channel: channel, Direction: direction}
 }
 
 func (s *scanner) payloadDescription(key, prefix string) string {

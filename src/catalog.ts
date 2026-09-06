@@ -4,7 +4,11 @@
 export type Status = "verified" | "declared" | "unresolved";
 
 /** Every status, best first: the order a count or a filter lists them in. */
-export const STATUSES: readonly Status[] = ["verified", "declared", "unresolved"];
+export const STATUSES: readonly Status[] = [
+  "verified",
+  "declared",
+  "unresolved",
+];
 
 export interface Catalog {
   generatedAt: string; // ISO 8601
@@ -94,11 +98,7 @@ export interface BoundedContext {
 }
 
 export type GroupKind =
-  | "bounded-context"
-  | "system"
-  | "product"
-  | "team"
-  | "namespace";
+  "bounded-context" | "system" | "product" | "team" | "namespace";
 
 export const GROUP_KINDS: readonly GroupKind[] = [
   "bounded-context",
@@ -506,7 +506,7 @@ export interface Channel {
    * "shop.cart.basket" - the channel as the broker knows it. The same string an
    * event's `wire.channel` carries, and comparing the two is how a document and
    * the code beside it are held against each other.
-  */
+   */
   address: string;
   /** Event stream by default; a job queue has work-queue ownership semantics. */
   kind?: "event" | "job";
@@ -712,6 +712,8 @@ export interface Flow {
   trigger?: FlowTrigger;
   /** Source function this flow expands, used for evidence-backed composition. */
   entrypoint?: string;
+  /** Source-backed flow fragments composed into this root flow. */
+  includes?: string[];
   /**
    * The top-level group this flow belongs to. Whatever derived the flow read
    * one component's tree to find it and therefore knows the answer, so the flow
@@ -724,7 +726,15 @@ export interface Flow {
   steps: FlowNode[];
 }
 export interface FlowTrigger {
-  kind: "http" | "callback" | "event" | "job" | "startup" | "scheduled" | "manual" | "unproven";
+  kind:
+    | "http"
+    | "callback"
+    | "event"
+    | "job"
+    | "startup"
+    | "scheduled"
+    | "manual"
+    | "unproven";
   label?: string;
   confidence: "high" | "medium" | "low";
 }
@@ -748,6 +758,17 @@ export interface Step {
   line?: string;
   /** Source function execution enters here, when an extractor can prove it. */
   continuesAt?: string;
+  /** Source functions proven to execute on the path represented by this step. */
+  reaches?: string[];
+  /** Exact asynchronous send/receive evidence used for flow composition. */
+  handoff?: FlowHandoff;
+}
+export interface FlowHandoff {
+  kind: "message" | "job";
+  transport: string;
+  channel: string;
+  message?: string;
+  direction: "send" | "receive";
 }
 export interface Parallel {
   type: "parallel";
@@ -1924,10 +1945,19 @@ export function validateCatalog(catalog: Catalog): Catalog {
   const flowGroupIds = new Set(catalog.contexts.map((c) => c.id));
 
   const triggerKinds = new Set<FlowTrigger["kind"]>([
-    "http", "callback", "event", "job", "startup", "scheduled", "manual", "unproven",
+    "http",
+    "callback",
+    "event",
+    "job",
+    "startup",
+    "scheduled",
+    "manual",
+    "unproven",
   ]);
   const triggerConfidence = new Set<FlowTrigger["confidence"]>([
-    "high", "medium", "low",
+    "high",
+    "medium",
+    "low",
   ]);
 
   for (const flow of catalog.flows) {
@@ -1965,6 +1995,18 @@ export function validateCatalog(catalog: Catalog): Catalog {
         `flow ${flow.id}`,
       );
     }
+    if (flow.includes) {
+      const included = new Set<string>();
+      for (const slug of flow.includes) {
+        if (!slug || slug === flow.slug || included.has(slug)) {
+          fail(
+            `flow "${flow.slug}" has an invalid or duplicate included flow "${slug}"`,
+            `flow ${flow.id}`,
+          );
+        }
+        included.add(slug);
+      }
+    }
     validateFlowFrames(flow, flow.steps);
 
     const steps = walkSteps(flow.steps);
@@ -1977,6 +2019,45 @@ export function validateCatalog(catalog: Catalog): Catalog {
         );
       }
       stepIds.add(step.id);
+
+      if (step.reaches?.some((entrypoint) => entrypoint.length === 0)) {
+        fail(
+          `flow "${flow.slug}" step "${step.id}" has an empty reached source function`,
+          `flow ${flow.id} / step ${step.id}`,
+        );
+      }
+      if (step.handoff) {
+        if (!(["message", "job"] as const).includes(step.handoff.kind)) {
+          fail(
+            `flow "${flow.slug}" step "${step.id}" has unknown handoff kind "${step.handoff.kind}"`,
+            `flow ${flow.id} / step ${step.id}`,
+          );
+        }
+        if (!step.handoff.transport) {
+          fail(
+            `flow "${flow.slug}" step "${step.id}" has a handoff with no transport`,
+            `flow ${flow.id} / step ${step.id}`,
+          );
+        }
+        if (!step.handoff.channel) {
+          fail(
+            `flow "${flow.slug}" step "${step.id}" has a handoff with no channel`,
+            `flow ${flow.id} / step ${step.id}`,
+          );
+        }
+        if (step.handoff.kind === "job" && !step.handoff.message) {
+          fail(
+            `flow "${flow.slug}" step "${step.id}" has a job handoff with no message`,
+            `flow ${flow.id} / step ${step.id}`,
+          );
+        }
+        if (!(["send", "receive"] as const).includes(step.handoff.direction)) {
+          fail(
+            `flow "${flow.slug}" step "${step.id}" has unknown handoff direction "${step.handoff.direction}"`,
+            `flow ${flow.id} / step ${step.id}`,
+          );
+        }
+      }
 
       if (!lanes.has(step.from)) {
         fail(
@@ -2245,7 +2326,9 @@ function validateStores(catalog: Catalog): void {
     // store whose slug is also an aggregate's would be one box standing for
     // two things, and the id it is clicked by would answer with whichever was
     // registered first.
-    if (services.get(store.owner)?.aggregates.some((a) => a.slug === store.slug)) {
+    if (
+      services.get(store.owner)?.aggregates.some((a) => a.slug === store.slug)
+    ) {
       fail(
         `store "${store.id}" has the slug of an aggregate of "${store.owner}"`,
         `store ${store.id}`,
@@ -2592,7 +2675,10 @@ function validateLifecycle(aggregate: Aggregate, lifecycle: Lifecycle): void {
       }
     }
     if (!t.on) {
-      fail(`aggregate "${aggregate.id}" moves ${t.from} → ${t.to} on nothing`, where);
+      fail(
+        `aggregate "${aggregate.id}" moves ${t.from} → ${t.to} on nothing`,
+        where,
+      );
     }
     if (t.emits !== undefined && !events.has(t.emits)) {
       fail(

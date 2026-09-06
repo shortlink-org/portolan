@@ -59,7 +59,7 @@ export function enrichCatalog(input: Catalog): Enriched {
   // everything below - and every consumer derived from it - sees the event
   // rather than the name.
   const catalog = resolveForeignKeys(
-    resolveWireNames(composeOutboundContinuations(input)),
+    composeExecutionContinuations(resolveWireNames(input)),
   );
 
   const serviceById = new Map<string, Service>();
@@ -107,7 +107,15 @@ export function enrichCatalog(input: Catalog): Enriched {
   const consumersFor = new Map<string, EventConsumer[]>();
   const callsFor = new Map<string, RpcCall[]>();
 
-  for (const flow of catalog.flows) {
+  // Atomic source fragments are the strongest provenance for a derived edge.
+  // Composed roots repeat those steps for reading, so inspect them afterwards;
+  // they only become evidence when their source fragment was intentionally
+  // consumed and removed from the catalog.
+  const evidenceFlows = [...catalog.flows].sort(
+    (left, right) =>
+      Number(Boolean(left.includes)) - Number(Boolean(right.includes)),
+  );
+  for (const flow of evidenceFlows) {
     const lanes = new Map(flow.participants.map((p) => [p.id, p]));
 
     for (const step of walkSteps(flow.steps)) {
@@ -122,7 +130,11 @@ export function enrichCatalog(input: Catalog): Enriched {
         if (step.from === step.to) continue;
         const lane = lanes.get(step.to);
         if (!lane) continue;
-        if (lane.kind === "broker" || lane.kind === "store" || lane.kind === "actor")
+        if (
+          lane.kind === "broker" ||
+          lane.kind === "store" ||
+          lane.kind === "actor"
+        )
           continue;
 
         const key = `${step.ref}|${step.to}`;
@@ -132,7 +144,13 @@ export function enrichCatalog(input: Catalog): Enriched {
         const known = lane.kind === "service" && serviceById.has(step.to);
         const status: Status = known ? step.status : "unresolved";
         push(consumersFor, step.ref, { service: step.to, status, via });
-        derived.push({ kind: "consumer", ref: step.ref, service: step.to, status, via });
+        derived.push({
+          kind: "consumer",
+          ref: step.ref,
+          service: step.to,
+          status,
+          via,
+        });
 
         continue;
       }
@@ -179,20 +197,25 @@ export function enrichCatalog(input: Catalog): Enriched {
       const calls = callsFor.get(service.id);
       const touched =
         calls !== undefined ||
-        service.aggregates.some((a) => a.events.some((e) => consumersFor.has(e.id)));
+        service.aggregates.some((a) =>
+          a.events.some((e) => consumersFor.has(e.id)),
+        );
       if (!touched) return service;
 
       return {
         ...service,
         consumes: calls ? [...service.consumes, ...calls] : service.consumes,
         aggregates: service.aggregates.map((aggregate) => {
-          if (!aggregate.events.some((e) => consumersFor.has(e.id))) return aggregate;
+          if (!aggregate.events.some((e) => consumersFor.has(e.id)))
+            return aggregate;
 
           return {
             ...aggregate,
             events: aggregate.events.map((event) => {
               const added = consumersFor.get(event.id);
-              return added ? { ...event, consumers: [...event.consumers, ...added] } : event;
+              return added
+                ? { ...event, consumers: [...event.consumers, ...added] }
+                : event;
             }),
           };
         }),
@@ -204,54 +227,48 @@ export function enrichCatalog(input: Catalog): Enriched {
 }
 
 /**
- * Joins an asynchronous entry flow to the outbound flow extracted from the
- * function it dispatches.
+ * Composes independently extracted protocol fragments into root-oriented
+ * execution flows.
  *
- * Both sides carry a source function key. That is deliberately stronger than
- * matching display labels such as `Worker.Work`: two packages can use that
- * name, while `jobs/email:Worker.Work` names the code the extractor actually
- * entered. A duplicated entrypoint composes nothing rather than choosing one.
+ * There are three deliberately exact seams: a source function entered after a
+ * step, a source function proven reachable on the same path, and an
+ * asynchronous handoff whose kind/channel/message tuple matches a receiving
+ * flow's opening step. Display labels and ordinary domain-event refs never
+ * participate. Ambiguous seams compose nothing.
  */
-function composeOutboundContinuations(input: Catalog): Catalog {
+function composeExecutionContinuations(input: Catalog): Catalog {
   const byEntry = new Map<string, Flow | null>();
+  const byHandoff = new Map<string, Flow | null>();
   for (const flow of input.flows) {
-    if (!flow.entrypoint) continue;
-    byEntry.set(
-      flow.entrypoint,
-      byEntry.has(flow.entrypoint) ? null : flow,
-    );
+    if (flow.entrypoint) addUniqueFlow(byEntry, flow.entrypoint, flow);
+    const opening = walkSteps(flow.steps)[0];
+    if (opening?.handoff?.direction === "receive") {
+      addUniqueFlow(byHandoff, handoffKey(opening.handoff), flow);
+    }
   }
-  if (byEntry.size === 0) return input;
+  if (byEntry.size === 0 && byHandoff.size === 0) {
+    return input;
+  }
 
   const consumed = new Set<string>();
   let any = false;
   const flows = input.flows.map((flow) => {
-    // Entrypoint flows are the continuations, never their own roots.
-    if (flow.entrypoint) return flow;
-
-    const additions: Flow[] = [];
-    const steps = expandContinuations(flow.steps, (step) => {
-      if (!step.continuesAt) return null;
-      const continuation = byEntry.get(step.continuesAt);
-      if (!continuation) return null;
-      const entersService = continuation.participants.some(
-        (participant) =>
-          participant.id === step.to && participant.kind === "service",
-      );
-      if (!entersService || continuation.owner !== flow.owner) return null;
-      additions.push(continuation);
-      consumed.add(continuation.slug);
-      return prefixFlowNodes(
-        continuation.steps,
-        `continuation-${continuation.slug}`,
-      );
-    });
-    if (additions.length === 0) return flow;
+    const existing = new Set(flow.includes ?? []);
+    const expansion = expandExecution(
+      flow,
+      flow.steps,
+      [flow.slug],
+      existing,
+      byEntry,
+      byHandoff,
+      consumed,
+    );
+    if (expansion.includes.length === 0) return flow;
     any = true;
 
     const participants = [...flow.participants];
     const seen = new Set(participants.map((participant) => participant.id));
-    for (const continuation of additions) {
+    for (const continuation of expansion.fragments) {
       for (const participant of continuation.participants) {
         if (seen.has(participant.id)) continue;
         seen.add(participant.id);
@@ -262,9 +279,10 @@ function composeOutboundContinuations(input: Catalog): Catalog {
       ...flow,
       summary:
         flow.summary.replace(/\s*$/, "") +
-        " Source-backed outbound continuation is included.",
+        " Source-backed cross-protocol continuations are included.",
+      includes: unique([...(flow.includes ?? []), ...expansion.includes]),
       participants,
-      steps,
+      steps: expansion.nodes,
     };
   });
 
@@ -272,50 +290,197 @@ function composeOutboundContinuations(input: Catalog): Catalog {
   return {
     ...input,
     flows: flows.filter(
-      (flow) => !flow.entrypoint || !consumed.has(flow.slug),
+      (flow) =>
+        !consumed.has(flow.slug) ||
+        (flow.trigger !== undefined && flow.trigger.kind !== "unproven"),
     ),
   };
 }
 
-function expandContinuations(
+interface ExecutionExpansion {
+  nodes: FlowNode[];
+  includes: string[];
+  fragments: Flow[];
+}
+
+function expandExecution(
+  root: Flow,
   nodes: FlowNode[],
-  continuationOf: (step: Step) => FlowNode[] | null,
-): FlowNode[] {
+  path: string[],
+  existing: ReadonlySet<string>,
+  byEntry: ReadonlyMap<string, Flow | null>,
+  byHandoff: ReadonlyMap<string, Flow | null>,
+  consumed: Set<string>,
+): ExecutionExpansion {
   const out: FlowNode[] = [];
+  const includes: string[] = [];
+  const fragments: Flow[] = [];
   for (const node of nodes) {
     switch (node.type) {
       case "step": {
         out.push(node);
-        const continuation = continuationOf(node);
-        if (continuation) out.push(...continuation);
+        if (path.length > 12) break;
+        for (const continuation of continuationsFor(
+          root,
+          node,
+          byEntry,
+          byHandoff,
+        )) {
+          if (
+            path.includes(continuation.slug) ||
+            existing.has(continuation.slug)
+          ) {
+            continue;
+          }
+          const nestedExisting = new Set(continuation.includes ?? []);
+          const nested = expandExecution(
+            continuation,
+            continuation.steps,
+            [...path, continuation.slug],
+            nestedExisting,
+            byEntry,
+            byHandoff,
+            consumed,
+          );
+          const prefix = `continuation-${continuation.slug}-${node.id}`;
+          out.push(...prefixFlowNodes(nested.nodes, prefix));
+          includes.push(
+            continuation.slug,
+            ...(continuation.includes ?? []),
+            ...nested.includes,
+          );
+          fragments.push(continuation, ...nested.fragments);
+          if (
+            continuation.entrypoint &&
+            (!continuation.trigger || continuation.trigger.kind === "unproven")
+          ) {
+            consumed.add(continuation.slug);
+          }
+        }
         break;
       }
       case "alt":
-        out.push({
-          ...node,
-          branches: node.branches.map((branch) => ({
-            ...branch,
-            steps: expandContinuations(branch.steps, continuationOf),
-          })),
-        });
+        {
+          const branches = node.branches.map((branch) => {
+            const expanded = expandExecution(
+              root,
+              branch.steps,
+              path,
+              existing,
+              byEntry,
+              byHandoff,
+              consumed,
+            );
+            includes.push(...expanded.includes);
+            fragments.push(...expanded.fragments);
+            return { ...branch, steps: expanded.nodes };
+          });
+          out.push({
+            ...node,
+            branches,
+          });
+        }
         break;
       case "parallel":
-        out.push({
-          ...node,
-          branches: node.branches.map((branch) =>
-            expandContinuations(branch, continuationOf),
-          ),
-        });
+        {
+          const branches = node.branches.map((branch) => {
+            const expanded = expandExecution(
+              root,
+              branch,
+              path,
+              existing,
+              byEntry,
+              byHandoff,
+              consumed,
+            );
+            includes.push(...expanded.includes);
+            fragments.push(...expanded.fragments);
+            return expanded.nodes;
+          });
+          out.push({
+            ...node,
+            branches,
+          });
+        }
         break;
       case "loop":
-        out.push({
-          ...node,
-          steps: expandContinuations(node.steps, continuationOf),
-        });
+        {
+          const expanded = expandExecution(
+            root,
+            node.steps,
+            path,
+            existing,
+            byEntry,
+            byHandoff,
+            consumed,
+          );
+          includes.push(...expanded.includes);
+          fragments.push(...expanded.fragments);
+          out.push({
+            ...node,
+            steps: expanded.nodes,
+          });
+        }
         break;
     }
   }
-  return out;
+  return {
+    nodes: out,
+    includes: unique(includes),
+    fragments: uniqueFlows(fragments),
+  };
+}
+
+function continuationsFor(
+  root: Flow,
+  step: Step,
+  byEntry: ReadonlyMap<string, Flow | null>,
+  byHandoff: ReadonlyMap<string, Flow | null>,
+): Flow[] {
+  const found: Flow[] = [];
+  const sourceEntries = [step.continuesAt, ...(step.reaches ?? [])].filter(
+    (entry): entry is string => Boolean(entry),
+  );
+  for (const entry of sourceEntries) {
+    const continuation = byEntry.get(entry);
+    if (!continuation || continuation.owner !== root.owner) continue;
+    found.push(continuation);
+  }
+  if (step.handoff?.direction === "send") {
+    const continuation = byHandoff.get(handoffKey(step.handoff));
+    if (continuation) found.push(continuation);
+  }
+  return uniqueFlows(found);
+}
+
+function handoffKey(handoff: NonNullable<Step["handoff"]>): string {
+  return [
+    handoff.kind,
+    handoff.transport,
+    handoff.channel,
+    handoff.message ?? "",
+  ].join("\u0000");
+}
+
+function addUniqueFlow(
+  index: Map<string, Flow | null>,
+  key: string,
+  flow: Flow,
+): void {
+  index.set(key, index.has(key) ? null : flow);
+}
+
+function unique(values: string[]): string[] {
+  return [...new Set(values)];
+}
+
+function uniqueFlows(flows: Flow[]): Flow[] {
+  const seen = new Set<string>();
+  return flows.filter((flow) => {
+    if (seen.has(flow.slug)) return false;
+    seen.add(flow.slug);
+    return true;
+  });
 }
 
 function prefixFlowNodes(nodes: FlowNode[], prefix: string): FlowNode[] {
@@ -383,7 +548,8 @@ function resolveWireNames(catalog: Catalog): Catalog {
   if (byWire.size === 0) return catalog;
 
   const resolve = (step: Step): Step => {
-    if (step.kind !== "event" || step.ref || step.status !== "unresolved") return step;
+    if (step.kind !== "event" || step.ref || step.status !== "unresolved")
+      return step;
     const named = step.label;
     if (!named) return step;
     const found = byWire.get(named) ?? bySegment.get(named) ?? null;
@@ -459,7 +625,10 @@ function resolveForeignKeys(catalog: Catalog): Catalog {
 }
 
 /** The same tree, with every step handed to `resolve`. */
-function mapSteps(nodes: FlowNode[], resolve: (step: Step) => Step): FlowNode[] {
+function mapSteps(
+  nodes: FlowNode[],
+  resolve: (step: Step) => Step,
+): FlowNode[] {
   return nodes.map((node) => {
     switch (node.type) {
       case "step":
@@ -473,7 +642,10 @@ function mapSteps(nodes: FlowNode[], resolve: (step: Step) => Step): FlowNode[] 
           })),
         };
       case "parallel":
-        return { ...node, branches: node.branches.map((branch) => mapSteps(branch, resolve)) };
+        return {
+          ...node,
+          branches: node.branches.map((branch) => mapSteps(branch, resolve)),
+        };
       case "loop":
         return { ...node, steps: mapSteps(node.steps, resolve) };
     }

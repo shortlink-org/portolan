@@ -44,9 +44,10 @@ type worker struct {
 }
 
 type producer struct {
-	args  string
-	queue string
-	at    goscan.Source
+	args       string
+	queue      string
+	entrypoint string
+	at         goscan.Source
 }
 
 type queueJob struct {
@@ -201,7 +202,7 @@ func (s *scanner) indexWorkers(file *goscan.File) {
 		key := s.TypeKey(fn.Recv.List[0].Type, file)
 		s.workers[key] = &worker{
 			key: key, name: goscan.LastSegment(key), args: args,
-			entrypoint: sourceFunctionKey(file, goscan.LastSegment(key)+"."+fn.Name.Name),
+			entrypoint: s.riverFunctionKey(file, fn),
 			at:         s.At(fn.Pos()),
 		}
 	}
@@ -296,7 +297,7 @@ func (s *scanner) indexProducers(file *goscan.File) {
 						queue = named
 					}
 				}
-				s.producers = append(s.producers, producer{args: key, queue: queue, at: s.At(item.Pos())})
+				s.producers = append(s.producers, producer{args: key, queue: queue, entrypoint: s.riverFunctionKey(file, fn), at: s.At(item.Pos())})
 			}
 			return true
 		})
@@ -386,23 +387,53 @@ func riverFlow(serviceID, owner, queue string, job *queueJob) catalog.Flow {
 		slugged += "-" + goscan.Slug(queue)
 	}
 	doc := jobDescription(job.args)
+	handoff := func(direction string) *catalog.FlowHandoff {
+		return &catalog.FlowHandoff{Kind: "job", Transport: "river", Channel: queue, Message: job.args.kind, Direction: direction}
+	}
 	return catalog.Flow{
-		ID:      "flow." + slugged,
-		Slug:    slugged,
-		Name:    goscan.Title(job.args.kind) + " job",
-		Summary: "River job `" + job.args.kind + "` is inserted on `" + queue + "` and handled by `" + job.worker.name + ".Work`.",
-		Source:  job.producers[0].at.String(),
-		Trigger: &catalog.FlowTrigger{Kind: "job", Label: "River · " + queue, Confidence: "high"},
-		Owner:   owner,
+		ID:         "flow." + slugged,
+		Slug:       slugged,
+		Name:       goscan.Title(job.args.kind) + " job",
+		Summary:    "River job `" + job.args.kind + "` is inserted on `" + queue + "` and handled by `" + job.worker.name + ".Work`.",
+		Source:     job.producers[0].at.String(),
+		Trigger:    &catalog.FlowTrigger{Kind: "job", Label: "River · " + queue, Confidence: "high"},
+		EntryPoint: producerEntrypoint(job.producers),
+		Owner:      owner,
 		Participants: []catalog.Participant{
 			{ID: serviceID, Kind: catalog.ParticipantService, Context: stringPtr(owner)},
 			{ID: broker, Kind: catalog.ParticipantBroker, Label: "River · " + queue},
 		},
 		Steps: catalog.FlowNodes{
-			&catalog.Step{Type: "step", ID: "enqueue", From: serviceID, To: broker, Kind: catalog.StepCall, Label: "enqueue " + job.args.kind, Status: catalog.StatusDeclared, Note: doc, Line: job.producers[0].at.String()},
-			&catalog.Step{Type: "step", ID: "work", From: broker, To: serviceID, Kind: catalog.StepCall, Label: job.worker.name + ".Work", Status: catalog.StatusDeclared, Note: "River dispatches `" + job.args.kind + "` to the registered worker.", Line: job.worker.at.String(), ContinuesAt: job.worker.entrypoint},
+			&catalog.Step{Type: "step", ID: "enqueue", From: serviceID, To: broker, Kind: catalog.StepCall, Label: "enqueue " + job.args.kind, Status: catalog.StatusDeclared, Note: doc, Line: job.producers[0].at.String(), Handoff: handoff("send")},
+			&catalog.Step{Type: "step", ID: "work", From: broker, To: serviceID, Kind: catalog.StepCall, Label: job.worker.name + ".Work", Status: catalog.StatusDeclared, Note: "River dispatches `" + job.args.kind + "` to the registered worker.", Line: job.worker.at.String(), ContinuesAt: job.worker.entrypoint, Handoff: handoff("receive")},
 		},
 	}
+}
+
+func producerEntrypoint(producers []producer) string {
+	seen := map[string]bool{}
+	entrypoint := ""
+	for _, producer := range producers {
+		if producer.entrypoint == "" || seen[producer.entrypoint] {
+			continue
+		}
+		seen[producer.entrypoint] = true
+		if entrypoint != "" {
+			return ""
+		}
+		entrypoint = producer.entrypoint
+	}
+	return entrypoint
+}
+
+func (s *scanner) riverFunctionKey(file *goscan.File, fn *ast.FuncDecl) string {
+	name := fn.Name.Name
+	if fn.Recv != nil && len(fn.Recv.List) > 0 {
+		if receiver := s.TypeKey(fn.Recv.List[0].Type, file); receiver != "" {
+			name = goscan.LastSegment(receiver) + "." + name
+		}
+	}
+	return sourceFunctionKey(file, name)
 }
 
 func sourceFunctionKey(file *goscan.File, name string) string {

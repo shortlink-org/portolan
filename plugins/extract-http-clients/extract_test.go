@@ -852,6 +852,12 @@ func (*Client) Search() { _, _ = http.Get("https://beta.example/search") }
 	if providers.Branches[0].Title != `connector = "alpha"` || providers.Branches[1].Title != `connector = "beta"` {
 		t.Fatalf("provider map titles = %+v", providers.Branches)
 	}
+	for _, branch := range providers.Branches {
+		step := branch.Steps[len(branch.Steps)-1].(*catalog.Step)
+		if len(step.Reaches) != 1 || !strings.HasSuffix(step.Reaches[0], ":Client.Search") {
+			t.Fatalf("provider reachability = %+v", step.Reaches)
+		}
+	}
 }
 
 func TestBuildsDirectHTTPRootThroughClosureAndLocalVariable(t *testing.T) {
@@ -894,7 +900,7 @@ func (*Cache) Update() error {
 	if flow.Trigger == nil || flow.Trigger.Kind != "http" || flow.Trigger.Confidence != "high" {
 		t.Fatalf("trigger = %+v", flow.Trigger)
 	}
-	if step := flow.Steps[1].(*catalog.Step); step.Label != "GET /v1/airports" {
+	if step := flow.Steps[1].(*catalog.Step); step.Label != "GET /v1/airports" || len(step.Reaches) != 1 || step.Reaches[0] != "cache:Cache.Update" {
 		t.Fatalf("outbound step = %+v", step)
 	}
 }
