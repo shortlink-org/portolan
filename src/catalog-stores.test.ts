@@ -161,6 +161,52 @@ describe("store validation", () => {
     }
     expect(() => validateCatalog(bare)).not.toThrow();
   });
+
+  it("accepts source-backed Redis key patterns", () => {
+    const redis = clone();
+    const store = omsStore(redis);
+    store.kind = "redis";
+    store.keyspaces = [
+      {
+        pattern: "session:{id}",
+        operations: ["read", "write", "delete"],
+        ttl: "24h",
+        value: "Session",
+        source: "cache.go:20",
+      },
+    ];
+    expect(() => validateCatalog(redis)).not.toThrow();
+  });
+
+  it("rejects Redis key patterns on a non-Redis store", () => {
+    const bad = clone();
+    omsStore(bad).keyspaces = [
+      { pattern: "session:{id}", operations: ["read"] },
+    ];
+    expect(failureOf(bad).message).toContain("has kind \"postgres\"");
+  });
+
+  it("rejects duplicate key patterns and unknown operations", () => {
+    const duplicate = clone();
+    const store = omsStore(duplicate);
+    store.kind = "redis";
+    store.keyspaces = [
+      { pattern: "session:{id}", operations: ["read"] },
+      { pattern: "session:{id}", operations: ["write"] },
+    ];
+    expect(failureOf(duplicate).message).toContain("repeats Redis key pattern");
+
+    const unknown = clone();
+    const redis = omsStore(unknown);
+    redis.kind = "redis";
+    redis.keyspaces = [
+      {
+        pattern: "session:{id}",
+        operations: ["rename" as "read"],
+      },
+    ];
+    expect(failureOf(unknown).message).toContain("rename");
+  });
 });
 
 describe("view validation", () => {

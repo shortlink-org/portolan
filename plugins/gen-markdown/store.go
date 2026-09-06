@@ -23,6 +23,23 @@ func (s *site) renderStore(store *catalog.Store) {
 	}
 	b.WriteString(defList(meta))
 
+	keyspaces := make([][]string, 0, len(store.Keyspaces))
+	for i := range store.Keyspaces {
+		keyspace := &store.Keyspaces[i]
+		source := ""
+		if keyspace.Source != "" {
+			source = s.source(self, keyspace.Source, s.services[store.Owner])
+		}
+		operations := make([]string, 0, len(keyspace.Operations))
+		for _, operation := range keyspace.Operations {
+			operations = append(operations, string(operation))
+		}
+		keyspaces = append(keyspaces, []string{
+			code(keyspace.Pattern), strings.Join(operations, ", "), code(keyspace.Value), code(keyspace.TTL), source,
+		})
+	}
+	section(&b, "Redis key patterns", table([]string{"Pattern", "Operations", "Value", "TTL", "Source"}, keyspaces))
+
 	var tables strings.Builder
 	for i := range store.Tables {
 		s.renderTable(&tables, self, store, &store.Tables[i])

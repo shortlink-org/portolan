@@ -147,6 +147,13 @@
       }
     },
     {
+      "name": "redis",
+      "process": {
+        "command": "go",
+        "args": ["run", "./plugins/extract-redis"]
+      }
+    },
+    {
       "name": "river",
       "process": {
         "command": "go",

@@ -153,7 +153,11 @@ func (s *site) llmsIndex() string {
 		if owner, ok := s.services[store.Owner]; ok {
 			note += " of " + s.ref(self, owner.ID, owner.Name)
 		}
-		optional = append(optional, entry(s.ref(self, store.ID, store.Name), note, plural(len(store.Tables), "table")))
+		schema := plural(len(store.Tables), "table")
+		if len(store.Keyspaces) > 0 {
+			schema = plural(len(store.Keyspaces), "key pattern")
+		}
+		optional = append(optional, entry(s.ref(self, store.ID, store.Name), note, schema))
 	}
 	section(&b, "Optional", list(optional))
 

@@ -189,6 +189,29 @@ function goSOAPClientEvidence(root, files) {
   return "";
 }
 
+function goRedisEvidence(root, files) {
+  const redisImport = /github\.com\/(?:redis\/go-redis(?:\/v\d+)?|go-redis\/redis(?:\/v\d+)?|redis\/rueidis|gomodule\/redigo\/redis)(?=\")/g;
+  for (const name of matches(files, /\.go$/).filter((name) => !name.endsWith("_test.go"))) {
+    let source = "";
+    try { source = readFileSync(join(root, name), "utf8"); } catch { continue; }
+    const imports = [...source.matchAll(redisImport)].map((match) => match[0]);
+    if (!imports.length) continue;
+
+    const aliases = new Set();
+    for (const importPath of imports) {
+      const escaped = importPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const declaration = new RegExp(`(?:^|\\n)\\s*(?:import\\s+)?(?:([A-Za-z_][A-Za-z0-9_]*)\\s+)?\"${escaped}\"`, "m").exec(source);
+      const alias = declaration?.[1];
+      if (alias && alias !== "_" && alias !== ".") aliases.add(alias);
+      else aliases.add(importPath.includes("rueidis") ? "rueidis" : "redis");
+    }
+    if ([...aliases].some((alias) => new RegExp(`\\b${alias}\\.(?:NewClient|NewClusterClient|NewFailoverClient|NewFailoverClusterClient|Dial|DialURL)\\s*\\(`).test(source))) {
+      return name;
+    }
+  }
+  return "";
+}
+
 function detectionsFor(root, files) {
   let goMod = "";
   if (files.has("go.mod")) {
@@ -218,6 +241,7 @@ function detectionsFor(root, files) {
   const goDomain = files.has("go.mod") ? goDomainEvidence(root, files) : "";
   const goHTTPClient = files.has("go.mod") ? goHTTPClientEvidence(root, files) : "";
   const goSOAPClient = files.has("go.mod") ? goSOAPClientEvidence(root, files) : "";
+  const goRedis = files.has("go.mod") ? goRedisEvidence(root, files) : "";
   const tsDomain = files.has("package.json") ? laidOutDomainEvidence(root, files, "typescript") : "";
   const rustDomain = files.has("Cargo.toml") ? laidOutDomainEvidence(root, files, "rust") : "";
   const javaDomain = ["pom.xml", "build.gradle", "build.gradle.kts"].some((name) => files.has(name)) ? laidOutDomainEvidence(root, files, "java") : "";
@@ -241,6 +265,7 @@ function detectionsFor(root, files) {
       true,
     ),
     detected("http-clients", goHTTPClient ? [goHTTPClient] : [], {}, goHTTPClient),
+    detected("redis", goRedis ? [goRedis] : [], {}, goRedis),
     detected("river", goMod.includes("github.com/riverqueue/river") ? ["go.mod"] : [], {}, "go.mod · github.com/riverqueue/river"),
     detected("watermill", goMod.includes("github.com/ThreeDotsLabs/watermill") ? ["go.mod"] : [], {}, "go.mod · github.com/ThreeDotsLabs/watermill"),
     detected("asyncapi", asyncapi, asyncapi[0] ? { spec: asyncapi[0] } : {}, asyncapi[0], true),
@@ -384,6 +409,7 @@ function pluginOptions(plugin, project, detectedOptions = {}) {
     return { ...common, ...(project.repository ? { repo: repositoryParts(project.repository).web } : {}), ...detectedOptions, out: "domain.json" };
   }
   if (plugin === "sql") return { ...common, store: "pg", ...detectedOptions, out: "stores.json" };
+  if (plugin === "redis") return { ...common, store: "redis", ...detectedOptions, out: "redis.json" };
   if (plugin === "openapi") return { ...common, ...detectedOptions, out: "api.json" };
   if (plugin === "wsdl") return { ...common, ...detectedOptions, out: "wsdl.json" };
   if (plugin === "http-clients") return { ...common, ...detectedOptions, out: "http-clients.json" };

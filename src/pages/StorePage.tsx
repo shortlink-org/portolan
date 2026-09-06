@@ -13,6 +13,7 @@ import { servicePath } from "../routes";
 import { ContextPill } from "../components/primitives";
 import { ErCanvas } from "../er/ErCanvas";
 import { StoreHeader } from "../er/StoreHeader";
+import { RedisSchema } from "../er/RedisSchema";
 import {
   readersOfStore,
   storeColumnCount,
@@ -43,6 +44,7 @@ export function StorePage() {
   const columns = storeColumnCount(store);
   const views = storeViewCount(store);
   const readers = readersOfStore(catalog, store.id, store.owner);
+  const keyspaces = store.keyspaces ?? [];
 
   return (
     <div className="flex h-full flex-col">
@@ -58,13 +60,23 @@ export function StorePage() {
         </div>
         <div className="mono mt-2 flex flex-wrap items-center gap-x-3 text-muted">
           <span>
-            <span className="tnum">{store.tables.length}</span>{" "}
-            {plural(store.tables.length, "table")} ·{" "}
-            <span className="tnum">{columns}</span> {plural(columns, "column")}
+            {keyspaces.length > 0 ? (
+              <>
+                <span className="tnum">{keyspaces.length}</span>{" "}
+                {plural(keyspaces.length, "key pattern")}
+              </>
+            ) : (
+              <>
+                <span className="tnum">{store.tables.length}</span>{" "}
+                {plural(store.tables.length, "table")} ·{" "}
+                <span className="tnum">{columns}</span>{" "}
+                {plural(columns, "column")}
+              </>
+            )}
             {/* Views are counted apart from the tables rather than added to
                 them: they hold no rows, and one number for both would answer
                 "how much is stored here" with the wrong figure. */}
-            {views > 0 ? (
+            {keyspaces.length === 0 && views > 0 ? (
               <>
                 {" · "}
                 <span className="tnum">{views}</span> {plural(views, "view")}
@@ -99,8 +111,12 @@ export function StorePage() {
 
       {/* The canvas takes the rest of the pane rather than a fixed height: on
           this page the schema IS the content, so it gets the room. */}
-      <div className="min-h-0 flex-1 p-gutter">
-        <ErCanvas store={store} height="100%" />
+      <div className="min-h-0 flex-1 overflow-auto p-gutter">
+        {keyspaces.length > 0 ? (
+          <RedisSchema store={store} />
+        ) : (
+          <ErCanvas store={store} height="100%" />
+        )}
       </div>
     </div>
   );

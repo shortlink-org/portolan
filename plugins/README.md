@@ -161,6 +161,14 @@ queue, `Worker[Args].Work`, and `river.AddWorker`. The result is a work-queue
 channel plus a two-hop enqueue/dispatch flow, with payload fields and source
 lines. It does not need aggregates and does not treat a job as a domain event.
 
+`extract-redis` finds runtime construction of go-redis, rueidis and redigo
+clients in non-test Go source. That source evidence adds a service-owned Redis
+store to the catalog even when the repository has no SQL migrations or domain
+model. It follows literals, constants, concatenation, `fmt.Sprintf`, helper
+functions and conditional suffixes into common Redis operations, producing
+key patterns with their read/write/delete use, TTL, value type and source. The
+patterns remain Redis keyspaces rather than being presented as SQL tables.
+
 `extract-watermill` reads Watermill `Router.AddHandler` and
 `AddNoPublisherHandler` registrations. It resolves literal and constant topics,
 plus defaults on env-config structs, follows direct `Publisher.Publish` calls

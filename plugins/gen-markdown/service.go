@@ -410,15 +410,19 @@ func (s *site) storesTable(from string, svc *catalog.Service) string {
 		if store.Owner == svc.ID {
 			access = "owns"
 		}
+		schema := plural(len(store.Tables), "table")
+		if len(store.Keyspaces) > 0 {
+			schema = plural(len(store.Keyspaces), "key pattern")
+		}
 		rows = append(rows, []string{
 			s.ref(from, store.ID, store.Name),
 			string(store.Kind),
 			access,
-			plural(len(store.Tables), "table"),
+			schema,
 		})
 	}
 
-	return table([]string{"Store", "Kind", "Access", "Tables"}, rows)
+	return table([]string{"Store", "Kind", "Access", "Schema"}, rows)
 }
 
 // commandsTable is what a developer types against the checkout, one row per
