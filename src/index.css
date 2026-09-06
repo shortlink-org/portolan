@@ -1060,20 +1060,6 @@
     box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent);
   }
 }
-
-/* The two overlays that arrive from an edge rather than from nowhere: the
-   catalog drawer from the left, the detail sheet from the right. Both are the
-   panel duration - they are panels, they have just run out of room to be one. */
-@keyframes drawer-in {
-  from {
-    transform: translateX(-100%);
-  }
-}
-@keyframes sheet-in {
-  from {
-    transform: translateX(100%);
-  }
-}
 /* The chat's waiting sprite: eight 24px frames in one SVG, stepped along. */
 @keyframes chat-sprite {
   to {
@@ -1081,7 +1067,9 @@
   }
 }
 
-/* Route content rises on mount. No exit: the outgoing route is simply gone. */
+/* Route content rises on mount. No exit: the outgoing route is simply gone.
+   Anything that also LEAVES - the palette, the drawer, the sheet, the toast -
+   is not here: that is Motion, in lib/motion.tsx, on the same tokens. */
 @utility page-in {
   animation: page-in var(--dur-page) var(--ease-out) both;
 }
@@ -1093,12 +1081,6 @@
 }
 @utility overlay-in {
   animation: fade-in var(--dur-panel) var(--ease-out) both;
-}
-@utility drawer-in {
-  animation: drawer-in var(--dur-panel) var(--ease-out) both;
-}
-@utility sheet-in {
-  animation: sheet-in var(--dur-panel) var(--ease-out) both;
 }
 /* 20ms per row, capped at ten rows by the --i the row sets. */
 @utility stagger-in {

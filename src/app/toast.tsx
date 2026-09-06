@@ -7,6 +7,7 @@
 
 import { useEffect } from "react";
 import { create } from "zustand";
+import { AnimatePresence, m, rise } from "../lib/motion";
 
 interface ToastState {
   message: string | null;
@@ -36,17 +37,23 @@ export function Toaster() {
     return () => clearTimeout(timer);
   }, [message, nonce, clear]);
 
-  if (!message) return null;
+  // It rises in and sinks out. A second message while one is up swaps the
+  // text in place: the box is the same box, only its line changed.
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      /* Bottom RIGHT, not left: the foot of the sidebar is where Problems and
-         the build line are pinned, and a message that covers them for four
-         seconds hides the one row that promised never to leave. */
-      className="overlay-in mono pointer-events-none fixed right-4 bottom-4 z-50 max-w-80 rounded-control border px-3 py-2 shadow-md border-line bg-canvas text-ink"
-    >
-      {message}
-    </div>
+    <AnimatePresence>
+      {message && (
+        <m.div
+          {...rise}
+          role="status"
+          aria-live="polite"
+          /* Bottom RIGHT, not left: the foot of the sidebar is where Problems
+             and the build line are pinned, and a message that covers them for
+             four seconds hides the one row that promised never to leave. */
+          className="mono pointer-events-none fixed right-4 bottom-4 z-50 max-w-80 rounded-control border px-3 py-2 shadow-md border-line bg-canvas text-ink"
+        >
+          {message}
+        </m.div>
+      )}
+    </AnimatePresence>
   );
 }

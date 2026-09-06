@@ -80,7 +80,9 @@ describe("presence", () => {
     ["unfold", unfold],
     ["slideFrom", slideFrom("100%")],
   ])("%s leaves the way it came", (_, p) => {
-    expect(p.exit).toEqual(p.initial);
+    const { transition, ...exit } = p.exit;
+    expect(transition).toBeDefined();
+    expect(exit).toEqual(p.initial);
   });
 
   it.each([
@@ -89,8 +91,9 @@ describe("presence", () => {
     ["rise", rise],
     ["unfold", unfold],
     ["slideFrom", slideFrom("100%")],
-  ])("%s runs on the panel duration", (_, p) => {
-    expect(p.transition).toBe(transitions.panel);
+  ])("%s runs on the panel duration, both ways", (_, p) => {
+    expect(p.animate.transition).toBe(transitions.panel);
+    expect(p.exit.transition).toBe(transitions.panel);
   });
 
   it("rise travels the eight pixels page-in travels", () => {

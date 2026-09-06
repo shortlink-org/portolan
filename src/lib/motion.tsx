@@ -16,7 +16,7 @@
 import { useEffect, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { AnimatePresence, LazyMotion, MotionConfig, m } from "motion/react";
-import type { Transition } from "motion/react";
+import type { Target, TargetAndTransition, Transition } from "motion/react";
 
 export { AnimatePresence, m };
 
@@ -59,35 +59,36 @@ export const transitions = {
    element inside an <AnimatePresence>.
    --------------------------------------------------------------------------- */
 
+/**
+ * The transition rides inside the targets, not as a prop of its own: Headless
+ * UI's DialogPanel has a boolean `transition` of its own, and a preset that
+ * carried one could not be spread onto it.
+ */
 interface Presence {
-  initial: Record<string, number>;
-  animate: Record<string, number>;
-  exit: Record<string, number>;
-  transition: Transition;
+  initial: Target;
+  animate: TargetAndTransition;
+  exit: TargetAndTransition;
 }
 
 /** A backdrop, a toast body: opacity only. */
 export const fade: Presence = {
   initial: { opacity: 0 },
-  animate: { opacity: 1 },
-  exit: { opacity: 0 },
-  transition: transitions.panel,
+  animate: { opacity: 1, transition: transitions.panel },
+  exit: { opacity: 0, transition: transitions.panel },
 };
 
 /** A modal: it grows into place by two percent, and shrinks the same on exit. */
 export const scaleIn: Presence = {
   initial: { opacity: 0, scale: 0.98 },
-  animate: { opacity: 1, scale: 1 },
-  exit: { opacity: 0, scale: 0.98 },
-  transition: transitions.panel,
+  animate: { opacity: 1, scale: 1, transition: transitions.panel },
+  exit: { opacity: 0, scale: 0.98, transition: transitions.panel },
 };
 
 /** A row, a toast, a page: rises the CSS `page-in` eight pixels. */
 export const rise: Presence = {
   initial: { opacity: 0, y: 8 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: 8 },
-  transition: transitions.panel,
+  animate: { opacity: 1, y: 0, transition: transitions.panel },
+  exit: { opacity: 0, y: 8, transition: transitions.panel },
 };
 
 /**
@@ -98,10 +99,9 @@ export const rise: Presence = {
  */
 export function slideFrom(x: number | string): Presence {
   return {
-    initial: { x: x as number },
-    animate: { x: 0 },
-    exit: { x: x as number },
-    transition: transitions.panel,
+    initial: { x },
+    animate: { x: 0, transition: transitions.panel },
+    exit: { x, transition: transitions.panel },
   };
 }
 
@@ -111,9 +111,8 @@ export function slideFrom(x: number | string): Presence {
  */
 export const unfold: Presence = {
   initial: { height: 0, opacity: 0 },
-  animate: { height: "auto" as unknown as number, opacity: 1 },
-  exit: { height: 0, opacity: 0 },
-  transition: transitions.panel,
+  animate: { height: "auto", opacity: 1, transition: transitions.panel },
+  exit: { height: 0, opacity: 0, transition: transitions.panel },
 };
 
 /* ---------------------------------------------------------------------------
