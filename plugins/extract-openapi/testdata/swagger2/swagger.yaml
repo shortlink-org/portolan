@@ -1,0 +1,75 @@
+swagger: "2.0"
+info:
+  title: aviasupp
+  version: "1.0"
+parameters:
+  Trace:
+    in: header
+    name: X-Trace
+    type: string
+paths:
+  /book:
+    parameters:
+      - $ref: "#/parameters/Trace"
+    post:
+      tags: [Book]
+      consumes: [application/json]
+      parameters:
+        - in: body
+          name: request
+          required: true
+          schema:
+            $ref: "#/definitions/book.Request"
+      produces: [application/json]
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: "#/definitions/book.Response"
+  /search:
+    parameters:
+      - in: body
+        name: request
+        schema:
+          $ref: "#/definitions/search.Request"
+    post:
+      tags: [Search]
+      operationId: search
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/search.Offer"
+definitions:
+  book.Request:
+    type: object
+    required: [offer_id]
+    properties:
+      offer_id:
+        type: string
+      passengers:
+        type: array
+        items:
+          $ref: "#/definitions/book.Passenger"
+  book.Passenger:
+    type: object
+    properties:
+      name:
+        type: string
+  book.Response:
+    type: object
+    properties:
+      booking_id:
+        type: string
+  search.Request:
+    type: object
+    properties:
+      origin:
+        type: string
+  search.Offer:
+    type: object
+    properties:
+      price:
+        type: number

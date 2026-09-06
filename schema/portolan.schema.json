@@ -50,6 +50,7 @@
         "properties": {
           "plugin": {
             "enum": [
+              "project",
               "go-domain",
               "ts-domain",
               "rust-domain",
@@ -57,6 +58,9 @@
               "django-domain",
               "celery",
               "openapi",
+              "http-clients",
+              "river",
+              "watermill",
               "asyncapi",
               "graphql",
               "sql",
@@ -82,6 +86,25 @@
           }
         },
         "allOf": [
+          {
+            "if": {
+              "required": [
+                "plugin"
+              ],
+              "properties": {
+                "plugin": {
+                  "const": "project"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "options": {
+                  "$ref": "#/$defs/options.project"
+                }
+              }
+            }
+          },
           {
             "if": {
               "required": [
@@ -211,6 +234,63 @@
               "properties": {
                 "options": {
                   "$ref": "#/$defs/options.openapi"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "plugin"
+              ],
+              "properties": {
+                "plugin": {
+                  "const": "http-clients"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "options": {
+                  "$ref": "#/$defs/options.http-clients"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "plugin"
+              ],
+              "properties": {
+                "plugin": {
+                  "const": "river"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "options": {
+                  "$ref": "#/$defs/options.river"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "plugin"
+              ],
+              "properties": {
+                "plugin": {
+                  "const": "watermill"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "options": {
+                  "$ref": "#/$defs/options.watermill"
                 }
               }
             }
@@ -564,12 +644,46 @@
         "context": {
           "type": "string",
           "minLength": 1,
-          "description": "Bounded context this project contributes to, when it has one."
+          "description": "Legacy alias for group. Kept so existing manifests remain valid."
         },
         "service": {
           "type": "string",
           "minLength": 1,
-          "description": "Service slug inside the context, when this is a service project."
+          "description": "Legacy alias for component. Kept so existing manifests remain valid."
+        },
+        "group": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Neutral top-level group this project contributes to."
+        },
+        "component": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Component slug inside the group."
+        },
+        "groupKind": {
+          "enum": [
+            "bounded-context",
+            "system",
+            "product",
+            "team",
+            "namespace"
+          ],
+          "description": "Semantic role of the project's top-level group."
+        },
+        "componentKind": {
+          "enum": [
+            "service",
+            "application",
+            "webapp",
+            "worker",
+            "job",
+            "function",
+            "cli",
+            "library",
+            "data-pipeline"
+          ],
+          "description": "Runtime or code role of the project component."
         },
         "repository": {
           "type": "string",
@@ -645,6 +759,65 @@
         }
       }
     },
+    "options.project": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "group": {
+          "type": "string",
+          "description": "Slug of the neutral top-level group. Defaults to the input directory name."
+        },
+        "groupName": {
+          "type": "string",
+          "description": "Human-readable group name. Defaults to the group slug, titled."
+        },
+        "groupSummary": {
+          "type": "string",
+          "description": "A short statement of what the group is responsible for."
+        },
+        "groupKind": {
+          "enum": [
+            "bounded-context",
+            "system",
+            "product",
+            "team",
+            "namespace"
+          ],
+          "description": "Semantic role of the top-level group. Defaults to system for this neutral extractor."
+        },
+        "component": {
+          "type": "string",
+          "description": "Slug of the component. Defaults to the input directory name."
+        },
+        "componentName": {
+          "type": "string",
+          "description": "Human-readable component name. Defaults to the README title and then the slug, titled."
+        },
+        "componentKind": {
+          "enum": [
+            "service",
+            "application",
+            "webapp",
+            "worker",
+            "job",
+            "function",
+            "cli",
+            "library",
+            "data-pipeline"
+          ],
+          "description": "Runtime or code role. When absent, the extractor uses conservative repository evidence."
+        },
+        "repo": {
+          "type": "string",
+          "description": "Source repository identity. Defaults to a Go module, package.json repository, Cargo package, or Maven coordinates when present."
+        },
+        "out": {
+          "type": "string",
+          "description": "Name of the fragment file inside the step output directory.",
+          "default": "project.json"
+        }
+      }
+    },
     "options.go-domain": {
       "type": "object",
       "additionalProperties": false,
@@ -711,6 +884,18 @@
             {
               "risk.v1": "shop.risk",
               "auth.v1": "auth.auth"
+            }
+          ]
+        },
+        "externals": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Which system outside the estate answers to an api this service calls, as the api id to the external's bare id. Left out, a generated HTTP client whose package no peers line claims is read as calling the system its vendored document is titled after: a document titled \"Stripe API\" makes the external stripe.",
+          "examples": [
+            {
+              "stripe.v1": "stripe"
             }
           ]
         },
@@ -1213,9 +1398,33 @@
         },
         "spec": {
           "type": "string",
-          "description": "The OpenAPI document, relative to the input root. Left out, the extractor looks for one.",
+          "description": "The OpenAPI document, relative to the input root. Left out, the extractor walks the tree for every document and reads what sits beside each: a server generated from it means this service implements it, a client generated from it means this service calls it, and a called document names a system outside the estate unless peers says the api is one of ours.",
           "examples": [
             "internal/infrastructure/transport/http/gen/openapi.yaml"
+          ]
+        },
+        "peers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Which called documents are ours, as the api id to the service that implements it. A called document whose api is named here is that service's to describe, and is skipped rather than read as a system outside the estate.",
+          "examples": [
+            {
+              "auth.v1": "auth.auth"
+            }
+          ]
+        },
+        "externals": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "What a called document's system is called when the name its title would give is not the one wanted, as the api id to the external's bare id. Left out, a document titled \"Stripe API\" makes the external stripe.",
+          "examples": [
+            {
+              "stripe.v1": "stripe"
+            }
           ]
         },
         "api": {
@@ -1254,6 +1463,105 @@
           "type": "string",
           "description": "Name of the fragment file, inside the step's output directory.",
           "default": "api.json"
+        }
+      }
+    },
+    "options.http-clients": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "Slug of the top-level group that owns the component. Defaults to the input directory name.",
+          "examples": [
+            "avia"
+          ]
+        },
+        "service": {
+          "type": "string",
+          "description": "Slug of the component making outbound calls. Defaults to the input directory name.",
+          "examples": [
+            "billing"
+          ]
+        },
+        "peers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Internal service answering an API, as API id to service id.",
+          "examples": [
+            {
+              "auth.v1": "auth.auth"
+            }
+          ]
+        },
+        "externals": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Override for the external system named by a vendored client contract, as API id to external id.",
+          "examples": [
+            {
+              "gordian.v2": "gordian"
+            }
+          ]
+        },
+        "out": {
+          "type": "string",
+          "description": "Name of the fragment file inside the step output directory.",
+          "default": "http-clients.json"
+        }
+      }
+    },
+    "options.river": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "Slug of the top-level group that owns the component. Defaults to the input directory name.",
+          "examples": [
+            "avia"
+          ]
+        },
+        "service": {
+          "type": "string",
+          "description": "Slug of the component that inserts or handles River jobs. Defaults to the input directory name.",
+          "examples": [
+            "billing"
+          ]
+        },
+        "out": {
+          "type": "string",
+          "description": "Name of the fragment file inside the step output directory.",
+          "default": "river.json"
+        }
+      }
+    },
+    "options.watermill": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "Slug of the top-level group that owns the component. Defaults to the input directory name.",
+          "examples": [
+            "avia"
+          ]
+        },
+        "service": {
+          "type": "string",
+          "description": "Slug of the component that registers Watermill handlers or publishes messages. Defaults to the input directory name.",
+          "examples": [
+            "billing"
+          ]
+        },
+        "out": {
+          "type": "string",
+          "description": "Name of the fragment file inside the step output directory.",
+          "default": "watermill.json"
         }
       }
     },
@@ -1535,6 +1843,23 @@
               "adr/*.md"
             ]
           ]
+        },
+        "scope": {
+          "type": "string",
+          "description": "What a record is about when it does not say so itself: \"org\", a context slug, or \"<context>.<service>\". A record written by adr-tools has no scope of its own and takes its id's prefix from here; a MADR record with a Scope bullet keeps its own.",
+          "examples": [
+            "avia.aviasupp",
+            "payments",
+            "org"
+          ]
+        },
+        "history": {
+          "enum": [
+            "git",
+            "none"
+          ],
+          "description": "Where a record's author and dates come from. \"git\", the default, reads the file's commits: who first added it and who last touched it. \"none\" reads nothing, for a tree that is not a checkout or a fragment that must not change when the history does.",
+          "default": "git"
         },
         "out": {
           "type": "string",

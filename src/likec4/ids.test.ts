@@ -68,6 +68,19 @@ describe("fqn", () => {
     expect(participantFqn("bus")).toBe("bus");
     expect(participantFqn("fraud-scoring")).toBe("fraud_scoring");
   });
+
+  it("keeps dots hierarchical for services but literal for root participants", () => {
+    expect(
+      participantFqn({ id: "shop.oms", kind: "service", context: "shop" }),
+    ).toBe("shop.oms");
+    expect(
+      participantFqn({
+        id: "river.order-jobs",
+        kind: "broker",
+        context: null,
+      }),
+    ).toBe("river_order_jobs");
+  });
 });
 
 describe("view ids", () => {

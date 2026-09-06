@@ -38,7 +38,13 @@ export function sourceDocKind(source: string): SourceDocKind {
   const path = docPathOf(source).toLowerCase();
   if (path.endsWith(".proto")) return "proto";
   if (path.endsWith(".graphql") || path.endsWith(".graphqls")) return "graphql";
-  if (path.endsWith(".yaml") || path.endsWith(".yml")) return "openapi";
+  if (
+    path.endsWith(".yaml") ||
+    path.endsWith(".yml") ||
+    path.endsWith(".json")
+  ) {
+    return "openapi";
+  }
 
   return null;
 }

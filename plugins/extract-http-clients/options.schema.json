@@ -1,0 +1,33 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "context": {
+      "type": "string",
+      "description": "Slug of the top-level group that owns the component. Defaults to the input directory name.",
+      "examples": ["avia"]
+    },
+    "service": {
+      "type": "string",
+      "description": "Slug of the component making outbound calls. Defaults to the input directory name.",
+      "examples": ["billing"]
+    },
+    "peers": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "Internal service answering an API, as API id to service id.",
+      "examples": [{ "auth.v1": "auth.auth" }]
+    },
+    "externals": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "Override for the external system named by a vendored client contract, as API id to external id.",
+      "examples": [{ "gordian.v2": "gordian" }]
+    },
+    "out": {
+      "type": "string",
+      "description": "Name of the fragment file inside the step output directory.",
+      "default": "http-clients.json"
+    }
+  }
+}

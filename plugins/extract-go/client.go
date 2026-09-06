@@ -28,6 +28,10 @@ type client struct {
 	methods map[string]string
 	// source is the generated file, or the document, the names were read from.
 	source string
+	// external is the system the document beside an HTTP client is titled
+	// after, as an id: what the far end is called when no peers line says it
+	// is one of ours. Empty for a gRPC client, whose proto names no system.
+	external string
 }
 
 // readClients finds every client a package declares, keyed by the type a port
@@ -368,8 +372,27 @@ func (r *flowReader) peerLane(d *flowDraft, client client) (lane, peer string, s
 		return d.lane(catalog.Participant{ID: service, Kind: catalog.ParticipantService, Context: &context}), service, catalog.StatusDeclared
 	}
 
+	// A system outside the estate, with a contract: the call lands on an
+	// operation its document declares, so the step is declared, and the lane
+	// says what the far end is rather than pretending it is ours. The manifest
+	// may name the system; failing that, the document beside the client does,
+	// because a service that vendors a document and generates a client from
+	// it is calling whatever that document is titled, and nothing in this
+	// tree implements it.
+	external := r.opts.externals[client.pkg]
+	if external == "" && client.external != "" {
+		external = client.external
+		if !r.warnedPeer[client.pkg] {
+			r.b.Warn(r.opts.svcID, "calls "+client.pkg+", which no peers line claims; read as calling "+external+", the system the document beside the client is titled after - add the package under `peers` if it is one of ours")
+			r.warnedPeer[client.pkg] = true
+		}
+	}
+	if external != "" {
+		return d.lane(catalog.Participant{ID: external, Kind: catalog.ParticipantExternal}), external, catalog.StatusDeclared
+	}
+
 	if !r.warnedPeer[client.pkg] {
-		r.b.Warn(r.opts.svcID, "calls "+client.pkg+" and the manifest names no peer for that package; add it under `peers` to say which service answers, until then the calls are unresolved")
+		r.b.Warn(r.opts.svcID, "calls "+client.pkg+" and the manifest names no peer for that package; add it under `peers` to say which service answers, or under `externals` when the far end is outside the estate, until then the calls are unresolved")
 		r.warnedPeer[client.pkg] = true
 	}
 

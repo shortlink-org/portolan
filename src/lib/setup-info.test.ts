@@ -63,6 +63,26 @@ describe("publicSetupFrom", () => {
     expect(JSON.stringify(setup)).not.toContain("command");
   });
 
+  it("publishes neutral project scope and kinds", () => {
+    const setup = publicSetupFrom({
+      projects: [{
+        id: "tools",
+        name: "Tools",
+        root: "tools",
+        group: "platform",
+        component: "cli",
+        groupKind: "team",
+        componentKind: "cli",
+      }],
+    });
+    expect(setup.projects[0]).toMatchObject({
+      group: "platform",
+      component: "cli",
+      groupKind: "team",
+      componentKind: "cli",
+    });
+  });
+
   it("claims the sandbox only for a plugin that declares a module", () => {
     const setup = publicSetupFrom({
       plugins: [
@@ -138,6 +158,7 @@ describe("publicSetupFrom", () => {
             fileCount: 0,
             changedCount: 0,
             files: ["data/shop/catalog.json", "../../private-key"],
+            warnings: ["shop.cart: internal/domain/errors has no struct called Errors", "", 42],
             error: "secret token",
           },
         ],
@@ -150,6 +171,7 @@ describe("publicSetupFrom", () => {
       plugin: "domain",
       status: "failed",
       files: ["data/shop/catalog.json"],
+      warnings: ["shop.cart: internal/domain/errors has no struct called Errors"],
     });
     expect(JSON.stringify(setup)).not.toContain("secret token");
     expect(JSON.stringify(setup)).not.toContain("private-key");

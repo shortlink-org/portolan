@@ -51,6 +51,9 @@ describe("sourceDocKind", () => {
     expect(sourceDocKind("proto/shop/v1/orders.proto:12")).toBe("proto");
     expect(sourceDocKind("examples/auth/openapi.yaml")).toBe("openapi");
     expect(sourceDocKind("examples/auth/openapi.yml")).toBe("openapi");
+    expect(sourceDocKind("vendor/repos/commerce/billing/docs/swagger.json")).toBe(
+      "openapi",
+    );
     expect(sourceDocKind("examples/bff/src/schema/basket/schema.graphql")).toBe("graphql");
     expect(sourceDocKind("internal/handler.go")).toBeNull();
   });

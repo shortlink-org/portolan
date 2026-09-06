@@ -132,6 +132,33 @@ func TestSemanticFieldsAndImmutableSourcesAreRendered(t *testing.T) {
 	}
 }
 
+func TestNeutralComponentDoesNotPretendToHaveADomainModel(t *testing.T) {
+	cat := catalog.Catalog{
+		GeneratedAt: "2026-09-06T00:00:00Z",
+		Commit:      "abc",
+		Contexts: []catalog.BoundedContext{{
+			ID: "avia", Slug: "avia", Name: "Avia", Kind: catalog.GroupKindSystem,
+			Services: []catalog.Service{{
+				ID: "avia.support", Slug: "support", Name: "Support", Kind: catalog.ComponentKindApplication,
+				Technologies: []string{"Go", "Kafka"}, Provides: []catalog.RpcService{}, Consumes: []catalog.RpcCall{}, Aggregates: []catalog.Aggregate{},
+			}},
+		}},
+		Defs: map[string]catalog.TypeDef{}, Flows: []catalog.Flow{}, Adrs: []catalog.Adr{},
+	}
+	files := renderedFiles(render(plugin.Request{Catalog: cat}, Options{}))
+	group := files["avia/README.md"]
+	component := files["avia/support/README.md"]
+	if !strings.Contains(group, "## Components") || !strings.Contains(group, "Technologies") {
+		t.Fatal(group)
+	}
+	if !strings.Contains(component, "**Kind:** application") || !strings.Contains(component, "Go, Kafka") {
+		t.Fatal(component)
+	}
+	if strings.Contains(component, "## Aggregates") {
+		t.Fatal("neutral component gained an empty DDD section:\n" + component)
+	}
+}
+
 func TestExternalSourceUsesItsImmutablePin(t *testing.T) {
 	owner := &catalog.Service{Repo: "gitlab.example/acme/payments", Path: "vendor/repos/acme/payments"}
 	s := &site{cat: catalog.Catalog{Repos: []catalog.RepoPin{{Repo: owner.Repo, Commit: strings.Repeat("b", 40)}}}, opts: Options{SourceBaseURL: "https://github.com/example/billing/blob/main"}}

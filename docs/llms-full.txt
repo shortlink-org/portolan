@@ -3337,9 +3337,9 @@ celery -A config worker -Q billing,billing.mail
 
 ### billing
 
-**Celery · billing**
-
 `work queue`
+
+**Celery · billing**
 
 Tasks enqueued and worked through Celery over redis.
 
@@ -3352,9 +3352,9 @@ Source: [`examples/shop/billing/invoices/services.py:50`](https://github.com/sho
 
 ### billing.mail
 
-**Celery · billing.mail**
-
 `work queue`
+
+**Celery · billing.mail**
 
 Tasks enqueued and worked through Celery over redis.
 
@@ -8798,6 +8798,7 @@ sequenceDiagram
 - **Date:** 2026-08-20
 - **Scope:** [auth.auth](../auth/auth/README.md)
 - **Source:** [`examples/auth/docs/adr/0001-events-returned-not-buffered.md`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/docs/adr/0001-events-returned-not-buffered.md)
+- **Committed:** Victor Login, 2026-09-04 (`bf50e40`)
 
 ### Context and Problem Statement
 
@@ -8858,6 +8859,7 @@ tests assert on it, and there is no way to store without offering it.
 - **Date:** 2026-08-20
 - **Scope:** [auth.auth](../auth/auth/README.md)
 - **Source:** [`examples/auth/docs/adr/0002-session-is-its-own-aggregate.md`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/docs/adr/0002-session-is-its-own-aggregate.md)
+- **Committed:** Victor Login, 2026-09-04 (`bf50e40`)
 
 ### Context and Problem Statement
 
@@ -8911,6 +8913,7 @@ than the use case, so every way a password can change gets it.
 - **Date:** 2026-08-22
 - **Scope:** [auth.auth](../auth/auth/README.md)
 - **Source:** [`examples/auth/docs/adr/0003-expiry-publishes-nothing.md`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/docs/adr/0003-expiry-publishes-nothing.md)
+- **Committed:** Victor Login, 2026-09-04 (`bf50e40`)
 
 ### Context and Problem Statement
 
@@ -8966,6 +8969,7 @@ can do its own arithmetic.
 - **Date:** 2026-09-04
 - **Scope:** [auth.auth](../auth/auth/README.md)
 - **Source:** [`examples/auth/docs/adr/0004-lockout-is-its-own-aggregate.md`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/docs/adr/0004-lockout-is-its-own-aggregate.md)
+- **Committed:** Victor Login, 2026-09-04 (`51248ba`)
 
 ### Context and Problem Statement
 
@@ -9038,6 +9042,7 @@ assembly adapts the lockout's use cases to it, the same shape as `login`'s
 - **Date:** 2026-08-22
 - **Scope:** [auth.auth](../auth/auth/README.md)
 - **Source:** [`examples/auth/docs/adr/0005-rules-are-specifications-at-construction.md`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/docs/adr/0005-rules-are-specifications-at-construction.md)
+- **Committed:** Victor Login, 2026-09-04 (`7576ca7`)
 
 ### Context and Problem Statement
 
@@ -9075,6 +9080,7 @@ the old one, whose stored hash is still perfectly good.
 - **Date:** 2026-08-22
 - **Scope:** [auth.auth](../auth/auth/README.md)
 - **Source:** [`examples/auth/docs/adr/0006-a-password-change-ends-sessions-through-a-policy.md`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/docs/adr/0006-a-password-change-ends-sessions-through-a-policy.md)
+- **Committed:** Victor Login, 2026-09-04 (`7576ca7`)
 
 ### Context and Problem Statement
 
@@ -9118,6 +9124,7 @@ than ended again with an event that reports nothing.
 - **Date:** 2026-09-04
 - **Scope:** [auth.auth](../auth/auth/README.md)
 - **Source:** [`examples/auth/docs/adr/0007-login-asks-risk-and-a-block-is-a-compromise.md`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/docs/adr/0007-login-asks-risk-and-a-block-is-a-compromise.md)
+- **Committed:** Victor Login, 2026-09-04 (`7576ca7`)
 
 ### Context and Problem Statement
 
@@ -9160,6 +9167,8 @@ thing the attacker came to learn.
 - **Date:** 2026-09-01
 - **Scope:** [auth.auth](../auth/auth/README.md)
 - **Source:** [`examples/auth/docs/adr/0008-a-cache-in-front-of-bytoken-only.md`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/docs/adr/0008-a-cache-in-front-of-bytoken-only.md)
+- **Committed:** Victor Login, 2026-09-04 (`7576ca7`)
+- **Revised:** Victor Login, 2026-09-05 (`a7cf7a4`)
 - **Note:** how a revocation is kept out of the cache was decided again in auth.0010; the drop described below turned out not to be enough.
 
 ### Context and Problem Statement
@@ -9203,6 +9212,7 @@ write that committed.
 - **Date:** 2026-09-04
 - **Scope:** [auth.auth](../auth/auth/README.md)
 - **Source:** [`examples/auth/docs/adr/0009-a-lock-answers-like-a-wrong-password.md`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/docs/adr/0009-a-lock-answers-like-a-wrong-password.md)
+- **Committed:** Victor Login, 2026-09-04 (`7576ca7`)
 
 ### Context and Problem Statement
 
@@ -9239,6 +9249,7 @@ means somebody has *not* got the password, and the sessions are the owner's.
 - **Date:** 2026-09-05
 - **Scope:** [auth.auth](../auth/auth/README.md)
 - **Source:** [`examples/auth/docs/adr/0010-a-revocation-is-written-to-the-cache.md`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/docs/adr/0010-a-revocation-is-written-to-the-cache.md)
+- **Committed:** Victor Login, 2026-09-05 (`a7cf7a4`)
 
 ### Context and Problem Statement
 
@@ -9336,6 +9347,7 @@ is the number the ttl was chosen by.
 - **Date:** 2026-09-05
 - **Scope:** [auth.auth](../auth/auth/README.md)
 - **Source:** [`examples/auth/docs/adr/0011-the-relay-feeds-a-bus-and-policies-subscribe-to-the-bus.md`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/docs/adr/0011-the-relay-feeds-a-bus-and-policies-subscribe-to-the-bus.md)
+- **Committed:** Victor Login, 2026-09-05 (`dab46a5`)
 
 ### Context and Problem Statement
 
@@ -9429,6 +9441,7 @@ later subscriber would reverse.
 - **Date:** 2026-09-05
 - **Scope:** [storefront.bff](../storefront/bff/README.md)
 - **Source:** [`examples/bff/docs/adr/0001-graphql-yoga-schema-first.md`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/docs/adr/0001-graphql-yoga-schema-first.md)
+- **Committed:** Victor Login, 2026-09-05 (`8115163`)
 
 ### Context and Problem Statement
 
@@ -9483,6 +9496,7 @@ once the server was up.
 - **Date:** 2026-09-05
 - **Scope:** [storefront.bff](../storefront/bff/README.md)
 - **Source:** [`examples/bff/docs/adr/0002-the-storefront-owns-no-state.md`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/docs/adr/0002-the-storefront-owns-no-state.md)
+- **Committed:** Victor Login, 2026-09-05 (`8115163`)
 
 ### Context and Problem Statement
 
@@ -9528,6 +9542,7 @@ schema and the clients. Two things follow, and both are deliberate:
 - **Date:** 2026-09-05
 - **Scope:** [storefront.bff](../storefront/bff/README.md)
 - **Source:** [`examples/bff/docs/adr/0003-the-schema-speaks-the-clients-words.md`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/docs/adr/0003-the-schema-speaks-the-clients-words.md)
+- **Committed:** Victor Login, 2026-09-05 (`8115163`)
 
 ### Context and Problem Statement
 
@@ -9574,6 +9589,7 @@ service owns.
 - **Date:** 2026-09-05
 - **Scope:** [storefront.bff](../storefront/bff/README.md)
 - **Source:** [`examples/bff/docs/adr/0004-subscriptions-are-the-bus-forwarded.md`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/docs/adr/0004-subscriptions-are-the-bus-forwarded.md)
+- **Committed:** Victor Login, 2026-09-05 (`8115163`)
 
 ### Context and Problem Statement
 
@@ -9621,6 +9637,8 @@ shows a screen that waits rather than a field that errors.
 - **Date:** 2026-09-04
 - **Scope:** [shop.cart](../shop/cart/README.md)
 - **Source:** [`examples/shop/cart/docs/adr/0001-typescript-on-node.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/docs/adr/0001-typescript-on-node.md)
+- **Committed:** Victor Login, 2026-09-04 (`18d3de7`)
+- **Revised:** Victor Login, 2026-09-04 (`7576ca7`)
 
 ### Context and Problem Statement
 
@@ -9678,6 +9696,8 @@ catalog can read, and its decorators are annotations by another name.
 - **Date:** 2026-09-04
 - **Scope:** [shop.cart](../shop/cart/README.md)
 - **Source:** [`examples/shop/cart/docs/adr/0002-currency-frozen-at-the-first-item.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/docs/adr/0002-currency-frozen-at-the-first-item.md)
+- **Committed:** Victor Login, 2026-09-04 (`18d3de7`)
+- **Revised:** Victor Login, 2026-09-04 (`7576ca7`)
 
 ### Context and Problem Statement
 
@@ -9716,6 +9736,8 @@ makes the running total shown on every page a lie until then.
 - **Date:** 2026-09-04
 - **Scope:** [shop.cart](../shop/cart/README.md)
 - **Source:** [`examples/shop/cart/docs/adr/0003-prices-captured-never-recomputed.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/docs/adr/0003-prices-captured-never-recomputed.md)
+- **Committed:** Victor Login, 2026-09-04 (`18d3de7`)
+- **Revised:** Victor Login, 2026-09-04 (`7576ca7`)
 
 ### Context and Problem Statement
 
@@ -9754,6 +9776,8 @@ between the captured lines and the quote is the storefront's to show.
 - **Date:** 2026-09-04
 - **Scope:** [shop.cart](../shop/cart/README.md)
 - **Source:** [`examples/shop/cart/docs/adr/0004-checkout-confirms-with-auth-and-pricing.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/docs/adr/0004-checkout-confirms-with-auth-and-pricing.md)
+- **Committed:** Victor Login, 2026-09-04 (`18d3de7`)
+- **Revised:** Victor Login, 2026-09-04 (`7576ca7`)
 
 ### Context and Problem Statement
 
@@ -9798,6 +9822,8 @@ is assembly's choice and the use case cannot tell.
 - **Date:** 2026-09-04
 - **Scope:** [shop.cart](../shop/cart/README.md)
 - **Source:** [`examples/shop/cart/docs/adr/0005-a-merge-moves-every-line-or-none.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/docs/adr/0005-a-merge-moves-every-line-or-none.md)
+- **Committed:** Victor Login, 2026-09-04 (`18d3de7`)
+- **Revised:** Victor Login, 2026-09-05 (`e32b0ae`)
 
 ### Context and Problem Statement
 
@@ -9841,6 +9867,8 @@ they picked and not the rest, with nothing saying which.
 - **Date:** 2026-09-04
 - **Scope:** [shop.cart](../shop/cart/README.md)
 - **Source:** [`examples/shop/cart/docs/adr/0006-abandonment-is-a-sweep-that-publishes.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/docs/adr/0006-abandonment-is-a-sweep-that-publishes.md)
+- **Committed:** Victor Login, 2026-09-04 (`18d3de7`)
+- **Revised:** Victor Login, 2026-09-04 (`7576ca7`)
 
 ### Context and Problem Statement
 
@@ -9876,6 +9904,8 @@ what is unusual is only that nothing calls it from outside.
 - **Date:** 2026-09-04
 - **Scope:** [shop.cart](../shop/cart/README.md)
 - **Source:** [`examples/shop/cart/docs/adr/0007-an-anonymous-basket-is-owned-by-its-token.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/docs/adr/0007-an-anonymous-basket-is-owned-by-its-token.md)
+- **Committed:** Victor Login, 2026-09-04 (`18d3de7`)
+- **Revised:** Victor Login, 2026-09-04 (`7576ca7`)
 
 ### Context and Problem Statement
 
@@ -9908,6 +9938,7 @@ operations where being someone matters - and by the token everywhere else.
 - **Date:** 2026-09-05
 - **Scope:** [shop.cart](../shop/cart/README.md)
 - **Source:** [`examples/shop/cart/docs/adr/0008-events-leave-over-nats-jetstream.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/docs/adr/0008-events-leave-over-nats-jetstream.md)
+- **Committed:** Victor Login, 2026-09-05 (`08fcaaa`)
 
 ### Context and Problem Statement
 
@@ -9977,6 +10008,7 @@ the job and costs a JVM-sized process for an estate of three services.
 - **Date:** 2026-09-05
 - **Scope:** [delivery.core](../delivery/core/README.md)
 - **Source:** [`examples/shop/delivery/core/docs/adr/0001-packages-order-id-is-a-foreign-key-into-another-service.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/docs/adr/0001-packages-order-id-is-a-foreign-key-into-another-service.md)
+- **Committed:** Victor Login, 2026-09-05 (`d76a56c`)
 
 ### Context and Problem Statement
 
@@ -10043,6 +10075,7 @@ bus yet.
 - **Date:** 2026-09-05
 - **Scope:** [delivery.core](../delivery/core/README.md)
 - **Source:** [`examples/shop/delivery/core/docs/adr/0002-a-shipment-waits-for-the-money.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/docs/adr/0002-a-shipment-waits-for-the-money.md)
+- **Committed:** Victor Login, 2026-09-05 (`d76a56c`)
 
 ### Context and Problem Statement
 
@@ -10113,6 +10146,7 @@ prevent.
 - **Date:** 2026-09-05
 - **Scope:** [payments.ledger](../payments/ledger/README.md)
 - **Source:** [`examples/payments/ledger/docs/adr/0001-a-gateway-outage-records-nothing.md`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/docs/adr/0001-a-gateway-outage-records-nothing.md)
+- **Committed:** Victor Login, 2026-09-05 (`d5acf38`)
 
 ### Context and Problem Statement
 
@@ -10184,6 +10218,7 @@ option 3 is the way to get the trail back if it is ever wanted.
 - **Date:** 2026-09-05
 - **Scope:** [payments.ledger](../payments/ledger/README.md)
 - **Source:** [`examples/payments/ledger/docs/adr/0002-foreign-events-arrive-over-nats-and-are-republished-in-process.md`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/docs/adr/0002-foreign-events-arrive-over-nats-and-are-republished-in-process.md)
+- **Committed:** Victor Login, 2026-09-05 (`d5acf38`)
 
 ### Context and Problem Statement
 
@@ -10248,6 +10283,7 @@ order service does not know who needs to unwind what, and should not.
 - **Date:** 2026-09-06
 - **Scope:** [payments.ledger](../payments/ledger/README.md)
 - **Source:** [`examples/payments/ledger/docs/adr/0003-the-card-network-is-stripe-and-stays-outside-the-estate.md`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/docs/adr/0003-the-card-network-is-stripe-and-stays-outside-the-estate.md)
+- **Committed:** Victor Login, 2026-09-06 (`951a4b5`)
 
 ### Context and Problem Statement
 
@@ -10333,6 +10369,7 @@ manifests that would have to agree.
 - **Date:** 2026-09-05
 - **Scope:** [shop.oms](../shop/oms/README.md)
 - **Source:** [`examples/shop/oms/docs/adr/0001-rust-on-tokio.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/docs/adr/0001-rust-on-tokio.md)
+- **Committed:** Victor Login, 2026-09-05 (`96ce9ca`)
 
 ### Context and Problem Statement
 
@@ -10376,6 +10413,7 @@ Adapter`. The catalog reads the bindings off those.
 - **Date:** 2026-09-05
 - **Scope:** [shop.oms](../shop/oms/README.md)
 - **Source:** [`examples/shop/oms/docs/adr/0002-an-order-is-placed-from-a-checked-out-basket.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/docs/adr/0002-an-order-is-placed-from-a-checked-out-basket.md)
+- **Committed:** Victor Login, 2026-09-05 (`96ce9ca`)
 
 ### Context and Problem Statement
 
@@ -10413,6 +10451,7 @@ the second time.
 - **Date:** 2026-09-05
 - **Scope:** [shop.oms](../shop/oms/README.md)
 - **Source:** [`examples/shop/oms/docs/adr/0003-lines-are-copied-never-repriced.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/docs/adr/0003-lines-are-copied-never-repriced.md)
+- **Committed:** Victor Login, 2026-09-05 (`96ce9ca`)
 
 ### Context and Problem Statement
 
@@ -10443,6 +10482,7 @@ total's. Everything else about the numbers is the cart's and pricing's.
 - **Date:** 2026-09-05
 - **Scope:** [shop.oms](../shop/oms/README.md)
 - **Source:** [`examples/shop/oms/docs/adr/0004-cancel-is-allowed-until-dispatch.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/docs/adr/0004-cancel-is-allowed-until-dispatch.md)
+- **Committed:** Victor Login, 2026-09-05 (`96ce9ca`)
 
 ### Context and Problem Statement
 
@@ -10474,6 +10514,7 @@ so today every cancellation is before dispatch, and the table has no
 - **Date:** 2026-09-05
 - **Scope:** [shop.oms](../shop/oms/README.md)
 - **Source:** [`examples/shop/oms/docs/adr/0005-confirmation-waits-for-a-payment-that-does-not-exist-yet.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/docs/adr/0005-confirmation-waits-for-a-payment-that-does-not-exist-yet.md)
+- **Committed:** Victor Login, 2026-09-05 (`96ce9ca`)
 
 ### Context and Problem Statement
 
@@ -10508,6 +10549,8 @@ arrives it fills both places and nothing here changes shape.
 - **Date:** 2025-03-11
 - **Scope:** org
 - **Source:** [`data/adr/0001-client-protos-in-consumer-infrastructure.md`](https://github.com/shortlink-org/portolan/blob/main/data/adr/0001-client-protos-in-consumer-infrastructure.md)
+- **Committed:** Victor Login, 2026-09-02 (`7db6b6e`)
+- **Revised:** Victor Login, 2026-09-05 (`615d900`)
 
 ### Context and Problem Statement
 
@@ -10582,6 +10625,8 @@ compiling.
 - **Date:** 2025-05-02
 - **Scope:** org
 - **Source:** [`data/adr/0002-event-version-in-package-path.md`](https://github.com/shortlink-org/portolan/blob/main/data/adr/0002-event-version-in-package-path.md)
+- **Committed:** Victor Login, 2026-09-02 (`7db6b6e`)
+- **Revised:** Victor Login, 2026-09-05 (`615d900`)
 
 ### Context and Problem Statement
 
@@ -10645,6 +10690,7 @@ are not willing to take yet.
 - **Date:** 2026-09-05
 - **Scope:** org
 - **Source:** [`data/adr/0003-ownership-is-read-from-codeowners.md`](https://github.com/shortlink-org/portolan/blob/main/data/adr/0003-ownership-is-read-from-codeowners.md)
+- **Committed:** Victor Login, 2026-09-05 (`85b12f2`)
 
 ### Context and Problem Statement
 
@@ -10724,6 +10770,8 @@ report about itself, a team believing it owns something that is not there.
 - **Date:** 2026-02-09
 - **Scope:** [payments](../payments/README.md)
 - **Source:** [`data/adr/0004-idempotent-journal-entries.md`](https://github.com/shortlink-org/portolan/blob/main/data/adr/0004-idempotent-journal-entries.md)
+- **Committed:** Victor Login, 2026-09-02 (`7db6b6e`)
+- **Revised:** Victor Login, 2026-09-05 (`615d900`)
 
 ### Context and Problem Statement
 

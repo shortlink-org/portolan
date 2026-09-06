@@ -6,6 +6,7 @@
 - **Date:** 2026-08-20
 - **Scope:** [auth.auth](../auth/auth/README.md)
 - **Source:** [`examples/auth/docs/adr/0002-session-is-its-own-aggregate.md`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/docs/adr/0002-session-is-its-own-aggregate.md)
+- **Committed:** Victor Login, 2026-09-04 (`bf50e40`)
 
 ### Context and Problem Statement
 

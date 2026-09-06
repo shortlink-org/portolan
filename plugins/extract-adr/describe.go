@@ -12,7 +12,7 @@ var optionsSchema []byte
 func descriptor() plugin.Descriptor {
 	return plugin.Descriptor{
 		Name:    "extract-adr",
-		Summary: "Reads decision records written by hand as MADR markdown - a title, meta bullets, and the record itself - into a catalog fragment.",
+		Summary: "Reads decision records written by hand - MADR markdown with a title, meta bullets and the record itself, or the numbered records adr-tools writes - into a catalog fragment.",
 		Phases:  []string{plugin.PhaseExtract},
 		Options: optionsSchema,
 	}

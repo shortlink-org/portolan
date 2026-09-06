@@ -222,3 +222,75 @@ func (uc *UseCase) Handle(ctx context.Context, in dto.Input) (dto.Output, error)
 		t.Errorf("unexpected diagnostic: %s", diag.Message)
 	}
 }
+
+// A generated HTTP client whose api no peers line claims calls the system its
+// vendored document is titled after: a service that vendors a document and
+// generates a client from it is calling whatever that document describes, and
+// nothing in this tree implements it. The manifest may still name the system
+// itself, under externals, and then that name wins.
+func TestAnHTTPClientNobodyClaimsCallsTheSystemItsDocumentIsTitledAfter(t *testing.T) {
+	partnerSpec := strings.Replace(vendoredSpec, "title: auth", "title: Partner Booking API", 1)
+	useCase := `package whoami
+
+import (
+	"context"
+
+	"github.com/example/gateway/internal/infrastructure/partner/gen"
+)
+
+type UseCase struct {
+	partner gen.ClientWithResponsesInterface
+}
+
+func (uc *UseCase) Handle(ctx context.Context, in dto.Input) (dto.Output, error) {
+	_, err := uc.partner.GetUserWithResponse(ctx, in.UserID)
+	return dto.Output{}, err
+}
+`
+	tree := map[string]string{
+		"go.mod": "module github.com/example/gateway\n\ngo 1.27\n",
+		"internal/infrastructure/partner/gen/client.gen.go":       generatedHTTPClient,
+		"internal/infrastructure/partner/gen/openapi.yaml":        partnerSpec,
+		"internal/application/session/usecases/whoami/usecase.go": useCase,
+	}
+
+	read := func(opts flowOptions) (*catalog.Step, []catalog.RpcCall, *plugin.Builder) {
+		t.Helper()
+		root := t.TempDir()
+		writeTree(t, root, tree)
+		b := &plugin.Builder{}
+		r := newFlowReader(root, opts, b)
+		d := newDraft()
+		d.lane(r.serviceLane())
+		r.walkUseCase(d, "session/whoami", 0)
+		if len(d.steps) != 1 {
+			t.Fatalf("nodes = %q", dump(d.steps))
+		}
+		return d.steps[0].(*catalog.Step), r.consumes(), b
+	}
+
+	step, calls, b := read(flowOptions{context: "edge", svcID: "edge.gateway", service: "gateway"})
+	if step.Kind != catalog.StepRPC || step.To != "partner-booking" || step.Ref != "partner-booking-api.v1.Users/getUser" || step.Status != catalog.StatusDeclared {
+		t.Errorf("rpc step = %+v", step)
+	}
+	if len(calls) != 1 || calls[0].Peer != "partner-booking" || calls[0].Status != catalog.StatusDeclared {
+		t.Errorf("consumes = %+v", calls)
+	}
+	var said bool
+	for _, warning := range b.Warnings {
+		said = said || strings.Contains(warning.Message, "read as calling partner-booking")
+	}
+	if !said {
+		t.Errorf("nothing said about the reading; warnings = %+v", b.Warnings)
+	}
+
+	step, calls, _ = read(flowOptions{context: "edge", svcID: "edge.gateway", service: "gateway", externals: map[string]string{"partner-booking-api.v1": "partner"}})
+	if step.To != "partner" || calls[0].Peer != "partner" {
+		t.Errorf("with externals: step to %q, consumes %+v", step.To, calls)
+	}
+
+	step, calls, _ = read(flowOptions{context: "edge", svcID: "edge.gateway", service: "gateway", peers: map[string]string{"partner-booking-api.v1": "shop.partner"}})
+	if step.To != "shop.partner" || calls[0].Peer != "shop.partner" {
+		t.Errorf("with peers: step to %q, consumes %+v", step.To, calls)
+	}
+}

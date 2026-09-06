@@ -57,7 +57,10 @@ func extractAggregate(root, dir, svcID string, b *plugin.Builder) (catalog.Aggre
 
 	// The root is the entity named after its package: package user holds User,
 	// and package price_list holds PriceList. It is a rule rather than a guess,
-	// and a package that breaks it says so.
+	// and a package that breaks it is not read as an aggregate at all. Taking
+	// whichever struct came first instead would put a package of error types
+	// on the page as a model with a root and seven fields, and a reader
+	// believes a table; a warning and no page is the honest answer.
 	aggregate.Root = pascal(pkg.name)
 	if !hasBlock(aggregate.Entities, aggregate.Root) {
 		if len(aggregate.Entities) == 0 {
@@ -66,8 +69,9 @@ func extractAggregate(root, dir, svcID string, b *plugin.Builder) (catalog.Aggre
 			return catalog.Aggregate{}, false
 		}
 
-		aggregate.Root = aggregate.Entities[0].Name
-		b.Warn(id, "internal/domain/"+dir+" has no struct called "+pascal(pkg.name)+"; taking "+aggregate.Entities[0].Name+" as the root")
+		b.Warn(id, "internal/domain/"+dir+" has no struct called "+pascal(pkg.name)+", so it is not read as an aggregate; the root is the struct named after its package")
+
+		return catalog.Aggregate{}, false
 	}
 
 	aggregate.ValueObjects = extractValueObjects(root, dir, id, b)

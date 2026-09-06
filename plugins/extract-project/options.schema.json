@@ -1,0 +1,43 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "group": {
+      "type": "string",
+      "description": "Slug of the neutral top-level group. Defaults to the input directory name."
+    },
+    "groupName": {
+      "type": "string",
+      "description": "Human-readable group name. Defaults to the group slug, titled."
+    },
+    "groupSummary": {
+      "type": "string",
+      "description": "A short statement of what the group is responsible for."
+    },
+    "groupKind": {
+      "enum": ["bounded-context", "system", "product", "team", "namespace"],
+      "description": "Semantic role of the top-level group. Defaults to system for this neutral extractor."
+    },
+    "component": {
+      "type": "string",
+      "description": "Slug of the component. Defaults to the input directory name."
+    },
+    "componentName": {
+      "type": "string",
+      "description": "Human-readable component name. Defaults to the README title and then the slug, titled."
+    },
+    "componentKind": {
+      "enum": ["service", "application", "webapp", "worker", "job", "function", "cli", "library", "data-pipeline"],
+      "description": "Runtime or code role. When absent, the extractor uses conservative repository evidence."
+    },
+    "repo": {
+      "type": "string",
+      "description": "Source repository identity. Defaults to a Go module, package.json repository, Cargo package, or Maven coordinates when present."
+    },
+    "out": {
+      "type": "string",
+      "description": "Name of the fragment file inside the step output directory.",
+      "default": "project.json"
+    }
+  }
+}

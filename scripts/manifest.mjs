@@ -9,6 +9,7 @@
 // CI is what keeps the committed copy in step with them.
 
 import { readFileSync } from "node:fs";
+import { normalize } from "node:path";
 
 import Ajv from "ajv/dist/2020.js";
 
@@ -147,4 +148,67 @@ function editDistance(a, b) {
   }
 
   return previous[b.length];
+}
+
+/**
+ * Names each step for the listing of what it wrote into its directory.
+ *
+ * A step is keyed by its plugin, which is enough while one step of a plugin
+ * writes into a directory. Two of them - the service's own OpenAPI document and
+ * the vendored copy of a supplier's, both read by `openapi` into the same
+ * `portolan/` - are told apart by the file each names in its `out` option;
+ * keyed by plugin alone, the second would take the first's listing for its own
+ * and delete the fragment it had just written. A pair that not even the file
+ * name tells apart would write the same file twice, and is refused.
+ *
+ * @param {object} manifest
+ * @returns {{keyOf: (step: object) => string, liveIn: (out: string) => Set<string>}}
+ *   keyOf names one step; liveIn is every key that writes into a directory on
+ *   this run, so a key left in the listing by a step that no longer exists can
+ *   be told from one that has simply not run yet.
+ */
+export function stepKeys(manifest) {
+  const steps = [
+    ...(manifest.extract ?? []),
+    ...(manifest.verify ?? []),
+    ...(manifest.generate ?? []),
+  ];
+
+  const dir = (out) => normalize(out).replace(/[\\/]+$/, "") || ".";
+
+  const groups = new Map();
+  for (const step of steps) {
+    const group = `${dir(step.out)}\0${step.plugin}`;
+    if (!groups.has(group)) groups.set(group, []);
+    groups.get(group).push(step);
+  }
+
+  const keys = new Map();
+  const live = new Map();
+  for (const group of groups.values()) {
+    const taken = new Set();
+    for (const step of group) {
+      const file = typeof step.options?.out === "string" ? step.options.out.trim() : "";
+      const key = group.length === 1 ? step.plugin : file ? `${step.plugin}:${file}` : "";
+      if (!key || taken.has(key)) {
+        throw new Error(
+          `portolan.json: ${group.length} ${step.plugin} steps write into ${step.out}` +
+            (key
+              ? `, and two of them name ${file} in their options`
+              : ", and nothing in their options tells them apart"),
+        );
+      }
+      taken.add(key);
+      keys.set(step, key);
+
+      const out = dir(step.out);
+      if (!live.has(out)) live.set(out, new Set());
+      live.get(out).add(key);
+    }
+  }
+
+  return {
+    keyOf: (step) => keys.get(step),
+    liveIn: (out) => live.get(dir(out)) ?? new Set(),
+  };
 }

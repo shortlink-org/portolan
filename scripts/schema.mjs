@@ -146,12 +146,30 @@ function compose() {
           context: {
             type: "string",
             minLength: 1,
-            description: "Bounded context this project contributes to, when it has one.",
+            description: "Legacy alias for group. Kept so existing manifests remain valid.",
           },
           service: {
             type: "string",
             minLength: 1,
-            description: "Service slug inside the context, when this is a service project.",
+            description: "Legacy alias for component. Kept so existing manifests remain valid.",
+          },
+          group: {
+            type: "string",
+            minLength: 1,
+            description: "Neutral top-level group this project contributes to.",
+          },
+          component: {
+            type: "string",
+            minLength: 1,
+            description: "Component slug inside the group.",
+          },
+          groupKind: {
+            enum: ["bounded-context", "system", "product", "team", "namespace"],
+            description: "Semantic role of the project's top-level group.",
+          },
+          componentKind: {
+            enum: ["service", "application", "webapp", "worker", "job", "function", "cli", "library", "data-pipeline"],
+            description: "Runtime or code role of the project component.",
           },
           repository: {
             type: "string",

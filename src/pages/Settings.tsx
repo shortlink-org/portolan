@@ -200,13 +200,15 @@ function BuildHealth() {
 }
 
 function projectHref(project: SetupProject): string | null {
-  const context = catalog.contexts.find((item) => item.id === project.context);
+  const group = project.group ?? project.context;
+  const component = project.component ?? project.service;
+  const context = catalog.contexts.find((item) => item.id === group);
   if (!context) return null;
   const service = context.services.find(
     (item) =>
-      item.slug === project.service ||
-      item.id === project.service ||
-      item.id === `${context.id}.${project.service}`,
+      item.slug === component ||
+      item.id === component ||
+      item.id === `${context.id}.${component}`,
   );
   return service ? paths.service(context.id, service.slug) : paths.context(context.id);
 }
@@ -242,17 +244,41 @@ function PipelineSteps({ steps }: { steps: SetupRunStep[] }) {
   return (
     <div className="divide-y divide-line rounded-control border border-line">
       {steps.map((step) => (
-        <div key={step.ordinal} className="grid gap-2 px-3 py-2 sm:grid-cols-[5rem_minmax(7rem,1fr)_auto_auto] sm:items-center">
-          <span className="mono text-muted">{step.phase}</span>
-          <span className="mono truncate text-ink" title={step.plugin}>{step.plugin}</span>
-          <span className="mono text-muted">{step.fileCount} {plural(step.fileCount, "file")}</span>
-          <div className="flex items-center justify-between gap-2 sm:justify-end">
-            <span className="mono text-muted">{duration(step.durationMs)}</span>
-            <StepStatus status={step.status} />
+        <div key={step.ordinal} className="px-3 py-2">
+          <div className="grid gap-2 sm:grid-cols-[5rem_minmax(7rem,1fr)_auto_auto] sm:items-center">
+            <span className="mono text-muted">{step.phase}</span>
+            <span className="mono truncate text-ink" title={step.plugin}>{step.plugin}</span>
+            <span className="mono text-muted">{step.fileCount} {plural(step.fileCount, "file")}</span>
+            <div className="flex items-center justify-between gap-2 sm:justify-end">
+              <span className="mono text-muted">{duration(step.durationMs)}</span>
+              <StepStatus status={step.status} />
+            </div>
           </div>
+          <StepWarnings warnings={step.warnings} />
         </div>
       ))}
     </div>
+  );
+}
+
+// What a plugin could not read, in its own words. For a tree the extractor
+// only half understood this is the list of what to fix, so it is shown where
+// the step is rather than left on the terminal it scrolled off.
+function StepWarnings({ warnings }: { warnings: string[] }) {
+  if (warnings.length === 0) return null;
+  return (
+    <details className="mt-2" open={warnings.length <= 5}>
+      <summary className="mono cursor-pointer text-muted">
+        {warnings.length} {plural(warnings.length, "warning")}
+      </summary>
+      <ul className="mono mt-1 space-y-1 text-muted">
+        {warnings.map((warning, index) => (
+          <li key={`${index}:${warning}`} className="break-words border-l-2 border-line pl-2">
+            {warning}
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }
 
@@ -292,7 +318,7 @@ function ProjectCard({ project }: { project: SetupProject }) {
       </div>
 
       <dl className="mono mt-4 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-muted">
-        <dt>scope</dt><dd className="truncate text-ink">{[project.context, project.service].filter(Boolean).join(" · ") || "estate"}</dd>
+        <dt>scope</dt><dd className="truncate text-ink">{[project.group ?? project.context, project.component ?? project.service].filter(Boolean).join(" · ") || "estate"}</dd>
         <dt>pipeline</dt><dd className="text-ink">{declared.length} {plural(declared.length, "step")}</dd>
         <dt>fragments</dt><dd className="text-ink">{sources.length}</dd>
         <dt>commit</dt><dd className="truncate text-ink" title={commits.join(", ")}>{commits.length === 0 ? "not stamped" : commits.length === 1 ? commits[0] : `${commits.length} source commits`}</dd>
@@ -483,7 +509,7 @@ function AddProjectCard({ onClick }: { onClick: () => void }) {
       <span className="flex max-w-72 flex-col items-center text-center">
         <span className="flex size-9 items-center justify-center rounded-full border border-line-strong text-muted group-hover:border-accent group-hover:text-accent"><Plus size={18} aria-hidden /></span>
         <span className="mt-3 font-semibold text-ink">Add a project</span>
-        <span className="mt-1 text-muted">Point Portolan at a local service or repository and it will suggest the extractors to use.</span>
+        <span className="mt-1 text-muted">Point Portolan at a local component or repository and it will suggest the extractors to use.</span>
       </span>
     </button>
   );
@@ -552,7 +578,7 @@ function Wizard({ open, onClose, onAdded, onGenerate }: { open: boolean; onClose
           <div className="space-y-5">
             <div className="seg inline-flex" role="group" aria-label="Project source"><button type="button" className={source === "local" ? "is-on" : ""} aria-pressed={source === "local"} onClick={() => setSource("local")}>local directory</button><button type="button" className={source === "external" ? "is-on" : ""} aria-pressed={source === "external"} onClick={() => setSource("external")}>external repository</button></div>
             <p className="text-muted">Detection reads project files but does not execute project code. External repositories are pinned and vendored through the built-in git fetcher.</p>
-            {source === "local" ? <><Field label="local path" value={path} onChange={setPath} placeholder="services/billing" required /><Field label="repository URL · optional" value={repository} onChange={setRepository} placeholder="https://github.com/acme/billing" /></> : <><Field label="repository URL" value={repository} onChange={setRepository} placeholder="https://github.com/acme/platform" required /><div className="grid gap-4 sm:grid-cols-2"><Field label="branch, tag or commit" value={ref} onChange={setRef} placeholder="main" /><Field label="service path · optional" value={sourcePath} onChange={setSourcePath} placeholder="services/billing" /></div></>}
+            {source === "local" ? <><Field label="local path" value={path} onChange={setPath} placeholder="services/billing" required /><Field label="repository URL · optional" value={repository} onChange={setRepository} placeholder="https://github.com/acme/billing" /></> : <><Field label="repository URL" value={repository} onChange={setRepository} placeholder="https://github.com/acme/platform" required /><div className="grid gap-4 sm:grid-cols-2"><Field label="branch, tag or commit" value={ref} onChange={setRef} placeholder="main" /><Field label="component path · optional" value={sourcePath} onChange={setSourcePath} placeholder="services/billing" /></div></>}
           </div>
         ) : stage === "configure" && discovery && draft ? (
           <div className="space-y-5">
@@ -560,8 +586,8 @@ function Wizard({ open, onClose, onAdded, onGenerate }: { open: boolean; onClose
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="project name" value={draft.name} onChange={(name) => setDraft({ ...draft, name })} required />
               <Field label="project id" value={draft.id} onChange={(id) => setDraft({ ...draft, id })} required />
-              <Field label="bounded context" value={draft.context} onChange={(context) => setDraft({ ...draft, context })} />
-              <Field label="service slug" value={draft.service} onChange={(service) => setDraft({ ...draft, service })} />
+              <Field label="group" value={draft.group} onChange={(group) => setDraft({ ...draft, group })} />
+              <Field label="component slug" value={draft.component} onChange={(component) => setDraft({ ...draft, component })} />
             </div>
             <div><div className="label mb-2">detected plugins</div>
               {discovery.detections.length ? <div className="divide-y divide-line rounded-control border border-line">{discovery.detections.map((item) => {

@@ -1,0 +1,11 @@
+openapi: 3.0.3
+info:
+  title: Partner API
+  version: 2.0.0
+paths:
+  /v2/offers:
+    get:
+      operationId: listOffers
+      responses:
+        "200":
+          description: OK

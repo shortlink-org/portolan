@@ -66,7 +66,30 @@ export async function runPlugin(plugin, request, requestedLimits = {}) {
     );
   }
 
-  return validateResponse(plugin.name, response);
+  return { ...validateResponse(plugin.name, response), warnings: warningsIn(result.stderr) };
+}
+
+/**
+ * The warnings a plugin wrote to stderr, one per `warning: ` line, without the
+ * prefix.
+ *
+ * They are not part of the response - the protocol has no advisory property a
+ * caller may accidentally ignore - but for a service whose tree the extractor
+ * only half understood they are the whole story: which packages were not read
+ * as aggregates, which record was left out and why. Printed once as they
+ * arrive, they scroll off; kept beside the step in the build report, they are
+ * the list of what to fix.
+ *
+ * @param {string} stderr
+ * @returns {string[]}
+ */
+export function warningsIn(stderr) {
+  const warnings = [];
+  for (const line of String(stderr ?? "").split(/\r?\n/)) {
+    const warning = line.startsWith("warning: ") ? line.slice("warning: ".length).trim() : "";
+    if (warning) warnings.push(warning);
+  }
+  return warnings;
 }
 
 function lowerLimits(requested) {

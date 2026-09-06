@@ -166,6 +166,17 @@ export function mergeCatalogs(sources: CatalogSource[]): MergeResult {
             });
           }
         }
+        if (context.kind) {
+          if (!existing.kind) {
+            existing.kind = context.kind;
+          } else if (existing.kind !== context.kind) {
+            conflicts.push({
+              path,
+              where: context.id,
+              message: `context "${context.id}" has kind ${context.kind} here and ${existing.kind} in ${owner}; the first one is used`,
+            });
+          }
+        }
       }
 
       for (const service of context.services) {
@@ -336,6 +347,9 @@ function mergeService(
         ? { channels: incoming.channels.map(copyChannel) }
         : {}),
       ...(incoming.owners ? { owners: [...incoming.owners] } : {}),
+      ...(incoming.technologies
+        ? { technologies: [...incoming.technologies] }
+        : {}),
     });
     origin.set(incoming.id, path);
 
@@ -358,6 +372,26 @@ function mergeService(
         message: `service "${incoming.id}" has a different ${field} here than in ${owner}; the first one is used`,
       });
     }
+  }
+
+  if (incoming.kind) {
+    if (!existing.kind) {
+      existing.kind = incoming.kind;
+    } else if (existing.kind !== incoming.kind) {
+      conflicts.push({
+        path,
+        where: incoming.id,
+        message: `service "${incoming.id}" has kind ${incoming.kind} here and ${existing.kind} in ${owner}; the first one is used`,
+      });
+    }
+  }
+
+  if (incoming.technologies?.length) {
+    const technologies = existing.technologies ?? [];
+    for (const technology of incoming.technologies) {
+      if (!technologies.includes(technology)) technologies.push(technology);
+    }
+    existing.technologies = technologies;
   }
 
   appendNew(existing.provides, incoming.provides, (p) => p.id);
@@ -400,11 +434,6 @@ function mergeService(
       incoming.channels.map(copyChannel),
       (c) => c.address,
       (mine, theirs) => {
-        appendNew(
-          mine.messages,
-          theirs.messages,
-          (m) => `${m.direction} ${m.name}`,
-        );
         if (!mine.kind && theirs.kind) {
           mine.kind = theirs.kind;
         } else if (mine.kind && theirs.kind && mine.kind !== theirs.kind) {
@@ -414,6 +443,11 @@ function mergeService(
             message: `channel "${mine.address}" of service "${incoming.id}" has kind ${theirs.kind} here and ${mine.kind} in ${owner}; the first one is used`,
           });
         }
+        appendNew(
+          mine.messages,
+          theirs.messages,
+          (m) => `${m.direction} ${m.name}`,
+        );
 
         // Mutated in place: the channel that was here keeps its prose and its
         // source, and gains the messages the other document named.

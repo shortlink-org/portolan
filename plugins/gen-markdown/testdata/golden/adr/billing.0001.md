@@ -6,6 +6,8 @@
 - **Date:** 2026-01-01
 - **Scope:** [billing](../billing/README.md)
 - **Source:** `docs/adr/0001.md`
+- **Committed:** Ada Lovelace, 2026-01-01 (`0a1b2c3`)
+- **Revised:** Grace Hopper, 2026-01-03 (`7654321`)
 
 ## Decision
 

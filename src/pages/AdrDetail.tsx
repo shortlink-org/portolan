@@ -1,10 +1,9 @@
 import { Link, useParams } from "react-router";
 import { ArrowRight, ArrowLeft } from "lucide-react";
 import { index } from "../data";
-import type { Adr } from "../catalog";
+import type { Adr, AdrCommit } from "../catalog";
 import { adrNumber } from "../lib/adr";
 import { Markdown } from "../components/Markdown";
-import { Empty } from "../components/PageHeader";
 import { Ident } from "../components/Ident";
 import {
   AdrNumber,
@@ -66,12 +65,19 @@ function Chips({ children }: { children: React.ReactNode }) {
   return <div className="flex flex-wrap gap-1.5">{children}</div>;
 }
 
+/** Whether a record names anything at all; a panel with nothing in it is not shown. */
+function relatesToSomething(adr: Adr): boolean {
+  return (
+    (adr.relates.services?.length ?? 0) > 0 ||
+    (adr.relates.events?.length ?? 0) > 0 ||
+    (adr.relates.flows?.length ?? 0) > 0
+  );
+}
+
 function RelatedPanel({ adr }: { adr: Adr }) {
   const services = adr.relates.services ?? [];
   const events = adr.relates.events ?? [];
   const flows = adr.relates.flows ?? [];
-  const empty =
-    services.length === 0 && events.length === 0 && flows.length === 0;
 
   return (
     <section className="overflow-hidden rounded-card border border-line shadow-xs">
@@ -79,7 +85,6 @@ function RelatedPanel({ adr }: { adr: Adr }) {
         Related
       </h2>
       <div className="flex flex-col gap-4 p-4">
-        {empty ? <Empty>this decision names nothing</Empty> : null}
 
         {services.length > 0 ? (
           <div>
@@ -180,10 +185,20 @@ export function AdrDetail() {
           <Ident value={adr.source} title={`${adr.source} — click to copy`} />
           <Ident value={adr.id} />
         </div>
+        {adr.created || adr.revised ? (
+          <div className="mono mt-1 flex flex-wrap items-center gap-x-4 text-muted">
+            {adr.created ? <CommitLine label="committed" commit={adr.created} /> : null}
+            {adr.revised ? <CommitLine label="revised" commit={adr.revised} /> : null}
+          </div>
+        ) : null}
       </div>
 
+      {/* The record first. It asks for a column of prose; the related panel
+          sits beside it only when there is room for both, and drops below
+          otherwise, so the record is never squeezed to make room for a list
+          of chips. A record that names nothing has no panel at all. */}
       <div className="flex flex-wrap items-start gap-section p-gutter">
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 grow basis-[40rem]">
           {successor || predecessors.length > 0 ? (
             <div className="mb-section flex max-w-prose flex-col gap-1.5">
               {successor ? (
@@ -201,10 +216,25 @@ export function AdrDetail() {
           <Markdown mermaid>{withoutLeadingTitle(adr.body)}</Markdown>
         </div>
 
-        <div className="w-[280px] shrink-0">
-          <RelatedPanel adr={adr} />
-        </div>
+        {relatesToSomething(adr) ? (
+          <div className="min-w-[280px] max-w-prose grow basis-[280px]">
+            <RelatedPanel adr={adr} />
+          </div>
+        ) : null}
       </div>
     </div>
+  );
+}
+
+/** Who wrote the record down and when, from git: "committed by Ada Lovelace · 2026-01-01 · 0a1b2c3". */
+function CommitLine({ label, commit }: { label: string; commit: AdrCommit }) {
+  return (
+    <span title={`${label} in ${commit.commit}`}>
+      {label} by <span className="text-ink">{commit.author || "unknown"}</span>
+      {" · "}
+      {commit.date.slice(0, 10)}
+      {" · "}
+      <Ident value={commit.commit}>{commit.commit.slice(0, 7)}</Ident>
+    </span>
   );
 }

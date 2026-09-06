@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"io"
 	"os"
 	"path/filepath"
@@ -8,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/shortlink-org/portolan/catalog"
+	"github.com/shortlink-org/portolan/plugin"
 )
 
 // The extractor's own golden is examples/auth/portolan/domain.json, which is
@@ -214,5 +216,46 @@ func TestAggregateReadmePrefersTheFile(t *testing.T) {
 	}
 	if got := aggregateReadme(root, "session", "session", "Session", "Package session holds the Session aggregate."); got != strings.TrimSpace(md) {
 		t.Errorf("with a README = %q", got)
+	}
+}
+
+// A package under internal/domain with no struct named after it is not an
+// aggregate, whatever else it declares. Taking the first struct as the root
+// would document a package of error types as a model, and a wrong table is
+// worse than no page.
+func TestAPackageWithoutItsRootIsNotAnAggregate(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "internal", "domain", "domainerrors")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	src := "package domainerrors\n\n// WithNotifyError carries what to tell the user.\ntype WithNotifyError struct {\n\tCode  string\n\tTitle string\n}\n"
+	if err := os.WriteFile(filepath.Join(dir, "errors.go"), []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "go.mod"), []byte("module example.com/svc\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	resp, err := extract(plugin.Input{Root: root, Commit: "abc1234", GeneratedAt: "2026-01-01T00:00:00Z"}, Options{Context: "avia", Service: "svc"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out catalog.Catalog
+	if err := json.Unmarshal([]byte(resp.Files[0].Contents), &out); err != nil {
+		t.Fatal(err)
+	}
+	if got := out.Contexts[0].Services[0].Aggregates; len(got) != 0 {
+		t.Errorf("read as aggregates: %+v", got)
+	}
+
+	var said bool
+	for _, warning := range resp.Warnings() {
+		if strings.Contains(warning.Message, "has no struct called Domainerrors, so it is not read as an aggregate") {
+			said = true
+		}
+	}
+	if !said {
+		t.Errorf("nothing said why; warnings = %+v", resp.Warnings())
 	}
 }

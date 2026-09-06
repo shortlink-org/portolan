@@ -6,6 +6,7 @@
 - **Date:** 2026-09-05
 - **Scope:** [payments.ledger](../payments/ledger/README.md)
 - **Source:** [`examples/payments/ledger/docs/adr/0001-a-gateway-outage-records-nothing.md`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/docs/adr/0001-a-gateway-outage-records-nothing.md)
+- **Committed:** Victor Login, 2026-09-05 (`d5acf38`)
 
 ### Context and Problem Statement
 

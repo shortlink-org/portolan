@@ -33,7 +33,7 @@ No event.
 func parsed(t *testing.T, src string) catalog.Adr {
 	t.Helper()
 
-	adr, errs := parseAdr("examples/auth/docs/adr/0003-expiry-publishes-nothing.md", src)
+	adr, errs := parseAdr("examples/auth/docs/adr/0003-expiry-publishes-nothing.md", src, defaults{})
 	if len(errs) > 0 {
 		t.Fatalf("errors: %s", strings.Join(errs, "\n"))
 	}
@@ -44,7 +44,7 @@ func parsed(t *testing.T, src string) catalog.Adr {
 func refused(t *testing.T, src string) string {
 	t.Helper()
 
-	_, errs := parseAdr("examples/auth/docs/adr/0003-expiry-publishes-nothing.md", src)
+	_, errs := parseAdr("examples/auth/docs/adr/0003-expiry-publishes-nothing.md", src, defaults{})
 	if len(errs) == 0 {
 		t.Fatal("parsed without complaint")
 	}
@@ -79,7 +79,7 @@ func TestTheSlugIsTheIDAndTheFileName(t *testing.T) {
 }
 
 func TestAFileNumberedAwayFromItsRecordIsRefused(t *testing.T) {
-	_, errs := parseAdr("docs/adr/0009-expiry-publishes-nothing.md", sample)
+	_, errs := parseAdr("docs/adr/0009-expiry-publishes-nothing.md", sample, defaults{})
 	if len(errs) != 1 || !strings.Contains(errs[0], "numbered 0009") {
 		t.Errorf("errors: %v", errs)
 	}
@@ -240,7 +240,166 @@ func TestATitleThatIsNotOneIsRefused(t *testing.T) {
 func TestEveryMistakeIsReported(t *testing.T) {
 	src := with("- **Status:** accepted", "- **Status:** agreed")
 	src = strings.Replace(src, "- **Date:** 2026-08-22", "- **Date:** last August", 1)
-	if _, errs := parseAdr("docs/adr/0003-expiry-publishes-nothing.md", src); len(errs) != 2 {
+	if _, errs := parseAdr("docs/adr/0003-expiry-publishes-nothing.md", src, defaults{}); len(errs) != 2 {
+		t.Errorf("errors: %v", errs)
+	}
+}
+
+// The other format: what adr-tools writes. The number and the title are on the
+// title line, the date is a line of its own, and the status is the record's
+// first section. The id's prefix and the scope come from the step, because
+// the format has no place for either.
+const toolsSample = `# 3. Use DTO
+
+Date: 2024-09-10
+
+## Status
+
+Accepted
+
+## Context
+
+Every supplier answers in its own shape.
+
+## Decision
+
+Translate at the boundary.
+`
+
+func parsedTools(t *testing.T, src string, scope string) catalog.Adr {
+	t.Helper()
+
+	adr, errs := parseAdr("etg/aviasupp/docs/ADR/0003-use-dto.md", src, defaults{Scope: scope})
+	if len(errs) > 0 {
+		t.Fatalf("errors: %s", strings.Join(errs, "\n"))
+	}
+
+	return adr
+}
+
+func refusedTools(t *testing.T, src string) string {
+	t.Helper()
+
+	_, errs := parseAdr("etg/aviasupp/docs/ADR/0003-use-dto.md", src, defaults{Scope: "avia.aviasupp"})
+	if len(errs) == 0 {
+		t.Fatal("parsed without complaint")
+	}
+
+	return strings.Join(errs, "\n")
+}
+
+func TestAnAdrToolsRecordIsRead(t *testing.T) {
+	adr := parsedTools(t, toolsSample, "avia.aviasupp")
+	if adr.ID != "aviasupp.0003" || adr.Number != 3 || adr.Title != "Use DTO" {
+		t.Errorf("id %q, number %d, title %q", adr.ID, adr.Number, adr.Title)
+	}
+	if adr.Slug != "aviasupp-0003-use-dto" {
+		t.Errorf("slug = %q", adr.Slug)
+	}
+	if adr.Status != catalog.AdrAccepted || adr.Date != "2024-09-10" {
+		t.Errorf("status %q, date %q", adr.Status, adr.Date)
+	}
+	if adr.Scope.Kind != "service" || adr.Scope.Service != "avia.aviasupp" {
+		t.Errorf("scope = %+v", adr.Scope)
+	}
+	// The status section is part of the record, and the record is kept whole.
+	if !strings.HasPrefix(adr.Body, "## Status\n\nAccepted\n\n## Context") {
+		t.Errorf("body = %q", adr.Body)
+	}
+}
+
+// The prefix follows the scope the way the estate's own records do: the
+// service, the context, or "org".
+func TestTheIDPrefixComesFromTheScope(t *testing.T) {
+	for scope, id := range map[string]string{
+		"avia.aviasupp": "aviasupp.0003",
+		"payments":      "payments.0003",
+		"org":           "org.0003",
+		"":              "org.0003",
+	} {
+		if adr := parsedTools(t, toolsSample, scope); adr.ID != id {
+			t.Errorf("scope %q: id = %q", scope, adr.ID)
+		}
+	}
+	if adr := parsedTools(t, toolsSample, ""); adr.Scope.Kind != "org" {
+		t.Errorf("no scope: %+v", adr.Scope)
+	}
+}
+
+// Supersession is written the way adr-tools writes it: in the Status section,
+// as a link to the other record, and the later statement wins.
+func TestAnAdrToolsSupersessionIsRead(t *testing.T) {
+	src := strings.Replace(toolsSample, "Accepted\n", "Accepted\n\nSuperseded by [5. Use schemas](0005-use-schemas.md)\n", 1)
+	adr := parsedTools(t, src, "avia.aviasupp")
+	if adr.Status != catalog.AdrSuperseded || adr.SupersededBy != "aviasupp.0005" {
+		t.Errorf("status %q, superseded by %q", adr.Status, adr.SupersededBy)
+	}
+
+	src = strings.Replace(toolsSample, "Accepted\n", "Accepted\n\nSupersedes [1. Record decisions](0001-record.md), ADR-0002\n", 1)
+	adr = parsedTools(t, src, "avia.aviasupp")
+	if strings.Join(adr.Supersedes, " ") != "aviasupp.0001" {
+		t.Errorf("supersedes = %v", adr.Supersedes)
+	}
+
+	src = strings.Replace(toolsSample, "Accepted\n", "Accepted\n\nSupersedes ADR-0001 and 2\n", 1)
+	if adr = parsedTools(t, src, "avia.aviasupp"); strings.Join(adr.Supersedes, " ") != "aviasupp.0001 aviasupp.0002" {
+		t.Errorf("bare numbers: supersedes = %v", adr.Supersedes)
+	}
+}
+
+func TestAStatusWordIsReadWhateverItsCase(t *testing.T) {
+	for _, word := range []string{"accepted", "ACCEPTED", "Accepted."} {
+		if adr := parsedTools(t, strings.Replace(toolsSample, "Accepted\n", word+"\n", 1), ""); adr.Status != catalog.AdrAccepted {
+			t.Errorf("%q read as %q", word, adr.Status)
+		}
+	}
+}
+
+func TestWhatAnAdrToolsRecordCannotBeReadWithout(t *testing.T) {
+	if errs := refusedTools(t, strings.Replace(toolsSample, "Date: 2024-09-10\n", "", 1)); !strings.Contains(errs, `no "Date:"`) {
+		t.Errorf("errors: %s", errs)
+	}
+	if errs := refusedTools(t, strings.Replace(toolsSample, "## Status\n\nAccepted\n", "", 1)); !strings.Contains(errs, "no `## Status` section") {
+		t.Errorf("errors: %s", errs)
+	}
+	if errs := refusedTools(t, strings.Replace(toolsSample, "Accepted", "Agreed", 1)); !strings.Contains(errs, `"Agreed" is not a status`) {
+		t.Errorf("errors: %s", errs)
+	}
+	if errs := refusedTools(t, strings.Replace(toolsSample, "Accepted", "Superseded by a later one", 1)); !strings.Contains(errs, "says by which one record") {
+		t.Errorf("errors: %s", errs)
+	}
+	if errs := refusedTools(t, strings.Replace(toolsSample, "Date: 2024-09-10", "Date: 2024-09-10\n\nWritten in a hurry.", 1)); !strings.Contains(errs, `only "Date:" belongs`) {
+		t.Errorf("errors: %s", errs)
+	}
+}
+
+// A MADR record that says no Scope is about whatever the step says its tree
+// is about, and only a record with neither is refused.
+func TestAMissingScopeFallsBackToTheStep(t *testing.T) {
+	src := with("- **Scope:** auth.auth\n", "")
+	adr, errs := parseAdr("examples/auth/docs/adr/0003-expiry-publishes-nothing.md", src, defaults{Scope: "auth"})
+	if len(errs) > 0 {
+		t.Fatalf("errors: %s", strings.Join(errs, "\n"))
+	}
+	if adr.Scope.Kind != "context" || adr.Scope.Context != "auth" {
+		t.Errorf("scope = %+v", adr.Scope)
+	}
+	if errs := refused(t, src); !strings.Contains(errs, `no "Scope"`) {
+		t.Errorf("errors: %s", errs)
+	}
+}
+
+// A record with no number in its title at all - written by hand into an
+// adr-tools tree - is numbered by its file. A MADR title with the wrong dash
+// is not one of these: it opens with an id, and stays refused as a typo.
+func TestATitleWithNoNumberIsNumberedByItsFile(t *testing.T) {
+	adr := parsedTools(t, strings.Replace(toolsSample, "# 3. Use DTO", "# Use DTO", 1), "avia.aviasupp")
+	if adr.ID != "aviasupp.0003" || adr.Number != 3 || adr.Title != "Use DTO" {
+		t.Errorf("id %q, number %d, title %q", adr.ID, adr.Number, adr.Title)
+	}
+
+	_, errs := parseAdr("docs/ADR/river.md", strings.Replace(toolsSample, "# 3. Use DTO", "# River", 1), defaults{})
+	if len(errs) == 0 || !strings.Contains(errs[0], "nothing numbers the record") {
 		t.Errorf("errors: %v", errs)
 	}
 }

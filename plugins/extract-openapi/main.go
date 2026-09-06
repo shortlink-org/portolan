@@ -22,8 +22,22 @@ type Options struct {
 	Service string `json:"service"`
 
 	// Spec is the document, relative to the input root. Left out, the
-	// extractor looks for one.
+	// extractor walks the tree for every document and reads what sits beside
+	// each one: a server generated from it means this service implements it,
+	// a client generated from it means this service calls it, and a called
+	// document names a system outside the estate unless `peers` says the api
+	// is one of ours.
 	Spec string `json:"spec,omitempty"`
+
+	// Peers says which called documents are ours, as the api id to the
+	// service that implements it: {"auth.v1": "auth.auth"}. A called document
+	// whose api is named here is that service's to describe, and is skipped.
+	Peers map[string]string `json:"peers,omitempty"`
+
+	// Externals names a called document's system when the name its title
+	// would give is not the one wanted, as the api id to the external's bare
+	// id: {"stripe.v1": "stripe"}.
+	Externals map[string]string `json:"externals,omitempty"`
 
 	// API prefixes the ids of the rpc services this produces. Left out, it is
 	// built from the document's title and major version - `auth` 1.0.0 gives

@@ -6,6 +6,7 @@
 - **Date:** 2026-08-22
 - **Scope:** [auth.auth](../auth/auth/README.md)
 - **Source:** [`examples/auth/docs/adr/0005-rules-are-specifications-at-construction.md`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/docs/adr/0005-rules-are-specifications-at-construction.md)
+- **Committed:** Victor Login, 2026-09-04 (`7576ca7`)
 
 ### Context and Problem Statement
 

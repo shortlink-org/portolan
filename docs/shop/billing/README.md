@@ -144,9 +144,9 @@ celery -A config worker -Q billing,billing.mail
 
 ### billing
 
-**Celery · billing**
-
 `work queue`
+
+**Celery · billing**
 
 Tasks enqueued and worked through Celery over redis.
 
@@ -159,9 +159,9 @@ Source: [`examples/shop/billing/invoices/services.py:50`](https://github.com/sho
 
 ### billing.mail
 
-**Celery · billing.mail**
-
 `work queue`
+
+**Celery · billing.mail**
 
 Tasks enqueued and worked through Celery over redis.
 

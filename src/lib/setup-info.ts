@@ -15,6 +15,10 @@ export interface SetupProject {
   root: string;
   context?: string;
   service?: string;
+  group?: string;
+  component?: string;
+  groupKind?: string;
+  componentKind?: string;
   repository?: string;
 }
 
@@ -48,6 +52,12 @@ export interface SetupRunStep extends SetupStep {
   fileCount: number;
   changedCount: number;
   files: string[];
+  /**
+   * What the plugin said it could not read, one line each, as it wrote them.
+   * For a tree the extractor only half understood this is the list of what to
+   * fix; a failed step's error stays out, because an error may quote anything.
+   */
+  warnings: string[];
 }
 
 export interface SetupRun {
@@ -86,6 +96,10 @@ interface ManifestProject {
   root?: unknown;
   context?: unknown;
   service?: unknown;
+  group?: unknown;
+  component?: unknown;
+  groupKind?: unknown;
+  componentKind?: unknown;
   repository?: unknown;
 }
 
@@ -100,6 +114,11 @@ interface Manifest {
 
 const PHASES: SetupPhase[] = ["extract", "verify", "generate"];
 const RUN_STATUSES: SetupRunStatus[] = ["ok", "drifted", "failed", "running"];
+// A step that warned about every file in a large tree would otherwise carry
+// the tree into the page; past this many the list is a count, not a list.
+const MAX_WARNINGS = 200;
+const MAX_WARNING_LENGTH = 500;
+
 const STEP_STATUSES: SetupRunStepStatus[] = [
   "up-to-date",
   "written",
@@ -223,6 +242,10 @@ function runStepFrom(
   const files = array(item.files).filter(
     (file): file is string => typeof file === "string" && safeRelativePath(file),
   );
+  const warnings = array(item.warnings)
+    .filter((warning): warning is string => typeof warning === "string" && warning.trim() !== "")
+    .slice(0, MAX_WARNINGS)
+    .map((warning) => warning.slice(0, MAX_WARNING_LENGTH));
 
   return {
     ordinal: item.ordinal,
@@ -240,6 +263,7 @@ function runStepFrom(
     fileCount: item.fileCount,
     changedCount: item.changedCount,
     files,
+    warnings,
   };
 }
 
@@ -262,6 +286,10 @@ function projectFrom(value: unknown): SetupProject | null {
     root: cleanPath(item.root),
     ...(typeof item.context === "string" ? { context: item.context } : {}),
     ...(typeof item.service === "string" ? { service: item.service } : {}),
+    ...(typeof item.group === "string" ? { group: item.group } : {}),
+    ...(typeof item.component === "string" ? { component: item.component } : {}),
+    ...(typeof item.groupKind === "string" ? { groupKind: item.groupKind } : {}),
+    ...(typeof item.componentKind === "string" ? { componentKind: item.componentKind } : {}),
     ...(repository ? { repository } : {}),
   };
 }

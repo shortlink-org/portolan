@@ -73,7 +73,7 @@ function compactDirectories(paths) {
   return directories.filter((dir, index) => !directories.some((parent, other) => other < index && (dir === parent || dir.startsWith(`${parent}/`))));
 }
 
-function detected(plugin, candidates, options = {}, label = candidates[0], ambiguous = false) {
+function detected(plugin, candidates, options = {}, label = candidates[0], ambiguous = false, selected = true) {
   if (!candidates.length) return null;
   return {
     plugin,
@@ -81,17 +81,83 @@ function detected(plugin, candidates, options = {}, label = candidates[0], ambig
     evidence: label,
     candidates,
     options,
-    selected: true,
+    selected,
   };
 }
 
-function detectionsFor(files) {
+function compatibleAdrs(root, candidates) {
+  return candidates.filter((name) => {
+    let source = "";
+    try { source = readFileSync(join(root, name), "utf8"); } catch { return false; }
+    return /^#\s+[^\n]+\.\d{4}\s+[—-]/m.test(source) && /^-\s+\*\*Status:\*\*/mi.test(source) && /^-\s+\*\*Date:\*\*/mi.test(source);
+  });
+}
+
+function goDomainEvidence(root, files) {
+  const candidates = matches(files, /^internal\/domain\/([^/]+)\/[^/]+\.go$/i);
+  for (const name of candidates) {
+    const match = /^internal\/domain\/([^/]+)\//i.exec(name);
+    if (!match) continue;
+    const packageName = match[1].replace(/[^a-zA-Z0-9_]/g, "_");
+    const rootName = match[1]
+      .split(/[^a-zA-Z0-9]+|_/)
+      .filter(Boolean)
+      .map((part) => part[0]?.toUpperCase() + part.slice(1))
+      .join("");
+    let source = "";
+    try { source = readFileSync(join(root, name), "utf8"); } catch { continue; }
+    const packagePattern = new RegExp(`\\bpackage\\s+${packageName}\\b`);
+    const rootPattern = new RegExp(`\\btype\\s+${rootName}\\s+struct\\s*\\{`);
+    if (packagePattern.test(source) && rootPattern.test(source)) return name;
+  }
+  return "";
+}
+
+function laidOutDomainEvidence(root, files, language) {
+  const extension = language === "typescript" ? "ts" : language === "rust" ? "rs" : "java";
+  const prefix = language === "java" ? /(?:^|\/)domain\/([^/]+)\/[^/]+\.java$/i : /^src\/domain\/([^/]+)\/[^/]+\.(?:ts|rs)$/i;
+  for (const name of matches(files, prefix)) {
+    if (!name.endsWith(`.${extension}`)) continue;
+    const match = prefix.exec(name);
+    if (!match) continue;
+    const rootName = match[1].split(/[^a-zA-Z0-9]+|_/).filter(Boolean).map((part) => part[0]?.toUpperCase() + part.slice(1)).join("");
+    let source = "";
+    try { source = readFileSync(join(root, name), "utf8"); } catch { continue; }
+    const claim = language === "typescript"
+      ? new RegExp(`\\b(?:export\\s+)?class\\s+${rootName}\\b`)
+      : language === "rust"
+        ? new RegExp(`\\bpub\\s+struct\\s+${rootName}\\b`)
+        : /@AggregateRoot\b/.test(source) || new RegExp(`\\bclass\\s+${rootName}\\b`).test(source);
+    if (claim instanceof RegExp ? claim.test(source) : claim) return name;
+  }
+  return "";
+}
+
+function goHTTPClientEvidence(root, files) {
+  for (const name of matches(files, /\.go$/).filter((name) => !name.endsWith("_test.go"))) {
+    let source = "";
+    try { source = readFileSync(join(root, name), "utf8"); } catch { continue; }
+    if (
+      /\bhttp\.(?:NewRequest(?:WithContext)?|Get|Post|PostForm|Head)\s*\(/.test(source)
+      || /ClientWithResponses(?:Interface)?\b/.test(source)
+      || /github\.com\/hooklift\/gowsdl\/soap/.test(source)
+    ) return name;
+  }
+  return "";
+}
+
+function detectionsFor(root, files) {
+  let goMod = "";
+  if (files.has("go.mod")) {
+    try { goMod = readFileSync(join(root, "go.mod"), "utf8"); } catch {}
+  }
   const openapi = matches(files, /(^|\/)(openapi|swagger)[^/]*\.(ya?ml|json)$/i);
   const asyncapi = matches(files, /(^|\/)asyncapi[^/]*\.(ya?ml|json)$/i);
   const graphql = matches(files, /\.graphqls?$/i);
   const protos = matches(files, /\.proto$/i);
   const sql = matches(files, /(^|\/)(migrations?|repository)(\/|.*\/).*\.sql$/i);
   const adrs = matches(files, /(^|\/)(docs\/adr|adr)\/.*\.md$/i);
+  const supportedAdrs = compatibleAdrs(root, adrs);
   const glossaries = matches(files, /(^|\/)glossary\.md$/i);
   // The app module is the one file a Celery project always has; the tasks
   // and the calls that enqueue them are found from there.
@@ -103,19 +169,37 @@ function detectionsFor(files) {
   }).find(Boolean);
   const graphqlDirs = compactDirectories(graphql);
   const protoDirs = compactDirectories(protos);
+  const projectMarkers = ["go.mod", "package.json", "Cargo.toml", "pom.xml", "build.gradle", "build.gradle.kts", "manage.py", "Dockerfile", "README.md"].filter((name) => files.has(name));
+  const projectEvidence = projectMarkers.length ? projectMarkers : [[...files].sort()[0]].filter(Boolean);
+  const goDomain = files.has("go.mod") ? goDomainEvidence(root, files) : "";
+  const goHTTPClient = files.has("go.mod") ? goHTTPClientEvidence(root, files) : "";
+  const tsDomain = files.has("package.json") ? laidOutDomainEvidence(root, files, "typescript") : "";
+  const rustDomain = files.has("Cargo.toml") ? laidOutDomainEvidence(root, files, "rust") : "";
+  const javaDomain = ["pom.xml", "build.gradle", "build.gradle.kts"].some((name) => files.has(name)) ? laidOutDomainEvidence(root, files, "java") : "";
   return [
-    detected("go-domain", files.has("go.mod") ? ["go.mod"] : []),
-    detected("ts-domain", ["package.json", "tsconfig.json"].filter((name) => files.has(name))),
-    detected("rust-domain", files.has("Cargo.toml") ? ["Cargo.toml"] : []),
-    detected("java-domain", ["pom.xml", "build.gradle", "build.gradle.kts"].filter((name) => files.has(name))),
-    detected("django-domain", files.has("manage.py") ? ["manage.py"] : []),
+    detected("project", projectEvidence, {}, projectEvidence.join(", ")),
+    detected("go-domain", goDomain ? [goDomain] : [], {}, goDomain),
+    detected("ts-domain", tsDomain ? [tsDomain] : [], {}, tsDomain),
+    detected("rust-domain", rustDomain ? [rustDomain] : [], {}, rustDomain),
+    detected("java-domain", javaDomain ? [javaDomain] : [], {}, javaDomain),
+    detected("django-domain", files.has("manage.py") && matches(files, /(^|\/)models(?:\/[^/]+)?\.py$/i).length ? ["manage.py"] : []),
     detected("celery", celery, {}, celery[0]),
     detected("openapi", openapi, openapi[0] ? { spec: openapi[0] } : {}, openapi[0], true),
+    detected("http-clients", goHTTPClient ? [goHTTPClient] : [], {}, goHTTPClient),
+    detected("river", goMod.includes("github.com/riverqueue/river") ? ["go.mod"] : [], {}, "go.mod · github.com/riverqueue/river"),
+    detected("watermill", goMod.includes("github.com/ThreeDotsLabs/watermill") ? ["go.mod"] : [], {}, "go.mod · github.com/ThreeDotsLabs/watermill"),
     detected("asyncapi", asyncapi, asyncapi[0] ? { spec: asyncapi[0] } : {}, asyncapi[0], true),
     detected("graphql", graphql, graphqlDirs[0] ? { schema: graphqlDirs.length === 1 ? graphqlDirs[0] : graphql[0] } : {}, graphqlDirs.length === 1 ? graphqlDirs[0] : graphql[0]),
     detected("proto", protos, protoDirs.length ? { paths: protoDirs } : {}, protoDirs.join(", ")),
     detected("sql", sql, sqlRoot ? { repositories: sqlRoot } : {}, sqlRoot || sql[0]),
-    detected("adr", adrs, adrs[0] ? { files: [`${posix.dirname(adrs[0])}/*.md`] } : {}, adrs[0] ? `${posix.dirname(adrs[0])}/*.md` : undefined),
+    detected(
+      "adr",
+      adrs,
+      supportedAdrs[0] ? { files: [`${posix.dirname(supportedAdrs[0])}/*.md`] } : {},
+      supportedAdrs[0] ? `${posix.dirname(supportedAdrs[0])}/*.md` : `${posix.dirname(adrs[0] ?? "docs/adr/x.md")}/*.md (format not recognized)`,
+      !supportedAdrs.length,
+      supportedAdrs.length > 0,
+    ),
     detected("glossary", glossaries, glossaries.length ? { files: glossaries } : {}, glossaries.join(", ")),
   ].filter(Boolean);
 }
@@ -123,13 +207,13 @@ function detectionsFor(files) {
 export function discoverProject(workspace, input) {
   const { root, absolute } = safeRoot(workspace, input);
   const files = walk(absolute);
-  const detections = detectionsFor(files);
+  const detections = detectionsFor(absolute, files);
   const id = slug(basename(absolute)) || "service";
   return {
     root,
     filesScanned: files.size,
     truncated: files.size >= MAX_FILES,
-    defaults: { id, name: id.split("-").map((part) => part[0]?.toUpperCase() + part.slice(1)).join(" "), context: id, service: id },
+    defaults: { id, name: id.split("-").map((part) => part[0]?.toUpperCase() + part.slice(1)).join(" "), group: id, component: id, context: id, service: id },
     detections,
   };
 }
@@ -227,12 +311,28 @@ function lstatExists(path) {
 }
 
 function pluginOptions(plugin, project, detectedOptions = {}) {
-  const common = { context: project.context, service: project.service };
+  const group = project.group ?? project.context;
+  const component = project.component ?? project.service;
+  const common = { context: group, service: component };
+  if (plugin === "project") {
+    return {
+      group,
+      component,
+      ...detectedOptions,
+      ...(project.groupKind ? { groupKind: project.groupKind } : {}),
+      ...(project.componentKind ? { componentKind: project.componentKind } : {}),
+      ...(project.repository ? { repo: repositoryParts(project.repository).web } : {}),
+      out: "project.json",
+    };
+  }
   if (["go-domain", "ts-domain", "rust-domain", "java-domain", "django-domain"].includes(plugin)) {
     return { ...common, ...(project.repository ? { repo: repositoryParts(project.repository).web } : {}), ...detectedOptions, out: "domain.json" };
   }
   if (plugin === "sql") return { ...common, store: "pg", ...detectedOptions, out: "stores.json" };
   if (plugin === "openapi") return { ...common, ...detectedOptions, out: "api.json" };
+  if (plugin === "http-clients") return { ...common, ...detectedOptions, out: "http-clients.json" };
+  if (plugin === "river") return { ...common, ...detectedOptions, out: "river.json" };
+  if (plugin === "watermill") return { ...common, ...detectedOptions, out: "watermill.json" };
   if (plugin === "asyncapi") return { ...common, ...detectedOptions, out: "bus.json" };
   if (plugin === "celery") return { ...common, ...detectedOptions, out: "celery.json" };
   if (plugin === "graphql") return { ...common, ...detectedOptions, out: "graphql.json" };
@@ -265,13 +365,27 @@ export function planProject(workspace, manifest, request) {
     id,
     name: String(request.name ?? "").trim() || discovery.defaults.name,
     root: finalRoot,
-    ...(String(request.context ?? "").trim() ? { context: slug(String(request.context)) } : {}),
-    ...(String(request.service ?? "").trim() ? { service: slug(String(request.service)) } : {}),
+    ...(String(request.group ?? request.context ?? "").trim() ? { group: slug(String(request.group ?? request.context)) } : {}),
+    ...(String(request.component ?? request.service ?? "").trim() ? { component: slug(String(request.component ?? request.service)) } : {}),
+    ...(String(request.groupKind ?? "").trim() ? { groupKind: String(request.groupKind).trim() } : {}),
+    ...(String(request.componentKind ?? "").trim() ? { componentKind: String(request.componentKind).trim() } : {}),
     ...(String(request.repository ?? "").trim() ? { repository: String(request.repository).trim() } : {}),
   };
   const out = `${finalRoot}/portolan`;
   const detectionByPlugin = new Map(discovery.detections.map((item) => [item.plugin, item]));
-  const steps = plugins.map((plugin) => ({ plugin, in: finalRoot, out, options: pluginOptions(plugin, project, detectionByPlugin.get(plugin)?.options) }));
+  const hasDomainModel = plugins.some((plugin) => ["go-domain", "ts-domain", "rust-domain", "java-domain", "django-domain"].includes(plugin));
+  const steps = plugins.map((plugin) => ({
+    plugin,
+    in: finalRoot,
+    out,
+    options: pluginOptions(
+      plugin,
+      project,
+      plugin === "project"
+        ? { groupKind: hasDomainModel ? "bounded-context" : "system", ...(hasDomainModel ? { componentKind: "service" } : {}) }
+        : detectionByPlugin.get(plugin)?.options,
+    ),
+  }));
   const source = external ? "vendor/repos/**/portolan/*.json" : `${out}/*.json`;
   const fetch = external ? { repo: repo.value, commit: String(request.commit), paths: sourcePath ? [sourcePath] : [] } : null;
   return { project, plugins, steps, source, discovery, fetch };

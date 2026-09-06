@@ -6,6 +6,7 @@
 - **Date:** 2026-09-04
 - **Scope:** [auth.auth](../auth/auth/README.md)
 - **Source:** [`examples/auth/docs/adr/0007-login-asks-risk-and-a-block-is-a-compromise.md`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/docs/adr/0007-login-asks-risk-and-a-block-is-a-compromise.md)
+- **Committed:** Victor Login, 2026-09-04 (`7576ca7`)
 
 ### Context and Problem Statement
 

@@ -53,6 +53,10 @@ type flowOptions struct {
 	store string
 	// peers maps a proto package to the service that answers to it.
 	peers map[string]string
+	// externals maps an api id to the system outside the estate that answers
+	// to it, when the manifest names one rather than leaving it to the
+	// document beside the client.
+	externals map[string]string
 	// events maps the import path a foreign event is vendored under to the
 	// aggregate that raised it.
 	events map[string]string

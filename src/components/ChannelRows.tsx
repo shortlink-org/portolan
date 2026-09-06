@@ -94,11 +94,11 @@ export function ChannelRows({
         <div key={channel.address} className="rounded-card border border-line">
           <div className="flex flex-wrap items-baseline gap-x-2 border-b border-line px-3 py-2">
             <Ident value={channel.address} />
-            {channel.title ? (
-              <span className="text-muted">{channel.title}</span>
-            ) : null}
             {channel.kind === "job" ? (
               <span className="chip">work queue</span>
+            ) : null}
+            {channel.title ? (
+              <span className="text-muted">{channel.title}</span>
             ) : null}
           </div>
           {channel.doc ? (

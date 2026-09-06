@@ -8,6 +8,16 @@
       "description": "The record files to read, as globs relative to the input root. A README.md among them is an index rather than a record and is skipped. Left out, every docs/adr/*.md.",
       "examples": [["docs/adr/*.md"], ["adr/*.md"]]
     },
+    "scope": {
+      "type": "string",
+      "description": "What a record is about when it does not say so itself: \"org\", a context slug, or \"<context>.<service>\". A record written by adr-tools has no scope of its own and takes its id's prefix from here; a MADR record with a Scope bullet keeps its own.",
+      "examples": ["avia.aviasupp", "payments", "org"]
+    },
+    "history": {
+      "enum": ["git", "none"],
+      "description": "Where a record's author and dates come from. \"git\", the default, reads the file's commits: who first added it and who last touched it. \"none\" reads nothing, for a tree that is not a checkout or a fragment that must not change when the history does.",
+      "default": "git"
+    },
     "out": {
       "type": "string",
       "description": "Name of the fragment file, inside the step's output directory. Left out, adr.json."

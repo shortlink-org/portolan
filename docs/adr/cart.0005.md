@@ -6,6 +6,8 @@
 - **Date:** 2026-09-04
 - **Scope:** [shop.cart](../shop/cart/README.md)
 - **Source:** [`examples/shop/cart/docs/adr/0005-a-merge-moves-every-line-or-none.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/docs/adr/0005-a-merge-moves-every-line-or-none.md)
+- **Committed:** Victor Login, 2026-09-04 (`18d3de7`)
+- **Revised:** Victor Login, 2026-09-05 (`e32b0ae`)
 
 ### Context and Problem Statement
 

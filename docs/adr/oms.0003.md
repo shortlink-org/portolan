@@ -6,6 +6,7 @@
 - **Date:** 2026-09-05
 - **Scope:** [shop.oms](../shop/oms/README.md)
 - **Source:** [`examples/shop/oms/docs/adr/0003-lines-are-copied-never-repriced.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/docs/adr/0003-lines-are-copied-never-repriced.md)
+- **Committed:** Victor Login, 2026-09-05 (`96ce9ca`)
 
 ### Context and Problem Statement
 

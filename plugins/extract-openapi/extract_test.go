@@ -17,7 +17,7 @@ func fragment(t *testing.T) catalog.Catalog {
 
 	resp, err := extract(
 		plugin.Input{Root: "testdata", Commit: "abc1234", GeneratedAt: "2026-01-01T00:00:00Z"},
-		Options{Context: "billing", Service: "invoices"},
+		Options{Context: "billing", Service: "invoices", Spec: "openapi.yaml"},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -353,7 +353,7 @@ func TestShapesOnEitherSide(t *testing.T) {
 func TestExternalCarriesNoService(t *testing.T) {
 	resp, err := extract(
 		plugin.Input{Root: "testdata", Commit: "abc1234", GeneratedAt: "2026-01-01T00:00:00Z"},
-		Options{External: "psp", ExternalName: "PSP", ExternalURL: "https://psp.example/docs", API: "psp.v1"},
+		Options{External: "psp", ExternalName: "PSP", ExternalURL: "https://psp.example/docs", API: "psp.v1", Spec: "openapi.yaml"},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -383,5 +383,134 @@ func TestExternalCarriesNoService(t *testing.T) {
 	// A dotted id would put the external inside a context nobody declared.
 	if _, err := extract(plugin.Input{Root: "testdata"}, Options{External: "shop.psp"}); err == nil {
 		t.Error("an external with a dot in its id was accepted")
+	}
+}
+
+// A Swagger 2.0 document keeps its schemas under definitions, sends its body
+// as a parameter and puts the response schema straight on the response. A
+// generator that still writes 2.0 - swag, for one - documents a service
+// exactly as well as one that writes 3.
+func TestSwagger2DefinitionsAndBodyParameters(t *testing.T) {
+	resp, err := extract(
+		plugin.Input{Root: "testdata/swagger2", Commit: "abc1234", GeneratedAt: "2026-01-01T00:00:00Z"},
+		Options{Context: "avia", Service: "aviasupp", Spec: "swagger.yaml"},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out catalog.Catalog
+	if err := json.Unmarshal([]byte(resp.Files[0].Contents), &out); err != nil {
+		t.Fatal(err)
+	}
+
+	byName := map[string]catalog.RpcMethod{}
+	shapes := map[string][]string{}
+	for _, p := range out.Contexts[0].Services[0].Provides {
+		for _, method := range p.Methods {
+			byName[method.Name] = method
+		}
+		for _, message := range p.Messages {
+			var fields []string
+			for _, field := range message.Fields {
+				fields = append(fields, field.Name+" "+field.Type)
+			}
+			shapes[message.Name] = fields
+		}
+	}
+
+	book, ok := byName["POST /book"]
+	if !ok {
+		t.Fatalf("no POST /book among %v", byName)
+	}
+	if book.Request != "book.Request" || book.Response != "book.Response" {
+		t.Errorf("book sends %q and returns %q", book.Request, book.Response)
+	}
+
+	// The body parameter is inherited from the path item, and a list of a
+	// definition is that definition with brackets.
+	search, ok := byName["search"]
+	if !ok {
+		t.Fatalf("no search among %v", byName)
+	}
+	if search.Request != "search.Request" || search.Response != "search.Offer[]" {
+		t.Errorf("search sends %q and returns %q", search.Request, search.Response)
+	}
+
+	if got := strings.Join(shapes["book.Request"], ", "); got != "offer_id string, passengers []book.Passenger" {
+		t.Errorf("book.Request = %q", got)
+	}
+	if _, ok := shapes["book.Passenger"]; !ok {
+		t.Errorf("book.Passenger, reached through book.Request, is not among the messages: %v", shapes)
+	}
+	if _, ok := shapes["search.Offer"]; !ok {
+		t.Errorf("search.Offer, the response item, is not among the messages: %v", shapes)
+	}
+}
+
+// Nothing named: the tree says which documents this service implements and
+// which it calls. A server generated from a document means provides; a client
+// generated from one means a system outside the estate, named by the
+// document's own title, unless the manifest says the api is one of ours. A
+// document with neither beside it is reported and left alone.
+func TestATreeSaysWhatIsImplementedAndWhatIsCalled(t *testing.T) {
+	read := func(opts Options) (catalog.Catalog, plugin.Response) {
+		t.Helper()
+		opts.Context, opts.Service = "avia", "aviasupp"
+		resp, err := extract(plugin.Input{Root: "testdata/discover", Commit: "abc1234", GeneratedAt: "2026-01-01T00:00:00Z"}, opts)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out catalog.Catalog
+		if err := json.Unmarshal([]byte(resp.Files[0].Contents), &out); err != nil {
+			t.Fatal(err)
+		}
+		return out, resp
+	}
+
+	out, resp := read(Options{Peers: map[string]string{"partner-api.v2": "shop.partner"}})
+
+	var provided []string
+	for _, p := range out.Contexts[0].Services[0].Provides {
+		provided = append(provided, p.ID+" from "+p.Source)
+	}
+	if strings.Join(provided, ", ") != "aviasupp.v1.Book from testdata/discover/docs/swagger.yaml" {
+		t.Errorf("provides = %v", provided)
+	}
+
+	if len(out.Externals) != 1 {
+		t.Fatalf("externals = %+v", out.Externals)
+	}
+	acme := out.Externals[0]
+	if acme.ID != "acme-flights" || acme.Slug != "acme-flights" || acme.Name != "Acme Flights API" || acme.Summary != "Flights and ancillaries from Acme." || acme.URL != "https://developer.acme.example/flights" {
+		t.Errorf("external = %+v", acme)
+	}
+	if len(acme.Provides) != 1 || acme.Provides[0].ID != "acme-flights-api.v1.Search" {
+		t.Errorf("acme provides %+v", acme.Provides)
+	}
+
+	warned := func(substring string) bool {
+		for _, w := range resp.Warnings() {
+			if strings.Contains(w.Message, substring) {
+				return true
+			}
+		}
+		return false
+	}
+	if !warned("found testdata/discover/internal/stray/openapi.yaml, and nothing beside it says") {
+		t.Errorf("the stray document was not reported; warnings = %+v", resp.Warnings())
+	}
+	if !warned("nameless/client/openapi.yaml is called from here and its document has no title") {
+		t.Errorf("the nameless document was not reported; warnings = %+v", resp.Warnings())
+	}
+
+	// The manifest may name the system itself; and a called document whose
+	// api no peers line claims is a system outside the estate too.
+	out, _ = read(Options{Externals: map[string]string{"acme-flights-api.v1": "acme"}})
+	var ids []string
+	for _, e := range out.Externals {
+		ids = append(ids, e.ID)
+	}
+	if strings.Join(ids, ",") != "acme,partner" {
+		t.Errorf("externals = %v", ids)
 	}
 }

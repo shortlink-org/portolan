@@ -62,6 +62,13 @@
   ],
   "plugins": [
     {
+      "name": "project",
+      "process": {
+        "command": "go",
+        "args": ["run", "./plugins/extract-project"]
+      }
+    },
+    {
       "name": "go-domain",
       "process": {
         "command": "go",
@@ -108,6 +115,27 @@
       "process": {
         "command": "go",
         "args": ["run", "./plugins/extract-openapi"]
+      }
+    },
+    {
+      "name": "http-clients",
+      "process": {
+        "command": "go",
+        "args": ["run", "./plugins/extract-http-clients"]
+      }
+    },
+    {
+      "name": "river",
+      "process": {
+        "command": "go",
+        "args": ["run", "./plugins/extract-river"]
+      }
+    },
+    {
+      "name": "watermill",
+      "process": {
+        "command": "go",
+        "args": ["run", "./plugins/extract-watermill"]
       }
     },
     {

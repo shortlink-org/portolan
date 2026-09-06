@@ -22,7 +22,7 @@ function workspace() {
   writeFileSync(join(root, "portolan.json"), `${JSON.stringify({
     sources: ["data/*.json"],
     projects: [],
-    plugins: ["go-domain", "openapi", "sql", "adr"].map((name) => ({ name, process: { command: "true" } })),
+    plugins: ["project", "go-domain", "openapi", "sql", "adr"].map((name) => ({ name, process: { command: "true" } })),
     extract: [],
   }, null, 2)}\n`);
   return root;
@@ -32,11 +32,66 @@ describe("local project setup", () => {
   it("detects project technologies without executing the project", () => {
     const root = workspace();
     const discovery = discoverProject(root, "services/billing");
-    expect(discovery.defaults).toEqual({ id: "billing", name: "Billing", context: "billing", service: "billing" });
-    expect(discovery.detections.map((item) => item.plugin)).toEqual(["go-domain", "openapi", "sql", "adr"]);
+    expect(discovery.defaults).toEqual({ id: "billing", name: "Billing", group: "billing", component: "billing", context: "billing", service: "billing" });
+    expect(discovery.detections.map((item) => item.plugin)).toEqual(["project", "openapi", "sql", "adr"]);
     expect(discovery.detections.find((item) => item.plugin === "openapi")?.options).toEqual({ spec: "api/openapi.yaml" });
     expect(discovery.detections.find((item) => item.plugin === "sql")?.options).toEqual({});
-    expect(discovery.detections.find((item) => item.plugin === "adr")?.options).toEqual({ files: ["docs/adr/*.md"] });
+    expect(discovery.detections.find((item) => item.plugin === "adr")?.options).toEqual({});
+    expect(discovery.detections.find((item) => item.plugin === "adr")?.selected).toBe(false);
+  });
+
+  it("only offers the Go domain extractor when the layout contains an aggregate root", () => {
+    const root = workspace();
+    mkdirSync(join(root, "services/billing/internal/domain/invoice"), { recursive: true });
+    writeFileSync(join(root, "services/billing/internal/domain/invoice/invoice.go"), "package invoice\n\ntype Invoice struct{}\n");
+    const discovery = discoverProject(root, "services/billing");
+    expect(discovery.detections.map((item) => item.plugin)).toContain("go-domain");
+    expect(discovery.detections.find((item) => item.plugin === "go-domain")?.evidence).toBe("internal/domain/invoice/invoice.go");
+  });
+
+  it("offers the River extractor when the Go module uses River", () => {
+    const root = workspace();
+    writeFileSync(join(root, "services/billing/go.mod"), "module example.com/billing\nrequire github.com/riverqueue/river v0.26.0\n");
+    const manifest = JSON.parse(readFileSync(join(root, "portolan.json"), "utf8"));
+    manifest.plugins.push({ name: "river", process: { command: "true" } });
+    const discovery = discoverProject(root, "services/billing");
+    expect(discovery.detections.find((item) => item.plugin === "river")).toMatchObject({ confidence: "high", evidence: "go.mod · github.com/riverqueue/river" });
+    const plan = planProject(root, manifest, {
+      root: "services/billing", id: "billing", name: "Billing", group: "finance", component: "billing", repository: "", plugins: ["project", "river"],
+    });
+    expect(plan.steps[1]).toMatchObject({ plugin: "river", options: { context: "finance", service: "billing", out: "river.json" } });
+  });
+
+  it("offers the Watermill extractor when the Go module uses Watermill", () => {
+    const root = workspace();
+    writeFileSync(join(root, "services/billing/go.mod"), "module example.com/billing\nrequire github.com/ThreeDotsLabs/watermill v1.5.1\n");
+    const manifest = JSON.parse(readFileSync(join(root, "portolan.json"), "utf8"));
+    manifest.plugins.push({ name: "watermill", process: { command: "true" } });
+    const discovery = discoverProject(root, "services/billing");
+    expect(discovery.detections.find((item) => item.plugin === "watermill")).toMatchObject({ confidence: "high", evidence: "go.mod · github.com/ThreeDotsLabs/watermill" });
+    const plan = planProject(root, manifest, {
+      root: "services/billing", id: "billing", name: "Billing", group: "finance", component: "billing", repository: "", plugins: ["project", "watermill"],
+    });
+    expect(plan.steps[1]).toMatchObject({ plugin: "watermill", options: { context: "finance", service: "billing", out: "watermill.json" } });
+  });
+
+  it("offers the HTTP client extractor when Go source makes outbound calls", () => {
+    const root = workspace();
+    writeFileSync(join(root, "services/billing/client.go"), 'package billing\nimport "net/http"\nfunc call() { _, _ = http.Get("https://billing.example/health") }\n');
+    const manifest = JSON.parse(readFileSync(join(root, "portolan.json"), "utf8"));
+    manifest.plugins.push({ name: "http-clients", process: { command: "true" } });
+    const discovery = discoverProject(root, "services/billing");
+    expect(discovery.detections.find((item) => item.plugin === "http-clients")).toMatchObject({
+      confidence: "high",
+      evidence: "client.go",
+    });
+    const plan = planProject(root, manifest, {
+      root: "services/billing", id: "billing", name: "Billing", group: "finance", component: "billing", repository: "", plugins: ["project", "http-clients"],
+    });
+    expect(plan.steps[1]).toMatchObject({
+      plugin: "http-clients",
+      options: { context: "finance", service: "billing", out: "http-clients.json" },
+    });
   });
 
   it("refuses paths that escape through a symlink", () => {
@@ -51,21 +106,25 @@ describe("local project setup", () => {
     const root = workspace();
     const manifest = JSON.parse(readFileSync(join(root, "portolan.json"), "utf8"));
     const plan = planProject(root, manifest, {
-      root: "services/billing", id: "billing", name: "Billing", context: "finance", service: "billing", repository: "", plugins: ["go-domain", "openapi", "proto"],
+      root: "services/billing", id: "billing", name: "Billing", group: "finance", component: "billing", context: "", service: "", repository: "", plugins: ["project", "openapi", "proto"],
     });
-    expect(plan.plugins).toEqual(["go-domain", "openapi"]);
+    expect(plan.plugins).toEqual(["project", "openapi"]);
     expect(plan.source).toBe("services/billing/portolan/*.json");
     expect(plan.steps).toHaveLength(2);
+    expect(plan.steps[0]).toMatchObject({
+      plugin: "project",
+      options: { group: "finance", component: "billing", groupKind: "system", out: "project.json" },
+    });
   });
 
   it("writes a validated manifest and rejects duplicate roots", () => {
     const root = workspace();
-    const request = { root: "services/billing", id: "billing", name: "Billing", context: "finance", service: "billing", repository: "", plugins: ["go-domain", "openapi"] };
+    const request = { root: "services/billing", id: "billing", name: "Billing", group: "finance", component: "billing", context: "", service: "", repository: "", plugins: ["project", "openapi"] };
     writeProject(root, request);
     const manifest = JSON.parse(readFileSync(join(root, "portolan.json"), "utf8"));
     expect(manifest.projects[0].id).toBe("billing");
     expect(manifest.sources).toContain("services/billing/portolan/*.json");
-    expect(manifest.extract.map((step) => step.plugin)).toEqual(["go-domain", "openapi"]);
+    expect(manifest.extract.map((step) => step.plugin)).toEqual(["project", "openapi"]);
     expect(() => writeProject(root, { ...request, id: "another" })).toThrow(/already exists/);
   });
 
@@ -80,7 +139,7 @@ describe("local project setup", () => {
     const manifest = JSON.parse(readFileSync(join(root, "portolan.json"), "utf8"));
     manifest.plugins.push({ name: "git", process: { command: "true" } });
     writeFileSync(join(root, "portolan.json"), `${JSON.stringify(manifest, null, 2)}\n`);
-    const request = { source: "external", root: "", repository, ref: "main", commit, sourcePath, id: "payments", name: "Payments", context: "payments", service: "payments", plugins: ["go-domain"] };
+    const request = { source: "external", root: "", repository, ref: "main", commit, sourcePath, id: "payments", name: "Payments", group: "payments", component: "payments", context: "", service: "", plugins: ["project"] };
     const plan = planProject(root, manifest, request);
     expect(plan.project.root).toBe("vendor/repos/acme/platform/services/payments");
     expect(plan.fetch).toEqual({ repo: repository, commit, paths: [sourcePath] });

@@ -95,6 +95,11 @@ for (const context of catalog.contexts) {
 // the lane and not to a `v1` nested inside a `risk` that nobody declared.
 const participantByLabel = new Map();
 for (const [id, meta] of rootParticipants) participantByLabel.set(meta.label, id);
+// A dot means containment only for catalog services. Root participants are
+// declared as one safe identifier, so a broker named `river.orders` must be
+// referenced as `river_orders`, not as an undeclared `orders` inside `river`.
+const participantRef = (id) =>
+  rootParticipants.has(id) && !serviceIds.has(id) ? safeId(id) : fqn(id);
 function peerParticipant(peer) {
   if (serviceIds.has(peer) || rootParticipants.has(peer)) return peer;
   return participantByLabel.get(peer);
@@ -176,11 +181,11 @@ model.push("");
 
 for (const context of catalog.contexts) {
   model.push(`  ${safeId(context.id)} = context ${q(context.name)} {`);
-  model.push(`    description ${q(context.summary)}`);
+  model.push(`    description ${q([context.kind, context.summary].filter(Boolean).join(" · "))}`);
   model.push(`    style { color ${contextColorName(context.id)} }`);
   for (const service of context.services) {
     model.push(`    ${safeId(service.slug)} = service ${q(service.name)} {`);
-    model.push(`      description ${q(`${service.repo}/${service.path}`)}`);
+    model.push(`      description ${q([service.kind, ...(service.technologies ?? []), `${service.repo}/${service.path}`].filter(Boolean).join(" · "))}`);
     model.push(`      style { color ${contextColorName(context.id)} }`);
     for (const aggregate of service.aggregates) {
       model.push(`      ${safeId(aggregate.slug)} = aggregate ${q(aggregate.name)} {`);
@@ -215,7 +220,7 @@ for (const context of catalog.contexts) {
           // event for the same reason.
           if (consumer.service === service.id) continue;
           relations.push(
-            `  ${fqn(service.id)} -> ${fqn(consumer.service)} ${q(event.name)} {\n` +
+            `  ${fqn(service.id)} -> ${participantRef(consumer.service)} ${q(event.name)} {\n` +
               `    style { color ${consumer.status}  line ${STATUS_LINE[consumer.status]}  head onormal }\n` +
               `  }`,
           );
@@ -227,7 +232,7 @@ for (const context of catalog.contexts) {
       if (!peer) continue;
       const method = call.id.split("/").pop() ?? call.id;
       relations.push(
-        `  ${fqn(service.id)} -> ${fqn(peer)} ${q(method)} {\n` +
+        `  ${fqn(service.id)} -> ${participantRef(peer)} ${q(method)} {\n` +
           `    style { color ${call.status}  line ${STATUS_LINE[call.status]}  head normal }\n` +
           `  }`,
       );
@@ -322,7 +327,7 @@ for (const edge of actorEdges.values()) {
   const names = [...edge.flows];
   const label = names.length === 1 ? names[0] : `${names.length} flows`;
   relations.push(
-    `  ${fqn(edge.from)} -> ${fqn(edge.to)} ${q(label)} {\n` +
+    `  ${participantRef(edge.from)} -> ${participantRef(edge.to)} ${q(label)} {\n` +
       `    style { color ${edge.status}  line ${STATUS_LINE[edge.status]}  head normal }\n` +
       `  }`,
   );
@@ -398,7 +403,7 @@ function emitSteps(nodes, out, indent) {
       const notes = [];
       if (node.note) notes.push(node.note);
       if (node.line) notes.push(node.line);
-      out.push(`${indent}${fqn(node.from)} -> ${fqn(node.to)} ${q(label)} {`);
+      out.push(`${indent}${participantRef(node.from)} -> ${participantRef(node.to)} ${q(label)} {`);
       out.push(`${indent}  ${attrs.join("  ")}`);
       if (notes.length > 0) out.push(`${indent}  notes ${q(notes.join(" — "))}`);
       out.push(`${indent}}`);
@@ -486,7 +491,9 @@ const outside = [...rootParticipants]
 views.push(`  view ${LANDSCAPE_VIEW} {`);
 views.push("    title 'Estate'");
 views.push(
-  "    description 'Every bounded context, and everything outside the estate that touches one.'",
+  catalog.contexts.some((context) => context.kind && context.kind !== "bounded-context")
+    ? "    description 'Every architecture group, and everything outside the estate that touches one.'"
+    : "    description 'Every bounded context, and everything outside the estate that touches one.'",
 );
 views.push(
   `    include ${[...catalog.contexts.map((c) => safeId(c.id)), ...outside].join(", ")}`,
@@ -563,7 +570,10 @@ for (const flow of catalog.flows) {
   if (crossBody.length === 0) {
     // A flow with no crossing at all still needs a renderable view.
     const first = flow.participants[0];
-    if (first) crossBody.push(`    ${fqn(first.id)} -> ${fqn(first.id)} 'no cross-context step'`);
+    if (first) {
+      const firstRef = participantRef(first.id);
+      crossBody.push(`    ${firstRef} -> ${firstRef} 'no cross-context step'`);
+    }
   }
   views.push(...crossBody);
   views.push("  }");

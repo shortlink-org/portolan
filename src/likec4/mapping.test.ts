@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { catalog } from "../data";
 import { classify } from "../selection/model";
-import { fqn } from "./ids";
-import { catalogIdOf } from "./mapping";
+import { fqn, participantFqn } from "./ids";
+import { catalogIdMap, catalogIdOf } from "./mapping";
 
 describe("catalogIdOf", () => {
   /**
@@ -37,6 +37,26 @@ describe("catalogIdOf", () => {
     expect(catalogIdOf("shop.pricing.price_list")).toBe(
       "shop.pricing.price-list",
     );
+  });
+
+  it("maps a dotted root participant using the identifier the generator declares", () => {
+    const participant = {
+      id: "river.order-jobs",
+      kind: "broker" as const,
+      context: null,
+    };
+    const fixture = {
+      ...catalog,
+      flows: [
+        {
+          ...catalog.flows[0]!,
+          participants: [...catalog.flows[0]!.participants, participant],
+        },
+        ...catalog.flows.slice(1),
+      ],
+    };
+
+    expect(catalogIdMap(fixture).get(participantFqn(participant))).toBe(participant.id);
   });
 
   it("hands back an id it has never seen, so the click still lands", () => {

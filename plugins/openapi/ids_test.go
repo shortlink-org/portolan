@@ -32,6 +32,23 @@ func TestIDs(t *testing.T) {
 	}
 }
 
+// A system outside the estate is named by its document's title, and the
+// title's "API" is the interface, not the system.
+func TestExternalID(t *testing.T) {
+	for title, want := range map[string]string{
+		"Gordian Flights & Ancillaries API": "gordian-flights-ancillaries",
+		"Stripe API":                        "stripe",
+		"  Partner   REST API ":             "partner-rest",
+		"API":                               "api",
+		"":                                  "",
+		"Amadeus (Self-Service) v2":         "amadeus-self-service-v2",
+	} {
+		if got := ExternalID(title); got != want {
+			t.Errorf("ExternalID(%q) = %q, want %q", title, got, want)
+		}
+	}
+}
+
 const doc = `openapi: 3.0.3
 info:
   title: auth
