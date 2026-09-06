@@ -120,6 +120,28 @@ Terminal states are derived on the page - nothing leads out - and never
 written down. A move the clock makes, a session expiring, a lock running out,
 is not a move: nothing runs when it happens, so it is not in the table.
 
+## Enums
+
+An aggregate's fields take some of their values from closed sets - a reason,
+a status, a code - and a consumer of its events switches on them. Those sets
+are the aggregate's `enums`: one entry per set, id `<aggregate>.<slug>`,
+the values in declaration order, each with its doc and a `deprecated` mark
+when the source carries one. A status enum is read here as well as by the
+lifecycle: the lifecycle keeps the moves, the enum keeps the doc on each
+value, and a page may draw both.
+
+What counts as one is a convention per language, and each extractor's README
+says which. In Go, which has no enum, it is a named type over a basic one -
+`type Reason string` - and a const block whose constants are of that type,
+looked for in the aggregate's package, under `vo/`, and under `event/`;
+a value's name is the constant's literal, because that is what the wire
+carries, and the constant's own name only for an iota. A `Deprecated:`
+paragraph in the doc marks the value. In Rust it is a `pub enum` whose every
+variant is a bare name, the literal an `as_str` answers standing in for the
+variant. In Java it is a top-level enum in the aggregate's package. In proto,
+the enums the messages reach through their fields sit on the interface as
+`enums`, with the numbers the wire uses.
+
 ## A repository without a domain model
 
 `extract-project` is the baseline extractor for any repository. It reads only

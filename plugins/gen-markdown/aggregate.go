@@ -30,6 +30,7 @@ func (s *site) renderAggregate(svc *catalog.Service, agg *catalog.Aggregate) {
 
 	section(&b, "Entities", s.blocks(self, agg.Entities, agg.Root))
 	section(&b, "Value objects", s.blocks(self, agg.ValueObjects, ""))
+	section(&b, "Enums", s.enums(agg.Enums))
 	section(&b, "Lifecycle", s.lifecycle(self, svc, agg))
 	section(&b, "Operations", s.operationsTable(agg))
 	section(&b, "Events", s.eventsBlock(self, svc, agg))
@@ -118,6 +119,40 @@ func hasBlock(blocks []catalog.Block, name string) bool {
 // own or a name for a shared one; both are shown with their fields, because a
 // reader asking what a value object holds should not have to follow a link to
 // find out.
+// enums lists each closed set with its values in declaration order: what a
+// consumer has to handle, next to the doc that says when each one comes.
+func (s *site) enums(enums []catalog.Enum) string {
+	var b strings.Builder
+
+	for i := range enums {
+		set := &enums[i]
+
+		heading := set.Name
+		if set.Deprecated {
+			heading += " — deprecated"
+		}
+		b.WriteString("### " + heading + "\n\n")
+
+		if set.Doc != "" {
+			b.WriteString(set.Doc + "\n\n")
+		}
+
+		rows := make([][]string, 0, len(set.Values))
+		for _, value := range set.Values {
+			name := code(value.Name)
+			if value.Deprecated {
+				name += " (deprecated)"
+			}
+			rows = append(rows, []string{name, value.Doc})
+		}
+		if rendered := table([]string{"Value", "Doc"}, rows); rendered != "" {
+			b.WriteString(rendered + "\n")
+		}
+	}
+
+	return b.String()
+}
+
 func (s *site) blocks(from string, blocks []catalog.Block, root string) string {
 	var b strings.Builder
 

@@ -1,6 +1,6 @@
 # Order
 
-*Generated from the portolan catalog · commit `10 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `12 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
 
 - **Id:** `shop.oms.order`
 - **Service:** [Order Management](../README.md)
@@ -68,6 +68,18 @@ requires every line to agree with the total on it.
 | --- | --- |
 | `amount_minor` | `i64` |
 | `currency` | `String` |
+
+## Enums
+
+### Status
+
+Where an order is in its life. Closed on purpose: a reader switches on it.
+
+| Value |
+| --- |
+| `placed` |
+| `confirmed` |
+| `cancelled` |
 
 ## Lifecycle
 

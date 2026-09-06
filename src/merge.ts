@@ -684,6 +684,7 @@ function copyAggregate(aggregate: Aggregate): Aggregate {
   return {
     ...aggregate,
     events: aggregate.events.map((e) => ({ ...e, consumers: [...e.consumers] })),
+    ...(aggregate.enums ? { enums: [...aggregate.enums] } : {}),
   };
 }
 

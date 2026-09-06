@@ -32,6 +32,8 @@ func canonicalCatalog(cat catalog.Catalog) catalog.Catalog {
 				slices.SortFunc(agg.Operations, func(a, b catalog.Operation) int { return strings.Compare(a.ID, b.ID) })
 				agg.Events = slices.Clone(agg.Events)
 				slices.SortFunc(agg.Events, func(a, b catalog.Event) int { return strings.Compare(a.ID, b.ID) })
+				agg.Enums = slices.Clone(agg.Enums)
+				slices.SortFunc(agg.Enums, func(a, b catalog.Enum) int { return strings.Compare(a.ID, b.ID) })
 			}
 			svc.Provides = canonicalProvides(svc.Provides)
 			svc.Consumes = slices.Clone(svc.Consumes)
@@ -78,6 +80,8 @@ func canonicalProvides(input []catalog.RpcService) []catalog.RpcService {
 		slices.SortFunc(out[i].Methods, func(a, b catalog.RpcMethod) int { return strings.Compare(a.Name, b.Name) })
 		out[i].Messages = slices.Clone(out[i].Messages)
 		slices.SortFunc(out[i].Messages, func(a, b catalog.RpcMessage) int { return strings.Compare(a.Name, b.Name) })
+		out[i].Enums = slices.Clone(out[i].Enums)
+		slices.SortFunc(out[i].Enums, func(a, b catalog.RpcEnum) int { return strings.Compare(a.Name, b.Name) })
 	}
 	return out
 }

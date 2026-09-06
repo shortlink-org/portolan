@@ -258,7 +258,29 @@
                     "emits": "shop.oms.order.OrderCancelled"
                   }
                 ]
-              }
+              },
+              "enums": [
+                {
+                  "id": "shop.oms.order.status",
+                  "slug": "status",
+                  "name": "Status",
+                  "doc": "",
+                  "values": [
+                    {
+                      "name": "placed",
+                      "doc": ""
+                    },
+                    {
+                      "name": "confirmed",
+                      "doc": ""
+                    },
+                    {
+                      "name": "cancelled",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ]
             }
           ]
         }

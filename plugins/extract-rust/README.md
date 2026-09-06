@@ -20,6 +20,7 @@ src/
     <aggregate>.rs        the root: a pub struct named like the directory, in PascalCase
     *.rs                  entities: other pub structs in the directory's own files
     vo/*.rs               value objects: pub structs under vo/
+    *.rs, vo/*.rs         enums: pub enums whose every variant is a bare name; `Error` is skipped
     rules/*.rs            specifications; skipped, they are not shapes
     event/*.rs            one pub struct per event, named by `fn name(&self) -> &'static str { "oms.OrderPlaced" }`
                           in any impl of it, or by `pub const NAME: &str`
@@ -50,6 +51,16 @@ skipped. Its fields are the struct's fields with the type as written. Other
 pub structs in the directory's top-level files are entities; structs under
 `vo/` are value objects; `rules/` is skipped. The readme is `README.md` in the
 directory, or the doc comment above the root.
+
+**Enum.** A pub enum in the directory's own files or under `vo/` whose every
+variant is a bare name is a closed set of values, id
+`<aggregate>.<slug>`. A variant carrying data makes the enum a sum type, which
+is a shape rather than a set, and it is not read; `Error` is not read either,
+being what a command refuses with. A value's name is the string literal an
+inherent method answers for the variant - `as_str`, or any method whose body
+is a `match self` with a literal per arm - and the variant's own name when
+there is none; the doc is the variant's doc comment, and `#[deprecated]` on a
+variant or the enum is carried.
 
 **Event.** Each pub struct under `event/` whose name on the bus can be read -
 a `name` method returning a string literal in any of its impl blocks,

@@ -1152,3 +1152,64 @@ describe("externals", () => {
     expect(() => validateCatalog(doubled)).toThrow(/method/);
   });
 });
+
+describe("validateCatalog: enums", () => {
+  function withEnum(): { bad: Catalog; aggregate: NonNullable<Catalog["contexts"][0]["services"][0]["aggregates"][0]> } {
+    const bad = clone();
+    const aggregate = bad.contexts[0]?.services[0]?.aggregates[0];
+    if (!aggregate) throw new Error("fixture has no aggregate");
+    aggregate.enums = [
+      {
+        id: `${aggregate.id}.reason`,
+        slug: "reason",
+        name: "Reason",
+        doc: "",
+        values: [
+          { name: "logout", doc: "" },
+          { name: "revoked", doc: "" },
+        ],
+      },
+    ];
+    return { bad, aggregate };
+  }
+
+  it("accepts an aggregate that declares none, and one that declares a set", () => {
+    expect(() => validateCatalog(clone())).not.toThrow();
+    const { bad } = withEnum();
+    expect(() => validateCatalog(bad)).not.toThrow();
+  });
+
+  it("indexes an enum under its id with its owners", () => {
+    const { bad, aggregate } = withEnum();
+    const owner = buildIndex(bad).enumById.get(`${aggregate.id}.reason`);
+    expect(owner?.enum.name).toBe("Reason");
+    expect(owner?.aggregate.id).toBe(aggregate.id);
+  });
+
+  it("rejects an enum whose id is not spelled from the aggregate's", () => {
+    const { bad, aggregate } = withEnum();
+    (aggregate.enums ?? [])[0]!.id = "elsewhere.reason";
+    expect(() => validateCatalog(bad)).toThrowError(
+      /enum "elsewhere.reason" .* must have id/,
+    );
+  });
+
+  it("rejects an enum with no values, and one naming a value twice", () => {
+    const { bad, aggregate } = withEnum();
+    const item = (aggregate.enums ?? [])[0]!;
+    item.values = [];
+    expect(() => validateCatalog(bad)).toThrowError(/has no values/);
+    item.values = [
+      { name: "logout", doc: "" },
+      { name: "logout", doc: "" },
+    ];
+    expect(() => validateCatalog(bad)).toThrowError(/lists value "logout" twice/);
+  });
+
+  it("rejects two enums with one slug", () => {
+    const { bad, aggregate } = withEnum();
+    const item = (aggregate.enums ?? [])[0]!;
+    aggregate.enums = [item, { ...item }];
+    expect(() => validateCatalog(bad)).toThrowError(/enum slug "reason" is not unique/);
+  });
+});

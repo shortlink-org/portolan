@@ -3,6 +3,7 @@ package main
 import (
 	"path"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/shortlink-org/portolan/catalog"
@@ -251,6 +252,20 @@ func (s *site) providesBlock(from string, provides []catalog.RpcService, owner *
 				b.WriteString(strings.Join(variants, ", ") + "\n\n")
 			}
 			b.WriteString(s.fieldTable(from, msg.Fields))
+			b.WriteString("\n</details>\n")
+		}
+		for j := range rpc.Enums {
+			set := &rpc.Enums[j]
+			b.WriteString("\n<a id=\"enum-" + anchorID(set.Name) + "\"></a>\n")
+			b.WriteString("<details><summary>" + set.Name + " (enum)</summary>\n\n")
+			if set.Doc != "" {
+				b.WriteString(set.Doc + "\n\n")
+			}
+			rows := make([][]string, 0, len(set.Values))
+			for _, value := range set.Values {
+				rows = append(rows, []string{code(value.Name), strconv.Itoa(value.Number), value.Doc})
+			}
+			b.WriteString(table([]string{"Value", "Number", "Doc"}, rows))
 			b.WriteString("\n</details>\n")
 		}
 		b.WriteString("\n")

@@ -67,6 +67,23 @@
                     }
                   ]
                 }
+              ],
+              "enums": [
+                {
+                  "name": "Kind",
+                  "doc": "What the invoice is for.",
+                  "values": [
+                    {
+                      "name": "KIND_UNSPECIFIED",
+                      "number": 0
+                    },
+                    {
+                      "name": "KIND_ORDER",
+                      "number": 1,
+                      "doc": "An order's goods."
+                    }
+                  ]
+                }
               ]
             }
           ],
@@ -227,6 +244,29 @@
                     }
                   ]
                 }
+              ],
+              "enums": [
+                {
+                  "id": "billing.invoices.invoice.invoice-status",
+                  "slug": "invoice-status",
+                  "name": "InvoiceStatus",
+                  "doc": "Where an invoice is in its life.",
+                  "values": [
+                    {
+                      "name": "DRAFT",
+                      "doc": "Drawn up, not yet sent."
+                    },
+                    {
+                      "name": "ISSUED",
+                      "doc": "Sent to the customer."
+                    },
+                    {
+                      "name": "VOID",
+                      "doc": "Withdrawn before payment.",
+                      "deprecated": true
+                    }
+                  ]
+                }
               ]
             }
           ]
@@ -243,8 +283,12 @@
       "owner": "billing.invoices",
       "commit": "0123456789012345678901234567890123456789",
       "digest": "b5:example",
-      "packages": ["billing.v1"],
-      "files": ["api/invoices.proto"],
+      "packages": [
+        "billing.v1"
+      ],
+      "files": [
+        "api/invoices.proto"
+      ],
       "source": "api"
     }
   ],

@@ -322,6 +322,32 @@
                   }
                 }
               ],
+              "enums": [
+                {
+                  "id": "auth.auth.session.reason",
+                  "slug": "reason",
+                  "name": "Reason",
+                  "doc": "Reason says why a session stopped being usable. It is a closed set: a consumer that switches on it should not have to handle free text.",
+                  "values": [
+                    {
+                      "name": "logout",
+                      "doc": "ReasonLogout - the user asked."
+                    },
+                    {
+                      "name": "revoked",
+                      "doc": "ReasonRevoked - somebody else ended it, support or an admin."
+                    },
+                    {
+                      "name": "password-changed",
+                      "doc": "ReasonPasswordChanged - the credentials it was issued against are gone."
+                    },
+                    {
+                      "name": "risk-blocked",
+                      "doc": "ReasonRiskBlocked - a login attempt was judged hostile, and every session the account had is treated as the attacker's. Told apart from the rest so that a client can say \"sign in again\" rather than \"you signed out\"."
+                    }
+                  ]
+                }
+              ],
               "lifecycle": {
                 "states": [
                   "live",

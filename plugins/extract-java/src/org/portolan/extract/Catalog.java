@@ -36,6 +36,23 @@ final class Catalog {
         return map("id", id, "slug", slug, "name", name, "doc", doc, "fields", fields);
     }
 
+    static Map<String, Object> enumSet(String id, String slug, String name, String doc, boolean deprecated, List<Object> values) {
+        Map<String, Object> out = map("id", id, "slug", slug, "name", name, "doc", doc);
+        if (deprecated) {
+            out.put("deprecated", true);
+        }
+        out.put("values", values);
+        return out;
+    }
+
+    static Map<String, Object> enumValue(String name, String doc, boolean deprecated) {
+        Map<String, Object> out = map("name", name, "doc", doc);
+        if (deprecated) {
+            out.put("deprecated", true);
+        }
+        return out;
+    }
+
     static Map<String, Object> version(String doc, String source, List<Object> fields) {
         return map("version", "v1", "doc", doc, "source", source, "fields", fields);
     }

@@ -67,7 +67,7 @@ func interfaces(ix *Index, files []*File, moduleID string, sh *shared, b *plugin
 				provided.Methods = append(provided.Methods, method)
 			}
 
-			provided.Messages = messagesFrom(ix, queue, seen, sh, id, b)
+			provided.Messages, provided.Enums = messagesFrom(ix, queue, seen, sh, id, b)
 			out = append(out, provided)
 		}
 	}
@@ -129,16 +129,22 @@ func shapeRef(ix *Index, from *File, name string, sh *shared, queue *[]string, s
 }
 
 // messagesFrom walks the queue, describing each message and adding whatever its
-// fields refer to, until nothing new is reached.
-func messagesFrom(ix *Index, queue []string, seen map[string]bool, sh *shared, where string, b *plugin.Builder) []catalog.RpcMessage {
+// fields refer to, until nothing new is reached. An enum a field names is
+// reached the same way and listed beside the messages: a consumer decoding
+// the field sees a number, and the enum is what the number means.
+func messagesFrom(ix *Index, queue []string, seen map[string]bool, sh *shared, where string, b *plugin.Builder) ([]catalog.RpcMessage, []catalog.RpcEnum) {
 	var out []catalog.RpcMessage
+	var enums []catalog.RpcEnum
 
 	for i := 0; i < len(queue); i++ {
 		fqn := queue[i]
 		msg := ix.Message(fqn)
 		if msg == nil {
-			// An enum, or something only an import declares. Neither is a
-			// message and neither belongs in this list.
+			if e := ix.enums[fqn]; e != nil {
+				enums = append(enums, enumOf(fqn, e))
+			}
+			// Otherwise something only an import declares: not a message,
+			// not a set, and not for this list.
 			continue
 		}
 
@@ -171,7 +177,19 @@ func messagesFrom(ix *Index, queue []string, seen map[string]bool, sh *shared, w
 		out = append(out, catalog.RpcMessage{Name: shortName(fqn), Fields: fields})
 	}
 
-	return out
+	return out, enums
+}
+
+// enumOf is an enum as the catalog carries it: the values in declaration
+// order with the numbers the wire uses. Named by its bare name, the way a
+// nested message is: a reader says `Channel`, and the file says where.
+func enumOf(fqn string, e *Enum) catalog.RpcEnum {
+	values := make([]catalog.RpcEnumValue, 0, len(e.Values))
+	for _, v := range e.Values {
+		values = append(values, catalog.RpcEnumValue{Name: v.Name, Number: v.Number, Doc: v.Doc})
+	}
+
+	return catalog.RpcEnum{Name: shortName(fqn), Doc: e.Doc, Values: values}
 }
 
 // promote records a message as a shared type and returns its defs key.

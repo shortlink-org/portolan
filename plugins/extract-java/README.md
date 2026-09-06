@@ -60,6 +60,15 @@ A class that extends an exception is a sentinel - what a command refuses with
 neither holds anything of the aggregate, so neither is a block of it. The doc
 of anything is its javadoc, first paragraph.
 
+**Enum.** Every top-level enum in an aggregate's package is a closed set of
+values, id `<aggregate>.<slug>`: its constants in declaration order, each
+with its javadoc, `@Deprecated` carried on a constant and on the type. A
+constant is a member whose type is the enum itself, so a `TRANSITIONS` table
+beside them is not one. jMolecules has no annotation for this, and none is
+needed: an enum in a domain package is a vocabulary whatever it is called. A
+status enum is read twice - here as the set, and by the lifecycle for its
+moves. Enums nested inside a class are not read.
+
 **Event.** A class saying `@DomainEvent`, or any class in the aggregate's
 `event` package. Its `NAME` constant is the name on the wire and `CHANNEL` is
 where it goes out; without a `NAME` the wire name is assumed from the service

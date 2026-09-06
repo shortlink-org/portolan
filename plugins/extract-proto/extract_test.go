@@ -436,3 +436,24 @@ func fmtInt(n int) string {
 
 	return string(digits)
 }
+
+// An enum a field names is listed beside the messages, values and numbers
+// in declaration order. Only the ones reached: a set no method moves is
+// not what the interface says.
+func TestEnumsAreReachedThroughFields(t *testing.T) {
+	byName := map[string]catalog.RpcEnum{}
+	for _, e := range service(t).Provides[0].Enums {
+		byName[e.Name] = e
+	}
+
+	channel, ok := byName["Channel"]
+	if !ok {
+		t.Fatalf("Order.channel names Channel, which is not listed: %v", byName)
+	}
+	if status, ok := byName["Status"]; !ok || status.Doc != "How far along an order is." || status.Values[1].Doc != "The shop has it." {
+		t.Errorf("Status, reached through Order.status, lost its docs: %+v", status)
+	}
+	if len(channel.Values) != 2 || channel.Values[1].Name != "CHANNEL_WEB" || channel.Values[1].Number != 1 {
+		t.Errorf("values = %+v", channel.Values)
+	}
+}

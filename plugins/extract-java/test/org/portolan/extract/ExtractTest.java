@@ -82,6 +82,9 @@ public final class ExtractTest {
         is("the root is the annotated class", "Payment", aggregate.get("root"));
         is("an @Entity beside it is an entity", "[Payment, Posting]", names(aggregate.get("entities")));
         is("a @ValueObject is a value object", "[Money]", names(aggregate.get("valueObjects")));
+        is("an enum in the package is a closed set, its constants in declaration order",
+                "[DeclineReason=[CARD_REFUSED, ORDER_CANCELLED, GATEWAY_TIMEOUT], PaymentStatus=[PENDING, AUTHORIZED, CAPTURED, DECLINED, VOIDED]]",
+                enumValues(aggregate.get("enums")));
 
         is("a use case is a @Service, and a write makes it a command",
                 "[AuthorizePayment=command, CapturePayment=command, GetPayment=query]",
@@ -126,6 +129,16 @@ public final class ExtractTest {
         is("the lane says the far end is outside the estate", "external", kindOf(authorize.get("participants"), "stripe"));
 
         is("what it reports beside the fragment", 2, warnings.size());
+    }
+
+    /** "[Name=[A, B], …]": each enum with the names of its values, in order. */
+    private static String enumValues(Object enums) {
+        List<String> out = new ArrayList<>();
+        for (Object item : Json.array(enums)) {
+            Map<String, Object> map = Json.object(item);
+            out.add(map.get("name") + "=" + names(map.get("values")));
+        }
+        return out.toString();
     }
 
     private static String names(Object blocks) {

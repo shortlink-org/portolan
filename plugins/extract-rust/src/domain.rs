@@ -109,6 +109,7 @@ fn read_aggregate(krate: &Crate, dir: &Path, svc_id: &str, rel: &dyn Fn(&Path) -
         .map(|s| s.trim().to_string())
         .unwrap_or_else(|_| doc_of(&root_struct.attrs));
     let lifecycle = read_lifecycle(krate, dir, root_src, root_struct, &event_ids, &id, rel, b);
+    let enums = crate::enums::read_enums(krate, &id, dir);
 
     Some(AggregateRead {
         aggregate: Aggregate {
@@ -121,6 +122,7 @@ fn read_aggregate(krate: &Crate, dir: &Path, svc_id: &str, rel: &dyn Fn(&Path) -
             value_objects,
             operations: vec![],
             events,
+            enums,
             lifecycle,
         },
         dir: dir.to_path_buf(),

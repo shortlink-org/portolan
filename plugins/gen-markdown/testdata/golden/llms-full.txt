@@ -119,6 +119,18 @@ refers to one of these is knowably the same shape everywhere it appears.
 
 </details>
 
+<a id="enum-kind"></a>
+<details><summary>Kind (enum)</summary>
+
+What the invoice is for.
+
+| Value | Number | Doc |
+| --- | --- | --- |
+| `KIND_UNSPECIFIED` | 0 | — |
+| `KIND_ORDER` | 1 | An order's goods. |
+
+</details>
+
 <!-- billing/README.md -->
 
 # Billing
@@ -209,6 +221,18 @@ No dunning.
 
 </details>
 
+<a id="enum-kind"></a>
+<details><summary>Kind (enum)</summary>
+
+What the invoice is for.
+
+| Value | Number | Doc |
+| --- | --- | --- |
+| `KIND_UNSPECIFIED` | 0 | — |
+| `KIND_ORDER` | 1 | An order's goods. |
+
+</details>
+
 ## Consumes
 
 | Call | Peer | Status | Source | Via | Note |
@@ -282,6 +306,18 @@ Shared type [`Money`](../../../types.md#type-money).
 | --- | --- | --- |
 | `amountMinor` | `int64` | Amount in the minor unit. |
 | `currency` | `string` | ISO 4217, upper case. |
+
+## Enums
+
+### InvoiceStatus
+
+Where an invoice is in its life.
+
+| Value | Doc |
+| --- | --- |
+| `DRAFT` | Drawn up, not yet sent. |
+| `ISSUED` | Sent to the customer. |
+| `VOID` (deprecated) | Withdrawn before payment. |
 
 ## Lifecycle
 

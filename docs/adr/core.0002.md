@@ -1,6 +1,6 @@
 # core.0002 — A shipment waits for the money, and the ledger's fact releases it
 
-*Generated from the portolan catalog · commit `10 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `12 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-05

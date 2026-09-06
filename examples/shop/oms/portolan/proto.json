@@ -150,6 +150,33 @@
                   ]
                 }
               ],
+              "enums": [
+                {
+                  "name": "OrderStatus",
+                  "doc": "OrderStatus is closed on purpose: a caller switches on it, and a new state is\na contract change rather than a string somebody starts sending.",
+                  "values": [
+                    {
+                      "name": "ORDER_STATUS_UNSPECIFIED",
+                      "number": 0
+                    },
+                    {
+                      "name": "ORDER_STATUS_PLACED",
+                      "number": 1,
+                      "doc": "Placed from a checked-out basket; the payment is not authorised yet."
+                    },
+                    {
+                      "name": "ORDER_STATUS_CONFIRMED",
+                      "number": 2,
+                      "doc": "The payment is authorised and the order may be fulfilled."
+                    },
+                    {
+                      "name": "ORDER_STATUS_CANCELLED",
+                      "number": 3,
+                      "doc": "Cancelled by the customer, or because the payment was declined. Terminal."
+                    }
+                  ]
+                }
+              ],
               "module": "buf.build/shortlink-org/portolan-shop-order"
             }
           ],

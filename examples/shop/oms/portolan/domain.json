@@ -267,6 +267,28 @@
                   }
                 }
               ],
+              "enums": [
+                {
+                  "id": "shop.oms.order.status",
+                  "slug": "status",
+                  "name": "Status",
+                  "doc": "Where an order is in its life. Closed on purpose: a reader switches on it.",
+                  "values": [
+                    {
+                      "name": "placed",
+                      "doc": ""
+                    },
+                    {
+                      "name": "confirmed",
+                      "doc": ""
+                    },
+                    {
+                      "name": "cancelled",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
               "lifecycle": {
                 "states": [
                   "placed",

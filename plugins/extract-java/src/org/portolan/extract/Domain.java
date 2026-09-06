@@ -1,6 +1,7 @@
 package org.portolan.extract;
 
 import com.sun.source.tree.ClassTree;
+import com.sun.source.tree.Tree;
 import com.sun.source.tree.VariableTree;
 
 import java.nio.file.Path;
@@ -30,6 +31,7 @@ final class Domain {
         ClassTree root;
         final List<ClassTree> entities = new ArrayList<>();
         final List<Map.Entry<Source.Unit, ClassTree>> valueObjects = new ArrayList<>();
+        final List<Map.Entry<Source.Unit, ClassTree>> enums = new ArrayList<>();
         final List<ClassTree> ports = new ArrayList<>();
         final Map<String, Source.Unit> unitOf = new LinkedHashMap<>();
         Map<String, Object> object;
@@ -132,7 +134,10 @@ final class Domain {
             return;
         }
         if (Source.isEnum(type)) {
-            return; // a closed set of values, read by Lifecycle when it is the status
+            // A closed set of values: what a consumer switches on. Lifecycle
+            // reads the same enum again when it is the status, for the moves.
+            aggregate.enums.add(Map.entry(unit, type));
+            return;
         }
         // Nothing said what this is. The layout answers: the class named after
         // the package is the root, anything else beside it is an entity.
@@ -176,6 +181,41 @@ final class Domain {
             values.add(block(id, value.getKey(), value.getValue()));
         }
         aggregate.object.put("valueObjects", values);
+
+        List<Object> enums = new ArrayList<>();
+        for (var entry : aggregate.enums) {
+            enums.add(enumSet(id, entry.getKey(), entry.getValue()));
+        }
+        if (!enums.isEmpty()) {
+            aggregate.object.put("enums", enums);
+        }
+    }
+
+    /**
+     * An enum as a set: its constants in declaration order, each with its
+     * javadoc, and {@code @Deprecated} carried on the constant and on the type.
+     * A constant is a member whose type is the enum itself; the static table
+     * beside them - a {@code TRANSITIONS} map - is not one.
+     */
+    private static Map<String, Object> enumSet(String aggregateId, Source.Unit unit, ClassTree type) {
+        String name = type.getSimpleName().toString();
+        List<Object> values = new ArrayList<>();
+        for (Tree member : type.getMembers()) {
+            if (member instanceof VariableTree constant && constant.getType() != null
+                    && constant.getType().toString().equals(name)) {
+                values.add(Catalog.enumValue(
+                        constant.getName().toString(),
+                        unit.doc(constant),
+                        Source.annotated(constant.getModifiers(), "Deprecated")));
+            }
+        }
+        return Catalog.enumSet(
+                Ids.blockId(aggregateId, Ids.slug(name)),
+                Ids.slug(name),
+                name,
+                unit.doc(type),
+                Source.annotated(type.getModifiers(), "Deprecated"),
+                values);
     }
 
     private static Map<String, Object> block(String aggregateId, Source.Unit unit, ClassTree type) {

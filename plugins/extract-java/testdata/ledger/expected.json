@@ -272,6 +272,57 @@
                   }
                 }
               ],
+              "enums": [
+                {
+                  "id": "payments.ledger.payment.decline-reason",
+                  "slug": "decline-reason",
+                  "name": "DeclineReason",
+                  "doc": "Why the money was not held, as a closed set.",
+                  "values": [
+                    {
+                      "name": "CARD_REFUSED",
+                      "doc": "The network would not hold the amount on this instrument."
+                    },
+                    {
+                      "name": "ORDER_CANCELLED",
+                      "doc": "The order was already cancelled when the hold was asked for; nothing was asked of the network."
+                    },
+                    {
+                      "name": "GATEWAY_TIMEOUT",
+                      "doc": "The gateway did not answer in time. Retired: an outage now records nothing.",
+                      "deprecated": true
+                    }
+                  ]
+                },
+                {
+                  "id": "payments.ledger.payment.payment-status",
+                  "slug": "payment-status",
+                  "name": "PaymentStatus",
+                  "doc": "Where a payment is in its life, and the one way through those states.",
+                  "values": [
+                    {
+                      "name": "PENDING",
+                      "doc": ""
+                    },
+                    {
+                      "name": "AUTHORIZED",
+                      "doc": ""
+                    },
+                    {
+                      "name": "CAPTURED",
+                      "doc": ""
+                    },
+                    {
+                      "name": "DECLINED",
+                      "doc": ""
+                    },
+                    {
+                      "name": "VOIDED",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
               "lifecycle": {
                 "states": [
                   "PENDING",

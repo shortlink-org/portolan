@@ -32,6 +32,18 @@ Shared type [`Money`](../../../types.md#type-money).
 | `amountMinor` | `int64` | Amount in the minor unit. |
 | `currency` | `string` | ISO 4217, upper case. |
 
+## Enums
+
+### InvoiceStatus
+
+Where an invoice is in its life.
+
+| Value | Doc |
+| --- | --- |
+| `DRAFT` | Drawn up, not yet sent. |
+| `ISSUED` | Sent to the customer. |
+| `VOID` (deprecated) | Withdrawn before payment. |
+
 ## Lifecycle
 
 ```mermaid

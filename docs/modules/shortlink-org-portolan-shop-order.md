@@ -1,6 +1,6 @@
 # shortlink-org/portolan-shop-order
 
-*Generated from the portolan catalog · commit `10 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `12 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
 
 - **Id:** `buf.build/shortlink-org/portolan-shop-order`
 - **Registry:** buf.build
@@ -108,5 +108,20 @@
 | `lines` | `[]Line` | — |
 | `total` | `Money` | The quoted total, tax and promotions included. |
 | `placed_at` | `Timestamp` | — |
+
+</details>
+
+<a id="enum-orderstatus"></a>
+<details><summary>OrderStatus (enum)</summary>
+
+OrderStatus is closed on purpose: a caller switches on it, and a new state is
+a contract change rather than a string somebody starts sending.
+
+| Value | Number | Doc |
+| --- | --- | --- |
+| `ORDER_STATUS_UNSPECIFIED` | 0 | — |
+| `ORDER_STATUS_PLACED` | 1 | Placed from a checked-out basket; the payment is not authorised yet. |
+| `ORDER_STATUS_CONFIRMED` | 2 | The payment is authorised and the order may be fulfilled. |
+| `ORDER_STATUS_CANCELLED` | 3 | Cancelled by the customer, or because the payment was declined. Terminal. |
 
 </details>

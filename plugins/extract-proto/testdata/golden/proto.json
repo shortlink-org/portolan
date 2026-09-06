@@ -222,6 +222,36 @@
                   ]
                 }
               ],
+              "enums": [
+                {
+                  "name": "Status",
+                  "doc": "How far along an order is.",
+                  "values": [
+                    {
+                      "name": "STATUS_UNKNOWN",
+                      "number": 0
+                    },
+                    {
+                      "name": "STATUS_PLACED",
+                      "number": 1,
+                      "doc": "The shop has it."
+                    }
+                  ]
+                },
+                {
+                  "name": "Channel",
+                  "values": [
+                    {
+                      "name": "CHANNEL_UNKNOWN",
+                      "number": 0
+                    },
+                    {
+                      "name": "CHANNEL_WEB",
+                      "number": 1
+                    }
+                  ]
+                }
+              ],
               "module": "buf.build/acme/shop"
             }
           ],

@@ -240,6 +240,11 @@ export interface RpcService {
    * a service whose protos were not parsed still lists its methods.
    */
   messages?: RpcMessage[];
+  /**
+   * The enums the messages' fields name, reached the way `messages` are:
+   * from the methods, through the fields, as far as the document declares.
+   */
+  enums?: RpcEnum[];
   /** The schema module declaring this interface, by `ProtoModule.id`. */
   module?: string;
 }
@@ -313,6 +318,18 @@ export const STREAMING: readonly Streaming[] = [
   "server",
   "bidi",
 ] as const;
+/** An enum a proto declares. The number is what a binary message carries. */
+export interface RpcEnum {
+  name: string;
+  doc?: string;
+  values: RpcEnumValue[];
+}
+export interface RpcEnumValue {
+  name: string;
+  number: number;
+  doc?: string;
+}
+
 export interface RpcMessage {
   name: string; // "PlaceOrderRequest"
   fields: Field[];
@@ -435,6 +452,12 @@ export interface Aggregate {
   operations: Operation[];
   events: Event[];
   /**
+   * The closed sets the aggregate's fields take values from: a reason, a
+   * status, a code. Read through `enumsOf`, which answers [] for a source
+   * that declared none - the same shape every other optional list here has.
+   */
+  enums?: Enum[];
+  /**
    * Where the root can go from where it is, when the aggregate has a status
    * and the code writes its transitions down as one table. Absent means the
    * aggregate has no lifecycle worth the name, or the extractor found none.
@@ -505,6 +528,34 @@ export interface Block {
 export type ValueObject = Block;
 export type Entity = Block;
 export type BlockKind = "vo" | "entity";
+
+/**
+ * A closed set of values a field can hold. What a consumer switches on: an
+ * order hearing `PaymentDeclined` reads `reason` and does one thing for
+ * CARD_REFUSED and another for ORDER_CANCELLED, and this is the list it has
+ * to handle. Not a Block - it has no fields - and told apart from a status
+ * the lifecycle already knows by nothing: the lifecycle keeps the moves, the
+ * enum keeps the doc on each value, and a page may draw both.
+ */
+export interface Enum {
+  id: string; // "<aggregate id>.<slug>"
+  slug: string;
+  name: string;
+  doc: string;
+  /** The whole set is on its way out. */
+  deprecated?: boolean;
+  values: EnumValue[];
+}
+export interface EnumValue {
+  /**
+   * What a consumer sees on the wire when the source says so - a Go
+   * constant's literal, a Rust `as_str` arm - and the variant's own name
+   * otherwise.
+   */
+  name: string;
+  doc: string;
+  deprecated?: boolean;
+}
 export interface Event {
   id: string; // "<service id>.<aggregate>.<Name>"
   slug: string;
@@ -1170,6 +1221,11 @@ export function keyColumns(table: Table): Column[] {
  * shared def it names. An empty list means the catalog knows the block by name
  * only, which pages say out loud rather than drawing a blank table.
  */
+/** The enums an aggregate declares; [] for a source that wrote none. */
+export function enumsOf(aggregate: Aggregate): Enum[] {
+  return aggregate.enums ?? [];
+}
+
 export function blockFields(catalog: Catalog, block: Block): Field[] {
   if (block.fields) return block.fields;
   if (block.ref) return catalog.defs[block.ref]?.fields ?? [];
@@ -1231,6 +1287,14 @@ export interface BlockOwner {
   context: BoundedContext;
 }
 
+/** An enum and everything that owns it, so a value can be drawn without a lookup. */
+export interface EnumOwner {
+  enum: Enum;
+  aggregate: Aggregate;
+  service: Service;
+  context: BoundedContext;
+}
+
 /** A column and everything holding it, so a row can be drawn without a lookup. */
 export interface ColumnOwner {
   column: Column;
@@ -1287,6 +1351,8 @@ export interface CatalogIndex {
   eventByWireName: Map<string, Event>;
   /** value object and entity id -> the block and everything that owns it */
   blockById: Map<string, BlockOwner>;
+  /** enum id -> the enum and everything that owns it */
+  enumById: Map<string, EnumOwner>;
   /** defs key -> ids of the blocks that name it */
   blocksByDef: Map<string, string[]>;
   rpcById: Map<string, RpcCall>;
@@ -1369,6 +1435,7 @@ export function buildIndex(catalog: Catalog): CatalogIndex {
     { service: Service; aggregate: Aggregate }
   >();
   const blockById = new Map<string, BlockOwner>();
+  const enumById = new Map<string, EnumOwner>();
   const blocksByDef = new Map<string, string[]>();
   const rpcById = new Map<string, RpcCall>();
   const rpcProviderByMethod = new Map<string, Service>();
@@ -1424,6 +1491,9 @@ export function buildIndex(catalog: Catalog): CatalogIndex {
           if (event.wire && !eventByWireName.has(event.wire.name)) {
             eventByWireName.set(event.wire.name, event);
           }
+        }
+        for (const item of enumsOf(aggregate)) {
+          enumById.set(item.id, { enum: item, aggregate, service, context });
         }
         for (const { kind, block } of aggregateBlocks(aggregate)) {
           blockById.set(block.id, { block, kind, aggregate, service, context });
@@ -1597,6 +1667,7 @@ export function buildIndex(catalog: Catalog): CatalogIndex {
     eventOwner,
     eventByWireName,
     blockById,
+    enumById,
     blocksByDef,
     rpcById,
     rpcProviderByMethod,
@@ -2629,6 +2700,49 @@ function validateFlowFrames(flow: Flow, nodes: FlowNode[]): void {
  * does not list is a modelling mistake, not a rendering one, and the tree would
  * quietly print a line pointing at nothing.
  */
+/**
+ * An enum is a set: its slug is unique among the aggregate's enums, its id
+ * is spelled from the aggregate's, and its values are named once each and
+ * are at least one. An empty enum is not a fact about a closed set, it is a
+ * reader that found the type and none of its members.
+ */
+function validateEnums(aggregate: Aggregate): void {
+  if (aggregate.enums !== undefined && !Array.isArray(aggregate.enums)) {
+    fail(
+      `aggregate "${aggregate.id}" has an enums list that is not a list`,
+      `aggregate ${aggregate.id}`,
+    );
+  }
+  const enums = enumsOf(aggregate);
+  assertUniqueSlugs(
+    enums.map((e) => e.slug),
+    `aggregate "${aggregate.id}"`,
+    "enum",
+  );
+  for (const item of enums) {
+    const where = `aggregate ${aggregate.id} / enum ${item.slug}`;
+    if (item.id !== `${aggregate.id}.${item.slug}`) {
+      fail(
+        `enum "${item.id}" in aggregate "${aggregate.id}" must have id "${aggregate.id}.${item.slug}"`,
+        where,
+      );
+    }
+    if (!Array.isArray(item.values) || item.values.length === 0) {
+      fail(`enum "${item.id}" has no values`, where);
+    }
+    const seen = new Set<string>();
+    for (const value of item.values) {
+      if (!value.name) {
+        fail(`enum "${item.id}" has a value with no name`, where);
+      }
+      if (seen.has(value.name)) {
+        fail(`enum "${item.id}" lists value "${value.name}" twice`, where);
+      }
+      seen.add(value.name);
+    }
+  }
+}
+
 function validateBlocks(catalog: Catalog, aggregate: Aggregate): void {
   for (const [what, list] of [
     ["entities", aggregate.entities],
@@ -2682,6 +2796,8 @@ function validateBlocks(catalog: Catalog, aggregate: Aggregate): void {
       }
     }
   }
+
+  validateEnums(aggregate);
 
   if (!aggregate.root) {
     fail(

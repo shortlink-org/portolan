@@ -42,6 +42,18 @@ No dunning.
 
 </details>
 
+<a id="enum-kind"></a>
+<details><summary>Kind (enum)</summary>
+
+What the invoice is for.
+
+| Value | Number | Doc |
+| --- | --- | --- |
+| `KIND_UNSPECIFIED` | 0 | — |
+| `KIND_ORDER` | 1 | An order's goods. |
+
+</details>
+
 ## Consumes
 
 | Call | Peer | Status | Source | Via | Note |

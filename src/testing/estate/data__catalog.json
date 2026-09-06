@@ -599,6 +599,28 @@
                     }
                   ]
                 }
+              ],
+              "enums": [
+                {
+                  "id": "shop.oms.order.status",
+                  "slug": "status",
+                  "name": "Status",
+                  "doc": "Where an order is in its life. The moves between these are the lifecycle.",
+                  "values": [
+                    {
+                      "name": "placed",
+                      "doc": "Came in from a checked-out basket; nothing is paid yet."
+                    },
+                    {
+                      "name": "confirmed",
+                      "doc": "The total is held with payments."
+                    },
+                    {
+                      "name": "cancelled",
+                      "doc": "Nobody will be charged; a hold, if any, is given back."
+                    }
+                  ]
+                }
               ]
             }
           ],
@@ -1367,6 +1389,29 @@
                     {
                       "service": "shop.oms",
                       "status": "verified"
+                    }
+                  ]
+                }
+              ],
+              "enums": [
+                {
+                  "id": "payments.ledger.payment.decline-reason",
+                  "slug": "decline-reason",
+                  "name": "DeclineReason",
+                  "doc": "Why the money was not held, as a closed set a consumer switches on.",
+                  "values": [
+                    {
+                      "name": "CARD_REFUSED",
+                      "doc": "The network would not hold the amount on this instrument."
+                    },
+                    {
+                      "name": "ORDER_CANCELLED",
+                      "doc": "The order was already cancelled when the hold was asked for; nothing was asked of the network."
+                    },
+                    {
+                      "name": "GATEWAY_TIMEOUT",
+                      "doc": "The gateway did not answer in time; retired, since an outage now records nothing.",
+                      "deprecated": true
                     }
                   ]
                 }

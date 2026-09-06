@@ -190,9 +190,28 @@ type RpcService struct {
 	Methods  []RpcMethod  `json:"methods"`
 	Source   string       `json:"source"`
 	Messages []RpcMessage `json:"messages,omitempty"`
+	// Enums are the closed sets the messages' fields take values from, reached
+	// the way Messages are: from the methods, through the fields, as far as
+	// the protos read here declare them.
+	Enums []RpcEnum `json:"enums,omitempty"`
 
 	// Module is the schema module declaring this interface, by ProtoModule.ID.
 	Module string `json:"module,omitempty"`
+}
+
+// RpcEnum is an enum a message field names, as the interface's document
+// declares it. Values carry their wire number because a proto consumer sees
+// the number, not the name, in a binary message.
+type RpcEnum struct {
+	Name   string         `json:"name"`
+	Doc    string         `json:"doc,omitempty"`
+	Values []RpcEnumValue `json:"values"`
+}
+
+type RpcEnumValue struct {
+	Name   string `json:"name"`
+	Number int    `json:"number"`
+	Doc    string `json:"doc,omitempty"`
 }
 
 // RpcMethod is one method of one interface.
@@ -352,7 +371,35 @@ type Aggregate struct {
 	ValueObjects []Block     `json:"valueObjects"`
 	Operations   []Operation `json:"operations"`
 	Events       []Event     `json:"events"`
-	Lifecycle    *Lifecycle  `json:"lifecycle,omitempty"`
+	// Enums are the closed sets the aggregate's fields take values from. A
+	// list beside Entities and ValueObjects rather than a Block with values:
+	// an enum has no fields, and a consumer switches on it rather than reads
+	// it. Omitted when the source declares none.
+	Enums     []Enum     `json:"enums,omitempty"`
+	Lifecycle *Lifecycle `json:"lifecycle,omitempty"`
+}
+
+// Enum is a closed set of values a field can hold - a reason, a status, a
+// code. What a consumer of an event switches on, and so what it has to be
+// told: free text from a schema row says "reason: Reason", and this is what
+// Reason can be.
+type Enum struct {
+	ID   string `json:"id"` // "<aggregate id>.<slug>"
+	Slug string `json:"slug"`
+	Name string `json:"name"`
+	Doc  string `json:"doc"`
+	// Deprecated marks the whole set as on its way out.
+	Deprecated bool        `json:"deprecated,omitempty"`
+	Values     []EnumValue `json:"values"`
+}
+
+// EnumValue is one member of an Enum. Name is what a consumer sees on the
+// wire when the source says so - a Go constant's literal - and the variant's
+// own name otherwise.
+type EnumValue struct {
+	Name       string `json:"name"`
+	Doc        string `json:"doc"`
+	Deprecated bool   `json:"deprecated,omitempty"`
 }
 
 // Lifecycle is the root's state machine as the code writes it down: the

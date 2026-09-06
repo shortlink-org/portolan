@@ -59,8 +59,30 @@ pub struct Aggregate {
     pub value_objects: Vec<Block>,
     pub operations: Vec<Operation>,
     pub events: Vec<Event>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub enums: Vec<Enum>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub lifecycle: Option<Lifecycle>,
+}
+
+/// A closed set of values a field can hold. See enums.rs for what counts.
+#[derive(Debug, Serialize)]
+pub struct Enum {
+    pub id: String,
+    pub slug: String,
+    pub name: String,
+    pub doc: String,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub deprecated: bool,
+    pub values: Vec<EnumValue>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct EnumValue {
+    pub name: String,
+    pub doc: String,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub deprecated: bool,
 }
 
 #[derive(Debug, Serialize)]

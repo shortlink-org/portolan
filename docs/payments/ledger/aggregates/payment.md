@@ -1,6 +1,6 @@
 # Payment
 
-*Generated from the portolan catalog · commit `10 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `12 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
 
 - **Id:** `payments.ledger.payment`
 - **Service:** [Ledger](../README.md)
@@ -64,6 +64,29 @@ An amount in the minor unit of a currency: 1250 GBP is £12.50.
 | --- | --- |
 | `amountMinor` | `long` |
 | `currency` | `String` |
+
+## Enums
+
+### DeclineReason
+
+Why the money was not held, as a closed set.
+
+| Value | Doc |
+| --- | --- |
+| `CARD_REFUSED` | The network would not hold the amount on this instrument. |
+| `ORDER_CANCELLED` | The order was already cancelled when the hold was asked for; nothing was asked of the network. |
+
+### PaymentStatus
+
+Where a payment is in its life, and the one way through those states.
+
+| Value |
+| --- |
+| `PENDING` |
+| `AUTHORIZED` |
+| `CAPTURED` |
+| `DECLINED` |
+| `VOIDED` |
 
 ## Lifecycle
 

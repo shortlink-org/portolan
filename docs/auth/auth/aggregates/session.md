@@ -1,6 +1,6 @@
 # Session
 
-*Generated from the portolan catalog · commit `10 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `12 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
 
 - **Id:** `auth.auth.session`
 - **Service:** [Authentication & Sessions](../README.md)
@@ -77,6 +77,19 @@ Token is the opaque string a client presents instead of a password.
 | Field | Type |
 | --- | --- |
 | `value` | `string` |
+
+## Enums
+
+### Reason
+
+Reason says why a session stopped being usable. It is a closed set: a consumer that switches on it should not have to handle free text.
+
+| Value | Doc |
+| --- | --- |
+| `logout` | ReasonLogout - the user asked. |
+| `revoked` | ReasonRevoked - somebody else ended it, support or an admin. |
+| `password-changed` | ReasonPasswordChanged - the credentials it was issued against are gone. |
+| `risk-blocked` | ReasonRiskBlocked - a login attempt was judged hostile, and every session the account had is treated as the attacker's. Told apart from the rest so that a client can say "sign in again" rather than "you signed out". |
 
 ## Lifecycle
 
