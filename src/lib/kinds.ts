@@ -12,6 +12,12 @@ export type Kind =
   | "event"
   | "vo"
   | "entity"
+  /**
+   * A closed set of values a field takes: a reason, a status, a code. A leaf
+   * of the aggregate like a value object, but with values where a value
+   * object has fields - and what a consumer switches on.
+   */
+  | "enum"
   | "command"
   | "query"
   /** One method of one interface: what the outside can actually call. */
@@ -43,6 +49,7 @@ export const MODEL_LEAF_KINDS = [
   "event",
   "vo",
   "entity",
+  "enum",
   "command",
   "query",
 ] as const;
@@ -89,6 +96,7 @@ export const KIND_LABEL: Record<Kind, string> = {
   event: "event",
   vo: "value object",
   entity: "entity",
+  enum: "enum",
   command: "command",
   query: "query",
   endpoint: "endpoint",
@@ -109,6 +117,7 @@ export const KIND_PLURAL: Record<Kind, string> = {
   event: "events",
   vo: "value objects",
   entity: "entities",
+  enum: "enums",
   command: "commands",
   query: "queries",
   endpoint: "endpoints",
@@ -124,6 +133,7 @@ export const KIND_CHIP: Record<LeafKind, string> = {
   event: "events",
   vo: "VO",
   entity: "entities",
+  enum: "enums",
   command: "cmd",
   query: "qry",
   endpoint: "api",
@@ -139,6 +149,9 @@ export const KIND_PREFIXES: Record<Kind, string[]> = {
   event: ["e", "ev", "event", "events"],
   vo: ["vo", "value-object", "valueobject"],
   entity: ["ent", "entity", "entities"],
+  // An enum is the set, not the field that holds it: "enum: reason" finds
+  // Reason, "e: ended" the event whose field says which one.
+  enum: ["enum", "enums"],
   command: ["cmd", "command", "commands"],
   query: ["q", "query", "queries"],
   // An endpoint is reached by the name the interface calls it, which is what

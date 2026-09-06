@@ -5,6 +5,7 @@ import {
   Database,
   Eye,
   Hexagon,
+  ListChecks,
   Package,
   Route,
   ScrollText,
@@ -57,6 +58,10 @@ export const KIND_ICON: Record<Kind, IconComponent> = {
   event: EventIcon,
   vo: ValueObjectIcon,
   entity: EntityIcon,
+  // An enum is a list a consumer ticks through - one of these, and no other.
+  // Furniture rather than a sixth domain mark: the five say what a block IS,
+  // and a set of values is what a field HOLDS.
+  enum: ListChecks,
   command: CommandIcon,
   query: QueryIcon,
   // An endpoint is a door in the wall of a service, not a domain object, so it
@@ -89,6 +94,7 @@ export const KIND_COLOR: Record<Kind, string> = {
   event: "var(--kind-event)",
   vo: "var(--fg-muted)",
   entity: "var(--fg-muted)",
+  enum: "var(--fg-muted)",
   command: "var(--fg-muted)",
   query: "var(--fg-muted)",
   endpoint: "var(--fg-muted)",
@@ -113,6 +119,7 @@ export const KIND_MONO: Record<Kind, boolean> = {
   event: true,
   vo: true,
   entity: true,
+  enum: true,
   command: true,
   query: true,
   // An operationId is what a caller writes in code, and a verb-and-path is

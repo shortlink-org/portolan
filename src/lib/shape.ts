@@ -18,11 +18,14 @@ import type {
   BlockKind,
   Catalog,
   CatalogIndex,
+  Enum,
+  EnumValue,
   Event,
   Field,
   Service,
 } from "../catalog";
-import { aggregateBlocks, blockFields } from "../catalog";
+import { aggregateBlocks, blockFields, enumsOf } from "../catalog";
+import type { DefUsage } from "./derive";
 
 /** How many of the base type a field holds. */
 export type Cardinality = "one" | "many" | "map";
@@ -144,16 +147,19 @@ export function parseType(type: string): TypeParts {
 }
 
 /** Where a type came from, and so where its own fields are read from. */
-export type ShapeKind = "def" | BlockKind;
+export type ShapeKind = "def" | BlockKind | "enum";
 
 export interface Shape {
   kind: ShapeKind;
-  /** The defs key, or the block id. */
+  /** The defs key, the block id, or the enum id. */
   id: string;
   name: string;
   doc: string;
   deprecated: boolean;
+  /** Empty for an enum, which has values instead. */
   fields: Field[];
+  /** The closed set, when the shape is an enum; empty otherwise. */
+  values: EnumValue[];
   /**
    * The aggregate the shape belongs to, when it is a block. A def belongs
    * to nobody, and its fields resolve in the scope they were reached from.
@@ -182,6 +188,21 @@ function fromBlock(
     doc: block.doc,
     deprecated: block.deprecated ?? false,
     fields: blockFields(catalog, block),
+    values: [],
+    aggregate,
+    service,
+  };
+}
+
+function fromEnum(item: Enum, aggregate: Aggregate, service: Service | null): Shape {
+  return {
+    kind: "enum",
+    id: item.id,
+    name: item.name,
+    doc: item.doc,
+    deprecated: item.deprecated ?? false,
+    fields: [],
+    values: item.values,
     aggregate,
     service,
   };
@@ -203,6 +224,12 @@ function findBlock(
         return fromBlock(catalog, kind, block, aggregate, scope.service);
       }
     }
+    // After the blocks of the same aggregate, before the blocks of the next:
+    // a name is looked for where it is declared, and an aggregate declares
+    // its sets beside its shapes.
+    for (const item of enumsOf(aggregate)) {
+      if (item.name === name) return fromEnum(item, aggregate, scope.service);
+    }
   }
   return null;
 }
@@ -212,8 +239,8 @@ function findBlock(
  * extractor did not read, or a name the catalog has nowhere.
  *
  * A `ref` is followed first and is never second-guessed. Without one, the
- * base name is looked for among the blocks of the scope's aggregate, then of
- * the rest of its service - never further.
+ * base name is looked for among the blocks and enums of the scope's
+ * aggregate, then of the rest of its service - never further.
  */
 export function resolveShape(
   catalog: Catalog,
@@ -230,6 +257,7 @@ export function resolveShape(
         doc: "",
         deprecated: false,
         fields: def.fields,
+        values: [],
         aggregate: null,
         service: null,
       };
@@ -340,4 +368,87 @@ export function schemaChanges(
     if (!now.has(field.name)) removed.push(field);
   }
   return { byField, removed };
+}
+
+// ---------------------------------------------------------------------------
+// An enum and a lifecycle.
+// ---------------------------------------------------------------------------
+
+/**
+ * Whether an enum is the aggregate's status: its values are the lifecycle's
+ * states, as sets, spelled however each side spells them - `PLACED` on the
+ * enum and `placed` in the table are one state. Matched on the values and
+ * never on the name, because `Status`, `PaymentStatus` and `RefundStatus`
+ * are three spellings of the same role and `Reason` is not a fourth.
+ */
+export function isStatusEnum(item: Enum, states: readonly string[]): boolean {
+  if (item.values.length === 0 || states.length === 0) return false;
+  const fold = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const have = new Set(item.values.map((v) => fold(v.name)));
+  const want = new Set(states.map(fold));
+  if (have.size !== want.size) return false;
+  for (const state of want) if (!have.has(state)) return false;
+  return true;
+}
+
+// ---------------------------------------------------------------------------
+// Who switches on an enum.
+// ---------------------------------------------------------------------------
+
+/**
+ * Every field in the catalog whose type resolves to the enum: event fields
+ * by version, and the fields of the aggregate's blocks. The same resolver
+ * the tree uses, and so the same guess - a name matched inside the service,
+ * not a ref anybody wrote - which is why a row built from this says so.
+ */
+export function usagesOfEnum(catalog: Catalog, enumId: string): DefUsage[] {
+  const events: DefUsage[] = [];
+  const entities: DefUsage[] = [];
+  const valueObjects: DefUsage[] = [];
+
+  for (const context of catalog.contexts) {
+    for (const service of context.services) {
+      for (const aggregate of service.aggregates) {
+        const scope: Scope = { aggregate, service };
+        const names = (fields: Field[]) =>
+          fields
+            .filter((f) => resolveShape(catalog, f, scope)?.id === enumId)
+            .map((f) => f.name);
+
+        for (const event of aggregate.events) {
+          const carried = new Set<string>();
+          const versions: string[] = [];
+          for (const version of event.versions) {
+            const found = names(version.fields);
+            if (found.length === 0) continue;
+            for (const name of found) carried.add(name);
+            versions.push(version.version);
+          }
+          if (carried.size === 0) continue;
+          events.push({
+            kind: "event",
+            id: event.id,
+            name: event.name,
+            owner: aggregate.id,
+            fields: [...carried],
+            versions,
+          });
+        }
+        for (const { kind, block } of aggregateBlocks(aggregate)) {
+          const found = names(blockFields(catalog, block));
+          if (found.length === 0) continue;
+          const usage: DefUsage = {
+            kind,
+            id: block.id,
+            name: block.name,
+            owner: aggregate.id,
+            fields: found,
+          };
+          (kind === "entity" ? entities : valueObjects).push(usage);
+        }
+      }
+    }
+  }
+
+  return [...events, ...entities, ...valueObjects];
 }

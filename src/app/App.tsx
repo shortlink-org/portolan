@@ -25,6 +25,7 @@ import { ContextPage } from "../pages/ContextPage";
 import { ServicePage } from "../pages/ServicePage";
 import { AggregatePage } from "../pages/AggregatePage";
 import { BlockPage } from "../pages/BlockPage";
+import { EnumPage } from "../pages/EnumPage";
 import { EventPage } from "../pages/EventPage";
 import { StorePage } from "../pages/StorePage";
 import { GraphPage } from "../pages/GraphPage";
@@ -152,6 +153,10 @@ function AppRoutes({ location }: { location: Location }) {
       <Route
         path="/c/:context/:service/:aggregate/entity/:block"
         element={<BlockPage kind="entity" />}
+      />
+      <Route
+        path="/c/:context/:service/:aggregate/enum/:enum"
+        element={<EnumPage />}
       />
       <Route
         path="/c/:context/:service/:aggregate/:event"

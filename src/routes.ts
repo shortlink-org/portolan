@@ -1,6 +1,7 @@
 // Every in-app URL is built here. Routes use slugs, never dotted ids.
 
 import type { Catalog } from "./catalog";
+import { enumsOf } from "./catalog";
 import type { Backlink } from "./lib/backlinks";
 import { index } from "./data";
 import { selectionHash } from "./selection/hash";
@@ -87,6 +88,13 @@ export const paths = {
     aggregateSlug: string,
     entitySlug: string,
   ) => `/c/${contextId}/${serviceSlug}/${aggregateSlug}/entity/${entitySlug}`,
+  /** An enum sits behind its own literal, beside the two block kinds. */
+  enum: (
+    contextId: string,
+    serviceSlug: string,
+    aggregateSlug: string,
+    enumSlug: string,
+  ) => `/c/${contextId}/${serviceSlug}/${aggregateSlug}/enum/${enumSlug}`,
   // A store hangs off its service, not off an aggregate: it is infrastructure
   // the service owns, and several aggregates may share one. "data" is a
   // literal for the same reason "vo" and "entity" are - a store slug can never
@@ -99,6 +107,7 @@ export const paths = {
 export const AGGREGATE_ANCHOR = {
   entities: "bb-entities",
   valueObjects: "bb-value-objects",
+  enums: "bb-enums",
   lifecycle: "bb-lifecycle",
   events: "bb-events",
   commands: "bb-commands",
@@ -137,6 +146,13 @@ export function packageAnchor(name: string): string {
 export const BLOCK_ANCHOR = {
   shape: "bl-shape",
   siblings: "bl-siblings",
+} as const;
+
+/** The section anchors on an enum page. */
+export const ENUM_ANCHOR = {
+  values: "en-values",
+  lifecycle: "en-lifecycle",
+  siblings: "en-siblings",
 } as const;
 
 /**
@@ -199,6 +215,18 @@ export function eventPath(eventId: string): string | null {
     owner.service.slug,
     owner.aggregate.slug,
     event.slug,
+  );
+}
+
+/** Path to an enum page, or null if the id is not in the catalog. */
+export function enumPath(enumId: string): string | null {
+  const owner = index.enumById.get(enumId);
+  if (!owner) return null;
+  return paths.enum(
+    owner.context.id,
+    owner.service.slug,
+    owner.aggregate.slug,
+    owner.enum.slug,
   );
 }
 
@@ -300,6 +328,8 @@ export function backlinkPath(link: Backlink): string | null {
     case "vo":
     case "entity":
       return blockPath(link.id);
+    case "enum":
+      return enumPath(link.id);
     case "store":
       return storePath(link.id);
     case "table":
@@ -342,6 +372,7 @@ const ROUTES: RegExp[] = [
   /^\/c\/[^/]+\/[^/]+\/[^/]+\/[^/]+$/,
   /^\/c\/[^/]+\/[^/]+\/[^/]+\/vo\/[^/]+$/,
   /^\/c\/[^/]+\/[^/]+\/[^/]+\/entity\/[^/]+$/,
+  /^\/c\/[^/]+\/[^/]+\/[^/]+\/enum\/[^/]+$/,
   /^\/c\/[^/]+\/[^/]+\/data\/[^/]+$/,
   /^\/graph$/,
   /^\/registry$/,
@@ -404,6 +435,11 @@ export function allCatalogPaths(catalog: Catalog): string[] {
         for (const entity of aggregate.entities) {
           out.push(
             paths.entity(context.id, service.slug, aggregate.slug, entity.slug),
+          );
+        }
+        for (const item of enumsOf(aggregate)) {
+          out.push(
+            paths.enum(context.id, service.slug, aggregate.slug, item.slug),
           );
         }
       }

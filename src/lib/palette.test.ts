@@ -28,6 +28,7 @@ describe("palette index", () => {
         "event",
         "vo",
         "entity",
+        "enum",
         "command",
         "query",
         "store",

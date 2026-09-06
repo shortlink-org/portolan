@@ -13,13 +13,13 @@
 
 import { Link } from "react-router";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import type { Field } from "../catalog";
+import type { EnumValue, Field } from "../catalog";
 import { catalog } from "../data";
 import { KIND_LABEL } from "../lib/kinds";
 import { plural } from "../lib/format";
 import { parseType, resolveShape, scopeOf, MAX_DEPTH } from "../lib/shape";
 import type { Scope, Shape } from "../lib/shape";
-import { blockPath } from "../routes";
+import { blockPath, enumPath } from "../routes";
 import { Ident } from "./Ident";
 import { KindIcon } from "./kind";
 
@@ -44,7 +44,7 @@ export function TypeCell({
   muted?: boolean;
 }) {
   const parts = parseType(field.type);
-  const page = shape && shape.kind !== "def" ? blockPath(shape.id) : null;
+  const page = pageOf(shape);
   const copy = field.ref ?? field.type;
 
   return (
@@ -74,14 +74,22 @@ export function TypeCell({
         <Link
           to={page}
           className="rounded-control text-muted hover:text-accent"
-          title={`open ${KIND_LABEL[shape.kind as "vo" | "entity"]} ${shape.name}`}
-          aria-label={`open ${KIND_LABEL[shape.kind as "vo" | "entity"]} ${shape.name}`}
+          title={`open ${KIND_LABEL[shape.kind as "vo" | "entity" | "enum"]} ${shape.name}`}
+          aria-label={`open ${KIND_LABEL[shape.kind as "vo" | "entity" | "enum"]} ${shape.name}`}
         >
           ↗
         </Link>
       ) : null}
     </span>
   );
+}
+
+/** The page a shape has, when it has one: a def has none of its own. */
+function pageOf(shape: Shape | null): string | null {
+  if (!shape) return null;
+  if (shape.kind === "enum") return enumPath(shape.id);
+  if (shape.kind === "def") return null;
+  return blockPath(shape.id);
 }
 
 /** What is under a field, once opened: the shape's header and its own rows. */
@@ -109,8 +117,12 @@ export function ShapeBody({
    */
   root?: boolean;
 }) {
-  const page = shape.kind !== "def" ? blockPath(shape.id) : null;
+  const page = pageOf(shape);
   const kindLabel = shape.kind === "def" ? "shared type" : KIND_LABEL[shape.kind];
+  const count =
+    shape.kind === "enum"
+      ? `${shape.values.length} ${plural(shape.values.length, "value")}`
+      : `${shape.fields.length} ${plural(shape.fields.length, "field")}`;
   const where =
     shape.kind === "def"
       ? "the same shape wherever it is named"
@@ -138,8 +150,7 @@ export function ShapeBody({
         )}
         <span className="meta">
           {kindLabel}
-          {where ? <> · {where}</> : null} ·{" "}
-          {shape.fields.length} {plural(shape.fields.length, "field")}
+          {where ? <> · {where}</> : null} · {count}
         </span>
       </div>
       {shape.doc ? (
@@ -147,7 +158,9 @@ export function ShapeBody({
           {shape.doc}
         </div>
       ) : null}
-      {shape.fields.length === 0 ? (
+      {shape.kind === "enum" ? (
+        <EnumValues values={shape.values} />
+      ) : shape.fields.length === 0 ? (
         <div className="meta pl-4">the catalog knows this shape by name only</div>
       ) : (
         <FieldTree
@@ -160,6 +173,37 @@ export function ShapeBody({
           depth={depth}
         />
       )}
+    </div>
+  );
+}
+
+/**
+ * The values of an enum, one per row, in the source's order. A value has no
+ * type and nothing under it, so the row is the name and the doc; a
+ * deprecated one is struck through, and the tooltip says so.
+ */
+export function EnumValues({ values }: { values: EnumValue[] }) {
+  if (values.length === 0) {
+    return <div className="meta pl-4">the catalog knows this set by name only</div>;
+  }
+  return (
+    <div className="field-tree" role="list">
+      {values.map((value) => (
+        <div key={value.name} role="listitem" className="field-row">
+          <span className="field-toggle" aria-hidden />
+          <span
+            className={`mono whitespace-nowrap${value.deprecated ? " line-through text-muted" : ""}`}
+            title={value.deprecated ? "deprecated" : undefined}
+          >
+            {value.name}
+          </span>
+          {value.doc ? (
+            <span className="meta min-w-0 truncate" title={value.doc}>
+              {value.doc}
+            </span>
+          ) : null}
+        </div>
+      ))}
     </div>
   );
 }

@@ -230,13 +230,13 @@ export function MethodRows({
               {open.has(reqKey) && reqFields ? (
                 <div className="mt-2">
                   <DiscriminatorRows discriminator={reqDiscriminator} />
-                  <ShapeRows fields={reqFields} />
+                  <ShapeRows fields={reqFields} enums={provided.enums} />
                 </div>
               ) : null}
               {open.has(resKey) && resFields ? (
                 <div className="mt-2">
                   <DiscriminatorRows discriminator={resDiscriminator} />
-                  <ShapeRows fields={resFields} />
+                  <ShapeRows fields={resFields} enums={provided.enums} />
                 </div>
               ) : null}
             </div>
@@ -298,7 +298,7 @@ export function MessageList({
             {shown ? (
               <div className="px-3 pb-3">
                 <DiscriminatorRows discriminator={message.discriminator} />
-                <ShapeRows fields={message.fields} />
+                <ShapeRows fields={message.fields} enums={provided.enums} />
               </div>
             ) : null}
           </div>

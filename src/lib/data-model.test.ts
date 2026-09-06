@@ -141,7 +141,7 @@ describe("storedFields", () => {
   it("joins each column to the field it maps to", () => {
     const status = stored.find((s) => s.owner.column.name === "status");
     expect(status?.path).toBe("status");
-    expect(status?.field?.type).toBe("string");
+    expect(status?.field?.type).toBe("Status");
     expect(status?.mismatch).toBe(false);
   });
 

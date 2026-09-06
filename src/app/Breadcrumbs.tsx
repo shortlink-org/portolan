@@ -2,6 +2,7 @@ import { Fragment } from "react";
 import { Link, useLocation } from "react-router";
 import { ChevronRight } from "lucide-react";
 import { catalog, index } from "../data";
+import { enumsOf } from "../catalog";
 import { adrNumber } from "../lib/adr";
 import { selectionLabel, selectionTrail } from "../selection/model";
 import { selectionPath } from "../selection/pages";
@@ -82,12 +83,18 @@ function crumbsFor(pathname: string): Crumb[] {
       ?.services.find((s) => s.slug === serviceSlug)
       ?.aggregates.find((a) => a.slug === aggregateSlug);
 
-    // "vo" and "entity" are literals, not slugs: one more segment follows.
-    if (eventSlug === "vo" || eventSlug === "entity") {
+    // "vo", "entity" and "enum" are literals, not slugs: one more segment follows.
+    if (eventSlug === "vo" || eventSlug === "entity" || eventSlug === "enum") {
       const blockSlug = parts[5];
       if (!blockSlug) return crumbs;
       const list =
-        eventSlug === "vo" ? aggregate?.valueObjects : aggregate?.entities;
+        eventSlug === "vo"
+          ? aggregate?.valueObjects
+          : eventSlug === "entity"
+            ? aggregate?.entities
+            : aggregate
+              ? enumsOf(aggregate)
+              : undefined;
       const block = list?.find((b) => b.slug === blockSlug);
       crumbs.push({
         label: block?.name ?? blockSlug,

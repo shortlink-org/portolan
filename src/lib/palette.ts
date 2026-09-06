@@ -12,7 +12,7 @@
 // reader cannot see is a row they have to open to understand.
 
 import type { Block, Catalog, Event, Field } from "../catalog";
-import { allTerms, walkSteps } from "../catalog";
+import { allTerms, enumsOf, walkSteps } from "../catalog";
 import { flowHealth } from "./flow-tree";
 import { parseQuery } from "./kinds";
 import type { Kind, ParsedQuery } from "./kinds";
@@ -165,6 +165,27 @@ export function paletteItems(catalog: Catalog): PaletteItem[] {
             ),
             context: context.id,
             text: flattenProse(blockProse(vo)),
+          });
+        }
+
+        for (const item of enumsOf(aggregate)) {
+          items.push({
+            kind: "enum",
+            id: item.id,
+            name: item.name,
+            detail: aggregate.id,
+            path: paths.enum(
+              context.id,
+              service.slug,
+              aggregate.slug,
+              item.slug,
+            ),
+            context: context.id,
+            // The values are what a reader remembers - "the one with
+            // CARD_REFUSED" - so they are searchable, docs and all.
+            text: flattenProse(
+              `${item.doc} ${item.values.map((v) => `${v.name} ${v.doc}`).join(" ")}`,
+            ),
           });
         }
 
@@ -471,6 +492,9 @@ const KIND_RANK: Record<Kind, number> = {
   // After the operation it exposes: a reader searching for "register" wants
   // the command first and the door to it second.
   endpoint: 8,
+  // A set of values after the shapes that hold it and the calls that move
+  // it: "status" wants the lifecycle's aggregate before the enum's list.
+  enum: 9,
   def: 9,
   // A module is a contract, so it sits with the shared types rather than with
   // the infrastructure: what it holds is shapes other services are promised.
