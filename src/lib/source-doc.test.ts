@@ -47,7 +47,7 @@ describe("docPathOf", () => {
 });
 
 describe("sourceDocKind", () => {
-  it("tells the two kinds of document apart, line number and all", () => {
+  it("tells supported API documents apart, line number and all", () => {
     expect(sourceDocKind("proto/shop/v1/orders.proto:12")).toBe("proto");
     expect(sourceDocKind("examples/auth/openapi.yaml")).toBe("openapi");
     expect(sourceDocKind("examples/auth/openapi.yml")).toBe("openapi");
@@ -55,6 +55,7 @@ describe("sourceDocKind", () => {
       "openapi",
     );
     expect(sourceDocKind("examples/bff/src/schema/basket/schema.graphql")).toBe("graphql");
+    expect(sourceDocKind("contracts/booking.wsdl")).toBe("wsdl");
     expect(sourceDocKind("internal/handler.go")).toBeNull();
   });
 });
@@ -101,6 +102,15 @@ describe("pickSpec", () => {
         held,
       ),
     ).toEqual({ kind: "module", moduleId: "buf.build/acme/shop" });
+  });
+
+  it("draws a WSDL from structured catalog facts without bundling the file", () => {
+    expect(
+      pickSpec(
+        service([{ id: "booking.soap.BookingPort", source: "contracts/booking.wsdl" }]),
+        () => false,
+      ),
+    ).toEqual({ kind: "wsdl", source: "contracts/booking.wsdl" });
   });
 
   // A spec in another repository is the normal case for a real estate: the

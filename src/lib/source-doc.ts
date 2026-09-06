@@ -32,11 +32,12 @@ export function sourceLineOf(source: string): number | null {
   return at?.[1] ? Number(at[1]) : null;
 }
 
-export type SourceDocKind = "openapi" | "proto" | "graphql" | null;
+export type SourceDocKind = "openapi" | "proto" | "graphql" | "wsdl" | null;
 
 export function sourceDocKind(source: string): SourceDocKind {
   const path = docPathOf(source).toLowerCase();
   if (path.endsWith(".proto")) return "proto";
+  if (path.endsWith(".wsdl")) return "wsdl";
   if (path.endsWith(".graphql") || path.endsWith(".graphqls")) return "graphql";
   if (
     path.endsWith(".yaml") ||
@@ -53,25 +54,35 @@ export function sourceDocKind(source: string): SourceDocKind {
 export type SpecChoice =
   | { kind: "openapi"; source: string }
   | { kind: "graphql"; source: string }
+  | { kind: "wsdl"; source: string }
   | { kind: "module"; moduleId: string };
 
 /**
  * The document to show for a service.
  *
- * Precedence: a document this repository actually holds - an OpenAPI one or a
- * GraphQL schema, whichever the interface was read from - then the module its
- * interfaces came from. The predicate is injected so the globs stay in the
- * component layer and this stays testable without a bundler.
+ * Precedence: an OpenAPI/GraphQL document this repository actually holds,
+ * then a structured WSDL, then the module its interfaces came from. The
+ * predicate is injected so the globs stay in the component layer and this
+ * stays testable without a bundler.
  */
 export function pickSpec(
   service: Service,
   hasDocument: (source: string) => boolean,
 ): SpecChoice | null {
   for (const provided of service.provides) {
-    if (!hasDocument(provided.source)) continue;
     const kind = sourceDocKind(provided.source);
+    if (!hasDocument(provided.source)) continue;
     if (kind === "openapi" || kind === "graphql") {
       return { kind, source: provided.source };
+    }
+  }
+
+  // A WSDL is fully represented by the catalog: operations, bindings,
+  // request/response messages and XSD shapes. It remains drawable even when
+  // the source checkout is not bundled into this site.
+  for (const provided of service.provides) {
+    if (sourceDocKind(provided.source) === "wsdl") {
+      return { kind: "wsdl", source: provided.source };
     }
   }
 

@@ -146,12 +146,26 @@ function goHTTPClientEvidence(root, files) {
   return "";
 }
 
+function goSOAPClientEvidence(root, files) {
+  for (const name of matches(files, /\.go$/).filter((name) => !name.endsWith("_test.go"))) {
+    let source = "";
+    try { source = readFileSync(join(root, name), "utf8"); } catch { continue; }
+    if (
+      /github\.com\/hooklift\/gowsdl\/soap/.test(source)
+      || /\bCallContext\s*\([^,]+,\s*[^,]*(?:soap)?action/i.test(source)
+      || /(?:Header\.)?(?:Add|Set)\s*\(\s*["'](?:SOAPAction|Content-Type)["']/i.test(source)
+    ) return name;
+  }
+  return "";
+}
+
 function detectionsFor(root, files) {
   let goMod = "";
   if (files.has("go.mod")) {
     try { goMod = readFileSync(join(root, "go.mod"), "utf8"); } catch {}
   }
   const openapi = matches(files, /(^|\/)(openapi|swagger)[^/]*\.(ya?ml|json)$/i);
+  const wsdls = matches(files, /\.wsdl$/i);
   const asyncapi = matches(files, /(^|\/)asyncapi[^/]*\.(ya?ml|json)$/i);
   const graphql = matches(files, /\.graphqls?$/i);
   const protos = matches(files, /\.proto$/i);
@@ -173,6 +187,7 @@ function detectionsFor(root, files) {
   const projectEvidence = projectMarkers.length ? projectMarkers : [[...files].sort()[0]].filter(Boolean);
   const goDomain = files.has("go.mod") ? goDomainEvidence(root, files) : "";
   const goHTTPClient = files.has("go.mod") ? goHTTPClientEvidence(root, files) : "";
+  const goSOAPClient = files.has("go.mod") ? goSOAPClientEvidence(root, files) : "";
   const tsDomain = files.has("package.json") ? laidOutDomainEvidence(root, files, "typescript") : "";
   const rustDomain = files.has("Cargo.toml") ? laidOutDomainEvidence(root, files, "rust") : "";
   const javaDomain = ["pom.xml", "build.gradle", "build.gradle.kts"].some((name) => files.has(name)) ? laidOutDomainEvidence(root, files, "java") : "";
@@ -185,6 +200,16 @@ function detectionsFor(root, files) {
     detected("django-domain", files.has("manage.py") && matches(files, /(^|\/)models(?:\/[^/]+)?\.py$/i).length ? ["manage.py"] : []),
     detected("celery", celery, {}, celery[0]),
     detected("openapi", openapi, openapi[0] ? { spec: openapi[0] } : {}, openapi[0], true),
+    detected(
+      "wsdl",
+      wsdls,
+      {
+        ...(wsdls.length === 1 ? { spec: wsdls[0] } : {}),
+        ...(goSOAPClient ? { mode: "external" } : {}),
+      },
+      wsdls.length === 1 ? wsdls[0] : `${wsdls.length} WSDL documents`,
+      true,
+    ),
     detected("http-clients", goHTTPClient ? [goHTTPClient] : [], {}, goHTTPClient),
     detected("river", goMod.includes("github.com/riverqueue/river") ? ["go.mod"] : [], {}, "go.mod · github.com/riverqueue/river"),
     detected("watermill", goMod.includes("github.com/ThreeDotsLabs/watermill") ? ["go.mod"] : [], {}, "go.mod · github.com/ThreeDotsLabs/watermill"),
@@ -330,6 +355,7 @@ function pluginOptions(plugin, project, detectedOptions = {}) {
   }
   if (plugin === "sql") return { ...common, store: "pg", ...detectedOptions, out: "stores.json" };
   if (plugin === "openapi") return { ...common, ...detectedOptions, out: "api.json" };
+  if (plugin === "wsdl") return { ...common, ...detectedOptions, out: "wsdl.json" };
   if (plugin === "http-clients") return { ...common, ...detectedOptions, out: "http-clients.json" };
   if (plugin === "river") return { ...common, ...detectedOptions, out: "river.json" };
   if (plugin === "watermill") return { ...common, ...detectedOptions, out: "watermill.json" };

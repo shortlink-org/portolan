@@ -245,6 +245,8 @@ export interface RpcMethod {
    * seen on the wire be read back to the operation it ran.
    */
   http?: HttpRoute;
+  /** Concrete SOAP binding read from a WSDL operation. */
+  soap?: SoapRoute;
 }
 
 export interface HttpRoute {
@@ -252,6 +254,16 @@ export interface HttpRoute {
   method: string;
   /** As templated in the document: `/v1/users/{id}`. */
   path: string;
+}
+
+export interface SoapRoute {
+  action?: string;
+  version?: "1.1" | "1.2";
+  style?: string;
+  endpoint?: string;
+  binding?: string;
+  faults?: string[];
+  headers?: string[];
 }
 
 export type Streaming = "client" | "server" | "bidi";
@@ -1755,6 +1767,16 @@ export function validateCatalog(catalog: Catalog): Catalog {
               `service ${service.id}`,
             );
           }
+          if (
+            method.soap?.version !== undefined &&
+            method.soap.version !== "1.1" &&
+            method.soap.version !== "1.2"
+          ) {
+            fail(
+              `method "${provided.id}/${method.name}" uses SOAP ${method.soap.version}; expected 1.1 or 1.2`,
+              `service ${service.id}`,
+            );
+          }
         }
         const messageNames = new Set(
           (provided.messages ?? []).map((message) => message.name),
@@ -2089,6 +2111,18 @@ function validateExternals(catalog: Catalog): void {
         `interface "${provided.id}"`,
         "method",
       );
+      for (const method of provided.methods) {
+        if (
+          method.soap?.version !== undefined &&
+          method.soap.version !== "1.1" &&
+          method.soap.version !== "1.2"
+        ) {
+          fail(
+            `method "${provided.id}/${method.name}" uses SOAP ${method.soap.version}; expected 1.1 or 1.2`,
+            `external ${external.id}`,
+          );
+        }
+      }
     }
   }
 }

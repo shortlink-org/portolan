@@ -97,14 +97,22 @@ func Cancel(ctx context.Context, client soap.HTTPClient, request, response any) 
 	writeHTTPFixture(t, root, "soap/booking.wsdl", `<?xml version="1.0"?>
 <definitions name="BookingService" targetNamespace="urn:booking"
   xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+  xmlns:tns="urn:booking"
+  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
   xmlns="http://schemas.xmlsoap.org/wsdl/">
-  <binding name="BookingBinding">
+  <message name="CancelRequest"><part name="body" type="xsd:string"/></message>
+  <message name="CancelResponse"><part name="body" type="xsd:string"/></message>
+  <portType name="BookingPortType">
+    <operation name="CancelBooking"><input message="tns:CancelRequest"/><output message="tns:CancelResponse"/></operation>
+  </portType>
+  <binding name="BookingBinding" type="tns:BookingPortType">
+    <soap:binding style="document"/>
     <operation name="CancelBooking">
       <soap:operation soapAction="urn:CancelBooking"/>
     </operation>
   </binding>
   <service name="BookingService">
-    <port name="BookingPort">
+    <port name="BookingPort" binding="tns:BookingBinding">
       <soap:address location="https://booking.example/soap"/>
     </port>
   </service>
@@ -141,7 +149,7 @@ func Cancel(ctx context.Context, client soap.HTTPClient, request, response any) 
 	if raw == nil || raw.Status != catalog.StatusUnresolved || raw.Source != "core/update.go:9" {
 		t.Fatalf("raw = %+v", raw)
 	}
-	if soapCall == nil || soapCall.Status != catalog.StatusDeclared || soapCall.Peer != "bookingservice" {
+	if soapCall == nil || soapCall.Status != catalog.StatusDeclared || soapCall.Peer != "booking" {
 		t.Fatalf("soap = %+v", soapCall)
 	}
 	if len(got.Externals) != 2 {
@@ -188,5 +196,104 @@ func TestOnlySourceBackedComplementsBecomeAnAlt(t *testing.T) {
 	flows = flowsOf("edge.gateway", context, calls, Options{})
 	if _, ok := flows[0].Steps[0].(*catalog.Alt); ok {
 		t.Fatal("unrelated calls became an alternative")
+	}
+}
+
+func TestLearnsHandWrittenSOAPWrapperArgumentPositions(t *testing.T) {
+	root := t.TempDir()
+	writeHTTPFixture(t, root, "go.mod", "module example.com/checkout\n")
+	writeHTTPFixture(t, root, "soap/booking.wsdl", `
+<definitions xmlns="http://schemas.xmlsoap.org/wsdl/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:tns="urn:booking" targetNamespace="urn:booking" name="Booking">
+  <message name="CancelRequest"/><message name="CancelResponse"/>
+  <portType name="BookingPortType"><operation name="Cancel"><input message="tns:CancelRequest"/><output message="tns:CancelResponse"/></operation></portType>
+  <binding name="BookingBinding" type="tns:BookingPortType"><soap:binding style="document"/><operation name="Cancel"><soap:operation soapAction="urn:booking:cancel"/></operation></binding>
+  <service name="BookingService"><port name="BookingPort" binding="tns:BookingBinding"><soap:address location="https://booking.example/soap"/></port></service>
+</definitions>`)
+	writeHTTPFixture(t, root, "soap/transport.go", `package soap
+import "net/http"
+type Transport struct{}
+func (t *Transport) Call(actionBase, operation string, messageID string, query, reply any) error {
+  req, err := http.NewRequest(http.MethodPost, "https://booking.example/soap", nil)
+  if err != nil { return err }
+  req.Header.Add("SOAPAction", actionBase+operation)
+  return nil
+}
+
+type Service struct{ transport *Transport }
+func (s *Service) Call(actionBase, operation string, query, reply any, stage string, options ...func()) error {
+  return s.transport.Call(actionBase, operation, "message-id", query, reply)
+}`)
+	writeHTTPFixture(t, root, "checkout/cancel.go", `package checkout
+import soapclient "example.com/checkout/soap"
+const actionBase = "urn:booking:"
+func CancelBooking(client *soapclient.Service, request, response any) error {
+  return client.Call(actionBase, "cancel", request, response, "checkout")
+}`)
+
+	resp, err := extract(plugin.Input{Root: root}, Options{Context: "checkout", Service: "gateway"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got catalog.Catalog
+	if err := json.Unmarshal([]byte(resp.Files[0].Contents), &got); err != nil {
+		t.Fatal(err)
+	}
+	service := got.Contexts[0].Services[0]
+	if len(service.Consumes) != 1 {
+		t.Fatalf("consumes = %+v", service.Consumes)
+	}
+	call := service.Consumes[0]
+	if call.ID != "bookingservice.soap.BookingPort/Cancel" || call.Status != catalog.StatusDeclared || call.Source != "soap/booking.wsdl" {
+		t.Fatalf("call = %+v", call)
+	}
+	if !strings.Contains(call.Note, "request 'request'") || !strings.Contains(call.Note, "response 'response'") {
+		t.Fatalf("note = %q", call.Note)
+	}
+	if len(got.Flows) != 1 || got.Flows[0].Source != "checkout/cancel.go:4" {
+		t.Fatalf("flows = %+v", got.Flows)
+	}
+}
+
+func TestReadsSOAP12ActionFromContentType(t *testing.T) {
+	root := t.TempDir()
+	writeHTTPFixture(t, root, "go.mod", "module example.com/soap12\n")
+	writeHTTPFixture(t, root, "contract.wsdl", `
+<definitions xmlns="http://schemas.xmlsoap.org/wsdl/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:soap12="http://schemas.xmlsoap.org/wsdl/soap12/" xmlns:tns="urn:status" targetNamespace="urn:status" name="Status">
+  <portType name="StatusPortType"><operation name="Check"/></portType>
+	<binding name="Status11Binding" type="tns:StatusPortType"><soap:binding style="document"/><operation name="Check"><soap:operation soapAction="urn:status:check"/></operation></binding>
+	<binding name="Status12Binding" type="tns:StatusPortType"><soap12:binding style="document"/><operation name="Check"><soap12:operation soapAction="urn:status:check"/></operation></binding>
+	<service name="StatusService">
+	  <port name="Status11Port" binding="tns:Status11Binding"><soap:address location="https://status.example/soap11"/></port>
+	  <port name="Status12Port" binding="tns:Status12Binding"><soap12:address location="https://status.example/soap12"/></port>
+	</service>
+</definitions>`)
+	writeHTTPFixture(t, root, "transport.go", `package soap12
+import "net/http"
+type Client struct{}
+func (c *Client) Send(action string, request, response any) error {
+  req, err := http.NewRequest(http.MethodPost, "https://status.example/soap", nil)
+  if err != nil { return err }
+  req.Header.Set("Content-Type", "application/soap+xml; charset=utf-8; action=\""+action+"\"")
+  return nil
+}
+func Check(client *Client, request, response any) error {
+  return client.Send("urn:status:check", request, response)
+}`)
+
+	resp, err := extract(plugin.Input{Root: root}, Options{Context: "monitoring", Service: "probe"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got catalog.Catalog
+	if err := json.Unmarshal([]byte(resp.Files[0].Contents), &got); err != nil {
+		t.Fatal(err)
+	}
+	calls := got.Contexts[0].Services[0].Consumes
+	if len(calls) != 1 || calls[0].ID != "statusservice.soap.Status12Port/Check" || calls[0].Status != catalog.StatusDeclared {
+		t.Fatalf("calls = %+v", calls)
+	}
+	method := got.Externals[0].Provides[0].Methods[0]
+	if method.SOAP == nil || method.SOAP.Version != "1.2" || method.SOAP.Action != "urn:status:check" {
+		t.Fatalf("method = %+v", method)
 	}
 }

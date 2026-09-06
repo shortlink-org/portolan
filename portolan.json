@@ -126,6 +126,13 @@
       }
     },
     {
+      "name": "wsdl",
+      "process": {
+        "command": "go",
+        "args": ["run", "./plugins/extract-wsdl"]
+      }
+    },
+    {
       "name": "http-clients",
       "process": {
         "command": "go",

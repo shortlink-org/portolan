@@ -27,6 +27,8 @@ import type {
   FlowNode,
   Loop,
   Parallel,
+  RpcMethod,
+  RpcService,
   Service,
   Status,
   Step,
@@ -394,7 +396,7 @@ function mergeService(
     existing.technologies = technologies;
   }
 
-  appendNew(existing.provides, incoming.provides, (p) => p.id);
+  mergeInterfaces(existing.provides, incoming.provides);
   appendNew(existing.consumes, incoming.consumes, (c) => c.id, raise);
   mergeAggregates(existing.aggregates, incoming.aggregates);
 
@@ -504,7 +506,119 @@ function mergeExternal(
     }
   }
 
-  appendNew(existing.provides, incoming.provides, (p) => p.id);
+  mergeInterfaces(existing.provides, incoming.provides);
+}
+
+/**
+ * An interface is commonly known by two independent sources: a contract
+ * extractor carries every method and message shape, while a call-site
+ * extractor carries only the methods this repository actually invokes. They
+ * share an id on purpose, so the second source enriches the first regardless
+ * of filename order instead of losing a whole WSDL/OpenAPI shape.
+ */
+function mergeInterfaces(target: RpcService[], incoming: RpcService[]): void {
+  for (const theirs of incoming) {
+    const mine = target.find((provided) => provided.id === theirs.id);
+    if (!mine) {
+      target.push(copyInterface(theirs));
+      continue;
+    }
+
+    if (!mine.source && theirs.source) mine.source = theirs.source;
+    if (!mine.module && theirs.module) mine.module = theirs.module;
+    for (const method of theirs.methods) {
+      const existing = mine.methods.find((candidate) => candidate.name === method.name);
+      if (!existing) {
+        mine.methods.push(copyMethod(method));
+      } else {
+        enrichMethod(existing, method);
+      }
+    }
+
+    const messages = mine.messages ?? [];
+    for (const message of theirs.messages ?? []) {
+      const existing = messages.find((candidate) => candidate.name === message.name);
+      if (!existing) {
+        messages.push({
+          ...message,
+          fields: message.fields.map((field) => ({ ...field })),
+          ...(message.discriminator
+            ? {
+                discriminator: {
+                  ...message.discriminator,
+                  variants: message.discriminator.variants.map((variant) => ({ ...variant })),
+                },
+              }
+            : {}),
+        });
+        continue;
+      }
+      appendNew(existing.fields, message.fields.map((field) => ({ ...field })), (field) => field.name);
+      if (!existing.discriminator && message.discriminator) {
+        existing.discriminator = {
+          ...message.discriminator,
+          variants: message.discriminator.variants.map((variant) => ({ ...variant })),
+        };
+      }
+    }
+    if (messages.length > 0) mine.messages = messages;
+  }
+}
+
+function copyInterface(provided: RpcService): RpcService {
+  return {
+    ...provided,
+    methods: provided.methods.map(copyMethod),
+    ...(provided.messages
+      ? {
+          messages: provided.messages.map((message) => ({
+            ...message,
+            fields: message.fields.map((field) => ({ ...field })),
+            ...(message.discriminator
+              ? {
+                  discriminator: {
+                    ...message.discriminator,
+                    variants: message.discriminator.variants.map((variant) => ({ ...variant })),
+                  },
+                }
+              : {}),
+          })),
+        }
+      : {}),
+  };
+}
+
+function copyMethod(method: RpcMethod): RpcMethod {
+  return {
+    ...method,
+    ...(method.http ? { http: { ...method.http } } : {}),
+    ...(method.soap
+      ? {
+          soap: {
+            ...method.soap,
+            ...(method.soap.faults ? { faults: [...method.soap.faults] } : {}),
+            ...(method.soap.headers ? { headers: [...method.soap.headers] } : {}),
+          },
+        }
+      : {}),
+  };
+}
+
+function enrichMethod(mine: RpcMethod, theirs: RpcMethod): void {
+  for (const field of ["doc", "request", "requestRef", "response", "responseRef", "streaming"] as const) {
+    if (!mine[field] && theirs[field]) mine[field] = theirs[field] as never;
+  }
+  if (!mine.deprecated && theirs.deprecated) mine.deprecated = true;
+  if (!mine.http && theirs.http) mine.http = { ...theirs.http };
+  if (!mine.soap && theirs.soap) {
+    mine.soap = copyMethod(theirs).soap;
+  } else if (mine.soap && theirs.soap) {
+    for (const field of ["action", "version", "style", "endpoint", "binding"] as const) {
+      if (!mine.soap[field] && theirs.soap[field]) mine.soap[field] = theirs.soap[field] as never;
+    }
+    mine.soap.faults = [...new Set([...(mine.soap.faults ?? []), ...(theirs.soap.faults ?? [])])];
+    mine.soap.headers = [...new Set([...(mine.soap.headers ?? []), ...(theirs.soap.headers ?? [])])];
+  }
 }
 
 /**
