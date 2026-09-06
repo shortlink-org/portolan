@@ -8,7 +8,7 @@ import { treeHref } from "../lib/source-link";
 import { flowHealth } from "../lib/flow-tree";
 import { adrsForService, isCurrent } from "../lib/adr";
 import { ADR_ROW_COLUMNS, AdrRow } from "../components/AdrRow";
-import { EVENT_ANCHOR, SERVICE_ANCHOR, aggregatePath, paths, servicePath } from "../routes";
+import { EVENT_ANCHOR, SERVICE_ANCHOR, aggregatePath, paths } from "../routes";
 import { Markdown } from "../components/Markdown";
 import { middleTruncate, plural } from "../lib/format";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
@@ -17,7 +17,9 @@ import { TAB_CLASS, TabCount, TabRow } from "../components/TabRow";
 import { MessageList, MethodRows } from "../components/MethodRows";
 import { docPathOf, pickSpec } from "../lib/source-doc";
 import { ApiReference, hasSpec } from "../components/ApiReference";
-import { SoapCallContract, WsdlReference } from "../components/WsdlReference";
+import { WsdlReference } from "../components/WsdlReference";
+import { Integrations } from "../components/Integrations";
+import { integrationsFor } from "../lib/integrations";
 import {
   AsyncApiReference,
   hasAsyncSpec,
@@ -30,10 +32,7 @@ import { KindIcon } from "../components/kind";
 import { TechIcon } from "../components/TechIcon";
 import { techGlyph } from "../lib/tech";
 import { RowActions } from "../components/RowActions";
-import {
-  ContextPill,
-  StatusChip,
-} from "../components/primitives";
+import { ContextPill, StatusChip } from "../components/primitives";
 import { WhatLinksHere } from "../components/WhatLinksHere";
 import { NotFound } from "./NotFound";
 import { C4View } from "../likec4/C4View";
@@ -110,7 +109,10 @@ export function ServicePage() {
   const retired = adrs.filter((a) => !isCurrent(a));
   // What the spec tab has to show: a document this repository holds, else the
   // schema module the interfaces were declared in, else nothing.
-  const spec = pickSpec(service, (source) => hasSpec(source) || hasSchema(source));
+  const spec = pickSpec(
+    service,
+    (source) => hasSpec(source) || hasSchema(source),
+  );
   // The channels the service declares, and the document behind them when this
   // repository holds it. A channel names its own source, so the tab does not
   // have to be told where to look.
@@ -118,13 +120,15 @@ export function ServicePage() {
   const busDoc = channels
     .map((channel) => channel.source)
     .find((source) => source !== undefined && hasAsyncSpec(source));
-  const showDomain = componentKind(service) === "service" || service.aggregates.length > 0;
+  const showDomain =
+    componentKind(service) === "service" || service.aggregates.length > 0;
+  const integrations = integrationsFor(service, catalog);
 
   const counts: Record<Tab, number | null> = {
     overview: null,
     provides: methodCount(service),
     spec: null,
-    consumes: service.consumes.length,
+    consumes: integrations.length,
     bus: channels.length,
     data: stores.length,
     flows: flows.length,
@@ -152,7 +156,12 @@ export function ServicePage() {
         id={service.id}
         contextId={context.id}
         pin={{ kind: "service", id: service.id }}
-        right={<><span className="chip-lg">{componentKind(service)}</span><ContextPill id={context.id} name={context.name} /></>}
+        right={
+          <>
+            <span className="chip-lg">{componentKind(service)}</span>
+            <ContextPill id={context.id} name={context.name} />
+          </>
+        }
       >
         <div className="mono mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-muted">
           <Ident value={service.repo}>{middleTruncate(service.repo, 32)}</Ident>
@@ -196,20 +205,24 @@ export function ServicePage() {
           <span aria-hidden className="h-4 w-px bg-line-strong" />
           {/* Both counts land in the section that lists what they counted;
               the tabs above do the same job for the other four. */}
-          {showDomain ? <a
-            href={`#${SERVICE_ANCHOR.aggregates}`}
-            className="rounded-control hover:text-ink"
-          >
-            <span className="tnum">{service.aggregates.length}</span>{" "}
-            {plural(service.aggregates.length, "aggregate")}
-          </a> : null}
-          {showDomain ? <a
-            href={`#${SERVICE_ANCHOR.events}`}
-            className="rounded-control hover:text-ink"
-          >
-            <span className="tnum">{events.length}</span>{" "}
-            {plural(events.length, "event")}
-          </a> : null}
+          {showDomain ? (
+            <a
+              href={`#${SERVICE_ANCHOR.aggregates}`}
+              className="rounded-control hover:text-ink"
+            >
+              <span className="tnum">{service.aggregates.length}</span>{" "}
+              {plural(service.aggregates.length, "aggregate")}
+            </a>
+          ) : null}
+          {showDomain ? (
+            <a
+              href={`#${SERVICE_ANCHOR.events}`}
+              className="rounded-control hover:text-ink"
+            >
+              <span className="tnum">{events.length}</span>{" "}
+              {plural(events.length, "event")}
+            </a>
+          ) : null}
         </div>
 
         {/* Tabs keep the underline rather than becoming a segmented box: they
@@ -224,10 +237,8 @@ export function ServicePage() {
             <TabList className="flex w-max gap-0">
               {TABS.map((t) => (
                 <Tab key={t} className={({ selected }) => TAB_CLASS(selected)}>
-                  {t}
-                  {counts[t] !== null ? (
-                    <TabCount>{counts[t]}</TabCount>
-                  ) : null}
+                  {t === "consumes" ? "integrations" : t}
+                  {counts[t] !== null ? <TabCount>{counts[t]}</TabCount> : null}
                 </Tab>
               ))}
             </TabList>
@@ -266,59 +277,63 @@ export function ServicePage() {
             />
             <div className="mt-section" />
             <Markdown mermaid>{service.readme}</Markdown>
-            {showDomain ? <section
-              id={SERVICE_ANCHOR.aggregates}
-              className="mt-section max-w-table"
-            >
-              <SectionTitle anchor={SERVICE_ANCHOR.aggregates}>
-                Aggregates
-              </SectionTitle>
-              {/* icon, slug, name, event count, actions - one column each,
-                  so the counts stack up instead of drifting with the name. */}
-              <div
-                className="rows grid-cols-[auto_auto_1fr_auto_auto]"
-                data-nav-list
+            {showDomain ? (
+              <section
+                id={SERVICE_ANCHOR.aggregates}
+                className="mt-section max-w-table"
               >
-                {service.aggregates.map((aggregate) => {
-                  const to = paths.aggregate(
-                    context.id,
-                    service.slug,
-                    aggregate.slug,
-                  );
-                  return (
-                    <div key={aggregate.id} className="row px-2 py-1.5">
-                      <KindIcon kind="aggregate" />
-                      <Link
-                        to={to}
-                        data-nav-item
-                        className="mono rounded-control"
-                      >
-                        {aggregate.slug}
-                      </Link>
-                      <span className="meta">{aggregate.name}</span>
-                      <Link
-                        to={`${to}#bb-events`}
-                        className="mono rounded-control hover:underline"
-                        style={{
-                          color:
-                            aggregate.events.length === 0
-                              ? "var(--status-declared)"
-                              : "var(--fg-muted)",
-                        }}
-                      >
-                        <span className="tnum">{aggregate.events.length}</span>{" "}
-                        events
-                      </Link>
-                      <RowActions
-                        copy={aggregate.id}
-                        reveal={aggregate.id}
-                        label={aggregate.name}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            </section> : null}
+                <SectionTitle anchor={SERVICE_ANCHOR.aggregates}>
+                  Aggregates
+                </SectionTitle>
+                {/* icon, slug, name, event count, actions - one column each,
+                  so the counts stack up instead of drifting with the name. */}
+                <div
+                  className="rows grid-cols-[auto_auto_1fr_auto_auto]"
+                  data-nav-list
+                >
+                  {service.aggregates.map((aggregate) => {
+                    const to = paths.aggregate(
+                      context.id,
+                      service.slug,
+                      aggregate.slug,
+                    );
+                    return (
+                      <div key={aggregate.id} className="row px-2 py-1.5">
+                        <KindIcon kind="aggregate" />
+                        <Link
+                          to={to}
+                          data-nav-item
+                          className="mono rounded-control"
+                        >
+                          {aggregate.slug}
+                        </Link>
+                        <span className="meta">{aggregate.name}</span>
+                        <Link
+                          to={`${to}#bb-events`}
+                          className="mono rounded-control hover:underline"
+                          style={{
+                            color:
+                              aggregate.events.length === 0
+                                ? "var(--status-declared)"
+                                : "var(--fg-muted)",
+                          }}
+                        >
+                          <span className="tnum">
+                            {aggregate.events.length}
+                          </span>{" "}
+                          events
+                        </Link>
+                        <RowActions
+                          copy={aggregate.id}
+                          reveal={aggregate.id}
+                          label={aggregate.name}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            ) : null}
 
             <section
               id={SERVICE_ANCHOR.events}
@@ -500,82 +515,7 @@ export function ServicePage() {
         </TabPanel>
 
         <TabPanel>
-          <div className="flex flex-col gap-1" data-nav-list>
-            {service.consumes.length === 0 ? (
-              <Empty>this service calls nobody — it only answers</Empty>
-            ) : null}
-            {service.consumes.map((call) => {
-              const to = servicePath(call.peer);
-              // A peer outside the estate with a contract is neither a page
-              // to open nor a hole in the catalog: it is named, and it says
-              // where it documents itself.
-              const external = to ? undefined : index.externalById.get(call.peer);
-              const provided = external?.provides.find((candidate) =>
-                call.id.startsWith(`${candidate.id}/`),
-              );
-              const calledMethod = provided?.methods.find(
-                (method) => `${provided.id}/${method.name}` === call.id,
-              );
-              return (
-                <div
-                  key={call.id}
-                  className="flex flex-wrap items-start gap-x-3 gap-y-1 rounded-control border px-3 py-2"
-                  style={{
-                    borderColor:
-                      call.status === "unresolved"
-                        ? "var(--status-unresolved)"
-                        : "var(--border)",
-                  }}
-                >
-                  <Ident value={call.id} className="text-ink" />
-                  <StatusChip status={call.status} />
-                  <Ident value={call.source} className="ml-auto" />
-                  <RowActions
-                    copy={call.id}
-                    {...(to ? { reveal: call.peer } : {})}
-                    label={call.id}
-                  />
-                  <div className="mono w-full text-muted">
-                    peer:{" "}
-                    {to ? (
-                      <Link to={to} className="text-accent">
-                        {call.peer}
-                      </Link>
-                    ) : external ? (
-                      <span>
-                        {external.name || external.id} — outside the estate
-                        {external.url ? (
-                          <>
-                            {", "}
-                            <a
-                              href={external.url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-accent"
-                            >
-                              documented here
-                            </a>
-                          </>
-                        ) : null}
-                      </span>
-                    ) : (
-                      <span className="text-unresolved">
-                        {call.peer} — not in the catalog
-                      </span>
-                    )}
-                  </div>
-                  {call.note ? (
-                    <p className="w-full border-l-2 pl-2 border-line-strong text-muted">
-                      {call.note}
-                    </p>
-                  ) : null}
-                  {provided && calledMethod?.soap ? (
-                    <SoapCallContract provided={provided} method={calledMethod} />
-                  ) : null}
-                </div>
-              );
-            })}
-          </div>
+          <Integrations groups={integrations} />
         </TabPanel>
 
         <TabPanel>
@@ -650,45 +590,60 @@ export function ServicePage() {
             {flows.length === 0 ? (
               <Empty>no chart runs through here yet</Empty>
             ) : null}
-            {flows.map(({ flow, role, trigger, firstStepId, steps, publishes, consumes }) => {
-              // What this service does in the flow, in one phrase, and the
-              // counts behind it. The link lands on the first step the
-              // service is on rather than the top of the rail.
-              const does =
-                role === "initiates"
-                  ? `answers ${trigger ?? "the call in"}`
-                  : role === "reacts"
-                    ? `reacts to ${trigger ?? "an event"}`
-                    : "on the way";
-              return (
-                <Link
-                  key={flow.slug}
-                  to={firstStepId ? paths.flowStep(flow.slug, firstStepId) : paths.flow(flow.slug)}
-                  data-nav-item
-                  className="row flex-wrap items-baseline gap-x-3"
-                >
-                  <span className="font-semibold">{flow.name}</span>
-                  <span className="mono text-muted">{flow.slug}</span>
-                  <span className="mono text-muted">{does}</span>
-                  <span className="mono ml-auto flex shrink-0 items-center gap-3 text-muted">
-                    {publishes.length > 0 ? (
-                      <span title={`publishes ${publishes.join(", ")}`}>
-                        ↑ <span className="tnum">{publishes.length}</span>
+            {flows.map(
+              ({
+                flow,
+                role,
+                trigger,
+                firstStepId,
+                steps,
+                publishes,
+                consumes,
+              }) => {
+                // What this service does in the flow, in one phrase, and the
+                // counts behind it. The link lands on the first step the
+                // service is on rather than the top of the rail.
+                const does =
+                  role === "initiates"
+                    ? `answers ${trigger ?? "the call in"}`
+                    : role === "reacts"
+                      ? `reacts to ${trigger ?? "an event"}`
+                      : "on the way";
+                return (
+                  <Link
+                    key={flow.slug}
+                    to={
+                      firstStepId
+                        ? paths.flowStep(flow.slug, firstStepId)
+                        : paths.flow(flow.slug)
+                    }
+                    data-nav-item
+                    className="row flex-wrap items-baseline gap-x-3"
+                  >
+                    <span className="font-semibold">{flow.name}</span>
+                    <span className="mono text-muted">{flow.slug}</span>
+                    <span className="mono text-muted">{does}</span>
+                    <span className="mono ml-auto flex shrink-0 items-center gap-3 text-muted">
+                      {publishes.length > 0 ? (
+                        <span title={`publishes ${publishes.join(", ")}`}>
+                          ↑ <span className="tnum">{publishes.length}</span>
+                        </span>
+                      ) : null}
+                      {consumes.length > 0 ? (
+                        <span title={`consumes ${consumes.join(", ")}`}>
+                          ↓ <span className="tnum">{consumes.length}</span>
+                        </span>
+                      ) : null}
+                      <span title="steps this service is on">
+                        <span className="tnum">{steps}</span> step
+                        {steps === 1 ? "" : "s"}
                       </span>
-                    ) : null}
-                    {consumes.length > 0 ? (
-                      <span title={`consumes ${consumes.join(", ")}`}>
-                        ↓ <span className="tnum">{consumes.length}</span>
-                      </span>
-                    ) : null}
-                    <span title="steps this service is on">
-                      <span className="tnum">{steps}</span> step{steps === 1 ? "" : "s"}
+                      <StatusChip status={flowHealth(flow)} />
                     </span>
-                    <StatusChip status={flowHealth(flow)} />
-                  </span>
-                </Link>
-              );
-            })}
+                  </Link>
+                );
+              },
+            )}
           </div>
         </TabPanel>
 
@@ -700,7 +655,10 @@ export function ServicePage() {
                the rows in force and the retired ones below them, so a chip
                sits under the chip above it rather than wherever the title
                before it happened to end. */
-            <div className={`rows max-w-table ${ADR_ROW_COLUMNS}`} data-nav-list>
+            <div
+              className={`rows max-w-table ${ADR_ROW_COLUMNS}`}
+              data-nav-list
+            >
               {current.map((adr) => (
                 <AdrRow key={adr.id} adr={adr} />
               ))}

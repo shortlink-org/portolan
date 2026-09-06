@@ -50,6 +50,20 @@ function crumbsFor(pathname: string): Crumb[] {
   if (parts[0] === "changes")
     return [{ label: "changes", to: paths.changes() }];
 
+  if (parts[0] === "externals") {
+    const slug = parts[1];
+    if (!slug) return [];
+    const external = (catalog.externals ?? []).find(
+      (candidate) => candidate.slug === slug,
+    );
+    return [
+      {
+        label: external?.name ?? slug,
+        to: paths.external(slug),
+      },
+    ];
+  }
+
   if (parts[0] === "c") {
     const [, contextId, serviceSlug, aggregateSlug, eventSlug] = parts;
     const crumbs: Crumb[] = [];
