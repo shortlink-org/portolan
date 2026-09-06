@@ -1,0 +1,93 @@
+{
+  "generatedAt": "2026-09-06T23:37:35+07:00",
+  "commit": "1600d03",
+  "contexts": [
+    {
+      "id": "storefront",
+      "slug": "storefront",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "storefront.bff",
+          "slug": "bff",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "commands": [
+            {
+              "runner": "npm",
+              "name": "build",
+              "run": "npm run build",
+              "body": "tsc -p tsconfig.build.json",
+              "source": "examples/bff/package.json:12"
+            },
+            {
+              "runner": "npm",
+              "name": "start",
+              "run": "npm start",
+              "body": "node dist/main.js",
+              "source": "examples/bff/package.json:13"
+            },
+            {
+              "runner": "npm",
+              "name": "typecheck",
+              "run": "npm run typecheck",
+              "body": "tsc -p tsconfig.json --noEmit",
+              "source": "examples/bff/package.json:14"
+            },
+            {
+              "runner": "npm",
+              "name": "test",
+              "run": "npm test",
+              "body": "vitest run",
+              "source": "examples/bff/package.json:15"
+            },
+            {
+              "runner": "npm",
+              "name": "generate",
+              "run": "npm run generate",
+              "body": "npm run generate:resolvers \u0026\u0026 npm run generate:auth \u0026\u0026 npm run generate:cart \u0026\u0026 npm run generate:grpc",
+              "source": "examples/bff/package.json:16"
+            },
+            {
+              "runner": "npm",
+              "name": "generate:resolvers",
+              "run": "npm run generate:resolvers",
+              "body": "graphql-codegen --config codegen.ts",
+              "source": "examples/bff/package.json:17"
+            },
+            {
+              "runner": "npm",
+              "name": "generate:auth",
+              "run": "npm run generate:auth",
+              "body": "openapi-typescript src/infrastructure/auth/gen/openapi.yaml -o src/infrastructure/auth/gen/types.ts",
+              "source": "examples/bff/package.json:18"
+            },
+            {
+              "runner": "npm",
+              "name": "generate:cart",
+              "run": "npm run generate:cart",
+              "body": "openapi-typescript src/infrastructure/cart/gen/openapi.yaml -o src/infrastructure/cart/gen/types.ts",
+              "source": "examples/bff/package.json:19"
+            },
+            {
+              "runner": "npm",
+              "name": "generate:grpc",
+              "run": "npm run generate:grpc",
+              "body": "buf generate --template buf.gen.oms.yaml \u0026\u0026 buf generate --template buf.gen.delivery.yaml",
+              "source": "examples/bff/package.json:20"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": []
+}

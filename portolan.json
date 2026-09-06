@@ -77,6 +77,13 @@
       }
     },
     {
+      "name": "commands",
+      "process": {
+        "command": "go",
+        "args": ["run", "./plugins/extract-commands"]
+      }
+    },
+    {
       "name": "go-domain",
       "process": {
         "command": "go",
@@ -319,6 +326,16 @@
       }
     },
     {
+      "plugin": "commands",
+      "in": ".",
+      "out": "portolan",
+      "options": {
+        "context": "portolan",
+        "service": "host",
+        "out": "commands.json"
+      }
+    },
+    {
       "plugin": "flows",
       "in": "flows",
       "out": "portolan",
@@ -398,6 +415,16 @@
       "options": {
         "context": "auth",
         "out": "glossary.json"
+      }
+    },
+    {
+      "plugin": "commands",
+      "in": "examples/shop/cart",
+      "out": "examples/shop/cart/portolan",
+      "options": {
+        "context": "shop",
+        "service": "cart",
+        "out": "commands.json"
       }
     },
     {
@@ -562,6 +589,16 @@
       }
     },
     {
+      "plugin": "commands",
+      "in": "examples/shop/pricing",
+      "out": "examples/shop/pricing/portolan",
+      "options": {
+        "context": "shop",
+        "service": "pricing",
+        "out": "commands.json"
+      }
+    },
+    {
       "plugin": "go-nats",
       "in": "examples/shop/pricing",
       "out": "examples/shop/pricing/portolan",
@@ -569,6 +606,16 @@
         "context": "shop",
         "service": "pricing",
         "out": "nats.json"
+      }
+    },
+    {
+      "plugin": "commands",
+      "in": "examples/shop/delivery/core",
+      "out": "examples/shop/delivery/core/portolan",
+      "options": {
+        "context": "delivery",
+        "service": "core",
+        "out": "commands.json"
       }
     },
     {
@@ -799,6 +846,16 @@
       "options": {
         "context": "shop",
         "out": "glossary.json"
+      }
+    },
+    {
+      "plugin": "commands",
+      "in": "examples/bff",
+      "out": "examples/bff/portolan",
+      "options": {
+        "context": "storefront",
+        "service": "bff",
+        "out": "commands.json"
       }
     },
     {

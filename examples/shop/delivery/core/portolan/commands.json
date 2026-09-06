@@ -1,0 +1,51 @@
+{
+  "generatedAt": "2026-09-05T16:34:53+07:00",
+  "commit": "d76a56c",
+  "contexts": [
+    {
+      "id": "delivery",
+      "slug": "delivery",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "delivery.core",
+          "slug": "core",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "commands": [
+            {
+              "runner": "npm",
+              "name": "build",
+              "run": "npm run build",
+              "body": "tsc -p tsconfig.build.json",
+              "source": "examples/shop/delivery/core/package.json:9"
+            },
+            {
+              "runner": "npm",
+              "name": "typecheck",
+              "run": "npm run typecheck",
+              "body": "tsc --noEmit",
+              "source": "examples/shop/delivery/core/package.json:10"
+            },
+            {
+              "runner": "npm",
+              "name": "gen",
+              "run": "npm run gen",
+              "body": "buf generate src/infrastructure/transport/grpc/shipment/proto -o src/infrastructure/transport/grpc/shipment/gen \u0026\u0026 buf generate src/infrastructure/transport/grpc/route/proto -o src/infrastructure/transport/grpc/route/gen \u0026\u0026 buf generate src/infrastructure/oms/proto -o src/infrastructure/oms/gen",
+              "source": "examples/shop/delivery/core/package.json:11"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": []
+}

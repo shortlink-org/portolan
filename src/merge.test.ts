@@ -181,6 +181,39 @@ describe("mergeCatalogs", () => {
     expect(service?.provides.map((p) => p.id)).toEqual(["auth.v1.Users"]);
   });
 
+  it("unions a service's commands by the line to type", () => {
+    const domain = context("shop", ["shop.cart"]);
+    domain.services = domain.services.map((s) => ({
+      ...s,
+      commands: [
+        { runner: "npm", name: "test", run: "npm test", body: "vitest run" },
+      ],
+    }));
+
+    const commands = context("shop", ["shop.cart"]);
+    commands.services = commands.services.map((s) => ({
+      ...s,
+      commands: [
+        { runner: "npm", name: "test", run: "npm test", body: "vitest" },
+        { runner: "make", name: "gen", run: "make gen", doc: "Regenerate stubs" },
+      ],
+    }));
+
+    const merged = mergeCatalogs([
+      source("a-domain.json", { contexts: [domain] }),
+      source("b-commands.json", { contexts: [commands] }),
+    ]);
+
+    expect(merged.conflicts).toEqual([]);
+    const service = merged.catalog.contexts[0]?.services[0];
+    expect(service?.commands?.map((c) => c.run)).toEqual([
+      "npm test",
+      "make gen",
+    ]);
+    // The first source's reading of a shared line is the one kept.
+    expect(service?.commands?.[0]?.body).toBe("vitest run");
+  });
+
   it("lets a second source add an event, and a consumer, to an aggregate it did not declare", () => {
     const aggregate = (events: Catalog["contexts"][0]["services"][0]["aggregates"][0]["events"]) => ({
       id: "shop.oms.order",

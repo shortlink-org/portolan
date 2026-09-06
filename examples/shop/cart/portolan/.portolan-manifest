@@ -16,5 +16,8 @@
   ],
   "adr": [
     "adr.json"
+  ],
+  "commands": [
+    "commands.json"
   ]
 }

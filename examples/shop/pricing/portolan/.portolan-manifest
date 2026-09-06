@@ -10,5 +10,8 @@
   ],
   "sql": [
     "stores.json"
+  ],
+  "commands": [
+    "commands.json"
   ]
 }

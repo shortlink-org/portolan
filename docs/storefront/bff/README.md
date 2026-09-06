@@ -1,6 +1,6 @@
 # Storefront BFF
 
-*Generated from the portolan catalog · commit `11 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
 
 - **Id:** `storefront.bff`
 - **Context:** [Storefront](../README.md)
@@ -346,6 +346,20 @@ Source: [`examples/bff/src/infrastructure/bus/asyncapi.yaml`](https://github.com
 | receive | [`oms.OrderPlaced`](../../shop/oms/aggregates/order.md#event-shop-oms-order-orderplaced) | An order came into being from a checked-out basket |
 | receive | [`oms.OrderConfirmed`](../../shop/oms/aggregates/order.md#event-shop-oms-order-orderconfirmed) | The payment was authorised and the order may be fulfilled |
 | receive | [`oms.OrderCancelled`](../../shop/oms/aggregates/order.md#event-shop-oms-order-ordercancelled) | The order will not be fulfilled |
+
+## Commands
+
+| Run | Body | Source |
+| --- | --- | --- |
+| `npm run build` | `tsc -p tsconfig.build.json` | [`examples/bff/package.json:12`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/package.json#L12) |
+| `npm start` | `node dist/main.js` | [`examples/bff/package.json:13`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/package.json#L13) |
+| `npm run typecheck` | `tsc -p tsconfig.json --noEmit` | [`examples/bff/package.json:14`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/package.json#L14) |
+| `npm test` | `vitest run` | [`examples/bff/package.json:15`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/package.json#L15) |
+| `npm run generate` | `npm run generate:resolvers && npm run generate:auth && npm run generate:cart && npm run generate:grpc` | [`examples/bff/package.json:16`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/package.json#L16) |
+| `npm run generate:resolvers` | `graphql-codegen --config codegen.ts` | [`examples/bff/package.json:17`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/package.json#L17) |
+| `npm run generate:auth` | `openapi-typescript src/infrastructure/auth/gen/openapi.yaml -o src/infrastructure/auth/gen/types.ts` | [`examples/bff/package.json:18`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/package.json#L18) |
+| `npm run generate:cart` | `openapi-typescript src/infrastructure/cart/gen/openapi.yaml -o src/infrastructure/cart/gen/types.ts` | [`examples/bff/package.json:19`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/package.json#L19) |
+| `npm run generate:grpc` | `buf generate --template buf.gen.oms.yaml && buf generate --template buf.gen.delivery.yaml` | [`examples/bff/package.json:20`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/package.json#L20) |
 
 ## Decisions
 

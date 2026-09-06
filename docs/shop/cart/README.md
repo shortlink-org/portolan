@@ -1,6 +1,6 @@
 # Shopping Cart
 
-*Generated from the portolan catalog · commit `11 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
 
 - **Id:** `shop.cart`
 - **Context:** [Shop](../README.md)
@@ -205,6 +205,19 @@ Source: [`examples/shop/cart/src/infrastructure/transport/bus/asyncapi.yaml`](ht
 | Store | Kind | Access | Tables |
 | --- | --- | --- | --- |
 | [Cart database](stores/pg.md) | postgres | owns | 3 tables |
+
+## Commands
+
+| Run | Body | Source |
+| --- | --- | --- |
+| `npm run build` | `tsc -p tsconfig.build.json && mkdir -p dist/infrastructure/repository/basket && cp -R src/infrastructure/repository/basket/migrations dist/infrastructure/repository/basket/` | [`examples/shop/cart/package.json:12`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/package.json#L12) |
+| `npm start` | `node dist/main.js` | [`examples/shop/cart/package.json:13`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/package.json#L13) |
+| `npm run typecheck` | `tsc -p tsconfig.json --noEmit` | [`examples/shop/cart/package.json:14`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/package.json#L14) |
+| `npm test` | `vitest run` | [`examples/shop/cart/package.json:15`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/package.json#L15) |
+| `npm run generate` | `npm run generate:api && npm run generate:auth && npm run generate:pricing` | [`examples/shop/cart/package.json:16`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/package.json#L16) |
+| `npm run generate:api` | `openapi-typescript src/infrastructure/transport/http/gen/openapi.yaml -o src/infrastructure/transport/http/gen/types.ts` | [`examples/shop/cart/package.json:17`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/package.json#L17) |
+| `npm run generate:auth` | `openapi-typescript src/infrastructure/auth/gen/openapi.yaml -o src/infrastructure/auth/gen/types.ts` | [`examples/shop/cart/package.json:18`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/package.json#L18) |
+| `npm run generate:pricing` | `buf generate` | [`examples/shop/cart/package.json:19`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/package.json#L19) |
 
 ## Decisions
 

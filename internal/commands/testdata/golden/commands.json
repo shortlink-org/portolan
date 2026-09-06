@@ -1,0 +1,187 @@
+[
+  {
+    "runner": "make",
+    "name": "help",
+    "run": "make help",
+    "doc": "List the targets",
+    "body": "@grep -E '^[a-z].*##' $(MAKEFILE_LIST)",
+    "source": "testdata/estate/Makefile:6"
+  },
+  {
+    "runner": "make",
+    "name": "gen",
+    "run": "make gen",
+    "doc": "Regenerate the gRPC stubs",
+    "body": "buf generate $(GRPC)/quote/proto -o $(GRPC)/quote/gen\nbuf generate $(GRPC)/price_list/proto -o $(GRPC)/price_list/gen",
+    "source": "testdata/estate/Makefile:10"
+  },
+  {
+    "runner": "make",
+    "name": "build",
+    "run": "make build",
+    "doc": "Compiles every package. Nothing is installed.",
+    "body": "go build ./...",
+    "source": "testdata/estate/Makefile:15"
+  },
+  {
+    "runner": "make",
+    "name": "test",
+    "run": "make test",
+    "body": "go test ./...",
+    "source": "testdata/estate/Makefile:18"
+  },
+  {
+    "runner": "make",
+    "name": "lint",
+    "run": "make lint",
+    "body": "go test ./...",
+    "source": "testdata/estate/Makefile:18"
+  },
+  {
+    "runner": "make",
+    "name": "ci",
+    "run": "make ci",
+    "body": "@echo done",
+    "source": "testdata/estate/Makefile:31"
+  },
+  {
+    "runner": "just",
+    "name": "dev",
+    "run": "just dev",
+    "doc": "Run the service against the compose stack",
+    "body": "docker compose up -d\ncargo run",
+    "source": "testdata/estate/justfile:7"
+  },
+  {
+    "runner": "just",
+    "name": "test",
+    "run": "just test",
+    "doc": "Run the tests, unit and integration",
+    "body": "cargo test {{args}}",
+    "source": "testdata/estate/justfile:12"
+  },
+  {
+    "runner": "task",
+    "name": "default",
+    "run": "task default",
+    "body": "task build",
+    "source": "testdata/estate/Taskfile.yml:4"
+  },
+  {
+    "runner": "task",
+    "name": "build",
+    "run": "task build",
+    "doc": "Compile the binary",
+    "body": "go build -o bin/svc ./cmd/svc",
+    "source": "testdata/estate/Taskfile.yml:7"
+  },
+  {
+    "runner": "task",
+    "name": "migrate",
+    "run": "task migrate",
+    "doc": "Apply pending migrations",
+    "body": "goose up",
+    "source": "testdata/estate/Taskfile.yml:11"
+  },
+  {
+    "runner": "task",
+    "name": "fmt",
+    "run": "task fmt",
+    "body": "gofmt -w .",
+    "source": "testdata/estate/Taskfile.yml:21"
+  },
+  {
+    "runner": "npm",
+    "name": "build",
+    "run": "npm run build",
+    "body": "tsc -p tsconfig.build.json",
+    "source": "testdata/estate/package.json:4"
+  },
+  {
+    "runner": "npm",
+    "name": "start",
+    "run": "npm start",
+    "body": "node dist/main.js",
+    "source": "testdata/estate/package.json:6"
+  },
+  {
+    "runner": "npm",
+    "name": "test",
+    "run": "npm test",
+    "body": "vitest run",
+    "source": "testdata/estate/package.json:7"
+  },
+  {
+    "runner": "npm",
+    "name": "build:watch",
+    "run": "npm run build:watch",
+    "body": "tsc -w",
+    "source": "testdata/estate/package.json:8"
+  },
+  {
+    "runner": "npm",
+    "name": "generate",
+    "run": "npm run generate",
+    "body": "npm run generate:api \u0026\u0026 npm run generate:auth",
+    "source": "testdata/estate/package.json:9"
+  },
+  {
+    "runner": "npm",
+    "name": "generate:api",
+    "run": "npm run generate:api",
+    "body": "openapi-typescript openapi.yaml -o types.ts",
+    "source": "testdata/estate/package.json:10"
+  },
+  {
+    "runner": "poe",
+    "name": "test",
+    "run": "poe test",
+    "body": "pytest",
+    "source": "testdata/estate/pyproject.toml:9"
+  },
+  {
+    "runner": "poe",
+    "name": "lint",
+    "run": "poe lint",
+    "body": "ruff check .",
+    "source": "testdata/estate/pyproject.toml:10"
+  },
+  {
+    "runner": "poe",
+    "name": "serve",
+    "run": "poe serve",
+    "doc": "Run the dev server",
+    "body": "python manage.py runserver",
+    "source": "testdata/estate/pyproject.toml:11"
+  },
+  {
+    "runner": "poe",
+    "name": "migrate",
+    "run": "poe migrate",
+    "doc": "Apply pending migrations",
+    "body": "python manage.py migrate",
+    "source": "testdata/estate/pyproject.toml:14"
+  },
+  {
+    "runner": "poe",
+    "name": "check",
+    "run": "poe check",
+    "body": "lint\ntest",
+    "source": "testdata/estate/pyproject.toml:18"
+  },
+  {
+    "runner": "pdm",
+    "name": "test",
+    "run": "pdm run test",
+    "body": "pytest -x",
+    "source": "testdata/estate/pyproject.toml:23"
+  },
+  {
+    "runner": "pdm",
+    "name": "worker",
+    "run": "pdm run worker",
+    "doc": "Run the celery worker",
+    "body": "celery -A billing worker",
+    "source": "testdata/estate/pyproject.toml:25"
+  }
+]

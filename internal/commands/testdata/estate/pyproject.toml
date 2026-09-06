@@ -1,0 +1,27 @@
+[project]
+name = "billing"
+version = "0.1.0"
+
+[project.scripts]
+billing = "billing.cli:main"
+
+[tool.poe.tasks]
+test = "pytest"
+lint = ["ruff", "check", "."]
+serve = { cmd = "python manage.py runserver", help = "Run the dev server" }
+_hidden = "echo no"
+
+[tool.poe.tasks.migrate]
+help = "Apply pending migrations"
+cmd = "python manage.py migrate"
+
+[tool.poe.tasks.check]
+sequence = ["lint", "test"]
+
+[tool.pdm.scripts]
+pre_test = "echo before"
+test = "pytest -x"
+
+[tool.pdm.scripts.worker]
+shell = "celery -A billing worker"
+help = "Run the celery worker"

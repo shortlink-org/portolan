@@ -166,6 +166,7 @@ export const BLOCK_STORED_AS = "bl-stored-as";
 export const SERVICE_ANCHOR = {
   aggregates: "svc-aggregates",
   events: "svc-events",
+  commands: "svc-commands",
 } as const;
 
 /** The section anchors on the context map. */

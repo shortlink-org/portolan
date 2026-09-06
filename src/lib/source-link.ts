@@ -31,7 +31,14 @@ export function splitLine(where: string): { path: string; line: number | null } 
 
 /** Whether a string is shaped like a path in a tree, not a sentence. */
 function looksLikePath(path: string): boolean {
-  return /^[\w./@+-]+$/.test(path) && !path.startsWith("/") && path.includes(".");
+  // A dot or a slash is what separates `Makefile:3` and `cmd/main.go` from a
+  // word somebody wrote where a path was expected; a bare `Makefile` at the
+  // root of a repository is a path all the same.
+  return (
+    /^[\w./@+-]+$/.test(path) &&
+    !path.startsWith("/") &&
+    (path.includes(".") || path.includes("/") || /file$/i.test(path))
+  );
 }
 
 /**

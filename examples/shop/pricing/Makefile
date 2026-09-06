@@ -3,10 +3,14 @@
 GRPC := internal/infrastructure/transport/grpc
 
 .PHONY: gen
-gen:
+gen: ## Regenerate the gRPC stubs from the vendored protos
 	buf generate $(GRPC)/quote/proto -o $(GRPC)/quote/gen
 	buf generate $(GRPC)/price_list/proto -o $(GRPC)/price_list/gen
 
 .PHONY: build
-build:
+build: ## Compile every package
 	go build ./...
+
+.PHONY: test
+test: ## Run the unit tests
+	go test ./...

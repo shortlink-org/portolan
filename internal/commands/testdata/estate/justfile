@@ -1,0 +1,20 @@
+set shell := ["bash", "-cu"]
+port := "8080"
+
+alias t := test
+
+# Run the service against the compose stack
+dev:
+    docker compose up -d
+    cargo run
+
+[doc("Run the tests, unit and integration")]
+test *args:
+    cargo test {{args}}
+
+[private]
+release:
+    cargo build --release
+
+_setup:
+    rustup default stable

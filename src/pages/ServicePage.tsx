@@ -2,7 +2,13 @@ import { useState } from "react";
 import { TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { catalog } from "../data";
-import { allRepos, componentKind, ownersOf, technologiesOf } from "../catalog";
+import {
+  allRepos,
+  commandsOf,
+  componentKind,
+  ownersOf,
+  technologiesOf,
+} from "../catalog";
 import { flowRoles } from "../lib/derive";
 import { treeHref } from "../lib/source-link";
 import { flowHealth } from "../lib/flow-tree";
@@ -25,6 +31,7 @@ import {
   hasAsyncSpec,
 } from "../components/AsyncApiReference";
 import { ChannelRows } from "../components/ChannelRows";
+import { CommandRows } from "../components/CommandRows";
 import { ModuleSpec } from "../components/SourceDoc";
 import { hasSchema, SchemaDocument } from "../components/SchemaDocument";
 import { methodCount, operationsExposedBy } from "../lib/api";
@@ -277,6 +284,27 @@ export function ServicePage() {
             />
             <div className="mt-section" />
             <Markdown mermaid>{service.readme}</Markdown>
+            {/* What to type to build, test and run it. Under the README
+                rather than in a tab of its own: the list is short, it is the
+                first thing a reader new to the checkout wants, and the README
+                above is where it would have been written by hand. Absent
+                entirely when no runner file declares one - a heading over an
+                empty list would be a claim that the service cannot be built,
+                and nobody made it. */}
+            {commandsOf(service).length > 0 ? (
+              <section
+                id={SERVICE_ANCHOR.commands}
+                className="mt-section max-w-table"
+              >
+                <SectionTitle anchor={SERVICE_ANCHOR.commands}>
+                  Commands
+                </SectionTitle>
+                <CommandRows
+                  commands={commandsOf(service)}
+                  service={service}
+                />
+              </section>
+            ) : null}
             {showDomain ? (
               <section
                 id={SERVICE_ANCHOR.aggregates}

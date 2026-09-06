@@ -16,5 +16,8 @@
   ],
   "flows": [
     "flows.json"
+  ],
+  "commands": [
+    "commands.json"
   ]
 }

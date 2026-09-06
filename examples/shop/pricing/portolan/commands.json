@@ -1,0 +1,54 @@
+{
+  "generatedAt": "2026-09-07T02:34:35+07:00",
+  "commit": "6db6d3f",
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.pricing",
+          "slug": "pricing",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "commands": [
+            {
+              "runner": "make",
+              "name": "gen",
+              "run": "make gen",
+              "doc": "Regenerate the gRPC stubs from the vendored protos",
+              "body": "buf generate $(GRPC)/quote/proto -o $(GRPC)/quote/gen\nbuf generate $(GRPC)/price_list/proto -o $(GRPC)/price_list/gen",
+              "source": "examples/shop/pricing/Makefile:6"
+            },
+            {
+              "runner": "make",
+              "name": "build",
+              "run": "make build",
+              "doc": "Compile every package",
+              "body": "go build ./...",
+              "source": "examples/shop/pricing/Makefile:11"
+            },
+            {
+              "runner": "make",
+              "name": "test",
+              "run": "make test",
+              "doc": "Run the unit tests",
+              "body": "go test ./...",
+              "source": "examples/shop/pricing/Makefile:15"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": []
+}

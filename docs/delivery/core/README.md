@@ -1,6 +1,6 @@
 # Delivery Core
 
-*Generated from the portolan catalog · commit `11 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
 
 - **Id:** `delivery.core`
 - **Context:** [Delivery](../README.md)
@@ -353,6 +353,14 @@ npm install && npm run gen && npm run build
 | Store | Kind | Access | Tables |
 | --- | --- | --- | --- |
 | [Delivery database](stores/pg.md) | postgres | owns | 5 tables |
+
+## Commands
+
+| Run | Body | Source |
+| --- | --- | --- |
+| `npm run build` | `tsc -p tsconfig.build.json` | [`examples/shop/delivery/core/package.json:9`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/package.json#L9) |
+| `npm run typecheck` | `tsc --noEmit` | [`examples/shop/delivery/core/package.json:10`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/package.json#L10) |
+| `npm run gen` | `buf generate src/infrastructure/transport/grpc/shipment/proto -o src/infrastructure/transport/grpc/shipment/gen && buf generate src/infrastructure/transport/grpc/route/proto -o src/infrastructure/transport/grpc/route/gen && buf generate src/infrastructure/oms/proto -o src/infrastructure/oms/gen` | [`examples/shop/delivery/core/package.json:11`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/package.json#L11) |
 
 ## Decisions
 

@@ -1,0 +1,20 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "context": {
+      "type": "string",
+      "description": "Slug of the bounded context the service is in. Left out, the name of the input directory's parent, which is right for shop/cart and wrong for a repository of its own.",
+      "examples": ["auth", "shop"]
+    },
+    "service": {
+      "type": "string",
+      "description": "Slug of the service the commands belong to. Left out, the name of the input directory.",
+      "examples": ["cart", "pricing"]
+    },
+    "out": {
+      "type": "string",
+      "description": "Name of the fragment file, inside the step's output directory. Left out, commands.json."
+    }
+  }
+}

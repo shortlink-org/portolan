@@ -1,0 +1,21 @@
+version: "3"
+
+tasks:
+  default:
+    cmds:
+      - task: build
+  build:
+    desc: Compile the binary
+    cmds:
+      - go build -o bin/svc ./cmd/svc
+  migrate:
+    summary: Apply pending migrations
+    cmd: goose up
+  _shared:
+    cmds:
+      - echo hidden
+  lint:
+    internal: true
+    cmds:
+      - golangci-lint run
+  fmt: gofmt -w .

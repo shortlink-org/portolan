@@ -352,6 +352,9 @@ function mergeService(
       ...(incoming.technologies
         ? { technologies: [...incoming.technologies] }
         : {}),
+      ...(incoming.commands
+        ? { commands: incoming.commands.map((c) => ({ ...c })) }
+        : {}),
     });
     origin.set(incoming.id, path);
 
@@ -423,6 +426,21 @@ function mergeService(
       if (!owners.includes(handle)) owners.push(handle);
     }
     existing.owners = owners;
+  }
+
+  // Keyed by the line a reader types, which is the whole of a command's
+  // identity: two fragments listing `make test` read one Makefile, and a
+  // second row would be the same command offered twice. Not a conflict
+  // worth reporting when the doc or body differ, either - the first one
+  // read is kept, the way scalars are.
+  if (incoming.commands?.length) {
+    const commands = existing.commands ?? [];
+    for (const command of incoming.commands) {
+      if (!commands.some((c) => c.run === command.run)) {
+        commands.push({ ...command });
+      }
+    }
+    existing.commands = commands;
   }
 
   if (incoming.channels?.length) {

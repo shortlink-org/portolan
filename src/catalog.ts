@@ -163,6 +163,46 @@ export interface Service {
    * written it down nowhere.
    */
   owners?: string[];
+  /**
+   * What a developer types against the checkout: the make targets, npm
+   * scripts, just recipes and task-runner tasks the repository declares. Read
+   * from the runner files, never from the README, so the list is the one the
+   * runner would accept. Absent when nothing declares any, which is not the
+   * same as a service that cannot be built.
+   */
+  commands?: Command[];
+}
+
+/**
+ * One entry of a task runner's file: a make target, an npm script, a just
+ * recipe, a Taskfile task, a poe or pdm task.
+ *
+ * `run` is the whole point - the line a reader copies - and it is spelled
+ * here rather than rebuilt from the runner and the name, because `npm test`
+ * and `npm run typecheck` are two spellings of one runner and the page should
+ * not have to know which scripts npm treats specially.
+ */
+export interface Command {
+  /** The tool the line is typed at: make, npm, pnpm, yarn, bun, just, task, poe, pdm. */
+  runner: string;
+  /** The target, script, recipe or task as its file spells it. */
+  name: string;
+  /** The line to type at a shell in the service's directory. */
+  run: string;
+  /**
+   * What the file says the command is for, when it says anything: a `##`
+   * comment on a make target, a `#` line over a just recipe, a task's `desc`,
+   * a poe task's `help`. Most files say nothing.
+   */
+  doc?: string;
+  /**
+   * What the runner executes for it: the recipe, the script line, the cmds.
+   * Carried so a name that says nothing can still be read, and shown folded,
+   * because a build script is not a sentence.
+   */
+  body?: string;
+  /** The file and line the entry was read at. */
+  source?: string;
 }
 
 export type ComponentKind =
@@ -1058,6 +1098,10 @@ export function ownersOf(service: Service): string[] {
 
 export function technologiesOf(component: Component): string[] {
   return component.technologies ?? [];
+}
+
+export function commandsOf(component: Component): Command[] {
+  return component.commands ?? [];
 }
 
 export function allTables(catalog: Catalog): Table[] {

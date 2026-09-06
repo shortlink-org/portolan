@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/shortlink-org/portolan/catalog"
+	"github.com/shortlink-org/portolan/internal/commands"
 	"github.com/shortlink-org/portolan/plugin"
 )
 
@@ -20,6 +21,11 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	group := firstNonEmpty(slug(opts.Group), base, "project")
 	component := firstNonEmpty(slug(opts.Component), base, "component")
 	readme := read(filepath.Join(root, "README.md"))
+	b := &plugin.Builder{}
+	cmds, warnings := commands.Read(root)
+	for _, warning := range warnings {
+		b.Warn(root, warning)
+	}
 
 	fragment := catalog.Catalog{
 		GeneratedAt: in.GeneratedAt,
@@ -42,6 +48,7 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 				Provides:     []catalog.RpcService{},
 				Consumes:     []catalog.RpcCall{},
 				Aggregates:   []catalog.Aggregate{},
+				Commands:     cmds,
 			}},
 		}},
 		Defs:  map[string]catalog.TypeDef{},
@@ -53,7 +60,6 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	if err != nil {
 		return plugin.Response{}, err
 	}
-	b := &plugin.Builder{}
 	b.File(firstNonEmpty(opts.Out, "project.json"), string(encoded)+"\n")
 	return b.Response(), nil
 }

@@ -1,0 +1,13 @@
+{
+  "name": "cart",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prebuild": "rimraf dist",
+    "start": "node dist/main.js",
+    "test": "vitest run",
+    "build:watch": "tsc -w",
+    "generate": "npm run generate:api && npm run generate:auth",
+    "generate:api": "openapi-typescript openapi.yaml -o types.ts"
+  },
+  "dependencies": {}
+}

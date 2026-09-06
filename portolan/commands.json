@@ -1,0 +1,135 @@
+{
+  "generatedAt": "2026-09-07T02:34:35+07:00",
+  "commit": "6db6d3f",
+  "contexts": [
+    {
+      "id": "portolan",
+      "slug": "portolan",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "portolan.host",
+          "slug": "host",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "commands": [
+            {
+              "runner": "npm",
+              "name": "dev",
+              "run": "npm run dev",
+              "body": "vite",
+              "source": "package.json:7"
+            },
+            {
+              "runner": "npm",
+              "name": "build",
+              "run": "npm run build",
+              "body": "npm run likec4:gen \u0026\u0026 tsc --noEmit \u0026\u0026 vite build \u0026\u0026 node scripts/site-docs.mjs",
+              "source": "package.json:8"
+            },
+            {
+              "runner": "npm",
+              "name": "preview",
+              "run": "npm run preview",
+              "body": "vite preview",
+              "source": "package.json:9"
+            },
+            {
+              "runner": "npm",
+              "name": "test",
+              "run": "npm test",
+              "body": "vitest run",
+              "source": "package.json:10"
+            },
+            {
+              "runner": "npm",
+              "name": "test:go",
+              "run": "npm run test:go",
+              "body": "go test ./...",
+              "source": "package.json:11"
+            },
+            {
+              "runner": "npm",
+              "name": "test:watch",
+              "run": "npm run test:watch",
+              "body": "vitest",
+              "source": "package.json:12"
+            },
+            {
+              "runner": "npm",
+              "name": "typecheck",
+              "run": "npm run typecheck",
+              "body": "tsc --noEmit \u0026\u0026 tsc -p plugins/extract-ts",
+              "source": "package.json:13"
+            },
+            {
+              "runner": "npm",
+              "name": "likec4:gen",
+              "run": "npm run likec4:gen",
+              "body": "node scripts/gen-likec4.mjs \u0026\u0026 likec4 gen react likec4 -o src/likec4/generated.jsx",
+              "source": "package.json:14"
+            },
+            {
+              "runner": "npm",
+              "name": "likec4:validate",
+              "run": "npm run likec4:validate",
+              "body": "likec4 validate likec4",
+              "source": "package.json:15"
+            },
+            {
+              "runner": "npm",
+              "name": "plugins:build",
+              "run": "npm run plugins:build",
+              "body": "GOOS=wasip1 GOARCH=wasm go build -o plugins/gen-markdown.wasm ./plugins/gen-markdown \u0026\u0026 GOOS=wasip1 GOARCH=wasm go build -o plugins/gen-mermaid.wasm ./plugins/gen-mermaid \u0026\u0026 GOOS=wasip1 GOARCH=wasm go build -o plugins/gen-backstage.wasm ./plugins/gen-backstage \u0026\u0026 javac --release 21 -d plugins/extract-java/build plugins/extract-java/src/org/portolan/extract/*.java",
+              "source": "package.json:17"
+            },
+            {
+              "runner": "npm",
+              "name": "schema",
+              "run": "npm run schema",
+              "body": "npm run plugins:build \u0026\u0026 node scripts/schema.mjs",
+              "source": "package.json:18"
+            },
+            {
+              "runner": "npm",
+              "name": "schema:check",
+              "run": "npm run schema:check",
+              "body": "npm run plugins:build \u0026\u0026 node scripts/schema.mjs --check",
+              "source": "package.json:19"
+            },
+            {
+              "runner": "npm",
+              "name": "gen",
+              "run": "npm run gen",
+              "body": "npm run plugins:build \u0026\u0026 node scripts/gen.mjs",
+              "source": "package.json:20"
+            },
+            {
+              "runner": "npm",
+              "name": "gen:check",
+              "run": "npm run gen:check",
+              "body": "npm run plugins:build \u0026\u0026 node scripts/gen.mjs --check",
+              "source": "package.json:21"
+            },
+            {
+              "runner": "npm",
+              "name": "diff",
+              "run": "npm run diff",
+              "body": "node scripts/diff.mjs",
+              "source": "package.json:22"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": []
+}

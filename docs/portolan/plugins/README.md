@@ -1,6 +1,6 @@
 # Plugins
 
-*Generated from the portolan catalog · commit `11 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
 
 - **Id:** `portolan.plugins`
 - **Group:** [Portolan](../README.md)
@@ -486,6 +486,57 @@ is the point of the id; the same word twice in one context is an error.
   ]
 }
 ```
+
+### Commands: what to type
+
+The first thing a reader new to a checkout wants is not the aggregate list but
+`how do I build this, test it, run it`. The README answers that sometimes; the
+runner files answer it always, and they are already in the tree. `extract-commands`
+reads them and puts the answer on the service as a list of commands - the line
+to type, what the file says it is for, what the runner would execute, and where
+it was read.
+
+| File | Runner | Line to type | Description read from |
+| --- | --- | --- | --- |
+| `Makefile` | make | `make <target>` | `## comment` on the target's line, else the `#` block over it |
+| `justfile` | just | `just <recipe>` | `[doc("...")]`, else the `#` block over it |
+| `Taskfile.yml` | task | `task <name>` | `desc`, else `summary` |
+| `package.json` `scripts` | npm, or pnpm/yarn/bun by the lockfile | `npm run <name>`; `npm test`, `npm start` | nothing - the script line is the body |
+| `pyproject.toml` | poe (`[tool.poe.tasks]`), pdm (`[tool.pdm.scripts]`) | `poe <name>`, `pdm run <name>` | `help` |
+
+Left out, because the runner leaves them out too: `_`-prefixed and `[private]`
+entries, `internal` tasks, make's special and pattern targets (`.PHONY`, `%.o`),
+targets spelled through a variable, and `pre`/`post` hooks of a script that is
+itself listed. `[project.scripts]` in a pyproject is not read: those are
+programs the package installs, not tasks a developer runs. `uv` has no task
+section, and Go and Cargo have no runner of their own, so a repository with
+only those declares no commands.
+
+Nothing is evaluated. A target inside an `ifeq` is listed; a name that depends
+on a variable's value is not, because the name it would have is not in the
+file. The pyproject reader is a line scanner that follows the table headers
+and the shapes both runners document, not a TOML parser.
+
+The fragment names the service and lists its commands, and claims nothing
+else: merging puts the list on the service a domain extractor described. The
+runner files sit beside the service, so the step is told which one it is.
+
+```json
+{
+  "plugins": [{ "name": "commands", "process": { "cmd": "go run ./plugins/extract-commands" } }],
+  "extract": [
+    {
+      "plugin": "commands",
+      "in": "examples/shop/pricing",
+      "out": "examples/shop/pricing/portolan",
+      "options": { "context": "shop", "service": "pricing", "out": "commands.json" }
+    }
+  ]
+}
+```
+
+`extract-project` reads the same files for the component it describes, so a
+repository read by that plugin does not need this one.
 
 ### Outside the estate: an external with a contract
 

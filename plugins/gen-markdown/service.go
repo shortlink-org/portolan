@@ -58,6 +58,7 @@ func (s *site) renderService(ctx *catalog.BoundedContext, svc *catalog.Service) 
 	section(&b, "Channels", s.channelsBlock(self, svc))
 	section(&b, "Schema modules", s.modulesTable(self, svc))
 	section(&b, "Stores", s.storesTable(self, svc))
+	section(&b, "Commands", s.commandsTable(self, svc))
 	section(&b, "Decisions", s.adrTable(self, s.adrsFor[svc.ID]))
 
 	s.b.file(self, b.String())
@@ -403,4 +404,32 @@ func (s *site) storesTable(from string, svc *catalog.Service) string {
 	}
 
 	return table([]string{"Store", "Kind", "Access", "Tables"}, rows)
+}
+
+// commandsTable is what a developer types against the checkout, one row per
+// entry of the runner files. The line to type comes first, because it is the
+// one cell a reader copies; the body is what it does when the file says
+// nothing about it, and is folded to its first line so a build script does
+// not become the table.
+func (s *site) commandsTable(from string, svc *catalog.Service) string {
+	rows := make([][]string, 0, len(svc.Commands))
+	for _, cmd := range svc.Commands {
+		rows = append(rows, []string{
+			code(cmd.Run),
+			cmd.Doc,
+			code(bodyLine(cmd.Body)),
+			s.source(from, cmd.Source, svc),
+		})
+	}
+
+	return table([]string{"Run", "Does", "Body", "Source"}, rows)
+}
+
+func bodyLine(s string) string {
+	line, rest, more := strings.Cut(s, "\n")
+	if more && strings.TrimSpace(rest) != "" {
+		return line + " …"
+	}
+
+	return line
 }

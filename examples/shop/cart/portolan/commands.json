@@ -1,0 +1,86 @@
+{
+  "generatedAt": "2026-09-06T23:37:35+07:00",
+  "commit": "1600d03",
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.cart",
+          "slug": "cart",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "commands": [
+            {
+              "runner": "npm",
+              "name": "build",
+              "run": "npm run build",
+              "body": "tsc -p tsconfig.build.json \u0026\u0026 mkdir -p dist/infrastructure/repository/basket \u0026\u0026 cp -R src/infrastructure/repository/basket/migrations dist/infrastructure/repository/basket/",
+              "source": "examples/shop/cart/package.json:12"
+            },
+            {
+              "runner": "npm",
+              "name": "start",
+              "run": "npm start",
+              "body": "node dist/main.js",
+              "source": "examples/shop/cart/package.json:13"
+            },
+            {
+              "runner": "npm",
+              "name": "typecheck",
+              "run": "npm run typecheck",
+              "body": "tsc -p tsconfig.json --noEmit",
+              "source": "examples/shop/cart/package.json:14"
+            },
+            {
+              "runner": "npm",
+              "name": "test",
+              "run": "npm test",
+              "body": "vitest run",
+              "source": "examples/shop/cart/package.json:15"
+            },
+            {
+              "runner": "npm",
+              "name": "generate",
+              "run": "npm run generate",
+              "body": "npm run generate:api \u0026\u0026 npm run generate:auth \u0026\u0026 npm run generate:pricing",
+              "source": "examples/shop/cart/package.json:16"
+            },
+            {
+              "runner": "npm",
+              "name": "generate:api",
+              "run": "npm run generate:api",
+              "body": "openapi-typescript src/infrastructure/transport/http/gen/openapi.yaml -o src/infrastructure/transport/http/gen/types.ts",
+              "source": "examples/shop/cart/package.json:17"
+            },
+            {
+              "runner": "npm",
+              "name": "generate:auth",
+              "run": "npm run generate:auth",
+              "body": "openapi-typescript src/infrastructure/auth/gen/openapi.yaml -o src/infrastructure/auth/gen/types.ts",
+              "source": "examples/shop/cart/package.json:18"
+            },
+            {
+              "runner": "npm",
+              "name": "generate:pricing",
+              "run": "npm run generate:pricing",
+              "body": "buf generate",
+              "source": "examples/shop/cart/package.json:19"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": []
+}

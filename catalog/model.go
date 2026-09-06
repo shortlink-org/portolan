@@ -149,6 +149,40 @@ type Service struct {
 	// nothing more: resolving one to people is a call to a forge, and the
 	// handle is what a reviewer types anyway.
 	Owners []string `json:"owners,omitempty"`
+
+	// Commands are what a developer types against the checkout - the make
+	// targets, npm scripts, just recipes and task-runner tasks the repository
+	// declares. Read from the runner files, never from the README, so the
+	// list is the one the runner would accept. Absent when nothing declares
+	// any, which is not the same as a service that cannot be built.
+	Commands []Command `json:"commands,omitempty"`
+}
+
+// Command is one entry of a task runner's file: a make target, an npm script,
+// a just recipe, a Taskfile task, a poe or pdm task.
+//
+// Run is the whole point - the line a reader copies - and it is spelled here
+// rather than rebuilt from Runner and Name, because `npm test` and
+// `npm run typecheck` are two spellings of one runner and the page should not
+// have to know which scripts npm treats specially.
+type Command struct {
+	// Runner is the tool the line is typed at: make, npm, pnpm, yarn, bun,
+	// just, task, poe, pdm.
+	Runner string `json:"runner"`
+	// Name is the target, script, recipe or task as its file spells it.
+	Name string `json:"name"`
+	// Run is the line to type at a shell in the service's directory.
+	Run string `json:"run"`
+	// Doc is what the file says the command is for, when it says anything: a
+	// `## comment` on a make target, a `#` line over a just recipe, a task's
+	// `desc`, a poe task's `help`. Most files say nothing.
+	Doc string `json:"doc,omitempty"`
+	// Body is what the runner executes for it: the recipe, the script line,
+	// the cmds. Carried so a name that says nothing can still be read, and
+	// shown folded, because a build script is not a sentence.
+	Body string `json:"body,omitempty"`
+	// Source is the file and line the entry was read at.
+	Source string `json:"source,omitempty"`
 }
 
 type RpcService struct {

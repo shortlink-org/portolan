@@ -16,6 +16,7 @@ func TestExtractsANeutralApplicationWithoutDDD(t *testing.T) {
 	mustWrite(t, filepath.Join(root, "go.mod"), "module example.com/flight/support\n")
 	mustWrite(t, filepath.Join(root, "cmd", "support", "main.go"), "package main\n")
 	mustWrite(t, filepath.Join(root, "Dockerfile"), "FROM scratch\n")
+	mustWrite(t, filepath.Join(root, "Makefile"), "build: ## Compile the binary\n\tgo build ./cmd/support\n")
 
 	response, err := extract(plugin.Input{Root: root, Commit: "abc", GeneratedAt: "2026-09-06T00:00:00Z"}, Options{Group: "avia", Component: "support"})
 	if err != nil {
@@ -41,6 +42,9 @@ func TestExtractsANeutralApplicationWithoutDDD(t *testing.T) {
 	}
 	if len(component.Aggregates) != 0 {
 		t.Fatalf("invented aggregates: %+v", component.Aggregates)
+	}
+	if len(component.Commands) != 1 || component.Commands[0].Run != "make build" || component.Commands[0].Doc != "Compile the binary" {
+		t.Errorf("commands = %+v", component.Commands)
 	}
 }
 

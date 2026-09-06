@@ -1,6 +1,6 @@
 # Pricing
 
-*Generated from the portolan catalog · commit `11 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
 
 - **Id:** `shop.pricing`
 - **Context:** [Shop](../README.md)
@@ -263,3 +263,11 @@ Source: [`internal/di/app.go:67`](https://github.com/shortlink-org/portolan/blob
 | Store | Kind | Access | Tables |
 | --- | --- | --- | --- |
 | [Pricing database](stores/pg.md) | postgres | owns | 5 tables |
+
+## Commands
+
+| Run | Does | Body | Source |
+| --- | --- | --- | --- |
+| `make gen` | Regenerate the gRPC stubs from the vendored protos | `buf generate $(GRPC)/quote/proto -o $(GRPC)/quote/gen …` | [`examples/shop/pricing/Makefile:6`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/Makefile#L6) |
+| `make build` | Compile every package | `go build ./...` | [`examples/shop/pricing/Makefile:11`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/Makefile#L11) |
+| `make test` | Run the unit tests | `go test ./...` | [`examples/shop/pricing/Makefile:15`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/Makefile#L15) |
