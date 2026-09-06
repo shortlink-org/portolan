@@ -41,7 +41,8 @@ one estate and validates the union. Nothing here draws anything.
   merge; `output-path.mjs`, the one refusal of an unsafe name;
   `build-report.mjs`, what the Settings page reads.
 - `schema.mjs`, the manifest schema composed; `gen-likec4.mjs`, the C4 model;
-  `diff.mjs`, what a branch changes about the architecture; `vendor-lock.mjs`,
+  `diff.mjs`, what a branch changes about the architecture; `forge-comment.mjs`,
+  that report put on the pull request as one comment kept current; `vendor-lock.mjs`,
   the commit a fetched copy is of; `site-docs.mjs`, generated documentation
   put into the built site; `local-api.mjs`, what the dev server answers the
   site with.

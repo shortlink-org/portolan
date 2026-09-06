@@ -2,6 +2,11 @@
 //
 //   node scripts/diff.mjs             against origin/main, or main
 //   node scripts/diff.mjs <ref>       against any commit, tag or branch
+//   --format markdown|json|sarif      markdown is what a pull request renders
+//   --output <file>                   instead of stdout; the directory is made
+//   --site <url> --head <branch>      markdown ends with a link into the site's
+//                                     Changes page for the same pair, so a
+//                                     reviewer can go from the list to the diff
 //
 // `gen:check` proves the documentation follows from the catalog; it says
 // nothing about what a change DOES. The diff it leaves a reviewer with is a
@@ -16,7 +21,8 @@
 // working tree's side is read the way the app reads it.
 
 import { execFileSync } from "node:child_process";
-import { writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
 
 import { validateCatalog } from "../src/catalog.ts";
 import { enrichCatalog } from "../src/enrich.ts";
@@ -34,10 +40,15 @@ async function main() {
   const options = parseArgs(process.argv.slice(2));
   const ref = options.ref || defaultBase();
   const before = catalogAt(ref);
-  const { catalog: after } = await loadCatalog("portolan.json");
+  const { catalog: after, sources } = await loadCatalog("portolan.json");
   const changes = diffCatalogs(before, after);
-  const output = renderFormat(options.format, ref, changes);
+  const output = renderFormat(options.format, ref, changes, {
+    site: options.site,
+    head: options.head || currentBranch(),
+    files: sources.map(({ path }) => ({ path, text: readFileSync(path, "utf8") })),
+  });
   if (options.output) {
+    mkdirSync(dirname(options.output), { recursive: true });
     writeFileSync(options.output, output);
     console.log(`architecture diff: ${options.format} → ${options.output}`);
   } else {
@@ -50,17 +61,15 @@ async function main() {
 }
 
 export function parseArgs(args) {
-  const options = { ref: "", format: "markdown", output: "" };
+  const options = { ref: "", format: "markdown", output: "", site: "", head: "" };
+  const valued = ["--format", "--output", "--site", "--head"];
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
-    if (arg === "--format" || arg === "--output") {
-      const value = args[++i];
-      if (!value) throw new Error(`${arg} needs a value`);
-      options[arg.slice(2)] = value;
-    } else if (arg.startsWith("--format=")) {
-      options.format = arg.slice("--format=".length);
-    } else if (arg.startsWith("--output=")) {
-      options.output = arg.slice("--output=".length);
+    const spelled = valued.find((name) => arg === name || arg.startsWith(name + "="));
+    if (spelled) {
+      const value = arg === spelled ? args[++i] : arg.slice(spelled.length + 1);
+      if (!value) throw new Error(`${spelled} needs a value`);
+      options[spelled.slice(2)] = value;
     } else if (arg.startsWith("-")) {
       throw new Error(`unknown option ${arg}`);
     } else if (options.ref) {
@@ -75,10 +84,41 @@ export function parseArgs(args) {
   return options;
 }
 
-export function renderFormat(format, ref, changes) {
+/**
+ * `extra` is what a format may use beyond the changes: `site` and `head` for
+ * the markdown's link into the Changes page, `files` (path and text of every
+ * working-tree source) for SARIF to anchor a finding to the fragment that
+ * declares the id it names.
+ */
+export function renderFormat(format, ref, changes, extra = {}) {
   if (format === "json") return renderJson(ref, changes);
-  if (format === "sarif") return renderSarif(ref, changes);
-  return render(ref, changes);
+  if (format === "sarif") return renderSarif(ref, changes, extra.files ?? []);
+  return render(ref, changes, extra);
+}
+
+/** The branch checked out, or "" when HEAD is detached, as a PR checkout is. */
+function currentBranch() {
+  try {
+    const name = git(["rev-parse", "--abbrev-ref", "HEAD"]);
+
+    return name === "HEAD" ? "" : name;
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * The Changes page for the same pair: the base as the site spells a branch,
+ * without the remote, and the head only when it is known - a detached
+ * checkout has no name, and the page can ask.
+ */
+export function changesHref(site, ref, head) {
+  if (!site) return "";
+  const base = ref.replace(/^origin\//, "");
+  const query = new URLSearchParams({ base });
+  if (head) query.set("head", head);
+
+  return site.replace(/\/$/, "") + "/changes?" + query.toString();
 }
 
 /**
@@ -165,7 +205,7 @@ export function globToRegExp(pattern) {
 }
 
 /** The report, as markdown, because that is what a pull request renders. */
-export function render(ref, changes) {
+export function render(ref, changes, { site = "", head = "" } = {}) {
   if (changes.length === 0) {
     return "No architectural change against `" + ref + "`.\n";
   }
@@ -186,7 +226,32 @@ export function render(ref, changes) {
     lines.push("");
   }
 
+  // The list says what moved; the page shows it in the estate, with the
+  // diagrams and the pages around it, so the link is the reviewer's way on.
+  const href = changesHref(site, ref, head);
+  if (href) lines.push("[Open in Changes](" + href + ")", "");
+
   return lines.join("\n");
+}
+
+/**
+ * Where a change is declared: the first working-tree source whose text holds
+ * `"id": "<where>"`, and the line it is on. A change with no such source - a
+ * removal, whose id is only on the base side; a catalog-level fact - is
+ * anchored at the manifest, because code scanning shows nothing without a
+ * location, and the manifest is the one file every estate has.
+ */
+export function locate(where, files) {
+  const id = where.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp('"id"\\s*:\\s*"' + id + '"');
+  for (const { path, text } of files) {
+    const at = text.search(re);
+    if (at === -1) continue;
+
+    return { uri: path, line: text.slice(0, at).split("\n").length };
+  }
+
+  return { uri: "portolan.json", line: 1 };
 }
 
 function counts(changes) {
@@ -198,8 +263,12 @@ export function renderJson(ref, changes) {
   return `${JSON.stringify({ version: 1, base: ref, counts: counts(changes), changes }, null, 2)}\n`;
 }
 
-/** SARIF 2.1.0: breaking changes are errors; everything else remains reviewable. */
-export function renderSarif(ref, changes) {
+/**
+ * SARIF 2.1.0: breaking changes are errors; everything else remains
+ * reviewable. Every result carries a location, because a code scanning
+ * upload shows a result without one to nobody.
+ */
+export function renderSarif(ref, changes, files = []) {
   const kinds = [...new Set(changes.map((change) => change.kind))].sort();
   const rules = kinds.map((kind) => ({
     id: kind,
@@ -214,12 +283,22 @@ export function renderSarif(ref, changes) {
     runs: [{
       tool: { driver: { name: "Portolan", informationUri: "https://github.com/shortlink-org/portolan", rules } },
       automationDetails: { id: `architecture-diff/${ref}` },
-      results: changes.map((change) => ({
-        ruleId: change.kind,
-        level: level[change.severity],
-        message: { text: change.summary },
-        properties: { severity: change.severity, where: change.where, base: ref },
-      })),
+      results: changes.map((change) => {
+        const at = locate(change.where, files);
+
+        return {
+          ruleId: change.kind,
+          level: level[change.severity],
+          message: { text: change.summary },
+          locations: [{
+            physicalLocation: {
+              artifactLocation: { uri: at.uri, uriBaseId: "%SRCROOT%" },
+              region: { startLine: at.line, startColumn: 1 },
+            },
+          }],
+          properties: { severity: change.severity, where: change.where, base: ref },
+        };
+      }),
     }],
   };
   return `${JSON.stringify(sarif, null, 2)}\n`;

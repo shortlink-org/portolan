@@ -1,0 +1,60 @@
+# What a pull request changes about the architecture, put where the review
+# happens. `ci.yml` checks and can fail; this one describes and never does.
+name: Architecture diff
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write # the sticky comment
+  security-events: write # the SARIF upload; annotations in the checks tab
+
+concurrency:
+  group: architecture-diff-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  describe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The base side of the diff is read out of history with `git show`,
+          # so the base branch has to be here, not just the merge commit.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Diff against the base branch
+        env:
+          # Branch names come through env, never through the script text: a
+          # branch is named by whoever opened the pull request.
+          BASE: ${{ github.base_ref }}
+          HEAD: ${{ github.head_ref }}
+          # Where the Changes page of the published site lives; pages.yml
+          # deploys to the repository's GitHub Pages.
+          SITE: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+        run: |
+          node scripts/diff.mjs "origin/$BASE" --site "$SITE" --head "$HEAD" --output .portolan/diff.md
+          node scripts/diff.mjs "origin/$BASE" --format sarif --output .portolan/diff.sarif
+          cat .portolan/diff.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Annotate the checks tab
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: .portolan/diff.sarif
+          category: architecture-diff
+        # A pull request from a fork has a read-only token and cannot upload;
+        # the comment step below handles that refusal itself.
+        continue-on-error: true
+
+      - name: Comment on the pull request
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/forge-comment.mjs .portolan/diff.md

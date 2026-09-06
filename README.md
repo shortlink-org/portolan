@@ -167,6 +167,38 @@ npm run build        # likec4:gen + tsc --noEmit + vite build
 Generated output is committed, so a change to it shows up in a diff; CI runs the
 `--check` variants to keep it honest.
 
+### In a pull request
+
+`gen:check` says the documentation follows from the catalog; it does not say
+what the change does. `.github/workflows/architecture-diff.yml` puts that on
+the pull request itself, without ever failing it:
+
+- one sticky comment with the events, endpoints, transitions and owners that
+  are not what they were, breaking first, ending in a link into the published
+  site's Changes page for the same pair of branches;
+- the same list as SARIF in the checks tab, breaking as errors, each result
+  anchored at the fragment that declares the id, so code scanning shows it;
+- the report again in the job summary, for whoever reads the run.
+
+The comment is `scripts/forge-comment.mjs` over the markdown `npm run diff`
+writes. It finds its own earlier comment by a marker and updates it in place.
+`GITHUB_TOKEN` with `pull-requests: write` is enough on GitHub; a pull request
+from a fork has a read-only token, and the step says so and stays green.
+
+On GitLab the job token cannot write notes, so the job wants a project access
+token with the `api` scope and the Reporter role as `PORTOLAN_TOKEN`:
+
+```yaml
+architecture-diff:
+  image: node:24
+  rules: [{ if: $CI_PIPELINE_SOURCE == "merge_request_event" }]
+  script:
+    - git fetch origin "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+    - npm ci
+    - node scripts/diff.mjs "origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME" --site "$CI_PAGES_URL" --head "$CI_COMMIT_REF_NAME" --output .portolan/diff.md
+    - node scripts/forge-comment.mjs .portolan/diff.md
+```
+
 Three build-time variables shape the chat:
 
 | variable | effect |
