@@ -253,6 +253,21 @@
               "name": "published_at",
               "type": "timestamptz",
               "nullable": true
+            },
+            {
+              "name": "uuid",
+              "type": "text",
+              "nullable": false
+            },
+            {
+              "name": "payload",
+              "type": "jsonb",
+              "nullable": false
+            },
+            {
+              "name": "metadata",
+              "type": "jsonb",
+              "nullable": false
             }
           ],
           "indexes": [
@@ -262,6 +277,13 @@
                 "id"
               ],
               "unique": false
+            },
+            {
+              "name": "outbox_by_uuid",
+              "columns": [
+                "uuid"
+              ],
+              "unique": true
             }
           ],
           "role": "outbox"

@@ -1,4 +1,5 @@
-# The database the migrations build, and the service in front of it.
+# The database the migrations build, the bus the events travel on, and the
+# service in front of both.
 services:
   db:
     image: postgres:18-alpine
@@ -11,6 +12,18 @@ services:
       test: ["CMD-SHELL", "pg_isready -U pricing"]
       interval: 5s
 
+  nats:
+    image: nats:2.14-alpine
+    command: ["-js", "-m", "8222"]
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8222/healthz"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+
   pricing:
     build: .
     environment:
@@ -20,4 +33,6 @@ services:
     ports: ["9093:9093"]
     depends_on:
       db:
+        condition: service_healthy
+      nats:
         condition: service_healthy

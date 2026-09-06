@@ -5,6 +5,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/shortlink-org/portolan/examples/shop/pricing/internal/domain/quote/event"
 	"github.com/shortlink-org/portolan/examples/shop/pricing/internal/domain/quote/vo/line"
 	"github.com/shortlink-org/portolan/examples/shop/pricing/internal/domain/quote/vo/money"
+	"github.com/shortlink-org/portolan/examples/shop/pricing/internal/infrastructure/bus"
 	"github.com/shortlink-org/portolan/examples/shop/pricing/internal/infrastructure/repository/quote/dto"
 )
 
@@ -25,7 +27,9 @@ func New(pool *pgxpool.Pool) *Repository {
 }
 
 // Save writes the quote, its lines and the events it raised in one transaction:
-// a quote whose event did not land is a promise nobody heard.
+// a quote whose event did not land is a promise nobody heard. An event goes
+// into the outbox as it will travel - the payload in its wire form, the name in
+// the metadata - so the relay hands the row to the bus without reading it.
 func (r *Repository) Save(ctx context.Context, q *quote.Quote, events ...event.Event) error {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
@@ -53,9 +57,16 @@ func (r *Repository) Save(ctx context.Context, q *quote.Quote, events ...event.E
 	}
 
 	for _, raised := range events {
+		payload, err := dto.Wire(raised)
+		if err != nil {
+			return err
+		}
+
 		if _, err := tx.Exec(ctx,
-			`INSERT INTO outbox (topic, name, aggregate_id, occurred_at) VALUES ($1, $2, $3, $4)`,
-			dto.Topic, raised.Name(), raised.AggregateID(), raised.OccurredAt(),
+			`INSERT INTO outbox (uuid, topic, name, aggregate_id, occurred_at, payload, metadata)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+			uuid.NewString(), dto.Topic, raised.Name(), raised.AggregateID(), raised.OccurredAt(),
+			payload, map[string]string{bus.MetadataEventName: raised.Name()},
 		); err != nil {
 			return err
 		}
