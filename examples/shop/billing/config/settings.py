@@ -42,6 +42,7 @@ REST_FRAMEWORK = {"DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema"}
 SPECTACULAR_SETTINGS = {"TITLE": "billing", "VERSION": "1.0.0", "SERVE_INCLUDE_SCHEMA": False}
 
 AUTH_URL = os.environ.get("AUTH_URL", "http://auth:8080")
+NATS_URL = os.environ.get("NATS_URL", "nats://nats:4222")
 
 DEFAULT_FROM_EMAIL = "billing@shop.example"
 

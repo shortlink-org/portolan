@@ -28,15 +28,18 @@ beyond an opaque id `auth` vouched for.
 
 ## Publishes
 
-`InvoiceIssued`, `InvoicePaid`, `InvoiceVoided`, on `shop.billing.invoice`.
+`InvoiceIssued`, `InvoicePaid`, `InvoiceVoided`, on `shop.billing.invoice` —
+put there by `invoices/bus.py`, over JetStream, with the event's name in the
+message headers.
 
 ## How the catalog reads it
 
 Nothing here is annotated for the catalog: `extract-django` reads the
 applications, and the applications are the claim — `invoices/models.py` is the
-aggregate and the schema, `events.py` is what leaves, `services.py` is what can
-be asked for, the DRF view and `urls.py` are the way in, and `handlers.py` is
-what runs when somebody else's event arrives. The rules are in
+aggregate and the schema, `events.py` is what leaves and `bus.py` the subject
+it leaves on, `services.py` is what can be asked for, the DRF view and
+`urls.py` are the way in, and `handlers.py` is what runs when somebody else's
+event arrives. The rules are in
 [plugins/extract-django/README.md](../../../plugins/extract-django/README.md).
 `extract-celery` reads the rest: `invoices/tasks.py` is what runs later, the
 `.delay()` and `.apply_async()` in `services.py` are where it is set off, and

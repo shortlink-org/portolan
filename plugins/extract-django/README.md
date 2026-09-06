@@ -58,7 +58,9 @@ writes down what a column means. Value objects are the frozen dataclasses in
 **Event.** `events.py`, in either of the two ways a Django project says it. A
 dataclass with `name = "billing.InvoiceIssued"` is an event, its payload the
 annotated fields and its wire name that string; `channel` beside it is where it
-goes out. A module-level `Signal()` is one too — leaving it out would hide a
+goes out — or, when the dataclass does not say, the address the code puts it
+on (below), and when both say and disagree that is reported, with the
+dataclass's claim kept on the page. A module-level `Signal()` is one too — leaving it out would hide a
 publish — and it declares no payload, which is a diagnostic rather than an
 empty shape nobody questions. A signal named after a dataclass event (
 `invoice_issued` beside `InvoiceIssued`) is how that event travels, not a
@@ -108,8 +110,11 @@ right. `Invoice.objects.get(…)` is a hop into the store, and so are
 `Invoice.objects.filter(…).first()` - where the queryset is built, which is
 where the line is - and a `save()` or `delete()` on something the ORM handed
 back; an event handed to anything — a signal's `send`, a project's own
-`publish` — is the event leaving for the bus; a call on a vendored client is an
-rpc to the peer; a `.delay()` or `.apply_async()` on a function decorated
+`publish` — is the event leaving for the bus, and where the call names an
+address — `producer.send("topic", …)`, `produce`, NATS' or Redis' `publish`,
+Channels' `group_send`, as a literal, a module constant or a `settings.X` —
+or is a function of the project, one hop away, whose body does, the step says
+`on <address>`; a call on a vendored client is an rpc to the peer; a `.delay()` or `.apply_async()` on a function decorated
 `@shared_task` or `@app.task`, directly or through `.s()`, is a hop to the
 queue it lands on, `celery-<queue>` — decided the way Celery decides it, by the
 reader `extract-celery` shares through `pyplugin`: the `queue=` at the call,

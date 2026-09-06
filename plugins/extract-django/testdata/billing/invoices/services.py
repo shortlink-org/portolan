@@ -3,7 +3,8 @@
 from django.db import transaction
 
 from .clients.pricing.client import PricingClient
-from .events import invoice_issued, invoice_paid, invoice_voided
+from . import bus
+from .events import invoice_issued, invoice_voided
 from .models import Invoice, InvoiceLine
 from .tasks import send_invoice_email
 
@@ -38,7 +39,7 @@ def pay_invoice(invoice_id, paid_at):
     invoice = Invoice.objects.get(id=invoice_id)
     event = invoice.pay(paid_at)
     invoice.save()
-    invoice_paid.send(sender=Invoice, event=event)
+    bus.publish(event)
     return event
 
 

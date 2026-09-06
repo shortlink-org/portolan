@@ -38,6 +38,11 @@ STORE_METHODS = {"save", "delete", "refresh_from_db", "update", "full_clean_and_
 # What a publish looks like. A signal's `send` is one; so is anything handed an
 # event, which is the rule that catches a project's own `publish()` helper.
 SEND_METHODS = {"send", "send_robust", "publish"}
+# A publish with an address: the topic, subject or channel goes first, and is
+# read as far as syntax carries it - a literal, a module constant, a setting.
+# `KafkaProducer.send`, confluent's `produce`, NATS and Redis `publish`,
+# Channels' `group_send`.
+PRODUCE_METHODS = {"send", "produce", "publish", "group_send"}
 
 
 @dataclass
@@ -144,6 +149,8 @@ class FlowReader:
         self._warned_store = False
         self._warned_peers = set()
         self._celery: Optional[Tuple[celery_conf.Config, Dict[Tuple[str, str], celery_tasks.Task]]] = None
+        self.produced: Dict[str, List[Tuple[str, str]]] = {}  # event id -> (address, line) it was put on the wire at
+        self._settings: Optional[Module] = None
 
     # --- lanes ---------------------------------------------------------------
 
@@ -388,6 +395,21 @@ class FlowReader:
         if use_case is not None:
             return self.inline(d, use_case, args, depth, ran, line)
 
+        # A publish with an address, or a project's own helper that makes one
+        # when handed an event: the event leaves for the bus, and the step
+        # says where. Read before the plain event rule so the address is
+        # not lost to it.
+        event = next((a for a in args if isinstance(a, tuple) and a[0] == "event"), None)
+        if holder is None or holder[0] not in ("client", "model"):
+            address = ""
+            if last in PRODUCE_METHODS and node.args:
+                address = self.address_of(frame.module, node.args[0])
+            if not address and event is not None:
+                address = self.helper_address(frame.module, name)
+            if address:
+                self.produce(d, address, event[1] if event is not None else "", line)
+                return None
+
         # Work handed to Celery is a hop off the request. `on_commit` around
         # it is the one fact about when the message leaves that the code
         # states plainly, so the lambda or partial it holds is read inside a
@@ -514,6 +536,67 @@ class FlowReader:
         address, _ = celery_conf.queue_for(task.name, at_call, task.queue, cfg)
         lane = d.lane("celery-" + slug(address), "broker", None, "Celery · " + address)
         d.add(self.opts.svc_id, lane, "call", "enqueue " + task.short, line=line)
+
+    def address_of(self, module: Module, node: ast.AST) -> str:
+        """The topic a producer was handed, as far as syntax carries it: the
+        literal, a module-level constant, or `settings.X` read out of the
+        settings module. A name in the settings module follows once more."""
+        text = celery_conf.str_value(node, module)
+        if text:
+            return text
+        name = dotted(node)
+        if name.startswith("settings.") and name.count(".") == 1:
+            if self._settings is None:
+                found = self.project.module(self.opts.settings or celery_conf.settings_module_name(self.project))
+                self._settings = found if found is not None else False  # type: ignore[assignment]
+            if self._settings:
+                return celery_conf.str_value(ast.Name(id=name.split(".")[1]), self._settings)
+        return ""
+
+    def helper_address(self, module: Module, name: str) -> str:
+        """`bus.publish(event)`: a function of this project, one hop away,
+        whose body puts what it was handed on an address. Followed one call
+        further - a sync wrapper around an async publish - and no more."""
+        parts = name.split(".")
+        target: Optional[Module] = None
+        local = parts[-1]
+        if len(parts) == 1:
+            hit = self.project.resolve(module, name)
+            if hit is not None:
+                target, local = hit
+        else:
+            imported = module.imports.get(parts[0])
+            if imported is not None:
+                package = imported.module if imported.name == "*" else imported.module + "." + imported.name
+                target = self.project.module(".".join([package] + parts[1:-1]))
+        if target is None or target.dotted.split(".")[-1] == "services":
+            return ""
+        return self.produced_in(target, local, 0)
+
+    def produced_in(self, module: Module, function: str, depth: int) -> str:
+        fn = next((f for f in module.functions() if f.name == function), None)
+        if fn is None or depth > 1:
+            return ""
+        for node in ast.walk(fn):
+            if isinstance(node, ast.Call) and dotted(node.func).split(".")[-1] in PRODUCE_METHODS and node.args:
+                address = self.address_of(module, node.args[0])
+                if address:
+                    return address
+        for node in ast.walk(fn):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+                address = self.produced_in(module, node.func.id, depth + 1)
+                if address:
+                    return address
+        return ""
+
+    def produce(self, d: Draft, address: str, event_id: str, line: str) -> None:
+        lane = d.lane(LANE_BUS, "broker", None)
+        if event_id:
+            d.add(self.opts.svc_id, lane, "event", event_id.rsplit(".", 1)[-1], ref=event_id, note="on " + address, line=line)
+            self.referenced.add(event_id)
+            self.produced.setdefault(event_id, []).append((address, line))
+        else:
+            d.add(self.opts.svc_id, lane, "call", "publish on " + address, line=line)
 
     def publish(self, d: Draft, event_id: str, line: str) -> None:
         d.add(self.opts.svc_id, d.lane(LANE_BUS, "broker", None), "event", event_id.rsplit(".", 1)[-1], ref=event_id, line=line)

@@ -976,7 +976,7 @@ views {
     }
     shop.billing -> bus 'InvoiceVoided' {
       color declared  line dashed  head onormal
-      notes 'examples/shop/billing/invoices/services.py:71'
+      notes 'on shop.billing.invoice — examples/shop/billing/invoices/services.py:71'
     }
   }
 
@@ -988,7 +988,7 @@ views {
     }
     shop.billing -> bus 'InvoiceVoided' {
       color declared  line dashed  head onormal
-      notes 'examples/shop/billing/invoices/services.py:71'
+      notes 'on shop.billing.invoice — examples/shop/billing/invoices/services.py:71'
     }
   }
 
@@ -1021,7 +1021,7 @@ views {
     }
     shop.billing -> bus 'InvoiceIssued' {
       color declared  line dashed  head onormal
-      notes 'examples/shop/billing/invoices/services.py:51'
+      notes 'on shop.billing.invoice — examples/shop/billing/invoices/services.py:51'
     }
   }
 
@@ -1037,7 +1037,7 @@ views {
     }
     shop.billing -> bus 'InvoiceIssued' {
       color declared  line dashed  head onormal
-      notes 'examples/shop/billing/invoices/services.py:51'
+      notes 'on shop.billing.invoice — examples/shop/billing/invoices/services.py:51'
     }
   }
 
@@ -1079,7 +1079,7 @@ views {
     }
     shop.billing -> bus 'InvoicePaid' {
       color declared  line dashed  head onormal
-      notes 'examples/shop/billing/invoices/services.py:62'
+      notes 'on shop.billing.invoice — examples/shop/billing/invoices/services.py:62'
     }
   }
 
@@ -1091,7 +1091,7 @@ views {
     }
     shop.billing -> bus 'InvoicePaid' {
       color declared  line dashed  head onormal
-      notes 'examples/shop/billing/invoices/services.py:62'
+      notes 'on shop.billing.invoice — examples/shop/billing/invoices/services.py:62'
     }
   }
 

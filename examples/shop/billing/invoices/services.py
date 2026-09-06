@@ -4,7 +4,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from .clients.auth.client import AuthClient
-from .events import invoice_issued, invoice_paid, invoice_voided
+from . import bus
 from .models import Invoice, InvoiceLine
 from .tasks import remind_unpaid_invoice, send_invoice_email
 
@@ -48,7 +48,7 @@ def issue_invoice(invoice_id, token, number):
         # before the commit would read an invoice that is still a draft.
         transaction.on_commit(lambda: send_invoice_email.delay(str(invoice.id)))
         transaction.on_commit(lambda: remind_unpaid_invoice.apply_async(args=[str(invoice.id)], countdown=REMINDER_AFTER))
-    invoice_issued.send(sender=Invoice, event=event)
+    bus.publish(event)
     return event
 
 
@@ -59,7 +59,7 @@ def pay_invoice(invoice_id, paid_at):
         return None
     event = invoice.pay(paid_at)
     invoice.save()
-    invoice_paid.send(sender=Invoice, event=event)
+    bus.publish(event)
     return event
 
 
@@ -68,7 +68,7 @@ def void_invoice(invoice_id, reason):
     invoice = Invoice.objects.get(id=invoice_id)
     event = invoice.void(reason, timezone.now())
     invoice.save()
-    invoice_voided.send(sender=Invoice, event=event)
+    bus.publish(event)
     return event
 
 

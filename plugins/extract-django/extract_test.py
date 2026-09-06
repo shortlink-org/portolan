@@ -136,7 +136,15 @@ class Reading(unittest.TestCase):
         step = [s for s in flow["steps"] if s["type"] == "step" and s["label"] == "enqueue send_invoice_email"][0]
         self.assertEqual(step["to"], "celery-billing-mail")
         self.assertEqual(step["note"], "in one transaction, after the transaction commits.")
-        self.assertTrue(step["line"].endswith("invoices/services.py:31"))
+        self.assertTrue(step["line"].endswith("invoices/services.py:32"))
+
+    def test_a_producer_names_the_address_and_the_event_takes_it_as_its_channel(self):
+        flow = {f["slug"]: f for f in self.fragment["flows"]}["billing-mark-invoice-paid"]
+        step = [s for s in flow["steps"] if s["type"] == "step" and s["kind"] == "event"][-1]
+        self.assertEqual(step["ref"], "shop.billing.invoice.InvoicePaid")
+        self.assertEqual(step["note"], "on shop.billing.invoice")
+        wire = {e["name"]: e.get("wire", {}) for e in self.aggregate["events"]}
+        self.assertEqual(wire["InvoicePaid"], {"name": "billing.InvoicePaid", "channel": "shop.billing.invoice"})
 
     def test_a_queryset_chain_makes_its_query_where_it_is_built(self):
         steps = {f["slug"]: f["steps"] for f in self.fragment["flows"]}["billing-invoice-retrieve"]

@@ -43,4 +43,4 @@ sequenceDiagram
    status: declared · [`examples/shop/billing/invoices/services.py:61`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L61)
 <a id="step-s4"></a>
 4. **shop.billing** → **bus** — InvoicePaid
-   [`shop.billing.invoice.InvoicePaid`](../shop/billing/aggregates/invoice.md#event-shop-billing-invoice-invoicepaid) · status: declared · [`examples/shop/billing/invoices/services.py:62`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L62)
+   [`shop.billing.invoice.InvoicePaid`](../shop/billing/aggregates/invoice.md#event-shop-billing-invoice-invoicepaid) · status: declared · [`examples/shop/billing/invoices/services.py:62`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L62) · on shop.billing.invoice

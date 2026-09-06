@@ -8,6 +8,11 @@ services:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
 
+  nats:
+    image: nats:2-alpine
+    command: ["-js"]
+    ports: ["4222:4222"]
+
   db:
     image: postgres:18-alpine
     environment:
@@ -26,12 +31,15 @@ services:
       DATABASE_URL: postgres://billing:billing@db:5432/billing
       AUTH_URL: http://auth:8080
       CELERY_BROKER_URL: redis://redis:6379/0
+      NATS_URL: nats://nats:4222
     ports: ["8004:8000"]
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
+      nats:
+        condition: service_started
 
   worker:
     build: .

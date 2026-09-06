@@ -98,6 +98,15 @@ def extract(input_: Input, opts: Options, b: Builder, cwd: str = "") -> None:
         for event in agg.aggregate["events"]:
             if event["id"] not in reader.referenced:
                 b.warn(event["id"], "no flow reaches this event: nothing this extractor could follow publishes it")
+            # Where the code puts the event on the wire is its channel, when
+            # the dataclass did not say; when both say and disagree, one of
+            # the two is stale, and the dataclass's claim stays on the page.
+            for address, line in reader.produced.get(event["id"], []):
+                declared = event.get("wire", {}).get("channel", "")
+                if not declared:
+                    event.setdefault("wire", {})["channel"] = address
+                elif declared != address:
+                    b.warn(event["id"], "declares channel %s but is put on %s at %s" % (declared, address, line))
 
     readme_path = os.path.join(root, "README.md")
     readme = read(readme_path).strip() if os.path.isfile(readme_path) else ""
