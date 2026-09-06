@@ -79,7 +79,7 @@ export function ContextPage() {
             className="rounded-control hover:text-ink"
           >
             <span className="tnum">{stats.services}</span>{" "}
-            {plural(stats.services, "service")}
+            {plural(stats.services, neutral ? "component" : "service")}
           </a>
           {showDomain ? (
             <>
