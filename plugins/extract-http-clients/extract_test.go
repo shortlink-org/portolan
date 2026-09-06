@@ -386,17 +386,34 @@ func New() *Connector { return &Connector{} }
 func (*Connector) Search() {}
 `)
 	writeHTTPFixture(t, root, "provider/alpha/client.go", `package alpha
-import alphaclient "example.com/travel/provider/alpha/client"
-type Connector struct{ Client alphaclient.API }
-func New() *Connector { return &Connector{Client: &alphaclient.Client{}} }
-func (c *Connector) Search() { c.Client.Search() }
+import (
+  alphaclient "example.com/travel/provider/alpha/client"
+  alphaport "example.com/travel/provider/alpha/port"
+)
+type Connector struct{ Client alphaport.API }
+func New() *Connector {
+  client := alphaclient.New()
+  return &Connector{Client: client}
+}
+func (c *Connector) Search() {
+  c.Client.Search()
+  c.Client.Retrieve()
+}
+`)
+	writeHTTPFixture(t, root, "provider/alpha/port/api.go", `package port
+type API interface {
+  Search()
+  Retrieve()
+}
 `)
 	writeHTTPFixture(t, root, "provider/alpha/client/client.go", `package client
 import "net/http"
-type API interface{ Search() }
 type Client struct{}
+func New() *Client { return &Client{} }
 func (c *Client) Search() { c.SearchRequest() }
 func (*Client) SearchRequest() { _, _ = http.Get("https://alpha.example/v1/search") }
+func (c *Client) Retrieve() { c.RetrieveRequest() }
+func (*Client) RetrieveRequest() { _, _ = http.Get("https://alpha.example/v1/retrieve") }
 `)
 	writeHTTPFixture(t, root, "provider/beta/client.go", `package beta
 import betaclient "example.com/travel/provider/beta/client"
@@ -466,6 +483,9 @@ func Refresh() { _, _ = http.Get("https://cache.example/refresh") }
 	if alphaStep.Label != "GET /v1/search" || betaStep.Label != "GET /v2/offers" {
 		t.Fatalf("provider steps = %+v / %+v", alphaStep, betaStep)
 	}
+	if len(providers.Branches[0].Steps) != 2 || providers.Branches[0].Steps[1].(*catalog.Step).Label != "GET /v1/retrieve" {
+		t.Fatalf("constructor-wired call order = %+v", providers.Branches[0].Steps)
+	}
 	if !strings.Contains(alphaStep.Note, "Connector.Search → Client.Search → Client.SearchRequest") {
 		t.Fatalf("nested provider chain = %+v", alphaStep)
 	}
@@ -475,6 +495,52 @@ func Refresh() { _, _ = http.Get("https://cache.example/refresh") }
 	opaqueStep := providers.Branches[2].Steps[0].(*catalog.Step)
 	if opaqueStep.Kind != catalog.StepCall || opaqueStep.Label != "Opaque Search" || !strings.Contains(opaqueStep.Note, "outbound transport was not resolved") {
 		t.Fatalf("opaque step = %+v", opaqueStep)
+	}
+}
+
+func TestDoesNotGuessBetweenMultipleConstructorWiredImplementations(t *testing.T) {
+	root := t.TempDir()
+	writeHTTPFixture(t, root, "go.mod", "module example.com/ambiguous\n")
+	writeHTTPFixture(t, root, "port/api.go", `package port
+type API interface{ Cancel() }
+`)
+	writeHTTPFixture(t, root, "connector/connector.go", `package connector
+import (
+  "example.com/ambiguous/port"
+  "example.com/ambiguous/provider/alpha"
+  "example.com/ambiguous/provider/beta"
+)
+type Connector struct{ client port.API }
+func NewAlpha() *Connector { return &Connector{client: &alpha.Client{}} }
+func NewBeta() *Connector { return &Connector{client: &beta.Client{}} }
+func (c *Connector) Cancel() { c.client.Cancel() }
+`)
+	writeHTTPFixture(t, root, "provider/alpha/client.go", `package alpha
+import "net/http"
+type Client struct{}
+func (*Client) Cancel() { _, _ = http.Get("https://alpha.example/cancel") }
+`)
+	writeHTTPFixture(t, root, "provider/beta/client.go", `package beta
+import "net/http"
+type Client struct{}
+func (*Client) Cancel() { _, _ = http.Get("https://beta.example/cancel") }
+`)
+
+	resp, err := extract(plugin.Input{Root: root}, Options{Context: "travel", Service: "cancel"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got catalog.Catalog
+	if err := json.Unmarshal([]byte(resp.Files[0].Contents), &got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Flows) != 2 {
+		t.Fatalf("ambiguous wiring created a composed flow: %+v", got.Flows)
+	}
+	for _, flow := range got.Flows {
+		if flow.Name == "Connector Cancel → outbound APIs" {
+			t.Fatalf("ambiguous receiver was guessed: %+v", flow)
+		}
 	}
 }
 

@@ -131,17 +131,18 @@ type constValue struct {
 }
 
 type scanner struct {
-	root      string
-	fset      *token.FileSet
-	files     []*parsedFile
-	constants map[string]constValue
-	contracts []Contract
-	warnings  []string
-	functions map[string]*functionDecl
-	methods   map[string][]string
-	soap      map[string][]soapWrapper
-	soapFns   map[string]bool
-	fields    map[string]fieldOrigin
+	root       string
+	fset       *token.FileSet
+	files      []*parsedFile
+	constants  map[string]constValue
+	contracts  []Contract
+	warnings   []string
+	functions  map[string]*functionDecl
+	methods    map[string][]string
+	soap       map[string][]soapWrapper
+	soapFns    map[string]bool
+	fields     map[string]fieldOrigin
+	fieldTypes map[string][]endpointType
 }
 
 type functionDecl struct {
@@ -187,12 +188,13 @@ type soapWrapper struct {
 }
 
 func Analyze(root string) (Result, error) {
-	s := &scanner{root: root, fset: token.NewFileSet(), constants: map[string]constValue{}, functions: map[string]*functionDecl{}, methods: map[string][]string{}, soap: map[string][]soapWrapper{}, soapFns: map[string]bool{}, fields: map[string]fieldOrigin{}}
+	s := &scanner{root: root, fset: token.NewFileSet(), constants: map[string]constValue{}, functions: map[string]*functionDecl{}, methods: map[string][]string{}, soap: map[string][]soapWrapper{}, soapFns: map[string]bool{}, fields: map[string]fieldOrigin{}, fieldTypes: map[string][]endpointType{}}
 	if err := s.read(); err != nil {
 		return Result{}, err
 	}
 	s.indexConstants()
 	s.indexFunctions()
+	s.indexConcreteFieldTypes()
 	s.indexFieldOrigins()
 	s.resolveFieldOriginsAtCallSites()
 	s.readContracts()
@@ -286,6 +288,202 @@ func (s *scanner) indexFunctions() {
 			}
 		}
 	}
+}
+
+// indexConcreteFieldTypes records the concrete values assigned to receiver
+// fields by constructors. A field may be declared as an interface while its
+// default production implementation is created in the same constructor:
+//
+//	client, err := transport.New(...)
+//	return &Connector{client: client}, nil
+//
+// The assignment itself is compiler-checked evidence that the concrete type
+// implements the interface. Multiple observed implementations are retained so
+// callers can refuse to guess when the wiring is genuinely ambiguous.
+func (s *scanner) indexConcreteFieldTypes() {
+	for _, declaration := range s.functions {
+		locals := s.localConcreteTypes(declaration)
+		ast.Inspect(declaration.fn.Body, func(node ast.Node) bool {
+			ret, ok := node.(*ast.ReturnStmt)
+			if !ok {
+				return true
+			}
+			for _, result := range ret.Results {
+				literal := compositeLiteral(result)
+				if literal == nil {
+					continue
+				}
+				ownerType, ok := s.typeExpression(declaration.file, literal.Type)
+				if !ok {
+					continue
+				}
+				for _, element := range literal.Elts {
+					field, ok := element.(*ast.KeyValueExpr)
+					if !ok {
+						continue
+					}
+					name, ok := field.Key.(*ast.Ident)
+					if !ok {
+						continue
+					}
+					typ, ok := s.concreteExpressionType(declaration, field.Value, locals)
+					if !ok || !s.typeHasMethods(typ) {
+						continue
+					}
+					key := fieldTypeKey(ownerType, name.Name)
+					s.fieldTypes[key] = appendEndpointType(s.fieldTypes[key], typ)
+				}
+			}
+			return true
+		})
+	}
+	for key := range s.fieldTypes {
+		sort.Slice(s.fieldTypes[key], func(i, j int) bool {
+			if s.fieldTypes[key][i].dir != s.fieldTypes[key][j].dir {
+				return s.fieldTypes[key][i].dir < s.fieldTypes[key][j].dir
+			}
+			return s.fieldTypes[key][i].name < s.fieldTypes[key][j].name
+		})
+	}
+}
+
+func (s *scanner) localConcreteTypes(declaration *functionDecl) map[string]endpointType {
+	locals := map[string]endpointType{}
+	if declaration.fn.Type.Params != nil {
+		for _, field := range declaration.fn.Type.Params.List {
+			typ, ok := s.typeExpression(declaration.file, field.Type)
+			if !ok {
+				continue
+			}
+			for _, name := range field.Names {
+				locals[name.Name] = typ
+			}
+		}
+	}
+	ast.Inspect(declaration.fn.Body, func(node ast.Node) bool {
+		switch statement := node.(type) {
+		case *ast.AssignStmt:
+			if len(statement.Rhs) == 1 && len(statement.Lhs) > 1 {
+				resultTypes := s.expressionResultTypes(declaration, statement.Rhs[0], locals)
+				for index, left := range statement.Lhs {
+					name, ok := left.(*ast.Ident)
+					if ok && index < len(resultTypes) && s.typeHasMethods(resultTypes[index]) {
+						locals[name.Name] = resultTypes[index]
+					}
+				}
+				return true
+			}
+			for index, left := range statement.Lhs {
+				name, ok := left.(*ast.Ident)
+				if !ok || index >= len(statement.Rhs) {
+					continue
+				}
+				if typ, ok := s.concreteExpressionType(declaration, statement.Rhs[index], locals); ok && s.typeHasMethods(typ) {
+					locals[name.Name] = typ
+				}
+			}
+		case *ast.DeclStmt:
+			generic, ok := statement.Decl.(*ast.GenDecl)
+			if !ok {
+				return true
+			}
+			for _, raw := range generic.Specs {
+				spec, ok := raw.(*ast.ValueSpec)
+				if !ok || spec.Type == nil {
+					continue
+				}
+				typ, ok := s.typeExpression(declaration.file, spec.Type)
+				if !ok || !s.typeHasMethods(typ) {
+					continue
+				}
+				for _, name := range spec.Names {
+					locals[name.Name] = typ
+				}
+			}
+		}
+		return true
+	})
+	return locals
+}
+
+func (s *scanner) concreteExpressionType(declaration *functionDecl, expr ast.Expr, locals map[string]endpointType) (endpointType, bool) {
+	switch value := expr.(type) {
+	case *ast.ParenExpr:
+		return s.concreteExpressionType(declaration, value.X, locals)
+	case *ast.UnaryExpr:
+		return s.concreteExpressionType(declaration, value.X, locals)
+	case *ast.Ident:
+		typ, ok := locals[value.Name]
+		return typ, ok
+	case *ast.CallExpr:
+		results := s.expressionResultTypes(declaration, value, locals)
+		if len(results) > 0 {
+			return results[0], true
+		}
+	}
+	if literal := compositeLiteral(expr); literal != nil {
+		return s.typeExpression(declaration.file, literal.Type)
+	}
+	return endpointType{}, false
+}
+
+func (s *scanner) expressionResultTypes(declaration *functionDecl, expr ast.Expr, locals map[string]endpointType) []endpointType {
+	call, ok := expr.(*ast.CallExpr)
+	if !ok {
+		if typ, ok := s.concreteExpressionType(declaration, expr, locals); ok {
+			return []endpointType{typ}
+		}
+		return nil
+	}
+	target := s.localTarget(declaration, call.Fun)
+	callee := s.functions[target]
+	if callee == nil || callee.fn.Type.Results == nil {
+		return nil
+	}
+	var out []endpointType
+	for _, field := range callee.fn.Type.Results.List {
+		typ, ok := s.typeExpression(callee.file, field.Type)
+		if !ok {
+			typ = endpointType{}
+		}
+		count := len(field.Names)
+		if count == 0 {
+			count = 1
+		}
+		for range count {
+			out = append(out, typ)
+		}
+	}
+	return out
+}
+
+func (s *scanner) typeHasMethods(typ endpointType) bool {
+	if typ.name == "" {
+		return false
+	}
+	prefix := typ.name + "."
+	if typ.dir != "." && typ.dir != "" {
+		prefix = typ.dir + ":" + prefix
+	}
+	for key := range s.functions {
+		if strings.HasPrefix(key, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
+func appendEndpointType(items []endpointType, value endpointType) []endpointType {
+	for _, item := range items {
+		if item == value {
+			return items
+		}
+	}
+	return append(items, value)
+}
+
+func fieldTypeKey(owner endpointType, field string) string {
+	return owner.dir + ":" + owner.name + "." + field
 }
 
 // indexFieldOrigins records where URL-shaped client fields are initialized.
@@ -1994,6 +2192,20 @@ func (s *scanner) receiverFieldMethodTarget(owner *functionDecl, call *ast.Selec
 		return key
 	}
 	if !s.interfaceHasMethod(fieldType, call.Sel.Name) {
+		return ""
+	}
+	ownerType := endpointType{dir: owner.file.dir, name: receiver}
+	var wiredCandidates []string
+	for _, concreteType := range s.fieldTypes[fieldTypeKey(ownerType, fieldSelector.Sel.Name)] {
+		if key := s.methodKey(concreteType, call.Sel.Name); key != "" {
+			wiredCandidates = append(wiredCandidates, key)
+		}
+	}
+	wiredCandidates = uniqueStrings(wiredCandidates)
+	if len(wiredCandidates) == 1 {
+		return wiredCandidates[0]
+	}
+	if len(wiredCandidates) > 1 {
 		return ""
 	}
 	var localCandidates []string
