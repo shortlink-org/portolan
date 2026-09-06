@@ -698,7 +698,37 @@ export interface Store {
    * `CREATE VIEW` still loads, and every reader sees an empty list.
    */
   views?: View[];
+  /** Redis key families proved by client calls. Dynamic parts use `{name}`. */
+  keyspaces?: RedisKeyspace[];
   /** Migrations directory or config path, as a reader would open it. */
+  source?: string;
+}
+
+export type RedisOperation =
+  | "read"
+  | "write"
+  | "delete"
+  | "exists"
+  | "expire"
+  | "count";
+
+export const REDIS_OPERATIONS: readonly RedisOperation[] = [
+  "read",
+  "write",
+  "delete",
+  "exists",
+  "expire",
+  "count",
+] as const;
+
+/** A source-backed family of Redis keys, not a relational table. */
+export interface RedisKeyspace {
+  pattern: string;
+  operations: RedisOperation[];
+  /** Source spelling of a fixed, configured or caller-provided expiry. */
+  ttl?: string;
+  /** Value type where a write or marshal call proves it. */
+  value?: string;
   source?: string;
 }
 
@@ -2462,6 +2492,46 @@ function validateStores(catalog: Catalog): void {
         `store "${store.id}" has kind "${store.kind}"; expected one of ${STORE_KINDS.join(", ")}`,
         `store ${store.id}`,
       );
+    }
+
+    const keyPatterns = new Set<string>();
+    for (const keyspace of store.keyspaces ?? []) {
+      const where = `store ${store.id} / Redis key ${keyspace.pattern}`;
+      if (store.kind !== "redis") {
+        fail(
+          `store "${store.id}" declares Redis key patterns but has kind "${store.kind}"`,
+          where,
+        );
+      }
+      if (!keyspace.pattern) {
+        fail(`store "${store.id}" has an empty Redis key pattern`, where);
+      }
+      if (keyPatterns.has(keyspace.pattern)) {
+        fail(
+          `store "${store.id}" repeats Redis key pattern "${keyspace.pattern}"`,
+          where,
+        );
+      }
+      keyPatterns.add(keyspace.pattern);
+      if (keyspace.operations.length === 0) {
+        fail(`Redis key pattern "${keyspace.pattern}" has no operations`, where);
+      }
+      const operations = new Set<string>();
+      for (const operation of keyspace.operations) {
+        if (!REDIS_OPERATIONS.includes(operation)) {
+          fail(
+            `Redis key pattern "${keyspace.pattern}" has operation "${operation}"; expected one of ${REDIS_OPERATIONS.join(", ")}`,
+            where,
+          );
+        }
+        if (operations.has(operation)) {
+          fail(
+            `Redis key pattern "${keyspace.pattern}" repeats operation "${operation}"`,
+            where,
+          );
+        }
+        operations.add(operation);
+      }
     }
 
     for (const table of store.tables) {

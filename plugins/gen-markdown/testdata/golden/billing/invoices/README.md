@@ -88,6 +88,6 @@ Source: `api/asyncapi.yaml`
 
 ## Stores
 
-| Store | Kind | Access | Tables |
+| Store | Kind | Access | Schema |
 | --- | --- | --- | --- |
 | [Invoices Postgres](stores/pg.md) | postgres | owns | 2 tables |

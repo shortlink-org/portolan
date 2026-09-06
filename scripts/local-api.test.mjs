@@ -117,6 +117,29 @@ describe("local project setup", () => {
     });
   });
 
+  it("offers the Redis extractor only when Go source constructs a supported client", () => {
+    const root = workspace();
+    writeFileSync(join(root, "services/billing/go.mod"), "module example.com/billing\nrequire github.com/redis/go-redis/v9 v9.19.0\n");
+    writeFileSync(join(root, "services/billing/cache.go"), 'package billing\nimport cachev9 "github.com/redis/go-redis/v9"\nfunc connect() { _ = cachev9.NewClient(&cachev9.Options{}) }\n');
+    const manifest = JSON.parse(readFileSync(join(root, "portolan.json"), "utf8"));
+    manifest.plugins.push({ name: "redis", process: { command: "true" } });
+    const discovery = discoverProject(root, "services/billing");
+    expect(discovery.detections.find((item) => item.plugin === "redis")).toMatchObject({
+      confidence: "high",
+      evidence: "cache.go",
+    });
+    const plan = planProject(root, manifest, {
+      root: "services/billing", id: "billing", name: "Billing", group: "finance", component: "billing", repository: "", plugins: ["project", "redis"],
+    });
+    expect(plan.steps[1]).toMatchObject({
+      plugin: "redis",
+      options: { context: "finance", service: "billing", store: "redis", out: "redis.json" },
+    });
+
+    writeFileSync(join(root, "services/billing/cache.go"), "package billing\n");
+    expect(discoverProject(root, "services/billing").detections.map((item) => item.plugin)).not.toContain("redis");
+  });
+
   it("offers WSDL as an external contract when the project contains a SOAP client", () => {
     const root = workspace();
     writeFileSync(join(root, "services/billing/client.go"), 'package billing\nimport soap "github.com/hooklift/gowsdl/soap"\nvar _ *soap.Client\n');

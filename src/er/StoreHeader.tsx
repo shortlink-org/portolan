@@ -61,6 +61,7 @@ export function StoreHeader({
   const outbound = outboundKeys(index, store);
   const copied = outboundLineage(index, store);
   const views = storeViews(store);
+  const keyspaces = store.keyspaces ?? [];
 
   return (
     <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -102,9 +103,14 @@ export function StoreHeader({
             shape the extractor cannot read, which a count of zero would state
             as a fact about the database rather than about the catalog. */}
         <span>
-          {store.tables.length === 0 ? (
+          {keyspaces.length > 0 ? (
+            <span title={keyspaces.map((key) => key.pattern).join("\n")}>
+              <span className="tnum">{keyspaces.length}</span>{" "}
+              {plural(keyspaces.length, "key pattern")}
+            </span>
+          ) : store.tables.length === 0 ? (
             <span title="no schema was extracted for this store">
-              no tables extracted
+              no schema extracted
             </span>
           ) : (
             <>

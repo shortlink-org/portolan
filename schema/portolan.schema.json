@@ -61,6 +61,7 @@
               "openapi",
               "wsdl",
               "http-clients",
+              "redis",
               "river",
               "watermill",
               "go-nats",
@@ -295,6 +296,25 @@
               "properties": {
                 "options": {
                   "$ref": "#/$defs/options.http-clients"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "plugin"
+              ],
+              "properties": {
+                "plugin": {
+                  "const": "redis"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "options": {
+                  "$ref": "#/$defs/options.redis"
                 }
               }
             }
@@ -1707,6 +1727,40 @@
           "type": "string",
           "description": "Name of the fragment file inside the step output directory.",
           "default": "http-clients.json"
+        }
+      }
+    },
+    "options.redis": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "Slug of the top-level group that owns the component. Defaults to the input directory name.",
+          "examples": [
+            "avia"
+          ]
+        },
+        "service": {
+          "type": "string",
+          "description": "Slug of the component that constructs the Redis client. Defaults to the input directory name.",
+          "examples": [
+            "aviasupp"
+          ]
+        },
+        "store": {
+          "type": "string",
+          "description": "Slug of the Redis store beneath the component.",
+          "default": "redis"
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable store name. Defaults to '<service> Redis'."
+        },
+        "out": {
+          "type": "string",
+          "description": "Name of the fragment file inside the step output directory.",
+          "default": "redis.json"
         }
       }
     },

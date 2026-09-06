@@ -570,14 +570,37 @@ const (
 )
 
 type Store struct {
-	ID     string    `json:"id"`
-	Slug   string    `json:"slug"`
-	Name   string    `json:"name"`
-	Kind   StoreKind `json:"kind"`
-	Owner  string    `json:"owner"`
-	Tables []Table   `json:"tables"`
-	Views  []View    `json:"views,omitempty"`
-	Source string    `json:"source,omitempty"`
+	ID        string          `json:"id"`
+	Slug      string          `json:"slug"`
+	Name      string          `json:"name"`
+	Kind      StoreKind       `json:"kind"`
+	Owner     string          `json:"owner"`
+	Tables    []Table         `json:"tables"`
+	Views     []View          `json:"views,omitempty"`
+	Keyspaces []RedisKeyspace `json:"keyspaces,omitempty"`
+	Source    string          `json:"source,omitempty"`
+}
+
+type RedisOperation string
+
+const (
+	RedisOperationRead   RedisOperation = "read"
+	RedisOperationWrite  RedisOperation = "write"
+	RedisOperationDelete RedisOperation = "delete"
+	RedisOperationExists RedisOperation = "exists"
+	RedisOperationExpire RedisOperation = "expire"
+	RedisOperationCount  RedisOperation = "count"
+)
+
+// RedisKeyspace is a family of keys proved by the expressions passed to a
+// Redis client. Pattern keeps literal separators and writes dynamic pieces in
+// braces; square brackets mark a conditional suffix.
+type RedisKeyspace struct {
+	Pattern    string           `json:"pattern"`
+	Operations []RedisOperation `json:"operations"`
+	TTL        string           `json:"ttl,omitempty"`
+	Value      string           `json:"value,omitempty"`
+	Source     string           `json:"source,omitempty"`
 }
 
 type TableRole string

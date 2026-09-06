@@ -50,6 +50,7 @@ import { index } from "../data";
 import { storesOfService } from "../lib/data-model";
 import { ErCanvas } from "../er/ErCanvas";
 import { StoreHeader } from "../er/StoreHeader";
+import { RedisSchema } from "../er/RedisSchema";
 
 const TABS = [
   "overview",
@@ -596,7 +597,9 @@ export function ServicePage() {
                 <section key={store.id}>
                   <StoreHeader store={store} access={access} />
                   <div className="mt-3">
-                    {store.tables.length === 0 ? (
+                    {(store.keyspaces ?? []).length > 0 ? (
+                      <RedisSchema store={store} />
+                    ) : store.tables.length === 0 ? (
                       /* A store whose schema nobody has read is still a fact
                          worth drawing — a cache IS part of the picture — but an
                          empty canvas would say the opposite. */

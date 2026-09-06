@@ -121,7 +121,7 @@ function StoreBody({
       <SelectLink id={service.id}>{service.id}</SelectLink>
 
       <Label>Tables</Label>
-      {store.tables.length === 0 ? (
+      {store.tables.length === 0 && (store.keyspaces ?? []).length === 0 ? (
         <div className="mono text-muted">no schema extracted</div>
       ) : null}
       {store.tables.map((table) => (
@@ -132,6 +132,20 @@ function StoreBody({
           </span>
         </Row>
       ))}
+
+      {(store.keyspaces ?? []).length > 0 ? (
+        <>
+          <Label>Key patterns</Label>
+          {(store.keyspaces ?? []).map((keyspace) => (
+            <Row key={keyspace.pattern}>
+              <span className="mono min-w-0 break-all">{keyspace.pattern}</span>
+              <span className="mono ml-auto shrink-0 text-muted">
+                {keyspace.operations.join("/")}
+              </span>
+            </Row>
+          ))}
+        </>
+      ) : null}
 
       {storeViews(store).length > 0 ? (
         <>
