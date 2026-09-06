@@ -56,7 +56,7 @@ import { CompassRose, Wordmark } from "../components/logo";
 import { isStruck } from "../components/primitives";
 import { packageAnchor, paths } from "../routes";
 import { selectionHash } from "../selection/hash";
-import { STORE_KIND_LABEL } from "../er/StoreHeader";
+import { STORE_KIND_LABEL, StoreKindMark } from "../er/StoreHeader";
 import { useSearch } from "./search";
 import { resolvePin, usePinsStore } from "./pins";
 import { resolveSelection, selectionFor } from "../selection/model";
@@ -1672,9 +1672,10 @@ function StoreNode({
         selId={store.id}
         right={
           <span
-            className="mono text-muted"
+            className="mono flex items-center gap-1 text-muted"
             title={STORE_KIND_LABEL[store.kind]}
           >
+            <StoreKindMark kind={store.kind} size={12} />
             {store.kind}
           </span>
         }

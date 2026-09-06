@@ -26,6 +26,8 @@ import { ModuleSpec } from "../components/SourceDoc";
 import { hasSchema, SchemaDocument } from "../components/SchemaDocument";
 import { methodCount, operationsExposedBy } from "../lib/api";
 import { KindIcon } from "../components/kind";
+import { TechIcon } from "../components/TechIcon";
+import { techGlyph } from "../lib/tech";
 import { RowActions } from "../components/RowActions";
 import {
   ContextPill,
@@ -178,9 +180,18 @@ export function ServicePage() {
               ))}
             </span>
           ) : null}
-          {technologiesOf(service).map((technology) => (
-            <span key={technology} className="chip">{technology}</span>
-          ))}
+          {/* What it is built with, read off its manifests. A brand that has
+              a mark shows it beside the name; one that does not is the name
+              alone, which is what every chip was before. */}
+          {technologiesOf(service).map((technology) => {
+            const glyph = techGlyph(technology);
+            return (
+              <span key={technology} className="chip">
+                {glyph ? <TechIcon glyph={glyph} /> : null}
+                {technology}
+              </span>
+            );
+          })}
           <span aria-hidden className="h-4 w-px bg-line-strong" />
           {/* Both counts land in the section that lists what they counted;
               the tabs above do the same job for the other four. */}

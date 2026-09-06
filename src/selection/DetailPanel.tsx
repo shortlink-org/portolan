@@ -39,7 +39,7 @@ import {
   registryUrl,
 } from "../lib/registry";
 import { typesDisagree } from "../lib/data-model";
-import { STORE_KIND_LABEL } from "../er/StoreHeader";
+import { STORE_KIND_LABEL, StoreKindMark } from "../er/StoreHeader";
 import { upstreamOf } from "../er/lineage";
 import type { LineageMaps } from "../er/lineage";
 import { ctxStyle } from "../lib/context-color";
@@ -110,7 +110,10 @@ function StoreBody({
   return (
     <>
       <Label>Kind</Label>
-      <div className="mono text-muted">{STORE_KIND_LABEL[store.kind]}</div>
+      <div className="mono flex items-center gap-1.5 text-muted">
+        <StoreKindMark kind={store.kind} />
+        {STORE_KIND_LABEL[store.kind]}
+      </div>
 
       <Label>Owner</Label>
       <SelectLink id={service.id}>{service.id}</SelectLink>
