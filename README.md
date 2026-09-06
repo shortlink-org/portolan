@@ -64,6 +64,14 @@ source proves one concrete target. The resulting flow starts at the inbound
 endpoint and fans out by the provider choices proved by source; when a
 provider's transport lives in another module, the flow stops at that
 implementation and says that the outbound transport could not be resolved.
+Endpoints without provider selection are composed too, including handlers
+passed through closures and local variables. Swagger `@Router` evidence can
+root a handler factory behind a custom registry, while calls reached from a
+`main → Run` assembly path become startup flows. These generated transport and
+async flows carry their trigger kind and static-confidence level; `AddFunc`,
+`AfterFunc`, and `Schedule` registrations become scheduled roots. A transport
+fragment with no proven root is marked `unproven` instead of looking like a
+complete scenario.
 
 The older JSON keys `contexts` and `services` remain the wire format, so old
 catalogs need no migration (portolan.0004). Optional `kind` fields say when those nodes should

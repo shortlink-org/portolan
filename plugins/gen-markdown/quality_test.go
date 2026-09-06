@@ -120,7 +120,9 @@ func reflectFiles(a, b map[string]string) bool {
 
 func TestSemanticFieldsAndImmutableSourcesAreRendered(t *testing.T) {
 	repo := "https://github.com/example/billing/blob/main"
-	files := renderedFiles(render(plugin.Request{Catalog: fixtureCatalog(t)}, Options{SourceBaseURL: repo}))
+	cat := fixtureCatalog(t)
+	cat.Flows[0].Trigger = &catalog.FlowTrigger{Kind: "callback", Label: "POST /callbacks/paid", Confidence: "high"}
+	files := renderedFiles(render(plugin.Request{Catalog: cat}, Options{SourceBaseURL: repo}))
 	service := files["billing/invoices/README.md"]
 	for _, want := range []string{"Schema modules", "Channels", "GET", "RaiseRequest", "server", "deprecated", "flow.raise-invoice#s3", repo + "/examples/billing/api/invoices.proto"} {
 		if !strings.Contains(service, want) {
@@ -129,6 +131,10 @@ func TestSemanticFieldsAndImmutableSourcesAreRendered(t *testing.T) {
 	}
 	if !strings.Contains(files["modules/example-billing.md"], "Billing contracts") {
 		t.Error("module page was not generated")
+	}
+	flow := files["flows/"+cat.Flows[0].Slug+".md"]
+	if !strings.Contains(flow, "**Trigger:** `callback` · POST /callbacks/paid") || !strings.Contains(flow, "**Root confidence:** high") {
+		t.Error("flow trigger evidence was not rendered")
 	}
 }
 

@@ -117,10 +117,17 @@ func (s *scanner) routeHandlers(owner *functionDecl, expr ast.Expr) []string {
 			}
 			if target := s.localTarget(owner, call.Fun); target != "" {
 				targets = append(targets, target)
+			} else if target := s.localVariableMethod(owner, call.Fun); target != "" {
+				targets = append(targets, target)
 			}
 			return true
 		})
 		return uniqueStrings(targets)
+	}
+	if call, ok := expr.(*ast.CallExpr); ok {
+		if target := s.localTarget(owner, call.Fun); target != "" {
+			return []string{target}
+		}
 	}
 	if target := s.localTarget(owner, expr); target != "" {
 		return []string{target}
@@ -145,7 +152,7 @@ func (s *scanner) localVariableMethod(owner *functionDecl, expr ast.Expr) string
 	if !ok {
 		return ""
 	}
-	types := s.localTypes(owner)
+	types := s.localConcreteTypes(owner)
 	typ, ok := types[identifier.Name]
 	if !ok {
 		return ""

@@ -705,6 +705,221 @@ func (*Client) Search() { _, _ = http.Get("https://beta.example/search") }
 	}
 }
 
+func TestBuildsDirectHTTPRootThroughClosureAndLocalVariable(t *testing.T) {
+	root := t.TempDir()
+	writeHTTPFixture(t, root, "go.mod", "module example.com/refresh\n")
+	writeHTTPFixture(t, root, "app/routes.go", `package app
+import "example.com/refresh/cache"
+type Router struct{}
+func (*Router) POST(string, func()) {}
+func Routes(r *Router) {
+  state := cache.New()
+  r.POST("/debug/refresh", func() { _ = state.Update() })
+}
+`)
+	writeHTTPFixture(t, root, "cache/cache.go", `package cache
+import "net/http"
+type Cache struct{}
+func New() *Cache { return &Cache{} }
+func (*Cache) Update() error {
+  _, err := http.Get("https://geo.example/v1/airports")
+  return err
+}
+`)
+
+	resp, err := extract(plugin.Input{Root: root}, Options{Context: "ops", Service: "catalog"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got catalog.Catalog
+	if err := json.Unmarshal([]byte(resp.Files[0].Contents), &got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Flows) != 1 {
+		t.Fatalf("flows = %+v", got.Flows)
+	}
+	flow := got.Flows[0]
+	if flow.Name != "POST /debug/refresh → outbound APIs" || len(flow.Steps) != 2 {
+		t.Fatalf("rooted flow = %+v", flow)
+	}
+	if flow.Trigger == nil || flow.Trigger.Kind != "http" || flow.Trigger.Confidence != "high" {
+		t.Fatalf("trigger = %+v", flow.Trigger)
+	}
+	if step := flow.Steps[1].(*catalog.Step); step.Label != "GET /v1/airports" {
+		t.Fatalf("outbound step = %+v", step)
+	}
+}
+
+func TestBuildsAnnotatedCallbackRootAndCoversNestedHelper(t *testing.T) {
+	root := t.TempDir()
+	writeHTTPFixture(t, root, "go.mod", "module example.com/callback\n")
+	writeHTTPFixture(t, root, "callbacks/callback.go", `package callbacks
+import "net/http"
+type Registry struct{}
+func (*Registry) Register(string, string, func()) {}
+func Mount(registry *Registry) {
+  registry.Register("provider", "completed", Completed())
+}
+// Completed receives the provider webhook.
+// @Router /callbacks/provider/completed [post]
+func Completed() func() {
+  return func() { notifyCore() }
+}
+func notifyCore() { _, _ = http.Post("https://core.example/protected/update", "application/json", nil) }
+`)
+
+	resp, err := extract(plugin.Input{Root: root}, Options{Context: "travel", Service: "callbacks"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got catalog.Catalog
+	if err := json.Unmarshal([]byte(resp.Files[0].Contents), &got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Flows) != 1 {
+		t.Fatalf("flows = %+v", got.Flows)
+	}
+	flow := got.Flows[0]
+	if flow.Name != "POST /callbacks/provider/completed → outbound APIs" || len(flow.Steps) != 2 {
+		t.Fatalf("callback flow = %+v", flow)
+	}
+	if flow.Trigger == nil || flow.Trigger.Kind != "callback" || flow.Trigger.Confidence != "high" {
+		t.Fatalf("trigger = %+v", flow.Trigger)
+	}
+	if flow.Source != "callbacks/callback.go:6" {
+		t.Fatalf("registration source = %q", flow.Source)
+	}
+	step := flow.Steps[1].(*catalog.Step)
+	if step.Label != "POST /protected/update" || !strings.Contains(step.Note, "Completed → notifyCore") {
+		t.Fatalf("callback continuation = %+v", step)
+	}
+}
+
+func TestBuildsStartupRootFromMainAssembly(t *testing.T) {
+	root := t.TempDir()
+	writeHTTPFixture(t, root, "go.mod", "module example.com/startup\n")
+	writeHTTPFixture(t, root, "cmd/catalog/main.go", `package main
+import app "example.com/startup/internal/app/catalog"
+func main() { app.Run() }
+`)
+	writeHTTPFixture(t, root, "internal/app/catalog/run.go", `package catalog
+import "example.com/startup/cache"
+func Run() {
+	state := cache.New()
+	if err := state.Warm(); err != nil { panic(err) }
+}
+`)
+	writeHTTPFixture(t, root, "cache/cache.go", `package cache
+import "net/http"
+type Cache struct{}
+func New() *Cache { return &Cache{} }
+func (*Cache) Warm() error {
+  _, err := http.Get("https://geo.example/v1/bootstrap")
+  return err
+}
+`)
+
+	resp, err := extract(plugin.Input{Root: root}, Options{Context: "ops", Service: "catalog"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got catalog.Catalog
+	if err := json.Unmarshal([]byte(resp.Files[0].Contents), &got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Flows) != 1 {
+		t.Fatalf("flows = %+v", got.Flows)
+	}
+	flow := got.Flows[0]
+	if flow.Trigger == nil || flow.Trigger.Kind != "startup" || flow.Trigger.Confidence != "high" {
+		t.Fatalf("trigger = %+v", flow.Trigger)
+	}
+	if flow.Name != "Startup → Cache.Warm → outbound APIs" || flow.Source != "internal/app/catalog/run.go:5" {
+		t.Fatalf("startup flow = %+v", flow)
+	}
+}
+
+func TestBuildsScheduledRootFromTimerRegistration(t *testing.T) {
+	root := t.TempDir()
+	writeHTTPFixture(t, root, "go.mod", "module example.com/scheduled\n")
+	writeHTTPFixture(t, root, "jobs/refresh.go", `package jobs
+import (
+  "net/http"
+  "time"
+)
+func Register() {
+  time.AfterFunc(5*time.Minute, func() { Refresh() })
+}
+func Refresh() { _, _ = http.Get("https://catalog.example/v1/refresh") }
+`)
+
+	resp, err := extract(plugin.Input{Root: root}, Options{Context: "ops", Service: "catalog"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got catalog.Catalog
+	if err := json.Unmarshal([]byte(resp.Files[0].Contents), &got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Flows) != 1 {
+		t.Fatalf("flows = %+v", got.Flows)
+	}
+	flow := got.Flows[0]
+	if flow.Trigger == nil || flow.Trigger.Kind != "scheduled" || flow.Trigger.Confidence != "high" {
+		t.Fatalf("trigger = %+v", flow.Trigger)
+	}
+	if !strings.Contains(flow.Name, "Schedule 5 * time.Minute → Refresh") || len(flow.Steps) != 2 {
+		t.Fatalf("scheduled flow = %+v", flow)
+	}
+}
+
+func TestProviderInitIsBusinessOperationAndIncludesNestedHelper(t *testing.T) {
+	root := t.TempDir()
+	writeHTTPFixture(t, root, "go.mod", "module example.com/providerinit\n")
+	writeHTTPFixture(t, root, "app/routes.go", `package app
+import "example.com/providerinit/connector"
+type Router struct{}
+func (*Router) POST(string, func()) {}
+func Routes(r *Router) { r.POST("/initialize", Initialize) }
+func Initialize() {
+  conn := connector.Build()
+  conn.Init()
+}
+`)
+	writeHTTPFixture(t, root, "connector/factory.go", `package connector
+import "example.com/providerinit/provider"
+type API interface{ Init() }
+func Build() API { return provider.New() }
+`)
+	writeHTTPFixture(t, root, "provider/provider.go", `package provider
+import "net/http"
+type Connector struct{}
+func New() *Connector { return &Connector{} }
+func (c *Connector) Init() { c.waitUntilReady() }
+func (*Connector) waitUntilReady() { _, _ = http.Get("https://provider.example/v1/status") }
+`)
+
+	resp, err := extract(plugin.Input{Root: root}, Options{Context: "travel", Service: "booking"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got catalog.Catalog
+	if err := json.Unmarshal([]byte(resp.Files[0].Contents), &got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Flows) != 1 {
+		t.Fatalf("flows = %+v", got.Flows)
+	}
+	flow := got.Flows[0]
+	if flow.Name != "POST /initialize → provider APIs" || len(flow.Steps) != 2 {
+		t.Fatalf("endpoint flow = %+v", flow)
+	}
+	step := flow.Steps[1].(*catalog.Step)
+	if step.Label != "GET /v1/status" || !strings.Contains(step.Note, "Connector.Init → Connector.waitUntilReady") {
+		t.Fatalf("nested Init flow = %+v", step)
+	}
+}
+
 func TestDoesNotGuessBetweenMultipleConstructorWiredImplementations(t *testing.T) {
 	root := t.TempDir()
 	writeHTTPFixture(t, root, "go.mod", "module example.com/ambiguous\n")

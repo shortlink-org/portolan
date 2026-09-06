@@ -55,6 +55,16 @@ func (s *site) renderFlow(flow *catalog.Flow) {
 	if flow.Owner != "" {
 		meta = append(meta, []string{"Owner", s.ref(self, flow.Owner, flow.Owner)})
 	}
+	if flow.Trigger != nil {
+		trigger := code(flow.Trigger.Kind)
+		if flow.Trigger.Label != "" {
+			trigger += " · " + flow.Trigger.Label
+		}
+		meta = append(meta,
+			[]string{"Trigger", trigger},
+			[]string{"Root confidence", flow.Trigger.Confidence},
+		)
+	}
 	// Source is the file the flow was read out of, which is the only thing a
 	// reader can go and check for themselves.
 	if flow.Source != "" {

@@ -239,6 +239,24 @@ describe("validateCatalog: flow frames", () => {
     expect(() => validateCatalog(clone())).not.toThrow();
   });
 
+  it("validates optional flow trigger evidence", () => {
+    const good = clone();
+    good.flows[0]!.trigger = {
+      kind: "callback",
+      label: "POST /callbacks/provider/completed",
+      confidence: "high",
+    };
+    expect(() => validateCatalog(good)).not.toThrow();
+
+    const badKind = clone();
+    badKind.flows[0]!.trigger = { kind: "timer" as never, confidence: "high" };
+    expect(() => validateCatalog(badKind)).toThrow(/unknown trigger kind "timer"/);
+
+    const badConfidence = clone();
+    badConfidence.flows[0]!.trigger = { kind: "startup", confidence: "maybe" as never };
+    expect(() => validateCatalog(badConfidence)).toThrow(/unknown trigger confidence "maybe"/);
+  });
+
   it("rejects an alt with a single branch", () => {
     const { bad, node } = alt();
     node.branches = node.branches.slice(0, 1);

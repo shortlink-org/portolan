@@ -91,6 +91,30 @@ type FlowGroup struct {
 	Callers  []string
 }
 
+type RootKind string
+
+const (
+	RootHTTP      RootKind = "http"
+	RootCallback  RootKind = "callback"
+	RootStartup   RootKind = "startup"
+	RootScheduled RootKind = "scheduled"
+)
+
+// RootFlow is a source-backed way execution enters a group of outbound calls
+// without going through provider selection. Provider endpoints retain their
+// richer branch model in EndpointFlow.
+type RootFlow struct {
+	Kind       RootKind
+	Method     string
+	Path       string
+	Handler    string
+	Label      string
+	Confidence string
+	Source     Source
+	Calls      []Call
+	Covered    []string
+}
+
 type EndpointFlow struct {
 	Method   string
 	Path     string
@@ -113,6 +137,7 @@ type Result struct {
 	Contracts     []Contract
 	Flows         []FlowGroup
 	EndpointFlows []EndpointFlow
+	RootFlows     []RootFlow
 	Warnings      []string
 }
 
@@ -238,7 +263,8 @@ func Analyze(root string) (Result, error) {
 	flows := s.flowGroups(calls)
 	calls = callsSpecializedByFlows(calls, flows)
 	endpointFlows := s.endpointFlows(flows)
-	return Result{Calls: calls, Contracts: s.contracts, Flows: flows, EndpointFlows: endpointFlows, Warnings: s.warnings}, nil
+	rootFlows := s.rootFlows(flows, endpointFlows)
+	return Result{Calls: calls, Contracts: s.contracts, Flows: flows, EndpointFlows: endpointFlows, RootFlows: rootFlows, Warnings: s.warnings}, nil
 }
 
 func callsSpecializedByFlows(direct []Call, flows []FlowGroup) []Call {
@@ -2409,12 +2435,18 @@ func exportedFlowFunction(key string) bool {
 
 func (s *scanner) technicalFlowFunction(key string) bool {
 	name := strings.ToLower(displayFunction(key))
+	method := false
 	if at := strings.LastIndex(name, "."); at >= 0 {
 		name = name[at+1:]
+		method = true
 	}
 	switch name {
-	case "main", "init", "new", "dorequest", "request", "roundtrip", "call", "do", "send", "flush", "decode", "encode", "getbytes", "postbytes", "postjsonbytes":
+	case "main", "new", "dorequest", "request", "roundtrip", "call", "do", "send", "flush", "decode", "encode", "getbytes", "postbytes", "postjsonbytes":
 		return true
+	case "init":
+		// Package init is assembly code. An exported method named Init is often
+		// the business operation itself (for example, initializing a booking).
+		return !method
 	}
 	if name == "run" {
 		if declaration := s.functions[key]; declaration != nil {

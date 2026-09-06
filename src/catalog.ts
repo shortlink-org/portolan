@@ -699,9 +699,8 @@ export interface View {
 /**
  * A sequence read out of source.
  *
- * Every flow in the catalog is derived the same way, so none of them carries a
- * note about where it came from: a field with one possible value tells a reader
- * nothing they did not already know.
+ * Extractors may attach the execution trigger they proved. Authored flows omit
+ * it when that evidence is not part of the document.
  */
 export interface Flow {
   id: string;
@@ -709,6 +708,8 @@ export interface Flow {
   name: string;
   summary: string;
   source?: string; // the file the flow was read out of
+  /** Source-backed execution root and the strength of that evidence. */
+  trigger?: FlowTrigger;
   /** Source function this flow expands, used for evidence-backed composition. */
   entrypoint?: string;
   /**
@@ -721,6 +722,11 @@ export interface Flow {
   owner: string;
   participants: Participant[]; // order is significant - it is the lane order
   steps: FlowNode[];
+}
+export interface FlowTrigger {
+  kind: "http" | "callback" | "event" | "job" | "startup" | "scheduled" | "manual" | "unproven";
+  label?: string;
+  confidence: "high" | "medium" | "low";
 }
 export interface Participant {
   id: string;
@@ -1917,6 +1923,13 @@ export function validateCatalog(catalog: Catalog): Catalog {
 
   const flowGroupIds = new Set(catalog.contexts.map((c) => c.id));
 
+  const triggerKinds = new Set<FlowTrigger["kind"]>([
+    "http", "callback", "event", "job", "startup", "scheduled", "manual", "unproven",
+  ]);
+  const triggerConfidence = new Set<FlowTrigger["confidence"]>([
+    "high", "medium", "low",
+  ]);
+
   for (const flow of catalog.flows) {
     const lanes = new Set(flow.participants.map((p) => p.id));
     if (lanes.size !== flow.participants.length) {
@@ -1937,6 +1950,18 @@ export function validateCatalog(catalog: Catalog): Catalog {
     if (flow.owner !== undefined && !flowGroupIds.has(flow.owner)) {
       fail(
         `flow "${flow.slug}" names owner "${flow.owner}", which is not a top-level group`,
+        `flow ${flow.id}`,
+      );
+    }
+    if (flow.trigger && !triggerKinds.has(flow.trigger.kind)) {
+      fail(
+        `flow "${flow.slug}" has unknown trigger kind "${flow.trigger.kind}"`,
+        `flow ${flow.id}`,
+      );
+    }
+    if (flow.trigger && !triggerConfidence.has(flow.trigger.confidence)) {
+      fail(
+        `flow "${flow.slug}" has unknown trigger confidence "${flow.trigger.confidence}"`,
         `flow ${flow.id}`,
       );
     }

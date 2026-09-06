@@ -39,6 +39,7 @@ import {
 import { Ident } from "../components/Ident";
 import { ContextPill } from "../components/primitives";
 import { WhatLinksHere } from "../components/WhatLinksHere";
+import { FlowTrigger } from "../components/FlowTrigger";
 
 /**
  * The summary, clamped to two lines.
@@ -453,6 +454,7 @@ export function FlowDetail() {
             id and the filter's own count are facts about what is on the canvas
             right now, and they live with the controls that changed them. */}
         <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+          {flow.trigger ? <FlowTrigger trigger={flow.trigger} /> : null}
           {/* The file the flow was read out of, spelled in full rather than
               named: the point of putting it here is that a reader can copy it
               and go and look. */}

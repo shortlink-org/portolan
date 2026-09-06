@@ -569,15 +569,18 @@ type View struct {
 	Source       string    `json:"source,omitempty"`
 }
 
-// Flow is a sequence read out of source. Every one of them is derived the same
-// way, which is why nothing here says where it came from: a field whose value
-// is the same on every record answers a question nobody can ask.
+// Flow is a sequence read out of source. Extractors may attach the execution
+// trigger they proved; authored flows omit it when that evidence is not part of
+// the document.
 type Flow struct {
 	ID      string `json:"id"`
 	Slug    string `json:"slug"`
 	Name    string `json:"name"`
 	Summary string `json:"summary"`
 	Source  string `json:"source,omitempty"`
+	// Trigger says how execution enters this flow and how strong the static
+	// evidence is. Authored flows may omit it; source extractors should not.
+	Trigger *FlowTrigger `json:"trigger,omitempty"`
 	// EntryPoint is the source function this fragment expands. It is machine
 	// evidence for composing a queue handler with the outbound flow extracted
 	// independently from the same function; ordinary authored flows omit it.
@@ -589,6 +592,12 @@ type Flow struct {
 	// Participants order is significant: it is the lane order.
 	Participants []Participant `json:"participants"`
 	Steps        FlowNodes     `json:"steps"`
+}
+
+type FlowTrigger struct {
+	Kind       string `json:"kind"`
+	Label      string `json:"label,omitempty"`
+	Confidence string `json:"confidence"`
 }
 
 type ParticipantKind string

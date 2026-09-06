@@ -198,6 +198,16 @@ literals, direct assignments, or setters. A standalone flow says whether no
 source caller exists or callers exist but no inbound/asynchronous root was
 proved, so the UI exposes the missing evidence instead of implying a complete
 business path.
+Routes without a provider factory are also joined to their outbound calls,
+including handlers invoked from closures and methods on locally constructed
+values. A Swagger `@Router` annotation is medium-confidence root evidence for
+handler factories behind custom registries. Direct calls reached through a
+`main → Run`/`Start`/`Bootstrap` assembly path become high-confidence startup
+flows. `AddFunc`, `AfterFunc`, and `Schedule` registrations create scheduled
+roots when their handler reaches an outbound call. Extracted HTTP, callback,
+startup, scheduled, River-job and Watermill-event flows publish that trigger
+provenance; unmatched transport fragments are explicitly `unproven` with low
+confidence.
 
 ## Flows written by hand
 

@@ -47,7 +47,10 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 
 	endpointFlows, covered := flowsOfEndpoints(serviceID, opts.Context, result.EndpointFlows, opts)
 	coverEndpointDescendants(covered, result.EndpointFlows, result.Flows)
-	flows := append(endpointFlows, flowsOfGroupsExcept(serviceID, opts.Context, result.Flows, opts, covered)...)
+	rootFlows := flowsOfRoots(serviceID, opts.Context, result.RootFlows, opts, covered)
+	coverRootDescendants(covered, result.RootFlows, result.Flows)
+	flows := append(endpointFlows, rootFlows...)
+	flows = append(flows, flowsOfGroupsExcept(serviceID, opts.Context, result.Flows, opts, covered)...)
 	if len(result.Calls) == 0 {
 		b.Warn(in.Root, "no outbound net/http, oapi-codegen, or SOAP calls were found")
 	}
@@ -249,8 +252,108 @@ func flowsOfGroupsExcept(serviceID, context string, groups []gohttp.FlowGroup, o
 			Slug:    serviceID + "-http-client-" + slug(function),
 			Name:    name + " → outbound APIs",
 			Summary: standaloneFlowSummary(function, flowGroup.Callers),
-			Source:  flowSource, EntryPoint: function, Owner: context,
+			Source:  flowSource,
+			Trigger: &catalog.FlowTrigger{
+				Kind: "unproven", Label: "No execution root proven", Confidence: "low",
+			},
+			EntryPoint: function, Owner: context,
 			Participants: participants, Steps: steps,
+		})
+	}
+	return flows
+}
+
+func flowsOfRoots(serviceID, context string, roots []gohttp.RootFlow, opts Options, covered map[string]bool) []catalog.Flow {
+	flows := make([]catalog.Flow, 0, len(roots))
+	for _, root := range roots {
+		for _, function := range root.Covered {
+			covered[function] = true
+		}
+		actorID := serviceID + ".api-client"
+		actorLabel := "API client"
+		firstKind := catalog.StepRPC
+		firstLabel := strings.TrimSpace(root.Method + " " + root.Path)
+		if root.Kind == gohttp.RootCallback {
+			actorID = serviceID + ".callback-sender"
+			actorLabel = "Callback sender"
+		}
+		if root.Kind == gohttp.RootStartup {
+			actorID = serviceID + ".process"
+			actorLabel = "Process startup"
+			firstKind = catalog.StepCall
+			firstLabel = root.Label
+		}
+		if root.Kind == gohttp.RootScheduled {
+			actorID = serviceID + ".scheduler"
+			actorLabel = "Scheduler"
+			firstKind = catalog.StepCall
+			firstLabel = root.Label
+		}
+		participants := []catalog.Participant{
+			{ID: actorID, Kind: catalog.ParticipantActor, Label: actorLabel},
+			{ID: serviceID, Kind: catalog.ParticipantService, Context: &context},
+		}
+		participantSeen := map[string]bool{actorID: true, serviceID: true}
+		steps := catalog.FlowNodes{&catalog.Step{
+			Type: "step", ID: "s1", From: actorID, To: serviceID,
+			Kind: firstKind, Label: firstLabel, Status: catalog.StatusDeclared,
+			Line: root.Source.String(),
+		}}
+		for index, call := range root.Calls {
+			peer, status := peerOf(call, opts)
+			participant := participantOf(peer, call, opts)
+			if !participantSeen[participant.ID] {
+				participants = append(participants, participant)
+				participantSeen[participant.ID] = true
+			}
+			note := callNote(call)
+			if len(call.Conditions) > 0 {
+				condition := "when " + strings.Join(uniqueStrings(call.Conditions), " and ")
+				if note == "" {
+					note = condition
+				} else {
+					note += "; " + condition
+				}
+			}
+			if len(call.Chain) > 1 {
+				chain := "via " + strings.Join(call.Chain, " → ")
+				if note == "" {
+					note = chain
+				} else {
+					note += "; " + chain
+				}
+			}
+			steps = append(steps, &catalog.Step{
+				Type: "step", ID: "s" + strconv.Itoa(index+2), From: serviceID, To: participant.ID,
+				Kind: catalog.StepRPC, Ref: call.ID, Label: callLabel(call), Status: status,
+				Note: note, Line: call.Source.String(),
+			})
+		}
+		summary := "Source-backed execution path from a concrete root to outbound APIs."
+		switch root.Kind {
+		case gohttp.RootCallback:
+			summary = "Source-backed callback path from the inbound webhook to outbound APIs."
+		case gohttp.RootStartup:
+			summary = "Source-backed startup path executed while the process is assembled."
+		case gohttp.RootScheduled:
+			summary = "Source-backed scheduled path from timer registration to outbound APIs."
+		case gohttp.RootHTTP:
+			summary = "Source-backed request path from the inbound endpoint to outbound APIs."
+		}
+		rootIdentity := root.Label
+		if root.Kind == gohttp.RootStartup {
+			rootIdentity = strings.TrimPrefix(rootIdentity, "Startup → ")
+		}
+		rootSlug := slug(string(root.Kind) + "-" + rootIdentity)
+		flows = append(flows, catalog.Flow{
+			ID:   "flow." + serviceID + ".root." + rootSlug,
+			Slug: serviceID + "-root-" + rootSlug,
+			Name: root.Label + " → outbound APIs", Summary: summary,
+			Source: root.Source.String(),
+			Trigger: &catalog.FlowTrigger{
+				Kind: string(root.Kind), Label: root.Label, Confidence: root.Confidence,
+			},
+			Owner: context, Participants: participants, Steps: steps,
 		})
 	}
 	return flows
@@ -337,10 +440,38 @@ func flowsOfEndpoints(serviceID, context string, endpoints []gohttp.EndpointFlow
 			Slug:    serviceID + "-endpoint-" + slug(name),
 			Name:    name + " → provider APIs",
 			Summary: "Source-backed request path from the inbound endpoint through provider selection to outbound APIs.",
-			Source:  endpoint.Source.String(), Owner: context, Participants: participants, Steps: steps,
+			Source:  endpoint.Source.String(),
+			Trigger: &catalog.FlowTrigger{
+				Kind: "http", Label: name, Confidence: "high",
+			},
+			Owner: context, Participants: participants, Steps: steps,
 		})
 	}
 	return flows, covered
+}
+
+func coverRootDescendants(covered map[string]bool, roots []gohttp.RootFlow, groups []gohttp.FlowGroup) {
+	for _, root := range roots {
+		callKeys := map[string]bool{}
+		for _, call := range root.Calls {
+			callKeys[endpointCallKey(call)] = true
+		}
+		for _, group := range groups {
+			if covered[group.Function] || len(group.Calls) == 0 {
+				continue
+			}
+			allCallsCovered := true
+			for _, call := range group.Calls {
+				if !callKeys[endpointCallKey(call)] {
+					allCallsCovered = false
+					break
+				}
+			}
+			if allCallsCovered {
+				covered[group.Function] = true
+			}
+		}
+	}
 }
 
 func coverEndpointDescendants(covered map[string]bool, endpoints []gohttp.EndpointFlow, groups []gohttp.FlowGroup) {

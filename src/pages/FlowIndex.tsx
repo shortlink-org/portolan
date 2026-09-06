@@ -16,6 +16,7 @@ import { Ident } from "../components/Ident";
 import { RowActions } from "../components/RowActions";
 import { Blank, Empty } from "../components/PageHeader";
 import { ContextPill } from "../components/primitives";
+import { FlowTrigger } from "../components/FlowTrigger";
 
 type Sort = "contexts" | "name" | "steps" | "health";
 
@@ -255,6 +256,7 @@ export function FlowIndex() {
                 <p className="mt-2 line-clamp-2 text-muted">{flow.summary}</p>
 
                 <div className="mt-4 flex flex-wrap items-center gap-1.5">
+                  {flow.trigger ? <FlowTrigger trigger={flow.trigger} /> : null}
                   {contexts.map((c) => (
                     <ContextPill key={c} id={c} name={contextName(c)} />
                   ))}

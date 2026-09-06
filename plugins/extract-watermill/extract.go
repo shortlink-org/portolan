@@ -1000,7 +1000,7 @@ func (s *scanner) flow(serviceID, owner string, found handler, pub *publication)
 	}
 	summary += "."
 	slugged := goscan.Slug(goscan.LastSegment(serviceID) + "-watermill-" + found.name + "-" + ending)
-	return catalog.Flow{ID: "flow." + slugged, Slug: slugged, Name: name, Summary: summary, Source: found.at.String(), Owner: owner, Participants: participants, Steps: steps}
+	return catalog.Flow{ID: "flow." + slugged, Slug: slugged, Name: name, Summary: summary, Source: found.at.String(), Trigger: &catalog.FlowTrigger{Kind: "event", Label: found.input.address, Confidence: "high"}, Owner: owner, Participants: participants, Steps: steps}
 }
 
 func (s *scanner) branchedFlow(serviceID, owner string, found handler) catalog.Flow {
@@ -1052,6 +1052,7 @@ func (s *scanner) branchedFlow(serviceID, owner string, found handler) catalog.F
 		Name:         goscan.Title(found.name),
 		Summary:      "Watermill handler `" + found.name + "` consumes `" + found.input.address + "` and source control flow branches to " + strings.Join(addresses, " or ") + ".",
 		Source:       found.at.String(),
+		Trigger:      &catalog.FlowTrigger{Kind: "event", Label: found.input.address, Confidence: "high"},
 		Owner:        owner,
 		Participants: participants,
 		Steps:        steps,

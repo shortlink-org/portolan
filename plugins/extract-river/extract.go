@@ -392,6 +392,7 @@ func riverFlow(serviceID, owner, queue string, job *queueJob) catalog.Flow {
 		Name:    goscan.Title(job.args.kind) + " job",
 		Summary: "River job `" + job.args.kind + "` is inserted on `" + queue + "` and handled by `" + job.worker.name + ".Work`.",
 		Source:  job.producers[0].at.String(),
+		Trigger: &catalog.FlowTrigger{Kind: "job", Label: "River · " + queue, Confidence: "high"},
 		Owner:   owner,
 		Participants: []catalog.Participant{
 			{ID: serviceID, Kind: catalog.ParticipantService, Context: stringPtr(owner)},
