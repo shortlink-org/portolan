@@ -46,7 +46,8 @@ Three obligations, and they are the whole of it:
 3. **One decisive response.** A malformed request, incompatible protocol,
    unsafe filename or invalid response fails the run. Non-fatal extraction
    notes go to stderr; there is no advisory response property a caller may
-   accidentally ignore.
+   accidentally ignore. A note that opens with `warning: ` is kept beside the
+   step in `.portolan/build-report.json` and listed on the Settings page.
 
 The repository enforces those obligations with schema/field coverage tests,
 byte-for-byte permutation tests, generated-link and anchor checks, Mermaid
@@ -230,9 +231,10 @@ then the file's kebab, as in `auth-0003-expiry-publishes-nothing`. A file
 renamed away from its record would silently change the address of a decision
 somebody linked to, so the two are held against each other.
 
-`Status`, `Date` and `Scope` are required; the rest are written when there is
-something to write, and a bullet the format does not have fails the run rather
-than being dropped. A bullet may wrap onto the next line, indented under
+`Status` and `Date` are required, and so is `Scope` unless the step's `scope`
+option names it for the whole tree; the rest are written when there is
+something to write, and a bullet the format does not have fails the record
+rather than being dropped. A bullet may wrap onto the next line, indented under
 itself - the break is the author's line width and closes up into a space.
 `Scope` says what the record is about by how many segments it has: none, or
 `org`, for the organisation, one for a context, two for `<context>.<service>`.
@@ -250,17 +252,25 @@ all: an ADR is frozen history, and nothing on its page is redrawn from the
 model as it stands now. Prose above that first `##` is a mistake - a paragraph
 that drifted up there would be read by a person and dropped by the extractor.
 
+The [adr-tools](https://github.com/npryce/adr-tools) shape is read too: number
+and title on the title line, `Date:` above the record, status as the first
+section with its `Superseded by` / `Supersedes` link. It has no prefix or
+scope, so both come from the step's `scope` option.
+
 `src/catalog.ts` fails the whole app on load if a record breaks any of its
-rules, so the extractor breaks first, where the file that caused it can be
+rules, so the extractor checks first, where the file that caused it can be
 named: ids and slugs unique, an id ending in its own zero-padded number, a date
-that parses, a status from the five, and both halves of a supersession. That
-last one is the reason `Superseded by` and `Supersedes` are two bullets rather
-than one derived from the other - supersession is a two-way fact, and half of
-it recorded is a bug. The halves that live in one step's tree are held against
-each other there; a record superseded by one in another service's tree is a
-claim only the merged catalog can check, and the validator checks it. The same
-goes for `Scope` and `Relates`: an extractor sees one root, so it validates the
-shape of a name and leaves whether the thing exists to the far side.
+that parses, a status from the five, and both halves of a supersession. A file
+that breaks one of them is left out with a warning naming the file and line,
+and the rest of the tree is read; only a supersession with one half recorded
+refuses the whole run. That is why `Superseded by` and `Supersedes` are two
+bullets rather than one derived from the other - supersession is a two-way
+fact, and half of it recorded is a bug. The halves that live in one step's
+tree are held against each other there; a record superseded by one in another
+service's tree is a claim only the merged catalog can check, and the validator
+checks it. The same goes for `Scope` and `Relates`: an extractor sees one root,
+so it validates the shape of a name and leaves whether the thing exists to the
+far side.
 
 The demo estate's org-wide and context-wide records live in `data/adr`, and are
 read by a step that points at that directory with a glob of its own. Root
@@ -383,6 +393,31 @@ in the same copy, and - told by `externals` that the copy's api id belongs to
 lane of kind `external`. The merge joins the two by the id; a call to an
 operation the copy declares resolves, one it does not is reported by the
 extractor and left out.
+
+Neither line is needed when the tree can say it itself. An `openapi` step
+with no `spec` walks the tree for every document and reads what sits beside
+each one: a server generated from it - oapi-codegen's `ServerInterface`,
+swag's `docs` package, a handler or controller written against it - means the
+service implements it, and the document is what the service provides; a
+client generated from it - `ClientInterface`, a `client.gen.go`, an adapter
+named after a client - means the service calls it, and the document names a
+system this tree does not implement. That system is an external, with the
+id, the name and the summary the document gives itself: a copy titled
+"Gordian Flights & Ancillaries API" becomes `gordian-flights-ancillaries`,
+the trailing "API" dropped because the system is the thing and not its
+interface. `peers` on the same step says which called documents are ours -
+`{"auth.v1": "auth.auth"}` - and those are skipped, because the service that
+implements them describes them; `externals` names a system when the title
+would not, `{"stripe.v1": "stripe"}`. A document with neither a server nor a
+client beside it is reported and left alone, since reading it as either would
+be a guess.
+
+The domain extractor keeps the same rule from its side: a generated HTTP
+client whose api no `peers` line claims is read as calling the system the
+document beside it is titled after, and the call lands on an `external` lane,
+declared, under the id both sides derive from that title. `externals` on the
+domain step overrides the name; a proto client, whose contract names no
+system, stays unresolved until `peers` says who answers.
 
 The copy is **narrow** - the operations the service calls and the schemas they
 answer with, every field verbatim - for the reason org.0001 gives for a proto:
