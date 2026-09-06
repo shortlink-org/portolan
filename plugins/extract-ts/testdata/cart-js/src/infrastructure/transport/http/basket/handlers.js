@@ -1,7 +1,7 @@
-/** @typedef {import("../../../../application/basket/usecases/add_item/usecase.js").UseCase} AddItem */
-/** @typedef {import("../../../../application/basket/usecases/checkout/usecase.js").UseCase} Checkout */
-/** @typedef {import("../../../../application/basket/usecases/expire/usecase.js").UseCase} Expire */
-/** @typedef {import("../../../../application/basket/usecases/merge/usecase.js").UseCase} Merge */
+/** @typedef {import("@app/basket/usecases/add_item/usecase.js").UseCase} AddItem */
+/** @typedef {import("@app/basket/usecases/checkout/usecase.js").UseCase} Checkout */
+/** @typedef {import("@app/basket/usecases/expire/usecase.js").UseCase} Expire */
+/** @typedef {import("@app/basket/usecases/merge/usecase.js").UseCase} Merge */
 
 export class BasketHandlers {
   /**

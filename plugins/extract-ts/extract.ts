@@ -2,7 +2,7 @@
 // context and one service, names peers it does not own, and is merged with
 // everything else before anything validates it.
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { basename, join, relative, resolve } from "node:path";
 import type { Catalog, Service } from "../../src/catalog.ts";
 import { readAggregates, type WarningSink } from "./domain.ts";
@@ -12,6 +12,7 @@ import { readGrpcTransport, readTransport } from "./transport.ts";
 import { readResolvers } from "./graphql.ts";
 import { FlowReader } from "./flows.ts";
 import { serviceID, title } from "./ids.ts";
+import { sourcesUnder } from "./source.ts";
 
 export interface Options {
   context?: string;
@@ -63,7 +64,10 @@ class Builder implements WarningSink {
 
 export function extract(input: Input, opts: Options, cwd = process.cwd()): Response {
   const b = new Builder();
-  const root = resolve(cwd, input.root);
+  // Real paths throughout: what the sources are read as is what the resolver
+  // hands back, and a `rel` between the two must not cross a symlink.
+  cwd = realpathSync(cwd);
+  const root = existsSync(resolve(cwd, input.root)) ? realpathSync(resolve(cwd, input.root)) : resolve(cwd, input.root);
   const rel = (abs: string): string => relative(cwd, abs).split("\\").join("/");
   const src = join(root, opts.source ?? "src");
 
@@ -138,6 +142,13 @@ export function extract(input: Input, opts: Options, cwd = process.cwd()): Respo
   // composes what other services decided (see the `graphql` option). Saying so
   // about that service every run would be noise nobody can act on.
   if (aggregates.length === 0 && !opts.graphql) b.warn(svcID, "no aggregates found under domain; the fragment describes a service with no model");
+
+  // A file with a syntax error still parsed to a tree, but a partial one, and
+  // whatever came after the error was never read. Said once per file, after
+  // everything else, so the reader knows which silences above are this.
+  for (const source of sourcesUnder(input.root)) {
+    for (const e of source.errors) b.warn(rel(source.path), `${rel(e.at)}: ${e.message}; the file is read only up to here`);
+  }
 
   const fragment: Catalog = {
     generatedAt: input.generatedAt,

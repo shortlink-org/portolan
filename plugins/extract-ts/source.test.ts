@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, realpathSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { paramTypeOf, readSource, resolveImport, returnTypeText, sourceFiles, sourceNamed } from "./source.ts";
@@ -8,7 +8,7 @@ import { isPropertySig, typeText } from "./ast.ts";
 // A JavaScript tree written to disk, because readSource reads files and the
 // imports a doc comment implies are resolved against what sits beside them.
 function tree(files: Record<string, string>): string {
-  const root = mkdtempSync(join(tmpdir(), "extract-ts-js-"));
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "extract-ts-js-")));
   for (const [name, contents] of Object.entries(files)) {
     mkdirSync(join(root, name, ".."), { recursive: true });
     writeFileSync(join(root, name), contents);
@@ -118,5 +118,57 @@ describe("a JavaScript source", () => {
     expect(resolveImport(from, "./types.js")).toBe(join(ROOT, "types.d.ts"));
     expect(resolveImport(from, "./")).toBe(join(ROOT, "index.ts"));
     expect(resolveImport(from, "openapi-fetch")).toBeUndefined();
+  });
+});
+
+// A repository with a tsconfig alias, a workspace package and a dependency:
+// the three ways a bare specifier can go, and only the last is a package.
+const REPO = tree({
+  "tsconfig.json": `{ "compilerOptions": { "baseUrl": ".", "paths": { "@app/*": ["services/cart/src/application/*"] } } }`,
+  "services/cart/src/application/basket/shared.ts": `export function holderOf(): string { return ""; }`,
+  "services/cart/src/infrastructure/handlers.ts": `
+import { holderOf } from "@app/basket/shared.ts";
+import { Money } from "@acme/domain";
+import createClient from "openapi-fetch";
+export const lazy = () => import("./adapter.js");
+export const dynamic = (x: string) => import("./" + x);
+`,
+  "services/cart/src/infrastructure/adapter.ts": `export const a = 1;`,
+  "packages/domain/package.json": `{ "name": "@acme/domain", "types": "./index.d.ts", "main": "./dist/index.js" }`,
+  "packages/domain/index.d.ts": `export interface Money { amountMinor: number }`,
+  "packages/domain/dist/index.js": `export const Money = {};`,
+  "node_modules/openapi-fetch/package.json": `{ "name": "openapi-fetch", "main": "index.js" }`,
+  "node_modules/openapi-fetch/index.js": `module.exports = {};`,
+  "broken.ts": `export class C {\n  handle( {\n}`,
+});
+mkdirSync(join(REPO, "node_modules/@acme"), { recursive: true });
+symlinkSync(join(REPO, "packages/domain"), join(REPO, "node_modules/@acme/domain"));
+
+describe("what an import resolves to", () => {
+  const src = readSource(join(REPO, "services/cart/src/infrastructure/handlers.ts"))!;
+  const file = (local: string) => src.imports.find((i) => i.local === local)?.file;
+
+  it("follows a tsconfig paths alias to the file it names", () => {
+    expect(file("holderOf")).toBe(join(REPO, "services/cart/src/application/basket/shared.ts"));
+  });
+
+  it("follows a workspace package through its symlink to the declarations it ships", () => {
+    expect(file("Money")).toBe(join(REPO, "packages/domain/index.d.ts"));
+    expect(readSource(file("Money")!)?.interfaces.has("Money")).toBe(true);
+  });
+
+  it("leaves a dependency as a name: nothing in node_modules is read", () => {
+    expect(src.imports.find((i) => i.local === "createClient")).toMatchObject({ imported: "default", specifier: "openapi-fetch", file: undefined });
+  });
+
+  it("records a lazy import with a literal request, and not one with an expression", () => {
+    expect(src.dynamicImports).toEqual([{ specifier: "./adapter.js", file: join(REPO, "services/cart/src/infrastructure/adapter.ts") }]);
+  });
+
+  it("keeps a syntax error beside the partial tree it produced", () => {
+    const broken = readSource(join(REPO, "broken.ts"))!;
+    expect(broken.errors.map((e) => e.at)).toEqual([`${join(REPO, "broken.ts")}:3`]);
+    expect(broken.errors[0]!.message).toMatch(/Expected/);
+    expect(src.errors).toEqual([]);
   });
 });

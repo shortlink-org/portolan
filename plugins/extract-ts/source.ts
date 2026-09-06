@@ -1,12 +1,15 @@
 // Reading TypeScript files: the few shapes the extractor looks at, pulled out
 // of the syntax tree once so the modules above it work on names and strings.
 //
-// No type checker: everything here is resolved by name and by relative
-// import, which is all a layout that is the claim needs. The tree itself is
+// No type checker: everything here is resolved by name and by import - the
+// resolver is oxc's, so a tsconfig `paths` alias and a workspace package
+// resolve as Node and TypeScript would - which is all a layout that is the
+// claim needs. The tree itself is
 // oxc-parser's, through `ast.ts`.
 
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { existsSync, readdirSync, readFileSync, realpathSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { ResolverFactory } from "oxc-resolver";
 import {
   parse,
   docBlock,
@@ -26,7 +29,6 @@ import {
   isClassDecl,
   isExportNamed,
   isFunctionDecl,
-  isImport,
   isInterface,
   isMethod,
   isNew,
@@ -90,7 +92,7 @@ export interface Import {
   /** What it is called in the module it came from; "*" for a namespace. */
   imported: string;
   specifier: string;
-  /** The file a relative specifier resolves to, or undefined for a package. */
+  /** The file the specifier resolves to - relative, aliased or a workspace package - or undefined for a dependency. */
   file: string | undefined;
   typeOnly: boolean;
 }
@@ -114,26 +116,48 @@ export interface Source {
   interfaces: Map<string, Iface>;
   /** Exported functions, by name. */
   functions: Map<string, FunctionNode>;
+  /** `import("./x.js")` with a literal request: what the file loads lazily, resolved the same way. */
+  dynamicImports: { specifier: string; file: string | undefined }[];
+  /** Syntax errors, `file:line` and message. The tree past the first is partial, and so is what was read from it. */
+  errors: { at: string; message: string }[];
 }
 
 const cache = new Map<string, Source | null>();
 
+/** Every source read so far that sits under a root, for reporting what was wrong with them once the reading is done. */
+export function sourcesUnder(root: string): Source[] {
+  if (!existsSync(root)) return [];
+  const prefix = realpathSync(root) + "/";
+  return [...cache.values()].filter((s): s is Source => s !== null && s.path.startsWith(prefix));
+}
+
+/**
+ * A file, read once. Keyed by its real path, because the resolver hands back
+ * real paths - a workspace package is followed through its symlink - and a
+ * file reached by two names is still one file.
+ */
 export function readSource(path: string): Source | null {
-  const key = resolve(path);
+  const asked = resolve(path);
+  if (!existsSync(asked)) return null;
+  const key = realpathSync(asked);
   const hit = cache.get(key);
   if (hit !== undefined) return hit;
-  if (!existsSync(key)) {
-    cache.set(key, null);
-    return null;
-  }
   const parsed = parse(key, readFileSync(key, "utf8"));
-  const source: Source = { path: key, parsed, classes: [], imports: [], interfaces: new Map(), functions: new Map() };
+  const source: Source = {
+    path: key,
+    parsed,
+    classes: [],
+    imports: importsOf(parsed, key),
+    interfaces: new Map(),
+    functions: new Map(),
+    dynamicImports: dynamicImportsOf(parsed, key),
+    errors: parsed.errors.map((e) => ({ at: `${key}:${lineOf(parsed, e.labels?.[0]?.start ?? 0)}`, message: e.message })),
+  };
   for (const stmt of parsed.program.body) {
     const exported = isExportNamed(stmt);
     const decl = exported ? stmt.declaration : stmt;
     if (!decl) continue;
-    if (isImport(decl)) source.imports.push(...importsOf(decl, key));
-    else if (isInterface(decl)) source.interfaces.set(decl.id.name, { p: parsed, node: decl });
+    if (isInterface(decl)) source.interfaces.set(decl.id.name, { p: parsed, node: decl });
     else if (isFunctionDecl(decl) && decl.id) source.functions.set(decl.id.name, decl);
   }
   // Typedefs before classes: a class's `@param {Port}` may name a typedef,
@@ -221,32 +245,64 @@ export function sourceNamed(dir: string, base: string): string {
 }
 
 /**
- * Resolves a relative specifier the way Node does for a `.ts` or `.js` tree.
- * A TypeScript file imports `./x.js` and means `./x.ts`, so the written
- * extension is tried first and its TypeScript twin second; a bare specifier
- * tries each extension and then an index.
+ * Node's resolution, with what a TypeScript tree adds to it: `./x.js` means
+ * `./x.ts`, a bare `./x` tries every source extension and then an index,
+ * `@app/domain/basket` is whatever the nearest tsconfig's `paths` say, and a
+ * workspace package is followed through its symlink to the source it is. The
+ * `types` condition comes first so a package that ships declarations resolves
+ * to the shape a port reader can walk rather than to compiled output.
+ */
+const resolver = new ResolverFactory({
+  tsconfig: "auto",
+  extensions: [...SOURCE_EXTENSIONS, ".d.ts", ".mts", ".cts"],
+  extensionAlias: { ".js": [".ts", ".tsx", ".d.ts", ".js"], ".mjs": [".mts", ".mjs"], ".cjs": [".cts", ".cjs"], ".jsx": [".tsx", ".jsx"] },
+  conditionNames: ["types", "import", "default"],
+  mainFields: ["types", "module", "main"],
+});
+
+/**
+ * The file a specifier names, or undefined for a package.
+ *
+ * A package is a specifier that lands in `node_modules`: what is there is a
+ * dependency, and the extractor does not read dependencies - a client library
+ * is recognised by the name it is imported under, not by its source. A
+ * workspace package is the exception, and needs none: its symlink resolves
+ * to a directory of the repository, outside any `node_modules`, and is read
+ * like the rest of the tree.
  */
 export function resolveImport(from: string, specifier: string): string | undefined {
-  if (!specifier.startsWith(".")) return undefined;
-  const base = resolve(dirname(from), specifier);
-  const candidates = [base, base.replace(/\.[cm]?jsx?$/, ".ts"), base.replace(/\.[cm]?jsx?$/, ".d.ts")];
-  for (const ext of [...SOURCE_EXTENSIONS, ".d.ts"]) candidates.push(base + ext);
-  for (const ext of SOURCE_EXTENSIONS) candidates.push(join(base, `index${ext}`));
-  for (const candidate of candidates) {
-    if (existsSync(candidate) && statSync(candidate).isFile()) return candidate;
-  }
-  return undefined;
+  const found = resolver.resolveFileSync(from, specifier);
+  if (!found.path || /[\\/]node_modules[\\/]/.test(found.path)) return undefined;
+  return found.path;
 }
 
-function importsOf(decl: import("./ast.ts").ImportDeclaration, from: string): Import[] {
-  const specifier = String(decl.source.value);
-  const file = resolveImport(from, specifier);
-  const typeOnly = decl.importKind === "type";
+/**
+ * The static imports as the parser records them: every declaration, every
+ * entry, with the name it is imported under, the name it had, and whether
+ * it is type-only - `import type { A }` and `import { type A }` alike.
+ * Nothing here walks the tree; the record is a by-product of parsing.
+ */
+function importsOf(parsed: Parsed, from: string): Import[] {
   const out: Import[] = [];
-  for (const s of decl.specifiers) {
-    if (s.type === "ImportDefaultSpecifier") out.push({ local: s.local.name, imported: "default", specifier, file, typeOnly });
-    else if (s.type === "ImportNamespaceSpecifier") out.push({ local: s.local.name, imported: "*", specifier, file, typeOnly });
-    else out.push({ local: s.local.name, imported: (s.imported && keyName(s.imported)) ?? s.local.name, specifier, file, typeOnly: typeOnly || s.importKind === "type" });
+  for (const decl of parsed.module.staticImports) {
+    const specifier = decl.moduleRequest.value;
+    const file = resolveImport(from, specifier);
+    for (const entry of decl.entries) {
+      const imported = entry.importName.kind === "Default" ? "default" : entry.importName.kind === "NamespaceObject" ? "*" : (entry.importName.name ?? entry.localName.value);
+      out.push({ local: entry.localName.value, imported, specifier, file, typeOnly: entry.isType });
+    }
+  }
+  return out;
+}
+
+/** `import("./x.js")` with a literal request, resolved; one with an expression names nothing that can be followed. */
+function dynamicImportsOf(parsed: Parsed, from: string): { specifier: string; file: string | undefined }[] {
+  const out: { specifier: string; file: string | undefined }[] = [];
+  for (const d of parsed.module.dynamicImports) {
+    const request = parsed.text.slice(d.moduleRequest.start, d.moduleRequest.end);
+    const m = /^(["'])(.*)\1$/s.exec(request);
+    if (!m) continue;
+    out.push({ specifier: m[2]!, file: resolveImport(from, m[2]!) });
   }
   return out;
 }

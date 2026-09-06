@@ -8,7 +8,8 @@
 // modules above need is a handful of node shapes, a way to walk, and the
 // text and line of a node. Those are declared here, by hand and minimal, so
 // the reading does not move when the parser's own typings do.
-import { parseSync } from "oxc-parser";
+import { parseSync, visitorKeys } from "oxc-parser";
+import type { ParseResult } from "oxc-parser";
 
 export interface Node {
   type: string;
@@ -244,6 +245,10 @@ export interface Parsed {
   lines: number[];
   /** JavaScript rather than TypeScript: the types are in the doc comments. */
   js: boolean;
+  /** What the file imports and exports, as the parser records it: names, requests and whether an import is type-only, without walking the tree. */
+  module: ParseResult["module"];
+  /** Syntax errors. The tree is still handed back, but what follows an error in the file may be missing from it. */
+  errors: ParseResult["errors"];
 }
 
 /** `.ts`, `.tsx`, `.js`, `.mjs`, `.cjs`, `.jsx`: what the tree is written in, and so where its types are. */
@@ -265,7 +270,7 @@ export function parse(path: string, text: string): Parsed {
   const result = parseSync(path, text, { lang, sourceType: "module" });
   const lines = [0];
   for (let i = 0; i < text.length; i++) if (text.charCodeAt(i) === 10) lines.push(i + 1);
-  return { path, text, program: result.program as unknown as Program, comments: result.comments as Comment[], lines, js: lang === "js" || lang === "jsx" };
+  return { path, text, program: result.program as unknown as Program, comments: result.comments as Comment[], lines, js: lang === "js" || lang === "jsx", module: result.module, errors: result.errors };
 }
 
 /**
@@ -515,8 +520,15 @@ export function walk(node: Node, f: (n: Node) => void): void {
   for (const child of children(node)) walk(child, f);
 }
 
+/**
+ * A node's children, in source order, by the parser's own table of which
+ * fields hold nodes. A type the table does not know - there is none in a tree
+ * oxc built, but a test may make one - falls back to reading every field.
+ */
 export function* children(node: Node): Iterable<Node> {
-  for (const [key, value] of Object.entries(node)) {
+  const keys = (visitorKeys as Record<string, readonly string[] | undefined>)[node.type];
+  const fields = keys ? keys.map((k) => [k, (node as unknown as Record<string, unknown>)[k]] as const) : Object.entries(node);
+  for (const [key, value] of fields) {
     if (key === "type" || key === "start" || key === "end" || value === null || typeof value !== "object") continue;
     if (Array.isArray(value)) {
       for (const el of value) if (isNode(el)) yield el;

@@ -1,7 +1,7 @@
-import type { UseCase as AddItem } from "../../../../application/basket/usecases/add_item/usecase.ts";
-import type { UseCase as Checkout } from "../../../../application/basket/usecases/checkout/usecase.ts";
-import type { UseCase as Expire } from "../../../../application/basket/usecases/expire/usecase.ts";
-import type { UseCase as Merge } from "../../../../application/basket/usecases/merge/usecase.ts";
+import type { UseCase as AddItem } from "@app/basket/usecases/add_item/usecase.ts";
+import type { UseCase as Checkout } from "@app/basket/usecases/checkout/usecase.ts";
+import type { UseCase as Expire } from "@app/basket/usecases/expire/usecase.ts";
+import type { UseCase as Merge } from "@app/basket/usecases/merge/usecase.ts";
 
 export class BasketHandlers {
   constructor(

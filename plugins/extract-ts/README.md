@@ -14,8 +14,10 @@ project's TypeScript is the 7 series, a compiler with no syntax tree to offer,
 and holding a second copy of 5 beside it for the parser alone was a workaround
 this replaces. The tree is read through `ast.ts`, a hand-written, minimal set
 of node shapes and predicates, so the reading does not move when the parser's
-own typings do. There is no type checker: everything is resolved by name and
-by relative import, which is all a layout that is the claim needs.
+own typings do. There is no type checker: everything is resolved by name and by import - the
+resolver is `oxc-resolver`, so a tsconfig `paths` alias and a workspace package
+resolve as they would for Node and TypeScript - which is all a layout that is
+the claim needs.
 
 ## The layout it reads
 
@@ -262,6 +264,12 @@ These cases do not become facts in the fragment:
   declare;
 - an event no flow reaches;
 - a proto package or api id the manifest names no peer for.
+- an import of a dependency: what lands in `node_modules` is not read, so a
+  port declared by a published package is a name with nothing behind it. A
+  tsconfig `paths` alias and a workspace package are followed, because they
+  resolve to the repository's own files.
+- a file with a syntax error, past the error: the tree up to it is read, the
+  rest is not, and the warning says where.
 
 ## Manifest
 
