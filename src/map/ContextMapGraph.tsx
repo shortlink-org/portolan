@@ -21,6 +21,7 @@ import { useNavigate } from "react-router";
 import {
   Background,
   MarkerType,
+  Panel,
   ReactFlow,
   ReactFlowProvider,
 } from "@xyflow/react";
@@ -29,6 +30,7 @@ import "@xyflow/react/dist/style.css";
 import type { Catalog, Status } from "../catalog";
 import { DiagramSkeleton } from "../components/DiagramSkeleton";
 import { layoutWithElk } from "../graph/elk";
+import { ExportSeg } from "../graph/GraphToolbar";
 import { EDGE_W, statusColor, statusDash } from "../graph/theme";
 import type { PortolanNode } from "../graph/nodes";
 import { PATTERN_LABEL } from "../lib/context-map";
@@ -250,6 +252,11 @@ export function ContextMapGraph({
         key={fitKey}
       >
         <Background gap={20} size={2} />
+        {/* The map has no modes to switch, so its only control is the way
+            out: the drawing as a file, for the page that explains it. */}
+        <Panel position="top-right">
+          <ExportSeg name="context-map" />
+        </Panel>
       </ReactFlow>
     </div>
   );

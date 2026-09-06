@@ -2,7 +2,7 @@ import { Link, useParams } from "react-router";
 import { AlertTriangle } from "lucide-react";
 import { catalog } from "../data";
 import { componentKind, groupKind, ownersOf, technologiesOf } from "../catalog";
-import { contextStats } from "../lib/derive";
+import { contextOwners, contextStats } from "../lib/derive";
 import { ctxStyle } from "../lib/context-color";
 import { middleTruncate, plural } from "../lib/format";
 import { staggerStyle } from "../lib/motion";
@@ -25,6 +25,7 @@ export function ContextPage() {
   const context = catalog.contexts.find((c) => c.id === contextId);
   if (!context) return <NotFound kind="Context" id={contextId} />;
   const stats = contextStats(context);
+  const owners = contextOwners(context);
 
   // Flattened once, here: a context is read as "what does this domain own",
   // and the answer is not one service deep.
@@ -92,6 +93,28 @@ export function ContextPage() {
             </>
           ) : null}
         </div>
+        {/* Who to ask about the whole domain, folded up from what its
+            services' CODEOWNERS say - the context itself names nobody. The
+            widest owner comes first; each handle says which services it
+            stands behind, and is copied rather than linked, as on a service
+            page. Absent is absent. */}
+        {owners.length > 0 ? (
+          <div className="mono mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-muted">
+            <span>ask</span>
+            {owners.map(({ handle, services }) => (
+              <Ident
+                key={handle}
+                value={handle}
+                title={`${handle} owns ${services.length} of ${context.services.length}: ${services.map((s) => s.slug).join(", ")}`}
+              >
+                {middleTruncate(handle, 28)}
+                {services.length < context.services.length ? (
+                  <span className="text-muted"> ·{services.length}</span>
+                ) : null}
+              </Ident>
+            ))}
+          </div>
+        ) : null}
       </PageHeader>
 
       <div className="flex gap-section p-gutter">

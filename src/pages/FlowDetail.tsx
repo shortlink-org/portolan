@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { toPng, toSvg } from "html-to-image";
+import { saveCanvasImage } from "../lib/export-canvas";
 import { allRepos, flowContexts, walkSteps } from "../catalog";
 import type { Flow, Status, Step } from "../catalog";
 import { catalog, index } from "../data";
@@ -11,7 +11,6 @@ import { toClipboard } from "../lib/clipboard";
 import { flowRepoService } from "../lib/derive";
 import { statusCounts } from "../lib/flow-tree";
 import { sourceHref } from "../lib/source-link";
-import { artifactFilename } from "../lib/export-file";
 import { flowAnswers } from "../flow/answers";
 import { flowMermaid } from "../flow/mermaid";
 import { useToastStore } from "../app/toast";
@@ -375,16 +374,8 @@ export function FlowDetail() {
     }
     setExporting(true);
     try {
-      const render = kind === "png" ? toPng : toSvg;
-      const url = await render(viewport, {
-        backgroundColor: getComputedStyle(document.body).backgroundColor,
-        ...(kind === "png" ? { pixelRatio: 2 } : {}),
-      });
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = artifactFilename(flow.slug, kind);
-      a.click();
-      say(`${kind.toUpperCase()} downloaded — ${a.download}`);
+      const file = await saveCanvasImage(viewport, flow.slug, kind);
+      say(`${kind.toUpperCase()} downloaded — ${file}`);
     } catch (cause) {
       say(`could not export ${kind.toUpperCase()}: ${cause instanceof Error ? cause.message : String(cause)}`);
     } finally {

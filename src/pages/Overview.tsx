@@ -1,12 +1,13 @@
 import { Link } from "react-router";
 import { AlertTriangle } from "lucide-react";
 import { CATALOG_PATH, catalog, index } from "../data";
-import { contextStats, problems, widestFlows } from "../lib/derive";
+import { contextOwners, contextStats, problems, widestFlows } from "../lib/derive";
+import type { ContextOwner } from "../lib/derive";
 import { dataProblems } from "../lib/data-problems";
 import { protoProblems } from "../lib/proto-problems";
 import { wireProblems } from "../lib/wire-problems";
 import { ctxStyle } from "../lib/context-color";
-import { plural } from "../lib/format";
+import { middleTruncate, plural } from "../lib/format";
 import { useCountUp, staggerStyle } from "../lib/motion";
 import { usePhone } from "../app/responsive";
 import { CONTEXT_ANCHOR, OVERVIEW_ANCHOR, paths } from "../routes";
@@ -73,6 +74,17 @@ function HealthMetric({
       </span>
     </Link>
   );
+}
+
+/**
+ * The tooltip behind a context's owners: each handle with the services it
+ * stands behind, so "who to ask" also says what about.
+ */
+function askTitle(owners: readonly ContextOwner[]): string | undefined {
+  if (owners.length === 0) return undefined;
+  return `Who to ask: ${owners
+    .map((o) => `${o.handle} (${o.services.map((s) => s.slug).join(", ")})`)
+    .join("; ")}`;
 }
 
 export function Overview() {
@@ -159,6 +171,7 @@ export function Overview() {
         >
           {catalog.contexts.map((context, i) => {
             const stats = contextStats(context);
+            const owners = contextOwners(context);
             return (
               <div
                 key={context.id}
@@ -169,7 +182,7 @@ export function Overview() {
                    The inner gap is zeroed because a subgrid inherits the
                    grid's, and the margins on the rows already say how far
                    apart they sit. */
-                className="card card-tagged stagger-in grid grid-rows-subgrid row-span-4 gap-y-0"
+                className="card card-tagged stagger-in grid grid-rows-subgrid row-span-5 gap-y-0"
                 style={{ ...staggerStyle(i), ...ctxStyle(context.id) }}
               >
                 {/* The name and its actions, alone on the first line. With the
@@ -213,6 +226,12 @@ export function Overview() {
                   ) : null}
                 </div>
                 <p className="mt-2 text-muted">{context.summary}</p>
+                {/* Who to ask, folded up from the services' CODEOWNERS. The
+                    row is there in every card of the row, empty where no
+                    service named anybody, so the counts still line up. */}
+                <div className="mono trunc mt-2 text-muted" title={askTitle(owners)}>
+                  {owners.length > 0 ? middleTruncate(owners.map((o) => o.handle).join(" · ")) : null}
+                </div>
                 <div className="mono mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 self-end whitespace-nowrap text-muted">
                   <Count
                     value={stats.services}

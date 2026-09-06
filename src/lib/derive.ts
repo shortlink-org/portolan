@@ -11,7 +11,7 @@ import type {
   Service,
   Step,
 } from "../catalog";
-import { aggregateBlocks, flowContexts, walkSteps } from "../catalog";
+import { aggregateBlocks, flowContexts, ownersOf, walkSteps } from "../catalog";
 
 export interface ContextStats {
   services: number;
@@ -40,6 +40,40 @@ export function contextStats(context: BoundedContext): ContextStats {
     }
   }
   return { services: context.services.length, aggregates, events, unresolved };
+}
+
+export interface ContextOwner {
+  /** A CODEOWNERS handle, exactly as the file spells it. */
+  handle: string;
+  /** The services of the context this handle owns, in catalog order. */
+  services: Service[];
+}
+
+/**
+ * Who to ask about a context, folded up from what its services say.
+ *
+ * A context names no owner of its own: the estate's CODEOWNERS speaks in
+ * paths, and a path is a service. So the context's owners are the union of
+ * its services' owners, widest first - the handle behind most of the context
+ * is the one most likely to know, and a tie keeps the order the services
+ * came in. An empty answer means no service named anybody, which is not the
+ * same as nobody owning it.
+ */
+export function contextOwners(context: BoundedContext): ContextOwner[] {
+  const byHandle = new Map<string, Service[]>();
+  for (const service of context.services) {
+    for (const handle of ownersOf(service)) {
+      const owned = byHandle.get(handle);
+      if (owned) {
+        if (!owned.includes(service)) owned.push(service);
+      } else {
+        byHandle.set(handle, [service]);
+      }
+    }
+  }
+  return [...byHandle]
+    .map(([handle, services]) => ({ handle, services }))
+    .sort((a, b) => b.services.length - a.services.length);
 }
 
 /** Flows ordered by how many contexts they cross, widest first. */

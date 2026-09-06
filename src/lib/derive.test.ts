@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { catalog } from "../testing/estate";
 import {
   addedFields,
+  contextOwners,
   contextStats,
   flowRepoService,
   flowRoles,
@@ -210,5 +211,41 @@ describe("flowRepoService", () => {
     expect(flowRepoService(catalog, webhook)?.id).toBe("payments.ledger");
     const login = catalog.flows.find((f) => f.slug === "auth-login")!;
     expect(flowRepoService(catalog, login)?.repo).toBe("github.com/shortlink-org/portolan");
+  });
+});
+
+describe("contextOwners", () => {
+  const shop = () => {
+    const found = structuredClone(catalog.contexts.find((c) => c.id === "shop"));
+    if (!found) throw new Error("no shop context");
+    return found;
+  };
+
+  it("is empty when no service names anybody", () => {
+    expect(contextOwners(shop())).toEqual([]);
+  });
+
+  it("folds the services' owners into one list, widest owner first", () => {
+    const context = shop();
+    const [a, b, c] = context.services;
+    a!.owners = ["@acme/platform"];
+    b!.owners = ["@acme/oms-team", "@acme/platform"];
+    c!.owners = ["@acme/oms-team", "@acme/platform"];
+
+    const owners = contextOwners(context);
+    expect(owners.map((o) => o.handle)).toEqual(["@acme/platform", "@acme/oms-team"]);
+    expect(owners[0]!.services).toEqual([a, b, c]);
+    expect(owners[1]!.services).toEqual([b, c]);
+  });
+
+  it("keeps the order the services came in on a tie", () => {
+    const context = shop();
+    context.services[0]!.owners = ["@later"];
+    context.services[1]!.owners = ["@later"];
+    context.services[2]!.owners = ["@first", "@first"];
+    // ...and a handle repeated on one service is still one owner of it.
+    const owners = contextOwners(context);
+    expect(owners.map((o) => o.handle)).toEqual(["@later", "@first"]);
+    expect(owners[1]!.services).toHaveLength(1);
   });
 });

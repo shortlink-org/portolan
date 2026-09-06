@@ -4,8 +4,19 @@
 // viewport, and a viewport control that sits outside the viewport it moves is
 // a control the reader has to remember belongs to it.
 
+import { useRef, useState } from "react";
 import { Panel, useReactFlow } from "@xyflow/react";
-import { Crosshair, Maximize2, Minus, Plus } from "lucide-react";
+import {
+  Crosshair,
+  FileCode2,
+  ImageDown,
+  Maximize2,
+  Minus,
+  Plus,
+} from "lucide-react";
+import { useToastStore } from "../app/toast";
+import { saveCanvasImage, viewportOf } from "../lib/export-canvas";
+import type { ImageKind } from "../lib/export-canvas";
 import type { GraphMode } from "./dependency-layout";
 
 export const FIT_OPTIONS = { padding: 0.15, maxZoom: 1.25 } as const;
@@ -64,7 +75,67 @@ export function GraphToolbar({
           </span>
         </button>
       </div>
+
+      <ExportSeg name={`dependency-graph-${mode}`} />
     </Panel>
+  );
+}
+
+/**
+ * The canvas as a picture: png for a slide, svg for a wiki.
+ *
+ * It finds its own viewport by walking up to the canvas it is floating over,
+ * so it needs no ref from the page and sits in any React Flow toolbar the
+ * same way. The file is named after the drawing and the catalog revision,
+ * like every other export.
+ */
+export function ExportSeg({ name }: { name: string }) {
+  const say = useToastStore((s) => s.say);
+  const self = useRef<HTMLDivElement | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const save = async (kind: ImageKind): Promise<void> => {
+    const viewport = viewportOf(self.current?.closest(".react-flow"));
+    if (!viewport) {
+      say("the canvas is not on screen");
+      return;
+    }
+    setSaving(true);
+    try {
+      const file = await saveCanvasImage(viewport, name, kind);
+      say(`${kind.toUpperCase()} downloaded — ${file}`);
+    } catch (cause) {
+      say(
+        `could not export ${kind.toUpperCase()}: ${cause instanceof Error ? cause.message : String(cause)}`,
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div ref={self} className="seg seg-float" role="group" aria-label="Export">
+      <button
+        type="button"
+        onClick={() => void save("png")}
+        disabled={saving}
+        title="Save the canvas as a PNG"
+        className="flex items-center gap-1.5"
+      >
+        <ImageDown size={13} aria-hidden />
+        {saving ? "saving…" : "png"}
+      </button>
+      <button
+        type="button"
+        onClick={() => void save("svg")}
+        disabled={saving}
+        title="Save the canvas as an SVG"
+        className="flex items-center gap-1.5"
+      >
+        <FileCode2 size={13} aria-hidden />
+        svg
+      </button>
+    </div>
   );
 }
 
