@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { rmSync } from "node:fs";
 
-import { diffGeneratedFiles, discoverProject, inspectionRoot, planProject, writeProject } from "./local-api.mjs";
+import { diffGeneratedFiles, discoverProject, inspectionRoot, planProject, readLocalSource, writeProject } from "./local-api.mjs";
 
 const roots = [];
 afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
@@ -29,6 +29,29 @@ function workspace() {
 }
 
 describe("local project setup", () => {
+  it("reads UTF-8 source inside the workspace", () => {
+    const root = workspace();
+    writeFileSync(join(root, "services/billing/client.go"), "package billing\n");
+    expect(readLocalSource(root, "services/billing/client.go")).toEqual({
+      path: "services/billing/client.go",
+      content: "package billing\n",
+    });
+  });
+
+  it("refuses local source traversal, symlink escape, binary files, and large files", () => {
+    const root = workspace();
+    const outside = mkdtempSync(join(tmpdir(), "portolan-source-outside-"));
+    roots.push(outside);
+    writeFileSync(join(outside, "secret.go"), "secret\n");
+    symlinkSync(join(outside, "secret.go"), join(root, "escape.go"));
+    writeFileSync(join(root, "binary.go"), Buffer.from([1, 0, 2]));
+    writeFileSync(join(root, "large.go"), Buffer.alloc(1024 * 1024 + 1, 65));
+    expect(() => readLocalSource(root, "../secret.go")).toThrow(/inside this repository/);
+    expect(() => readLocalSource(root, "escape.go")).toThrow(/outside this repository/);
+    expect(() => readLocalSource(root, "binary.go")).toThrow(/binary/);
+    expect(() => readLocalSource(root, "large.go")).toThrow(/1 MB/);
+  });
+
   it("detects project technologies without executing the project", () => {
     const root = workspace();
     const discovery = discoverProject(root, "services/billing");

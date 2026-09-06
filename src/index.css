@@ -32,6 +32,15 @@
   --accent-lo: #1a5ec9;
   --accent-hi: #3d86f5;
 
+  /* Source preview syntax. These are semantic roles rather than one imported
+     editor theme, so code follows Portolan's light and dark palettes. */
+  --syntax-comment: #6a737d;
+  --syntax-keyword: #7a3fa8;
+  --syntax-string: #0f7a6c;
+  --syntax-number: #a8552b;
+  --syntax-title: #2563a8;
+  --syntax-attribute: #8c4a6b;
+
   --status-verified: #157f4a;
   --status-declared: #8a6d1f;
   --status-unresolved: #c02a29;
@@ -140,6 +149,13 @@
   --accent: #5b9dff;
   --accent-lo: #3d7fe0;
   --accent-hi: #7ab2ff;
+
+  --syntax-comment: #8b97a4;
+  --syntax-keyword: #c6a0f6;
+  --syntax-string: #72d5c4;
+  --syntax-number: #efa66a;
+  --syntax-title: #82b4f4;
+  --syntax-attribute: #e19abb;
 
   --status-verified: #3fbf7f;
   --status-declared: #d6a844;
@@ -321,6 +337,51 @@
 }
 
 @layer components {
+  .source-code .hljs-comment,
+  .source-code .hljs-quote {
+    color: var(--syntax-comment);
+    font-style: italic;
+  }
+  .source-code .hljs-keyword,
+  .source-code .hljs-selector-tag,
+  .source-code .hljs-meta,
+  .source-code .hljs-doctag {
+    color: var(--syntax-keyword);
+  }
+  .source-code .hljs-string,
+  .source-code .hljs-regexp,
+  .source-code .hljs-template-tag,
+  .source-code .hljs-template-variable,
+  .source-code .hljs-addition {
+    color: var(--syntax-string);
+  }
+  .source-code .hljs-number,
+  .source-code .hljs-literal,
+  .source-code .hljs-symbol,
+  .source-code .hljs-bullet,
+  .source-code .hljs-deletion {
+    color: var(--syntax-number);
+  }
+  .source-code .hljs-title,
+  .source-code .hljs-section,
+  .source-code .hljs-built_in,
+  .source-code .hljs-type {
+    color: var(--syntax-title);
+  }
+  .source-code .hljs-attr,
+  .source-code .hljs-attribute,
+  .source-code .hljs-variable,
+  .source-code .hljs-params,
+  .source-code .hljs-property {
+    color: var(--syntax-attribute);
+  }
+  .source-code .hljs-emphasis {
+    font-style: italic;
+  }
+  .source-code .hljs-strong {
+    font-weight: 600;
+  }
+
   /* Floating UI publishes the whole available viewport as an inline maximum.
      A branch list may contain a hundred refs; cap it to a readable picker and
      let the list scroll instead of turning the picker into a page-sized veil. */

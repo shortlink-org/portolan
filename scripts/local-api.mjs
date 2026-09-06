@@ -25,6 +25,7 @@ export const GENERATOR_EVENT_PREFIX = "::portolan-event::";
 
 const SKIP = new Set([".git", ".portolan", "build", "dist", "node_modules", "target", "vendor"]);
 const MAX_FILES = 12_000;
+const MAX_SOURCE_BYTES = 1024 * 1024;
 const jobs = new Map();
 const SNAPSHOT_SKIP = new Set([".git", ".portolan", "dist", "node_modules", "target"]);
 
@@ -39,6 +40,35 @@ function safeRoot(workspace, input) {
   }
   const root = relative(workspaceReal, targetReal).replaceAll(sep, "/") || ".";
   return { root, absolute: targetReal };
+}
+
+/** A UTF-8 source file inside the served workspace, never outside it. */
+export function readLocalSource(workspace, input) {
+  if (typeof input !== "string" || !input.trim()) throw new Error("Source path is required.");
+  const clean = input.trim().replaceAll("\\", "/").replace(/^\.\//, "");
+  if (clean.includes("\0") || clean.startsWith("/") || clean.split("/").includes("..")) {
+    throw new Error("Source path must stay inside this repository.");
+  }
+  const workspaceReal = realpathSync(workspace);
+  const targetReal = realpathSync(resolve(workspaceReal, clean));
+  if (targetReal !== workspaceReal && !targetReal.startsWith(`${workspaceReal}${sep}`)) {
+    throw new Error("Source path resolves outside this repository.");
+  }
+  const stat = statSync(targetReal);
+  if (!stat.isFile()) throw new Error("Source path is not a file.");
+  if (stat.size > MAX_SOURCE_BYTES) throw new Error("Source file is larger than the 1 MB preview limit.");
+  const bytes = readFileSync(targetReal);
+  if (bytes.includes(0)) throw new Error("Source file is binary.");
+  let content;
+  try {
+    content = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    throw new Error("Source file is not UTF-8 text.");
+  }
+  return {
+    path: relative(workspaceReal, targetReal).replaceAll(sep, "/"),
+    content,
+  };
 }
 
 function walk(root) {
@@ -659,6 +689,7 @@ export function localApiPlugin(workspace = process.cwd()) {
             return send(res, 405, { error: "Use a local JSON request." });
           }
           const input = await body(req);
+          if (url.pathname === `${LOCAL_API_PREFIX}/source`) return send(res, 200, readLocalSource(workspace, input.path));
           if (url.pathname === `${LOCAL_API_PREFIX}/repositories/prepare`) return send(res, 200, prepareRepository(workspace, input));
           if (url.pathname === `${LOCAL_API_PREFIX}/discover`) return send(res, 200, discoverProject(workspace, input.path));
           if (url.pathname === `${LOCAL_API_PREFIX}/projects/preview`) {

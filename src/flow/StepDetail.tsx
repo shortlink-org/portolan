@@ -5,8 +5,9 @@ import { allRepos, stepFrames } from "../catalog";
 import type { Flow, Step, StepFrame } from "../catalog";
 import { catalog, index } from "../data";
 import { Ident } from "../components/Ident";
+import { SourcePreviewButton } from "../components/SourcePreview";
 import { flowRepoService } from "../lib/derive";
-import { sourceHref } from "../lib/source-link";
+import { sourceLocation } from "../lib/source-link";
 import { AdrNumber, StatusChip } from "../components/primitives";
 import { stepAnswer } from "./answers";
 import { paths, eventPath, servicePath } from "../routes";
@@ -136,7 +137,7 @@ function EventDetail({ step, flow }: { step: Step; flow: Flow }) {
       {latest ? (
         <>
           <Label>Source</Label>
-          <Ident block value={latest.source} className="text-muted" />
+          <SourceWhere where={latest.source} flow={flow} />
         </>
       ) : null}
     </>
@@ -181,7 +182,7 @@ function RpcDetail({ step, flow }: { step: Step; flow: Flow }) {
           <Label>Declared by</Label>
           <div className="mono text-muted">peer: {call.peer}</div>
           <Label>Source</Label>
-          <Ident block value={call.source} className="text-muted" />
+          <SourceWhere where={call.source} flow={flow} />
         </>
       ) : (
         <>
@@ -274,15 +275,15 @@ function Frames({ step, flow }: { step: Step; flow: Flow }) {
  * `file:line` in the repository this was built from opens on the line; a
  * trace id or a path in another repository stays as it is, to copy.
  */
-function Where({ step, flow }: { step: Step; flow: Flow }) {
-  if (!step.line) return <div className="mono text-muted">not recorded</div>;
-  const href = sourceHref(step.line, flowRepoService(catalog, flow), allRepos(catalog));
+function SourceWhere({ where, flow }: { where: string; flow: Flow }) {
+  const location = sourceLocation(where, flowRepoService(catalog, flow), allRepos(catalog));
   return (
     <div className="mono flex flex-wrap items-center gap-2 break-all text-muted">
-      <Ident block value={step.line} className="text-muted" />
-      {href ? (
+      <Ident block value={where} className="text-muted" />
+      <SourcePreviewButton location={location} />
+      {location?.href ? (
         <a
-          href={href}
+          href={location.href}
           target="_blank"
           rel="noreferrer"
           className="rounded-control text-accent hover:underline"
@@ -293,6 +294,11 @@ function Where({ step, flow }: { step: Step; flow: Flow }) {
       ) : null}
     </div>
   );
+}
+
+function Where({ step, flow }: { step: Step; flow: Flow }) {
+  if (!step.line) return <div className="mono text-muted">not recorded</div>;
+  return <SourceWhere where={step.line} flow={flow} />;
 }
 
 export function StepDetailBody({ step, flow }: { step: Step; flow: Flow }) {

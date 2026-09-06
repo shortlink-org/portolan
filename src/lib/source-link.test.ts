@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { BuildInfo } from "./build-info";
 import type { RepoPin } from "../catalog";
-import { sourceHref, splitLine, treeHref } from "./source-link";
+import { sourceHref, sourceLocation, splitLine, treeHref } from "./source-link";
 
 const GH: BuildInfo = {
   commit: "4f1c9ae0c1b2d3e4f5a6b7c8d9e0f1a2b3c4d5e6",
@@ -93,6 +93,42 @@ describe("sourceHref", () => {
 
   it("links a service that names no repository, since there is only the one", () => {
     expect(sourceHref("docs/x.md", { repo: "" }, [], GH)).toMatch(/\/docs\/x\.md$/);
+  });
+});
+
+describe("sourceLocation", () => {
+  it("keeps the immutable repository, commit, path, and line needed by a preview", () => {
+    expect(sourceLocation("examples/auth/internal/x.go:20", { repo: "github.com/shortlink-org/portolan" }, [], GH)).toEqual({
+      kind: "remote",
+      provider: "github",
+      origin: "https://github.com",
+      repositoryUrl: "https://github.com/shortlink-org/portolan",
+      ref: GH.commit,
+      path: "examples/auth/internal/x.go",
+      line: 20,
+      href: `https://github.com/shortlink-org/portolan/blob/${GH.commit}/examples/auth/internal/x.go#L20`,
+    });
+  });
+
+  it("uses the explicit forge hint for a self-hosted GitLab repository", () => {
+    const gl = { ...GH, repoUrl: "https://git.example.test/acme/portolan", forge: "gitlab" as const };
+    expect(sourceLocation("internal/x.go:3", { repo: "git.example.test/acme/portolan" }, [], gl)).toMatchObject({
+      kind: "remote",
+      provider: "gitlab",
+      origin: "https://git.example.test",
+      ref: GH.commit,
+      path: "internal/x.go",
+      line: 3,
+    });
+  });
+
+  it("falls back to the localhost source service when no forge is known", () => {
+    expect(sourceLocation("internal/x.go:3", null, [], { ...GH, repoUrl: "", commit: "" })).toEqual({
+      kind: "local",
+      path: "internal/x.go",
+      line: 3,
+      href: null,
+    });
   });
 });
 

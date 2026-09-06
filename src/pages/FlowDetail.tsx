@@ -17,7 +17,8 @@ import { middleTruncate } from "../lib/format";
 import { toClipboard } from "../lib/clipboard";
 import { flowRepoService } from "../lib/derive";
 import { statusCounts } from "../lib/flow-tree";
-import { sourceHref } from "../lib/source-link";
+import { sourceLocation } from "../lib/source-link";
+import { SourcePreviewButton } from "../components/SourcePreview";
 import { flowAnswers } from "../flow/answers";
 import { flowMermaid } from "../flow/mermaid";
 import { useToastStore } from "../app/toast";
@@ -370,8 +371,8 @@ export function FlowDetail() {
   const contexts = flowContexts(flow);
   const viewId = crossOnly ? flowCrossViewId(flow) : flowViewId(flow);
   const hiddenCount = crossOnly ? hidden.size : 0;
-  const sourceLink = flow.source
-    ? sourceHref(flow.source, flowRepoService(catalog, flow), allRepos(catalog))
+  const flowSource = flow.source
+    ? sourceLocation(flow.source, flowRepoService(catalog, flow), allRepos(catalog))
     : null;
 
   const copyMermaid = () => {
@@ -487,9 +488,10 @@ export function FlowDetail() {
               {middleTruncate(flow.source, 40)}
             </Ident>
           ) : null}
-          {sourceLink ? (
+          <SourcePreviewButton location={flowSource} />
+          {flowSource?.href ? (
             <a
-              href={sourceLink}
+              href={flowSource.href}
               target="_blank"
               rel="noreferrer"
               className="mono rounded-control text-accent hover:underline"

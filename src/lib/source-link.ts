@@ -78,6 +78,27 @@ interface Where {
   ref: string;
 }
 
+export type RemoteSourceLocation = {
+  kind: "remote";
+  provider: "github" | "gitlab";
+  origin: string;
+  repositoryUrl: string;
+  ref: string;
+  path: string;
+  line: number | null;
+  href: string;
+};
+
+export type LocalSourceLocation = {
+  kind: "local";
+  path: string;
+  line: number | null;
+  href: string | null;
+};
+
+/** Everything needed to fetch and display the immutable source behind a catalog fact. */
+export type SourceLocation = RemoteSourceLocation | LocalSourceLocation;
+
 /**
  * Where `service` can be read: this repository at the built commit, or the
  * repository the service lives in at the commit it was fetched at. Null when
@@ -98,6 +119,53 @@ function whereFor(
   return { url: `https://${bare(pin.repo)}`, ref: pin.commit };
 }
 
+function providerFor(url: string, info: BuildInfo): "github" | "gitlab" | null {
+  let host = "";
+  try {
+    host = new URL(url).hostname.toLowerCase();
+  } catch {
+    return null;
+  }
+  if (info.repoUrl && bare(info.repoUrl) === bare(url) && info.forge) return info.forge;
+  if (host === "github.com" || host.endsWith(".github.com")) return "github";
+  if (host === "gitlab.com" || host.includes("gitlab")) return "gitlab";
+  return null;
+}
+
+/**
+ * Resolve a catalog source to a fetchable location. When no forge is known,
+ * the same relative path can still be served by Portolan's localhost-only
+ * control plane in local mode.
+ */
+export function sourceLocation(
+  where: string,
+  service: Pick<Service, "repo"> | null | undefined,
+  pins: readonly RepoPin[] = [],
+  info: BuildInfo = buildInfo,
+): SourceLocation | null {
+  const { path, line } = splitLine(where);
+  if (!looksLikePath(path)) return null;
+  const repo = service?.repo ?? "";
+  const at = whereFor(repo, pins, info);
+  const href = at
+    ? `${at.url}${blobPath(at.url)}${at.ref}/${repositoryPath(path, repo, info)}${line ? `#L${line}` : ""}`
+    : null;
+  if (!at) return { kind: "local", path, line, href: null };
+
+  const provider = providerFor(at.url, info);
+  if (!provider) return { kind: "local", path, line, href };
+  return {
+    kind: "remote",
+    provider,
+    origin: new URL(at.url).origin,
+    repositoryUrl: at.url,
+    ref: at.ref,
+    path: repositoryPath(path, repo, info),
+    line,
+    href: href!,
+  };
+}
+
 /**
  * A link to `where` in the repository `service` lives in, or null when the
  * path is not one, or nothing knows where that repository is.
@@ -108,12 +176,7 @@ export function sourceHref(
   pins: readonly RepoPin[] = [],
   info: BuildInfo = buildInfo,
 ): string | null {
-  const { path, line } = splitLine(where);
-  if (!looksLikePath(path)) return null;
-  const at = whereFor(service?.repo ?? "", pins, info);
-  if (!at) return null;
-
-  return `${at.url}${blobPath(at.url)}${at.ref}/${repositoryPath(path, service?.repo ?? "", info)}${line ? `#L${line}` : ""}`;
+  return sourceLocation(where, service, pins, info)?.href ?? null;
 }
 
 /** A link to a directory of the repository, for a service's own path. */
