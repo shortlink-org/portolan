@@ -1,0 +1,12 @@
+swagger: "2.0"
+info:
+  title: Aviasupp
+  version: "1.0"
+paths:
+  /book:
+    post:
+      tags: [Book]
+      operationId: book
+      responses:
+        "200":
+          description: OK

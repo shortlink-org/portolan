@@ -31,6 +31,18 @@ type Options struct {
 	// them; an estate-wide step points its own glob somewhere else.
 	Files []string `json:"files,omitempty"`
 
+	// Scope is what a record is about when it does not say so itself: a
+	// service, `avia.aviasupp`, a context, or the organisation. A record
+	// written by adr-tools has no such field, and its id takes its prefix
+	// from here. A MADR record with a Scope bullet keeps its own.
+	Scope string `json:"scope,omitempty"`
+
+	// History says where a record's author and dates come from: "git", the
+	// default, reads the file's commits - who first added it and who last
+	// touched it; "none" reads nothing, for a tree that is not a checkout
+	// or a fragment that must not change when the history does.
+	History string `json:"history,omitempty"`
+
 	// Out names the fragment file.
 	Out string `json:"out,omitempty"`
 }

@@ -17,7 +17,7 @@ import {
 } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { join } from "node:path";
+import { join, relative, resolve } from "node:path";
 
 import {
   addBuildStep,
@@ -26,7 +26,7 @@ import {
   writeBuildReport,
 } from "./build-report.mjs";
 import { loadCatalog } from "./catalog-sources.mjs";
-import { loadManifest } from "./manifest.mjs";
+import { loadManifest, stepKeys } from "./manifest.mjs";
 import { runPlugin } from "./plugin-host.mjs";
 import { vendoredCommit } from "./vendor-lock.mjs";
 import {
@@ -50,7 +50,15 @@ function event(value) {
 // The listing is keyed by step, not by directory. Two extractors writing
 // fragments side by side into the same directory is the normal case - one knows
 // the domain, the other the API - and a directory-wide list would have each of
-// them delete the other's work on every run.
+// them delete the other's work on every run. What names a step is decided in
+// manifest.mjs: its plugin, and the file it names when two steps of one plugin
+// share a directory.
+//
+// A key that no step of this run answers to belonged to a step that was taken
+// out of the manifest or renamed. Its files are as stale as any other, and they
+// are removed once every step has run - not before, because a renamed step
+// writes the same files under its new key, and a file removed and written back
+// in one run is drift that never happened.
 const MANIFEST = ".portolan-manifest";
 
 const check = process.argv.includes("--check");
@@ -62,7 +70,17 @@ const report = createBuildReport({
   manifestSha256,
 });
 let manifest = {};
+let keys = stepKeys({});
 let drifted = false;
+
+// What each step wrote into each directory on this run, by key. The listing
+// on disk says what was written last time; in check mode it is never updated,
+// so the sweep at the end reads this rather than the file.
+const wroteThisRun = new Map();
+
+// Directories already swept this run; a second pass would report the same
+// removals again in check mode.
+const swept = new Set();
 
 try {
   persistReport();
@@ -95,6 +113,7 @@ async function generate() {
         .join("\n")}`,
     );
   }
+  keys = stepKeys(manifest);
   event({ type: "pipeline-ready", stepCount: (manifest.extract?.length ?? 0) + (manifest.verify?.length ?? 0) + (manifest.generate?.length ?? 0) });
 
   // Extractors run first and write catalog fragments; only then is there a
@@ -116,7 +135,7 @@ async function generate() {
   for (const step of manifest.verify ?? []) {
     const plugin = pluginNamed(step.plugin);
     const stamp = stampFor(step.in, step.out);
-    const own = (previous(step.out)[step.plugin] ?? []).map((name) => join(step.out, name));
+    const own = (previous(step.out)[keys.keyOf(step)] ?? []).map((name) => join(step.out, name));
     const { catalog } = await loadSources({ exclude: own });
     await executeStep("verify", step, `${step.plugin} ⇐ ${step.in}`, async () =>
       runPlugin(plugin, {
@@ -127,6 +146,11 @@ async function generate() {
       }),
     );
   }
+
+  // What a dropped extract step wrote is not part of the catalog, so it is
+  // swept before the catalog is read - not after, when the generators would
+  // already have documented it once more.
+  sweepAll();
 
   const { catalog, sources, conflicts } = await loadSources();
   console.log(
@@ -148,15 +172,28 @@ async function generate() {
       }),
     );
   }
+
+  sweepAll();
+}
+
+function sweepAll() {
+  for (const out of wroteThisRun.keys()) {
+    if (swept.has(out)) continue;
+    swept.add(out);
+    const changes = sweep(out, check);
+    if (changes.length > 0) {
+      drifted = summarise(`${out}: steps no longer in portolan.json`, [], changes) || drifted;
+    }
+  }
 }
 
 async function executeStep(phase, step, label, work) {
   const startedAt = Date.now();
   event({ type: "step-started", ordinal: report.steps.length, phase, plugin: step.plugin, input: step.in, output: step.out });
   try {
-    const { files } = await work();
-    const changes = apply(files, step.out, step.plugin, check);
-    const changed = summarise(label, files, changes);
+    const { files, warnings = [] } = await work();
+    const changes = apply(files, step.out, keys.keyOf(step), check);
+    const changed = summarise(label, files, changes, warnings);
     drifted = changed || drifted;
     const result = {
       phase,
@@ -169,6 +206,9 @@ async function executeStep(phase, step, label, work) {
       changedCount: changes.length,
       changes,
       files: files.map((file) => join(step.out, file.name)),
+      // What the plugin could not read, in its own words. Already printed as
+      // it ran; kept here so the Settings page can list it beside the step.
+      warnings,
     };
     addBuildStep(report, result);
     persistReport();
@@ -185,6 +225,7 @@ async function executeStep(phase, step, label, work) {
       changedCount: 0,
       changes: [],
       files: [],
+      warnings: [],
     };
     addBuildStep(report, result);
     persistReport();
@@ -211,8 +252,9 @@ function pluginNamed(name) {
 }
 
 /** Prints what a step did, and says whether it left the tree out of date. */
-function summarise(label, files, changes) {
-  const summary = `${label}: ${files.length} file${files.length === 1 ? "" : "s"}`;
+function summarise(label, files, changes, warnings = []) {
+  const said = warnings.length > 0 ? `, ${warnings.length} warning${warnings.length === 1 ? "" : "s"}` : "";
+  const summary = `${label}: ${files.length} file${files.length === 1 ? "" : "s"}${said}`;
 
   if (changes.length === 0) {
     console.log(`${summary}, up to date`);
@@ -267,14 +309,24 @@ function stampFor(root, out) {
     return { commit: vendored.slice(0, 7), generatedAt: "" };
   }
 
+  // The history read is the one the root lives in. A manifest pointed at a
+  // checkout elsewhere on the disk - the service being documented, not a copy
+  // of it vendored here - is stamped from that checkout's history, because the
+  // fragment describes that service and not the repository the manifest sits
+  // in. A root with no repository around it is stamped as uncommitted.
+  const repo = repositoryOf(root);
+  if (!repo) {
+    return { commit: "uncommitted", generatedAt: process.env.PORTOLAN_GENERATED_AT || new Date().toISOString() };
+  }
+
   // A shallow clone has no history to read: the one commit that was fetched has
   // no parent, so every path looks as though it changed there and every fragment
   // is stamped with the checkout rather than with its subject. That is wrong
   // quietly - the fragments regenerate, `--check` reports drift, and nothing
   // says why - so it is refused here instead.
-  if (shallow()) {
+  if (shallow(repo)) {
     fail(
-      "this is a shallow clone, where every path looks as though it changed in " +
+      `${repo} is a shallow clone, where every path looks as though it changed in ` +
         "the single commit that was fetched, so a fragment cannot be stamped " +
         "with the commit it describes. Fetch the full history first " +
         "(git fetch --unshallow, or actions/checkout with fetch-depth: 0).",
@@ -285,34 +337,46 @@ function stampFor(root, out) {
   // it, is not in the root's history to begin with - and excluding a parent
   // would exclude the root itself, leaving nothing to read and a stamp that
   // moved on every commit.
-  const inside = out && (out === root || out.startsWith(`${root.replace(/\/$/, "")}/`));
-  const exclude = inside && out !== root ? [`:(exclude)${out}`] : [];
+  const rootInRepo = relative(repo, resolve(root)) || ".";
+  const outInRepo = out ? relative(repo, resolve(out)) : "";
+  const inside = out && (outInRepo === rootInRepo || outInRepo.startsWith(`${rootInRepo.replace(/\/$/, "")}/`) || rootInRepo === ".");
+  const exclude = inside && outInRepo !== rootInRepo && !outInRepo.startsWith("..") ? [`:(exclude)${outInRepo}`] : [];
 
   for (const args of [
-    ["log", "-1", "--format=%h %cI", "--", root, ...exclude],
+    ["log", "-1", "--format=%h %cI", "--", rootInRepo, ...exclude],
     ["log", "-1", "--format=%h %cI"],
   ]) {
-    try {
-      const [commit, generatedAt] = execFileSync("git", args, { encoding: "utf8" }).trim().split(" ");
-      if (commit && generatedAt) return { commit, generatedAt };
-    } catch {
-      // Not a repository, or no commit touches this path yet.
-    }
+    const answer = git(repo, args);
+    if (!answer) continue;
+    const [commit, generatedAt] = answer.split(" ");
+    if (commit && generatedAt) return { commit, generatedAt };
   }
 
   return { commit: "uncommitted", generatedAt: process.env.PORTOLAN_GENERATED_AT || new Date().toISOString() };
 }
 
-/** Whether the history this runs against is truncated. */
-function shallow() {
+/** Runs git in a repository and answers with its trimmed output, or "" when it refused. */
+function git(repo, args) {
   try {
-    return execFileSync("git", ["rev-parse", "--is-shallow-repository"], {
+    return execFileSync("git", ["-C", repo, ...args], {
       encoding: "utf8",
-    }).trim() === "true";
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
   } catch {
-    // Not a repository at all, which stampFor already falls back for.
-    return false;
+    // Not a repository, or no commit touches this path yet. git has already
+    // said so on its own stderr, which is not this run's log.
+    return "";
   }
+}
+
+/** The working tree a directory belongs to, or "" when no repository holds it. */
+function repositoryOf(dir) {
+  return git(dir, ["rev-parse", "--show-toplevel"]);
+}
+
+/** Whether the history this runs against is truncated. */
+function shallow(repo) {
+  return git(repo, ["rev-parse", "--is-shallow-repository"]) === "true";
 }
 
 /** Reads, merges and validates every source the manifest names. */
@@ -328,9 +392,11 @@ async function loadSources(options = {}) {
  * Writes what the plugin asked for, and removes what it no longer asks for.
  * Returns a line per file that differs; in check mode nothing is touched.
  */
-function apply(files, out, step, checkOnly) {
+function apply(files, out, key, checkOnly) {
   const changes = [];
   const written = new Set();
+  if (!wroteThisRun.has(out)) wroteThisRun.set(out, new Map());
+  wroteThisRun.get(out).set(key, written);
 
   for (const file of files) {
     const target = safeJoin(out, file.name);
@@ -358,11 +424,11 @@ function apply(files, out, step, checkOnly) {
   const listing = previous(out);
   const claimedByOthers = new Set(
     Object.entries(listing)
-      .filter(([other]) => other !== step)
+      .filter(([other]) => other !== key)
       .flatMap(([, names]) => names),
   );
 
-  for (const stale of (listing[step] ?? []).filter(
+  for (const stale of (listing[key] ?? []).filter(
     (name) => !written.has(name) && !claimedByOthers.has(name),
   )) {
     changes.push({ kind: "removed", path: join(out, stale) });
@@ -376,7 +442,52 @@ function apply(files, out, step, checkOnly) {
   }
 
   if (!checkOnly) {
-    listing[step] = [...written].sort();
+    listing[key] = [...written].sort();
+    try {
+      writeOutputFile(out, MANIFEST, `${JSON.stringify(listing, null, 2)}\n`);
+    } catch (cause) {
+      fail(cause.message);
+    }
+    pruneEmptyDirs(out);
+  }
+
+  return changes;
+}
+
+/**
+ * Removes what the steps that are no longer in the manifest wrote into a
+ * directory, and forgets them. Runs after every step has written, so a file a
+ * dead key listed and a live step wrote again this run is kept - it was
+ * renamed, not dropped.
+ */
+function sweep(out, checkOnly) {
+  const changes = [];
+  const listing = previous(out);
+  const live = keys.liveIn(out);
+  const dead = Object.keys(listing).filter((key) => !live.has(key));
+  if (dead.length === 0) return changes;
+
+  const kept = new Set();
+  for (const key of live) {
+    for (const name of wroteThisRun.get(out)?.get(key) ?? listing[key] ?? []) kept.add(name);
+  }
+
+  for (const key of dead) {
+    for (const stale of listing[key].filter((name) => !kept.has(name))) {
+      kept.add(stale);
+      changes.push({ kind: "removed", path: join(out, stale) });
+      if (checkOnly) continue;
+
+      try {
+        removeOutputFile(out, stale);
+      } catch (cause) {
+        fail(cause.message);
+      }
+    }
+    delete listing[key];
+  }
+
+  if (!checkOnly) {
     try {
       writeOutputFile(out, MANIFEST, `${JSON.stringify(listing, null, 2)}\n`);
     } catch (cause) {

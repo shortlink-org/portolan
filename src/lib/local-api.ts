@@ -62,7 +62,7 @@ export type RunEvent =
   | { type: "run-started"; at: string; runId: string; mode: "write" | "check" | "preview" }
   | { type: "pipeline-ready"; at: string; stepCount: number }
   | { type: "step-started"; at: string; ordinal: number; phase: SetupPhase; plugin: string; input?: string; output: string }
-  | { type: "step-finished"; at: string; ordinal: number; phase: SetupPhase; plugin: string; status: SetupRunStepStatus; durationMs: number; fileCount: number; changedCount: number; changes: Array<{ kind: "added" | "changed" | "removed"; path: string }>; files: string[]; message?: string }
+  | { type: "step-finished"; at: string; ordinal: number; phase: SetupPhase; plugin: string; status: SetupRunStepStatus; durationMs: number; fileCount: number; changedCount: number; changes: Array<{ kind: "added" | "changed" | "removed"; path: string }>; files: string[]; warnings?: string[]; message?: string }
   | { type: "preview-ready"; at: string; files: GeneratedFileDiff[]; totalFiles: number; truncated: boolean }
   | { type: "run-finished"; at: string; status: string; durationMs?: number; message?: string }
   | { type: "process-finished"; at: string; status: string; durationMs?: number; message?: string }

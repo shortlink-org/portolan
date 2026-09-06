@@ -6,6 +6,8 @@
 - **Date:** 2026-09-04
 - **Scope:** [shop.cart](../shop/cart/README.md)
 - **Source:** [`examples/shop/cart/docs/adr/0003-prices-captured-never-recomputed.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/docs/adr/0003-prices-captured-never-recomputed.md)
+- **Committed:** Victor Login, 2026-09-04 (`18d3de7`)
+- **Revised:** Victor Login, 2026-09-04 (`7576ca7`)
 
 ### Context and Problem Statement
 

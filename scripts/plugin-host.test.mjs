@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 
-import { runPlugin, validateResponse } from "./plugin-host.mjs";
+import { runPlugin, validateResponse, warningsIn } from "./plugin-host.mjs";
 
 describe("plugin response validation", () => {
   it("accepts only named text files", () => {
@@ -43,6 +43,25 @@ describe("process plugins", () => {
       { portolanVersion: "0.1.0" },
     );
     expect(response.files).toEqual([{ name: "name with spaces.txt", contents: "ok" }]);
+    expect(response.warnings).toEqual([]);
+  });
+
+  it("keeps the warnings a plugin wrote to stderr beside its response", async () => {
+    const script = `
+      process.stderr.write("warning: shop.cart: internal/domain/errors has no struct called Errors\\n");
+      process.stderr.write("a note that is not a warning\\n");
+      process.stderr.write("warning: docs/adr/0004.md: left out of the fragment\\n");
+      process.stdin.resume();
+      process.stdin.on("end", () => process.stdout.write(JSON.stringify({files:[]})));
+    `;
+    const response = await runPlugin(
+      { name: "fixture", process: { command: process.execPath, args: ["-e", script] } },
+      { portolanVersion: "0.1.0" },
+    );
+    expect(response.warnings).toEqual([
+      "shop.cart: internal/domain/errors has no struct called Errors",
+      "docs/adr/0004.md: left out of the fragment",
+    ]);
   });
 
   it("kills a zip-bomb-like response before buffering it", async () => {
@@ -78,5 +97,13 @@ describe("wasm plugins", () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe("warningsIn", () => {
+  it("reads only the warning lines, and nothing from an empty stderr", () => {
+    expect(warningsIn("")).toEqual([]);
+    expect(warningsIn(undefined)).toEqual([]);
+    expect(warningsIn("warning: one\r\nnote\nwarning:   two  \nwarning: \n")).toEqual(["one", "two"]);
   });
 });

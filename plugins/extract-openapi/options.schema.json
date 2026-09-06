@@ -14,8 +14,20 @@
     },
     "spec": {
       "type": "string",
-      "description": "The OpenAPI document, relative to the input root. Left out, the extractor looks for one.",
+      "description": "The OpenAPI document, relative to the input root. Left out, the extractor walks the tree for every document and reads what sits beside each: a server generated from it means this service implements it, a client generated from it means this service calls it, and a called document names a system outside the estate unless peers says the api is one of ours.",
       "examples": ["internal/infrastructure/transport/http/gen/openapi.yaml"]
+    },
+    "peers": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "Which called documents are ours, as the api id to the service that implements it. A called document whose api is named here is that service's to describe, and is skipped rather than read as a system outside the estate.",
+      "examples": [{ "auth.v1": "auth.auth" }]
+    },
+    "externals": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "What a called document's system is called when the name its title would give is not the one wanted, as the api id to the external's bare id. Left out, a document titled \"Stripe API\" makes the external stripe.",
+      "examples": [{ "stripe.v1": "stripe" }]
     },
     "api": {
       "type": "string",

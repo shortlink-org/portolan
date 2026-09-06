@@ -38,24 +38,6 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 		owner = opts.External
 	}
 
-	specPath, err := findSpec(root, opts.Spec, b)
-	if err != nil {
-		return plugin.Response{}, err
-	}
-
-	doc, err := load(specPath)
-	if err != nil {
-		return plugin.Response{}, fmt.Errorf("%s: %w", specPath, err)
-	}
-
-	source := filepath.ToSlash(specPath)
-	api := firstNonEmpty(opts.API, apiID(doc))
-
-	provides := rpcServices(doc, api, source, b)
-	if len(provides) == 0 {
-		b.Warn(owner, source+" declares no operations")
-	}
-
 	fragment := catalog.Catalog{
 		GeneratedAt: in.GeneratedAt,
 		Commit:      in.Commit,
@@ -64,6 +46,36 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 		Flows:       []catalog.Flow{},
 		Adrs:        []catalog.Adr{},
 	}
+
+	var provides []catalog.RpcService
+	var externals []catalog.External
+	if opts.Spec == "" && !external {
+		// Nothing named: the tree says which documents it implements and
+		// which it calls.
+		provides, externals = discover(root, owner, opts, b)
+	} else {
+		specPath, err := findSpec(root, opts.Spec, b)
+		if err != nil {
+			return plugin.Response{}, err
+		}
+
+		doc, err := load(specPath)
+		if err != nil {
+			return plugin.Response{}, fmt.Errorf("%s: %w", specPath, err)
+		}
+
+		source := filepath.ToSlash(specPath)
+		api := firstNonEmpty(opts.API, apiID(doc))
+
+		provides = rpcServices(doc, api, source, b)
+		if len(provides) == 0 {
+			b.Warn(owner, source+" declares no operations")
+		}
+	}
+	if provides == nil {
+		provides = []catalog.RpcService{}
+	}
+
 	if external {
 		// Everything the catalog may claim about a system it does not own: what
 		// it answers on, and what the manifest says it is called and is for.
@@ -90,6 +102,9 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 				Aggregates: []catalog.Aggregate{},
 			}},
 		}}
+		if len(externals) > 0 {
+			fragment.Externals = externals
+		}
 	}
 
 	encoded, err := json.MarshalIndent(fragment, "", "  ")
@@ -153,7 +168,7 @@ func rpcServices(doc *document, api, source string, b *plugin.Builder) []catalog
 			// document names the last two whenever the body is a $ref, which
 			// is what lets a flow draw what comes back from a call and not
 			// only that one was made.
-			request, response := doc.shapes(operation)
+			request, response := doc.shapes(p.value, operation)
 			g.methods = append(g.methods, catalog.RpcMethod{
 				Name:     method,
 				Request:  request,
@@ -282,7 +297,7 @@ func schemaMessageName(doc *document, ref string) string {
 			return name
 		}
 	}
-	if name, ok := strings.CutPrefix(ref, schemaRefPrefix); ok {
+	if name, ok := refName(ref); ok {
 		return name
 	}
 	return ""
@@ -390,7 +405,7 @@ func typeOf(doc *document, node *yaml.Node) string {
 				return name
 			}
 		}
-		if name, ok := strings.CutPrefix(ref, schemaRefPrefix); ok {
+		if name, ok := refName(ref); ok {
 			return name
 		}
 

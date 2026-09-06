@@ -1,0 +1,15 @@
+openapi: 3.0.3
+info:
+  title: Acme Flights API
+  version: 1.4.0
+  description: Flights and ancillaries from Acme.
+externalDocs:
+  url: https://developer.acme.example/flights
+paths:
+  /v1/search:
+    post:
+      tags: [search]
+      operationId: search
+      responses:
+        "200":
+          description: OK

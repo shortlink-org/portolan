@@ -768,6 +768,17 @@ export interface Adr {
   supersedes?: string[];
   relates: { services?: string[]; events?: string[]; flows?: string[] };
   source: string; // path to the .md in its repo
+  // What git says about the file: the commit that first added it, and the one
+  // that last touched it when that is a different commit. Absent when the
+  // tree had no history to read.
+  created?: AdrCommit;
+  revised?: AdrCommit;
+}
+
+export interface AdrCommit {
+  commit: string; // full sha
+  author: string; // author name as git records it
+  date: string; // committer date, ISO
 }
 
 // ---------------------------------------------------------------------------

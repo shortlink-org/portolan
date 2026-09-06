@@ -6,6 +6,7 @@
 - **Date:** 2026-09-05
 - **Scope:** [delivery.core](../delivery/core/README.md)
 - **Source:** [`examples/shop/delivery/core/docs/adr/0002-a-shipment-waits-for-the-money.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/docs/adr/0002-a-shipment-waits-for-the-money.md)
+- **Committed:** Victor Login, 2026-09-05 (`d76a56c`)
 
 ### Context and Problem Statement
 

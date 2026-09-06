@@ -76,7 +76,7 @@ func readHTTPClient(p *pkg) (map[string]client, string) {
 		return nil, problem
 	}
 
-	c := client{pkg: spec.API, methods: map[string]string{}, source: source}
+	c := client{pkg: spec.API, methods: map[string]string{}, source: source, external: openapi.ExternalID(spec.Title)}
 	var unknown []string
 	for _, file := range p.files {
 		for _, decl := range file.Decls {

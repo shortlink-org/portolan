@@ -7,7 +7,7 @@ import { flowRoles } from "../lib/derive";
 import { treeHref } from "../lib/source-link";
 import { flowHealth } from "../lib/flow-tree";
 import { adrsForService, isCurrent } from "../lib/adr";
-import { AdrRow } from "../components/AdrRow";
+import { ADR_ROW_COLUMNS, AdrRow } from "../components/AdrRow";
 import { EVENT_ANCHOR, SERVICE_ANCHOR, aggregatePath, paths, servicePath } from "../routes";
 import { Markdown } from "../components/Markdown";
 import { middleTruncate, plural } from "../lib/format";
@@ -666,32 +666,41 @@ export function ServicePage() {
         </TabPanel>
 
         <TabPanel>
-          <div className="flex max-w-prose flex-col gap-1">
-            {adrs.length === 0 ? (
-              <Empty>nothing on the record names this service</Empty>
-            ) : null}
-            {current.map((adr) => (
-              <AdrRow key={adr.id} adr={adr} />
-            ))}
-            {retired.length > 0 ? (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setShowRetired((v) => !v)}
-                  aria-expanded={showRetired}
-                  className="mono mt-1 self-start border border-dashed px-2 py-1 border-line-strong text-muted hover:bg-surface"
-                >
-                  {showRetired ? "hide" : "show"} {retired.length}{" "}
-                  {retired.every((a) => a.status === "superseded")
-                    ? "superseded"
-                    : "no longer in force"}
-                </button>
-                {showRetired
-                  ? retired.map((adr) => <AdrRow key={adr.id} adr={adr} />)
-                  : null}
-              </>
-            ) : null}
-          </div>
+          {adrs.length === 0 ? (
+            <Empty>nothing on the record names this service</Empty>
+          ) : (
+            /* number, title, status, scope, date - one column each, shared by
+               the rows in force and the retired ones below them, so a chip
+               sits under the chip above it rather than wherever the title
+               before it happened to end. */
+            <div className={`rows max-w-table ${ADR_ROW_COLUMNS}`} data-nav-list>
+              {current.map((adr) => (
+                <AdrRow key={adr.id} adr={adr} />
+              ))}
+              {retired.length > 0 ? (
+                <>
+                  {/* A row of its own, so the button sits in the list's grid
+                      without being a grid itself. */}
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => setShowRetired((v) => !v)}
+                      aria-expanded={showRetired}
+                      className="mono col-span-full mt-1 justify-self-start border border-dashed px-2 py-1 border-line-strong text-muted hover:bg-surface"
+                    >
+                      {showRetired ? "hide" : "show"} {retired.length}{" "}
+                      {retired.every((a) => a.status === "superseded")
+                        ? "superseded"
+                        : "no longer in force"}
+                    </button>
+                  </div>
+                  {showRetired
+                    ? retired.map((adr) => <AdrRow key={adr.id} adr={adr} />)
+                    : null}
+                </>
+              ) : null}
+            </div>
+          )}
         </TabPanel>
       </TabPanels>
     </TabGroup>

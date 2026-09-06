@@ -13,11 +13,14 @@ import (
 )
 
 // extract reads every record the options name and answers with one fragment
-// holding them. A file that does not parse fails the whole run rather than
-// being left out of the fragment: `src/catalog.ts` refuses to load a catalog
-// whose records break any of these rules, so a half fragment written here
-// would be a blank site later, with the reason a long way from the file that
-// caused it.
+// holding them.
+//
+// A file that does not parse, or that declares a record another file already
+// declared, is left out of the fragment with a warning that names it and the
+// line, and the rest of the tree is read: one record written differently is
+// not a reason to document nothing. What is refused whole is a supersession
+// with only one half recorded, because `src/catalog.ts` refuses to load a
+// catalog that says it, and either record alone would say something untrue.
 func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	b := &plugin.Builder{}
 
@@ -49,8 +52,9 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 		b.Warn(in.Root, "no decision records matched "+strings.Join(patterns, ", ")+"; the fragment holds none")
 	}
 
+	history := newHistory(in.Root, opts.History, b)
+
 	adrs := []catalog.Adr{}
-	var problems []string
 	ids := map[string]string{}
 	slugs := map[string]string{}
 	for _, file := range files {
@@ -59,28 +63,28 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 			return plugin.Response{}, err
 		}
 		rel := filepath.ToSlash(file)
-		adr, errs := parseAdr(rel, string(src))
+		adr, errs := parseAdr(rel, string(src), defaults{Scope: opts.Scope})
 		if len(errs) > 0 {
-			problems = append(problems, errs...)
+			b.Warn(rel, "left out of the fragment: "+strings.Join(errs, "; "))
 
 			continue
 		}
 		if other, taken := ids[adr.ID]; taken {
-			problems = append(problems, rel+": "+adr.ID+" is already declared in "+other)
+			b.Warn(rel, "left out of the fragment: "+adr.ID+" is already declared in "+other)
 
 			continue
 		}
 		if other, taken := slugs[adr.Slug]; taken {
-			problems = append(problems, rel+": the slug "+adr.Slug+" is already taken by "+other)
+			b.Warn(rel, "left out of the fragment: the slug "+adr.Slug+" is already taken by "+other)
 
 			continue
 		}
 		ids[adr.ID] = rel
 		slugs[adr.Slug] = rel
+		adr.Created, adr.Revised = history.of(file)
 		adrs = append(adrs, adr)
 	}
-	problems = append(problems, supersessions(adrs, ids)...)
-	if len(problems) > 0 {
+	if problems := supersessions(adrs, ids); len(problems) > 0 {
 		return plugin.Response{}, errors.New(strings.Join(problems, "\n"))
 	}
 

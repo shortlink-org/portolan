@@ -6,6 +6,7 @@
 - **Date:** 2026-09-04
 - **Scope:** [auth.auth](../auth/auth/README.md)
 - **Source:** [`examples/auth/docs/adr/0004-lockout-is-its-own-aggregate.md`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/docs/adr/0004-lockout-is-its-own-aggregate.md)
+- **Committed:** Victor Login, 2026-09-04 (`51248ba`)
 
 ### Context and Problem Statement
 

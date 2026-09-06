@@ -55,7 +55,8 @@ var catalogCoverage = map[reflect.Type]string{
 	reflect.TypeOf(catalog.AltBranch{}):        "title steps terminal",
 	reflect.TypeOf(catalog.Loop{}):             "type id title steps",
 	reflect.TypeOf(catalog.AdrScope{}):         "kind context service",
-	reflect.TypeOf(catalog.Adr{}):              "id slug number title status date scope body note supersededBy supersedes relates source",
+	reflect.TypeOf(catalog.Adr{}):              "id slug number title status date scope body note supersededBy supersedes relates source created revised",
+	reflect.TypeOf(catalog.AdrCommit{}):        "commit author date",
 	reflect.TypeOf(catalog.AdrRelates{}):       "services events flows",
 	reflect.TypeOf(catalog.Term{}):             "id slug context name definition source",
 }

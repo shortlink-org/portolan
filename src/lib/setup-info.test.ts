@@ -138,6 +138,7 @@ describe("publicSetupFrom", () => {
             fileCount: 0,
             changedCount: 0,
             files: ["data/shop/catalog.json", "../../private-key"],
+            warnings: ["shop.cart: internal/domain/errors has no struct called Errors", "", 42],
             error: "secret token",
           },
         ],
@@ -150,6 +151,7 @@ describe("publicSetupFrom", () => {
       plugin: "domain",
       status: "failed",
       files: ["data/shop/catalog.json"],
+      warnings: ["shop.cart: internal/domain/errors has no struct called Errors"],
     });
     expect(JSON.stringify(setup)).not.toContain("secret token");
     expect(JSON.stringify(setup)).not.toContain("private-key");

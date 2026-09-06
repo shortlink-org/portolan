@@ -42,6 +42,14 @@ type Options struct {
 	// with no line here is called as `unknown`, and the steps are unresolved.
 	Peers map[string]string `json:"peers,omitempty"`
 
+	// Externals says which system outside the estate answers to an api this
+	// service calls, as the api id to the external's bare id: {"stripe.v1":
+	// "stripe"}. Written when the name the document would give the system is
+	// not the one wanted; left out, a generated HTTP client whose package no
+	// peers line claims is read as calling the system its vendored document
+	// is titled after.
+	Externals map[string]string `json:"externals,omitempty"`
+
 	// Events says which aggregate another service's events belong to, as the
 	// import path a policy reads them from to the aggregate id. A service that
 	// vendors the shape of somebody else's event has the type and nothing else;

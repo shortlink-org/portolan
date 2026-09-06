@@ -76,12 +76,13 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	// Flows are read last, because a flow names the events the aggregates
 	// declare and an event nothing reaches is worth reporting.
 	flows, calls := extractFlows(root, flowOptions{
-		context: opts.Context,
-		svcID:   svcID,
-		service: opts.Service,
-		store:   opts.Store,
-		peers:   opts.Peers,
-		events:  opts.Events,
+		context:   opts.Context,
+		svcID:     svcID,
+		service:   opts.Service,
+		store:     opts.Store,
+		peers:     opts.Peers,
+		externals: opts.Externals,
+		events:    opts.Events,
 	}, endpoints, eventIDs(service.Aggregates), b)
 	// What the service calls is read off its flows: the generated client in
 	// the tree names the rpc, and a step on it is the call being made.

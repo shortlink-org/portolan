@@ -694,6 +694,18 @@
             }
           ]
         },
+        "externals": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Which system outside the estate answers to an api this service calls, as the api id to the external's bare id. Left out, a generated HTTP client whose package no peers line claims is read as calling the system its vendored document is titled after: a document titled \"Stripe API\" makes the external stripe.",
+          "examples": [
+            {
+              "stripe.v1": "stripe"
+            }
+          ]
+        },
         "events": {
           "type": "object",
           "additionalProperties": {
@@ -1156,9 +1168,33 @@
         },
         "spec": {
           "type": "string",
-          "description": "The OpenAPI document, relative to the input root. Left out, the extractor looks for one.",
+          "description": "The OpenAPI document, relative to the input root. Left out, the extractor walks the tree for every document and reads what sits beside each: a server generated from it means this service implements it, a client generated from it means this service calls it, and a called document names a system outside the estate unless peers says the api is one of ours.",
           "examples": [
             "internal/infrastructure/transport/http/gen/openapi.yaml"
+          ]
+        },
+        "peers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Which called documents are ours, as the api id to the service that implements it. A called document whose api is named here is that service's to describe, and is skipped rather than read as a system outside the estate.",
+          "examples": [
+            {
+              "auth.v1": "auth.auth"
+            }
+          ]
+        },
+        "externals": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "What a called document's system is called when the name its title would give is not the one wanted, as the api id to the external's bare id. Left out, a document titled \"Stripe API\" makes the external stripe.",
+          "examples": [
+            {
+              "stripe.v1": "stripe"
+            }
           ]
         },
         "api": {
@@ -1478,6 +1514,23 @@
               "adr/*.md"
             ]
           ]
+        },
+        "scope": {
+          "type": "string",
+          "description": "What a record is about when it does not say so itself: \"org\", a context slug, or \"<context>.<service>\". A record written by adr-tools has no scope of its own and takes its id's prefix from here; a MADR record with a Scope bullet keeps its own.",
+          "examples": [
+            "avia.aviasupp",
+            "payments",
+            "org"
+          ]
+        },
+        "history": {
+          "enum": [
+            "git",
+            "none"
+          ],
+          "description": "Where a record's author and dates come from. \"git\", the default, reads the file's commits: who first added it and who last touched it. \"none\" reads nothing, for a tree that is not a checkout or a fragment that must not change when the history does.",
+          "default": "git"
         },
         "out": {
           "type": "string",

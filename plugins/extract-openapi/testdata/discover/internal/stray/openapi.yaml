@@ -1,0 +1,11 @@
+openapi: 3.0.3
+info:
+  title: Stray
+  version: 1.0.0
+paths:
+  /stray:
+    get:
+      operationId: stray
+      responses:
+        "200":
+          description: OK

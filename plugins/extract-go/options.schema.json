@@ -45,6 +45,12 @@
       "description": "Which service answers for what this one calls, as the callee's package to its service id: a proto package for a gRPC client, the api id (the document's title and major version, `auth.v1`) for a generated HTTP client. The generated client names the package and the operation; only the manifest knows whose it is. A package with no line here is called as unknown and its steps stay unresolved.",
       "examples": [{ "risk.v1": "shop.risk", "auth.v1": "auth.auth" }]
     },
+    "externals": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "Which system outside the estate answers to an api this service calls, as the api id to the external's bare id. Left out, a generated HTTP client whose package no peers line claims is read as calling the system its vendored document is titled after: a document titled \"Stripe API\" makes the external stripe.",
+      "examples": [{ "stripe.v1": "stripe" }]
+    },
     "events": {
       "type": "object",
       "additionalProperties": { "type": "string" },

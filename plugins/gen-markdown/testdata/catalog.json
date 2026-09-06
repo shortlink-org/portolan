@@ -487,7 +487,17 @@
           "flow.raise-invoice"
         ]
       },
-      "source": "docs/adr/0001.md"
+      "source": "docs/adr/0001.md",
+      "created": {
+        "commit": "0a1b2c3d4e5f60718293a4b5c6d7e8f901234567",
+        "author": "Ada Lovelace",
+        "date": "2026-01-01T09:00:00Z"
+      },
+      "revised": {
+        "commit": "76543210f9e8d7c6b5a49382716a5b4c3d2e1f00",
+        "author": "Grace Hopper",
+        "date": "2026-01-03T17:30:00Z"
+      }
     }
   ],
   "terms": [

@@ -8,7 +8,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { loadManifest } from "./manifest.mjs";
+import { loadManifest, stepKeys } from "./manifest.mjs";
 
 const dir = mkdtempSync(join(tmpdir(), "portolan-manifest-"));
 
@@ -107,5 +107,42 @@ describe("the manifest schema", () => {
 
     expect(problems).toHaveLength(1);
     expect(problems[0]).toContain('extract/0: "out" is missing');
+  });
+});
+
+describe("stepKeys", () => {
+  const step = (plugin, out, options) => ({ plugin, in: "svc", out, options });
+
+  it("keys a step by its plugin while it is the only one of that plugin in its directory", () => {
+    const go = step("go-domain", "svc/portolan", { out: "domain.json" });
+    const api = step("openapi", "svc/portolan", { out: "api.json" });
+    const keys = stepKeys({ extract: [go, api] });
+
+    expect(keys.keyOf(go)).toBe("go-domain");
+    expect(keys.keyOf(api)).toBe("openapi");
+    expect([...keys.liveIn("svc/portolan/")]).toEqual(["go-domain", "openapi"]);
+  });
+
+  it("tells two steps of one plugin in one directory apart by the file they name", () => {
+    const own = step("openapi", "svc/portolan", { out: "api.json" });
+    const vendored = step("openapi", "svc/portolan", { external: "psp", out: "psp.json" });
+    const elsewhere = step("openapi", "other/portolan", { out: "api.json" });
+    const keys = stepKeys({ extract: [own, vendored, elsewhere] });
+
+    expect(keys.keyOf(own)).toBe("openapi:api.json");
+    expect(keys.keyOf(vendored)).toBe("openapi:psp.json");
+    expect(keys.keyOf(elsewhere)).toBe("openapi");
+  });
+
+  it("refuses two steps that would write the same file", () => {
+    const manifest = {
+      generate: [step("markdown", "docs", { title: "A" }), step("markdown", "docs", { title: "B" })],
+    };
+    expect(() => stepKeys(manifest)).toThrow("nothing in their options tells them apart");
+
+    const same = {
+      extract: [step("openapi", "svc/portolan", { out: "api.json" }), step("openapi", "svc/portolan", { out: "api.json" })],
+    };
+    expect(() => stepKeys(same)).toThrow("two of them name api.json");
   });
 });

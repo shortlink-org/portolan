@@ -6,6 +6,7 @@
 - **Date:** 2026-09-05
 - **Scope:** [storefront.bff](../storefront/bff/README.md)
 - **Source:** [`examples/bff/docs/adr/0004-subscriptions-are-the-bus-forwarded.md`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/docs/adr/0004-subscriptions-are-the-bus-forwarded.md)
+- **Committed:** Victor Login, 2026-09-05 (`8115163`)
 
 ### Context and Problem Statement
 

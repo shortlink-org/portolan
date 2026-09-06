@@ -11,6 +11,8 @@ import (
 	"encoding/json"
 	"flag"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -36,7 +38,7 @@ func input(root string) plugin.Input {
 func response(t *testing.T) plugin.Response {
 	t.Helper()
 
-	resp, err := extract(input("testdata/estate"), Options{})
+	resp, err := extract(input("testdata/estate"), Options{History: "none"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +90,7 @@ func TestTheFragmentSaysNothingItDidNotRead(t *testing.T) {
 }
 
 func TestTheFileIsNamedByTheOptions(t *testing.T) {
-	resp, err := extract(input("testdata/estate"), Options{Out: "decisions.json"})
+	resp, err := extract(input("testdata/estate"), Options{History: "none", Out: "decisions.json"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +106,7 @@ func TestTheFileIsNamedByTheOptions(t *testing.T) {
 // directory answers with an empty fragment either way, and the warning is the
 // only thing that tells the two apart.
 func TestARootWithNoRecordsWarns(t *testing.T) {
-	resp, err := extract(input("testdata"), Options{})
+	resp, err := extract(input("testdata"), Options{History: "none"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,37 +115,86 @@ func TestARootWithNoRecordsWarns(t *testing.T) {
 	}
 }
 
-// Every rule src/catalog.ts fails the whole app on is checked here instead,
-// where the file that broke it can be named. A fragment written half-valid is
-// a blank site later, with the reason a long way from its cause.
-func TestABrokenTreeIsRefusedWholeRatherThanWrittenHalf(t *testing.T) {
-	resp, err := extract(input("testdata/broken"), Options{})
+// A supersession with one half recorded is refused whole: src/catalog.ts
+// fails the app on it, and either record alone would say something untrue.
+func TestAHalfRecordedSupersessionIsRefusedWhole(t *testing.T) {
+	resp, err := extract(input("testdata/broken"), Options{History: "none"})
 	if err == nil {
 		t.Fatal("the broken tree produced a fragment")
 	}
 	if len(resp.Files) != 0 {
 		t.Errorf("files were named anyway: %+v", resp.Files)
 	}
+	if want := "acme.0001 is superseded by acme.0002, which does not say it supersedes it"; !strings.Contains(err.Error(), want) {
+		t.Errorf("no %q in:\n%s", want, err)
+	}
+}
+
+// A tree kept with adr-tools, with the mistakes such a tree collects: two
+// records numbered the same by two branches, and a file of notes among them.
+// Each is left out with a warning that names it, and the rest is read.
+func TestATreeOfAdrToolsRecordsIsReadAndItsMistakesAreLeftOut(t *testing.T) {
+	resp, err := extract(input("testdata/lenient"), Options{Scope: "avia.aviasupp", Files: []string{"docs/adr/*.md"}, History: "none"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cat catalog.Catalog
+	if err := json.Unmarshal([]byte(resp.Files[0].Contents), &cat); err != nil {
+		t.Fatal(err)
+	}
+
+	var ids []string
+	for _, adr := range cat.Adrs {
+		ids = append(ids, adr.ID)
+	}
+	if strings.Join(ids, " ") != "aviasupp.0001 aviasupp.0003 aviasupp.0004 aviasupp.0005 acme.0007" {
+		t.Errorf("ids = %v", ids)
+	}
 
 	for _, want := range []string{
-		"acme.0007 is already declared in",
-		"acme.0001 is superseded by acme.0002, which does not say it supersedes it",
+		"0004-use-river.md: left out of the fragment: aviasupp.0004 is already declared in",
+		"0006-a-note-that-is-not-a-record.md: left out of the fragment: ",
+		"0007-declared-once.md: left out of the fragment: acme.0007 is already declared in",
 	} {
-		if !strings.Contains(err.Error(), want) {
-			t.Errorf("no %q in:\n%s", want, err)
+		if !warnedAt(resp, want) {
+			t.Errorf("no warning %q among %+v", want, resp.Warnings())
 		}
 	}
+
+	by := map[string]catalog.Adr{}
+	for _, adr := range cat.Adrs {
+		by[adr.ID] = adr
+	}
+	if dto := by["aviasupp.0003"]; dto.Status != catalog.AdrSuperseded || dto.SupersededBy != "aviasupp.0005" {
+		t.Errorf("aviasupp.0003 = %+v", dto)
+	}
+	if schemas := by["aviasupp.0005"]; strings.Join(schemas.Supersedes, " ") != "aviasupp.0003" {
+		t.Errorf("aviasupp.0005 supersedes %v", schemas.Supersedes)
+	}
+	if action := by["aviasupp.0004"]; action.Status != catalog.AdrProposed || action.Title != "Call action" {
+		t.Errorf("aviasupp.0004 = %+v", action)
+	}
+}
+
+func warnedAt(resp plugin.Response, substring string) bool {
+	for _, d := range resp.Warnings() {
+		if strings.Contains(d.Ref+": "+d.Message, substring) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // The fragment is committed and compared by gen:check. A map iterated in Go's
 // order would rewrite the file every run and turn every build into a diff.
 func TestOutputIsByteIdentical(t *testing.T) {
-	first, err := extract(input("testdata/estate"), Options{})
+	first, err := extract(input("testdata/estate"), Options{History: "none"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	for i := 0; i < 5; i++ {
-		again, err := extract(input("testdata/estate"), Options{})
+		again, err := extract(input("testdata/estate"), Options{History: "none"})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -196,4 +247,104 @@ func firstDifference(want, got string) string {
 	}
 
 	return "want " + strconv.Itoa(len(a)) + " lines, got " + strconv.Itoa(len(b))
+}
+
+// Who wrote a record down and when comes from the file's own commits: the
+// first commit is when it was created, the last when it was revised, and a
+// file committed once has no revision. A tree that is not a checkout says
+// nothing, once.
+func TestWhoCommittedARecordComesFromGit(t *testing.T) {
+	root := t.TempDir()
+	run := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", append([]string{"-C", root}, args...)...)
+		cmd.Env = append(os.Environ(),
+			"GIT_AUTHOR_NAME=Ada Lovelace", "GIT_AUTHOR_EMAIL=ada@example.com",
+			"GIT_COMMITTER_NAME=Ada Lovelace", "GIT_COMMITTER_EMAIL=ada@example.com",
+			"GIT_COMMITTER_DATE=2026-01-01T09:00:00Z", "GIT_AUTHOR_DATE=2026-01-01T09:00:00Z",
+		)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+	write := func(name, contents string) {
+		t.Helper()
+		if err := os.MkdirAll(filepath.Join(root, "docs", "adr"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(root, "docs", "adr", name), []byte(contents), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	record := func(title, body string) string {
+		return "# " + title + "\n\nDate: 2026-01-01\n\n## Status\n\nAccepted\n\n## Context\n\n" + body + "\n"
+	}
+
+	run("init", "-q")
+	write("0001-first.md", record("1. First", "As written."))
+	write("0002-second.md", record("2. Second", "As written."))
+	run("add", ".")
+	run("commit", "-q", "-m", "two records")
+
+	write("0002-second.md", record("2. Second", "Reworded."))
+	cmd := exec.Command("git", "-C", root, "commit", "-q", "-am", "reword")
+	cmd.Env = append(os.Environ(),
+		"GIT_AUTHOR_NAME=Grace Hopper", "GIT_AUTHOR_EMAIL=grace@example.com",
+		"GIT_COMMITTER_NAME=Grace Hopper", "GIT_COMMITTER_EMAIL=grace@example.com",
+		"GIT_COMMITTER_DATE=2026-01-03T17:30:00Z", "GIT_AUTHOR_DATE=2026-01-03T17:30:00Z",
+	)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git commit: %v\n%s", err, out)
+	}
+
+	resp, err := extract(input(root), Options{Scope: "org"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cat catalog.Catalog
+	if err := json.Unmarshal([]byte(resp.Files[0].Contents), &cat); err != nil {
+		t.Fatal(err)
+	}
+	if len(cat.Adrs) != 2 {
+		t.Fatalf("adrs = %+v", cat.Adrs)
+	}
+
+	first, second := cat.Adrs[0], cat.Adrs[1]
+	if first.Created == nil || first.Created.Author != "Ada Lovelace" || first.Created.Date != "2026-01-01T09:00:00Z" || len(first.Created.Commit) != 40 {
+		t.Errorf("first created = %+v", first.Created)
+	}
+	if first.Revised != nil {
+		t.Errorf("a file committed once was revised: %+v", first.Revised)
+	}
+	if second.Created == nil || second.Created.Author != "Ada Lovelace" {
+		t.Errorf("second created = %+v", second.Created)
+	}
+	if second.Revised == nil || second.Revised.Author != "Grace Hopper" || second.Revised.Date != "2026-01-03T17:30:00Z" || second.Revised.Commit == second.Created.Commit {
+		t.Errorf("second revised = %+v", second.Revised)
+	}
+
+	// Told not to look, the extractor does not.
+	resp, err = extract(input(root), Options{Scope: "org", History: "none"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(resp.Files[0].Contents, "\"created\"") {
+		t.Error("history \"none\" still read git")
+	}
+
+	// A tree with no checkout around it says so once and carries on.
+	bare := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(bare, "docs", "adr"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(bare, "docs", "adr", "0001-first.md"), []byte(record("1. First", "As written.")), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	resp, err = extract(input(bare), Options{Scope: "org"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !warned(resp, "not inside a git checkout") {
+		t.Errorf("warnings = %+v", resp.Warnings())
+	}
 }

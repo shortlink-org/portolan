@@ -50,6 +50,12 @@ func (s *site) renderAdr(adr *catalog.Adr) {
 		{"Scope", s.scopeRef(self, adr.Scope)},
 		{"Source", s.source(self, adr.Source, s.adrOwner(adr))},
 	}
+	if adr.Created != nil {
+		meta = append(meta, []string{"Committed", commitLine(adr.Created)})
+	}
+	if adr.Revised != nil {
+		meta = append(meta, []string{"Revised", commitLine(adr.Revised)})
+	}
 	if adr.Note != "" {
 		meta = append(meta, []string{"Note", adr.Note})
 	}
@@ -128,4 +134,29 @@ func (s *site) scopeRef(from string, scope catalog.AdrScope) string {
 	default:
 		return "org"
 	}
+}
+
+// commitLine is who and when, and the commit itself short enough to read:
+// "Viktor Login, 2024-09-10 (`a6181fe`)".
+func commitLine(c *catalog.AdrCommit) string {
+	date := c.Date
+	if len(date) >= 10 {
+		date = date[:10]
+	}
+	sha := c.Commit
+	if len(sha) > 7 {
+		sha = sha[:7]
+	}
+	parts := []string{}
+	if c.Author != "" {
+		parts = append(parts, c.Author)
+	}
+	if date != "" {
+		parts = append(parts, date)
+	}
+	line := strings.Join(parts, ", ")
+	if sha != "" {
+		line += " (`" + sha + "`)"
+	}
+	return strings.TrimSpace(line)
 }

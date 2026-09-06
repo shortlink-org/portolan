@@ -52,11 +52,11 @@ type Catalog struct {
 // and nothing else. It sits at the root beside the contexts, so its id is its
 // slug and carries no dot.
 type External struct {
-	ID      string       `json:"id"`
-	Slug    string       `json:"slug"`
-	Name    string       `json:"name"`
-	Summary string       `json:"summary"`
-	URL     string       `json:"url,omitempty"`
+	ID       string       `json:"id"`
+	Slug     string       `json:"slug"`
+	Name     string       `json:"name"`
+	Summary  string       `json:"summary"`
+	URL      string       `json:"url,omitempty"`
 	Provides []RpcService `json:"provides"`
 }
 
@@ -702,6 +702,21 @@ type Adr struct {
 	Supersedes   []string   `json:"supersedes,omitempty"`
 	Relates      AdrRelates `json:"relates"`
 	Source       string     `json:"source"`
+
+	// Created is the commit that first added the file, and Revised the one
+	// that last touched it, when that is a different commit. Absent when the
+	// tree has no history to read.
+	Created *AdrCommit `json:"created,omitempty"`
+	Revised *AdrCommit `json:"revised,omitempty"`
+}
+
+// AdrCommit is one commit of a record's file: who made it and when. The
+// markdown says when a decision was taken; git says when it was written down
+// and by whom, which is the other half of "who decided this".
+type AdrCommit struct {
+	Commit string `json:"commit"`
+	Author string `json:"author"`
+	Date   string `json:"date"`
 }
 
 type AdrRelates struct {

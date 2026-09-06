@@ -42,9 +42,38 @@ import (
 // it goes into the catalog exactly as written and comes out onto the page the
 // same way, and nothing in it is ever regenerated from the model as it stands
 // now.
+//
+// The other format read here is the one adr-tools writes, because a tree of
+// records kept that way for years should not have to be retyped to be read:
+//
+//	# 2. Integration with external suppliers
+//
+//	Date: 2024-09-04
+//
+//	## Status
+//
+//	Superseded by [5. Use schemas](0005-use-schemas.md)
+//
+//	## Context
+//	…
+//
+// The title carries the number and the title; the id's prefix, which the
+// format has no place for, comes from the step's scope option, as does the
+// scope itself. The date is a line of its own above the record, and the status
+// is the first section of the record, where adr-tools writes it - a word, or
+// "Superseded by" and a link to the record that replaced this one, and
+// "Supersedes" and a link the other way. The record is the same as above:
+// everything from the first `##`, the status section included.
 
 var (
 	titleLine  = regexp.MustCompile(`^#\s+(\S+)\s+—\s+(.+?)\s*$`)
+	toolsTitle = regexp.MustCompile(`^#\s+(\d+)\.\s+(.+?)\s*$`)
+	plainTitle = regexp.MustCompile(`^#\s+(.+?)\s*$`)
+	toolsDate  = regexp.MustCompile(`^Date:\s*(.+?)\s*$`)
+	toolsLink  = regexp.MustCompile(`\[\s*(\d+)\.[^\]]*\]\([^)]*\)`)
+	toolsBare  = regexp.MustCompile(`(?i)^(?:adr[-\s]?)?0*(\d+)$`)
+	statusHead = regexp.MustCompile(`^##\s+Status\s*$`)
+	sectionAny = regexp.MustCompile(`^#{1,2}\s`)
 	bulletLine = regexp.MustCompile(`^-\s+\*\*([^*:]+):\*\*\s*(.*?)\s*$`)
 	bodyStart  = regexp.MustCompile(`^##\s`)
 	fileName   = regexp.MustCompile(`^(\d{4})-([a-z0-9]+(?:-[a-z0-9]+)*)$`)
@@ -63,10 +92,25 @@ var statuses = map[string]catalog.AdrStatus{
 	"rejected":   catalog.AdrRejected,
 }
 
+// defaults are what the manifest says about a tree of records, for the
+// records that do not say it themselves.
+type defaults struct {
+	// Scope is what a record is about when it has no Scope of its own: "org",
+	// a context, or "<context>.<service>". It also lends an adr-tools record
+	// the prefix of its id, which is the last segment: the service, the
+	// context, or "org".
+	Scope string
+}
+
 type parser struct {
 	file  string
 	lines []string
 	errs  []string
+	d     defaults
+
+	// tools is set when the title is the one adr-tools writes, and picks the
+	// way the rest of the file is read.
+	tools bool
 
 	adr catalog.Adr
 }
@@ -74,10 +118,11 @@ type parser struct {
 // parseAdr reads one record. Every mistake it can find is collected rather
 // than returned at the first one, because a file with two typos in its header
 // should be fixed once.
-func parseAdr(file, src string) (catalog.Adr, []string) {
+func parseAdr(file, src string, d defaults) (catalog.Adr, []string) {
 	p := &parser{
 		file:  file,
 		lines: strings.Split(strings.ReplaceAll(src, "\r\n", "\n"), "\n"),
+		d:     d,
 	}
 	p.read()
 	if len(p.errs) > 0 {
@@ -101,11 +146,20 @@ func (p *parser) read() {
 	}
 	p.checkFileName()
 
-	body := p.meta(head + 1)
+	body := -1
+	if p.tools {
+		body = p.toolsMeta(head + 1)
+	} else {
+		body = p.meta(head + 1)
+	}
 	if body < 0 {
 		return
 	}
 	p.adr.Body = strings.TrimSpace(strings.Join(p.lines[body:], "\n")) + "\n"
+	if p.tools {
+		p.toolsStatus(body)
+		p.checkSupersession(head)
+	}
 }
 
 // title reads the one line the record has to open with and answers with its
@@ -118,7 +172,17 @@ func (p *parser) title() int {
 
 		match := titleLine.FindStringSubmatch(line)
 		if match == nil {
-			p.fail(i, `a record opens with "# <id> — <title>", an em dash between the two`)
+			if tools := toolsTitle.FindStringSubmatch(line); tools != nil {
+				return p.toolsTitleLine(i, tools)
+			}
+			// A title with no number at all is numbered by its file, unless
+			// it opens with something shaped like an id: that is a MADR
+			// title with the wrong dash, and reading it as a plain one would
+			// turn a typo into a record under another name.
+			if plain := plainTitle.FindStringSubmatch(line); plain != nil && !adrID.MatchString(strings.Fields(plain[1])[0]) {
+				return p.plainTitleLine(i, plain[1])
+			}
+			p.fail(i, `a record opens with "# <id> — <title>", an em dash between the two, or with "# <n>. <title>" as adr-tools writes it`)
 
 			return -1
 		}
@@ -149,6 +213,207 @@ func (p *parser) title() int {
 	p.fail(0, "the file is empty")
 
 	return -1
+}
+
+// toolsTitleLine reads the title adr-tools writes: the record's number, a
+// full stop, the title. The id is built from the number and the prefix the
+// scope lends, because the format keeps no id of its own.
+func (p *parser) toolsTitleLine(i int, match []string) int {
+	number, err := strconv.Atoi(match[1])
+	if err != nil || number <= 0 {
+		p.fail(i, "the number "+strconv.Quote(match[1])+" is not a record's number")
+
+		return -1
+	}
+
+	p.tools = true
+	p.adr.ID = p.toolsID(number)
+	p.adr.Number = number
+	p.adr.Title = strings.TrimSpace(match[2])
+
+	return i
+}
+
+// plainTitleLine reads a title that carries no number, which adr-tools trees
+// collect when a record is written by hand: the file's own name numbers it,
+// and the heading is the title.
+func (p *parser) plainTitleLine(i int, title string) int {
+	match := fileName.FindStringSubmatch(strings.TrimSuffix(path.Base(p.file), ".md"))
+	if match == nil {
+		p.fail(i, `the title carries no number and the file is not named "NNNN-kebab-slug.md", so nothing numbers the record`)
+
+		return -1
+	}
+	number, _ := strconv.Atoi(match[1])
+	if number <= 0 {
+		p.fail(i, "the file is numbered "+match[1]+", which is not a record's number")
+
+		return -1
+	}
+
+	p.tools = true
+	p.adr.ID = p.toolsID(number)
+	p.adr.Number = number
+	p.adr.Title = strings.TrimSpace(title)
+
+	return i
+}
+
+// toolsID is the id an adr-tools record gets: the prefix the scope lends and
+// the number, padded the one way that round-trips.
+func (p *parser) toolsID(number int) string {
+	return p.prefix() + "." + fmt.Sprintf("%04d", number)
+}
+
+// prefix is what an id opens with, taken from the scope the way the MADR
+// records of the estate do it: the service for a service, the context for a
+// context, and "org" for the organisation.
+func (p *parser) prefix() string {
+	scope := strings.TrimSpace(p.d.Scope)
+	if scope == "" || scope == "org" {
+		return "org"
+	}
+	if _, service, ok := strings.Cut(scope, "."); ok {
+		return service
+	}
+
+	return scope
+}
+
+// toolsMeta reads what adr-tools keeps above the record - the date, on a line
+// of its own - and answers with the index the record starts at, or -1 when
+// there is none.
+func (p *parser) toolsMeta(from int) int {
+	for i := from; i < len(p.lines); i++ {
+		line := p.lines[i]
+		switch {
+		case bodyStart.MatchString(line):
+			if p.adr.Date == "" {
+				p.fail(from-1, `the record says no "Date:"`)
+			}
+			p.scope(from-1, p.d.Scope)
+
+			return i
+
+		case strings.TrimSpace(line) == "":
+
+		case toolsDate.MatchString(line):
+			value := toolsDate.FindStringSubmatch(line)[1]
+			if _, err := time.Parse("2006-01-02", value); err != nil {
+				p.fail(i, strconv.Quote(value)+" is not a date, as in 2026-08-22")
+
+				continue
+			}
+			p.adr.Date = value
+
+		default:
+			p.fail(i, "only \"Date:\" belongs between the title and the first `##`")
+
+			return -1
+		}
+	}
+
+	p.fail(len(p.lines)-1, "the record has no body: nothing here is under a `##`")
+
+	return -1
+}
+
+// toolsStatus reads the status from the record's own Status section, which is
+// where adr-tools keeps it. Each non-empty line there is one statement: a
+// status word, or "Superseded by" or "Supersedes" and the record it means. A
+// later statement wins over an earlier one, because a record that was accepted
+// and then superseded has both written down, in that order.
+func (p *parser) toolsStatus(body int) {
+	head := -1
+	for i := body; i < len(p.lines); i++ {
+		if statusHead.MatchString(p.lines[i]) {
+			head = i
+
+			break
+		}
+	}
+	if head < 0 {
+		p.fail(body, "the record has no `## Status` section")
+
+		return
+	}
+
+	statements := 0
+	for i := head + 1; i < len(p.lines) && !sectionAny.MatchString(p.lines[i]); i++ {
+		statement := strings.TrimSpace(p.lines[i])
+		if statement == "" {
+			continue
+		}
+		statements++
+		p.toolsStatement(i, statement)
+	}
+	if statements == 0 {
+		p.fail(head, "the Status section says nothing")
+	}
+	if p.adr.Status == "" && len(p.errs) == 0 {
+		p.fail(head, "the Status section names no status: proposed, accepted, superseded, deprecated or rejected")
+	}
+}
+
+func (p *parser) toolsStatement(at int, statement string) {
+	lower := strings.ToLower(strings.TrimRight(statement, ". "))
+	if status, ok := statuses[lower]; ok {
+		p.adr.Status = status
+
+		return
+	}
+
+	switch {
+	case strings.HasPrefix(lower, "superseded by"):
+		ids := p.toolsRecords(statement[len("superseded by"):])
+		if len(ids) != 1 {
+			p.fail(at, "the record is superseded and says by which one record")
+
+			return
+		}
+		p.adr.Status = catalog.AdrSuperseded
+		p.adr.SupersededBy = ids[0]
+
+	case strings.HasPrefix(lower, "supersedes"):
+		ids := p.toolsRecords(statement[len("supersedes"):])
+		if len(ids) == 0 {
+			p.fail(at, "the record supersedes something and says which record")
+
+			return
+		}
+		p.adr.Supersedes = append(p.adr.Supersedes, ids...)
+
+	case strings.HasPrefix(lower, "amends"), strings.HasPrefix(lower, "amended by"):
+		// An amendment is a fact the catalog has no field for. It stays in the
+		// body, which is on the page as written.
+
+	default:
+		p.fail(at, strconv.Quote(statement)+` is not a status: proposed, accepted, superseded, deprecated or rejected, or "Superseded by" a record`)
+	}
+}
+
+// toolsRecords finds the records a statement names, as the links adr-tools
+// writes - "[3. Use DTO](0003-use-dto.md)" - or as bare numbers.
+func (p *parser) toolsRecords(rest string) []string {
+	var ids []string
+	for _, match := range toolsLink.FindAllStringSubmatch(rest, -1) {
+		number, err := strconv.Atoi(match[1])
+		if err != nil {
+			continue
+		}
+		ids = append(ids, p.toolsID(number))
+	}
+	if len(ids) > 0 {
+		return ids
+	}
+	for _, word := range strings.Fields(strings.NewReplacer(",", " ", "and", " ").Replace(rest)) {
+		if match := toolsBare.FindStringSubmatch(word); match != nil {
+			number, _ := strconv.Atoi(match[1])
+			ids = append(ids, p.toolsID(number))
+		}
+	}
+
+	return ids
 }
 
 // checkFileName ties the record to the file it is in. The slug is built from
@@ -229,15 +494,31 @@ func (p *parser) meta(from int) int {
 // reported against the title rather than against the missing line, because
 // there is no missing line to point at.
 func (p *parser) require(at int, seen map[string]bool) {
-	for _, key := range []string{"Status", "Date", "Scope"} {
+	for _, key := range []string{"Status", "Date"} {
 		if !seen[key] {
 			p.fail(at, "the record says no "+strconv.Quote(key))
 		}
 	}
+	// A record that does not say what it is about is about what the step says
+	// its tree is about; only when the step says nothing either is that a
+	// mistake.
+	switch {
+	case seen["Scope"]:
+	case strings.TrimSpace(p.d.Scope) != "":
+		p.scope(at, p.d.Scope)
+	default:
+		p.fail(at, `the record says no "Scope"`)
+	}
 
-	// Supersession is a two-way fact and half of it recorded is a bug. The
-	// other half - that the record named actually names this one back - can
-	// only be checked once every record is read, so it is checked there.
+	p.checkSupersession(at)
+}
+
+// checkSupersession holds the two things a record says about being replaced
+// against each other. Supersession is a two-way fact and half of it recorded
+// is a bug. The other half - that the record named actually names this one
+// back - can only be checked once every record is read, so it is checked
+// there.
+func (p *parser) checkSupersession(at int) {
 	if p.adr.Status == catalog.AdrSuperseded && p.adr.SupersededBy == "" {
 		p.fail(at, "the record is superseded and says by what")
 	}
@@ -295,6 +576,7 @@ func (p *parser) bullet(at int, key, value string) {
 // can answer - an extractor sees one service's tree - so it is left to the
 // validator, which sees the merged catalog.
 func (p *parser) scope(at int, value string) {
+	value = strings.TrimSpace(value)
 	if value == "" || value == "org" {
 		p.adr.Scope = catalog.AdrScope{Kind: "org"}
 

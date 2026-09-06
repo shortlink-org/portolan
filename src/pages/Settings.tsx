@@ -242,17 +242,41 @@ function PipelineSteps({ steps }: { steps: SetupRunStep[] }) {
   return (
     <div className="divide-y divide-line rounded-control border border-line">
       {steps.map((step) => (
-        <div key={step.ordinal} className="grid gap-2 px-3 py-2 sm:grid-cols-[5rem_minmax(7rem,1fr)_auto_auto] sm:items-center">
-          <span className="mono text-muted">{step.phase}</span>
-          <span className="mono truncate text-ink" title={step.plugin}>{step.plugin}</span>
-          <span className="mono text-muted">{step.fileCount} {plural(step.fileCount, "file")}</span>
-          <div className="flex items-center justify-between gap-2 sm:justify-end">
-            <span className="mono text-muted">{duration(step.durationMs)}</span>
-            <StepStatus status={step.status} />
+        <div key={step.ordinal} className="px-3 py-2">
+          <div className="grid gap-2 sm:grid-cols-[5rem_minmax(7rem,1fr)_auto_auto] sm:items-center">
+            <span className="mono text-muted">{step.phase}</span>
+            <span className="mono truncate text-ink" title={step.plugin}>{step.plugin}</span>
+            <span className="mono text-muted">{step.fileCount} {plural(step.fileCount, "file")}</span>
+            <div className="flex items-center justify-between gap-2 sm:justify-end">
+              <span className="mono text-muted">{duration(step.durationMs)}</span>
+              <StepStatus status={step.status} />
+            </div>
           </div>
+          <StepWarnings warnings={step.warnings} />
         </div>
       ))}
     </div>
+  );
+}
+
+// What a plugin could not read, in its own words. For a tree the extractor
+// only half understood this is the list of what to fix, so it is shown where
+// the step is rather than left on the terminal it scrolled off.
+function StepWarnings({ warnings }: { warnings: string[] }) {
+  if (warnings.length === 0) return null;
+  return (
+    <details className="mt-2" open={warnings.length <= 5}>
+      <summary className="mono cursor-pointer text-muted">
+        {warnings.length} {plural(warnings.length, "warning")}
+      </summary>
+      <ul className="mono mt-1 space-y-1 text-muted">
+        {warnings.map((warning, index) => (
+          <li key={`${index}:${warning}`} className="break-words border-l-2 border-line pl-2">
+            {warning}
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }
 

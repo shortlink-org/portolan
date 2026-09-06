@@ -48,6 +48,35 @@ func DocumentAPIID(declared, title, version string) string {
 	return APIID(title, version)
 }
 
+// ExternalID is the id a system outside the estate goes by when nothing but
+// its own document names it: the document's title as a slug, with a trailing
+// "API" dropped because the system is the thing, not its interface. "Gordian
+// Flights & Ancillaries API" is gordian-flights-ancillaries; "Stripe API" is
+// stripe. Both sides of a call - the extractor that reads the vendored copy
+// for what the system answers on, and the one that reads the client beside it
+// for what this service calls - derive it here, so neither needs the manifest
+// to say it.
+func ExternalID(title string) string {
+	var b strings.Builder
+	dash := false
+	for _, r := range strings.ToLower(strings.TrimSpace(title)) {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9':
+			b.WriteRune(r)
+			dash = false
+		case !dash && b.Len() > 0:
+			b.WriteByte('-')
+			dash = true
+		}
+	}
+	id := strings.TrimRight(b.String(), "-")
+	if trimmed := strings.TrimSuffix(id, "-api"); trimmed != "" {
+		id = trimmed
+	}
+
+	return id
+}
+
 // Title is the human form of a tag: users becomes Users, price_list becomes
 // PriceList, because it sits in an id beside a proto-shaped service name.
 func Title(name string) string {
@@ -98,6 +127,12 @@ func (o Operation) CallID(api string) string { return o.Interface(api) + "/" + o
 type Spec struct {
 	API        string
 	Operations []Operation
+
+	// Title, Description and DocsURL are what the document says about the
+	// system it describes, for naming that system when the manifest does not.
+	Title       string
+	Description string
+	DocsURL     string
 }
 
 // Read loads a document and lists its operations. The api id may be
@@ -117,7 +152,12 @@ func Read(path string) (*Spec, error) {
 	}
 
 	info := child(node, "info")
-	spec := &Spec{API: DocumentAPIID(text(child(info, "x-portolan-api")), text(child(info, "title")), text(child(info, "version")))}
+	spec := &Spec{
+		API:         DocumentAPIID(text(child(info, "x-portolan-api")), text(child(info, "title")), text(child(info, "version"))),
+		Title:       text(child(info, "title")),
+		Description: text(child(info, "description")),
+		DocsURL:     text(child(node, "externalDocs", "url")),
+	}
 	for _, p := range entries(child(node, "paths")) {
 		for _, verb := range Verbs {
 			operation := child(p.value, verb)

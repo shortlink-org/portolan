@@ -6,6 +6,7 @@
 - **Date:** 2026-09-05
 - **Scope:** [auth.auth](../auth/auth/README.md)
 - **Source:** [`examples/auth/docs/adr/0011-the-relay-feeds-a-bus-and-policies-subscribe-to-the-bus.md`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/docs/adr/0011-the-relay-feeds-a-bus-and-policies-subscribe-to-the-bus.md)
+- **Committed:** Victor Login, 2026-09-05 (`dab46a5`)
 
 ### Context and Problem Statement
 

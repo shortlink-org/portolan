@@ -6,6 +6,7 @@
 - **Date:** 2026-09-05
 - **Scope:** [shop.oms](../shop/oms/README.md)
 - **Source:** [`examples/shop/oms/docs/adr/0005-confirmation-waits-for-a-payment-that-does-not-exist-yet.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/docs/adr/0005-confirmation-waits-for-a-payment-that-does-not-exist-yet.md)
+- **Committed:** Victor Login, 2026-09-05 (`96ce9ca`)
 
 ### Context and Problem Statement
 
