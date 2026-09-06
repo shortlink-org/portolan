@@ -6,35 +6,44 @@
 // undo it is to remember which catalog id produced which identifier.
 
 import { catalog } from "../data";
-import { fqn } from "./ids";
+import type { Catalog } from "../catalog";
+import { fqn, participantFqn } from "./ids";
 
-const toCatalogId = new Map<string, string>();
+export function catalogIdMap(catalog: Catalog): Map<string, string> {
+  const result = new Map<string, string>();
+  const remember = (id: string): void => {
+    const likec4 = fqn(id);
+    // First writer wins: two catalog ids that collapse to one identifier would
+    // be a modelling bug, and silently reassigning would hide it.
+    if (!result.has(likec4)) result.set(likec4, id);
+  };
 
-function remember(id: string): void {
-  const likec4 = fqn(id);
-  // First writer wins: two catalog ids that collapse to one identifier would
-  // be a modelling bug, and silently reassigning would hide it.
-  if (!toCatalogId.has(likec4)) toCatalogId.set(likec4, id);
-}
-
-for (const context of catalog.contexts) {
-  remember(context.id);
-  for (const service of context.services) {
-    remember(service.id);
-    for (const aggregate of service.aggregates) {
-      remember(aggregate.id);
-      for (const event of aggregate.events) remember(event.id);
+  for (const context of catalog.contexts) {
+    remember(context.id);
+    for (const service of context.services) {
+      remember(service.id);
+      for (const aggregate of service.aggregates) {
+        remember(aggregate.id);
+        for (const event of aggregate.events) remember(event.id);
+      }
     }
   }
+  // A store is a container inside the service that owns it, and clicking one
+  // should open the schema rather than nothing.
+  for (const store of catalog.stores ?? []) remember(store.id);
+  // Brokers, actors and externals are model elements too, and a flow lane is
+  // the most likely thing on screen to be clicked.
+  for (const flow of catalog.flows) {
+    for (const participant of flow.participants) {
+      const likec4 = participantFqn(participant);
+      if (!result.has(likec4)) result.set(likec4, participant.id);
+    }
+  }
+
+  return result;
 }
-// A store is a container inside the service that owns it, and clicking one
-// should open the schema rather than nothing.
-for (const store of catalog.stores ?? []) remember(store.id);
-// Brokers, actors and externals are model elements too, and a flow lane is the
-// most likely thing on screen to be clicked.
-for (const flow of catalog.flows) {
-  for (const participant of flow.participants) remember(participant.id);
-}
+
+const toCatalogId = catalogIdMap(catalog);
 
 /**
  * The catalog id a LikeC4 element id stands for, or the id unchanged when the

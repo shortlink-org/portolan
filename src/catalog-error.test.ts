@@ -90,7 +90,7 @@ describe("CatalogError.path", () => {
     expect(error.path).toBe(`flow ${flow.id}`);
   });
 
-  it("refuses an owner that is not a bounded context", () => {
+  it("refuses an owner that is not a top-level group", () => {
     const bad = clone();
     const flow = bad.flows[0];
     if (!flow) throw new Error("fixture has no flows");
@@ -98,7 +98,7 @@ describe("CatalogError.path", () => {
 
     const error = failureOf(bad);
     expect(error.message).toContain(
-      'names owner "not-a-context", which is not a bounded context',
+      'names owner "not-a-context", which is not a top-level group',
     );
     expect(error.path).toBe(`flow ${flow.id}`);
   });

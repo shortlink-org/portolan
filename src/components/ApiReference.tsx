@@ -38,7 +38,20 @@ const Reference = lazy(async () => {
  * and this tab says plainly that it has nothing to show.
  */
 const SPECS = import.meta.glob<string>(
-  ["../../examples/**/openapi.yaml", "../../examples/**/openapi.yml"],
+  [
+    "../../examples/**/openapi*.yaml",
+    "../../examples/**/openapi*.yml",
+    "../../examples/**/openapi*.json",
+    "../../examples/**/swagger*.yaml",
+    "../../examples/**/swagger*.yml",
+    "../../examples/**/swagger*.json",
+    "../../vendor/repos/**/openapi*.yaml",
+    "../../vendor/repos/**/openapi*.yml",
+    "../../vendor/repos/**/openapi*.json",
+    "../../vendor/repos/**/swagger*.yaml",
+    "../../vendor/repos/**/swagger*.yml",
+    "../../vendor/repos/**/swagger*.json",
+  ],
   { query: "?raw", import: "default" },
 );
 

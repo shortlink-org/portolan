@@ -1,0 +1,21 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "context": {
+      "type": "string",
+      "description": "Slug of the top-level group that owns the component. Defaults to the input directory name.",
+      "examples": ["avia"]
+    },
+    "service": {
+      "type": "string",
+      "description": "Slug of the component that registers Watermill handlers or publishes messages. Defaults to the input directory name.",
+      "examples": ["billing"]
+    },
+    "out": {
+      "type": "string",
+      "description": "Name of the fragment file inside the step output directory.",
+      "default": "watermill.json"
+    }
+  }
+}

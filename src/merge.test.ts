@@ -99,6 +99,27 @@ describe("mergeCatalogs", () => {
     );
   });
 
+  it("merges neutral kinds and reports incompatible claims", () => {
+    const base = context("platform", ["platform.tools"]);
+    const typed = context("platform", ["platform.tools"], { kind: "system" });
+    typed.services[0]!.kind = "application";
+    const conflicting = context("platform", ["platform.tools"], { kind: "team" });
+    conflicting.services[0]!.kind = "cli";
+
+    const merged = mergeCatalogs([
+      source("a.json", { contexts: [base] }),
+      source("b.json", { contexts: [typed] }),
+      source("c.json", { contexts: [conflicting] }),
+    ]);
+
+    expect(merged.catalog.contexts[0]!.kind).toBe("system");
+    expect(merged.catalog.contexts[0]!.services[0]!.kind).toBe("application");
+    expect(merged.conflicts.map((conflict) => conflict.message)).toEqual([
+      expect.stringContaining("has kind team"),
+      expect.stringContaining("has kind cli"),
+    ]);
+  });
+
   it("records two sources disagreeing about a context's name, and keeps the first", () => {
     const merged = mergeCatalogs([
       source("a.json", { contexts: [context("shop", [], { name: "Shop" })] }),

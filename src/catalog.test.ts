@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest";
 import { rawCatalog as raw } from "./test-catalog";
 import {
   CatalogError,
+  allComponents,
   allAggregates,
   allEvents,
   blockFields,
   buildIndex,
+  componentKind,
+  groupKind,
   rootEntity,
   stepConditions,
   stepFrames,
@@ -23,6 +26,27 @@ function clone(): Catalog {
 describe("validateCatalog", () => {
   it("accepts the shipped catalog", () => {
     expect(() => validateCatalog(catalog)).not.toThrow();
+  });
+
+  it("keeps old catalogs compatible while accepting neutral group and component kinds", () => {
+    expect(groupKind(catalog.contexts[0]!)).toBe("bounded-context");
+    expect(componentKind(catalog.contexts[0]!.services[0]!)).toBe("service");
+    expect(allComponents(catalog)).toEqual(catalog.contexts.flatMap((group) => group.services));
+
+    const neutral = clone();
+    neutral.contexts[0]!.kind = "system";
+    neutral.contexts[0]!.services[0]!.kind = "application";
+    expect(() => validateCatalog(neutral)).not.toThrow();
+  });
+
+  it("rejects unknown neutral kinds", () => {
+    const badGroup = clone();
+    badGroup.contexts[0]!.kind = "folder" as never;
+    expect(() => validateCatalog(badGroup)).toThrow(/has kind "folder"/);
+
+    const badComponent = clone();
+    badComponent.contexts[0]!.services[0]!.kind = "daemon" as never;
+    expect(() => validateCatalog(badComponent)).toThrow(/has kind "daemon"/);
   });
 
   it("rejects an operation exposed by a method no interface declares", () => {

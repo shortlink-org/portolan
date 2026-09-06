@@ -55,6 +55,24 @@ func TestNameIsBackstageSafe(t *testing.T) {
 	}
 }
 
+func TestNeutralComponentKindBecomesBackstageType(t *testing.T) {
+	cat := catalog.Catalog{Contexts: []catalog.BoundedContext{{
+		ID: "tools", Name: "Tools", Kind: catalog.GroupKindSystem, Services: []catalog.Service{{
+			ID: "tools.cli", Name: "CLI", Kind: catalog.ComponentKindCLI, Technologies: []string{"OpenTelemetry", "Go"},
+		}},
+	}}}
+	resp, err := render(plugin.Request{Catalog: cat}, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(resp.Files[0].Contents, "type: tool") {
+		t.Fatal(resp.Files[0].Contents)
+	}
+	if !strings.Contains(resp.Files[0].Contents, "- go") || !strings.Contains(resp.Files[0].Contents, "- opentelemetry") {
+		t.Fatal(resp.Files[0].Contents)
+	}
+}
+
 func TestNameIsASCII(t *testing.T) {
 	if got := nameOf("Оплата.API"); got != "api" {
 		t.Fatalf("%q", got)

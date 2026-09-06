@@ -56,12 +56,15 @@ export const eventFqn = (event: Event | string): string =>
   fqn(typeof event === "string" ? event : event.id);
 
 /**
- * Flow participants are either catalog services (dotted, hierarchical) or bare
- * ids like "bus" and "fraud-scoring" that live at the model root.
+ * Flow participants are either catalog services (dotted, hierarchical) or
+ * elements at the model root. A root id may itself contain a dot — for example
+ * `river.orders` — and that dot is data, not LikeC4 containment.
  */
 export function participantFqn(participant: Participant | string): string {
   const id = typeof participant === "string" ? participant : participant.id;
-  return fqn(id);
+  return typeof participant !== "string" && participant.kind !== "service"
+    ? safeId(id)
+    : fqn(id);
 }
 
 // --- view ids -------------------------------------------------------------

@@ -114,6 +114,48 @@ Terminal states are derived on the page - nothing leads out - and never
 written down. A move the clock makes, a session expiring, a lock running out,
 is not a move: nothing runs when it happens, so it is not in the table.
 
+## A repository without a domain model
+
+`extract-project` is the baseline extractor for any repository. It reads only
+README and build/deployment manifests, emits a neutral group and component,
+and leaves `aggregates` empty. This is intentional: a package called `domain`
+is not evidence that the project models aggregates. OpenAPI, AsyncAPI,
+GraphQL, proto and SQL extractors merge their facts into the same component.
+
+The language-specific domain extractors are optional enrichments. The local
+setup wizard offers one only when it finds the structure that extractor
+requires; for Go this means a package under `internal/domain` containing the
+root struct named after that package.
+
+`extract-river` is another independent enrichment for Go repositories. It
+joins a job argument's `Kind()` to `Client.Insert`/`InsertTx`, the selected
+queue, `Worker[Args].Work`, and `river.AddWorker`. The result is a work-queue
+channel plus a two-hop enqueue/dispatch flow, with payload fields and source
+lines. It does not need aggregates and does not treat a job as a domain event.
+
+`extract-watermill` reads Watermill `Router.AddHandler` and
+`AddNoPublisherHandler` registrations. It resolves literal and constant topics,
+plus defaults on env-config structs, follows direct `Publisher.Publish` calls
+and one-hop publishing helpers, and traces JSON marshal/unmarshal values back to
+their Go payload structs. It carries enclosing `if`/`else` conditions and early
+returns through the handler's control flow: proven alternatives become one
+catalog `alt`; publications whose relationship cannot be proven remain separate
+possible routes. The channels merge normally with AsyncAPI declarations by address. Generic
+`NewEventHandler[T]` and `NewCommandHandler[T]` registrations on Watermill CQRS
+processors are also extracted; fixed topic generators and the standard
+event/command-name generator form are resolved from source.
+
+`extract-http-clients` is the outbound counterpart and does not require a
+domain layout. It reads `net/http` request construction, calls through an
+`oapi-codegen` client, and SOAP `Call`/`CallContext` sites. A generated client
+is joined to the OpenAPI document beside it, so the call uses the document's
+operation id and lands on an external with the contract the document declares.
+SOAP actions are joined to vendored WSDL bindings when the action matches. A
+raw request whose peer or contract cannot be proved is still useful evidence:
+it is emitted as `unresolved`, with its method, path and source line, rather
+than being assigned to a guessed system. Conditions guarding a call and the
+opposite path after an early return are carried into the flow note.
+
 ## Flows written by hand
 
 Some flows will always be written by people: the design doc for something not

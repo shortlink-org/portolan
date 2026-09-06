@@ -33,7 +33,10 @@ import {
   allStores,
   allTerms,
   ownersOf,
+  technologiesOf,
   walkSteps,
+  componentKind,
+  groupKind,
 } from "../catalog.ts";
 import type {
   Adr,
@@ -137,6 +140,14 @@ function diffContexts(before: Catalog, after: Catalog, add: Add): void {
   for (const id of kept) {
     const a = was.get(id)!;
     const b = now.get(id)!;
+    if (groupKind(a) !== groupKind(b)) {
+      add(
+        "context.kind",
+        "change",
+        id,
+        `group "${id}" is a ${groupKind(b)}, was ${groupKind(a)}`,
+      );
+    }
     if (a.classification !== b.classification) {
       add(
         "context.classification",
@@ -171,6 +182,15 @@ function diffServices(before: Catalog, after: Catalog, add: Add): void {
     const a = was.get(id)!;
     const b = now.get(id)!;
 
+    if (componentKind(a) !== componentKind(b)) {
+      add(
+        "service.kind",
+        "change",
+        id,
+        `component "${id}" is a ${componentKind(b)}, was ${componentKind(a)}`,
+      );
+    }
+
     const from = contextOf(before, id);
     const to = contextOf(after, id);
     if (from !== to) {
@@ -178,11 +198,27 @@ function diffServices(before: Catalog, after: Catalog, add: Add): void {
     }
 
     diffOwners(a, b, add);
+    diffTechnologies(a, b, add);
     diffInterfaces(a, b, add);
     diffCalls(a, b, add);
     diffChannels(a, b, add);
     diffServiceStores(a, b, add);
     diffAggregates(a, b, add);
+  }
+}
+
+function diffTechnologies(before: Service, after: Service, add: Add): void {
+  const was = new Set(technologiesOf(before));
+  const now = new Set(technologiesOf(after));
+  for (const technology of now) {
+    if (!was.has(technology)) {
+      add("technology.added", "change", before.id, `"${before.id}" now uses ${technology}`);
+    }
+  }
+  for (const technology of was) {
+    if (!now.has(technology)) {
+      add("technology.removed", "change", before.id, `"${before.id}" no longer uses ${technology}`);
+    }
   }
 }
 

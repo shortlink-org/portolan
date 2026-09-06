@@ -32,6 +32,7 @@ type metadata struct {
 	Title       string            `yaml:"title,omitempty"`
 	Description string            `yaml:"description,omitempty"`
 	Annotations map[string]string `yaml:"annotations,omitempty"`
+	Tags        []string          `yaml:"tags,omitempty"`
 }
 
 func render(req plugin.Request, opts Options) (plugin.Response, error) {
@@ -110,6 +111,7 @@ func render(req plugin.Request, opts Options) (plugin.Response, error) {
 			owner := ownerOf(svc, opts.Owner)
 			component := entityFor("Component", svc.ID, svc.Name, firstLine(svc.Readme), svc.ID)
 			component.Metadata.Annotations = annotations(opts.SourceBaseURL, svc.ID, svc.Path, svc.Repo, true)
+			component.Metadata.Tags = backstageTags(svc.Technologies)
 			depends := []string{}
 			consumes := []string{}
 			for _, call := range svc.Consumes {
@@ -131,7 +133,7 @@ func render(req plugin.Request, opts Options) (plugin.Response, error) {
 				provides = append(provides, "api:default/"+nameOf(provided.ID))
 			}
 			component.Spec = compact(map[string]any{
-				"type": "service", "lifecycle": opts.Lifecycle, "owner": owner,
+				"type": componentType(svc.Kind), "lifecycle": opts.Lifecycle, "owner": owner,
 				"system": nameOf(ctx.ID), "dependsOn": sortedUnique(depends),
 				"providesApis": sortedUnique(provides), "consumesApis": sortedUnique(consumes),
 			})
@@ -178,6 +180,39 @@ func render(req plugin.Request, opts Options) (plugin.Response, error) {
 		documents = append(documents, strings.TrimSpace(string(raw)))
 	}
 	return plugin.Response{Files: []plugin.File{{Name: "catalog-info.yaml", Contents: strings.Join(documents, "\n---\n") + "\n"}}}, nil
+}
+
+func componentType(kind catalog.ComponentKind) string {
+	switch kind {
+	case catalog.ComponentKindWebapp:
+		return "website"
+	case catalog.ComponentKindLibrary:
+		return "library"
+	case catalog.ComponentKindCLI:
+		return "tool"
+	case catalog.ComponentKindDataPipeline:
+		return "data-pipeline"
+	case catalog.ComponentKindApplication:
+		return "application"
+	case catalog.ComponentKindWorker:
+		return "worker"
+	case catalog.ComponentKindJob:
+		return "job"
+	case catalog.ComponentKindFunction:
+		return "function"
+	default:
+		return "service"
+	}
+}
+
+func backstageTags(technologies []string) []string {
+	tags := make([]string, 0, len(technologies))
+	for _, technology := range technologies {
+		if tag := nameOf(technology); tag != "" {
+			tags = append(tags, tag)
+		}
+	}
+	return sortedUnique(tags)
 }
 
 func apiEntity(req plugin.Request, rpc *catalog.RpcService, svc *catalog.Service, ctx *catalog.BoundedContext, opts Options) (entity, error) {

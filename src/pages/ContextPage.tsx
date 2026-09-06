@@ -1,7 +1,7 @@
 import { Link, useParams } from "react-router";
 import { AlertTriangle } from "lucide-react";
 import { catalog } from "../data";
-import { ownersOf } from "../catalog";
+import { componentKind, groupKind, ownersOf, technologiesOf } from "../catalog";
 import { contextStats } from "../lib/derive";
 import { ctxStyle } from "../lib/context-color";
 import { middleTruncate, plural } from "../lib/format";
@@ -20,13 +20,6 @@ import { C4View } from "../likec4/C4View";
 import { LevelBadge } from "../likec4/levels";
 import { contextViewId } from "../likec4/ids";
 
-const TOC: TocItem[] = [
-  { id: CONTEXT_ANCHOR.services, label: "Services" },
-  { id: CONTEXT_ANCHOR.aggregates, label: "Aggregates" },
-  { id: CONTEXT_ANCHOR.events, label: "Events" },
-  { id: LINKS_HERE, label: "What links here" },
-];
-
 export function ContextPage() {
   const { context: contextId } = useParams();
   const context = catalog.contexts.find((c) => c.id === contextId);
@@ -41,6 +34,18 @@ export function ContextPage() {
   const events = aggregates.flatMap(({ service, aggregate }) =>
     aggregate.events.map((event) => ({ service, aggregate, event })),
   );
+  const neutral = groupKind(context) !== "bounded-context";
+  const showDomain = !neutral || aggregates.length > 0;
+  const toc: TocItem[] = [
+    { id: CONTEXT_ANCHOR.services, label: neutral ? "Components" : "Services" },
+    ...(showDomain
+      ? [
+          { id: CONTEXT_ANCHOR.aggregates, label: "Aggregates" },
+          { id: CONTEXT_ANCHOR.events, label: "Events" },
+        ]
+      : []),
+    { id: LINKS_HERE, label: "What links here" },
+  ];
 
   return (
     <div className="h-full overflow-y-auto">
@@ -51,6 +56,7 @@ export function ContextPage() {
         contextId={context.id}
         right={
           <>
+            <span className="chip-lg">{groupKind(context)}</span>
             <ClassificationBadge classification={context.classification} />
             {stats.unresolved > 0 ? (
               <Link
@@ -75,20 +81,16 @@ export function ContextPage() {
             <span className="tnum">{stats.services}</span>{" "}
             {plural(stats.services, "service")}
           </a>
-          <a
-            href={`#${CONTEXT_ANCHOR.aggregates}`}
-            className="rounded-control hover:text-ink"
-          >
-            <span className="tnum">{stats.aggregates}</span>{" "}
-            {plural(stats.aggregates, "aggregate")}
-          </a>
-          <a
-            href={`#${CONTEXT_ANCHOR.events}`}
-            className="rounded-control hover:text-ink"
-          >
-            <span className="tnum">{stats.events}</span>{" "}
-            {plural(stats.events, "event")}
-          </a>
+          {showDomain ? (
+            <>
+              <a href={`#${CONTEXT_ANCHOR.aggregates}`} className="rounded-control hover:text-ink">
+                <span className="tnum">{stats.aggregates}</span>{" "}{plural(stats.aggregates, "aggregate")}
+              </a>
+              <a href={`#${CONTEXT_ANCHOR.events}`} className="rounded-control hover:text-ink">
+                <span className="tnum">{stats.events}</span>{" "}{plural(stats.events, "event")}
+              </a>
+            </>
+          ) : null}
         </div>
       </PageHeader>
 
@@ -106,7 +108,7 @@ export function ContextPage() {
           {/* --- Services ----------------------------------------------- */}
           <section id={CONTEXT_ANCHOR.services} className="mt-section">
             <SectionTitle anchor={CONTEXT_ANCHOR.services}>
-              Services
+              {neutral ? "Components" : "Services"}
             </SectionTitle>
             <div
               className="grid gap-grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))]"
@@ -133,17 +135,16 @@ export function ContextPage() {
                       reveal={service.id}
                       label={service.name}
                     />
+                    <span className="chip">{componentKind(service)}</span>
                   </div>
                   {/* Each number is a link into the part of the service page
                       that lists what it counted. */}
                   <div className="mono mt-4 flex flex-wrap gap-x-4 text-muted">
-                    <Link
-                      to={`${paths.service(context.id, service.slug)}#svc-aggregates`}
-                      className="rounded-control hover:text-ink"
-                    >
-                      <span className="tnum">{service.aggregates.length}</span>{" "}
-                      {plural(service.aggregates.length, "aggregate")}
-                    </Link>
+                    {service.aggregates.length > 0 || componentKind(service) === "service" ? (
+                      <Link to={`${paths.service(context.id, service.slug)}#svc-aggregates`} className="rounded-control hover:text-ink">
+                        <span className="tnum">{service.aggregates.length}</span>{" "}{plural(service.aggregates.length, "aggregate")}
+                      </Link>
+                    ) : null}
                     <Link
                       to={`${paths.service(context.id, service.slug)}#svc-events`}
                       className="rounded-control hover:text-ink"
@@ -170,6 +171,13 @@ export function ContextPage() {
                   >
                     {middleTruncate(`${service.repo}/${service.path}`)}
                   </div>
+                  {technologiesOf(service).length > 0 ? (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {technologiesOf(service).map((technology) => (
+                        <span key={technology} className="chip">{technology}</span>
+                      ))}
+                    </div>
+                  ) : null}
                   {/* Who to ask, when the estate's CODEOWNERS says. Absent is
                       absent: a card that read "owned by nobody" would be
                       making a claim the file never makes. */}
@@ -187,7 +195,7 @@ export function ContextPage() {
           </section>
 
           {/* --- Aggregates --------------------------------------------- */}
-          <section
+          {showDomain ? <section
             id={CONTEXT_ANCHOR.aggregates}
             className="mt-section max-w-table"
           >
@@ -235,10 +243,10 @@ export function ContextPage() {
                 ))}
               </div>
             )}
-          </section>
+          </section> : null}
 
           {/* --- Events -------------------------------------------------- */}
-          <section
+          {showDomain ? <section
             id={CONTEXT_ANCHOR.events}
             className="mt-section max-w-table"
           >
@@ -297,7 +305,7 @@ export function ContextPage() {
                 })}
               </div>
             )}
-          </section>
+          </section> : null}
 
           {/* Traffic that starts outside. What its own services call each
               other is wiring, not something the domain is depended on for. */}
@@ -307,7 +315,7 @@ export function ContextPage() {
           />
         </div>
 
-        <Toc items={TOC} label="Sections of this context" />
+        <Toc items={toc} label={`Sections of this ${neutral ? "group" : "context"}`} />
       </div>
     </div>
   );

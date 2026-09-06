@@ -15,11 +15,21 @@ func (s *site) renderService(ctx *catalog.BoundedContext, svc *catalog.Service) 
 	b.WriteString("# " + svc.Name + "\n\n")
 	b.WriteString(s.stamp() + "\n")
 
+	groupLabel := "Context"
+	if ctx.Kind != "" && ctx.Kind != catalog.GroupKindBoundedContext {
+		groupLabel = "Group"
+	}
 	rows := [][]string{
 		{"Id", code(svc.ID)},
-		{"Context", s.ref(self, ctx.ID, ctx.Name)},
+		{groupLabel, s.ref(self, ctx.ID, ctx.Name)},
 		{"Repo", repoLink(svc.Repo)},
 		{"Path", s.source(self, strings.TrimSuffix(svc.Path, "/")+"/", svc)},
+	}
+	if svc.Kind != "" {
+		rows = append(rows, []string{"Kind", string(svc.Kind)})
+	}
+	if len(svc.Technologies) > 0 {
+		rows = append(rows, []string{"Technologies", strings.Join(svc.Technologies, ", ")})
 	}
 	// Who to ask, when the estate keeps a CODEOWNERS. Left out entirely when
 	// it does not: a line reading "Owners: none" is a claim, and nobody made
@@ -39,7 +49,9 @@ func (s *site) renderService(ctx *catalog.BoundedContext, svc *catalog.Service) 
 		b.WriteString("\n" + readme + "\n")
 	}
 
-	section(&b, "Aggregates", s.aggregateTable(self, svc))
+	if svc.Kind == "" || svc.Kind == catalog.ComponentKindService || len(svc.Aggregates) > 0 {
+		section(&b, "Aggregates", s.aggregateTable(self, svc))
+	}
 	section(&b, "Provides", s.providesBlock(self, svc.Provides, svc))
 	section(&b, "Consumes", s.consumesTable(self, svc))
 	section(&b, "Publishes", s.publishesTable(self, svc))
@@ -251,6 +263,9 @@ func (s *site) channelsBlock(from string, svc *catalog.Service) string {
 	for i := range svc.Channels {
 		channel := &svc.Channels[i]
 		b.WriteString("### " + channel.Address + "\n\n")
+		if channel.Kind == catalog.ChannelKindJob {
+			b.WriteString("`work queue`\n\n")
+		}
 		if channel.Title != "" {
 			b.WriteString("**" + channel.Title + "**\n\n")
 		}

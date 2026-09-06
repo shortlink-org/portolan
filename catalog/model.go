@@ -82,26 +82,53 @@ const (
 	ClassificationGeneric    Classification = "generic"
 )
 
+type GroupKind string
+
+const (
+	GroupKindBoundedContext GroupKind = "bounded-context"
+	GroupKindSystem         GroupKind = "system"
+	GroupKindProduct        GroupKind = "product"
+	GroupKindTeam           GroupKind = "team"
+	GroupKindNamespace      GroupKind = "namespace"
+)
+
 type BoundedContext struct {
 	ID             string         `json:"id"`
 	Slug           string         `json:"slug"`
 	Name           string         `json:"name"`
 	Summary        string         `json:"summary"`
+	Kind           GroupKind      `json:"kind,omitempty"`
 	Classification Classification `json:"classification,omitempty"`
 	ViewID         string         `json:"viewId,omitempty"`
 	Services       []Service      `json:"services"`
 }
 
+type ComponentKind string
+
+const (
+	ComponentKindService      ComponentKind = "service"
+	ComponentKindApplication  ComponentKind = "application"
+	ComponentKindWebapp       ComponentKind = "webapp"
+	ComponentKindWorker       ComponentKind = "worker"
+	ComponentKindJob          ComponentKind = "job"
+	ComponentKindFunction     ComponentKind = "function"
+	ComponentKindCLI          ComponentKind = "cli"
+	ComponentKindLibrary      ComponentKind = "library"
+	ComponentKindDataPipeline ComponentKind = "data-pipeline"
+)
+
 type Service struct {
-	ID         string       `json:"id"`
-	Slug       string       `json:"slug"`
-	Name       string       `json:"name"`
-	Repo       string       `json:"repo"`
-	Path       string       `json:"path"`
-	Readme     string       `json:"readme"`
-	Provides   []RpcService `json:"provides"`
-	Consumes   []RpcCall    `json:"consumes"`
-	Aggregates []Aggregate  `json:"aggregates"`
+	ID           string        `json:"id"`
+	Slug         string        `json:"slug"`
+	Name         string        `json:"name"`
+	Repo         string        `json:"repo"`
+	Path         string        `json:"path"`
+	Readme       string        `json:"readme"`
+	Kind         ComponentKind `json:"kind,omitempty"`
+	Technologies []string      `json:"technologies,omitempty"`
+	Provides     []RpcService  `json:"provides"`
+	Consumes     []RpcCall     `json:"consumes"`
+	Aggregates   []Aggregate   `json:"aggregates"`
 	// Stores this service touches, by id. Ownership is not stated here - a
 	// store names its own owner, so an id in this list that the store does not
 	// call its owner is a read.
@@ -360,6 +387,10 @@ type Channel struct {
 	// the same string an event's Wire.Channel carries, and comparing the two is
 	// how a document and the code it belongs to are held against each other.
 	Address string `json:"address"`
+	// Kind distinguishes broadcast/event channels from work queues. The latter
+	// may have many producers by design and do not require a domain event with
+	// the same wire name.
+	Kind ChannelKind `json:"kind,omitempty"`
 
 	Title string `json:"title,omitempty"`
 	Doc   string `json:"doc,omitempty"`
@@ -369,6 +400,13 @@ type Channel struct {
 	// Source is the document this was read out of.
 	Source string `json:"source,omitempty"`
 }
+
+type ChannelKind string
+
+const (
+	ChannelKindEvent ChannelKind = "event"
+	ChannelKindJob   ChannelKind = "job"
+)
 
 // ChannelDirection is which way a message travels, from this service's side.
 //

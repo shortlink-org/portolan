@@ -16,7 +16,7 @@ export interface Discovery {
   root: string;
   filesScanned: number;
   truncated: boolean;
-  defaults: { id: string; name: string; context: string; service: string };
+  defaults: { id: string; name: string; group: string; component: string; context: string; service: string };
   detections: Detection[];
 }
 
@@ -29,13 +29,17 @@ export interface ProjectDraft {
   sourcePath: string;
   id: string;
   name: string;
-  context: string;
-  service: string;
+  group: string;
+  component: string;
+  context?: string;
+  service?: string;
+  groupKind?: "bounded-context" | "system" | "product" | "team" | "namespace";
+  componentKind?: "service" | "application" | "webapp" | "worker" | "job" | "function" | "cli" | "library" | "data-pipeline";
   plugins: string[];
 }
 
 export interface ProjectPlan {
-  project: { id: string; name: string; root: string; context?: string; service?: string; repository?: string };
+  project: { id: string; name: string; root: string; group?: string; component?: string; groupKind?: string; componentKind?: string; context?: string; service?: string; repository?: string };
   plugins: string[];
   steps: Array<{ plugin: string; in: string; out: string; options: Record<string, unknown> }>;
   source: string;

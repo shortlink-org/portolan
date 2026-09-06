@@ -63,6 +63,26 @@ describe("publicSetupFrom", () => {
     expect(JSON.stringify(setup)).not.toContain("command");
   });
 
+  it("publishes neutral project scope and kinds", () => {
+    const setup = publicSetupFrom({
+      projects: [{
+        id: "tools",
+        name: "Tools",
+        root: "tools",
+        group: "platform",
+        component: "cli",
+        groupKind: "team",
+        componentKind: "cli",
+      }],
+    });
+    expect(setup.projects[0]).toMatchObject({
+      group: "platform",
+      component: "cli",
+      groupKind: "team",
+      componentKind: "cli",
+    });
+  });
+
   it("claims the sandbox only for a plugin that declares a module", () => {
     const setup = publicSetupFrom({
       plugins: [

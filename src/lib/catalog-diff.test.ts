@@ -24,6 +24,28 @@ describe("diffCatalogs", () => {
     expect(diffCatalogs(catalog, catalog)).toEqual([]);
   });
 
+  it("reports semantic kind changes but not missing legacy defaults", () => {
+    const before = JSON.parse(JSON.stringify(catalog)) as Catalog;
+    const explicitDefaults = JSON.parse(JSON.stringify(catalog)) as Catalog;
+    explicitDefaults.contexts[0]!.kind = "bounded-context";
+    explicitDefaults.contexts[0]!.services[0]!.kind = "service";
+    expect(diffCatalogs(before, explicitDefaults)).toEqual([]);
+
+    const changes = edited((c) => {
+      c.contexts[0]!.kind = "system";
+      c.contexts[0]!.services[0]!.kind = "application";
+    });
+    expect(kinds(changes)).toEqual(["context.kind", "service.kind"]);
+  });
+
+  it("reports technology changes on a component", () => {
+    const changes = edited((c) => {
+      c.contexts[0]!.services[0]!.technologies = ["Go", "PostgreSQL"];
+    });
+    expect(kinds(changes)).toEqual(["technology.added", "technology.added"]);
+    expect(changes.map((change) => change.summary).join(" ")).toContain("PostgreSQL");
+  });
+
   it("says nothing about a stamp, which is not a change anybody made", () => {
     expect(
       edited((c) => {

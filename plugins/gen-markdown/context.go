@@ -14,6 +14,9 @@ func (s *site) renderContext(ctx *catalog.BoundedContext) {
 	b.WriteString(s.stamp() + "\n")
 
 	meta := [][]string{{"Id", code(ctx.ID)}}
+	if ctx.Kind != "" {
+		meta = append(meta, []string{"Kind", string(ctx.Kind)})
+	}
 	if ctx.Classification != "" {
 		meta = append(meta, []string{"Classification", string(ctx.Classification)})
 	}
@@ -23,9 +26,19 @@ func (s *site) renderContext(ctx *catalog.BoundedContext) {
 		b.WriteString("\n" + ctx.Summary + "\n")
 	}
 
+	neutral := ctx.Kind != "" && ctx.Kind != catalog.GroupKindBoundedContext
 	rows := make([][]string, 0, len(ctx.Services))
 	for i := range ctx.Services {
 		svc := &ctx.Services[i]
+		if neutral {
+			rows = append(rows, []string{
+				s.ref(self, svc.ID, svc.Name),
+				string(svc.Kind),
+				strings.Join(svc.Technologies, ", "),
+				code(svc.Path),
+			})
+			continue
+		}
 		aggregates := make([]string, 0, len(svc.Aggregates))
 		for j := range svc.Aggregates {
 			aggregates = append(aggregates, svc.Aggregates[j].Name)
@@ -36,7 +49,15 @@ func (s *site) renderContext(ctx *catalog.BoundedContext) {
 			strings.Join(aggregates, ", "),
 		})
 	}
-	section(&b, "Services", table([]string{"Service", "Path", "Aggregates"}, rows))
+	title := "Services"
+	firstColumn := "Service"
+	headings := []string{firstColumn, "Path", "Aggregates"}
+	if neutral {
+		title = "Components"
+		firstColumn = "Component"
+		headings = []string{firstColumn, "Kind", "Technologies", "Path"}
+	}
+	section(&b, title, table(headings, rows))
 
 	// Before the decisions, because the decisions are written in these words.
 	if terms := s.termsOf[ctx.ID]; len(terms) > 0 {

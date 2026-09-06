@@ -15,6 +15,10 @@ export interface SetupProject {
   root: string;
   context?: string;
   service?: string;
+  group?: string;
+  component?: string;
+  groupKind?: string;
+  componentKind?: string;
   repository?: string;
 }
 
@@ -92,6 +96,10 @@ interface ManifestProject {
   root?: unknown;
   context?: unknown;
   service?: unknown;
+  group?: unknown;
+  component?: unknown;
+  groupKind?: unknown;
+  componentKind?: unknown;
   repository?: unknown;
 }
 
@@ -278,6 +286,10 @@ function projectFrom(value: unknown): SetupProject | null {
     root: cleanPath(item.root),
     ...(typeof item.context === "string" ? { context: item.context } : {}),
     ...(typeof item.service === "string" ? { service: item.service } : {}),
+    ...(typeof item.group === "string" ? { group: item.group } : {}),
+    ...(typeof item.component === "string" ? { component: item.component } : {}),
+    ...(typeof item.groupKind === "string" ? { groupKind: item.groupKind } : {}),
+    ...(typeof item.componentKind === "string" ? { componentKind: item.componentKind } : {}),
     ...(repository ? { repository } : {}),
   };
 }

@@ -80,6 +80,8 @@ export interface BoundedContext {
   slug: string;
   name: string;
   summary: string;
+  /** Semantic role of this top-level group. Absent preserves the historical bounded-context meaning. */
+  kind?: GroupKind;
   /**
    * How strategically the domain is rated. A badge, and only a badge: it never
    * orders, groups or filters anything. Absent means the estate has not made
@@ -90,6 +92,21 @@ export interface BoundedContext {
   viewId?: string;
   services: Service[];
 }
+
+export type GroupKind =
+  | "bounded-context"
+  | "system"
+  | "product"
+  | "team"
+  | "namespace";
+
+export const GROUP_KINDS: readonly GroupKind[] = [
+  "bounded-context",
+  "system",
+  "product",
+  "team",
+  "namespace",
+] as const;
 
 export type Classification = "core" | "supporting" | "generic";
 
@@ -105,6 +122,10 @@ export interface Service {
   repo: string;
   path: string;
   readme: string; // markdown
+  /** Runtime or code role. Absent preserves the historical service meaning. */
+  kind?: ComponentKind;
+  /** Technology names discovered from build and deployment manifests. */
+  technologies?: string[];
   provides: RpcService[];
   consumes: RpcCall[];
   aggregates: Aggregate[];
@@ -143,6 +164,33 @@ export interface Service {
    */
   owners?: string[];
 }
+
+export type ComponentKind =
+  | "service"
+  | "application"
+  | "webapp"
+  | "worker"
+  | "job"
+  | "function"
+  | "cli"
+  | "library"
+  | "data-pipeline";
+
+export const COMPONENT_KINDS: readonly ComponentKind[] = [
+  "service",
+  "application",
+  "webapp",
+  "worker",
+  "job",
+  "function",
+  "cli",
+  "library",
+  "data-pipeline",
+] as const;
+
+/** Neutral vocabulary for consumers that do not assume DDD. */
+export type Group = BoundedContext;
+export type Component = Service;
 export interface RpcService {
   id: string;
   methods: RpcMethod[];
@@ -446,8 +494,10 @@ export interface Channel {
    * "shop.cart.basket" - the channel as the broker knows it. The same string an
    * event's `wire.channel` carries, and comparing the two is how a document and
    * the code beside it are held against each other.
-   */
+  */
   address: string;
+  /** Event stream by default; a job queue has work-queue ownership semantics. */
+  kind?: "event" | "job";
   title?: string;
   doc?: string;
   messages: ChannelMessage[];
@@ -648,8 +698,8 @@ export interface Flow {
   summary: string;
   source?: string; // the file the flow was read out of
   /**
-   * The bounded context this flow belongs to. Whatever derived the flow read
-   * one service's tree to find it and therefore knows the answer, so the flow
+   * The top-level group this flow belongs to. Whatever derived the flow read
+   * one component's tree to find it and therefore knows the answer, so the flow
    * states it instead of leaving a reader to recover it from `source` - and the
    * validator holds every flow to it, because a flow with no owner has nowhere
    * to sit in the tree.
@@ -899,6 +949,19 @@ export function allServices(catalog: Catalog): Service[] {
   return catalog.contexts.flatMap((c) => c.services);
 }
 
+/** Neutral alias for allServices; both names intentionally address the same wire model. */
+export function allComponents(catalog: Catalog): Component[] {
+  return allServices(catalog);
+}
+
+export function groupKind(group: Group): GroupKind {
+  return group.kind ?? "bounded-context";
+}
+
+export function componentKind(component: Component): ComponentKind {
+  return component.kind ?? "service";
+}
+
 /** Every system outside the estate with a contract, in catalog order. */
 export function allExternals(catalog: Catalog): External[] {
   return catalog.externals ?? [];
@@ -940,6 +1003,10 @@ export function allRepos(catalog: Catalog): RepoPin[] {
 /** Who to ask about a service, without the caller having to know the field is optional. */
 export function ownersOf(service: Service): string[] {
   return service.owners ?? [];
+}
+
+export function technologiesOf(component: Component): string[] {
+  return component.technologies ?? [];
 }
 
 export function allTables(catalog: Catalog): Table[] {
@@ -1537,6 +1604,17 @@ function validateChannels(service: Service): void {
     }
     addresses.add(channel.address);
 
+    if (
+      channel.kind !== undefined &&
+      channel.kind !== "event" &&
+      channel.kind !== "job"
+    ) {
+      fail(
+        `channel "${channel.address}" of service "${service.id}" has kind "${channel.kind}", which is neither event nor job`,
+        `service ${service.id} / channel ${channel.address}`,
+      );
+    }
+
     const seen = new Set<string>();
     for (const message of channel.messages) {
       if (typeof message.name !== "string" || message.name === "") {
@@ -1586,6 +1664,12 @@ export function validateCatalog(catalog: Catalog): Catalog {
         `context ${context.id}`,
       );
     }
+    if (context.kind !== undefined && !GROUP_KINDS.includes(context.kind)) {
+      fail(
+        `context "${context.id}" has kind "${context.kind}"; expected one of ${GROUP_KINDS.join(", ")}`,
+        `context ${context.id}`,
+      );
+    }
     if (
       context.classification !== undefined &&
       !CLASSIFICATIONS.includes(context.classification)
@@ -1607,6 +1691,15 @@ export function validateCatalog(catalog: Catalog): Catalog {
           `service ${service.id}`,
         );
       }
+      if (
+        service.kind !== undefined &&
+        !COMPONENT_KINDS.includes(service.kind)
+      ) {
+        fail(
+          `service "${service.id}" has kind "${service.kind}"; expected one of ${COMPONENT_KINDS.join(", ")}`,
+          `service ${service.id}`,
+        );
+      }
       // Owners are opaque - the estate's business is who to ask, not what a
       // handle resolves to - so only the two things that would render as a
       // hole are checked: a blank chip, and one name shown twice.
@@ -1625,6 +1718,22 @@ export function validateCatalog(catalog: Catalog): Catalog {
           );
         }
         handles.add(handle);
+      }
+      const technologies = new Set<string>();
+      for (const technology of service.technologies ?? []) {
+        if (!technology.trim()) {
+          fail(
+            `service "${service.id}" has a technology with no name`,
+            `service ${service.id}`,
+          );
+        }
+        if (technologies.has(technology)) {
+          fail(
+            `service "${service.id}" names technology "${technology}" twice`,
+            `service ${service.id}`,
+          );
+        }
+        technologies.add(technology);
       }
       for (const call of service.consumes) rpcIds.add(call.id);
       for (const provided of service.provides) {
@@ -1780,7 +1889,7 @@ export function validateCatalog(catalog: Catalog): Catalog {
     "flow",
   );
 
-  const flowContextIds = new Set(catalog.contexts.map((c) => c.id));
+  const flowGroupIds = new Set(catalog.contexts.map((c) => c.id));
 
   for (const flow of catalog.flows) {
     const lanes = new Set(flow.participants.map((p) => p.id));
@@ -1795,13 +1904,13 @@ export function validateCatalog(catalog: Catalog): Catalog {
     // no group to sit under and the tree files it as a defect.
     if (flow.owner === undefined) {
       fail(
-        `flow "${flow.slug}" names no owner; a flow must state the context it belongs to`,
+        `flow "${flow.slug}" names no owner; a flow must state the group it belongs to`,
         `flow ${flow.id}`,
       );
     }
-    if (flow.owner !== undefined && !flowContextIds.has(flow.owner)) {
+    if (flow.owner !== undefined && !flowGroupIds.has(flow.owner)) {
       fail(
-        `flow "${flow.slug}" names owner "${flow.owner}", which is not a bounded context`,
+        `flow "${flow.slug}" names owner "${flow.owner}", which is not a top-level group`,
         `flow ${flow.id}`,
       );
     }

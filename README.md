@@ -1,8 +1,10 @@
 # portolan
 
-A browser for an event-driven system's architecture catalog: bounded contexts,
-services, aggregates, events, flows, stores and ADRs, read out of the code and
-the specs that already describe them, and rendered as a navigable site.
+A browser for a software estate's architecture catalog: systems or bounded
+contexts, components, interfaces, events, flows, stores and ADRs, read out of
+the code and specs that already describe them, and rendered as a navigable
+site. DDD enriches the model when a repository really uses it; it is not a
+prerequisite.
 
 Static end to end — no backend, no runtime queries. The catalog is the input,
 the site is the output.
@@ -46,6 +48,24 @@ Facts carry a status: `declared` (a fragment says so), `verified` (a recorded
 trace showed it happening), `unresolved` (nothing in the catalog answers the
 reference).
 
+### Projects without DDD
+
+`extract-project` is the neutral baseline. It reads repository metadata and
+deployment/build manifests without executing project code, creates a `system`,
+`product`, `team` or `namespace` containing a component, and records its role
+(`application`, `worker`, `job`, `cli`, `library`, and so on) and technologies.
+Contract and messaging extractors then add OpenAPI, AsyncAPI, GraphQL, proto,
+SQL, River, Watermill and outbound HTTP/SOAP facts to that same component.
+
+The older JSON keys `contexts` and `services` remain the wire format, so old
+catalogs need no migration. Optional `kind` fields say when those nodes should
+be read as a neutral group and component. When `kind` is absent, the historical
+`bounded-context` and `service` meanings apply.
+
+The setup wizard always offers the neutral extractor. A language-specific DDD
+extractor is selected only when its expected model structure is present; a
+`go.mod` or a directory merely named `internal/domain` is not sufficient.
+
 ## What the site shows
 
 - **Entity pages** — context, service, aggregate (entities, value objects,
@@ -85,7 +105,7 @@ Plugins, one JSON message in and one out (`plugins/README.md`), declared in
 
 | phase | plugins |
 | --- | --- |
-| extract | `extract-go`, `extract-ts`, `extract-rust`, `extract-java`, `extract-django`, `extract-openapi`, `extract-asyncapi`, `extract-graphql`, `extract-proto`, `extract-csr`, `extract-sql`, `extract-flows`, `extract-adr`, `extract-glossary` |
+| extract | `extract-project`, `extract-go`, `extract-ts`, `extract-rust`, `extract-java`, `extract-django`, `extract-openapi`, `extract-http-clients`, `extract-asyncapi`, `extract-graphql`, `extract-proto`, `extract-river`, `extract-watermill`, `extract-csr`, `extract-sql`, `extract-flows`, `extract-adr`, `extract-glossary` |
 | verify | `verify-otel` — reads traces, marks the hops they show as `verified`; `verify-codeowners` — reads CODEOWNERS, says who to ask about each service |
 | generate | `gen-markdown` — `docs/`, `gen-mermaid` — standalone flow diagrams, `gen-backstage` — Backstage entities |
 

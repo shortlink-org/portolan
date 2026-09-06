@@ -194,6 +194,18 @@ describe("wireProblems", () => {
     expect(found(catalogWith([cart()]))).toEqual([]);
   });
 
+  it("does not require a work-queue job to be a domain event", () => {
+    const jobs = channel(
+      "critical_mail",
+      "send send_mail",
+      "receive send_mail",
+    );
+    jobs.kind = "job";
+    const mailer = speaking(service("shop.mailer", []), jobs);
+
+    expect(found(catalogWith([mailer]))).toEqual([]);
+  });
+
   // The one edge in the catalog that runs from the subscriber outwards.
   it("resolves a subscription against whoever publishes the name", () => {
     const oms = speaking(
