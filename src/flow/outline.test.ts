@@ -141,22 +141,19 @@ describe("buildOutline", () => {
     expect(opening?.title).not.toBe(firstBranch);
   });
 
-  it("greys the steps off a chosen path instead of dropping them", () => {
+  it("keeps only the steps of a chosen path", () => {
     const path = flowPaths(checkout).paths.find((p) => p.terminal);
     if (!path) throw new Error("fixture has no terminal path");
     const all = walkSteps(checkout.steps).map((s) => s.id);
     const rows = buildOutline(checkout, { ...NO_FILTER, path: path.stepIds });
 
-    // Every step is still drawn: the branch selector says which run to read,
-    // not which steps exist.
-    expect(outlineSteps(rows).map((r) => r.step.id)).toEqual(all);
-    const onPath = outlineSteps(rows)
-      .filter((r) => !r.offPath)
-      .map((r) => r.step.id);
-    expect(onPath).toEqual(all.filter((id) => path.stepIds.has(id)));
+    expect(outlineSteps(rows).map((r) => r.step.id)).toEqual(
+      all.filter((id) => path.stepIds.has(id)),
+    );
+    expect(outlineSteps(rows).every((r) => !r.offPath)).toBe(true);
   });
 
-  it("greys a branch frame only when nothing under it is on the path", () => {
+  it("keeps only the branch frames selected by the path", () => {
     const path = flowPaths(checkout).paths.find((p) => p.terminal);
     if (!path) throw new Error("fixture has no terminal path");
     const rows = buildOutline(checkout, { ...NO_FILTER, path: path.stepIds });
@@ -164,11 +161,10 @@ describe("buildOutline", () => {
       (f) => f.keyword === "alt" || f.keyword === "else",
     );
 
-    // The conditions the path chose are the ones left lit, and every other arm
-    // of every alt recedes.
-    const lit = choices.filter((f) => !f.offPath).map((f) => f.title);
-    expect(lit).toEqual(path.choices.map((c) => c.title));
-    expect(choices.some((f) => f.offPath)).toBe(true);
+    expect(choices.map((f) => f.title)).toEqual(
+      path.choices.map((c) => c.title),
+    );
+    expect(choices.every((f) => !f.offPath)).toBe(true);
   });
 
   it("numbers every step by its place in the whole flow, path or not", () => {
@@ -177,7 +173,10 @@ describe("buildOutline", () => {
     if (!path) throw new Error("fixture has no terminal path");
     const rows = buildOutline(checkout, { ...NO_FILTER, path: path.stepIds });
     expect(outlineSteps(rows).map((r) => r.number)).toEqual(
-      order.map((_, i) => i + 1),
+      order
+        .map((id, i) => ({ id, number: i + 1 }))
+        .filter(({ id }) => path.stepIds.has(id))
+        .map(({ number }) => number),
     );
   });
 
@@ -190,17 +189,13 @@ describe("buildOutline", () => {
       crossOnly: true,
       path: path.stepIds,
     });
-    // The filter still drops; the path still only marks.
+    // Both filters remove their own set; the intersection is what remains.
     expect(outlineSteps(rows).map((r) => r.step.id)).toEqual(
       walkSteps(checkout.steps)
         .map((s) => s.id)
-        .filter((id) => !hidden.has(id)),
+        .filter((id) => !hidden.has(id) && path.stepIds.has(id)),
     );
-    expect(
-      outlineSteps(rows)
-        .filter((r) => !r.offPath)
-        .every((r) => path.stepIds.has(r.step.id)),
-    ).toBe(true);
+    expect(outlineSteps(rows).every((r) => !r.offPath)).toBe(true);
   });
 
   it("emits nothing but steps for a flow with no frames", () => {

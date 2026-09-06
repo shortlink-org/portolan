@@ -162,8 +162,9 @@ export function FlowDetail() {
   );
   /**
    * What the canvas lifts: the chosen path, narrowed to the chosen status.
-   * Both narrow the same way on the picture - the rest recedes - so they are
-   * one set there, and two flags on the rail, where each has its own words.
+   * A path also hides the other branches on the picture, while a status keeps
+   * them as context and lets them recede. Both still share one highlighted set
+   * on the canvas and remain separate controls on the rail.
    */
   const liftedSteps = useMemo(() => {
     if (!path && !statusFilter) return null;
@@ -253,8 +254,8 @@ export function FlowDetail() {
 
   useEffect(() => {
     // Choosing a path that does not contain the selected step would leave the
-    // rail marking a step it has greyed out. The selection is the newer
-    // intent, so the filter yields to it rather than the other way round.
+    // selected step outside the focused rail. The selection is the newer
+    // intent, so the path filter yields to it rather than the other way round.
     if (path && selectedStepId && !path.stepIds.has(selectedStepId)) {
       setPathId("");
     }
@@ -552,8 +553,14 @@ export function FlowDetail() {
                 flow={flow}
                 crossOnly={crossOnly}
                 variant={prefs.variant}
-                litSteps={litSteps}
-                pathSteps={liftedSteps}
+                litSteps={
+                  litSteps.length > 0
+                    ? litSteps
+                    : statusFilter
+                      ? (liftedSteps ?? [])
+                      : []
+                }
+                pathSteps={path ? [...path.stepIds] : null}
                 /* What the READER is pointing at, which is not the same thing
                    as what the rail is marking: during playback the rail marks
                    the step being played, and feeding that back to the canvas

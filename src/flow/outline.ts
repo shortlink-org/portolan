@@ -33,7 +33,7 @@ export interface OutlineStep {
   number: number;
   /** True when the cross-context view would leave this step out. */
   hidden: boolean;
-  /** True when the chosen path does not run through this step. */
+  /** Reserved for consumers that render an unfocused path as context. */
   offPath: boolean;
   /** True when the status filter is on and this step is not the status asked for. */
   offStatus: boolean;
@@ -47,13 +47,9 @@ export interface OutlineOptions {
   /** When true, those steps are left out and empty frames go with them. */
   crossOnly: boolean;
   /**
-   * When set, steps outside this path are marked `offPath`. Kept apart from
-   * `hidden` because the two mean different things, and treated differently
-   * for the same reason: a hidden step is one this VIEW chooses not to draw,
-   * so it goes; an off-path step is one that does not happen on the path being
-   * read, and it stays, greyed. Dropping it would redraw the rail — and the
-   * canvas frames beside it — every time the branch selector moved, and the
-   * fact that there IS a branch here is most of what both are for.
+   * When set, only steps on this executable path remain. The unfiltered state
+   * already shows the whole decision tree; choosing a path is an explicit
+   * request to focus on one run through it, not merely recolour the tree.
    */
   path?: ReadonlySet<string> | null;
   /**
@@ -75,12 +71,6 @@ export function buildOutline(
 ): OutlineRow[] {
   let counter = 0;
 
-  /** A frame is off the path only when nothing under it is on it. */
-  const bodyOffPath = (body: readonly OutlineRow[]): boolean => {
-    const steps = body.filter((row) => row.type === "step");
-    return steps.length > 0 && steps.every((row) => row.offPath);
-  };
-
   const emit = (nodes: FlowNode[], depth: number): OutlineRow[] => {
     const rows: OutlineRow[] = [];
 
@@ -90,6 +80,7 @@ export function buildOutline(
           counter += 1;
           const hidden = options.hidden.has(node.id);
           if (options.crossOnly && hidden) break;
+          if (options.path && !options.path.has(node.id)) break;
           rows.push({
             type: "step",
             key: node.id,
@@ -97,7 +88,7 @@ export function buildOutline(
             step: node,
             number: counter,
             hidden,
-            offPath: options.path ? !options.path.has(node.id) : false,
+            offPath: false,
             offStatus: options.statuses
               ? !options.statuses.has(node.status)
               : false,
@@ -119,7 +110,7 @@ export function buildOutline(
               depth,
               keyword: opened ? "and" : "par",
               title: opened ? undefined : node.title,
-              offPath: bodyOffPath(body),
+              offPath: false,
             });
             opened = true;
             rows.push(...body);
@@ -142,7 +133,7 @@ export function buildOutline(
               keyword: opened ? "else" : "alt",
               title: branch.title,
               terminal: branch.terminal,
-              offPath: bodyOffPath(body),
+              offPath: false,
             });
             opened = true;
             rows.push(...body);
@@ -159,7 +150,7 @@ export function buildOutline(
             depth,
             keyword: "loop",
             title: node.title,
-            offPath: bodyOffPath(body),
+            offPath: false,
           });
           rows.push(...body);
           break;

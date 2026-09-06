@@ -40,6 +40,11 @@ export function viewHasNode(viewId: string, likec4Id: string): boolean {
   return shapeOf(viewId).nodeIds.has(likec4Id);
 }
 
+/** The node ids a view draws, in LikeC4 model order. */
+export function viewNodeIds(viewId: string): readonly string[] {
+  return [...shapeOf(viewId).nodeIds];
+}
+
 /** The edge ids a view draws, in the order LikeC4 emits them. */
 export function viewEdgeIds(viewId: string): readonly string[] {
   return shapeOf(viewId).edgeIds;

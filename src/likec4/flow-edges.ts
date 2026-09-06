@@ -63,7 +63,7 @@ export function frameAncestors(edgeId: string): string[] {
  *
  * A frame with even one live edge inside it stays lit: the alt itself still
  * happens on this path, it is the arms not taken that do not. Only a frame
- * that contributes nothing at all recedes.
+ * that contributes nothing at all is hidden.
  */
 export function offPathFrameIds(
   edgeIds: readonly string[],

@@ -207,7 +207,7 @@ export function FlowToolbar({
             value={pathId}
             onChange={onPath}
             label="Path through this flow"
-            title="Grey out everything that does not run on one path through this flow"
+            title="Focus the rail and canvas on one executable path through this flow"
             // A path's name is every condition along it, which on a flow with
             // five forks is a sentence. It is capped here rather than shortened
             // in the data: the menu still shows the whole thing, and the bar

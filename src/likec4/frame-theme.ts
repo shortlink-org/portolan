@@ -70,19 +70,29 @@ export function buildWalkthroughCss(): string {
 }
 
 /**
- * Frames the chosen path does not run through, dimmed rather than hidden.
+ * Removes everything outside the executable path the reader selected.
  *
- * Hiding them would redraw the picture every time the branch selector moved,
- * and the shape of a flow — that there IS a choice here, with three arms — is
- * most of what the canvas is for. So the branch not taken stays exactly where
- * it was and recedes, which is the same thing the rail does to its rows.
+ * The default canvas remains the complete decision tree. Once a path is
+ * chosen, keeping its siblings as pale scaffolding defeats the choice on the
+ * large provider graphs this control is for, so both their arrows and their
+ * now-empty frames leave the picture.
  */
-export function buildOffPathCss(frameIds: readonly string[]): string {
-  if (frameIds.length === 0) return "";
-  const selector = frameIds
-    .map((id) => `.react-flow__node[data-id="${cssQuote(id)}"]`)
-    .join(",\n");
-  return `${selector} {\n  opacity: 0.35;\n  transition: opacity 120ms ease;\n}`;
+export function buildFocusedPathCss(
+  edgeIds: readonly string[],
+  edgeLabelPositions: readonly number[],
+  nodeIds: readonly string[],
+  frameIds: readonly string[],
+): string {
+  const selectors = [
+    ...edgeIds.map((id) => `.react-flow__edge[data-id="${cssQuote(id)}"]`),
+    ...edgeLabelPositions.map(
+      (position) => `.react-flow__edgelabel-renderer > :nth-child(${position})`,
+    ),
+    ...nodeIds.map((id) => `.react-flow__node[data-id="${cssQuote(id)}"]`),
+    ...frameIds.map((id) => `.react-flow__node[data-id="${cssQuote(id)}"]`),
+  ];
+  if (selectors.length === 0) return "";
+  return `${selectors.join(",\n")} {\n  display: none;\n}`;
 }
 
 /** CSS string escape for an attribute value. */

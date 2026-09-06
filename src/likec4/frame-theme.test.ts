@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildFrameCss,
-  buildOffPathCss,
+  buildFocusedPathCss,
   buildWalkthroughCss,
 } from "./frame-theme";
 
@@ -34,20 +34,27 @@ describe("buildFrameCss", () => {
   });
 });
 
-describe("buildOffPathCss", () => {
-  it("says nothing when every frame is on the path", () => {
-    expect(buildOffPathCss([])).toBe("");
+describe("buildFocusedPathCss", () => {
+  it("says nothing when every edge, label, node and frame is on the path", () => {
+    expect(buildFocusedPathCss([], [], [], [])).toBe("");
   });
 
-  it("dims the frames it is given, and does not hide them", () => {
-    const css = buildOffPathCss(["step-07:alt.02:else"]);
+  it("hides off-path edges, labels, participants and empty frames", () => {
+    const css = buildFocusedPathCss(
+      ["step-08:alt.02:else.01"],
+      [8],
+      ["unused_provider"],
+      ["step-07:alt.02:else"],
+    );
+    expect(css).toContain('.react-flow__edge[data-id="step-08:alt.02:else.01"]');
+    expect(css).toContain(".react-flow__edgelabel-renderer > :nth-child(8)");
+    expect(css).toContain('.react-flow__node[data-id="unused_provider"]');
     expect(css).toContain('[data-id="step-07:alt.02:else"]');
-    expect(css).toContain("opacity");
-    expect(css).not.toContain("display: none");
+    expect(css).toContain("display: none");
   });
 
   it("escapes a quote rather than letting it close the selector", () => {
-    expect(buildOffPathCss(['a"b'])).toContain('data-id="a\\"b"');
+    expect(buildFocusedPathCss(['a"b'], [], [], [])).toContain('data-id="a\\"b"');
   });
 });
 

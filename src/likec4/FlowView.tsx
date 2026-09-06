@@ -2,16 +2,23 @@ import { useCallback, useMemo } from "react";
 import type { RefObject } from "react";
 import type { DiagramApi } from "likec4/react";
 import type { Flow } from "../catalog";
+import { walkSteps } from "../catalog";
 import { InteractiveView } from "./InteractiveView";
 import { CanvasBridge } from "./CanvasBridge";
 import type { CanvasHandle } from "./CanvasBridge";
-import { flowCrossViewId, flowViewId, fqn } from "./ids";
+import { flowCrossViewId, flowViewId, fqn, participantFqn } from "./ids";
 import { catalogIdOf } from "./mapping";
-import { flowPairing, viewBounds, viewEdgeIds, viewHasNode } from "./view-index";
+import {
+  flowPairing,
+  viewBounds,
+  viewEdgeIds,
+  viewHasNode,
+  viewNodeIds,
+} from "./view-index";
 import { offPathFrameIds } from "./flow-edges";
 import {
   buildFrameCss,
-  buildOffPathCss,
+  buildFocusedPathCss,
   buildWalkthroughCss,
 } from "./frame-theme";
 import { centredViewport, readableViewport } from "./canvas-viewport";
@@ -45,9 +52,8 @@ export function FlowView({
   /** Catalog step ids to mark; the rest of the sequence is dimmed. */
   litSteps?: readonly string[];
   /**
-   * Steps of the path being read, when one is chosen. The picture keeps drawing
-   * every branch — the alt frame is the point of it — but the branches not
-   * taken recede, so what is on screen matches what the rail lists.
+   * Steps of the path being read, when one is chosen. Everything outside that
+   * executable path leaves the picture, matching the focused rail beside it.
    */
   pathSteps?: readonly string[] | null;
   /** The step the canvas should bring into view, when the rail asks for one. */
@@ -100,20 +106,46 @@ export function FlowView({
     [marked, pairing],
   );
 
-  // Frames go with their steps. Only a chosen PATH greys frames — a selection
-  // is one step and greying every frame around it would leave the reader
-  // looking at a single arrow with no idea what it runs under.
+  // Frames go with their steps. A chosen path is a structural focus, so its
+  // unused arrows and empty frames disappear; selecting one step remains a
+  // paint-only highlight and never changes the surrounding graph.
   const extraCss = useMemo(() => {
     const theme = [buildFrameCss(), buildWalkthroughCss()].join("\n");
     if (!pathSteps) return theme;
+    const allEdges = viewEdgeIds(viewId);
     const onPath = new Set(
       pathSteps
         .map((stepId) => pairing.edgeOf.get(stepId))
         .filter((id): id is string => id !== undefined),
     );
-    const frames = offPathFrameIds(viewEdgeIds(viewId), onPath);
-    return [theme, buildOffPathCss(frames)].filter(Boolean).join("\n");
-  }, [pathSteps, pairing, viewId]);
+    const edges = allEdges.filter((id) => !onPath.has(id));
+    const edgeLabelPositions = allEdges
+      .map((id, index) => (onPath.has(id) ? null : index + 1))
+      .filter((position): position is number => position !== null);
+    const pathStepIds = new Set(
+      pathSteps.filter((stepId) => pairing.edgeOf.has(stepId)),
+    );
+    const participantsById = new Map(
+      flow.participants.map((participant) => [
+        participant.id,
+        participantFqn(participant),
+      ]),
+    );
+    const onPathNodes = new Set(
+      walkSteps(flow.steps)
+        .filter((step) => pathStepIds.has(step.id))
+        .flatMap((step) => [step.from, step.to])
+        .map((id) => participantsById.get(id) ?? fqn(id)),
+    );
+    const nodes = viewNodeIds(viewId).filter((id) => !onPathNodes.has(id));
+    const frames = offPathFrameIds(allEdges, onPath);
+    return [
+      theme,
+      buildFocusedPathCss(edges, edgeLabelPositions, nodes, frames),
+    ]
+      .filter(Boolean)
+      .join("\n");
+  }, [flow, pathSteps, pairing, viewId]);
 
   // Lanes are marked only for a selection made somewhere else, and only when
   // this variant of the view actually has that lane.
