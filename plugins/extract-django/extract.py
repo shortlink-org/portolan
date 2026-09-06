@@ -14,6 +14,7 @@ from typing import Any, Dict, List
 import apps as apps_module
 import catalog
 import clients as clients_module
+import database
 import domain
 import events as events_module
 import flows
@@ -146,10 +147,13 @@ def extract(input_: Input, opts: Options, b: Builder, cwd: str = "") -> None:
     if not opts.store:
         b.warn(svc_id, "no store named in the options, so the models describe no database: `store` is what says which one they are the schema of")
         return
+    kind, engine, implied = database.store_kind(project, opts.settings, opts.store_kind)
+    if implied:
+        b.warn(svc_id, "the manifest says storeKind %s but the settings' DATABASES engine is %s, which is %s; the manifest's kind is used" % (kind, engine, implied))
     tables = []
     names = store_module.index(aggregates)
     for agg in aggregates:
-        tables += store_module.read(agg, names, svc_id, opts.store, opts.store_kind or "postgres", b)
+        tables += store_module.read(agg, names, svc_id, opts.store, kind, b)
     store_id = "%s.%s" % (svc_id, opts.store)
     stores_fragment = {
         "generatedAt": input_.generated_at,
@@ -184,7 +188,7 @@ def extract(input_: Input, opts: Options, b: Builder, cwd: str = "") -> None:
                 store_id,
                 opts.store,
                 opts.store_name or title(service) + " database",
-                opts.store_kind or "postgres",
+                kind,
                 svc_id,
                 tables,
                 rel(source),

@@ -186,8 +186,13 @@ this does not name.
 unless said otherwise; `apps` names them outright for a project that keeps them
 somewhere a models module would not be found. `store` is what says which
 database the models are the schema of — without it they describe none, and
-calls into the ORM stay on the service's own lane. `settings` names the Django
-settings module Celery is configured from, only where `manage.py` does not.
+calls into the ORM stay on the service's own lane. `storeKind` is read off
+`DATABASES["default"]["ENGINE"]` in the settings module when left out —
+`postgresql` and `postgis` are `postgres`, `sqlite3` is `sqlite`, and a
+project that configures the database through a URL the tree does not hold is
+`postgres` by default; given, it wins, and a disagreement with the settings is
+reported. `settings` names the Django settings module — for the database, and
+for the queues Celery is configured with — only where `manage.py` does not.
 Everything else means what it means for `extract-ts`.
 
 ## Extraction limits

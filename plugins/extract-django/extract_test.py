@@ -75,6 +75,15 @@ class Fragment(unittest.TestCase):
         self.assertEqual(list(files), ["domain.json"])
         self.assertIn("`store` is what says which one they are the schema of", " ".join(d.message for d in warnings))
 
+    def test_the_store_kind_is_read_off_the_settings_and_the_manifest_wins_when_it_speaks(self):
+        _, warnings = run(OPTIONS)
+        self.assertEqual(json.loads(self.files["stores.json"])["stores"][0]["kind"], "postgres")
+        self.assertFalse([w for w in warnings if "storeKind" in w.message])
+        files, warnings = run(dict(OPTIONS, storeKind="sqlite"))
+        self.assertEqual(json.loads(files["stores.json"])["stores"][0]["kind"], "sqlite")
+        said = [w.message for w in warnings if "storeKind" in w.message]
+        self.assertEqual(said, ["the manifest says storeKind sqlite but the settings' DATABASES engine is django.db.backends.postgresql, which is postgres; the manifest's kind is used"])
+
     def test_an_option_nobody_reads_is_refused_rather_than_dropped(self):
         with self.assertRaises(ValueError):
             Options.of({"context": "shop", "storeKnd": "postgres"})

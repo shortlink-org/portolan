@@ -44,8 +44,7 @@
     },
     "storeKind": {
       "enum": ["postgres", "mysql", "sqlite", "redis", "mongodb", "clickhouse", "s3", "other"],
-      "description": "Which database the models are the schema of. It picks the column types a field becomes; only postgres has a mapping, and a kind without one keeps the field's own name and says so.",
-      "default": "postgres"
+      "description": "Which database the models are the schema of. Read off DATABASES['default']['ENGINE'] in the settings module when left out, and postgres when that says nothing readable; given here, it wins, and a disagreement with the settings is reported. It picks the column types a field becomes; only postgres has a mapping, and a kind without one keeps the field's own name and says so."
     },
     "apps": {
       "type": "array",

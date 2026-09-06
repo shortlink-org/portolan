@@ -20,7 +20,7 @@ class Options:
     repo: str = ""
     store: str = ""
     store_name: str = ""
-    store_kind: str = "postgres"
+    store_kind: str = ""  # "" reads DATABASES["default"]["ENGINE"] off the settings
     apps: List[str] = field(default_factory=list)
     aggregates: Dict[str, str] = field(default_factory=dict)
     peers: Dict[str, str] = field(default_factory=dict)
