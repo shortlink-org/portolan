@@ -21,6 +21,7 @@ model {
     style { color ctx0 }
     auth = service 'Authentication & Sessions' {
       description 'github.com/shortlink-org/portolan/examples/auth'
+      technology 'HTTP'
       style { color ctx0 }
       lockout = aggregate 'Lockout' {
         AccountLocked = event 'AccountLocked' {
@@ -44,7 +45,7 @@ model {
         }
       }
       pg = store 'Auth database' {
-        description 'postgres'
+        technology 'postgres'
       }
     }
   }
@@ -53,6 +54,7 @@ model {
     style { color ctx1 }
     bff = service 'Storefront BFF' {
       description 'github.com/shortlink-org/portolan/examples/bff'
+      technology 'GraphQL'
       style { color ctx1 }
     }
   }
@@ -61,6 +63,7 @@ model {
     style { color ctx2 }
     ledger = service 'Ledger' {
       description 'github.com/shortlink-org/portolan/examples/payments/ledger'
+      technology 'gRPC'
       style { color ctx2 }
       payment = aggregate 'Payment' {
         PaymentAuthorized = event 'PaymentAuthorized' {
@@ -79,7 +82,7 @@ model {
         }
       }
       pg = store 'Ledger database' {
-        description 'postgres'
+        technology 'postgres'
       }
     }
   }
@@ -88,6 +91,7 @@ model {
     style { color ctx3 }
     billing = service 'Billing' {
       description 'github.com/shortlink-org/portolan/examples/shop/billing'
+      technology 'HTTP'
       style { color ctx3 }
       invoice = aggregate 'Invoice' {
         InvoiceIssued = event 'InvoiceIssued' {
@@ -101,11 +105,12 @@ model {
         }
       }
       pg = store 'Billing database' {
-        description 'postgres'
+        technology 'postgres'
       }
     }
     cart = service 'Shopping Cart' {
       description 'github.com/shortlink-org/portolan/examples/shop/cart'
+      technology 'HTTP'
       style { color ctx3 }
       basket = aggregate 'Basket' {
         BasketAbandoned = event 'BasketAbandoned' {
@@ -131,11 +136,12 @@ that now holds everything.'
         }
       }
       pg = store 'Cart database' {
-        description 'postgres'
+        technology 'postgres'
       }
     }
     oms = service 'Order Management' {
       description 'github.com/shortlink-org/portolan/examples/shop/oms'
+      technology 'gRPC'
       style { color ctx3 }
       _order = aggregate 'Order' {
         OrderCancelled = event 'OrderCancelled' {
@@ -153,11 +159,12 @@ for: whoever moves money listens for this.'
         }
       }
       pg = store 'Order database' {
-        description 'postgres'
+        technology 'postgres'
       }
     }
     pricing = service 'Pricing' {
       description 'github.com/shortlink-org/portolan/examples/shop/pricing'
+      technology 'gRPC'
       style { color ctx3 }
       price_list = aggregate 'Price List' {
       }
@@ -170,7 +177,7 @@ for: whoever moves money listens for this.'
         }
       }
       pg = store 'Pricing database' {
-        description 'postgres'
+        technology 'postgres'
       }
     }
   }
@@ -179,6 +186,7 @@ for: whoever moves money listens for this.'
     style { color ctx4 }
     core = service 'Delivery Core' {
       description 'github.com/shortlink-org/portolan/examples/shop/delivery/core'
+      technology 'gRPC'
       style { color ctx4 }
       route = aggregate 'Route' {
         RouteClosed = event 'RouteClosed' {
@@ -218,7 +226,7 @@ payment was captured, and what that means for a parcel is decided here.'
         }
       }
       pg = store 'Delivery database' {
-        description 'postgres'
+        technology 'postgres'
       }
     }
   }
@@ -227,145 +235,199 @@ payment was captured, and what that means for a parcel is decided here.'
     style { color ctx5 }
     host = service 'Host' {
       description 'cli · Node.js · github.com/shortlink-org/portolan/scripts'
+      technology 'Node.js'
       style { color ctx5 }
     }
     plugins = service 'Plugins' {
       description 'cli · Go · TypeScript · Rust · Java · Python · github.com/shortlink-org/portolan/plugins'
+      technology 'Go · TypeScript · Rust · Java · Python'
       style { color ctx5 }
     }
     site = service 'Site' {
       description 'webapp · TypeScript · React · Vite · github.com/shortlink-org/portolan/src'
+      technology 'TypeScript · React · Vite'
       style { color ctx5 }
     }
   }
 
-  auth.auth -> risk_v1 'Assess' {
+  auth.auth -[calls]-> risk_v1 'Assess' 'gRPC' {
     style { color unresolved  line dotted  head normal }
   }
-  storefront.bff -> auth.auth 'validateSession' {
+  storefront.bff -[calls]-> auth.auth 'validateSession' 'HTTP' {
     style { color declared  line dashed  head normal }
   }
-  storefront.bff -> shop.cart 'addItem' {
+  storefront.bff -[calls]-> shop.cart 'addItem' 'HTTP' {
     style { color declared  line dashed  head normal }
   }
-  storefront.bff -> shop.cart 'checkout' {
+  storefront.bff -[calls]-> shop.cart 'checkout' 'HTTP' {
     style { color declared  line dashed  head normal }
   }
-  storefront.bff -> shop.cart 'getBasket' {
+  storefront.bff -[calls]-> shop.cart 'getBasket' 'HTTP' {
     style { color declared  line dashed  head normal }
   }
-  storefront.bff -> shop.cart 'removeItem' {
+  storefront.bff -[calls]-> shop.cart 'removeItem' 'HTTP' {
     style { color declared  line dashed  head normal }
   }
-  storefront.bff -> delivery.core 'GetShipment' {
+  storefront.bff -[calls]-> delivery.core 'GetShipment' 'gRPC' {
     style { color declared  line dashed  head normal }
   }
-  storefront.bff -> shop.oms 'CancelOrder' {
+  storefront.bff -[calls]-> shop.oms 'CancelOrder' 'gRPC' {
     style { color declared  line dashed  head normal }
   }
-  storefront.bff -> shop.oms 'GetOrder' {
+  storefront.bff -[calls]-> shop.oms 'GetOrder' 'gRPC' {
     style { color declared  line dashed  head normal }
   }
-  payments.ledger -> shop.oms 'PaymentAuthorized' {
+  payments.ledger -[consumes]-> shop.oms 'PaymentAuthorized' {
     style { color declared  line dashed  head onormal }
   }
-  payments.ledger -> shop.billing 'PaymentCaptured' {
+  payments.ledger -[consumes]-> shop.billing 'PaymentCaptured' {
     style { color declared  line dashed  head onormal }
   }
-  payments.ledger -> delivery.core 'PaymentCaptured' {
+  payments.ledger -[consumes]-> delivery.core 'PaymentCaptured' {
     style { color declared  line dashed  head onormal }
   }
-  payments.ledger -> shop.oms 'GetOrder' {
+  payments.ledger -[calls]-> shop.oms 'GetOrder' 'gRPC' {
     style { color declared  line dashed  head normal }
   }
-  payments.ledger -> stripe 'PostPaymentIntents' {
+  payments.ledger -[calls]-> stripe 'PostPaymentIntents' 'HTTP' {
     style { color declared  line dashed  head normal }
   }
-  payments.ledger -> stripe 'PostPaymentIntentsIntentCancel' {
+  payments.ledger -[calls]-> stripe 'PostPaymentIntentsIntentCancel' 'HTTP' {
     style { color declared  line dashed  head normal }
   }
-  payments.ledger -> stripe 'PostPaymentIntentsIntentCapture' {
+  payments.ledger -[calls]-> stripe 'PostPaymentIntentsIntentCapture' 'HTTP' {
     style { color declared  line dashed  head normal }
   }
-  payments.ledger -> stripe 'PostRefunds' {
+  payments.ledger -[calls]-> stripe 'PostRefunds' 'HTTP' {
     style { color declared  line dashed  head normal }
   }
-  shop.billing -> auth.auth 'validateSession' {
+  shop.billing -[calls]-> auth.auth 'validateSession' 'HTTP' {
     style { color declared  line dashed  head normal }
   }
-  shop.cart -> shop.oms 'BasketCheckedOut' {
+  shop.cart -[consumes]-> shop.oms 'BasketCheckedOut' {
     style { color verified  line solid  head onormal }
   }
-  shop.cart -> shop.pricing 'BasketCheckedOut' {
+  shop.cart -[consumes]-> shop.pricing 'BasketCheckedOut' {
     style { color declared  line dashed  head onormal }
   }
-  shop.cart -> auth.auth 'validateSession' {
+  shop.cart -[calls]-> auth.auth 'validateSession' 'HTTP' {
     style { color verified  line solid  head normal }
   }
-  shop.cart -> shop.pricing 'GetQuote' {
+  shop.cart -[calls]-> shop.pricing 'GetQuote' 'gRPC' {
     style { color declared  line dashed  head normal }
   }
-  shop.oms -> payments.ledger 'OrderCancelled' {
+  shop.oms -[consumes]-> payments.ledger 'OrderCancelled' {
     style { color declared  line dashed  head onormal }
   }
-  shop.oms -> payments.ledger 'Authorize' {
+  shop.oms -[calls]-> payments.ledger 'Authorize' 'gRPC' {
     style { color declared  line dashed  head normal }
   }
-  delivery.core -> shop.oms 'GetOrder' {
+  delivery.core -[calls]-> shop.oms 'GetOrder' 'gRPC' {
     style { color declared  line dashed  head normal }
   }
-  auth.auth.lockout -> auth.auth.pg 'lockouts' {
+  auth.auth.lockout -[persists]-> auth.auth.pg 'lockouts' {
     style { color declared  line dashed  head normal }
   }
-  auth.auth.session -> auth.auth.pg 'sessions' {
+  auth.auth.session -[persists]-> auth.auth.pg 'sessions' {
     style { color declared  line dashed  head normal }
   }
-  auth.auth.user -> auth.auth.pg 'users' {
+  auth.auth.user -[persists]-> auth.auth.pg 'users' {
     style { color declared  line dashed  head normal }
   }
-  payments.ledger.payment -> payments.ledger.pg 'payments, postings' {
+  payments.ledger.payment -[persists]-> payments.ledger.pg 'payments, postings' {
     style { color declared  line dashed  head normal }
   }
-  payments.ledger.refund -> payments.ledger.pg 'refunds' {
+  payments.ledger.refund -[persists]-> payments.ledger.pg 'refunds' {
     style { color declared  line dashed  head normal }
   }
-  shop.billing.invoice -> shop.billing.pg 'invoices, invoice_lines' {
+  shop.billing.invoice -[persists]-> shop.billing.pg 'invoices, invoice_lines' {
     style { color declared  line dashed  head normal }
   }
-  shop.cart.basket -> shop.cart.pg 'baskets, basket_items' {
+  shop.cart.basket -[persists]-> shop.cart.pg 'baskets, basket_items' {
     style { color declared  line dashed  head normal }
   }
-  delivery.core.route -> delivery.core.pg 'routes, route_stops' {
+  delivery.core.route -[persists]-> delivery.core.pg 'routes, route_stops' {
     style { color declared  line dashed  head normal }
   }
-  delivery.core.shipment -> delivery.core.pg 'packages, parcels, scans' {
+  delivery.core.shipment -[persists]-> delivery.core.pg 'packages, parcels, scans' {
     style { color declared  line dashed  head normal }
   }
-  shop.oms._order -> shop.oms.pg 'orders, order_lines' {
+  shop.oms._order -[persists]-> shop.oms.pg 'orders, order_lines' {
     style { color declared  line dashed  head normal }
   }
-  shop.pricing.price_list -> shop.pricing.pg 'price_lists, price_rows' {
+  shop.pricing.price_list -[persists]-> shop.pricing.pg 'price_lists, price_rows' {
     style { color declared  line dashed  head normal }
   }
-  shop.pricing.quote -> shop.pricing.pg 'quotes, quote_lines' {
+  shop.pricing.quote -[persists]-> shop.pricing.pg 'quotes, quote_lines' {
     style { color declared  line dashed  head normal }
   }
-  client -> auth.auth '6 flows' {
+  auth.auth -[bus]-> bus '4 events' {
+    style { color verified  line solid  head onormal }
+  }
+  bus -[bus]-> auth.auth 'PasswordChanged' {
+    style { color verified  line solid  head onormal }
+  }
+  payments.ledger -[bus]-> bus '4 events' {
+    style { color declared  line dashed  head onormal }
+  }
+  bus -[bus]-> payments.ledger 'OrderCancelled' {
+    style { color declared  line dashed  head onormal }
+  }
+  shop.billing -[bus]-> celery_billing 'enqueue remind_unpaid_invoice' {
+    style { color declared  line dashed  head none }
+  }
+  celery_billing -[bus]-> shop.billing 'remind_unpaid_invoice' {
+    style { color declared  line dashed  head none }
+  }
+  shop.billing -[bus]-> celery_billing_mail 'enqueue send_invoice_email' {
+    style { color declared  line dashed  head none }
+  }
+  celery_billing_mail -[bus]-> shop.billing 'send_invoice_email' {
+    style { color declared  line dashed  head none }
+  }
+  shop.billing -[bus]-> bus '3 events' {
+    style { color declared  line dashed  head onormal }
+  }
+  bus -[bus]-> shop.billing 'PaymentCaptured' {
+    style { color declared  line dashed  head onormal }
+  }
+  shop.cart -[bus]-> bus '5 events' {
+    style { color verified  line solid  head onormal }
+  }
+  delivery.core -[bus]-> bus '8 events' {
+    style { color declared  line dashed  head onormal }
+  }
+  bus -[bus]-> delivery.core 'PaymentCaptured' {
+    style { color declared  line dashed  head onormal }
+  }
+  shop.oms -[bus]-> bus '3 events' {
+    style { color verified  line solid  head onormal }
+  }
+  bus -[bus]-> shop.oms '2 events' {
+    style { color verified  line solid  head onormal }
+  }
+  shop.pricing -[bus]-> bus '2 events' {
+    style { color declared  line dashed  head onormal }
+  }
+  bus -[bus]-> shop.pricing 'BasketCheckedOut' {
+    style { color declared  line dashed  head onormal }
+  }
+  client -[uses]-> auth.auth '6 flows' {
     style { color verified  line solid  head normal }
   }
-  client -> storefront.bff '9 flows' {
+  client -[uses]-> storefront.bff '9 flows' {
     style { color declared  line dashed  head normal }
   }
-  client -> shop.billing '4 flows' {
+  client -[uses]-> shop.billing '4 flows' {
     style { color declared  line dashed  head normal }
   }
-  client -> shop.cart '6 flows' {
+  client -[uses]-> shop.cart '6 flows' {
     style { color verified  line solid  head normal }
   }
-  client -> shop.oms '2 flows' {
+  client -[uses]-> shop.oms '2 flows' {
     style { color verified  line solid  head normal }
   }
-  developer -> portolan.host 'npm run gen' {
+  developer -[uses]-> portolan.host 'npm run gen' {
     style { color declared  line dashed  head normal }
   }
 }

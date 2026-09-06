@@ -20,7 +20,7 @@ export const C4_LEVEL: Record<C4Level, { name: string; note: string }> = {
   },
   2: {
     name: "containers",
-    note: "services, and the stores they keep their state in",
+    note: "services, the stores they keep their state in, and the brokers between them",
   },
   3: {
     name: "components",

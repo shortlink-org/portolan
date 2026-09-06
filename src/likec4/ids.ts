@@ -70,12 +70,19 @@ export function participantFqn(participant: Participant | string): string {
 // --- view ids -------------------------------------------------------------
 
 /**
- * C4 level 1, and the only view with a name of its own: the estate has one
- * landscape, so nothing is derived from an id.
+ * C4 level 1, and one of the two views with a name of its own: the estate has
+ * one landscape, so nothing is derived from an id.
  */
 export const LANDSCAPE_VIEW = "landscape";
 
-/** C4 level 2, one context: its services and the stores they keep state in. */
+/**
+ * C4 level 2, the whole estate: every service inside its context, the store
+ * each keeps its state in, the brokers between them, and the same outsiders
+ * as the landscape. The other fixed name, for the same reason.
+ */
+export const CONTAINERS_VIEW = "containers";
+
+/** C4 level 2, one context: its services, their stores, and the brokers they use. */
 export const contextViewId = (context: BoundedContext | string): string =>
   `ctx_${safeId(typeof context === "string" ? context : context.id)}`;
 
@@ -96,7 +103,7 @@ export const flowCrossViewId = (flow: Flow | string): string =>
 
 /** Every view id the generator is expected to emit, in a stable order. */
 export function allViewIds(catalog: Catalog): string[] {
-  const out: string[] = [LANDSCAPE_VIEW];
+  const out: string[] = [LANDSCAPE_VIEW, CONTAINERS_VIEW];
   for (const context of catalog.contexts) {
     out.push(contextViewId(context));
     for (const service of context.services) {

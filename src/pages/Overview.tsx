@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router";
 import { AlertTriangle } from "lucide-react";
 import { CATALOG_PATH, catalog, index } from "../data";
@@ -13,8 +14,9 @@ import { usePhone } from "../app/responsive";
 import { CONTEXT_ANCHOR, OVERVIEW_ANCHOR, paths } from "../routes";
 import { Blank, SectionTitle } from "../components/PageHeader";
 import { C4View } from "../likec4/C4View";
-import { LANDSCAPE_VIEW } from "../likec4/ids";
-import { LevelBadge } from "../likec4/levels";
+import { CONTAINERS_VIEW, LANDSCAPE_VIEW } from "../likec4/ids";
+import { LevelSwitch } from "../likec4/levels";
+import type { C4Level } from "../likec4/levels";
 import { CatalogStamp } from "../components/CatalogStamp";
 import { RowActions } from "../components/RowActions";
 import { MachineDocs } from "../components/MachineDocs";
@@ -89,6 +91,7 @@ function askTitle(owners: readonly ContextOwner[]): string | undefined {
 
 export function Overview() {
   const phone = usePhone();
+  const [level, setLevel] = useState<C4Level>(1);
   const reach = widestFlows(catalog);
   const services = catalog.contexts.reduce(
     (count, context) => count + context.services.length,
@@ -144,21 +147,32 @@ export function Overview() {
         />
       </div>
 
-      {/* C4 level 1, and the only picture in the app that draws the whole
-          estate as boxes: the contexts, the people who use them, the systems
-          they pay and ask, and the consumers nothing in the catalog accounts
-          for. The event graph at /graph is a different question — which event
-          reaches whom — and it is drawn by a different renderer. */}
+      {/* The whole estate as boxes, at two scopes. Level 1 is the contexts,
+          the people who use them, the systems they pay and ask, and the
+          consumers nothing in the catalog accounts for. Level 2 opens the
+          contexts: every service with its technology, the store it keeps
+          its state in, the brokers between them, and the protocol on each
+          edge. The event graph at /graph is a different question — which
+          event reaches whom — and it is drawn by a different renderer. */}
       <section id={OVERVIEW_ANCHOR.landscape} className="mt-section">
         <SectionTitle
           anchor={OVERVIEW_ANCHOR.landscape}
-          right={<LevelBadge level={1} />}
+          right={
+            <LevelSwitch
+              level={level}
+              onLevel={setLevel}
+              levels={[
+                { level: 1, label: "estate" },
+                { level: 2, label: "containers" },
+              ]}
+            />
+          }
         >
           Landscape
         </SectionTitle>
         <C4View
-          viewId={LANDSCAPE_VIEW}
-          height={phone ? 300 : 400}
+          viewId={level === 2 ? CONTAINERS_VIEW : LANDSCAPE_VIEW}
+          height={phone ? 300 : level === 2 ? 560 : 400}
           controls={phone}
         />
       </section>

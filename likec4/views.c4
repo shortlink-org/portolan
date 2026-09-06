@@ -6,6 +6,30 @@ views {
     include auth, storefront, payments, shop, delivery, portolan, client, risk_v1, stripe, developer
   }
 
+  view containers {
+    title 'Containers'
+    description 'Every service, the store it keeps its state in, the brokers between them, and everything outside the estate that touches one.'
+    include auth, storefront, payments, shop, delivery, portolan, auth.auth, storefront.bff, payments.ledger, shop.billing, shop.cart, shop.oms, shop.pricing, delivery.core, portolan.host, portolan.plugins, portolan.site, auth.auth.pg, payments.ledger.pg, shop.billing.pg, shop.cart.pg, delivery.core.pg, shop.oms.pg, shop.pricing.pg, bus, celery_billing, celery_billing_mail, client, risk_v1, stripe, developer
+    include auth.auth -> risk_v1 with { title 'Assess'  technology 'gRPC'  color unresolved  line dotted }
+    include storefront.bff -> auth.auth with { title 'validateSession'  technology 'HTTP'  color declared  line dashed }
+    include storefront.bff -> shop.cart with { title '4 calls'  technology 'HTTP'  color declared  line dashed }
+    include storefront.bff -> delivery.core with { title 'GetShipment'  technology 'gRPC'  color declared  line dashed }
+    include storefront.bff -> shop.oms with { title '2 calls'  technology 'gRPC'  color declared  line dashed }
+    include payments.ledger -> shop.oms with { title 'GetOrder'  technology 'gRPC'  color declared  line dashed }
+    include payments.ledger -> stripe with { title '4 calls'  technology 'HTTP'  color declared  line dashed }
+    include shop.billing -> auth.auth with { title 'validateSession'  technology 'HTTP'  color declared  line dashed }
+    include shop.cart -> auth.auth with { title 'validateSession'  technology 'HTTP'  color verified  line solid }
+    include shop.cart -> shop.pricing with { title 'GetQuote'  technology 'gRPC'  color declared  line dashed }
+    include shop.oms -> payments.ledger with { title 'Authorize'  technology 'gRPC'  color declared  line dashed }
+    include delivery.core -> shop.oms with { title 'GetOrder'  technology 'gRPC'  color declared  line dashed }
+    exclude payments.ledger -> shop.oms where kind is consumes
+    exclude payments.ledger -> shop.billing where kind is consumes
+    exclude payments.ledger -> delivery.core where kind is consumes
+    exclude shop.cart -> shop.oms where kind is consumes
+    exclude shop.cart -> shop.pricing where kind is consumes
+    exclude shop.oms -> payments.ledger where kind is consumes
+  }
+
   view ctx_auth of auth {
     title 'Authentication'
     include *, auth.auth.pg
@@ -47,6 +71,9 @@ views {
   view ctx_shop of shop {
     title 'Shop'
     include *, shop.billing.pg, shop.cart.pg, shop.oms.pg, shop.pricing.pg
+    include shop.cart -> shop.pricing with { title 'GetQuote'  technology 'gRPC'  color declared  line dashed }
+    exclude shop.cart -> shop.oms where kind is consumes
+    exclude shop.cart -> shop.pricing where kind is consumes
   }
   view svc_shop_billing of shop.billing {
     title 'Billing — neighbours'

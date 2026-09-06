@@ -6,6 +6,7 @@ import { catalog } from "../testing/estate";
 // frozen fixture the id rules are checked with.
 import { catalog as shipped } from "../data";
 import {
+  CONTAINERS_VIEW,
   LANDSCAPE_VIEW,
   allViewIds,
   contextViewId,
@@ -97,17 +98,19 @@ describe("view ids", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("covers the landscape, every context, both views of every service and both of every flow", () => {
+  it("covers the landscape, the containers, every context, both views of every service and both of every flow", () => {
     const ids = allViewIds(catalog);
     const services = catalog.contexts.flatMap((c) => c.services);
     expect(ids).toHaveLength(
-      1 +
+      2 +
         catalog.contexts.length +
         services.length * 2 +
         catalog.flows.length * 2,
     );
-    // The three C4 levels: the estate, a context, and a service opened up.
+    // The three C4 levels: the estate, its containers, a context, and a
+    // service opened up.
     expect(ids).toContain(LANDSCAPE_VIEW);
+    expect(ids).toContain(CONTAINERS_VIEW);
     expect(ids).toContain(contextViewId("shop"));
     expect(ids).toContain(serviceInsideViewId("shop.oms"));
   });
@@ -131,7 +134,8 @@ describe("generated sources match the ids the app asks for", () => {
     expect([...declared].sort()).toEqual([...allViewIds(shipped)].sort());
   });
 
-  it("declares the landscape once, and it is the only view with a fixed name", () => {
+  it("declares the landscape and the containers once each, the only views with fixed names", () => {
     expect(declared.filter((id) => id === LANDSCAPE_VIEW)).toHaveLength(1);
+    expect(declared.filter((id) => id === CONTAINERS_VIEW)).toHaveLength(1);
   });
 });

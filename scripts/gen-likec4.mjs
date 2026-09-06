@@ -1,8 +1,9 @@
 // Generates likec4/ sources from the merged catalog.
 //
-// Everything LikeC4 renders is DECLARED here: the C4 views and one dynamic view
-// per flow (plus a cross-context-only twin). Nothing in the app draws these
-// pictures itself.
+// Everything LikeC4 renders is DECLARED here: the C4 views — the estate at
+// level 1, its containers at level 2 as one picture and one per context, two
+// per service — and one dynamic view per flow (plus a cross-context-only
+// twin). Nothing in the app draws these pictures itself.
 //
 //   node scripts/gen-likec4.mjs
 
@@ -32,8 +33,32 @@ const contextViewId = (c) => `ctx_${safeId(c.id)}`;
 const serviceViewId = (s) => `svc_${safeId(s.id)}`;
 const serviceInsideViewId = (s) => `${serviceViewId(s)}_inside`;
 const LANDSCAPE_VIEW = "landscape";
+const CONTAINERS_VIEW = "containers";
 
 const q = (text) => `'${String(text).replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
+
+// The protocol a call travels on, read off the document that declares it.
+// Mirrors sourceDocKind in src/lib/source-doc.ts, plus the generated stub a
+// Go client is read from when no proto is vendored. Empty when the source
+// says nothing a reader could name.
+const protocolOf = (source) => {
+  const path = String(source ?? "").replace(/:\d+$/, "").toLowerCase();
+  if (path.endsWith(".proto") || path.endsWith(".pb.go")) return "gRPC";
+  if (path.endsWith(".wsdl")) return "SOAP";
+  if (path.endsWith(".graphql") || path.endsWith(".graphqls")) return "GraphQL";
+  if (/\.(ya?ml|json)$/.test(path)) return "HTTP";
+  return "";
+};
+
+// What a container box says under its name at level 2: what the service is
+// built with when an extractor recorded it, and what it speaks, read off the
+// contracts it provides. Both are facts the catalog holds; neither is guessed.
+const technologyOf = (service) => {
+  const protocols = new Set(
+    service.provides.map((provided) => protocolOf(provided.source)).filter(Boolean),
+  );
+  return [...(service.technologies ?? []), ...[...protocols].sort()].join(" · ");
+};
 
 // --- shared visual language ------------------------------------------------
 // These hex values are the light/dark-neutral midpoints of the --ctx-N and
@@ -46,7 +71,13 @@ const STATUS_COLORS = {
   unresolved: "#e0453f",
 };
 const STATUS_LINE = { verified: "solid", declared: "dashed", unresolved: "dotted" };
+const STATUS_RANK = { verified: 0, declared: 1, unresolved: 2 };
 const KIND_HEAD = { event: "onormal", rpc: "normal", call: "none" };
+
+// Every relation carries the kind of fact it is, so a view can say which
+// facts it draws: a level-2 picture with the bus on it leaves out the arrows
+// that skip the bus, and nothing else has to change for it to do so.
+const RELATION_KINDS = ["consumes", "calls", "bus", "reads", "persists", "uses"];
 
 const contextColorName = (contextId) => {
   const i = catalog.contexts.findIndex((c) => c.id === contextId);
@@ -166,6 +197,8 @@ spec.push("  }");
 spec.push("  element unknown {");
 spec.push("    style { shape rectangle  color unresolved  border dashed }");
 spec.push("  }");
+spec.push("");
+for (const kind of RELATION_KINDS) spec.push(`  relationship ${kind}`);
 spec.push("}");
 
 // ---------------------------------------------------------------------------
@@ -186,6 +219,8 @@ for (const context of catalog.contexts) {
   for (const service of context.services) {
     model.push(`    ${safeId(service.slug)} = service ${q(service.name)} {`);
     model.push(`      description ${q([service.kind, ...(service.technologies ?? []), `${service.repo}/${service.path}`].filter(Boolean).join(" · "))}`);
+    const technology = technologyOf(service);
+    if (technology) model.push(`      technology ${q(technology)}`);
     model.push(`      style { color ${contextColorName(context.id)} }`);
     for (const aggregate of service.aggregates) {
       model.push(`      ${safeId(aggregate.slug)} = aggregate ${q(aggregate.name)} {`);
@@ -199,7 +234,7 @@ for (const context of catalog.contexts) {
     }
     for (const store of storesByOwner.get(service.id) ?? []) {
       model.push(`      ${safeId(store.slug)} = store ${q(store.name)} {`);
-      model.push(`        description ${q(store.kind)}`);
+      model.push(`        technology ${q(store.kind)}`);
       model.push("      }");
     }
     model.push("    }");
@@ -220,7 +255,7 @@ for (const context of catalog.contexts) {
           // event for the same reason.
           if (consumer.service === service.id) continue;
           relations.push(
-            `  ${fqn(service.id)} -> ${participantRef(consumer.service)} ${q(event.name)} {\n` +
+            `  ${fqn(service.id)} -[consumes]-> ${participantRef(consumer.service)} ${q(event.name)} {\n` +
               `    style { color ${consumer.status}  line ${STATUS_LINE[consumer.status]}  head onormal }\n` +
               `  }`,
           );
@@ -231,8 +266,9 @@ for (const context of catalog.contexts) {
       const peer = peerParticipant(call.peer);
       if (!peer) continue;
       const method = call.id.split("/").pop() ?? call.id;
+      const protocol = protocolOf(call.source);
       relations.push(
-        `  ${fqn(service.id)} -> ${participantRef(peer)} ${q(method)} {\n` +
+        `  ${fqn(service.id)} -[calls]-> ${participantRef(peer)} ${q(method)}${protocol ? ` ${q(protocol)}` : ""} {\n` +
           `    style { color ${call.status}  line ${STATUS_LINE[call.status]}  head normal }\n` +
           `  }`,
       );
@@ -244,7 +280,7 @@ for (const context of catalog.contexts) {
       const store = storeById.get(storeId);
       if (!store || store.owner === service.id) continue;
       relations.push(
-        `  ${fqn(service.id)} -> ${fqn(store.id)} 'reads' {\n` +
+        `  ${fqn(service.id)} -[reads]-> ${fqn(store.id)} 'reads' {\n` +
           `    style { color declared  line ${STATUS_LINE.declared}  head normal }\n` +
           `  }`,
       );
@@ -272,8 +308,45 @@ for (const edge of persists.values()) {
   const label =
     edge.tables.length > 3 ? `${edge.tables.length} tables` : edge.tables.join(", ");
   relations.push(
-    `  ${fqn(edge.aggregate)} -> ${fqn(edge.store)} ${q(label)} {\n` +
+    `  ${fqn(edge.aggregate)} -[persists]-> ${fqn(edge.store)} ${q(label)} {\n` +
       `    style { color declared  line ${STATUS_LINE.declared}  head normal }\n` +
+      `  }`,
+  );
+}
+
+// A broker is a container too, and the one the catalog only meets in flows:
+// no repository imports the bus, and an event records its consumers service
+// to service, as if the message went straight across. The hop through the
+// broker is read off the steps that walk it — once per pair and direction,
+// however many events or jobs travel that way — so a level-2 picture can put
+// the bus between publisher and subscriber instead of an arrow that skips it.
+const brokerIds = new Set(
+  [...rootParticipants].filter(([, meta]) => meta.kind === "broker").map(([id]) => id),
+);
+const busEdges = new Map(); // "from|to" -> { from, to, kind, labels:Set, status }
+for (const flow of catalog.flows) {
+  walkFlowSteps(flow.steps, (step) => {
+    if (brokerIds.has(step.from) === brokerIds.has(step.to)) return;
+    const key = `${step.from}|${step.to}`;
+    const edge = busEdges.get(key) ?? {
+      from: step.from,
+      to: step.to,
+      kind: step.kind,
+      labels: new Set(),
+      status: "unresolved",
+    };
+    if (step.label) edge.labels.add(step.label);
+    if (STATUS_RANK[step.status] < STATUS_RANK[edge.status]) edge.status = step.status;
+    busEdges.set(key, edge);
+  });
+}
+for (const edge of busEdges.values()) {
+  const names = [...edge.labels].sort();
+  const noun = edge.kind === "event" ? "events" : "calls";
+  const label = names.length === 1 ? names[0] : `${names.length} ${noun}`;
+  relations.push(
+    `  ${participantRef(edge.from)} -[bus]-> ${participantRef(edge.to)} ${q(label)} {\n` +
+      `    style { color ${edge.status}  line ${STATUS_LINE[edge.status]}  head ${KIND_HEAD[edge.kind]} }\n` +
       `  }`,
   );
 }
@@ -282,7 +355,6 @@ for (const edge of persists.values()) {
 // repository imports the customer, and no event names them. A flow step is
 // the only evidence that they touch the estate at all, so it is read as a
 // relation — once per pair, however many flows walk it.
-const STATUS_RANK = { verified: 0, declared: 1, unresolved: 2 };
 const actorIds = new Set(
   [...rootParticipants].filter(([, meta]) => meta.kind === "actor").map(([id]) => id),
 );
@@ -327,7 +399,7 @@ for (const edge of actorEdges.values()) {
   const names = [...edge.flows];
   const label = names.length === 1 ? names[0] : `${names.length} flows`;
   relations.push(
-    `  ${participantRef(edge.from)} -> ${participantRef(edge.to)} ${q(label)} {\n` +
+    `  ${participantRef(edge.from)} -[uses]-> ${participantRef(edge.to)} ${q(label)} {\n` +
       `    style { color ${edge.status}  line ${STATUS_LINE[edge.status]}  head normal }\n` +
       `  }`,
   );
@@ -335,6 +407,88 @@ for (const edge of actorEdges.values()) {
 
 model.push(...relations);
 model.push("}");
+
+// --- one arrow per pair of containers --------------------------------------
+// The model keeps one relation per method, which is what the neighbours view
+// and the flows are about. A container diagram is about which boxes talk and
+// over what, and LikeC4 folds a pair's relations into one edge on its own but
+// labels it `[...]`. The fold is given a label here, once per pair: the
+// method when there is one, a count when there are more, the protocol read
+// off the contract, and the best status any of the calls has.
+const callPairs = new Map(); // "from|to" -> { from, to, methods:[], protocols:Set, status }
+for (const context of catalog.contexts) {
+  for (const service of context.services) {
+    for (const call of service.consumes) {
+      const peer = peerParticipant(call.peer);
+      if (!peer) continue;
+      const key = `${service.id}|${peer}`;
+      const pair = callPairs.get(key) ?? {
+        from: service.id,
+        to: peer,
+        methods: [],
+        protocols: new Set(),
+        status: "unresolved",
+      };
+      pair.methods.push(call.id.split("/").pop() ?? call.id);
+      const protocol = protocolOf(call.source);
+      if (protocol) pair.protocols.add(protocol);
+      if (STATUS_RANK[call.status] < STATUS_RANK[pair.status]) pair.status = call.status;
+      callPairs.set(key, pair);
+    }
+  }
+}
+
+/** The `include a -> b with { … }` line that labels one pair's folded edge. */
+function pairEdge(pair) {
+  const title =
+    pair.methods.length === 1 ? pair.methods[0] : `${pair.methods.length} calls`;
+  const technology = [...pair.protocols].sort().join(" · ");
+  const props = [
+    `title ${q(title)}`,
+    technology ? `technology ${q(technology)}` : "",
+    `color ${pair.status}`,
+    `line ${STATUS_LINE[pair.status]}`,
+  ].filter(Boolean);
+  return `include ${participantRef(pair.from)} -> ${participantRef(pair.to)} with { ${props.join("  ")} }`;
+}
+
+// A consumer arrow the bus already carries: the publisher's hop onto a broker
+// and that broker's hop to the consumer are both drawn, so the arrow that
+// skips the broker would say the same thing twice. One that is not carried —
+// a consumer no flow has walked to — stays, as the only sign it listens.
+const carriedByBus = []; // [publisher, consumer]
+for (const context of catalog.contexts) {
+  for (const service of context.services) {
+    const consumers = new Set();
+    for (const aggregate of service.aggregates) {
+      for (const event of aggregate.events) {
+        for (const consumer of event.consumers) consumers.add(consumer.service);
+      }
+    }
+    consumers.delete(service.id);
+    for (const consumer of consumers) {
+      const via = [...brokerIds].some(
+        (broker) => busEdges.has(`${service.id}|${broker}`) && busEdges.has(`${broker}|${consumer}`),
+      );
+      if (via) carriedByBus.push([service.id, consumer]);
+    }
+  }
+}
+
+/**
+ * The level-2 predicates shared by the estate's container view and each
+ * context's: the folded call edges, then the consumer arrows the bus carries
+ * taken away.
+ */
+function containerPredicates(pairs, carried, indent) {
+  return [
+    ...pairs.map((pair) => `${indent}${pairEdge(pair)}`),
+    ...carried.map(
+      ([from, to]) =>
+        `${indent}exclude ${participantRef(from)} -> ${participantRef(to)} where kind is consumes`,
+    ),
+  ];
+}
 
 // ---------------------------------------------------------------------------
 // views
@@ -478,9 +632,8 @@ views.push("views {");
 // --- C4 level 1: the estate and what stands outside it ---------------------
 // Contexts as black boxes, and the participants that are not the estate's to
 // build: the people who use it, the systems it pays and asks, and the
-// consumers nothing in the catalog accounts for. Brokers and the stores a
-// flow names are left out on purpose — they are containers, and they belong
-// to the level below.
+// consumers nothing in the catalog accounts for. Brokers and stores are left
+// out on purpose — they are containers, and they belong to the level below.
 //
 // This is not /graph's picture: that one is services against the events they
 // carry, and it is drawn by React Flow. No picture is drawn by both.
@@ -501,14 +654,51 @@ views.push(
 views.push("  }");
 views.push("");
 
+// --- C4 level 2: every container in the estate -----------------------------
+// The same boxes as the landscape, opened: each context with its services
+// inside, each service with the store it owns inside that, the brokers the
+// flows walk through, and the same outsiders as above. One picture of what
+// runs, what it talks to and over which protocol — the diagram most people
+// mean when they ask for "the architecture".
+const brokersOfService = new Map(); // service id -> Set of broker ids
+for (const edge of busEdges.values()) {
+  const [service, broker] = brokerIds.has(edge.to) ? [edge.from, edge.to] : [edge.to, edge.from];
+  const set = brokersOfService.get(service) ?? new Set();
+  set.add(broker);
+  brokersOfService.set(service, set);
+}
+const allServices = catalog.contexts.flatMap((c) => c.services);
+const drawnBrokers = [...new Set(allServices.flatMap((s) => [...(brokersOfService.get(s.id) ?? [])]))];
+views.push(`  view ${CONTAINERS_VIEW} {`);
+views.push("    title 'Containers'");
+views.push(
+  "    description 'Every service, the store it keeps its state in, the brokers between them, and everything outside the estate that touches one.'",
+);
+views.push(
+  `    include ${[
+    ...catalog.contexts.map((c) => safeId(c.id)),
+    ...allServices.map((s) => fqn(s.id)),
+    ...(catalog.stores ?? []).map((store) => fqn(store.id)),
+    ...drawnBrokers.map(safeId),
+    ...outside,
+  ].join(", ")}`,
+);
+views.push(...containerPredicates([...callPairs.values()], carriedByBus, "    "));
+views.push("  }");
+views.push("");
+
 for (const context of catalog.contexts) {
   // --- C4 level 2: the containers of one context --------------------------
   // Services, and the databases they keep their state in. A store is a
   // grandchild of the context, so `*` does not reach it and each one is named:
   // the ones this context's services own, and the ones they only read, which
   // is how a service reading someone else's database shows up as a crossing
-  // rather than as a box inside its own walls.
+  // rather than as a box inside its own walls. The brokers these services
+  // publish on or listen to arrive with `*` as neighbours, the way the other
+  // contexts do, and are not named: naming the bus would also pull in every
+  // other context's hops onto it, which are not this context's picture.
   const contextStores = new Set();
+  const contextServiceIds = new Set(context.services.map((s) => s.id));
   for (const service of context.services) {
     for (const store of storesByOwner.get(service.id) ?? []) contextStores.add(store.id);
     for (const storeId of service.stores ?? []) {
@@ -516,9 +706,15 @@ for (const context of catalog.contexts) {
     }
   }
   const include = ["*", ...[...contextStores].map(fqn)].join(", ");
+  // Only the pairs the picture holds both ends of: a neighbour in another
+  // context is drawn folded into its context, and naming one of its services
+  // would unfold it into a second box.
+  const inside = ([from, to]) => contextServiceIds.has(from) && contextServiceIds.has(to);
+  const pairs = [...callPairs.values()].filter((pair) => inside([pair.from, pair.to]));
   views.push(`  view ${contextViewId(context)} of ${safeId(context.id)} {`);
   views.push(`    title ${q(context.name)}`);
   views.push(`    include ${include}`);
+  views.push(...containerPredicates(pairs, carriedByBus.filter(inside), "    "));
   views.push("  }");
 
   for (const service of context.services) {

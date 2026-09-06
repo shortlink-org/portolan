@@ -37,4 +37,11 @@ specification {
   element unknown {
     style { shape rectangle  color unresolved  border dashed }
   }
+
+  relationship consumes
+  relationship calls
+  relationship bus
+  relationship reads
+  relationship persists
+  relationship uses
 }

@@ -88,10 +88,11 @@ extractor is selected only when its expected model structure is present; a
   lifecycle, events, commands, queries), event, store, schema module, ADR.
 - **Flows** — step-by-step walkthroughs with a step rail, cross-protocol chains that continue
   across contexts, and per-step detail.
-- **Diagrams** — LikeC4 C4 views (estate landscape, one per context, two per
-  service, one dynamic view per flow), an ELK-routed dependency graph, and a
-  context map. The app never draws these itself; `npm run likec4:gen` writes
-  the model from the catalog.
+- **Diagrams** — LikeC4 C4 views (estate landscape, every container in the
+  estate with its technology and the protocol on each edge, one per context,
+  two per service, one dynamic view per flow), an ELK-routed dependency
+  graph, and a context map. The app never draws these itself;
+  `npm run likec4:gen` writes the model from the catalog.
 - **ER canvases** — per store: tables, views, keys and crow's feet, plus column
   lineage (`from`) drawn dashed; hovering a column lights the whole chain back
   to where the value came from.
