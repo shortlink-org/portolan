@@ -6,6 +6,7 @@ import {
   Routes,
   useLocation,
 } from "react-router";
+import type { Location } from "react-router";
 import {
   Panel,
   ResizeHandle,
@@ -53,7 +54,7 @@ import { ShortcutsSheet, useShortcuts } from "./shortcuts";
 import { Toaster } from "./toast";
 import { useUiStore } from "./ui-store";
 import { ForgeAccessProvider } from "./forge-access";
-import { MotionProvider } from "../lib/motion";
+import { AnimatePresence, MotionProvider, m, page } from "../lib/motion";
 import { useChatUi } from "../chat/store";
 
 // The chat is a chunk of its own, and a build with VITE_CHAT=off has no such
@@ -64,10 +65,16 @@ const ChatPanel =
     ? lazy(() => import("../chat/ChatPanel"))
     : null;
 
-/** Every route, once. Rendered inside a pane on wide layouts and alone below. */
-function AppRoutes() {
+/**
+ * Every route, once. Rendered inside a pane on wide layouts and alone below.
+ *
+ * The location is a prop, not read from the router: while a page is on its
+ * way out the router already says the next address, and the page leaving
+ * must keep drawing the one it was.
+ */
+function AppRoutes({ location }: { location: Location }) {
   return (
-    <Routes>
+    <Routes location={location}>
       <Route path="/" element={<Overview />} />
       <Route path="/flows" element={<FlowIndex />} />
       <Route
@@ -200,7 +207,8 @@ function Shell() {
   const [help, setHelp] = useState(false);
   const chatOpen = useChatUi((s) => s.open);
   const [railed, setRailed] = useState(false);
-  const { pathname } = useLocation();
+  const location = useLocation();
+  const { pathname } = location;
   const settle = useCanvasResize();
   const sidebarRef = usePanelRef();
   const narrow = useNarrow();
@@ -288,14 +296,18 @@ function Shell() {
 
       {narrow ? (
         <>
-          {/* `key` on the route content is what makes the page transition fire:
-              a new pathname is a new element, so the mount animation runs again. */}
-          <main
-            key={pathname}
-            className="page-in min-h-0 flex-1 overflow-hidden"
-          >
-            <AppRoutes />
-          </main>
+          {/* `key` on the route content is what makes the page transition
+              fire: a new pathname is a new element. The old one leaves first,
+              on the micro duration, then the new one rises. */}
+          <AnimatePresence mode="wait">
+            <m.main
+              key={pathname}
+              {...page}
+              className="min-h-0 flex-1 overflow-hidden"
+            >
+              <AppRoutes location={location} />
+            </m.main>
+          </AnimatePresence>
           <SidebarDrawer />
         </>
       ) : (
@@ -325,9 +337,15 @@ function Shell() {
           <Panel id="main" className="h-full min-w-0" onResize={settle}>
             {/* The detail rail rides along with every page that draws a
                 diagram, so a selection made anywhere has somewhere to be read. */}
-            <main key={pathname} className="page-in h-full overflow-hidden">
-              <AppRoutes />
-            </main>
+            <AnimatePresence mode="wait">
+              <m.main
+                key={pathname}
+                {...page}
+                className="h-full overflow-hidden"
+              >
+                <AppRoutes location={location} />
+              </m.main>
+            </AnimatePresence>
           </Panel>
         </SavedGroup>
       )}

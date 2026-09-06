@@ -68,9 +68,10 @@ library by one careless import.
 ### Consequences
 
 - Good: the palette, the drawer, the sheet and the toast leave the way they
-  came, on the same duration.
-- Good: a tab indicator, a chevron and the current-step highlight move
-  instead of repainting, on one spring that does not bounce.
+  came, on the same duration; a route leaves on the micro duration before the
+  next one rises, and the one leaving keeps drawing the page it was.
+- Good: a tab indicator, the current-step highlight and the tree's selection
+  light move instead of repainting, on one spring that does not bounce.
 - Good: a branch of the tree opens to its height instead of appearing.
 - Bad: two ways to say "fade in" exist, `overlay-in` in CSS and `fade` in
   Motion. The rule is the file: a thing that only ever mounts uses the CSS

@@ -21,20 +21,24 @@ export function HashScroll() {
     if (!hash || hash.startsWith(SEL)) return;
     const id = decodeURIComponent(hash.slice(1));
 
-    // Two frames: the first is the route's own commit, the second is after the
-    // browser has laid it out, which is the earliest the target has a position.
-    let second = 0;
-    const first = requestAnimationFrame(() => {
-      second = requestAnimationFrame(() => {
-        document
-          .getElementById(id)
-          ?.scrollIntoView({ block: "start", behavior: "smooth" });
-      });
-    });
-    return () => {
-      cancelAnimationFrame(first);
-      cancelAnimationFrame(second);
+    // The target is not there yet: the route commits, the browser lays it
+    // out, and when a page is leaving the next one is not even mounted until
+    // the exit has run. So: a frame at a time until the element exists, then
+    // one more so it has a position, and give up after half a second.
+    const deadline = performance.now() + 500;
+    let frame = 0;
+    const look = () => {
+      const target = document.getElementById(id);
+      if (target) {
+        frame = requestAnimationFrame(() =>
+          target.scrollIntoView({ block: "start", behavior: "smooth" }),
+        );
+        return;
+      }
+      if (performance.now() < deadline) frame = requestAnimationFrame(look);
     };
+    frame = requestAnimationFrame(look);
+    return () => cancelAnimationFrame(frame);
   }, [pathname, hash]);
 
   return null;

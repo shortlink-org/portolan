@@ -1,6 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Link, NavLink, useLocation, useMatch } from "react-router";
-import { DURATION, Unfold } from "../lib/motion";
+import {
+  DURATION,
+  LayoutGroup,
+  Unfold,
+  m,
+  transitions,
+} from "../lib/motion";
 import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import {
   Check,
@@ -252,6 +258,26 @@ const CLASSIFICATION_NOTE: Record<Classification, string> = {
 
 const indent = (depth: number) => 8 + depth * 12;
 
+/**
+ * The selection's light: the raised background and the accent edge of the
+ * row that is selected. One element for the whole tree - a new selection is
+ * the same light arriving on another row, and it travels there on the settle
+ * spring rather than going out here and coming on over there. `-left-0.5`
+ * puts its edge over the row's own transparent 2px border, so the text does
+ * not move.
+ */
+function SelectionLight() {
+  return (
+    <m.span
+      layoutId="selection"
+      aria-hidden
+      className="pointer-events-none absolute inset-y-0 right-0 -left-0.5 -z-10 border-l-2 border-accent"
+      style={{ background: "var(--surface-2)" }}
+      transition={transitions.settle}
+    />
+  );
+}
+
 function Chevron({ open }: { open: boolean }) {
   return (
     <ChevronRight
@@ -314,19 +340,20 @@ function Leaf({
       onClick={onClick}
       style={({ isActive }) => ({
         paddingLeft: indent(depth),
-        background: isActive || selected ? "var(--surface-2)" : undefined,
+        background: isActive && !selected ? "var(--surface-2)" : undefined,
         borderLeftWidth: 2,
         borderLeftStyle: "solid",
-        borderLeftColor: isActive || selected ? "var(--accent)" : "transparent",
+        borderLeftColor:
+          isActive && !selected ? "var(--accent)" : "transparent",
       })}
       /* The edge is always 2px, transparent when idle: lighting a row must not
-         shift the text beside it. `pulse-once` keys off `selected` so the
-         outline runs exactly once, on the row that just became the selection. */
+         shift the text beside it. The route's own row paints its light in
+         place; the SELECTION's light is one element that slides from the row
+         it was on to this one. */
       data-nav-item
-      className={`tree-row flex items-center gap-1.5 py-[3px] pr-2 t-micro transition-colors hover:bg-surface ${
-        selected ? "pulse-once" : ""
-      }`}
+      className="tree-row relative isolate flex items-center gap-1.5 py-[3px] pr-2 t-micro transition-colors hover:bg-surface"
     >
+      {selected ? <SelectionLight /> : null}
       {children}
     </NavLink>
   );
@@ -368,13 +395,11 @@ function Branch({
     (s) => selId !== undefined && s.selection?.id === selId,
   );
   const onClick = useRowClick(selId);
-  const active = useMatch({ path: to, end: true }) !== null || selected;
+  const active = useMatch({ path: to, end: true }) !== null && !selected;
   return (
     <>
       <div
-        className={`tree-row group flex items-stretch t-micro transition-colors hover:bg-surface ${
-          selected ? "pulse-once" : ""
-        }`}
+        className="tree-row group relative isolate flex items-stretch t-micro transition-colors hover:bg-surface"
         style={{
           paddingLeft: indent(depth),
           background: active ? "var(--surface-2)" : undefined,
@@ -383,6 +408,7 @@ function Branch({
           borderLeftColor: active ? "var(--accent)" : "transparent",
         }}
       >
+        {selected ? <SelectionLight /> : null}
         <button
           type="button"
           onClick={onToggle}
@@ -1246,396 +1272,400 @@ export function Sidebar({
   if (railed) return <IconRail onExpand={() => onExpand?.()} />;
 
   const resetKinds = () => setHidden(new Set());
+  // Namespaces the selection light's layoutId to this tree.
+  const treeId = useId();
 
   return (
     <nav
       className="flex h-full flex-col border-r border-line bg-canvas"
       aria-label="Catalog"
     >
-      {/* Two rows, and only two: the mark and the name, then the filter box
-          with the funnel beside it. Everything the funnel holds used to live
-          here as a third and fourth row, in the one pane that is always on
-          screen. */}
-      <div className="shrink-0 border-b px-3 pt-2.5 pb-2 border-line">
-        <Wordmark />
-        <div className="mt-2 flex items-center gap-2">
-          <input
-            ref={inputRef}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                setQuery("");
-                e.currentTarget.blur();
-              }
-            }}
-            placeholder="filter"
-            spellCheck={false}
-            className="mono h-8 min-w-0 flex-1 rounded-control border bg-transparent px-2 outline-none placeholder:text-muted border-line t-micro transition-colors hover:border-line-strong"
-            aria-label="Filter catalog"
-          />
-          <KindFilter
-            hidden={hidden}
-            onToggle={toggleKind}
-            onReset={resetKinds}
-          />
+    <LayoutGroup id={treeId}>
+        {/* Two rows, and only two: the mark and the name, then the filter box
+            with the funnel beside it. Everything the funnel holds used to live
+            here as a third and fourth row, in the one pane that is always on
+            screen. */}
+        <div className="shrink-0 border-b px-3 pt-2.5 pb-2 border-line">
+          <Wordmark />
+          <div className="mt-2 flex items-center gap-2">
+            <input
+              ref={inputRef}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  setQuery("");
+                  e.currentTarget.blur();
+                }
+              }}
+              placeholder="filter"
+              spellCheck={false}
+              className="mono h-8 min-w-0 flex-1 rounded-control border bg-transparent px-2 outline-none placeholder:text-muted border-line t-micro transition-colors hover:border-line-strong"
+              aria-label="Filter catalog"
+            />
+            <KindFilter
+              hidden={hidden}
+              onToggle={toggleKind}
+              onReset={resetKinds}
+            />
+          </div>
+          <HidingLine hidden={hidden} onReset={resetKinds} />
         </div>
-        <HidingLine hidden={hidden} onReset={resetKinds} />
-      </div>
 
-      <div
-        ref={scrollerRef}
-        data-nav-list
-        className="pane flex-1 overflow-y-auto pb-3"
-      >
-        <PinnedSection
-          open={sectionOpen("pinned")}
-          onToggle={() => toggleSection("pinned")}
-        />
-
-        <Section
-          title="Flows"
-          count={flowCount}
-          open={filtering || sectionOpen("flows")}
-          onToggle={() => toggleSection("flows")}
+        <div
+          ref={scrollerRef}
+          data-nav-list
+          className="pane flex-1 overflow-y-auto pb-3"
         >
-          {flowGroups.length === 0 ? (
-            <TreeNote>{filtering ? "no match" : "none charted yet"}</TreeNote>
-          ) : null}
-          {flowGroups.map((group) => {
-            const key = group.owner ?? "unowned";
-            return (
-              <FlowGroupNode
-                key={key}
-                group={group}
-                open={filtering || groupOpen(key)}
-                onToggle={() => toggleGroup(key)}
-              />
-            );
-          })}
-        </Section>
+          <PinnedSection
+            open={sectionOpen("pinned")}
+            onToggle={() => toggleSection("pinned")}
+          />
 
-        <Section
-          title="Contexts"
-          count={contexts.length}
-          open={filtering || sectionOpen("contexts")}
-          onToggle={() => toggleSection("contexts")}
-        >
-          {contexts.length === 0 ? (
-            <TreeNote>
-              {filtering ? "no match" : "nothing extracted yet"}
-            </TreeNote>
-          ) : null}
-          {contexts.map(({ context, services }) => {
-            const ckey = `c:${context.id}`;
-            const copen = filtering || isOpen(ckey, true);
-            const unresolved = contextStats(context).unresolved;
-            return (
-              <div key={context.id}>
-                <Branch
-                  to={paths.context(context.id)}
-                  depth={0}
-                  open={copen}
-                  onToggle={() => toggle(ckey, true)}
-                  label={`context ${context.id}`}
-                  selId={context.id}
-                  end={
-                    <>
-                      {/* Its own target, because it goes somewhere else: the
-                          reader clicked the count, and the count is a list. */}
-                      {unresolved > 0 ? (
-                        <Link
-                          to={`${paths.problems()}?context=${encodeURIComponent(context.id)}`}
-                          title={`${unresolved} unresolved ${plural(unresolved, "edge")} — open Problems`}
-                          className="mono tnum flex shrink-0 items-center px-1.5 text-unresolved hover:underline"
-                        >
-                          {unresolved}
-                        </Link>
-                      ) : null}
-                      <span className="ml-auto" />
-                      {/* Only worth saying while the services are not on
-                          screen; once the branch is open the reader can count
-                          them. */}
-                      {!copen ? (
-                        <span className="mono flex shrink-0 items-center pr-1.5 text-muted opacity-0 t-micro transition-opacity group-hover:opacity-100">
-                          {context.services.length}{" "}
-                          {plural(context.services.length, "service")}
-                        </span>
-                      ) : null}
-                    </>
-                  }
-                  right={
-                    context.classification ? (
-                      <span
-                        className="sb-class"
-                        title={CLASSIFICATION_NOTE[context.classification]}
-                      >
-                        {context.classification}
-                      </span>
-                    ) : null
-                  }
-                >
-                  <KindIcon kind="context" contextId={context.id} />
-                  <span className="truncate" title={context.id}>
-                    {context.name}
-                  </span>
-                </Branch>
-                <Unfold open={copen}>
-                  {services.map(
-                      ({ service, aggregates, endpoints, stores }) => {
-                        const skey = `s:${service.id}`;
-                        const sopen = filtering || isOpen(skey, true);
-                        return (
-                          <div key={service.id}>
-                            <Branch
-                              to={paths.service(context.id, service.slug)}
-                              depth={1}
-                              open={sopen}
-                              onToggle={() => toggle(skey, true)}
-                              label={`service ${service.id}`}
-                              selId={service.id}
-                            >
-                              <KindIcon kind="service" />
-                              <span className="truncate" title={service.id}>
-                                {service.name}
-                              </span>
-                            </Branch>
-                            <Unfold open={sopen}>
-                            {aggregates.map((match) => (
-                                  <AggregateNode
-                                    key={match.aggregate.id}
-                                    match={match}
-                                    contextId={context.id}
-                                    serviceSlug={service.slug}
-                                    filtering={filtering}
-                                    isOpen={isOpen}
-                                    toggle={toggle}
-                                    shows={shows}
-                                  />
-                                ))}
-                            {/* Between the model and where it is kept: an
-                              endpoint is how the outside reaches the first and
-                              eventually moves the second. Methods are listed
-                              flat rather than nested under their interface -
-                              an operationId is unique across a document, so
-                              the extra level would carry no information and
-                              cost a line of indent in a narrow tree. */}
-                            {shows("endpoint") && endpoints.length > 0 ? (
-                              <Group
-                                kind="endpoint"
-                                label="api"
-                                count={endpoints.reduce(
-                                  (n, e) => n + e.methods.length,
-                                  0,
-                                )}
-                                depth={2}
-                                open={filtering || isOpen(`${skey}:api`, false)}
-                                onToggle={() => toggle(`${skey}:api`, false)}
-                              >
-                                {endpoints.flatMap(({ provided, methods }) =>
-                                  methods.map((method) => (
-                                    <Leaf
-                                      key={`${provided.id}/${method.name}`}
-                                      to={`${paths.service(context.id, service.slug)}?tab=provides`}
-                                      depth={3}
-                                      title={`${provided.id}/${method.name} — ${provided.source}`}
-                                    >
-                                      <KindIcon kind="endpoint" />
-                                      <span className="mono truncate">
-                                        {method.name}
-                                      </span>
-                                    </Leaf>
-                                  )),
-                                )}
-                              </Group>
-                            ) : null}
-
-                            {/* After the aggregates, because the model comes
-                              before where it is kept. Closed by default: this
-                              is the answer to a question about deployment, not
-                              the one the tree is usually open for. */}
-                            {shows("table") ? (
-                              <Group
-                                kind="table"
-                                label="data"
-                                count={stores.length}
-                                depth={2}
-                                open={
-                                  filtering || isOpen(`${skey}:data`, false)
-                                }
-                                onToggle={() => toggle(`${skey}:data`, false)}
-                              >
-                                {stores.map(({ store, tables, views }) => (
-                                  <StoreNode
-                                    key={store.id}
-                                    store={store}
-                                    tables={tables}
-                                    views={shows("view") ? views : []}
-                                    contextId={context.id}
-                                    serviceSlug={service.slug}
-                                    filtering={filtering}
-                                    isOpen={isOpen}
-                                    toggle={toggle}
-                                  />
-                                ))}
-                              </Group>
-                            ) : null}
-                            </Unfold>
-                          </div>
-                        );
-                      },
-                    )}
-                </Unfold>
-              </div>
-            );
-          })}
-        </Section>
-
-        {/* Guarded on the count rather than drawn empty: `Section` renders its
-            header and a TreeNote at zero, so an estate that has never published
-            a proto would grow a permanent dead row. */}
-        {modules.length > 0 ? (
           <Section
-            title="Registry"
-            count={modules.length}
-            open={filtering || sectionOpen("registry")}
-            onToggle={() => toggleSection("registry")}
+            title="Flows"
+            count={flowCount}
+            open={filtering || sectionOpen("flows")}
+            onToggle={() => toggleSection("flows")}
           >
-            {modules.map(({ module, packages }) => {
-              const open = filtering || isOpen(`mod:${module.id}`, false);
-
+            {flowGroups.length === 0 ? (
+              <TreeNote>{filtering ? "no match" : "none charted yet"}</TreeNote>
+            ) : null}
+            {flowGroups.map((group) => {
+              const key = group.owner ?? "unowned";
               return (
-                <div key={module.id}>
+                <FlowGroupNode
+                  key={key}
+                  group={group}
+                  open={filtering || groupOpen(key)}
+                  onToggle={() => toggleGroup(key)}
+                />
+              );
+            })}
+          </Section>
+
+          <Section
+            title="Contexts"
+            count={contexts.length}
+            open={filtering || sectionOpen("contexts")}
+            onToggle={() => toggleSection("contexts")}
+          >
+            {contexts.length === 0 ? (
+              <TreeNote>
+                {filtering ? "no match" : "nothing extracted yet"}
+              </TreeNote>
+            ) : null}
+            {contexts.map(({ context, services }) => {
+              const ckey = `c:${context.id}`;
+              const copen = filtering || isOpen(ckey, true);
+              const unresolved = contextStats(context).unresolved;
+              return (
+                <div key={context.id}>
                   <Branch
-                    to={paths.module(module.slug)}
+                    to={paths.context(context.id)}
                     depth={0}
-                    selId={module.id}
-                    label={`module ${module.name}`}
-                    open={open}
-                    onToggle={() => toggle(`mod:${module.id}`, false)}
+                    open={copen}
+                    onToggle={() => toggle(ckey, true)}
+                    label={`context ${context.id}`}
+                    selId={context.id}
+                    end={
+                      <>
+                        {/* Its own target, because it goes somewhere else: the
+                            reader clicked the count, and the count is a list. */}
+                        {unresolved > 0 ? (
+                          <Link
+                            to={`${paths.problems()}?context=${encodeURIComponent(context.id)}`}
+                            title={`${unresolved} unresolved ${plural(unresolved, "edge")} — open Problems`}
+                            className="mono tnum flex shrink-0 items-center px-1.5 text-unresolved hover:underline"
+                          >
+                            {unresolved}
+                          </Link>
+                        ) : null}
+                        <span className="ml-auto" />
+                        {/* Only worth saying while the services are not on
+                            screen; once the branch is open the reader can count
+                            them. */}
+                        {!copen ? (
+                          <span className="mono flex shrink-0 items-center pr-1.5 text-muted opacity-0 t-micro transition-opacity group-hover:opacity-100">
+                            {context.services.length}{" "}
+                            {plural(context.services.length, "service")}
+                          </span>
+                        ) : null}
+                      </>
+                    }
                     right={
-                      module.commit ? null : (
+                      context.classification ? (
                         <span
-                          className="mono text-muted"
-                          title="tracked by label rather than pinned to a commit"
+                          className="sb-class"
+                          title={CLASSIFICATION_NOTE[context.classification]}
                         >
-                          ~
+                          {context.classification}
                         </span>
-                      )
+                      ) : null
                     }
                   >
-                    <KindIcon kind="module" />
-                    <span className="mono truncate" title={module.id}>
-                      {module.name}
+                    <KindIcon kind="context" contextId={context.id} />
+                    <span className="truncate" title={context.id}>
+                      {context.name}
                     </span>
                   </Branch>
+                  <Unfold open={copen}>
+                    {services.map(
+                        ({ service, aggregates, endpoints, stores }) => {
+                          const skey = `s:${service.id}`;
+                          const sopen = filtering || isOpen(skey, true);
+                          return (
+                            <div key={service.id}>
+                              <Branch
+                                to={paths.service(context.id, service.slug)}
+                                depth={1}
+                                open={sopen}
+                                onToggle={() => toggle(skey, true)}
+                                label={`service ${service.id}`}
+                                selId={service.id}
+                              >
+                                <KindIcon kind="service" />
+                                <span className="truncate" title={service.id}>
+                                  {service.name}
+                                </span>
+                              </Branch>
+                              <Unfold open={sopen}>
+                              {aggregates.map((match) => (
+                                    <AggregateNode
+                                      key={match.aggregate.id}
+                                      match={match}
+                                      contextId={context.id}
+                                      serviceSlug={service.slug}
+                                      filtering={filtering}
+                                      isOpen={isOpen}
+                                      toggle={toggle}
+                                      shows={shows}
+                                    />
+                                  ))}
+                              {/* Between the model and where it is kept: an
+                                endpoint is how the outside reaches the first and
+                                eventually moves the second. Methods are listed
+                                flat rather than nested under their interface -
+                                an operationId is unique across a document, so
+                                the extra level would carry no information and
+                                cost a line of indent in a narrow tree. */}
+                              {shows("endpoint") && endpoints.length > 0 ? (
+                                <Group
+                                  kind="endpoint"
+                                  label="api"
+                                  count={endpoints.reduce(
+                                    (n, e) => n + e.methods.length,
+                                    0,
+                                  )}
+                                  depth={2}
+                                  open={filtering || isOpen(`${skey}:api`, false)}
+                                  onToggle={() => toggle(`${skey}:api`, false)}
+                                >
+                                  {endpoints.flatMap(({ provided, methods }) =>
+                                    methods.map((method) => (
+                                      <Leaf
+                                        key={`${provided.id}/${method.name}`}
+                                        to={`${paths.service(context.id, service.slug)}?tab=provides`}
+                                        depth={3}
+                                        title={`${provided.id}/${method.name} — ${provided.source}`}
+                                      >
+                                        <KindIcon kind="endpoint" />
+                                        <span className="mono truncate">
+                                          {method.name}
+                                        </span>
+                                      </Leaf>
+                                    )),
+                                  )}
+                                </Group>
+                              ) : null}
 
-                  {/* Two levels only. The interfaces inside a module are
-                      already in the tree under the service that answers on
-                      them, and listing them again would say the estate has
-                      twice as many. */}
-                  {open
-                    ? packages.map((name) => (
-                        <Leaf
-                          key={name}
-                          to={`${paths.module(module.slug)}?tab=interfaces#${packageAnchor(name)}`}
-                          depth={1}
-                          title={`${name} — ${module.id}`}
-                        >
-                          <KindIcon kind="endpoint" />
-                          <span className="mono truncate">{name}</span>
-                        </Leaf>
-                      ))
-                    : null}
+                              {/* After the aggregates, because the model comes
+                                before where it is kept. Closed by default: this
+                                is the answer to a question about deployment, not
+                                the one the tree is usually open for. */}
+                              {shows("table") ? (
+                                <Group
+                                  kind="table"
+                                  label="data"
+                                  count={stores.length}
+                                  depth={2}
+                                  open={
+                                    filtering || isOpen(`${skey}:data`, false)
+                                  }
+                                  onToggle={() => toggle(`${skey}:data`, false)}
+                                >
+                                  {stores.map(({ store, tables, views }) => (
+                                    <StoreNode
+                                      key={store.id}
+                                      store={store}
+                                      tables={tables}
+                                      views={shows("view") ? views : []}
+                                      contextId={context.id}
+                                      serviceSlug={service.slug}
+                                      filtering={filtering}
+                                      isOpen={isOpen}
+                                      toggle={toggle}
+                                    />
+                                  ))}
+                                </Group>
+                              ) : null}
+                              </Unfold>
+                            </div>
+                          );
+                        },
+                      )}
+                  </Unfold>
                 </div>
               );
             })}
-            <NavLink
-              to={paths.registry()}
-              data-nav-item
-              className="tree-row mono flex items-center py-[3px] pr-2 pl-[8px] text-accent hover:bg-surface"
-            >
-              view all {allModules(catalog).length} →
-            </NavLink>
           </Section>
-        ) : null}
 
-        <Section
-          title="Decisions"
-          count={adrs.length}
-          open={filtering || sectionOpen("decisions")}
-          onToggle={() => toggleSection("decisions")}
-        >
-          {adrs.length === 0 ? (
-            <TreeNote>
-              {filtering ? "no match" : "nothing on the record yet"}
-            </TreeNote>
-          ) : null}
-          {adrs.map((adr) => (
-            <Leaf
-              key={adr.id}
-              to={paths.adr(adr.slug)}
-              depth={0}
-              title={`${adr.id} — ${adr.title}`}
+          {/* Guarded on the count rather than drawn empty: `Section` renders its
+              header and a TreeNote at zero, so an estate that has never published
+              a proto would grow a permanent dead row. */}
+          {modules.length > 0 ? (
+            <Section
+              title="Registry"
+              count={modules.length}
+              open={filtering || sectionOpen("registry")}
+              onToggle={() => toggleSection("registry")}
             >
-              <KindIcon kind="adr" />
-              {/* The number without its prefix: the header already said
-                  DECISIONS, and "ADR-" repeated down a column is a word the
-                  reader reads five times to get to the digits. */}
-              <span
-                className={`mono tnum shrink-0 ${isStruck(adr.status) ? "line-through text-muted" : ""}`}
+              {modules.map(({ module, packages }) => {
+                const open = filtering || isOpen(`mod:${module.id}`, false);
+
+                return (
+                  <div key={module.id}>
+                    <Branch
+                      to={paths.module(module.slug)}
+                      depth={0}
+                      selId={module.id}
+                      label={`module ${module.name}`}
+                      open={open}
+                      onToggle={() => toggle(`mod:${module.id}`, false)}
+                      right={
+                        module.commit ? null : (
+                          <span
+                            className="mono text-muted"
+                            title="tracked by label rather than pinned to a commit"
+                          >
+                            ~
+                          </span>
+                        )
+                      }
+                    >
+                      <KindIcon kind="module" />
+                      <span className="mono truncate" title={module.id}>
+                        {module.name}
+                      </span>
+                    </Branch>
+
+                    {/* Two levels only. The interfaces inside a module are
+                        already in the tree under the service that answers on
+                        them, and listing them again would say the estate has
+                        twice as many. */}
+                    {open
+                      ? packages.map((name) => (
+                          <Leaf
+                            key={name}
+                            to={`${paths.module(module.slug)}?tab=interfaces#${packageAnchor(name)}`}
+                            depth={1}
+                            title={`${name} — ${module.id}`}
+                          >
+                            <KindIcon kind="endpoint" />
+                            <span className="mono truncate">{name}</span>
+                          </Leaf>
+                        ))
+                      : null}
+                  </div>
+                );
+              })}
+              <NavLink
+                to={paths.registry()}
+                data-nav-item
+                className="tree-row mono flex items-center py-[3px] pr-2 pl-[8px] text-accent hover:bg-surface"
               >
-                {adrNumber(adr).replace(/^ADR-/, "")}
-              </span>
-              <span className="truncate">{adr.title}</span>
-            </Leaf>
-          ))}
-          {catalog.adrs.length > 0 ? (
-            <NavLink
-              to={paths.adrs()}
-              data-nav-item
-              className="tree-row mono flex items-center py-[3px] pr-2 pl-[8px] text-accent hover:bg-surface"
-            >
-              view all {catalog.adrs.length} →
-            </NavLink>
+                view all {allModules(catalog).length} →
+              </NavLink>
+            </Section>
           ) : null}
-        </Section>
 
-        {/* Guarded on the count, like Registry: an estate that has written no
-            glossary would otherwise grow a permanent empty band teaching a
-            feature by taking up room. */}
-        {allTerms(catalog).length > 0 ? (
           <Section
-            title="Language"
-            count={termCount}
-            open={filtering || sectionOpen("language")}
-            onToggle={() => toggleSection("language")}
+            title="Decisions"
+            count={adrs.length}
+            open={filtering || sectionOpen("decisions")}
+            onToggle={() => toggleSection("decisions")}
           >
-            {vocabs.length === 0 ? <TreeNote>no match</TreeNote> : null}
-            {vocabs.map((vocabulary) => (
+            {adrs.length === 0 ? (
+              <TreeNote>
+                {filtering ? "no match" : "nothing on the record yet"}
+              </TreeNote>
+            ) : null}
+            {adrs.map((adr) => (
               <Leaf
-                key={vocabulary.contextId}
-                to={paths.contextLanguage(vocabulary.contextId)}
+                key={adr.id}
+                to={paths.adr(adr.slug)}
                 depth={0}
-                title={`${vocabulary.context?.name ?? vocabulary.contextId} — one meaning per word inside this context`}
+                title={`${adr.id} — ${adr.title}`}
               >
-                <KindIcon kind="context" contextId={vocabulary.contextId} />
-                <span className="truncate">{vocabulary.contextId}</span>
-                <span className="sb-count">{vocabulary.terms.length}</span>
+                <KindIcon kind="adr" />
+                {/* The number without its prefix: the header already said
+                    DECISIONS, and "ADR-" repeated down a column is a word the
+                    reader reads five times to get to the digits. */}
+                <span
+                  className={`mono tnum shrink-0 ${isStruck(adr.status) ? "line-through text-muted" : ""}`}
+                >
+                  {adrNumber(adr).replace(/^ADR-/, "")}
+                </span>
+                <span className="truncate">{adr.title}</span>
               </Leaf>
             ))}
-            <NavLink
-              to={paths.language()}
-              data-nav-item
-              className="tree-row mono flex items-center py-[3px] pr-2 pl-[8px] text-accent hover:bg-surface"
-            >
-              view all {allTerms(catalog).length} →
-            </NavLink>
+            {catalog.adrs.length > 0 ? (
+              <NavLink
+                to={paths.adrs()}
+                data-nav-item
+                className="tree-row mono flex items-center py-[3px] pr-2 pl-[8px] text-accent hover:bg-surface"
+              >
+                view all {catalog.adrs.length} →
+              </NavLink>
+            ) : null}
           </Section>
-        ) : null}
-      </div>
 
-      <BottomGroup />
+          {/* Guarded on the count, like Registry: an estate that has written no
+              glossary would otherwise grow a permanent empty band teaching a
+              feature by taking up room. */}
+          {allTerms(catalog).length > 0 ? (
+            <Section
+              title="Language"
+              count={termCount}
+              open={filtering || sectionOpen("language")}
+              onToggle={() => toggleSection("language")}
+            >
+              {vocabs.length === 0 ? <TreeNote>no match</TreeNote> : null}
+              {vocabs.map((vocabulary) => (
+                <Leaf
+                  key={vocabulary.contextId}
+                  to={paths.contextLanguage(vocabulary.contextId)}
+                  depth={0}
+                  title={`${vocabulary.context?.name ?? vocabulary.contextId} — one meaning per word inside this context`}
+                >
+                  <KindIcon kind="context" contextId={vocabulary.contextId} />
+                  <span className="truncate">{vocabulary.contextId}</span>
+                  <span className="sb-count">{vocabulary.terms.length}</span>
+                </Leaf>
+              ))}
+              <NavLink
+                to={paths.language()}
+                data-nav-item
+                className="tree-row mono flex items-center py-[3px] pr-2 pl-[8px] text-accent hover:bg-surface"
+              >
+                view all {allTerms(catalog).length} →
+              </NavLink>
+            </Section>
+          ) : null}
+        </div>
+
+        <BottomGroup />
+    </LayoutGroup>
     </nav>
   );
 }

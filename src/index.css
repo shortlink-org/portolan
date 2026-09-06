@@ -1014,12 +1014,6 @@
    Motion. One system: 150 micro, 250 panel and page, 400 narrative.
    --------------------------------------------------------------------------- */
 
-@keyframes page-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-}
 @keyframes panel-in {
   from {
     opacity: 0;
@@ -1048,31 +1042,9 @@
     transform: scaleX(0);
   }
 }
-/* Once. 0 -> 2px -> settle; it never loops. */
-@keyframes pulse-once {
-  0% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent);
-  }
-  45% {
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent);
-  }
-  100% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent);
-  }
-}
-/* The chat's waiting sprite: eight 24px frames in one SVG, stepped along. */
-@keyframes chat-sprite {
-  to {
-    transform: translateX(-192px);
-  }
-}
-
-/* Route content rises on mount. No exit: the outgoing route is simply gone.
-   Anything that also LEAVES - the palette, the drawer, the sheet, the toast -
-   is not here: that is Motion, in lib/motion.tsx, on the same tokens. */
-@utility page-in {
-  animation: page-in var(--dur-page) var(--ease-out) both;
-}
+/* Anything that also LEAVES or moves - a route, the palette, the drawer, the
+   sheet, the toast, the light under a tab - is not here: that is Motion, in
+   lib/motion.tsx, on the same tokens. */
 @utility panel-in {
   animation: panel-in var(--dur-panel) var(--ease-out) both;
 }
@@ -1090,9 +1062,6 @@
 @utility bar-fill {
   transform-origin: left center;
   animation: bar-fill var(--dur-narrative) var(--ease-in-out) both;
-}
-@utility pulse-once {
-  animation: pulse-once var(--dur-narrative) var(--ease-in-out) 1;
 }
 
 /* Everything that moves, moves for 150ms unless it says otherwise. */

@@ -10,6 +10,7 @@ import {
   EASE_IN_OUT,
   EASE_OUT,
   fade,
+  page,
   rise,
   scaleIn,
   slideFrom,
@@ -96,9 +97,15 @@ describe("presence", () => {
     expect(p.exit.transition).toBe(transitions.panel);
   });
 
-  it("rise travels the eight pixels page-in travels", () => {
-    expect(css).toMatch(/@keyframes page-in \{[^}]*translateY\(8px\)/);
+  it("a page and a row rise the same eight pixels", () => {
+    expect(page.initial.y).toBe(8);
     expect(rise.initial.y).toBe(8);
+  });
+
+  it("a page arrives on the page duration and leaves faster, opacity only", () => {
+    expect(page.animate.transition).toBe(transitions.page);
+    expect(page.exit.transition).toBe(transitions.micro);
+    expect(Object.keys(page.exit)).toEqual(["opacity", "transition"]);
   });
 
   it("scaleIn grows the two percent palette-in grows", () => {

@@ -1,7 +1,7 @@
 // Motion, in two halves.
 //
-// CSS owns what appears and what changes colour: a page rising on mount, a
-// row hovered, a stagger of cards. That is `page-in`, `stagger-in`, `t-micro`
+// CSS owns what appears and what changes colour: a card rising on mount, a
+// row hovered, a stagger of cards. That is `stagger-in`, `t-micro`
 // in index.css, driven by the tokens declared there.
 //
 // Motion (motion.dev) owns the three things CSS cannot say on its own: an
@@ -90,7 +90,18 @@ export const scaleIn: Presence = {
   exit: { opacity: 0, scale: 0.98, transition: transitions.panel },
 };
 
-/** A row, a toast, a page: rises the CSS `page-in` eight pixels. */
+/**
+ * A route: rises the eight pixels on the page duration, and leaves on the
+ * micro duration, opacity only. The reader has already asked for the next
+ * page; the old one should be out of the way, not making an exit.
+ */
+export const page: Presence = {
+  initial: { opacity: 0, y: 8 },
+  animate: { opacity: 1, y: 0, transition: transitions.page },
+  exit: { opacity: 0, transition: transitions.micro },
+};
+
+/** A row, a toast: rises the same eight pixels a page rises. */
 export const rise: Presence = {
   initial: { opacity: 0, y: 8 },
   animate: { opacity: 1, y: 0, transition: transitions.panel },
