@@ -191,6 +191,11 @@ type RpcMethod struct {
 	// HTTP is the route, for a method read from an OpenAPI document. It is
 	// what lets a request seen on the wire be read back to the operation.
 	HTTP *HttpRoute `json:"http,omitempty"`
+
+	// SOAP is the concrete binding of a WSDL operation. Unlike Doc, these
+	// fields participate in comparison and let renderers present the contract
+	// without reparsing the source document.
+	SOAP *SoapRoute `json:"soap,omitempty"`
 }
 
 type HttpRoute struct {
@@ -198,6 +203,19 @@ type HttpRoute struct {
 	Method string `json:"method"`
 	// Path is the template as the document writes it: /v1/users/{id}.
 	Path string `json:"path"`
+}
+
+// SoapRoute is the wire-level part of one WSDL operation. Request, response
+// and fault shapes remain on RpcMethod/RpcService, beside their proto and
+// OpenAPI equivalents.
+type SoapRoute struct {
+	Action   string   `json:"action,omitempty"`
+	Version  string   `json:"version,omitempty"`
+	Style    string   `json:"style,omitempty"`
+	Endpoint string   `json:"endpoint,omitempty"`
+	Binding  string   `json:"binding,omitempty"`
+	Faults   []string `json:"faults,omitempty"`
+	Headers  []string `json:"headers,omitempty"`
 }
 
 type Streaming string

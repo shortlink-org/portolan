@@ -145,12 +145,23 @@ possible routes. The channels merge normally with AsyncAPI declarations by addre
 processors are also extracted; fixed topic generators and the standard
 event/command-name generator form are resolved from source.
 
+`extract-wsdl` reads WSDL 1.1 contracts as structured SOAP APIs. It follows
+local WSDL imports and XSD imports/includes without network access, keeps
+distinct services, ports and SOAP 1.1/1.2 bindings, and records operation
+actions, request/response messages, faults, headers and reachable XSD shapes.
+It can describe a contract implemented by the component or a vendored copy for
+an external system (`mode: external`). Remote imports are reported as missing
+evidence rather than fetched during generation.
+
 `extract-http-clients` is the outbound counterpart and does not require a
 domain layout. It reads `net/http` request construction, calls through an
 `oapi-codegen` client, and SOAP `Call`/`CallContext` sites. A generated client
 is joined to the OpenAPI document beside it, so the call uses the document's
 operation id and lands on an external with the contract the document declares.
-SOAP actions are joined to vendored WSDL bindings when the action matches. A
+SOAP actions are joined to WSDL bindings when the action matches. Generated and
+hand-written wrapper signatures are learned from their call into the SOAP
+transport or their `SOAPAction`/SOAP 1.2 content-type header, so the action,
+request and response positions are taken from code rather than assumed. A
 raw request whose peer or contract cannot be proved is still useful evidence:
 it is emitted as `unresolved`, with its method, path and source line, rather
 than being assigned to a guessed system. Conditions guarding a call and the

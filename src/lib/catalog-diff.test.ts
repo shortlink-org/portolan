@@ -110,6 +110,25 @@ describe("diffCatalogs: what a reviewer is looking for", () => {
     expect(change?.severity).toBe("breaking");
     expect(change?.summary).toContain("SomethingElse");
   });
+
+  it("treats a changed SOAP action as a breaking signature change", () => {
+    const before = JSON.parse(JSON.stringify(catalog)) as Catalog;
+    const method = before.contexts
+      .flatMap((ctx) => ctx.services)
+      .find((service) => service.provides.some((provided) => provided.methods.length > 0))!
+      .provides.find((provided) => provided.methods.length > 0)!.methods[0]!;
+    method.soap = { version: "1.1", action: "urn:pay:v1" };
+    const after = JSON.parse(JSON.stringify(before)) as Catalog;
+    after.contexts
+      .flatMap((ctx) => ctx.services)
+      .find((service) => service.provides.some((provided) => provided.methods.length > 0))!
+      .provides.find((provided) => provided.methods.length > 0)!.methods[0]!.soap!.action =
+      "urn:pay:v2";
+
+    const change = diffCatalogs(before, after).find((item) => item.kind === "method.signature");
+    expect(change?.severity).toBe("breaking");
+    expect(change?.summary).toContain("urn:pay:v2");
+  });
 });
 
 describe("diffCatalogs: lifecycles", () => {

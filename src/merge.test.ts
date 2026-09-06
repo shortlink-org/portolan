@@ -827,6 +827,44 @@ describe("externals", () => {
     expect(merged.conflicts.map((c) => c.where)).toEqual(["psp"]);
   });
 
+  it("enriches a called SOAP method with the full WSDL contract regardless of file order", () => {
+    const id = "booking.soap.BookingPort";
+    const merged = mergeCatalogs([
+      source("http-clients.json", {
+        externals: [{
+          id: "booking", slug: "booking", name: "Booking", summary: "", provides: [{
+            id, source: "contracts/booking.wsdl", methods: [{ name: "Cancel" }],
+          }],
+        }],
+      }),
+      source("wsdl.json", {
+        externals: [{
+          id: "booking", slug: "booking", name: "Booking", summary: "", provides: [{
+            id, source: "contracts/booking.wsdl",
+            methods: [{
+              name: "Cancel", request: "CancelRequest", response: "CancelResponse",
+              soap: { version: "1.2", action: "urn:booking:cancel", faults: ["BookingFault"] },
+            }],
+            messages: [
+              { name: "CancelRequest", fields: [{ name: "bookingId", type: "string", doc: "" }] },
+              { name: "CancelResponse", fields: [] },
+            ],
+          }],
+        }],
+      }),
+    ]);
+
+    const provided = merged.catalog.externals?.[0]?.provides[0];
+    expect(provided?.methods).toEqual([{
+      name: "Cancel", request: "CancelRequest", response: "CancelResponse",
+      soap: { version: "1.2", action: "urn:booking:cancel", faults: ["BookingFault"] },
+    }]);
+    expect(provided?.messages?.map((message) => message.name)).toEqual([
+      "CancelRequest",
+      "CancelResponse",
+    ]);
+  });
+
   it("leaves the field out when no source names one", () => {
     const merged = mergeCatalogs([source("a.json", { contexts: [context("shop", ["shop.oms"])] })]);
     expect(merged.catalog.externals).toBeUndefined();

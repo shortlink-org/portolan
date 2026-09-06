@@ -94,6 +94,27 @@ describe("local project setup", () => {
     });
   });
 
+  it("offers WSDL as an external contract when the project contains a SOAP client", () => {
+    const root = workspace();
+    writeFileSync(join(root, "services/billing/client.go"), 'package billing\nimport soap "github.com/hooklift/gowsdl/soap"\nvar _ *soap.Client\n');
+    writeFileSync(join(root, "services/billing/api/billing.wsdl"), '<definitions xmlns="http://schemas.xmlsoap.org/wsdl/"/>\n');
+    const manifest = JSON.parse(readFileSync(join(root, "portolan.json"), "utf8"));
+    manifest.plugins.push({ name: "wsdl", process: { command: "true" } });
+    const discovery = discoverProject(root, "services/billing");
+    expect(discovery.detections.find((item) => item.plugin === "wsdl")).toMatchObject({
+      confidence: "high",
+      evidence: "api/billing.wsdl",
+      options: { spec: "api/billing.wsdl", mode: "external" },
+    });
+    const plan = planProject(root, manifest, {
+      root: "services/billing", id: "billing", name: "Billing", group: "finance", component: "billing", repository: "", plugins: ["project", "wsdl"],
+    });
+    expect(plan.steps[1]).toMatchObject({
+      plugin: "wsdl",
+      options: { context: "finance", service: "billing", spec: "api/billing.wsdl", mode: "external", out: "wsdl.json" },
+    });
+  });
+
   it("refuses paths that escape through a symlink", () => {
     const root = workspace();
     const outside = mkdtempSync(join(tmpdir(), "portolan-outside-"));

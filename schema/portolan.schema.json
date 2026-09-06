@@ -57,6 +57,7 @@
               "java-domain",
               "django-domain",
               "openapi",
+              "wsdl",
               "http-clients",
               "river",
               "watermill",
@@ -214,6 +215,25 @@
               "properties": {
                 "options": {
                   "$ref": "#/$defs/options.openapi"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "plugin"
+              ],
+              "properties": {
+                "plugin": {
+                  "const": "wsdl"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "options": {
+                  "$ref": "#/$defs/options.wsdl"
                 }
               }
             }
@@ -1406,6 +1426,82 @@
           "type": "string",
           "description": "Name of the fragment file, inside the step's output directory.",
           "default": "api.json"
+        }
+      }
+    },
+    "options.wsdl": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "Top-level group that owns the component implementing the WSDL contract.",
+          "examples": [
+            "booking"
+          ]
+        },
+        "service": {
+          "type": "string",
+          "description": "Component implementing the WSDL contract.",
+          "examples": [
+            "gateway"
+          ]
+        },
+        "spec": {
+          "type": "string",
+          "description": "Root WSDL document relative to the input. Its local WSDL and XSD imports are followed. Left out, every WSDL in the tree is discovered.",
+          "examples": [
+            "contracts/booking.wsdl"
+          ]
+        },
+        "api": {
+          "type": "string",
+          "description": "API id prefix for a single contract. Defaults to the WSDL service name plus .soap.",
+          "examples": [
+            "booking.soap"
+          ]
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "service",
+            "external"
+          ],
+          "default": "service",
+          "description": "Whether the contract is implemented by this component or is a local copy used to call external systems."
+        },
+        "external": {
+          "type": "string",
+          "description": "One external id for all discovered contracts. In external mode, each WSDL service otherwise derives its own external id."
+        },
+        "externals": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "External id overrides keyed by derived API id.",
+          "examples": [
+            {
+              "booking-service.soap": "booking-provider"
+            }
+          ]
+        },
+        "externalName": {
+          "type": "string",
+          "description": "Display name when external names one combined system."
+        },
+        "externalSummary": {
+          "type": "string",
+          "description": "Description when external names one combined system."
+        },
+        "externalUrl": {
+          "type": "string",
+          "description": "Documentation URL when it differs from the SOAP endpoint."
+        },
+        "out": {
+          "type": "string",
+          "description": "Fragment file name inside the step output directory.",
+          "default": "wsdl.json"
         }
       }
     },

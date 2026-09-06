@@ -103,12 +103,16 @@ func externalCatalog(contracts []gohttp.Contract, calls []gohttp.Call, opts Opti
 			})
 		}
 		for _, op := range contract.SOAP {
-			if !called[contract.API+".SOAP/"+op.ID] {
+			if !called[op.Interface+"/"+op.ID] {
 				continue
 			}
-			byInterface[contract.API+".SOAP"] = append(byInterface[contract.API+".SOAP"], catalog.RpcMethod{
-				Name: op.ID,
-				Doc:  firstNonEmpty(op.Action, "SOAP operation"),
+			byInterface[op.Interface] = append(byInterface[op.Interface], catalog.RpcMethod{
+				Name: op.ID, Request: op.Request, Response: op.Response,
+				SOAP: &catalog.SoapRoute{
+					Action: op.Action, Version: op.Version, Style: op.Style,
+					Endpoint: op.Endpoint, Binding: op.Binding,
+					Faults: append([]string(nil), op.Faults...), Headers: append([]string(nil), op.Headers...),
+				},
 			})
 		}
 		var provides []catalog.RpcService

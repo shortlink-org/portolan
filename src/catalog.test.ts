@@ -73,6 +73,17 @@ describe("validateCatalog", () => {
     expect(() => validateCatalog(good)).not.toThrow();
   });
 
+  it("rejects an unknown SOAP version", () => {
+    const bad = clone();
+    const method = bad.contexts
+      .flatMap((context) => context.services)
+      .flatMap((service) => service.provides)
+      .flatMap((provided) => provided.methods)[0];
+    if (!method) throw new Error("fixture has no rpc method");
+    method.soap = { version: "2.0" as never, action: "urn:pay" };
+    expect(() => validateCatalog(bad)).toThrow(/expected 1.1 or 1.2/);
+  });
+
   it("rejects a step whose participant was never declared, naming flow and step", () => {
     const bad = clone();
     const checkout = bad.flows.find((f) => f.slug === "checkout") as Flow;

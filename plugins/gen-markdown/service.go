@@ -192,13 +192,45 @@ func (s *site) providesBlock(from string, provides []catalog.RpcService, owner *
 			if method.HTTP != nil {
 				route = code(method.HTTP.Method + " " + method.HTTP.Path)
 			}
+			if method.SOAP != nil {
+				soap := "SOAP"
+				if method.SOAP.Version != "" {
+					soap += " " + method.SOAP.Version
+				}
+				if method.SOAP.Action != "" {
+					soap += " " + method.SOAP.Action
+				}
+				route = code(soap)
+			}
 			streaming := string(method.Streaming)
 			if method.Deprecated {
 				streaming = strings.TrimSpace(streaming + " deprecated")
 			}
+			doc := method.Doc
+			if method.SOAP != nil {
+				var details []string
+				if method.SOAP.Endpoint != "" {
+					details = append(details, "endpoint "+code(method.SOAP.Endpoint))
+				}
+				if method.SOAP.Binding != "" {
+					details = append(details, "binding "+code(method.SOAP.Binding))
+				}
+				if method.SOAP.Style != "" {
+					details = append(details, method.SOAP.Style)
+				}
+				if len(method.SOAP.Headers) > 0 {
+					details = append(details, "headers "+code(strings.Join(method.SOAP.Headers, ", ")))
+				}
+				if len(method.SOAP.Faults) > 0 {
+					details = append(details, "faults "+code(strings.Join(method.SOAP.Faults, ", ")))
+				}
+				if len(details) > 0 {
+					doc = strings.TrimSpace(strings.TrimSpace(doc) + " " + strings.Join(details, "; "))
+				}
+			}
 			methods = append(methods, []string{
 				code(method.Name), route, s.methodShape(from, method.Request, method.RequestRef),
-				s.methodShape(from, method.Response, method.ResponseRef), streaming, method.Doc,
+				s.methodShape(from, method.Response, method.ResponseRef), streaming, doc,
 			})
 		}
 		if rendered := table([]string{"Method", "Route", "Request", "Response", "Mode", "Doc"}, methods); rendered != "" {

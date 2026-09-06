@@ -168,6 +168,15 @@ export function MethodRows({
                     {method.http.method} {method.http.path}
                   </span>
                 ) : null}
+                {method.soap ? (
+                  <span
+                    className="chip mono"
+                    title={method.soap.endpoint || "SOAP operation"}
+                  >
+                    SOAP{method.soap.version ? ` ${method.soap.version}` : ""}
+                    {method.soap.action ? ` · ${method.soap.action}` : ""}
+                  </span>
+                ) : null}
                 {method.deprecated ? (
                   <span className="chip">deprecated</span>
                 ) : null}
@@ -200,6 +209,20 @@ export function MethodRows({
 
               {method.doc ? (
                 <p className="mt-0.5 text-muted">{method.doc}</p>
+              ) : null}
+
+              {method.soap?.faults?.length || method.soap?.headers?.length ? (
+                <p className="mono mt-0.5 text-muted">
+                  {method.soap.headers?.length
+                    ? `headers ${method.soap.headers.join(", ")}`
+                    : null}
+                  {method.soap.headers?.length && method.soap.faults?.length
+                    ? " · "
+                    : null}
+                  {method.soap.faults?.length
+                    ? `faults ${method.soap.faults.join(", ")}`
+                    : null}
+                </p>
               ) : null}
 
               {runs?.(method)}

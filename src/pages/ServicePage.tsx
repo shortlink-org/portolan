@@ -17,6 +17,7 @@ import { TAB_CLASS, TabCount, TabRow } from "../components/TabRow";
 import { MessageList, MethodRows } from "../components/MethodRows";
 import { docPathOf, pickSpec } from "../lib/source-doc";
 import { ApiReference, hasSpec } from "../components/ApiReference";
+import { SoapCallContract, WsdlReference } from "../components/WsdlReference";
 import {
   AsyncApiReference,
   hasAsyncSpec,
@@ -475,6 +476,8 @@ export function ServicePage() {
             <ApiReference source={spec.source} />
           ) : spec.kind === "graphql" ? (
             <SchemaDocument source={spec.source} />
+          ) : spec.kind === "wsdl" ? (
+            <WsdlReference source={spec.source} provided={service.provides} />
           ) : (
             /* A proto is drawn from the catalog rather than as raw text. The
                rule ApiReference states - draw the document because the catalog
@@ -496,6 +499,12 @@ export function ServicePage() {
               // to open nor a hole in the catalog: it is named, and it says
               // where it documents itself.
               const external = to ? undefined : index.externalById.get(call.peer);
+              const provided = external?.provides.find((candidate) =>
+                call.id.startsWith(`${candidate.id}/`),
+              );
+              const calledMethod = provided?.methods.find(
+                (method) => `${provided.id}/${method.name}` === call.id,
+              );
               return (
                 <div
                   key={call.id}
@@ -548,6 +557,9 @@ export function ServicePage() {
                     <p className="w-full border-l-2 pl-2 border-line-strong text-muted">
                       {call.note}
                     </p>
+                  ) : null}
+                  {provided && calledMethod?.soap ? (
+                    <SoapCallContract provided={provided} method={calledMethod} />
                   ) : null}
                 </div>
               );

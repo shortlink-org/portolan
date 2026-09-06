@@ -246,6 +246,17 @@ function signature(method: RpcMethod): string {
   const parts = [method.request ?? "?", method.response ?? "?"];
   if (method.streaming) parts.push(method.streaming);
   if (method.http) parts.push(`${method.http.method} ${method.http.path}`);
+  if (method.soap) {
+    parts.push(
+      [
+        `SOAP ${method.soap.version ?? "?"}`,
+        method.soap.action ?? "?",
+        method.soap.endpoint ?? "?",
+        method.soap.binding ?? "?",
+        ...(method.soap.faults ?? []).map((fault) => `fault:${fault}`),
+      ].join(" "),
+    );
+  }
 
   return parts.join(" → ");
 }
