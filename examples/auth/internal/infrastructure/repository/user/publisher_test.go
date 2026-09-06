@@ -45,7 +45,7 @@ func outboxSetup(t *testing.T) *outboxHarness {
 	if err != nil {
 		t.Fatalf("config: %v", err)
 	}
-	log, _, err := sdklogger.NewDefault(ctx, cfg)
+	log, err := sdklogger.New(sdklogger.Default())
 	if err != nil {
 		t.Fatalf("logger: %v", err)
 	}

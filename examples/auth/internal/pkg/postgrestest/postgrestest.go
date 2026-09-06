@@ -124,7 +124,7 @@ func StoreWithDB(t *testing.T, sources ...Source) (*db.Store, *replica.Router, *
 	if err != nil {
 		t.Fatalf("postgrestest: config: %v", err)
 	}
-	log, _, err := logger.NewDefault(ctx, cfg)
+	log, err := logger.New(logger.Default())
 	if err != nil {
 		t.Fatalf("postgrestest: logger: %v", err)
 	}

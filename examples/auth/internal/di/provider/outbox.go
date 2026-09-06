@@ -3,12 +3,12 @@ package provider
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/google/wire"
 
 	sdkconfig "github.com/shortlink-org/go-sdk/config"
 	sdkdb "github.com/shortlink-org/go-sdk/db"
-	sdklogger "github.com/shortlink-org/go-sdk/logger"
 	sdkoutbox "github.com/shortlink-org/go-sdk/outbox"
 	sdkuow "github.com/shortlink-org/go-sdk/uow"
 	sdkwatermill "github.com/shortlink-org/go-sdk/watermill"
@@ -63,7 +63,7 @@ func ProvideOutboxPublisher() (*sdkoutbox.Publisher, error) {
 // would ever be retried.
 func ProvideWatermill(
 	cfg *sdkconfig.Config,
-	log sdklogger.Logger,
+	log *slog.Logger,
 	backend *messaging.Backend,
 ) (*sdkwatermill.Client, error) {
 	client, err := sdkwatermill.New(
@@ -88,7 +88,7 @@ func ProvideWatermill(
 // ProvideBuses.
 func ProvideRelay(
 	store *sdkdb.Store,
-	log sdklogger.Logger,
+	log *slog.Logger,
 	client *sdkwatermill.Client,
 	buses *Buses,
 ) (*sdkoutbox.Relay, error) {

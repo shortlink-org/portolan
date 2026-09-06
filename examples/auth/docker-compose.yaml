@@ -49,7 +49,7 @@ services:
   # OTLP JSON, which is the file portolan reads to mark hops as observed - see
   # telemetry/README.md for the recording.
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.126.0
+    image: otel/opentelemetry-collector-contrib:0.160.0
     command: ["--config=/etc/otelcol/config.yaml"]
     volumes:
       - ./telemetry/otel-collector.yaml:/etc/otelcol/config.yaml:ro

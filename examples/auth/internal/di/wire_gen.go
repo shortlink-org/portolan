@@ -43,7 +43,7 @@ func New() (App, error) {
 	if err != nil {
 		return App{}, err
 	}
-	logger, err := provider.ProvideLogger(config)
+	logger, err := provider.ProvideLogger()
 	if err != nil {
 		return App{}, err
 	}

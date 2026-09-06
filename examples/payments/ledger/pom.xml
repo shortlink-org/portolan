@@ -7,7 +7,7 @@
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
-    <version>3.5.16</version>
+    <version>4.1.1</version>
     <relativePath/>
   </parent>
 
@@ -23,10 +23,23 @@
 
   <properties>
     <java.version>21</java.version>
-    <grpc.version>1.72.0</grpc.version>
+    <grpc.version>1.84.0</grpc.version>
     <protobuf.version>3.25.5</protobuf.version>
-    <jmolecules.version>1.10.0</jmolecules.version>
+    <jmolecules.version>2.0.1</jmolecules.version>
   </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <!-- grpc-server-spring-boot-starter pins an older grpc-stub; the stubs protoc-gen-grpc-java emits need the same line as the compiler. -->
+      <dependency>
+        <groupId>io.grpc</groupId>
+        <artifactId>grpc-bom</artifactId>
+        <version>${grpc.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
 
   <dependencies>
     <!-- The vocabulary the catalog reads: what is an aggregate, an event, a port. -->
@@ -48,7 +61,7 @@
     <dependency>
       <groupId>org.springframework.modulith</groupId>
       <artifactId>spring-modulith-events-api</artifactId>
-      <version>1.4.1</version>
+      <version>2.1.1</version>
     </dependency>
 
     <!-- grpc-java's generated stubs are annotated @javax.annotation.Generated,
@@ -63,9 +76,10 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-data-jpa</artifactId>
     </dependency>
+    <!-- Boot 4 moved Flyway auto-configuration out of the JPA starter; without this the schema is validated before it is migrated. -->
     <dependency>
-      <groupId>org.flywaydb</groupId>
-      <artifactId>flyway-core</artifactId>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-flyway</artifactId>
     </dependency>
     <dependency>
       <groupId>org.flywaydb</groupId>

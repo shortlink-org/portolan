@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/google/wire"
 	"go.opentelemetry.io/otel"
@@ -38,8 +39,8 @@ var Storage = wire.NewSet(
 	uow.New,
 )
 
-func ProvideLogger(cfg *sdkconfig.Config) (logger.Logger, error) {
-	log, _, err := logger.NewDefault(context.Background(), cfg)
+func ProvideLogger() (*slog.Logger, error) {
+	log, err := logger.New(logger.Default())
 	if err != nil {
 		return nil, fmt.Errorf("provider: logger: %w", err)
 	}
@@ -53,7 +54,7 @@ func ProvideLogger(cfg *sdkconfig.Config) (logger.Logger, error) {
 // different connection: the statement then runs outside the transaction,
 // without its locks, and can deadlock against it. Every repository in this
 // service depends on that one line being here.
-func ProvideStore(cfg *sdkconfig.Config, log logger.Logger) (*db.Store, error) {
+func ProvideStore(cfg *sdkconfig.Config, log *slog.Logger) (*db.Store, error) {
 	ctx := context.Background()
 
 	store, err := db.New(ctx, log, otel.GetTracerProvider(), &metric.MeterProvider{}, cfg,
