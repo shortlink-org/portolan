@@ -48,7 +48,7 @@
     <dependency>
       <groupId>org.springframework.modulith</groupId>
       <artifactId>spring-modulith-events-api</artifactId>
-      <version>1.4.1</version>
+      <version>1.4.13</version>
     </dependency>
 
     <!-- grpc-java's generated stubs are annotated @javax.annotation.Generated,
