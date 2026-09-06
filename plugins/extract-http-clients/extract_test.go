@@ -504,6 +504,155 @@ func Refresh() { _, _ = http.Get("https://cache.example/refresh") }
 	}
 }
 
+func TestBuildsEndpointThroughMultiStageInterfaceDispatch(t *testing.T) {
+	root := t.TempDir()
+	writeHTTPFixture(t, root, "go.mod", "module example.com/typed\n\ngo 1.27.0\n")
+	writeHTTPFixture(t, root, "app/main.go", `package app
+import (
+  "example.com/typed/actions/rules"
+  "example.com/typed/connector"
+)
+type Router struct{}
+func (*Router) POST(string, func()) {}
+type Requester interface { ConnExec(connector.API) }
+func Start(r *Router) { r.POST("/rules", RulesAction) }
+func RulesAction() {
+  request := &rules.Request{}
+  Dispatch(request)
+}
+func Dispatch(request Requester) { Invoke(request) }
+func Invoke(request Requester) {
+  conn := connector.Build("runtime")
+  request.ConnExec(conn)
+}
+`)
+	writeHTTPFixture(t, root, "actions/rules/request.go", `package rules
+import "example.com/typed/connector"
+type Request struct{}
+func (*Request) ConnExec(conn connector.API) { conn.Rules() }
+`)
+	writeHTTPFixture(t, root, "connector/factory.go", `package connector
+import "example.com/typed/provider/alpha"
+type API interface { Rules() }
+func Build(name string) API {
+  switch name {
+  case "alpha": return alpha.New()
+  default: return nil
+  }
+}
+`)
+	writeHTTPFixture(t, root, "provider/alpha/connector.go", `package alpha
+import "example.com/typed/provider/alpha/client"
+type rulesClient interface { FetchRules() }
+type Connector struct { client rulesClient }
+func New() *Connector { return &Connector{client: &client.Client{}} }
+func (c *Connector) Rules() { c.client.FetchRules() }
+`)
+	writeHTTPFixture(t, root, "provider/alpha/client/client.go", `package client
+import "net/http"
+type Client struct{}
+func (c *Client) FetchRules() { c.fetchRules() }
+func (c *Client) fetchRules() { c.finishRules() }
+func (c *Client) finishRules() {
+  _, _ = http.Get("https://alpha.example/v1/rules")
+  if false { c.fetchRules() }
+}
+func (*Client) CheckRules() { _, _ = http.Get("https://alpha.example/v1/check-rules") }
+`)
+
+	analysis, err := gohttp.Analyze(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !analysis.TypedCallGraph || analysis.TypedCallGraphError != "" {
+		t.Fatalf("typed analysis = %v / %q", analysis.TypedCallGraph, analysis.TypedCallGraphError)
+	}
+	if len(analysis.EndpointFlows) != 1 || len(analysis.EndpointFlows[0].Branches) != 1 {
+		t.Fatalf("endpoint flows = %+v", analysis.EndpointFlows)
+	}
+	branch := analysis.EndpointFlows[0].Branches[0]
+	if branch.Operation != "Rules" || len(branch.Calls) != 1 || branch.Calls[0].Path != "/v1/rules" {
+		t.Fatalf("typed provider branch = %+v", branch)
+	}
+
+	resp, err := extract(plugin.Input{Root: root}, Options{Context: "travel", Service: "rules"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got catalog.Catalog
+	if err := json.Unmarshal([]byte(resp.Files[0].Contents), &got); err != nil {
+		t.Fatal(err)
+	}
+	var endpoint, unused *catalog.Flow
+	for index := range got.Flows {
+		flow := &got.Flows[index]
+		if flow.Name == "POST /rules → provider APIs" {
+			endpoint = flow
+		}
+		if strings.Contains(flow.Name, "CheckRules") {
+			unused = flow
+		}
+		if strings.Contains(flow.Name, "Fetch Rules") {
+			t.Fatalf("covered typed fragment retained: %+v", flow)
+		}
+	}
+	if endpoint == nil || unused == nil {
+		t.Fatalf("endpoint = %+v, unused = %+v, flows = %+v", endpoint, unused, got.Flows)
+	}
+	step := endpoint.Steps[1].(*catalog.Step)
+	if step.Label != "GET /v1/rules" || !strings.Contains(step.Note, "Connector.Rules → Client.FetchRules") {
+		t.Fatalf("typed step = %+v", step)
+	}
+	if unused.Trigger == nil || unused.Trigger.Kind != "unproven" {
+		t.Fatalf("unused trigger = %+v", unused.Trigger)
+	}
+}
+
+func TestFallsBackToSyntaxWhenTypedPackagesDoNotLoad(t *testing.T) {
+	root := t.TempDir()
+	writeHTTPFixture(t, root, "go.mod", "module example.com/fallback\n\ngo 1.27.0\n")
+	writeHTTPFixture(t, root, "app/main.go", `package app
+import (
+  "net/http"
+  "example.com/fallback/connector"
+)
+type Router struct{}
+func (*Router) POST(string, func()) {}
+func Start(r *Router) { r.POST("/search", Search) }
+func Search() {
+  conn := connector.Build("runtime")
+  conn.Search()
+  _, _ = http.Get("https://fallback.example/search")
+}
+`)
+	writeHTTPFixture(t, root, "connector/factory.go", `package connector
+import "example.com/fallback/provider/alpha"
+type API interface { Search() }
+func Build(name string) API {
+  switch name { case "only": return alpha.New(); default: return nil }
+}
+`)
+	writeHTTPFixture(t, root, "provider/alpha/connector.go", `package alpha
+type Connector struct{}
+func New() *Connector { return &Connector{} }
+func (*Connector) Search() {}
+`)
+	writeHTTPFixture(t, root, "broken/broken.go", `package broken
+import _ "example.com/missing/private"
+`)
+
+	analysis, err := gohttp.Analyze(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if analysis.TypedCallGraph || analysis.TypedCallGraphError == "" {
+		t.Fatalf("typed fallback = %v / %q", analysis.TypedCallGraph, analysis.TypedCallGraphError)
+	}
+	if len(analysis.Calls) != 1 || analysis.Calls[0].Path != "/search" {
+		t.Fatalf("syntax calls = %+v", analysis.Calls)
+	}
+}
+
 func TestBuildsEndpointThroughFixedFactorySetterAndWrapper(t *testing.T) {
 	root := t.TempDir()
 	writeHTTPFixture(t, root, "go.mod", "module example.com/wired\n")

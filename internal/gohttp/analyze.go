@@ -1,6 +1,7 @@
-// Package gohttp reads outbound HTTP-shaped calls from Go syntax without
-// loading packages or downloading modules. Every result points back to the
-// source expression that proves it.
+// Package gohttp reads outbound HTTP-shaped calls from Go source. Its syntax
+// analysis always works without loading dependencies; when a module can be
+// type-checked, an optional SSA/VTA pass adds source-backed dynamic call edges.
+// Every result points back to the source expression that proves it.
 package gohttp
 
 import (
@@ -133,12 +134,14 @@ type EndpointBranch struct {
 }
 
 type Result struct {
-	Calls         []Call
-	Contracts     []Contract
-	Flows         []FlowGroup
-	EndpointFlows []EndpointFlow
-	RootFlows     []RootFlow
-	Warnings      []string
+	Calls               []Call
+	Contracts           []Contract
+	Flows               []FlowGroup
+	EndpointFlows       []EndpointFlow
+	RootFlows           []RootFlow
+	TypedCallGraph      bool
+	TypedCallGraphError string
+	Warnings            []string
 }
 
 type parsedFile struct {
@@ -157,18 +160,20 @@ type constValue struct {
 }
 
 type scanner struct {
-	root       string
-	fset       *token.FileSet
-	files      []*parsedFile
-	constants  map[string]constValue
-	contracts  []Contract
-	warnings   []string
-	functions  map[string]*functionDecl
-	methods    map[string][]string
-	soap       map[string][]soapWrapper
-	soapFns    map[string]bool
-	fields     map[string]fieldOrigin
-	fieldTypes map[string][]endpointType
+	root                string
+	fset                *token.FileSet
+	files               []*parsedFile
+	constants           map[string]constValue
+	contracts           []Contract
+	warnings            []string
+	functions           map[string]*functionDecl
+	methods             map[string][]string
+	soap                map[string][]soapWrapper
+	soapFns             map[string]bool
+	fields              map[string]fieldOrigin
+	fieldTypes          map[string][]endpointType
+	typedEdges          map[string][]localEdge
+	typedCallGraphError string
 }
 
 type functionDecl struct {
@@ -220,7 +225,7 @@ type soapWrapper struct {
 }
 
 func Analyze(root string) (Result, error) {
-	s := &scanner{root: root, fset: token.NewFileSet(), constants: map[string]constValue{}, functions: map[string]*functionDecl{}, methods: map[string][]string{}, soap: map[string][]soapWrapper{}, soapFns: map[string]bool{}, fields: map[string]fieldOrigin{}, fieldTypes: map[string][]endpointType{}}
+	s := &scanner{root: root, fset: token.NewFileSet(), constants: map[string]constValue{}, functions: map[string]*functionDecl{}, methods: map[string][]string{}, soap: map[string][]soapWrapper{}, soapFns: map[string]bool{}, fields: map[string]fieldOrigin{}, fieldTypes: map[string][]endpointType{}, typedEdges: map[string][]localEdge{}}
 	if err := s.read(); err != nil {
 		return Result{}, err
 	}
@@ -260,11 +265,28 @@ func Analyze(root string) (Result, error) {
 	})
 	calls = uniqueCalls(calls)
 	sort.Strings(s.warnings)
-	flows := s.flowGroups(calls)
-	calls = callsSpecializedByFlows(calls, flows)
+	directCalls := calls
+	flows := s.flowGroups(directCalls)
+	calls = callsSpecializedByFlows(directCalls, flows)
 	endpointFlows := s.endpointFlows(flows)
+	if s.endpointFlowsNeedTypedCalls(endpointFlows) && s.indexTypedCallEdges() {
+		flows = s.flowGroups(directCalls)
+		calls = callsSpecializedByFlows(directCalls, flows)
+		endpointFlows = s.endpointFlows(flows)
+	}
 	rootFlows := s.rootFlows(flows, endpointFlows)
-	return Result{Calls: calls, Contracts: s.contracts, Flows: flows, EndpointFlows: endpointFlows, RootFlows: rootFlows, Warnings: s.warnings}, nil
+	return Result{Calls: calls, Contracts: s.contracts, Flows: flows, EndpointFlows: endpointFlows, RootFlows: rootFlows, TypedCallGraph: len(s.typedEdges) > 0, TypedCallGraphError: s.typedCallGraphError, Warnings: s.warnings}, nil
+}
+
+func (s *scanner) endpointFlowsNeedTypedCalls(flows []EndpointFlow) bool {
+	for _, flow := range flows {
+		for _, branch := range flow.Branches {
+			if len(branch.Calls) == 0 {
+				return true
+			}
+		}
+	}
+	return s.hasRouteAndProviderFactory()
 }
 
 func callsSpecializedByFlows(direct []Call, flows []FlowGroup) []Call {

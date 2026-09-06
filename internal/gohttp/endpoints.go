@@ -298,9 +298,132 @@ func (s *scanner) endpointOperation(handlerKey string) (string, *functionDecl) {
 		return true
 	})
 	if operation == "" {
-		return s.directEndpointOperation(handler)
+		operation, coordinator = s.directEndpointOperation(handler)
+	}
+	if operation == "" && len(s.typedEdges) > 0 {
+		return s.typedEndpointOperation(handlerKey)
 	}
 	return operation, coordinator
+}
+
+// typedEndpointOperation handles coordinators that pass a concrete request
+// through more than one interface-typed helper before invoking a provider.
+// VTA supplies possible callees; the existing factory analysis keeps the
+// provider set and its source conditions precise and explainable.
+func (s *scanner) typedEndpointOperation(handlerKey string) (string, *functionDecl) {
+	type visit struct {
+		key   string
+		depth int
+	}
+	queue := []visit{{key: handlerKey}}
+	seen := map[string]bool{}
+	depths := map[string]int{}
+	var factories []*functionDecl
+	for len(queue) > 0 {
+		current := queue[0]
+		queue = queue[1:]
+		if current.depth > 10 || seen[current.key] {
+			continue
+		}
+		seen[current.key] = true
+		depths[current.key] = current.depth
+		declaration := s.functions[current.key]
+		if declaration != nil {
+			if factory := s.factoryCalledBy(declaration); factory != nil {
+				factories = append(factories, factory)
+			}
+		}
+		for _, edge := range s.typedEdges[current.key] {
+			queue = append(queue, visit{key: edge.target, depth: current.depth + 1})
+		}
+	}
+
+	type candidate struct {
+		operation string
+		factory   *functionDecl
+		depth     int
+	}
+	var candidates []candidate
+	for _, factory := range uniqueFunctions(factories) {
+		for key, depth := range depths {
+			operation := methodName(key)
+			if operation != "" && s.factorySupportsOperation(factory, operation) {
+				candidates = append(candidates, candidate{operation: operation, factory: factory, depth: depth})
+			}
+		}
+	}
+	if len(candidates) == 0 {
+		return "", nil
+	}
+	sort.Slice(candidates, func(i, j int) bool {
+		if candidates[i].depth != candidates[j].depth {
+			return candidates[i].depth < candidates[j].depth
+		}
+		if candidates[i].operation != candidates[j].operation {
+			return candidates[i].operation < candidates[j].operation
+		}
+		return candidates[i].factory.key < candidates[j].factory.key
+	})
+	best := candidates[0]
+	for _, candidate := range candidates[1:] {
+		if candidate.depth != best.depth {
+			break
+		}
+		if candidate.operation != best.operation || candidate.factory.key != best.factory.key {
+			// VTA is deliberately context-insensitive. If several operations are
+			// equally close through a shared dispatcher, refusing the join is
+			// safer than attaching every provider call to the wrong endpoint.
+			return "", nil
+		}
+	}
+	return best.operation, best.factory
+}
+
+func methodName(key string) string {
+	display := displayFunction(key)
+	if at := strings.LastIndex(display, "."); at >= 0 {
+		return display[at+1:]
+	}
+	return ""
+}
+
+func uniqueFunctions(in []*functionDecl) []*functionDecl {
+	seen := map[string]bool{}
+	var out []*functionDecl
+	for _, function := range in {
+		if function != nil && !seen[function.key] {
+			out = append(out, function)
+			seen[function.key] = true
+		}
+	}
+	return out
+}
+
+func (s *scanner) hasRouteAndProviderFactory() bool {
+	hasFactory := false
+	for _, declaration := range s.functions {
+		if len(s.factoryCases(declaration)) > 0 {
+			hasFactory = true
+			break
+		}
+	}
+	if !hasFactory {
+		return false
+	}
+	for _, owner := range s.functions {
+		found := false
+		ast.Inspect(owner.fn.Body, func(node ast.Node) bool {
+			call, ok := node.(*ast.CallExpr)
+			if ok {
+				_, _, _, found = s.routeCall(owner, call)
+			}
+			return !found
+		})
+		if found {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *scanner) endpointArgumentType(owner *functionDecl, expr ast.Expr, locals map[string]endpointType) (endpointType, bool) {
@@ -769,7 +892,7 @@ func (s *scanner) endpointBranches(factory *functionDecl, operation string, grou
 		if function == "" {
 			continue
 		}
-		group := groups[function]
+		group := s.typedOutboundGroup(function, groups)
 		if len(group.Calls) == 0 {
 			if descendant, ok := providerOutboundGroup(branch.provider, operation, groups); ok {
 				group = descendant
@@ -788,6 +911,68 @@ func (s *scanner) endpointBranches(factory *functionDecl, operation string, grou
 		})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Condition < out[j].Condition })
+	return out
+}
+
+// typedOutboundGroup follows dynamic calls only after a concrete provider
+// branch has been chosen. Keeping VTA out of the shared coordinator graph is
+// important: VTA is context-insensitive, so a common ActionFlow may otherwise
+// appear to call every Requester implementation from every endpoint.
+func (s *scanner) typedOutboundGroup(root string, groups map[string]FlowGroup) FlowGroup {
+	base := groups[root]
+	if base.Function == "" {
+		base.Function = root
+		if declaration := s.functions[root]; declaration != nil {
+			base.Source = s.source(declaration.file, declaration.fn.Pos())
+		}
+	}
+	if len(s.typedEdges) == 0 {
+		return base
+	}
+
+	type visit struct {
+		key   string
+		path  []string
+		depth int
+	}
+	queue := []visit{{key: root}}
+	seenDepth := map[string]int{}
+	calls := append([]Call(nil), base.Calls...)
+	for len(queue) > 0 && len(seenDepth) < 256 {
+		current := queue[0]
+		queue = queue[1:]
+		if current.depth > 8 {
+			continue
+		}
+		if depth, seen := seenDepth[current.key]; seen && depth <= current.depth {
+			continue
+		}
+		seenDepth[current.key] = current.depth
+		path := appendCopy(current.path, displayFunction(current.key))
+		if current.key != root {
+			if descendant, ok := groups[current.key]; ok {
+				for _, call := range descendant.Calls {
+					copy := call
+					copy.Chain = joinCallChains(path, call.Chain)
+					calls = append(calls, copy)
+				}
+			}
+		}
+		for _, edge := range s.typedEdges[current.key] {
+			queue = append(queue, visit{key: edge.target, path: path, depth: current.depth + 1})
+		}
+	}
+	base.Calls = uniqueFlowCalls(calls)
+	return base
+}
+
+func joinCallChains(prefix, suffix []string) []string {
+	out := append([]string(nil), prefix...)
+	for _, item := range suffix {
+		if len(out) == 0 || out[len(out)-1] != item {
+			out = append(out, item)
+		}
+	}
 	return out
 }
 

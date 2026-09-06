@@ -23,6 +23,9 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	for _, warning := range result.Warnings {
 		b.Warn(in.Root, warning)
 	}
+	if result.TypedCallGraphError != "" {
+		b.Warn(in.Root, "typed call graph unavailable; using syntax fallback: "+result.TypedCallGraphError)
+	}
 
 	serviceID := opts.Context + "." + opts.Service
 	externals := externalCatalog(result.Contracts, result.Calls, opts)
@@ -476,29 +479,33 @@ func coverRootDescendants(covered map[string]bool, roots []gohttp.RootFlow, grou
 
 func coverEndpointDescendants(covered map[string]bool, endpoints []gohttp.EndpointFlow, groups []gohttp.FlowGroup) {
 	for _, endpoint := range endpoints {
+		// Typed dispatch can lift a union of calls from every provider branch
+		// into a shared coordinator such as ActionFlow. Compare those callers
+		// with the whole endpoint, not with one branch at a time, or the same
+		// source-backed calls reappear as a misleading standalone flow.
+		callKeys := map[string]bool{}
 		for _, branch := range endpoint.Branches {
-			callKeys := map[string]bool{}
 			for _, call := range branch.Calls {
 				callKeys[endpointCallKey(call)] = true
 			}
-			for _, group := range groups {
-				if covered[group.Function] || len(group.Calls) == 0 {
-					continue
+		}
+		for _, group := range groups {
+			if covered[group.Function] || len(group.Calls) == 0 {
+				continue
+			}
+			// Exact source location plus operation id is stronger evidence than
+			// a display name in the reconstructed call chain. Wrappers reached
+			// through interfaces and promoted methods can omit that name while
+			// still contributing precisely the same source-backed calls.
+			allCallsCovered := true
+			for _, call := range group.Calls {
+				if !callKeys[endpointCallKey(call)] {
+					allCallsCovered = false
+					break
 				}
-				// Exact source location plus operation id is stronger evidence than
-				// a display name in the reconstructed call chain. Wrappers reached
-				// through interfaces and promoted methods can omit that name while
-				// still contributing precisely the same source-backed calls.
-				allCallsCovered := true
-				for _, call := range group.Calls {
-					if !callKeys[endpointCallKey(call)] {
-						allCallsCovered = false
-						break
-					}
-				}
-				if allCallsCovered {
-					covered[group.Function] = true
-				}
+			}
+			if allCallsCovered {
+				covered[group.Function] = true
 			}
 		}
 	}

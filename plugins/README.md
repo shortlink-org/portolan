@@ -198,6 +198,16 @@ literals, direct assignments, or setters. A standalone flow says whether no
 source caller exists or callers exist but no inbound/asynchronous root was
 proved, so the UI exposes the missing evidence instead of implying a complete
 business path.
+When a provider branch still ends before its transport, the extractor loads
+the module with `go/packages`, builds SSA, and uses `x/tools` VTA to resolve
+calls through interface parameters, function values, return values, and
+interface-typed struct fields. Typed edges are followed only after a concrete
+factory branch is selected: applying context-insensitive VTA to a shared
+dispatcher would otherwise attach every request implementation to every
+endpoint. Factory conditions and HTTP/SOAP meaning continue to come from the
+source extractor. Module loading is read-only and bounded; unavailable private
+dependencies, type errors, or a timeout produce a warning and retain the
+syntax-only result rather than failing generation.
 Routes without a provider factory are also joined to their outbound calls,
 including handlers invoked from closures and methods on locally constructed
 values. A Swagger `@Router` annotation is medium-confidence root evidence for
