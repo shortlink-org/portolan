@@ -161,13 +161,16 @@ function documentAgainstCode(catalog: Catalog): Problem[] {
   for (const context of catalog.contexts) {
     for (const service of context.services) {
       const channels = service.channels ?? [];
-      if (channels.length === 0) continue;
-
       const declared = new Set(
         channels
           .filter((c) => c.kind !== "job" && sends(c.messages))
           .map((c) => c.address),
       );
+      // Channels that only receive say nothing about what the service
+      // sends: a subscription read out of the code is not a document of
+      // the service's publications, and holding the events against it
+      // would report every one of them.
+      if (declared.size === 0) continue;
       const published = new Map<string, Event>();
 
       for (const aggregate of service.aggregates) {

@@ -93,6 +93,27 @@ func TestImportsAreByLocalName(t *testing.T) {
 	}
 }
 
+func TestADottedImportSegmentIsKnownByItsPackageName(t *testing.T) {
+	root := t.TempDir()
+	write(t, root, "go.mod", "module example.com/m\n")
+	write(t, root, "main.go", "package main\n\nimport (\n\t\"github.com/nats-io/nats.go\"\n\t\"gopkg.in/yaml.v3\"\n\t\"github.com/nats-io/nats.go/jetstream\"\n)\n")
+	out, err := Read(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := out.Files[0].Imports
+	want := map[string]string{
+		"nats.go":   "github.com/nats-io/nats.go",
+		"nats":      "github.com/nats-io/nats.go",
+		"yaml.v3":   "gopkg.in/yaml.v3",
+		"yaml":      "gopkg.in/yaml.v3",
+		"jetstream": "github.com/nats-io/nats.go/jetstream",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("imports: got %v, want %v", got, want)
+	}
+}
+
 func TestConstantsResolveThroughEachOther(t *testing.T) {
 	out := tree(t)
 	cases := map[string]string{

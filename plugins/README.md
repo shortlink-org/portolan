@@ -151,6 +151,21 @@ possible routes. The channels merge normally with AsyncAPI declarations by addre
 processors are also extracted; fixed topic generators and the standard
 event/command-name generator form are resolved from source.
 
+`extract-go-nats` reads nats.go and JetStream calls into the subjects a service
+listens on and publishes to. A call is known by the type it is made on -
+`*nats.Conn`, `nats.JetStreamContext`, `jetstream.JetStream`, `jetstream.Stream` -
+and not by its name, because a service's own bus port has a `Subscribe` too.
+The subject is followed to a literal, a constant, a config default, or a
+parameter; a parameter is followed up to two hops through the callers,
+including calls through an interface the adapter satisfies, which is how a
+port `Subscribe(ctx, topic, name, handler)` reads as the assembly's
+`Subscribe(ctx, cart.Topic, cart.BasketCheckedOut{}.Name(), …)`. When the port
+takes exactly one other string beside the subject, that string is the
+message's name; a direct call names no message, and its direction is in the
+channel's doc. A subject read off a database row is a warning at the call,
+not a channel. Consumer configs give the filter subject and the durable name;
+streams, wildcard subjects and work-queue retention are not read yet.
+
 `extract-http-clients` is the outbound counterpart and does not require a
 domain layout. It reads `net/http` request construction, calls through an
 `oapi-codegen` client, and SOAP `Call`/`CallContext` sites. A generated client

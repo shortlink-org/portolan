@@ -147,6 +147,13 @@
       }
     },
     {
+      "name": "go-nats",
+      "process": {
+        "command": "go",
+        "args": ["run", "./plugins/extract-go-nats"]
+      }
+    },
+    {
       "name": "asyncapi",
       "process": {
         "command": "go",
@@ -545,6 +552,16 @@
         "store": "pg",
         "name": "Pricing database",
         "out": "stores.json"
+      }
+    },
+    {
+      "plugin": "go-nats",
+      "in": "examples/shop/pricing",
+      "out": "examples/shop/pricing/portolan",
+      "options": {
+        "context": "shop",
+        "service": "pricing",
+        "out": "nats.json"
       }
     },
     {

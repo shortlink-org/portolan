@@ -131,6 +131,10 @@ func ModulePath(root string) string {
 // ImportsOf is a file's imports by the name the file uses for them: the alias
 // when there is one, the last path segment when there is not. Blank and dot
 // imports keep the segment, since nothing in the file refers to them by name.
+//
+// A segment with a dot in it - `nats.go`, `yaml.v3` - is not a Go identifier,
+// and the package behind it is called by what comes before the dot; that name
+// is recorded too, since it is the one the file uses.
 func ImportsOf(node *ast.File) map[string]string {
 	out := map[string]string{}
 	for _, spec := range node.Imports {
@@ -143,6 +147,9 @@ func ImportsOf(node *ast.File) map[string]string {
 			name = spec.Name.Name
 		}
 		out[name] = value
+		if short, _, dotted := strings.Cut(name, "."); dotted && short != "" {
+			out[short] = value
+		}
 	}
 	return out
 }

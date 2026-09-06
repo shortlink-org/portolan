@@ -61,6 +61,7 @@
               "http-clients",
               "river",
               "watermill",
+              "go-nats",
               "asyncapi",
               "graphql",
               "sql",
@@ -292,6 +293,25 @@
               "properties": {
                 "options": {
                   "$ref": "#/$defs/options.watermill"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "plugin"
+              ],
+              "properties": {
+                "plugin": {
+                  "const": "go-nats"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "options": {
+                  "$ref": "#/$defs/options.go-nats"
                 }
               }
             }
@@ -1595,6 +1615,31 @@
           "type": "string",
           "description": "Name of the fragment file inside the step output directory.",
           "default": "watermill.json"
+        }
+      }
+    },
+    "options.go-nats": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "Slug of the bounded context this service belongs to. Defaults to the name of the input directory.",
+          "examples": [
+            "shop"
+          ]
+        },
+        "service": {
+          "type": "string",
+          "description": "Slug of the service. Defaults to the name of the input directory.",
+          "examples": [
+            "pricing"
+          ]
+        },
+        "out": {
+          "type": "string",
+          "description": "Name of the fragment file, inside the step's output directory.",
+          "default": "nats.json"
         }
       }
     },
