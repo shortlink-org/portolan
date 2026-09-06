@@ -21,7 +21,7 @@ import {
 } from "@xyflow/react";
 import type { Edge } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Columns3, Download, Eye, Maximize2, Search, Waypoints } from "lucide-react";
+import { Columns3, Eye, FileCode2, ImageDown, Maximize2, Search, Waypoints } from "lucide-react";
 import type { Store } from "../catalog";
 import { storeViews } from "../catalog";
 import { index } from "../data";
@@ -37,7 +37,9 @@ import { lineageChain } from "./lineage";
 import type { LineageMaps } from "./lineage";
 import { erSpec, matchingNodes } from "./spec";
 import type { ColumnMode, ErSpec } from "./spec";
-import { toPng } from "html-to-image";
+import { useToastStore } from "../app/toast";
+import { saveCanvasImage, viewportOf } from "../lib/export-canvas";
+import type { ImageKind } from "../lib/export-canvas";
 
 /** Stable across renders: React Flow re-mounts every node when this changes. */
 const erNodeTypes = { erTable: TableNodeCard, erView: ViewNodeCard };
@@ -398,25 +400,22 @@ function Toolbar({
   name: string;
 }) {
   const flow = useReactFlow();
+  const say = useToastStore((s) => s.say);
   const [saving, setSaving] = useState(false);
 
-  const exportPng = async (): Promise<void> => {
-    const viewport = wrapper.current?.querySelector<HTMLElement>(
-      ".react-flow__viewport",
-    );
+  // The same way out as every other canvas: the file is named after the
+  // store and the catalog revision, and the toast says what it was called.
+  const exportImage = async (kind: ImageKind): Promise<void> => {
+    const viewport = viewportOf(wrapper.current);
     if (!viewport) return;
     setSaving(true);
     try {
-      // The viewport is captured at its own size rather than the box's, so the
-      // file holds the whole schema however far it has been panned.
-      const url = await toPng(viewport, {
-        backgroundColor: getComputedStyle(document.body).backgroundColor,
-        pixelRatio: 2,
-      });
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${name}.png`;
-      a.click();
+      const file = await saveCanvasImage(viewport, name, kind);
+      say(`${kind.toUpperCase()} downloaded — ${file}`);
+    } catch (cause) {
+      say(
+        `could not export ${kind.toUpperCase()}: ${cause instanceof Error ? cause.message : String(cause)}`,
+      );
     } finally {
       setSaving(false);
     }
@@ -503,13 +502,23 @@ function Toolbar({
       </button>
       <button
         type="button"
-        onClick={() => void exportPng()}
+        onClick={() => void exportImage("png")}
         disabled={saving}
-        title="Export PNG"
+        title="Save the schema as a PNG"
         aria-label="Export PNG"
         className="rounded-control border p-1.5 border-line bg-canvas text-muted hover:text-ink disabled:opacity-50"
       >
-        <Download size={12} aria-hidden />
+        <ImageDown size={12} aria-hidden />
+      </button>
+      <button
+        type="button"
+        onClick={() => void exportImage("svg")}
+        disabled={saving}
+        title="Save the schema as an SVG"
+        aria-label="Export SVG"
+        className="rounded-control border p-1.5 border-line bg-canvas text-muted hover:text-ink disabled:opacity-50"
+      >
+        <FileCode2 size={12} aria-hidden />
       </button>
     </div>
   );
