@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react";
+import { TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { catalog, index } from "../data";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
 import { Ident } from "../components/Ident";
-import { TAB_CLASS, TabCount, TabRow } from "../components/TabRow";
+import { TabButton, TabCount, TabRow } from "../components/TabRow";
 import { KindIcon } from "../components/kind";
 import { MessageList, MethodRows } from "../components/MethodRows";
 import { RowActions } from "../components/RowActions";
@@ -128,15 +128,12 @@ export function ModulePage() {
           <TabRow active={tab}>
             <TabList className="flex w-max gap-0">
               {TABS.map((name) => (
-                <Tab
-                  key={name}
-                  className={({ selected }) => TAB_CLASS(selected)}
-                >
+                <TabButton key={name}>
                   {name}
                   {tabCounts[name] !== null ? (
                     <TabCount>{tabCounts[name]}</TabCount>
                   ) : null}
-                </Tab>
+                </TabButton>
               ))}
             </TabList>
           </TabRow>

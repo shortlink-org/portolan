@@ -15,10 +15,16 @@
 
 import { useEffect, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
-import { AnimatePresence, LazyMotion, MotionConfig, m } from "motion/react";
+import {
+  AnimatePresence,
+  LayoutGroup,
+  LazyMotion,
+  MotionConfig,
+  m,
+} from "motion/react";
 import type { Target, TargetAndTransition, Transition } from "motion/react";
 
-export { AnimatePresence, m };
+export { AnimatePresence, LayoutGroup, m };
 
 /* ---------------------------------------------------------------------------
    The clock: index.css --dur-* and --ease-*, as Motion reads them.

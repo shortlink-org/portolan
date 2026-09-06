@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { Tab } from "@headlessui/react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { LayoutGroup, m, transitions } from "../lib/motion";
 
 /**
  * The strip a page's tab list scrolls inside.
@@ -26,6 +28,8 @@ export function TabRow({
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  // Namespaces the bar's layoutId to this strip, for a screen with two.
+  const group = useId();
   const [edges, setEdges] = useState({ left: false, right: false });
 
   const measure = useCallback(() => {
@@ -72,17 +76,24 @@ export function TabRow({
   };
 
   return (
-    <div className="relative">
-      <div
-        ref={ref}
-        onScroll={measure}
-        className="tab-scroll overflow-x-auto overscroll-x-contain"
-      >
-        {children}
+    <LayoutGroup id={group}>
+      <div className="relative">
+        {/* `layoutScroll`: the bar under the selected tab measures its trip
+            through this box, and the box scrolls the new tab into view in the
+            same breath. Without it the bar would start its slide from where
+            the old tab was before the scroll. */}
+        <m.div
+          ref={ref}
+          layoutScroll
+          onScroll={measure}
+          className="tab-scroll overflow-x-auto overscroll-x-contain"
+        >
+          {children}
+        </m.div>
+        <Edge side="left" show={edges.left} onClick={() => nudge(-1)} />
+        <Edge side="right" show={edges.right} onClick={() => nudge(1)} />
       </div>
-      <Edge side="left" show={edges.left} onClick={() => nudge(-1)} />
-      <Edge side="right" show={edges.right} onClick={() => nudge(1)} />
-    </div>
+    </LayoutGroup>
   );
 }
 
@@ -137,10 +148,35 @@ export function TabCount({ children }: { children: ReactNode }) {
   );
 }
 
-/** What a tab is drawn as. The same on every page that has tabs. */
-export const TAB_CLASS = (selected: boolean) =>
-  `mono shrink-0 rounded-t-control border-b-2 px-3 py-1.5 t-micro transition-colors focus:outline-none ${
-    selected
-      ? "border-accent text-ink"
-      : "border-transparent text-muted hover:text-ink"
-  }`;
+/**
+ * A tab. The same on every page that has tabs, and the strip's one moving
+ * part: the accent bar under the selected tab is a single element that slides
+ * from the old tab to the new, not a border each tab paints for itself. Every
+ * tab keeps a transparent 2px border so the bar has a slot to sit in and
+ * selecting one never nudges the text.
+ */
+export function TabButton({ children }: { children: ReactNode }) {
+  return (
+    <Tab
+      className={({ selected }) =>
+        `mono relative shrink-0 rounded-t-control border-b-2 border-transparent px-3 py-1.5 t-micro transition-colors focus:outline-none ${
+          selected ? "text-ink" : "text-muted hover:text-ink"
+        }`
+      }
+    >
+      {({ selected }) => (
+        <>
+          {children}
+          {selected ? (
+            <m.span
+              layoutId="tab-bar"
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 -bottom-0.5 h-0.5 bg-accent"
+              transition={transitions.settle}
+            />
+          ) : null}
+        </>
+      )}
+    </Tab>
+  );
+}

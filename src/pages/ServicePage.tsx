@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react";
+import { TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { catalog } from "../data";
 import { allRepos, componentKind, ownersOf, technologiesOf } from "../catalog";
@@ -13,7 +13,7 @@ import { Markdown } from "../components/Markdown";
 import { middleTruncate, plural } from "../lib/format";
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
 import { Ident } from "../components/Ident";
-import { TAB_CLASS, TabCount, TabRow } from "../components/TabRow";
+import { TabButton, TabCount, TabRow } from "../components/TabRow";
 import { MessageList, MethodRows } from "../components/MethodRows";
 import { docPathOf, pickSpec } from "../lib/source-doc";
 import { ApiReference, hasSpec } from "../components/ApiReference";
@@ -236,10 +236,10 @@ export function ServicePage() {
           <TabRow active={tab}>
             <TabList className="flex w-max gap-0">
               {TABS.map((t) => (
-                <Tab key={t} className={({ selected }) => TAB_CLASS(selected)}>
+                <TabButton key={t}>
                   {t === "consumes" ? "integrations" : t}
                   {counts[t] !== null ? <TabCount>{counts[t]}</TabCount> : null}
-                </Tab>
+                </TabButton>
               ))}
             </TabList>
           </TabRow>

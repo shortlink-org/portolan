@@ -1,5 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 import { Link } from "react-router";
+import { LayoutGroup, m, transitions } from "../lib/motion";
 import {
   ArrowRight,
   ChevronDown,
@@ -216,22 +217,30 @@ function StepRow({
         onFocus={() => onHover(step.id)}
         onBlur={() => onHover(null)}
         /* Playback dims and undims at the narrative tier - the reader is meant to
-           watch the sequence recede, not to be blinked at. The accent edge is
-           always 2px and merely changes colour, so lighting a step never nudges
-           the text beside it. */
-        className={`flex w-full items-start gap-2 px-2 py-1.5 text-left t-narrative hover:bg-surface ${
-          active ? "bg-raised pulse-once" : ""
-        }`}
+           watch the sequence recede, not to be blinked at. The edge is always
+           2px and transparent, so lighting a step never nudges the text beside
+           it; the light itself is the one element below, which slides from the
+           step it was on to this one. `isolate` keeps its -z under the text but
+           above the rail. */
+        className="relative isolate flex w-full items-start gap-2 px-2 py-1.5 text-left t-narrative hover:bg-surface"
         style={{
           borderLeftWidth: 2,
           borderLeftStyle: "solid",
-          borderLeftColor: active ? "var(--accent)" : "transparent",
+          borderLeftColor: "transparent",
           paddingLeft: 8 + depth * 10,
         }}
         aria-current={active ? "true" : undefined}
       >
+        {active ? (
+          <m.span
+            layoutId="active-step"
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 right-0 -left-0.5 -z-10 border-l-2 border-accent bg-raised"
+            transition={transitions.settle}
+          />
+        ) : null}
         <span
-          className={`mono w-5 shrink-0 text-right ${active ? "text-accent" : "text-muted"}`}
+          className={`mono w-5 shrink-0 text-right t-micro transition-colors ${active ? "text-accent" : "text-muted"}`}
         >
           {number}
         </span>
@@ -355,6 +364,8 @@ export function StepRail({
   full?: boolean;
 }) {
   const listRef = useRef<HTMLDivElement | null>(null);
+  // Namespaces the light's layoutId to this rail, for a screen with two.
+  const railId = useId();
 
   useEffect(() => {
     if (!activeId || !listRef.current) return;
@@ -371,45 +382,47 @@ export function StepRail({
     // A container so a row can ask how wide the rail is: the reader drags it,
     // and what fits at half a pane does not fit at a quarter.
     <div ref={listRef} data-nav-list className="@container">
-      {groups.map((group) => {
-        const { chapter } = group;
-        const rows = railRows(group);
-        const folded = collapsed.has(chapter.id);
-        return (
-          <section key={chapter.id}>
-            <ChapterRow
-              chapter={chapter}
-              collapsed={folded}
-              onToggle={() => onToggleChapter(chapter.id)}
-            />
-            {folded ? null : (
-              <ul className="divide-y divide-line">
-                {rows.map((row) =>
-                  row.type === "frame" ? (
-                    <li key={row.key}>
-                      <FrameRow frame={row} />
-                    </li>
-                  ) : (
-                    <li key={row.key} data-step={row.step.id}>
-                      <StepRow
-                        row={row}
-                        answer={answers.get(row.step.id)}
-                        active={activeId === row.step.id}
-                        dimmed={matchIds ? !matchIds.has(row.step.id) : false}
-                        onSelect={onSelect}
-                        onHover={onHover}
-                        crossContext={crossContextOf(row.step)}
-                        continuations={continuations.get(row.step.id) ?? []}
-                        full={full}
-                      />
-                    </li>
-                  ),
-                )}
-              </ul>
-            )}
-          </section>
-        );
-      })}
+      <LayoutGroup id={railId}>
+        {groups.map((group) => {
+          const { chapter } = group;
+          const rows = railRows(group);
+          const folded = collapsed.has(chapter.id);
+          return (
+            <section key={chapter.id}>
+              <ChapterRow
+                chapter={chapter}
+                collapsed={folded}
+                onToggle={() => onToggleChapter(chapter.id)}
+              />
+              {folded ? null : (
+                <ul className="divide-y divide-line">
+                  {rows.map((row) =>
+                    row.type === "frame" ? (
+                      <li key={row.key}>
+                        <FrameRow frame={row} />
+                      </li>
+                    ) : (
+                      <li key={row.key} data-step={row.step.id}>
+                        <StepRow
+                          row={row}
+                          answer={answers.get(row.step.id)}
+                          active={activeId === row.step.id}
+                          dimmed={matchIds ? !matchIds.has(row.step.id) : false}
+                          onSelect={onSelect}
+                          onHover={onHover}
+                          crossContext={crossContextOf(row.step)}
+                          continuations={continuations.get(row.step.id) ?? []}
+                          full={full}
+                        />
+                      </li>
+                    ),
+                  )}
+                </ul>
+              )}
+            </section>
+          );
+        })}
+      </LayoutGroup>
     </div>
   );
 }
