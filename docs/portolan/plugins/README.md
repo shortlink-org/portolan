@@ -231,6 +231,18 @@ startup, scheduled, River-job and Watermill-event flows publish that trigger
 provenance; unmatched transport fragments are explicitly `unproven` with low
 confidence.
 
+After fragments merge, Portolan composes them into root-oriented,
+cross-protocol flows. The seam is machine evidence rather than a display-name
+match: an exact source function reached by another extractor, a River job's
+queue plus `Kind()`, or a Watermill transport plus topic address.
+Composition is recursive, so one request can continue through provider
+HTTP/SOAP calls, enqueue a River job, enter its worker, and make further
+outbound calls. Ambiguous handoffs remain separate. Each composed flow records
+the source fragment slugs it includes, and the UI exposes that provenance as a
+`cross-protocol` badge. Trigger-bearing job and event flows stay available as
+standalone entry views; transport-only fragments consumed by a proven root are
+removed from the top-level flow list.
+
 ### Flows written by hand
 
 Some flows will always be written by people: the design doc for something not

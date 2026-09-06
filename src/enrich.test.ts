@@ -47,7 +47,9 @@ function context(id: string, services: Service[]): BoundedContext {
   return { id, slug: id, name: id, summary: "", services };
 }
 
-function oms(consumers: { service: string; status: Status; note?: string }[] = []): Service {
+function oms(
+  consumers: { service: string; status: Status; note?: string }[] = [],
+): Service {
   return service("shop", "oms", {
     aggregates: [
       {
@@ -57,7 +59,13 @@ function oms(consumers: { service: string; status: Status; note?: string }[] = [
         readme: "",
         root: "Order",
         entities: [
-          { id: "shop.oms.order.order", slug: "order", name: "Order", doc: "", fields: [{ name: "id", type: "string", doc: "" }] },
+          {
+            id: "shop.oms.order.order",
+            slug: "order",
+            name: "Order",
+            doc: "",
+            fields: [{ name: "id", type: "string", doc: "" }],
+          },
         ],
         valueObjects: [],
         operations: [],
@@ -78,7 +86,11 @@ function oms(consumers: { service: string; status: Status; note?: string }[] = [
 function pricing(): Service {
   return service("shop", "pricing", {
     provides: [
-      { id: "pricing.v1.Pricing", methods: [{ name: "Quote", doc: "" }], source: "pricing.proto" },
+      {
+        id: "pricing.v1.Pricing",
+        methods: [{ name: "Quote", doc: "" }],
+        source: "pricing.proto",
+      },
     ],
   });
 }
@@ -105,7 +117,15 @@ function step(
   extra: Partial<Extract<FlowNode, { type: "step" }>> = {},
 ): FlowNode {
   n += 1;
-  return { type: "step", id: `s${n}`, from, to, kind, status: "declared", ...extra };
+  return {
+    type: "step",
+    id: `s${n}`,
+    from,
+    to,
+    kind,
+    status: "declared",
+    ...extra,
+  };
 }
 
 function flow(slug: string, steps: FlowNode[], source?: string): Flow {
@@ -121,7 +141,10 @@ function flow(slug: string, steps: FlowNode[], source?: string): Flow {
   };
 }
 
-function estate(flows: Flow[], services: Service[] = [oms(), pricing()]): Catalog {
+function estate(
+  flows: Flow[],
+  services: Service[] = [oms(), pricing()],
+): Catalog {
   return {
     generatedAt: "2026-01-01T00:00:00Z",
     commit: "0000000",
@@ -205,6 +228,231 @@ describe("enrichCatalog: asynchronous outbound continuations", () => {
     expect(result.flows).toHaveLength(3);
     expect(walkSteps(result.flows[0]!.steps)).toHaveLength(1);
   });
+
+  it("composes an API path through a River job into its HTTP continuation", () => {
+    const producer = "connector/websky:Connector.Void";
+    const worker = "connector/websky:VoidWorker.Work";
+    const api = {
+      ...flow("void-api", [
+        step("client", "shop.oms", "rpc", {
+          label: "POST /void",
+          reaches: [producer],
+        }),
+      ]),
+      trigger: {
+        kind: "http",
+        label: "POST /void",
+        confidence: "high",
+      } as const,
+    };
+    const job = {
+      ...flow("void-job", [
+        step("shop.oms", "bus", "call", {
+          label: "enqueue void",
+          handoff: {
+            kind: "job",
+            transport: "river",
+            channel: "void",
+            message: "void-cancellation",
+            direction: "send",
+          },
+        }),
+        step("bus", "shop.oms", "call", {
+          label: "VoidWorker.Work",
+          continuesAt: worker,
+          handoff: {
+            kind: "job",
+            transport: "river",
+            channel: "void",
+            message: "void-cancellation",
+            direction: "receive",
+          },
+        }),
+      ]),
+      entrypoint: producer,
+      trigger: {
+        kind: "job",
+        label: "River · void",
+        confidence: "high",
+      } as const,
+    };
+
+    const once = enrichCatalog(
+      estate([api, job, outbound("void-http", worker, "/cancel")]),
+    ).catalog;
+    const root = once.flows.find((item) => item.slug === "void-api")!;
+
+    expect(walkSteps(root.steps).map((item) => item.label)).toEqual([
+      "POST /void",
+      "enqueue void",
+      "VoidWorker.Work",
+      "POST /cancel",
+    ]);
+    expect(root.includes).toEqual(["void-job", "void-http"]);
+    expect(once.flows.map((item) => item.slug)).toEqual([
+      "void-api",
+      "void-job",
+    ]);
+    expect(enrichCatalog(once).catalog).toEqual(once);
+  });
+
+  it("composes a message handoff and its nested outbound call", () => {
+    const handler = "messages/email:Handle";
+    const publish = {
+      ...flow("request", [
+        step("shop.oms", "bus", "event", {
+          label: "publish email.requested",
+          handoff: {
+            kind: "message",
+            transport: "kafka",
+            channel: "email.requested",
+            direction: "send",
+          },
+        }),
+      ]),
+      trigger: {
+        kind: "http",
+        label: "POST /email",
+        confidence: "high",
+      } as const,
+    };
+    const consume = {
+      ...flow("email-handler", [
+        step("bus", "shop.oms", "event", {
+          label: "email.requested",
+          continuesAt: handler,
+          handoff: {
+            kind: "message",
+            transport: "kafka",
+            channel: "email.requested",
+            direction: "receive",
+          },
+        }),
+      ]),
+      trigger: {
+        kind: "event",
+        label: "email.requested",
+        confidence: "high",
+      } as const,
+    };
+
+    const once = enrichCatalog(
+      estate([publish, consume, outbound("email-http", handler, "/mail")]),
+    ).catalog;
+    const root = once.flows.find((item) => item.slug === "request")!;
+
+    expect(walkSteps(root.steps).map((item) => item.label)).toEqual([
+      "publish email.requested",
+      "email.requested",
+      "POST /mail",
+    ]);
+    expect(root.includes).toEqual(["email-handler", "email-http"]);
+    expect(enrichCatalog(once).catalog).toEqual(once);
+  });
+
+  it("refuses an ambiguous message handoff", () => {
+    const publisher = flow("publisher", [
+      step("shop.oms", "bus", "event", {
+        handoff: {
+          kind: "message",
+          transport: "kafka",
+          channel: "shared",
+          direction: "send",
+        },
+      }),
+    ]);
+    const consumer = (slug: string): Flow =>
+      flow(slug, [
+        step("bus", "shop.oms", "event", {
+          handoff: {
+            kind: "message",
+            transport: "kafka",
+            channel: "shared",
+            direction: "receive",
+          },
+        }),
+      ]);
+
+    const result = enrichCatalog(
+      estate([publisher, consumer("first"), consumer("second")]),
+    ).catalog;
+    expect(result.flows[0]!.includes).toBeUndefined();
+    expect(walkSteps(result.flows[0]!.steps)).toHaveLength(1);
+  });
+
+  it("composes an exact message handoff across service boundaries", () => {
+    const publisher = flow("publisher", [
+      step("shop.oms", "bus", "event", {
+        label: "publish payment.requested",
+        handoff: {
+          kind: "message",
+          transport: "kafka",
+          channel: "payment.requested",
+          direction: "send",
+        },
+      }),
+    ]);
+    const consumer: Flow = {
+      ...flow("ledger-consumer", [
+        step("bus", "payments.ledger", "event", {
+          label: "handle payment.requested",
+          handoff: {
+            kind: "message",
+            transport: "kafka",
+            channel: "payment.requested",
+            direction: "receive",
+          },
+        }),
+      ]),
+      owner: "payments",
+      trigger: {
+        kind: "event",
+        label: "payment.requested",
+        confidence: "high",
+      },
+    };
+
+    const result = enrichCatalog(estate([publisher, consumer])).catalog;
+    expect(result.flows[0]!.includes).toEqual(["ledger-consumer"]);
+    expect(
+      result.flows[0]!.participants.some(
+        (participant) => participant.id === "payments.ledger",
+      ),
+    ).toBe(true);
+  });
+
+  it("stops recursive handoff cycles and remains idempotent", () => {
+    const chained = (slug: string, input: string, output: string): Flow => ({
+      ...flow(slug, [
+        step("bus", "shop.oms", "event", {
+          label: `receive ${input}`,
+          handoff: {
+            kind: "message",
+            transport: "kafka",
+            channel: input,
+            direction: "receive",
+          },
+        }),
+        step("shop.oms", "bus", "event", {
+          label: `publish ${output}`,
+          handoff: {
+            kind: "message",
+            transport: "kafka",
+            channel: output,
+            direction: "send",
+          },
+        }),
+      ]),
+      trigger: { kind: "event", label: input, confidence: "high" },
+    });
+
+    const once = enrichCatalog(
+      estate([chained("alpha", "alpha", "beta"), chained("beta", "beta", "alpha")]),
+    ).catalog;
+    expect(once.flows[0]!.includes).toEqual(["beta"]);
+    expect(walkSteps(once.flows[0]!.steps)).toHaveLength(4);
+    expect(enrichCatalog(once).catalog).toEqual(once);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -212,12 +460,21 @@ describe("enrichCatalog: asynchronous outbound continuations", () => {
 describe("enrichCatalog: consumers from event steps", () => {
   it("reads a consumer out of a broker -> service step, with the step's status", () => {
     const c = estate([
-      flow("a", [step("bus", "payments.ledger", "event", { ref: EVENT, status: "verified" })]),
+      flow("a", [
+        step("bus", "payments.ledger", "event", {
+          ref: EVENT,
+          status: "verified",
+        }),
+      ]),
     ]);
     const { catalog, derived } = enrichCatalog(c);
 
     expect(consumersOf(catalog)).toEqual([
-      { service: "payments.ledger", status: "verified", via: { flow: "a", step: "s1" } },
+      {
+        service: "payments.ledger",
+        status: "verified",
+        via: { flow: "a", step: "s1" },
+      },
     ]);
     expect(derived).toEqual([
       {
@@ -231,10 +488,12 @@ describe("enrichCatalog: consumers from event steps", () => {
   });
 
   it("reads a consumer out of a service -> service step when no broker is drawn", () => {
-    const c = estate([flow("a", [step("shop.oms", "payments.ledger", "event", { ref: EVENT })])]);
-    expect(consumersOf(enrichCatalog(c).catalog).map((x) => x.service)).toEqual([
-      "payments.ledger",
+    const c = estate([
+      flow("a", [step("shop.oms", "payments.ledger", "event", { ref: EVENT })]),
     ]);
+    expect(consumersOf(enrichCatalog(c).catalog).map((x) => x.service)).toEqual(
+      ["payments.ledger"],
+    );
   });
 
   it("does not read a publish, a write, a notification or a self-message as a consumer", () => {
@@ -271,8 +530,20 @@ describe("enrichCatalog: consumers from event steps", () => {
 
   it("lets a declared consumer win over the step, untouched", () => {
     const c = estate(
-      [flow("a", [step("bus", "payments.ledger", "event", { ref: EVENT, status: "verified" })])],
-      [oms([{ service: "payments.ledger", status: "declared", note: "by hand" }]), pricing()],
+      [
+        flow("a", [
+          step("bus", "payments.ledger", "event", {
+            ref: EVENT,
+            status: "verified",
+          }),
+        ]),
+      ],
+      [
+        oms([
+          { service: "payments.ledger", status: "declared", note: "by hand" },
+        ]),
+        pricing(),
+      ],
     );
     const { catalog, derived } = enrichCatalog(c);
     expect(derived).toEqual([]);
@@ -284,7 +555,12 @@ describe("enrichCatalog: consumers from event steps", () => {
   it("records one consumer when two flows imply the same edge, from the first flow", () => {
     const c = estate([
       flow("a", [step("bus", "payments.ledger", "event", { ref: EVENT })]),
-      flow("b", [step("bus", "payments.ledger", "event", { ref: EVENT, status: "verified" })]),
+      flow("b", [
+        step("bus", "payments.ledger", "event", {
+          ref: EVENT,
+          status: "verified",
+        }),
+      ]),
     ]);
     const list = consumersOf(enrichCatalog(c).catalog);
     expect(list).toHaveLength(1);
@@ -292,7 +568,14 @@ describe("enrichCatalog: consumers from event steps", () => {
   });
 
   it("ignores a step whose ref is not an event the catalog has", () => {
-    const c = estate([flow("a", [step("bus", "payments.ledger", "event", { ref: "nope.Event", status: "unresolved" })])]);
+    const c = estate([
+      flow("a", [
+        step("bus", "payments.ledger", "event", {
+          ref: "nope.Event",
+          status: "unresolved",
+        }),
+      ]),
+    ]);
     expect(enrichCatalog(c).derived).toEqual([]);
   });
 
@@ -303,27 +586,48 @@ describe("enrichCatalog: consumers from event steps", () => {
           type: "alt",
           id: "alt1",
           branches: [
-            { title: "yes", steps: [step("bus", "payments.ledger", "event", { ref: EVENT })] },
-            { title: "no", steps: [step("bus", "shop.pricing", "event", { ref: EVENT })] },
+            {
+              title: "yes",
+              steps: [step("bus", "payments.ledger", "event", { ref: EVENT })],
+            },
+            {
+              title: "no",
+              steps: [step("bus", "shop.pricing", "event", { ref: EVENT })],
+            },
           ],
         },
-        { type: "parallel", id: "par1", branches: [[step("bus", "ghost.svc", "event", { ref: EVENT })]] },
-        { type: "loop", id: "loop1", title: "retry", steps: [step("bus", "risk", "event", { ref: EVENT })] },
+        {
+          type: "parallel",
+          id: "par1",
+          branches: [[step("bus", "ghost.svc", "event", { ref: EVENT })]],
+        },
+        {
+          type: "loop",
+          id: "loop1",
+          title: "retry",
+          steps: [step("bus", "risk", "event", { ref: EVENT })],
+        },
       ]),
     ]);
-    expect(consumersOf(enrichCatalog(c).catalog).map((x) => x.service)).toEqual([
-      "payments.ledger",
-      "shop.pricing",
-      "ghost.svc",
-      "risk",
-    ]);
+    expect(consumersOf(enrichCatalog(c).catalog).map((x) => x.service)).toEqual(
+      ["payments.ledger", "shop.pricing", "ghost.svc", "risk"],
+    );
   });
 });
 
 describe("enrichCatalog: calls from rpc steps", () => {
   it("reads a call out of a service -> provider step, sourced from the flow", () => {
     const c = estate([
-      flow("a", [step("shop.oms", "shop.pricing", "rpc", { ref: METHOD, status: "verified" })], "checkout_test.go"),
+      flow(
+        "a",
+        [
+          step("shop.oms", "shop.pricing", "rpc", {
+            ref: METHOD,
+            status: "verified",
+          }),
+        ],
+        "checkout_test.go",
+      ),
     ]);
     const { catalog, derived } = enrichCatalog(c);
     expect(serviceOf(catalog, "shop.oms").consumes).toEqual([
@@ -335,22 +639,37 @@ describe("enrichCatalog: calls from rpc steps", () => {
         via: { flow: "a", step: "s1" },
       },
     ]);
-    expect(derived[0]).toMatchObject({ kind: "rpc", service: "shop.oms", peer: "shop.pricing" });
+    expect(derived[0]).toMatchObject({
+      kind: "rpc",
+      service: "shop.oms",
+      peer: "shop.pricing",
+    });
   });
 
   it("names the flow as the source when the flow has none", () => {
-    const c = estate([flow("a", [step("shop.oms", "shop.pricing", "rpc", { ref: METHOD })])]);
-    expect(serviceOf(enrichCatalog(c).catalog, "shop.oms").consumes[0]?.source).toBe("flow:a");
+    const c = estate([
+      flow("a", [step("shop.oms", "shop.pricing", "rpc", { ref: METHOD })]),
+    ]);
+    expect(
+      serviceOf(enrichCatalog(c).catalog, "shop.oms").consumes[0]?.source,
+    ).toBe("flow:a");
   });
 
   it("puts nothing on an actor, which has no consumes list", () => {
-    const c = estate([flow("a", [step("client", "shop.pricing", "rpc", { ref: METHOD })])]);
+    const c = estate([
+      flow("a", [step("client", "shop.pricing", "rpc", { ref: METHOD })]),
+    ]);
     expect(enrichCatalog(c).derived).toEqual([]);
   });
 
   it("derives nothing from a method nobody provides or declares", () => {
     const c = estate([
-      flow("a", [step("shop.oms", "shop.pricing", "rpc", { ref: "pricing.v1.Pricing/Nope", status: "unresolved" })]),
+      flow("a", [
+        step("shop.oms", "shop.pricing", "rpc", {
+          ref: "pricing.v1.Pricing/Nope",
+          status: "unresolved",
+        }),
+      ]),
     ]);
     const { catalog, derived } = enrichCatalog(c);
     expect(derived).toEqual([]);
@@ -362,7 +681,9 @@ describe("enrichCatalog: calls from rpc steps", () => {
     // The validator resolves a step's ref against declared calls, not against
     // what peers provide. Before this pass the step names a method no service
     // is on record as calling; after it, shop.oms is.
-    const c = estate([flow("a", [step("shop.oms", "shop.pricing", "rpc", { ref: METHOD })])]);
+    const c = estate([
+      flow("a", [step("shop.oms", "shop.pricing", "rpc", { ref: METHOD })]),
+    ]);
     expect(() => validateCatalog(c)).toThrow(/resolves to neither/);
     expect(() => validateCatalog(enrichCatalog(c).catalog)).not.toThrow();
   });
@@ -370,20 +691,34 @@ describe("enrichCatalog: calls from rpc steps", () => {
   it("reads a call to a system outside the estate as declared when its contract answers on the method", () => {
     const ASSESS = "risk.v1.Risk/Assess";
     const c: Catalog = {
-      ...estate([flow("a", [step("shop.oms", "risk", "rpc", { ref: ASSESS })])]),
+      ...estate([
+        flow("a", [step("shop.oms", "risk", "rpc", { ref: ASSESS })]),
+      ]),
       externals: [
         {
           id: "risk",
           slug: "risk",
           name: "Risk",
           summary: "",
-          provides: [{ id: "risk.v1.Risk", methods: [{ name: "Assess" }], source: "risk/openapi.yaml" }],
+          provides: [
+            {
+              id: "risk.v1.Risk",
+              methods: [{ name: "Assess" }],
+              source: "risk/openapi.yaml",
+            },
+          ],
         },
       ],
     };
     const { catalog, derived } = enrichCatalog(c);
-    expect(serviceOf(catalog, "shop.oms").consumes).toMatchObject([{ id: ASSESS, peer: "risk", status: "declared" }]);
-    expect(derived[0]).toMatchObject({ kind: "rpc", peer: "risk", status: "declared" });
+    expect(serviceOf(catalog, "shop.oms").consumes).toMatchObject([
+      { id: ASSESS, peer: "risk", status: "declared" },
+    ]);
+    expect(derived[0]).toMatchObject({
+      kind: "rpc",
+      peer: "risk",
+      status: "declared",
+    });
     expect(() => validateCatalog(catalog)).not.toThrow();
     // Declared, so not a problem: the far end is outside, and it is known.
     expect(problems(catalog)).toEqual([]);
@@ -394,31 +729,68 @@ describe("enrichCatalog: calls from rpc steps", () => {
     // an external that provides nothing.
     const c = estate(
       [flow("a", [step("shop.oms", "risk", "rpc", { ref: METHOD })])],
-      [oms(), pricing(), service("shop", "other", { consumes: [{ id: METHOD, peer: "shop.pricing", status: "declared", source: "x" }] })],
+      [
+        oms(),
+        pricing(),
+        service("shop", "other", {
+          consumes: [
+            {
+              id: METHOD,
+              peer: "shop.pricing",
+              status: "declared",
+              source: "x",
+            },
+          ],
+        }),
+      ],
     );
-    expect(serviceOf(enrichCatalog(c).catalog, "shop.oms").consumes).toMatchObject([
-      { id: METHOD, peer: "risk", status: "unresolved" },
-    ]);
+    expect(
+      serviceOf(enrichCatalog(c).catalog, "shop.oms").consumes,
+    ).toMatchObject([{ id: METHOD, peer: "risk", status: "unresolved" }]);
   });
 
   it("lets a declared call win over the step", () => {
     const c = estate(
-      [flow("a", [step("shop.oms", "shop.pricing", "rpc", { ref: METHOD, status: "verified" })])],
+      [
+        flow("a", [
+          step("shop.oms", "shop.pricing", "rpc", {
+            ref: METHOD,
+            status: "verified",
+          }),
+        ]),
+      ],
       [oms(), pricing()].map((s) =>
         s.id === "shop.oms"
-          ? { ...s, consumes: [{ id: METHOD, peer: "shop.pricing", status: "declared", source: "by hand" }] }
+          ? {
+              ...s,
+              consumes: [
+                {
+                  id: METHOD,
+                  peer: "shop.pricing",
+                  status: "declared",
+                  source: "by hand",
+                },
+              ],
+            }
           : s,
       ),
     );
     const { catalog, derived } = enrichCatalog(c);
     expect(derived).toEqual([]);
     expect(serviceOf(catalog, "shop.oms").consumes).toEqual([
-      { id: METHOD, peer: "shop.pricing", status: "declared", source: "by hand" },
+      {
+        id: METHOD,
+        peer: "shop.pricing",
+        status: "declared",
+        source: "by hand",
+      },
     ]);
   });
 
   it("ignores call steps", () => {
-    const c = estate([flow("a", [step("shop.oms", "oms-db", "call", { ref: EVENT })])]);
+    const c = estate([
+      flow("a", [step("shop.oms", "oms-db", "call", { ref: EVENT })]),
+    ]);
     expect(enrichCatalog(c).derived).toEqual([]);
   });
 });
@@ -437,7 +809,9 @@ describe("enrichCatalog: invariants", () => {
       oms(),
       pricing(),
       service("shop", "other", {
-        consumes: [{ id: METHOD, peer: "shop.pricing", status: "declared", source: "x" }],
+        consumes: [
+          { id: METHOD, peer: "shop.pricing", status: "declared", source: "x" },
+        ],
       }),
     ],
   );
@@ -468,7 +842,10 @@ describe("enrichCatalog: the auth fragment", () => {
     ["domain", "api", "stores"].map((name) => ({
       path: `${name}.json`,
       catalog: JSON.parse(
-        readFileSync(new URL(`../examples/auth/portolan/${name}.json`, import.meta.url), "utf8"),
+        readFileSync(
+          new URL(`../examples/auth/portolan/${name}.json`, import.meta.url),
+          "utf8",
+        ),
       ) as Catalog,
     })),
   ).catalog;
@@ -495,7 +872,10 @@ describe("enrichCatalog: an event named by the name it travels under", () => {
   /** The same estate, with a wire name on OrderPlaced. */
   function wired(name = "oms.OrderPlaced"): Service {
     const service = oms();
-    service.aggregates[0]!.events[0]!.wire = { name, channel: "shop.oms.order" };
+    service.aggregates[0]!.events[0]!.wire = {
+      name,
+      channel: "shop.oms.order",
+    };
     return service;
   }
 
@@ -507,7 +887,10 @@ describe("enrichCatalog: an event named by the name it travels under", () => {
   it("resolves a step that names the wire name, and reads the consumer off it", () => {
     // What an extractor can say about somebody else's message: the name on it.
     const listens = flow("listens", [
-      step("bus", "shop.pricing", "event", { status: "unresolved", label: "oms.OrderPlaced" }),
+      step("bus", "shop.pricing", "event", {
+        status: "unresolved",
+        label: "oms.OrderPlaced",
+      }),
     ]);
     const { catalog } = enrichCatalog(estate([listens], [wired(), pricing()]));
 
@@ -515,13 +898,20 @@ describe("enrichCatalog: an event named by the name it travels under", () => {
     expect(resolved.ref).toBe(EVENT);
     expect(resolved.status).toBe("declared");
     expect(consumersOf(catalog)).toEqual([
-      { service: "shop.pricing", status: "declared", via: { flow: "listens", step: "s1" } },
+      {
+        service: "shop.pricing",
+        status: "declared",
+        via: { flow: "listens", step: "s1" },
+      },
     ]);
   });
 
   it("resolves the last segment when one event travels under it", () => {
     const listens = flow("listens", [
-      step("bus", "shop.pricing", "event", { status: "unresolved", label: "OrderPlaced" }),
+      step("bus", "shop.pricing", "event", {
+        status: "unresolved",
+        label: "OrderPlaced",
+      }),
     ]);
     const { catalog } = enrichCatalog(estate([listens], [wired(), pricing()]));
 
@@ -547,7 +937,9 @@ describe("enrichCatalog: an event named by the name it travels under", () => {
               id: "payments.ledger.payment.OrderPlaced",
               slug: "orderplaced",
               name: "OrderPlaced",
-              versions: [{ version: "v1", doc: "", source: "x.java", fields: [] }],
+              versions: [
+                { version: "v1", doc: "", source: "x.java", fields: [] },
+              ],
               consumers: [],
               wire: { name: "ledger.OrderPlaced" },
             },
@@ -556,7 +948,10 @@ describe("enrichCatalog: an event named by the name it travels under", () => {
       ],
     });
     const listens = flow("listens", [
-      step("bus", "shop.pricing", "event", { status: "unresolved", label: "OrderPlaced" }),
+      step("bus", "shop.pricing", "event", {
+        status: "unresolved",
+        label: "OrderPlaced",
+      }),
     ]);
     const catalog = estate([listens], [wired(), pricing()]);
     catalog.contexts[1]!.services = [other];
@@ -569,11 +964,17 @@ describe("enrichCatalog: an event named by the name it travels under", () => {
   it("leaves a step that already resolves, and one nothing answers to", () => {
     const both = flow("both", [
       step("bus", "shop.pricing", "event", { ref: EVENT }),
-      step("bus", "shop.pricing", "event", { status: "unresolved", label: "nothing.AtAll" }),
+      step("bus", "shop.pricing", "event", {
+        status: "unresolved",
+        label: "nothing.AtAll",
+      }),
     ]);
     const { catalog } = enrichCatalog(estate([both], [wired(), pricing()]));
 
-    const steps = catalog.flows[0]!.steps as Extract<FlowNode, { type: "step" }>[];
+    const steps = catalog.flows[0]!.steps as Extract<
+      FlowNode,
+      { type: "step" }
+    >[];
     expect(steps[0]!.status).toBe("declared");
     expect(steps[1]!.ref).toBeUndefined();
     expect(steps[1]!.status).toBe("unresolved");
@@ -587,7 +988,12 @@ describe("enrichCatalog: an event named by the name it travels under", () => {
         branches: [
           {
             title: "the money arrived",
-            steps: [step("bus", "shop.pricing", "event", { status: "unresolved", label: "oms.OrderPlaced" })],
+            steps: [
+              step("bus", "shop.pricing", "event", {
+                status: "unresolved",
+                label: "oms.OrderPlaced",
+              }),
+            ],
           },
           { title: "otherwise", steps: [] },
         ],
@@ -597,7 +1003,8 @@ describe("enrichCatalog: an event named by the name it travels under", () => {
     const twice = enrichCatalog(once).catalog;
 
     const inside = (catalog: Catalog) =>
-      (catalog.flows[0]!.steps[0] as Extract<FlowNode, { type: "alt" }>).branches[0]!.steps[0] as Extract<FlowNode, { type: "step" }>;
+      (catalog.flows[0]!.steps[0] as Extract<FlowNode, { type: "alt" }>)
+        .branches[0]!.steps[0] as Extract<FlowNode, { type: "step" }>;
     expect(inside(once).ref).toBe(EVENT);
     expect(twice).toEqual(once);
   });
@@ -622,7 +1029,12 @@ describe("enrichCatalog: a foreign key into another service's table", () => {
             columns: [
               { name: "id", type: "text", nullable: false, pk: true },
               // What the extractor leaves when the table is not in its store.
-              { name: "order_id", type: "text", nullable: false, fk: { table: "orders", column: "id" } },
+              {
+                name: "order_id",
+                type: "text",
+                nullable: false,
+                fk: { table: "orders", column: "id" },
+              },
             ],
           },
         ],
@@ -650,7 +1062,9 @@ describe("enrichCatalog: a foreign key into another service's table", () => {
   }
 
   it("resolves a name exactly one table in the estate answers to", () => {
-    expect(keyOf(enrichCatalog(estateWithStores()).catalog)).toBe("shop.oms.pg.orders");
+    expect(keyOf(enrichCatalog(estateWithStores()).catalog)).toBe(
+      "shop.oms.pg.orders",
+    );
   });
 
   it("leaves a name two tables answer to alone", () => {
@@ -661,7 +1075,9 @@ describe("enrichCatalog: a foreign key into another service's table", () => {
       name: "Ledger database",
       kind: "postgres",
       owner: "payments.ledger",
-      tables: [{ id: "payments.ledger.pg.orders", name: "orders", columns: [] }],
+      tables: [
+        { id: "payments.ledger.pg.orders", name: "orders", columns: [] },
+      ],
     });
 
     expect(keyOf(enrichCatalog(catalog).catalog)).toBe("orders");

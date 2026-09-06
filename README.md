@@ -86,7 +86,7 @@ extractor is selected only when its expected model structure is present; a
 
 - **Entity pages** — context, service, aggregate (entities, value objects,
   lifecycle, events, commands, queries), event, store, schema module, ADR.
-- **Flows** — step-by-step walkthroughs with a step rail, chains that continue
+- **Flows** — step-by-step walkthroughs with a step rail, cross-protocol chains that continue
   across contexts, and per-step detail.
 - **Diagrams** — LikeC4 C4 views (estate landscape, one per context, two per
   service, one dynamic view per flow), an ELK-routed dependency graph, and a

@@ -31,7 +31,9 @@ describe("validateCatalog", () => {
   it("keeps old catalogs compatible while accepting neutral group and component kinds", () => {
     expect(groupKind(catalog.contexts[0]!)).toBe("bounded-context");
     expect(componentKind(catalog.contexts[0]!.services[0]!)).toBe("service");
-    expect(allComponents(catalog)).toEqual(catalog.contexts.flatMap((group) => group.services));
+    expect(allComponents(catalog)).toEqual(
+      catalog.contexts.flatMap((group) => group.services),
+    );
 
     const neutral = clone();
     neutral.contexts[0]!.kind = "system";
@@ -250,11 +252,42 @@ describe("validateCatalog: flow frames", () => {
 
     const badKind = clone();
     badKind.flows[0]!.trigger = { kind: "timer" as never, confidence: "high" };
-    expect(() => validateCatalog(badKind)).toThrow(/unknown trigger kind "timer"/);
+    expect(() => validateCatalog(badKind)).toThrow(
+      /unknown trigger kind "timer"/,
+    );
 
     const badConfidence = clone();
-    badConfidence.flows[0]!.trigger = { kind: "startup", confidence: "maybe" as never };
-    expect(() => validateCatalog(badConfidence)).toThrow(/unknown trigger confidence "maybe"/);
+    badConfidence.flows[0]!.trigger = {
+      kind: "startup",
+      confidence: "maybe" as never,
+    };
+    expect(() => validateCatalog(badConfidence)).toThrow(
+      /unknown trigger confidence "maybe"/,
+    );
+  });
+
+  it("validates cross-protocol composition evidence", () => {
+    const good = clone();
+    const flow = good.flows[0]!;
+    const first = walkSteps(flow.steps)[0]!;
+    flow.includes = ["downstream-worker"];
+    first.reaches = ["jobs/email:Worker.Work"];
+    first.handoff = {
+      kind: "message",
+      transport: "kafka",
+      channel: "email.requested",
+      direction: "send",
+    };
+    expect(() => validateCatalog(good)).not.toThrow();
+
+    const bad = clone();
+    walkSteps(bad.flows[0]!.steps)[0]!.handoff = {
+      kind: "job",
+      transport: "river",
+      channel: "jobs",
+      direction: "receive",
+    };
+    expect(() => validateCatalog(bad)).toThrow(/job handoff with no message/);
   });
 
   it("rejects an alt with a single branch", () => {
@@ -321,7 +354,9 @@ describe("validateCatalog: building blocks", () => {
     const agg = firstAggregate(ok);
     agg.lifecycle = {
       states: ["open", "placed"],
-      transitions: [{ from: "open", to: "placed", on: "place", emits: agg.events[0]!.id }],
+      transitions: [
+        { from: "open", to: "placed", on: "place", emits: agg.events[0]!.id },
+      ],
     };
     expect(() => validateCatalog(ok)).not.toThrow();
   });
@@ -332,16 +367,27 @@ describe("validateCatalog: building blocks", () => {
       states: ["open"],
       transitions: [{ from: "open", to: "gone", on: "vanish" }],
     };
-    expect(() => validateCatalog(bad)).toThrowError(/"gone" is not one of its states/);
+    expect(() => validateCatalog(bad)).toThrowError(
+      /"gone" is not one of its states/,
+    );
   });
 
   it("rejects a transition emitting an event of another aggregate", () => {
     const bad = clone();
     firstAggregate(bad).lifecycle = {
       states: ["open", "placed"],
-      transitions: [{ from: "open", to: "placed", on: "place", emits: "shop.cart.basket.BasketCreated" }],
+      transitions: [
+        {
+          from: "open",
+          to: "placed",
+          on: "place",
+          emits: "shop.cart.basket.BasketCreated",
+        },
+      ],
     };
-    expect(() => validateCatalog(bad)).toThrowError(/which is not one of its events/);
+    expect(() => validateCatalog(bad)).toThrowError(
+      /which is not one of its events/,
+    );
   });
 
   it("rejects a block id that disagrees with its slug", () => {
@@ -736,7 +782,9 @@ describe("glossary terms", () => {
     const bad = clone();
     terms(bad)[0]!.definition = "";
 
-    expect(() => validateCatalog(bad)).toThrowError(/says nothing about what it is/);
+    expect(() => validateCatalog(bad)).toThrowError(
+      /says nothing about what it is/,
+    );
   });
 
   it("indexes a term whose definition is one short sentence", () => {
@@ -912,7 +960,9 @@ describe("validateCatalog: owners", () => {
 
   it("takes a handle as it is written, whatever shape it is", () => {
     expect(() =>
-      validateCatalog(withOwners(["@acme/oms-team", "@someone", "dev@acme.io"])),
+      validateCatalog(
+        withOwners(["@acme/oms-team", "@someone", "dev@acme.io"]),
+      ),
     ).not.toThrow();
   });
 
@@ -923,9 +973,9 @@ describe("validateCatalog: owners", () => {
   });
 
   it("rejects one owner named twice", () => {
-    expect(() => validateCatalog(withOwners(["@acme/oms", "@acme/oms"]))).toThrow(
-      /twice/,
-    );
+    expect(() =>
+      validateCatalog(withOwners(["@acme/oms", "@acme/oms"])),
+    ).toThrow(/twice/);
   });
 });
 
@@ -1048,7 +1098,9 @@ describe("externals", () => {
         provides: [
           {
             id: "psp.v1.Charges",
-            methods: [{ name: "Create", http: { method: "POST", path: "/v1/charges" } }],
+            methods: [
+              { name: "Create", http: { method: "POST", path: "/v1/charges" } },
+            ],
             source: "psp/openapi.yaml",
           },
         ],
@@ -1062,7 +1114,9 @@ describe("externals", () => {
     expect(() => validateCatalog(good)).not.toThrow();
     const index = buildIndex(good);
     expect(index.externalById.get("psp")?.name).toBe("PSP");
-    expect(index.externalProviderByMethod.get("psp.v1.Charges/Create")?.id).toBe("psp");
+    expect(
+      index.externalProviderByMethod.get("psp.v1.Charges/Create")?.id,
+    ).toBe("psp");
     // Never widened into the service map: every reader of that one opens a service page.
     expect(index.rpcProviderByMethod.has("psp.v1.Charges/Create")).toBe(false);
   });

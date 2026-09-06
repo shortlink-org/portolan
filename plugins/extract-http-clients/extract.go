@@ -332,6 +332,11 @@ func flowsOfRoots(serviceID, context string, roots []gohttp.RootFlow, opts Optio
 				Note: note, Line: call.Source.String(),
 			})
 		}
+		reached := append([]string{}, root.Covered...)
+		if root.Handler != "" {
+			reached = append(reached, root.Handler)
+		}
+		markLastStepReaches(steps, reached)
 		summary := "Source-backed execution path from a concrete root to outbound APIs."
 		switch root.Kind {
 		case gohttp.RootCallback:
@@ -423,6 +428,7 @@ func flowsOfEndpoints(serviceID, context string, endpoints []gohttp.EndpointFlow
 				})
 				stepIndex++
 			}
+			markLastStepReaches(steps, []string{branch.Function})
 			branches = append(branches, catalog.AltBranch{
 				Title: "connector = \"" + branch.Condition + "\"", Steps: steps,
 			})
@@ -451,6 +457,29 @@ func flowsOfEndpoints(serviceID, context string, endpoints []gohttp.EndpointFlow
 		})
 	}
 	return flows, covered
+}
+
+func markLastStepReaches(nodes catalog.FlowNodes, reaches []string) {
+	for index := len(nodes) - 1; index >= 0; index-- {
+		switch node := nodes[index].(type) {
+		case *catalog.Step:
+			node.Reaches = uniqueStrings(reaches)
+			return
+		case *catalog.Alt:
+			for branch := range node.Branches {
+				markLastStepReaches(node.Branches[branch].Steps, reaches)
+			}
+			return
+		case *catalog.Parallel:
+			for branch := range node.Branches {
+				markLastStepReaches(node.Branches[branch], reaches)
+			}
+			return
+		case *catalog.Loop:
+			markLastStepReaches(node.Steps, reaches)
+			return
+		}
+	}
 }
 
 func coverRootDescendants(covered map[string]bool, roots []gohttp.RootFlow, groups []gohttp.FlowGroup) {

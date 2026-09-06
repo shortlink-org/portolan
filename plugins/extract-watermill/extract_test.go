@@ -120,6 +120,15 @@ func Register(r *message.Router, cfg config.Bus, pub message.Publisher) {
 	if len(branches) != 2 || branches[0].Title != "!input.Valid" || branches[1].Title != "not (!input.Valid)" || !branches[0].Terminal {
 		t.Fatalf("branches = %+v", branches)
 	}
+	receive := flow.Steps[0].(*catalog.Step).Handoff
+	errorSend := branches[0].Steps[0].(*catalog.Step).Handoff
+	successSend := branches[1].Steps[0].(*catalog.Step).Handoff
+	if receive == nil || receive.Direction != "receive" || receive.Transport != "watermill" || receive.Channel != "mail.input" {
+		t.Fatalf("receive handoff = %+v", receive)
+	}
+	if errorSend == nil || errorSend.Direction != "send" || errorSend.Channel != "mail.error" || successSend == nil || successSend.Channel != "mail.output" {
+		t.Fatalf("publish handoffs = error %+v, success %+v", errorSend, successSend)
+	}
 }
 
 func TestExtractsNamedNoPublisherHandler(t *testing.T) {
@@ -150,6 +159,9 @@ func Register(r *message.Router, sub message.Subscriber) {
 	}
 	if got := out.Flows[0].Steps[0].(*catalog.Step).ContinuesAt; got != "consume" {
 		t.Fatalf("handler continuation = %q", got)
+	}
+	if got := out.Flows[0].Steps[0].(*catalog.Step).Handoff; got == nil || got.Kind != "message" || got.Channel != "notice.input" || got.Direction != "receive" {
+		t.Fatalf("handler handoff = %+v", got)
 	}
 }
 
