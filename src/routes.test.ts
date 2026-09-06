@@ -11,9 +11,10 @@ import {
   servicePath,
   tablePath,
   viewPath,
+  enumPath,
 } from "./routes";
 import { parseSelectionHash } from "./selection/hash";
-import { allAggregates, allStores, allViews } from "./catalog";
+import { allAggregates, allStores, allViews, enumsOf } from "./catalog";
 import { registryCatalog } from "./lib/scenarios";
 
 describe("routes", () => {
@@ -70,6 +71,20 @@ describe("routes", () => {
     expect(blockPath("shop.oms.order.line")).toBe(
       "/c/shop/oms/order/entity/line",
     );
+  });
+
+  it("routes every enum, behind its own literal segment", () => {
+    for (const aggregate of allAggregates(catalog)) {
+      for (const item of enumsOf(aggregate)) {
+        const path = enumPath(item.id);
+        expect(path, item.id).not.toBeNull();
+        expect(isRoutable(path as string), path as string).toBe(true);
+      }
+    }
+    expect(enumPath("shop.oms.order.status")).toBe(
+      "/c/shop/oms/order/enum/status",
+    );
+    expect(enumPath("shop.oms.order.nowhere")).toBeNull();
   });
 
   // Both are five segments deep, so nothing may fall through to the event route.

@@ -5,7 +5,9 @@ import {
   forgeRepoFromUrl,
   githubRepoFromUrl,
   listForgeBranches,
+  listForgeRefs,
   listGitHubBranches,
+  listGitHubTags,
   loadForgeCatalog,
   loadGitHubCatalog,
 } from "./github-catalog";
@@ -79,12 +81,47 @@ describe("listGitHubBranches", () => {
     vi.stubGlobal("fetch", fetch);
 
     await expect(listGitHubBranches(REPO)).resolves.toEqual([
-      { name: "main", commit: SHA, protected: true },
+      { name: "main", commit: SHA, protected: true, kind: "branch" },
     ]);
     await listGitHubBranches(REPO);
 
     expect(fetch).toHaveBeenCalledOnce();
     expect(fetch.mock.calls[0]?.[0]).toContain("/repos/acme/portolan/branches?per_page=100&page=1");
+  });
+
+  // A tag is read at the commit it points to. GitHub's listing gives that
+  // commit already, peeled from an annotated tag; the tag object's own sha
+  // would be a tree nobody can read.
+  it("reads tags at their commit, and lists them after the branches", async () => {
+    const fetch = vi.fn(async (url: string) => new Response(JSON.stringify(
+      url.includes("/tags?")
+        ? [{ name: "v1.2.0", commit: { sha: "b".repeat(40) }, zipball_url: "" }]
+        : [{ name: "main", commit: { sha: SHA }, protected: true }],
+    ), { status: 200, headers: { "content-type": "application/json" } }));
+    vi.stubGlobal("fetch", fetch);
+
+    await expect(listForgeRefs(REPO)).resolves.toEqual([
+      { name: "main", commit: SHA, protected: true, kind: "branch" },
+      { name: "v1.2.0", commit: "b".repeat(40), protected: false, kind: "tag" },
+    ]);
+    await listGitHubTags(REPO);
+
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(fetch.mock.calls.map(([url]) => url)).toContainEqual(expect.stringContaining("/repos/acme/portolan/tags?per_page=100&page=1"));
+  });
+
+  it("reads GitLab tags through the repository API with the project encoded", async () => {
+    const fetch = vi.fn(async (url: string) => new Response(JSON.stringify(
+      url.includes("/repository/tags?")
+        ? [{ name: "v2.0.0", commit: { id: "c".repeat(40) }, protected: true }]
+        : [],
+    ), { status: 200 }));
+    vi.stubGlobal("fetch", fetch);
+
+    await expect(listForgeRefs(GITLAB_REPO, { token: "s" })).resolves.toEqual([
+      { name: "v2.0.0", commit: "c".repeat(40), protected: true, kind: "tag" },
+    ]);
+    expect(fetch.mock.calls.map(([url]) => url)).toContainEqual(expect.stringContaining("/api/v4/projects/acme%2Fplatform%2Fportolan/repository/tags?per_page=100&page=1"));
   });
 
   it("explains the unauthenticated private-repository failure", async () => {

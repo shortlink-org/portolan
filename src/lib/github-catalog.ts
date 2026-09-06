@@ -6,7 +6,7 @@ import type { CatalogSource, SourceCatalog } from "../merge";
 
 const API_VERSION = "2026-03-10";
 const PAGE_SIZE = 100;
-const MAX_BRANCH_PAGES = 10;
+const MAX_REF_PAGES = 10;
 const MAX_TREE_PAGES = 100;
 const MAX_SOURCE_BYTES = 5 * 1024 * 1024;
 const MAX_CATALOG_BYTES = 25 * 1024 * 1024;
@@ -33,13 +33,20 @@ export type ForgeRepo = GitHubRepo | GitLabRepo;
 
 export type ForgeAccess = { token?: string };
 
-export type GitHubBranch = {
+/**
+ * A name the forge resolves to a commit: a branch head as it is now, or a
+ * tag. Both are what a reader compares against; the kind is kept because a
+ * tag does not move and a branch does, and the picker groups them apart.
+ */
+export type ForgeRef = {
   name: string;
   commit: string;
   protected: boolean;
+  kind: "branch" | "tag";
 };
 
-export type ForgeBranch = GitHubBranch;
+export type GitHubBranch = ForgeRef;
+export type ForgeBranch = ForgeRef;
 
 type TreeItem = {
   path: string;
@@ -53,7 +60,8 @@ type TreeResponse = {
   truncated: boolean;
 };
 
-const branchCache = new Map<string, Promise<GitHubBranch[]>>();
+const branchCache = new Map<string, Promise<ForgeRef[]>>();
+const tagCache = new Map<string, Promise<ForgeRef[]>>();
 const catalogCache = new Map<string, Promise<Catalog>>();
 
 /** A github.com repository page, reduced to the two API path segments. */
@@ -285,37 +293,54 @@ async function fetchText(
 }
 
 /** Branch heads as they exist on GitHub now, not when the site was built. */
+/**
+ * Every page of a ref listing, once per repository and kind while the request
+ * is anonymous. A token makes the answer the token's, so it is never kept.
+ */
+function listRefs(
+  cache: Map<string, Promise<ForgeRef[]>>,
+  repo: ForgeRepo,
+  access: ForgeAccess,
+  page: (index: number) => Promise<ForgeRef[]>,
+): Promise<ForgeRef[]> {
+  const key = repoKey(repo);
+  const cached = access.token ? undefined : cache.get(key);
+  if (cached) return cached;
+
+  const pending = (async () => {
+    const refs: ForgeRef[] = [];
+    for (let index = 1; index <= MAX_REF_PAGES; index++) {
+      const found = await page(index);
+      refs.push(...found);
+      if (found.length < PAGE_SIZE) break;
+    }
+    return refs;
+  })();
+
+  if (!access.token) {
+    cache.set(key, pending);
+    pending.catch(() => cache.delete(key));
+  }
+  return pending;
+}
+
 export function listGitHubBranches(
   repo: GitHubRepo,
   access: ForgeAccess = {},
 ): Promise<GitHubBranch[]> {
-  const key = repoKey(repo);
-  const cached = access.token ? undefined : branchCache.get(key);
-  if (cached) return cached;
-
-  const pending = (async () => {
-    const branches: GitHubBranch[] = [];
-    for (let page = 1; page <= MAX_BRANCH_PAGES; page++) {
-      const found = await githubJson<Array<{
-        name: string;
-        commit: { sha: string };
-        protected: boolean;
-      }>>(apiUrl(repo, `/branches?per_page=${PAGE_SIZE}&page=${page}`), access.token);
-      branches.push(...found.map((branch) => ({
-        name: branch.name,
-        commit: branch.commit.sha,
-        protected: branch.protected,
-      })));
-      if (found.length < PAGE_SIZE) break;
-    }
-    return branches;
-  })();
-
-  if (!access.token) {
-    branchCache.set(key, pending);
-    pending.catch(() => branchCache.delete(key));
-  }
-  return pending;
+  return listRefs(branchCache, repo, access, async (page) => {
+    const found = await githubJson<Array<{
+      name: string;
+      commit: { sha: string };
+      protected: boolean;
+    }>>(apiUrl(repo, `/branches?per_page=${PAGE_SIZE}&page=${page}`), access.token);
+    return found.map((branch) => ({
+      name: branch.name,
+      commit: branch.commit.sha,
+      protected: branch.protected,
+      kind: "branch" as const,
+    }));
+  });
 }
 
 /** Branch heads as they exist on GitLab now, including subgroup projects. */
@@ -323,36 +348,22 @@ export function listGitLabBranches(
   repo: GitLabRepo,
   access: ForgeAccess = {},
 ): Promise<ForgeBranch[]> {
-  const key = repoKey(repo);
-  const cached = access.token ? undefined : branchCache.get(key);
-  if (cached) return cached;
-
-  const pending = (async () => {
-    const branches: ForgeBranch[] = [];
-    for (let page = 1; page <= MAX_BRANCH_PAGES; page++) {
-      const found = await gitlabJson<Array<{
-        name: string;
-        protected: boolean;
-        commit: { id: string };
-      }>>(
-        gitlabApiUrl(repo, `/repository/branches?per_page=${PAGE_SIZE}&page=${page}`),
-        access.token,
-      );
-      branches.push(...found.map((branch) => ({
-        name: branch.name,
-        commit: branch.commit.id,
-        protected: branch.protected,
-      })));
-      if (found.length < PAGE_SIZE) break;
-    }
-    return branches;
-  })();
-
-  if (!access.token) {
-    branchCache.set(key, pending);
-    pending.catch(() => branchCache.delete(key));
-  }
-  return pending;
+  return listRefs(branchCache, repo, access, async (page) => {
+    const found = await gitlabJson<Array<{
+      name: string;
+      protected: boolean;
+      commit: { id: string };
+    }>>(
+      gitlabApiUrl(repo, `/repository/branches?per_page=${PAGE_SIZE}&page=${page}`),
+      access.token,
+    );
+    return found.map((branch) => ({
+      name: branch.name,
+      commit: branch.commit.id,
+      protected: branch.protected,
+      kind: "branch" as const,
+    }));
+  });
 }
 
 export function listForgeBranches(
@@ -362,6 +373,73 @@ export function listForgeBranches(
   return repo.provider === "github"
     ? listGitHubBranches(repo, access)
     : listGitLabBranches(repo, access);
+}
+
+/**
+ * Tags, with the commit each one points at. GitHub's tag listing peels an
+ * annotated tag to its commit already; the tag object's own sha is not what
+ * a tree is read at. Nothing on GitHub says whether a tag is protected, so
+ * none is.
+ */
+export function listGitHubTags(
+  repo: GitHubRepo,
+  access: ForgeAccess = {},
+): Promise<ForgeRef[]> {
+  return listRefs(tagCache, repo, access, async (page) => {
+    const found = await githubJson<Array<{
+      name: string;
+      commit: { sha: string };
+    }>>(apiUrl(repo, `/tags?per_page=${PAGE_SIZE}&page=${page}`), access.token);
+    return found.map((tag) => ({
+      name: tag.name,
+      commit: tag.commit.sha,
+      protected: false,
+      kind: "tag" as const,
+    }));
+  });
+}
+
+export function listGitLabTags(
+  repo: GitLabRepo,
+  access: ForgeAccess = {},
+): Promise<ForgeRef[]> {
+  return listRefs(tagCache, repo, access, async (page) => {
+    const found = await gitlabJson<Array<{
+      name: string;
+      protected?: boolean;
+      commit: { id: string };
+    }>>(
+      gitlabApiUrl(repo, `/repository/tags?per_page=${PAGE_SIZE}&page=${page}`),
+      access.token,
+    );
+    return found.map((tag) => ({
+      name: tag.name,
+      commit: tag.commit.id,
+      protected: Boolean(tag.protected),
+      kind: "tag" as const,
+    }));
+  });
+}
+
+export function listForgeTags(
+  repo: ForgeRepo,
+  access: ForgeAccess = {},
+): Promise<ForgeRef[]> {
+  return repo.provider === "github"
+    ? listGitHubTags(repo, access)
+    : listGitLabTags(repo, access);
+}
+
+/** Branches and tags together, branches first, as one list to pick from. */
+export async function listForgeRefs(
+  repo: ForgeRepo,
+  access: ForgeAccess = {},
+): Promise<ForgeRef[]> {
+  const [branches, tags] = await Promise.all([
+    listForgeBranches(repo, access),
+    listForgeTags(repo, access),
+  ]);
+  return [...branches, ...tags];
 }
 
 /** A manifest glob as an anchored regular expression. */
@@ -576,6 +654,7 @@ export function loadForgeCatalog(
 /** Test-only: runtime caches must never leak between isolated cases. */
 export function clearGitHubCatalogCache(): void {
   branchCache.clear();
+  tagCache.clear();
   catalogCache.clear();
 }
 

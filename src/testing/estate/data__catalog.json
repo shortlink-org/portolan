@@ -263,7 +263,7 @@
                     },
                     {
                       "name": "status",
-                      "type": "string",
+                      "type": "Status",
                       "doc": "placed | awaiting-review | confirmed | cancelled. `awaiting-review` is where a fail-open risk check leaves the order: accepted, but not yet trusted."
                     },
                     {
@@ -1374,7 +1374,7 @@
                         },
                         {
                           "name": "code",
-                          "type": "string",
+                          "type": "DeclineCode",
                           "doc": "Normalised decline code, not the raw PSP string."
                         },
                         {
@@ -1395,9 +1395,9 @@
               ],
               "enums": [
                 {
-                  "id": "payments.ledger.payment.decline-reason",
-                  "slug": "decline-reason",
-                  "name": "DeclineReason",
+                  "id": "payments.ledger.payment.decline-code",
+                  "slug": "decline-code",
+                  "name": "DeclineCode",
                   "doc": "Why the money was not held, as a closed set a consumer switches on.",
                   "values": [
                     {

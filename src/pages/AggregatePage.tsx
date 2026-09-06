@@ -1,13 +1,15 @@
 import { useMemo } from "react";
 import { Link, useParams } from "react-router";
 import { catalog, index } from "../data";
-import { blockCounts, blockFields, rootEntity } from "../catalog";
+import { blockCounts, blockFields, enumsOf, rootEntity } from "../catalog";
+import { isStatusEnum } from "../lib/shape";
 import type {
   Aggregate,
   Block,
   BlockKind,
   Operation,
   Service,
+  Enum,
 } from "../catalog";
 import { markdownOutline } from "../lib/derive";
 import { tablesPersisting, viewsPresenting } from "../lib/data-model";
@@ -58,6 +60,7 @@ function BuildingBlocks({
       n: counts.valueObjects,
       anchor: AGGREGATE_ANCHOR.valueObjects,
     },
+    { kind: "enum", n: counts.enums, anchor: AGGREGATE_ANCHOR.enums },
     { kind: "event", n: counts.events, anchor: AGGREGATE_ANCHOR.events },
     { kind: "command", n: counts.commands, anchor: AGGREGATE_ANCHOR.commands },
     { kind: "query", n: counts.queries, anchor: AGGREGATE_ANCHOR.queries },
@@ -175,6 +178,81 @@ function BlockList({
 }
 
 /**
+ * The closed sets, each with its values on the row: a reader scanning the
+ * aggregate wants to see "placed, confirmed, cancelled" without opening a
+ * page, and a set has few enough values that the row can hold them.
+ */
+function EnumList({
+  aggregate,
+  linkTo,
+}: {
+  aggregate: Aggregate;
+  linkTo: (item: Enum) => string;
+}) {
+  const enums = enumsOf(aggregate);
+  if (enums.length === 0) {
+    return (
+      <Empty>no enums declared — every field here is a scalar or a shape</Empty>
+    );
+  }
+  const states = aggregate.lifecycle?.states ?? [];
+  return (
+    <div className="rows grid-cols-[auto_1fr_auto_auto]" data-nav-list>
+      {enums.map((item) => (
+        <div key={item.id} className="row items-start gap-2 px-3 py-2">
+          <span className="mt-0.5 flex shrink-0">
+            <KindIcon kind="enum" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <Link
+              to={linkTo(item)}
+              data-nav-item
+              className="mono rounded-control"
+              title={item.name}
+            >
+              {item.name}
+            </Link>
+            {isStatusEnum(item, states) ? (
+              <a
+                href={`#${AGGREGATE_ANCHOR.lifecycle}`}
+                className="chip status-verified ml-2"
+                title="its values are the lifecycle's states"
+              >
+                <span aria-hidden className="dot" />
+                the status
+              </a>
+            ) : null}
+            {item.deprecated ? (
+              <span className="chip ml-2" title="marked deprecated in the source">
+                deprecated
+              </span>
+            ) : null}
+            <span className="meta block truncate" title={item.doc}>
+              {item.doc}
+            </span>
+            <span className="mono mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5 text-muted">
+              {item.values.map((value) => (
+                <span
+                  key={value.name}
+                  className={value.deprecated ? "line-through" : undefined}
+                  title={value.doc || undefined}
+                >
+                  {value.name}
+                </span>
+              ))}
+            </span>
+          </span>
+          <span className="mono flex shrink-0 items-center gap-2 text-muted">
+            <span>{item.values.length}v</span>
+          </span>
+          <RowActions copy={item.id} label={item.name} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
  * Commands and queries with what each one actually does. The sentence is the
  * point: a bare `CancelOrder` says nothing about when it is refused, and the
  * precondition is exactly what a reader came to this page for.
@@ -281,6 +359,7 @@ export function AggregatePage() {
     ...outline.map((h) => ({ id: h.slug, label: h.text, depth: h.depth })),
     { id: AGGREGATE_ANCHOR.entities, label: "Entities" },
     { id: AGGREGATE_ANCHOR.valueObjects, label: "Value objects" },
+    { id: AGGREGATE_ANCHOR.enums, label: "Enums" },
     ...(aggregate.lifecycle ? [{ id: AGGREGATE_ANCHOR.lifecycle, label: "Lifecycle" }] : []),
     { id: AGGREGATE_ANCHOR.events, label: "Events" },
     { id: AGGREGATE_ANCHOR.commands, label: "Commands" },
@@ -293,6 +372,8 @@ export function AggregatePage() {
     paths.valueObject(context.id, service.slug, aggregate.slug, block.slug);
   const entityPath = (block: Block) =>
     paths.entity(context.id, service.slug, aggregate.slug, block.slug);
+  const enumPathOf = (item: Enum) =>
+    paths.enum(context.id, service.slug, aggregate.slug, item.slug);
 
   return (
     <div className="h-full overflow-y-auto">
@@ -366,6 +447,21 @@ export function AggregatePage() {
               blocks={aggregate.valueObjects}
               linkTo={voPath}
             />
+          </div>
+
+          <div
+            className="mt-section max-w-prose"
+            id={AGGREGATE_ANCHOR.enums}
+          >
+            <SectionTitle
+              anchor={AGGREGATE_ANCHOR.enums}
+              right={
+                <span>closed sets — a consumer handles every value</span>
+              }
+            >
+              Enums
+            </SectionTitle>
+            <EnumList aggregate={aggregate} linkTo={enumPathOf} />
           </div>
 
           {aggregate.lifecycle ? (

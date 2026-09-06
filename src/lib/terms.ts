@@ -14,6 +14,7 @@
 // Nothing here counts, scores or reports; there is no coverage to chase.
 
 import type { Catalog, Term } from "../catalog";
+import { enumsOf } from "../catalog";
 import type { Kind } from "./kinds";
 import { AGGREGATE_ANCHOR, paths } from "../routes";
 
@@ -115,6 +116,20 @@ export function bindTerms(catalog: Catalog): TermBindings {
               service.slug,
               aggregate.slug,
               vo.slug,
+            ),
+          });
+        }
+
+        for (const item of enumsOf(aggregate)) {
+          pair(context.id, item.slug, {
+            kind: "enum",
+            id: item.id,
+            name: item.name,
+            path: paths.enum(
+              context.id,
+              service.slug,
+              aggregate.slug,
+              item.slug,
             ),
           });
         }

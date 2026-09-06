@@ -18,6 +18,7 @@ import type { Adr, Catalog, CatalogIndex, Flow, Status, Term } from "../catalog"
 import { allServices, walkSteps } from "../catalog";
 import { sortAdrs, adrNumber } from "./adr";
 import { flowsForService, usagesOfDef } from "./derive";
+import { usagesOfEnum } from "./shape";
 import { bindTerms } from "./terms";
 import type { DefUsage } from "./derive";
 import type { Kind } from "./kinds";
@@ -72,6 +73,7 @@ const GROUP_ORDER: readonly Kind[] = [
   "aggregate",
   "entity",
   "vo",
+  "enum",
   "def",
   "context",
   // Last. A term does not depend on this page in the sense every row above
@@ -452,6 +454,23 @@ function blockBacklinks(
   );
 }
 
+/**
+ * The fields that switch on an enum. Found by the resolver's name match
+ * rather than by a ref, and each row says "by name" so that a reader knows
+ * the claim is the catalog's and not the source's.
+ */
+function enumBacklinks(
+  catalog: Catalog,
+  index: CatalogIndex,
+  enumId: string,
+): Backlink[] {
+  if (!index.enumById.has(enumId)) return [];
+  return usagesOfEnum(catalog, enumId).map((usage) => {
+    const link = usageLink(index, usage);
+    return { ...link, via: `${link.via} · by name` };
+  });
+}
+
 function flowBacklinks(
   catalog: Catalog,
   index: CatalogIndex,
@@ -498,6 +517,8 @@ export function backlinksFor(
     case "vo":
     case "entity":
       return grouped(named(catalog, target.id, blockBacklinks(catalog, index, target.id)));
+    case "enum":
+      return grouped(named(catalog, target.id, enumBacklinks(catalog, index, target.id)));
     case "flow":
       return grouped(flowBacklinks(catalog, index, target.id));
     default:

@@ -207,6 +207,23 @@ describe("a value object", () => {
   });
 });
 
+describe("an enum", () => {
+  const code: BacklinkTarget = { kind: "enum", id: "payments.ledger.payment.decline-code" };
+
+  it("finds the fields that switch on it, and says the match is by name", () => {
+    const events = of(code, "event");
+    expect(events.map((l) => l.id)).toContain("payments.ledger.payment.PaymentDeclined");
+    for (const link of events) {
+      expect(link.via).toContain("code");
+      expect(link.via).toContain("by name");
+    }
+  });
+
+  it("has nothing for a set the catalog lacks", () => {
+    expect(backlinkCount(groups({ kind: "enum", id: "x.y.z" }))).toBe(0);
+  });
+});
+
 describe("a flow", () => {
   it("is pointed at only by the decisions that name it", () => {
     const adrs = of({ kind: "flow", id: "checkout" }, "adr");

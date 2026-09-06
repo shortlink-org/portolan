@@ -3,6 +3,8 @@ import { catalog, index } from "../testing/estate";
 import type { Aggregate, Event, Field, Service } from "../catalog";
 import {
   eventScope,
+  isStatusEnum,
+  usagesOfEnum,
   openablePaths,
   parseType,
   resolveShape,
@@ -214,5 +216,74 @@ describe("schemaChanges", () => {
     const { byField, removed } = schemaChanges(placed, "v2");
     expect([...byField.keys()]).toEqual(["channel"]);
     expect(removed).toEqual([]);
+  });
+});
+
+describe("enums", () => {
+  it("resolves a field's type to an enum of the aggregate by name", () => {
+    const event = eventById("payments.ledger.payment.PaymentDeclined");
+    const scope = eventScope(index, event);
+    const reason = resolveShape(
+      catalog,
+      { name: "code", type: "DeclineCode", doc: "" },
+      scope,
+    );
+    expect(reason?.kind).toBe("enum");
+    expect(reason?.id).toBe("payments.ledger.payment.decline-code");
+    expect(reason?.values.map((v) => v.name)).toEqual([
+      "CARD_REFUSED",
+      "ORDER_CANCELLED",
+      "GATEWAY_TIMEOUT",
+    ]);
+    expect(reason?.fields).toEqual([]);
+  });
+
+  it("prefers a block of the same name over an enum, and opens an enum as a leaf", () => {
+    const order = index.aggregateById.get("shop.oms.order");
+    if (!order) throw new Error("no order");
+    const service = index.aggregateOwner.get(order.id) ?? null;
+    const scope = { aggregate: order, service };
+    // Money is a value object there; the enum is Status.
+    expect(resolveShape(catalog, { name: "t", type: "Money", doc: "" }, scope)?.kind).toBe("vo");
+    const paths = openablePaths(
+      catalog,
+      [{ name: "status", type: "Status", doc: "" }],
+      scope,
+    );
+    expect(paths).toEqual(["status"]);
+  });
+
+  it("knows the status by its values, not its name", () => {
+    const order = index.aggregateById.get("shop.oms.order");
+    const status = order?.enums?.find((e) => e.slug === "status");
+    if (!status) throw new Error("fixture lacks the status");
+    const states = ["placed", "confirmed", "cancelled"];
+    expect(isStatusEnum(status, states)).toBe(true);
+    expect(isStatusEnum(status, ["placed", "confirmed"])).toBe(false);
+    expect(isStatusEnum(status, [...states, "lost"])).toBe(false);
+    // PLACED and placed are one state; so are risk-blocked and RISK_BLOCKED.
+    expect(
+      isStatusEnum(
+        { ...status, values: status.values.map((v) => ({ ...v, name: v.name.toUpperCase() })) },
+        states,
+      ),
+    ).toBe(true);
+    const payment = index.aggregateById.get("payments.ledger.payment");
+    const code = payment?.enums?.find((e) => e.slug === "decline-code");
+    if (!code) throw new Error("fixture lacks the code");
+    expect(isStatusEnum(code, states)).toBe(false);
+  });
+
+  it("finds who switches on an enum, by the same name match the tree makes", () => {
+    const uses = usagesOfEnum(catalog, "payments.ledger.payment.decline-code");
+    const declined = uses.find((u) => u.id === "payments.ledger.payment.PaymentDeclined");
+    expect(declined?.kind).toBe("event");
+    expect(declined?.fields).toEqual(["code"]);
+    expect(declined?.versions).toEqual(["v1"]);
+    // The root entity holds the status, by name too.
+    const order = usagesOfEnum(catalog, "shop.oms.order.status").find((u) => u.id === "shop.oms.order.order");
+    expect(order?.kind).toBe("entity");
+    expect(order?.fields).toEqual(["status"]);
+    expect(usagesOfEnum(catalog, "nowhere.at-all")).toEqual([]);
   });
 });

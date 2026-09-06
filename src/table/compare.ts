@@ -28,6 +28,7 @@ const KIND_RANK: Record<Kind, number> = {
   query: 2,
   entity: 3,
   vo: 4,
+  enum: 5,
   def: 5,
   aggregate: 6,
   // What the outside can call sits between the model and where it is kept: it

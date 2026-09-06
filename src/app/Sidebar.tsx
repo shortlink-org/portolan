@@ -32,8 +32,9 @@ import type {
   Store,
   Table,
   View,
+  Enum,
 } from "../catalog";
-import { allModules, allTerms, storeViews } from "../catalog";
+import { allModules, allTerms, enumsOf, storeViews } from "../catalog";
 import { adrNumber, newestAccepted, sortAdrs } from "../lib/adr";
 import { contextName, ctxStyle } from "../lib/context-color";
 import { contextStats, problems } from "../lib/derive";
@@ -85,6 +86,7 @@ interface AggregateMatch {
   aggregate: Aggregate;
   valueObjects: Block[];
   entities: Block[];
+  enums: Enum[];
   events: Event[];
   commands: Operation[];
   queries: Operation[];
@@ -184,6 +186,11 @@ function matchAggregate(
     aggregate,
     valueObjects: keepBlocks(aggregate.valueObjects),
     entities: keepBlocks(aggregate.entities),
+    enums: hit
+      ? enumsOf(aggregate)
+      : enumsOf(aggregate).filter((e) =>
+          matches(q, e.id, e.name, e.slug, ...e.values.map((v) => v.name)),
+        ),
     events: hit
       ? aggregate.events
       : aggregate.events.filter((e) => matches(q, e.id, e.name, e.slug)),
@@ -194,6 +201,7 @@ function matchAggregate(
   const anyChild =
     match.valueObjects.length +
       match.entities.length +
+      match.enums.length +
       match.events.length +
       match.commands.length +
       match.queries.length >
@@ -489,6 +497,7 @@ function Group({
 const KIND_GROUP_LABEL: Record<LeafKind, string> = {
   vo: "value objects",
   entity: "entities",
+  enum: "enums",
   event: "events",
   command: "commands",
   query: "queries",
@@ -1868,6 +1877,29 @@ function AggregateNode({
               depth={3}
             >
               {match.entities.map((b) => blockLeaf("entity", b))}
+            </Group>
+          ) : null}
+
+          {shows("enum") ? (
+            <Group
+              {...group("enum", false)}
+              count={match.enums.length}
+              depth={3}
+            >
+              {match.enums.map((item) => (
+                <Leaf
+                  key={item.id}
+                  to={paths.enum(contextId, serviceSlug, aggregate.slug, item.slug)}
+                  depth={4}
+                  title={item.doc || item.id}
+                >
+                  <KindIcon kind="enum" />
+                  <span className="mono truncate">{item.name}</span>
+                  <span className="mono ml-auto shrink-0 text-muted">
+                    {item.values.length}
+                  </span>
+                </Leaf>
+              ))}
             </Group>
           ) : null}
 

@@ -1280,6 +1280,7 @@ export function rootEntity(aggregate: Aggregate): Entity | undefined {
 export interface BlockCounts {
   entities: number;
   valueObjects: number;
+  enums: number;
   events: number;
   commands: number;
   queries: number;
@@ -1289,6 +1290,7 @@ export function blockCounts(aggregate: Aggregate): BlockCounts {
   return {
     entities: aggregate.entities.length,
     valueObjects: aggregate.valueObjects.length,
+    enums: enumsOf(aggregate).length,
     events: aggregate.events.length,
     commands: aggregate.operations.filter((o) => o.kind === "command").length,
     queries: aggregate.operations.filter((o) => o.kind === "query").length,

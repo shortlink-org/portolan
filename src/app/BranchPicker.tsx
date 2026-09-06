@@ -4,25 +4,26 @@ import {
   ListboxOption,
   ListboxOptions,
 } from "@headlessui/react";
-import { Check, ChevronDown, ExternalLink, GitBranch, LoaderCircle } from "lucide-react";
+import { Check, ChevronDown, ExternalLink, GitBranch, LoaderCircle, Tag } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
 import { branchCompareHref } from "../lib/branch-compare";
 import { buildInfo } from "../lib/build-info";
-import { forgeRepoFromUrl, listForgeBranches } from "../lib/github-catalog";
-import type { ForgeBranch } from "../lib/github-catalog";
+import { findRef, sortRefs } from "../lib/forge-refs";
+import { forgeRepoFromUrl, listForgeRefs } from "../lib/github-catalog";
+import type { ForgeRef } from "../lib/github-catalog";
 import { forgetComparison, rememberComparison } from "../lib/comparison-memory";
 import { paths } from "../routes";
 import { useForgeAccess } from "./forge-access";
 
-function branchNote(branch: ForgeBranch, current: string): string {
-  if (branch.name === current) return `${branch.commit.slice(0, 7)} · current catalog`;
-  return `${branch.commit.slice(0, 7)}${branch.protected ? " · protected" : ""}`;
+function refNote(ref: ForgeRef, current: string): string {
+  if (ref.kind === "branch" && ref.name === current) return `${ref.commit.slice(0, 7)} · current catalog`;
+  return `${ref.commit.slice(0, 7)}${ref.protected ? " · protected" : ""}`;
 }
 
 /**
- * Selects the comparison head. Branches are read from the configured forge at runtime; a
- * choice opens the first-class changes route, whose URL carries both heads.
+ * Selects the comparison head. Branches and tags are read from the configured forge at
+ * runtime; a choice opens the first-class changes route, whose URL carries both heads.
  */
 export function BranchPicker({ compact = false }: { compact?: boolean }) {
   const current = buildInfo.branch || "main";
@@ -31,7 +32,7 @@ export function BranchPicker({ compact = false }: { compact?: boolean }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [search] = useSearchParams();
-  const [remote, setRemote] = useState<ForgeBranch[]>([]);
+  const [remote, setRemote] = useState<ForgeRef[]>([]);
   const [loading, setLoading] = useState(Boolean(repo));
   const [error, setError] = useState("");
   const token = repo ? access.tokenFor(repo) : "";
@@ -46,9 +47,9 @@ export function BranchPicker({ compact = false }: { compact?: boolean }) {
     setRemote([]);
     setLoading(true);
     setError("");
-    listForgeBranches(repo, { token })
-      .then((branches) => {
-        if (live) setRemote(branches);
+    listForgeRefs(repo, { token })
+      .then((refs) => {
+        if (live) setRemote(refs);
       })
       .catch((cause: unknown) => {
         if (live) setError(cause instanceof Error ? cause.message : String(cause));
@@ -61,22 +62,17 @@ export function BranchPicker({ compact = false }: { compact?: boolean }) {
     };
   }, [repo?.provider, repo?.webUrl, token]);
 
-  const branches = useMemo(() => {
-    const byName = new Map(remote.map((branch) => [branch.name, branch]));
-    if (!byName.has(current)) {
-      byName.set(current, { name: current, commit: buildInfo.commit, protected: false });
-    }
-    return [...byName.values()].sort((a, b) => {
-      if (a.name === current) return -1;
-      if (b.name === current) return 1;
-      if (a.name === "main") return -1;
-      if (b.name === "main") return 1;
-      return a.name.localeCompare(b.name);
-    });
+  const refs = useMemo(() => {
+    const known = remote.some((ref) => ref.kind === "branch" && ref.name === current)
+      ? remote
+      : [...remote, { name: current, commit: buildInfo.commit, protected: false, kind: "branch" as const }];
+    return sortRefs(known, current);
   }, [current, remote]);
+  const branches = refs.filter((ref) => ref.kind === "branch");
+  const tags = refs.filter((ref) => ref.kind === "tag");
 
   const requested = pathname === paths.changes() ? search.get("head") ?? "" : "";
-  const selected = branches.some((branch) => branch.name === requested) ? requested : current;
+  const selected = findRef(refs, requested) ? requested : current;
   const comparing = selected !== current;
   const compareHref = branchCompareHref(current, selected);
 
@@ -114,31 +110,24 @@ export function BranchPicker({ compact = false }: { compact?: boolean }) {
       </ListboxButton>
 
       <ListboxOptions
-        aria-label="Comparison head branch"
+        aria-label="Comparison head branch or tag"
         anchor={{ to: "bottom end", gap: 4, padding: 8 }}
         className="branch-options palette-in z-50 w-80 overflow-y-auto rounded-control border bg-canvas py-1 border-line-strong shadow-md focus:outline-none"
       >
         <div className="label px-3 pt-2 pb-1">compare {current} with</div>
-        {branches.map((branch) => (
-          <ListboxOption
-            key={branch.name}
-            value={branch.name}
-            className={({ focus }) => `mono flex cursor-pointer items-start gap-2 px-3 py-2 ${focus ? "bg-raised" : ""}`}
-          >
-            {({ selected: on }) => (
-              <>
-                <Check size={13} aria-hidden className="mt-0.5 shrink-0 text-accent" style={{ opacity: on ? 1 : 0 }} />
-                <span className="min-w-0 flex-1">
-                  <span className={`block truncate ${on ? "text-accent" : "text-ink"}`}>{branch.name}</span>
-                  <span className="block truncate text-muted">{branchNote(branch, current)}</span>
-                </span>
-              </>
-            )}
-          </ListboxOption>
-        ))}
+        {branches.map((ref) => <RefOption key={`branch:${ref.name}`} item={ref} current={current} />)}
+        {/* A tag and a branch can share a name; the option's value is the
+            name, which the changes route resolves branch-first, so a tag
+            shadowed that way is listed but selects the branch. */}
+        {tags.length > 0 ? (
+          <div className="label flex items-center gap-1.5 border-t border-line px-3 pt-2 pb-1">
+            <Tag size={11} aria-hidden /> tags
+          </div>
+        ) : null}
+        {tags.map((ref) => <RefOption key={`tag:${ref.name}`} item={ref} current={current} />)}
         {loading ? (
           <div className="mono flex items-center gap-2 border-t border-line px-3 py-2 text-muted" role="status">
-            <LoaderCircle size={13} aria-hidden className="animate-spin" /> Loading {repo?.provider === "gitlab" ? "GitLab" : "GitHub"} branches…
+            <LoaderCircle size={13} aria-hidden className="animate-spin" /> Loading {repo?.provider === "gitlab" ? "GitLab" : "GitHub"} branches and tags…
           </div>
         ) : error ? (
           <div className="border-t border-line px-3 py-2 text-sm">
@@ -159,5 +148,24 @@ export function BranchPicker({ compact = false }: { compact?: boolean }) {
         ) : null}
       </ListboxOptions>
     </Listbox>
+  );
+}
+
+function RefOption({ item, current }: { item: ForgeRef; current: string }) {
+  return (
+    <ListboxOption
+      value={item.name}
+      className={({ focus }) => `mono flex cursor-pointer items-start gap-2 px-3 py-2 ${focus ? "bg-raised" : ""}`}
+    >
+      {({ selected: on }) => (
+        <>
+          <Check size={13} aria-hidden className="mt-0.5 shrink-0 text-accent" style={{ opacity: on ? 1 : 0 }} />
+          <span className="min-w-0 flex-1">
+            <span className={`block truncate ${on ? "text-accent" : "text-ink"}`}>{item.name}</span>
+            <span className="block truncate text-muted">{refNote(item, current)}</span>
+          </span>
+        </>
+      )}
+    </ListboxOption>
   );
 }
