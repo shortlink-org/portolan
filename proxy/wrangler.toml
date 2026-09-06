@@ -3,7 +3,7 @@ main = "src/index.js"
 compatibility_date = "2026-09-01"
 
 [vars]
-MODEL = "gemini-2.5-flash"
+MODEL = "gemini-3.6-flash"
 ALLOWED_ORIGINS = "https://shortlink-org.github.io,http://localhost:5173"
 
 [[ratelimits]]
