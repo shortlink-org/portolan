@@ -32,6 +32,7 @@ import { Settings } from "../pages/Settings";
 import { Changes } from "../pages/Changes";
 import { RegistryIndex } from "../pages/RegistryIndex";
 import { ModulePage } from "../pages/ModulePage";
+import { ExternalPage } from "../pages/ExternalPage";
 import { NotFoundPage } from "../pages/NotFound";
 import { CatalogFailure } from "../pages/CatalogFailure";
 import { catalogError } from "../data";
@@ -73,6 +74,7 @@ function AppRoutes() {
       <Route path="/problems" element={<Problems />} />
       <Route path="/settings" element={<Settings />} />
       <Route path="/changes" element={<Changes />} />
+      <Route path="/externals/:external" element={<ExternalPage />} />
       {/* A module sits at the estate level, not under a service: it is
           published by one and read by four, so hanging it off a service would
           put one entity at four URLs. */}

@@ -151,6 +151,15 @@ describe("routes", () => {
     expect(allCatalogPaths(catalog)).toContain(paths.changes());
   });
 
+  it("gives every external contract one routable page", () => {
+    for (const external of catalog.externals ?? []) {
+      const path = paths.external(external.slug);
+      expect(path).toBe(`/externals/${external.slug}`);
+      expect(isRoutable(path)).toBe(true);
+      expect(allCatalogPaths(catalog)).toContain(path);
+    }
+  });
+
   it("builds deep links to steps, carrying the step as a selection", () => {
     const link = paths.flowStep("cart-checkout", "s6");
     expect(link).toBe("/flows/cart-checkout#sel=flow-step:cart-checkout%2Fs6");

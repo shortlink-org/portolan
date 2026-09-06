@@ -40,6 +40,7 @@ export const paths = {
   problems: () => "/problems",
   changes: () => "/changes",
   settings: () => "/settings",
+  external: (slug: string) => `/externals/${slug}`,
   registry: () => "/registry",
   /**
    * A schema module sits at the estate level, not under a service.
@@ -331,6 +332,7 @@ const ROUTES: RegExp[] = [
   /^\/problems$/,
   /^\/changes$/,
   /^\/settings$/,
+  /^\/externals\/[^/]+$/,
   /^\/map$/,
   /^\/adrs\/[^/]+$/,
   /^\/c\/[^/]+$/,
@@ -367,6 +369,9 @@ export function allCatalogPaths(catalog: Catalog): string[] {
   ];
   for (const module of catalog.modules ?? []) {
     out.push(paths.module(module.slug));
+  }
+  for (const external of catalog.externals ?? []) {
+    out.push(paths.external(external.slug));
   }
   for (const flow of catalog.flows) out.push(paths.flow(flow.slug));
   for (const adr of catalog.adrs) out.push(paths.adr(adr.slug));
