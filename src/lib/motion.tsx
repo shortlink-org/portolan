@@ -22,7 +22,7 @@ import {
   MotionConfig,
   m,
 } from "motion/react";
-import type { Target, TargetAndTransition, Transition } from "motion/react";
+import type { TargetAndTransition, Transition } from "motion/react";
 
 export { AnimatePresence, LayoutGroup, m };
 
@@ -71,7 +71,7 @@ export const transitions = {
  * carried one could not be spread onto it.
  */
 interface Presence {
-  initial: Target;
+  initial: TargetAndTransition;
   animate: TargetAndTransition;
   exit: TargetAndTransition;
 }
@@ -113,13 +113,54 @@ export function slideFrom(x: number | string): Presence {
 
 /**
  * A branch that opens: height from nothing to whatever its children need, and
- * back. `overflow: hidden` is the caller's, on the same element.
+ * back. Overflow is the component's, below: hidden while the height moves,
+ * visible once it has landed.
  */
 export const unfold: Presence = {
   initial: { height: 0, opacity: 0 },
   animate: { height: "auto", opacity: 1, transition: transitions.panel },
   exit: { height: 0, opacity: 0, transition: transitions.panel },
 };
+
+/**
+ * `unfold`, as a component: the children are there while `open`, and arrive
+ * and leave on the preset. `initial={false}` because a tree restored from the
+ * last session must not open every branch on the way in.
+ */
+export function Unfold({
+  open,
+  children,
+}: {
+  open: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <AnimatePresence initial={false}>
+      {open ? <UnfoldBox>{children}</UnfoldBox> : null}
+    </AnimatePresence>
+  );
+}
+
+/**
+ * Overflow is hidden only while the box is moving. Open and at rest it is
+ * visible, so the focus ring on the first or last row inside is not clipped
+ * by the box that grew to hold it. (`transitionEnd` on the target would say
+ * the same, but Motion 13 applies it only to a static render, not after the
+ * animation it was meant to end.)
+ */
+function UnfoldBox({ children }: { children: ReactNode }) {
+  const [moving, setMoving] = useState(false);
+  return (
+    <m.div
+      {...unfold}
+      style={{ overflow: moving ? "hidden" : "visible" }}
+      onAnimationStart={() => setMoving(true)}
+      onAnimationComplete={() => setMoving(false)}
+    >
+      {children}
+    </m.div>
+  );
+}
 
 /* ---------------------------------------------------------------------------
    The provider. Once, at the root.

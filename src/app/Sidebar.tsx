@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, NavLink, useLocation, useMatch } from "react-router";
+import { DURATION, Unfold } from "../lib/motion";
 import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import {
   Check,
@@ -454,7 +455,7 @@ function Group({
           {label ?? KIND_GROUP_LABEL[kind]} ({count})
         </span>
       </button>
-      {open ? children : null}
+      <Unfold open={open}>{children}</Unfold>
     </>
   );
 }
@@ -510,7 +511,7 @@ function Section({
         {title}
         <span className="sb-count">{count}</span>
       </button>
-      {open ? children : null}
+      <Unfold open={open}>{children}</Unfold>
     </div>
   );
 }
@@ -742,7 +743,7 @@ function FlowGroupNode({
         </span>
         <span className="sb-count">{group.entries.length}</span>
       </button>
-      {open ? (
+      <Unfold open={open}>
         <>
           {shown.map((entry) => (
             <FlowRow key={entry.flow.slug} entry={entry} />
@@ -758,7 +759,7 @@ function FlowGroupNode({
             </NavLink>
           ) : null}
         </>
-      ) : null}
+      </Unfold>
     </div>
   );
 }
@@ -1221,17 +1222,25 @@ export function Sidebar({
 
   // Scroll only when the row is actually out of sight: yanking the tree under
   // a reader who can already see the row is worse than doing nothing.
+  //
+  // Measured one panel duration later, not now: "reveal" opens the row's
+  // ancestors in the same update, and a branch takes that long to unfold to
+  // its height. Measured at once, the row is inside a box still growing, and
+  // where it is is not where it will be.
   useEffect(() => {
-    const scroller = scrollerRef.current;
-    if (!selection || !scroller) return;
-    const row = scroller.querySelector<HTMLElement>(
-      `[data-sel="${CSS.escape(selection.id)}"]`,
-    );
-    if (!row) return;
-    const a = row.getBoundingClientRect();
-    const b = scroller.getBoundingClientRect();
-    if (a.top >= b.top && a.bottom <= b.bottom) return;
-    row.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    const timer = setTimeout(() => {
+      const scroller = scrollerRef.current;
+      if (!selection || !scroller) return;
+      const row = scroller.querySelector<HTMLElement>(
+        `[data-sel="${CSS.escape(selection.id)}"]`,
+      );
+      if (!row) return;
+      const a = row.getBoundingClientRect();
+      const b = scroller.getBoundingClientRect();
+      if (a.top >= b.top && a.bottom <= b.bottom) return;
+      row.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }, DURATION.panel * 1000);
+    return () => clearTimeout(timer);
   }, [selection, collapsed, hidden, sections, groups]);
 
   if (railed) return <IconRail onExpand={() => onExpand?.()} />;
@@ -1371,8 +1380,8 @@ export function Sidebar({
                     {context.name}
                   </span>
                 </Branch>
-                {copen
-                  ? services.map(
+                <Unfold open={copen}>
+                  {services.map(
                       ({ service, aggregates, endpoints, stores }) => {
                         const skey = `s:${service.id}`;
                         const sopen = filtering || isOpen(skey, true);
@@ -1391,8 +1400,8 @@ export function Sidebar({
                                 {service.name}
                               </span>
                             </Branch>
-                            {sopen
-                              ? aggregates.map((match) => (
+                            <Unfold open={sopen}>
+                            {aggregates.map((match) => (
                                   <AggregateNode
                                     key={match.aggregate.id}
                                     match={match}
@@ -1403,8 +1412,7 @@ export function Sidebar({
                                     toggle={toggle}
                                     shows={shows}
                                   />
-                                ))
-                              : null}
+                                ))}
                             {/* Between the model and where it is kept: an
                               endpoint is how the outside reaches the first and
                               eventually moves the second. Methods are listed
@@ -1412,9 +1420,7 @@ export function Sidebar({
                               an operationId is unique across a document, so
                               the extra level would carry no information and
                               cost a line of indent in a narrow tree. */}
-                            {sopen &&
-                            shows("endpoint") &&
-                            endpoints.length > 0 ? (
+                            {shows("endpoint") && endpoints.length > 0 ? (
                               <Group
                                 kind="endpoint"
                                 label="api"
@@ -1448,7 +1454,7 @@ export function Sidebar({
                               before where it is kept. Closed by default: this
                               is the answer to a question about deployment, not
                               the one the tree is usually open for. */}
-                            {sopen && shows("table") ? (
+                            {shows("table") ? (
                               <Group
                                 kind="table"
                                 label="data"
@@ -1474,11 +1480,12 @@ export function Sidebar({
                                 ))}
                               </Group>
                             ) : null}
+                            </Unfold>
                           </div>
                         );
                       },
-                    )
-                  : null}
+                    )}
+                </Unfold>
               </div>
             );
           })}
@@ -1812,7 +1819,7 @@ function AggregateNode({
         </span>
       </Branch>
 
-      {aopen ? (
+      <Unfold open={aopen}>
         <>
           {shows("vo") ? (
             <Group
@@ -1913,7 +1920,7 @@ function AggregateNode({
             </Group>
           ) : null}
         </>
-      ) : null}
+      </Unfold>
     </div>
   );
 }
