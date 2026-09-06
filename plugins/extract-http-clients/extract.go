@@ -45,7 +45,8 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	}
 	sort.Slice(consumes, func(i, j int) bool { return consumes[i].ID < consumes[j].ID })
 
-	flows := flowsOfGroups(serviceID, opts.Context, result.Flows, opts)
+	endpointFlows, covered := flowsOfEndpoints(serviceID, opts.Context, result.EndpointFlows, opts)
+	flows := append(endpointFlows, flowsOfGroupsExcept(serviceID, opts.Context, result.Flows, opts, covered)...)
 	if len(result.Calls) == 0 {
 		b.Warn(in.Root, "no outbound net/http, oapi-codegen, or SOAP calls were found")
 	}
@@ -176,10 +177,20 @@ func flowsOf(serviceID, context string, calls []gohttp.Call, opts Options) []cat
 }
 
 func flowsOfGroups(serviceID, context string, groups []gohttp.FlowGroup, opts Options) []catalog.Flow {
+	return flowsOfGroupsExcept(serviceID, context, groups, opts, nil)
+}
+
+func flowsOfGroupsExcept(serviceID, context string, groups []gohttp.FlowGroup, opts Options, excluded map[string]bool) []catalog.Flow {
 	var flows []catalog.Flow
 	for _, flowGroup := range groups {
+		if excluded[flowGroup.Function] {
+			continue
+		}
 		function := flowGroup.Function
 		group := flowGroup.Calls
+		if len(group) == 0 {
+			continue
+		}
 		participants := []catalog.Participant{{ID: serviceID, Kind: catalog.ParticipantService, Context: &context}}
 		participantSeen := map[string]bool{serviceID: true}
 		callSteps := make([]*catalog.Step, 0, len(group))
@@ -241,6 +252,81 @@ func flowsOfGroups(serviceID, context string, groups []gohttp.FlowGroup, opts Op
 		})
 	}
 	return flows
+}
+
+func flowsOfEndpoints(serviceID, context string, endpoints []gohttp.EndpointFlow, opts Options) ([]catalog.Flow, map[string]bool) {
+	covered := map[string]bool{}
+	flows := make([]catalog.Flow, 0, len(endpoints))
+	for _, endpoint := range endpoints {
+		actorID := serviceID + ".api-client"
+		participants := []catalog.Participant{
+			{ID: actorID, Kind: catalog.ParticipantActor, Label: "API client"},
+			{ID: serviceID, Kind: catalog.ParticipantService, Context: &context},
+		}
+		participantSeen := map[string]bool{actorID: true, serviceID: true}
+		branches := make([]catalog.AltBranch, 0, len(endpoint.Branches))
+		stepIndex := 2
+		for _, branch := range endpoint.Branches {
+			covered[branch.Function] = true
+			steps := catalog.FlowNodes{}
+			for _, call := range branch.Calls {
+				peer, status := peerOf(call, opts)
+				participant := participantOf(peer, call, opts)
+				if !participantSeen[participant.ID] {
+					participants = append(participants, participant)
+					participantSeen[participant.ID] = true
+				}
+				note := callNote(call)
+				if len(call.Chain) > 1 {
+					chain := "via " + strings.Join(call.Chain, " → ")
+					if note == "" {
+						note = chain
+					} else {
+						note += "; " + chain
+					}
+				}
+				steps = append(steps, &catalog.Step{
+					Type: "step", ID: "s" + strconv.Itoa(stepIndex), From: serviceID, To: participant.ID,
+					Kind: catalog.StepRPC, Ref: call.ID, Label: callLabel(call), Status: status,
+					Note: note, Line: call.Source.String(),
+				})
+				stepIndex++
+			}
+			if len(steps) == 0 {
+				provider := filepath.Base(branch.Provider)
+				steps = append(steps, &catalog.Step{
+					Type: "step", ID: "s" + strconv.Itoa(stepIndex), From: serviceID, To: serviceID,
+					Kind: catalog.StepCall, Label: title(provider) + " " + title(branch.Operation),
+					Status: catalog.StatusDeclared,
+					Note:   "provider implementation is source-backed; its outbound transport was not resolved in the analyzed source",
+					Line:   branch.Source.String(),
+				})
+				stepIndex++
+			}
+			branches = append(branches, catalog.AltBranch{
+				Title: "connector = \"" + branch.Condition + "\"", Steps: steps,
+			})
+		}
+		steps := catalog.FlowNodes{&catalog.Step{
+			Type: "step", ID: "s1", From: actorID, To: serviceID,
+			Kind: catalog.StepRPC, Label: strings.TrimSpace(endpoint.Method + " " + endpoint.Path),
+			Status: catalog.StatusDeclared, Line: endpoint.Source.String(),
+		}}
+		if len(branches) == 1 {
+			steps = append(steps, branches[0].Steps...)
+		} else {
+			steps = append(steps, &catalog.Alt{Type: "alt", ID: "providers", Branches: branches})
+		}
+		name := strings.TrimSpace(endpoint.Method + " " + endpoint.Path)
+		flows = append(flows, catalog.Flow{
+			ID:      "flow." + serviceID + ".endpoint." + slug(name),
+			Slug:    serviceID + "-endpoint-" + slug(name),
+			Name:    name + " → provider APIs",
+			Summary: "Source-backed request path from the inbound endpoint through provider selection to outbound APIs.",
+			Source:  endpoint.Source.String(), Owner: context, Participants: participants, Steps: steps,
+		})
+	}
+	return flows, covered
 }
 
 func flowName(function string) string {

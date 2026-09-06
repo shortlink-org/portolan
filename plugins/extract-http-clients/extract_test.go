@@ -324,6 +324,139 @@ func Fetch() error {
 	t.Fatalf("Fetch flow missing: %+v", got.Flows)
 }
 
+func TestBuildsEndpointRootedProviderFlowFromSource(t *testing.T) {
+	root := t.TempDir()
+	writeHTTPFixture(t, root, "go.mod", "module example.com/travel\n")
+	writeHTTPFixture(t, root, "app/main.go", `package app
+import (
+  "example.com/travel/actions/search"
+  "example.com/travel/connector"
+)
+type Router struct{}
+func (*Router) POST(string, func()) {}
+type Requester interface { ConnExec(connector.API) }
+func Start(r *Router) {
+  r.POST("/search", func() { SearchAction() })
+  app := App{}
+  r.POST("/direct-search", app.DirectSearch)
+}
+type App struct{}
+func (App) DirectSearch() {
+  conn := connector.BuildConnector("runtime-name")
+  conn.Search()
+}
+func SearchAction() {
+  request := &search.Request{}
+  ActionFlow(request)
+}
+func ActionFlow(request Requester) {
+  conn := connector.BuildConnector("runtime-name")
+  request.ConnExec(conn)
+}
+`)
+	writeHTTPFixture(t, root, "actions/search/request.go", `package search
+import "example.com/travel/connector"
+type Request struct{}
+func (*Request) ConnExec(conn connector.API) { conn.Search() }
+`)
+	writeHTTPFixture(t, root, "connector/factory.go", `package connector
+import (
+  "example.com/travel/provider/alpha"
+  "example.com/travel/provider/beta"
+  "example.com/travel/provider/opaque"
+)
+type API interface { Search() }
+func BuildConnector(name string) API {
+  switch name {
+  case "alpha":
+    return alpha.New()
+  case "beta":
+    client := beta.New()
+    return client
+  case "opaque":
+    return opaque.New()
+  default:
+    return nil
+  }
+}
+`)
+	writeHTTPFixture(t, root, "provider/opaque/client.go", `package opaque
+type Connector struct{}
+func New() *Connector { return &Connector{} }
+func (*Connector) Search() {}
+`)
+	writeHTTPFixture(t, root, "provider/alpha/client.go", `package alpha
+import "net/http"
+type Connector struct{}
+func New() *Connector { return &Connector{} }
+func (*Connector) Search() { _, _ = http.Get("https://alpha.example/v1/search") }
+`)
+	writeHTTPFixture(t, root, "provider/beta/client.go", `package beta
+import "net/http"
+type Connector struct{}
+func New() *Connector { return &Connector{} }
+func (*Connector) Search() { _, _ = http.Get("https://beta.example/v2/offers") }
+`)
+	writeHTTPFixture(t, root, "jobs/refresh.go", `package jobs
+import "net/http"
+func Refresh() { _, _ = http.Get("https://cache.example/refresh") }
+`)
+
+	resp, err := extract(plugin.Input{Root: root}, Options{Context: "travel", Service: "search"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got catalog.Catalog
+	if err := json.Unmarshal([]byte(resp.Files[0].Contents), &got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Flows) != 3 {
+		t.Fatalf("flows = %+v", got.Flows)
+	}
+	var endpoint, direct, background *catalog.Flow
+	for index := range got.Flows {
+		flow := &got.Flows[index]
+		if flow.Name == "POST /search → provider APIs" {
+			endpoint = flow
+		}
+		if flow.Name == "POST /direct-search → provider APIs" {
+			direct = flow
+		}
+		if flow.Name == "Refresh → outbound APIs" {
+			background = flow
+		}
+		if strings.Contains(flow.Name, "Connector Search") {
+			t.Fatalf("covered provider fragment was retained: %+v", flow)
+		}
+	}
+	if endpoint == nil || direct == nil || background == nil {
+		t.Fatalf("endpoint = %+v, direct = %+v, background = %+v", endpoint, direct, background)
+	}
+	if len(endpoint.Steps) != 2 {
+		t.Fatalf("steps = %+v", endpoint.Steps)
+	}
+	inbound, ok := endpoint.Steps[0].(*catalog.Step)
+	if !ok || inbound.Label != "POST /search" || inbound.Line != "app/main.go:10" {
+		t.Fatalf("inbound = %+v", endpoint.Steps[0])
+	}
+	providers, ok := endpoint.Steps[1].(*catalog.Alt)
+	if !ok || len(providers.Branches) != 3 {
+		t.Fatalf("providers = %+v", endpoint.Steps[1])
+	}
+	if providers.Branches[0].Title != `connector = "alpha"` || providers.Branches[1].Title != `connector = "beta"` || providers.Branches[2].Title != `connector = "opaque"` {
+		t.Fatalf("branches = %+v", providers.Branches)
+	}
+	alphaStep := providers.Branches[0].Steps[0].(*catalog.Step)
+	betaStep := providers.Branches[1].Steps[0].(*catalog.Step)
+	if alphaStep.Label != "GET /v1/search" || betaStep.Label != "GET /v2/offers" {
+		t.Fatalf("provider steps = %+v / %+v", alphaStep, betaStep)
+	}
+	opaqueStep := providers.Branches[2].Steps[0].(*catalog.Step)
+	if opaqueStep.Kind != catalog.StepCall || opaqueStep.Label != "Opaque Search" || !strings.Contains(opaqueStep.Note, "outbound transport was not resolved") {
+		t.Fatalf("opaque step = %+v", opaqueStep)
+	}
+}
+
 func TestOnlySourceBackedComplementsBecomeAnAlt(t *testing.T) {
 	context := "edge"
 	calls := []gohttp.Call{

@@ -56,6 +56,12 @@ deployment/build manifests without executing project code, creates a `system`,
 (`application`, `worker`, `job`, `cli`, `library`, and so on) and technologies.
 Contract and messaging extractors then add OpenAPI, AsyncAPI, GraphQL, proto,
 SQL, River, Watermill and outbound HTTP/SOAP facts to that same component.
+For Go services, the HTTP client extractor also joins common router
+registrations to handlers, interface calls, string-keyed factory branches and
+concrete providers. The resulting flow starts at the inbound endpoint and fans
+out by the provider choices proved by source; when a provider's transport lives
+in another module, the flow stops at that implementation and says that the
+outbound transport could not be resolved.
 
 The older JSON keys `contexts` and `services` remain the wire format, so old
 catalogs need no migration. Optional `kind` fields say when those nodes should

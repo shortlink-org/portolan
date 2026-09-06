@@ -90,11 +90,29 @@ type FlowGroup struct {
 	Source   Source
 }
 
-type Result struct {
+type EndpointFlow struct {
+	Method   string
+	Path     string
+	Handler  string
+	Source   Source
+	Branches []EndpointBranch
+}
+
+type EndpointBranch struct {
+	Condition string
+	Provider  string
+	Operation string
+	Function  string
 	Calls     []Call
-	Contracts []Contract
-	Flows     []FlowGroup
-	Warnings  []string
+	Source    Source
+}
+
+type Result struct {
+	Calls         []Call
+	Contracts     []Contract
+	Flows         []FlowGroup
+	EndpointFlows []EndpointFlow
+	Warnings      []string
 }
 
 type parsedFile struct {
@@ -210,7 +228,8 @@ func Analyze(root string) (Result, error) {
 	sort.Strings(s.warnings)
 	flows := s.flowGroups(calls)
 	calls = callsSpecializedByFlows(calls, flows)
-	return Result{Calls: calls, Contracts: s.contracts, Flows: flows, Warnings: s.warnings}, nil
+	endpointFlows := s.endpointFlows(flows)
+	return Result{Calls: calls, Contracts: s.contracts, Flows: flows, EndpointFlows: endpointFlows, Warnings: s.warnings}, nil
 }
 
 func callsSpecializedByFlows(direct []Call, flows []FlowGroup) []Call {
