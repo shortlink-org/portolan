@@ -1,0 +1,12 @@
+name = "portolan-chat"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+[vars]
+MODEL = "gemini-2.5-flash"
+ALLOWED_ORIGINS = "https://shortlink-org.github.io,http://localhost:5173"
+
+[[ratelimits]]
+name = "CHAT_LIMIT"
+namespace_id = "1001"
+simple = { limit = 10, period = 60 }
