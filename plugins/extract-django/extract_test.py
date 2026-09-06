@@ -130,6 +130,14 @@ class Reading(unittest.TestCase):
         note = [s for s in steps if s["type"] == "step" and "for each" in s.get("note", "")]
         self.assertEqual(note[0]["note"], "in one transaction, for each line.")
 
+    def test_an_enqueue_is_a_hop_to_celery_and_on_commit_is_its_note(self):
+        flow = {f["slug"]: f for f in self.fragment["flows"]}["billing-invoice-issue"]
+        self.assertIn("celery", [p["id"] for p in flow["participants"]])
+        step = [s for s in flow["steps"] if s["type"] == "step" and s["label"] == "enqueue send_invoice_email"][0]
+        self.assertEqual(step["to"], "celery")
+        self.assertEqual(step["note"], "in one transaction, after the transaction commits.")
+        self.assertTrue(step["line"].endswith("invoices/services.py:31"))
+
     def test_a_queryset_chain_makes_its_query_where_it_is_built(self):
         steps = {f["slug"]: f["steps"] for f in self.fragment["flows"]}["billing-invoice-retrieve"]
         self.assertEqual([s["label"] for s in steps], ["invoice_retrieve", "Invoice.objects.filter"])

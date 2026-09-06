@@ -1,6 +1,6 @@
 # Invoice issue
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
 
 - **Id:** `flow.billing-invoice-issue`
 - **Owner:** [shop](../shop/README.md)
@@ -10,13 +10,14 @@ Confirms the session, freezes the invoice and asks the customer to pay.
 
 ## Participants
 
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `client` | actor | — |
-| `shop.billing` | service | [shop](../shop/README.md) |
-| `auth.auth` | service | [auth](../auth/README.md) |
-| `billing-pg` | store | [shop](../shop/README.md) |
-| `bus` | broker | — |
+| Participant | Kind | Context | Label |
+| --- | --- | --- | --- |
+| `client` | actor | — | — |
+| `shop.billing` | service | [shop](../shop/README.md) | — |
+| `auth.auth` | service | [auth](../auth/README.md) | — |
+| `billing-pg` | store | [shop](../shop/README.md) | — |
+| `celery` | broker | — | Celery |
+| `bus` | broker | — | — |
 
 ## Sequence
 
@@ -27,12 +28,15 @@ sequenceDiagram
     participant p1 as shop.billing
     participant p2 as auth.auth
     participant p3 as billing-pg
-    participant p4 as bus
+    participant p4 as Celery
+    participant p5 as bus
     p0->>p1: invoice_issue → InvoiceId
     p1->>p2: validateSession → SessionInfo
     p1->>p3: Invoice.objects.get
     p1->>p3: Invoice.save
-    p1-)p4: InvoiceIssued
+    p1->>p4: enqueue send_invoice_email
+    p1->>p4: enqueue remind_unpaid_invoice
+    p1-)p5: InvoiceIssued
 ```
 
 ## Steps
@@ -50,5 +54,11 @@ sequenceDiagram
 4. **shop.billing** → **billing-pg** — Invoice.save
    status: declared · [`examples/shop/billing/invoices/services.py:46`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L46) · in one transaction.
 <a id="step-s5"></a>
-5. **shop.billing** → **bus** — InvoiceIssued
+5. **shop.billing** → **celery** — enqueue send_invoice_email
+   status: declared · [`examples/shop/billing/invoices/services.py:49`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L49) · in one transaction, after the transaction commits.
+<a id="step-s6"></a>
+6. **shop.billing** → **celery** — enqueue remind_unpaid_invoice
+   status: declared · [`examples/shop/billing/invoices/services.py:50`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L50) · in one transaction, after the transaction commits.
+<a id="step-s7"></a>
+7. **shop.billing** → **bus** — InvoiceIssued
    [`shop.billing.invoice.InvoiceIssued`](../shop/billing/aggregates/invoice.md#event-shop-billing-invoice-invoiceissued) · status: declared · [`examples/shop/billing/invoices/services.py:51`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L51)

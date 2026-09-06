@@ -344,7 +344,7 @@
           "kind": "call",
           "label": "Invoice.objects.get",
           "status": "declared",
-          "line": "plugins/extract-django/testdata/billing/invoices/services.py:45"
+          "line": "plugins/extract-django/testdata/billing/invoices/services.py:47"
         },
         {
           "type": "step",
@@ -354,7 +354,7 @@
           "kind": "call",
           "label": "Invoice.save",
           "status": "declared",
-          "line": "plugins/extract-django/testdata/billing/invoices/services.py:47"
+          "line": "plugins/extract-django/testdata/billing/invoices/services.py:49"
         },
         {
           "type": "step",
@@ -365,7 +365,7 @@
           "label": "InvoiceVoided",
           "status": "declared",
           "ref": "shop.billing.invoice.InvoiceVoided",
-          "line": "plugins/extract-django/testdata/billing/invoices/services.py:48"
+          "line": "plugins/extract-django/testdata/billing/invoices/services.py:50"
         }
       ]
     },
@@ -398,6 +398,12 @@
           "context": "shop"
         },
         {
+          "id": "celery",
+          "kind": "broker",
+          "context": null,
+          "label": "Celery"
+        },
+        {
           "id": "bus",
           "kind": "broker",
           "context": null
@@ -422,7 +428,7 @@
           "kind": "call",
           "label": "Invoice.objects.get",
           "status": "declared",
-          "line": "plugins/extract-django/testdata/billing/invoices/services.py:14"
+          "line": "plugins/extract-django/testdata/billing/invoices/services.py:15"
         },
         {
           "type": "alt",
@@ -440,7 +446,7 @@
                   "label": "createQuote",
                   "status": "declared",
                   "ref": "pricing.v1.Quotes/createQuote",
-                  "line": "plugins/extract-django/testdata/billing/invoices/services.py:18"
+                  "line": "plugins/extract-django/testdata/billing/invoices/services.py:19"
                 }
               ]
             }
@@ -455,7 +461,7 @@
           "label": "InvoiceLine.objects.create",
           "status": "declared",
           "note": "in one transaction, for each line.",
-          "line": "plugins/extract-django/testdata/billing/invoices/services.py:22"
+          "line": "plugins/extract-django/testdata/billing/invoices/services.py:23"
         },
         {
           "type": "step",
@@ -466,18 +472,29 @@
           "label": "Invoice.save",
           "status": "declared",
           "note": "in one transaction.",
-          "line": "plugins/extract-django/testdata/billing/invoices/services.py:29"
+          "line": "plugins/extract-django/testdata/billing/invoices/services.py:30"
         },
         {
           "type": "step",
           "id": "s7",
+          "from": "shop.billing",
+          "to": "celery",
+          "kind": "call",
+          "label": "enqueue send_invoice_email",
+          "status": "declared",
+          "note": "in one transaction, after the transaction commits.",
+          "line": "plugins/extract-django/testdata/billing/invoices/services.py:31"
+        },
+        {
+          "type": "step",
+          "id": "s8",
           "from": "shop.billing",
           "to": "bus",
           "kind": "event",
           "label": "InvoiceIssued",
           "status": "declared",
           "ref": "shop.billing.invoice.InvoiceIssued",
-          "line": "plugins/extract-django/testdata/billing/invoices/services.py:30"
+          "line": "plugins/extract-django/testdata/billing/invoices/services.py:32"
         }
       ]
     },
@@ -524,7 +541,7 @@
           "kind": "call",
           "label": "Invoice.objects.filter",
           "status": "declared",
-          "line": "plugins/extract-django/testdata/billing/invoices/services.py:53"
+          "line": "plugins/extract-django/testdata/billing/invoices/services.py:55"
         }
       ]
     },
@@ -572,7 +589,7 @@
           "kind": "call",
           "label": "Invoice.objects.get",
           "status": "declared",
-          "line": "plugins/extract-django/testdata/billing/invoices/services.py:36"
+          "line": "plugins/extract-django/testdata/billing/invoices/services.py:38"
         },
         {
           "type": "step",
@@ -582,7 +599,7 @@
           "kind": "call",
           "label": "Invoice.save",
           "status": "declared",
-          "line": "plugins/extract-django/testdata/billing/invoices/services.py:38"
+          "line": "plugins/extract-django/testdata/billing/invoices/services.py:40"
         },
         {
           "type": "step",
@@ -593,7 +610,7 @@
           "label": "InvoicePaid",
           "status": "declared",
           "ref": "shop.billing.invoice.InvoicePaid",
-          "line": "plugins/extract-django/testdata/billing/invoices/services.py:39"
+          "line": "plugins/extract-django/testdata/billing/invoices/services.py:41"
         }
       ]
     }

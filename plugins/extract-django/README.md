@@ -27,6 +27,7 @@ resolves them without a type checker.
   views.py                    DRF views: a ViewSet's actions, an @api_view function
   urls.py                     the router registration, which names the endpoints
   handlers.py                 policies: `@receiver(signal)`, also read from signals.py
+  tasks.py                    Celery tasks: what runs later; an enqueue of one is a hop
   clients/<peer>/
     openapi.yaml              the peer's document, vendored
     client.py                 the class that calls it
@@ -108,7 +109,12 @@ right. `Invoice.objects.get(…)` is a hop into the store, and so are
 where the line is - and a `save()` or `delete()` on something the ORM handed
 back; an event handed to anything — a signal's `send`, a project's own
 `publish` — is the event leaving for the bus; a call on a vendored client is an
-rpc to the peer. A call into `services.py` is followed, two deep at most, and
+rpc to the peer; a `.delay()` or `.apply_async()` on a function decorated
+`@shared_task` or `@app.task`, directly or through `.s()`, is a hop to the
+`celery` lane — one lane, because which queue the task lands on is a fact about
+the routes, and the routes are `extract-celery`'s to read — and
+`transaction.on_commit(…)` around it, as a lambda or a `partial`, is the note
+that it waits for the commit. A call into `services.py` is followed, two deep at most, and
 past that the call itself is the step. `if` becomes an alt when some arm holds
 a hop, and a branch ending in a `return` or a `raise` is terminal; a `for`, a
 `while`, a `with transaction.atomic()` and an `except` are a note on the steps
@@ -140,8 +146,9 @@ inventing the hash would be a name no database has.
 ## What it does not read
 
 Named here rather than left to be discovered: **migrations** (the models are
-the schema; a migration is how it got there), **Celery tasks** and `.delay()`,
-**admin**, **serializers**, **templates**, **middleware**, **management
+the schema; a migration is how it got there), **the bodies of Celery tasks**
+and **the queues they land on** (an enqueue is a hop, and the rest is
+`extract-celery`'s), **admin**, **serializers**, **templates**, **middleware**, **management
 commands**, **signals connected outside a `@receiver`**, and a **many-to-many**
 field's join table — which is reported, since Django makes a table there that
 this does not name.

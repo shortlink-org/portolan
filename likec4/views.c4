@@ -1011,6 +1011,14 @@ views {
       color declared  line dashed  head none
       notes 'in one transaction. — examples/shop/billing/invoices/services.py:46'
     }
+    shop.billing -> celery 'enqueue send_invoice_email' {
+      color declared  line dashed  head none
+      notes 'in one transaction, after the transaction commits. — examples/shop/billing/invoices/services.py:49'
+    }
+    shop.billing -> celery 'enqueue remind_unpaid_invoice' {
+      color declared  line dashed  head none
+      notes 'in one transaction, after the transaction commits. — examples/shop/billing/invoices/services.py:50'
+    }
     shop.billing -> bus 'InvoiceIssued' {
       color declared  line dashed  head onormal
       notes 'examples/shop/billing/invoices/services.py:51'

@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-09-05T03:58:04Z",
-  "commit": "4577548",
+  "generatedAt": "2026-09-06T17:09:23+07:00",
+  "commit": "b077ef9",
   "contexts": [
     {
       "id": "shop",
@@ -504,6 +504,12 @@
           "context": "shop"
         },
         {
+          "id": "celery",
+          "kind": "broker",
+          "context": null,
+          "label": "Celery"
+        },
+        {
           "id": "bus",
           "kind": "broker",
           "context": null
@@ -555,6 +561,28 @@
         {
           "type": "step",
           "id": "s5",
+          "from": "shop.billing",
+          "to": "celery",
+          "kind": "call",
+          "label": "enqueue send_invoice_email",
+          "status": "declared",
+          "note": "in one transaction, after the transaction commits.",
+          "line": "examples/shop/billing/invoices/services.py:49"
+        },
+        {
+          "type": "step",
+          "id": "s6",
+          "from": "shop.billing",
+          "to": "celery",
+          "kind": "call",
+          "label": "enqueue remind_unpaid_invoice",
+          "status": "declared",
+          "note": "in one transaction, after the transaction commits.",
+          "line": "examples/shop/billing/invoices/services.py:50"
+        },
+        {
+          "type": "step",
+          "id": "s7",
           "from": "shop.billing",
           "to": "bus",
           "kind": "event",

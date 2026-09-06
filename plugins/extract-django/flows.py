@@ -19,10 +19,19 @@ from clients import Client
 from domain import Aggregate, ModelDef
 from ids import pascal, slug
 from operations import UseCase
-from source import Module, Project, assigned, doc, dotted, methods
+from source import Module, Project, assigned, decorator_named, doc, dotted, methods
 
 LANE_CLIENT = "client"
 LANE_BUS = "bus"
+# One lane for everything handed to Celery. Which queue a task lands on is a
+# fact about the routes, and the routes are `extract-celery`'s to read; this
+# reader says only that the work left the request.
+LANE_CELERY = "celery"
+
+# What an enqueue looks like: the call, and the signature it may go through.
+ENQUEUE = {"delay", "apply_async"}
+SIGNATURE = {"s", "si", "signature", "subtask"}
+TASK_DECORATORS = ("task", "shared_task")
 
 # A call on the ORM that goes to the database. `objects.<anything>` does too,
 # and is caught by the manager rather than by this list.
@@ -378,6 +387,22 @@ class FlowReader:
         if use_case is not None:
             return self.inline(d, use_case, args, depth, ran, line)
 
+        # Work handed to Celery is a hop off the request. `on_commit` around
+        # it is the one fact about when the message leaves that the code
+        # states plainly, so the lambda or partial it holds is read inside a
+        # note rather than skipped.
+        if last == "on_commit":
+            d.enter("after the transaction commits")
+            for arg in node.args:
+                self.deferred(d, frame, arg, depth, ran)
+            d.leave()
+            return None
+        if last in ENQUEUE and isinstance(node.func, ast.Attribute):
+            task = self.task_of(frame.module, node.func.value)
+            if task:
+                self.enqueue(d, task, line)
+                return None
+
         # An event handed to anything is the event leaving for the bus, which
         # is the rule that catches a project's own `publish()` helper as well
         # as a signal's `send`. A list it is being collected into is not one.
@@ -432,6 +457,53 @@ class FlowReader:
                 inner.vars[parameter.arg] = binding
         self.walk(d, inner, use_case.node.body, depth + 1, ran)
         return inner.returned
+
+    def deferred(self, d: Draft, frame: Frame, node: ast.AST, depth: int, ran: List[UseCase]) -> None:
+        """What `on_commit` was handed: a lambda, whose body is read where the
+        lambda is; `partial(task.delay, ...)`, which is the enqueue it binds;
+        or anything else, read as a value."""
+        if isinstance(node, ast.Lambda):
+            self.value(d, frame, node.body, depth, ran)
+            return
+        if isinstance(node, ast.Call) and dotted(node.func).split(".")[-1] == "partial" and node.args:
+            bound = node.args[0]
+            if isinstance(bound, ast.Attribute) and bound.attr in ENQUEUE:
+                task = self.task_of(frame.module, bound.value)
+                if task:
+                    self.enqueue(d, task, frame.module.where(node))
+                    return
+        self.value(d, frame, node, depth, ran)
+
+    def task_of(self, module: Module, receiver: ast.AST) -> str:
+        """The task `.delay` was called on, by name, when the name resolves by
+        import to a function decorated as one; "" for anything else."""
+        if isinstance(receiver, ast.Call) and isinstance(receiver.func, ast.Attribute) and receiver.func.attr in SIGNATURE:
+            receiver = receiver.func.value
+        name = dotted(receiver)
+        if not name:
+            return ""
+        parts = name.split(".")
+        if len(parts) == 1:
+            hit = self.project.resolve(module, name)
+            if hit is None:
+                return ""
+            target, local = hit
+        else:
+            imported = module.imports.get(parts[0])
+            if imported is None:
+                return ""
+            package = imported.module if imported.name == "*" else imported.module + "." + imported.name
+            found = self.project.module(".".join([package] + parts[1:-1]))
+            if found is None:
+                return ""
+            target, local = found, parts[-1]
+        for fn in target.functions():
+            if fn.name == local and decorator_named(fn, *TASK_DECORATORS) is not None:
+                return fn.name
+        return ""
+
+    def enqueue(self, d: Draft, task: str, line: str) -> None:
+        d.add(self.opts.svc_id, d.lane(LANE_CELERY, "broker", None, "Celery"), "call", "enqueue " + task, line=line)
 
     def publish(self, d: Draft, event_id: str, line: str) -> None:
         d.add(self.opts.svc_id, d.lane(LANE_BUS, "broker", None), "event", event_id.rsplit(".", 1)[-1], ref=event_id, line=line)

@@ -9,6 +9,7 @@ model {
   celery_billing = broker 'Celery · billing'
   celery_billing_mail = broker 'Celery · billing.mail'
   billing_pg = store 'billing-pg'
+  celery = broker 'Celery'
   cart_pg = store 'cart-pg'
   core_pg = store 'core-pg'
   oms_pg = store 'oms-pg'

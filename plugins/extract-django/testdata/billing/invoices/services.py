@@ -5,6 +5,7 @@ from django.db import transaction
 from .clients.pricing.client import PricingClient
 from .events import invoice_issued, invoice_paid, invoice_voided
 from .models import Invoice, InvoiceLine
+from .tasks import send_invoice_email
 
 pricing = PricingClient()
 
@@ -27,6 +28,7 @@ def issue_invoice(order_id, lines, number, now):
             )
         event = invoice.issue(number, now)
         invoice.save()
+        transaction.on_commit(lambda: send_invoice_email.delay(invoice.id))
     invoice_issued.send(sender=Invoice, event=event)
     return event
 
