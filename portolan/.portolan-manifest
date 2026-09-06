@@ -1,0 +1,20 @@
+{
+  "adr": [
+    "adr.json"
+  ],
+  "glossary": [
+    "glossary.json"
+  ],
+  "project:host.json": [
+    "host.json"
+  ],
+  "project:site.json": [
+    "site.json"
+  ],
+  "project:plugins.json": [
+    "plugins.json"
+  ],
+  "flows": [
+    "flows.json"
+  ]
+}

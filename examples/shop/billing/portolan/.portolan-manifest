@@ -8,5 +8,8 @@
   ],
   "asyncapi": [
     "bus.json"
+  ],
+  "celery": [
+    "celery.json"
   ]
 }

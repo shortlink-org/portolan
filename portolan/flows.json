@@ -1,0 +1,171 @@
+{
+  "generatedAt": "2026-09-06T18:48:02+07:00",
+  "commit": "229c1fb",
+  "contexts": [],
+  "defs": {},
+  "flows": [
+    {
+      "id": "flow.gen",
+      "slug": "gen",
+      "name": "npm run gen",
+      "summary": "Three passes over the manifest, each after the previous one's files are on disk: extract reads trees and specifications into fragments, verify overlays evidence on the merged catalog, generate turns it into pages. Every plugin is one JSON message in and one out; the host writes, the plugin never does.\n\nIn `--check` mode the same run writes nothing and fails on the first file that differs from disk, which is what makes committed output reviewable.",
+      "source": "scripts/gen.mjs",
+      "owner": "portolan",
+      "participants": [
+        {
+          "id": "developer",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "tree",
+          "kind": "store",
+          "context": "portolan",
+          "label": "the tree: fragments, docs/, exports/"
+        },
+        {
+          "id": "portolan.host",
+          "kind": "service",
+          "context": "portolan"
+        },
+        {
+          "id": "portolan.plugins",
+          "kind": "service",
+          "context": "portolan"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "developer",
+          "to": "portolan.host",
+          "kind": "call",
+          "label": "npm run gen",
+          "status": "declared"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "portolan.host",
+          "to": "portolan.host",
+          "kind": "call",
+          "label": "validate the manifest against the composed schema",
+          "status": "declared",
+          "note": "schema/portolan.schema.json is what every declared plugin said it can be told, composed by npm run schema."
+        },
+        {
+          "type": "loop",
+          "id": "loop3",
+          "title": "for each extract step",
+          "steps": [
+            {
+              "type": "step",
+              "id": "s4",
+              "from": "portolan.host",
+              "to": "portolan.plugins",
+              "kind": "call",
+              "label": "extract",
+              "status": "declared",
+              "note": "The request carries the input root, its stamp and the step's options. The stamp is the last commit that touched the root, never a clock (portolan.0002).",
+              "line": "scripts/gen.mjs:121"
+            },
+            {
+              "type": "step",
+              "id": "s5",
+              "from": "portolan.host",
+              "to": "tree",
+              "kind": "call",
+              "label": "write the fragment beside the service",
+              "status": "declared"
+            }
+          ]
+        },
+        {
+          "type": "step",
+          "id": "s6",
+          "from": "portolan.host",
+          "to": "tree",
+          "kind": "call",
+          "label": "read every source the manifest names",
+          "status": "declared",
+          "line": "scripts/catalog-sources.mjs:28"
+        },
+        {
+          "type": "step",
+          "id": "s7",
+          "from": "portolan.host",
+          "to": "portolan.host",
+          "kind": "call",
+          "label": "merge, validate and enrich the union",
+          "status": "declared",
+          "note": "The same code the site runs: src/merge.ts, src/catalog.ts, src/enrich.ts. A fragment naming a peer it does not own is normal; integrity holds over the union."
+        },
+        {
+          "type": "loop",
+          "id": "loop8",
+          "title": "for each verify step",
+          "steps": [
+            {
+              "type": "step",
+              "id": "s9",
+              "from": "portolan.host",
+              "to": "portolan.plugins",
+              "kind": "call",
+              "label": "verify",
+              "status": "declared",
+              "note": "The merged catalog rides in the request; the answer is an overlay fragment with what the evidence showed.",
+              "line": "scripts/gen.mjs:135"
+            },
+            {
+              "type": "step",
+              "id": "s10",
+              "from": "portolan.host",
+              "to": "tree",
+              "kind": "call",
+              "label": "write the overlay",
+              "status": "declared"
+            }
+          ]
+        },
+        {
+          "type": "loop",
+          "id": "loop11",
+          "title": "for each generate step",
+          "steps": [
+            {
+              "type": "step",
+              "id": "s12",
+              "from": "portolan.host",
+              "to": "portolan.plugins",
+              "kind": "call",
+              "label": "generate",
+              "status": "declared",
+              "note": "A wasm module with nothing preopened, or a process. It names files and never writes them (portolan.0001).",
+              "line": "scripts/gen.mjs:165"
+            },
+            {
+              "type": "step",
+              "id": "s13",
+              "from": "portolan.host",
+              "to": "tree",
+              "kind": "call",
+              "label": "write the pages and delete what stopped being generated",
+              "status": "declared"
+            }
+          ]
+        },
+        {
+          "type": "step",
+          "id": "s14",
+          "from": "portolan.host",
+          "to": "tree",
+          "kind": "call",
+          "label": "write .portolan/build-report.json",
+          "status": "declared"
+        }
+      ]
+    }
+  ],
+  "adrs": []
+}

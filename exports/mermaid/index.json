@@ -129,6 +129,22 @@
       "diagram": "bff-subscription-order-status.mmd"
     },
     {
+      "id": "flow.billing-celery-remind-unpaid-invoice",
+      "slug": "billing-celery-remind-unpaid-invoice",
+      "name": "Remind Unpaid Invoice task",
+      "owner": "shop",
+      "source": "examples/shop/billing/invoices/services.py",
+      "diagram": "billing-celery-remind-unpaid-invoice.mmd"
+    },
+    {
+      "id": "flow.billing-celery-send-invoice-email",
+      "slug": "billing-celery-send-invoice-email",
+      "name": "Send Invoice Email task",
+      "owner": "shop",
+      "source": "examples/shop/billing/invoices/services.py",
+      "diagram": "billing-celery-send-invoice-email.mmd"
+    },
+    {
       "id": "flow.billing-close-invoice-on-payment",
       "slug": "billing-close-invoice-on-payment",
       "name": "Close invoice on payment",
@@ -295,6 +311,14 @@
       "owner": "delivery",
       "source": "examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts",
       "diagram": "core-track-shipment.mmd"
+    },
+    {
+      "id": "flow.gen",
+      "slug": "gen",
+      "name": "npm run gen",
+      "owner": "portolan",
+      "source": "scripts/gen.mjs",
+      "diagram": "gen.mmd"
     },
     {
       "id": "flow.ledger-authorize",

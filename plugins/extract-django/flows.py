@@ -19,10 +19,18 @@ from clients import Client
 from domain import Aggregate, ModelDef
 from ids import pascal, slug
 from operations import UseCase
-from source import Module, Project, assigned, doc, dotted, methods
+import celery_conf
+import celery_tasks
+from source import Module, Project, assigned, doc, dotted, keyword, keyword_str, methods
 
 LANE_CLIENT = "client"
 LANE_BUS = "bus"
+
+# What an enqueue looks like: the call, and the signature it may go through.
+# The queue it lands on is decided the way Celery decides it, by the same
+# reader `extract-celery` uses, so the lane here is the one its flow draws.
+ENQUEUE = {"delay", "apply_async"}
+SIGNATURE = {"s", "si", "signature", "subtask"}
 
 # A call on the ORM that goes to the database. `objects.<anything>` does too,
 # and is caught by the manager rather than by this list.
@@ -30,6 +38,24 @@ STORE_METHODS = {"save", "delete", "refresh_from_db", "update", "full_clean_and_
 # What a publish looks like. A signal's `send` is one; so is anything handed an
 # event, which is the rule that catches a project's own `publish()` helper.
 SEND_METHODS = {"send", "send_robust", "publish"}
+# A publish with an address: the topic, subject or channel goes first, and is
+# read as far as syntax carries it - a literal, a module constant, a setting.
+# `KafkaProducer.send`, confluent's `produce`, NATS and Redis `publish`,
+# Channels' `group_send`.
+PRODUCE_METHODS = {"send", "produce", "publish", "group_send"}
+# Django's own model signals: a hook on the row, not an event. A receiver on
+# one is reported, not drawn.
+ORM_SIGNALS = {"pre_init", "post_init", "pre_save", "post_save", "pre_delete", "post_delete", "m2m_changed", "pre_migrate", "post_migrate"}
+
+
+def sender_of(decorator: ast.Call) -> str:
+    """`sender=Invoice`, or the models listed, or every model when none is named."""
+    value = keyword(decorator, "sender")
+    if value is None:
+        return "every model"
+    if isinstance(value, (ast.List, ast.Tuple)):
+        return ", ".join(dotted(v) for v in value.elts if dotted(v)) or "every model"
+    return dotted(value) or "every model"
 
 
 @dataclass
@@ -40,6 +66,7 @@ class Options:
     store: str
     peers: Dict[str, str] = dc_field(default_factory=dict)
     events: Dict[str, str] = dc_field(default_factory=dict)
+    settings: str = ""  # the Django settings module Celery is configured from
 
 
 class Draft:
@@ -134,6 +161,9 @@ class FlowReader:
         self.events = events  # class or signal name -> EventDef
         self._warned_store = False
         self._warned_peers = set()
+        self._celery: Optional[Tuple[celery_conf.Config, Dict[Tuple[str, str], celery_tasks.Task]]] = None
+        self.produced: Dict[str, List[Tuple[str, str]]] = {}  # event id -> (address, line) it was put on the wire at
+        self._settings: Optional[Module] = None
 
     # --- lanes ---------------------------------------------------------------
 
@@ -189,6 +219,18 @@ class FlowReader:
         )
 
     def policy_flow(self, agg: Aggregate, module: Module, node: ast.AST, decorator: ast.Call) -> Optional[Dict[str, object]]:
+        signal = dotted(decorator.args[0]).split(".")[-1] if decorator.args else ""
+        if signal in ORM_SIGNALS:
+            # Not a policy on an event: a hook on the row. It says nothing
+            # about what happened, and it fires for every save - migrations,
+            # fixtures and the admin included - so it is reported rather than
+            # drawn as a flow nothing in the domain triggers.
+            self.b.warn(
+                module.where(node),
+                "%s runs on %s of %s: a policy hanging on a persistence hook rather than a domain event - nothing says what happened, and it fires for any save, migrations and fixtures included"
+                % (node.name, signal, sender_of(decorator)),
+            )
+            return None
         trigger = self.trigger(module, decorator)
         if trigger is None:
             self.b.warn(
@@ -378,6 +420,37 @@ class FlowReader:
         if use_case is not None:
             return self.inline(d, use_case, args, depth, ran, line)
 
+        # A publish with an address, or a project's own helper that makes one
+        # when handed an event: the event leaves for the bus, and the step
+        # says where. Read before the plain event rule so the address is
+        # not lost to it.
+        event = next((a for a in args if isinstance(a, tuple) and a[0] == "event"), None)
+        if holder is None or holder[0] not in ("client", "model"):
+            address = ""
+            if last in PRODUCE_METHODS and node.args:
+                address = self.address_of(frame.module, node.args[0])
+            if not address and event is not None:
+                address = self.helper_address(frame.module, name)
+            if address:
+                self.produce(d, address, event[1] if event is not None else "", line)
+                return None
+
+        # Work handed to Celery is a hop off the request. `on_commit` around
+        # it is the one fact about when the message leaves that the code
+        # states plainly, so the lambda or partial it holds is read inside a
+        # note rather than skipped.
+        if last == "on_commit":
+            d.enter("after the transaction commits")
+            for arg in node.args:
+                self.deferred(d, frame, arg, depth, ran)
+            d.leave()
+            return None
+        if last in ENQUEUE and isinstance(node.func, ast.Attribute):
+            task = self.task_of(frame.module, node.func.value)
+            if task is not None:
+                self.enqueue(d, task, keyword_str(node, "queue"), line)
+                return None
+
         # An event handed to anything is the event leaving for the bus, which
         # is the rule that catches a project's own `publish()` helper as well
         # as a signal's `send`. A list it is being collected into is not one.
@@ -432,6 +505,123 @@ class FlowReader:
                 inner.vars[parameter.arg] = binding
         self.walk(d, inner, use_case.node.body, depth + 1, ran)
         return inner.returned
+
+    def deferred(self, d: Draft, frame: Frame, node: ast.AST, depth: int, ran: List[UseCase]) -> None:
+        """What `on_commit` was handed: a lambda, whose body is read where the
+        lambda is; `partial(task.delay, ...)`, which is the enqueue it binds;
+        or anything else, read as a value."""
+        if isinstance(node, ast.Lambda):
+            self.value(d, frame, node.body, depth, ran)
+            return
+        if isinstance(node, ast.Call) and dotted(node.func).split(".")[-1] == "partial" and node.args:
+            bound = node.args[0]
+            if isinstance(bound, ast.Attribute) and bound.attr in ENQUEUE:
+                task = self.task_of(frame.module, bound.value)
+                if task is not None:
+                    self.enqueue(d, task, "", frame.module.where(node))
+                    return
+        self.value(d, frame, node, depth, ran)
+
+    def celery(self) -> Tuple[celery_conf.Config, Dict[Tuple[str, str], celery_tasks.Task]]:
+        """The tasks of the tree and the configuration that places them, read
+        once, the first time an enqueue is met."""
+        if self._celery is None:
+            by_key, _ = celery_tasks.index(celery_tasks.read_tasks(self.project))
+            self._celery = (celery_conf.read_config(self.project, self.opts.settings), by_key)
+        return self._celery
+
+    def task_of(self, module: Module, receiver: ast.AST) -> Optional[celery_tasks.Task]:
+        """The task `.delay` was called on, when the name resolves by import to
+        a function decorated as one; None for anything else."""
+        if isinstance(receiver, ast.Call) and isinstance(receiver.func, ast.Attribute) and receiver.func.attr in SIGNATURE:
+            receiver = receiver.func.value
+        name = dotted(receiver)
+        if not name:
+            return None
+        parts = name.split(".")
+        if len(parts) == 1:
+            hit = self.project.resolve(module, name)
+            if hit is None:
+                return None
+            target, local = hit
+            key = (celery_tasks.package_of(target), local)
+        else:
+            imported = module.imports.get(parts[0])
+            if imported is None:
+                return None
+            package = imported.module if imported.name == "*" else imported.module + "." + imported.name
+            key = (".".join([package] + parts[1:-1]), parts[-1])
+        _, by_key = self.celery()
+        return by_key.get(key)
+
+    def enqueue(self, d: Draft, task: celery_tasks.Task, at_call: str, line: str) -> None:
+        """One lane per queue, named as `extract-celery` names it, so the two
+        flows meet on the same participant."""
+        cfg, _ = self.celery()
+        address, _ = celery_conf.queue_for(task.name, at_call, task.queue, cfg)
+        lane = d.lane("celery-" + slug(address), "broker", None, "Celery · " + address)
+        d.add(self.opts.svc_id, lane, "call", "enqueue " + task.short, line=line)
+
+    def address_of(self, module: Module, node: ast.AST) -> str:
+        """The topic a producer was handed, as far as syntax carries it: the
+        literal, a module-level constant, or `settings.X` read out of the
+        settings module. A name in the settings module follows once more."""
+        text = celery_conf.str_value(node, module)
+        if text:
+            return text
+        name = dotted(node)
+        if name.startswith("settings.") and name.count(".") == 1:
+            if self._settings is None:
+                found = self.project.module(self.opts.settings or celery_conf.settings_module_name(self.project))
+                self._settings = found if found is not None else False  # type: ignore[assignment]
+            if self._settings:
+                return celery_conf.str_value(ast.Name(id=name.split(".")[1]), self._settings)
+        return ""
+
+    def helper_address(self, module: Module, name: str) -> str:
+        """`bus.publish(event)`: a function of this project, one hop away,
+        whose body puts what it was handed on an address. Followed one call
+        further - a sync wrapper around an async publish - and no more."""
+        parts = name.split(".")
+        target: Optional[Module] = None
+        local = parts[-1]
+        if len(parts) == 1:
+            hit = self.project.resolve(module, name)
+            if hit is not None:
+                target, local = hit
+        else:
+            imported = module.imports.get(parts[0])
+            if imported is not None:
+                package = imported.module if imported.name == "*" else imported.module + "." + imported.name
+                target = self.project.module(".".join([package] + parts[1:-1]))
+        if target is None or target.dotted.split(".")[-1] == "services":
+            return ""
+        return self.produced_in(target, local, 0)
+
+    def produced_in(self, module: Module, function: str, depth: int) -> str:
+        fn = next((f for f in module.functions() if f.name == function), None)
+        if fn is None or depth > 1:
+            return ""
+        for node in ast.walk(fn):
+            if isinstance(node, ast.Call) and dotted(node.func).split(".")[-1] in PRODUCE_METHODS and node.args:
+                address = self.address_of(module, node.args[0])
+                if address:
+                    return address
+        for node in ast.walk(fn):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+                address = self.produced_in(module, node.func.id, depth + 1)
+                if address:
+                    return address
+        return ""
+
+    def produce(self, d: Draft, address: str, event_id: str, line: str) -> None:
+        lane = d.lane(LANE_BUS, "broker", None)
+        if event_id:
+            d.add(self.opts.svc_id, lane, "event", event_id.rsplit(".", 1)[-1], ref=event_id, note="on " + address, line=line)
+            self.referenced.add(event_id)
+            self.produced.setdefault(event_id, []).append((address, line))
+        else:
+            d.add(self.opts.svc_id, lane, "call", "publish on " + address, line=line)
 
     def publish(self, d: Draft, event_id: str, line: str) -> None:
         d.add(self.opts.svc_id, d.lane(LANE_BUS, "broker", None), "event", event_id.rsplit(".", 1)[-1], ref=event_id, line=line)

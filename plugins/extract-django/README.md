@@ -27,6 +27,7 @@ resolves them without a type checker.
   views.py                    DRF views: a ViewSet's actions, an @api_view function
   urls.py                     the router registration, which names the endpoints
   handlers.py                 policies: `@receiver(signal)`, also read from signals.py
+  tasks.py                    Celery tasks: what runs later; an enqueue of one is a hop
   clients/<peer>/
     openapi.yaml              the peer's document, vendored
     client.py                 the class that calls it
@@ -57,7 +58,9 @@ writes down what a column means. Value objects are the frozen dataclasses in
 **Event.** `events.py`, in either of the two ways a Django project says it. A
 dataclass with `name = "billing.InvoiceIssued"` is an event, its payload the
 annotated fields and its wire name that string; `channel` beside it is where it
-goes out. A module-level `Signal()` is one too — leaving it out would hide a
+goes out — or, when the dataclass does not say, the address the code puts it
+on (below), and when both say and disagree that is reported, with the
+dataclass's claim kept on the page. A module-level `Signal()` is one too — leaving it out would hide a
 publish — and it declares no payload, which is a diagnostic rather than an
 empty shape nobody questions. A signal named after a dataclass event (
 `invoice_issued` beside `InvoiceIssued`) is how that event travels, not a
@@ -100,15 +103,29 @@ and never written down.
 <endpoint>`, then the steps of every service function it runs, in order.
 **Flow, from a policy.** Each `@receiver` opens one on the bus: `bus → service
 : event <ref>`, where the event is the signal it is given — one of this
-service's own, or another service's placed by the manifest's `events`.
+service's own, or another service's placed by the manifest's `events`. A
+receiver on one of Django's model signals — `post_save`, `pre_delete`,
+`m2m_changed` and the rest — opens none: that is a hook on the row, not a
+policy on an event. It says nothing about what happened, and it fires for
+every save, migrations and fixtures included, so it is reported, with the
+`sender` it hangs on, as the one thing left to move onto an event.
 
 **Inside a body.** Statements are read in source order, and a chain left to
 right. `Invoice.objects.get(…)` is a hop into the store, and so are
 `Invoice.objects.filter(…).first()` - where the queryset is built, which is
 where the line is - and a `save()` or `delete()` on something the ORM handed
 back; an event handed to anything — a signal's `send`, a project's own
-`publish` — is the event leaving for the bus; a call on a vendored client is an
-rpc to the peer. A call into `services.py` is followed, two deep at most, and
+`publish` — is the event leaving for the bus, and where the call names an
+address — `producer.send("topic", …)`, `produce`, NATS' or Redis' `publish`,
+Channels' `group_send`, as a literal, a module constant or a `settings.X` —
+or is a function of the project, one hop away, whose body does, the step says
+`on <address>`; a call on a vendored client is an rpc to the peer; a `.delay()` or `.apply_async()` on a function decorated
+`@shared_task` or `@app.task`, directly or through `.s()`, is a hop to the
+queue it lands on, `celery-<queue>` — decided the way Celery decides it, by the
+reader `extract-celery` shares through `pyplugin`: the `queue=` at the call,
+then the decorator's, then `task_routes`, then `task_default_queue` — so the
+two flows meet on one participant; and `transaction.on_commit(…)` around it,
+as a lambda or a `partial`, is the note that it waits for the commit. A call into `services.py` is followed, two deep at most, and
 past that the call itself is the step. `if` becomes an alt when some arm holds
 a hop, and a branch ending in a `return` or a `raise` is terminal; a `for`, a
 `while`, a `with transaction.atomic()` and an `except` are a note on the steps
@@ -140,8 +157,9 @@ inventing the hash would be a name no database has.
 ## What it does not read
 
 Named here rather than left to be discovered: **migrations** (the models are
-the schema; a migration is how it got there), **Celery tasks** and `.delay()`,
-**admin**, **serializers**, **templates**, **middleware**, **management
+the schema; a migration is how it got there), **the bodies of Celery tasks**
+(an enqueue is a hop to its queue, and what the worker does there is
+`extract-celery`'s), **admin**, **serializers**, **templates**, **middleware**, **management
 commands**, **signals connected outside a `@receiver`**, and a **many-to-many**
 field's join table — which is reported, since Django makes a table there that
 this does not name.
@@ -158,6 +176,7 @@ this does not name.
   "peers": { "pricing.v1": "shop.pricing" },
   "events": { "payments.events": "payments.ledger.payment" },
   "source": ".",
+  "settings": "config.settings",
   "out": "domain.json",
   "storesOut": "stores.json"
 }
@@ -167,8 +186,14 @@ this does not name.
 unless said otherwise; `apps` names them outright for a project that keeps them
 somewhere a models module would not be found. `store` is what says which
 database the models are the schema of — without it they describe none, and
-calls into the ORM stay on the service's own lane. Everything else means what
-it means for `extract-ts`.
+calls into the ORM stay on the service's own lane. `storeKind` is read off
+`DATABASES["default"]["ENGINE"]` in the settings module when left out —
+`postgresql` and `postgis` are `postgres`, `sqlite3` is `sqlite`, and a
+project that configures the database through a URL the tree does not hold is
+`postgres` by default; given, it wins, and a disagreement with the settings is
+reported. `settings` names the Django settings module — for the database, and
+for the queues Celery is configured with — only where `manage.py` does not.
+Everything else means what it means for `extract-ts`.
 
 ## Extraction limits
 
@@ -187,6 +212,8 @@ These cases do not become facts in the fragment:
 - a client with no document beside it, and a route its document does not
   declare;
 - an api id the manifest names no peer for;
+- a receiver on a model signal, `post_save` and its kin, named with the model
+  it hangs on;
 - a many-to-many field, whose join table is not named here;
 - an event no flow reaches;
 - a file that does not parse, by path.

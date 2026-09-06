@@ -1,0 +1,15 @@
+name = "portolan-chat"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+MODEL = "gemini-3.6-flash"
+ALLOWED_ORIGINS = "https://shortlink-org.github.io,http://localhost:5173"
+# Where the built site lives: the worker reads llms.txt and docs/ from here.
+DOCS_BASE = "https://shortlink-org.github.io/portolan/"
+
+[[ratelimits]]
+name = "CHAT_LIMIT"
+namespace_id = "1001"
+simple = { limit = 10, period = 60 }

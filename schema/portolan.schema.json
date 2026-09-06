@@ -56,16 +56,19 @@
               "rust-domain",
               "java-domain",
               "django-domain",
+              "celery",
               "openapi",
               "wsdl",
               "http-clients",
               "river",
               "watermill",
+              "go-nats",
               "asyncapi",
               "graphql",
               "sql",
               "adr",
               "glossary",
+              "flows",
               "bsr",
               "git",
               "proto"
@@ -207,6 +210,25 @@
               ],
               "properties": {
                 "plugin": {
+                  "const": "celery"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "options": {
+                  "$ref": "#/$defs/options.celery"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "plugin"
+              ],
+              "properties": {
+                "plugin": {
                   "const": "openapi"
                 }
               }
@@ -302,6 +324,25 @@
               ],
               "properties": {
                 "plugin": {
+                  "const": "go-nats"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "options": {
+                  "$ref": "#/$defs/options.go-nats"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "plugin"
+              ],
+              "properties": {
+                "plugin": {
                   "const": "asyncapi"
                 }
               }
@@ -386,6 +427,25 @@
               "properties": {
                 "options": {
                   "$ref": "#/$defs/options.glossary"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "plugin"
+              ],
+              "properties": {
+                "plugin": {
+                  "const": "flows"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "options": {
+                  "$ref": "#/$defs/options.flows"
                 }
               }
             }
@@ -806,6 +866,13 @@
             "data-pipeline"
           ],
           "description": "Runtime or code role. When absent, the extractor uses conservative repository evidence."
+        },
+        "technologies": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Languages and frameworks, stated when the tree cannot say: a component whose manifests sit above its root, one of several in a repository, has nothing at its root to read. Left out, inferred from go.mod, package.json, Cargo.toml and the like at the root."
         },
         "repo": {
           "type": "string",
@@ -1273,8 +1340,7 @@
             "s3",
             "other"
           ],
-          "description": "Which database the models are the schema of. It picks the column types a field becomes; only postgres has a mapping, and a kind without one keeps the field's own name and says so.",
-          "default": "postgres"
+          "description": "Which database the models are the schema of. Read off DATABASES['default']['ENGINE'] in the settings module when left out, and postgres when that says nothing readable; given here, it wins, and a disagreement with the settings is reported. It picks the column types a field becomes; only postgres has a mapping, and a kind without one keeps the field's own name and says so."
         },
         "apps": {
           "type": "array",
@@ -1329,6 +1395,13 @@
           "description": "The directory the applications are looked for in, relative to the input root.",
           "default": "."
         },
+        "settings": {
+          "type": "string",
+          "description": "The Django settings module Celery is configured from, as an import spells it, so an enqueue lands on the queue the routes give it. Defaults to what manage.py sets DJANGO_SETTINGS_MODULE to.",
+          "examples": [
+            "config.settings"
+          ]
+        },
         "out": {
           "type": "string",
           "description": "Name of the fragment file, inside the step's output directory.",
@@ -1338,6 +1411,43 @@
           "type": "string",
           "description": "Name of the fragment holding the database the models describe, inside the step's output directory. Written only when store is set.",
           "default": "stores.json"
+        }
+      }
+    },
+    "options.celery": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "Slug of the bounded context the service belongs to. Defaults to the name of the input directory.",
+          "examples": [
+            "shop"
+          ]
+        },
+        "service": {
+          "type": "string",
+          "description": "Slug of the service that enqueues and works the tasks. Defaults to the name of the input directory.",
+          "examples": [
+            "billing"
+          ]
+        },
+        "source": {
+          "type": "string",
+          "description": "The directory the tasks and their callers are looked for in, relative to the input root.",
+          "default": "."
+        },
+        "settings": {
+          "type": "string",
+          "description": "The Django settings module the Celery app is configured from, as an import spells it. Defaults to what manage.py sets DJANGO_SETTINGS_MODULE to.",
+          "examples": [
+            "config.settings"
+          ]
+        },
+        "out": {
+          "type": "string",
+          "description": "Name of the fragment file, inside the step's output directory.",
+          "default": "celery.json"
         }
       }
     },
@@ -1601,6 +1711,31 @@
           "type": "string",
           "description": "Name of the fragment file inside the step output directory.",
           "default": "watermill.json"
+        }
+      }
+    },
+    "options.go-nats": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "Slug of the bounded context this service belongs to. Defaults to the name of the input directory.",
+          "examples": [
+            "shop"
+          ]
+        },
+        "service": {
+          "type": "string",
+          "description": "Slug of the service. Defaults to the name of the input directory.",
+          "examples": [
+            "pricing"
+          ]
+        },
+        "out": {
+          "type": "string",
+          "description": "Name of the fragment file, inside the step's output directory.",
+          "default": "nats.json"
         }
       }
     },
@@ -1936,6 +2071,28 @@
         "out": {
           "type": "string",
           "description": "Name of the fragment file, inside the step's output directory. Left out, glossary.json."
+        }
+      }
+    },
+    "options.flows": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The flow files to read, as globs relative to the input root. Left out, every *.flow.md directly under the root.",
+          "examples": [
+            [
+              "*.flow.md"
+            ]
+          ]
+        },
+        "out": {
+          "type": "string",
+          "description": "Name of the fragment file, inside the step's output directory. Left out, flows.json."
         }
       }
     },

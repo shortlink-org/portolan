@@ -1,14 +1,13 @@
 """What billing tells everybody else.
 
-The dataclass carries the payload and the name the message travels under; the
-signal beside it is how Django hands it on. `invoices/bus/asyncapi.yaml` says
-the same thing from the other side, and the catalog holds the two against each
-other.
+The dataclass carries the payload and the name the message travels under;
+`bus.py` is how it leaves, on the subject named here and there alike.
+`invoices/bus/asyncapi.yaml` says the same thing from the other side, and the
+catalog holds the three against each other.
 """
 
 from dataclasses import dataclass
 
-from django.dispatch import Signal
 
 
 @dataclass(frozen=True)
@@ -49,6 +48,3 @@ class InvoiceVoided:
     reason: str
 
 
-invoice_issued = Signal()
-invoice_paid = Signal()
-invoice_voided = Signal()

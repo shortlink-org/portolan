@@ -1242,6 +1242,75 @@ spec:
 apiVersion: backstage.io/v1alpha1
 kind: System
 metadata:
+    name: portolan
+    title: Portolan
+    description: 'The tool that reads this estate: a browser for an architecture catalog, read out of the code and specs that already describe it. Nothing in the shop calls it and it calls nothing; it is here because a catalog that cannot describe its own reader is a catalog with a hole in it.'
+    annotations:
+        portolan.io/id: portolan
+spec:
+    domain: example-estate
+    owner: architecture
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+    name: portolan-host
+    title: Host
+    description: Host
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/scripts
+        portolan.io/id: portolan.host
+    tags:
+        - node-js
+spec:
+    lifecycle: production
+    owner: shortlink-org/platform
+    system: portolan
+    type: tool
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+    name: portolan-plugins
+    title: Plugins
+    description: Generators
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/plugins
+        portolan.io/id: portolan.plugins
+    tags:
+        - go
+        - java
+        - python
+        - rust
+        - typescript
+spec:
+    lifecycle: production
+    owner: shortlink-org/platform
+    system: portolan
+    type: tool
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+    name: portolan-site
+    title: Site
+    description: Site
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/src
+        portolan.io/id: portolan.site
+    tags:
+        - react
+        - typescript
+        - vite
+spec:
+    lifecycle: production
+    owner: shortlink-org/platform
+    system: portolan
+    type: website
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
     name: shop
     title: Shop
     description: 'What a customer is buying, what it costs and what they owe for it: the basket while it is still changing, the price it was promised at, the order it became, and the invoice for it. It moves no money and delivers nothing.'

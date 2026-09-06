@@ -4,9 +4,13 @@ sequenceDiagram
     participant p1 as shop.billing
     participant p2 as auth.auth
     participant p3 as billing-pg
-    participant p4 as bus
+    participant p4 as Celery · billing.mail
+    participant p5 as Celery · billing
+    participant p6 as bus
     p0->>p1: invoice_issue → InvoiceId
     p1->>p2: validateSession → SessionInfo
     p1->>p3: Invoice.objects.get
     p1->>p3: Invoice.save
-    p1-)p4: InvoiceIssued
+    p1->>p4: enqueue send_invoice_email
+    p1->>p5: enqueue remind_unpaid_invoice
+    p1-)p6: InvoiceIssued

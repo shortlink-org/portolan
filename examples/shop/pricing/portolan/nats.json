@@ -1,0 +1,44 @@
+{
+  "generatedAt": "2026-09-05T03:58:04Z",
+  "commit": "4577548",
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.pricing",
+          "slug": "pricing",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "channels": [
+            {
+              "address": "shop.cart.basket",
+              "kind": "event",
+              "title": "JetStream subject",
+              "doc": "Read through github.com/nats-io/nats.go. Subscribed by `NATS.Subscribe` over JetStream.",
+              "messages": [
+                {
+                  "name": "cart.BasketCheckedOut",
+                  "title": "cart.BasketCheckedOut",
+                  "direction": "receive"
+                }
+              ],
+              "source": "internal/di/app.go:67"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": []
+}

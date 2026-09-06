@@ -1,6 +1,6 @@
 # Example estate
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `10 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
 
 
 ## Contexts
@@ -10,6 +10,7 @@
 | [Authentication](auth/README.md) | generic | [Authentication & Sessions](auth/auth/README.md) | Who someone is, and whether they are still logged in. The only service in the estate that stores credentials, and the only one allowed to mint or revoke a session. |
 | [Delivery](delivery/README.md) | supporting | [Delivery Core](delivery/core/README.md) | Parcels, vans and the day they are driven. Told what to carry and asked where it got to; it decides neither. |
 | [Payments](payments/README.md) | supporting | [Ledger](payments/ledger/README.md) | Money, and the record of every movement of it. Nothing here decides whether to charge - it is asked, and it writes down what happened either way. |
+| [Portolan](portolan/README.md) | — | [Host](portolan/host/README.md), [Plugins](portolan/plugins/README.md), [Site](portolan/site/README.md) | The tool that reads this estate: a browser for an architecture catalog, read out of the code and specs that already describe it. Nothing in the shop calls it and it calls nothing; it is here because a catalog that cannot describe its own reader is a catalog with a hole in it. |
 | [Shop](shop/README.md) | core | [Billing](shop/billing/README.md), [Shopping Cart](shop/cart/README.md), [Order Management](shop/oms/README.md), [Pricing](shop/pricing/README.md) | What a customer is buying, what it costs and what they owe for it: the basket while it is still changing, the price it was promised at, the order it became, and the invoice for it. It moves no money and delivers nothing. |
 | [Storefront](storefront/README.md) | supporting | [Storefront BFF](storefront/bff/README.md) | One graph in front of the estate, for one kind of client. It owns nothing: everything it answers with it asked somebody else for a moment earlier, and translated into the words a shopper's screen uses. |
 
@@ -51,6 +52,8 @@
 | [Query shipment](flows/bff-query-shipment.md) | [storefront](storefront/README.md) | — |
 | [Query viewer](flows/bff-query-viewer.md) | [storefront](storefront/README.md) | Who the request belongs to. Auth is asked on every call rather than a token being read here: this service holds no key and could not tell a forged one from a live one. |
 | [Subscription order status](flows/bff-subscription-order-status.md) | [storefront](storefront/README.md) | Every move of one order, for as long as somebody is watching it. |
+| [Remind Unpaid Invoice task](flows/billing-celery-remind-unpaid-invoice.md) | [shop](shop/README.md) | Celery task `invoices.tasks.remind_unpaid_invoice` is enqueued on `billing` and worked by `remind_unpaid_invoice`. |
+| [Send Invoice Email task](flows/billing-celery-send-invoice-email.md) | [shop](shop/README.md) | Celery task `invoices.tasks.send_invoice_email` is enqueued on `billing.mail` and worked by `send_invoice_email`. |
 | [Close invoice on payment](flows/billing-close-invoice-on-payment.md) | [shop](shop/README.md) | Closes the invoice for an order once the ledger says the money arrived. |
 | [Invoice create](flows/billing-invoice-create.md) | [shop](shop/README.md) | Draws up a draft invoice for an order, with a line for each thing sold. |
 | [Invoice destroy](flows/billing-invoice-destroy.md) | [shop](shop/README.md) | Ends an invoice nobody is going to pay. |
@@ -72,6 +75,7 @@
 | [Release shipment on payment captured](flows/core-release-shipment-on-payment-captured.md) | [delivery](delivery/README.md) | Nothing leaves the warehouse before the money has moved (ADR core.0002). |
 | [Start route](flows/core-start-route.md) | [delivery](delivery/README.md) | The van is out. |
 | [Track shipment](flows/core-track-shipment.md) | [delivery](delivery/README.md) | What the customer sees when they paste a tracking code. |
+| [npm run gen](flows/gen.md) | [portolan](portolan/README.md) | Three passes over the manifest, each after the previous one's files are on disk: extract reads trees and specifications into fragments, verify overlays evidence on the merged catalog, generate turns it into pages. Every plugin is one JSON message in and one out; the host writes, the plugin never does. |
 | [Authorize](flows/ledger-authorize.md) | [payments](payments/README.md) | Asks the gateway to hold the money for an order, and records either that it agreed or that it refused. |
 | [Capture](flows/ledger-capture.md) | [payments](payments/README.md) | Moves the money the gateway was holding, writes the pair of postings for it, and says so on the bus. |
 | [Get payment](flows/ledger-get-payment.md) | [payments](payments/README.md) | Reads one payment, for whoever is asking what happened to the money. |
@@ -130,3 +134,7 @@
 | [org.0002](adr/org.0002.md) | Domain event schema version is encoded in the package path (events/v1) | accepted | 2025-05-02 |
 | [org.0003](adr/org.0003.md) | Ownership is read from CODEOWNERS, never typed and never resolved | accepted | 2026-09-05 |
 | [payments.0004](adr/payments.0004.md) | Journal entries are idempotent by (order_id, attempt) | proposed | 2026-02-09 |
+| [portolan.0001](adr/portolan.0001.md) | A plugin names files and never writes them | accepted | 2026-09-02 |
+| [portolan.0002](adr/portolan.0002.md) | The host stamps a fragment from its input's last commit | accepted | 2026-09-02 |
+| [portolan.0003](adr/portolan.0003.md) | The Go catalog is a mirror held by a round-trip test | accepted | 2026-09-02 |
+| [portolan.0004](adr/portolan.0004.md) | `contexts` and `services` stay the wire format | accepted | 2026-09-06 |

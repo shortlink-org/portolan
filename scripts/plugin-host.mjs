@@ -1,6 +1,6 @@
 // Runs a portolan generator plugin and returns what it wants written.
 //
-// A plugin never touches the tree. It is handed a request on stdin and answers
+// A plugin never touches the tree (portolan.0001). It is handed a request on stdin and answers
 // with named files on stdout; writing them - and refusing a name that climbs
 // out of the output directory - is this file's job. That split is what lets the
 // same plugin run as a sandboxed wasm module with no directory preopened at

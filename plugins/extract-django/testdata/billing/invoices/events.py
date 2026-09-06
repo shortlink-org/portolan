@@ -27,7 +27,7 @@ class InvoicePaid:
     """The money arrived and the invoice is closed."""
 
     name = "billing.InvoicePaid"
-    channel = "shop.billing.invoice"
+    # No channel here: bus.py puts it on the wire, and that is where it is read.
 
     invoice_id: str
     paid_at: str

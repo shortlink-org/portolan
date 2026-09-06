@@ -38,7 +38,7 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 				Path:         filepath.ToSlash(root),
 				Readme:       readme,
 				Kind:         catalog.ComponentKind(firstNonEmpty(opts.ComponentKind, inferredKind(root))),
-				Technologies: technologies(root),
+				Technologies: stated(opts.Technologies, technologies(root)),
 				Provides:     []catalog.RpcService{},
 				Consumes:     []catalog.RpcCall{},
 				Aggregates:   []catalog.Aggregate{},
@@ -183,4 +183,14 @@ func firstNonEmpty(values ...string) string {
 		}
 	}
 	return ""
+}
+
+// stated prefers what the manifest says to what the tree implies: a component
+// whose manifests sit above its root, one of several in a repository, has
+// nothing at its root for technologies to read.
+func stated(told, inferred []string) []string {
+	if len(told) > 0 {
+		return told
+	}
+	return inferred
 }

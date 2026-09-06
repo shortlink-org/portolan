@@ -67,6 +67,30 @@ def transition(from_: str, to: str, on: str, emits: str, source: str) -> Dict[st
     return out
 
 
+def channel(address: str, kind: str, title: str, doc: str, messages: List[Dict[str, Any]], source: str = "") -> Dict[str, Any]:
+    out: Dict[str, Any] = {"address": address}
+    if kind:
+        out["kind"] = kind
+    if title:
+        out["title"] = title
+    if doc:
+        out["doc"] = doc
+    out["messages"] = messages
+    if source:
+        out["source"] = source
+    return out
+
+
+def message(name: str, title: str, doc: str, direction: str) -> Dict[str, Any]:
+    out: Dict[str, Any] = {"name": name}
+    if title:
+        out["title"] = title
+    if doc:
+        out["doc"] = doc
+    out["direction"] = direction
+    return out
+
+
 def rpc_call(id_: str, peer: str, status: str, source: str, note: str = "") -> Dict[str, Any]:
     out = {"id": id_, "peer": peer, "status": status, "source": source}
     if note:

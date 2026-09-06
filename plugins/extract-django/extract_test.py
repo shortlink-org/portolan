@@ -12,9 +12,11 @@ import sys
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(1, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "pyplugin"))
 
 from extract import extract  # noqa: E402
-from protocol import Builder, Input, Options  # noqa: E402
+from options import Options  # noqa: E402
+from protocol import Builder, Input  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
@@ -60,10 +62,11 @@ class Fragment(unittest.TestCase):
 
     def test_what_it_reports_beside_them(self):
         self.assertEqual(
-            [(d.severity, d.ref) for d in self.warnings],
-            [("warning", "shop.billing.invoice.InvoiceVoided")],
+            [(d.severity, d.ref.split("/")[-1]) for d in self.warnings],
+            [("warning", "shop.billing.invoice.InvoiceVoided"), ("warning", "handlers.py:19")],
         )
         self.assertIn("a signal declares no payload", self.warnings[0].message)
+        self.assertTrue(self.warnings[1].message.startswith("index_invoice runs on post_save of Invoice: a policy hanging on a persistence hook"))
 
     def test_without_a_store_the_models_describe_no_database(self):
         options = dict(OPTIONS)
@@ -71,6 +74,15 @@ class Fragment(unittest.TestCase):
         files, warnings = run(options)
         self.assertEqual(list(files), ["domain.json"])
         self.assertIn("`store` is what says which one they are the schema of", " ".join(d.message for d in warnings))
+
+    def test_the_store_kind_is_read_off_the_settings_and_the_manifest_wins_when_it_speaks(self):
+        _, warnings = run(OPTIONS)
+        self.assertEqual(json.loads(self.files["stores.json"])["stores"][0]["kind"], "postgres")
+        self.assertFalse([w for w in warnings if "storeKind" in w.message])
+        files, warnings = run(dict(OPTIONS, storeKind="sqlite"))
+        self.assertEqual(json.loads(files["stores.json"])["stores"][0]["kind"], "sqlite")
+        said = [w.message for w in warnings if "storeKind" in w.message]
+        self.assertEqual(said, ["the manifest says storeKind sqlite but the settings' DATABASES engine is django.db.backends.postgresql, which is postgres; the manifest's kind is used"])
 
     def test_an_option_nobody_reads_is_refused_rather_than_dropped(self):
         with self.assertRaises(ValueError):
@@ -127,6 +139,22 @@ class Reading(unittest.TestCase):
         self.assertEqual(alt[0]["branches"][0]["steps"][0]["kind"], "rpc")
         note = [s for s in steps if s["type"] == "step" and "for each" in s.get("note", "")]
         self.assertEqual(note[0]["note"], "in one transaction, for each line.")
+
+    def test_an_enqueue_is_a_hop_to_celery_and_on_commit_is_its_note(self):
+        flow = {f["slug"]: f for f in self.fragment["flows"]}["billing-invoice-issue"]
+        self.assertIn("celery-billing-mail", [p["id"] for p in flow["participants"]])
+        step = [s for s in flow["steps"] if s["type"] == "step" and s["label"] == "enqueue send_invoice_email"][0]
+        self.assertEqual(step["to"], "celery-billing-mail")
+        self.assertEqual(step["note"], "in one transaction, after the transaction commits.")
+        self.assertTrue(step["line"].endswith("invoices/services.py:32"))
+
+    def test_a_producer_names_the_address_and_the_event_takes_it_as_its_channel(self):
+        flow = {f["slug"]: f for f in self.fragment["flows"]}["billing-mark-invoice-paid"]
+        step = [s for s in flow["steps"] if s["type"] == "step" and s["kind"] == "event"][-1]
+        self.assertEqual(step["ref"], "shop.billing.invoice.InvoicePaid")
+        self.assertEqual(step["note"], "on shop.billing.invoice")
+        wire = {e["name"]: e.get("wire", {}) for e in self.aggregate["events"]}
+        self.assertEqual(wire["InvoicePaid"], {"name": "billing.InvoicePaid", "channel": "shop.billing.invoice"})
 
     def test_a_queryset_chain_makes_its_query_where_it_is_built(self):
         steps = {f["slug"]: f["steps"] for f in self.fragment["flows"]}["billing-invoice-retrieve"]

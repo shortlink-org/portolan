@@ -50,10 +50,18 @@
       "root": "examples/shop/oms",
       "context": "shop",
       "service": "oms"
+    },
+    {
+      "id": "portolan",
+      "name": "Portolan",
+      "root": ".",
+      "context": "portolan",
+      "service": "portolan"
     }
   ],
   "sources": [
     "data/*.json",
+    "portolan/*.json",
     "examples/*/portolan/*.json",
     "examples/*/*/portolan/*.json",
     "examples/*/*/*/portolan/*.json",
@@ -104,6 +112,13 @@
       }
     },
     {
+      "name": "celery",
+      "process": {
+        "command": "python3",
+        "args": ["plugins/extract-celery/main.py"]
+      }
+    },
+    {
       "name": "openapi",
       "process": {
         "command": "go",
@@ -136,6 +151,13 @@
       "process": {
         "command": "go",
         "args": ["run", "./plugins/extract-watermill"]
+      }
+    },
+    {
+      "name": "go-nats",
+      "process": {
+        "command": "go",
+        "args": ["run", "./plugins/extract-go-nats"]
       }
     },
     {
@@ -212,6 +234,13 @@
       }
     },
     {
+      "name": "flows",
+      "process": {
+        "command": "go",
+        "args": ["run", "./plugins/extract-flows"]
+      }
+    },
+    {
       "name": "bsr",
       "process": {
         "command": "go",
@@ -243,6 +272,77 @@
           "*.md"
         ],
         "out": "adr.json"
+      }
+    },
+    {
+      "plugin": "project",
+      "in": "scripts",
+      "out": "portolan",
+      "options": {
+        "group": "portolan",
+        "groupName": "Portolan",
+        "groupSummary": "The tool that reads this estate: a browser for an architecture catalog, read out of the code and specs that already describe it. Nothing in the shop calls it and it calls nothing; it is here because a catalog that cannot describe its own reader is a catalog with a hole in it.",
+        "component": "host",
+        "componentName": "Host",
+        "componentKind": "cli",
+        "technologies": ["Node.js"],
+        "repo": "github.com/shortlink-org/portolan",
+        "out": "host.json"
+      }
+    },
+    {
+      "plugin": "project",
+      "in": "src",
+      "out": "portolan",
+      "options": {
+        "group": "portolan",
+        "component": "site",
+        "componentName": "Site",
+        "componentKind": "webapp",
+        "technologies": ["TypeScript", "React", "Vite"],
+        "repo": "github.com/shortlink-org/portolan",
+        "out": "site.json"
+      }
+    },
+    {
+      "plugin": "project",
+      "in": "plugins",
+      "out": "portolan",
+      "options": {
+        "group": "portolan",
+        "component": "plugins",
+        "componentName": "Plugins",
+        "componentKind": "cli",
+        "technologies": ["Go", "TypeScript", "Rust", "Java", "Python"],
+        "repo": "github.com/shortlink-org/portolan",
+        "out": "plugins.json"
+      }
+    },
+    {
+      "plugin": "flows",
+      "in": "flows",
+      "out": "portolan",
+      "options": {
+        "out": "flows.json"
+      }
+    },
+    {
+      "plugin": "adr",
+      "in": "adr",
+      "out": "portolan",
+      "options": {
+        "files": ["*.md"],
+        "scope": "portolan",
+        "out": "adr.json"
+      }
+    },
+    {
+      "plugin": "glossary",
+      "in": ".",
+      "out": "portolan",
+      "options": {
+        "context": "portolan",
+        "out": "glossary.json"
       }
     },
     {
@@ -404,6 +504,16 @@
       }
     },
     {
+      "plugin": "celery",
+      "in": "examples/shop/billing",
+      "out": "examples/shop/billing/portolan",
+      "options": {
+        "context": "shop",
+        "service": "billing",
+        "out": "celery.json"
+      }
+    },
+    {
       "plugin": "go-domain",
       "in": "examples/shop/pricing",
       "out": "examples/shop/pricing/portolan",
@@ -449,6 +559,16 @@
         "store": "pg",
         "name": "Pricing database",
         "out": "stores.json"
+      }
+    },
+    {
+      "plugin": "go-nats",
+      "in": "examples/shop/pricing",
+      "out": "examples/shop/pricing/portolan",
+      "options": {
+        "context": "shop",
+        "service": "pricing",
+        "out": "nats.json"
       }
     },
     {

@@ -1,6 +1,6 @@
 # Invoice retrieve
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `10 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
 
 - **Id:** `flow.billing-invoice-retrieve`
 - **Owner:** [shop](../shop/README.md)
@@ -35,4 +35,4 @@ sequenceDiagram
    status: declared · [`examples/shop/billing/invoices/views.py:24`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/views.py#L24)
 <a id="step-s2"></a>
 2. **shop.billing** → **billing-pg** — Invoice.objects.get
-   status: declared · [`examples/shop/billing/invoices/services.py:68`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L68)
+   status: declared · [`examples/shop/billing/invoices/services.py:77`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L77)

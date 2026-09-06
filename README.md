@@ -56,15 +56,9 @@ deployment/build manifests without executing project code, creates a `system`,
 (`application`, `worker`, `job`, `cli`, `library`, and so on) and technologies.
 Contract and messaging extractors then add OpenAPI, AsyncAPI, GraphQL, proto,
 SQL, River, Watermill and outbound HTTP/SOAP facts to that same component.
-For Go services, the HTTP client extractor also joins common router
-registrations to handlers, interface calls, string-keyed factory branches and
-concrete providers. The resulting flow starts at the inbound endpoint and fans
-out by the provider choices proved by source; when a provider's transport lives
-in another module, the flow stops at that implementation and says that the
-outbound transport could not be resolved.
 
 The older JSON keys `contexts` and `services` remain the wire format, so old
-catalogs need no migration. Optional `kind` fields say when those nodes should
+catalogs need no migration (portolan.0004). Optional `kind` fields say when those nodes should
 be read as a neutral group and component. When `kind` is absent, the historical
 `bounded-context` and `service` meanings apply.
 
@@ -90,6 +84,13 @@ extractor is selected only when its expected model structure is present; a
 - **Navigation** — ⌘K palette over everything the catalog names (`e:` events,
   `vo:` value objects, …), sidebar tree, breadcrumbs, "what links here", a
   trail of recent pages, pins, keyboard shortcuts, light/dark and density.
+- **Ask the catalog** — a chat that answers from the generated pages: the
+  model gets `llms.txt` and opens pages one at a time, names things by their
+  ids (which become links), and can end an answer with a card drawn from the
+  catalog — a service, a flow's sequence diagram, what runs between two
+  contexts, an aggregate's state machine. The demo answers through the worker
+  in `proxy/`; a reader can bring their own OpenAI-compatible endpoint and key
+  from the panel's settings, kept in their browser.
 
 ## What it checks
 
@@ -111,7 +112,7 @@ Plugins, one JSON message in and one out (`plugins/README.md`), declared in
 
 | phase | plugins |
 | --- | --- |
-| extract | `extract-project`, `extract-go`, `extract-ts`, `extract-rust`, `extract-java`, `extract-django`, `extract-openapi`, `extract-wsdl`, `extract-http-clients`, `extract-asyncapi`, `extract-graphql`, `extract-proto`, `extract-river`, `extract-watermill`, `extract-csr`, `extract-sql`, `extract-flows`, `extract-adr`, `extract-glossary` |
+| extract | `extract-project`, `extract-go`, `extract-ts`, `extract-rust`, `extract-java`, `extract-django`, `extract-openapi`, `extract-wsdl`, `extract-http-clients`, `extract-asyncapi`, `extract-graphql`, `extract-proto`, `extract-river`, `extract-watermill`, `extract-go-nats`, `extract-csr`, `extract-sql`, `extract-flows`, `extract-adr`, `extract-glossary` |
 | verify | `verify-otel` — reads traces, marks the hops they show as `verified`; `verify-codeowners` — reads CODEOWNERS, says who to ask about each service |
 | generate | `gen-markdown` — `docs/`, `gen-mermaid` — standalone flow diagrams, `gen-backstage` — Backstage entities |
 
@@ -141,3 +142,11 @@ npm run build        # likec4:gen + tsc --noEmit + vite build
 
 Generated output is committed, so a change to it shows up in a diff; CI runs the
 `--check` variants to keep it honest.
+
+Three build-time variables shape the chat:
+
+| variable | effect |
+|---|---|
+| `VITE_CHAT=off` | no chat at all: no button, no settings section, and its chunk is not built |
+| `VITE_CHAT_PROXY_URL` | the worker that answers with a key of its own (see `proxy/README.md`); unset, the chat waits for the reader's own model |
+| (a switch in Settings) | the reader turns the chat on or off in their browser; on by default when a proxy answers |

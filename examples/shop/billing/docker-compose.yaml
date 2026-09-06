@@ -1,5 +1,18 @@
-# The database the models are the schema of, and the service in front of it.
+# The database the models are the schema of, the broker the tasks go through,
+# the service in front of them and the worker behind.
 services:
+  redis:
+    image: redis:8-alpine
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+
+  nats:
+    image: nats:2-alpine
+    command: ["-js"]
+    ports: ["4222:4222"]
+
   db:
     image: postgres:18-alpine
     environment:
@@ -17,7 +30,25 @@ services:
     environment:
       DATABASE_URL: postgres://billing:billing@db:5432/billing
       AUTH_URL: http://auth:8080
+      CELERY_BROKER_URL: redis://redis:6379/0
+      NATS_URL: nats://nats:4222
     ports: ["8004:8000"]
     depends_on:
       db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_started
+
+  worker:
+    build: .
+    command: celery -A config worker -Q billing,billing.mail
+    environment:
+      DATABASE_URL: postgres://billing:billing@db:5432/billing
+      CELERY_BROKER_URL: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
         condition: service_healthy

@@ -1,6 +1,6 @@
 # shortlink-org/portolan-delivery-route
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `10 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
 
 - **Id:** `buf.build/shortlink-org/portolan-delivery-route`
 - **Registry:** buf.build

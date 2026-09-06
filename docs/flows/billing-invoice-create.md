@@ -1,6 +1,6 @@
 # Invoice create
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `10 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
 
 - **Id:** `flow.billing-invoice-create`
 - **Owner:** [shop](../shop/README.md)
@@ -36,7 +36,7 @@ sequenceDiagram
    status: declared · [`examples/shop/billing/invoices/views.py:13`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/views.py#L13)
 <a id="step-s2"></a>
 2. **shop.billing** → **billing-pg** — Invoice.objects.create
-   status: declared · [`examples/shop/billing/invoices/services.py:16`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L16) · in one transaction.
+   status: declared · [`examples/shop/billing/invoices/services.py:20`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L20) · in one transaction.
 <a id="step-s3"></a>
 3. **shop.billing** → **billing-pg** — InvoiceLine.objects.create
-   status: declared · [`examples/shop/billing/invoices/services.py:25`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L25) · in one transaction, for each line.
+   status: declared · [`examples/shop/billing/invoices/services.py:29`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L29) · in one transaction, for each line.

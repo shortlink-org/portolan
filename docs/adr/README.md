@@ -1,6 +1,6 @@
 # Decision records
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `10 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
 
 | ADR | Title | Status | Date | Scope |
 | --- | --- | --- | --- | --- |
@@ -41,3 +41,7 @@
 | [org.0002](org.0002.md) | Domain event schema version is encoded in the package path (events/v1) | accepted | 2025-05-02 | org |
 | [org.0003](org.0003.md) | Ownership is read from CODEOWNERS, never typed and never resolved | accepted | 2026-09-05 | org |
 | [payments.0004](payments.0004.md) | Journal entries are idempotent by (order_id, attempt) | proposed | 2026-02-09 | [payments](../payments/README.md) |
+| [portolan.0001](portolan.0001.md) | A plugin names files and never writes them | accepted | 2026-09-02 | [portolan](../portolan/README.md) |
+| [portolan.0002](portolan.0002.md) | The host stamps a fragment from its input's last commit | accepted | 2026-09-02 | [portolan](../portolan/README.md) |
+| [portolan.0003](portolan.0003.md) | The Go catalog is a mirror held by a round-trip test | accepted | 2026-09-02 | [portolan](../portolan/README.md) |
+| [portolan.0004](portolan.0004.md) | `contexts` and `services` stay the wire format | accepted | 2026-09-06 | [portolan](../portolan/README.md) |

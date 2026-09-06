@@ -59,8 +59,14 @@ either be rendered or be explicitly acknowledged by the relevant exporter.
 1. Write it. In Go, a new directory here with a `main` that hands its options
    type to `plugin.Serve`, which reads the request, answers a describe and calls
    the work; `catalog.Catalog` from `github.com/shortlink-org/portolan/catalog`
-   is the mirror of the schema. In any other language, anything that speaks the
-   protocol above.
+   is the mirror of the schema, and `internal/goscan` is the tree as syntax -
+   the files parsed once, the import path of each package, the string
+   constants followed to their literals - which River and Watermill share and
+   the next Go extractor should not copy. In Python, the same three things live in
+   `pyplugin/` - `protocol.py`, `source.py` for the tree as syntax, and
+   `catalog.py` for the fragment shapes - and `extract-django` and
+   `extract-celery` are what using them looks like. In any other language,
+   anything that speaks the protocol above.
 2. Describe it. An `options.schema.json` beside the source, embedded with
    `go:embed` and returned in the descriptor. `schematest.Check` in a test keeps
    it from drifting from the options struct: a field renamed on one side and not
@@ -145,6 +151,21 @@ possible routes. The channels merge normally with AsyncAPI declarations by addre
 processors are also extracted; fixed topic generators and the standard
 event/command-name generator form are resolved from source.
 
+`extract-go-nats` reads nats.go and JetStream calls into the subjects a service
+listens on and publishes to. A call is known by the type it is made on -
+`*nats.Conn`, `nats.JetStreamContext`, `jetstream.JetStream`, `jetstream.Stream` -
+and not by its name, because a service's own bus port has a `Subscribe` too.
+The subject is followed to a literal, a constant, a config default, or a
+parameter; a parameter is followed up to two hops through the callers,
+including calls through an interface the adapter satisfies, which is how a
+port `Subscribe(ctx, topic, name, handler)` reads as the assembly's
+`Subscribe(ctx, cart.Topic, cart.BasketCheckedOut{}.Name(), …)`. When the port
+takes exactly one other string beside the subject, that string is the
+message's name; a direct call names no message, and its direction is in the
+channel's doc. A subject read off a database row is a warning at the call,
+not a channel. Consumer configs give the filter subject and the durable name;
+streams, wildcard subjects and work-queue retention are not read yet.
+
 `extract-wsdl` reads WSDL 1.1 contracts as structured SOAP APIs. It follows
 local WSDL imports and XSD imports/includes without network access, keeps
 distinct services, ports and SOAP 1.1/1.2 bindings, and records operation
@@ -166,11 +187,6 @@ raw request whose peer or contract cannot be proved is still useful evidence:
 it is emitted as `unresolved`, with its method, path and source line, rather
 than being assigned to a guessed system. Conditions guarding a call and the
 opposite path after an early return are carried into the flow note.
-Calls through local wrappers retain their argument values, including closure
-arguments, so a path and HTTP method declared by a business operation survive
-the trip into the transport. URL-shaped configuration is followed through a
-constructor and client field to the request, and the resulting evidence chain
-is included in the flow instead of presenting a receiver field as an endpoint.
 
 ## Flows written by hand
 
@@ -948,3 +964,19 @@ somebody else to subscribe to.
 Reading 2.x the obvious way puts every arrow in the estate the wrong way round.
 The extractor reads both versions and answers in 3.x's vocabulary, which is the
 one the catalog keeps.
+
+### A work queue is a channel of kind `job`
+
+A task queue is a channel too - an address the broker knows, messages that
+travel on it - with one difference the catalog has to be told: many callers
+put the same job on it by design, and no domain event stands behind a job.
+`kind: "job"` on the channel says so. The merge does not call two senders on a
+job queue rival publishers, and the Problems page does not look for an event
+with the job's wire name. `extract-celery` answers with these for a Python tree:
+one channel per queue, a `send` per task the tree enqueues and a `receive` per
+task it declares, and one flow per task that is both - the call that enqueues
+it, then the worker that runs it. It reads the queue the way Celery decides
+it, the call before the decorator before `task_routes` before the default,
+and `transaction.on_commit(...)` around an enqueue is a note on the step,
+which is the one fact about *when* a message leaves that the code states
+plainly.

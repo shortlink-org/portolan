@@ -1,6 +1,6 @@
 # Invoice destroy
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `10 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
 
 - **Id:** `flow.billing-invoice-destroy`
 - **Owner:** [shop](../shop/README.md)
@@ -39,10 +39,10 @@ sequenceDiagram
    status: declared · [`examples/shop/billing/invoices/views.py:34`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/views.py#L34)
 <a id="step-s2"></a>
 2. **shop.billing** → **billing-pg** — Invoice.objects.get
-   status: declared · [`examples/shop/billing/invoices/services.py:59`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L59)
+   status: declared · [`examples/shop/billing/invoices/services.py:68`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L68)
 <a id="step-s3"></a>
 3. **shop.billing** → **billing-pg** — Invoice.save
-   status: declared · [`examples/shop/billing/invoices/services.py:61`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L61)
+   status: declared · [`examples/shop/billing/invoices/services.py:70`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L70)
 <a id="step-s4"></a>
 4. **shop.billing** → **bus** — InvoiceVoided
-   [`shop.billing.invoice.InvoiceVoided`](../shop/billing/aggregates/invoice.md#event-shop-billing-invoice-invoicevoided) · status: declared · [`examples/shop/billing/invoices/services.py:62`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L62)
+   [`shop.billing.invoice.InvoiceVoided`](../shop/billing/aggregates/invoice.md#event-shop-billing-invoice-invoicevoided) · status: declared · [`examples/shop/billing/invoices/services.py:71`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L71) · on shop.billing.invoice

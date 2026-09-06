@@ -10,14 +10,18 @@ import { storeViews } from "../catalog";
 import { index } from "../data";
 import { Ident } from "../components/Ident";
 import { KindIcon } from "../components/kind";
+import { TechIcon } from "../components/TechIcon";
+import { STORE_KIND_GLYPH } from "../lib/tech";
 import { plural } from "../lib/format";
 import { outboundKeys, outboundLineage } from "./spec";
 import { servicePath, storePath } from "../routes";
 
 /**
- * What a kind is called on the page. The icon is the same database glyph for
- * all of them: the distinction between Postgres and ClickHouse is a word, and
- * nine glyphs nobody can tell apart is not a taxonomy.
+ * What a kind is called on the page. The KIND icon stays the same database
+ * glyph for all of them - a store is a store in the taxonomy, and nine glyphs
+ * in the tree would make nine kinds of it. Which brand it is lives in the chip
+ * beside the word, as the brand's own mark next to its name, so the chip can
+ * be read at a glance and the tree does not have to be.
  */
 export const STORE_KIND_LABEL: Record<StoreKind, string> = {
   postgres: "PostgreSQL",
@@ -29,6 +33,18 @@ export const STORE_KIND_LABEL: Record<StoreKind, string> = {
   s3: "S3",
   other: "store",
 };
+
+/** The brand's mark for a store kind, or nothing for a kind that has none. */
+export function StoreKindMark({
+  kind,
+  size,
+}: {
+  kind: StoreKind;
+  size?: number;
+}) {
+  const glyph = STORE_KIND_GLYPH[kind];
+  return glyph ? <TechIcon glyph={glyph} size={size} /> : null;
+}
 
 export function StoreHeader({
   store,
@@ -57,7 +73,10 @@ export function StoreHeader({
         <span className="mono text-ink">{store.slug}</span>
       )}
       <span className="meta">{store.name}</span>
-      <span className="chip">{STORE_KIND_LABEL[store.kind]}</span>
+      <span className="chip">
+        <StoreKindMark kind={store.kind} />
+        {STORE_KIND_LABEL[store.kind]}
+      </span>
 
       {access === "reads" ? (
         <span

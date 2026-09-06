@@ -14,6 +14,7 @@ from typing import Any, Dict, List
 import apps as apps_module
 import catalog
 import clients as clients_module
+import database
 import domain
 import events as events_module
 import flows
@@ -22,7 +23,8 @@ import operations
 import store as store_module
 import transport
 from ids import service_id, title
-from protocol import Builder, Input, Options
+from options import Options
+from protocol import Builder, Input
 from source import Project, read
 
 
@@ -61,7 +63,7 @@ def extract(input_: Input, opts: Options, b: Builder, cwd: str = "") -> None:
         clients += clients_module.read_clients(agg.app, dict(opts.peers), rel, b)
 
     reader = flows.FlowReader(
-        flows.Options(context=context, svc_id=svc_id, service=service, store=opts.store, peers=dict(opts.peers), events=dict(opts.events)),
+        flows.Options(context=context, svc_id=svc_id, service=service, store=opts.store, peers=dict(opts.peers), events=dict(opts.events), settings=opts.settings),
         project,
         aggregates,
         use_cases,
@@ -97,6 +99,15 @@ def extract(input_: Input, opts: Options, b: Builder, cwd: str = "") -> None:
         for event in agg.aggregate["events"]:
             if event["id"] not in reader.referenced:
                 b.warn(event["id"], "no flow reaches this event: nothing this extractor could follow publishes it")
+            # Where the code puts the event on the wire is its channel, when
+            # the dataclass did not say; when both say and disagree, one of
+            # the two is stale, and the dataclass's claim stays on the page.
+            for address, line in reader.produced.get(event["id"], []):
+                declared = event.get("wire", {}).get("channel", "")
+                if not declared:
+                    event.setdefault("wire", {})["channel"] = address
+                elif declared != address:
+                    b.warn(event["id"], "declares channel %s but is put on %s at %s" % (declared, address, line))
 
     readme_path = os.path.join(root, "README.md")
     readme = read(readme_path).strip() if os.path.isfile(readme_path) else ""
@@ -136,10 +147,13 @@ def extract(input_: Input, opts: Options, b: Builder, cwd: str = "") -> None:
     if not opts.store:
         b.warn(svc_id, "no store named in the options, so the models describe no database: `store` is what says which one they are the schema of")
         return
+    kind, engine, implied = database.store_kind(project, opts.settings, opts.store_kind)
+    if implied:
+        b.warn(svc_id, "the manifest says storeKind %s but the settings' DATABASES engine is %s, which is %s; the manifest's kind is used" % (kind, engine, implied))
     tables = []
     names = store_module.index(aggregates)
     for agg in aggregates:
-        tables += store_module.read(agg, names, svc_id, opts.store, opts.store_kind or "postgres", b)
+        tables += store_module.read(agg, names, svc_id, opts.store, kind, b)
     store_id = "%s.%s" % (svc_id, opts.store)
     stores_fragment = {
         "generatedAt": input_.generated_at,
@@ -174,7 +188,7 @@ def extract(input_: Input, opts: Options, b: Builder, cwd: str = "") -> None:
                 store_id,
                 opts.store,
                 opts.store_name or title(service) + " database",
-                opts.store_kind or "postgres",
+                kind,
                 svc_id,
                 tables,
                 rel(source),

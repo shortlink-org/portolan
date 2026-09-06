@@ -42,3 +42,15 @@ REST_FRAMEWORK = {"DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema"}
 SPECTACULAR_SETTINGS = {"TITLE": "billing", "VERSION": "1.0.0", "SERVE_INCLUDE_SCHEMA": False}
 
 AUTH_URL = os.environ.get("AUTH_URL", "http://auth:8080")
+NATS_URL = os.environ.get("NATS_URL", "nats://nats:4222")
+
+DEFAULT_FROM_EMAIL = "billing@shop.example"
+
+# Read by config/celery.py under the CELERY_ prefix: the broker the messages
+# go through, the queue a task lands on when nothing else says, and the one
+# task with a queue of its own. The catalog reads the same three lines.
+CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "redis://localhost:6379/0")
+CELERY_TASK_DEFAULT_QUEUE = "billing"
+CELERY_TASK_ROUTES = {
+    "invoices.tasks.send_invoice_email": {"queue": "billing.mail"},
+}

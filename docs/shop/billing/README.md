@@ -1,6 +1,6 @@
 # Billing
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `10 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
 
 - **Id:** `shop.billing`
 - **Context:** [Shop](../README.md)
@@ -20,6 +20,9 @@ and when it was settled.
 - Draws up a draft invoice, with its lines, against an order.
 - Issues it: confirms the session with `auth`, freezes the lines, gives the
   invoice the number the customer will quote, and says `InvoiceIssued`.
+- Mails the invoice to the customer, and reminds them a few days later if it
+  is still unpaid — both off the request, as Celery tasks enqueued once the
+  row is committed.
 - Closes it when the ledger says the money arrived — it listens for
   `PaymentCaptured` and answers with `InvoicePaid`.
 - Voids an invoice nobody is going to pay.
@@ -33,20 +36,29 @@ beyond an opaque id `auth` vouched for.
 
 ## Publishes
 
-`InvoiceIssued`, `InvoicePaid`, `InvoiceVoided`, on `shop.billing.invoice`.
+`InvoiceIssued`, `InvoicePaid`, `InvoiceVoided`, on `shop.billing.invoice` —
+put there by `invoices/bus.py`, over JetStream, with the event's name in the
+message headers.
 
 ## How the catalog reads it
 
 Nothing here is annotated for the catalog: `extract-django` reads the
 applications, and the applications are the claim — `invoices/models.py` is the
-aggregate and the schema, `events.py` is what leaves, `services.py` is what can
-be asked for, the DRF view and `urls.py` are the way in, and `handlers.py` is
-what runs when somebody else's event arrives. The rules are in
+aggregate and the schema, `events.py` is what leaves and `bus.py` the subject
+it leaves on, `services.py` is what can be asked for, the DRF view and
+`urls.py` are the way in, and `handlers.py` is what runs when somebody else's
+event arrives. The rules are in
 [plugins/extract-django/README.md](../../../plugins/extract-django/README.md).
+`extract-celery` reads the rest: `invoices/tasks.py` is what runs later, the
+`.delay()` and `.apply_async()` in `services.py` are where it is set off, and
+the `CELERY_` lines in `config/settings.py` say which queue each task lands
+on. The rules are in
+[plugins/extract-celery/README.md](../../../plugins/extract-celery/README.md).
 
 ```bash
-docker compose up -d db
+docker compose up -d db redis
 python manage.py migrate && python manage.py runserver
+celery -A config worker -Q billing,billing.mail
 ```
 
 ## Aggregates
@@ -132,6 +144,36 @@ python manage.py migrate && python manage.py runserver
 | [`InvoiceVoided`](aggregates/invoice.md#event-shop-billing-invoice-invoicevoided) | v1 |
 
 ## Channels
+
+### billing
+
+`work queue`
+
+**Celery · billing**
+
+Tasks enqueued and worked through Celery over redis.
+
+Source: [`examples/shop/billing/invoices/services.py:50`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L50)
+
+| Direction | Message | Title | Doc |
+| --- | --- | --- | --- |
+| send | `invoices.tasks.remind_unpaid_invoice` | remind_unpaid_invoice | Nudges the customer about an invoice that has stayed unpaid. |
+| receive | `invoices.tasks.remind_unpaid_invoice` | remind_unpaid_invoice | Worked by `remind_unpaid_invoice`, the default queue. Nudges the customer about an invoice that has stayed unpaid. |
+
+### billing.mail
+
+`work queue`
+
+**Celery · billing.mail**
+
+Tasks enqueued and worked through Celery over redis.
+
+Source: [`examples/shop/billing/invoices/services.py:49`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L49)
+
+| Direction | Message | Title | Doc |
+| --- | --- | --- | --- |
+| send | `invoices.tasks.send_invoice_email` | send_invoice_email | Emails the customer the invoice they were asked to pay. |
+| receive | `invoices.tasks.send_invoice_email` | send_invoice_email | Worked by `send_invoice_email`, routed by task_routes. Emails the customer the invoice they were asked to pay. |
 
 ### shop.billing.invoice
 

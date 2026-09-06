@@ -2,8 +2,8 @@
 views {
   view landscape {
     title 'Estate'
-    description 'Every bounded context, and everything outside the estate that touches one.'
-    include auth, storefront, payments, shop, delivery, client, risk_v1, stripe
+    description 'Every architecture group, and everything outside the estate that touches one.'
+    include auth, storefront, payments, shop, delivery, portolan, client, risk_v1, stripe, developer
   }
 
   view ctx_auth of auth {
@@ -95,6 +95,34 @@ views {
   }
   view svc_delivery_core_inside of delivery.core {
     title 'Delivery Core — inside'
+    include *
+  }
+  view ctx_portolan of portolan {
+    title 'Portolan'
+    include *
+  }
+  view svc_portolan_host of portolan.host {
+    title 'Host — neighbours'
+    include *, -> *, * ->
+  }
+  view svc_portolan_host_inside of portolan.host {
+    title 'Host — inside'
+    include *
+  }
+  view svc_portolan_plugins of portolan.plugins {
+    title 'Plugins — neighbours'
+    include *, -> *, * ->
+  }
+  view svc_portolan_plugins_inside of portolan.plugins {
+    title 'Plugins — inside'
+    include *
+  }
+  view svc_portolan_site of portolan.site {
+    title 'Site — neighbours'
+    include *, -> *, * ->
+  }
+  view svc_portolan_site_inside of portolan.site {
+    title 'Site — inside'
     include *
   }
 
@@ -898,6 +926,42 @@ views {
     }
   }
 
+  dynamic view flow_billing_celery_remind_unpaid_invoice {
+    title 'Remind Unpaid Invoice task'
+    description 'Celery task `invoices.tasks.remind_unpaid_invoice` is enqueued on `billing` and worked by `remind_unpaid_invoice`.'
+    shop.billing -> celery_billing 'enqueue remind_unpaid_invoice' {
+      color declared  line dashed  head none
+      notes 'Enqueued after the transaction commits, for later, with a countdown or an eta. Nudges the customer about an invoice that has stayed unpaid. — examples/shop/billing/invoices/services.py:50'
+    }
+    celery_billing -> shop.billing 'remind_unpaid_invoice' {
+      color declared  line dashed  head none
+      notes 'Celery hands `invoices.tasks.remind_unpaid_invoice` to the worker consuming `billing`, the default queue. — examples/shop/billing/invoices/tasks.py:30'
+    }
+  }
+
+  dynamic view flow_billing_celery_remind_unpaid_invoice_cross {
+    title 'Remind Unpaid Invoice task — crossings only'
+    shop.billing -> shop.billing 'no cross-context step'
+  }
+
+  dynamic view flow_billing_celery_send_invoice_email {
+    title 'Send Invoice Email task'
+    description 'Celery task `invoices.tasks.send_invoice_email` is enqueued on `billing.mail` and worked by `send_invoice_email`.'
+    shop.billing -> celery_billing_mail 'enqueue send_invoice_email' {
+      color declared  line dashed  head none
+      notes 'Enqueued after the transaction commits. Emails the customer the invoice they were asked to pay. — examples/shop/billing/invoices/services.py:49'
+    }
+    celery_billing_mail -> shop.billing 'send_invoice_email' {
+      color declared  line dashed  head none
+      notes 'Celery hands `invoices.tasks.send_invoice_email` to the worker consuming `billing.mail`, routed by task_routes. — examples/shop/billing/invoices/tasks.py:18'
+    }
+  }
+
+  dynamic view flow_billing_celery_send_invoice_email_cross {
+    title 'Send Invoice Email task — crossings only'
+    shop.billing -> shop.billing 'no cross-context step'
+  }
+
   dynamic view flow_billing_invoice_create {
     title 'Invoice create'
     description 'Draws up a draft invoice for an order, with a line for each thing sold.'
@@ -907,11 +971,11 @@ views {
     }
     shop.billing -> billing_pg 'Invoice.objects.create' {
       color declared  line dashed  head none
-      notes 'in one transaction. — examples/shop/billing/invoices/services.py:16'
+      notes 'in one transaction. — examples/shop/billing/invoices/services.py:20'
     }
     shop.billing -> billing_pg 'InvoiceLine.objects.create' {
       color declared  line dashed  head none
-      notes 'in one transaction, for each line. — examples/shop/billing/invoices/services.py:25'
+      notes 'in one transaction, for each line. — examples/shop/billing/invoices/services.py:29'
     }
   }
 
@@ -932,15 +996,15 @@ views {
     }
     shop.billing -> billing_pg 'Invoice.objects.get' {
       color declared  line dashed  head none
-      notes 'examples/shop/billing/invoices/services.py:59'
+      notes 'examples/shop/billing/invoices/services.py:68'
     }
     shop.billing -> billing_pg 'Invoice.save' {
       color declared  line dashed  head none
-      notes 'examples/shop/billing/invoices/services.py:61'
+      notes 'examples/shop/billing/invoices/services.py:70'
     }
     shop.billing -> bus 'InvoiceVoided' {
       color declared  line dashed  head onormal
-      notes 'examples/shop/billing/invoices/services.py:62'
+      notes 'on shop.billing.invoice — examples/shop/billing/invoices/services.py:71'
     }
   }
 
@@ -952,7 +1016,7 @@ views {
     }
     shop.billing -> bus 'InvoiceVoided' {
       color declared  line dashed  head onormal
-      notes 'examples/shop/billing/invoices/services.py:62'
+      notes 'on shop.billing.invoice — examples/shop/billing/invoices/services.py:71'
     }
   }
 
@@ -965,19 +1029,27 @@ views {
     }
     shop.billing -> auth.auth 'validateSession → SessionInfo' {
       color declared  line dashed  head normal
-      notes 'examples/shop/billing/invoices/services.py:36'
+      notes 'examples/shop/billing/invoices/services.py:40'
     }
     shop.billing -> billing_pg 'Invoice.objects.get' {
       color declared  line dashed  head none
-      notes 'examples/shop/billing/invoices/services.py:37'
+      notes 'examples/shop/billing/invoices/services.py:41'
     }
     shop.billing -> billing_pg 'Invoice.save' {
       color declared  line dashed  head none
-      notes 'examples/shop/billing/invoices/services.py:41'
+      notes 'in one transaction. — examples/shop/billing/invoices/services.py:46'
+    }
+    shop.billing -> celery_billing_mail 'enqueue send_invoice_email' {
+      color declared  line dashed  head none
+      notes 'in one transaction, after the transaction commits. — examples/shop/billing/invoices/services.py:49'
+    }
+    shop.billing -> celery_billing 'enqueue remind_unpaid_invoice' {
+      color declared  line dashed  head none
+      notes 'in one transaction, after the transaction commits. — examples/shop/billing/invoices/services.py:50'
     }
     shop.billing -> bus 'InvoiceIssued' {
       color declared  line dashed  head onormal
-      notes 'examples/shop/billing/invoices/services.py:42'
+      notes 'on shop.billing.invoice — examples/shop/billing/invoices/services.py:51'
     }
   }
 
@@ -989,11 +1061,11 @@ views {
     }
     shop.billing -> auth.auth 'validateSession → SessionInfo' {
       color declared  line dashed  head normal
-      notes 'examples/shop/billing/invoices/services.py:36'
+      notes 'examples/shop/billing/invoices/services.py:40'
     }
     shop.billing -> bus 'InvoiceIssued' {
       color declared  line dashed  head onormal
-      notes 'examples/shop/billing/invoices/services.py:42'
+      notes 'on shop.billing.invoice — examples/shop/billing/invoices/services.py:51'
     }
   }
 
@@ -1006,7 +1078,7 @@ views {
     }
     shop.billing -> billing_pg 'Invoice.objects.get' {
       color declared  line dashed  head none
-      notes 'examples/shop/billing/invoices/services.py:68'
+      notes 'examples/shop/billing/invoices/services.py:77'
     }
   }
 
@@ -1027,15 +1099,15 @@ views {
     }
     shop.billing -> billing_pg 'Invoice.objects.filter' {
       color declared  line dashed  head none
-      notes 'examples/shop/billing/invoices/services.py:48'
+      notes 'examples/shop/billing/invoices/services.py:57'
     }
     shop.billing -> billing_pg 'Invoice.save' {
       color declared  line dashed  head none
-      notes 'examples/shop/billing/invoices/services.py:52'
+      notes 'examples/shop/billing/invoices/services.py:61'
     }
     shop.billing -> bus 'InvoicePaid' {
       color declared  line dashed  head onormal
-      notes 'examples/shop/billing/invoices/services.py:53'
+      notes 'on shop.billing.invoice — examples/shop/billing/invoices/services.py:62'
     }
   }
 
@@ -1047,7 +1119,7 @@ views {
     }
     shop.billing -> bus 'InvoicePaid' {
       color declared  line dashed  head onormal
-      notes 'examples/shop/billing/invoices/services.py:53'
+      notes 'on shop.billing.invoice — examples/shop/billing/invoices/services.py:62'
     }
   }
 
@@ -1937,6 +2009,63 @@ views {
       color declared  line dashed  head onormal
       notes 'examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:55'
     }
+  }
+
+  dynamic view flow_gen {
+    title 'npm run gen'
+    description 'Three passes over the manifest, each after the previous one\'s files are on disk: extract reads trees and specifications into fragments, verify overlays evidence on the merged catalog, generate turns it into pages. Every plugin is one JSON message in and one out; the host writes, the plugin never does.
+
+In `--check` mode the same run writes nothing and fails on the first file that differs from disk, which is what makes committed output reviewable.'
+    developer -> portolan.host 'npm run gen' {
+      color declared  line dashed  head none
+    }
+    portolan.host -> portolan.host 'validate the manifest against the composed schema' {
+      color declared  line dashed  head none
+      notes 'schema/portolan.schema.json is what every declared plugin said it can be told, composed by npm run schema.'
+    }
+    loop 'for each extract step' {
+      portolan.host -> portolan.plugins 'extract' {
+        color declared  line dashed  head none
+        notes 'The request carries the input root, its stamp and the step\'s options. The stamp is the last commit that touched the root, never a clock (portolan.0002). — scripts/gen.mjs:121'
+      }
+      portolan.host -> tree 'write the fragment beside the service' {
+        color declared  line dashed  head none
+      }
+    }
+    portolan.host -> tree 'read every source the manifest names' {
+      color declared  line dashed  head none
+      notes 'scripts/catalog-sources.mjs:28'
+    }
+    portolan.host -> portolan.host 'merge, validate and enrich the union' {
+      color declared  line dashed  head none
+      notes 'The same code the site runs: src/merge.ts, src/catalog.ts, src/enrich.ts. A fragment naming a peer it does not own is normal; integrity holds over the union.'
+    }
+    loop 'for each verify step' {
+      portolan.host -> portolan.plugins 'verify' {
+        color declared  line dashed  head none
+        notes 'The merged catalog rides in the request; the answer is an overlay fragment with what the evidence showed. — scripts/gen.mjs:135'
+      }
+      portolan.host -> tree 'write the overlay' {
+        color declared  line dashed  head none
+      }
+    }
+    loop 'for each generate step' {
+      portolan.host -> portolan.plugins 'generate' {
+        color declared  line dashed  head none
+        notes 'A wasm module with nothing preopened, or a process. It names files and never writes them (portolan.0001). — scripts/gen.mjs:165'
+      }
+      portolan.host -> tree 'write the pages and delete what stopped being generated' {
+        color declared  line dashed  head none
+      }
+    }
+    portolan.host -> tree 'write .portolan/build-report.json' {
+      color declared  line dashed  head none
+    }
+  }
+
+  dynamic view flow_gen_cross {
+    title 'npm run gen — crossings only'
+    developer -> developer 'no cross-context step'
   }
 
 }

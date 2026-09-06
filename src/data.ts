@@ -32,8 +32,9 @@ import type {
  * what each service publishes beside its code - one level down for a context
  * of one service, two for a context that holds several.
  */
-const SOURCE_GLOBS = [
+export const SOURCE_GLOBS = [
   "data/*.json",
+  "portolan/*.json",
   "examples/*/portolan/*.json",
   "examples/*/*/portolan/*.json",
   "examples/*/*/*/portolan/*.json",
@@ -43,6 +44,7 @@ const SOURCE_GLOBS = [
 
 const modules: Record<string, unknown> = {
   ...import.meta.glob("../data/*.json", { eager: true, import: "default" }),
+  ...import.meta.glob("../portolan/*.json", { eager: true, import: "default" }),
   ...import.meta.glob("../examples/*/portolan/*.json", {
     eager: true,
     import: "default",

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import {
   BrowserRouter,
   Navigate,
@@ -53,6 +53,15 @@ import { ShortcutsSheet, useShortcuts } from "./shortcuts";
 import { Toaster } from "./toast";
 import { useUiStore } from "./ui-store";
 import { ForgeAccessProvider } from "./forge-access";
+import { useChatUi } from "../chat/store";
+
+// The chat is a chunk of its own, and a build with VITE_CHAT=off has no such
+// chunk: the test is on the literal Vite substitutes, so the import below is
+// dead code to the bundler and is dropped with everything it would pull in.
+const ChatPanel =
+  import.meta.env.VITE_CHAT !== "off"
+    ? lazy(() => import("../chat/ChatPanel"))
+    : null;
 
 /** Every route, once. Rendered inside a pane on wide layouts and alone below. */
 function AppRoutes() {
@@ -188,6 +197,7 @@ function SidebarDrawer() {
 function Shell() {
   const [palette, setPalette] = useState(false);
   const [help, setHelp] = useState(false);
+  const chatOpen = useChatUi((s) => s.open);
   const [railed, setRailed] = useState(false);
   const { pathname } = useLocation();
   const settle = useCanvasResize();
@@ -257,7 +267,7 @@ function Shell() {
     },
     // While a modal owns the keyboard the global bindings stand down; ⌘K and
     // Esc are handled inside the modals themselves.
-    !palette && !help,
+    !palette && !help && !chatOpen,
   );
 
   return (
@@ -323,6 +333,11 @@ function Shell() {
 
       <CommandPalette open={palette} onClose={() => setPalette(false)} />
       <ShortcutsSheet open={help} onClose={() => setHelp(false)} />
+      {ChatPanel && chatOpen ? (
+        <Suspense fallback={null}>
+          <ChatPanel />
+        </Suspense>
+      ) : null}
       {/* The one thing the app says out loud, and it says it here rather than
           in the sidebar: a pin can be taken from a page whose tree is folded
           away to a 48px rail. */}

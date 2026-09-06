@@ -344,7 +344,7 @@
           "kind": "call",
           "label": "Invoice.objects.get",
           "status": "declared",
-          "line": "plugins/extract-django/testdata/billing/invoices/services.py:45"
+          "line": "plugins/extract-django/testdata/billing/invoices/services.py:48"
         },
         {
           "type": "step",
@@ -354,7 +354,7 @@
           "kind": "call",
           "label": "Invoice.save",
           "status": "declared",
-          "line": "plugins/extract-django/testdata/billing/invoices/services.py:47"
+          "line": "plugins/extract-django/testdata/billing/invoices/services.py:50"
         },
         {
           "type": "step",
@@ -365,7 +365,7 @@
           "label": "InvoiceVoided",
           "status": "declared",
           "ref": "shop.billing.invoice.InvoiceVoided",
-          "line": "plugins/extract-django/testdata/billing/invoices/services.py:48"
+          "line": "plugins/extract-django/testdata/billing/invoices/services.py:51"
         }
       ]
     },
@@ -398,6 +398,12 @@
           "context": "shop"
         },
         {
+          "id": "celery-billing-mail",
+          "kind": "broker",
+          "context": null,
+          "label": "Celery · billing.mail"
+        },
+        {
           "id": "bus",
           "kind": "broker",
           "context": null
@@ -422,7 +428,7 @@
           "kind": "call",
           "label": "Invoice.objects.get",
           "status": "declared",
-          "line": "plugins/extract-django/testdata/billing/invoices/services.py:14"
+          "line": "plugins/extract-django/testdata/billing/invoices/services.py:16"
         },
         {
           "type": "alt",
@@ -440,7 +446,7 @@
                   "label": "createQuote",
                   "status": "declared",
                   "ref": "pricing.v1.Quotes/createQuote",
-                  "line": "plugins/extract-django/testdata/billing/invoices/services.py:18"
+                  "line": "plugins/extract-django/testdata/billing/invoices/services.py:20"
                 }
               ]
             }
@@ -455,7 +461,7 @@
           "label": "InvoiceLine.objects.create",
           "status": "declared",
           "note": "in one transaction, for each line.",
-          "line": "plugins/extract-django/testdata/billing/invoices/services.py:22"
+          "line": "plugins/extract-django/testdata/billing/invoices/services.py:24"
         },
         {
           "type": "step",
@@ -466,18 +472,29 @@
           "label": "Invoice.save",
           "status": "declared",
           "note": "in one transaction.",
-          "line": "plugins/extract-django/testdata/billing/invoices/services.py:29"
+          "line": "plugins/extract-django/testdata/billing/invoices/services.py:31"
         },
         {
           "type": "step",
           "id": "s7",
+          "from": "shop.billing",
+          "to": "celery-billing-mail",
+          "kind": "call",
+          "label": "enqueue send_invoice_email",
+          "status": "declared",
+          "note": "in one transaction, after the transaction commits.",
+          "line": "plugins/extract-django/testdata/billing/invoices/services.py:32"
+        },
+        {
+          "type": "step",
+          "id": "s8",
           "from": "shop.billing",
           "to": "bus",
           "kind": "event",
           "label": "InvoiceIssued",
           "status": "declared",
           "ref": "shop.billing.invoice.InvoiceIssued",
-          "line": "plugins/extract-django/testdata/billing/invoices/services.py:30"
+          "line": "plugins/extract-django/testdata/billing/invoices/services.py:33"
         }
       ]
     },
@@ -524,7 +541,7 @@
           "kind": "call",
           "label": "Invoice.objects.filter",
           "status": "declared",
-          "line": "plugins/extract-django/testdata/billing/invoices/services.py:53"
+          "line": "plugins/extract-django/testdata/billing/invoices/services.py:56"
         }
       ]
     },
@@ -562,7 +579,7 @@
           "label": "PaymentCaptured",
           "status": "declared",
           "ref": "payments.ledger.payment.PaymentCaptured",
-          "line": "plugins/extract-django/testdata/billing/invoices/handlers.py:10"
+          "line": "plugins/extract-django/testdata/billing/invoices/handlers.py:13"
         },
         {
           "type": "step",
@@ -572,7 +589,7 @@
           "kind": "call",
           "label": "Invoice.objects.get",
           "status": "declared",
-          "line": "plugins/extract-django/testdata/billing/invoices/services.py:36"
+          "line": "plugins/extract-django/testdata/billing/invoices/services.py:39"
         },
         {
           "type": "step",
@@ -582,7 +599,7 @@
           "kind": "call",
           "label": "Invoice.save",
           "status": "declared",
-          "line": "plugins/extract-django/testdata/billing/invoices/services.py:38"
+          "line": "plugins/extract-django/testdata/billing/invoices/services.py:41"
         },
         {
           "type": "step",
@@ -593,7 +610,8 @@
           "label": "InvoicePaid",
           "status": "declared",
           "ref": "shop.billing.invoice.InvoicePaid",
-          "line": "plugins/extract-django/testdata/billing/invoices/services.py:39"
+          "note": "on shop.billing.invoice",
+          "line": "plugins/extract-django/testdata/billing/invoices/services.py:42"
         }
       ]
     }

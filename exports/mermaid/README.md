@@ -18,6 +18,8 @@ Standalone Mermaid sequence diagrams generated from the portolan catalog.
 - [Query shipment](bff-query-shipment.mmd) — `flow.bff-query-shipment`
 - [Query viewer](bff-query-viewer.mmd) — `flow.bff-query-viewer`
 - [Subscription order status](bff-subscription-order-status.mmd) — `flow.bff-subscription-order-status`
+- [Remind Unpaid Invoice task](billing-celery-remind-unpaid-invoice.mmd) — `flow.billing-celery-remind-unpaid-invoice`
+- [Send Invoice Email task](billing-celery-send-invoice-email.mmd) — `flow.billing-celery-send-invoice-email`
 - [Close invoice on payment](billing-close-invoice-on-payment.mmd) — `flow.billing-close-invoice-on-payment`
 - [Invoice create](billing-invoice-create.mmd) — `flow.billing-invoice-create`
 - [Invoice destroy](billing-invoice-destroy.mmd) — `flow.billing-invoice-destroy`
@@ -39,6 +41,7 @@ Standalone Mermaid sequence diagrams generated from the portolan catalog.
 - [Release shipment on payment captured](core-release-shipment-on-payment-captured.mmd) — `flow.core-release-shipment-on-payment-captured`
 - [Start route](core-start-route.mmd) — `flow.core-start-route`
 - [Track shipment](core-track-shipment.mmd) — `flow.core-track-shipment`
+- [npm run gen](gen.mmd) — `flow.gen`
 - [Authorize](ledger-authorize.mmd) — `flow.ledger-authorize`
 - [Capture](ledger-capture.mmd) — `flow.ledger-capture`
 - [Get payment](ledger-get-payment.mmd) — `flow.ledger-get-payment`

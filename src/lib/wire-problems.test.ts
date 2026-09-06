@@ -194,6 +194,20 @@ describe("wireProblems", () => {
     expect(found(catalogWith([cart()]))).toEqual([]);
   });
 
+  // A subscription read out of the code says where the service listens and
+  // nothing about where it publishes; its events are not held against it.
+  it("says nothing about the sends of a service whose channels only receive", () => {
+    const one = speaking(
+      cart(),
+      channel("payments.ledger.payment", "receive payments.PaymentAuthorized"),
+    );
+    const problems = found(catalogWith([one])).filter(
+      (p) => p.kind === "channel-undeclared" || p.kind === "channel-unpublished",
+    );
+
+    expect(problems).toEqual([]);
+  });
+
   it("does not require a work-queue job to be a domain event", () => {
     const jobs = channel(
       "critical_mail",

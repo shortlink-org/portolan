@@ -173,6 +173,9 @@ function detectionsFor(root, files) {
   const adrs = matches(files, /(^|\/)(docs\/adr|adr)\/.*\.md$/i);
   const supportedAdrs = compatibleAdrs(root, adrs);
   const glossaries = matches(files, /(^|\/)glossary\.md$/i);
+  // The app module is the one file a Celery project always has; the tasks
+  // and the calls that enqueue them are found from there.
+  const celery = matches(files, /(^|\/)celery\.py$/);
   const sqlRoot = sql.map((name) => {
     const segments = name.split("/");
     const repository = segments.findIndex((part) => /^(repository|repositories)$/i.test(part));
@@ -195,6 +198,7 @@ function detectionsFor(root, files) {
     detected("rust-domain", rustDomain ? [rustDomain] : [], {}, rustDomain),
     detected("java-domain", javaDomain ? [javaDomain] : [], {}, javaDomain),
     detected("django-domain", files.has("manage.py") && matches(files, /(^|\/)models(?:\/[^/]+)?\.py$/i).length ? ["manage.py"] : []),
+    detected("celery", celery, {}, celery[0]),
     detected("openapi", openapi, openapi[0] ? { spec: openapi[0] } : {}, openapi[0], true),
     detected(
       "wsdl",
@@ -356,6 +360,7 @@ function pluginOptions(plugin, project, detectedOptions = {}) {
   if (plugin === "river") return { ...common, ...detectedOptions, out: "river.json" };
   if (plugin === "watermill") return { ...common, ...detectedOptions, out: "watermill.json" };
   if (plugin === "asyncapi") return { ...common, ...detectedOptions, out: "bus.json" };
+  if (plugin === "celery") return { ...common, ...detectedOptions, out: "celery.json" };
   if (plugin === "graphql") return { ...common, ...detectedOptions, out: "graphql.json" };
   if (plugin === "proto") return { ...common, ...detectedOptions, out: "proto.json" };
   if (plugin === "glossary") return { context: project.context, ...detectedOptions, out: "glossary.json" };

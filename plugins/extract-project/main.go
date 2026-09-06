@@ -16,11 +16,12 @@ type Options struct {
 	GroupSummary string `json:"groupSummary,omitempty"`
 	GroupKind    string `json:"groupKind,omitempty"`
 
-	Component     string `json:"component,omitempty"`
-	ComponentName string `json:"componentName,omitempty"`
-	ComponentKind string `json:"componentKind,omitempty"`
-	Repo          string `json:"repo,omitempty"`
-	Out           string `json:"out,omitempty"`
+	Component     string   `json:"component,omitempty"`
+	ComponentName string   `json:"componentName,omitempty"`
+	ComponentKind string   `json:"componentKind,omitempty"`
+	Technologies  []string `json:"technologies,omitempty"`
+	Repo          string   `json:"repo,omitempty"`
+	Out           string   `json:"out,omitempty"`
 }
 
 func main() {

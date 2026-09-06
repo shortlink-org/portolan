@@ -45,7 +45,7 @@ type Input struct {
 	// Root is the directory to read, relative to the repository.
 	Root string `json:"root"`
 
-	// Commit and GeneratedAt stamp the fragment. The host works them out - the
+	// Commit and GeneratedAt stamp the fragment (portolan.0002). The host works them out - the
 	// last commit that touched Root, and its date - rather than the plugin
 	// reading a clock, because a fragment that changes on every run cannot be
 	// committed and cannot be checked. Stamped this way it changes exactly when
@@ -56,7 +56,7 @@ type Input struct {
 
 // Response is what comes back.
 //
-// Files are named, not written. The host rejects a name that climbs out of the
+// Files are named, not written (portolan.0001). The host rejects a name that climbs out of the
 // output directory, and that rejection is the whole of a plugin's authority
 // over the tree.
 type Response struct {

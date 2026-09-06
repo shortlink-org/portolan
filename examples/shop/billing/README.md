@@ -12,6 +12,9 @@ and when it was settled.
 - Draws up a draft invoice, with its lines, against an order.
 - Issues it: confirms the session with `auth`, freezes the lines, gives the
   invoice the number the customer will quote, and says `InvoiceIssued`.
+- Mails the invoice to the customer, and reminds them a few days later if it
+  is still unpaid — both off the request, as Celery tasks enqueued once the
+  row is committed.
 - Closes it when the ledger says the money arrived — it listens for
   `PaymentCaptured` and answers with `InvoicePaid`.
 - Voids an invoice nobody is going to pay.
@@ -25,18 +28,27 @@ beyond an opaque id `auth` vouched for.
 
 ## Publishes
 
-`InvoiceIssued`, `InvoicePaid`, `InvoiceVoided`, on `shop.billing.invoice`.
+`InvoiceIssued`, `InvoicePaid`, `InvoiceVoided`, on `shop.billing.invoice` —
+put there by `invoices/bus.py`, over JetStream, with the event's name in the
+message headers.
 
 ## How the catalog reads it
 
 Nothing here is annotated for the catalog: `extract-django` reads the
 applications, and the applications are the claim — `invoices/models.py` is the
-aggregate and the schema, `events.py` is what leaves, `services.py` is what can
-be asked for, the DRF view and `urls.py` are the way in, and `handlers.py` is
-what runs when somebody else's event arrives. The rules are in
+aggregate and the schema, `events.py` is what leaves and `bus.py` the subject
+it leaves on, `services.py` is what can be asked for, the DRF view and
+`urls.py` are the way in, and `handlers.py` is what runs when somebody else's
+event arrives. The rules are in
 [plugins/extract-django/README.md](../../../plugins/extract-django/README.md).
+`extract-celery` reads the rest: `invoices/tasks.py` is what runs later, the
+`.delay()` and `.apply_async()` in `services.py` are where it is set off, and
+the `CELERY_` lines in `config/settings.py` say which queue each task lands
+on. The rules are in
+[plugins/extract-celery/README.md](../../../plugins/extract-celery/README.md).
 
 ```bash
-docker compose up -d db
+docker compose up -d db redis
 python manage.py migrate && python manage.py runserver
+celery -A config worker -Q billing,billing.mail
 ```

@@ -2,6 +2,9 @@
   "go-domain": [
     "domain.json"
   ],
+  "go-nats": [
+    "nats.json"
+  ],
   "proto": [
     "proto.json"
   ],
