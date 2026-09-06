@@ -103,7 +103,12 @@ and never written down.
 <endpoint>`, then the steps of every service function it runs, in order.
 **Flow, from a policy.** Each `@receiver` opens one on the bus: `bus → service
 : event <ref>`, where the event is the signal it is given — one of this
-service's own, or another service's placed by the manifest's `events`.
+service's own, or another service's placed by the manifest's `events`. A
+receiver on one of Django's model signals — `post_save`, `pre_delete`,
+`m2m_changed` and the rest — opens none: that is a hook on the row, not a
+policy on an event. It says nothing about what happened, and it fires for
+every save, migrations and fixtures included, so it is reported, with the
+`sender` it hangs on, as the one thing left to move onto an event.
 
 **Inside a body.** Statements are read in source order, and a chain left to
 right. `Invoice.objects.get(…)` is a hop into the store, and so are
@@ -202,6 +207,8 @@ These cases do not become facts in the fragment:
 - a client with no document beside it, and a route its document does not
   declare;
 - an api id the manifest names no peer for;
+- a receiver on a model signal, `post_save` and its kin, named with the model
+  it hangs on;
 - a many-to-many field, whose join table is not named here;
 - an event no flow reaches;
 - a file that does not parse, by path.

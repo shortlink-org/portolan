@@ -21,7 +21,7 @@ from ids import pascal, slug
 from operations import UseCase
 import celery_conf
 import celery_tasks
-from source import Module, Project, assigned, doc, dotted, keyword_str, methods
+from source import Module, Project, assigned, doc, dotted, keyword, keyword_str, methods
 
 LANE_CLIENT = "client"
 LANE_BUS = "bus"
@@ -43,6 +43,19 @@ SEND_METHODS = {"send", "send_robust", "publish"}
 # `KafkaProducer.send`, confluent's `produce`, NATS and Redis `publish`,
 # Channels' `group_send`.
 PRODUCE_METHODS = {"send", "produce", "publish", "group_send"}
+# Django's own model signals: a hook on the row, not an event. A receiver on
+# one is reported, not drawn.
+ORM_SIGNALS = {"pre_init", "post_init", "pre_save", "post_save", "pre_delete", "post_delete", "m2m_changed", "pre_migrate", "post_migrate"}
+
+
+def sender_of(decorator: ast.Call) -> str:
+    """`sender=Invoice`, or the models listed, or every model when none is named."""
+    value = keyword(decorator, "sender")
+    if value is None:
+        return "every model"
+    if isinstance(value, (ast.List, ast.Tuple)):
+        return ", ".join(dotted(v) for v in value.elts if dotted(v)) or "every model"
+    return dotted(value) or "every model"
 
 
 @dataclass
@@ -206,6 +219,18 @@ class FlowReader:
         )
 
     def policy_flow(self, agg: Aggregate, module: Module, node: ast.AST, decorator: ast.Call) -> Optional[Dict[str, object]]:
+        signal = dotted(decorator.args[0]).split(".")[-1] if decorator.args else ""
+        if signal in ORM_SIGNALS:
+            # Not a policy on an event: a hook on the row. It says nothing
+            # about what happened, and it fires for every save - migrations,
+            # fixtures and the admin included - so it is reported rather than
+            # drawn as a flow nothing in the domain triggers.
+            self.b.warn(
+                module.where(node),
+                "%s runs on %s of %s: a policy hanging on a persistence hook rather than a domain event - nothing says what happened, and it fires for any save, migrations and fixtures included"
+                % (node.name, signal, sender_of(decorator)),
+            )
+            return None
         trigger = self.trigger(module, decorator)
         if trigger is None:
             self.b.warn(

@@ -62,10 +62,11 @@ class Fragment(unittest.TestCase):
 
     def test_what_it_reports_beside_them(self):
         self.assertEqual(
-            [(d.severity, d.ref) for d in self.warnings],
-            [("warning", "shop.billing.invoice.InvoiceVoided")],
+            [(d.severity, d.ref.split("/")[-1]) for d in self.warnings],
+            [("warning", "shop.billing.invoice.InvoiceVoided"), ("warning", "handlers.py:19")],
         )
         self.assertIn("a signal declares no payload", self.warnings[0].message)
+        self.assertTrue(self.warnings[1].message.startswith("index_invoice runs on post_save of Invoice: a policy hanging on a persistence hook"))
 
     def test_without_a_store_the_models_describe_no_database(self):
         options = dict(OPTIONS)

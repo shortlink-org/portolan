@@ -579,7 +579,7 @@
           "label": "PaymentCaptured",
           "status": "declared",
           "ref": "payments.ledger.payment.PaymentCaptured",
-          "line": "plugins/extract-django/testdata/billing/invoices/handlers.py:10"
+          "line": "plugins/extract-django/testdata/billing/invoices/handlers.py:13"
         },
         {
           "type": "step",
