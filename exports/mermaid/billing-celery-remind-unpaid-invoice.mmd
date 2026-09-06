@@ -1,0 +1,6 @@
+sequenceDiagram
+    autonumber
+    participant p0 as shop.billing
+    participant p1 as Celery · billing
+    p0->>p1: enqueue remind_unpaid_invoice
+    p1->>p0: remind_unpaid_invoice

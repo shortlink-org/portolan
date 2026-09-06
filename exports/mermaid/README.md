@@ -18,6 +18,8 @@ Standalone Mermaid sequence diagrams generated from the portolan catalog.
 - [Query shipment](bff-query-shipment.mmd) — `flow.bff-query-shipment`
 - [Query viewer](bff-query-viewer.mmd) — `flow.bff-query-viewer`
 - [Subscription order status](bff-subscription-order-status.mmd) — `flow.bff-subscription-order-status`
+- [Remind Unpaid Invoice task](billing-celery-remind-unpaid-invoice.mmd) — `flow.billing-celery-remind-unpaid-invoice`
+- [Send Invoice Email task](billing-celery-send-invoice-email.mmd) — `flow.billing-celery-send-invoice-email`
 - [Close invoice on payment](billing-close-invoice-on-payment.mmd) — `flow.billing-close-invoice-on-payment`
 - [Invoice create](billing-invoice-create.mmd) — `flow.billing-invoice-create`
 - [Invoice destroy](billing-invoice-destroy.mmd) — `flow.billing-invoice-destroy`

@@ -22,7 +22,8 @@ import operations
 import store as store_module
 import transport
 from ids import service_id, title
-from protocol import Builder, Input, Options
+from options import Options
+from protocol import Builder, Input
 from source import Project, read
 
 

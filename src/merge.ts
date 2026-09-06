@@ -405,6 +405,15 @@ function mergeService(
           theirs.messages,
           (m) => `${m.direction} ${m.name}`,
         );
+        if (!mine.kind && theirs.kind) {
+          mine.kind = theirs.kind;
+        } else if (mine.kind && theirs.kind && mine.kind !== theirs.kind) {
+          conflicts.push({
+            path,
+            where: incoming.id,
+            message: `channel "${mine.address}" of service "${incoming.id}" has kind ${theirs.kind} here and ${mine.kind} in ${owner}; the first one is used`,
+          });
+        }
 
         // Mutated in place: the channel that was here keeps its prose and its
         // source, and gains the messages the other document named.

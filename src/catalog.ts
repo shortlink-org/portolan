@@ -448,6 +448,8 @@ export interface Channel {
    * the code beside it are held against each other.
    */
   address: string;
+  /** Event stream by default; a job queue has work-queue ownership semantics. */
+  kind?: "event" | "job";
   title?: string;
   doc?: string;
   messages: ChannelMessage[];
@@ -1525,6 +1527,17 @@ function validateChannels(service: Service): void {
       );
     }
     addresses.add(channel.address);
+
+    if (
+      channel.kind !== undefined &&
+      channel.kind !== "event" &&
+      channel.kind !== "job"
+    ) {
+      fail(
+        `channel "${channel.address}" of service "${service.id}" has kind "${channel.kind}", which is neither event nor job`,
+        `service ${service.id} / channel ${channel.address}`,
+      );
+    }
 
     const seen = new Set<string>();
     for (const message of channel.messages) {

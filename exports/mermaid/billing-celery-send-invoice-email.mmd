@@ -1,0 +1,6 @@
+sequenceDiagram
+    autonumber
+    participant p0 as shop.billing
+    participant p1 as Celery · billing.mail
+    p0->>p1: enqueue send_invoice_email
+    p1->>p0: send_invoice_email

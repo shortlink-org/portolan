@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Invoices against an order, for the portolan example estate."
 requires-python = ">=3.11"
 dependencies = [
+    "celery[redis]>=5.4",
     "django>=5.0",
     "djangorestframework>=3.15",
     "drf-spectacular>=0.27",

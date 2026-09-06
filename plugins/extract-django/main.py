@@ -14,9 +14,11 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(1, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "pyplugin"))
 
 from extract import extract  # noqa: E402
-from protocol import Builder, Input, Options  # noqa: E402
+from options import Options  # noqa: E402
+from protocol import Builder, Input  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 

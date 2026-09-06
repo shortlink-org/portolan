@@ -14,7 +14,7 @@
           "name": "Billing",
           "repo": "github.com/shortlink-org/portolan",
           "path": "examples/shop/billing",
-          "readme": "# Billing\n\nService `billing` — bounded context **shop**. Python on Django.\n\nOwns the invoice: what a customer is asked to pay for one order, and what\nhappens to it between being drawn up and being closed. It does not move money.\n`payments.ledger` does that; billing records what was owed, what it was for,\nand when it was settled.\n\n## What it does\n\n- Draws up a draft invoice, with its lines, against an order.\n- Issues it: confirms the session with `auth`, freezes the lines, gives the\n  invoice the number the customer will quote, and says `InvoiceIssued`.\n- Closes it when the ledger says the money arrived — it listens for\n  `PaymentCaptured` and answers with `InvoicePaid`.\n- Voids an invoice nobody is going to pay.\n\n## What it does not do\n\nDoes not authorise, capture or refund anything: money is `payments.ledger`'s,\nand billing only hears about it. Does not price anything — a line arrives with\nthe amount it was sold at. Does not hold card data, or know who a customer is\nbeyond an opaque id `auth` vouched for.\n\n## Publishes\n\n`InvoiceIssued`, `InvoicePaid`, `InvoiceVoided`, on `shop.billing.invoice`.\n\n## How the catalog reads it\n\nNothing here is annotated for the catalog: `extract-django` reads the\napplications, and the applications are the claim — `invoices/models.py` is the\naggregate and the schema, `events.py` is what leaves, `services.py` is what can\nbe asked for, the DRF view and `urls.py` are the way in, and `handlers.py` is\nwhat runs when somebody else's event arrives. The rules are in\n[plugins/extract-django/README.md](../../../plugins/extract-django/README.md).\n\n```bash\ndocker compose up -d db\npython manage.py migrate && python manage.py runserver\n```",
+          "readme": "# Billing\n\nService `billing` — bounded context **shop**. Python on Django.\n\nOwns the invoice: what a customer is asked to pay for one order, and what\nhappens to it between being drawn up and being closed. It does not move money.\n`payments.ledger` does that; billing records what was owed, what it was for,\nand when it was settled.\n\n## What it does\n\n- Draws up a draft invoice, with its lines, against an order.\n- Issues it: confirms the session with `auth`, freezes the lines, gives the\n  invoice the number the customer will quote, and says `InvoiceIssued`.\n- Mails the invoice to the customer, and reminds them a few days later if it\n  is still unpaid — both off the request, as Celery tasks enqueued once the\n  row is committed.\n- Closes it when the ledger says the money arrived — it listens for\n  `PaymentCaptured` and answers with `InvoicePaid`.\n- Voids an invoice nobody is going to pay.\n\n## What it does not do\n\nDoes not authorise, capture or refund anything: money is `payments.ledger`'s,\nand billing only hears about it. Does not price anything — a line arrives with\nthe amount it was sold at. Does not hold card data, or know who a customer is\nbeyond an opaque id `auth` vouched for.\n\n## Publishes\n\n`InvoiceIssued`, `InvoicePaid`, `InvoiceVoided`, on `shop.billing.invoice`.\n\n## How the catalog reads it\n\nNothing here is annotated for the catalog: `extract-django` reads the\napplications, and the applications are the claim — `invoices/models.py` is the\naggregate and the schema, `events.py` is what leaves, `services.py` is what can\nbe asked for, the DRF view and `urls.py` are the way in, and `handlers.py` is\nwhat runs when somebody else's event arrives. The rules are in\n[plugins/extract-django/README.md](../../../plugins/extract-django/README.md).\n`extract-celery` reads the rest: `invoices/tasks.py` is what runs later, the\n`.delay()` and `.apply_async()` in `services.py` are where it is set off, and\nthe `CELERY_` lines in `config/settings.py` say which queue each task lands\non. The rules are in\n[plugins/extract-celery/README.md](../../../plugins/extract-celery/README.md).\n\n```bash\ndocker compose up -d db redis\npython manage.py migrate && python manage.py runserver\ncelery -A config worker -Q billing,billing.mail\n```",
           "provides": [],
           "consumes": [
             {
@@ -387,7 +387,7 @@
           "label": "Invoice.objects.create",
           "status": "declared",
           "note": "in one transaction.",
-          "line": "examples/shop/billing/invoices/services.py:16"
+          "line": "examples/shop/billing/invoices/services.py:20"
         },
         {
           "type": "step",
@@ -398,7 +398,7 @@
           "label": "InvoiceLine.objects.create",
           "status": "declared",
           "note": "in one transaction, for each line.",
-          "line": "examples/shop/billing/invoices/services.py:25"
+          "line": "examples/shop/billing/invoices/services.py:29"
         }
       ]
     },
@@ -450,7 +450,7 @@
           "kind": "call",
           "label": "Invoice.objects.get",
           "status": "declared",
-          "line": "examples/shop/billing/invoices/services.py:59"
+          "line": "examples/shop/billing/invoices/services.py:68"
         },
         {
           "type": "step",
@@ -460,7 +460,7 @@
           "kind": "call",
           "label": "Invoice.save",
           "status": "declared",
-          "line": "examples/shop/billing/invoices/services.py:61"
+          "line": "examples/shop/billing/invoices/services.py:70"
         },
         {
           "type": "step",
@@ -471,7 +471,7 @@
           "label": "InvoiceVoided",
           "status": "declared",
           "ref": "shop.billing.invoice.InvoiceVoided",
-          "line": "examples/shop/billing/invoices/services.py:62"
+          "line": "examples/shop/billing/invoices/services.py:71"
         }
       ]
     },
@@ -529,7 +529,7 @@
           "label": "validateSession",
           "status": "declared",
           "ref": "auth.v1.Sessions/validateSession",
-          "line": "examples/shop/billing/invoices/services.py:36"
+          "line": "examples/shop/billing/invoices/services.py:40"
         },
         {
           "type": "step",
@@ -539,7 +539,7 @@
           "kind": "call",
           "label": "Invoice.objects.get",
           "status": "declared",
-          "line": "examples/shop/billing/invoices/services.py:37"
+          "line": "examples/shop/billing/invoices/services.py:41"
         },
         {
           "type": "step",
@@ -549,7 +549,8 @@
           "kind": "call",
           "label": "Invoice.save",
           "status": "declared",
-          "line": "examples/shop/billing/invoices/services.py:41"
+          "note": "in one transaction.",
+          "line": "examples/shop/billing/invoices/services.py:46"
         },
         {
           "type": "step",
@@ -560,7 +561,7 @@
           "label": "InvoiceIssued",
           "status": "declared",
           "ref": "shop.billing.invoice.InvoiceIssued",
-          "line": "examples/shop/billing/invoices/services.py:42"
+          "line": "examples/shop/billing/invoices/services.py:51"
         }
       ]
     },
@@ -607,7 +608,7 @@
           "kind": "call",
           "label": "Invoice.objects.get",
           "status": "declared",
-          "line": "examples/shop/billing/invoices/services.py:68"
+          "line": "examples/shop/billing/invoices/services.py:77"
         }
       ]
     },
@@ -655,7 +656,7 @@
           "kind": "call",
           "label": "Invoice.objects.filter",
           "status": "declared",
-          "line": "examples/shop/billing/invoices/services.py:48"
+          "line": "examples/shop/billing/invoices/services.py:57"
         },
         {
           "type": "step",
@@ -665,7 +666,7 @@
           "kind": "call",
           "label": "Invoice.save",
           "status": "declared",
-          "line": "examples/shop/billing/invoices/services.py:52"
+          "line": "examples/shop/billing/invoices/services.py:61"
         },
         {
           "type": "step",
@@ -676,7 +677,7 @@
           "label": "InvoicePaid",
           "status": "declared",
           "ref": "shop.billing.invoice.InvoicePaid",
-          "line": "examples/shop/billing/invoices/services.py:53"
+          "line": "examples/shop/billing/invoices/services.py:62"
         }
       ]
     }

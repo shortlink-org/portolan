@@ -87,6 +87,7 @@ function sharedChannels(catalog: Catalog): Problem[] {
       }
 
       for (const channel of service.channels ?? []) {
+        if (channel.kind === "job") continue;
         if (!sends(channel.messages)) continue;
         publisher(channel.address, service, context.id).declared = true;
       }
@@ -163,7 +164,9 @@ function documentAgainstCode(catalog: Catalog): Problem[] {
       if (channels.length === 0) continue;
 
       const declared = new Set(
-        channels.filter((c) => sends(c.messages)).map((c) => c.address),
+        channels
+          .filter((c) => c.kind !== "job" && sends(c.messages))
+          .map((c) => c.address),
       );
       const published = new Map<string, Event>();
 
@@ -188,6 +191,7 @@ function documentAgainstCode(catalog: Catalog): Problem[] {
       }
 
       for (const channel of channels) {
+        if (channel.kind === "job") continue;
         if (!sends(channel.messages)) continue;
         if (published.has(channel.address)) continue;
 

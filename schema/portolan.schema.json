@@ -55,6 +55,7 @@
               "rust-domain",
               "java-domain",
               "django-domain",
+              "celery",
               "openapi",
               "asyncapi",
               "graphql",
@@ -172,6 +173,25 @@
               "properties": {
                 "options": {
                   "$ref": "#/$defs/options.django-domain"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "plugin"
+              ],
+              "properties": {
+                "plugin": {
+                  "const": "celery"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "options": {
+                  "$ref": "#/$defs/options.celery"
                 }
               }
             }
@@ -1133,6 +1153,43 @@
           "type": "string",
           "description": "Name of the fragment holding the database the models describe, inside the step's output directory. Written only when store is set.",
           "default": "stores.json"
+        }
+      }
+    },
+    "options.celery": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "Slug of the bounded context the service belongs to. Defaults to the name of the input directory.",
+          "examples": [
+            "shop"
+          ]
+        },
+        "service": {
+          "type": "string",
+          "description": "Slug of the service that enqueues and works the tasks. Defaults to the name of the input directory.",
+          "examples": [
+            "billing"
+          ]
+        },
+        "source": {
+          "type": "string",
+          "description": "The directory the tasks and their callers are looked for in, relative to the input root.",
+          "default": "."
+        },
+        "settings": {
+          "type": "string",
+          "description": "The Django settings module the Celery app is configured from, as an import spells it. Defaults to what manage.py sets DJANGO_SETTINGS_MODULE to.",
+          "examples": [
+            "config.settings"
+          ]
+        },
+        "out": {
+          "type": "string",
+          "description": "Name of the fragment file, inside the step's output directory.",
+          "default": "celery.json"
         }
       }
     },

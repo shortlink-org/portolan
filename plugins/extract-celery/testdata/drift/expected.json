@@ -1,0 +1,174 @@
+{
+  "generatedAt": "2026-09-05T00:00:00Z",
+  "commit": "abc1234",
+  "contexts": [
+    {
+      "id": "ops",
+      "slug": "ops",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "ops.reports",
+          "slug": "reports",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "channels": [
+            {
+              "address": "mail",
+              "kind": "job",
+              "title": "Celery · mail",
+              "doc": "Tasks enqueued and worked through Celery over amqp.",
+              "messages": [
+                {
+                  "name": "mail.tasks.send_receipt",
+                  "title": "mail.tasks.send_receipt",
+                  "direction": "send"
+                }
+              ],
+              "source": "plugins/extract-celery/testdata/drift/jobs/services.py:19"
+            },
+            {
+              "address": "reports.default",
+              "kind": "job",
+              "title": "Celery · reports.default",
+              "doc": "Tasks enqueued and worked through Celery over amqp.",
+              "messages": [
+                {
+                  "name": "jobs.tasks.build_report",
+                  "title": "build_report",
+                  "doc": "Builds the monthly report.",
+                  "direction": "send"
+                },
+                {
+                  "name": "jobs.tasks.build_report",
+                  "title": "build_report",
+                  "doc": "Worked by `build_report`, the default queue. Builds the monthly report.",
+                  "direction": "receive"
+                },
+                {
+                  "name": "jobs.tasks.deliver_report",
+                  "title": "deliver_report",
+                  "doc": "Sends the report to whoever asked for it.",
+                  "direction": "send"
+                },
+                {
+                  "name": "jobs.tasks.deliver_report",
+                  "title": "deliver_report",
+                  "doc": "Worked by `deliver_report`, the default queue. Sends the report to whoever asked for it.",
+                  "direction": "receive"
+                },
+                {
+                  "name": "jobs.tasks.orphan",
+                  "title": "orphan",
+                  "doc": "Worked by `orphan`, the default queue. Nothing in this tree enqueues it. Declared, never enqueued.",
+                  "direction": "receive"
+                }
+              ],
+              "source": "plugins/extract-celery/testdata/drift/jobs/services.py:14"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [
+    {
+      "id": "flow.reports-celery-build-report",
+      "slug": "reports-celery-build-report",
+      "name": "Build Report task",
+      "summary": "Celery task `jobs.tasks.build_report` is enqueued on `reports.default` and worked by `build_report`.",
+      "source": "plugins/extract-celery/testdata/drift/jobs/services.py",
+      "owner": "ops",
+      "participants": [
+        {
+          "id": "ops.reports",
+          "kind": "service",
+          "context": "ops"
+        },
+        {
+          "id": "celery-reports-default",
+          "kind": "broker",
+          "context": null,
+          "label": "Celery · reports.default"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "enqueue",
+          "from": "ops.reports",
+          "to": "celery-reports-default",
+          "kind": "call",
+          "label": "enqueue build_report",
+          "status": "declared",
+          "note": "Enqueued in a chain. Builds the monthly report.",
+          "line": "plugins/extract-celery/testdata/drift/jobs/services.py:14"
+        },
+        {
+          "type": "step",
+          "id": "work",
+          "from": "celery-reports-default",
+          "to": "ops.reports",
+          "kind": "call",
+          "label": "build_report",
+          "status": "declared",
+          "note": "Celery hands `jobs.tasks.build_report` to the worker consuming `reports.default`, the default queue.",
+          "line": "plugins/extract-celery/testdata/drift/jobs/tasks.py:9"
+        }
+      ]
+    },
+    {
+      "id": "flow.reports-celery-deliver-report",
+      "slug": "reports-celery-deliver-report",
+      "name": "Deliver Report task",
+      "summary": "Celery task `jobs.tasks.deliver_report` is enqueued on `reports.default` and worked by `deliver_report`.",
+      "source": "plugins/extract-celery/testdata/drift/jobs/services.py",
+      "owner": "ops",
+      "participants": [
+        {
+          "id": "ops.reports",
+          "kind": "service",
+          "context": "ops"
+        },
+        {
+          "id": "celery-reports-default",
+          "kind": "broker",
+          "context": null,
+          "label": "Celery · reports.default"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "enqueue",
+          "from": "ops.reports",
+          "to": "celery-reports-default",
+          "kind": "call",
+          "label": "enqueue deliver_report",
+          "status": "declared",
+          "note": "Enqueued in a chain. Sends the report to whoever asked for it.",
+          "line": "plugins/extract-celery/testdata/drift/jobs/services.py:14"
+        },
+        {
+          "type": "step",
+          "id": "work",
+          "from": "celery-reports-default",
+          "to": "ops.reports",
+          "kind": "call",
+          "label": "deliver_report",
+          "status": "declared",
+          "note": "Celery hands `jobs.tasks.deliver_report` to the worker consuming `reports.default`, the default queue.",
+          "line": "plugins/extract-celery/testdata/drift/jobs/tasks.py:14"
+        }
+      ]
+    }
+  ],
+  "adrs": []
+}

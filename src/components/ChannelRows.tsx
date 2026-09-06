@@ -97,6 +97,9 @@ export function ChannelRows({
             {channel.title ? (
               <span className="text-muted">{channel.title}</span>
             ) : null}
+            {channel.kind === "job" ? (
+              <span className="chip">work queue</span>
+            ) : null}
           </div>
           {channel.doc ? (
             <p className="px-3 py-2 text-muted">{channel.doc}</p>

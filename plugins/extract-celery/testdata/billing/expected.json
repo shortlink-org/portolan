@@ -1,0 +1,229 @@
+{
+  "generatedAt": "2026-09-05T00:00:00Z",
+  "commit": "abc1234",
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.billing",
+          "slug": "billing",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "channels": [
+            {
+              "address": "billing",
+              "kind": "job",
+              "title": "Celery · billing",
+              "doc": "Tasks enqueued and worked through Celery over redis.",
+              "messages": [
+                {
+                  "name": "billing.archive_invoice",
+                  "title": "archive_invoice",
+                  "doc": "Moves a closed invoice to cold storage.",
+                  "direction": "send"
+                },
+                {
+                  "name": "billing.archive_invoice",
+                  "title": "archive_invoice",
+                  "doc": "Worked by `archive_invoice`, the default queue. Moves a closed invoice to cold storage.",
+                  "direction": "receive"
+                }
+              ],
+              "source": "plugins/extract-celery/testdata/billing/invoices/handlers.py:15"
+            },
+            {
+              "address": "billing.mail",
+              "kind": "job",
+              "title": "Celery · billing.mail",
+              "doc": "Tasks enqueued and worked through Celery over redis.",
+              "messages": [
+                {
+                  "name": "invoices.tasks.send_invoice_email",
+                  "title": "send_invoice_email",
+                  "doc": "Emails the customer the invoice they were asked to pay.",
+                  "direction": "send"
+                },
+                {
+                  "name": "invoices.tasks.send_invoice_email",
+                  "title": "send_invoice_email",
+                  "doc": "Worked by `send_invoice_email`, routed by task_routes. Emails the customer the invoice they were asked to pay.",
+                  "direction": "receive"
+                }
+              ],
+              "source": "plugins/extract-celery/testdata/billing/invoices/services.py:12"
+            },
+            {
+              "address": "billing.slow",
+              "kind": "job",
+              "title": "Celery · billing.slow",
+              "doc": "Tasks enqueued and worked through Celery over redis.",
+              "messages": [
+                {
+                  "name": "invoices.tasks.remind_unpaid_invoice",
+                  "title": "remind_unpaid_invoice",
+                  "doc": "Nudges the customer about an invoice that has stayed unpaid.",
+                  "direction": "send"
+                },
+                {
+                  "name": "invoices.tasks.remind_unpaid_invoice",
+                  "title": "remind_unpaid_invoice",
+                  "doc": "Worked by `remind_unpaid_invoice`, named on the task. Nudges the customer about an invoice that has stayed unpaid.",
+                  "direction": "receive"
+                }
+              ],
+              "source": "plugins/extract-celery/testdata/billing/invoices/services.py:18"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [
+    {
+      "id": "flow.billing-celery-archive-invoice",
+      "slug": "billing-celery-archive-invoice",
+      "name": "Archive Invoice task",
+      "summary": "Celery task `billing.archive_invoice` is enqueued on `billing` and worked by `archive_invoice`.",
+      "source": "plugins/extract-celery/testdata/billing/invoices/handlers.py",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "shop.billing",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "celery-billing",
+          "kind": "broker",
+          "context": null,
+          "label": "Celery · billing"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "enqueue",
+          "from": "shop.billing",
+          "to": "celery-billing",
+          "kind": "call",
+          "label": "enqueue archive_invoice",
+          "status": "declared",
+          "note": "Enqueued after the transaction commits. Moves a closed invoice to cold storage. Also enqueued at plugins/extract-celery/testdata/billing/invoices/services.py:23.",
+          "line": "plugins/extract-celery/testdata/billing/invoices/handlers.py:15"
+        },
+        {
+          "type": "step",
+          "id": "work",
+          "from": "celery-billing",
+          "to": "shop.billing",
+          "kind": "call",
+          "label": "archive_invoice",
+          "status": "declared",
+          "note": "Celery hands `billing.archive_invoice` to the worker consuming `billing`, the default queue.",
+          "line": "plugins/extract-celery/testdata/billing/invoices/tasks.py:22"
+        }
+      ]
+    },
+    {
+      "id": "flow.billing-celery-remind-unpaid-invoice",
+      "slug": "billing-celery-remind-unpaid-invoice",
+      "name": "Remind Unpaid Invoice task",
+      "summary": "Celery task `invoices.tasks.remind_unpaid_invoice` is enqueued on `billing.slow` and worked by `remind_unpaid_invoice`.",
+      "source": "plugins/extract-celery/testdata/billing/invoices/services.py",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "shop.billing",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "celery-billing-slow",
+          "kind": "broker",
+          "context": null,
+          "label": "Celery · billing.slow"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "enqueue",
+          "from": "shop.billing",
+          "to": "celery-billing-slow",
+          "kind": "call",
+          "label": "enqueue remind_unpaid_invoice",
+          "status": "declared",
+          "note": "Enqueued for later, with a countdown or an eta. Nudges the customer about an invoice that has stayed unpaid.",
+          "line": "plugins/extract-celery/testdata/billing/invoices/services.py:18"
+        },
+        {
+          "type": "step",
+          "id": "work",
+          "from": "celery-billing-slow",
+          "to": "shop.billing",
+          "kind": "call",
+          "label": "remind_unpaid_invoice",
+          "status": "declared",
+          "note": "Celery hands `invoices.tasks.remind_unpaid_invoice` to the worker consuming `billing.slow`, named on the task.",
+          "line": "plugins/extract-celery/testdata/billing/invoices/tasks.py:17"
+        }
+      ]
+    },
+    {
+      "id": "flow.billing-celery-send-invoice-email",
+      "slug": "billing-celery-send-invoice-email",
+      "name": "Send Invoice Email task",
+      "summary": "Celery task `invoices.tasks.send_invoice_email` is enqueued on `billing.mail` and worked by `send_invoice_email`.",
+      "source": "plugins/extract-celery/testdata/billing/invoices/services.py",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "shop.billing",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "celery-billing-mail",
+          "kind": "broker",
+          "context": null,
+          "label": "Celery · billing.mail"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "enqueue",
+          "from": "shop.billing",
+          "to": "celery-billing-mail",
+          "kind": "call",
+          "label": "enqueue send_invoice_email",
+          "status": "declared",
+          "note": "Enqueued after the transaction commits. Emails the customer the invoice they were asked to pay.",
+          "line": "plugins/extract-celery/testdata/billing/invoices/services.py:12"
+        },
+        {
+          "type": "step",
+          "id": "work",
+          "from": "celery-billing-mail",
+          "to": "shop.billing",
+          "kind": "call",
+          "label": "send_invoice_email",
+          "status": "declared",
+          "note": "Celery hands `invoices.tasks.send_invoice_email` to the worker consuming `billing.mail`, routed by task_routes.",
+          "line": "plugins/extract-celery/testdata/billing/invoices/tasks.py:12"
+        }
+      ]
+    }
+  ],
+  "adrs": []
+}

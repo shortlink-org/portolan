@@ -59,8 +59,11 @@ either be rendered or be explicitly acknowledged by the relevant exporter.
 1. Write it. In Go, a new directory here with a `main` that hands its options
    type to `plugin.Serve`, which reads the request, answers a describe and calls
    the work; `catalog.Catalog` from `github.com/shortlink-org/portolan/catalog`
-   is the mirror of the schema. In any other language, anything that speaks the
-   protocol above.
+   is the mirror of the schema. In Python, the same three things live in
+   `pyplugin/` - `protocol.py`, `source.py` for the tree as syntax, and
+   `catalog.py` for the fragment shapes - and `extract-django` and
+   `extract-celery` are what using them looks like. In any other language,
+   anything that speaks the protocol above.
 2. Describe it. An `options.schema.json` beside the source, embedded with
    `go:embed` and returned in the descriptor. `schematest.Check` in a test keeps
    it from drifting from the options struct: a field renamed on one side and not
@@ -890,3 +893,19 @@ somebody else to subscribe to.
 Reading 2.x the obvious way puts every arrow in the estate the wrong way round.
 The extractor reads both versions and answers in 3.x's vocabulary, which is the
 one the catalog keeps.
+
+### A work queue is a channel of kind `job`
+
+A task queue is a channel too - an address the broker knows, messages that
+travel on it - with one difference the catalog has to be told: many callers
+put the same job on it by design, and no domain event stands behind a job.
+`kind: "job"` on the channel says so. The merge does not call two senders on a
+job queue rival publishers, and the Problems page does not look for an event
+with the job's wire name. `extract-celery` answers with these for a Python tree:
+one channel per queue, a `send` per task the tree enqueues and a `receive` per
+task it declares, and one flow per task that is both - the call that enqueues
+it, then the worker that runs it. It reads the queue the way Celery decides
+it, the call before the decorator before `task_routes` before the default,
+and `transaction.on_commit(...)` around an enqueue is a note on the step,
+which is the one fact about *when* a message leaves that the code states
+plainly.

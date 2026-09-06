@@ -6,6 +6,8 @@ model {
   risk_v1 = unknown 'risk.v1'
   ledger_pg = store 'ledger-pg'
   stripe = external 'Stripe'
+  celery_billing = broker 'Celery · billing'
+  celery_billing_mail = broker 'Celery · billing.mail'
   billing_pg = store 'billing-pg'
   cart_pg = store 'cart-pg'
   core_pg = store 'core-pg'

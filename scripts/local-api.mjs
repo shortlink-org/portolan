@@ -93,6 +93,9 @@ function detectionsFor(files) {
   const sql = matches(files, /(^|\/)(migrations?|repository)(\/|.*\/).*\.sql$/i);
   const adrs = matches(files, /(^|\/)(docs\/adr|adr)\/.*\.md$/i);
   const glossaries = matches(files, /(^|\/)glossary\.md$/i);
+  // The app module is the one file a Celery project always has; the tasks
+  // and the calls that enqueue them are found from there.
+  const celery = matches(files, /(^|\/)celery\.py$/);
   const sqlRoot = sql.map((name) => {
     const segments = name.split("/");
     const repository = segments.findIndex((part) => /^(repository|repositories)$/i.test(part));
@@ -106,6 +109,7 @@ function detectionsFor(files) {
     detected("rust-domain", files.has("Cargo.toml") ? ["Cargo.toml"] : []),
     detected("java-domain", ["pom.xml", "build.gradle", "build.gradle.kts"].filter((name) => files.has(name))),
     detected("django-domain", files.has("manage.py") ? ["manage.py"] : []),
+    detected("celery", celery, {}, celery[0]),
     detected("openapi", openapi, openapi[0] ? { spec: openapi[0] } : {}, openapi[0], true),
     detected("asyncapi", asyncapi, asyncapi[0] ? { spec: asyncapi[0] } : {}, asyncapi[0], true),
     detected("graphql", graphql, graphqlDirs[0] ? { schema: graphqlDirs.length === 1 ? graphqlDirs[0] : graphql[0] } : {}, graphqlDirs.length === 1 ? graphqlDirs[0] : graphql[0]),
@@ -230,6 +234,7 @@ function pluginOptions(plugin, project, detectedOptions = {}) {
   if (plugin === "sql") return { ...common, store: "pg", ...detectedOptions, out: "stores.json" };
   if (plugin === "openapi") return { ...common, ...detectedOptions, out: "api.json" };
   if (plugin === "asyncapi") return { ...common, ...detectedOptions, out: "bus.json" };
+  if (plugin === "celery") return { ...common, ...detectedOptions, out: "celery.json" };
   if (plugin === "graphql") return { ...common, ...detectedOptions, out: "graphql.json" };
   if (plugin === "proto") return { ...common, ...detectedOptions, out: "proto.json" };
   if (plugin === "glossary") return { context: project.context, ...detectedOptions, out: "glossary.json" };

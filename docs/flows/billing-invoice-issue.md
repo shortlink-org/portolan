@@ -42,13 +42,13 @@ sequenceDiagram
    status: declared · [`examples/shop/billing/invoices/views.py:29`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/views.py#L29)
 <a id="step-s2"></a>
 2. **shop.billing** → **auth.auth** — validateSession → SessionInfo
-   `auth.v1.Sessions/validateSession` · status: declared · [`examples/shop/billing/invoices/services.py:36`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L36)
+   `auth.v1.Sessions/validateSession` · status: declared · [`examples/shop/billing/invoices/services.py:40`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L40)
 <a id="step-s3"></a>
 3. **shop.billing** → **billing-pg** — Invoice.objects.get
-   status: declared · [`examples/shop/billing/invoices/services.py:37`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L37)
+   status: declared · [`examples/shop/billing/invoices/services.py:41`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L41)
 <a id="step-s4"></a>
 4. **shop.billing** → **billing-pg** — Invoice.save
-   status: declared · [`examples/shop/billing/invoices/services.py:41`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L41)
+   status: declared · [`examples/shop/billing/invoices/services.py:46`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L46) · in one transaction.
 <a id="step-s5"></a>
 5. **shop.billing** → **bus** — InvoiceIssued
-   [`shop.billing.invoice.InvoiceIssued`](../shop/billing/aggregates/invoice.md#event-shop-billing-invoice-invoiceissued) · status: declared · [`examples/shop/billing/invoices/services.py:42`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L42)
+   [`shop.billing.invoice.InvoiceIssued`](../shop/billing/aggregates/invoice.md#event-shop-billing-invoice-invoiceissued) · status: declared · [`examples/shop/billing/invoices/services.py:51`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L51)

@@ -70,6 +70,8 @@
     "flows/bff-query-shipment.md",
     "flows/bff-query-viewer.md",
     "flows/bff-subscription-order-status.md",
+    "flows/billing-celery-remind-unpaid-invoice.md",
+    "flows/billing-celery-send-invoice-email.md",
     "flows/billing-close-invoice-on-payment.md",
     "flows/billing-invoice-create.md",
     "flows/billing-invoice-destroy.md",

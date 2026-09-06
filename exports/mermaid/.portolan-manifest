@@ -17,6 +17,8 @@
     "bff-query-shipment.mmd",
     "bff-query-viewer.mmd",
     "bff-subscription-order-status.mmd",
+    "billing-celery-remind-unpaid-invoice.mmd",
+    "billing-celery-send-invoice-email.mmd",
     "billing-close-invoice-on-payment.mmd",
     "billing-invoice-create.mmd",
     "billing-invoice-destroy.mmd",

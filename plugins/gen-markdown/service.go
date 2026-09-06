@@ -254,6 +254,9 @@ func (s *site) channelsBlock(from string, svc *catalog.Service) string {
 		if channel.Title != "" {
 			b.WriteString("**" + channel.Title + "**\n\n")
 		}
+		if channel.Kind == catalog.ChannelKindJob {
+			b.WriteString("`work queue`\n\n")
+		}
 		if channel.Doc != "" {
 			b.WriteString(channel.Doc + "\n\n")
 		}

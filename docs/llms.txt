@@ -1,6 +1,6 @@
 # Example estate
 
-> Architecture catalog of Example estate: 5 bounded contexts, 8 services, 12 aggregates, 7 stores, 7 schema modules, 1 system outside the estate, 53 flows and 37 decision records, read from the code, the specs and the traces of the estate.
+> Architecture catalog of Example estate: 5 bounded contexts, 8 services, 12 aggregates, 7 stores, 7 schema modules, 1 system outside the estate, 55 flows and 37 decision records, read from the code, the specs and the traces of the estate.
 
 *Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
 
@@ -65,6 +65,8 @@ Every link below is a markdown page beside this file. [llms-full.txt](llms-full.
 - [Query shipment](flows/bff-query-shipment.md): owned by [storefront](storefront/README.md)
 - [Query viewer](flows/bff-query-viewer.md): owned by [storefront](storefront/README.md). Who the request belongs to. Auth is asked on every call rather than a token being read here: this service holds no key and could not tell a forged one from a live one
 - [Subscription order status](flows/bff-subscription-order-status.md): owned by [storefront](storefront/README.md). Every move of one order, for as long as somebody is watching it
+- [Remind Unpaid Invoice task](flows/billing-celery-remind-unpaid-invoice.md): owned by [shop](shop/README.md). Celery task `invoices.tasks.remind_unpaid_invoice` is enqueued on `billing` and worked by `remind_unpaid_invoice`
+- [Send Invoice Email task](flows/billing-celery-send-invoice-email.md): owned by [shop](shop/README.md). Celery task `invoices.tasks.send_invoice_email` is enqueued on `billing.mail` and worked by `send_invoice_email`
 - [Close invoice on payment](flows/billing-close-invoice-on-payment.md): owned by [shop](shop/README.md). Closes the invoice for an order once the ledger says the money arrived
 - [Invoice create](flows/billing-invoice-create.md): owned by [shop](shop/README.md). Draws up a draft invoice for an order, with a line for each thing sold
 - [Invoice destroy](flows/billing-invoice-destroy.md): owned by [shop](shop/README.md). Ends an invoice nobody is going to pay

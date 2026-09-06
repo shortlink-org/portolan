@@ -57,6 +57,8 @@
 | [Query shipment](flows/bff-query-shipment.md) | [storefront](storefront/README.md) | — |
 | [Query viewer](flows/bff-query-viewer.md) | [storefront](storefront/README.md) | Who the request belongs to. Auth is asked on every call rather than a token being read here: this service holds no key and could not tell a forged one from a live one. |
 | [Subscription order status](flows/bff-subscription-order-status.md) | [storefront](storefront/README.md) | Every move of one order, for as long as somebody is watching it. |
+| [Remind Unpaid Invoice task](flows/billing-celery-remind-unpaid-invoice.md) | [shop](shop/README.md) | Celery task `invoices.tasks.remind_unpaid_invoice` is enqueued on `billing` and worked by `remind_unpaid_invoice`. |
+| [Send Invoice Email task](flows/billing-celery-send-invoice-email.md) | [shop](shop/README.md) | Celery task `invoices.tasks.send_invoice_email` is enqueued on `billing.mail` and worked by `send_invoice_email`. |
 | [Close invoice on payment](flows/billing-close-invoice-on-payment.md) | [shop](shop/README.md) | Closes the invoice for an order once the ledger says the money arrived. |
 | [Invoice create](flows/billing-invoice-create.md) | [shop](shop/README.md) | Draws up a draft invoice for an order, with a line for each thing sold. |
 | [Invoice destroy](flows/billing-invoice-destroy.md) | [shop](shop/README.md) | Ends an invoice nobody is going to pay. |
@@ -3211,6 +3213,9 @@ and when it was settled.
 - Draws up a draft invoice, with its lines, against an order.
 - Issues it: confirms the session with `auth`, freezes the lines, gives the
   invoice the number the customer will quote, and says `InvoiceIssued`.
+- Mails the invoice to the customer, and reminds them a few days later if it
+  is still unpaid — both off the request, as Celery tasks enqueued once the
+  row is committed.
 - Closes it when the ledger says the money arrived — it listens for
   `PaymentCaptured` and answers with `InvoicePaid`.
 - Voids an invoice nobody is going to pay.
@@ -3234,10 +3239,16 @@ aggregate and the schema, `events.py` is what leaves, `services.py` is what can
 be asked for, the DRF view and `urls.py` are the way in, and `handlers.py` is
 what runs when somebody else's event arrives. The rules are in
 [plugins/extract-django/README.md](../../../plugins/extract-django/README.md).
+`extract-celery` reads the rest: `invoices/tasks.py` is what runs later, the
+`.delay()` and `.apply_async()` in `services.py` are where it is set off, and
+the `CELERY_` lines in `config/settings.py` say which queue each task lands
+on. The rules are in
+[plugins/extract-celery/README.md](../../../plugins/extract-celery/README.md).
 
 ```bash
-docker compose up -d db
+docker compose up -d db redis
 python manage.py migrate && python manage.py runserver
+celery -A config worker -Q billing,billing.mail
 ```
 
 ## Aggregates
@@ -3323,6 +3334,36 @@ python manage.py migrate && python manage.py runserver
 | [`InvoiceVoided`](aggregates/invoice.md#event-shop-billing-invoice-invoicevoided) | v1 |
 
 ## Channels
+
+### billing
+
+**Celery · billing**
+
+`work queue`
+
+Tasks enqueued and worked through Celery over redis.
+
+Source: [`examples/shop/billing/invoices/services.py:50`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L50)
+
+| Direction | Message | Title | Doc |
+| --- | --- | --- | --- |
+| send | `invoices.tasks.remind_unpaid_invoice` | remind_unpaid_invoice | Nudges the customer about an invoice that has stayed unpaid. |
+| receive | `invoices.tasks.remind_unpaid_invoice` | remind_unpaid_invoice | Worked by `remind_unpaid_invoice`, the default queue. Nudges the customer about an invoice that has stayed unpaid. |
+
+### billing.mail
+
+**Celery · billing.mail**
+
+`work queue`
+
+Tasks enqueued and worked through Celery over redis.
+
+Source: [`examples/shop/billing/invoices/services.py:49`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L49)
+
+| Direction | Message | Title | Doc |
+| --- | --- | --- | --- |
+| send | `invoices.tasks.send_invoice_email` | send_invoice_email | Emails the customer the invoice they were asked to pay. |
+| receive | `invoices.tasks.send_invoice_email` | send_invoice_email | Worked by `send_invoice_email`, routed by task_routes. Emails the customer the invoice they were asked to pay. |
 
 ### shop.billing.invoice
 
@@ -5835,6 +5876,8 @@ The card network the ledger moves money through. Nobody in the estate provides i
 | [Query shipment](bff-query-shipment.md) | [storefront](../storefront/README.md) | — |
 | [Query viewer](bff-query-viewer.md) | [storefront](../storefront/README.md) | Who the request belongs to. Auth is asked on every call rather than a token being read here: this service holds no key and could not tell a forged one from a live one. |
 | [Subscription order status](bff-subscription-order-status.md) | [storefront](../storefront/README.md) | Every move of one order, for as long as somebody is watching it. |
+| [Remind Unpaid Invoice task](billing-celery-remind-unpaid-invoice.md) | [shop](../shop/README.md) | Celery task `invoices.tasks.remind_unpaid_invoice` is enqueued on `billing` and worked by `remind_unpaid_invoice`. |
+| [Send Invoice Email task](billing-celery-send-invoice-email.md) | [shop](../shop/README.md) | Celery task `invoices.tasks.send_invoice_email` is enqueued on `billing.mail` and worked by `send_invoice_email`. |
 | [Close invoice on payment](billing-close-invoice-on-payment.md) | [shop](../shop/README.md) | Closes the invoice for an order once the ledger says the money arrived. |
 | [Invoice create](billing-invoice-create.md) | [shop](../shop/README.md) | Draws up a draft invoice for an order, with a line for each thing sold. |
 | [Invoice destroy](billing-invoice-destroy.md) | [shop](../shop/README.md) | Ends an invoice nobody is going to pay. |
@@ -6655,6 +6698,84 @@ sequenceDiagram
 1. **client** → **storefront.bff** — Subscription.orderStatus → OrderMoved
    status: declared · [`examples/bff/src/schema/order/resolvers/Subscription/orderStatus.ts:11`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/order/resolvers/Subscription/orderStatus.ts#L11)
 
+<!-- flows/billing-celery-remind-unpaid-invoice.md -->
+
+# Remind Unpaid Invoice task
+
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
+
+- **Id:** `flow.billing-celery-remind-unpaid-invoice`
+- **Owner:** [shop](../shop/README.md)
+- **Source:** [`examples/shop/billing/invoices/services.py`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py)
+
+Celery task `invoices.tasks.remind_unpaid_invoice` is enqueued on `billing` and worked by `remind_unpaid_invoice`.
+
+## Participants
+
+| Participant | Kind | Context | Label |
+| --- | --- | --- | --- |
+| `shop.billing` | service | [shop](../shop/README.md) | — |
+| `celery-billing` | broker | — | Celery · billing |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant p0 as shop.billing
+    participant p1 as Celery · billing
+    p0->>p1: enqueue remind_unpaid_invoice
+    p1->>p0: remind_unpaid_invoice
+```
+
+## Steps
+
+<a id="step-enqueue"></a>
+1. **shop.billing** → **celery-billing** — enqueue remind_unpaid_invoice
+   status: declared · [`examples/shop/billing/invoices/services.py:50`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L50) · Enqueued after the transaction commits, for later, with a countdown or an eta. Nudges the customer about an invoice that has stayed unpaid.
+<a id="step-work"></a>
+2. **celery-billing** → **shop.billing** — remind_unpaid_invoice
+   status: declared · [`examples/shop/billing/invoices/tasks.py:30`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/tasks.py#L30) · Celery hands `invoices.tasks.remind_unpaid_invoice` to the worker consuming `billing`, the default queue.
+
+<!-- flows/billing-celery-send-invoice-email.md -->
+
+# Send Invoice Email task
+
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
+
+- **Id:** `flow.billing-celery-send-invoice-email`
+- **Owner:** [shop](../shop/README.md)
+- **Source:** [`examples/shop/billing/invoices/services.py`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py)
+
+Celery task `invoices.tasks.send_invoice_email` is enqueued on `billing.mail` and worked by `send_invoice_email`.
+
+## Participants
+
+| Participant | Kind | Context | Label |
+| --- | --- | --- | --- |
+| `shop.billing` | service | [shop](../shop/README.md) | — |
+| `celery-billing-mail` | broker | — | Celery · billing.mail |
+
+## Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant p0 as shop.billing
+    participant p1 as Celery · billing.mail
+    p0->>p1: enqueue send_invoice_email
+    p1->>p0: send_invoice_email
+```
+
+## Steps
+
+<a id="step-enqueue"></a>
+1. **shop.billing** → **celery-billing-mail** — enqueue send_invoice_email
+   status: declared · [`examples/shop/billing/invoices/services.py:49`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L49) · Enqueued after the transaction commits. Emails the customer the invoice they were asked to pay.
+<a id="step-work"></a>
+2. **celery-billing-mail** → **shop.billing** — send_invoice_email
+   status: declared · [`examples/shop/billing/invoices/tasks.py:18`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/tasks.py#L18) · Celery hands `invoices.tasks.send_invoice_email` to the worker consuming `billing.mail`, routed by task_routes.
+
 <!-- flows/billing-close-invoice-on-payment.md -->
 
 # Close invoice on payment
@@ -6696,13 +6817,13 @@ sequenceDiagram
    [`payments.ledger.payment.PaymentCaptured`](../payments/ledger/aggregates/payment.md#event-payments-ledger-payment-paymentcaptured) · status: declared · [`examples/shop/billing/invoices/handlers.py:10`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/handlers.py#L10)
 <a id="step-s2"></a>
 2. **shop.billing** → **billing-pg** — Invoice.objects.filter
-   status: declared · [`examples/shop/billing/invoices/services.py:48`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L48)
+   status: declared · [`examples/shop/billing/invoices/services.py:57`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L57)
 <a id="step-s3"></a>
 3. **shop.billing** → **billing-pg** — Invoice.save
-   status: declared · [`examples/shop/billing/invoices/services.py:52`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L52)
+   status: declared · [`examples/shop/billing/invoices/services.py:61`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L61)
 <a id="step-s4"></a>
 4. **shop.billing** → **bus** — InvoicePaid
-   [`shop.billing.invoice.InvoicePaid`](../shop/billing/aggregates/invoice.md#event-shop-billing-invoice-invoicepaid) · status: declared · [`examples/shop/billing/invoices/services.py:53`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L53)
+   [`shop.billing.invoice.InvoicePaid`](../shop/billing/aggregates/invoice.md#event-shop-billing-invoice-invoicepaid) · status: declared · [`examples/shop/billing/invoices/services.py:62`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L62)
 
 <!-- flows/billing-invoice-create.md -->
 
@@ -6744,10 +6865,10 @@ sequenceDiagram
    status: declared · [`examples/shop/billing/invoices/views.py:13`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/views.py#L13)
 <a id="step-s2"></a>
 2. **shop.billing** → **billing-pg** — Invoice.objects.create
-   status: declared · [`examples/shop/billing/invoices/services.py:16`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L16) · in one transaction.
+   status: declared · [`examples/shop/billing/invoices/services.py:20`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L20) · in one transaction.
 <a id="step-s3"></a>
 3. **shop.billing** → **billing-pg** — InvoiceLine.objects.create
-   status: declared · [`examples/shop/billing/invoices/services.py:25`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L25) · in one transaction, for each line.
+   status: declared · [`examples/shop/billing/invoices/services.py:29`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L29) · in one transaction, for each line.
 
 <!-- flows/billing-invoice-destroy.md -->
 
@@ -6792,13 +6913,13 @@ sequenceDiagram
    status: declared · [`examples/shop/billing/invoices/views.py:34`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/views.py#L34)
 <a id="step-s2"></a>
 2. **shop.billing** → **billing-pg** — Invoice.objects.get
-   status: declared · [`examples/shop/billing/invoices/services.py:59`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L59)
+   status: declared · [`examples/shop/billing/invoices/services.py:68`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L68)
 <a id="step-s3"></a>
 3. **shop.billing** → **billing-pg** — Invoice.save
-   status: declared · [`examples/shop/billing/invoices/services.py:61`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L61)
+   status: declared · [`examples/shop/billing/invoices/services.py:70`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L70)
 <a id="step-s4"></a>
 4. **shop.billing** → **bus** — InvoiceVoided
-   [`shop.billing.invoice.InvoiceVoided`](../shop/billing/aggregates/invoice.md#event-shop-billing-invoice-invoicevoided) · status: declared · [`examples/shop/billing/invoices/services.py:62`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L62)
+   [`shop.billing.invoice.InvoiceVoided`](../shop/billing/aggregates/invoice.md#event-shop-billing-invoice-invoicevoided) · status: declared · [`examples/shop/billing/invoices/services.py:71`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L71)
 
 <!-- flows/billing-invoice-issue.md -->
 
@@ -6846,16 +6967,16 @@ sequenceDiagram
    status: declared · [`examples/shop/billing/invoices/views.py:29`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/views.py#L29)
 <a id="step-s2"></a>
 2. **shop.billing** → **auth.auth** — validateSession → SessionInfo
-   `auth.v1.Sessions/validateSession` · status: declared · [`examples/shop/billing/invoices/services.py:36`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L36)
+   `auth.v1.Sessions/validateSession` · status: declared · [`examples/shop/billing/invoices/services.py:40`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L40)
 <a id="step-s3"></a>
 3. **shop.billing** → **billing-pg** — Invoice.objects.get
-   status: declared · [`examples/shop/billing/invoices/services.py:37`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L37)
+   status: declared · [`examples/shop/billing/invoices/services.py:41`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L41)
 <a id="step-s4"></a>
 4. **shop.billing** → **billing-pg** — Invoice.save
-   status: declared · [`examples/shop/billing/invoices/services.py:41`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L41)
+   status: declared · [`examples/shop/billing/invoices/services.py:46`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L46) · in one transaction.
 <a id="step-s5"></a>
 5. **shop.billing** → **bus** — InvoiceIssued
-   [`shop.billing.invoice.InvoiceIssued`](../shop/billing/aggregates/invoice.md#event-shop-billing-invoice-invoiceissued) · status: declared · [`examples/shop/billing/invoices/services.py:42`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L42)
+   [`shop.billing.invoice.InvoiceIssued`](../shop/billing/aggregates/invoice.md#event-shop-billing-invoice-invoiceissued) · status: declared · [`examples/shop/billing/invoices/services.py:51`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L51)
 
 <!-- flows/billing-invoice-retrieve.md -->
 
@@ -6896,7 +7017,7 @@ sequenceDiagram
    status: declared · [`examples/shop/billing/invoices/views.py:24`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/views.py#L24)
 <a id="step-s2"></a>
 2. **shop.billing** → **billing-pg** — Invoice.objects.get
-   status: declared · [`examples/shop/billing/invoices/services.py:68`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L68)
+   status: declared · [`examples/shop/billing/invoices/services.py:77`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L77)
 
 <!-- flows/cart-add-item.md -->
 
