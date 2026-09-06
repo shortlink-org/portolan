@@ -16,5 +16,8 @@
   ],
   "openapi": [
     "stripe.json"
+  ],
+  "commands": [
+    "commands.json"
   ]
 }

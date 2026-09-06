@@ -1,0 +1,7 @@
+[build]
+rustflags = ["-D", "warnings"]
+
+[alias]
+xtask = "run --package xtask --"
+gen = { cmd = "run --package xtask -- gen" }
+_secret = "test --release"

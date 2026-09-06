@@ -169,6 +169,14 @@ skipped.
 | --- | --- | --- | --- |
 | [Order database](stores/pg.md) | postgres | owns | 3 tables |
 
+## Commands
+
+| Run | Does | Body | Source |
+| --- | --- | --- | --- |
+| `cargo xtask` | — | `run --quiet --package xtask --` | [`examples/shop/oms/.cargo/config.toml:4`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/.cargo/config.toml#L4) |
+| `cargo xtask gen` | Regenerate the gRPC stubs from the registry pins, own contract and the payments client | — | [`examples/shop/oms/xtask/src/main.rs:12`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/xtask/src/main.rs#L12) |
+| `cargo xtask ci` | Run fmt, clippy and the tests the way CI does | — | [`examples/shop/oms/xtask/src/main.rs:16`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/xtask/src/main.rs#L16) |
+
 ## Decisions
 
 | ADR | Title | Status | Date |

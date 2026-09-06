@@ -183,5 +183,123 @@
     "doc": "Run the celery worker",
     "body": "celery -A billing worker",
     "source": "testdata/estate/pyproject.toml:25"
+  },
+  {
+    "runner": "mvn",
+    "name": "test",
+    "run": "mvn test",
+    "doc": "Run the tests (lifecycle phase)",
+    "source": "testdata/estate/pom.xml:5"
+  },
+  {
+    "runner": "mvn",
+    "name": "package",
+    "run": "mvn package",
+    "doc": "Build the artifact (lifecycle phase)",
+    "source": "testdata/estate/pom.xml:5"
+  },
+  {
+    "runner": "mvn",
+    "name": "spring-boot:run",
+    "run": "mvn spring-boot:run",
+    "doc": "Run the application",
+    "source": "testdata/estate/pom.xml:22"
+  },
+  {
+    "runner": "gradle",
+    "name": "build",
+    "run": "gradle build",
+    "doc": "Assemble and test the project",
+    "source": "testdata/estate/build.gradle.kts"
+  },
+  {
+    "runner": "gradle",
+    "name": "test",
+    "run": "gradle test",
+    "doc": "Run the tests",
+    "source": "testdata/estate/build.gradle.kts"
+  },
+  {
+    "runner": "gradle",
+    "name": "run",
+    "run": "gradle run",
+    "doc": "Run the application",
+    "source": "testdata/estate/build.gradle.kts:3"
+  },
+  {
+    "runner": "gradle",
+    "name": "bootRun",
+    "run": "gradle bootRun",
+    "doc": "Run the Spring Boot application",
+    "source": "testdata/estate/build.gradle.kts:2"
+  },
+  {
+    "runner": "gradle",
+    "name": "generateProto",
+    "run": "gradle generateProto",
+    "doc": "Regenerate the gRPC stubs",
+    "source": "testdata/estate/build.gradle.kts:6"
+  },
+  {
+    "runner": "gradle",
+    "name": "smokeTest",
+    "run": "gradle smokeTest",
+    "doc": "Run the tests that need the compose stack",
+    "source": "testdata/estate/build.gradle.kts:15"
+  },
+  {
+    "runner": "gradle",
+    "name": "legacyTask",
+    "run": "gradle legacyTask",
+    "source": "testdata/estate/build.gradle.kts:19"
+  },
+  {
+    "runner": "cargo",
+    "name": "xtask",
+    "run": "cargo xtask",
+    "body": "run --package xtask --",
+    "source": "testdata/estate/.cargo/config.toml:5"
+  },
+  {
+    "runner": "cargo",
+    "name": "xtask gen",
+    "run": "cargo xtask gen",
+    "doc": "Regenerate the gRPC stubs from the vendored protos",
+    "source": "testdata/estate/xtask/src/main.rs:12"
+  },
+  {
+    "runner": "cargo",
+    "name": "xtask ci",
+    "run": "cargo xtask ci",
+    "doc": "Run fmt, clippy and the tests the way CI does",
+    "source": "testdata/estate/xtask/src/main.rs:14"
+  },
+  {
+    "runner": "cargo",
+    "name": "xtask dist",
+    "run": "cargo xtask dist",
+    "doc": "Build the release artefacts",
+    "source": "testdata/estate/xtask/src/main.rs:16"
+  },
+  {
+    "runner": "cargo",
+    "name": "xtask bench",
+    "run": "cargo xtask bench",
+    "doc": "Run the benchmarks against the compose stack",
+    "source": "testdata/estate/xtask/src/main.rs:24"
+  },
+  {
+    "runner": "cargo",
+    "name": "xtask perf",
+    "run": "cargo xtask perf",
+    "doc": "Run the benchmarks against the compose stack",
+    "source": "testdata/estate/xtask/src/main.rs:24"
+  },
+  {
+    "runner": "cargo",
+    "name": "gen",
+    "run": "cargo gen",
+    "body": "run --package xtask -- gen",
+    "source": "testdata/estate/.cargo/config.toml:6"
   }
 ]

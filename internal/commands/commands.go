@@ -21,8 +21,8 @@ import (
 )
 
 // Read lists the commands declared at root, in a fixed order of files - make,
-// just, Taskfile, the package manifest, pyproject - and in file order inside
-// each. Source is spelled root-relative with the line, the way the rest of the
+// just, Taskfile, the package manifest, pyproject, pom, the Gradle script,
+// cargo's aliases - and in file order inside each. Source is spelled root-relative with the line, the way the rest of the
 // catalog spells one.
 //
 // Warnings name what was seen and not read: a Taskfile that is not YAML, a
@@ -50,6 +50,15 @@ func Read(root string) ([]catalog.Command, []string) {
 	}
 	if file, src, ok := first(root, "pyproject.toml"); ok {
 		add(readPyproject(file, src), nil)
+	}
+	if file, src, ok := first(root, "pom.xml"); ok {
+		add(readPom(root, file, src), nil)
+	}
+	if file, src, ok := first(root, "build.gradle.kts", "build.gradle"); ok {
+		add(readGradle(root, file, src), nil)
+	}
+	if file, src, ok := first(root, ".cargo/config.toml", ".cargo/config"); ok {
+		add(readCargoAliases(root, file, src), nil)
 	}
 
 	return out, warnings

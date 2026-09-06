@@ -1,0 +1,4 @@
+# `cargo xtask <task>` runs the development tasks in ./xtask. An alias rather
+# than a script, so there is nothing to install and nothing outside cargo.
+[alias]
+xtask = "run --quiet --package xtask --"

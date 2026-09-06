@@ -689,6 +689,16 @@
       }
     },
     {
+      "plugin": "commands",
+      "in": "examples/payments/ledger",
+      "out": "examples/payments/ledger/portolan",
+      "options": {
+        "context": "payments",
+        "service": "ledger",
+        "out": "commands.json"
+      }
+    },
+    {
       "plugin": "java-domain",
       "in": "examples/payments/ledger",
       "out": "examples/payments/ledger/portolan",
@@ -797,6 +807,16 @@
           "vendor/proto/shortlink-org/portolan-shop-order"
         ],
         "out": "proto.json"
+      }
+    },
+    {
+      "plugin": "commands",
+      "in": "examples/shop/oms",
+      "out": "examples/shop/oms/portolan",
+      "options": {
+        "context": "shop",
+        "service": "oms",
+        "out": "commands.json"
       }
     },
     {

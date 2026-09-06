@@ -1,0 +1,51 @@
+{
+  "generatedAt": "2026-09-06T23:47:32+07:00",
+  "commit": "1c31afe",
+  "contexts": [
+    {
+      "id": "payments",
+      "slug": "payments",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "payments.ledger",
+          "slug": "ledger",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "commands": [
+            {
+              "runner": "mvn",
+              "name": "test",
+              "run": "mvn test",
+              "doc": "Run the tests (lifecycle phase)",
+              "source": "examples/payments/ledger/pom.xml:1"
+            },
+            {
+              "runner": "mvn",
+              "name": "package",
+              "run": "mvn package",
+              "doc": "Build the artifact (lifecycle phase)",
+              "source": "examples/payments/ledger/pom.xml:1"
+            },
+            {
+              "runner": "mvn",
+              "name": "spring-boot:run",
+              "run": "mvn spring-boot:run",
+              "doc": "Run the application",
+              "source": "examples/payments/ledger/pom.xml:146"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": []
+}

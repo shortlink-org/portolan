@@ -55,8 +55,9 @@ deployment/build manifests without executing project code, creates a `system`,
 `product`, `team` or `namespace` containing a component, and records its role
 (`application`, `worker`, `job`, `cli`, `library`, and so on) and technologies.
 It also lists the commands the runner files declare - make targets, npm
-scripts, just recipes, Taskfile and poe/pdm tasks - which `extract-commands`
-does on its own for a service a domain extractor describes.
+scripts, just recipes, Taskfile and poe/pdm tasks, Maven and Gradle goals,
+cargo aliases and xtask subcommands - which `extract-commands` does on its
+own for a service a domain extractor describes.
 Contract and messaging extractors then add OpenAPI, AsyncAPI, GraphQL, proto,
 SQL, River, Watermill and outbound HTTP/SOAP facts to that same component.
 For Go services, the HTTP client extractor also joins common router

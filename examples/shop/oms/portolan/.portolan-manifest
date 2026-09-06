@@ -16,5 +16,8 @@
   ],
   "glossary": [
     "glossary.json"
+  ],
+  "commands": [
+    "commands.json"
   ]
 }

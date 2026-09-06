@@ -185,6 +185,96 @@ func TestPyprojectTasks(t *testing.T) {
 	absent(t, cmds, "poe billing")
 }
 
+func TestPomPhasesAndPluginGoals(t *testing.T) {
+	cmds := read(t)
+
+	if test := find(t, cmds, "mvn test"); test.Source != "testdata/estate/pom.xml:5" || test.Doc == "" {
+		t.Errorf("test = %+v", test)
+	}
+	find(t, cmds, "mvn package")
+	if run := find(t, cmds, "mvn spring-boot:run"); run.Doc != "Run the application" || run.Source != "testdata/estate/pom.xml:22" {
+		t.Errorf("spring-boot:run = %+v", run)
+	}
+	// A plugin bound to a phase is run by the phase, not typed; a plugin
+	// under pluginManagement or in dependencies is not part of the build.
+	for _, hidden := range []string{"mvn protobuf:compile", "mvn jib:dockerBuild", "mvn flyway:migrate"} {
+		absent(t, cmds, hidden)
+	}
+}
+
+func TestPomIsTypedAtTheWrapper(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "pom.xml"), []byte("<project><packaging>jar</packaging></project>"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "mvnw"), []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cmds, _ := Read(root)
+	if len(cmds) != 2 || cmds[0].Run != "./mvnw test" || cmds[0].Runner != "./mvnw" {
+		t.Errorf("commands = %+v", cmds)
+	}
+}
+
+func TestGradleTasks(t *testing.T) {
+	cmds := read(t)
+
+	find(t, cmds, "gradle build")
+	find(t, cmds, "gradle test")
+	if run := find(t, cmds, "gradle run"); run.Source != "testdata/estate/build.gradle.kts:3" {
+		t.Errorf("run = %+v", run)
+	}
+	if boot := find(t, cmds, "gradle bootRun"); boot.Source != "testdata/estate/build.gradle.kts:2" {
+		t.Errorf("bootRun = %+v", boot)
+	}
+	if gen := find(t, cmds, "gradle generateProto"); gen.Doc != "Regenerate the gRPC stubs" || gen.Source != "testdata/estate/build.gradle.kts:6" {
+		t.Errorf("generateProto = %+v", gen)
+	}
+	if smoke := find(t, cmds, "gradle smokeTest"); smoke.Doc != "Run the tests that need the compose stack" {
+		t.Errorf("smokeTest = %+v", smoke)
+	}
+	find(t, cmds, "gradle legacyTask")
+	absent(t, cmds, "gradle _shared")
+}
+
+func TestCargoAliasesAndXtask(t *testing.T) {
+	cmds := read(t)
+
+	if xtask := find(t, cmds, "cargo xtask"); xtask.Body != "run --package xtask --" || xtask.Source != "testdata/estate/.cargo/config.toml:5" {
+		t.Errorf("xtask = %+v", xtask)
+	}
+	if gen := find(t, cmds, "cargo gen"); gen.Body != "run --package xtask -- gen" {
+		t.Errorf("gen = %+v", gen)
+	}
+	absent(t, cmds, "cargo _secret")
+
+	if gen := find(t, cmds, "cargo xtask gen"); gen.Doc != "Regenerate the gRPC stubs from the vendored protos" || gen.Source != "testdata/estate/xtask/src/main.rs:12" {
+		t.Errorf("xtask gen = %+v", gen)
+	}
+	if ci := find(t, cmds, "cargo xtask ci"); ci.Doc != "Run fmt, clippy and the tests the way CI does" {
+		t.Errorf("xtask ci = %+v", ci)
+	}
+	if dist := find(t, cmds, "cargo xtask dist"); dist.Doc != "Build the release artefacts" {
+		t.Errorf("xtask dist = %+v", dist)
+	}
+	// Match arms add what the enum does not name, once each.
+	if bench := find(t, cmds, "cargo xtask bench"); bench.Doc != "Run the benchmarks against the compose stack" {
+		t.Errorf("bench = %+v", bench)
+	}
+	if perf := find(t, cmds, "cargo xtask perf"); perf.Doc != "Run the benchmarks against the compose stack" {
+		t.Errorf("perf = %+v", perf)
+	}
+	count := 0
+	for _, cmd := range cmds {
+		if cmd.Run == "cargo xtask gen" {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Errorf("cargo xtask gen listed %d times", count)
+	}
+}
+
 func TestNothingToReadIsNothing(t *testing.T) {
 	cmds, warnings := Read(t.TempDir())
 	if len(cmds) != 0 || len(warnings) != 0 {

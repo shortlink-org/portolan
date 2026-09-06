@@ -491,14 +491,40 @@ it was read.
 | `Taskfile.yml` | task | `task <name>` | `desc`, else `summary` |
 | `package.json` `scripts` | npm, or pnpm/yarn/bun by the lockfile | `npm run <name>`; `npm test`, `npm start` | nothing - the script line is the body |
 | `pyproject.toml` | poe (`[tool.poe.tasks]`), pdm (`[tool.pdm.scripts]`) | `poe <name>`, `pdm run <name>` | `help` |
+| `pom.xml` | mvn, or `./mvnw` when the wrapper is there | `mvn test`, `mvn package`, and the goals of declared plugins: `spring-boot:run`, `quarkus:dev`, `flyway:migrate`, … | the goal's own purpose |
+| `build.gradle(.kts)` | gradle, or `./gradlew` | `gradle build`, `gradle test`; `run` with the application plugin, `bootRun` with Spring Boot; every `tasks.register("...")` | the task's `description` |
+| `.cargo/config.toml` | cargo | `cargo <alias>` for each `[alias]`; when one runs the `xtask` package, `cargo xtask <sub>` for each subcommand of its `main.rs` | `///` over a clap variant, `//` over a match arm |
 
 Left out, because the runner leaves them out too: `_`-prefixed and `[private]`
 entries, `internal` tasks, make's special and pattern targets (`.PHONY`, `%.o`),
 targets spelled through a variable, and `pre`/`post` hooks of a script that is
 itself listed. `[project.scripts]` in a pyproject is not read: those are
 programs the package installs, not tasks a developer runs. `uv` has no task
-section, and Go and Cargo have no runner of their own, so a repository with
-only those declares no commands.
+section and Go has no runner of its own, so a repository with only those
+declares no commands.
+
+Maven and Gradle are the other way round: the build is the runner, and what
+a project declares is which plugins extend it. So a pom lists the two
+lifecycle phases every pom answers to, `test` and `package`, and then the
+goals a person types that its `<build><plugins>` add - `spring-boot:run` for
+the Spring Boot plugin, `flyway:migrate` for Flyway - from a short table of
+the plugins an estate meets. A plugin bound to a phase, like protobuf
+generation, is run by the phase and is not listed; neither is one under
+`<pluginManagement>`, which pins a version and runs nothing. A Gradle script
+lists `build` and `test`, `run` when it applies the application plugin,
+`bootRun` for Spring Boot, and every task it registers itself, with the
+description it sets. The script is read as text, not run: a task registered
+in a loop or by an unnamed plugin is not here.
+
+Cargo declares commands in one place, `[alias]` in `.cargo/config.toml`, and
+the xtask convention is an alias that runs a package: `xtask = "run --package
+xtask --"`. Each alias is a command with its expansion as the body, and when
+the expansion runs a package and leaves the subcommand to the caller, that
+package's `main.rs` is read for the subcommands - the variants of a clap enum
+deriving `Subcommand`, in kebab-case, with their `///` comment as the doc, and
+the string literals of a `match` on the first argument, with a `//` comment
+over the arm. An alias that names its subcommand already, like `gen = "run -p
+xtask -- gen"`, is listed as the one command it is.
 
 Nothing is evaluated. A target inside an `ifeq` is listed; a name that depends
 on a variable's value is not, because the name it would have is not in the

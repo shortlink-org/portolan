@@ -298,6 +298,14 @@ gap, not an oversight, and none of them changes what the catalog shows.
 | --- | --- | --- | --- |
 | [Ledger database](stores/pg.md) | postgres | owns | 3 tables |
 
+## Commands
+
+| Run | Does | Source |
+| --- | --- | --- |
+| `mvn test` | Run the tests (lifecycle phase) | [`examples/payments/ledger/pom.xml:1`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/pom.xml#L1) |
+| `mvn package` | Build the artifact (lifecycle phase) | [`examples/payments/ledger/pom.xml:1`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/pom.xml#L1) |
+| `mvn spring-boot:run` | Run the application | [`examples/payments/ledger/pom.xml:146`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/pom.xml#L146) |
+
 ## Decisions
 
 | ADR | Title | Status | Date |

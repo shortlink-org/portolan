@@ -30,3 +30,7 @@ http = "1"
 
 [dev-dependencies]
 testcontainers = "0.28"
+
+# The xtask package is a member so `cargo xtask` resolves against one lockfile.
+[workspace]
+members = ["xtask"]

@@ -7,7 +7,8 @@ layout.
 It reads only files already present in the checkout: `README.md`, language
 package manifests, `Dockerfile`, Compose and Helm markers, and the runner files
 (`Makefile`, `justfile`, `Taskfile.yml`, `package.json` scripts, poe and pdm
-tasks in `pyproject.toml`), whose entries become the component's commands. It does not execute
+tasks in `pyproject.toml`, `pom.xml`, the Gradle script, cargo aliases and
+xtask subcommands), whose entries become the component's commands. It does not execute
 the project, resolve dependencies, import application code or write into the
 input tree. Its response contains a catalog fragment named `project.json`;
 the host decides where that file is written.
