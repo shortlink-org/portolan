@@ -88,6 +88,7 @@ type FlowGroup struct {
 	Function string
 	Calls    []Call
 	Source   Source
+	Callers  []string
 }
 
 type EndpointFlow struct {
@@ -166,6 +167,12 @@ type fieldOrigin struct {
 	value       string
 	chain       []string
 	constructor string
+}
+
+type fieldSetter struct {
+	owner endpointType
+	field string
+	param int
 }
 
 type valuePart struct {
@@ -291,11 +298,14 @@ func (s *scanner) indexFunctions() {
 }
 
 // indexConcreteFieldTypes records the concrete values assigned to receiver
-// fields by constructors. A field may be declared as an interface while its
-// default production implementation is created in the same constructor:
+// fields by constructors and assembly code. A field may be declared as an
+// interface while its production implementation is supplied through a
+// composite literal, a direct assignment, or a setter:
 //
 //	client, err := transport.New(...)
 //	return &Connector{client: client}, nil
+//
+//	connector.SetClient(client)
 //
 // The assignment itself is compiler-checked evidence that the concrete type
 // implements the interface. Multiple observed implementations are retained so
@@ -304,35 +314,46 @@ func (s *scanner) indexConcreteFieldTypes() {
 	for _, declaration := range s.functions {
 		locals := s.localConcreteTypes(declaration)
 		ast.Inspect(declaration.fn.Body, func(node ast.Node) bool {
-			ret, ok := node.(*ast.ReturnStmt)
+			switch value := node.(type) {
+			case *ast.CompositeLit:
+				s.indexCompositeFieldTypes(declaration, value, locals)
+			case *ast.AssignStmt:
+				s.indexAssignedFieldTypes(declaration, value, locals)
+			}
+			return true
+		})
+	}
+
+	setters := s.fieldSetters()
+	for _, declaration := range s.functions {
+		locals := s.localConcreteTypes(declaration)
+		ast.Inspect(declaration.fn.Body, func(node ast.Node) bool {
+			call, ok := node.(*ast.CallExpr)
 			if !ok {
 				return true
 			}
-			for _, result := range ret.Results {
-				literal := compositeLiteral(result)
-				if literal == nil {
+			selector, ok := call.Fun.(*ast.SelectorExpr)
+			if !ok {
+				return true
+			}
+			root, ok := selector.X.(*ast.Ident)
+			if !ok {
+				return true
+			}
+			owner, ok := locals[root.Name]
+			if !ok {
+				return true
+			}
+			for _, setter := range setters[s.methodKey(owner, selector.Sel.Name)] {
+				if setter.param >= len(call.Args) {
 					continue
 				}
-				ownerType, ok := s.typeExpression(declaration.file, literal.Type)
-				if !ok {
+				typ, ok := s.concreteExpressionType(declaration, call.Args[setter.param], locals)
+				if !ok || !s.typeHasMethods(typ) {
 					continue
 				}
-				for _, element := range literal.Elts {
-					field, ok := element.(*ast.KeyValueExpr)
-					if !ok {
-						continue
-					}
-					name, ok := field.Key.(*ast.Ident)
-					if !ok {
-						continue
-					}
-					typ, ok := s.concreteExpressionType(declaration, field.Value, locals)
-					if !ok || !s.typeHasMethods(typ) {
-						continue
-					}
-					key := fieldTypeKey(ownerType, name.Name)
-					s.fieldTypes[key] = appendEndpointType(s.fieldTypes[key], typ)
-				}
+				key := fieldTypeKey(setter.owner, setter.field)
+				s.fieldTypes[key] = appendEndpointType(s.fieldTypes[key], typ)
 			}
 			return true
 		})
@@ -347,8 +368,113 @@ func (s *scanner) indexConcreteFieldTypes() {
 	}
 }
 
+func (s *scanner) indexCompositeFieldTypes(declaration *functionDecl, literal *ast.CompositeLit, locals map[string]endpointType) {
+	ownerType, ok := s.typeExpression(declaration.file, literal.Type)
+	if !ok {
+		return
+	}
+	for _, element := range literal.Elts {
+		field, ok := element.(*ast.KeyValueExpr)
+		if !ok {
+			continue
+		}
+		name, ok := field.Key.(*ast.Ident)
+		if !ok {
+			continue
+		}
+		typ, ok := s.concreteExpressionType(declaration, field.Value, locals)
+		if !ok || !s.typeHasMethods(typ) {
+			continue
+		}
+		key := fieldTypeKey(ownerType, name.Name)
+		s.fieldTypes[key] = appendEndpointType(s.fieldTypes[key], typ)
+	}
+}
+
+func (s *scanner) indexAssignedFieldTypes(declaration *functionDecl, assignment *ast.AssignStmt, locals map[string]endpointType) {
+	for index, left := range assignment.Lhs {
+		selector, ok := left.(*ast.SelectorExpr)
+		if !ok || index >= len(assignment.Rhs) {
+			continue
+		}
+		root, ok := selector.X.(*ast.Ident)
+		if !ok {
+			continue
+		}
+		owner, ok := locals[root.Name]
+		if !ok {
+			continue
+		}
+		typ, ok := s.concreteExpressionType(declaration, assignment.Rhs[index], locals)
+		if !ok || !s.typeHasMethods(typ) {
+			continue
+		}
+		key := fieldTypeKey(owner, selector.Sel.Name)
+		s.fieldTypes[key] = appendEndpointType(s.fieldTypes[key], typ)
+	}
+}
+
+// fieldSetters identifies the narrow setter shape that proves a field receives
+// one of the method's parameters. The concrete implementation is intentionally
+// resolved only at call sites; the interface-typed parameter itself proves no
+// implementation.
+func (s *scanner) fieldSetters() map[string][]fieldSetter {
+	out := map[string][]fieldSetter{}
+	for key, declaration := range s.functions {
+		receiver := receiverVariable(declaration.fn)
+		if receiver == "" {
+			continue
+		}
+		owner, ok := s.typeExpression(declaration.file, declaration.fn.Recv.List[0].Type)
+		if !ok {
+			continue
+		}
+		params := functionParams(declaration.fn)
+		paramAt := map[string]int{}
+		for index, name := range params {
+			if name != "" {
+				paramAt[name] = index
+			}
+		}
+		ast.Inspect(declaration.fn.Body, func(node ast.Node) bool {
+			assignment, ok := node.(*ast.AssignStmt)
+			if !ok {
+				return true
+			}
+			for index, left := range assignment.Lhs {
+				selector, ok := left.(*ast.SelectorExpr)
+				if !ok || index >= len(assignment.Rhs) {
+					continue
+				}
+				root, ok := selector.X.(*ast.Ident)
+				if !ok || root.Name != receiver {
+					continue
+				}
+				right, ok := assignment.Rhs[index].(*ast.Ident)
+				if !ok {
+					continue
+				}
+				param, ok := paramAt[right.Name]
+				if !ok {
+					continue
+				}
+				out[key] = append(out[key], fieldSetter{owner: owner, field: selector.Sel.Name, param: param})
+			}
+			return true
+		})
+	}
+	return out
+}
+
 func (s *scanner) localConcreteTypes(declaration *functionDecl) map[string]endpointType {
 	locals := map[string]endpointType{}
+	if declaration.fn.Recv != nil && len(declaration.fn.Recv.List) > 0 {
+		if typ, ok := s.typeExpression(declaration.file, declaration.fn.Recv.List[0].Type); ok {
+			for _, name := range declaration.fn.Recv.List[0].Names {
+				locals[name.Name] = typ
+			}
+		}
+	}
 	if declaration.fn.Type.Params != nil {
 		for _, field := range declaration.fn.Type.Params.List {
 			typ, ok := s.typeExpression(declaration.file, field.Type)
@@ -1970,12 +2096,20 @@ func (s *scanner) flowGroups(calls []Call) []FlowGroup {
 	}
 	sort.Strings(keys)
 	out := make([]FlowGroup, 0, len(keys))
+	callers := map[string][]string{}
+	for caller, outgoing := range edges {
+		for _, edge := range outgoing {
+			callers[edge.target] = append(callers[edge.target], caller)
+		}
+	}
 	for _, key := range keys {
 		source := Source{}
 		if fn := s.functions[key]; fn != nil {
 			source = s.source(fn.file, fn.fn.Pos())
 		}
-		out = append(out, FlowGroup{Function: key, Calls: groups[key], Source: source})
+		groupCallers := uniqueStrings(callers[key])
+		sort.Strings(groupCallers)
+		out = append(out, FlowGroup{Function: key, Calls: groups[key], Source: source, Callers: groupCallers})
 	}
 	return out
 }

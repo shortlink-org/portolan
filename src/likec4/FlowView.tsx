@@ -106,6 +106,16 @@ export function FlowView({
     [marked, pairing],
   );
 
+  const focusedPathEdges = useMemo(
+    () =>
+      pathSteps
+        ? pathSteps
+            .map((stepId) => pairing.edgeOf.get(stepId))
+            .filter((id): id is string => id !== undefined)
+        : null,
+    [pathSteps, pairing],
+  );
+
   // Frames go with their steps. A chosen path is a structural focus, so its
   // unused arrows and empty frames disappear; selecting one step remains a
   // paint-only highlight and never changes the surrounding graph.
@@ -113,11 +123,7 @@ export function FlowView({
     const theme = [buildFrameCss(), buildWalkthroughCss()].join("\n");
     if (!pathSteps) return theme;
     const allEdges = viewEdgeIds(viewId);
-    const onPath = new Set(
-      pathSteps
-        .map((stepId) => pairing.edgeOf.get(stepId))
-        .filter((id): id is string => id !== undefined),
-    );
+    const onPath = new Set(focusedPathEdges ?? []);
     const edges = allEdges.filter((id) => !onPath.has(id));
     const edgeLabelPositions = allEdges
       .map((id, index) => (onPath.has(id) ? null : index + 1))
@@ -145,7 +151,7 @@ export function FlowView({
     ]
       .filter(Boolean)
       .join("\n");
-  }, [flow, pathSteps, pairing, viewId]);
+  }, [flow, pathSteps, focusedPathEdges, pairing, viewId]);
 
   // Lanes are marked only for a selection made somewhere else, and only when
   // this variant of the view actually has that lane.
@@ -221,6 +227,7 @@ export function FlowView({
         activeEdgeId={
           focusStep ? (pairing.edgeOf.get(focusStep) ?? null) : null
         }
+        focusEdgeIds={focusedPathEdges}
         onWalkthroughEdge={onWalkthroughEdge}
       />
     </InteractiveView>

@@ -67,11 +67,14 @@ export interface CanvasHandle {
 export function CanvasBridge({
   handle,
   activeEdgeId,
+  focusEdgeIds,
   onWalkthroughEdge,
 }: {
   handle: RefObject<CanvasHandle | null>;
   /** The edge the page wants in view, or null when it wants nothing. */
   activeEdgeId: string | null;
+  /** The selected executable path, fitted after its siblings leave. */
+  focusEdgeIds?: readonly string[] | null;
   /** The edge playback is on, or null when playback is not running. */
   onWalkthroughEdge: (edgeId: string | null) => void;
 }) {
@@ -153,6 +156,32 @@ export function CanvasBridge({
     observer.observe(node);
     return () => observer.disconnect();
   }, [activeEdgeId, walkthroughStep, diagram]);
+
+  useEffect(() => {
+    if (activeEdgeId || walkthroughStep || !focusEdgeIds?.length) return;
+    const points = focusEdgeIds.flatMap(
+      (edgeId) => diagram.findDiagramEdge(edgeId)?.points ?? [],
+    );
+    const bounds = boundsOf(points);
+    const node = canvasNode(diagram);
+    if (!bounds || !node) return;
+
+    const aim = (): void => {
+      const canvas = canvasSize(node);
+      if (!canvas) return;
+      diagram.send({
+        type: "xyflow.setViewport",
+        viewport: focusViewport(bounds, canvas),
+        duration: 180,
+      });
+    };
+
+    // Let the stylesheet that hides the other branches land before moving the
+    // camera; the geometry is precomputed, but the transition should describe
+    // the picture the reader can already see.
+    const frame = requestAnimationFrame(aim);
+    return () => cancelAnimationFrame(frame);
+  }, [activeEdgeId, walkthroughStep, focusEdgeIds, diagram]);
 
   return null;
 }

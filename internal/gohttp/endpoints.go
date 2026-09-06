@@ -3,6 +3,7 @@ package gohttp
 import (
 	"go/ast"
 	"go/token"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -263,11 +264,10 @@ func (s *scanner) endpointOperation(handlerKey string) (string, *functionDecl) {
 		}
 		params := functionParams(target.fn)
 		for index, argument := range call.Args {
-			identifier, ok := argument.(*ast.Ident)
-			if !ok || index >= len(params) {
+			if index >= len(params) {
 				continue
 			}
-			typ, ok := localTypes[identifier.Name]
+			typ, ok := s.endpointArgumentType(handler, argument, localTypes)
 			if !ok {
 				continue
 			}
@@ -296,6 +296,21 @@ func (s *scanner) endpointOperation(handlerKey string) (string, *functionDecl) {
 	return operation, coordinator
 }
 
+func (s *scanner) endpointArgumentType(owner *functionDecl, expr ast.Expr, locals map[string]endpointType) (endpointType, bool) {
+	switch value := expr.(type) {
+	case *ast.Ident:
+		typ, ok := locals[value.Name]
+		return typ, ok
+	case *ast.ParenExpr:
+		return s.endpointArgumentType(owner, value.X, locals)
+	case *ast.UnaryExpr:
+		return s.endpointArgumentType(owner, value.X, locals)
+	case *ast.CompositeLit:
+		return s.typeExpression(owner.file, value.Type)
+	}
+	return endpointType{}, false
+}
+
 func (s *scanner) directEndpointOperation(handler *functionDecl) (string, *functionDecl) {
 	factory := s.factoryCalledBy(handler)
 	if factory == nil {
@@ -307,13 +322,12 @@ func (s *scanner) directEndpointOperation(handler *functionDecl) (string, *funct
 		if !ok || len(assignment.Rhs) == 0 {
 			return true
 		}
-		call, ok := assignment.Rhs[0].(*ast.CallExpr)
-		if !ok || !s.isFactoryCall(handler, call, factory) {
-			return true
+		if call, ok := assignment.Rhs[0].(*ast.CallExpr); ok && s.isFactoryCall(handler, call, factory) {
+			if name, ok := assignment.Lhs[0].(*ast.Ident); ok {
+				factoryResult[name.Name] = true
+			}
 		}
-		if name, ok := assignment.Lhs[0].(*ast.Ident); ok {
-			factoryResult[name.Name] = true
-		}
+		propagateAliases(assignment, factoryResult)
 		return true
 	})
 	var operation string
@@ -326,8 +340,7 @@ func (s *scanner) directEndpointOperation(handler *functionDecl) (string, *funct
 		if !ok {
 			return true
 		}
-		root, ok := selector.X.(*ast.Ident)
-		if ok && factoryResult[root.Name] {
+		if expressionUsesAlias(selector.X, factoryResult) {
 			operation = selector.Sel.Name
 			return false
 		}
@@ -375,16 +388,20 @@ func methodsCalledOn(fn *ast.FuncDecl, variable string) []string {
 }
 
 func interfaceOperations(fn *ast.FuncDecl) []string {
-	params := map[string]bool{}
+	aliases := map[string]bool{}
 	if fn.Type.Params != nil {
 		for _, field := range fn.Type.Params.List {
 			for _, name := range field.Names {
-				params[name.Name] = true
+				aliases[name.Name] = true
 			}
 		}
 	}
 	var operations []string
 	ast.Inspect(fn.Body, func(node ast.Node) bool {
+		if assignment, ok := node.(*ast.AssignStmt); ok {
+			propagateAliases(assignment, aliases)
+			return true
+		}
 		call, ok := node.(*ast.CallExpr)
 		if !ok {
 			return true
@@ -393,13 +410,49 @@ func interfaceOperations(fn *ast.FuncDecl) []string {
 		if !ok {
 			return true
 		}
-		root, ok := selector.X.(*ast.Ident)
-		if ok && params[root.Name] && selector.Sel.Name != "Error" {
+		if expressionUsesAlias(selector.X, aliases) && selector.Sel.Name != "Error" {
 			operations = append(operations, selector.Sel.Name)
 		}
 		return true
 	})
 	return uniqueStrings(operations)
+}
+
+// propagateAliases follows the value-preserving assembly shapes used for
+// capability narrowing: alias := value and capability, ok := value.(Port).
+// It does not follow arbitrary calls or selectors, which could change identity.
+func propagateAliases(assignment *ast.AssignStmt, aliases map[string]bool) {
+	for index, left := range assignment.Lhs {
+		name, ok := left.(*ast.Ident)
+		if !ok {
+			continue
+		}
+		rightAt := index
+		if len(assignment.Rhs) == 1 {
+			if index > 0 {
+				continue
+			}
+			rightAt = 0
+		}
+		if rightAt >= len(assignment.Rhs) || !expressionUsesAlias(assignment.Rhs[rightAt], aliases) {
+			continue
+		}
+		aliases[name.Name] = true
+	}
+}
+
+func expressionUsesAlias(expr ast.Expr, aliases map[string]bool) bool {
+	switch value := expr.(type) {
+	case *ast.Ident:
+		return aliases[value.Name]
+	case *ast.ParenExpr:
+		return expressionUsesAlias(value.X, aliases)
+	case *ast.UnaryExpr:
+		return expressionUsesAlias(value.X, aliases)
+	case *ast.TypeAssertExpr:
+		return expressionUsesAlias(value.X, aliases)
+	}
+	return false
 }
 
 func (s *scanner) factorySupportsOperation(factory *functionDecl, operation string) bool {
@@ -428,7 +481,7 @@ func (s *scanner) factoryCalledBy(coordinator *functionDecl) *functionDecl {
 	})
 	for _, key := range uniqueStrings(candidates) {
 		declaration := s.functions[key]
-		if declaration != nil && len(s.factoryCases(declaration)) > 1 {
+		if declaration != nil && len(s.factoryCases(declaration)) > 0 {
 			return declaration
 		}
 	}
@@ -459,7 +512,157 @@ func (s *scanner) factoryCases(factory *functionDecl) []factoryCase {
 		}
 		return true
 	})
+	if len(out) > 0 {
+		return out
+	}
+	if mapped := s.factoryMapCases(factory); len(mapped) > 0 {
+		return mapped
+	}
+	providers := s.returnedProviders(factory)
+	if len(providers) != 1 {
+		return nil
+	}
+	return []factoryCase{{condition: filepath.Base(providers[0]), provider: providers[0]}}
+}
+
+func (s *scanner) factoryMapCases(factory *functionDecl) []factoryCase {
+	used := map[string]bool{}
+	ast.Inspect(factory.fn.Body, func(node ast.Node) bool {
+		ret, ok := node.(*ast.ReturnStmt)
+		if !ok {
+			return true
+		}
+		for _, result := range ret.Results {
+			if name := indexedMapName(result); name != "" {
+				used[name] = true
+			}
+		}
+		return true
+	})
+	if len(used) == 0 {
+		return nil
+	}
+
+	literals := map[string]*ast.CompositeLit{}
+	record := func(name string, expr ast.Expr) {
+		literal := compositeLiteral(expr)
+		if literal == nil {
+			return
+		}
+		if _, ok := literal.Type.(*ast.MapType); ok && used[name] {
+			literals[name] = literal
+		}
+	}
+	ast.Inspect(factory.fn.Body, func(node ast.Node) bool {
+		switch value := node.(type) {
+		case *ast.AssignStmt:
+			for index, left := range value.Lhs {
+				name, ok := left.(*ast.Ident)
+				if ok && index < len(value.Rhs) {
+					record(name.Name, value.Rhs[index])
+				}
+			}
+		case *ast.ValueSpec:
+			for index, name := range value.Names {
+				if index < len(value.Values) {
+					record(name.Name, value.Values[index])
+				}
+			}
+		}
+		return true
+	})
+	for _, declaration := range factory.file.node.Decls {
+		generic, ok := declaration.(*ast.GenDecl)
+		if !ok || generic.Tok != token.VAR {
+			continue
+		}
+		for _, raw := range generic.Specs {
+			spec, ok := raw.(*ast.ValueSpec)
+			if !ok {
+				continue
+			}
+			for index, name := range spec.Names {
+				if index < len(spec.Values) {
+					record(name.Name, spec.Values[index])
+				}
+			}
+		}
+	}
+
+	var out []factoryCase
+	seen := map[string]bool{}
+	for _, literal := range literals {
+		for _, element := range literal.Elts {
+			pair, ok := element.(*ast.KeyValueExpr)
+			if !ok {
+				continue
+			}
+			condition := s.value(factory.file, pair.Key, map[string]string{}, map[string]bool{})
+			provider := s.providerExpression(factory.file, pair.Value, map[string]string{})
+			key := condition + "\x00" + provider
+			if condition == "" || provider == "" || seen[key] {
+				continue
+			}
+			seen[key] = true
+			out = append(out, factoryCase{condition: condition, provider: provider})
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].condition < out[j].condition })
 	return out
+}
+
+func indexedMapName(expr ast.Expr) string {
+	switch value := expr.(type) {
+	case *ast.ParenExpr:
+		return indexedMapName(value.X)
+	case *ast.UnaryExpr:
+		return indexedMapName(value.X)
+	case *ast.CallExpr:
+		return indexedMapName(value.Fun)
+	case *ast.IndexExpr:
+		if name, ok := value.X.(*ast.Ident); ok {
+			return name.Name
+		}
+	}
+	return ""
+}
+
+// returnedProviders recognizes a fixed factory without manufacturing branches:
+// a single local provider is returned, possibly through a temporary variable.
+// Two distinct returns are ambiguous unless a switch supplied their conditions,
+// so this conservative fallback rejects them.
+func (s *scanner) returnedProviders(factory *functionDecl) []string {
+	locals := map[string]string{}
+	var providers []string
+	ast.Inspect(factory.fn.Body, func(node ast.Node) bool {
+		switch value := node.(type) {
+		case *ast.AssignStmt:
+			for index, left := range value.Lhs {
+				name, ok := left.(*ast.Ident)
+				if !ok {
+					continue
+				}
+				rightAt := index
+				if len(value.Rhs) == 1 {
+					rightAt = 0
+				}
+				if rightAt >= len(value.Rhs) {
+					continue
+				}
+				if provider := s.providerExpression(factory.file, value.Rhs[rightAt], locals); provider != "" {
+					locals[name.Name] = provider
+				}
+			}
+		case *ast.ReturnStmt:
+			for _, result := range value.Results {
+				if provider := s.providerExpression(factory.file, result, locals); provider != "" {
+					providers = append(providers, provider)
+				}
+			}
+		}
+		return true
+	})
+	return uniqueStrings(providers)
 }
 
 func (s *scanner) providerOfCase(file *parsedFile, clause *ast.CaseClause) string {
@@ -524,6 +727,28 @@ func (s *scanner) providerExpression(file *parsedFile, expr ast.Expr, locals map
 			if alias, ok := selector.X.(*ast.Ident); ok {
 				return s.importDirectory(file, alias.Name)
 			}
+		}
+	case *ast.SelectorExpr:
+		if alias, ok := value.X.(*ast.Ident); ok {
+			return s.importDirectory(file, alias.Name)
+		}
+	case *ast.FuncLit:
+		var providers []string
+		ast.Inspect(value.Body, func(node ast.Node) bool {
+			ret, ok := node.(*ast.ReturnStmt)
+			if !ok {
+				return true
+			}
+			for _, result := range ret.Results {
+				if provider := s.providerExpression(file, result, locals); provider != "" {
+					providers = append(providers, provider)
+				}
+			}
+			return true
+		})
+		providers = uniqueStrings(providers)
+		if len(providers) == 1 {
+			return providers[0]
 		}
 	}
 	return ""

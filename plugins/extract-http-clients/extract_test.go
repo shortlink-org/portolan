@@ -467,6 +467,9 @@ func Refresh() { _, _ = http.Get("https://cache.example/refresh") }
 	if endpoint == nil || direct == nil || background == nil {
 		t.Fatalf("endpoint = %+v, direct = %+v, background = %+v", endpoint, direct, background)
 	}
+	if !strings.Contains(background.Summary, "No source caller was found") {
+		t.Fatalf("standalone reason = %q", background.Summary)
+	}
 	if len(endpoint.Steps) != 2 {
 		t.Fatalf("steps = %+v", endpoint.Steps)
 	}
@@ -498,6 +501,207 @@ func Refresh() { _, _ = http.Get("https://cache.example/refresh") }
 	opaqueStep := providers.Branches[2].Steps[0].(*catalog.Step)
 	if opaqueStep.Kind != catalog.StepCall || opaqueStep.Label != "Opaque Search" || !strings.Contains(opaqueStep.Note, "outbound transport was not resolved") {
 		t.Fatalf("opaque step = %+v", opaqueStep)
+	}
+}
+
+func TestBuildsEndpointThroughFixedFactorySetterAndWrapper(t *testing.T) {
+	root := t.TempDir()
+	writeHTTPFixture(t, root, "go.mod", "module example.com/wired\n")
+	writeHTTPFixture(t, root, "app/main.go", `package app
+import "example.com/wired/connector"
+type Router struct{}
+func (*Router) POST(string, func()) {}
+func Start(r *Router) { r.POST("/cancel", Cancel) }
+func Cancel() {
+  conn := connector.Build()
+  conn.Cancel()
+}
+`)
+	writeHTTPFixture(t, root, "connector/factory.go", `package connector
+import (
+  "example.com/wired/provider/alpha"
+  "example.com/wired/provider/wrapper"
+)
+type API interface{ Cancel() }
+func Build() API {
+  conn := wrapper.New()
+  client := alpha.New()
+  conn.SetClient(client)
+  return conn
+}
+`)
+	writeHTTPFixture(t, root, "provider/port/api.go", `package port
+type API interface{ Cancel() }
+`)
+	writeHTTPFixture(t, root, "provider/wrapper/connector.go", `package wrapper
+import "example.com/wired/provider/port"
+type Connector struct{ client port.API }
+func New() *Connector { return &Connector{} }
+func (c *Connector) SetClient(client port.API) { c.client = client }
+func (c *Connector) Cancel() { c.client.Cancel() }
+`)
+	writeHTTPFixture(t, root, "provider/alpha/client.go", `package alpha
+import "net/http"
+type Client struct{}
+func New() *Client { return &Client{} }
+func (*Client) Cancel() { _, _ = http.Get("https://alpha.example/v1/cancel") }
+`)
+
+	resp, err := extract(plugin.Input{Root: root}, Options{Context: "travel", Service: "cancel"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got catalog.Catalog
+	if err := json.Unmarshal([]byte(resp.Files[0].Contents), &got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Flows) != 1 {
+		t.Fatalf("flows = %+v", got.Flows)
+	}
+	flow := got.Flows[0]
+	if flow.Name != "POST /cancel → provider APIs" || len(flow.Steps) != 2 {
+		t.Fatalf("endpoint = %+v", flow)
+	}
+	step, ok := flow.Steps[1].(*catalog.Step)
+	if !ok || step.Label != "GET /v1/cancel" {
+		t.Fatalf("provider step = %+v", flow.Steps[1])
+	}
+	if !strings.Contains(step.Note, "Connector.Cancel → Client.Cancel") {
+		t.Fatalf("setter-wired wrapper chain = %q", step.Note)
+	}
+}
+
+func TestBuildsEndpointThroughCapabilityAssertion(t *testing.T) {
+	root := t.TempDir()
+	writeHTTPFixture(t, root, "go.mod", "module example.com/capability\n")
+	writeHTTPFixture(t, root, "app/main.go", `package app
+import (
+  "example.com/capability/actions/documents"
+  "example.com/capability/connector"
+)
+type Router struct{}
+func (*Router) POST(string, func()) {}
+type Requester interface{ ConnExec(connector.API) }
+func Start(r *Router) { r.POST("/documents", DocumentsAction) }
+func DocumentsAction() {
+  request := documents.Request{}
+  ActionFlow(&request)
+}
+func ActionFlow(request Requester) {
+  conn := connector.Build("runtime")
+  request.ConnExec(conn)
+}
+`)
+	writeHTTPFixture(t, root, "actions/documents/request.go", `package documents
+import "example.com/capability/connector"
+type Request struct{}
+func (*Request) ConnExec(conn connector.API) {
+  getter, ok := conn.(interface{ GetDocuments() })
+  if ok { getter.GetDocuments() }
+}
+`)
+	writeHTTPFixture(t, root, "connector/factory.go", `package connector
+import (
+  "example.com/capability/provider/alpha"
+  "example.com/capability/provider/beta"
+)
+type API interface{}
+func Build(name string) API {
+  switch name {
+  case "alpha": return alpha.New()
+  case "beta": return beta.New()
+  default: return nil
+  }
+}
+`)
+	writeHTTPFixture(t, root, "provider/alpha/client.go", `package alpha
+import "net/http"
+type Client struct{}
+func New() *Client { return &Client{} }
+func (*Client) GetDocuments() { _, _ = http.Get("https://alpha.example/v1/documents") }
+`)
+	writeHTTPFixture(t, root, "provider/beta/client.go", `package beta
+type Client struct{}
+func New() *Client { return &Client{} }
+`)
+
+	resp, err := extract(plugin.Input{Root: root}, Options{Context: "travel", Service: "documents"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got catalog.Catalog
+	if err := json.Unmarshal([]byte(resp.Files[0].Contents), &got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Flows) != 1 {
+		t.Fatalf("flows = %+v", got.Flows)
+	}
+	flow := got.Flows[0]
+	if flow.Name != "POST /documents → provider APIs" || len(flow.Steps) != 2 {
+		t.Fatalf("endpoint = %+v", flow)
+	}
+	step, ok := flow.Steps[1].(*catalog.Step)
+	if !ok || step.Label != "GET /v1/documents" {
+		t.Fatalf("capability step = %+v", flow.Steps[1])
+	}
+}
+
+func TestBuildsProviderBranchesFromConstructorMap(t *testing.T) {
+	root := t.TempDir()
+	writeHTTPFixture(t, root, "go.mod", "module example.com/registry\n")
+	writeHTTPFixture(t, root, "app/main.go", `package app
+import "example.com/registry/connector"
+type Router struct{}
+func (*Router) POST(string, func()) {}
+func Start(r *Router) { r.POST("/search", Search) }
+func Search() {
+  conn := connector.Build("runtime")
+  conn.Search()
+}
+`)
+	writeHTTPFixture(t, root, "connector/factory.go", `package connector
+import (
+  "example.com/registry/provider/alpha"
+  "example.com/registry/provider/beta"
+)
+type API interface{ Search() }
+var providers = map[string]func() API{
+  "alpha": func() API { return alpha.New() },
+  "beta": beta.New,
+}
+func Build(name string) API { return providers[name]() }
+`)
+	writeHTTPFixture(t, root, "provider/alpha/client.go", `package alpha
+import "net/http"
+type Client struct{}
+func New() *Client { return &Client{} }
+func (*Client) Search() { _, _ = http.Get("https://alpha.example/search") }
+`)
+	writeHTTPFixture(t, root, "provider/beta/client.go", `package beta
+import "net/http"
+type Client struct{}
+func New() *Client { return &Client{} }
+func (*Client) Search() { _, _ = http.Get("https://beta.example/search") }
+`)
+
+	resp, err := extract(plugin.Input{Root: root}, Options{Context: "travel", Service: "search"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got catalog.Catalog
+	if err := json.Unmarshal([]byte(resp.Files[0].Contents), &got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Flows) != 1 {
+		t.Fatalf("flows = %+v", got.Flows)
+	}
+	flow := got.Flows[0]
+	providers, ok := flow.Steps[1].(*catalog.Alt)
+	if !ok || len(providers.Branches) != 2 {
+		t.Fatalf("provider map branches = %+v", flow.Steps)
+	}
+	if providers.Branches[0].Title != `connector = "alpha"` || providers.Branches[1].Title != `connector = "beta"` {
+		t.Fatalf("provider map titles = %+v", providers.Branches)
 	}
 }
 
@@ -544,6 +748,26 @@ func (*Client) Cancel() { _, _ = http.Get("https://beta.example/cancel") }
 		if flow.Name == "Connector Cancel → outbound APIs" {
 			t.Fatalf("ambiguous receiver was guessed: %+v", flow)
 		}
+	}
+}
+
+func TestCoveredEndpointCallRemovesWrapperWithoutAChainName(t *testing.T) {
+	call := gohttp.Call{
+		Function: "provider:Client.Send",
+		ID:       "http-client/POST /send",
+		Source:   gohttp.Source{File: "provider/client.go", Line: 42},
+	}
+	groups := []gohttp.FlowGroup{{Function: "provider:Connector.Publish", Calls: []gohttp.Call{call}}}
+	endpoints := []gohttp.EndpointFlow{{Branches: []gohttp.EndpointBranch{{
+		Function: "provider:Client.Send",
+		Calls:    []gohttp.Call{call},
+	}}}}
+	covered := map[string]bool{}
+
+	coverEndpointDescendants(covered, endpoints, groups)
+
+	if !covered["provider:Connector.Publish"] {
+		t.Fatalf("exact source-backed wrapper was not covered: %+v", covered)
 	}
 }
 

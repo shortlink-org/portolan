@@ -248,12 +248,24 @@ func flowsOfGroupsExcept(serviceID, context string, groups []gohttp.FlowGroup, o
 			ID:      "flow." + serviceID + ".http-client." + slug(function),
 			Slug:    serviceID + "-http-client-" + slug(function),
 			Name:    name + " → outbound APIs",
-			Summary: "Source-backed outbound calls made by '" + function + "'.",
+			Summary: standaloneFlowSummary(function, flowGroup.Callers),
 			Source:  flowSource, EntryPoint: function, Owner: context,
 			Participants: participants, Steps: steps,
 		})
 	}
 	return flows
+}
+
+func standaloneFlowSummary(function string, callers []string) string {
+	base := "Source-backed outbound calls made by '" + function + "'."
+	if len(callers) == 0 {
+		return base + " No source caller was found; this may be a public entrypoint, a background task, or unreachable code."
+	}
+	displays := make([]string, 0, len(callers))
+	for _, caller := range callers {
+		displays = append(displays, flowName(caller))
+	}
+	return base + " Source callers were found (" + strings.Join(uniqueStrings(displays), ", ") + "), but no inbound or asynchronous root was proven."
 }
 
 func flowsOfEndpoints(serviceID, context string, endpoints []gohttp.EndpointFlow, opts Options) ([]catalog.Flow, map[string]bool) {
@@ -335,17 +347,17 @@ func coverEndpointDescendants(covered map[string]bool, endpoints []gohttp.Endpoi
 	for _, endpoint := range endpoints {
 		for _, branch := range endpoint.Branches {
 			callKeys := map[string]bool{}
-			chainNames := map[string]bool{}
 			for _, call := range branch.Calls {
 				callKeys[endpointCallKey(call)] = true
-				for _, name := range call.Chain {
-					chainNames[name] = true
-				}
 			}
 			for _, group := range groups {
-				if covered[group.Function] || len(group.Calls) == 0 || !chainNames[flowFunctionName(group.Function)] {
+				if covered[group.Function] || len(group.Calls) == 0 {
 					continue
 				}
+				// Exact source location plus operation id is stronger evidence than
+				// a display name in the reconstructed call chain. Wrappers reached
+				// through interfaces and promoted methods can omit that name while
+				// still contributing precisely the same source-backed calls.
 				allCallsCovered := true
 				for _, call := range group.Calls {
 					if !callKeys[endpointCallKey(call)] {
@@ -363,13 +375,6 @@ func coverEndpointDescendants(covered map[string]bool, endpoints []gohttp.Endpoi
 
 func endpointCallKey(call gohttp.Call) string {
 	return call.Source.String() + "\x00" + call.ID
-}
-
-func flowFunctionName(function string) string {
-	if _, name, qualified := strings.Cut(function, ":"); qualified {
-		return name
-	}
-	return function
 }
 
 func flowName(function string) string {

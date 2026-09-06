@@ -192,6 +192,12 @@ arguments, so a path and HTTP method declared by a business operation survive
 the trip into the transport. URL-shaped configuration is followed through a
 constructor and client field to the request, and the resulting evidence chain
 is included in the flow instead of presenting a receiver field as an endpoint.
+Inbound composition also follows fixed factories, string-keyed constructor
+maps, capability type assertions, and interface fields wired by composite
+literals, direct assignments, or setters. A standalone flow says whether no
+source caller exists or callers exist but no inbound/asynchronous root was
+proved, so the UI exposes the missing evidence instead of implying a complete
+business path.
 
 ## Flows written by hand
 
