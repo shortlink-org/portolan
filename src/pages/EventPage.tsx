@@ -1,13 +1,19 @@
 import { useCallback, useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
-import { ChevronDown, ChevronRight, Plus } from "lucide-react";
+import { ChevronDown, ChevronRight, Minus, Plus } from "lucide-react";
 import { catalog, index } from "../data";
 import { plural } from "../lib/format";
 import type { Field } from "../catalog";
-import { addedFields } from "../lib/derive";
 import { backlinkCount, stepsInto } from "../lib/backlinks";
 import { outboxOfService } from "../lib/data-model";
 import { ctxStyle } from "../lib/context-color";
+import {
+  eventScope,
+  openablePaths,
+  resolveShape,
+  schemaChanges,
+} from "../lib/shape";
+import type { Change, Scope } from "../lib/shape";
 import {
   EVENT_ANCHOR,
   LINKS_HERE,
@@ -18,7 +24,7 @@ import {
 import { Empty, PageHeader, SectionTitle } from "../components/PageHeader";
 import { Select } from "../components/Select";
 import { Ident } from "../components/Ident";
-import { ShapeRows } from "../components/ShapeRows";
+import { ShapeBody, TypeCell } from "../components/FieldTree";
 import { RowActions } from "../components/RowActions";
 import { DataTable } from "../table/DataTable";
 import type { ColumnSpec } from "../table/types";
@@ -33,100 +39,162 @@ import { eventChain } from "../flow/chain";
 import { ChainList } from "../flow/ChainList";
 
 /**
+ * One row of the schema table: a field of the version shown, or a field the
+ * version dropped. A dropped field is still a row because "what did v3 take
+ * away" is asked at the same table as "what did it add", and a table of the
+ * fields that survived cannot answer it.
+ */
+interface SchemaRow extends Field {
+  change?: Change;
+  /** The type the previous version gave the field, when this one changed it. */
+  from?: string;
+}
+
+/** What the change column says, and in what colour. */
+const CHANGE: Record<Change, { label: string; className: string; title: string }> = {
+  new: {
+    label: "new",
+    className: "text-verified",
+    title: "added in this version",
+  },
+  changed: {
+    label: "changed",
+    className: "text-declared",
+    title: "type changed in this version",
+  },
+  removed: {
+    label: "removed",
+    className: "text-unresolved",
+    title: "dropped by this version — shown as the previous version had it",
+  },
+};
+
+function ChangeMark({ row }: { row: SchemaRow }) {
+  if (!row.change) return null;
+  const mark = CHANGE[row.change];
+  const title =
+    row.change === "changed" && row.from
+      ? `was ${row.from} in the previous version`
+      : mark.title;
+  return (
+    <span
+      className={`mono inline-flex items-center gap-1 ${mark.className}`}
+      title={title}
+    >
+      {row.change === "new" ? <Plus size={10} aria-hidden /> : null}
+      {row.change === "removed" ? <Minus size={10} aria-hidden /> : null}
+      {mark.label}
+    </span>
+  );
+}
+
+/**
  * The schema, as columns the table knows how to sort and filter. Field order
  * in a proto is meaningful, so nothing is sorted until the reader asks; what
  * the table adds is the ability to ask - "which fields are strings", "which
  * one was the timestamp" - over a schema too long to scan.
+ *
+ * A field whose type the catalog has a shape for - a shared def by ref, or a
+ * value object or entity of the aggregate by name - opens under its row, and
+ * keeps opening as far as the shapes go.
  */
 function schemaColumns(
-  added: Set<string>,
-  expanded: Set<string>,
-  onToggle: (name: string) => void,
-): ColumnSpec<Field>[] {
-  const columns: ColumnSpec<Field>[] = [
+  scope: Scope,
+  open: ReadonlySet<string>,
+  onToggle: (path: string) => void,
+): ColumnSpec<SchemaRow>[] {
+  const columns: ColumnSpec<SchemaRow>[] = [
     {
       id: "name",
       header: "name",
       type: "mono",
-      value: (field) => field.name,
+      value: (row) => row.name,
       primary: true,
-      cell: (field) =>
-        // Only a field whose type is a shared type has anything to open.
-        field.ref && catalog.defs[field.ref] ? (
+      cell: (row) => {
+        const struck = row.deprecated || row.change === "removed";
+        const nameClass = `mono${struck ? " line-through" : ""}${row.change === "removed" ? " text-muted" : ""}`;
+        const title = row.change === "removed"
+          ? "removed in this version"
+          : row.deprecated
+            ? "deprecated"
+            : undefined;
+        // Only a field the catalog has a shape for has anything to open.
+        const shape =
+          row.change === "removed" ? null : resolveShape(catalog, row, scope);
+        return shape ? (
           <button
             type="button"
-            onClick={() => onToggle(field.name)}
-            className="mono flex items-center gap-1"
-            aria-expanded={expanded.has(field.name)}
+            onClick={() => onToggle(row.name)}
+            className="mono flex items-center gap-1 rounded-control"
+            aria-expanded={open.has(row.name)}
+            title={`${open.has(row.name) ? "collapse" : "expand"} ${shape.name}`}
           >
-            {expanded.has(field.name) ? (
+            {open.has(row.name) ? (
               <ChevronDown size={11} aria-hidden className="text-muted" />
             ) : (
               <ChevronRight size={11} aria-hidden className="text-muted" />
             )}
-            {field.name}
+            <span className={nameClass} title={title}>
+              {row.name}
+            </span>
           </button>
         ) : (
-          <span
-            className={field.deprecated ? "mono pl-4 line-through" : "mono pl-4"}
-            title={field.deprecated ? "deprecated" : undefined}
-          >
-            {field.name}
+          <span className={`${nameClass} pl-4`} title={title}>
+            {row.name}
           </span>
-        ),
+        );
+      },
     },
     {
       id: "type",
       header: "type",
       type: "mono",
-      value: (field) => field.type,
-      cell: (field) => (
-        <Ident value={field.ref ?? field.type} className="text-muted">
-          {field.type}
-        </Ident>
+      value: (row) => row.type,
+      cell: (row) => (
+        <TypeCell
+          field={row}
+          shape={
+            row.change === "removed" ? null : resolveShape(catalog, row, scope)
+          }
+        />
       ),
     },
     {
       id: "doc",
       header: "doc",
       type: "text",
-      value: (field) => field.doc,
-      cell: (field) => <span className="meta">{field.doc}</span>,
+      value: (row) => row.doc,
+      cell: (row) => <span className="meta">{row.doc}</span>,
     },
     {
-      id: "new",
-      header: "",
+      id: "change",
+      header: "change",
       type: "text",
       // Sortable and filterable like any other column: "show me what this
-      // version added" is a question about the schema, not a decoration.
-      value: (field) => (added.has(field.name) ? "new" : undefined),
-      cell: (field) =>
-        added.has(field.name) ? (
-          <span
-            className="mono inline-flex items-center gap-1 text-verified"
-            title="added in this version"
-          >
-            <Plus size={10} aria-hidden />
-            new
-          </span>
-        ) : null,
+      // version did" is a question about the schema, not a decoration.
+      value: (row) => row.change,
+      cell: (row) => <ChangeMark row={row} />,
+      facet: true,
       enableHiding: false,
-      size: 60,
+      size: 88,
     },
   ];
   return columns;
 }
 
-/** One level deep only: a ref inside an expanded TypeDef is shown, not expanded. */
-function TypeDefBody({ field }: { field: Field }) {
-  const def = field.ref ? catalog.defs[field.ref] : undefined;
-  if (!def) return null;
-  return (
-    <>
-      <Ident block value={field.ref ?? ""} className="mb-1 text-muted" />
-      <ShapeRows fields={def.fields} />
-    </>
-  );
+/** " · +2 · ~1 · −1", or nothing when the version changed nothing. */
+function changeSummary(rows: SchemaRow[]): string {
+  const n = (change: Change) =>
+    rows.filter((row) => row.change === change).length;
+  const parts = [
+    [n("new"), "+"],
+    [n("changed"), "~"],
+    [n("removed"), "−"],
+  ] as const;
+  return parts
+    .filter(([count]) => count > 0)
+    .map(([count, sign]) => ` · ${sign}${count}`)
+    .join("");
 }
 
 export function EventPage() {
@@ -143,30 +211,45 @@ export function EventPage() {
 
   const latest = event?.versions[event.versions.length - 1]?.version ?? "";
   const [version, setVersion] = useState(latest);
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  // Dotted paths of the rows opened, at every depth: "items", then
+  // "items.unitPrice". Kept across versions on purpose - a reader comparing
+  // v1 to v2 wants the same fields open in both.
+  const [open, setOpen] = useState<Set<string>>(new Set());
 
   const selected = useMemo(
     () =>
       event?.versions.find((v) => v.version === version) ?? event?.versions[0],
     [event, version],
   );
-  const added = useMemo(
+  // The version's rows, with what it did to each against the one before.
+  const rows = useMemo<SchemaRow[]>(() => {
+    if (!event || !selected) return [];
+    const { byField, removed } = schemaChanges(event, selected.version);
+    return [
+      ...selected.fields.map((field) => ({ ...field, ...byField.get(field.name) })),
+      ...removed.map((field) => ({ ...field, change: "removed" as const })),
+    ];
+  }, [event, selected]);
+  const scope = useMemo<Scope>(
     () =>
-      event && selected
-        ? addedFields(event, selected.version)
-        : new Set<string>(),
-    [event, selected],
+      event ? eventScope(index, event) : { aggregate: null, service: null },
+    [event],
+  );
+  // Everything the tree could open under this version, for "expand all".
+  const openable = useMemo(
+    () => (selected ? openablePaths(catalog, selected.fields, scope) : []),
+    [selected, scope],
   );
   // Flows, decisions and consumers all point AT this event, so they are one
   // question with one answer; the section at the bottom is where it is given.
   const links = useBacklinks({ kind: "event", id: event?.id ?? "" });
 
   const toggle = useCallback(
-    (name: string) =>
-      setExpanded((prev) => {
+    (path: string) =>
+      setOpen((prev) => {
         const next = new Set(prev);
-        if (next.has(name)) next.delete(name);
-        else next.add(name);
+        if (next.has(path)) next.delete(path);
+        else next.add(path);
         return next;
       }),
     [],
@@ -174,8 +257,8 @@ export function EventPage() {
   // Above the not-found return, with every other hook: the columns are built
   // once per render of a schema, and a hook cannot sit behind a branch.
   const schema = useMemo(
-    () => schemaColumns(added, expanded, toggle),
-    [added, expanded, toggle],
+    () => schemaColumns(scope, open, toggle),
+    [scope, open, toggle],
   );
   // What follows this event, as far as the flows say; and, for a consumer no
   // source declared, the number of the step it was read from.
@@ -340,10 +423,39 @@ export function EventPage() {
             <SectionTitle
               anchor={EVENT_ANCHOR.schema}
               right={
-                <span>
-                  {selected.fields.length}{" "}
-                  {plural(selected.fields.length, "field")} ·{" "}
-                  <span className="mono">{selected.version}</span>
+                <span className="flex items-center gap-x-3">
+                  {/* Both offered while anything is open: a reader who
+                      opened three of eight shapes wants "the rest" as much
+                      as "none", and either word alone guesses which. */}
+                  {openable.length > 0 ? (
+                    <span className="mono flex items-center gap-x-2">
+                      {openable.some((path) => !open.has(path)) ? (
+                        <button
+                          type="button"
+                          onClick={() => setOpen(new Set(openable))}
+                          className="rounded-control text-muted hover:text-ink"
+                          title={`open every nested shape (${openable.length})`}
+                        >
+                          expand all
+                        </button>
+                      ) : null}
+                      {openable.some((path) => open.has(path)) ? (
+                        <button
+                          type="button"
+                          onClick={() => setOpen(new Set())}
+                          className="rounded-control text-muted hover:text-ink"
+                        >
+                          collapse all
+                        </button>
+                      ) : null}
+                    </span>
+                  ) : null}
+                  <span>
+                    {selected.fields.length}{" "}
+                    {plural(selected.fields.length, "field")}
+                    {changeSummary(rows)} ·{" "}
+                    <span className="mono">{selected.version}</span>
+                  </span>
                 </span>
               }
             >
@@ -358,17 +470,28 @@ export function EventPage() {
                 tableId={`event-schema.${event.id}`}
                 caption={`Schema of ${event.id} ${selected.version}`}
                 columns={schema}
-                rows={selected.fields}
-                rowId={(field) => field.name}
-                subRow={(field) =>
-                  expanded.has(field.name) ? (
-                    <TypeDefBody field={field} />
-                  ) : null
-                }
-                rowActions={(field) => (
+                rows={rows}
+                rowId={(row) => row.name}
+                subRow={(row) => {
+                  if (row.change === "removed" || !open.has(row.name)) return null;
+                  const shape = resolveShape(catalog, row, scope);
+                  return shape ? (
+                    <ShapeBody
+                      shape={shape}
+                      scope={scope}
+                      path={row.name}
+                      open={open}
+                      onToggle={toggle}
+                      seen={new Set([shape.id])}
+                      depth={1}
+                      root
+                    />
+                  ) : null;
+                }}
+                rowActions={(row) => (
                   <RowActions
-                    copy={`${event.id}@${selected.version}.${field.name}`}
-                    label={field.name}
+                    copy={`${event.id}@${selected.version}.${row.name}`}
+                    label={row.name}
                   />
                 )}
               />

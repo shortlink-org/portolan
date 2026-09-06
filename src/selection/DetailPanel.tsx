@@ -29,6 +29,8 @@ import {
   viewReads,
 } from "../catalog";
 import { flowsForService, usesOfDef } from "../lib/derive";
+import { KIND_LABEL } from "../lib/kinds";
+import { eventScope, resolveShape } from "../lib/shape";
 import { stepsInto } from "../lib/backlinks";
 import { walkSteps } from "../catalog";
 import { methodCount } from "../lib/api";
@@ -541,6 +543,7 @@ function EventBody({
 }) {
   const { event, service } = resolved;
   const latest = event.versions[event.versions.length - 1];
+  const scope = eventScope(index, event);
   // The steps that carry this event, not just the flows: a panel that says
   // "checkout" sends the reader to the top of a forty-step rail, and one that
   // says "checkout · step 14" opens on the step.
@@ -570,14 +573,33 @@ function EventBody({
       <Label>Schema · {latest?.version ?? "—"}</Label>
       <table className="w-full">
         <tbody>
-          {(latest?.fields ?? []).map((f) => (
-            <tr key={f.name} className="align-top">
-              <td className="mono py-0.5 pr-2 whitespace-nowrap">{f.name}</td>
-              <td className="mono py-0.5 text-muted">
-                {f.ref ? <SelectLink id={f.ref}>{f.type}</SelectLink> : f.type}
-              </td>
-            </tr>
-          ))}
+          {(latest?.fields ?? []).map((f) => {
+            // A shared def moves the selection; a block of the aggregate has
+            // a page and no selection, so it is a link.
+            const shape = f.ref ? null : resolveShape(catalog, f, scope);
+            const page =
+              shape && shape.kind !== "def" ? blockPath(shape.id) : null;
+            return (
+              <tr key={f.name} className="align-top">
+                <td className="mono py-0.5 pr-2 whitespace-nowrap">{f.name}</td>
+                <td className="mono py-0.5 text-muted">
+                  {f.ref ? (
+                    <SelectLink id={f.ref}>{f.type}</SelectLink>
+                  ) : page && shape ? (
+                    <Link
+                      to={page}
+                      className="rounded-control text-accent hover:underline"
+                      title={`open ${KIND_LABEL[shape.kind as "vo" | "entity"]} ${shape.name}`}
+                    >
+                      {f.type}
+                    </Link>
+                  ) : (
+                    f.type
+                  )}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
 

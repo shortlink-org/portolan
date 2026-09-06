@@ -1008,6 +1008,61 @@
     color: var(--fg-muted);
     font-size: var(--text-meta);
   }
+
+  /* ---- Field tree: a shape opened under a schema row -----------------------
+
+     One shape per level, each a step in from the last, with a guide line
+     down its left edge so a reader four levels deep can see where each
+     level began. The header names the shape; the rows under it are its
+     fields, drawn like the table rows above but without the table - they
+     are an aside to a row, not a table of their own. */
+  .shape {
+    @apply mt-1 mb-0.5 ml-[5px] border-l border-line-strong pl-3;
+  }
+  .shape-root {
+    width: 0;
+    min-width: 100%;
+  }
+  /* One line of the shape's doc, cut where the row ends; the whole of it is
+     on the shape's own page, one click away. */
+  .shape-doc {
+    @apply mb-1 truncate pl-5;
+  }
+  .shape-head {
+    @apply mono flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 py-0.5;
+    font-size: var(--text-sm);
+  }
+  .field-tree {
+    @apply flex flex-col;
+  }
+  .field-row {
+    @apply flex min-w-0 items-center gap-x-3 rounded-control py-0.5 pr-2;
+    font-size: var(--text-sm);
+    min-height: 24px;
+  }
+  .field-row:hover {
+    background: color-mix(in srgb, var(--accent) 5%, transparent);
+  }
+  .field-row[data-open] > .mono:first-of-type {
+    color: var(--fg);
+  }
+  /* The chevron, or the room for one: rows with and without a shape to open
+     keep their names on one line. */
+  .field-toggle {
+    @apply inline-flex size-4 shrink-0 items-center justify-center rounded-control text-muted;
+  }
+  button.field-toggle:hover {
+    color: var(--fg);
+    background: var(--surface-2);
+  }
+  /* A word beside a type - "list of", "optional" - in the tone of a footnote,
+     not a chip: it qualifies the type, it is not a status of its own. */
+  .type-mark {
+    @apply mono shrink-0 rounded-[4px] px-1 leading-4;
+    font-size: 11px;
+    color: var(--fg-faint);
+    background: var(--surface-2);
+  }
 }
 
 /* ---------------------------------------------------------------------------

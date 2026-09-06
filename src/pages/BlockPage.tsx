@@ -2,10 +2,15 @@
 // object differ in whether identity matters, not in what there is to say about
 // them, so they share a page and are told apart by the header and the icon.
 
+import { useCallback, useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { catalog, index } from "../data";
 import { blockFields, rootEntity } from "../catalog";
 import type { Block, BlockKind, Field } from "../catalog";
+import { openablePaths, resolveShape } from "../lib/shape";
+import type { Scope } from "../lib/shape";
+import { ShapeBody, TypeCell } from "../components/FieldTree";
 import { backlinkCount } from "../lib/backlinks";
 import { storedFields } from "../lib/data-model";
 import { plural } from "../lib/format";
@@ -32,64 +37,111 @@ import { NotFound } from "./NotFound";
 /**
  * The shape of a value object or an entity. Three columns and usually few
  * rows, so the toolbar stays out of the way until there is enough here to
- * need one.
+ * need one. A field whose type is another block of the aggregate - a Line's
+ * Money - opens under its row, the way an event's schema does.
  */
-const SHAPE_COLUMNS: ColumnSpec<Field>[] = [
-  {
-    id: "name",
-    header: "name",
-    type: "mono",
-    value: (field) => field.name,
-    primary: true,
-    // Plain, not an <Ident>: the name is a field of this block, not an id
-    // anything else refers to. The type beside it is the copyable one.
-    cell: (field) => (
-      <span
-        className={field.deprecated ? "mono line-through" : "mono"}
-        title={field.deprecated ? "deprecated" : undefined}
-      >
-        {field.name}
-      </span>
-    ),
-  },
-  {
-    id: "type",
-    header: "type",
-    type: "mono",
-    value: (field) => field.ref ?? field.type,
-    cell: (field) => (
-      <Ident
-        value={field.ref ?? field.type}
-        className="text-muted"
-        title={
-          field.ref
-            ? `shared type ${field.ref} — click to copy`
-            : `${field.type} — click to copy`
-        }
-      >
-        {field.type}
-        {field.ref ? <span className="ml-1.5">↗</span> : null}
-      </Ident>
-    ),
-  },
-  {
-    id: "doc",
-    header: "doc",
-    type: "text",
-    value: (field) => field.doc,
-    cell: (field) => <span className="meta">{field.doc}</span>,
-  },
-];
+function shapeColumns(
+  scope: Scope,
+  open: ReadonlySet<string>,
+  onToggle: (path: string) => void,
+): ColumnSpec<Field>[] {
+  return [
+    {
+      id: "name",
+      header: "name",
+      type: "mono",
+      value: (field) => field.name,
+      primary: true,
+      // Plain, not an <Ident>: the name is a field of this block, not an id
+      // anything else refers to. The type beside it is the copyable one.
+      cell: (field) => {
+        const shape = resolveShape(catalog, field, scope);
+        const nameClass = field.deprecated ? "mono line-through" : "mono";
+        const title = field.deprecated ? "deprecated" : undefined;
+        return shape ? (
+          <button
+            type="button"
+            onClick={() => onToggle(field.name)}
+            className="mono flex items-center gap-1 rounded-control"
+            aria-expanded={open.has(field.name)}
+            title={`${open.has(field.name) ? "collapse" : "expand"} ${shape.name}`}
+          >
+            {open.has(field.name) ? (
+              <ChevronDown size={11} aria-hidden className="text-muted" />
+            ) : (
+              <ChevronRight size={11} aria-hidden className="text-muted" />
+            )}
+            <span className={nameClass} title={title}>
+              {field.name}
+            </span>
+          </button>
+        ) : (
+          <span className={`${nameClass} pl-4`} title={title}>
+            {field.name}
+          </span>
+        );
+      },
+    },
+    {
+      id: "type",
+      header: "type",
+      type: "mono",
+      value: (field) => field.ref ?? field.type,
+      cell: (field) => (
+        <TypeCell field={field} shape={resolveShape(catalog, field, scope)} />
+      ),
+    },
+    {
+      id: "doc",
+      header: "doc",
+      type: "text",
+      value: (field) => field.doc,
+      cell: (field) => <span className="meta">{field.doc}</span>,
+    },
+  ];
+}
 
-function ShapeTable({ id, fields }: { id: string; fields: Field[] }) {
+function ShapeTable({
+  id,
+  fields,
+  scope,
+  open,
+  onToggle,
+}: {
+  id: string;
+  fields: Field[];
+  scope: Scope;
+  open: ReadonlySet<string>;
+  onToggle: (path: string) => void;
+}) {
+  const columns = useMemo(
+    () => shapeColumns(scope, open, onToggle),
+    [scope, open, onToggle],
+  );
   return (
-    <div className="max-w-prose">
+    <div className="max-w-table">
       <DataTable
         tableId={`block-shape.${id}`}
         caption={`Shape of ${id}`}
-        columns={SHAPE_COLUMNS}
+        columns={columns}
         rows={fields}
         rowId={(field) => field.name}
+        subRow={(field) => {
+          if (!open.has(field.name)) return null;
+          const shape = resolveShape(catalog, field, scope);
+          return shape ? (
+            <ShapeBody
+              shape={shape}
+              scope={scope}
+              path={field.name}
+              open={open}
+              onToggle={onToggle}
+              seen={new Set([shape.id])}
+              depth={1}
+              root
+            />
+          ) : null;
+        }}
       />
     </div>
   );
@@ -114,6 +166,36 @@ export function BlockPage({ kind }: { kind: BlockKind }) {
   // the shared section now, and the block's shape is what it walks.
   const links = useBacklinks({ kind, id: block?.id ?? "" });
 
+  // The rows opened under this block's fields, as dotted paths. The block
+  // itself is what its own fields must not open again: an Order whose Line
+  // names its Order stops at the name.
+  const [open, setOpen] = useState<Set<string>>(new Set());
+  const toggle = useCallback(
+    (path: string) =>
+      setOpen((prev) => {
+        const next = new Set(prev);
+        if (next.has(path)) next.delete(path);
+        else next.add(path);
+        return next;
+      }),
+    [],
+  );
+  const scope = useMemo<Scope>(
+    () => ({ aggregate: aggregate ?? null, service: service ?? null }),
+    [aggregate, service],
+  );
+  const fields = useMemo(
+    () => (block ? blockFields(catalog, block) : []),
+    [block],
+  );
+  const openable = useMemo(
+    () =>
+      block
+        ? openablePaths(catalog, fields, scope, "", new Set([block.id]))
+        : [],
+    [block, fields, scope],
+  );
+
   if (!context || !service || !aggregate || !block) {
     return <NotFound kind={KIND_LABEL[kind]} id={blockSlug} />;
   }
@@ -128,7 +210,6 @@ export function BlockPage({ kind }: { kind: BlockKind }) {
     { id: LINKS_HERE, label: "What links here" },
   ];
 
-  const fields = blockFields(catalog, block);
   const isRoot =
     kind === "entity" && rootEntity(aggregate)?.slug === block.slug;
 
@@ -209,7 +290,34 @@ export function BlockPage({ kind }: { kind: BlockKind }) {
             <SectionTitle
               anchor={BLOCK_ANCHOR.shape}
               right={
-                <span>{fields.length} fields</span>
+                <span className="flex items-center gap-x-3">
+                  {openable.length > 0 ? (
+                    <span className="mono flex items-center gap-x-2">
+                      {openable.some((path) => !open.has(path)) ? (
+                        <button
+                          type="button"
+                          onClick={() => setOpen(new Set(openable))}
+                          className="rounded-control text-muted hover:text-ink"
+                          title={`open every nested shape (${openable.length})`}
+                        >
+                          expand all
+                        </button>
+                      ) : null}
+                      {openable.some((path) => open.has(path)) ? (
+                        <button
+                          type="button"
+                          onClick={() => setOpen(new Set())}
+                          className="rounded-control text-muted hover:text-ink"
+                        >
+                          collapse all
+                        </button>
+                      ) : null}
+                    </span>
+                  ) : null}
+                  <span>
+                    {fields.length} {plural(fields.length, "field")}
+                  </span>
+                </span>
               }
             >
               Shape
@@ -217,7 +325,13 @@ export function BlockPage({ kind }: { kind: BlockKind }) {
             {fields.length === 0 ? (
               <Empty>the catalog knows this block by name only</Empty>
             ) : (
-              <ShapeTable id={block.id} fields={fields} />
+              <ShapeTable
+                id={block.id}
+                fields={fields}
+                scope={scope}
+                open={open}
+                onToggle={toggle}
+              />
             )}
           </section>
 
