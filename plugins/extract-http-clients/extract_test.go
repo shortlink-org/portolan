@@ -386,16 +386,28 @@ func New() *Connector { return &Connector{} }
 func (*Connector) Search() {}
 `)
 	writeHTTPFixture(t, root, "provider/alpha/client.go", `package alpha
+import alphaclient "example.com/travel/provider/alpha/client"
+type Connector struct{ Client alphaclient.API }
+func New() *Connector { return &Connector{Client: &alphaclient.Client{}} }
+func (c *Connector) Search() { c.Client.Search() }
+`)
+	writeHTTPFixture(t, root, "provider/alpha/client/client.go", `package client
 import "net/http"
-type Connector struct{}
-func New() *Connector { return &Connector{} }
-func (*Connector) Search() { _, _ = http.Get("https://alpha.example/v1/search") }
+type API interface{ Search() }
+type Client struct{}
+func (c *Client) Search() { c.SearchRequest() }
+func (*Client) SearchRequest() { _, _ = http.Get("https://alpha.example/v1/search") }
 `)
 	writeHTTPFixture(t, root, "provider/beta/client.go", `package beta
+import betaclient "example.com/travel/provider/beta/client"
+type Connector struct{ Client *betaclient.Client }
+func New() *Connector { return &Connector{Client: &betaclient.Client{}} }
+func (c *Connector) Search() { c.Client.Search() }
+`)
+	writeHTTPFixture(t, root, "provider/beta/client/client.go", `package client
 import "net/http"
-type Connector struct{}
-func New() *Connector { return &Connector{} }
-func (*Connector) Search() { _, _ = http.Get("https://beta.example/v2/offers") }
+type Client struct{}
+func (*Client) Search() { _, _ = http.Get("https://beta.example/v2/offers") }
 `)
 	writeHTTPFixture(t, root, "jobs/refresh.go", `package jobs
 import "net/http"
@@ -428,6 +440,9 @@ func Refresh() { _, _ = http.Get("https://cache.example/refresh") }
 		if strings.Contains(flow.Name, "Connector Search") {
 			t.Fatalf("covered provider fragment was retained: %+v", flow)
 		}
+		if flow.Name == "Alpha Search Request → outbound APIs" {
+			t.Fatalf("covered nested provider fragment was retained: %+v", flow)
+		}
 	}
 	if endpoint == nil || direct == nil || background == nil {
 		t.Fatalf("endpoint = %+v, direct = %+v, background = %+v", endpoint, direct, background)
@@ -450,6 +465,12 @@ func Refresh() { _, _ = http.Get("https://cache.example/refresh") }
 	betaStep := providers.Branches[1].Steps[0].(*catalog.Step)
 	if alphaStep.Label != "GET /v1/search" || betaStep.Label != "GET /v2/offers" {
 		t.Fatalf("provider steps = %+v / %+v", alphaStep, betaStep)
+	}
+	if !strings.Contains(alphaStep.Note, "Connector.Search → Client.Search → Client.SearchRequest") {
+		t.Fatalf("nested provider chain = %+v", alphaStep)
+	}
+	if !strings.Contains(betaStep.Note, "Connector.Search → Client.Search") {
+		t.Fatalf("concrete imported client chain = %+v", betaStep)
 	}
 	opaqueStep := providers.Branches[2].Steps[0].(*catalog.Step)
 	if opaqueStep.Kind != catalog.StepCall || opaqueStep.Label != "Opaque Search" || !strings.Contains(opaqueStep.Note, "outbound transport was not resolved") {

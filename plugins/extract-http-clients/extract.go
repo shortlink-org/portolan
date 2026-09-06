@@ -46,6 +46,7 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	sort.Slice(consumes, func(i, j int) bool { return consumes[i].ID < consumes[j].ID })
 
 	endpointFlows, covered := flowsOfEndpoints(serviceID, opts.Context, result.EndpointFlows, opts)
+	coverEndpointDescendants(covered, result.EndpointFlows, result.Flows)
 	flows := append(endpointFlows, flowsOfGroupsExcept(serviceID, opts.Context, result.Flows, opts, covered)...)
 	if len(result.Calls) == 0 {
 		b.Warn(in.Root, "no outbound net/http, oapi-codegen, or SOAP calls were found")
@@ -327,6 +328,47 @@ func flowsOfEndpoints(serviceID, context string, endpoints []gohttp.EndpointFlow
 		})
 	}
 	return flows, covered
+}
+
+func coverEndpointDescendants(covered map[string]bool, endpoints []gohttp.EndpointFlow, groups []gohttp.FlowGroup) {
+	for _, endpoint := range endpoints {
+		for _, branch := range endpoint.Branches {
+			callKeys := map[string]bool{}
+			chainNames := map[string]bool{}
+			for _, call := range branch.Calls {
+				callKeys[endpointCallKey(call)] = true
+				for _, name := range call.Chain {
+					chainNames[name] = true
+				}
+			}
+			for _, group := range groups {
+				if covered[group.Function] || len(group.Calls) == 0 || !chainNames[flowFunctionName(group.Function)] {
+					continue
+				}
+				allCallsCovered := true
+				for _, call := range group.Calls {
+					if !callKeys[endpointCallKey(call)] {
+						allCallsCovered = false
+						break
+					}
+				}
+				if allCallsCovered {
+					covered[group.Function] = true
+				}
+			}
+		}
+	}
+}
+
+func endpointCallKey(call gohttp.Call) string {
+	return call.Source.String() + "\x00" + call.ID
+}
+
+func flowFunctionName(function string) string {
+	if _, name, qualified := strings.Cut(function, ":"); qualified {
+		return name
+	}
+	return function
 }
 
 func flowName(function string) string {

@@ -1930,14 +1930,12 @@ func (s *scanner) localTarget(owner *functionDecl, expr ast.Expr) string {
 				}
 			}
 		}
-		// A method invoked through a receiver's local interface field can be
-		// followed when there is exactly one implementation in the repository.
-		// Do not apply this fallback to arbitrary selectors: Body.Close used to
-		// connect to an unrelated local Close method solely because names matched.
-		if s.receiverInterfaceCall(owner, call) {
-			if candidates := s.methods[call.Sel.Name]; len(candidates) == 1 {
-				return candidates[0]
-			}
+		// Resolve methods invoked through a receiver field from that field's
+		// declared type. This covers both concrete clients and imported client
+		// interfaces without linking arbitrary selectors such as Body.Close to
+		// an unrelated method that merely has the same name.
+		if target := s.receiverFieldMethodTarget(owner, call); target != "" {
+			return target
 		}
 	}
 	return ""
@@ -1950,17 +1948,17 @@ func receiverVariable(fn *ast.FuncDecl) string {
 	return fn.Recv.List[0].Names[0].Name
 }
 
-func (s *scanner) receiverInterfaceCall(owner *functionDecl, call *ast.SelectorExpr) bool {
+func (s *scanner) receiverFieldMethodTarget(owner *functionDecl, call *ast.SelectorExpr) string {
 	fieldSelector, ok := call.X.(*ast.SelectorExpr)
 	if !ok {
-		return false
+		return ""
 	}
 	root, ok := fieldSelector.X.(*ast.Ident)
 	if !ok || root.Name != receiverVariable(owner.fn) {
-		return false
+		return ""
 	}
 	receiver := receiverName(owner.fn.Recv.List[0].Type)
-	interfaceName := ""
+	var fieldType endpointType
 	for _, file := range s.files {
 		if file.dir != owner.file.dir {
 			continue
@@ -1982,18 +1980,44 @@ func (s *scanner) receiverInterfaceCall(owner *functionDecl, call *ast.SelectorE
 				for _, field := range structure.Fields.List {
 					for _, name := range field.Names {
 						if name.Name == fieldSelector.Sel.Name {
-							interfaceName = receiverName(field.Type)
+							fieldType, _ = s.typeExpression(file, field.Type)
 						}
 					}
 				}
 			}
 		}
 	}
-	if interfaceName == "" {
-		return false
+	if fieldType.name == "" {
+		return ""
 	}
+	if key := s.methodKey(fieldType, call.Sel.Name); s.functions[key] != nil {
+		return key
+	}
+	if !s.interfaceHasMethod(fieldType, call.Sel.Name) {
+		return ""
+	}
+	var localCandidates []string
+	for _, key := range s.methods[call.Sel.Name] {
+		dir, _, qualified := strings.Cut(key, ":")
+		if !qualified {
+			dir = "."
+		}
+		if dir == fieldType.dir {
+			localCandidates = append(localCandidates, key)
+		}
+	}
+	if len(localCandidates) == 1 {
+		return localCandidates[0]
+	}
+	if candidates := s.methods[call.Sel.Name]; len(candidates) == 1 {
+		return candidates[0]
+	}
+	return ""
+}
+
+func (s *scanner) interfaceHasMethod(typ endpointType, methodName string) bool {
 	for _, file := range s.files {
-		if file.dir != owner.file.dir {
+		if file.dir != typ.dir {
 			continue
 		}
 		for _, declaration := range file.node.Decls {
@@ -2003,7 +2027,7 @@ func (s *scanner) receiverInterfaceCall(owner *functionDecl, call *ast.SelectorE
 			}
 			for _, spec := range generic.Specs {
 				typeSpec, ok := spec.(*ast.TypeSpec)
-				if !ok || typeSpec.Name.Name != interfaceName {
+				if !ok || typeSpec.Name.Name != typ.name {
 					continue
 				}
 				iface, ok := typeSpec.Type.(*ast.InterfaceType)
@@ -2012,7 +2036,7 @@ func (s *scanner) receiverInterfaceCall(owner *functionDecl, call *ast.SelectorE
 				}
 				for _, method := range iface.Methods.List {
 					for _, name := range method.Names {
-						if name.Name == call.Sel.Name {
+						if name.Name == methodName {
 							return true
 						}
 					}
