@@ -1,6 +1,6 @@
 # Example estate
 
-*Generated from the portolan catalog · commit `9 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `10 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
 
 
 ## Contexts
@@ -10,7 +10,7 @@
 | [Authentication](auth/README.md) | generic | [Authentication & Sessions](auth/auth/README.md) | Who someone is, and whether they are still logged in. The only service in the estate that stores credentials, and the only one allowed to mint or revoke a session. |
 | [Delivery](delivery/README.md) | supporting | [Delivery Core](delivery/core/README.md) | Parcels, vans and the day they are driven. Told what to carry and asked where it got to; it decides neither. |
 | [Payments](payments/README.md) | supporting | [Ledger](payments/ledger/README.md) | Money, and the record of every movement of it. Nothing here decides whether to charge - it is asked, and it writes down what happened either way. |
-| [Portolan](portolan/README.md) | — | [Portolan](portolan/portolan/README.md) | The tool that reads this estate: a browser for an architecture catalog, read out of the code and specs that already describe it. Nothing in the shop calls it and it calls nothing; it is here because a catalog that cannot describe its own reader is a catalog with a hole in it. |
+| [Portolan](portolan/README.md) | — | [Host](portolan/host/README.md), [Plugins](portolan/plugins/README.md), [Site](portolan/site/README.md) | The tool that reads this estate: a browser for an architecture catalog, read out of the code and specs that already describe it. Nothing in the shop calls it and it calls nothing; it is here because a catalog that cannot describe its own reader is a catalog with a hole in it. |
 | [Shop](shop/README.md) | core | [Billing](shop/billing/README.md), [Shopping Cart](shop/cart/README.md), [Order Management](shop/oms/README.md), [Pricing](shop/pricing/README.md) | What a customer is buying, what it costs and what they owe for it: the basket while it is still changing, the price it was promised at, the order it became, and the invoice for it. It moves no money and delivers nothing. |
 | [Storefront](storefront/README.md) | supporting | [Storefront BFF](storefront/bff/README.md) | One graph in front of the estate, for one kind of client. It owns nothing: everything it answers with it asked somebody else for a moment earlier, and translated into the words a shopper's screen uses. |
 
@@ -75,6 +75,7 @@
 | [Release shipment on payment captured](flows/core-release-shipment-on-payment-captured.md) | [delivery](delivery/README.md) | Nothing leaves the warehouse before the money has moved (ADR core.0002). |
 | [Start route](flows/core-start-route.md) | [delivery](delivery/README.md) | The van is out. |
 | [Track shipment](flows/core-track-shipment.md) | [delivery](delivery/README.md) | What the customer sees when they paste a tracking code. |
+| [npm run gen](flows/gen.md) | [portolan](portolan/README.md) | Three passes over the manifest, each after the previous one's files are on disk: extract reads trees and specifications into fragments, verify overlays evidence on the merged catalog, generate turns it into pages. Every plugin is one JSON message in and one out; the host writes, the plugin never does. |
 | [Authorize](flows/ledger-authorize.md) | [payments](payments/README.md) | Asks the gateway to hold the money for an order, and records either that it agreed or that it refused. |
 | [Capture](flows/ledger-capture.md) | [payments](payments/README.md) | Moves the money the gateway was holding, writes the pair of postings for it, and says so on the bus. |
 | [Get payment](flows/ledger-get-payment.md) | [payments](payments/README.md) | Reads one payment, for whoever is asking what happened to the money. |

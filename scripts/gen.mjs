@@ -131,12 +131,16 @@ async function generate() {
   }
 
   // Verifiers read observed evidence against the merged catalog while leaving
-  // their own previous output out of that evidence.
+  // their own previous output out of that evidence - and what a dropped
+  // extract step wrote, which is still on disk because the sweep runs once
+  // every step has written. Read into this merge, a service nobody extracts
+  // any more would be written back into an overlay, and the overlay would
+  // carry it into the generators and into the next run.
   for (const step of manifest.verify ?? []) {
     const plugin = pluginNamed(step.plugin);
     const stamp = stampFor(step.in, step.out);
     const own = (previous(step.out)[keys.keyOf(step)] ?? []).map((name) => join(step.out, name));
-    const { catalog } = await loadSources({ exclude: own });
+    const { catalog } = await loadSources({ exclude: [...own, ...staleAll()] });
     await executeStep("verify", step, `${step.plugin} ⇐ ${step.in}`, async () =>
       runPlugin(plugin, {
         portolanVersion: PORTOLAN_VERSION,
@@ -185,6 +189,47 @@ function sweepAll() {
       drifted = summarise(`${out}: steps no longer in portolan.json`, [], changes) || drifted;
     }
   }
+}
+
+/** Every file the sweep would remove, in every directory a step writes into. */
+function staleAll() {
+  const outs = new Set(
+    [...(manifest.extract ?? []), ...(manifest.verify ?? []), ...(manifest.generate ?? [])].map(
+      (step) => step.out,
+    ),
+  );
+  const stale = [];
+  for (const out of outs) {
+    for (const name of staleIn(out)) stale.push(join(out, name));
+  }
+  return stale;
+}
+
+/**
+ * What the steps no longer in the manifest wrote into a directory and no live
+ * step claims. A file a dead key listed and a live step wrote again this run
+ * is not stale - it was renamed, not dropped - and a live step that has not
+ * run yet is taken at its previous listing.
+ */
+function staleIn(out) {
+  const listing = previous(out);
+  const live = keys.liveIn(out);
+  const dead = Object.keys(listing).filter((key) => !live.has(key));
+  if (dead.length === 0) return [];
+
+  const kept = new Set();
+  for (const key of live) {
+    for (const name of wroteThisRun.get(out)?.get(key) ?? listing[key] ?? []) kept.add(name);
+  }
+  const stale = [];
+  for (const key of dead) {
+    for (const name of listing[key]) {
+      if (kept.has(name)) continue;
+      kept.add(name);
+      stale.push(name);
+    }
+  }
+  return stale;
 }
 
 async function executeStep(phase, step, label, work) {
@@ -468,25 +513,17 @@ function sweep(out, checkOnly) {
   const dead = Object.keys(listing).filter((key) => !live.has(key));
   if (dead.length === 0) return changes;
 
-  const kept = new Set();
-  for (const key of live) {
-    for (const name of wroteThisRun.get(out)?.get(key) ?? listing[key] ?? []) kept.add(name);
-  }
+  for (const stale of staleIn(out)) {
+    changes.push({ kind: "removed", path: join(out, stale) });
+    if (checkOnly) continue;
 
-  for (const key of dead) {
-    for (const stale of listing[key].filter((name) => !kept.has(name))) {
-      kept.add(stale);
-      changes.push({ kind: "removed", path: join(out, stale) });
-      if (checkOnly) continue;
-
-      try {
-        removeOutputFile(out, stale);
-      } catch (cause) {
-        fail(cause.message);
-      }
+    try {
+      removeOutputFile(out, stale);
+    } catch (cause) {
+      fail(cause.message);
     }
-    delete listing[key];
   }
+  for (const key of dead) delete listing[key];
 
   if (!checkOnly) {
     try {

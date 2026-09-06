@@ -1254,15 +1254,54 @@ spec:
 apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
-    name: portolan-portolan
-    title: Portolan
-    description: portolan
+    name: portolan-host
+    title: Host
+    description: Host
     annotations:
-        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/.
-        portolan.io/id: portolan.portolan
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/scripts
+        portolan.io/id: portolan.host
+    tags:
+        - node-js
+spec:
+    lifecycle: production
+    owner: shortlink-org/platform
+    system: portolan
+    type: tool
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+    name: portolan-plugins
+    title: Plugins
+    description: Generators
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/plugins
+        portolan.io/id: portolan.plugins
     tags:
         - go
-        - node-js
+        - java
+        - python
+        - rust
+        - typescript
+spec:
+    lifecycle: production
+    owner: shortlink-org/platform
+    system: portolan
+    type: tool
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+    name: portolan-site
+    title: Site
+    description: Site
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/src
+        portolan.io/id: portolan.site
+    tags:
+        - react
+        - typescript
+        - vite
 spec:
     lifecycle: production
     owner: shortlink-org/platform

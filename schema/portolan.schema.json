@@ -66,6 +66,7 @@
               "sql",
               "adr",
               "glossary",
+              "flows",
               "bsr",
               "git",
               "proto"
@@ -386,6 +387,25 @@
               "properties": {
                 "options": {
                   "$ref": "#/$defs/options.glossary"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "plugin"
+              ],
+              "properties": {
+                "plugin": {
+                  "const": "flows"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "options": {
+                  "$ref": "#/$defs/options.flows"
                 }
               }
             }
@@ -806,6 +826,13 @@
             "data-pipeline"
           ],
           "description": "Runtime or code role. When absent, the extractor uses conservative repository evidence."
+        },
+        "technologies": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Languages and frameworks, stated when the tree cannot say: a component whose manifests sit above its root, one of several in a repository, has nothing at its root to read. Left out, inferred from go.mod, package.json, Cargo.toml and the like at the root."
         },
         "repo": {
           "type": "string",
@@ -1903,6 +1930,28 @@
         "out": {
           "type": "string",
           "description": "Name of the fragment file, inside the step's output directory. Left out, glossary.json."
+        }
+      }
+    },
+    "options.flows": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The flow files to read, as globs relative to the input root. Left out, every *.flow.md directly under the root.",
+          "examples": [
+            [
+              "*.flow.md"
+            ]
+          ]
+        },
+        "out": {
+          "type": "string",
+          "description": "Name of the fragment file, inside the step's output directory. Left out, flows.json."
         }
       }
     },

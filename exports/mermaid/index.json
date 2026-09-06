@@ -313,6 +313,14 @@
       "diagram": "core-track-shipment.mmd"
     },
     {
+      "id": "flow.gen",
+      "slug": "gen",
+      "name": "npm run gen",
+      "owner": "portolan",
+      "source": "scripts/gen.mjs",
+      "diagram": "gen.mmd"
+    },
+    {
       "id": "flow.ledger-authorize",
       "slug": "ledger-authorize",
       "name": "Authorize",

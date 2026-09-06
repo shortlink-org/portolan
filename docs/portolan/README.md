@@ -1,6 +1,6 @@
 # Portolan
 
-*Generated from the portolan catalog · commit `9 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `10 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
 
 - **Id:** `portolan`
 - **Kind:** system
@@ -11,7 +11,9 @@ The tool that reads this estate: a browser for an architecture catalog, read out
 
 | Component | Kind | Technologies | Path |
 | --- | --- | --- | --- |
-| [Portolan](portolan/README.md) | webapp | Go, Node.js | `.` |
+| [Host](host/README.md) | cli | Node.js | `scripts` |
+| [Plugins](plugins/README.md) | cli | Go, TypeScript, Rust, Java, Python | `plugins` |
+| [Site](site/README.md) | webapp | TypeScript, React, Vite | `src` |
 
 ## Language
 

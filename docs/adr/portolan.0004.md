@@ -1,11 +1,12 @@
 # portolan.0004 — `contexts` and `services` stay the wire format
 
-*Generated from the portolan catalog · commit `9 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `10 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-06
 - **Scope:** [portolan](../portolan/README.md)
 - **Source:** [`adr/0004-contexts-and-services-stay-the-wire-format.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0004-contexts-and-services-stay-the-wire-format.md)
+- **Committed:** Victor Login, 2026-09-06 (`229c1fb`)
 
 ### Context and Problem Statement
 

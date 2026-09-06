@@ -13,6 +13,7 @@ the host decides where that file is written.
 By default the group is a `system`. A repository with an executable or a
 container definition becomes an `application`; otherwise it becomes a
 `library`. Options can state more precise roles such as `team`, `worker`, `job`
-or `cli`. Language-specific domain extractors and contract extractors can be
-run beside it: fragment merging fills in aggregates, interfaces, channels and
-stores without duplicating the component.
+or `cli`, and `technologies` when the manifests sit above the root, as for one
+component of several in a repository. Language-specific domain extractors and
+contract extractors can be run beside it: fragment merging fills in
+aggregates, interfaces, channels and stores without duplicating the component.

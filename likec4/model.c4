@@ -13,6 +13,8 @@ model {
   core_pg = store 'core-pg'
   oms_pg = store 'oms-pg'
   pricing_pg = store 'pricing-pg'
+  developer = actor 'developer'
+  tree = store 'the tree: fragments, docs/, exports/'
 
   auth = context 'Authentication' {
     description 'Who someone is, and whether they are still logged in. The only service in the estate that stores credentials, and the only one allowed to mint or revoke a session.'
@@ -223,8 +225,16 @@ payment was captured, and what that means for a parcel is decided here.'
   portolan = context 'Portolan' {
     description 'system · The tool that reads this estate: a browser for an architecture catalog, read out of the code and specs that already describe it. Nothing in the shop calls it and it calls nothing; it is here because a catalog that cannot describe its own reader is a catalog with a hole in it.'
     style { color ctx5 }
-    portolan = service 'Portolan' {
-      description 'webapp · Go · Node.js · github.com/shortlink-org/portolan/.'
+    host = service 'Host' {
+      description 'cli · Node.js · github.com/shortlink-org/portolan/scripts'
+      style { color ctx5 }
+    }
+    plugins = service 'Plugins' {
+      description 'cli · Go · TypeScript · Rust · Java · Python · github.com/shortlink-org/portolan/plugins'
+      style { color ctx5 }
+    }
+    site = service 'Site' {
+      description 'webapp · TypeScript · React · Vite · github.com/shortlink-org/portolan/src'
       style { color ctx5 }
     }
   }
@@ -354,5 +364,8 @@ payment was captured, and what that means for a parcel is decided here.'
   }
   client -> shop.oms '2 flows' {
     style { color verified  line solid  head normal }
+  }
+  developer -> portolan.host 'npm run gen' {
+    style { color declared  line dashed  head normal }
   }
 }

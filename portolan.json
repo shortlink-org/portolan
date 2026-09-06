@@ -220,6 +220,13 @@
       }
     },
     {
+      "name": "flows",
+      "process": {
+        "command": "go",
+        "args": ["run", "./plugins/extract-flows"]
+      }
+    },
+    {
       "name": "bsr",
       "process": {
         "command": "go",
@@ -255,17 +262,54 @@
     },
     {
       "plugin": "project",
-      "in": ".",
+      "in": "scripts",
       "out": "portolan",
       "options": {
         "group": "portolan",
         "groupName": "Portolan",
         "groupSummary": "The tool that reads this estate: a browser for an architecture catalog, read out of the code and specs that already describe it. Nothing in the shop calls it and it calls nothing; it is here because a catalog that cannot describe its own reader is a catalog with a hole in it.",
-        "component": "portolan",
-        "componentName": "Portolan",
-        "componentKind": "webapp",
+        "component": "host",
+        "componentName": "Host",
+        "componentKind": "cli",
+        "technologies": ["Node.js"],
         "repo": "github.com/shortlink-org/portolan",
-        "out": "project.json"
+        "out": "host.json"
+      }
+    },
+    {
+      "plugin": "project",
+      "in": "src",
+      "out": "portolan",
+      "options": {
+        "group": "portolan",
+        "component": "site",
+        "componentName": "Site",
+        "componentKind": "webapp",
+        "technologies": ["TypeScript", "React", "Vite"],
+        "repo": "github.com/shortlink-org/portolan",
+        "out": "site.json"
+      }
+    },
+    {
+      "plugin": "project",
+      "in": "plugins",
+      "out": "portolan",
+      "options": {
+        "group": "portolan",
+        "component": "plugins",
+        "componentName": "Plugins",
+        "componentKind": "cli",
+        "technologies": ["Go", "TypeScript", "Rust", "Java", "Python"],
+        "repo": "github.com/shortlink-org/portolan",
+        "out": "plugins.json"
+      }
+    },
+    {
+      "plugin": "flows",
+      "in": "flows",
+      "out": "portolan",
+      "options": {
+        "out": "flows.json"
       }
     },
     {

@@ -1,0 +1,35 @@
+{
+  "generatedAt": "2026-09-06T18:48:02+07:00",
+  "commit": "229c1fb",
+  "contexts": [
+    {
+      "id": "portolan",
+      "slug": "portolan",
+      "name": "Portolan",
+      "summary": "",
+      "kind": "system",
+      "services": [
+        {
+          "id": "portolan.site",
+          "slug": "site",
+          "name": "Site",
+          "repo": "github.com/shortlink-org/portolan",
+          "path": "src",
+          "readme": "# Site\n\nThe browser: a React single-page application that loads every source the\nmanifest names, merges them, validates the union and renders the estate.\nStatic end to end; there is no backend and no runtime query.\n\n## What it does\n\n- Decides the shape of a catalog. `catalog.ts` is the contract, with the\n  reasoning beside each field; `catalog/` in Go is a mirror of it, held by a\n  round-trip test (portolan.0003). The validator lives here too, and runs\n  before anything is drawn: a catalog that fails renders the failure.\n- Merges sources and derives what they imply. `merge.ts` and `enrich.ts` are\n  the same code the host runs, so the site and the generated documentation\n  cannot disagree about what the estate is.\n- Renders the entity pages, the flows with their step rail and chains, the\n  Problems page, the language page, the ER canvases, the C4 views the\n  LikeC4 bundle carries, and the navigation around them.\n\n## What it does not do\n\n- Draw a C4 view itself: `likec4/` is written from the catalog by the host,\n  and the site embeds the generated bundle.\n- Run a plugin, read a tree or stamp anything; the fragments arrive as JSON\n  through the build.\n- Persist anything but a reader's own conveniences, pins and the trail, in\n  the browser.\n\n## Layout\n\n- `catalog.ts`, `merge.ts`, `enrich.ts`, `data.ts`: the contract, the merge,\n  what the merge implies, and where the sources are found.\n- `pages/`, `components/`, `app/`: what a reader sees.\n- `flow/`, `graph/`, `map/`, `er/`, `language/`, `table/`, `selection/`,\n  `trail/`: one directory per kind of view.\n- `lib/`: what the views share, one concern per file.\n- `likec4/`: the generated bundle and the ids it is asked for.\n- `testing/`: the frozen estate the UI tests run against.",
+          "kind": "webapp",
+          "technologies": [
+            "TypeScript",
+            "React",
+            "Vite"
+          ],
+          "provides": [],
+          "consumes": [],
+          "aggregates": []
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": []
+}

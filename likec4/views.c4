@@ -3,7 +3,7 @@ views {
   view landscape {
     title 'Estate'
     description 'Every architecture group, and everything outside the estate that touches one.'
-    include auth, storefront, payments, shop, delivery, portolan, client, risk_v1, stripe
+    include auth, storefront, payments, shop, delivery, portolan, client, risk_v1, stripe, developer
   }
 
   view ctx_auth of auth {
@@ -101,12 +101,28 @@ views {
     title 'Portolan'
     include *
   }
-  view svc_portolan_portolan of portolan.portolan {
-    title 'Portolan — neighbours'
+  view svc_portolan_host of portolan.host {
+    title 'Host — neighbours'
     include *, -> *, * ->
   }
-  view svc_portolan_portolan_inside of portolan.portolan {
-    title 'Portolan — inside'
+  view svc_portolan_host_inside of portolan.host {
+    title 'Host — inside'
+    include *
+  }
+  view svc_portolan_plugins of portolan.plugins {
+    title 'Plugins — neighbours'
+    include *, -> *, * ->
+  }
+  view svc_portolan_plugins_inside of portolan.plugins {
+    title 'Plugins — inside'
+    include *
+  }
+  view svc_portolan_site of portolan.site {
+    title 'Site — neighbours'
+    include *, -> *, * ->
+  }
+  view svc_portolan_site_inside of portolan.site {
+    title 'Site — inside'
     include *
   }
 
@@ -1993,6 +2009,63 @@ views {
       color declared  line dashed  head onormal
       notes 'examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:55'
     }
+  }
+
+  dynamic view flow_gen {
+    title 'npm run gen'
+    description 'Three passes over the manifest, each after the previous one\'s files are on disk: extract reads trees and specifications into fragments, verify overlays evidence on the merged catalog, generate turns it into pages. Every plugin is one JSON message in and one out; the host writes, the plugin never does.
+
+In `--check` mode the same run writes nothing and fails on the first file that differs from disk, which is what makes committed output reviewable.'
+    developer -> portolan.host 'npm run gen' {
+      color declared  line dashed  head none
+    }
+    portolan.host -> portolan.host 'validate the manifest against the composed schema' {
+      color declared  line dashed  head none
+      notes 'schema/portolan.schema.json is what every declared plugin said it can be told, composed by npm run schema.'
+    }
+    loop 'for each extract step' {
+      portolan.host -> portolan.plugins 'extract' {
+        color declared  line dashed  head none
+        notes 'The request carries the input root, its stamp and the step\'s options. The stamp is the last commit that touched the root, never a clock (portolan.0002). — scripts/gen.mjs:121'
+      }
+      portolan.host -> tree 'write the fragment beside the service' {
+        color declared  line dashed  head none
+      }
+    }
+    portolan.host -> tree 'read every source the manifest names' {
+      color declared  line dashed  head none
+      notes 'scripts/catalog-sources.mjs:28'
+    }
+    portolan.host -> portolan.host 'merge, validate and enrich the union' {
+      color declared  line dashed  head none
+      notes 'The same code the site runs: src/merge.ts, src/catalog.ts, src/enrich.ts. A fragment naming a peer it does not own is normal; integrity holds over the union.'
+    }
+    loop 'for each verify step' {
+      portolan.host -> portolan.plugins 'verify' {
+        color declared  line dashed  head none
+        notes 'The merged catalog rides in the request; the answer is an overlay fragment with what the evidence showed. — scripts/gen.mjs:135'
+      }
+      portolan.host -> tree 'write the overlay' {
+        color declared  line dashed  head none
+      }
+    }
+    loop 'for each generate step' {
+      portolan.host -> portolan.plugins 'generate' {
+        color declared  line dashed  head none
+        notes 'A wasm module with nothing preopened, or a process. It names files and never writes them (portolan.0001). — scripts/gen.mjs:165'
+      }
+      portolan.host -> tree 'write the pages and delete what stopped being generated' {
+        color declared  line dashed  head none
+      }
+    }
+    portolan.host -> tree 'write .portolan/build-report.json' {
+      color declared  line dashed  head none
+    }
+  }
+
+  dynamic view flow_gen_cross {
+    title 'npm run gen — crossings only'
+    developer -> developer 'no cross-context step'
   }
 
 }

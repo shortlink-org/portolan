@@ -1,8 +1,8 @@
 # Example estate
 
-> Architecture catalog of Example estate: 6 bounded contexts, 9 services, 12 aggregates, 7 stores, 7 schema modules, 1 system outside the estate, 55 flows and 41 decision records, read from the code, the specs and the traces of the estate.
+> Architecture catalog of Example estate: 6 bounded contexts, 11 services, 12 aggregates, 7 stores, 7 schema modules, 1 system outside the estate, 56 flows and 41 decision records, read from the code, the specs and the traces of the estate.
 
-*Generated from the portolan catalog · commit `9 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `10 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
 
 Every link below is a markdown page beside this file. [llms-full.txt](llms-full.txt) is all of those pages in one file, in the order the site lists them.
 
@@ -29,7 +29,9 @@ Every link below is a markdown page beside this file. [llms-full.txt](llms-full.
 - [Authentication & Sessions](auth/auth/README.md): in Authentication. Aggregates: Lockout, Session, User
 - [Delivery Core](delivery/core/README.md): in Delivery. Aggregates: Route, Shipment
 - [Ledger](payments/ledger/README.md): in Payments. Aggregates: Payment, Refund
-- [Portolan](portolan/portolan/README.md): in Portolan
+- [Host](portolan/host/README.md): in Portolan
+- [Plugins](portolan/plugins/README.md): in Portolan
+- [Site](portolan/site/README.md): in Portolan
 - [Billing](shop/billing/README.md): in Shop. Aggregates: Invoice
 - [Shopping Cart](shop/cart/README.md): in Shop. Aggregates: Basket
 - [Order Management](shop/oms/README.md): in Shop. Aggregates: Order
@@ -91,6 +93,7 @@ Every link below is a markdown page beside this file. [llms-full.txt](llms-full.
 - [Release shipment on payment captured](flows/core-release-shipment-on-payment-captured.md): owned by [delivery](delivery/README.md). Nothing leaves the warehouse before the money has moved (ADR core.0002)
 - [Start route](flows/core-start-route.md): owned by [delivery](delivery/README.md). The van is out
 - [Track shipment](flows/core-track-shipment.md): owned by [delivery](delivery/README.md). What the customer sees when they paste a tracking code
+- [npm run gen](flows/gen.md): owned by [portolan](portolan/README.md). Three passes over the manifest, each after the previous one's files are on disk: extract reads trees and specifications into fragments, verify overlays evidence on the merged catalog, generate turns it into pages. Every plugin is one JSON message in and one out; the host writes, the plugin never does
 - [Authorize](flows/ledger-authorize.md): owned by [payments](payments/README.md). Asks the gateway to hold the money for an order, and records either that it agreed or that it refused
 - [Capture](flows/ledger-capture.md): owned by [payments](payments/README.md). Moves the money the gateway was holding, writes the pair of postings for it, and says so on the bus
 - [Get payment](flows/ledger-get-payment.md): owned by [payments](payments/README.md). Reads one payment, for whoever is asking what happened to the money

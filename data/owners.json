@@ -162,8 +162,36 @@
       "summary": "",
       "services": [
         {
-          "id": "portolan.portolan",
-          "slug": "portolan",
+          "id": "portolan.host",
+          "slug": "host",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "owners": [
+            "@shortlink-org/platform"
+          ]
+        },
+        {
+          "id": "portolan.plugins",
+          "slug": "plugins",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "owners": [
+            "@shortlink-org/platform"
+          ]
+        },
+        {
+          "id": "portolan.site",
+          "slug": "site",
           "name": "",
           "repo": "",
           "path": "",

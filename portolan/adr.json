@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-09-06T18:31:22+07:00",
-  "commit": "76a300a",
+  "generatedAt": "2026-09-06T18:48:02+07:00",
+  "commit": "229c1fb",
   "contexts": [],
   "defs": {},
   "flows": [],
@@ -18,7 +18,12 @@
       },
       "body": "## Context and Problem Statement\n\nA plugin produces files: a fragment beside the service it read, pages under\n`docs/`, a Backstage bundle. Who writes them to disk?\n\nThe obvious answer is the plugin. It knows the names, it has the tree, and\nevery code generator ever written does it that way. It is also the answer that\nmakes a plugin something that holds a directory: a `--check` mode then needs\nthe plugin to know there is a disk to compare against, a wasm module needs a\ndirectory preopened for it, a plugin that can write can also delete, and a page\nthat stops being generated has nobody who remembers writing it.\n\n## Decision Drivers\n\n- A generator must be able to run as a wasm module with nothing preopened at\n  all.\n- `--check` must compare a render against disk without the plugin knowing\n  there is a disk.\n- A name that climbs out of the output directory must be refused in one\n  place, not in every plugin.\n- A page that stops being generated must be deleted by something that knows\n  what was written last time.\n\n## Considered Options\n\n1. **The plugin answers with named files and the host writes them** — one\n   JSON message out, `files: [{name, contents}]`, nothing else.\n2. **The plugin writes into an output directory it is handed** — a path in the\n   request, or a preopened directory for wasm.\n3. **The plugin writes and answers with a listing** — so the host can at least\n   delete what went stale.\n\n## Decision Outcome\n\nChosen option: **the plugin answers with named files and the host writes\nthem**.\n\n| | sandbox | check mode | stale pages | unsafe names |\n|---|---|---|---|---|\n| host writes | nothing preopened | host compares | host lists what each step wrote | refused once, in the host |\n| plugin writes | a directory is open | plugin must know the disk | nobody's | every plugin's problem |\n| plugin writes and lists | a directory is open | plugin must know the disk | host deletes from the listing | every plugin's problem |\n\nWhat is given up is streaming: a plugin's whole output crosses one JSON\nmessage on stdout, so a generator holds every page in memory at once and\ncannot write incrementally. That is the cheaper loss, because the outputs are\ndocumentation-sized and the sandbox is the reason the protocol has this\nshape rather than a restriction worked around.\n\n### Consequences\n\n- Good: `gen-markdown`, `gen-mermaid` and `gen-backstage` run as wasm with no\n  filesystem, and a generator in any language is the same contract.\n- Good: the host refuses a name outside the output directory, keeps a listing\n  of what each step wrote, and deletes pages that stopped being generated.\n- Bad: a plugin cannot stream, and a plugin cannot read what it wrote last\n  time; determinism has to come from the catalog alone, which is required of\n  it anyway.\n- Neutral: this decides the write side only. An extractor still reads a tree,\n  so extractors run as processes rather than wasm; lifting that would be its\n  own record.\n",
       "relates": {},
-      "source": "adr/0001-a-plugin-names-files-and-never-writes-them.md"
+      "source": "adr/0001-a-plugin-names-files-and-never-writes-them.md",
+      "created": {
+        "commit": "229c1fb4f2b8ee1d4fe60d35c2be9d122f75c34c",
+        "author": "Victor Login",
+        "date": "2026-09-06T18:48:02+07:00"
+      }
     },
     {
       "id": "portolan.0002",
@@ -33,7 +38,12 @@
       },
       "body": "## Context and Problem Statement\n\nA fragment says when it was read and at which commit, so the estate can be\ndated and a source path can be a link. Who works that out?\n\nThe obvious answer is the extractor: read the clock, ask the repository for\nits head. A clock makes a different fragment on every run, which cannot be\ncommitted and cannot be checked. Version control in the plugin makes a plugin\nthat can never be sandboxed, and a plugin that reads its own output\ndirectory's history stamps itself out of date on every run.\n\n## Decision Drivers\n\n- A committed fragment must be byte-identical across runs of the same source,\n  so `--check` means something.\n- A fragment must change exactly when its subject changes.\n- A plugin must know no clock and no repository.\n- A copy of another repository must be dated by the commit it is a copy of,\n  not by when it was copied.\n\n## Considered Options\n\n1. **The host stamps from the last commit that touched the input root**,\n   excluding the output directory when it sits inside that root.\n2. **The extractor reads the clock and the repository** and writes what it\n   found.\n3. **No stamp; a content hash** — the fragment is dated by what it says.\n\n## Decision Outcome\n\nChosen option: **the host stamps from the last commit that touched the input\nroot**.\n\n| | reproducible | sandboxable | says when |\n|---|---|---|---|\n| host, from history | yes | yes | the last change to the subject |\n| plugin, clock and repository | no | no | now |\n| content hash | yes | yes | never |\n\nWhat is given up is a stamp for a root that is the whole repository: every\ncommit anywhere moves it, so the fragment of a repository that describes\nitself, portolan's own `portolan/project.json` included, is re-stamped after\nevery commit. That is accepted because it is true: every commit to the\nrepository is a commit to the component. A tree with no history is stamped\n`uncommitted` with the wall clock, and `PORTOLAN_GENERATED_AT` pins that for\na build that must reproduce.\n\n### Consequences\n\n- Good: `gen --check` is a real check; a fragment diffs only when its source\n  does; a fetched repository is dated by the commit its lock names.\n- Bad: a shallow clone cannot stamp, and the host refuses rather than guesses:\n  fetch the full history first.\n- Bad: two extractors on one root carry the same stamp even when only one's\n  subject changed.\n- Neutral: the stamp is the commit that last touched the directory, which is\n  not the commit the code was built from.\n",
       "relates": {},
-      "source": "adr/0002-the-host-stamps-a-fragment-from-its-inputs-last-commit.md"
+      "source": "adr/0002-the-host-stamps-a-fragment-from-its-inputs-last-commit.md",
+      "created": {
+        "commit": "229c1fb4f2b8ee1d4fe60d35c2be9d122f75c34c",
+        "author": "Victor Login",
+        "date": "2026-09-06T18:48:02+07:00"
+      }
     },
     {
       "id": "portolan.0003",
@@ -48,7 +58,12 @@
       },
       "body": "## Context and Problem Statement\n\nPlugins written in Go need the catalog's shape, and the site written in\nTypeScript needs it too. Where is the shape decided, and how do two languages\nhold one shape?\n\nThe obvious answer is a JSON schema that both are generated from. A generated\ntype carries no prose, and the prose is where every decision about the shape\nlives: why a list is optional in the file and never optional downstream, why a\ncontext's id is its slug. The other obvious answer is two definitions kept in\nstep by care, which is how two definitions drift.\n\n## Decision Drivers\n\n- One place decides the shape, and the reasoning sits beside the field it is\n  about.\n- A Go plugin reads a catalog the host has already validated, and does not\n  validate again: a second opinion in a second language is how the two drift.\n- Drift between the two is a failing test, not a reader's surprise.\n- A plugin in a language with no mirror at all still works.\n\n## Considered Options\n\n1. **`src/catalog.ts` is the definition and `catalog/model.go` a hand-written\n   mirror**, held to it by a round-trip test over a fixture catalog.\n2. **A JSON schema generates both** — one source, two generated types.\n3. **Go is the definition and TypeScript is generated** from it.\n4. **No Go mirror** — Go plugins read `map[string]any`.\n\n## Decision Outcome\n\nChosen option: **`src/catalog.ts` is the definition and the Go package is a\nmirror**.\n\n| | prose beside the shape | drift | plugin ergonomics |\n|---|---|---|---|\n| TypeScript decides, Go mirrors | yes, once | a test fails | typed |\n| schema generates both | no | none | typed, undocumented |\n| Go decides | yes, in Go | a test fails | the site reads a generated type |\n| no mirror | yes | none | untyped |\n\nWhat is given up is typing every field twice by hand, and that a field added\non one side and not the other is a test failure rather than a compile error.\nThat is the cheaper loss, because the round trip is mechanical and the prose\nis not.\n\n### Consequences\n\n- Good: the reasoning about the shape lives in one file, and the Go package\n  says on its first line that it decides nothing.\n- Good: Rust, Python, Java and TypeScript plugins keep no mirror; they write\n  JSON the host validates.\n- Bad: the round trip covers what the fixture exercises, so an `omitempty`\n  on the Go side and an \"optional in the file\" on the TypeScript side have to\n  be matched by hand.\n- Neutral: the mirror is kept honest by the tests that hold generators to the\n  catalog too: a field rendered nowhere fails the coverage test.\n",
       "relates": {},
-      "source": "adr/0003-the-go-catalog-is-a-mirror-held-by-a-round-trip-test.md"
+      "source": "adr/0003-the-go-catalog-is-a-mirror-held-by-a-round-trip-test.md",
+      "created": {
+        "commit": "229c1fb4f2b8ee1d4fe60d35c2be9d122f75c34c",
+        "author": "Victor Login",
+        "date": "2026-09-06T18:48:02+07:00"
+      }
     },
     {
       "id": "portolan.0004",
@@ -63,7 +78,12 @@
       },
       "body": "## Context and Problem Statement\n\nPortolan began for estates built on domain-driven design: bounded contexts\nowning services owning aggregates. A repository that was never laid out that\nway still belongs in a catalog: a system with an application in it, a team\nwith a library, a namespace with a job. Where does it go?\n\nThe obvious answer is to rename the keys to `groups` and `components`, migrate\nevery committed catalog and every extractor in five languages, or to add a\nsecond top-level list beside `contexts`. The first rewrites every fragment\never committed for a change of word; the second means two of everything\ndownstream: the site, three generators, the diff, the C4 model.\n\n## Decision Drivers\n\n- An old catalog loads unchanged.\n- One model in the site, the generators, the exporters and the C4 model.\n- The neutral extractor emits the same node a domain extractor would, so the\n  two can fill it side by side.\n- The historical meaning stays the default: a fragment that says no kind is a\n  bounded context with services in it.\n\n## Considered Options\n\n1. **Keep the keys and add an optional `kind` to both nodes**; absent keeps the\n   historical meaning.\n2. **Rename to `groups` and `components`** with a migration of every fragment\n   and extractor.\n3. **A second top-level list**, `systems` with `components`, beside\n   `contexts`.\n\n## Decision Outcome\n\nChosen option: **keep the keys and add an optional `kind`**.\n\n| | old catalogs | downstream | vocabulary |\n|---|---|---|---|\n| keys stay, `kind` added | load unchanged | one model | two readings of one node |\n| keys renamed | migrated | one model | one |\n| second list | load unchanged | two of everything | one |\n\nWhat is given up is one vocabulary in prose: the wire and the code say\ncontext and service, and the README and the setup wizard say group and\ncomponent when the kind is neutral. That is the cheaper loss, because a\nmigration is paid once by everyone and a word is explained once in the\nglossary: `GLOSSARY.md` names all four and says which is the term.\n\n### Consequences\n\n- Good: no fragment is migrated, and every page, view and exporter works for a\n  neutral repository on the day.\n- Good: `extract-project` and a domain extractor fill the same node, so a\n  repository can be catalogued before anyone decides whether it has a domain.\n- Bad: the type is called `BoundedContext` and holds a `system`; a reader of\n  the Go or TypeScript type has to know about `kind`.\n- Neutral: `bounded-context` is also spelled as a kind, for a fragment that\n  wants to say so explicitly.\n",
       "relates": {},
-      "source": "adr/0004-contexts-and-services-stay-the-wire-format.md"
+      "source": "adr/0004-contexts-and-services-stay-the-wire-format.md",
+      "created": {
+        "commit": "229c1fb4f2b8ee1d4fe60d35c2be9d122f75c34c",
+        "author": "Victor Login",
+        "date": "2026-09-06T18:48:02+07:00"
+      }
     }
   ]
 }

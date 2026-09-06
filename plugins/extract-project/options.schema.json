@@ -30,6 +30,11 @@
       "enum": ["service", "application", "webapp", "worker", "job", "function", "cli", "library", "data-pipeline"],
       "description": "Runtime or code role. When absent, the extractor uses conservative repository evidence."
     },
+    "technologies": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Languages and frameworks, stated when the tree cannot say: a component whose manifests sit above its root, one of several in a repository, has nothing at its root to read. Left out, inferred from go.mod, package.json, Cargo.toml and the like at the root."
+    },
     "repo": {
       "type": "string",
       "description": "Source repository identity. Defaults to a Go module, package.json repository, Cargo package, or Maven coordinates when present."
