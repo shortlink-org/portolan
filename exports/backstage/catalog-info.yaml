@@ -493,7 +493,21 @@ metadata:
     description: Delivery Core
     annotations:
         backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/examples/shop/delivery/core
+        portolan.io/commands: |-
+            npm run build
+            npm run typecheck
+            npm run gen
         portolan.io/id: delivery.core
+    links:
+        - url: https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/package.json#L9
+          title: npm run build
+          type: command
+        - url: https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/package.json#L10
+          title: npm run typecheck
+          type: command
+        - url: https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/package.json#L11
+          title: npm run gen
+          type: command
 spec:
     consumesApis:
         - api:default/shop-v1-orderservice
@@ -942,7 +956,21 @@ metadata:
     description: Ledger
     annotations:
         backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/examples/payments/ledger
+        portolan.io/commands: |-
+            mvn test — Run the tests (lifecycle phase)
+            mvn package — Build the artifact (lifecycle phase)
+            mvn spring-boot:run — Run the application
         portolan.io/id: payments.ledger
+    links:
+        - url: https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/pom.xml#L1
+          title: mvn test — Run the tests (lifecycle phase)
+          type: command
+        - url: https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/pom.xml#L1
+          title: mvn package — Build the artifact (lifecycle phase)
+          type: command
+        - url: https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/pom.xml#L146
+          title: mvn spring-boot:run — Run the application
+          type: command
 spec:
     consumesApis:
         - api:default/shop-v1-orderservice
@@ -1259,9 +1287,71 @@ metadata:
     description: Host
     annotations:
         backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/scripts
+        portolan.io/commands: |-
+            npm run dev
+            npm run build
+            npm run preview
+            npm test
+            npm run test:go
+            npm run test:watch
+            npm run typecheck
+            npm run likec4:gen
+            npm run likec4:validate
+            npm run plugins:build
+            npm run schema
+            npm run schema:check
+            npm run gen
+            npm run gen:check
+            npm run diff
         portolan.io/id: portolan.host
     tags:
         - node-js
+    links:
+        - url: https://github.com/shortlink-org/portolan/blob/main/package.json#L7
+          title: npm run dev
+          type: command
+        - url: https://github.com/shortlink-org/portolan/blob/main/package.json#L8
+          title: npm run build
+          type: command
+        - url: https://github.com/shortlink-org/portolan/blob/main/package.json#L9
+          title: npm run preview
+          type: command
+        - url: https://github.com/shortlink-org/portolan/blob/main/package.json#L10
+          title: npm test
+          type: command
+        - url: https://github.com/shortlink-org/portolan/blob/main/package.json#L11
+          title: npm run test:go
+          type: command
+        - url: https://github.com/shortlink-org/portolan/blob/main/package.json#L12
+          title: npm run test:watch
+          type: command
+        - url: https://github.com/shortlink-org/portolan/blob/main/package.json#L13
+          title: npm run typecheck
+          type: command
+        - url: https://github.com/shortlink-org/portolan/blob/main/package.json#L14
+          title: npm run likec4:gen
+          type: command
+        - url: https://github.com/shortlink-org/portolan/blob/main/package.json#L15
+          title: npm run likec4:validate
+          type: command
+        - url: https://github.com/shortlink-org/portolan/blob/main/package.json#L17
+          title: npm run plugins:build
+          type: command
+        - url: https://github.com/shortlink-org/portolan/blob/main/package.json#L18
+          title: npm run schema
+          type: command
+        - url: https://github.com/shortlink-org/portolan/blob/main/package.json#L19
+          title: npm run schema:check
+          type: command
+        - url: https://github.com/shortlink-org/portolan/blob/main/package.json#L20
+          title: npm run gen
+          type: command
+        - url: https://github.com/shortlink-org/portolan/blob/main/package.json#L21
+          title: npm run gen:check
+          type: command
+        - url: https://github.com/shortlink-org/portolan/blob/main/package.json#L22
+          title: npm run diff
+          type: command
 spec:
     lifecycle: production
     owner: shortlink-org/platform
@@ -1512,7 +1602,41 @@ metadata:
     description: Shopping Cart
     annotations:
         backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/examples/shop/cart
+        portolan.io/commands: |-
+            npm run build
+            npm start
+            npm run typecheck
+            npm test
+            npm run generate
+            npm run generate:api
+            npm run generate:auth
+            npm run generate:pricing
         portolan.io/id: shop.cart
+    links:
+        - url: https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/package.json#L12
+          title: npm run build
+          type: command
+        - url: https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/package.json#L13
+          title: npm start
+          type: command
+        - url: https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/package.json#L14
+          title: npm run typecheck
+          type: command
+        - url: https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/package.json#L15
+          title: npm test
+          type: command
+        - url: https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/package.json#L16
+          title: npm run generate
+          type: command
+        - url: https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/package.json#L17
+          title: npm run generate:api
+          type: command
+        - url: https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/package.json#L18
+          title: npm run generate:auth
+          type: command
+        - url: https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/package.json#L19
+          title: npm run generate:pricing
+          type: command
 spec:
     consumesApis:
         - api:default/auth-v1-sessions
@@ -1765,7 +1889,21 @@ metadata:
     description: Order Management
     annotations:
         backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/examples/shop/oms
+        portolan.io/commands: |-
+            cargo xtask
+            cargo xtask gen — Regenerate the gRPC stubs from the registry pins, own contract and the payments client
+            cargo xtask ci — Run fmt, clippy and the tests the way CI does
         portolan.io/id: shop.oms
+    links:
+        - url: https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/.cargo/config.toml#L4
+          title: cargo xtask
+          type: command
+        - url: https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/xtask/src/main.rs#L12
+          title: cargo xtask gen — Regenerate the gRPC stubs from the registry pins, own contract and the payments client
+          type: command
+        - url: https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/xtask/src/main.rs#L16
+          title: cargo xtask ci — Run fmt, clippy and the tests the way CI does
+          type: command
 spec:
     consumesApis:
         - api:default/payments-v1-paymentservice
@@ -1939,7 +2077,21 @@ metadata:
     description: Pricing
     annotations:
         backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/examples/shop/pricing
+        portolan.io/commands: |-
+            make gen — Regenerate the gRPC stubs from the vendored protos
+            make build — Compile every package
+            make test — Run the unit tests
         portolan.io/id: shop.pricing
+    links:
+        - url: https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/Makefile#L6
+          title: make gen — Regenerate the gRPC stubs from the vendored protos
+          type: command
+        - url: https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/Makefile#L11
+          title: make build — Compile every package
+          type: command
+        - url: https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/Makefile#L15
+          title: make test — Run the unit tests
+          type: command
 spec:
     dependsOn:
         - resource:default/buf-build-shortlink-org-portolan-shop-price-list
@@ -2280,7 +2432,45 @@ metadata:
     description: Storefront BFF
     annotations:
         backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/examples/bff
+        portolan.io/commands: |-
+            npm run build
+            npm start
+            npm run typecheck
+            npm test
+            npm run generate
+            npm run generate:resolvers
+            npm run generate:auth
+            npm run generate:cart
+            npm run generate:grpc
         portolan.io/id: storefront.bff
+    links:
+        - url: https://github.com/shortlink-org/portolan/blob/main/examples/bff/package.json#L12
+          title: npm run build
+          type: command
+        - url: https://github.com/shortlink-org/portolan/blob/main/examples/bff/package.json#L13
+          title: npm start
+          type: command
+        - url: https://github.com/shortlink-org/portolan/blob/main/examples/bff/package.json#L14
+          title: npm run typecheck
+          type: command
+        - url: https://github.com/shortlink-org/portolan/blob/main/examples/bff/package.json#L15
+          title: npm test
+          type: command
+        - url: https://github.com/shortlink-org/portolan/blob/main/examples/bff/package.json#L16
+          title: npm run generate
+          type: command
+        - url: https://github.com/shortlink-org/portolan/blob/main/examples/bff/package.json#L17
+          title: npm run generate:resolvers
+          type: command
+        - url: https://github.com/shortlink-org/portolan/blob/main/examples/bff/package.json#L18
+          title: npm run generate:auth
+          type: command
+        - url: https://github.com/shortlink-org/portolan/blob/main/examples/bff/package.json#L19
+          title: npm run generate:cart
+          type: command
+        - url: https://github.com/shortlink-org/portolan/blob/main/examples/bff/package.json#L20
+          title: npm run generate:grpc
+          type: command
 spec:
     consumesApis:
         - api:default/auth-v1-sessions

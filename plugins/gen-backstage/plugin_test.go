@@ -49,6 +49,53 @@ func TestRenderBackstageRelationships(t *testing.T) {
 	}
 }
 
+func TestComponentCarriesItsCommands(t *testing.T) {
+	cat := catalog.Catalog{Contexts: []catalog.BoundedContext{{
+		ID: "shop", Name: "Shop", Services: []catalog.Service{{
+			ID: "shop.pricing", Name: "Pricing", Repo: "github.com/acme/shop", Path: "services/pricing",
+			Commands: []catalog.Command{
+				{Runner: "make", Name: "gen", Run: "make gen", Doc: "Regenerate the stubs", Body: "buf generate", Source: "services/pricing/Makefile:6"},
+				{Runner: "make", Name: "test", Run: "make test", Source: "services/pricing/Makefile:15"},
+			},
+		}},
+	}}}
+	resp, err := render(plugin.Request{Catalog: cat}, Options{SourceBaseURL: "https://github.com/acme/shop/blob/main"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var component struct {
+		Metadata struct {
+			Annotations map[string]string
+			Links       []struct{ URL, Title, Type string }
+		}
+	}
+	var part string
+	for _, candidate := range strings.Split(resp.Files[0].Contents, "\n---\n") {
+		if strings.Contains(candidate, "kind: Component") {
+			part = candidate
+		}
+	}
+	if err := yaml.Unmarshal([]byte(part), &component); err != nil {
+		t.Fatal(err)
+	}
+	if got := component.Metadata.Annotations["portolan.io/commands"]; got != "make gen — Regenerate the stubs\nmake test" {
+		t.Errorf("annotation = %q", got)
+	}
+	if len(component.Metadata.Links) != 2 || component.Metadata.Links[0].URL != "https://github.com/acme/shop/blob/main/services/pricing/Makefile#L6" || component.Metadata.Links[0].Title != "make gen — Regenerate the stubs" || component.Metadata.Links[0].Type != "command" {
+		t.Errorf("links = %+v", component.Metadata.Links)
+	}
+
+	// Without a source base there is nowhere to link to; the list still
+	// travels in the annotation.
+	resp, err = render(plugin.Request{Catalog: cat}, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(resp.Files[0].Contents, "links:") || !strings.Contains(resp.Files[0].Contents, "portolan.io/commands") {
+		t.Fatal(resp.Files[0].Contents)
+	}
+}
+
 func TestNameIsBackstageSafe(t *testing.T) {
 	if got := nameOf("buf.build/Acme/Very Long API"); got != "buf-build-acme-very-long-api" {
 		t.Fatalf("%q", got)

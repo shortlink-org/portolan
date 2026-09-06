@@ -1,6 +1,6 @@
 # Plugins
 
-*Generated from the portolan catalog · commit `9 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `10 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
 
 - **Id:** `portolan.plugins`
 - **Group:** [Portolan](../README.md)
@@ -563,6 +563,13 @@ runner files sit beside the service, so the step is told which one it is.
 
 `extract-project` reads the same files for the component it describes, so a
 repository read by that plugin does not need this one.
+
+Downstream, `gen-markdown` draws the list as a Commands table on the service
+page, and `gen-backstage` puts it on the Component twice, because Backstage
+has no field for it: as the `portolan.io/commands` annotation, one command a
+line with its description, and as entity links of type `command`, each
+leading to the line of the runner file it was read from, when `sourceBaseUrl`
+says where the repository is.
 
 ### Outside the estate: an external with a contract
 

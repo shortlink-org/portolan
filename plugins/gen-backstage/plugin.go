@@ -33,6 +33,16 @@ type metadata struct {
 	Description string            `yaml:"description,omitempty"`
 	Annotations map[string]string `yaml:"annotations,omitempty"`
 	Tags        []string          `yaml:"tags,omitempty"`
+	Links       []link            `yaml:"links,omitempty"`
+}
+
+// link is one of Backstage's entity links, the card on the entity page
+// that takes a reader somewhere. `type` is Backstage's own free-text
+// category; every link here is a command.
+type link struct {
+	URL   string `yaml:"url"`
+	Title string `yaml:"title,omitempty"`
+	Type  string `yaml:"type,omitempty"`
 }
 
 func render(req plugin.Request, opts Options) (plugin.Response, error) {
@@ -112,6 +122,7 @@ func render(req plugin.Request, opts Options) (plugin.Response, error) {
 			component := entityFor("Component", svc.ID, svc.Name, firstLine(svc.Readme), svc.ID)
 			component.Metadata.Annotations = annotations(opts.SourceBaseURL, svc.ID, svc.Path, svc.Repo, true)
 			component.Metadata.Tags = backstageTags(svc.Technologies)
+			commands(&component.Metadata, svc, opts.SourceBaseURL)
 			depends := []string{}
 			consumes := []string{}
 			for _, call := range svc.Consumes {
@@ -235,21 +246,61 @@ func entityFor(kind, id, title, description, portolanID string) entity {
 
 func annotations(sourceBase, id, source, repo string, directory bool) map[string]string {
 	out := map[string]string{"portolan.io/id": id}
-	if sourceBase != "" && sameRepo(repo, sourceBaseRepo(sourceBase)) {
-		path := strings.TrimPrefix(strings.TrimSpace(source), "/")
-		if at := strings.LastIndex(path, ":"); at > 0 {
-			path = path[:at]
-		}
-		if path != "" {
-			base := strings.TrimSuffix(sourceBase, "/")
-			if directory {
-				base = strings.Replace(base, "/-/blob/", "/-/tree/", 1)
-				base = strings.Replace(base, "/blob/", "/tree/", 1)
-			}
-			out["backstage.io/source-location"] = "url:" + base + "/" + path
-		}
+	if url := sourceURL(sourceBase, source, repo, directory, false); url != "" {
+		out["backstage.io/source-location"] = "url:" + url
 	}
 	return out
+}
+
+// sourceURL is where `source` is on the forge, when the source base names
+// the same repository - or "" when the catalog cannot say. A `:line` suffix
+// is dropped, or kept as the `#L` anchor both forges read, when asked.
+func sourceURL(sourceBase, source, repo string, directory, keepLine bool) string {
+	if sourceBase == "" || !sameRepo(repo, sourceBaseRepo(sourceBase)) {
+		return ""
+	}
+	path := strings.TrimPrefix(strings.TrimSpace(source), "/")
+	line := ""
+	if at := strings.LastIndex(path, ":"); at > 0 {
+		if keepLine {
+			line = "#L" + path[at+1:]
+		}
+		path = path[:at]
+	}
+	if path == "" {
+		return ""
+	}
+	base := strings.TrimSuffix(sourceBase, "/")
+	if directory {
+		base = strings.Replace(base, "/-/blob/", "/-/tree/", 1)
+		base = strings.Replace(base, "/blob/", "/tree/", 1)
+	}
+	return base + "/" + path + line
+}
+
+// commands puts what a developer types onto the component, twice, because
+// Backstage has no field for it. The annotation is the list itself, one
+// command a line with its description, for anything that reads the entity;
+// the links are the same commands as the Links card draws them, each
+// leading to the line of the runner file it was read from, for the reader
+// on the entity page. Links need a URL, so they exist only when the source
+// base says where the repository is.
+func commands(meta *metadata, svc *catalog.Service, sourceBase string) {
+	if len(svc.Commands) == 0 {
+		return
+	}
+	lines := make([]string, 0, len(svc.Commands))
+	for _, cmd := range svc.Commands {
+		line := cmd.Run
+		if cmd.Doc != "" {
+			line += " — " + cmd.Doc
+		}
+		lines = append(lines, line)
+		if url := sourceURL(sourceBase, cmd.Source, svc.Repo, false, true); url != "" {
+			meta.Links = append(meta.Links, link{URL: url, Title: line, Type: "command"})
+		}
+	}
+	meta.Annotations["portolan.io/commands"] = strings.Join(lines, "\n")
 }
 
 func sourceBaseRepo(base string) string {
