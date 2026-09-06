@@ -1,0 +1,11 @@
+{
+  "project": [
+    "project.json"
+  ],
+  "adr": [
+    "adr.json"
+  ],
+  "glossary": [
+    "glossary.json"
+  ]
+}

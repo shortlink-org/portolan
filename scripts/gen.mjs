@@ -276,7 +276,8 @@ function summarise(label, files, changes, warnings = []) {
 }
 
 /**
- * When the source a fragment describes last changed, and at which commit.
+ * When the source a fragment describes last changed, and at which commit
+ * (portolan.0002).
  *
  * The host works this out rather than the extractor, for two reasons. A plugin
  * that reads a clock produces a different fragment on every run, which cannot

@@ -1,6 +1,6 @@
 // Package catalog is the Go side of the contract in src/catalog.ts.
 //
-// It is a MIRROR, not a second definition. The TypeScript file is where the
+// It is a MIRROR, not a second definition (portolan.0003). The TypeScript file is where the
 // shape is decided and where the prose explaining each decision lives; this
 // package exists so a plugin written in Go can read a catalog without
 // reinventing it, and it is held to the original by a round-trip test rather
@@ -82,6 +82,7 @@ const (
 	ClassificationGeneric    Classification = "generic"
 )
 
+// How a context is read. The keys stay `contexts` and `services` (portolan.0004).
 type GroupKind string
 
 const (

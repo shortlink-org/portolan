@@ -154,6 +154,28 @@
           ]
         }
       ]
+    },
+    {
+      "id": "portolan",
+      "slug": "portolan",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "portolan.portolan",
+          "slug": "portolan",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "owners": [
+            "@shortlink-org/platform"
+          ]
+        }
+      ]
     }
   ],
   "defs": {},

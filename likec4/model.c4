@@ -220,6 +220,14 @@ payment was captured, and what that means for a parcel is decided here.'
       }
     }
   }
+  portolan = context 'Portolan' {
+    description 'system · The tool that reads this estate: a browser for an architecture catalog, read out of the code and specs that already describe it. Nothing in the shop calls it and it calls nothing; it is here because a catalog that cannot describe its own reader is a catalog with a hole in it.'
+    style { color ctx5 }
+    portolan = service 'Portolan' {
+      description 'webapp · Go · Node.js · github.com/shortlink-org/portolan/.'
+      style { color ctx5 }
+    }
+  }
 
   auth.auth -> risk_v1 'Assess' {
     style { color unresolved  line dotted  head normal }

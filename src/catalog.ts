@@ -80,7 +80,7 @@ export interface BoundedContext {
   slug: string;
   name: string;
   summary: string;
-  /** Semantic role of this top-level group. Absent preserves the historical bounded-context meaning. */
+  /** Semantic role of this top-level group. Absent preserves the historical bounded-context meaning (portolan.0004). */
   kind?: GroupKind;
   /**
    * How strategically the domain is rated. A badge, and only a badge: it never

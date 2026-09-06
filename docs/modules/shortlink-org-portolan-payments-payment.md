@@ -1,6 +1,6 @@
 # shortlink-org/portolan-payments-payment
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
 
 - **Id:** `buf.build/shortlink-org/portolan-payments-payment`
 - **Registry:** buf.build

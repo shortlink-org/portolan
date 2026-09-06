@@ -58,7 +58,7 @@ Contract and messaging extractors then add OpenAPI, AsyncAPI, GraphQL, proto,
 SQL, River, Watermill and outbound HTTP/SOAP facts to that same component.
 
 The older JSON keys `contexts` and `services` remain the wire format, so old
-catalogs need no migration. Optional `kind` fields say when those nodes should
+catalogs need no migration (portolan.0004). Optional `kind` fields say when those nodes should
 be read as a neutral group and component. When `kind` is absent, the historical
 `bounded-context` and `service` meanings apply.
 

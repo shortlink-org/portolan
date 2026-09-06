@@ -2,8 +2,8 @@
 views {
   view landscape {
     title 'Estate'
-    description 'Every bounded context, and everything outside the estate that touches one.'
-    include auth, storefront, payments, shop, delivery, client, risk_v1, stripe
+    description 'Every architecture group, and everything outside the estate that touches one.'
+    include auth, storefront, payments, shop, delivery, portolan, client, risk_v1, stripe
   }
 
   view ctx_auth of auth {
@@ -95,6 +95,18 @@ views {
   }
   view svc_delivery_core_inside of delivery.core {
     title 'Delivery Core — inside'
+    include *
+  }
+  view ctx_portolan of portolan {
+    title 'Portolan'
+    include *
+  }
+  view svc_portolan_portolan of portolan.portolan {
+    title 'Portolan — neighbours'
+    include *, -> *, * ->
+  }
+  view svc_portolan_portolan_inside of portolan.portolan {
+    title 'Portolan — inside'
     include *
   }
 

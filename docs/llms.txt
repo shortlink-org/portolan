@@ -1,8 +1,8 @@
 # Example estate
 
-> Architecture catalog of Example estate: 5 bounded contexts, 8 services, 12 aggregates, 7 stores, 7 schema modules, 1 system outside the estate, 55 flows and 37 decision records, read from the code, the specs and the traces of the estate.
+> Architecture catalog of Example estate: 6 bounded contexts, 9 services, 12 aggregates, 7 stores, 7 schema modules, 1 system outside the estate, 55 flows and 41 decision records, read from the code, the specs and the traces of the estate.
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `9 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
 
 Every link below is a markdown page beside this file. [llms-full.txt](llms-full.txt) is all of those pages in one file, in the order the site lists them.
 
@@ -11,6 +11,7 @@ Every link below is a markdown page beside this file. [llms-full.txt](llms-full.
 - [Authentication](auth/README.md): generic. Who someone is, and whether they are still logged in. The only service in the estate that stores credentials, and the only one allowed to mint or revoke a session
 - [Delivery](delivery/README.md): supporting. Parcels, vans and the day they are driven. Told what to carry and asked where it got to; it decides neither
 - [Payments](payments/README.md): supporting. Money, and the record of every movement of it. Nothing here decides whether to charge - it is asked, and it writes down what happened either way
+- [Portolan](portolan/README.md): The tool that reads this estate: a browser for an architecture catalog, read out of the code and specs that already describe it. Nothing in the shop calls it and it calls nothing; it is here because a catalog that cannot describe its own reader is a catalog with a hole in it
 - [Shop](shop/README.md): core. What a customer is buying, what it costs and what they owe for it: the basket while it is still changing, the price it was promised at, the order it became, and the invoice for it. It moves no money and delivers nothing
 - [Storefront](storefront/README.md): supporting. One graph in front of the estate, for one kind of client. It owns nothing: everything it answers with it asked somebody else for a moment earlier, and translated into the words a shopper's screen uses
 
@@ -19,6 +20,7 @@ Every link below is a markdown page beside this file. [llms-full.txt](llms-full.
 - [Glossary of Authentication](auth/glossary.md): 27 terms. Attempt, Authenticate, Bus, Conflict, Credential, Email address, Expiry, Locked, Lockout, Login, Logout, Outbox, Password hash, Password policy, Policy, Reason, Refusal, Register, Revoke, Risk, Session, Threshold, Token, User, Validate, Verdict, Version
 - [Glossary of Delivery](delivery/glossary.md): 13 terms. Address, Awaiting payment, Dispatch, Order, Package, Parcel, Released, Route, Scan, Shipment, Stop, Tracking code, Window
 - [Glossary of Payments](payments/glossary.md): 12 terms. Attempt, Capture, Decline, Gateway, Hold, Journal, Money, Order, Payment, Posting, Refund, Void
+- [Glossary of Portolan](portolan/glossary.md): 44 terms. ADR, Aggregate, Answer, Catalog, Chain, Component, Context, Declared, Estate, Event, External, Extractor, Fetcher, Flow, Fragment, Generator, Group, Hop, Host, Lifecycle, Manifest, Module, Owner, Participant, Peer, Phase, Pin, Plugin, Problem, Project, Repository pin, Service, Source, Stamp, Status, Step, Store, Term, Trail, Unknown, Unresolved, Verified, Verifier, Wire format
 - [Glossary of Shop](shop/glossary.md): 11 terms. Basket, Bus, Cancelled, Confirmed, Line, Money, Order, Outbox, Payments, Placed, Relay
 - [Glossary of Storefront](storefront/glossary.md): 13 terms. Adapter, Basket, Checkout, Line, Money, Order, Order move, Order state, Peer, Port, Shipment, Storefront, Viewer
 
@@ -27,6 +29,7 @@ Every link below is a markdown page beside this file. [llms-full.txt](llms-full.
 - [Authentication & Sessions](auth/auth/README.md): in Authentication. Aggregates: Lockout, Session, User
 - [Delivery Core](delivery/core/README.md): in Delivery. Aggregates: Route, Shipment
 - [Ledger](payments/ledger/README.md): in Payments. Aggregates: Payment, Refund
+- [Portolan](portolan/portolan/README.md): in Portolan
 - [Billing](shop/billing/README.md): in Shop. Aggregates: Invoice
 - [Shopping Cart](shop/cart/README.md): in Shop. Aggregates: Basket
 - [Order Management](shop/oms/README.md): in Shop. Aggregates: Order
@@ -144,6 +147,10 @@ Every link below is a markdown page beside this file. [llms-full.txt](llms-full.
 - [org.0002](adr/org.0002.md): Domain event schema version is encoded in the package path (events/v1) (accepted, 2025-05-02)
 - [org.0003](adr/org.0003.md): Ownership is read from CODEOWNERS, never typed and never resolved (accepted, 2026-09-05)
 - [payments.0004](adr/payments.0004.md): Journal entries are idempotent by (order_id, attempt) (proposed, 2026-02-09)
+- [portolan.0001](adr/portolan.0001.md): A plugin names files and never writes them (accepted, 2026-09-02)
+- [portolan.0002](adr/portolan.0002.md): The host stamps a fragment from its input's last commit (accepted, 2026-09-02)
+- [portolan.0003](adr/portolan.0003.md): The Go catalog is a mirror held by a round-trip test (accepted, 2026-09-02)
+- [portolan.0004](adr/portolan.0004.md): `contexts` and `services` stay the wire format (accepted, 2026-09-06)
 
 ## Optional
 

@@ -50,10 +50,18 @@
       "root": "examples/shop/oms",
       "context": "shop",
       "service": "oms"
+    },
+    {
+      "id": "portolan",
+      "name": "Portolan",
+      "root": ".",
+      "context": "portolan",
+      "service": "portolan"
     }
   ],
   "sources": [
     "data/*.json",
+    "portolan/*.json",
     "examples/*/portolan/*.json",
     "examples/*/*/portolan/*.json",
     "examples/*/*/*/portolan/*.json",
@@ -243,6 +251,40 @@
           "*.md"
         ],
         "out": "adr.json"
+      }
+    },
+    {
+      "plugin": "project",
+      "in": ".",
+      "out": "portolan",
+      "options": {
+        "group": "portolan",
+        "groupName": "Portolan",
+        "groupSummary": "The tool that reads this estate: a browser for an architecture catalog, read out of the code and specs that already describe it. Nothing in the shop calls it and it calls nothing; it is here because a catalog that cannot describe its own reader is a catalog with a hole in it.",
+        "component": "portolan",
+        "componentName": "Portolan",
+        "componentKind": "webapp",
+        "repo": "github.com/shortlink-org/portolan",
+        "out": "project.json"
+      }
+    },
+    {
+      "plugin": "adr",
+      "in": "adr",
+      "out": "portolan",
+      "options": {
+        "files": ["*.md"],
+        "scope": "portolan",
+        "out": "adr.json"
+      }
+    },
+    {
+      "plugin": "glossary",
+      "in": ".",
+      "out": "portolan",
+      "options": {
+        "context": "portolan",
+        "out": "glossary.json"
       }
     },
     {

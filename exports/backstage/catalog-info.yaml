@@ -1242,6 +1242,36 @@ spec:
 apiVersion: backstage.io/v1alpha1
 kind: System
 metadata:
+    name: portolan
+    title: Portolan
+    description: 'The tool that reads this estate: a browser for an architecture catalog, read out of the code and specs that already describe it. Nothing in the shop calls it and it calls nothing; it is here because a catalog that cannot describe its own reader is a catalog with a hole in it.'
+    annotations:
+        portolan.io/id: portolan
+spec:
+    domain: example-estate
+    owner: architecture
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+    name: portolan-portolan
+    title: Portolan
+    description: portolan
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/.
+        portolan.io/id: portolan.portolan
+    tags:
+        - go
+        - node-js
+spec:
+    lifecycle: production
+    owner: shortlink-org/platform
+    system: portolan
+    type: website
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
     name: shop
     title: Shop
     description: 'What a customer is buying, what it costs and what they owe for it: the basket while it is still changing, the price it was promised at, the order it became, and the invoice for it. It moves no money and delivers nothing.'
