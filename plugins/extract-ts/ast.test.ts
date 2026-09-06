@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { children, firstTokenOf, isClassDecl, isExportNamed, isMethod, isVarDecl, jsdoc, lineOf, parse, paramIdent, stringOf, templateShape, text, typeText, unwrap, walk } from "./ast.ts";
+import { children, docBlock, firstTokenOf, flattenLinks, isClassDecl, isExportNamed, isMethod, isVarDecl, jsdoc, lineOf, parse, paramIdent, parseDoc, stringOf, templateShape, text, typeText, unwrap, walk } from "./ast.ts";
 import type { CallExpression, ClassDeclaration, Literal, TemplateLiteral } from "./ast.ts";
 
 const SRC = `import { inject } from "inversify";
@@ -79,5 +79,51 @@ describe("the adapter", () => {
     expect(route).toBe("/v1/users/${x}/orders");
     const lit: Literal = { type: "Literal", value: "a", start: 0, end: 3 };
     expect(stringOf(lit)).toBe("a");
+  });
+});
+
+describe("the doc comment", () => {
+  const p = parse("x.ts", SRC);
+  const decl = p.program.body[1]!;
+  const cls = (isExportNamed(decl) ? decl.declaration : decl) as ClassDeclaration;
+
+  it("keeps the deprecation beside the prose it was cut from", () => {
+    const block = docBlock(p, cls, firstTokenOf(cls, decl));
+    expect(block.text).toBe("Class doc.\n\nSecond paragraph.");
+    expect(block.deprecated).toBe("not really");
+    expect(block.examples).toEqual([]);
+    // Nothing above the class itself but the decorator: no block, and no tags.
+    expect(docBlock(p, cls)).toEqual({ text: "", examples: [] });
+  });
+
+  it("folds @remarks into the text, keeps each @example whole, and drops the tags a type checker reads", () => {
+    const block = parseDoc(`
+ * One line.
+ *
+ * @param id which one
+ * @remarks
+ * The long form, which TSDoc puts here.
+ *
+ * With a second paragraph.
+ * @example
+ * const b = Basket.create(id);
+ * b.addItem("sku", 1);
+ * @returns nothing
+ * @example \`\`\`ts
+ * fenced();
+ * \`\`\`
+ * @deprecated
+ `);
+    expect(block.text).toBe("One line.\n\nThe long form, which TSDoc puts here.\n\nWith a second paragraph.");
+    expect(block.examples).toEqual(['const b = Basket.create(id);\nb.addItem("sku", 1);', "```ts\nfenced();\n```"]);
+    // A bare tag is still the tag: "" says deprecated, undefined says nothing.
+    expect(block.deprecated).toBe("");
+    expect(parseDoc(" * Plain.").deprecated).toBeUndefined();
+  });
+
+  it("flattens {@link} to what it names or to its label", () => {
+    expect(flattenLinks("A {@link Basket} holds a {@link BasketItem|line} and a {@link Money money value}.")).toBe("A Basket holds a line and a money value.");
+    expect(flattenLinks("See [the docs]{@link https://example.com/x} and {@linkcode Basket.create}.")).toBe("See the docs and Basket.create.");
+    expect(parseDoc(" * @deprecated use {@link Basket.lines} instead").deprecated).toBe("use Basket.lines instead");
   });
 });

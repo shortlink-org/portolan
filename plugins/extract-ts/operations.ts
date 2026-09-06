@@ -52,7 +52,7 @@ export function readUseCases(applicationDir: string, rel: (abs: string) => strin
 
 /** The use case as an operation of its aggregate. `exposedBy` is filled by the transport reader. */
 export function operationOf(uc: UseCase): Operation {
-  return { id: camel(uc.name), kind: isCommand(uc) ? "command" : "query", doc: docOf(uc) };
+  return { id: camel(uc.name), kind: isCommand(uc) ? "command" : "query", doc: docOf(uc), ...(uc.cls.deprecated === undefined ? {} : { deprecated: true }) };
 }
 
 /** README.md's first paragraph after the title, or the JSDoc above the class. */

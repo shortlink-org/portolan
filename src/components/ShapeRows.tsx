@@ -14,7 +14,14 @@ export function ShapeRows({ fields }: { fields: Field[] }) {
       <tbody>
         {fields.map((field) => (
           <tr key={field.name} className="align-top">
-            <td className="mono py-0.5 pr-3 whitespace-nowrap">{field.name}</td>
+            {/* Struck through rather than chipped: an aside has no room for a
+                badge, and the doc beside it says why. */}
+            <td
+              className={`mono py-0.5 pr-3 whitespace-nowrap${field.deprecated ? " line-through" : ""}`}
+              title={field.deprecated ? "deprecated" : undefined}
+            >
+              {field.name}
+            </td>
             {/* An arrow marks a type that is a shared definition rather than a
                 primitive, so a reader can tell which names are worth following
                 without the row becoming a link it is not. */}

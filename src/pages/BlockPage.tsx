@@ -43,7 +43,14 @@ const SHAPE_COLUMNS: ColumnSpec<Field>[] = [
     primary: true,
     // Plain, not an <Ident>: the name is a field of this block, not an id
     // anything else refers to. The type beside it is the copyable one.
-    cell: (field) => <span className="mono">{field.name}</span>,
+    cell: (field) => (
+      <span
+        className={field.deprecated ? "mono line-through" : "mono"}
+        title={field.deprecated ? "deprecated" : undefined}
+      >
+        {field.name}
+      </span>
+    ),
   },
   {
     id: "type",
@@ -147,6 +154,11 @@ export function BlockPage({ kind }: { kind: BlockKind }) {
               <span className="chip status-verified" title="aggregate root">
                 <span aria-hidden className="dot" />
                 root
+              </span>
+            ) : null}
+            {block.deprecated ? (
+              <span className="chip" title="marked @deprecated in the source">
+                deprecated
               </span>
             ) : null}
             <Link

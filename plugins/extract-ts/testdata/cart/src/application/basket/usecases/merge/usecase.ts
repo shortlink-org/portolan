@@ -11,7 +11,10 @@ export interface Input {
   fromToken: string;
 }
 
-/** Folds a visitor's basket into the customer's own, making one if there is none. */
+/**
+ * Folds a visitor's basket into the customer's own, making one if there is none.
+ * @deprecated sessions are merged at sign-in now
+ */
 @injectable()
 export class UseCase {
   constructor(

@@ -9,6 +9,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import {
   parse,
+  docBlock,
   jsdoc as docOf,
   firstTokenOf,
   isArray,
@@ -30,12 +31,20 @@ import {
   text as textOf,
   typeText,
 } from "./ast.ts";
-import type { BlockStatement, ClassDeclaration, FunctionNode, InterfaceDeclaration, MethodDefinition, Node, Parsed } from "./ast.ts";
+import type { BlockStatement, ClassDeclaration, DocBlock, FunctionNode, InterfaceDeclaration, MethodDefinition, Node, Parsed } from "./ast.ts";
 
-export interface Field {
+/** What a doc comment says about the thing it sits on, beyond its prose. */
+export interface Documented {
+  doc: string;
+  /** The `@deprecated` reason, "" for a bare tag, absent when not deprecated. */
+  deprecated?: string;
+  /** The `@example` bodies, when the comment had any. */
+  examples?: string[];
+}
+
+export interface Field extends Documented {
   name: string;
   type: string;
-  doc: string;
 }
 
 export interface Method {
@@ -50,10 +59,9 @@ export interface Method {
   isStatic: boolean;
 }
 
-export interface ClassInfo {
+export interface ClassInfo extends Documented {
   name: string;
   node: ClassDeclaration;
-  doc: string;
   exported: boolean;
   fields: Field[];
   /** Constructor parameters, in order: what a use case holds as ports. */
@@ -138,11 +146,31 @@ export function jsdoc(src: Source, node: Node, exportNode?: Node): string {
   return docOf(src.parsed, node, firstTokenOf(node, exportNode));
 }
 
+/** A parsed doc block as the optional fields a `Documented` carries: nothing is written down when the tag is absent. */
+function withTags(block: DocBlock): Documented {
+  const out: Documented = { doc: block.text };
+  if (block.deprecated !== undefined) out.deprecated = block.deprecated;
+  if (block.examples.length) out.examples = block.examples;
+  return out;
+}
+
+/**
+ * The prose with the deprecation written into it, for a catalog field that
+ * holds only a sentence: "Deprecated: use `total` instead." is what a reader
+ * wants next to a struck-through name, and the boolean beside it is what the
+ * page strikes it through by.
+ */
+export function docWithDeprecation(d: Documented): string {
+  if (d.deprecated === undefined) return d.doc;
+  const note = d.deprecated ? `Deprecated: ${d.deprecated.replace(/[.\s]+$/, "")}.` : "Deprecated.";
+  return d.doc ? `${d.doc}\n\n${note}` : note;
+}
+
 function classInfo(p: Parsed, node: ClassDeclaration, exportNode: Node | undefined): ClassInfo {
   const info: ClassInfo = {
     name: node.id!.name,
     node,
-    doc: docOf(p, node, firstTokenOf(node, exportNode)),
+    ...withTags(docBlock(p, node, firstTokenOf(node, exportNode))),
     exported: exportNode !== undefined,
     fields: [],
     params: [],
@@ -159,14 +187,14 @@ function classInfo(p: Parsed, node: ClassDeclaration, exportNode: Node | undefin
         continue;
       }
       if (member.static) continue;
-      info.fields.push({ name, type: typeText(p, member.typeAnnotation) || inferred(p, init), doc: docOf(p, member, firstTokenOf(member)) });
+      info.fields.push({ name, type: typeText(p, member.typeAnnotation) || inferred(p, init), ...withTags(docBlock(p, member, firstTokenOf(member))) });
     } else if (isMethod(member) && member.kind === "constructor") {
       for (const param of member.value.params) {
         const id = paramIdent(param);
         if (!id) continue;
         const type = typeText(p, id.typeAnnotation);
         info.params.push({ name: id.name, type });
-        if (isParamProperty(param)) info.fields.push({ name: id.name, type, doc: docOf(p, param, firstTokenOf(param)) });
+        if (isParamProperty(param)) info.fields.push({ name: id.name, type, ...withTags(docBlock(p, param, firstTokenOf(param))) });
       }
     } else if (isMethod(member) && !member.computed && member.kind === "method") {
       const name = keyName(member.key);

@@ -425,6 +425,8 @@ export interface Operation {
   id: string;
   kind: "command" | "query";
   doc?: string;
+  /** Still callable, but the source says not to: a JSDoc `@deprecated`. */
+  deprecated?: boolean;
   /**
    * The interface methods that expose this operation, by the name they carry
    * in `RpcService.methods` - an OpenAPI `operationId`, a proto method.
@@ -455,6 +457,8 @@ export interface Block {
   slug: string;
   name: string;
   doc: string;
+  /** The shape is on its way out, per a `@deprecated` on its class. */
+  deprecated?: boolean;
   ref?: string; // key into catalog.defs
   fields?: Field[]; // inline shape, used when there is no ref
 }
@@ -541,6 +545,8 @@ export interface EventConsumer {
 export interface EventVersion {
   version: string;
   doc: string;
+  /** This version is superseded, per a `@deprecated` on the class that carries it. */
+  deprecated?: boolean;
   source: string;
   fields: Field[];
 }
@@ -548,6 +554,8 @@ export interface Field {
   name: string;
   type: string;
   doc: string;
+  /** Still on the wire, but not to be written or read anew: a `@deprecated` on the field. */
+  deprecated?: boolean;
   ref?: string;
 } // ref -> defs key
 export interface TypeDef {

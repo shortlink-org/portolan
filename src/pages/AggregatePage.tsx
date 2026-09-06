@@ -149,6 +149,11 @@ function BlockList({
               {block.name === rootName ? (
                 <span className="mono ml-2 text-muted">root</span>
               ) : null}
+              {block.deprecated ? (
+                <span className="chip ml-2" title="marked @deprecated in the source">
+                  deprecated
+                </span>
+              ) : null}
               <span className="meta block truncate" title={block.doc}>
                 {block.doc}
               </span>
@@ -204,7 +209,14 @@ function OperationList({
             <KindIcon kind={kind} />
           </span>
           <div className="min-w-0">
-            <Ident block value={op.id} />
+            <span className="flex flex-wrap items-center gap-x-2">
+              <Ident block value={op.id} className={op.deprecated ? "line-through" : undefined} />
+              {op.deprecated ? (
+                <span className="chip" title="marked @deprecated in the source">
+                  deprecated
+                </span>
+              ) : null}
+            </span>
             {op.doc ? <p className="mt-0.5 text-muted">{op.doc}</p> : null}
             {op.exposedBy?.length ? (
               <p className="mono mt-1 flex flex-wrap items-center gap-x-2 text-muted">

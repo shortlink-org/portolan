@@ -67,7 +67,12 @@ function schemaColumns(
             {field.name}
           </button>
         ) : (
-          <span className="mono pl-4">{field.name}</span>
+          <span
+            className={field.deprecated ? "mono pl-4 line-through" : "mono pl-4"}
+            title={field.deprecated ? "deprecated" : undefined}
+          >
+            {field.name}
+          </span>
         ),
     },
     {
@@ -244,6 +249,11 @@ export function EventPage() {
         pin={{ kind: "event", id: event.id }}
         right={
           <span className="mono flex items-center gap-1.5 text-muted">
+            {selected.deprecated ? (
+              <span className="chip" title="this version is marked @deprecated in the source">
+                deprecated
+              </span>
+            ) : null}
             version
             <Select
               value={selected.version}

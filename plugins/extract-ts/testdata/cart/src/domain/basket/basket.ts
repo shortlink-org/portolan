@@ -6,7 +6,16 @@ import { Money } from "./vo/money.ts";
 import { BasketItem } from "./item.ts";
 import { canMove, type BasketStatus } from "./status.ts";
 
-/** A visitor's or a customer's lines, under one lock. */
+/**
+ * A visitor's or a customer's lines, under one lock.
+ *
+ * @remarks
+ * Each line is a {@link BasketItem}; the price on it is a {@link Money | money value}.
+ * @example
+ * const [basket] = Basket.create(id, token);
+ * basket.addItem("sku-1", 2, new Money(500, "EUR"));
+ * @see {@link BasketCheckedOut}
+ */
 export class Basket {
   readonly items: BasketItem[] = [];
   status: BasketStatus = "open";

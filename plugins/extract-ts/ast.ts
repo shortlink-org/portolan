@@ -269,28 +269,93 @@ export function lineOf(p: Parsed, offset: number): number {
 }
 
 /**
- * The `/** … *\/` comment that sits right above a node, cleaned the way a
- * reader would read it: the frame and the leading stars gone, and cut off at
- * the first tag, since `@param` is for a tool and the text above it is the
- * doc. `from` is where the node's first token is when something precedes the
- * node itself - a decorator, `export` - and the comment sits above that.
+ * A `/** … *\/` comment read the way JSDoc says to: the prose above the first
+ * tag, then the block tags. Only the tags that say something about the thing
+ * itself are kept - a `@param` or a `@returns` is for a type checker, and the
+ * layout already says what a `@fires` would.
  */
-export function jsdoc(p: Parsed, node: Node, from = node.start): string {
+export interface DocBlock {
+  /**
+   * The prose, with `@remarks` folded in as the paragraphs after it, because
+   * TSDoc puts the long description there and a reader wants it in the same
+   * place. An inline `{@link X}` is flattened to what it names, or to its
+   * label when it has one.
+   */
+  text: string;
+  /** Each `@example`, as written, without its frame. */
+  examples: string[];
+  /**
+   * What followed `@deprecated`, "" when nothing did, and undefined when the
+   * tag is absent - so the reason is kept without a second field to say
+   * whether there was a tag at all.
+   */
+  deprecated?: string;
+}
+
+const EMPTY_DOC: DocBlock = { text: "", examples: [] };
+
+/**
+ * The doc comment that sits right above a node, cleaned the way a reader would
+ * read it: the frame and the leading stars gone, and split at the tags. `from`
+ * is where the node's first token is when something precedes the node itself -
+ * a decorator, `export` - and the comment sits above that.
+ */
+export function docBlock(p: Parsed, node: Node, from = node.start): DocBlock {
   let found: Comment | undefined;
   for (const c of p.comments) {
     if (c.end > from) break;
     if (c.type !== "Block" || !c.value.startsWith("*")) continue;
     if (p.text.slice(c.end, from).trim() === "") found = c;
   }
-  if (!found) return "";
-  const body = found.value.slice(1);
+  if (!found) return EMPTY_DOC;
+  return parseDoc(found.value.slice(1));
+}
+
+/** The prose of the doc comment above a node: `docBlock(...).text`. */
+export function jsdoc(p: Parsed, node: Node, from = node.start): string {
+  return docBlock(p, node, from).text;
+}
+
+/**
+ * Splits a cleaned comment body into the text above the first tag and one
+ * section per block tag. A tag opens at a line starting with `@name` and runs
+ * to the next such line; inline `{@link}` never starts a line, so it stays
+ * inside whichever section it sits in.
+ */
+export function parseDoc(body: string): DocBlock {
   const lines = body.split("\n").map((l) => l.replace(/^\s*\*? ?/, ""));
-  const out: string[] = [];
+  const sections: { tag: string; lines: string[] }[] = [{ tag: "", lines: [] }];
   for (const line of lines) {
-    if (/^\s*@\w/.test(line)) break;
-    out.push(line);
+    const m = /^\s*@(\w+)(?:\s+(.*))?$/.exec(line);
+    if (m) sections.push({ tag: m[1]!.toLowerCase(), lines: m[2] !== undefined ? [m[2]] : [] });
+    else sections[sections.length - 1]!.lines.push(line);
   }
-  return out.join("\n").trim();
+  const prose = [sections[0]!.lines.join("\n").trim()];
+  const examples: string[] = [];
+  let deprecated: string | undefined;
+  for (const s of sections.slice(1)) {
+    const text = s.lines.join("\n").trim();
+    if (s.tag === "remarks" && text) prose.push(text);
+    else if (s.tag === "example" && text) examples.push(text);
+    else if (s.tag === "deprecated") deprecated = flattenLinks(text.replace(/\s+/g, " "));
+  }
+  const out: DocBlock = { text: flattenLinks(prose.filter(Boolean).join("\n\n")), examples };
+  if (deprecated !== undefined) out.deprecated = deprecated;
+  return out;
+}
+
+/**
+ * `{@link X}` → `X`, `{@link X|label}` and `{@link X label}` → `label`,
+ * `[label]{@link X}` → `label`; `@linkcode` and `@linkplain` the same. The
+ * catalog has no way to say "this name is that page" from inside prose, so
+ * the name is kept as words rather than dropped or left as a tag nobody
+ * renders.
+ */
+export function flattenLinks(text: string): string {
+  return text
+    .replace(/\[([^\]]+)\]\{@link(?:code|plain)?\s+[^}]+\}/g, "$1")
+    .replace(/\{@link(?:code|plain)?\s+([^}\s|]+)(?:\s*\|\s*|\s+)([^}]+)\}/g, (_, _target, label: string) => label.trim())
+    .replace(/\{@link(?:code|plain)?\s+([^}]+)\}/g, (_, target: string) => target.trim());
 }
 
 /** Where a declaration's first token is: its decorator, its `export`, or itself. */

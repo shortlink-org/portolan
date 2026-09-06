@@ -35,14 +35,14 @@
               "id": "shop.cart.basket",
               "slug": "basket",
               "name": "Basket",
-              "readme": "A visitor's or a customer's lines, under one lock.",
+              "readme": "A visitor's or a customer's lines, under one lock.\n\nEach line is a BasketItem; the price on it is a money value.\n\n```ts\nconst [basket] = Basket.create(id, token);\nbasket.addItem(\"sku-1\", 2, new Money(500, \"EUR\"));\n```",
               "root": "Basket",
               "entities": [
                 {
                   "id": "shop.cart.basket.basket",
                   "slug": "basket",
                   "name": "Basket",
-                  "doc": "A visitor's or a customer's lines, under one lock.",
+                  "doc": "A visitor's or a customer's lines, under one lock.\n\nEach line is a BasketItem; the price on it is a money value.",
                   "fields": [
                     {
                       "name": "items",
@@ -82,6 +82,12 @@
                   "name": "BasketItem",
                   "doc": "One line of the basket.",
                   "fields": [
+                    {
+                      "name": "priceMinor",
+                      "type": "number",
+                      "doc": "The unit price in minor units, from before Money carried the currency.\n\nDeprecated: read `unitPrice` instead.",
+                      "deprecated": true
+                    },
                     {
                       "name": "sku",
                       "type": "string",
@@ -149,6 +155,7 @@
                   "id": "Merge",
                   "kind": "command",
                   "doc": "Folds a visitor's basket into the customer's own, making one if there is none.",
+                  "deprecated": true,
                   "exposedBy": [
                     "mergeBaskets"
                   ]
@@ -162,7 +169,8 @@
                   "versions": [
                     {
                       "version": "v1",
-                      "doc": "Nobody touched the basket for long enough that it is no longer anybody's.",
+                      "doc": "Nobody touched the basket for long enough that it is no longer anybody's.\n\nDeprecated: expiry is a policy now; nothing listens for this.",
+                      "deprecated": true,
                       "source": "plugins/extract-ts/testdata/cart/src/domain/basket/events/basket-abandoned.ts",
                       "fields": [
                         {
@@ -293,14 +301,14 @@
                     "from": "open",
                     "to": "checked-out",
                     "on": "checkout",
-                    "source": "plugins/extract-ts/testdata/cart/src/domain/basket/basket.ts:34",
+                    "source": "plugins/extract-ts/testdata/cart/src/domain/basket/basket.ts:43",
                     "emits": "shop.cart.basket.BasketCheckedOut"
                   },
                   {
                     "from": "open",
                     "to": "abandoned",
                     "on": "abandon",
-                    "source": "plugins/extract-ts/testdata/cart/src/domain/basket/basket.ts:39",
+                    "source": "plugins/extract-ts/testdata/cart/src/domain/basket/basket.ts:48",
                     "emits": "shop.cart.basket.BasketAbandoned"
                   }
                 ]
@@ -620,7 +628,7 @@
           "label": "validateSession",
           "status": "declared",
           "ref": "auth.v1.Sessions/validateSession",
-          "line": "plugins/extract-ts/testdata/cart/src/application/basket/usecases/merge/usecase.ts:24"
+          "line": "plugins/extract-ts/testdata/cart/src/application/basket/usecases/merge/usecase.ts:27"
         },
         {
           "type": "step",
@@ -630,7 +638,7 @@
           "kind": "call",
           "label": "openFor",
           "status": "declared",
-          "line": "plugins/extract-ts/testdata/cart/src/application/basket/usecases/merge/usecase.ts:30"
+          "line": "plugins/extract-ts/testdata/cart/src/application/basket/usecases/merge/usecase.ts:33"
         },
         {
           "type": "step",
@@ -640,7 +648,7 @@
           "kind": "call",
           "label": "save",
           "status": "declared",
-          "line": "plugins/extract-ts/testdata/cart/src/application/basket/usecases/merge/usecase.ts:39"
+          "line": "plugins/extract-ts/testdata/cart/src/application/basket/usecases/merge/usecase.ts:42"
         },
         {
           "type": "step",
@@ -651,7 +659,7 @@
           "label": "BasketCreated",
           "status": "declared",
           "ref": "shop.cart.basket.BasketCreated",
-          "line": "plugins/extract-ts/testdata/cart/src/application/basket/usecases/merge/usecase.ts:39"
+          "line": "plugins/extract-ts/testdata/cart/src/application/basket/usecases/merge/usecase.ts:42"
         },
         {
           "type": "step",
@@ -662,7 +670,7 @@
           "label": "BasketItemAdded",
           "status": "declared",
           "ref": "shop.cart.basket.BasketItemAdded",
-          "line": "plugins/extract-ts/testdata/cart/src/application/basket/usecases/merge/usecase.ts:39"
+          "line": "plugins/extract-ts/testdata/cart/src/application/basket/usecases/merge/usecase.ts:42"
         },
         {
           "type": "step",
@@ -672,7 +680,7 @@
           "kind": "call",
           "label": "save",
           "status": "declared",
-          "line": "plugins/extract-ts/testdata/cart/src/application/basket/usecases/merge/usecase.ts:40"
+          "line": "plugins/extract-ts/testdata/cart/src/application/basket/usecases/merge/usecase.ts:43"
         }
       ]
     },

@@ -7,7 +7,7 @@ import type { Aggregate, Block, Event, Field as CatalogField } from "../../src/c
 import { aggregateID, blockID, eventID, pascal, slug, title } from "./ids.ts";
 import { isExportNamed, isIdent, isString, isVarDecl } from "./ast.ts";
 import { readLifecycle } from "./lifecycle.ts";
-import { readSource, type ClassInfo, type Source } from "./source.ts";
+import { docWithDeprecation, readSource, type ClassInfo, type Documented, type Source } from "./source.ts";
 
 export interface WarningSink {
   warn(ref: string, message: string): void;
@@ -50,7 +50,6 @@ function readAggregate(dir: string, name: string, svcID: string, rel: (abs: stri
   const entities: Block[] = [];
   let root: ClassInfo | undefined;
   let rootFile = "";
-  let rootDoc = "";
 
   for (const file of tsFiles(dir)) {
     const src = readSource(file);
@@ -61,7 +60,6 @@ function readAggregate(dir: string, name: string, svcID: string, rel: (abs: stri
       if (c.name === rootName) {
         root = c;
         rootFile = file;
-        rootDoc = c.doc;
       }
       entities.push(block(id, c));
     }
@@ -96,7 +94,7 @@ function readAggregate(dir: string, name: string, svcID: string, rel: (abs: stri
         id: evID,
         slug: slug(c.name),
         name: c.name,
-        versions: [{ version: "v1", doc: c.doc.trim(), source: rel(file), fields: fields(c) }],
+        versions: [{ version: "v1", doc: docWithDeprecation(c), ...deprecated(c), source: rel(file), fields: fields(c) }],
         consumers: [],
         wire: { name: c.nameLiteral, ...(channel ? { channel } : {}) },
       });
@@ -104,7 +102,8 @@ function readAggregate(dir: string, name: string, svcID: string, rel: (abs: stri
   }
 
   const readmePath = join(dir, "README.md");
-  const readme = existsSync(readmePath) ? readFileSync(readmePath, "utf8").trim() : rootDoc;
+  // README.md when the author wrote one; else the root class own doc, examples and all.
+  const readme = existsSync(readmePath) ? readFileSync(readmePath, "utf8").trim() : readmeOf(root);
   const lifecycle = readLifecycle(dir, root, rootFile, eventIds, id, rel, b);
 
   return {
@@ -147,11 +146,27 @@ function channelOf(domainDir: string, aggregate: string): string {
 }
 
 function block(aggregate: string, c: ClassInfo): Block {
-  return { id: blockID(aggregate, slug(c.name)), slug: slug(c.name), name: c.name, doc: c.doc, fields: fields(c) };
+  return { id: blockID(aggregate, slug(c.name)), slug: slug(c.name), name: c.name, doc: docWithDeprecation(c), ...deprecated(c), fields: fields(c) };
 }
 
 function fields(c: ClassInfo): CatalogField[] {
-  return c.fields.map((f) => ({ name: f.name, type: f.type, doc: f.doc }));
+  return c.fields.map((f) => ({ name: f.name, type: f.type, doc: docWithDeprecation(f), ...deprecated(f) }));
+}
+
+/** The flag, only when the tag was there: an absent key is what an older fragment looks like too. */
+function deprecated(d: Documented): { deprecated?: true } {
+  return d.deprecated === undefined ? {} : { deprecated: true };
+}
+
+/**
+ * The root's doc comment as the aggregate's page, when there is no README:
+ * the prose, then each `@example` as a fenced block, since an example in a
+ * comment is code and the page renders markdown.
+ */
+function readmeOf(root: ClassInfo): string {
+  const parts = [docWithDeprecation(root)];
+  for (const example of root.examples ?? []) parts.push(example.startsWith("```") ? example : `\`\`\`ts\n${example}\n\`\`\``);
+  return parts.filter(Boolean).join("\n\n");
 }
 
 export { basename as _basename, type Source as _Source };

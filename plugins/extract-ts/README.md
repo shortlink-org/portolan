@@ -86,6 +86,26 @@ An adapter over the bus is the one port call that draws no step. It calls
 nobody - it waits - and what it hears is said by the channel the service
 declares in its AsyncAPI document, not by a step in a flow.
 
+## What a doc comment says
+
+The `/** … */` above a class, a field or a constructor parameter property is
+its doc, read the way [JSDoc](https://jsdoc.app/) and TSDoc say to: the prose
+above the first tag, then the tags. Most tags are for a type checker or a site
+generator and are dropped - `@param`, `@returns`, `@see`, `@fires` - because
+the layout and the signature already say what they would, and a tag that
+restates the code is one more place for it to go stale. Three are kept:
+
+| tag | becomes |
+| --- | --- |
+| `@remarks` | the paragraphs after the summary, in the same doc: TSDoc's long description is still the description |
+| `@example` | a fenced block in the aggregate's readme when the root has no `README.md`; elsewhere an example is code where a sentence should be, and is left out |
+| `@deprecated` | `deprecated: true` on the entity, value object, field, event version or operation, which the page strikes through and badges; the reason, when one follows the tag, is appended to the doc as "Deprecated: …" - except for an operation, whose doc stays the one paragraph its README or summary gives |
+
+An inline `{@link X}` is flattened to `X`, or to its label when it has one
+(`{@link X|label}`, `[label]{@link X}`): the catalog has no way to say from
+inside a sentence that a name is a page, so the name is kept as a word rather
+than left as a tag nobody renders.
+
 ## What becomes what
 
 **Aggregate.** Every directory under `src/domain/` whose name has a root class
@@ -95,7 +115,8 @@ fields are the class's property declarations and constructor parameter
 properties, `readonly id: string` and `constructor(readonly id: string)` alike,
 with the type as written. Other classes exported from the directory's top-level
 files are entities; classes in `vo/` are value objects; `rules/` is skipped.
-The readme is `README.md` in the directory, or the JSDoc above the root.
+The readme is `README.md` in the directory, or the doc comment above the root,
+its `@example`s fenced as code.
 
 **Event.** Each class in `events/` with a `name` property initialised to a
 string literal - `readonly name = "cart.BasketCheckedOut"` or `static readonly

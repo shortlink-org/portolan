@@ -55,12 +55,22 @@ describe("the service", () => {
     const added = basket.events[3].versions[0];
     expect(added.fields.map((f: { name: string; type: string }) => `${f.name}:${f.type}`)).toEqual(["basketId:string", "sku:string", "quantity:number", "unitPrice:Money"]);
     expect(added.doc).not.toContain("Published on the bus");
+    // A tag says what the prose cannot: the flag, and the reason folded into the doc a reader sees.
+    const abandoned = basket.events[0].versions[0];
+    expect(abandoned.deprecated).toBe(true);
+    expect(abandoned.doc).toContain("Deprecated: expiry is a policy now");
+    expect(added.deprecated).toBeUndefined();
     expect(basket.events[3].wire).toEqual({ name: "cart.BasketItemAdded", channel: "shop.cart.basket" });
   });
 
   it("reads fields off properties and constructor parameter properties alike", () => {
     const root = svc.aggregates[0].entities[0];
     expect(root.fields.map((f: { name: string }) => f.name)).toEqual(["items", "status", "id", "token", "currency", "version"]);
+    // The root doc: the summary, then @remarks with its {@link}s flattened; the readme adds the @example as code.
+    expect(root.doc).toBe("A visitor's or a customer's lines, under one lock.\n\nEach line is a BasketItem; the price on it is a money value.");
+    expect(svc.aggregates[0].readme).toContain("```ts\nconst [basket] = Basket.create(id, token);");
+    const item = svc.aggregates[0].entities[1];
+    expect(item.fields.find((f: { name: string }) => f.name === "priceMinor")).toMatchObject({ deprecated: true, doc: expect.stringContaining("Deprecated: read `unitPrice` instead.") });
   });
 
   it("reads each use case as an operation, command or query by what it does to a port, exposed by its handler", () => {
@@ -72,6 +82,8 @@ describe("the service", () => {
       "Merge:command:mergeBaskets",
     ]);
     expect(ops[1].doc).toContain("Freezes the basket");
+    // `@deprecated` above the class is the flag; the README, when there is one, is still the doc.
+    expect(ops.map((o: { deprecated?: boolean }) => o.deprecated ?? false)).toEqual([false, false, false, true]);
   });
 
   it("follows a value through a helper, a loop, a list and a port declared elsewhere", () => {
