@@ -5,13 +5,16 @@
 // counts, the arrows and the states are the ones the pages show.
 
 import { Link } from "react-router";
-import { ArrowRight } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
+import type { ReactNode } from "react";
 import type { Aggregate, BoundedContext, Flow, Service } from "../catalog";
 import { Integrations } from "../components/Integrations";
 import { LifecycleDiagram } from "../components/LifecycleDiagram";
 import { Mermaid } from "../components/Mermaid";
+import { KindIcon } from "../components/kind";
 import { Empty } from "../components/PageHeader";
 import { ContextPill } from "../components/primitives";
+import type { Kind } from "../lib/kinds";
 import { catalog } from "../data";
 import { flowMermaid } from "../flow/mermaid";
 import { integrationsFor } from "../lib/integrations";
@@ -148,28 +151,67 @@ function Missing({ what }: { what: string }) {
   );
 }
 
-function Title({
+/**
+ * Every card starts the same way: the kind's icon, the name as a link, the
+ * id underneath, the context on the right, and one arrow out to the page.
+ */
+function CardHeader({
+  kind,
+  title,
+  id,
   to,
-  children,
+  context,
   onNavigate,
 }: {
+  kind: Kind;
+  title: string;
+  id: string;
   to: string;
-  children: React.ReactNode;
+  context?: BoundedContext;
   onNavigate: () => void;
 }) {
   return (
-    <Link
-      to={to}
-      onClick={onNavigate}
-      className="group flex items-center gap-1.5 font-semibold text-ink hover:text-accent"
-    >
-      {children}
-      <ArrowRight
-        size={14}
-        aria-hidden
-        className="opacity-0 transition-opacity group-hover:opacity-100"
+    <div className="flex items-start gap-2.5">
+      <KindIcon
+        kind={kind}
+        {...(context && kind === "context" ? { contextId: context.id } : {})}
+        size={16}
+        className="mt-1 shrink-0"
       />
-    </Link>
+      <div className="min-w-0 flex-1">
+        <Link
+          to={to}
+          onClick={onNavigate}
+          className="font-semibold text-ink hover:text-accent"
+        >
+          {title}
+        </Link>
+        <div className="mono truncate text-muted">{id}</div>
+      </div>
+      {context ? (
+        <Link to={paths.context(context.id)} onClick={onNavigate} className="shrink-0">
+          <ContextPill id={context.id} name={context.name} />
+        </Link>
+      ) : null}
+      <Link
+        to={to}
+        onClick={onNavigate}
+        aria-label={`Open ${title}`}
+        title="Open the page"
+        className="mt-0.5 shrink-0 text-muted transition-colors hover:text-accent"
+      >
+        <ArrowUpRight size={15} aria-hidden />
+      </Link>
+    </div>
+  );
+}
+
+/** A diagram in its own frame, scrolling sideways rather than widening the panel. */
+function Figure({ children }: { children: ReactNode }) {
+  return (
+    <div className="mt-3 overflow-x-auto rounded-control border border-line bg-canvas p-2">
+      {children}
+    </div>
   );
 }
 
@@ -191,15 +233,15 @@ function ServiceCard({ id, onNavigate }: { id: unknown; onNavigate: () => void }
   ];
   return (
     <div className={CARD}>
-      <div className="flex flex-wrap items-center gap-2">
-        <ContextPill id={context.id} name={context.name} />
-        <Title to={paths.service(context.id, service.slug)} onNavigate={onNavigate}>
-          {service.name}
-        </Title>
-        {service.kind ? <span className="chip border-line">{service.kind}</span> : null}
-      </div>
-      <div className="mono mt-1 text-muted">{service.id}</div>
-      <div className="mono mt-2 text-muted">{facts.join(" · ")}</div>
+      <CardHeader
+        kind="service"
+        title={service.name}
+        id={service.id}
+        to={paths.service(context.id, service.slug)}
+        context={context}
+        onNavigate={onNavigate}
+      />
+      <div className="mono mt-3 text-muted">{facts.join(" · ")}</div>
       {service.technologies?.length ? (
         <div className="mt-2 flex flex-wrap gap-1.5">
           {service.technologies.map((tech) => (
@@ -219,13 +261,17 @@ function FlowCard({ id, onNavigate }: { id: unknown; onNavigate: () => void }) {
   if (!flow) return <Missing what={String(id)} />;
   return (
     <div className={CARD}>
-      <Title to={paths.flow(flow.slug)} onNavigate={onNavigate}>
-        {flow.name}
-      </Title>
-      {flow.summary ? <p className="mt-1 text-muted">{flow.summary}</p> : null}
-      <div className="mt-2 overflow-x-auto">
+      <CardHeader
+        kind="flow"
+        title={flow.name}
+        id={flow.id}
+        to={paths.flow(flow.slug)}
+        onNavigate={onNavigate}
+      />
+      {flow.summary ? <p className="mt-2 text-muted">{flow.summary}</p> : null}
+      <Figure>
         <Mermaid code={flowMermaid(flow)} />
-      </div>
+      </Figure>
     </div>
   );
 }
@@ -259,14 +305,17 @@ function BetweenCard({
   const backward = callsBetween(right, left);
   return (
     <div className={CARD}>
-      <div className="flex flex-wrap items-center gap-2">
-        <Link to={paths.context(left.id)} onClick={onNavigate}>
-          <ContextPill id={left.id} name={left.name} />
-        </Link>
-        <span className="mono text-muted">and</span>
-        <Link to={paths.context(right.id)} onClick={onNavigate}>
-          <ContextPill id={right.id} name={right.name} />
-        </Link>
+      <div className="flex items-center gap-2.5">
+        <KindIcon kind="context" contextId={left.id} size={16} className="shrink-0" />
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+          <Link to={paths.context(left.id)} onClick={onNavigate}>
+            <ContextPill id={left.id} name={left.name} />
+          </Link>
+          <span className="mono text-muted">and</span>
+          <Link to={paths.context(right.id)} onClick={onNavigate}>
+            <ContextPill id={right.id} name={right.name} />
+          </Link>
+        </div>
       </div>
       {forward.length === 0 && backward.length === 0 ? (
         <div className="mt-2">
@@ -304,17 +353,16 @@ function LifecycleCard({
   const { context, service, aggregate } = found;
   return (
     <div className={CARD}>
-      <div className="flex flex-wrap items-center gap-2">
-        <ContextPill id={context.id} name={context.name} />
-        <Title
-          to={paths.aggregate(context.id, service.slug, aggregate.slug)}
-          onNavigate={onNavigate}
-        >
-          {aggregate.name}
-        </Title>
-      </div>
+      <CardHeader
+        kind="aggregate"
+        title={aggregate.name}
+        id={aggregate.id}
+        to={paths.aggregate(context.id, service.slug, aggregate.slug)}
+        context={context}
+        onNavigate={onNavigate}
+      />
       {aggregate.lifecycle ? (
-        <div className="mt-2 overflow-x-auto">
+        <Figure>
           <LifecycleDiagram
             aggregate={aggregate}
             eventPath={(eventId) => {
@@ -324,7 +372,7 @@ function LifecycleCard({
                 : null;
             }}
           />
-        </div>
+        </Figure>
       ) : (
         <div className="mt-2">
           <Empty>this aggregate has no lifecycle in the catalog</Empty>

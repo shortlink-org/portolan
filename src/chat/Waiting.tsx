@@ -58,6 +58,21 @@ export function Sprite({ className = "" }: { className?: string }) {
   );
 }
 
+/** The boat at rest: frame one, for the gutter beside an answer. */
+export function Boat({ size = 24, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox={`0 0 ${SIZE} ${SIZE}`}
+      className={`shrink-0 ${className}`}
+      aria-hidden
+    >
+      <Frame index={0} />
+    </svg>
+  );
+}
+
 /** The sprite and what it is waiting for. */
 export function Waiting({ label }: { label: string }) {
   return (
