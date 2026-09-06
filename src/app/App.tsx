@@ -53,6 +53,7 @@ import { ShortcutsSheet, useShortcuts } from "./shortcuts";
 import { Toaster } from "./toast";
 import { useUiStore } from "./ui-store";
 import { ForgeAccessProvider } from "./forge-access";
+import { MotionProvider } from "../lib/motion";
 import { useChatUi } from "../chat/store";
 
 // The chat is a chunk of its own, and a build with VITE_CHAT=off has no such
@@ -359,15 +360,17 @@ export function App() {
 
   return (
     <ThemeProvider>
-      <DensityProvider>
-        <ForgeAccessProvider>
-          <SearchProvider>
-            <BrowserRouter basename={import.meta.env.BASE_URL}>
-              <Shell />
-            </BrowserRouter>
-          </SearchProvider>
-        </ForgeAccessProvider>
-      </DensityProvider>
+      <MotionProvider>
+        <DensityProvider>
+          <ForgeAccessProvider>
+            <SearchProvider>
+              <BrowserRouter basename={import.meta.env.BASE_URL}>
+                <Shell />
+              </BrowserRouter>
+            </SearchProvider>
+          </ForgeAccessProvider>
+        </DensityProvider>
+      </MotionProvider>
     </ThemeProvider>
   );
 }
