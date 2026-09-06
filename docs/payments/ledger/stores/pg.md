@@ -1,6 +1,6 @@
 # Ledger database
 
-*Generated from the portolan catalog · commit `10 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `11 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
 
 - **Id:** `payments.ledger.pg`
 - **Kind:** postgres
@@ -95,4 +95,4 @@ SELECT p.id           AS payment_id,
  GROUP BY p.id;
 ```
 
-Source: [`src/main/java/org/portolan/payments/ledger/infrastructure/repository/refund/migrations/0002_payment_state.sql`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/repository/refund/migrations/0002_payment_state.sql)
+Source: [`src/main/java/org/portolan/payments/ledger/infrastructure/repository/refund/migrations/2002_payment_state.sql`](https://github.com/shortlink-org/portolan/blob/main/examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/repository/refund/migrations/2002_payment_state.sql)

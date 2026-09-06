@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-09-06T00:23:49+07:00",
-  "commit": "951a4b5",
+  "generatedAt": "2026-09-06T23:47:32+07:00",
+  "commit": "1c31afe",
   "contexts": [
     {
       "id": "payments",
@@ -303,7 +303,7 @@
             "payments.ledger.pg.refunds"
           ],
           "definition": "CREATE VIEW v_payment_state AS\nSELECT p.id           AS payment_id,\n       p.order_id     AS order_id,\n       p.status       AS status,\n       p.amount_minor AS amount_minor,\n       coalesce(sum(r.amount_minor), 0) AS refunded_minor\n  FROM payments p\n  LEFT JOIN refunds r ON r.payment_id = p.id AND r.status = 'ISSUED'\n GROUP BY p.id;",
-          "source": "src/main/java/org/portolan/payments/ledger/infrastructure/repository/refund/migrations/0002_payment_state.sql"
+          "source": "src/main/java/org/portolan/payments/ledger/infrastructure/repository/refund/migrations/2002_payment_state.sql"
         }
       ],
       "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/repository"

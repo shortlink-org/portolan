@@ -1,6 +1,6 @@
 # Pricing
 
-*Generated from the portolan catalog · commit `10 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `11 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
 
 - **Id:** `shop.pricing`
 - **Context:** [Shop](../README.md)
@@ -32,7 +32,15 @@ changed under the customer would not be a quote.
 
 ## Publishes
 
-`QuoteIssued`, `QuoteExpired`, on `shop.pricing.quote`.
+`QuoteIssued`, `QuoteExpired`, on `shop.pricing.quote`. Each is written to the
+outbox in the transaction that raised it, and the relay hands the row to the
+bus.
+
+## Listens
+
+`cart.BasketCheckedOut`, on `shop.cart.basket`: the quote the basket was priced
+with is expired straight away, because from checkout on the order holds the
+price.
 
 ## Provides
 
@@ -48,12 +56,14 @@ exception is written down in the module's `buf.yaml`.
 ## Running it
 
 ```bash
-docker compose up -d db
-make gen && go run ./cmd/pricing
+docker compose up -d db nats
+make gen && NATS_URL=nats://localhost:4222 go run ./cmd/pricing
 ```
 
 `make gen` regenerates the stubs from the contracts in this tree — one call per
-module, into the `gen` directory beside the code that uses it.
+module, into the `gen` directory beside the code that uses it. Without
+`NATS_URL` the service still runs: what it would have published goes to the
+log, and nothing arrives.
 
 ## Aggregates
 
@@ -226,6 +236,20 @@ module, into the `gen` directory beside the code that uses it.
 | --- | --- |
 | [`QuoteExpired`](aggregates/quote.md#event-shop-pricing-quote-quoteexpired) | v1 |
 | [`QuoteIssued`](aggregates/quote.md#event-shop-pricing-quote-quoteissued) | v1 |
+
+## Channels
+
+### shop.cart.basket
+
+**JetStream subject**
+
+Read through github.com/nats-io/nats.go. Subscribed by `NATS.Subscribe` over JetStream.
+
+Source: [`internal/di/app.go:67`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/di/app.go#L67)
+
+| Direction | Message | Title |
+| --- | --- | --- |
+| receive | [`cart.BasketCheckedOut`](../cart/aggregates/basket.md#event-shop-cart-basket-basketcheckedout) | cart.BasketCheckedOut |
 
 ## Schema modules
 

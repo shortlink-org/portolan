@@ -43,6 +43,7 @@
     "adr/portolan.0002.md",
     "adr/portolan.0003.md",
     "adr/portolan.0004.md",
+    "adr/portolan.0005.md",
     "auth/README.md",
     "auth/auth/README.md",
     "auth/auth/aggregates/lockout.md",

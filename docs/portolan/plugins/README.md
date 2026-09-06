@@ -1,6 +1,6 @@
 # Plugins
 
-*Generated from the portolan catalog · commit `10 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `11 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
 
 - **Id:** `portolan.plugins`
 - **Group:** [Portolan](../README.md)
@@ -71,7 +71,10 @@ either be rendered or be explicitly acknowledged by the relevant exporter.
 1. Write it. In Go, a new directory here with a `main` that hands its options
    type to `plugin.Serve`, which reads the request, answers a describe and calls
    the work; `catalog.Catalog` from `github.com/shortlink-org/portolan/catalog`
-   is the mirror of the schema. In Python, the same three things live in
+   is the mirror of the schema, and `internal/goscan` is the tree as syntax -
+   the files parsed once, the import path of each package, the string
+   constants followed to their literals - which River and Watermill share and
+   the next Go extractor should not copy. In Python, the same three things live in
    `pyplugin/` - `protocol.py`, `source.py` for the tree as syntax, and
    `catalog.py` for the fragment shapes - and `extract-django` and
    `extract-celery` are what using them looks like. In any other language,
@@ -160,16 +163,47 @@ possible routes. The channels merge normally with AsyncAPI declarations by addre
 processors are also extracted; fixed topic generators and the standard
 event/command-name generator form are resolved from source.
 
+`extract-go-nats` reads nats.go and JetStream calls into the subjects a service
+listens on and publishes to. A call is known by the type it is made on -
+`*nats.Conn`, `nats.JetStreamContext`, `jetstream.JetStream`, `jetstream.Stream` -
+and not by its name, because a service's own bus port has a `Subscribe` too.
+The subject is followed to a literal, a constant, a config default, or a
+parameter; a parameter is followed up to two hops through the callers,
+including calls through an interface the adapter satisfies, which is how a
+port `Subscribe(ctx, topic, name, handler)` reads as the assembly's
+`Subscribe(ctx, cart.Topic, cart.BasketCheckedOut{}.Name(), …)`. When the port
+takes exactly one other string beside the subject, that string is the
+message's name; a direct call names no message, and its direction is in the
+channel's doc. A subject read off a database row is a warning at the call,
+not a channel. Consumer configs give the filter subject and the durable name;
+streams, wildcard subjects and work-queue retention are not read yet.
+
+`extract-wsdl` reads WSDL 1.1 contracts as structured SOAP APIs. It follows
+local WSDL imports and XSD imports/includes without network access, keeps
+distinct services, ports and SOAP 1.1/1.2 bindings, and records operation
+actions, request/response messages, faults, headers and reachable XSD shapes.
+It can describe a contract implemented by the component or a vendored copy for
+an external system (`mode: external`). Remote imports are reported as missing
+evidence rather than fetched during generation.
+
 `extract-http-clients` is the outbound counterpart and does not require a
 domain layout. It reads `net/http` request construction, calls through an
 `oapi-codegen` client, and SOAP `Call`/`CallContext` sites. A generated client
 is joined to the OpenAPI document beside it, so the call uses the document's
 operation id and lands on an external with the contract the document declares.
-SOAP actions are joined to vendored WSDL bindings when the action matches. A
+SOAP actions are joined to WSDL bindings when the action matches. Generated and
+hand-written wrapper signatures are learned from their call into the SOAP
+transport or their `SOAPAction`/SOAP 1.2 content-type header, so the action,
+request and response positions are taken from code rather than assumed. A
 raw request whose peer or contract cannot be proved is still useful evidence:
 it is emitted as `unresolved`, with its method, path and source line, rather
 than being assigned to a guessed system. Conditions guarding a call and the
 opposite path after an early return are carried into the flow note.
+Calls through local wrappers retain their argument values, including closure
+arguments, so a path and HTTP method declared by a business operation survive
+the trip into the transport. URL-shaped configuration is followed through a
+constructor and client field to the request, and the resulting evidence chain
+is included in the flow instead of presenting a receiver field as an endpoint.
 
 ### Flows written by hand
 

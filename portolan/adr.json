@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-09-06T18:48:02+07:00",
-  "commit": "229c1fb",
+  "generatedAt": "2026-09-06T22:45:59+07:00",
+  "commit": "8c250c8",
   "contexts": [],
   "defs": {},
   "flows": [],
@@ -83,6 +83,31 @@
         "commit": "229c1fb4f2b8ee1d4fe60d35c2be9d122f75c34c",
         "author": "Victor Login",
         "date": "2026-09-06T18:48:02+07:00"
+      }
+    },
+    {
+      "id": "portolan.0005",
+      "slug": "portolan-0005-css-moves-what-appears-and-motion-moves-what-leaves",
+      "number": 5,
+      "title": "CSS moves what appears; Motion moves what leaves or changes place",
+      "status": "accepted",
+      "date": "2026-09-06",
+      "scope": {
+        "kind": "context",
+        "context": "portolan"
+      },
+      "body": "## Context and Problem Statement\n\nThe site has one motion system: three durations and two easings as CSS\ntokens, a handful of keyframes, and a stagger for lists. Every animation in\nit runs once, on mount. Nothing leaves - the palette, the drawer, the toast\nare on screen one frame and gone the next - and nothing changes place: a tab\nbecomes active by repainting, a branch opens by appearing, the current step of\na flow jumps down the rail. A reader sees a site that arrives but never\nmoves, and reads that as \"no animations\".\n\nCSS can express a mount. It cannot express an exit, because the element is\nalready unmounted when it would need to animate; it cannot animate `height:\nauto`; and it cannot say that the highlight on tab two is the same highlight\nthat was on tab one. Those three need JavaScript that measures, keeps a node\nalive while it leaves, and interpolates between two layouts.\n\n## Decision Drivers\n\n- One clock: a panel must leave at the speed it arrived, and a spring must\n  land in about the panel duration.\n- `prefers-reduced-motion` is obeyed everywhere, by one mechanism, not by\n  each call site remembering.\n- The first paint does not pay for it: the first screen has nothing that\n  leaves or moves.\n- Hover, focus and colour stay CSS. They are hundreds of sites; a library\n  component at each would be the wrong trade.\n\n## Considered Options\n\n1. **Motion (motion.dev) for exit, layout and shared elements; CSS for\n   everything else.** The `m` component under `LazyMotion`, features loaded\n   after first paint, presets that spell the CSS tokens as numbers.\n2. **CSS only, with the exits done by hand**: keep the node mounted on a\n   timer, toggle a class, unmount when the timer fires. Layout and shared\n   elements stay impossible, or become a FLIP written per site.\n3. **Motion for everything**, hover and colour included: one library, one\n   syntax, every interactive element a Motion element.\n\n## Decision Outcome\n\nChosen option: **Motion for exit, layout and shared elements; CSS for the\nrest**.\n\n| | exits | layout, shared | hover, colour | first paint |\n|---|---|---|---|---|\n| Motion where CSS cannot | yes | yes | CSS, as now | +0 kB; ~30 kB after |\n| CSS with hand-rolled exits | timers per site | no | CSS | +0 kB |\n| Motion everywhere | yes | yes | Motion, hundreds of sites | ~30 kB before |\n\nThe clock is shared by construction: `src/lib/motion.tsx` declares the\ndurations and easings as numbers, and a test reads `index.css` and holds the\ntwo to each other. `MotionConfig reducedMotion=\"user\"` reads the same media\nquery the CSS does, so a reader who asked for less motion sees opacity\ncrossfade and nothing travel, on both halves.\n\nThe library is loaded through `LazyMotion` in strict mode with `domMax`\nbehind a dynamic import. Until it arrives an `m.*` element is its plain tag\nat its resting values, which is the right first frame. `strict` throws on the\nfull `motion.*` element, so the bundle cannot quietly grow back to the full\nlibrary by one careless import.\n\n### Consequences\n\n- Good: the palette, the drawer, the sheet and the toast leave the way they\n  came, on the same duration; a route leaves on the micro duration before the\n  next one rises, and the one leaving keeps drawing the page it was.\n- Good: a tab indicator, the current-step highlight and the tree's selection\n  light move instead of repainting, on one spring that does not bounce.\n- Good: a branch of the tree opens to its height instead of appearing.\n- Bad: two ways to say \"fade in\" exist, `overlay-in` in CSS and `fade` in\n  Motion. The rule is the file: a thing that only ever mounts uses the CSS\n  utility; a thing that also leaves uses the preset. Utilities that Motion\n  takes over are deleted from `index.css` as each site moves.\n- Bad: about 30 kB of JavaScript after first paint, in a chunk of its own.\n- Neutral: `useCountUp` and `staggerStyle` stay as they were. A count and a\n  stagger are neither exits nor layout.\n",
+      "relates": {},
+      "source": "adr/0005-css-moves-what-appears-and-motion-moves-what-leaves.md",
+      "created": {
+        "commit": "8df6d6bc4547f08d540185f617b8cf69634ecbfd",
+        "author": "Victor Login",
+        "date": "2026-09-06T22:40:19+07:00"
+      },
+      "revised": {
+        "commit": "8c250c8b50d9c2e46a0fc29a2be379c86cbd03b6",
+        "author": "Victor Login",
+        "date": "2026-09-06T22:45:59+07:00"
       }
     }
   ]

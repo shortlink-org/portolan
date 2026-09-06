@@ -1,6 +1,6 @@
 # Pricing database
 
-*Generated from the portolan catalog · commit `10 sources` · at 2026-09-05T03:58:04Z. Do not edit by hand.*
+*Generated from the portolan catalog · commit `11 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
 
 - **Id:** `shop.pricing.pg`
 - **Kind:** postgres
@@ -83,10 +83,14 @@ outbox
 | `aggregate_id` | `text` | not null | — |
 | `occurred_at` | `timestamptz` | not null | — |
 | `published_at` | `timestamptz` | null | — |
+| `uuid` | `text` | not null | — |
+| `payload` | `jsonb` | not null | — |
+| `metadata` | `jsonb` | not null | — |
 
 | Index | Columns | Kind |
 | --- | --- | --- |
 | `outbox_unpublished` | id | index |
+| `outbox_by_uuid` | uuid | unique |
 
 ## Views
 
