@@ -177,6 +177,153 @@ func Cancel(ctx context.Context, client soap.HTTPClient, request, response any) 
 	}
 }
 
+func TestFlowTracesConfigThroughConstructorFieldAndWrapper(t *testing.T) {
+	root := t.TempDir()
+	writeHTTPFixture(t, root, "go.mod", "module example.com/payments\n")
+	writeHTTPFixture(t, root, "client/client.go", `package client
+import (
+  "context"
+  "net/http"
+	"net/url"
+)
+type Config struct { BaseURL string }
+type Client struct { baseURL url.URL }
+func Build(config map[string]string) (*Client, error) {
+  return New(Config{BaseURL: config["url"]})
+}
+func New(cfg Config) (*Client, error) {
+  parsed, err := url.Parse(cfg.BaseURL)
+  if err != nil { return nil, err }
+  return &Client{baseURL: *parsed}, nil
+}
+func (c *Client) request(ctx context.Context, method, path string) error {
+  req, err := http.NewRequestWithContext(ctx, method, c.baseURL.String()+path, nil)
+  if err != nil { return err }
+  _ = req
+  return nil
+}
+func (c *Client) Search(ctx context.Context) error {
+  return c.request(ctx, http.MethodPost, "/v1/search")
+}
+`)
+
+	resp, err := extract(plugin.Input{Root: root}, Options{Context: "pay", Service: "gateway"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got catalog.Catalog
+	if err := json.Unmarshal([]byte(resp.Files[0].Contents), &got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Flows) != 1 {
+		t.Fatalf("flows = %+v", got.Flows)
+	}
+	flow := got.Flows[0]
+	if flow.Name != "Client Search → outbound APIs" {
+		t.Fatalf("flow name = %q", flow.Name)
+	}
+	step, ok := flow.Steps[0].(*catalog.Step)
+	if !ok {
+		t.Fatalf("step = %#v", flow.Steps[0])
+	}
+	if step.Label != "POST /v1/search" {
+		t.Fatalf("step label = %q", step.Label)
+	}
+	if consumes := got.Contexts[0].Services[0].Consumes; len(consumes) != 1 || consumes[0].ID != "http-client/POST /v1/search" {
+		t.Fatalf("consumes = %+v", consumes)
+	}
+	if !strings.Contains(step.Note, `config["url"] → Build → New → Client.baseURL → request URL`) {
+		t.Fatalf("step note = %q", step.Note)
+	}
+	if !strings.Contains(step.Note, "Client.Search → Client.request") {
+		t.Fatalf("step chain = %q", step.Note)
+	}
+}
+
+func TestFlowKeepsDistinctCallsThroughClosureArguments(t *testing.T) {
+	root := t.TempDir()
+	writeHTTPFixture(t, root, "go.mod", "module example.com/closure\n")
+	writeHTTPFixture(t, root, "client.go", `package closure
+import (
+  "context"
+  "net/http"
+)
+func request(ctx context.Context, path string) error {
+  req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://example.test"+path, nil)
+  if err != nil { return err }
+  _ = req
+  return nil
+}
+func Refresh(ctx context.Context) {
+  go func(path string) { _ = request(ctx, path) }("/v1/primary")
+  go func(path string) { _ = request(ctx, path) }("/v1/secondary")
+}
+`)
+
+	resp, err := extract(plugin.Input{Root: root}, Options{Context: "ops", Service: "refresher"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got catalog.Catalog
+	if err := json.Unmarshal([]byte(resp.Files[0].Contents), &got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Flows) != 1 {
+		t.Fatalf("flows = %+v", got.Flows)
+	}
+	var labels []string
+	for _, node := range got.Flows[0].Steps {
+		if step, ok := node.(*catalog.Step); ok {
+			labels = append(labels, step.Label)
+		}
+	}
+	if strings.Join(labels, ",") != "GET /v1/primary,GET /v1/secondary" {
+		t.Fatalf("labels = %+v", labels)
+	}
+}
+
+func TestFlowDoesNotLinkMethodsByNameAlone(t *testing.T) {
+	root := t.TempDir()
+	writeHTTPFixture(t, root, "go.mod", "module example.com/close\n")
+	writeHTTPFixture(t, root, "client.go", `package close
+import "net/http"
+type LocalCloser struct{}
+func (LocalCloser) Close() error {
+  _, err := http.Get("https://audit.example/v1/closed")
+  return err
+}
+func Fetch() error {
+  response, err := http.Get("https://data.example/v1/items")
+  if err != nil { return err }
+  defer response.Body.Close()
+  return nil
+}
+`)
+
+	resp, err := extract(plugin.Input{Root: root}, Options{Context: "edge", Service: "reader"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got catalog.Catalog
+	if err := json.Unmarshal([]byte(resp.Files[0].Contents), &got); err != nil {
+		t.Fatal(err)
+	}
+	for _, flow := range got.Flows {
+		if flow.Name != "Fetch → outbound APIs" {
+			continue
+		}
+		if len(flow.Steps) != 1 {
+			t.Fatalf("Fetch steps = %+v", flow.Steps)
+		}
+		step := flow.Steps[0].(*catalog.Step)
+		if step.Label != "GET /v1/items" {
+			t.Fatalf("Fetch step = %+v", step)
+		}
+		return
+	}
+	t.Fatalf("Fetch flow missing: %+v", got.Flows)
+}
+
 func TestOnlySourceBackedComplementsBecomeAnAlt(t *testing.T) {
 	context := "edge"
 	calls := []gohttp.Call{

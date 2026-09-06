@@ -18,6 +18,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/shortlink-org/portolan/internal/wsdl"
 	"github.com/shortlink-org/portolan/plugins/openapi"
@@ -79,6 +80,8 @@ type Call struct {
 	Contract    string
 	Conditions  []string
 	Chain       []string
+	URLTrace    []string
+	template    *callTemplate
 }
 
 type FlowGroup struct {
@@ -120,6 +123,7 @@ type scanner struct {
 	methods   map[string][]string
 	soap      map[string][]soapWrapper
 	soapFns   map[string]bool
+	fields    map[string]fieldOrigin
 }
 
 type functionDecl struct {
@@ -131,6 +135,18 @@ type functionDecl struct {
 type localEdge struct {
 	target string
 	line   int
+	args   []ast.Expr
+}
+
+type callTemplate struct {
+	method   ast.Expr
+	endpoint ast.Expr
+}
+
+type fieldOrigin struct {
+	value       string
+	chain       []string
+	constructor string
 }
 
 type valuePart struct {
@@ -153,12 +169,14 @@ type soapWrapper struct {
 }
 
 func Analyze(root string) (Result, error) {
-	s := &scanner{root: root, fset: token.NewFileSet(), constants: map[string]constValue{}, functions: map[string]*functionDecl{}, methods: map[string][]string{}, soap: map[string][]soapWrapper{}, soapFns: map[string]bool{}}
+	s := &scanner{root: root, fset: token.NewFileSet(), constants: map[string]constValue{}, functions: map[string]*functionDecl{}, methods: map[string][]string{}, soap: map[string][]soapWrapper{}, soapFns: map[string]bool{}, fields: map[string]fieldOrigin{}}
 	if err := s.read(); err != nil {
 		return Result{}, err
 	}
 	s.indexConstants()
 	s.indexFunctions()
+	s.indexFieldOrigins()
+	s.resolveFieldOriginsAtCallSites()
 	s.readContracts()
 	s.readWSDLContracts()
 	s.indexSOAPWrappers()
@@ -190,7 +208,35 @@ func Analyze(root string) (Result, error) {
 	})
 	calls = uniqueCalls(calls)
 	sort.Strings(s.warnings)
-	return Result{Calls: calls, Contracts: s.contracts, Flows: s.flowGroups(calls), Warnings: s.warnings}, nil
+	flows := s.flowGroups(calls)
+	calls = callsSpecializedByFlows(calls, flows)
+	return Result{Calls: calls, Contracts: s.contracts, Flows: flows, Warnings: s.warnings}, nil
+}
+
+func callsSpecializedByFlows(direct []Call, flows []FlowGroup) []Call {
+	specializedSources := map[string]bool{}
+	var out []Call
+	for _, flow := range flows {
+		for _, call := range flow.Calls {
+			specializedSources[call.Source.String()] = true
+			out = append(out, call)
+		}
+	}
+	for _, call := range direct {
+		if !specializedSources[call.Source.String()] {
+			out = append(out, call)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Source.File != out[j].Source.File {
+			return out[i].Source.File < out[j].Source.File
+		}
+		if out[i].Source.Line != out[j].Source.Line {
+			return out[i].Source.Line < out[j].Source.Line
+		}
+		return out[i].ID < out[j].ID
+	})
+	return uniqueCalls(out)
 }
 
 func functionKey(file *parsedFile, fn *ast.FuncDecl) string {
@@ -221,6 +267,258 @@ func (s *scanner) indexFunctions() {
 			}
 		}
 	}
+}
+
+// indexFieldOrigins records where URL-shaped client fields are initialized.
+// The result is deliberately symbolic: configuration is commonly loaded at
+// runtime, but "Config.BaseURL" is still substantially better evidence than
+// the receiver expression "c.baseURL".
+func (s *scanner) indexFieldOrigins() {
+	for _, declaration := range s.functions {
+		locals := s.symbolicLocals(declaration)
+		ast.Inspect(declaration.fn.Body, func(node ast.Node) bool {
+			ret, ok := node.(*ast.ReturnStmt)
+			if !ok {
+				return true
+			}
+			for _, result := range ret.Results {
+				literal := compositeLiteral(result)
+				if literal == nil {
+					continue
+				}
+				typeName := receiverName(literal.Type)
+				for _, element := range literal.Elts {
+					field, ok := element.(*ast.KeyValueExpr)
+					if !ok {
+						continue
+					}
+					name, ok := field.Key.(*ast.Ident)
+					if !ok || !looksLikeURLName(name.Name) {
+						continue
+					}
+					value := s.symbolicValue(declaration, field.Value, locals, map[string]bool{})
+					if value == "" {
+						continue
+					}
+					label := typeName + "." + name.Name
+					s.fields[fieldKey(declaration.file, typeName, name.Name)] = fieldOrigin{value: value, chain: uniqueStrings([]string{value, displayFunction(declaration.key), label}), constructor: declaration.key}
+				}
+			}
+			return true
+		})
+	}
+}
+
+// resolveFieldOriginsAtCallSites replaces an intermediate constructor input
+// such as Params.BaseURL with the value that populates it at the unique call
+// site, for example connectionVal["url"]. Ambiguous call sites retain the
+// constructor-level origin instead of choosing one arbitrarily.
+func (s *scanner) resolveFieldOriginsAtCallSites() {
+	type candidate struct {
+		value  string
+		caller string
+	}
+	byField := map[string]map[string]candidate{}
+	for _, caller := range s.functions {
+		locals := s.symbolicLocals(caller)
+		ast.Inspect(caller.fn.Body, func(node ast.Node) bool {
+			call, ok := node.(*ast.CallExpr)
+			if !ok {
+				return true
+			}
+			target := s.localTarget(caller, call.Fun)
+			if target == "" {
+				return true
+			}
+			declaration := s.functions[target]
+			if declaration == nil || declaration.fn.Type.Params == nil {
+				return true
+			}
+			paramTypes := functionParamTypes(declaration.fn)
+			for key, origin := range s.fields {
+				if origin.constructor != target {
+					continue
+				}
+				container, field, ok := strings.Cut(origin.value, ".")
+				if !ok {
+					continue
+				}
+				for index, typ := range paramTypes {
+					if typ != container || index >= len(call.Args) {
+						continue
+					}
+					literal := compositeLiteral(call.Args[index])
+					if literal == nil {
+						continue
+					}
+					for _, element := range literal.Elts {
+						pair, ok := element.(*ast.KeyValueExpr)
+						if !ok || expression(pair.Key) != field {
+							continue
+						}
+						value := s.symbolicValue(caller, pair.Value, locals, map[string]bool{})
+						if value == "" || value == origin.value {
+							continue
+						}
+						if byField[key] == nil {
+							byField[key] = map[string]candidate{}
+						}
+						byField[key][value] = candidate{value: value, caller: displayFunction(caller.key)}
+					}
+				}
+			}
+			return true
+		})
+	}
+	for key, candidates := range byField {
+		if len(candidates) != 1 {
+			continue
+		}
+		for _, candidate := range candidates {
+			origin := s.fields[key]
+			origin.value = candidate.value
+			origin.chain = uniqueStrings(append([]string{candidate.value, candidate.caller}, origin.chain[1:]...))
+			s.fields[key] = origin
+		}
+	}
+}
+
+func functionParamTypes(fn *ast.FuncDecl) []string {
+	var out []string
+	if fn.Type.Params == nil {
+		return out
+	}
+	for _, field := range fn.Type.Params.List {
+		typeName := receiverName(field.Type)
+		if len(field.Names) == 0 {
+			out = append(out, typeName)
+			continue
+		}
+		for range field.Names {
+			out = append(out, typeName)
+		}
+	}
+	return out
+}
+
+func fieldKey(file *parsedFile, typeName, field string) string {
+	return file.dir + ":" + typeName + "." + field
+}
+
+func compositeLiteral(expr ast.Expr) *ast.CompositeLit {
+	switch value := expr.(type) {
+	case *ast.CompositeLit:
+		return value
+	case *ast.UnaryExpr:
+		return compositeLiteral(value.X)
+	}
+	return nil
+}
+
+func looksLikeURLName(name string) bool {
+	name = strings.ToLower(name)
+	return strings.Contains(name, "url") || strings.Contains(name, "endpoint") || strings.Contains(name, "host")
+}
+
+func (s *scanner) symbolicLocals(declaration *functionDecl) map[string]string {
+	locals := map[string]string{}
+	parameterTypes := map[string]string{}
+	if declaration.fn.Type.Params != nil {
+		for _, field := range declaration.fn.Type.Params.List {
+			for _, name := range field.Names {
+				parameterTypes[name.Name] = receiverName(field.Type)
+			}
+		}
+	}
+	ast.Inspect(declaration.fn.Body, func(node ast.Node) bool {
+		assign, ok := node.(*ast.AssignStmt)
+		if !ok || len(assign.Rhs) == 0 {
+			return true
+		}
+		for index, left := range assign.Lhs {
+			id, ok := left.(*ast.Ident)
+			if !ok {
+				continue
+			}
+			rightAt := index
+			if len(assign.Rhs) == 1 {
+				rightAt = 0
+			}
+			if rightAt >= len(assign.Rhs) {
+				continue
+			}
+			if value := s.symbolicValueWithTypes(declaration, assign.Rhs[rightAt], locals, parameterTypes, map[string]bool{}); value != "" {
+				if assign.Tok == token.ADD_ASSIGN {
+					value = locals[id.Name] + value
+				}
+				locals[id.Name] = value
+			}
+		}
+		return true
+	})
+	return locals
+}
+
+func (s *scanner) symbolicValue(declaration *functionDecl, expr ast.Expr, locals map[string]string, seen map[string]bool) string {
+	parameterTypes := map[string]string{}
+	if declaration.fn.Type.Params != nil {
+		for _, field := range declaration.fn.Type.Params.List {
+			for _, name := range field.Names {
+				parameterTypes[name.Name] = receiverName(field.Type)
+			}
+		}
+	}
+	return s.symbolicValueWithTypes(declaration, expr, locals, parameterTypes, seen)
+}
+
+func (s *scanner) symbolicValueWithTypes(declaration *functionDecl, expr ast.Expr, locals, parameterTypes map[string]string, seen map[string]bool) string {
+	switch value := expr.(type) {
+	case *ast.ParenExpr:
+		return s.symbolicValueWithTypes(declaration, value.X, locals, parameterTypes, seen)
+	case *ast.UnaryExpr:
+		return s.symbolicValueWithTypes(declaration, value.X, locals, parameterTypes, seen)
+	case *ast.StarExpr:
+		return s.symbolicValueWithTypes(declaration, value.X, locals, parameterTypes, seen)
+	case *ast.TypeAssertExpr:
+		return s.symbolicValueWithTypes(declaration, value.X, locals, parameterTypes, seen)
+	case *ast.BasicLit:
+		if value.Kind == token.STRING {
+			literal, _ := strconv.Unquote(value.Value)
+			return literal
+		}
+	case *ast.Ident:
+		if local := locals[value.Name]; local != "" {
+			return local
+		}
+		return value.Name
+	case *ast.IndexExpr:
+		return expression(value)
+	case *ast.SelectorExpr:
+		if owner, ok := value.X.(*ast.Ident); ok {
+			if local := locals[owner.Name+"."+value.Sel.Name]; local != "" {
+				return local
+			}
+			if typ := parameterTypes[owner.Name]; typ != "" {
+				return typ + "." + value.Sel.Name
+			}
+		}
+		return expression(value)
+	case *ast.BinaryExpr:
+		if value.Op == token.ADD {
+			return s.symbolicValueWithTypes(declaration, value.X, locals, parameterTypes, seen) + s.symbolicValueWithTypes(declaration, value.Y, locals, parameterTypes, seen)
+		}
+	case *ast.CallExpr:
+		name := selectorName(value.Fun)
+		if name == "String" {
+			if selector, ok := value.Fun.(*ast.SelectorExpr); ok {
+				return s.symbolicValueWithTypes(declaration, selector.X, locals, parameterTypes, seen)
+			}
+		}
+		if (name == "Parse" || strings.HasPrefix(name, "Trim")) && len(value.Args) > 0 {
+			return s.symbolicValueWithTypes(declaration, value.Args[0], locals, parameterTypes, seen)
+		}
+	}
+	return ""
 }
 
 // indexSOAPWrappers learns the public signature of local SOAP adapters from
@@ -724,19 +1022,46 @@ func routeOf(fn *ast.FuncDecl) (method, path string) {
 }
 
 func (s *scanner) localStrings(file *parsedFile, fn *ast.FuncDecl) map[string]string {
+	return s.localStringsBound(file, fn, nil)
+}
+
+func (s *scanner) localStringsBound(file *parsedFile, fn *ast.FuncDecl, bindings map[string]string) map[string]string {
 	out := map[string]string{}
+	for name, value := range bindings {
+		out[name] = value
+	}
+	if fn.Recv != nil && len(fn.Recv.List) > 0 && len(fn.Recv.List[0].Names) > 0 {
+		receiver := fn.Recv.List[0].Names[0].Name
+		typeName := receiverName(fn.Recv.List[0].Type)
+		prefix := file.dir + ":" + typeName + "."
+		for field, origin := range s.fields {
+			if strings.HasPrefix(field, prefix) {
+				out[receiver+"."+strings.TrimPrefix(field, prefix)] = origin.value
+			}
+		}
+	}
 	ast.Inspect(fn.Body, func(node ast.Node) bool {
 		assign, ok := node.(*ast.AssignStmt)
-		if !ok || len(assign.Lhs) != len(assign.Rhs) {
+		if !ok || len(assign.Rhs) == 0 {
 			return true
 		}
 		for i, left := range assign.Lhs {
-			id, ok := left.(*ast.Ident)
-			if !ok {
+			name := expression(left)
+			if name == "" || name == "_" {
 				continue
 			}
-			if value := s.value(file, assign.Rhs[i], out, map[string]bool{}); value != "" {
-				out[id.Name] = value
+			rightAt := i
+			if len(assign.Rhs) == 1 {
+				rightAt = 0
+			}
+			if rightAt >= len(assign.Rhs) {
+				continue
+			}
+			if value := s.value(file, assign.Rhs[rightAt], out, map[string]bool{}); value != "" {
+				if assign.Tok == token.ADD_ASSIGN {
+					value = out[name] + value
+				}
+				out[name] = value
 			}
 		}
 		return true
@@ -852,6 +1177,7 @@ func (s *scanner) call(file *parsedFile, function string, call *ast.CallExpr, co
 		return Call{
 			Function: function, Source: s.source(file, call.Pos()), Protocol: "HTTP", Method: method,
 			Path: path, Endpoint: endpoint, ID: rawCallID(method, path), Conditions: append([]string(nil), conditions...),
+			URLTrace: s.urlTrace(function), template: &callTemplate{method: call.Args[methodAt], endpoint: call.Args[urlAt]},
 		}, true
 	}
 
@@ -864,7 +1190,7 @@ func (s *scanner) call(file *parsedFile, function string, call *ast.CallExpr, co
 		}
 		endpoint := s.value(file, call.Args[0], locals, map[string]bool{})
 		path := pathOf(call.Args[0], endpoint)
-		return Call{Function: function, Source: s.source(file, call.Pos()), Protocol: "HTTP", Method: strings.ToUpper(strings.TrimSuffix(name, "Form")), Path: path, Endpoint: endpoint, ID: rawCallID(strings.ToUpper(strings.TrimSuffix(name, "Form")), path), Conditions: append([]string(nil), conditions...)}, true
+		return Call{Function: function, Source: s.source(file, call.Pos()), Protocol: "HTTP", Method: strings.ToUpper(strings.TrimSuffix(name, "Form")), Path: path, Endpoint: endpoint, ID: rawCallID(strings.ToUpper(strings.TrimSuffix(name, "Form")), path), Conditions: append([]string(nil), conditions...), URLTrace: s.urlTrace(function), template: &callTemplate{endpoint: call.Args[0]}}, true
 	}
 
 	if (name == "Call" || name == "CallContext") && s.looksLikeSOAP(file, call) {
@@ -891,6 +1217,31 @@ func (s *scanner) call(file *parsedFile, function string, call *ast.CallExpr, co
 		return s.bindSOAP(found), true
 	}
 	return Call{}, false
+}
+
+func (s *scanner) urlTrace(function string) []string {
+	declaration := s.functions[function]
+	if declaration == nil || declaration.fn.Recv == nil || len(declaration.fn.Recv.List) == 0 {
+		return nil
+	}
+	typeName := receiverName(declaration.fn.Recv.List[0].Type)
+	var trace []string
+	ast.Inspect(declaration.fn.Body, func(node ast.Node) bool {
+		selector, ok := node.(*ast.SelectorExpr)
+		if !ok {
+			return true
+		}
+		origin, ok := s.fields[fieldKey(declaration.file, typeName, selector.Sel.Name)]
+		if !ok {
+			return true
+		}
+		trace = append(trace, origin.chain...)
+		return false
+	})
+	if len(trace) == 0 {
+		return nil
+	}
+	return uniqueStrings(append(trace, "request URL"))
 }
 
 func (s *scanner) wrapperCall(file *parsedFile, function string, call *ast.CallExpr, conditions []string, locals map[string]string, wrappers []soapWrapper) (Call, bool) {
@@ -1098,6 +1449,9 @@ func (s *scanner) value(file *parsedFile, expr ast.Expr, locals map[string]strin
 			return s.value(constant.file, constant.expr, locals, seen)
 		}
 	case *ast.SelectorExpr:
+		if value := locals[expression(x)]; value != "" {
+			return value
+		}
 		owner, ok := x.X.(*ast.Ident)
 		if !ok {
 			return ""
@@ -1125,6 +1479,17 @@ func (s *scanner) value(file *parsedFile, expr ast.Expr, locals map[string]strin
 			}
 		}
 	case *ast.CallExpr:
+		if selectorName(x.Fun) == "Join" && len(x.Args) > 0 {
+			var parts []string
+			for _, argument := range x.Args {
+				if part := s.value(file, argument, locals, seen); part != "" {
+					parts = append(parts, part)
+				}
+			}
+			if len(parts) > 0 {
+				return joinURLParts(parts)
+			}
+		}
 		if selectorName(x.Fun) == "Sprintf" && len(x.Args) > 0 {
 			format := s.value(file, x.Args[0], locals, seen)
 			if format != "" {
@@ -1132,17 +1497,83 @@ func (s *scanner) value(file *parsedFile, expr ast.Expr, locals map[string]strin
 			}
 		}
 		if selectorName(x.Fun) == "String" {
+			if selector, ok := x.Fun.(*ast.SelectorExpr); ok {
+				base := s.value(file, selector.X, locals, seen)
+				path := locals[expression(selector.X)+".Path"]
+				if base != "" || path != "" {
+					return joinURLParts([]string{base, path})
+				}
+			}
 			return expression(x)
+		}
+		if value := s.localReturnValue(file, x, locals, seen); value != "" {
+			return value
 		}
 	}
 	return ""
+}
+
+func (s *scanner) localReturnValue(file *parsedFile, call *ast.CallExpr, locals map[string]string, seen map[string]bool) string {
+	name, ok := call.Fun.(*ast.Ident)
+	if !ok {
+		return ""
+	}
+	key := name.Name
+	if file.dir != "." && file.dir != "" {
+		key = file.dir + ":" + key
+	}
+	declaration := s.functions[key]
+	if declaration == nil || seen["return:"+key] {
+		return ""
+	}
+	bound := map[string]string{}
+	for index, param := range functionParams(declaration.fn) {
+		if param == "" || index >= len(call.Args) {
+			continue
+		}
+		bound[param] = s.value(file, call.Args[index], locals, seen)
+	}
+	seen["return:"+key] = true
+	defer delete(seen, "return:"+key)
+	var result string
+	ast.Inspect(declaration.fn.Body, func(node ast.Node) bool {
+		ret, ok := node.(*ast.ReturnStmt)
+		if !ok || len(ret.Results) == 0 {
+			return true
+		}
+		if value := s.value(declaration.file, ret.Results[0], bound, seen); value != "" {
+			result = value
+			return false
+		}
+		return true
+	})
+	return result
+}
+
+func joinURLParts(parts []string) string {
+	var out string
+	for _, part := range parts {
+		if part == "" {
+			continue
+		}
+		if out == "" {
+			out = part
+			continue
+		}
+		out = strings.TrimRight(out, "/") + "/" + strings.TrimLeft(part, "/")
+	}
+	return out
 }
 
 func pathOf(expr ast.Expr, endpoint string) string {
 	if endpoint != "" {
 		if !strings.Contains(endpoint, "://") {
 			if at := strings.Index(endpoint, "/"); at >= 0 {
-				return endpoint[at:]
+				candidate := endpoint[at:]
+				if parsed, err := url.Parse(candidate); err == nil && parsed.Path != "" {
+					return parsed.Path
+				}
+				return candidate
 			}
 		}
 		if parsed, err := url.Parse(endpoint); err == nil && parsed.Path != "" {
@@ -1237,6 +1668,18 @@ func appendCopy(items []string, value string) []string {
 	return out
 }
 
+func uniqueStrings(items []string) []string {
+	seen := map[string]bool{}
+	out := make([]string, 0, len(items))
+	for _, item := range items {
+		if item != "" && !seen[item] {
+			seen[item] = true
+			out = append(out, item)
+		}
+	}
+	return out
+}
+
 func uniqueCalls(in []Call) []Call {
 	seen := map[string]bool{}
 	out := make([]Call, 0, len(in))
@@ -1258,31 +1701,49 @@ func (s *scanner) flowGroups(calls []Call) []FlowGroup {
 	}
 	edges := map[string][]localEdge{}
 	for key, fn := range s.functions {
-		seen := map[string]bool{}
 		ast.Inspect(fn.fn.Body, func(node ast.Node) bool {
 			call, ok := node.(*ast.CallExpr)
 			if !ok {
 				return true
 			}
-			if target := s.localTarget(fn, call.Fun); target != "" && target != key && !seen[target] {
-				edges[key] = append(edges[key], localEdge{target: target, line: s.fset.Position(call.Pos()).Line})
-				seen[target] = true
+			if target := s.localTarget(fn, call.Fun); target != "" && target != key {
+				args := make([]ast.Expr, len(call.Args))
+				for index, argument := range call.Args {
+					args[index] = closureArgument(fn.fn, call.Pos(), argument)
+				}
+				edges[key] = append(edges[key], localEdge{target: target, line: s.fset.Position(call.Pos()).Line, args: args})
 			}
 			return true
 		})
 	}
-
 	groups := map[string][]Call{}
-	for key, group := range direct {
-		groups[key] = group
-	}
 	for key := range s.functions {
-		if !entryFunction(key) {
+		collected := s.collectCalls(key, edges, direct, nil, nil, map[string]bool{}, 0)
+		if len(collected) > 0 {
+			groups[key] = collected
+		}
+	}
+
+	// Keep the highest source-backed caller for each resolvable call chain. This
+	// removes duplicate transport flows such as Search → doRequest → RoundTrip,
+	// while retaining a leaf when syntax cannot prove a caller for it.
+	shadowed := map[string]bool{}
+	for caller, outgoing := range edges {
+		if len(groups[caller]) == 0 || s.technicalFlowFunction(caller) {
 			continue
 		}
-		collected := s.collectCalls(key, edges, direct, nil, map[string]bool{}, 0)
-		if len(collected) > len(direct[key]) {
-			groups[key] = collected
+		for _, edge := range outgoing {
+			if len(groups[edge.target]) > 0 && !exportedFlowFunction(edge.target) {
+				shadowed[edge.target] = true
+			}
+		}
+	}
+	for key := range shadowed {
+		delete(groups, key)
+	}
+	for key := range groups {
+		if s.technicalFlowFunction(key) {
+			delete(groups, key)
 		}
 	}
 
@@ -1302,13 +1763,62 @@ func (s *scanner) flowGroups(calls []Call) []FlowGroup {
 	return out
 }
 
-func (s *scanner) collectCalls(key string, edges map[string][]localEdge, direct map[string][]Call, chain []string, visiting map[string]bool, depth int) []Call {
+func closureArgument(fn *ast.FuncDecl, position token.Pos, argument ast.Expr) ast.Expr {
+	identifier, ok := argument.(*ast.Ident)
+	if !ok {
+		return argument
+	}
+	resolved := argument
+	bestSize := token.Pos(0)
+	ast.Inspect(fn.Body, func(node ast.Node) bool {
+		invocation, ok := node.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		literal, ok := invocation.Fun.(*ast.FuncLit)
+		if !ok || position < literal.Body.Pos() || position > literal.Body.End() {
+			return true
+		}
+		params := fieldListNames(literal.Type.Params)
+		for index, name := range params {
+			if name == identifier.Name && index < len(invocation.Args) {
+				size := literal.Body.End() - literal.Body.Pos()
+				if bestSize == 0 || size < bestSize {
+					resolved = invocation.Args[index]
+					bestSize = size
+				}
+			}
+		}
+		return true
+	})
+	return resolved
+}
+
+func fieldListNames(fields *ast.FieldList) []string {
+	if fields == nil {
+		return nil
+	}
+	var out []string
+	for _, field := range fields.List {
+		for _, name := range field.Names {
+			out = append(out, name.Name)
+		}
+	}
+	return out
+}
+
+func (s *scanner) collectCalls(key string, edges map[string][]localEdge, direct map[string][]Call, chain []string, bindings map[string]string, visiting map[string]bool, depth int) []Call {
 	if depth > 6 || visiting[key] {
 		return nil
 	}
 	visiting[key] = true
 	defer delete(visiting, key)
 	path := appendCopy(chain, displayFunction(key))
+	declaration := s.functions[key]
+	locals := map[string]string{}
+	if declaration != nil {
+		locals = s.localStringsBound(declaration.file, declaration.fn, bindings)
+	}
 	type event struct {
 		line   int
 		call   Call
@@ -1327,11 +1837,46 @@ func (s *scanner) collectCalls(key string, edges map[string][]localEdge, direct 
 	for _, item := range events {
 		if item.isCall {
 			copy := item.call
+			if copy.template != nil && declaration != nil {
+				if copy.template.method != nil {
+					method := httpMethod(copy.template.method)
+					if method == "" {
+						method = strings.ToUpper(s.value(declaration.file, copy.template.method, locals, map[string]bool{}))
+					}
+					if method != "" {
+						copy.Method = method
+					}
+				}
+				endpoint := s.value(declaration.file, copy.template.endpoint, locals, map[string]bool{})
+				if endpoint != "" {
+					copy.Endpoint = endpoint
+				}
+				if resolvedPath := pathOf(copy.template.endpoint, copy.Endpoint); resolvedPath != "" {
+					copy.Path = resolvedPath
+				}
+				copy.ID = rawCallID(copy.Method, copy.Path)
+			}
 			copy.Chain = append([]string(nil), path...)
 			out = append(out, copy)
 			continue
 		}
-		out = append(out, s.collectCalls(item.edge.target, edges, direct, path, visiting, depth+1)...)
+		nextBindings := map[string]string{}
+		if target := s.functions[item.edge.target]; target != nil && declaration != nil {
+			params := functionParams(target.fn)
+			for index, name := range params {
+				if name == "" || index >= len(item.edge.args) {
+					continue
+				}
+				value := s.value(declaration.file, item.edge.args[index], locals, map[string]bool{})
+				if value == "" {
+					value = httpMethod(item.edge.args[index])
+				}
+				if value != "" {
+					nextBindings[name] = value
+				}
+			}
+		}
+		out = append(out, s.collectCalls(item.edge.target, edges, direct, path, nextBindings, visiting, depth+1)...)
 	}
 	return uniqueFlowCalls(out)
 }
@@ -1355,24 +1900,140 @@ func (s *scanner) localTarget(owner *functionDecl, expr ast.Expr) string {
 					}
 				}
 			}
+			if receiverVariable(owner.fn) == ident.Name {
+				receiver := receiverName(owner.fn.Recv.List[0].Type)
+				candidate := owner.file.dir + ":" + receiver + "." + call.Sel.Name
+				if owner.file.dir == "." || owner.file.dir == "" {
+					candidate = receiver + "." + call.Sel.Name
+				}
+				if s.functions[candidate] != nil {
+					return candidate
+				}
+			}
 		}
-		if candidates := s.methods[call.Sel.Name]; len(candidates) == 1 {
-			return candidates[0]
+		// A method invoked through a receiver's local interface field can be
+		// followed when there is exactly one implementation in the repository.
+		// Do not apply this fallback to arbitrary selectors: Body.Close used to
+		// connect to an unrelated local Close method solely because names matched.
+		if s.receiverInterfaceCall(owner, call) {
+			if candidates := s.methods[call.Sel.Name]; len(candidates) == 1 {
+				return candidates[0]
+			}
 		}
 	}
 	return ""
 }
 
-func entryFunction(key string) bool {
+func receiverVariable(fn *ast.FuncDecl) string {
+	if fn.Recv == nil || len(fn.Recv.List) == 0 || len(fn.Recv.List[0].Names) == 0 {
+		return ""
+	}
+	return fn.Recv.List[0].Names[0].Name
+}
+
+func (s *scanner) receiverInterfaceCall(owner *functionDecl, call *ast.SelectorExpr) bool {
+	fieldSelector, ok := call.X.(*ast.SelectorExpr)
+	if !ok {
+		return false
+	}
+	root, ok := fieldSelector.X.(*ast.Ident)
+	if !ok || root.Name != receiverVariable(owner.fn) {
+		return false
+	}
+	receiver := receiverName(owner.fn.Recv.List[0].Type)
+	interfaceName := ""
+	for _, file := range s.files {
+		if file.dir != owner.file.dir {
+			continue
+		}
+		for _, declaration := range file.node.Decls {
+			generic, ok := declaration.(*ast.GenDecl)
+			if !ok || generic.Tok != token.TYPE {
+				continue
+			}
+			for _, spec := range generic.Specs {
+				typeSpec, ok := spec.(*ast.TypeSpec)
+				if !ok || typeSpec.Name.Name != receiver {
+					continue
+				}
+				structure, ok := typeSpec.Type.(*ast.StructType)
+				if !ok {
+					continue
+				}
+				for _, field := range structure.Fields.List {
+					for _, name := range field.Names {
+						if name.Name == fieldSelector.Sel.Name {
+							interfaceName = receiverName(field.Type)
+						}
+					}
+				}
+			}
+		}
+	}
+	if interfaceName == "" {
+		return false
+	}
+	for _, file := range s.files {
+		if file.dir != owner.file.dir {
+			continue
+		}
+		for _, declaration := range file.node.Decls {
+			generic, ok := declaration.(*ast.GenDecl)
+			if !ok || generic.Tok != token.TYPE {
+				continue
+			}
+			for _, spec := range generic.Specs {
+				typeSpec, ok := spec.(*ast.TypeSpec)
+				if !ok || typeSpec.Name.Name != interfaceName {
+					continue
+				}
+				iface, ok := typeSpec.Type.(*ast.InterfaceType)
+				if !ok {
+					return false
+				}
+				for _, method := range iface.Methods.List {
+					for _, name := range method.Names {
+						if name.Name == call.Sel.Name {
+							return true
+						}
+					}
+				}
+			}
+		}
+	}
+	return false
+}
+
+func exportedFlowFunction(key string) bool {
 	name := displayFunction(key)
 	if at := strings.LastIndex(name, "."); at >= 0 {
 		name = name[at+1:]
 	}
+	if name == "" {
+		return false
+	}
+	for _, first := range name {
+		return unicode.IsUpper(first)
+	}
+	return false
+}
+
+func (s *scanner) technicalFlowFunction(key string) bool {
+	name := strings.ToLower(displayFunction(key))
+	if at := strings.LastIndex(name, "."); at >= 0 {
+		name = name[at+1:]
+	}
 	switch name {
-	case "Work", "Handle", "ServeHTTP", "Consume", "Process", "Execute":
+	case "main", "init", "new", "dorequest", "request", "roundtrip", "call", "do", "send", "flush", "decode", "encode", "getbytes", "postbytes", "postjsonbytes":
 		return true
 	}
-	return strings.HasSuffix(name, "Action")
+	if name == "run" {
+		if declaration := s.functions[key]; declaration != nil {
+			dir := "/" + filepath.ToSlash(declaration.file.dir) + "/"
+			return strings.Contains(dir, "/cmd/") || strings.Contains(dir, "/app/")
+		}
+	}
+	return strings.HasPrefix(name, "new") && strings.HasSuffix(name, "client")
 }
 
 func displayFunction(key string) string {

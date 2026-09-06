@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"net/url"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -226,11 +227,7 @@ func flowsOfGroups(serviceID, context string, groups []gohttp.FlowGroup, opts Op
 				steps = append(steps, step)
 			}
 		}
-		display := function
-		if _, tail, ok := strings.Cut(function, ":"); ok {
-			display = tail
-		}
-		name := strings.TrimSpace(strings.ReplaceAll(display, ".", " "))
+		name := flowName(function)
 		flowSource := flowGroup.Source.String()
 		if flowSource == "" {
 			flowSource = group[0].Source.String()
@@ -238,12 +235,32 @@ func flowsOfGroups(serviceID, context string, groups []gohttp.FlowGroup, opts Op
 		flows = append(flows, catalog.Flow{
 			ID:      "flow." + serviceID + ".http-client." + slug(function),
 			Slug:    serviceID + "-http-client-" + slug(function),
-			Name:    title(name) + " → outbound APIs",
+			Name:    name + " → outbound APIs",
 			Summary: "Source-backed outbound calls made by '" + function + "'.",
 			Source:  flowSource, Owner: context, Participants: participants, Steps: steps,
 		})
 	}
 	return flows
+}
+
+func flowName(function string) string {
+	directory, display, qualified := strings.Cut(function, ":")
+	if !qualified {
+		display = function
+	}
+	receiver, method, methodCall := strings.Cut(display, ".")
+	if !methodCall || (receiver != "Client" && receiver != "Connector") {
+		return title(strings.ReplaceAll(display, ".", " "))
+	}
+	parts := strings.Split(filepath.ToSlash(directory), "/")
+	for index := len(parts) - 1; index >= 0; index-- {
+		part := parts[index]
+		if part == "" || part == "client" || part == "connector" || part == "adapter" {
+			continue
+		}
+		return title(part) + " " + title(method)
+	}
+	return title(strings.ReplaceAll(display, ".", " "))
 }
 
 func complementaryCalls(calls []gohttp.Call) (string, string, bool) {
@@ -331,6 +348,9 @@ func callNote(call gohttp.Call) string {
 	}
 	if call.Response != "" {
 		parts = append(parts, "response '"+call.Response+"'")
+	}
+	if len(call.URLTrace) > 1 {
+		parts = append(parts, "URL source "+strings.Join(call.URLTrace, " → "))
 	}
 	return strings.Join(parts, "; ")
 }
