@@ -18,8 +18,8 @@ import { dirname, join } from "node:path";
 import type { Alt, AltBranch, Flow, FlowNode, Participant, RpcCall, Status, Step } from "../../src/catalog.ts";
 import { adapterCalls, callsIn, type RpcHop } from "./clients.ts";
 import { camel, eventID, slug } from "./ids.ts";
-import { readSource, at, bareType, text, type ClassInfo, type Source } from "./source.ts";
-import { isArrayPattern, isBinary, isBlock, isCall, isForEach, isFor, isFunctionType, isIdent, isIf, isMember, isMethodSig, isPropertySig, isReturn, isSpread, isString, isSwitch, isSwitchCase, isThis, isThrow, isTry, isVarDecl, isWhile, isAssign, keyName, memberName, paramIdent, thisMember, typeText, unwrap, walk, type CallExpression, type ForEachStatement, type IfStatement, type Node, type SwitchStatement } from "./ast.ts";
+import { readSource, at, bareType, returnTypeText, sourceFiles, sourceNamed, text, type ClassInfo, type Source } from "./source.ts";
+import { isArrayPattern, isBinary, isBlock, isCall, isForEach, isFor, isFunctionType, isIdent, isIf, isMember, isMethodSig, isPropertySig, isReturn, isSourceFile, isSpread, isString, isSwitch, isSwitchCase, isThis, isThrow, isTry, isVarDecl, isWhile, isAssign, keyName, memberName, paramIdent, thisMember, typeText, unwrap, walk, type CallExpression, type ForEachStatement, type IfStatement, type Node, type SwitchStatement } from "./ast.ts";
 import type { UseCase } from "./operations.ts";
 import { PORTS, type Binding } from "./wiring.ts";
 import type { AggregateRead, WarningSink } from "./domain.ts";
@@ -230,7 +230,7 @@ export class FlowReader {
     const out: Flow[] = [];
     let files: string[] = [];
     try {
-      files = require("node:fs").readdirSync(policyDir).filter((f: string) => f.endsWith(".ts") && !f.endsWith(".test.ts")).sort();
+      files = require("node:fs").readdirSync(policyDir).filter(isSourceFile).sort();
     } catch {
       return out;
     }
@@ -270,7 +270,7 @@ export class FlowReader {
     const byName = (wire: string): typeof found => {
       for (const agg of this.aggregates) {
         for (const [cls, id] of agg.events) {
-          const evSrc = readSource(join(agg.dir, "events", `${slug(cls)}.ts`)) ?? readSource(join(agg.dir, "events", `${cls}.ts`));
+          const evSrc = readSource(sourceNamed(join(agg.dir, "events"), slug(cls))) ?? readSource(sourceNamed(join(agg.dir, "events"), cls));
           const lit = evSrc?.classes.find((c) => c.name === cls)?.nameLiteral;
           if (lit === wire) return { name: cls, id };
         }
@@ -626,11 +626,11 @@ export class FlowReader {
     const portSrc = imp?.file ? readSource(imp.file) : undefined;
     const iface = portSrc?.interfaces.get(imp?.imported ?? port);
     if (!iface || !portSrc) return [];
-    for (const m of iface.body.body) {
-      if (isMethodSig(m) && keyName(m.key) === method) return this.refsOfType(agg, typeText(portSrc.parsed, m.returnType));
+    for (const m of iface.node.body.body) {
+      if (isMethodSig(m) && keyName(m.key) === method) return this.refsOfType(agg, typeText(iface.p, m.returnType));
       if (isPropertySig(m) && keyName(m.key) === method) {
         const fn = m.typeAnnotation?.typeAnnotation;
-        return this.refsOfType(agg, isFunctionType(fn) ? typeText(portSrc.parsed, fn.returnType) : "");
+        return this.refsOfType(agg, isFunctionType(fn) ? typeText(iface.p, fn.returnType) : "");
       }
     }
     return [];
@@ -645,8 +645,7 @@ export class FlowReader {
     // elsewhere - `holderOf(repo, id, token)` under application/ - against
     // whichever aggregate its return type names.
     const own = this.aggregates.find((a) => imp.file!.startsWith(a.dir));
-    const fnSrc = readSource(imp.file)!;
-    const type = typeText(fnSrc.parsed, fn.returnType);
+    const type = returnTypeText(readSource(imp.file)!, fn);
     for (const agg of own ? [own] : this.aggregates) {
       const refs = this.refsOfType(agg, type);
       if (refs.some((r) => r.name)) return refs;
@@ -666,9 +665,8 @@ export class FlowReader {
 
   private resultsOfMethod(held: DomainRef, method: string): DomainRef[] {
     const agg = held.aggregate!;
-    for (const file of require("node:fs").readdirSync(agg.dir) as string[]) {
-      if (!file.endsWith(".ts")) continue;
-      const src = readSource(join(agg.dir, file));
+    for (const file of sourceFiles(agg.dir)) {
+      const src = readSource(file);
       const m = src?.classes.find((c) => c.name === held.name)?.methods.get(method);
       if (m) return this.refsOfType(agg, m.returns);
     }
@@ -714,7 +712,7 @@ export class FlowReader {
 }
 
 function useCaseKeyFromFile(file: string): string | undefined {
-  const m = /[\\/]application[\\/]([^\\/]+)[\\/]usecases[\\/]([^\\/]+)[\\/]usecase\.ts$/.exec(file);
+  const m = /[\\/]application[\\/]([^\\/]+)[\\/]usecases[\\/]([^\\/]+)[\\/]usecase\.[cm]?[jt]sx?$/.exec(file);
   return m ? `${m[1]}/${m[2]}` : undefined;
 }
 

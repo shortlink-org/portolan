@@ -20,7 +20,7 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { basename, join } from "node:path";
 import { readSource, at, bareType, jsdoc, type Source } from "./source.ts";
-import { isArrow, isBlock, isExportNamed, isIdent, isPropertySig, isVarDecl, keyName, paramIdent, typeText, type BlockStatement, type Node } from "./ast.ts";
+import { isArrow, isBlock, isExportNamed, isIdent, isPropertySig, isSourceFile, isVarDecl, keyName, paramIdent, typeText, type BlockStatement, type Node } from "./ast.ts";
 import type { WarningSink } from "./domain.ts";
 
 /** The three types a client may open a request on. */
@@ -64,8 +64,8 @@ export function readResolvers(schemaDir: string, srcDir: string, rel: (abs: stri
       if (!existsSync(dir) || !statSync(dir).isDirectory()) continue;
 
       for (const name of readdirSync(dir).sort()) {
-        if (!name.endsWith(".ts") || name.endsWith(".test.ts")) continue;
-        const resolver = readResolver(join(dir, name), `${root}.${basename(name, ".ts")}`, ports, rel, b);
+        if (!isSourceFile(name)) continue;
+        const resolver = readResolver(join(dir, name), `${root}.${name.replace(/\.[cm]?[jt]sx?$/, "")}`, ports, rel, b);
         if (resolver) found.push(resolver);
       }
     }
@@ -79,7 +79,7 @@ function readResolver(file: string, id: string, ports: Map<string, string>, rel:
   const src = readSource(file);
   if (!src) return undefined;
 
-  const fn = exportedResolver(src, basename(file, ".ts"));
+  const fn = exportedResolver(src, basename(file).replace(/\.[cm]?[jt]sx?$/, ""));
   if (!fn) {
     b.warn(id, `${rel(file)}: no resolver is exported under the field's name; the field is left out of the flows`);
     return undefined;
@@ -154,10 +154,10 @@ function readContext(srcDir: string, schemaDir: string): Map<string, string> {
   const iface = src?.interfaces.get(CONTEXT);
   if (!src || !iface) return out;
 
-  for (const member of iface.body.body) {
+  for (const member of iface.node.body.body) {
     if (!isPropertySig(member)) continue;
     const name = keyName(member.key);
-    if (name) out.set(name, bareType(typeText(src.parsed, member.typeAnnotation)));
+    if (name) out.set(name, bareType(typeText(iface.p, member.typeAnnotation)));
   }
 
   return out;
@@ -173,7 +173,7 @@ function findContext(dir: string, schemaDir: string): string | undefined {
       if (found) return found;
       continue;
     }
-    if (!name.endsWith(".ts") || name.endsWith(".test.ts")) continue;
+    if (!isSourceFile(name)) continue;
     if (readSource(path)?.interfaces.has(CONTEXT)) return path;
   }
 

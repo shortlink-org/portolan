@@ -1,6 +1,6 @@
 # extract-ts
 
-A TypeScript service in, a catalog fragment out. The TypeScript twin of
+A TypeScript or JavaScript service in, a catalog fragment out. The TypeScript twin of
 `extract-go`: it describes one service - its aggregates, what they publish,
 what runs when somebody calls in, what the service calls - by reading the
 tree, and it reads the tree by its layout. Nothing is annotated for the
@@ -85,6 +85,34 @@ layout already says what the SDL would.
 An adapter over the bus is the one port call that draws no step. It calls
 nobody - it waits - and what it hears is said by the channel the service
 declares in its AsyncAPI document, not by a step in a flow.
+
+## A service written in JavaScript
+
+The same layout in `.js` (or `.mjs`, `.jsx`) reads the same way. What the
+syntax cannot say, the doc comments do, in the form `tsc --checkJs` reads:
+
+| in TypeScript | in JavaScript |
+| --- | --- |
+| `readonly items: BasketItem[] = []` | `/** @type {BasketItem[]} */ items = [];` |
+| `constructor(readonly id: string)` | `/** @param {string} id */ constructor(id) { this.id = id; }` - a field is what the constructor assigns to `this`, typed by the parameter it takes or by what it is given |
+| `handle(input: Input): Promise<void>` | `/** @param {Input} input @returns {Promise<void>} */ handle(input)` |
+| `export interface Port { save(b: Basket): Promise<void> }` | `/** @typedef {{ save(b: Basket): Promise<void> }} Port */`, or `@typedef {Object} Port` with one `@property {type} name` per member |
+| `import type { Port } from "./port.ts"` | `/** @typedef {import("./port.js").Port} Port */`, or `import("./port.js").Port` written inline in any type |
+| `bind<Port>(TOKENS.Port)` | `bind(TOKENS.Port)` - the token's name is the port's |
+| `function provideX(deps): Port` | `/** @returns {Port} */ function provideX(deps)` |
+| `gen/types.ts`, `gen/**/x_pb.ts` | `gen/types.d.ts`, `gen/**/x_pb.js` |
+
+A type expression in a comment is TypeScript's own syntax, so it is parsed
+as one - `let _: <expr>` - and read by the same code that reads an
+annotation. Closure's `?T` and `Array.<T>` are not, and read as nothing.
+`@param`, `@returns` and `@type` are read only where the syntax has no
+annotation, so a TypeScript file that leaves a field untyped and documents it
+instead reads that too. Decorators are not JavaScript; assembly in a
+JavaScript tree is the container's `bind(...)` calls or the `provideX`
+functions, which need none.
+
+`testdata/cart-js` is `testdata/cart` written in JavaScript, file for file,
+and the test is that both read to one fragment.
 
 ## What a doc comment says
 

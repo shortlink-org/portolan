@@ -55,13 +55,13 @@ function peerOf(src: Source, rel: (abs: string) => string, b: WarningSink): Peer
   const protos: ProtoService[] = [];
   for (const imp of src.imports) {
     if (!imp.file) continue;
-    // gen/types.ts of openapi-typescript → gen/openapi.yaml beside it
-    if (/[\\/]gen[\\/]/.test(imp.file) && imp.file.endsWith(".ts") && !/_pb\.ts$/.test(imp.file)) {
+    // gen/types.ts (or types.d.ts, in a JavaScript tree) of openapi-typescript → gen/openapi.yaml beside it
+    if (/[\\/]gen[\\/]/.test(imp.file) && /\.(d\.)?ts$/.test(imp.file) && !/_pb\.[jt]s$/.test(imp.file)) {
       const found = specBeside(dirname(imp.file));
       if (found) spec = readSpec(found);
     }
-    // gen/**/<x>_pb.ts of Connect-ES → proto/**/*.proto beside gen/
-    if (/_pb\.ts$/.test(imp.file)) {
+    // gen/**/<x>_pb.ts, or _pb.js, of Connect-ES → proto/**/*.proto beside gen/
+    if (/_pb\.[jt]s$/.test(imp.file)) {
       const gen = genDirAbove(imp.file);
       if (gen) protos.push(...readProtos(join(dirname(gen), "proto"), rel));
     }

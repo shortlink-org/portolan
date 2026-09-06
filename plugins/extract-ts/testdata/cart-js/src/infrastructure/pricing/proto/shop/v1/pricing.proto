@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package shop.v1;
+
+// Prices a basket.
+service Pricing {
+  rpc GetQuote(GetQuoteRequest) returns (GetQuoteResponse);
+  rpc ExpireQuote(ExpireQuoteRequest) returns (ExpireQuoteResponse);
+}
+
+message GetQuoteRequest { string basket_id = 1; }
+message GetQuoteResponse { string quote_id = 1; int64 total_minor = 2; string currency = 3; }
+message ExpireQuoteRequest { string quote_id = 1; }
+message ExpireQuoteResponse {}

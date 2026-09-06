@@ -5,11 +5,20 @@
 // import, which is all a layout that is the claim needs. The tree itself is
 // oxc-parser's, through `ast.ts`.
 
-import { existsSync, readFileSync, statSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 import {
   parse,
   docBlock,
+  docParams,
+  docReturns,
+  docType,
+  docTypedefs,
+  interfaceFromDoc,
+  isAssign,
+  isExprStmt,
+  isIdent,
+  isSourceFile,
   jsdoc as docOf,
   firstTokenOf,
   isArray,
@@ -28,10 +37,14 @@ import {
   keyName,
   lineOf,
   paramIdent,
+  parseDoc,
   text as textOf,
+  thisMember,
+  typeFromDoc,
   typeText,
+  SOURCE_EXTENSIONS,
 } from "./ast.ts";
-import type { BlockStatement, ClassDeclaration, DocBlock, FunctionNode, InterfaceDeclaration, MethodDefinition, Node, Parsed } from "./ast.ts";
+import type { BlockStatement, ClassDeclaration, DocBlock, FunctionNode, InterfaceDeclaration, MethodDefinition, Node, Parsed, Typed } from "./ast.ts";
 
 /** What a doc comment says about the thing it sits on, beyond its prose. */
 export interface Documented {
@@ -82,13 +95,23 @@ export interface Import {
   typeOnly: boolean;
 }
 
+/**
+ * An interface with the text its nodes point into: the file's own for one
+ * written in the syntax, its own for one declared by a `@typedef`, which is
+ * parsed apart from the file it sits in.
+ */
+export interface Iface {
+  p: Parsed;
+  node: InterfaceDeclaration;
+}
+
 export interface Source {
   path: string;
   parsed: Parsed;
   classes: ClassInfo[];
   imports: Import[];
-  /** Exported interfaces, by name. */
-  interfaces: Map<string, InterfaceDeclaration>;
+  /** Exported interfaces, by name - `interface X` in TypeScript, `@typedef {{…}} X` in JavaScript. */
+  interfaces: Map<string, Iface>;
   /** Exported functions, by name. */
   functions: Map<string, FunctionNode>;
 }
@@ -110,19 +133,106 @@ export function readSource(path: string): Source | null {
     const decl = exported ? stmt.declaration : stmt;
     if (!decl) continue;
     if (isImport(decl)) source.imports.push(...importsOf(decl, key));
-    else if (isClassDecl(decl) && decl.id) source.classes.push(classInfo(parsed, decl, exported ? stmt : undefined));
-    else if (isInterface(decl)) source.interfaces.set(decl.id.name, decl);
+    else if (isInterface(decl)) source.interfaces.set(decl.id.name, { p: parsed, node: decl });
     else if (isFunctionDecl(decl) && decl.id) source.functions.set(decl.id.name, decl);
+  }
+  // Typedefs before classes: a class's `@param {Port}` may name a typedef,
+  // and the typedef's `import(...)` is what says where the port came from.
+  if (parsed.js) readTypedefs(source);
+  for (const stmt of parsed.program.body) {
+    const exported = isExportNamed(stmt);
+    const decl = exported ? stmt.declaration : stmt;
+    if (decl && isClassDecl(decl) && decl.id) source.classes.push(classInfo(source, decl, exported ? stmt : undefined));
   }
   cache.set(key, source);
   return source;
 }
 
-/** Resolves a relative specifier the way Node does for a `.ts` tree. */
+/**
+ * Every `@typedef` in a JavaScript file, wherever its comment sits - a typedef
+ * is attached to nothing, so the comments are read rather than the tree.
+ * `@typedef {import("./port.js").Port} Port` is an import of a type and is
+ * filed as one. `@typedef {{ save(): Promise<void> }} Port`, and
+ * `@typedef {Object} Port` with `@property` lines under it, is an interface,
+ * and becomes the node `interface Port {…}` would have been. Any other
+ * typedef - a union, an alias of a primitive - names nothing the extractor
+ * follows, and is left alone.
+ */
+function readTypedefs(src: Source): void {
+  for (const c of src.parsed.comments) {
+    if (c.type !== "Block" || !c.value.startsWith("*")) continue;
+    for (const def of docTypedefs(parseDoc(c.value.slice(1)))) {
+      const imported = /^import\(\s*["']([^"']+)["']\s*\)\.([\w$]+)$/.exec(def.type);
+      if (imported) {
+        addImport(src, { local: def.name, imported: imported[2]!, specifier: imported[1]!, file: resolveImport(src.path, imported[1]!), typeOnly: true });
+        continue;
+      }
+      let body: string | undefined;
+      if (/^\{[\s\S]*\}$/.test(def.type)) body = docTypeIn(src, def.type.slice(1, -1));
+      else if (/^object$/i.test(def.type)) body = def.properties.map((p) => `${p.name}: ${docTypeIn(src, p.type)};`).join(" ");
+      if (body === undefined) continue;
+      const iface = interfaceFromDoc(def.name, body);
+      if (iface) src.interfaces.set(def.name, iface);
+    }
+  }
+}
+
+/** An import a doc comment implies, added once: the first mention of a local name wins, as it would in the syntax. */
+function addImport(src: Source, imp: Import): void {
+  if (!src.imports.some((i) => i.local === imp.local)) src.imports.push(imp);
+}
+
+/**
+ * A type expression from a doc comment, with each `import("./x.js").Y` in it
+ * read as the import it is and shortened to `Y`, so that what is left is a
+ * name the rest of the reader resolves the way it resolves any other: through
+ * `src.imports`. Returns the expression as the syntax would have written it.
+ */
+export function docTypeIn(src: Source, expr: string): string {
+  return expr.replace(/\btypeof\s+import\(\s*["']([^"']+)["']\s*\)\.([\w$]+)|\bimport\(\s*["']([^"']+)["']\s*\)\.([\w$]+)/g, (_m, s1: string | undefined, n1: string | undefined, s2: string | undefined, n2: string | undefined) => {
+    const specifier = (s1 ?? s2)!;
+    const name = (n1 ?? n2)!;
+    addImport(src, { local: name, imported: name, specifier, file: resolveImport(src.path, specifier), typeOnly: true });
+    return s1 ? `typeof ${name}` : name;
+  });
+}
+
+/** A doc-comment type as the annotation it stands in for, or undefined when there is none or it does not parse. */
+function docTyped(src: Source, expr: string): Typed | undefined {
+  return expr ? typeFromDoc(docTypeIn(src, expr)) : undefined;
+}
+
+/** The files the extractor reads in a directory, sorted: TypeScript and JavaScript alike, tests and declarations left out. */
+export function sourceFiles(dir: string): string[] {
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir)
+    .filter(isSourceFile)
+    .sort()
+    .map((f) => join(dir, f));
+}
+
+/** `<dir>/<base>.ts`, or the `.js`/`.mjs` beside where it would have been: the fixed names of the layout, in whichever language the tree is written. */
+export function sourceNamed(dir: string, base: string): string {
+  for (const ext of SOURCE_EXTENSIONS) {
+    const path = join(dir, base + ext);
+    if (existsSync(path)) return path;
+  }
+  return join(dir, `${base}.ts`);
+}
+
+/**
+ * Resolves a relative specifier the way Node does for a `.ts` or `.js` tree.
+ * A TypeScript file imports `./x.js` and means `./x.ts`, so the written
+ * extension is tried first and its TypeScript twin second; a bare specifier
+ * tries each extension and then an index.
+ */
 export function resolveImport(from: string, specifier: string): string | undefined {
   if (!specifier.startsWith(".")) return undefined;
   const base = resolve(dirname(from), specifier);
-  for (const candidate of [base, base.replace(/\.js$/, ".ts"), `${base}.ts`, `${base}/index.ts`]) {
+  const candidates = [base, base.replace(/\.[cm]?jsx?$/, ".ts"), base.replace(/\.[cm]?jsx?$/, ".d.ts")];
+  for (const ext of [...SOURCE_EXTENSIONS, ".d.ts"]) candidates.push(base + ext);
+  for (const ext of SOURCE_EXTENSIONS) candidates.push(join(base, `index${ext}`));
+  for (const candidate of candidates) {
     if (existsSync(candidate) && statSync(candidate).isFile()) return candidate;
   }
   return undefined;
@@ -166,7 +276,16 @@ export function docWithDeprecation(d: Documented): string {
   return d.doc ? `${d.doc}\n\n${note}` : note;
 }
 
-function classInfo(p: Parsed, node: ClassDeclaration, exportNode: Node | undefined): ClassInfo {
+/**
+ * A class as the reader sees it. In TypeScript the types are in the syntax;
+ * in JavaScript they are in the doc comments - `@type` on a field, `@param`
+ * on the constructor, `@returns` on a method - and a field is what the
+ * constructor assigns to `this`, since there is no parameter property to
+ * declare it with. Each reading falls back to the next, so a TypeScript file
+ * with a JSDoc type on an unannotated field reads that too.
+ */
+function classInfo(src: Source, node: ClassDeclaration, exportNode: Node | undefined): ClassInfo {
+  const p = src.parsed;
   const info: ClassInfo = {
     name: node.id!.name,
     node,
@@ -187,14 +306,31 @@ function classInfo(p: Parsed, node: ClassDeclaration, exportNode: Node | undefin
         continue;
       }
       if (member.static) continue;
-      info.fields.push({ name, type: typeText(p, member.typeAnnotation) || inferred(p, init), ...withTags(docBlock(p, member, firstTokenOf(member))) });
+      const block = docBlock(p, member, firstTokenOf(member));
+      info.fields.push({ name, type: typeText(p, member.typeAnnotation) || docTypeIn(src, docType(block)) || inferred(p, init), ...withTags(block) });
     } else if (isMethod(member) && member.kind === "constructor") {
+      const documented = docParams(docBlock(p, member, firstTokenOf(member)));
+      const params = new Map<string, string>();
       for (const param of member.value.params) {
         const id = paramIdent(param);
         if (!id) continue;
-        const type = typeText(p, id.typeAnnotation);
+        const type = typeText(p, id.typeAnnotation) || docTypeIn(src, documented.get(id.name) ?? "");
         info.params.push({ name: id.name, type });
+        params.set(id.name, type);
         if (isParamProperty(param)) info.fields.push({ name: id.name, type, ...withTags(docBlock(p, param, firstTokenOf(param))) });
+      }
+      if (p.js && member.value.body) {
+        // `this.id = id`: the field is declared by being assigned, typed by
+        // the parameter it takes or by what it is given.
+        for (const stmt of member.value.body.body) {
+          if (!isExprStmt(stmt) || !isAssign(stmt.expression) || stmt.expression.operator !== "=") continue;
+          const name = thisMember(stmt.expression.left);
+          if (name === undefined || name === "name" || info.fields.some((f) => f.name === name)) continue;
+          const value = stmt.expression.right;
+          const block = docBlock(p, stmt);
+          const fromParam = isIdent(value) ? params.get(value.name) : undefined;
+          info.fields.push({ name, type: docTypeIn(src, docType(block)) || fromParam || inferred(p, value), ...withTags(block) });
+        }
       }
     } else if (isMethod(member) && !member.computed && member.kind === "method") {
       const name = keyName(member.key);
@@ -206,12 +342,41 @@ function classInfo(p: Parsed, node: ClassDeclaration, exportNode: Node | undefin
         node: member,
         params: member.value.params,
         body: member.value.body,
-        returns: typeText(p, member.value.returnType),
+        returns: typeText(p, member.value.returnType) || docTypeIn(src, docReturns(docBlock(p, member, firstTokenOf(member)))),
         isStatic: member.static,
       });
     }
   }
   return info;
+}
+
+/** The doc block above an exported function, found through its export statement when it has one. */
+function functionDoc(src: Source, fn: FunctionNode): DocBlock {
+  for (const stmt of src.parsed.program.body) {
+    if (stmt === fn) return docBlock(src.parsed, fn);
+    if (isExportNamed(stmt) && stmt.declaration === fn) return docBlock(src.parsed, fn, firstTokenOf(fn, stmt));
+  }
+  return docBlock(src.parsed, fn);
+}
+
+/** What a function returns: the annotation, or the `@returns {T}` above it, with the text the node points into. */
+export function returnTypeOf(src: Source, fn: FunctionNode): Typed | undefined {
+  if (fn.returnType) return { p: src.parsed, ann: fn.returnType };
+  return docTyped(src, docReturns(functionDoc(src, fn)));
+}
+
+/** The type of one of a function's parameters: the annotation, or the `@param {T} name` above the function. */
+export function paramTypeOf(src: Source, fn: FunctionNode, param: Node): Typed | undefined {
+  const id = paramIdent(param);
+  if (!id) return undefined;
+  if (id.typeAnnotation) return { p: src.parsed, ann: id.typeAnnotation };
+  return docTyped(src, docParams(functionDoc(src, fn)).get(id.name) ?? "");
+}
+
+/** The return type of a function as written, or "". */
+export function returnTypeText(src: Source, fn: FunctionNode): string {
+  const t = returnTypeOf(src, fn);
+  return t ? typeText(t.p, t.ann) : "";
 }
 
 function inferred(p: Parsed, init: Node | null): string {

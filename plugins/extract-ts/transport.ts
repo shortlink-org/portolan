@@ -10,7 +10,7 @@ import { join } from "node:path";
 import { readSpec, type Spec } from "./openapi.ts";
 import { readProtos } from "./clients.ts";
 import { readSource, type ClassInfo, type Source, at } from "./source.ts";
-import { isCall, isMember, memberName, thisMember, walk, type Node } from "./ast.ts";
+import { isCall, isMember, isSourceFile, memberName, thisMember, walk, type Node } from "./ast.ts";
 import { useCaseKeyOf } from "./operations.ts";
 import type { WarningSink } from "./domain.ts";
 
@@ -55,7 +55,7 @@ export function readGrpcTransport(grpcDir: string, rel: (abs: string) => string,
     const answered = new Set<string>();
 
     for (const name of readdirSync(dir).sort()) {
-      if (!name.endsWith(".ts") || name.endsWith(".test.ts")) continue;
+      if (!isSourceFile(name)) continue;
       const src = readSource(join(dir, name));
       if (!src) continue;
       for (const cls of src.classes) {
@@ -96,7 +96,7 @@ export function readTransport(httpDir: string, rel: (abs: string) => string, b: 
     const dir = join(httpDir, pkg);
     if (pkg === "gen" || !statSync(dir).isDirectory()) continue;
     for (const name of readdirSync(dir).sort()) {
-      if (!name.endsWith(".ts") || name.endsWith(".test.ts")) continue;
+      if (!isSourceFile(name)) continue;
       const src = readSource(join(dir, name));
       if (!src) continue;
       for (const cls of src.classes) {

@@ -242,13 +242,82 @@ export interface Parsed {
   comments: Comment[];
   /** Offsets at which each line starts, for turning a position into a line. */
   lines: number[];
+  /** JavaScript rather than TypeScript: the types are in the doc comments. */
+  js: boolean;
+}
+
+/** `.ts`, `.tsx`, `.js`, `.mjs`, `.cjs`, `.jsx`: what the tree is written in, and so where its types are. */
+export const SOURCE_EXTENSIONS = [".ts", ".tsx", ".js", ".mjs", ".cjs", ".jsx"] as const;
+
+/** A file the extractor reads: one of the source extensions, and not a test or a declaration file. */
+export function isSourceFile(name: string): boolean {
+  if (/\.(test|spec)\.[cm]?[jt]sx?$/.test(name) || name.endsWith(".d.ts")) return false;
+  return SOURCE_EXTENSIONS.some((ext) => name.endsWith(ext));
+}
+
+/** Whether a file is JavaScript, where the types are in the doc comments rather than the syntax. */
+export function isJavaScript(path: string): boolean {
+  return /\.([cm]?js|jsx)$/.test(path);
 }
 
 export function parse(path: string, text: string): Parsed {
-  const result = parseSync(path, text, { lang: "ts", sourceType: "module" });
+  const lang = path.endsWith(".tsx") ? "tsx" : path.endsWith(".jsx") ? "jsx" : isJavaScript(path) ? "js" : "ts";
+  const result = parseSync(path, text, { lang, sourceType: "module" });
   const lines = [0];
   for (let i = 0; i < text.length; i++) if (text.charCodeAt(i) === 10) lines.push(i + 1);
-  return { path, text, program: result.program as unknown as Program, comments: result.comments as Comment[], lines };
+  return { path, text, program: result.program as unknown as Program, comments: result.comments as Comment[], lines, js: lang === "js" || lang === "jsx" };
+}
+
+/**
+ * A type annotation with the text its offsets point into: the two travel
+ * together because `typeText` slices the text by the node. A type read from
+ * a doc comment has no place in the file, so it is parsed on its own and
+ * carries its own text; a type written in the syntax carries the file's.
+ */
+export interface Typed {
+  p: Parsed;
+  ann: TypeAnnotation;
+}
+
+const docTypes = new Map<string, Typed | undefined>();
+
+/**
+ * A JSDoc type expression - `{Promise<Basket>}` without its braces - as the
+ * node a TypeScript annotation would have been. The expressions a `checkJs`
+ * project writes are TypeScript's own, so `let _: <expr>;` is a program and
+ * its one annotation is the type; `typeText`, `bareType` and `isFunctionType`
+ * then read it exactly as they read one written in the syntax. Closure's
+ * `?T` and `Array.<T>` are not TypeScript and read as nothing.
+ */
+export function typeFromDoc(expr: string): Typed | undefined {
+  const key = expr.trim();
+  if (!key) return undefined;
+  if (docTypes.has(key)) return docTypes.get(key);
+  let out: Typed | undefined;
+  try {
+    const p = parse("doc-type.ts", `let _: ${key};`);
+    const stmt = p.program.body[0];
+    const decl = isVarDecl(stmt) ? stmt.declarations[0]?.id : undefined;
+    const ann = isIdent(decl) ? decl.typeAnnotation : undefined;
+    // A parse that errored still hands back a tree; the text of the type must
+    // be the whole expression or something was left unread.
+    if (ann && text(p, ann.typeAnnotation) === key) out = { p, ann };
+  } catch {
+    out = undefined;
+  }
+  docTypes.set(key, out);
+  return out;
+}
+
+/** An interface declared in a doc comment - a `@typedef` - as the node an `interface` would have been, with its own text. */
+export function interfaceFromDoc(name: string, body: string): { p: Parsed; node: InterfaceDeclaration } | undefined {
+  try {
+    const p = parse("doc-typedef.ts", `interface ${name} {${body}}`);
+    const node = p.program.body[0];
+    return isInterface(node) && node.id.name === name ? { p, node } : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /** The source of a node, as written. */
@@ -290,9 +359,81 @@ export interface DocBlock {
    * whether there was a tag at all.
    */
   deprecated?: string;
+  /**
+   * Every block tag, in order, with what followed it - the raw material the
+   * type readers below work from. `@param`, `@returns` and `@type` are where
+   * a JavaScript file keeps what a TypeScript file writes in the syntax.
+   */
+  tags: DocTag[];
 }
 
-const EMPTY_DOC: DocBlock = { text: "", examples: [] };
+export interface DocTag {
+  /** Lower case, without the `@`. */
+  tag: string;
+  /** Everything after the tag name, joined and trimmed. */
+  text: string;
+}
+
+const EMPTY_DOC: DocBlock = { text: "", examples: [], tags: [] };
+
+/** `{T} rest` → `["T", "rest"]`, braces balanced so `{{ a: string }}` and `{Record<string, {x: number}>}` read whole; no braces → `["", text]`. */
+export function splitDocType(text: string): [string, string] {
+  const s = text.trim();
+  if (!s.startsWith("{")) return ["", s];
+  let depth = 0;
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] === "{") depth++;
+    else if (s[i] === "}" && --depth === 0) return [s.slice(1, i).trim(), s.slice(i + 1).trim()];
+  }
+  return ["", s];
+}
+
+/** The `@type {T}` of a doc block, or "". */
+export function docType(block: DocBlock): string {
+  const tag = block.tags.find((t) => t.tag === "type");
+  return tag ? splitDocType(tag.text)[0] : "";
+}
+
+/** The `@returns {T}` (or `@return`) of a doc block, or "". */
+export function docReturns(block: DocBlock): string {
+  const tag = block.tags.find((t) => t.tag === "returns" || t.tag === "return");
+  return tag ? splitDocType(tag.text)[0] : "";
+}
+
+/** Each `@param {T} name` of a doc block, by name; `[name]` and `[name=x]` are the optional spellings of the same. */
+export function docParams(block: DocBlock): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const t of block.tags) {
+    if (t.tag !== "param" && t.tag !== "arg" && t.tag !== "argument") continue;
+    const [type, rest] = splitDocType(t.text);
+    const m = /^\[?([\w$]+)/.exec(rest);
+    if (m && type) out.set(m[1]!, type);
+  }
+  return out;
+}
+
+/** A `@typedef {T} Name`, with the `@property {T} name` lines that followed it when `T` was `Object`. */
+export interface DocTypedef {
+  name: string;
+  type: string;
+  properties: { name: string; type: string }[];
+}
+
+export function docTypedefs(block: DocBlock): DocTypedef[] {
+  const out: DocTypedef[] = [];
+  for (const t of block.tags) {
+    if (t.tag === "typedef") {
+      const [type, rest] = splitDocType(t.text);
+      const name = /^[\w$]+/.exec(rest)?.[0];
+      if (name) out.push({ name, type, properties: [] });
+    } else if ((t.tag === "property" || t.tag === "prop") && out.length) {
+      const [type, rest] = splitDocType(t.text);
+      const name = /^\[?([\w$]+)/.exec(rest)?.[1];
+      if (name && type) out[out.length - 1]!.properties.push({ name, type });
+    }
+  }
+  return out;
+}
 
 /**
  * The doc comment that sits right above a node, cleaned the way a reader would
@@ -332,14 +473,16 @@ export function parseDoc(body: string): DocBlock {
   }
   const prose = [sections[0]!.lines.join("\n").trim()];
   const examples: string[] = [];
+  const tags: DocTag[] = [];
   let deprecated: string | undefined;
   for (const s of sections.slice(1)) {
     const text = s.lines.join("\n").trim();
+    tags.push({ tag: s.tag, text });
     if (s.tag === "remarks" && text) prose.push(text);
     else if (s.tag === "example" && text) examples.push(text);
     else if (s.tag === "deprecated") deprecated = flattenLinks(text.replace(/\s+/g, " "));
   }
-  const out: DocBlock = { text: flattenLinks(prose.filter(Boolean).join("\n\n")), examples };
+  const out: DocBlock = { text: flattenLinks(prose.filter(Boolean).join("\n\n")), examples, tags };
   if (deprecated !== undefined) out.deprecated = deprecated;
   return out;
 }

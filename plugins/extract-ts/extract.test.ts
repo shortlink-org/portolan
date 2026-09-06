@@ -182,3 +182,27 @@ describe("the protocol", () => {
     expect(() => serve(JSON.stringify({}))).toThrow(/no input root/);
   });
 });
+
+// The same service in JavaScript: the types in doc comments, a port a
+// typedef, a field an assignment to `this`. What it reads to is what the
+// TypeScript tree reads to, and the golden is the proof - compared with the
+// two things that can only differ set aside: the root and the line numbers.
+describe("the JavaScript twin", () => {
+  const JS = "plugins/extract-ts/testdata/cart-js";
+  const sameShape = (v: unknown): unknown =>
+    JSON.parse(JSON.stringify(v), (_k, x) =>
+      typeof x === "string"
+        ? x
+            .replace(/testdata\/cart-js(\/|$)/g, "testdata/cart$1")
+            .replace(/\.(d\.ts|js)(:\d+)?$/, ".ts")
+            .replace(/\.ts:\d+$/, ".ts")
+        : x,
+    );
+
+  it("reads to the fragment the TypeScript tree reads to", () => {
+    const twin = extract({ root: JS, commit: "abc1234", generatedAt: "2026-09-04T00:00:00Z" }, options);
+    const golden = JSON.parse(readFileSync(`${ROOT}/expected.json`, "utf8"));
+    expect(sameShape(JSON.parse(twin.files[0]!.contents))).toEqual(sameShape(golden));
+    expect(twin.warnings.map((d) => d.ref)).toEqual(["getBasket"]);
+  });
+});

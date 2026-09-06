@@ -7,8 +7,8 @@
 
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { readSource, text, type Source } from "./source.ts";
-import { isCall, isIdent, isMember, isNew, isReturn, isTypeRef, memberName, walk, type BlockStatement, type CallExpression, type FunctionNode, type Node } from "./ast.ts";
+import { paramTypeOf, readSource, returnTypeOf, text, type Source } from "./source.ts";
+import { isCall, isIdent, isMember, isNew, isReturn, isSourceFile, isTypeRef, memberName, walk, type BlockStatement, type CallExpression, type FunctionNode, type Node } from "./ast.ts";
 import { useCaseKeyOf } from "./operations.ts";
 
 export interface Binding {
@@ -45,7 +45,7 @@ export function readBindings(diDir: string): Map<string, Binding[]> {
         walk(path);
         continue;
       }
-      if (!name.endsWith(".ts") || name.endsWith(".test.ts")) continue;
+      if (!isSourceFile(name)) continue;
       const src = readSource(path);
       if (!src) continue;
       for (const fn of src.functions.values()) {
@@ -132,8 +132,9 @@ function containerBinding(src: Source, bind: CallExpression, implName: string): 
 }
 
 function bindingOf(src: Source, fn: FunctionNode): Binding | undefined {
-  if (!fn.returnType || !fn.body) return undefined;
-  const returned = fn.returnType.typeAnnotation;
+  const returns = returnTypeOf(src, fn);
+  if (!returns || !fn.body) return undefined;
+  const returned = returns.ann.typeAnnotation;
   const typeName = isTypeRef(returned) && isIdent(returned.typeName) ? returned.typeName.name : undefined;
   if (!typeName) return undefined;
   const portImport = src.imports.find((i) => i.local === typeName);
@@ -143,7 +144,7 @@ function bindingOf(src: Source, fn: FunctionNode): Binding | undefined {
 
   // A parameter that is another use case binds the port to it.
   for (const p of fn.params) {
-    const ann = isIdent(p) ? p.typeAnnotation?.typeAnnotation : undefined;
+    const ann = paramTypeOf(src, fn, p)?.ann.typeAnnotation;
     const t = isTypeRef(ann) && isIdent(ann.typeName) ? ann.typeName.name : undefined;
     const imp = t ? src.imports.find((i) => i.local === t) : undefined;
     if (imp?.file && imp.imported === "UseCase") {
@@ -182,7 +183,7 @@ function portKeyOf(file: string, name: string): string | undefined {
   const useCase = useCaseKeyOf(file);
   if (useCase) return `${useCase}.${name}`;
 
-  return /[\\/]ports[\\/][^\\/]+\.ts$/.test(file) ? `${PORTS}.${name}` : undefined;
+  return /[\\/]ports[\\/][^\\/]+\.[cm]?[jt]sx?$/.test(file) ? `${PORTS}.${name}` : undefined;
 }
 
 /** The key ports that belong to no use case are filed under. */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { children, docBlock, firstTokenOf, flattenLinks, isClassDecl, isExportNamed, isMethod, isVarDecl, jsdoc, lineOf, parse, paramIdent, parseDoc, stringOf, templateShape, text, typeText, unwrap, walk } from "./ast.ts";
+import { children, docBlock, docParams, docReturns, docType, docTypedefs, firstTokenOf, flattenLinks, interfaceFromDoc, isClassDecl, isExportNamed, isMethod, isSourceFile, isVarDecl, jsdoc, lineOf, parse, paramIdent, parseDoc, splitDocType, stringOf, templateShape, text, typeFromDoc, typeText, unwrap, walk } from "./ast.ts";
 import type { CallExpression, ClassDeclaration, Literal, TemplateLiteral } from "./ast.ts";
 
 const SRC = `import { inject } from "inversify";
@@ -93,7 +93,7 @@ describe("the doc comment", () => {
     expect(block.deprecated).toBe("not really");
     expect(block.examples).toEqual([]);
     // Nothing above the class itself but the decorator: no block, and no tags.
-    expect(docBlock(p, cls)).toEqual({ text: "", examples: [] });
+    expect(docBlock(p, cls)).toEqual({ text: "", examples: [], tags: [] });
   });
 
   it("folds @remarks into the text, keeps each @example whole, and drops the tags a type checker reads", () => {
@@ -125,5 +125,54 @@ describe("the doc comment", () => {
     expect(flattenLinks("A {@link Basket} holds a {@link BasketItem|line} and a {@link Money money value}.")).toBe("A Basket holds a line and a money value.");
     expect(flattenLinks("See [the docs]{@link https://example.com/x} and {@linkcode Basket.create}.")).toBe("See the docs and Basket.create.");
     expect(parseDoc(" * @deprecated use {@link Basket.lines} instead").deprecated).toBe("use Basket.lines instead");
+  });
+});
+
+describe("types in a doc comment", () => {
+  it("splits the braced type off a tag, braces balanced", () => {
+    expect(splitDocType("{string} id the id")).toEqual(["string", "id the id"]);
+    expect(splitDocType("{{ a: string; b: { c: number } }} Shape")).toEqual(["{ a: string; b: { c: number } }", "Shape"]);
+    expect(splitDocType("[name] no type")).toEqual(["", "[name] no type"]);
+  });
+
+  it("reads @type, @param, @returns and @typedef with its @property lines", () => {
+    const block = parseDoc(`
+ * @type {BasketItem[]}
+ * @param {Repo} repo the store
+ * @param {string} [token]
+ * @param untyped
+ * @returns {Promise<Basket>}
+ * @typedef {Object} Input
+ * @property {string} basketId which one
+ * @prop {number} quantity
+ * @typedef {import("./port.js").Port} Port
+ `);
+    expect(docType(block)).toBe("BasketItem[]");
+    expect([...docParams(block)]).toEqual([["repo", "Repo"], ["token", "string"]]);
+    expect(docReturns(block)).toBe("Promise<Basket>");
+    expect(docTypedefs(block)).toEqual([
+      { name: "Input", type: "Object", properties: [{ name: "basketId", type: "string" }, { name: "quantity", type: "number" }] },
+      { name: "Port", type: 'import("./port.js").Port', properties: [] },
+    ]);
+  });
+
+  it("turns a type expression into the node an annotation would have been", () => {
+    const t = typeFromDoc("Promise<[Basket, BasketCreated]>");
+    expect(t && typeText(t.p, t.ann)).toBe("Promise<[Basket, BasketCreated]>");
+    const fn = typeFromDoc("(basket: Basket) => Promise<void>");
+    expect(fn && fn.ann.typeAnnotation.type).toBe("TSFunctionType");
+    // Closure's spelling is not TypeScript's, and reads as nothing rather than as something else.
+    expect(typeFromDoc("Array.<string>")).toBeUndefined();
+    expect(typeFromDoc("")).toBeUndefined();
+  });
+
+  it("turns a typedef body into an interface with members a port reader can walk", () => {
+    const iface = interfaceFromDoc("Repo", " byId(id: string): Promise<Basket>; save: (b: Basket) => Promise<void>; ");
+    expect(iface?.node.id.name).toBe("Repo");
+    expect(iface?.node.body.body.map((m) => m.type)).toEqual(["TSMethodSignature", "TSPropertySignature"]);
+  });
+
+  it("tells a source file from a test, a declaration and anything else", () => {
+    expect(["a.ts", "a.js", "a.mjs", "a.jsx", "a.test.ts", "a.spec.js", "a.d.ts", "a.json", "a.md"].filter(isSourceFile)).toEqual(["a.ts", "a.js", "a.mjs", "a.jsx"]);
   });
 });

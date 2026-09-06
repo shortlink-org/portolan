@@ -7,7 +7,7 @@ import type { Aggregate, Block, Event, Field as CatalogField } from "../../src/c
 import { aggregateID, blockID, eventID, pascal, slug, title } from "./ids.ts";
 import { isExportNamed, isIdent, isString, isVarDecl } from "./ast.ts";
 import { readLifecycle } from "./lifecycle.ts";
-import { docWithDeprecation, readSource, type ClassInfo, type Documented, type Source } from "./source.ts";
+import { docWithDeprecation, readSource, sourceFiles, sourceNamed, type ClassInfo, type Documented, type Source } from "./source.ts";
 
 export interface WarningSink {
   warn(ref: string, message: string): void;
@@ -35,14 +35,6 @@ export function readAggregates(domainDir: string, svcID: string, rel: (abs: stri
   return out;
 }
 
-function tsFiles(dir: string): string[] {
-  if (!existsSync(dir)) return [];
-  return readdirSync(dir)
-    .filter((f) => f.endsWith(".ts") && !f.endsWith(".test.ts") && !f.endsWith(".d.ts"))
-    .sort()
-    .map((f) => join(dir, f));
-}
-
 function readAggregate(dir: string, name: string, svcID: string, rel: (abs: string) => string, b: WarningSink): AggregateRead | null {
   const id = aggregateID(svcID, name);
   const rootName = pascal(name);
@@ -51,7 +43,7 @@ function readAggregate(dir: string, name: string, svcID: string, rel: (abs: stri
   let root: ClassInfo | undefined;
   let rootFile = "";
 
-  for (const file of tsFiles(dir)) {
+  for (const file of sourceFiles(dir)) {
     const src = readSource(file);
     if (!src) continue;
     for (const c of src.classes) {
@@ -72,7 +64,7 @@ function readAggregate(dir: string, name: string, svcID: string, rel: (abs: stri
   entities.sort((a, c) => (a.name === rootName ? -1 : c.name === rootName ? 1 : 0));
 
   const valueObjects: Block[] = [];
-  for (const file of tsFiles(join(dir, "vo"))) {
+  for (const file of sourceFiles(join(dir, "vo"))) {
     const src = readSource(file);
     for (const c of src?.classes ?? []) if (c.exported) valueObjects.push(block(id, c));
   }
@@ -80,7 +72,7 @@ function readAggregate(dir: string, name: string, svcID: string, rel: (abs: stri
   const events: Event[] = [];
   const eventIds = new Map<string, string>();
   const channel = channelOf(dir, name);
-  for (const file of tsFiles(join(dir, "events"))) {
+  for (const file of sourceFiles(join(dir, "events"))) {
     const src = readSource(file);
     for (const c of src?.classes ?? []) {
       if (!c.exported) continue;
@@ -133,7 +125,7 @@ function readAggregate(dir: string, name: string, svcID: string, rel: (abs: stri
  * about what happened. Empty when the module or the constant is missing.
  */
 function channelOf(domainDir: string, aggregate: string): string {
-  const src = readSource(join(domainDir, "..", "..", "infrastructure", "repository", aggregate, "dto.ts"));
+  const src = readSource(sourceNamed(join(domainDir, "..", "..", "infrastructure", "repository", aggregate), "dto"));
   if (!src) return "";
   for (const stmt of src.parsed.program.body) {
     const decl = isExportNamed(stmt) ? stmt.declaration : stmt;

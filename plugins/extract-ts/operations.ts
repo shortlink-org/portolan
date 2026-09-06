@@ -6,7 +6,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, join } from "node:path";
 import type { Operation } from "../../src/catalog.ts";
 import { camel } from "./ids.ts";
-import { readSource, type ClassInfo, type Source } from "./source.ts";
+import { readSource, sourceNamed, type ClassInfo, type Source } from "./source.ts";
 import { isCall, isMember, memberName, thisMember, walk } from "./ast.ts";
 import type { WarningSink } from "./domain.ts";
 
@@ -34,7 +34,7 @@ export function readUseCases(applicationDir: string, rel: (abs: string) => strin
     for (const name of readdirSync(usecases).sort()) {
       const dir = join(usecases, name);
       if (!statSync(dir).isDirectory()) continue;
-      const file = join(dir, "usecase.ts");
+      const file = sourceNamed(dir, "usecase");
       const source = readSource(file);
       const cls = source?.classes.find((c) => c.name === "UseCase");
       if (!source || !cls) {
@@ -85,8 +85,8 @@ function isCommand(uc: UseCase): boolean {
 }
 
 export function useCaseKeyOf(file: string): string | undefined {
-  // .../application/<aggregate>/usecases/<name>/usecase.ts
-  const m = /[\\/]application[\\/]([^\\/]+)[\\/]usecases[\\/]([^\\/]+)[\\/]usecase\.ts$/.exec(file);
+  // .../application/<aggregate>/usecases/<name>/usecase.ts, or .js
+  const m = /[\\/]application[\\/]([^\\/]+)[\\/]usecases[\\/]([^\\/]+)[\\/]usecase\.[cm]?[jt]sx?$/.exec(file);
   return m ? `${m[1]}/${m[2]}` : undefined;
 }
 

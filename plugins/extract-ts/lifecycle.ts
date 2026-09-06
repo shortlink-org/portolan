@@ -16,7 +16,7 @@ import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import type { Lifecycle, Transition } from "../../src/catalog.ts";
 import { readSource, at, bareType, type ClassInfo } from "./source.ts";
-import { isArray, isAssign, isCall, isExportNamed, isIdent, isMember, isObject, isProp, isString, isVarDecl, keyName, thisMember, unwrap, walk, type Node, type ObjectExpression } from "./ast.ts";
+import { isArray, isAssign, isCall, isExportNamed, isIdent, isMember, isObject, isProp, isSourceFile, isString, isVarDecl, keyName, thisMember, unwrap, walk, type Node, type ObjectExpression } from "./ast.ts";
 import type { WarningSink } from "./domain.ts";
 
 /** The exported constant the table is looked for under. */
@@ -80,7 +80,7 @@ export function readLifecycle(dir: string, root: ClassInfo, rootFile: string, ev
 function readTable(dir: string): Map<string, string[]> | undefined {
   if (!existsSync(dir)) return undefined;
   for (const name of readdirSync(dir).sort()) {
-    if (!name.endsWith(".ts") || name.endsWith(".test.ts")) continue;
+    if (!isSourceFile(name)) continue;
     const src = readSource(join(dir, name));
     if (!src) continue;
     for (const stmt of src.parsed.program.body) {
