@@ -103,12 +103,15 @@ export type RunEvent =
 
 async function json<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${ROOT}${path}`, init);
-  const value = await response.json() as T & { error?: string; code?: string; retryable?: boolean; provider?: string };
+  const value = await response.json() as T & { error?: string; code?: string; retryable?: boolean; provider?: string; host?: string; credentialSupported?: boolean; credentialPresent?: boolean };
   if (!response.ok) throw new LocalApiError(value.error || `Local API returned ${response.status}.`, {
     status: response.status,
     code: value.code,
     retryable: value.retryable,
     provider: value.provider,
+    host: value.host,
+    credentialSupported: value.credentialSupported,
+    credentialPresent: value.credentialPresent,
   });
   return value;
 }
@@ -118,14 +121,20 @@ export class LocalApiError extends Error {
   readonly code?: string;
   readonly retryable: boolean;
   readonly provider?: string;
+  readonly host?: string;
+  readonly credentialSupported: boolean;
+  readonly credentialPresent: boolean;
 
-  constructor(message: string, options: { status: number; code?: string; retryable?: boolean; provider?: string }) {
+  constructor(message: string, options: { status: number; code?: string; retryable?: boolean; provider?: string; host?: string; credentialSupported?: boolean; credentialPresent?: boolean }) {
     super(message);
     this.name = "LocalApiError";
     this.status = options.status;
     this.code = options.code;
     this.retryable = options.retryable ?? false;
     this.provider = options.provider;
+    this.host = options.host;
+    this.credentialSupported = options.credentialSupported ?? false;
+    this.credentialPresent = options.credentialPresent ?? false;
   }
 }
 
@@ -139,6 +148,14 @@ export async function discover(path: string): Promise<Discovery> {
 
 export async function inspectRepository(repository: string, ref: string, sourcePath: string): Promise<RepositoryInspection> {
   return json("/repositories/prepare", { method: "POST", headers: LOCAL_HEADER, body: JSON.stringify({ repository, ref, sourcePath }) });
+}
+
+export async function saveRepositoryCredential(repository: string, token: string): Promise<{ host: string; provider: string; scope: "session"; stored: true }> {
+  return json("/repositories/credentials", { method: "POST", headers: LOCAL_HEADER, body: JSON.stringify({ repository, token }) });
+}
+
+export async function forgetRepositoryCredential(repository: string): Promise<{ host: string; provider: string; scope: "session"; stored: false }> {
+  return json("/repositories/credentials/forget", { method: "POST", headers: LOCAL_HEADER, body: JSON.stringify({ repository }) });
 }
 
 export async function previewProject(draft: ProjectDraft): Promise<ProjectPlan> {

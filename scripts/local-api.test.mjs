@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { rmSync } from "node:fs";
 
-import { classifyRepositoryFailure, diffGeneratedFiles, discoverProject, inspectionRoot, planProject, readLocalSource, summarizeProjectTrial, writeProject } from "./local-api.mjs";
+import { classifyRepositoryFailure, diffGeneratedFiles, discoverProject, forgetRepositoryCredential, inspectionRoot, planProject, readLocalSource, resolveRepositoryCommit, storeRepositoryCredential, summarizeProjectTrial, writeProject } from "./local-api.mjs";
 
 const roots = [];
 afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
@@ -39,6 +39,37 @@ describe("local project setup", () => {
     expect(classifyRepositoryFailure(Object.assign(new Error("spawnSync git ETIMEDOUT"), { code: "ETIMEDOUT" }), "GitHub")).toMatchObject({
       code: "repository_timeout", status: 504, retryable: true, provider: "GitHub",
     });
+  });
+
+  it("keeps repository credentials session-scoped and out of API results and errors", () => {
+    const repository = "https://github.com/acme/private-service";
+    const token = "portolan-test-secret-token";
+    const stored = storeRepositoryCredential({ repository, token });
+    expect(stored).toEqual({ host: "github.com", provider: "GitHub", scope: "session", stored: true });
+    expect(JSON.stringify(stored)).not.toContain(token);
+    expect(classifyRepositoryFailure(new Error(`Authentication failed: ${token}`), "GitHub").message).not.toContain(token);
+    expect(forgetRepositoryCredential({ repository })).toEqual({ host: "github.com", provider: "GitHub", scope: "session", stored: false });
+  });
+
+  it.skipIf(process.platform === "win32")("passes a session token through GIT_ASKPASS without adding it to git arguments", () => {
+    const root = mkdtempSync(join(tmpdir(), "portolan-fake-git-"));
+    roots.push(root);
+    const git = join(root, "git");
+    const token = "askpass-only-secret";
+    writeFileSync(git, `#!/bin/sh\ncase " $* " in\n  *" $PORTOLAN_EXPECTED_TEST_TOKEN "*) exit 91 ;;\nesac\nuser="$($GIT_ASKPASS "Username for 'https://github.com':")"\npassword="$($GIT_ASKPASS "Password for 'https://x-access-token@github.com':")"\nif [ "$user" != "x-access-token" ] || [ "$password" != "$PORTOLAN_EXPECTED_TEST_TOKEN" ]; then exit 92; fi\nprintf 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\trefs/heads/main\\n'\n`, { mode: 0o700 });
+    const previousPath = process.env.PATH;
+    process.env.PATH = `${root}:${previousPath}`;
+    process.env.PORTOLAN_EXPECTED_TEST_TOKEN = token;
+    storeRepositoryCredential({ repository: "https://github.com/acme/private-service", token });
+    storeRepositoryCredential({ repository: "https://gitlab.com/acme/another-service", token: "another-host-secret" });
+    try {
+      expect(resolveRepositoryCommit("https://github.com/acme/private-service", "main")).toBe("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+    } finally {
+      forgetRepositoryCredential({ repository: "https://github.com/acme/private-service" });
+      forgetRepositoryCredential({ repository: "https://gitlab.com/acme/another-service" });
+      process.env.PATH = previousPath;
+      delete process.env.PORTOLAN_EXPECTED_TEST_TOKEN;
+    }
   });
 
   it("reads UTF-8 source inside the workspace", () => {

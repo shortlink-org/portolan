@@ -29,6 +29,7 @@ const MAX_FILES = 12_000;
 const MAX_COMPONENTS = 100;
 const MAX_SOURCE_BYTES = 1024 * 1024;
 const jobs = new Map();
+const repositoryCredentials = new Map();
 const SNAPSHOT_SKIP = new Set([".git", ".portolan", "dist", "node_modules", "target"]);
 const PROJECT_PREVIEW_TTL_MS = 15 * 60 * 1000;
 
@@ -348,10 +349,12 @@ function repositoryParts(repository) {
   let path;
   let host;
   let fetchUrl = value;
+  let transport = "https";
   if (value.startsWith("git@")) {
     const match = /^git@([^:/\s]+):(.+)$/.exec(value);
     if (!match) throw new Error("Use a valid SSH repository URL.");
     [, host, path] = match;
+    transport = "ssh";
   }
   else if (value.includes("://")) {
     const url = new URL(value);
@@ -359,6 +362,7 @@ function repositoryParts(repository) {
     if (!["https:", "ssh:"].includes(url.protocol) || embeddedCredentials) throw new Error("Use an HTTPS or SSH repository URL without embedded credentials.");
     host = url.hostname;
     path = url.pathname;
+    transport = url.protocol === "ssh:" ? "ssh" : "https";
   } else {
     if (!/^[a-z0-9.-]+\/[a-z0-9._/-]+$/i.test(value)) throw new Error("Repository must name a host, owner and repository.");
     host = value.slice(0, value.indexOf("/"));
@@ -373,17 +377,20 @@ function repositoryParts(repository) {
     : normalizedHost === "gitlab.com" || normalizedHost.endsWith(".gitlab.com")
       ? "GitLab"
       : "Git server";
-  return { value, fetchUrl, host, provider, owner: segments.at(-2), name: segments.at(-1), web: `${host}/${segments.at(-2)}/${segments.at(-1)}` };
+  return { value, fetchUrl, host, provider, transport, owner: segments.at(-2), name: segments.at(-1), web: `${host}/${segments.at(-2)}/${segments.at(-1)}` };
 }
 
 class LocalApiError extends Error {
-  constructor(message, { code = "request_failed", status = 400, retryable = false, provider } = {}) {
+  constructor(message, { code = "request_failed", status = 400, retryable = false, provider, host, credentialSupported = false, credentialPresent = false } = {}) {
     super(message);
     this.name = "LocalApiError";
     this.code = code;
     this.status = status;
     this.retryable = retryable;
     this.provider = provider;
+    this.host = host;
+    this.credentialSupported = credentialSupported;
+    this.credentialPresent = credentialPresent;
   }
 }
 
@@ -412,22 +419,115 @@ export function classifyRepositoryFailure(cause, provider = "Git server", phase 
   });
 }
 
-function remoteCommit(repository, ref) {
+function credentialUsername(provider) {
+  return provider === "GitHub" ? "x-access-token" : provider === "GitLab" ? "oauth2" : "git";
+}
+
+function environmentCredential(repo) {
+  const token = repo.provider === "GitHub"
+    ? process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN
+    : repo.provider === "GitLab"
+      ? process.env.GITLAB_TOKEN
+      : undefined;
+  return token ? { token, username: credentialUsername(repo.provider), provider: repo.provider } : null;
+}
+
+function credentialFor(repo) {
+  return repositoryCredentials.get(repo.host.toLowerCase()) ?? environmentCredential(repo);
+}
+
+export function storeRepositoryCredential(request) {
+  const repo = repositoryParts(request.repository);
+  if (repo.transport !== "https" || !["GitHub", "GitLab"].includes(repo.provider)) {
+    throw new LocalApiError("Access tokens are supported for HTTPS GitHub and GitLab repositories.", { code: "credential_unsupported", status: 400 });
+  }
+  const token = String(request.token ?? "").trim();
+  if (!token || token.length > 8_192 || /[\r\n\0]/.test(token)) {
+    throw new LocalApiError("Enter a valid access token.", { code: "credential_invalid", status: 400 });
+  }
+  repositoryCredentials.set(repo.host.toLowerCase(), { token, username: credentialUsername(repo.provider), provider: repo.provider });
+  return { host: repo.host.toLowerCase(), provider: repo.provider, scope: "session", stored: true };
+}
+
+export function forgetRepositoryCredential(request) {
+  const repo = repositoryParts(request.repository);
+  repositoryCredentials.delete(repo.host.toLowerCase());
+  return { host: repo.host.toLowerCase(), provider: repo.provider, scope: "session", stored: false };
+}
+
+function gitConfigEnvironment(env) {
+  const parsed = Number.parseInt(String(env.GIT_CONFIG_COUNT ?? "0"), 10);
+  const count = Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+  return { ...env, GIT_CONFIG_COUNT: String(count + 1), [`GIT_CONFIG_KEY_${count}`]: "credential.helper", [`GIT_CONFIG_VALUE_${count}`]: "" };
+}
+
+function gitAuthEnvironment(repositories = []) {
+  const credentials = {};
+  if (repositories.length) {
+    for (const repo of repositories) {
+      const credential = credentialFor(repo);
+      if (repo.transport === "https" && credential) credentials[repo.host.toLowerCase()] = credential;
+    }
+  } else {
+    for (const [host, credential] of repositoryCredentials) credentials[host] = credential;
+    if (!credentials["github.com"] && (process.env.GH_TOKEN || process.env.GITHUB_TOKEN)) {
+      credentials["github.com"] = { token: process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN, username: "x-access-token", provider: "GitHub" };
+    }
+    if (!credentials["gitlab.com"] && process.env.GITLAB_TOKEN) {
+      credentials["gitlab.com"] = { token: process.env.GITLAB_TOKEN, username: "oauth2", provider: "GitLab" };
+    }
+  }
+  const entries = Object.entries(credentials);
+  if (!entries.length) return { env: { ...process.env, GIT_TERMINAL_PROMPT: "0" }, dispose() {} };
+  const holder = mkdtempSync(join(tmpdir(), "portolan-git-auth-"));
+  const helper = join(holder, process.platform === "win32" ? "askpass.cmd" : "askpass.cjs");
+  const script = process.platform === "win32"
+    ? `@echo off\r\n"${process.execPath}" "${join(holder, "askpass.mjs")}" %*\r\n`
+    : `#!${process.execPath}\nconst process = require("node:process");\nconst credentials = JSON.parse(process.env.PORTOLAN_GIT_CREDENTIALS_JSON || "{}");\nconst prompt = String(process.argv[2] || "");\nconst authority = /https?:\\/\\/([^/'\"]+)/i.exec(prompt)?.[1];\nconst host = authority?.split("@").pop()?.replace(/:\\d+$/, "").toLowerCase();\nconst values = Object.values(credentials);\nconst credential = credentials[host] || (values.length === 1 ? values[0] : null);\nif (credential) process.stdout.write(String(/username/i.test(prompt) ? credential.username : credential.token));\n`;
+  if (process.platform === "win32") {
+    writeFileSync(join(holder, "askpass.mjs"), `import process from "node:process";\nconst credentials = JSON.parse(process.env.PORTOLAN_GIT_CREDENTIALS_JSON || "{}");\nconst prompt = String(process.argv[2] || "");\nconst authority = /https?:\\/\\/([^/'\"]+)/i.exec(prompt)?.[1];\nconst host = authority?.split("@").pop()?.replace(/:\\d+$/, "").toLowerCase();\nconst values = Object.values(credentials);\nconst credential = credentials[host] || (values.length === 1 ? values[0] : null);\nif (credential) process.stdout.write(String(/username/i.test(prompt) ? credential.username : credential.token));\n`);
+  }
+  writeFileSync(helper, script, { mode: 0o700 });
+  const env = gitConfigEnvironment({
+    ...process.env,
+    GIT_TERMINAL_PROMPT: "0",
+    GIT_ASKPASS: helper,
+    GIT_ASKPASS_REQUIRE: "force",
+    PORTOLAN_GIT_CREDENTIALS_JSON: JSON.stringify(credentials),
+  });
+  return { env, dispose() { rmSync(holder, { recursive: true, force: true }); } };
+}
+
+function repositoryFailure(cause, repo, phase) {
+  const failure = classifyRepositoryFailure(cause, repo.provider, phase);
+  failure.host = repo.host.toLowerCase();
+  failure.credentialSupported = repo.transport === "https" && ["GitHub", "GitLab"].includes(repo.provider);
+  failure.credentialPresent = repositoryCredentials.has(repo.host.toLowerCase());
+  return failure;
+}
+
+function remoteCommit(repo, ref) {
   if (ref.startsWith("-") || /[\s\r\n\0]/.test(ref)) throw new Error("Branch, tag or commit is not valid.");
   if (/^[0-9a-f]{40}$/i.test(ref)) return ref.toLowerCase();
   const query = ref.trim() || "HEAD";
-  const output = execFileSync("git", ["ls-remote", "--quiet", repository, query, `${query}^{}`], {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-    timeout: 30_000,
-    maxBuffer: 1024 * 1024,
-    env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
-  });
+  const auth = gitAuthEnvironment([repo]);
+  let output;
+  try {
+    output = execFileSync("git", ["ls-remote", "--quiet", repo.fetchUrl, query, `${query}^{}`], {
+      encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], timeout: 30_000, maxBuffer: 1024 * 1024, env: auth.env,
+    });
+  } finally { auth.dispose(); }
   const lines = output.trim().split("\n").filter(Boolean);
   const peeled = lines.find((line) => line.trimEnd().endsWith("^{}"));
   const commit = (peeled ?? lines[0] ?? "").trim().split(/\s+/)[0];
   if (!/^[0-9a-f]{40}$/i.test(commit)) throw new Error(`Repository has no ref \"${query}\".`);
   return commit.toLowerCase();
+}
+
+export function resolveRepositoryCommit(repository, ref) {
+  const repo = repositoryParts(repository);
+  try { return remoteCommit(repo, String(ref ?? "").trim()); }
+  catch (cause) { throw repositoryFailure(cause, repo, "resolve the requested ref"); }
 }
 
 function inspectionKey(repository, commit, sourcePath = "") {
@@ -449,9 +549,7 @@ export function prepareRepository(workspace, request) {
   const repo = repositoryParts(request.repository);
   const ref = String(request.ref ?? "").trim();
   const sourcePath = cleanSourcePath(request.sourcePath);
-  let commit;
-  try { commit = remoteCommit(repo.fetchUrl, ref); }
-  catch (cause) { throw classifyRepositoryFailure(cause, repo.provider, "resolve the requested ref"); }
+  const commit = resolveRepositoryCommit(repo.value, ref);
   const root = inspectionRoot(repo.value, commit, sourcePath);
   const checkout = join(workspace, ".portolan", "inspect", inspectionKey(repo.value, commit, sourcePath));
   if (!lstatExists(checkout)) {
@@ -460,12 +558,14 @@ export function prepareRepository(workspace, request) {
     try {
       const options = { cwd: staging, stdio: "pipe", timeout: 60_000, maxBuffer: 4 * 1024 * 1024, env: { ...process.env, GIT_TERMINAL_PROMPT: "0" } };
       execFileSync("git", ["init", "--quiet"], options);
-      execFileSync("git", ["fetch", "--quiet", "--depth", "1", repo.fetchUrl, commit], options);
+      const auth = gitAuthEnvironment([repo]);
+      try { execFileSync("git", ["fetch", "--quiet", "--depth", "1", repo.fetchUrl, commit], { ...options, env: auth.env }); }
+      finally { auth.dispose(); }
       if (sourcePath) execFileSync("git", ["sparse-checkout", "set", "--no-cone", sourcePath], options);
       execFileSync("git", ["checkout", "--quiet", "--detach", "FETCH_HEAD"], options);
       renameSync(staging, checkout);
     } catch (cause) {
-      throw classifyRepositoryFailure(cause, repo.provider, "download the repository");
+      throw repositoryFailure(cause, repo, "download the repository");
     } finally {
       if (lstatExists(staging)) rmSync(staging, { recursive: true, force: true });
     }
@@ -912,21 +1012,31 @@ function startJob(workspace, mode, approvedPreview, preparedTrial) {
     throw new Error("Files changed while the preview workspace was being created. Try again.");
   }
   const generatedAt = preview ? new Date().toISOString() : approvedPreview?.generatedAt;
-  const job = { id, mode, status: "running", events: [], subscribers: new Set(), buffers: { stdout: "", stderr: "" }, child: null, runRoot: snapshot?.snapshot ?? workspace, snapshotHolder: snapshot?.holder ?? null, fingerprint, generatedAt, projectPlan: preparedTrial?.plan ?? null, projectRequest: preparedTrial ? structuredClone(preparedTrial.request) : null };
+  const gitAuth = gitAuthEnvironment();
+  const job = { id, mode, status: "running", events: [], subscribers: new Set(), buffers: { stdout: "", stderr: "" }, child: null, gitAuth, runRoot: snapshot?.snapshot ?? workspace, snapshotHolder: snapshot?.holder ?? null, fingerprint, generatedAt, projectPlan: preparedTrial?.plan ?? null, projectRequest: preparedTrial ? structuredClone(preparedTrial.request) : null };
   jobs.set(id, job);
   const command = process.platform === "win32" ? "npm.cmd" : "npm";
-  const child = spawn(command, ["run", mode === "check" ? "gen:check" : "gen"], {
-    cwd: job.runRoot,
-    env: { ...process.env, PORTOLAN_EVENTS: "1", ...(generatedAt ? { PORTOLAN_GENERATED_AT: generatedAt } : {}) },
-    stdio: ["ignore", "pipe", "pipe"],
-    detached: process.platform !== "win32",
-  });
+  let child;
+  try {
+    child = spawn(command, ["run", mode === "check" ? "gen:check" : "gen"], {
+      cwd: job.runRoot,
+      env: { ...gitAuth.env, PORTOLAN_EVENTS: "1", ...(generatedAt ? { PORTOLAN_GENERATED_AT: generatedAt } : {}) },
+      stdio: ["ignore", "pipe", "pipe"],
+      detached: process.platform !== "win32",
+    });
+  } catch (cause) {
+    gitAuth.dispose();
+    jobs.delete(id);
+    throw cause;
+  }
   job.child = child;
   emit(job, { type: "run-started", runId: id, mode });
   child.stdout.on("data", (chunk) => feed(job, "stdout", chunk));
   child.stderr.on("data", (chunk) => feed(job, "stderr", chunk));
   child.on("error", (error) => emit(job, { type: "run-finished", status: "failed", message: error.message }));
   child.on("close", async (code, signal) => {
+    job.gitAuth.dispose();
+    job.gitAuth = null;
     for (const stream of ["stdout", "stderr"]) if (job.buffers[stream]) emit(job, { type: "log", stream, message: job.buffers[stream] });
     job.status = signal ? "cancelled" : code === 0 ? "ok" : "failed";
     if (preview && job.status !== "cancelled") {
@@ -986,6 +1096,8 @@ export function localApiPlugin(workspace = process.cwd()) {
           }
           const input = await body(req);
           if (url.pathname === `${LOCAL_API_PREFIX}/source`) return send(res, 200, readLocalSource(workspace, input.path));
+          if (url.pathname === `${LOCAL_API_PREFIX}/repositories/credentials`) return send(res, 201, storeRepositoryCredential(input));
+          if (url.pathname === `${LOCAL_API_PREFIX}/repositories/credentials/forget`) return send(res, 200, forgetRepositoryCredential(input));
           if (url.pathname === `${LOCAL_API_PREFIX}/repositories/prepare`) return send(res, 200, prepareRepository(workspace, input));
           if (url.pathname === `${LOCAL_API_PREFIX}/discover`) return send(res, 200, discoverProject(workspace, input.path));
           if (url.pathname === `${LOCAL_API_PREFIX}/projects/trials`) {
@@ -1046,7 +1158,14 @@ export function localApiPlugin(workspace = process.cwd()) {
         } catch (error) {
           return send(res, error instanceof LocalApiError ? error.status : 400, {
             error: error instanceof Error ? error.message : String(error),
-            ...(error instanceof LocalApiError ? { code: error.code, retryable: error.retryable, provider: error.provider } : {}),
+            ...(error instanceof LocalApiError ? {
+              code: error.code,
+              retryable: error.retryable,
+              provider: error.provider,
+              host: error.host,
+              credentialSupported: error.credentialSupported,
+              credentialPresent: error.credentialPresent,
+            } : {}),
           });
         }
       });
