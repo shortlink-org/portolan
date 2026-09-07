@@ -1,3 +1,4 @@
+import { useDocumentTitle } from "../app/title";
 import { useState } from "react";
 import { Link } from "react-router";
 import { AlertTriangle } from "lucide-react";
@@ -90,6 +91,7 @@ function askTitle(owners: readonly ContextOwner[]): string | undefined {
 }
 
 export function Overview() {
+  useDocumentTitle("Overview");
   const phone = usePhone();
   const [level, setLevel] = useState<C4Level>(1);
   const reach = widestFlows(catalog);

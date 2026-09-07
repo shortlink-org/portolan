@@ -1,3 +1,4 @@
+import { useDocumentTitle } from "../app/title";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { Link } from "react-router";
 import {
@@ -902,6 +903,7 @@ function SettingsContent({ local, onAdd, onGenerate }: { local: boolean; onAdd: 
 }
 
 export function Settings() {
+  useDocumentTitle("Settings");
   const [setup, setSetup] = useState<SetupInfo>(staticSetupInfo);
   const [local, setLocal] = useState(false);
   const [wizard, setWizard] = useState(false);

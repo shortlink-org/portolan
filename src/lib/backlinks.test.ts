@@ -236,6 +236,26 @@ describe("a flow", () => {
   });
 });
 
+describe("a store", () => {
+  const target: BacklinkTarget = { kind: "store", id: "shop.oms.pg" };
+
+  it("is pointed at by the services that read it, and says so", () => {
+    const readers = of(target, "service");
+    expect(readers.map((l) => [l.id, l.via])).toContainEqual([
+      "delivery.core",
+      "reads",
+    ]);
+    expect(readers.some((l) => l.id === "shop.oms")).toBe(false);
+  });
+
+  it("names the aggregates its tables hold, once per table", () => {
+    const held = of(target, "aggregate");
+    expect(held.length).toBeGreaterThan(0);
+    for (const link of held) expect(link.via).toMatch(/^persisted in /);
+    expect(held.map((l) => l.id)).toContain("shop.oms.order");
+  });
+});
+
 describe("targets the catalog does not have", () => {
   it("answer nothing rather than throwing", () => {
     for (const kind of [

@@ -2,7 +2,6 @@
 // generator and the app must agree on every name without sharing state.
 
 import type {
-  Aggregate,
   Catalog,
   BoundedContext,
   Event,
@@ -42,15 +41,6 @@ export function safeId(raw: string): string {
 export function fqn(catalogId: string): string {
   return catalogId.split(".").map(safeId).join(".");
 }
-
-export const contextFqn = (context: BoundedContext | string): string =>
-  fqn(typeof context === "string" ? context : context.id);
-
-export const serviceFqn = (service: Service | string): string =>
-  fqn(typeof service === "string" ? service : service.id);
-
-export const aggregateFqn = (aggregate: Aggregate | string): string =>
-  fqn(typeof aggregate === "string" ? aggregate : aggregate.id);
 
 export const eventFqn = (event: Event | string): string =>
   fqn(typeof event === "string" ? event : event.id);

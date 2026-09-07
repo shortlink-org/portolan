@@ -1,3 +1,4 @@
+import { useDocumentTitle } from "../app/title";
 import { useLayoutEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { ctxStyle } from "../lib/context-color";
@@ -54,6 +55,7 @@ export function PageHeader({
 }) {
   const bar = useRef<HTMLDivElement>(null);
   const [stuck, setStuck] = useState(false);
+  useDocumentTitle(name);
 
   useLayoutEffect(() => {
     const el = bar.current;

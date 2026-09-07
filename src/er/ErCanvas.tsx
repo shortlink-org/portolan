@@ -65,7 +65,7 @@ const LINEAGE: LineageMaps = {
  * larger scale - the store's own page, where the canvas has the whole pane, is
  * where a schema is read at 1:1.
  */
-export const CANVAS_SECTION_HEIGHT = "clamp(360px, 62vh, 720px)";
+const CANVAS_SECTION_HEIGHT = "clamp(360px, 62vh, 720px)";
 
 interface CanvasProps {
   store: Store;

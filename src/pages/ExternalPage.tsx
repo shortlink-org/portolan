@@ -1,3 +1,4 @@
+import { plural } from "../lib/format";
 import { useState } from "react";
 import { ExternalLink } from "lucide-react";
 import { Link, useParams } from "react-router";
@@ -69,10 +70,12 @@ export function ExternalPage() {
         ) : null}
         <div className="mono mt-2 flex flex-wrap items-center gap-3 text-muted">
           <span>
-            <span className="tnum">{external.provides.length}</span> interfaces
+            <span className="tnum">{external.provides.length}</span>{" "}
+            {plural(external.provides.length, "interface")}
           </span>
           <span>
-            <span className="tnum">{methods.length}</span> operations
+            <span className="tnum">{methods.length}</span>{" "}
+            {plural(methods.length, "operation")}
           </span>
           {soap ? (
             <span>

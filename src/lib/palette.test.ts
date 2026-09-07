@@ -23,6 +23,7 @@ describe("palette index", () => {
       new Set([
         "endpoint",
         "context",
+        "external",
         "service",
         "aggregate",
         "event",

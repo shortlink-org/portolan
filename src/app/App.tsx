@@ -39,6 +39,7 @@ import { NotFoundPage } from "../pages/NotFound";
 import { CatalogFailure } from "../pages/CatalogFailure";
 import { catalogError } from "../data";
 import { SidePanel } from "../components/Overlay";
+import { Empty } from "../components/PageHeader";
 import { WithDetail } from "../selection/DetailPanel";
 import { SelectionSync } from "../selection/sync";
 import { Trail } from "../trail/Trail";
@@ -50,7 +51,7 @@ import { TopBar } from "./TopBar";
 import { SearchProvider } from "./search";
 import { ThemeProvider } from "./theme";
 import { DensityProvider } from "./density";
-import { useNarrow } from "./responsive";
+import { useNarrow, usePhone } from "./responsive";
 import { ShortcutsSheet, useShortcuts } from "./shortcuts";
 import { Toaster } from "./toast";
 import { useUiStore } from "./ui-store";
@@ -66,6 +67,28 @@ const ChatPanel =
   import.meta.env.VITE_CHAT !== "off"
     ? lazy(() => import("../chat/ChatPanel"))
     : null;
+
+/**
+ * What the click shows while that chunk is on its way: the same sheet, at the
+ * same width, with a word in it. A fallback of nothing meant the first "ask"
+ * on a slow line did nothing for a second and the reader clicked again.
+ */
+function ChatLoading() {
+  const phone = usePhone();
+  return (
+    <SidePanel
+      open
+      onClose={() => useChatUi.getState().setOpen(false)}
+      side="right"
+      label="Ask the catalog"
+      width={phone ? "100vw" : "min(560px,92vw)"}
+    >
+      <div className="h-full bg-canvas p-gutter text-ink">
+        <Empty>loading the chat…</Empty>
+      </div>
+    </SidePanel>
+  );
+}
 
 /**
  * Every route, once. Rendered inside a pane on wide layouts and alone below.
@@ -364,7 +387,7 @@ function Shell() {
       <CommandPalette open={palette} onClose={() => setPalette(false)} />
       <ShortcutsSheet open={help} onClose={() => setHelp(false)} />
       {ChatPanel && chatOpen ? (
-        <Suspense fallback={null}>
+        <Suspense fallback={<ChatLoading />}>
           <ChatPanel />
         </Suspense>
       ) : null}

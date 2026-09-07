@@ -15,26 +15,32 @@
  * panel three levels deep is a bookmark to a scroll position.
  */
 export type PinKind =
+  /** A context is a page and the top of a tree; keeping it at the top is a way in. */
+  | "context"
   | "flow"
   | "event"
   | "adr"
   | "service"
   | "aggregate"
   | "table"
+  /** A store has a page of its own, so it can be kept at the top like one. */
+  | "store"
   /** A module has a page of its own, so it can be kept at the top like one. */
   | "module";
 
 const PIN_KINDS: readonly PinKind[] = [
+  "context",
   "flow",
   "event",
   "adr",
   "service",
   "aggregate",
   "table",
+  "store",
   "module",
 ] as const;
 
-export function isPinKind(value: string): value is PinKind {
+function isPinKind(value: string): value is PinKind {
   return (PIN_KINDS as readonly string[]).includes(value);
 }
 
@@ -52,7 +58,7 @@ export interface Pin {
  */
 export const PIN_CAP = 12;
 
-export function samePin(a: Pin, b: Pin): boolean {
+function samePin(a: Pin, b: Pin): boolean {
   return a.kind === b.kind && a.id === b.id;
 }
 

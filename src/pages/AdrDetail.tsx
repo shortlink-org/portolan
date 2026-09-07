@@ -1,3 +1,4 @@
+import { useDocumentTitle } from "../app/title";
 import { Link, useParams } from "react-router";
 import { ArrowRight, ArrowLeft } from "lucide-react";
 import { index } from "../data";
@@ -156,6 +157,7 @@ function RelatedPanel({ adr }: { adr: Adr }) {
 export function AdrDetail() {
   const { adr: slug } = useParams();
   const adr = slug ? index.adrBySlug.get(slug) : undefined;
+  useDocumentTitle(adr?.title ?? "Decision not found");
   if (!adr) return <NotFound kind="Decision" id={slug} />;
 
   const successor = adr.supersededBy

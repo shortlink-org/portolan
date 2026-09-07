@@ -14,7 +14,7 @@ interface Crumb {
   to: string;
 }
 
-function crumbsFor(pathname: string): Crumb[] {
+export function crumbsFor(pathname: string): Crumb[] {
   const parts = pathname.split("/").filter(Boolean);
   if (parts.length === 0) return [];
 
@@ -29,7 +29,7 @@ function crumbsFor(pathname: string): Crumb[] {
   }
 
   if (parts[0] === "adrs") {
-    const crumbs: Crumb[] = [{ label: "adrs", to: "/adrs" }];
+    const crumbs: Crumb[] = [{ label: "decisions", to: paths.adrs() }];
     const slug = parts[1];
     if (slug) {
       const adr = index.adrBySlug.get(slug);
@@ -63,6 +63,22 @@ function crumbsFor(pathname: string): Crumb[] {
         to: paths.external(slug),
       },
     ];
+  }
+
+  if (parts[0] === "language")
+    return [{ label: "language", to: paths.language() }];
+
+  if (parts[0] === "problems")
+    return [{ label: "problems", to: paths.problems() }];
+
+  if (parts[0] === "registry") {
+    const crumbs: Crumb[] = [{ label: "registry", to: paths.registry() }];
+    const slug = parts[1];
+    if (slug) {
+      const module = index.moduleBySlug.get(slug);
+      crumbs.push({ label: module?.name ?? slug, to: paths.module(slug) });
+    }
+    return crumbs;
   }
 
   if (parts[0] === "c") {

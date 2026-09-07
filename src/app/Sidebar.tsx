@@ -1013,7 +1013,7 @@ function BottomGroup() {
 function IconRail({ onExpand }: { onExpand: () => void }) {
   const sections: { key: string; kind: Kind; label: string }[] = [
     { key: "flows", kind: "flow", label: "Flows" },
-    { key: "domains", kind: "context", label: "Domains" },
+    { key: "domains", kind: "context", label: "Contexts" },
     // Conditional for the same reason the band is: at 48px a button that opens
     // an empty section is worse than no button.
     ...(allModules(catalog).length > 0

@@ -1,3 +1,4 @@
+import { useDocumentTitle } from "../app/title";
 import { useMemo } from "react";
 import { CATALOG_PATH, catalog } from "../data";
 import type { Adr } from "../catalog";
@@ -68,6 +69,7 @@ const COLUMNS: ColumnSpec<Adr>[] = [
 ];
 
 export function AdrIndex() {
+  useDocumentTitle("Decisions");
   const rows = useMemo(() => sortAdrs(catalog.adrs), []);
 
   // An empty table with a header row is a table that looks broken. Before the

@@ -74,14 +74,6 @@ export function canFacet(type: ColumnType): boolean {
   return type === "status" || type === "kind" || type === "text";
 }
 
-/** Normalizes anything an accessor might hand back into a CellValue. */
-export function cellValue(raw: unknown): CellValue {
-  if (raw === null || raw === undefined) return undefined;
-  if (typeof raw === "number") return Number.isFinite(raw) ? raw : undefined;
-  const text = String(raw);
-  return text.trim() === "" ? undefined : text;
-}
-
 /** The string a cell exports as, and the string the text filter matches. */
 export function cellText(value: CellValue): string {
   return value === undefined ? "" : String(value);

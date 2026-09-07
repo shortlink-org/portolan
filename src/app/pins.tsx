@@ -22,6 +22,7 @@ import {
   modulePath,
   paths,
   servicePath,
+  storePath,
   tablePath,
 } from "../routes";
 import { useToastStore } from "./toast";
@@ -60,7 +61,7 @@ export const usePinsStore = create<PinsState>()((set, get) => ({
 }));
 
 /** True while this exact thing is on the list. Re-renders only when it flips. */
-export function useIsPinned(pin: Pin | null): boolean {
+function useIsPinned(pin: Pin | null): boolean {
   return usePinsStore((s) => (pin ? isPinned(s.pins, pin) : false));
 }
 
@@ -82,6 +83,29 @@ export interface ResolvedPin {
 export function resolvePin(pin: Pin): ResolvedPin | null {
   const base = { pin, title: pin.id };
   switch (pin.kind) {
+    case "context": {
+      const context = catalog.contexts.find((c) => c.id === pin.id);
+      if (!context) return null;
+      return {
+        ...base,
+        kind: "context",
+        name: context.name,
+        path: paths.context(context.id),
+        contextId: context.id,
+      };
+    }
+    case "store": {
+      const store = index.storeById.get(pin.id);
+      const to = storePath(pin.id);
+      if (!store || !to) return null;
+      return {
+        ...base,
+        kind: "store",
+        name: store.name,
+        path: to,
+        contextId: index.serviceContext.get(store.owner)?.id ?? null,
+      };
+    }
     case "flow": {
       const flow = catalog.flows.find((f) => f.id === pin.id);
       if (!flow) return null;

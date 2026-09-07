@@ -4,6 +4,7 @@
 import {
   Database,
   Eye,
+  Globe,
   Hexagon,
   ListChecks,
   Package,
@@ -16,7 +17,6 @@ import {
   WholeWord,
 } from "lucide-react";
 import type { Kind } from "../lib/kinds";
-import { KIND_LABEL } from "../lib/kinds";
 import { ctxStyle } from "../lib/context-color";
 import {
   CommandIcon,
@@ -44,8 +44,10 @@ type IconComponent = (props: {
  * domain concept gets a mark that says what it is, a piece of furniture gets
  * the furniture library.
  */
-export const KIND_ICON: Record<Kind, IconComponent> = {
+const KIND_ICON: Record<Kind, IconComponent> = {
   context: Hexagon, // unused: contexts draw a coloured dot instead
+  // Outside the estate, so the one mark that says "the rest of the world".
+  external: Globe,
   service: Server,
   aggregate: Hexagon,
   // A store and a table are infrastructure, not domain objects, so they take
@@ -86,6 +88,7 @@ export const KIND_ICON: Record<Kind, IconComponent> = {
  */
 export const KIND_COLOR: Record<Kind, string> = {
   context: "var(--ctx)",
+  external: "var(--fg-muted)",
   service: "var(--fg-muted)",
   aggregate: "var(--fg)",
   store: "var(--fg-muted)",
@@ -106,34 +109,6 @@ export const KIND_COLOR: Record<Kind, string> = {
   // vocabulary a word belongs to is the whole of what distinguishes two
   // entries that spell the same word.
   term: "var(--ctx)",
-};
-
-/** Kinds whose names are identifiers in the source, and so are set in mono. */
-export const KIND_MONO: Record<Kind, boolean> = {
-  context: true,
-  service: true,
-  aggregate: true,
-  store: true,
-  table: true,
-  view: true,
-  event: true,
-  vo: true,
-  entity: true,
-  enum: true,
-  command: true,
-  query: true,
-  // An operationId is what a caller writes in code, and a verb-and-path is
-  // what they write in a request. Both are identifiers.
-  endpoint: true,
-  // `acme/shop` is what a reader pastes into a buf.yaml.
-  module: true,
-  def: true,
-  flow: true,
-  adr: true,
-  // A term is a word in a sentence, not an identifier: the glossary spells it
-  // "Email address", and the code's spelling is derived from that, not the
-  // other way round.
-  term: false,
 };
 
 /**
@@ -181,18 +156,3 @@ export function KindIcon({
   );
 }
 
-/** Icon plus the kind's name, for page headers and palette group rows. */
-export function KindTag({
-  kind,
-  contextId,
-}: {
-  kind: Kind;
-  contextId?: string;
-}) {
-  return (
-    <span className="mono inline-flex items-center gap-1.5 text-muted">
-      <KindIcon kind={kind} contextId={contextId} />
-      {KIND_LABEL[kind]}
-    </span>
-  );
-}

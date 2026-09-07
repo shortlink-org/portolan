@@ -13,7 +13,7 @@ export { Panel, usePanelRef } from "react-resizable-panels";
 export type { PanelImperativeHandle } from "react-resizable-panels";
 
 /** The 100ms every canvas in the app waits before it re-measures. */
-export const RESIZE_SETTLE_MS = 100;
+const RESIZE_SETTLE_MS = 100;
 
 /**
  * localStorage, but a private-mode failure is not worth a crash: a layout that

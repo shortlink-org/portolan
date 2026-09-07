@@ -17,6 +17,7 @@
 import type { Adr, Catalog, CatalogIndex, Flow, Status, Term } from "../catalog";
 import { allServices, walkSteps } from "../catalog";
 import { sortAdrs, adrNumber } from "./adr";
+import { readersOfStore } from "./data-model";
 import { flowsForService, usagesOfDef } from "./derive";
 import { usagesOfEnum } from "./shape";
 import { bindTerms } from "./terms";
@@ -471,6 +472,41 @@ function enumBacklinks(
   });
 }
 
+/**
+ * Who depends on a schema: the services that read it - allowed, and exactly
+ * what makes a column rename expensive - and the aggregates its tables hold.
+ * The owner is not a row; it is the page's own header.
+ */
+function storeBacklinks(
+  catalog: Catalog,
+  index: CatalogIndex,
+  storeId: string,
+): Backlink[] {
+  const store = index.storeById.get(storeId);
+  if (!store) return [];
+  const out: Backlink[] = [];
+  for (const reader of readersOfStore(catalog, storeId, store.owner)) {
+    out.push(serviceLink(index, reader.id, "reads"));
+  }
+  for (const table of store.tables) {
+    const aggregateId = table.persists?.aggregate;
+    const aggregate = aggregateId
+      ? index.aggregateById.get(aggregateId)
+      : undefined;
+    const owner = aggregateId ? index.aggregateOwner.get(aggregateId) : undefined;
+    if (!aggregateId || !aggregate || !owner) continue;
+    out.push({
+      kind: "aggregate",
+      id: aggregateId,
+      name: aggregate.name,
+      owner: owner.id,
+      context: index.serviceContext.get(owner.id)?.id ?? null,
+      via: `persisted in ${table.name}`,
+    });
+  }
+  return out;
+}
+
 function flowBacklinks(
   catalog: Catalog,
   index: CatalogIndex,
@@ -521,6 +557,10 @@ export function backlinksFor(
       return grouped(named(catalog, target.id, enumBacklinks(catalog, index, target.id)));
     case "flow":
       return grouped(flowBacklinks(catalog, index, target.id));
+    case "store":
+      return grouped(storeBacklinks(catalog, index, target.id));
+    // A module and an external API list their callers in a section of their
+    // own; a decision's incoming edges are its banner. Nothing to add here.
     default:
       return [];
   }

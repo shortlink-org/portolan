@@ -1,6 +1,8 @@
+import { useDocumentTitle } from "../app/title";
 import { useMemo, useState } from "react";
 import { catalog } from "../data";
 import { plural } from "../lib/format";
+import { Empty } from "../components/PageHeader";
 import {
   bundles,
   edgeCount,
@@ -20,6 +22,7 @@ const STATUSES: { status: Status; note: string }[] = [
 ];
 
 export function GraphPage() {
+  useDocumentTitle("Dependency graph");
   const [contexts, setContexts] = useState<Set<string>>(new Set());
   const [statuses, setStatuses] = useState<Set<Status>>(new Set());
   const [mode, setMode] = useState<GraphMode>("bipartite");
@@ -51,6 +54,13 @@ export function GraphPage() {
   // been seen to listen. Worth saying out loud, because a canvas of pills with
   // no lines out of them otherwise reads as a rendering failure.
   const thin = counts.events > 0 && counts.consumptions === 0;
+
+  // Nothing to draw. A graph is its events; a canvas of one or two service
+  // pills with no line between them reads as a rendering failure rather than
+  // as an answer. Either the filters left no event - the common case, and the
+  // reader wants the way back - or the catalog has none yet.
+  const filtered = contexts.size > 0 || statuses.size > 0;
+  const nothing = graph.events.length === 0;
 
   const toggle = <T,>(set: Set<T>, value: T): Set<T> => {
     const next = new Set(set);
@@ -171,12 +181,36 @@ export function GraphPage() {
       </div>
 
       <div className="min-h-0 flex-1">
-        <DependencyGraphPane
-          graph={graph}
-          mode={mode}
-          onMode={setMode}
-          fitKey={fitKey}
-        />
+        {nothing ? (
+          <div className="p-gutter">
+            <Empty>
+              {filtered ? (
+                <>
+                  no event passes these filters.{" "}
+                  <button
+                    type="button"
+                    className="rounded-control text-accent hover:underline"
+                    onClick={() => {
+                      setContexts(new Set());
+                      setStatuses(new Set());
+                    }}
+                  >
+                    show everything
+                  </button>
+                </>
+              ) : (
+                "no events in the catalog yet"
+              )}
+            </Empty>
+          </div>
+        ) : (
+          <DependencyGraphPane
+            graph={graph}
+            mode={mode}
+            onMode={setMode}
+            fitKey={fitKey}
+          />
+        )}
       </div>
     </div>
   );
