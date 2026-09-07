@@ -30,7 +30,7 @@ export function splitLine(where: string): { path: string; line: number | null } 
 }
 
 /** Whether a string is shaped like a path in a tree, not a sentence. */
-function looksLikePath(path: string): boolean {
+export function looksLikePath(path: string): boolean {
   // A dot or a slash is what separates `Makefile:3` and `cmd/main.go` from a
   // word somebody wrote where a path was expected; a bare `Makefile` at the
   // root of a repository is a path all the same.
@@ -57,7 +57,7 @@ function sameRepo(repo: string, info: BuildInfo): boolean {
 }
 
 /** A repository as `host/owner/name`, however it was spelled. */
-function bare(repo: string): string {
+export function bare(repo: string): string {
   return repo
     .replace(/^https?:\/\//, "")
     .replace(/\.git$/, "")

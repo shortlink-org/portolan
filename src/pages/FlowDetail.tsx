@@ -19,6 +19,7 @@ import { toClipboard } from "../lib/clipboard";
 import { flowRepoService } from "../lib/derive";
 import { statusCounts } from "../lib/flow-tree";
 import { sourceLocation } from "../lib/source-link";
+import { EditorLink } from "../components/EditorLink";
 import { SourcePreviewButton } from "../components/SourcePreview";
 import { flowAnswers } from "../flow/answers";
 import { flowMermaid } from "../flow/mermaid";
@@ -494,6 +495,7 @@ export function FlowDetail() {
               open ↗
             </a>
           ) : null}
+          <EditorLink location={flowSource} variant="text" />
           <WhatLinksHere
             target={{ kind: "flow", id: flow.slug }}
             variant="line"

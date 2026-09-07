@@ -6,6 +6,7 @@ import {
   Pin,
   X,
 } from "lucide-react";
+import { EditorLink } from "./EditorLink";
 import {
   useCallback,
   useEffect,
@@ -275,6 +276,7 @@ function PreviewPanel({
               aria-label="Preview pinned"
             />
           ) : null}
+          <EditorLink location={location} />
           {location.href ? (
             <a
               href={location.href}

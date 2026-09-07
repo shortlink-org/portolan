@@ -23,6 +23,10 @@ import {
 } from "lucide-react";
 import { catalog, catalogSources } from "../data";
 import { useDensity } from "../app/density";
+import { useEditorStore } from "../components/EditorLink";
+import { Select } from "../components/Select";
+import { EDITORS } from "../lib/editor-link";
+import { parseEditor } from "../lib/editor-prefs";
 import { useTheme } from "../app/theme";
 import { useToastStore } from "../app/toast";
 import { absoluteTime, plural, relativeTime } from "../lib/format";
@@ -479,11 +483,35 @@ function PluginsList() {
   );
 }
 
+/**
+ * Which editor the "edit ↗" links hand a file to. The links exist only in
+ * local mode; the choice is offered everywhere, because a reader sets it once
+ * and the static build they open tomorrow is the same browser.
+ */
+function EditorChoice() {
+  const editor = useEditorStore((s) => s.editor);
+  const setEditor = useEditorStore((s) => s.set);
+  const options = EDITORS.map((e) => ({ value: e.id, label: e.name }));
+  return (
+    <div className="rounded-card border border-line p-card shadow-xs">
+      <div className="label mb-3">open source in</div>
+      <Select
+        value={editor}
+        options={options}
+        onChange={(value) => setEditor(parseEditor(value))}
+        label="Editor for source links"
+        menuWidth={200}
+      />
+      <p className="mono mt-2 text-muted">Used by the edit links in local mode.</p>
+    </div>
+  );
+}
+
 function Appearance() {
   const { theme, toggle: toggleTheme } = useTheme();
   const { density, toggle: toggleDensity } = useDensity();
   return (
-    <div className="grid gap-grid sm:grid-cols-2">
+    <div className="grid gap-grid sm:grid-cols-2 xl:grid-cols-3">
       <div className="rounded-card border border-line p-card shadow-xs">
         <div className="label mb-3">theme</div>
         <div className="seg inline-flex" role="group" aria-label="Theme">
@@ -498,6 +526,7 @@ function Appearance() {
           <button type="button" aria-pressed={density === "compact"} onClick={() => density !== "compact" && toggleDensity()} className={`flex items-center gap-1.5 ${density === "compact" ? "is-on" : ""}`}><Rows2 size={15} aria-hidden /> compact</button>
         </div>
       </div>
+      <EditorChoice />
     </div>
   );
 }

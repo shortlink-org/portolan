@@ -138,7 +138,7 @@ export class LocalApiError extends Error {
   }
 }
 
-export async function localStatus(): Promise<{ local: true; setup: SetupInfo; activeRun: { id: string; mode: "write" | "check" | "preview" } | null }> {
+export async function localStatus(): Promise<{ local: true; workspace: string; setup: SetupInfo; activeRun: { id: string; mode: "write" | "check" | "preview" } | null }> {
   return json("/status");
 }
 

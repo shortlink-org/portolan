@@ -1084,7 +1084,7 @@ export function localApiPlugin(workspace = process.cwd()) {
         try {
           if (req.method === "GET" && url.pathname === `${LOCAL_API_PREFIX}/status`) {
             const active = [...jobs.values()].find((job) => job.status === "running");
-            return send(res, 200, { local: true, setup: setup(workspace), activeRun: active ? { id: active.id, mode: active.mode } : null });
+            return send(res, 200, { local: true, workspace: realpathSync(workspace), setup: setup(workspace), activeRun: active ? { id: active.id, mode: active.mode } : null });
           }
           const eventMatch = url.pathname.match(/^\/__portolan\/runs\/([^/]+)\/events$/);
           if (req.method === "GET" && eventMatch) {

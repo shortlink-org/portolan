@@ -15,7 +15,8 @@ import { ChevronRight } from "lucide-react";
 import type { Command, Service } from "../catalog";
 import { allRepos } from "../catalog";
 import { catalog } from "../data";
-import { sourceHref, splitLine } from "../lib/source-link";
+import { sourceLocation, splitLine } from "../lib/source-link";
+import { EditorLink } from "./EditorLink";
 import { RowActions } from "./RowActions";
 
 /** The runner as a chip: the tool, not the whole line, so the eye can group by it. */
@@ -39,27 +40,29 @@ function SourceLink({
   where: string;
   service: Service;
 }) {
-  const href = sourceHref(where, service, allRepos(catalog));
+  const location = sourceLocation(where, service, allRepos(catalog));
+  const href = location?.href ?? null;
   const { path, line } = splitLine(where);
   const label = `${path.split("/").pop() ?? path}${line ? `:${line}` : ""}`;
-  if (!href) {
-    return (
-      <span className="mono text-muted" title={where}>
-        {label}
-      </span>
-    );
-  }
-
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noreferrer"
-      className="mono text-muted hover:text-ink hover:underline"
-      title={`${where} on the forge, at the built commit`}
-    >
-      {label}
-    </a>
+    <span className="inline-flex items-center gap-1">
+      {href ? (
+        <a
+          href={href}
+          target="_blank"
+          rel="noreferrer"
+          className="mono text-muted hover:text-ink hover:underline"
+          title={`${where} on the forge, at the built commit`}
+        >
+          {label}
+        </a>
+      ) : (
+        <span className="mono text-muted" title={where}>
+          {label}
+        </span>
+      )}
+      <EditorLink location={location} className="-my-1" />
+    </span>
   );
 }
 

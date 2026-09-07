@@ -5,6 +5,7 @@ import { allRepos, stepFrames } from "../catalog";
 import type { Flow, Step, StepFrame } from "../catalog";
 import { catalog, index } from "../data";
 import { Ident } from "../components/Ident";
+import { EditorLink } from "../components/EditorLink";
 import { SourcePreviewButton } from "../components/SourcePreview";
 import { flowRepoService } from "../lib/derive";
 import { sourceLocation } from "../lib/source-link";
@@ -292,6 +293,7 @@ function SourceWhere({ where, flow }: { where: string; flow: Flow }) {
           open ↗
         </a>
       ) : null}
+      <EditorLink location={location} variant="text" />
     </div>
   );
 }
