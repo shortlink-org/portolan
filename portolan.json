@@ -126,6 +126,13 @@
       }
     },
     {
+      "name": "python-kafka",
+      "process": {
+        "command": "python3",
+        "args": ["plugins/extract-python-kafka/main.py"]
+      }
+    },
+    {
       "name": "openapi",
       "process": {
         "command": "go",

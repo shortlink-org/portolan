@@ -244,8 +244,8 @@ describe("validateCatalog: flow frames", () => {
   it("validates optional flow trigger evidence", () => {
     const good = clone();
     good.flows[0]!.trigger = {
-      kind: "callback",
-      label: "POST /callbacks/provider/completed",
+      kind: "message",
+      label: "Kafka · records.changed",
       confidence: "high",
     };
     expect(() => validateCatalog(good)).not.toThrow();

@@ -487,9 +487,8 @@ type Channel struct {
 	// the same string an event's Wire.Channel carries, and comparing the two is
 	// how a document and the code it belongs to are held against each other.
 	Address string `json:"address"`
-	// Kind distinguishes broadcast/event channels from work queues. The latter
-	// may have many producers by design and do not require a domain event with
-	// the same wire name.
+	// Kind distinguishes domain-event channels, work queues, and generic message
+	// streams. Only event channels are checked against the domain event model.
 	Kind ChannelKind `json:"kind,omitempty"`
 
 	Title string `json:"title,omitempty"`
@@ -504,8 +503,9 @@ type Channel struct {
 type ChannelKind string
 
 const (
-	ChannelKindEvent ChannelKind = "event"
-	ChannelKindJob   ChannelKind = "job"
+	ChannelKindEvent   ChannelKind = "event"
+	ChannelKindJob     ChannelKind = "job"
+	ChannelKindMessage ChannelKind = "message"
 )
 
 // ChannelDirection is which way a message travels, from this service's side.

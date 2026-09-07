@@ -22,6 +22,7 @@ from ids import pascal, slug
 from operations import UseCase
 import celery_conf
 import celery_tasks
+import kafka
 from source import Module, Project, assigned, doc, dotted, keyword, keyword_str, methods
 
 LANE_CLIENT = "client"
@@ -267,6 +268,7 @@ class FlowReader:
         self._celery: Optional[Tuple[celery_conf.Config, Dict[Tuple[str, str], celery_tasks.Task]]] = None
         self.produced: Dict[str, List[Tuple[str, str]]] = {}  # event id -> (address, line) it was put on the wire at
         self._settings: Optional[Module] = None
+        self._warned_kafka_topics = set()
         self.classes: Dict[Tuple[str, str], ClassTarget] = {}
         self.functions: Dict[Tuple[str, str], CallableTarget] = {}
         for module in project.modules.values():
@@ -486,7 +488,7 @@ class FlowReader:
                             out["self." + stmt.targets[0].attr] = binding
         return out
 
-    def constructed(self, module: Module, value: ast.AST) -> Optional[Tuple[str, object]]:
+    def constructed(self, module: Module, value: ast.AST, variables=None) -> Optional[Tuple[str, object]]:
         if not isinstance(value, ast.Call):
             return None
         name = dotted(value.func).split(".")[-1]
@@ -495,6 +497,9 @@ class FlowReader:
         external = self.external_name(module, dotted(value.func))
         if external in ("requests.Session", "httpx.Client", "httpx.AsyncClient", "aiohttp.ClientSession"):
             return ("http", external.split(".", 1)[0])
+        kafka_client = kafka.constructed(self.project, module, value, self.opts.settings, variables)
+        if kafka_client is not None:
+            return ("kafka", kafka_client)
         target = self.resolve_class(module, dotted(value.func))
         if target is not None:
             return ("object", target)
@@ -577,8 +582,8 @@ class FlowReader:
             return
         if isinstance(target, ast.Name):
             frame.vars[target.id] = binding
-        elif isinstance(target, ast.Attribute) and dotted(target.value) == "self":
-            frame.vars["self." + target.attr] = binding
+        elif isinstance(target, ast.Attribute) and dotted(target):
+            frame.vars[dotted(target)] = binding
         elif isinstance(target, (ast.Tuple, ast.List)) and isinstance(binding, tuple) and binding[0] == "many":
             for element, one in zip(target.elts, binding[1]):
                 self.bind(frame, element, one)
@@ -610,7 +615,10 @@ class FlowReader:
             return ("string", text) if text else None
         if not isinstance(node, ast.Call):
             text = self.string_value(frame.module, node)
-            return ("string", text) if text else None
+            if text:
+                return ("string", text)
+            resolved = kafka.value(self.project, frame.module, node, self.opts.settings, frame.vars)
+            return ("value", resolved) if resolved is not None else None
 
         # The receiver first, then the arguments: a chain is read the way it is
         # written, so `Invoice.objects.filter(...).first()` makes its query
@@ -619,12 +627,67 @@ class FlowReader:
         if isinstance(node.func, ast.Attribute):
             inner = node.func.value
             holder = self.value(d, frame, inner, depth, ran) if isinstance(inner, ast.Call) else self.lookup(frame, inner)
-        positional = [self.value(d, frame, arg, depth, ran) for arg in node.args]
-        named = {kw.arg: self.value(d, frame, kw.value, depth, ran) for kw in node.keywords if kw.arg}
-        args = positional + list(named.values())
         name = dotted(node.func)
         last = name.split(".")[-1]
         line = frame.module.where(node)
+
+        # A Kafka call is recognized from the constructed client type, not the
+        # method name alone. Handle it before walking serialization arguments:
+        # those expressions describe the payload and are not extra publishes.
+        if holder is not None and holder[0] == "kafka":
+            client: kafka.Client = holder[1]
+            if client.role == "producer" and last in kafka.PUBLISH_METHODS.get(client.library, set()):
+                topic_node = kafka.topic_node(node)
+                address = kafka.value(self.project, frame.module, topic_node, self.opts.settings, frame.vars)
+                if isinstance(address, str) and address:
+                    payload = kafka.payload_node(node)
+                    event_id = ""
+                    if payload is not None:
+                        for child in ast.walk(payload):
+                            if not isinstance(child, (ast.Name, ast.Attribute)):
+                                continue
+                            binding = self.lookup(frame, child)
+                            if binding is not None and binding[0] == "event":
+                                event_id = binding[1]
+                                break
+                    message = event_id.rsplit(".", 1)[-1] if event_id else kafka.payload_name(payload, frame.vars)
+                    lane = d.lane("kafka-" + slug(address), "broker", None, "Kafka · " + address)
+                    detail = [kafka.config_note(client)]
+                    if payload is not None:
+                        detail.append("payload `%s`" % kafka.expression(payload))
+                    key = keyword(node, "key")
+                    headers = keyword(node, "headers")
+                    if key is not None:
+                        detail.append("key `%s`" % kafka.expression(key))
+                    if headers is not None:
+                        detail.append("headers `%s`" % kafka.expression(headers))
+                    d.add(
+                        self.opts.svc_id,
+                        lane,
+                        "event" if event_id else "call",
+                        "publish " + message,
+                        ref=event_id,
+                        note="; ".join(detail),
+                        line=line,
+                        handoff={
+                            "kind": "message",
+                            "transport": "kafka",
+                            "channel": address,
+                            "message": message,
+                            "direction": "send",
+                        },
+                    )
+                    if event_id:
+                        self.referenced.add(event_id)
+                        self.produced.setdefault(event_id, []).append((address, line))
+                elif line not in self._warned_kafka_topics:
+                    self._warned_kafka_topics.add(line)
+                    self.b.warn(line, "Kafka topic is dynamic%s, so no flow step is invented" % ((": `%s`" % kafka.expression(topic_node)) if topic_node is not None else ""))
+                return None
+
+        positional = [self.value(d, frame, arg, depth, ran) for arg in node.args]
+        named = {kw.arg: self.value(d, frame, kw.value, depth, ran) for kw in node.keywords if kw.arg}
+        args = positional + list(named.values())
 
         if self.external_name(frame.module, name) == "urllib.parse.urljoin" and len(node.args) >= 2:
             left = binding_string(positional[0]) or self.string_value(frame.module, node.args[0])
@@ -704,7 +767,7 @@ class FlowReader:
             return ("model", model)
         if last in self.clients:
             return ("client", self.clients[last])
-        constructed = self.constructed(frame.module, node)
+        constructed = self.constructed(frame.module, node, frame.vars)
         if constructed is not None:
             return constructed
 

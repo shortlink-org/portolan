@@ -603,8 +603,8 @@ export interface Channel {
    * the code beside it are held against each other.
    */
   address: string;
-  /** Event stream by default; a job queue has work-queue ownership semantics. */
-  kind?: "event" | "job";
+  /** Domain event by default; jobs are work queues and messages are generic streams. */
+  kind?: "event" | "job" | "message";
   title?: string;
   doc?: string;
   messages: ChannelMessage[];
@@ -859,6 +859,7 @@ export interface FlowTrigger {
     | "http"
     | "callback"
     | "event"
+    | "message"
     | "job"
     | "startup"
     | "scheduled"
@@ -1797,10 +1798,11 @@ function validateChannels(service: Service): void {
     if (
       channel.kind !== undefined &&
       channel.kind !== "event" &&
-      channel.kind !== "job"
+      channel.kind !== "job" &&
+      channel.kind !== "message"
     ) {
       fail(
-        `channel "${channel.address}" of service "${service.id}" has kind "${channel.kind}", which is neither event nor job`,
+        `channel "${channel.address}" of service "${service.id}" has kind "${channel.kind}", which is neither event, job, nor message`,
         `service ${service.id} / channel ${channel.address}`,
       );
     }
@@ -2095,6 +2097,7 @@ export function validateCatalog(catalog: Catalog): Catalog {
     "http",
     "callback",
     "event",
+    "message",
     "job",
     "startup",
     "scheduled",

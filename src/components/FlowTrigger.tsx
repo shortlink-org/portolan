@@ -4,6 +4,7 @@ const KIND: Record<Trigger["kind"], string> = {
   http: "HTTP endpoint",
   callback: "callback",
   event: "event",
+  message: "message",
   job: "job",
   startup: "startup",
   scheduled: "scheduled",

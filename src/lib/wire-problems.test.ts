@@ -220,6 +220,18 @@ describe("wireProblems", () => {
     expect(found(catalogWith([mailer]))).toEqual([]);
   });
 
+  it("does not require a generic message stream to be a domain event", () => {
+    const records = channel(
+      "records.changed",
+      "send record",
+      "receive record",
+    );
+    records.kind = "message";
+    const indexer = speaking(service("shop.indexer", []), records);
+
+    expect(found(catalogWith([indexer]))).toEqual([]);
+  });
+
   // The one edge in the catalog that runs from the subscriber outwards.
   it("resolves a subscription against whoever publishes the name", () => {
     const oms = speaking(

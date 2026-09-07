@@ -58,6 +58,7 @@
               "java-domain",
               "django-domain",
               "celery",
+              "python-kafka",
               "openapi",
               "wsdl",
               "http-clients",
@@ -239,6 +240,25 @@
               "properties": {
                 "options": {
                   "$ref": "#/$defs/options.celery"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "plugin"
+              ],
+              "properties": {
+                "plugin": {
+                  "const": "python-kafka"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "options": {
+                  "$ref": "#/$defs/options.python-kafka"
                 }
               }
             }
@@ -1554,6 +1574,43 @@
           "type": "string",
           "description": "Name of the fragment file, inside the step's output directory.",
           "default": "celery.json"
+        }
+      }
+    },
+    "options.python-kafka": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "Slug of the bounded context the service belongs to. Defaults to the input directory name.",
+          "examples": [
+            "shop"
+          ]
+        },
+        "service": {
+          "type": "string",
+          "description": "Slug of the service that uses Kafka. Defaults to the input directory name.",
+          "examples": [
+            "billing"
+          ]
+        },
+        "source": {
+          "type": "string",
+          "description": "Python source directory to inspect, relative to the input root.",
+          "default": "."
+        },
+        "settings": {
+          "type": "string",
+          "description": "Optional settings module used to resolve values referenced as settings.NAME.",
+          "examples": [
+            "config.settings"
+          ]
+        },
+        "out": {
+          "type": "string",
+          "description": "Fragment filename inside the extraction step output directory.",
+          "default": "kafka.json"
         }
       }
     },

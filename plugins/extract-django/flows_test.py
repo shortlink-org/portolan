@@ -282,6 +282,57 @@ def refresh():
         self.assertEqual(found[0]["entrypoint"], "python:app.tasks:refresh")
         self.assertEqual([step["label"] for step in found[0]["steps"]], ["POST /refresh"])
 
+    def test_kafka_factory_inside_a_task_is_a_message_handoff(self):
+        settings = module(
+            "app.settings",
+            """
+import os
+TOPIC = os.environ.get("TOPIC", "records.changed")
+""",
+        )
+        tasks = module(
+            "app.tasks",
+            """
+from celery import shared_task
+from confluent_kafka import Producer
+from django.conf import settings
+
+class Factory:
+    @classmethod
+    def get(cls):
+        config = {"bootstrap.servers": "kafka:9092", "enable.idempotence": True}
+        return Producer(config)
+
+def publish(payload):
+    producer = Factory.get()
+    producer.produce(topic=settings.TOPIC, value=payload, headers=[("schema", b"v1")])
+
+@shared_task(name="app.deliver")
+def deliver(payload):
+    publish(payload)
+""",
+        )
+        reader = flows.FlowReader(
+            flows.Options(context="app", svc_id="app.web", service="web", store="", settings="app.settings"),
+            Project([tasks, settings]),
+            [],
+            [],
+            [],
+            [],
+            {},
+            lambda path: path,
+            Warnings(),
+        )
+
+        found = reader.task_flows()
+
+        self.assertEqual(len(found), 1)
+        step = found[0]["steps"][0]
+        self.assertEqual(step["to"], "kafka-records-changed")
+        self.assertEqual(step["handoff"], {"kind": "message", "transport": "kafka", "channel": "records.changed", "message": "payload", "direction": "send"})
+        self.assertIn("idempotence: enabled", step["note"])
+        self.assertEqual(step["line"], "app.tasks.py:14")
+
 
 if __name__ == "__main__":
     unittest.main()

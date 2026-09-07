@@ -208,6 +208,15 @@ channel's doc. A subject read off a database row is a warning at the call,
 not a channel. Consumer configs give the filter subject and the durable name;
 streams, wildcard subjects and work-queue retention are not read yet.
 
+`extract-python-kafka` is the framework-independent Kafka enrichment for
+Python. It recognizes confluent-kafka, kafka-python and aiokafka by their
+imported client types, follows literal topics through constants, environment
+defaults, settings and local factories, and emits generic message streams with
+producer and consumer flows. Only client-side configuration proven in source
+is retained; authentication values are omitted, while broker-side partitions,
+replication and retention remain explicitly unknown. See
+`extract-python-kafka/README.md` for the supported call shapes.
+
 `extract-wsdl` reads WSDL 1.1 contracts as structured SOAP APIs. It follows
 local WSDL imports and XSD imports/includes without network access, keeps
 distinct services, ports and SOAP 1.1/1.2 bindings, and records operation

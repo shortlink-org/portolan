@@ -96,6 +96,8 @@ export function ChannelRows({
             <Ident value={channel.address} />
             {channel.kind === "job" ? (
               <span className="chip">work queue</span>
+            ) : channel.kind === "message" ? (
+              <span className="chip">message stream</span>
             ) : null}
             {channel.title ? (
               <span className="text-muted">{channel.title}</span>
