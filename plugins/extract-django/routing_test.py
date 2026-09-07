@@ -29,8 +29,20 @@ schema_view = get_schema_view()
 urlpatterns = [
     path("api/v2/", include("orders.urls")),
     path("health/", include("health.urls")),
+    path("", include("home.urls")),
     path("swagger/", schema_view.with_ui("swagger")),
 ]
+''',
+            "home/urls.py": '''
+from django.urls import path
+from .views import Home
+urlpatterns = [path("", Home.as_view()), path("about/", Home.as_view())]
+''',
+            "home/views.py": '''
+from rest_framework.views import APIView
+class Home(APIView):
+    def get(self, request):
+        return None
 ''',
             "health/urls.py": '''
 from django.urls import path
@@ -122,6 +134,10 @@ urlpatterns = [
         self.assertIn(("Health.get", "/api/v2/health/{region}/"), paths)
         self.assertIn(("OrderViewSet", "/api/v2/orders/"), paths)
         self.assertIn(("Ready", "/health/ready/"), paths)
+        # A root mount is the commonest way to include an application, and the
+        # empty prefix must not be read as "no route".
+        self.assertIn(("Home", "/"), paths)
+        self.assertIn(("Home", "/about/"), paths)
         detail = next(route for route in routes.entries if route.view == "OrderDetail")
         self.assertEqual(dict(detail.parameters), {"pk": "uuid"})
 
@@ -161,13 +177,21 @@ urlpatterns = [
         routes = routing.read(self.project)
         model_apps = apps.discover(self.project, [])
         endpoint_apps = routed_applications(self.project, model_apps, routes)
-        self.assertEqual([app.dotted for app in endpoint_apps], ["health", "orders"])
+        self.assertEqual([app.dotted for app in endpoint_apps], ["health", "home", "orders"])
         endpoints = []
         for app in endpoint_apps:
             endpoints += [(app, endpoint) for endpoint in transport.read_endpoints(app, Builder(), routes)]
         contracts = http_contracts(endpoints, "shop.billing", "billing/portolan/openapi.inferred.yaml")
         health = [contract for contract in contracts if contract["id"] == "shop.billing.health"][0]
         self.assertEqual(health["methods"], [{"name": "health_ready_get", "http": {"method": "GET", "path": "/health/ready/"}}])
+        home = [contract for contract in contracts if contract["id"] == "shop.billing.home"][0]
+        self.assertEqual(
+            home["methods"],
+            [
+                {"name": "about_get", "http": {"method": "GET", "path": "/about/"}},
+                {"name": "home_get", "http": {"method": "GET", "path": "/"}},
+            ],
+        )
 
 
 if __name__ == "__main__":

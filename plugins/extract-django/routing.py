@@ -90,9 +90,13 @@ def visit(project: Project, module: Module, prefix: str, prefix_parameters: Tupl
             continue
         if len(node.args) < 2:
             continue
-        fragment = const_str(node.args[0])
-        if not fragment:
+        # An empty string is a route too: `path("", include("invoices.urls"))`
+        # mounts an application at the root, and `path("", index)` is the
+        # root itself.  Only a pattern that is not a literal is skipped.
+        first = node.args[0]
+        if not (isinstance(first, ast.Constant) and isinstance(first.value, str)):
             continue
+        fragment = first.value
         regex = dotted(node.func).split(".")[-1] != "path"
         path = join_path(prefix, fragment, regex)
         parameters = prefix_parameters + route_parameters(fragment, regex)
