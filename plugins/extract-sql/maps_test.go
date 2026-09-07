@@ -73,8 +73,30 @@ func TestFieldOfReadsOnlyTheRootWhenTheFunctionNamesIt(t *testing.T) {
 	}
 }
 
+// The variable of a range loop stands for one element of what it walks, so a
+// column written from it carries a field of the elements of a field.
+func TestFieldOfFollowsARangeVariable(t *testing.T) {
+	s := scope{
+		packages: map[string]bool{},
+		roots:    map[string]bool{"q": true},
+		aliases:  map[string]ast.Expr{"l": expr(t, "q.Lines()"), "raised": expr(t, "events"), "l2": expr(t, "l2.Items")},
+	}
+	cases := map[string]string{
+		"l.SKU()":                  "Lines.SKU",
+		"l.UnitPrice().Currency()": "Lines.UnitPrice",
+		"raised.Name()":            "",
+		"l2.Name":                  "",
+	}
+
+	for src, want := range cases {
+		if got := fieldOf(expr(t, src), s); got != want {
+			t.Errorf("fieldOf(%s) = %q, want %q", src, got, want)
+		}
+	}
+}
+
 // Pricing keeps its fields unexported and writes rows off getters, and its
-// lines are written from a loop variable that is not the aggregate.
+// lines are written from a loop variable over them.
 func TestMapsThroughGetters(t *testing.T) {
 	b := builderFor(t)
 	mapped := readMaps("../../examples/shop/pricing", "internal/infrastructure/repository", "quote", b)
@@ -89,7 +111,13 @@ func TestMapsThroughGetters(t *testing.T) {
 			"issued_at":   "Quote.IssuedAt",
 			"expires_at":  "Quote.ExpiresAt",
 		},
-		"quote_lines": {"quote_id": "Quote.ID"},
+		"quote_lines": {
+			"quote_id":         "Quote.ID",
+			"sku":              "Quote.Lines.SKU",
+			"quantity":         "Quote.Lines.Quantity",
+			"unit_price_minor": "Quote.Lines.UnitPrice",
+			"currency":         "Quote.Lines.UnitPrice",
+		},
 	}
 	for table, columns := range want {
 		for column, field := range columns {

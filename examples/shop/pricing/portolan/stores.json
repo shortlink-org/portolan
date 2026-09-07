@@ -107,12 +107,14 @@
               "name": "sku",
               "type": "text",
               "nullable": false,
-              "pk": true
+              "pk": true,
+              "maps": "PriceList.Rows.SKU"
             },
             {
               "name": "amount_minor",
               "type": "bigint",
-              "nullable": false
+              "nullable": false,
+              "maps": "PriceList.Rows.Price"
             }
           ],
           "persists": {
@@ -210,22 +212,26 @@
               "name": "sku",
               "type": "text",
               "nullable": false,
-              "pk": true
+              "pk": true,
+              "maps": "Quote.Lines.SKU"
             },
             {
               "name": "quantity",
               "type": "integer",
-              "nullable": false
+              "nullable": false,
+              "maps": "Quote.Lines.Quantity"
             },
             {
               "name": "unit_price_minor",
               "type": "bigint",
-              "nullable": false
+              "nullable": false,
+              "maps": "Quote.Lines.UnitPrice"
             },
             {
               "name": "currency",
               "type": "char(3)",
-              "nullable": false
+              "nullable": false,
+              "maps": "Quote.Lines.UnitPrice"
             }
           ],
           "persists": {
@@ -341,7 +347,8 @@
               "nullable": false,
               "from": [
                 "shop.pricing.pg.price_rows.sku"
-              ]
+              ],
+              "maps": "PriceList.Rows.SKU"
             }
           ],
           "reads": [

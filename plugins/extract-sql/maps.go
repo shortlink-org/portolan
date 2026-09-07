@@ -85,7 +85,7 @@ func readMaps(root, repositories, aggregate string, b *plugin.Builder) map[strin
 			if !ok || fn.Body == nil {
 				continue
 			}
-			s := scope{packages: packages, roots: rootParams(fn, root_)}
+			s := scope{packages: packages, roots: rootParams(fn, root_), aliases: rangeAliases(fn)}
 
 			ast.Inspect(fn.Body, func(node ast.Node) bool {
 				call, ok := node.(*ast.CallExpr)
@@ -168,6 +168,50 @@ type scope struct {
 	// taken for the aggregate, as it always was; a function that names the
 	// root can only mean the root by it.
 	roots map[string]bool
+	// aliases are the variables of the enclosing function's range loops and
+	// what each one ranges over: `for _, l := range q.Lines()` makes l stand
+	// for one of q.Lines(), so l.SKU() is Lines.SKU - a field of the
+	// elements of a field, which is what a child table's column carries.
+	aliases map[string]ast.Expr
+}
+
+// without is the scope with one alias forgotten, which is what following
+// that alias reads the rest of the expression in: an alias cannot stand for
+// itself, however the loop was written.
+func (s scope) without(alias string) scope {
+	rest := make(map[string]ast.Expr, len(s.aliases))
+	for name, expr := range s.aliases {
+		if name != alias {
+			rest[name] = expr
+		}
+	}
+	s.aliases = rest
+
+	return s
+}
+
+// rangeAliases reads every range loop of fn: the value variable, and the
+// expression it walks.
+func rangeAliases(fn *ast.FuncDecl) map[string]ast.Expr {
+	var aliases map[string]ast.Expr
+	ast.Inspect(fn.Body, func(node ast.Node) bool {
+		loop, ok := node.(*ast.RangeStmt)
+		if !ok {
+			return true
+		}
+		value, ok := loop.Value.(*ast.Ident)
+		if !ok || value.Name == "_" {
+			return true
+		}
+		if aliases == nil {
+			aliases = map[string]ast.Expr{}
+		}
+		aliases[value.Name] = loop.X
+
+		return true
+	})
+
+	return aliases
 }
 
 // receiver says whether a bare identifier stands for the aggregate.
@@ -459,6 +503,14 @@ func fieldOf(arg ast.Expr, s scope) string {
 			arg = expr.Args[0]
 		case *ast.SelectorExpr:
 			if ident, ok := expr.X.(*ast.Ident); ok {
+				if over, ok := s.aliases[ident.Name]; ok {
+					head := fieldOf(over, s.without(ident.Name))
+					if head == "" {
+						return ""
+					}
+
+					return head + "." + expr.Sel.Name
+				}
 				if !s.receiver(ident) {
 					return ""
 				}

@@ -928,10 +928,29 @@ describe("mergeCatalogs: maps", () => {
               { name: "id", type: "string", doc: "" },
               { name: "basketID", type: "string", doc: "" },
               { name: "total", type: "Money", doc: "" },
+              { name: "lines", type: "[]line.Line", doc: "" },
             ],
           },
         ],
-        valueObjects: [],
+        valueObjects: [
+          {
+            id: "shop.pricing.quote.line",
+            slug: "line",
+            name: "Line",
+            doc: "",
+            fields: [
+              { name: "sku", type: "string", doc: "" },
+              { name: "unitPrice", type: "money.Money", doc: "" },
+            ],
+          },
+          {
+            id: "shop.pricing.quote.money",
+            slug: "money",
+            name: "Money",
+            doc: "",
+            fields: [{ name: "amountMinor", type: "int64", doc: "" }],
+          },
+        ],
         operations: [],
         events: [],
       },
@@ -971,6 +990,9 @@ describe("mergeCatalogs: maps", () => {
             total_minor: "Quote.Total.AmountMinor",
             currency: "Quote.total",
             state: "Quote.State",
+            sku: "Quote.Lines.SKU",
+            unit_price_minor: "Quote.Lines.UnitPrice.AmountMinor",
+            weight: "Quote.Lines.Weight.Grams",
           }),
         ],
       }),
@@ -981,11 +1003,16 @@ describe("mergeCatalogs: maps", () => {
     expect(maps).toEqual({
       id: "Quote.id",
       basket_id: "Quote.basketID",
-      total_minor: "Quote.total.AmountMinor",
+      total_minor: "Quote.total.amountMinor",
       currency: "Quote.total",
       // No field of any case is called State: the claim stays as the code
       // made it, for a reader to see rather than for the merge to hide.
       state: "Quote.State",
+      // Through the elements of a field, block by block, as far as the
+      // declarations reach; what lies beyond them stays as read.
+      sku: "Quote.lines.sku",
+      unit_price_minor: "Quote.lines.unitPrice.amountMinor",
+      weight: "Quote.lines.Weight.Grams",
     });
   });
 
