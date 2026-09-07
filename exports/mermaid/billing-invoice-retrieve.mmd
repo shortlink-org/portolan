@@ -3,5 +3,5 @@ sequenceDiagram
     actor p0 as client
     participant p1 as shop.billing
     participant p2 as billing-pg
-    p0->>p1: invoice_retrieve → Invoice
+    p0->>p1: invoice_retrieve
     p1->>p2: Invoice.objects.get

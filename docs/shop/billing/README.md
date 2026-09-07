@@ -1,6 +1,6 @@
 # Billing
 
-*Generated from the portolan catalog · commit `12 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `13 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
 
 - **Id:** `shop.billing`
 - **Context:** [Shop](../README.md)
@@ -128,6 +128,20 @@ celery -A config worker -Q billing,billing.mail
 | `unitPriceMinor` | `integer (int64)` |
 
 </details>
+
+### shop.billing.invoices
+
+- **Source:** [`examples/shop/billing/portolan/openapi.inferred.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/portolan/openapi.inferred.yaml)
+
+| Method | Route | Doc |
+| --- | --- | --- |
+| `invoice_create` | `POST /v1/invoices/` | Draws up a draft invoice for an order. |
+| `invoice_destroy` | `DELETE /v1/invoices/{id}/` | Voids an invoice. |
+| `invoice_issue` | `POST /v1/invoices/{id}/issue/` | Issues a draft invoice and asks the customer to pay it. |
+| `invoice_list` | `GET /v1/invoices/` | Invoices over HTTP. Every action here runs one function of services.py. |
+| `invoice_partial_update` | `PATCH /v1/invoices/{id}/` | Invoices over HTTP. Every action here runs one function of services.py. |
+| `invoice_retrieve` | `GET /v1/invoices/{id}/` | Reads one invoice. |
+| `invoice_update` | `PUT /v1/invoices/{id}/` | Invoices over HTTP. Every action here runs one function of services.py. |
 
 ## Consumes
 

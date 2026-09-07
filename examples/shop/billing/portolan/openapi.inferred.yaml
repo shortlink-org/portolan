@@ -1,0 +1,317 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Billing HTTP API",
+    "version": "inferred",
+    "description": "Generated statically from Django URLConf, DRF declarations, schema decorators and handler expressions. Unknown details are left unspecified."
+  },
+  "tags": [
+    {
+      "name": "invoices"
+    }
+  ],
+  "paths": {
+    "/v1/invoices/": {
+      "get": {
+        "operationId": "invoices_invoice_list",
+        "summary": "Invoices over HTTP. Every action here runs one function of services.py.",
+        "tags": [
+          "invoices"
+        ],
+        "responses": {
+          "default": {
+            "description": "Response schema and status are not available from static Django route analysis."
+          }
+        },
+        "x-portolan-inferred": true,
+        "x-portolan-source": "examples/shop/billing/invoices/urls.py:14",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "basicAuth": []
+          },
+          {}
+        ],
+        "x-portolan-permissions": [
+          "AllowAny"
+        ]
+      },
+      "post": {
+        "operationId": "invoices_invoice_create",
+        "summary": "Draws up a draft invoice for an order.",
+        "tags": [
+          "invoices"
+        ],
+        "responses": {
+          "201": {
+            "description": "Response shape inferred from the Django handler.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "invoiceId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "invoiceId"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-portolan-inferred": true,
+        "x-portolan-source": "examples/shop/billing/invoices/urls.py:14",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "basicAuth": []
+          },
+          {}
+        ],
+        "x-portolan-permissions": [
+          "AllowAny"
+        ]
+      }
+    },
+    "/v1/invoices/{id}/": {
+      "delete": {
+        "operationId": "invoices_invoice_destroy",
+        "summary": "Voids an invoice.",
+        "tags": [
+          "invoices"
+        ],
+        "responses": {
+          "204": {
+            "description": "No content response read from the Django handler."
+          }
+        },
+        "x-portolan-inferred": true,
+        "x-portolan-source": "examples/shop/billing/invoices/urls.py:14",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Type was not recoverable from the resolved Django route.",
+            "schema": {
+              "type": "string"
+            },
+            "x-portolan-inferred": true
+          }
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "basicAuth": []
+          },
+          {}
+        ],
+        "x-portolan-permissions": [
+          "AllowAny"
+        ]
+      },
+      "get": {
+        "operationId": "invoices_invoice_retrieve",
+        "summary": "Reads one invoice.",
+        "tags": [
+          "invoices"
+        ],
+        "responses": {
+          "200": {
+            "description": "Response shape inferred from the Django handler."
+          }
+        },
+        "x-portolan-inferred": true,
+        "x-portolan-source": "examples/shop/billing/invoices/urls.py:14",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Type was not recoverable from the resolved Django route.",
+            "schema": {
+              "type": "string"
+            },
+            "x-portolan-inferred": true
+          }
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "basicAuth": []
+          },
+          {}
+        ],
+        "x-portolan-permissions": [
+          "AllowAny"
+        ]
+      },
+      "patch": {
+        "operationId": "invoices_invoice_partial_update",
+        "summary": "Invoices over HTTP. Every action here runs one function of services.py.",
+        "tags": [
+          "invoices"
+        ],
+        "responses": {
+          "default": {
+            "description": "Response schema and status are not available from static Django route analysis."
+          }
+        },
+        "x-portolan-inferred": true,
+        "x-portolan-source": "examples/shop/billing/invoices/urls.py:14",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Type was not recoverable from the resolved Django route.",
+            "schema": {
+              "type": "string"
+            },
+            "x-portolan-inferred": true
+          }
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "basicAuth": []
+          },
+          {}
+        ],
+        "x-portolan-permissions": [
+          "AllowAny"
+        ]
+      },
+      "put": {
+        "operationId": "invoices_invoice_update",
+        "summary": "Invoices over HTTP. Every action here runs one function of services.py.",
+        "tags": [
+          "invoices"
+        ],
+        "responses": {
+          "default": {
+            "description": "Response schema and status are not available from static Django route analysis."
+          }
+        },
+        "x-portolan-inferred": true,
+        "x-portolan-source": "examples/shop/billing/invoices/urls.py:14",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Type was not recoverable from the resolved Django route.",
+            "schema": {
+              "type": "string"
+            },
+            "x-portolan-inferred": true
+          }
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "basicAuth": []
+          },
+          {}
+        ],
+        "x-portolan-permissions": [
+          "AllowAny"
+        ]
+      }
+    },
+    "/v1/invoices/{id}/issue/": {
+      "post": {
+        "operationId": "invoices_invoice_issue",
+        "summary": "Issues a draft invoice and asks the customer to pay it.",
+        "tags": [
+          "invoices"
+        ],
+        "responses": {
+          "200": {
+            "description": "Response shape inferred from the Django handler.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "invoiceId": {},
+                    "number": {}
+                  },
+                  "required": [
+                    "invoiceId",
+                    "number"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-portolan-inferred": true,
+        "x-portolan-source": "examples/shop/billing/invoices/urls.py:14",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Type was not recoverable from the resolved Django route.",
+            "schema": {
+              "type": "string"
+            },
+            "x-portolan-inferred": true
+          }
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "basicAuth": []
+          },
+          {}
+        ],
+        "x-portolan-permissions": [
+          "AllowAny"
+        ]
+      }
+    }
+  },
+  "x-portolan-inferred": true,
+  "x-portolan-generator": "extract-django",
+  "security": [
+    {
+      "cookieAuth": []
+    },
+    {
+      "basicAuth": []
+    },
+    {}
+  ],
+  "components": {
+    "securitySchemes": {
+      "basicAuth": {
+        "type": "http",
+        "scheme": "basic"
+      },
+      "cookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "sessionid"
+      }
+    }
+  }
+}

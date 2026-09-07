@@ -1,6 +1,7 @@
 {
   "django-domain": [
     "domain.json",
+    "openapi.inferred.yaml",
     "stores.json"
   ],
   "openapi": [

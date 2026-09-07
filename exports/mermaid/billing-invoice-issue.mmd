@@ -7,7 +7,7 @@ sequenceDiagram
     participant p4 as Celery · billing.mail
     participant p5 as Celery · billing
     participant p6 as bus
-    p0->>p1: invoice_issue → InvoiceId
+    p0->>p1: invoice_issue
     p1->>p2: validateSession → SessionInfo
     p1->>p3: Invoice.objects.get
     p1->>p3: Invoice.save

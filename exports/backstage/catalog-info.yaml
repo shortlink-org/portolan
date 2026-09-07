@@ -1433,6 +1433,7 @@ spec:
     owner: shortlink-org/shop
     providesApis:
         - api:default/billing-v1-invoices
+        - api:default/shop-billing-invoices
     system: shop
     type: service
 ---
@@ -1588,6 +1589,85 @@ spec:
               "http": {
                 "method": "POST",
                 "path": "/v1/invoices/{id}/issue"
+              }
+            }
+          ],
+          "module": ""
+        }
+    lifecycle: production
+    owner: shortlink-org/shop
+    system: shop
+    type: portolan
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+    name: shop-billing-invoices
+    title: shop.billing.invoices
+    description: Interface provided by Billing
+    annotations:
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/portolan/openapi.inferred.yaml
+        portolan.io/id: shop.billing.invoices
+spec:
+    definition: |-
+        {
+          "id": "shop.billing.invoices",
+          "messages": null,
+          "methods": [
+            {
+              "name": "invoice_create",
+              "doc": "Draws up a draft invoice for an order.",
+              "http": {
+                "method": "POST",
+                "path": "/v1/invoices/"
+              }
+            },
+            {
+              "name": "invoice_destroy",
+              "doc": "Voids an invoice.",
+              "http": {
+                "method": "DELETE",
+                "path": "/v1/invoices/{id}/"
+              }
+            },
+            {
+              "name": "invoice_issue",
+              "doc": "Issues a draft invoice and asks the customer to pay it.",
+              "http": {
+                "method": "POST",
+                "path": "/v1/invoices/{id}/issue/"
+              }
+            },
+            {
+              "name": "invoice_list",
+              "doc": "Invoices over HTTP. Every action here runs one function of services.py.",
+              "http": {
+                "method": "GET",
+                "path": "/v1/invoices/"
+              }
+            },
+            {
+              "name": "invoice_partial_update",
+              "doc": "Invoices over HTTP. Every action here runs one function of services.py.",
+              "http": {
+                "method": "PATCH",
+                "path": "/v1/invoices/{id}/"
+              }
+            },
+            {
+              "name": "invoice_retrieve",
+              "doc": "Reads one invoice.",
+              "http": {
+                "method": "GET",
+                "path": "/v1/invoices/{id}/"
+              }
+            },
+            {
+              "name": "invoice_update",
+              "doc": "Invoices over HTTP. Every action here runs one function of services.py.",
+              "http": {
+                "method": "PUT",
+                "path": "/v1/invoices/{id}/"
               }
             }
           ],
