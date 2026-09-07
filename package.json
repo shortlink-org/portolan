@@ -55,7 +55,7 @@
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^6.1.1",
     "ajv": "^8.20.0",
-    "oxc-parser": "^0.148.0",
+    "oxc-parser": "^0.149.0",
     "tailwindcss": "^4.0.0",
     "typescript": "^7.0.2",
     "vite": "^8.2.2",
