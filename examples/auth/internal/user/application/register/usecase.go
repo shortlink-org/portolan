@@ -7,7 +7,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/shortlink-org/portolan/examples/auth/internal/user/application/register/dto"
 	"github.com/shortlink-org/portolan/examples/auth/internal/user/domain"
 	"github.com/shortlink-org/portolan/examples/auth/internal/user/domain/vo/email"
 )
@@ -29,33 +28,33 @@ func New(repo user.Repository, hasher PasswordHasher, now func() time.Time, newI
 // Handle registers a user. A second registration of the same address is refused
 // with user.ErrEmailTaken rather than quietly returning the first one: the
 // caller asked to create something, and it did not happen.
-func (uc *UseCase) Handle(ctx context.Context, in dto.Input) (dto.Output, error) {
+func (uc *UseCase) Handle(ctx context.Context, in Command) (Result, error) {
 	address, err := email.New(in.Email)
 	if err != nil {
-		return dto.Output{}, err
+		return Result{}, err
 	}
 	if _, err := uc.repo.ByEmail(ctx, address.String()); err == nil {
-		return dto.Output{}, user.ErrEmailTaken
+		return Result{}, user.ErrEmailTaken
 	} else if !errors.Is(err, user.ErrNotFound) {
-		return dto.Output{}, err
+		return Result{}, err
 	}
 
 	hash, err := uc.hasher.Hash(in.Password)
 	if err != nil {
-		return dto.Output{}, err
+		return Result{}, err
 	}
 	u, ev, err := user.Register(uc.newID(), in.Email, hash, uc.now())
 	if err != nil {
-		return dto.Output{}, err
+		return Result{}, err
 	}
 	// The event goes in with the write. Announcing a user that failed to save
 	// would be a lie no consumer could detect, so the two are one call and the
 	// repository is left to make them one act.
 	if err := uc.repo.Save(ctx, u, ev); err != nil {
-		return dto.Output{}, err
+		return Result{}, err
 	}
 
-	return dto.Output{
+	return Result{
 		UserID:    u.ID,
 		Email:     u.Email.String(),
 		CreatedAt: u.CreatedAt,

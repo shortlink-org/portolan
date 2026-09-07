@@ -4,7 +4,6 @@ package get
 import (
 	"context"
 
-	"github.com/shortlink-org/portolan/examples/auth/internal/user/application/get/dto"
 	"github.com/shortlink-org/portolan/examples/auth/internal/user/domain"
 )
 
@@ -19,12 +18,12 @@ func New(repo user.Repository) *UseCase {
 // Handle returns the user, or user.ErrNotFound. Unlike check_credentials, this one
 // may say "no such user": the caller already knows the id, so nothing is
 // disclosed by admitting it does not exist.
-func (uc *UseCase) Handle(ctx context.Context, in dto.Input) (dto.Output, error) {
+func (uc *UseCase) Handle(ctx context.Context, in Query) (Result, error) {
 	u, err := uc.repo.ByID(ctx, in.UserID)
 	if err != nil {
-		return dto.Output{}, err
+		return Result{}, err
 	}
-	return dto.Output{
+	return Result{
 		UserID:    u.ID,
 		Email:     u.Email.String(),
 		CreatedAt: u.CreatedAt,

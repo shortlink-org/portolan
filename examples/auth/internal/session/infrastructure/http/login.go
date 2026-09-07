@@ -3,7 +3,7 @@ package session
 import (
 	"context"
 
-	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/login/dto"
+	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/login"
 	"github.com/shortlink-org/portolan/examples/auth/internal/transport/http/gen"
 )
 
@@ -12,7 +12,7 @@ func (h *Sessions) Login(
 	ctx context.Context,
 	request gen.LoginRequestObject,
 ) (gen.LoginResponseObject, error) {
-	out, err := h.login.Handle(ctx, dto.Input{
+	out, err := h.login.Handle(ctx, login.Command{
 		Email:    request.Body.Email,
 		Password: request.Body.Password,
 	})

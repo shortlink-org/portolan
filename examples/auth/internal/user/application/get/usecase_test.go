@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/shortlink-org/portolan/examples/auth/internal/user/application/get"
-	"github.com/shortlink-org/portolan/examples/auth/internal/user/application/get/dto"
 	"github.com/shortlink-org/portolan/examples/auth/internal/user/domain"
 	"github.com/shortlink-org/portolan/examples/auth/internal/user/domain/vo/password"
 )
@@ -33,7 +32,7 @@ func TestGet(t *testing.T) {
 	repository := NewMockRepository(t)
 	repository.EXPECT().ByID(mock.Anything, "u1").Return(storedUser(t), nil).Once()
 
-	out, err := get.New(repository).Handle(context.Background(), dto.Input{UserID: "u1"})
+	out, err := get.New(repository).Handle(context.Background(), get.Query{UserID: "u1"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +45,7 @@ func TestMissingIsSaidPlainly(t *testing.T) {
 	repository := NewMockRepository(t)
 	repository.EXPECT().ByID(mock.Anything, "nobody").Return(nil, user.ErrNotFound).Once()
 
-	_, err := get.New(repository).Handle(context.Background(), dto.Input{UserID: "nobody"})
+	_, err := get.New(repository).Handle(context.Background(), get.Query{UserID: "nobody"})
 	if !errors.Is(err, user.ErrNotFound) {
 		t.Fatalf("= %v, want ErrNotFound", err)
 	}

@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/login"
-	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/login/dto"
 	"github.com/shortlink-org/portolan/examples/auth/internal/session/domain"
 	"github.com/shortlink-org/portolan/examples/auth/internal/session/domain/event"
 )
@@ -45,7 +44,7 @@ func TestLogin(t *testing.T) {
 		}).Once()
 
 	out, err := login.New(repository, authenticator, risk, func() time.Time { return now }, func() string { return "s1" }).
-		Handle(context.Background(), dto.Input{Email: "ada@example.com", Password: "Passw0rdish"})
+		Handle(context.Background(), login.Command{Email: "ada@example.com", Password: "Passw0rdish"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +61,7 @@ func TestNoSessionWithoutTheAuthenticator(t *testing.T) {
 		Return("", errInvalidCredentials).Once()
 
 	out, err := login.New(repository, authenticator, risk, time.Now, func() string { return "unused" }).
-		Handle(context.Background(), dto.Input{Email: "ada@example.com", Password: "wrong"})
+		Handle(context.Background(), login.Command{Email: "ada@example.com", Password: "wrong"})
 	if !errors.Is(err, errInvalidCredentials) || out.Token != "" {
 		t.Fatalf("out = %+v, err = %v", out, err)
 	}
@@ -76,7 +75,7 @@ func TestAuthenticatorFailureIsNotRewritten(t *testing.T) {
 	authenticator.EXPECT().Authenticate(mock.Anything, "a@b.co", "x").Return("", boom).Once()
 
 	_, err := login.New(repository, authenticator, risk, time.Now, func() string { return "unused" }).
-		Handle(context.Background(), dto.Input{Email: "a@b.co", Password: "x"})
+		Handle(context.Background(), login.Command{Email: "a@b.co", Password: "x"})
 	if !errors.Is(err, boom) {
 		t.Fatalf("= %v, want %v", err, boom)
 	}
@@ -102,7 +101,7 @@ func TestEachLoginIsItsOwnSession(t *testing.T) {
 		return string(rune('0' + ids))
 	})
 	for range 2 {
-		if _, err := uc.Handle(context.Background(), dto.Input{Email: "a", Password: "b"}); err != nil {
+		if _, err := uc.Handle(context.Background(), login.Command{Email: "a", Password: "b"}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -132,7 +131,7 @@ func TestABlockedAttemptEndsEverySessionFirst(t *testing.T) {
 		}).Once()
 
 	out, err := login.New(repository, authenticator, risk, func() time.Time { return now }, func() string { return "unused" }).
-		Handle(context.Background(), dto.Input{})
+		Handle(context.Background(), login.Command{})
 	if !errors.Is(err, login.ErrBlocked) || out.Token != "" {
 		t.Fatalf("out = %+v, err = %v", out, err)
 	}
@@ -147,7 +146,7 @@ func TestRiskBeingDownIssuesNothing(t *testing.T) {
 	risk.EXPECT().Assess(mock.Anything, login.Attempt{UserID: "u1"}).Return(login.Verdict(""), boom).Once()
 
 	_, err := login.New(repository, authenticator, risk, time.Now, func() string { return "unused" }).
-		Handle(context.Background(), dto.Input{})
+		Handle(context.Background(), login.Command{})
 	if !errors.Is(err, boom) {
 		t.Fatalf("= %v, want %v", err, boom)
 	}

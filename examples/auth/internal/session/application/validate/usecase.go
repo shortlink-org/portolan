@@ -8,7 +8,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/validate/dto"
 	"github.com/shortlink-org/portolan/examples/auth/internal/session/domain"
 	"github.com/shortlink-org/portolan/examples/auth/internal/session/domain/vo/token"
 )
@@ -26,19 +25,19 @@ func New(repo session.Repository, now func() time.Time) *UseCase {
 // session.ErrNotFound rather than as a parse failure: outside auth, "this token
 // is not shaped like one of ours" and "we have never seen it" are the same
 // answer, and telling them apart only helps someone probing the format.
-func (uc *UseCase) Handle(ctx context.Context, in dto.Input) (dto.Output, error) {
+func (uc *UseCase) Handle(ctx context.Context, in Query) (Result, error) {
 	presented, err := token.Parse(in.Token)
 	if err != nil {
-		return dto.Output{}, session.ErrNotFound
+		return Result{}, session.ErrNotFound
 	}
 	sess, err := uc.repo.ByToken(ctx, presented)
 	if err != nil {
-		return dto.Output{}, err
+		return Result{}, err
 	}
 	if err := sess.Validate(uc.now()); err != nil {
-		return dto.Output{}, err
+		return Result{}, err
 	}
-	return dto.Output{
+	return Result{
 		UserID:    sess.UserID,
 		ExpiresAt: sess.ExpiresAt,
 		SessionID: sess.ID,

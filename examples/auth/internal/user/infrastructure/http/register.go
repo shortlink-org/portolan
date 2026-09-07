@@ -4,20 +4,20 @@ import (
 	"context"
 
 	"github.com/shortlink-org/portolan/examples/auth/internal/transport/http/gen"
-	"github.com/shortlink-org/portolan/examples/auth/internal/user/application/register/dto"
+	"github.com/shortlink-org/portolan/examples/auth/internal/user/application/register"
 )
 
 // RegisterUser implements POST /v1/users.
 //
 // It translates in both directions and decides nothing: the wire shape becomes
-// dto.Input, the use case answers, and dto.Output becomes the wire shape. The
+// register.Command, the use case answers, and register.Result becomes the wire shape. The
 // two are separate types so that renaming a JSON field never reaches into the
 // application layer.
 func (h *Users) RegisterUser(
 	ctx context.Context,
 	request gen.RegisterUserRequestObject,
 ) (gen.RegisterUserResponseObject, error) {
-	out, err := h.register.Handle(ctx, dto.Input{
+	out, err := h.register.Handle(ctx, register.Command{
 		Email:    request.Body.Email,
 		Password: request.Body.Password,
 	})

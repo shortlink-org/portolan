@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/shortlink-org/portolan/examples/auth/internal/transport/http/gen"
-	"github.com/shortlink-org/portolan/examples/auth/internal/user/application/get/dto"
+	"github.com/shortlink-org/portolan/examples/auth/internal/user/application/get"
 )
 
 // GetUser implements GET /v1/users/{userId}.
@@ -12,7 +12,7 @@ func (h *Users) GetUser(
 	ctx context.Context,
 	request gen.GetUserRequestObject,
 ) (gen.GetUserResponseObject, error) {
-	out, err := h.get.Handle(ctx, dto.Input{UserID: request.UserId})
+	out, err := h.get.Handle(ctx, get.Query{UserID: request.UserId})
 	if err != nil {
 		code, message := status(err)
 		if code == 404 {

@@ -3,7 +3,7 @@ package session
 import (
 	"context"
 
-	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/logout/dto"
+	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/logout"
 	"github.com/shortlink-org/portolan/examples/auth/internal/transport/http/gen"
 )
 
@@ -16,7 +16,7 @@ func (h *Sessions) Logout(
 	ctx context.Context,
 	request gen.LogoutRequestObject,
 ) (gen.LogoutResponseObject, error) {
-	if err := h.logout.Handle(ctx, dto.Input{Token: bearer(request.Params.Authorization)}); err != nil {
+	if err := h.logout.Handle(ctx, logout.Command{Token: bearer(request.Params.Authorization)}); err != nil {
 		_, message := status(err)
 		return gen.Logout500JSONResponse{Message: message}, nil
 	}

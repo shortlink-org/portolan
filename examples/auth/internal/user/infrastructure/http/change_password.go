@@ -5,10 +5,10 @@ import (
 	"errors"
 	"strings"
 
-	validatedto "github.com/shortlink-org/portolan/examples/auth/internal/session/application/validate/dto"
+	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/validate"
 	"github.com/shortlink-org/portolan/examples/auth/internal/session/domain"
 	"github.com/shortlink-org/portolan/examples/auth/internal/transport/http/gen"
-	changedto "github.com/shortlink-org/portolan/examples/auth/internal/user/application/change_password/dto"
+	"github.com/shortlink-org/portolan/examples/auth/internal/user/application/change_password"
 )
 
 // ChangePassword implements POST /v1/users/me/password.
@@ -21,14 +21,14 @@ func (h *Users) ChangePassword(
 	ctx context.Context,
 	request gen.ChangePasswordRequestObject,
 ) (gen.ChangePasswordResponseObject, error) {
-	current, err := h.validate.Handle(ctx, validatedto.Input{Token: bearer(request.Params.Authorization)})
+	current, err := h.validate.Handle(ctx, validate.Query{Token: bearer(request.Params.Authorization)})
 	if err != nil {
 		// Every reason a token can fail is one answer, exactly as it is on the
 		// endpoints the session package serves.
 		return gen.ChangePassword401JSONResponse{Message: "unauthorized"}, nil
 	}
 
-	err = h.changePassword.Handle(ctx, changedto.Input{
+	err = h.changePassword.Handle(ctx, change_password.Command{
 		UserID: current.UserID,
 		// The session this was made from is spared, so the person is not signed
 		// out of the device they are holding.

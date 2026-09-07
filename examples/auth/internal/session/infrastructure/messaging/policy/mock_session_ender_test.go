@@ -7,7 +7,7 @@ package policy_test
 import (
 	"context"
 
-	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/end_after_credential_change/dto"
+	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/end_after_credential_change"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -39,16 +39,16 @@ func (_m *MockSessionEnder) EXPECT() *MockSessionEnder_Expecter {
 }
 
 // Handle provides a mock function for the type MockSessionEnder
-func (_mock *MockSessionEnder) Handle(ctx context.Context, in dto.Input) error {
-	ret := _mock.Called(ctx, in)
+func (_mock *MockSessionEnder) Handle(ctx context.Context, command end_after_credential_change.Command) error {
+	ret := _mock.Called(ctx, command)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Handle")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, dto.Input) error); ok {
-		r0 = returnFunc(ctx, in)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, end_after_credential_change.Command) error); ok {
+		r0 = returnFunc(ctx, command)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -62,20 +62,20 @@ type MockSessionEnder_Handle_Call struct {
 
 // Handle is a helper method to define mock.On call
 //   - ctx context.Context
-//   - in dto.Input
-func (_e *MockSessionEnder_Expecter) Handle(ctx any, in any) *MockSessionEnder_Handle_Call {
-	return &MockSessionEnder_Handle_Call{Call: _e.mock.On("Handle", ctx, in)}
+//   - command end_after_credential_change.Command
+func (_e *MockSessionEnder_Expecter) Handle(ctx any, command any) *MockSessionEnder_Handle_Call {
+	return &MockSessionEnder_Handle_Call{Call: _e.mock.On("Handle", ctx, command)}
 }
 
-func (_c *MockSessionEnder_Handle_Call) Run(run func(ctx context.Context, in dto.Input)) *MockSessionEnder_Handle_Call {
+func (_c *MockSessionEnder_Handle_Call) Run(run func(ctx context.Context, command end_after_credential_change.Command)) *MockSessionEnder_Handle_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 dto.Input
+		var arg1 end_after_credential_change.Command
 		if args[1] != nil {
-			arg1 = args[1].(dto.Input)
+			arg1 = args[1].(end_after_credential_change.Command)
 		}
 		run(
 			arg0,
@@ -90,7 +90,7 @@ func (_c *MockSessionEnder_Handle_Call) Return(err error) *MockSessionEnder_Hand
 	return _c
 }
 
-func (_c *MockSessionEnder_Handle_Call) RunAndReturn(run func(ctx context.Context, in dto.Input) error) *MockSessionEnder_Handle_Call {
+func (_c *MockSessionEnder_Handle_Call) RunAndReturn(run func(ctx context.Context, command end_after_credential_change.Command) error) *MockSessionEnder_Handle_Call {
 	_c.Call.Return(run)
 	return _c
 }

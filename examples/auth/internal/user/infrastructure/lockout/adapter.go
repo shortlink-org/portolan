@@ -6,11 +6,8 @@ import (
 	"context"
 
 	"github.com/shortlink-org/portolan/examples/auth/internal/lockout/application/check"
-	checkdto "github.com/shortlink-org/portolan/examples/auth/internal/lockout/application/check/dto"
 	"github.com/shortlink-org/portolan/examples/auth/internal/lockout/application/record_failure"
-	failuredto "github.com/shortlink-org/portolan/examples/auth/internal/lockout/application/record_failure/dto"
 	"github.com/shortlink-org/portolan/examples/auth/internal/lockout/application/record_success"
-	successdto "github.com/shortlink-org/portolan/examples/auth/internal/lockout/application/record_success/dto"
 	"github.com/shortlink-org/portolan/examples/auth/internal/user/application/check_credentials"
 )
 
@@ -36,7 +33,7 @@ type lockoutAdapter struct {
 }
 
 func (l lockoutAdapter) Allowed(ctx context.Context, userID string) (bool, error) {
-	out, err := l.check.Handle(ctx, checkdto.Input{UserID: userID})
+	out, err := l.check.Handle(ctx, check.Query{UserID: userID})
 	if err != nil {
 		return false, err
 	}
@@ -44,9 +41,9 @@ func (l lockoutAdapter) Allowed(ctx context.Context, userID string) (bool, error
 }
 
 func (l lockoutAdapter) Failed(ctx context.Context, userID string) error {
-	return l.failed.Handle(ctx, failuredto.Input{UserID: userID})
+	return l.failed.Handle(ctx, record_failure.Command{UserID: userID})
 }
 
 func (l lockoutAdapter) Succeeded(ctx context.Context, userID string) error {
-	return l.succeeded.Handle(ctx, successdto.Input{UserID: userID})
+	return l.succeeded.Handle(ctx, record_success.Command{UserID: userID})
 }

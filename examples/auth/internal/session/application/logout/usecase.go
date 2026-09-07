@@ -6,7 +6,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/logout/dto"
 	"github.com/shortlink-org/portolan/examples/auth/internal/session/domain"
 	"github.com/shortlink-org/portolan/examples/auth/internal/session/domain/event"
 	"github.com/shortlink-org/portolan/examples/auth/internal/session/domain/vo/token"
@@ -27,7 +26,7 @@ func New(repo session.Repository, now func() time.Time) *UseCase {
 // be no session, and there is none; failing here would tell an attacker which
 // tokens exist and would make a client's retry after a network timeout fail for
 // no reason.
-func (uc *UseCase) Handle(ctx context.Context, in dto.Input) error {
+func (uc *UseCase) Handle(ctx context.Context, in Command) error {
 	presented, err := token.Parse(in.Token)
 	if err != nil {
 		return nil

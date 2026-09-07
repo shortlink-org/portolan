@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/end_after_credential_change"
-	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/end_after_credential_change/dto"
 	"github.com/shortlink-org/portolan/examples/auth/internal/session/domain"
 	"github.com/shortlink-org/portolan/examples/auth/internal/session/domain/event"
 )
@@ -44,7 +43,7 @@ func TestEndsWhatTheServiceSelected(t *testing.T) {
 	}).Once()
 
 	err := end_after_credential_change.New(repository, func() time.Time { return change.Add(time.Hour) }).Handle(
-		context.Background(), dto.Input{UserID: "u1", ChangedAt: change, Keep: "laptop"})
+		context.Background(), end_after_credential_change.Command{UserID: "u1", ChangedAt: change, Keep: "laptop"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +62,7 @@ func TestEachSessionIsSavedOnItsOwn(t *testing.T) {
 	}
 
 	if err := end_after_credential_change.New(repository, func() time.Time { return change }).Handle(
-		context.Background(), dto.Input{UserID: "u1", ChangedAt: change}); err != nil {
+		context.Background(), end_after_credential_change.Command{UserID: "u1", ChangedAt: change}); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -80,7 +79,7 @@ func TestConflictReloadsTheSession(t *testing.T) {
 	repository.EXPECT().Save(mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 
 	if err := end_after_credential_change.New(repository, func() time.Time { return change }).Handle(
-		context.Background(), dto.Input{UserID: "u1", ChangedAt: change}); err != nil {
+		context.Background(), end_after_credential_change.Command{UserID: "u1", ChangedAt: change}); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -92,7 +91,7 @@ func TestSessionEndedBySomebodyElseIsLeftAlone(t *testing.T) {
 	repository.EXPECT().ByUserID(mock.Anything, "u1").Return([]*session.Session{s}, nil).Once()
 
 	if err := end_after_credential_change.New(repository, func() time.Time { return change }).Handle(
-		context.Background(), dto.Input{UserID: "u1", ChangedAt: change}); err != nil {
+		context.Background(), end_after_credential_change.Command{UserID: "u1", ChangedAt: change}); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -101,7 +100,7 @@ func TestUserWithNothingOpen(t *testing.T) {
 	repository := NewMockRepository(t)
 	repository.EXPECT().ByUserID(mock.Anything, "nobody").Return(nil, nil).Once()
 	if err := end_after_credential_change.New(repository, func() time.Time { return change }).Handle(
-		context.Background(), dto.Input{UserID: "nobody", ChangedAt: change}); err != nil {
+		context.Background(), end_after_credential_change.Command{UserID: "nobody", ChangedAt: change}); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -111,7 +110,7 @@ func TestRepositoryFailureIsReturned(t *testing.T) {
 	repository := NewMockRepository(t)
 	repository.EXPECT().ByUserID(mock.Anything, "u1").Return(nil, boom).Once()
 	if err := end_after_credential_change.New(repository, time.Now).Handle(
-		context.Background(), dto.Input{UserID: "u1", ChangedAt: change}); !errors.Is(err, boom) {
+		context.Background(), end_after_credential_change.Command{UserID: "u1", ChangedAt: change}); !errors.Is(err, boom) {
 		t.Fatalf("= %v, want %v", err, boom)
 	}
 }

@@ -3,7 +3,7 @@ package session
 import (
 	"context"
 
-	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/validate/dto"
+	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/validate"
 	"github.com/shortlink-org/portolan/examples/auth/internal/transport/http/gen"
 )
 
@@ -13,7 +13,7 @@ func (h *Sessions) ValidateSession(
 	ctx context.Context,
 	request gen.ValidateSessionRequestObject,
 ) (gen.ValidateSessionResponseObject, error) {
-	out, err := h.validate.Handle(ctx, dto.Input{Token: bearer(request.Params.Authorization)})
+	out, err := h.validate.Handle(ctx, validate.Query{Token: bearer(request.Params.Authorization)})
 	if err != nil {
 		code, message := status(err)
 		if code == 401 {

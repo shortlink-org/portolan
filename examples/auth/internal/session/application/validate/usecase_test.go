@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/validate"
-	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/validate/dto"
 	"github.com/shortlink-org/portolan/examples/auth/internal/session/domain"
 	"github.com/shortlink-org/portolan/examples/auth/internal/session/domain/event"
 )
@@ -31,7 +30,7 @@ func TestValidate(t *testing.T) {
 	repository.EXPECT().ByToken(mock.Anything, s.Token).Return(s, nil).Once()
 
 	out, err := validate.New(repository, func() time.Time { return now }).Handle(
-		context.Background(), dto.Input{Token: s.Token.String()})
+		context.Background(), validate.Query{Token: s.Token.String()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +45,7 @@ func TestExpired(t *testing.T) {
 	repository.EXPECT().ByToken(mock.Anything, s.Token).Return(s, nil).Once()
 
 	_, err := validate.New(repository, func() time.Time { return now.Add(session.TTL + time.Second) }).Handle(
-		context.Background(), dto.Input{Token: s.Token.String()})
+		context.Background(), validate.Query{Token: s.Token.String()})
 	if !errors.Is(err, session.ErrExpired) {
 		t.Fatalf("= %v, want ErrExpired", err)
 	}
@@ -59,7 +58,7 @@ func TestRevoked(t *testing.T) {
 	repository.EXPECT().ByToken(mock.Anything, s.Token).Return(s, nil).Once()
 
 	_, err := validate.New(repository, func() time.Time { return now }).Handle(
-		context.Background(), dto.Input{Token: s.Token.String()})
+		context.Background(), validate.Query{Token: s.Token.String()})
 	if !errors.Is(err, session.ErrRevoked) {
 		t.Fatalf("= %v, want ErrRevoked", err)
 	}
@@ -68,7 +67,7 @@ func TestRevoked(t *testing.T) {
 func TestMalformedIsReportedAsUnknown(t *testing.T) {
 	uc := validate.New(NewMockRepository(t), func() time.Time { return now })
 	for _, raw := range []string{"", "....", "YWJj"} {
-		if _, err := uc.Handle(context.Background(), dto.Input{Token: raw}); !errors.Is(err, session.ErrNotFound) {
+		if _, err := uc.Handle(context.Background(), validate.Query{Token: raw}); !errors.Is(err, session.ErrNotFound) {
 			t.Errorf("%q = %v, want ErrNotFound", raw, err)
 		}
 	}
@@ -80,7 +79,7 @@ func TestValidateDoesNotWrite(t *testing.T) {
 	repository.EXPECT().ByToken(mock.Anything, s.Token).Return(s, nil).Once()
 
 	if _, err := validate.New(repository, func() time.Time { return now }).Handle(
-		context.Background(), dto.Input{Token: s.Token.String()}); err != nil {
+		context.Background(), validate.Query{Token: s.Token.String()}); err != nil {
 		t.Fatal(err)
 	}
 }

@@ -10,7 +10,6 @@ import (
 	"errors"
 
 	userapplication "github.com/shortlink-org/portolan/examples/auth/internal/user/application"
-	"github.com/shortlink-org/portolan/examples/auth/internal/user/application/check_credentials/dto"
 	"github.com/shortlink-org/portolan/examples/auth/internal/user/domain"
 	"github.com/shortlink-org/portolan/examples/auth/internal/user/domain/vo/email"
 )
@@ -35,25 +34,25 @@ func New(repo user.Repository, lockout Lockout, verifier PasswordVerifier) *UseC
 // how the check went only for a password that was actually checked. An
 // unknown address reaches the lockout not at all - there is no account to
 // count against, and counting by address would let anybody lock anybody.
-func (uc *UseCase) Handle(ctx context.Context, in dto.Input) (dto.Output, error) {
+func (uc *UseCase) Handle(ctx context.Context, in Command) (Result, error) {
 	address, err := email.New(in.Email)
 	if err != nil {
-		return dto.Output{}, userapplication.ErrInvalidCredentials
+		return Result{}, userapplication.ErrInvalidCredentials
 	}
 	u, err := uc.repo.ByEmail(ctx, address.String())
 	if errors.Is(err, user.ErrNotFound) {
-		return dto.Output{}, userapplication.ErrInvalidCredentials
+		return Result{}, userapplication.ErrInvalidCredentials
 	}
 	if err != nil {
-		return dto.Output{}, err
+		return Result{}, err
 	}
 
 	allowed, err := uc.lockout.Allowed(ctx, u.ID)
 	if err != nil {
-		return dto.Output{}, err
+		return Result{}, err
 	}
 	if !allowed {
-		return dto.Output{}, userapplication.ErrInvalidCredentials
+		return Result{}, userapplication.ErrInvalidCredentials
 	}
 
 	if !uc.verifier.Verify(in.Password, u.Password) {
@@ -61,13 +60,13 @@ func (uc *UseCase) Handle(ctx context.Context, in dto.Input) (dto.Output, error)
 			// A failure that could not be counted is reported as what it is.
 			// Answering with the refusal instead would let a lockout store
 			// that is down turn back into unlimited guessing, silently.
-			return dto.Output{}, recordErr
+			return Result{}, recordErr
 		}
-		return dto.Output{}, userapplication.ErrInvalidCredentials
+		return Result{}, userapplication.ErrInvalidCredentials
 	}
 
 	if err := uc.lockout.Succeeded(ctx, u.ID); err != nil {
-		return dto.Output{}, err
+		return Result{}, err
 	}
-	return dto.Output{UserID: u.ID}, nil
+	return Result{UserID: u.ID}, nil
 }

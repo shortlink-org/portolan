@@ -5,7 +5,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/login/dto"
 	"github.com/shortlink-org/portolan/examples/auth/internal/session/domain"
 	"github.com/shortlink-org/portolan/examples/auth/internal/session/domain/event"
 )
@@ -54,32 +53,32 @@ func New(
 // trying has the right password, so every session the account has is ended
 // before the refusal goes back. Refusing alone would leave the attacker's
 // earlier session, if any, live.
-func (uc *UseCase) Handle(ctx context.Context, in dto.Input) (dto.Output, error) {
+func (uc *UseCase) Handle(ctx context.Context, in Command) (Result, error) {
 	userID, err := uc.auth.Authenticate(ctx, in.Email, in.Password)
 	if err != nil {
-		return dto.Output{}, err
+		return Result{}, err
 	}
 
 	verdict, err := uc.risk.Assess(ctx, Attempt{UserID: userID})
 	if err != nil {
-		return dto.Output{}, err
+		return Result{}, err
 	}
 	if verdict == VerdictBlock {
 		if err := uc.endAll(ctx, userID); err != nil {
-			return dto.Output{}, err
+			return Result{}, err
 		}
-		return dto.Output{}, ErrBlocked
+		return Result{}, ErrBlocked
 	}
 
 	sess, ev, err := session.Start(uc.newID(), userID, uc.now())
 	if err != nil {
-		return dto.Output{}, err
+		return Result{}, err
 	}
 	if err := uc.repo.Save(ctx, sess, ev); err != nil {
-		return dto.Output{}, err
+		return Result{}, err
 	}
 
-	return dto.Output{
+	return Result{
 		Token:     sess.Token.String(),
 		ExpiresAt: sess.ExpiresAt,
 	}, nil

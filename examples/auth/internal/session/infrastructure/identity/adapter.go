@@ -7,7 +7,6 @@ import (
 
 	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/login"
 	"github.com/shortlink-org/portolan/examples/auth/internal/user/application/check_credentials"
-	"github.com/shortlink-org/portolan/examples/auth/internal/user/application/check_credentials/dto"
 )
 
 // Authenticator adapts the user module's credential check to the shape login
@@ -29,7 +28,7 @@ type authenticator struct {
 // be the one way to accidentally make a wrong password distinguishable from an
 // unknown address.
 func (a authenticator) Authenticate(ctx context.Context, email, password string) (string, error) {
-	out, err := a.uc.Handle(ctx, dto.Input{Email: email, Password: password})
+	out, err := a.uc.Handle(ctx, check_credentials.Command{Email: email, Password: password})
 	if err != nil {
 		return "", err
 	}

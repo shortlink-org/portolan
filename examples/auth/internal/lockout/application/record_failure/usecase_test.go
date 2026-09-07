@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/shortlink-org/portolan/examples/auth/internal/lockout/application/record_failure"
-	"github.com/shortlink-org/portolan/examples/auth/internal/lockout/application/record_failure/dto"
 	"github.com/shortlink-org/portolan/examples/auth/internal/lockout/domain"
 	"github.com/shortlink-org/portolan/examples/auth/internal/lockout/domain/event"
 )
@@ -41,7 +40,7 @@ func TestConflictReloadsAndCountsOnTopOfTheWinner(t *testing.T) {
 		}).Twice()
 
 	uc := record_failure.New(repository, func() time.Time { return time.Unix(0, 0) })
-	if err := uc.Handle(context.Background(), dto.Input{UserID: "u1"}); err != nil {
+	if err := uc.Handle(context.Background(), record_failure.Command{UserID: "u1"}); err != nil {
 		t.Fatal(err)
 	}
 	if saves != 2 || stored.Failures != 2 || stored.Version != 2 {
@@ -59,7 +58,7 @@ func TestExhaustedRetriesReturnAClassifiableConflict(t *testing.T) {
 		}).Times(3)
 	repository.EXPECT().Save(mock.Anything, mock.Anything).Return(lockout.ErrConflict).Times(3)
 
-	err := record_failure.New(repository, time.Now).Handle(context.Background(), dto.Input{UserID: "u1"})
+	err := record_failure.New(repository, time.Now).Handle(context.Background(), record_failure.Command{UserID: "u1"})
 	if !errors.Is(err, lockout.ErrConflict) {
 		t.Fatalf("= %v, want ErrConflict", err)
 	}

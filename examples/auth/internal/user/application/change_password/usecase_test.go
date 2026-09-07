@@ -10,7 +10,6 @@ import (
 
 	userapplication "github.com/shortlink-org/portolan/examples/auth/internal/user/application"
 	"github.com/shortlink-org/portolan/examples/auth/internal/user/application/change_password"
-	"github.com/shortlink-org/portolan/examples/auth/internal/user/application/change_password/dto"
 	"github.com/shortlink-org/portolan/examples/auth/internal/user/domain"
 	"github.com/shortlink-org/portolan/examples/auth/internal/user/domain/event"
 	"github.com/shortlink-org/portolan/examples/auth/internal/user/domain/vo/password"
@@ -71,7 +70,7 @@ func TestChangePassword(t *testing.T) {
 		}).Once()
 
 	err := change_password.New(repository, hasher, func() time.Time { return now }).Handle(
-		context.Background(), dto.Input{UserID: "u1", By: "s1", Current: current, New: next})
+		context.Background(), change_password.Command{UserID: "u1", By: "s1", Current: current, New: next})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +84,7 @@ func TestWrongCurrentWritesNothing(t *testing.T) {
 	hasher.EXPECT().Verify("Wr0ngGuess", u.Password).Return(false).Once()
 
 	err := change_password.New(repository, hasher, func() time.Time { return now }).Handle(
-		context.Background(), dto.Input{UserID: "u1", Current: "Wr0ngGuess", New: next})
+		context.Background(), change_password.Command{UserID: "u1", Current: "Wr0ngGuess", New: next})
 	if !errors.Is(err, userapplication.ErrInvalidCredentials) || err.Error() != userapplication.ErrInvalidCredentials.Error() {
 		t.Fatalf("= %v, want the plain credential refusal", err)
 	}
@@ -100,7 +99,7 @@ func TestWeakNewPasswordWritesNothing(t *testing.T) {
 	hasher.EXPECT().Hash("abc").Return(password.Hash{}, password.ErrInvalid).Once()
 
 	err := change_password.New(repository, hasher, func() time.Time { return now }).Handle(
-		context.Background(), dto.Input{UserID: "u1", Current: current, New: "abc"})
+		context.Background(), change_password.Command{UserID: "u1", Current: current, New: "abc"})
 	if !errors.Is(err, password.ErrInvalid) {
 		t.Fatalf("= %v, want %v", err, password.ErrInvalid)
 	}
@@ -112,7 +111,7 @@ func TestUnknownUser(t *testing.T) {
 	repository.EXPECT().ByID(mock.Anything, "nobody").Return(nil, user.ErrNotFound).Once()
 
 	err := change_password.New(repository, hasher, time.Now).Handle(
-		context.Background(), dto.Input{UserID: "nobody", Current: current, New: next})
+		context.Background(), change_password.Command{UserID: "nobody", Current: current, New: next})
 	if !errors.Is(err, user.ErrNotFound) {
 		t.Fatalf("= %v, want ErrNotFound", err)
 	}

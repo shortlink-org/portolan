@@ -10,7 +10,7 @@ package policy
 import (
 	"context"
 
-	sessiondto "github.com/shortlink-org/portolan/examples/auth/internal/session/application/end_after_credential_change/dto"
+	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/end_after_credential_change"
 	userevent "github.com/shortlink-org/portolan/examples/auth/internal/user/integration/event"
 )
 
@@ -18,7 +18,7 @@ import (
 // the port here makes the policy independently testable and avoids coupling an
 // integration-event adapter to a concrete use-case implementation.
 type SessionEnder interface {
-	Handle(ctx context.Context, in sessiondto.Input) error
+	Handle(ctx context.Context, command end_after_credential_change.Command) error
 }
 
 // RevokeSessionsOnPasswordChange ends the sessions issued against a password
@@ -50,7 +50,7 @@ func (p *RevokeSessionsOnPasswordChange) Handle(ctx context.Context, e userevent
 		return nil
 	}
 
-	return p.end.Handle(ctx, sessiondto.Input{
+	return p.end.Handle(ctx, end_after_credential_change.Command{
 		UserID:    changed.UserID,
 		ChangedAt: changed.OccurredAt,
 		Keep:      changed.By,

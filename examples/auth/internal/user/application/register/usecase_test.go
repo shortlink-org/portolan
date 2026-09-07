@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/shortlink-org/portolan/examples/auth/internal/user/application/register"
-	"github.com/shortlink-org/portolan/examples/auth/internal/user/application/register/dto"
 	"github.com/shortlink-org/portolan/examples/auth/internal/user/domain"
 	"github.com/shortlink-org/portolan/examples/auth/internal/user/domain/event"
 	"github.com/shortlink-org/portolan/examples/auth/internal/user/domain/vo/email"
@@ -51,7 +50,7 @@ func TestRegister(t *testing.T) {
 		}).Once()
 
 	out, err := register.New(repository, hasher, func() time.Time { return now }, func() string { return "u1" }).
-		Handle(context.Background(), dto.Input{Email: address, Password: plaintext})
+		Handle(context.Background(), register.Command{Email: address, Password: plaintext})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +65,7 @@ func TestSecondRegistrationIsRefused(t *testing.T) {
 	repository.EXPECT().ByEmail(mock.Anything, "ada@example.com").Return(&user.User{ID: "u1"}, nil).Once()
 
 	_, err := register.New(repository, hasher, time.Now, func() string { return "unused" }).
-		Handle(context.Background(), dto.Input{Email: address, Password: plaintext})
+		Handle(context.Background(), register.Command{Email: address, Password: plaintext})
 	if !errors.Is(err, user.ErrEmailTaken) {
 		t.Fatalf("= %v, want ErrEmailTaken", err)
 	}
@@ -75,7 +74,7 @@ func TestSecondRegistrationIsRefused(t *testing.T) {
 func TestInvalidInputWritesNothing(t *testing.T) {
 	t.Run("bad address", func(t *testing.T) {
 		_, err := register.New(NewMockRepository(t), NewMockPasswordHasher(t), time.Now, func() string { return "u1" }).
-			Handle(context.Background(), dto.Input{Email: "nope", Password: plaintext})
+			Handle(context.Background(), register.Command{Email: "nope", Password: plaintext})
 		if !errors.Is(err, email.ErrInvalid) {
 			t.Fatalf("= %v, want %v", err, email.ErrInvalid)
 		}
@@ -88,7 +87,7 @@ func TestInvalidInputWritesNothing(t *testing.T) {
 		hasher.EXPECT().Hash("abc").Return(password.Hash{}, password.ErrInvalid).Once()
 
 		_, err := register.New(repository, hasher, time.Now, func() string { return "u1" }).
-			Handle(context.Background(), dto.Input{Email: address, Password: "abc"})
+			Handle(context.Background(), register.Command{Email: address, Password: "abc"})
 		if !errors.Is(err, password.ErrInvalid) {
 			t.Fatalf("= %v, want %v", err, password.ErrInvalid)
 		}

@@ -7,7 +7,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/shortlink-org/portolan/examples/auth/internal/lockout/application/record_failure/dto"
 	"github.com/shortlink-org/portolan/examples/auth/internal/lockout/domain"
 	"github.com/shortlink-org/portolan/examples/auth/internal/lockout/domain/event"
 )
@@ -32,7 +31,7 @@ func New(repo lockout.Repository, now func() time.Time) *UseCase {
 //
 // A failure against an account that is already locked is passed over: the
 // password was refused unchecked, so there is nothing to count.
-func (uc *UseCase) Handle(ctx context.Context, in dto.Input) error {
+func (uc *UseCase) Handle(ctx context.Context, in Command) error {
 	for range retries {
 		l, err := uc.repo.ByUserID(ctx, in.UserID)
 		if errors.Is(err, lockout.ErrNotFound) {

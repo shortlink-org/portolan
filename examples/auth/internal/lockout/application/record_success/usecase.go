@@ -6,7 +6,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/shortlink-org/portolan/examples/auth/internal/lockout/application/record_success/dto"
 	"github.com/shortlink-org/portolan/examples/auth/internal/lockout/domain"
 )
 
@@ -27,7 +26,7 @@ func New(repo lockout.Repository, now func() time.Time) *UseCase {
 // Handle clears the count. For the common user, who has never typed a wrong
 // password, there is no lockout to clear and nothing is written; for one with
 // a count, it goes back to zero.
-func (uc *UseCase) Handle(ctx context.Context, in dto.Input) error {
+func (uc *UseCase) Handle(ctx context.Context, in Command) error {
 	for range retries {
 		l, err := uc.repo.ByUserID(ctx, in.UserID)
 		if errors.Is(err, lockout.ErrNotFound) {

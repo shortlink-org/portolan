@@ -7,7 +7,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/end_after_credential_change/dto"
 	"github.com/shortlink-org/portolan/examples/auth/internal/session/domain"
 	"github.com/shortlink-org/portolan/examples/auth/internal/session/domain/event"
 	"github.com/shortlink-org/portolan/examples/auth/internal/session/domain/services"
@@ -36,7 +35,7 @@ func New(repo session.Repository, now func() time.Time) *UseCase {
 // Each session is its own transaction. One write covering all of them would be
 // a single transaction spanning several aggregates, and it would mean one
 // unlucky conflict undoing every other revocation.
-func (uc *UseCase) Handle(ctx context.Context, in dto.Input) error {
+func (uc *UseCase) Handle(ctx context.Context, in Command) error {
 	sessions, err := uc.repo.ByUserID(ctx, in.UserID)
 	if err != nil {
 		return err

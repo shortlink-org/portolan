@@ -11,7 +11,6 @@ import (
 	"time"
 
 	userapplication "github.com/shortlink-org/portolan/examples/auth/internal/user/application"
-	"github.com/shortlink-org/portolan/examples/auth/internal/user/application/change_password/dto"
 	"github.com/shortlink-org/portolan/examples/auth/internal/user/domain"
 )
 
@@ -29,7 +28,7 @@ func New(repo user.Repository, hasher PasswordHasher, now func() time.Time) *Use
 // application.ErrInvalidCredentials, the same answer a failed login gets: this is a
 // credential check, and it must not become a way to test passwords that reports
 // differently from the front door.
-func (uc *UseCase) Handle(ctx context.Context, in dto.Input) error {
+func (uc *UseCase) Handle(ctx context.Context, in Command) error {
 	u, err := uc.repo.ByID(ctx, in.UserID)
 	if err != nil {
 		return err

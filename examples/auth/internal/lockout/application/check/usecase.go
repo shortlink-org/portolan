@@ -6,7 +6,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/shortlink-org/portolan/examples/auth/internal/lockout/application/check/dto"
 	"github.com/shortlink-org/portolan/examples/auth/internal/lockout/domain"
 )
 
@@ -23,13 +22,13 @@ func New(repo lockout.Repository, now func() time.Time) *UseCase {
 // locked is not an attempt on it.
 //
 // A user with no lockout has never typed a wrong password, and is allowed.
-func (uc *UseCase) Handle(ctx context.Context, in dto.Input) (dto.Output, error) {
+func (uc *UseCase) Handle(ctx context.Context, in Query) (Result, error) {
 	l, err := uc.repo.ByUserID(ctx, in.UserID)
 	if errors.Is(err, lockout.ErrNotFound) {
-		return dto.Output{Allowed: true}, nil
+		return Result{Allowed: true}, nil
 	}
 	if err != nil {
-		return dto.Output{}, err
+		return Result{}, err
 	}
-	return dto.Output{Allowed: l.Allows(uc.now())}, nil
+	return Result{Allowed: l.Allows(uc.now())}, nil
 }

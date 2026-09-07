@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/logout"
-	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/logout/dto"
 	"github.com/shortlink-org/portolan/examples/auth/internal/session/domain"
 	"github.com/shortlink-org/portolan/examples/auth/internal/session/domain/event"
 )
@@ -41,14 +40,14 @@ func TestLogout(t *testing.T) {
 		}).Once()
 
 	if err := logout.New(repository, func() time.Time { return now }).Handle(
-		context.Background(), dto.Input{Token: s.Token.String()}); err != nil {
+		context.Background(), logout.Command{Token: s.Token.String()}); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestUnknownTokensSucceedSilently(t *testing.T) {
 	t.Run("malformed", func(t *testing.T) {
-		if err := logout.New(NewMockRepository(t), time.Now).Handle(context.Background(), dto.Input{Token: "...."}); err != nil {
+		if err := logout.New(NewMockRepository(t), time.Now).Handle(context.Background(), logout.Command{Token: "...."}); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -57,7 +56,7 @@ func TestUnknownTokensSucceedSilently(t *testing.T) {
 		s := liveSession(t)
 		repository := NewMockRepository(t)
 		repository.EXPECT().ByToken(mock.Anything, s.Token).Return(nil, session.ErrNotFound).Once()
-		if err := logout.New(repository, time.Now).Handle(context.Background(), dto.Input{Token: s.Token.String()}); err != nil {
+		if err := logout.New(repository, time.Now).Handle(context.Background(), logout.Command{Token: s.Token.String()}); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -70,10 +69,10 @@ func TestSecondLogoutAnnouncesNothing(t *testing.T) {
 	repository.EXPECT().Save(mock.Anything, s, mock.Anything).Return(nil).Once()
 	uc := logout.New(repository, func() time.Time { return now })
 
-	if err := uc.Handle(context.Background(), dto.Input{Token: s.Token.String()}); err != nil {
+	if err := uc.Handle(context.Background(), logout.Command{Token: s.Token.String()}); err != nil {
 		t.Fatal(err)
 	}
-	if err := uc.Handle(context.Background(), dto.Input{Token: s.Token.String()}); err != nil {
+	if err := uc.Handle(context.Background(), logout.Command{Token: s.Token.String()}); err != nil {
 		t.Fatal(err)
 	}
 }
