@@ -117,22 +117,16 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	return b.Response(), nil
 }
 
-// rpcServices groups the document's operations by tag.
+// rpcServices turns one OpenAPI document into one provided HTTP API.
 //
-// A tag is what an OpenAPI author uses to say "these endpoints belong
-// together", which is the same thing a proto service says, so the two map onto
-// each other without inventing anything. Untagged operations are collected
-// under the api id itself rather than into a group called "other".
+// Tags organise operations inside a document; they do not declare independent
+// contracts. Treating every tag as an interface repeats shared schemas in every
+// tag card and makes one specification look like many APIs.
 func rpcServices(doc *document, api, source string, b *plugin.Builder) []catalog.RpcService {
-	type group struct {
-		methods []catalog.RpcMethod
-		schemas []schemaRef
-		seen    map[string]bool
-		visited map[string]bool
-	}
-
-	groups := map[string]*group{}
-	var order []string
+	methods := []catalog.RpcMethod{}
+	schemas := []schemaRef{}
+	seen := map[string]bool{}
+	visited := map[string]bool{}
 
 	for _, p := range entries(child(doc.root, "paths")) {
 		for _, verb := range verbs {
@@ -150,48 +144,31 @@ func rpcServices(doc *document, api, source string, b *plugin.Builder) []catalog
 				b.Warn(api, p.key+" "+strings.ToUpper(verb)+" has no operationId; listed by verb and path")
 			}
 
-			tags := list(child(operation, "tags"))
-			tag := ""
-			if len(tags) > 0 {
-				tag = tags[0]
-			}
-
-			id := openapi.InterfaceID(api, tag)
-
-			g, ok := groups[id]
-			if !ok {
-				g = &group{seen: map[string]bool{}, visited: map[string]bool{}}
-				groups[id] = g
-				order = append(order, id)
-			}
 			// The name, the route, and the shapes on either side. The
 			// document names the last two whenever the body is a $ref, which
 			// is what lets a flow draw what comes back from a call and not
 			// only that one was made.
 			request, response := doc.shapes(p.value, operation)
-			g.methods = append(g.methods, catalog.RpcMethod{
+			methods = append(methods, catalog.RpcMethod{
 				Name:     method,
 				Request:  request,
 				Response: response,
 				HTTP:     &catalog.HttpRoute{Method: strings.ToUpper(verb), Path: p.key},
 			})
-			doc.schemaRefs(operation, &g.schemas, g.seen, g.visited)
+			doc.schemaRefs(operation, &schemas, seen, visited)
 		}
 	}
 
-	out := make([]catalog.RpcService, 0, len(order))
-	for _, id := range order {
-		g := groups[id]
-
-		out = append(out, catalog.RpcService{
-			ID:       id,
-			Methods:  g.methods,
-			Source:   source,
-			Messages: messages(doc, g.schemas, g.seen, g.visited, b),
-		})
+	if len(methods) == 0 {
+		return []catalog.RpcService{}
 	}
 
-	return out
+	return []catalog.RpcService{{
+		ID:       openapi.InterfaceID(api, ""),
+		Methods:  methods,
+		Source:   source,
+		Messages: messages(doc, schemas, seen, visited, b),
+	}}
 }
 
 // messages turns every schema the group's operations reach into a named shape.

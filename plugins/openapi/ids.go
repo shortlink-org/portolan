@@ -92,15 +92,9 @@ func Title(name string) string {
 	return b.String()
 }
 
-// InterfaceID is the interface an operation belongs to: the api and the
-// operation's first tag, or the api alone for an operation with none.
-func InterfaceID(api, tag string) string {
-	if tag == "" {
-		return api
-	}
-
-	return api + "." + Title(tag)
-}
+// InterfaceID is the contract declared by the OpenAPI document. Tags organise
+// operations inside that contract; they do not create separate interfaces.
+func InterfaceID(api, _ string) string { return api }
 
 // Verbs, in the order the paths object lists them by convention.
 var Verbs = []string{"get", "put", "post", "delete", "options", "head", "patch", "trace"}
@@ -109,7 +103,8 @@ var Verbs = []string{"get", "put", "post", "delete", "options", "head", "patch",
 type Operation struct {
 	// ID is the operationId, or `VERB /path` when the document has none.
 	ID string
-	// Tag is the first tag, which decides the interface.
+	// Tag is the first tag, retained as document metadata. It does not change
+	// the identity of the contract.
 	Tag string
 	// Verb is upper case: POST.
 	Verb string

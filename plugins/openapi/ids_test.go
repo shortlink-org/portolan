@@ -16,7 +16,7 @@ func TestIDs(t *testing.T) {
 	if got := Title("price_list"); got != "PriceList" {
 		t.Errorf("Title = %q", got)
 	}
-	if got := InterfaceID("auth.v1", "sessions"); got != "auth.v1.Sessions" {
+	if got := InterfaceID("auth.v1", "sessions"); got != "auth.v1" {
 		t.Errorf("InterfaceID = %q", got)
 	}
 	if got := InterfaceID("auth.v1", ""); got != "auth.v1" {
@@ -80,12 +80,12 @@ func TestReadAndFind(t *testing.T) {
 	}
 
 	login, ok := spec.Find("post", "/v1/sessions")
-	if !ok || login.CallID(spec.API) != "auth.v1.Sessions/login" {
+	if !ok || login.CallID(spec.API) != "auth.v1/login" {
 		t.Errorf("login = %+v %v", login, ok)
 	}
 	// A generated client spells the parameter as a format verb.
 	user, ok := spec.Find("GET", "/v1/users/%s")
-	if !ok || user.CallID(spec.API) != "auth.v1.Users/getUser" {
+	if !ok || user.CallID(spec.API) != "auth.v1/getUser" {
 		t.Errorf("getUser = %+v %v", user, ok)
 	}
 	health, ok := spec.Find("GET", "/v1/health")

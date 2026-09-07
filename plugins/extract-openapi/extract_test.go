@@ -60,23 +60,52 @@ func names(methods []catalog.RpcMethod) []string {
 	return out
 }
 
-// A tag says "these endpoints belong together", which is what a proto service
-// says too - so tags become rpc services and operation ids become methods.
-func TestTagsBecomeServices(t *testing.T) {
+// Tags organise operations within one OpenAPI contract. They must not split a
+// document into duplicate interfaces with duplicate message inventories.
+func TestTagsStayWithinOneService(t *testing.T) {
 	provides := provided(t)
-
-	got := map[string][]string{}
-	for _, p := range provides {
-		got[p.ID] = names(p.Methods)
+	if len(provides) != 1 {
+		t.Fatalf("provides = %d, want one contract", len(provides))
 	}
-
-	if methods := got["billing.v2.Invoices"]; strings.Join(methods, ",") != "raiseInvoice" {
-		t.Errorf("tagged operations: %v", methods)
+	if provides[0].ID != "billing.v2" {
+		t.Errorf("interface = %q", provides[0].ID)
 	}
+	if got := strings.Join(names(provides[0].Methods), ","); got != "raiseInvoice,GET /v2/health" {
+		t.Errorf("methods = %q", got)
+	}
+}
 
-	// An untagged operation still has to be findable, under the api itself.
-	if methods := got["billing.v2"]; strings.Join(methods, ",") != "GET /v2/health" {
-		t.Errorf("untagged operation: %v", methods)
+func TestSharedSchemaIsNotRepeatedAcrossTags(t *testing.T) {
+	doc := testDocument(t, `
+openapi: 3.0.3
+info: {title: shared, version: 1.0.0}
+paths:
+  /orders:
+    get:
+      tags: [orders]
+      operationId: listOrders
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Result'}
+  /refunds:
+    get:
+      tags: [refunds]
+      operationId: listRefunds
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Result'}
+components:
+  schemas:
+    Result: {type: object}
+`)
+
+	services := rpcServices(doc, "shared.v1", "test.yaml", &plugin.Builder{})
+	if len(services) != 1 || len(services[0].Methods) != 2 || len(services[0].Messages) != 1 {
+		t.Fatalf("contract = %+v", services)
 	}
 }
 
@@ -96,7 +125,7 @@ func TestApiIDFromTitleAndMajorVersion(t *testing.T) {
 func TestFollowsRefsThroughSharedResponses(t *testing.T) {
 	var names []string
 	for _, p := range provided(t) {
-		if p.ID != "billing.v2.Invoices" {
+		if p.ID != "billing.v2" {
 			continue
 		}
 		for _, message := range p.Messages {
@@ -376,7 +405,7 @@ func TestExternalCarriesNoService(t *testing.T) {
 	for _, p := range ext.Provides {
 		ids = append(ids, p.ID)
 	}
-	if strings.Join(ids, ",") != "psp.v1.Invoices,psp.v1" {
+	if strings.Join(ids, ",") != "psp.v1" {
 		t.Errorf("interfaces = %v", ids)
 	}
 
@@ -473,7 +502,7 @@ func TestATreeSaysWhatIsImplementedAndWhatIsCalled(t *testing.T) {
 	for _, p := range out.Contexts[0].Services[0].Provides {
 		provided = append(provided, p.ID+" from "+p.Source)
 	}
-	if strings.Join(provided, ", ") != "aviasupp.v1.Book from testdata/discover/docs/swagger.yaml" {
+	if strings.Join(provided, ", ") != "aviasupp.v1 from testdata/discover/docs/swagger.yaml" {
 		t.Errorf("provides = %v", provided)
 	}
 
@@ -484,7 +513,7 @@ func TestATreeSaysWhatIsImplementedAndWhatIsCalled(t *testing.T) {
 	if acme.ID != "acme-flights" || acme.Slug != "acme-flights" || acme.Name != "Acme Flights API" || acme.Summary != "Flights and ancillaries from Acme." || acme.URL != "https://developer.acme.example/flights" {
 		t.Errorf("external = %+v", acme)
 	}
-	if len(acme.Provides) != 1 || acme.Provides[0].ID != "acme-flights-api.v1.Search" {
+	if len(acme.Provides) != 1 || acme.Provides[0].ID != "acme-flights-api.v1" {
 		t.Errorf("acme provides %+v", acme.Provides)
 	}
 

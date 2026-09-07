@@ -112,12 +112,12 @@ func TestAnHTTPClientIsNamedByTheDocumentBesideIt(t *testing.T) {
 		}
 	}
 	want := map[string]string{
-		"Login":                       "auth.v1.Sessions/login",
-		"LoginWithBody":               "auth.v1.Sessions/login",
-		"LoginWithResponse":           "auth.v1.Sessions/login",
-		"GetUserWithResponse":         "auth.v1.Users/getUser",
-		"GetUser":                     "auth.v1.Users/getUser",
-		"GetUserWithBodyWithResponse": "auth.v1.Users/getUser",
+		"Login":                       "auth.v1/login",
+		"LoginWithBody":               "auth.v1/login",
+		"LoginWithResponse":           "auth.v1/login",
+		"GetUserWithResponse":         "auth.v1/getUser",
+		"GetUser":                     "auth.v1/getUser",
+		"GetUserWithBodyWithResponse": "auth.v1/getUser",
 	}
 	for method, id := range want {
 		if c.methods[method] != id {
@@ -197,7 +197,7 @@ func (uc *UseCase) Handle(ctx context.Context, in dto.Input) (dto.Output, error)
 		t.Fatalf("nodes = %q", got)
 	}
 	first := d.steps[0].(*catalog.Step)
-	if first.Kind != catalog.StepRPC || first.To != "auth.auth" || first.Ref != "auth.v1.Users/getUser" || first.Status != catalog.StatusDeclared {
+	if first.Kind != catalog.StepRPC || first.To != "auth.auth" || first.Ref != "auth.v1/getUser" || first.Status != catalog.StatusDeclared {
 		t.Errorf("first = %+v", first)
 	}
 	alt := d.steps[1].(*catalog.Alt)
@@ -212,7 +212,7 @@ func (uc *UseCase) Handle(ctx context.Context, in dto.Input) (dto.Output, error)
 		t.Errorf("terminal marks = %v %v %v", alt.Branches[0].Terminal, alt.Branches[1].Terminal, alt.Branches[2].Terminal)
 	}
 	calls := r.consumes()
-	if len(calls) != 2 || calls[0].ID != "auth.v1.Sessions/login" || calls[1].ID != "auth.v1.Users/getUser" || calls[0].Peer != "auth.auth" {
+	if len(calls) != 2 || calls[0].ID != "auth.v1/getUser" || calls[1].ID != "auth.v1/login" || calls[0].Peer != "auth.auth" {
 		t.Errorf("consumes = %+v", calls)
 	}
 	for _, diag := range b.Response().Warnings() {
@@ -270,7 +270,7 @@ func (uc *UseCase) Handle(ctx context.Context, in dto.Input) (dto.Output, error)
 	}
 
 	step, calls, b := read(flowOptions{context: "edge", svcID: "edge.gateway", service: "gateway"})
-	if step.Kind != catalog.StepRPC || step.To != "partner-booking" || step.Ref != "partner-booking-api.v1.Users/getUser" || step.Status != catalog.StatusDeclared {
+	if step.Kind != catalog.StepRPC || step.To != "partner-booking" || step.Ref != "partner-booking-api.v1/getUser" || step.Status != catalog.StatusDeclared {
 		t.Errorf("rpc step = %+v", step)
 	}
 	if len(calls) != 1 || calls[0].Peer != "partner-booking" || calls[0].Status != catalog.StatusDeclared {
