@@ -44,22 +44,26 @@
               "name": "id",
               "type": "text",
               "nullable": false,
-              "pk": true
+              "pk": true,
+              "maps": "Route.id"
             },
             {
               "name": "vehicle",
               "type": "text",
-              "nullable": false
+              "nullable": false,
+              "maps": "Route.vehicle"
             },
             {
               "name": "planned_for",
               "type": "date",
-              "nullable": false
+              "nullable": false,
+              "maps": "Route.plannedFor"
             },
             {
               "name": "status",
               "type": "text",
-              "nullable": false
+              "nullable": false,
+              "maps": "Route.status"
             }
           ],
           "indexes": [
@@ -90,13 +94,15 @@
                 "table": "delivery.core.pg.routes",
                 "column": "id",
                 "onDelete": "cascade"
-              }
+              },
+              "maps": "Route.id"
             },
             {
               "name": "seq",
               "type": "integer",
               "nullable": false,
-              "pk": true
+              "pk": true,
+              "maps": "Route.stops.seq"
             },
             {
               "name": "shipment_id",
@@ -106,30 +112,35 @@
                 "table": "delivery.core.pg.packages",
                 "column": "id",
                 "onDelete": "restrict"
-              }
+              },
+              "maps": "Route.stops.shipmentId"
             },
             {
               "name": "address",
-              "type": "text",
+              "type": "jsonb",
               "nullable": false,
               "from": [
                 "delivery.core.pg.packages.ship_to"
-              ]
+              ],
+              "maps": "Route.stops.address"
             },
             {
               "name": "window_from",
               "type": "timestamptz",
-              "nullable": false
+              "nullable": false,
+              "maps": "Route.stops.window.from"
             },
             {
               "name": "window_to",
               "type": "timestamptz",
-              "nullable": false
+              "nullable": false,
+              "maps": "Route.stops.window.to"
             },
             {
               "name": "done",
               "type": "boolean",
-              "nullable": false
+              "nullable": false,
+              "maps": "Route.stops.done"
             }
           ],
           "persists": {
@@ -145,7 +156,8 @@
               "name": "id",
               "type": "text",
               "nullable": false,
-              "pk": true
+              "pk": true,
+              "maps": "Shipment.id"
             },
             {
               "name": "order_id",
@@ -155,27 +167,32 @@
                 "table": "orders",
                 "column": "id",
                 "onDelete": "restrict"
-              }
+              },
+              "maps": "Shipment.orderId"
             },
             {
               "name": "ship_to",
-              "type": "text",
-              "nullable": false
+              "type": "jsonb",
+              "nullable": false,
+              "maps": "Shipment.shipTo"
             },
             {
               "name": "status",
               "type": "text",
-              "nullable": false
+              "nullable": false,
+              "maps": "Shipment.status"
             },
             {
               "name": "tracking",
               "type": "text",
-              "nullable": true
+              "nullable": true,
+              "maps": "Shipment.tracking.value"
             },
             {
               "name": "route_id",
               "type": "text",
-              "nullable": true
+              "nullable": true,
+              "maps": "Shipment.routeId"
             },
             {
               "name": "dispatched_at",
@@ -212,7 +229,8 @@
               "name": "id",
               "type": "text",
               "nullable": false,
-              "pk": true
+              "pk": true,
+              "maps": "Shipment.parcels.id"
             },
             {
               "name": "package_id",
@@ -222,17 +240,20 @@
                 "table": "delivery.core.pg.packages",
                 "column": "id",
                 "onDelete": "cascade"
-              }
+              },
+              "maps": "Shipment.id"
             },
             {
               "name": "weight_g",
               "type": "integer",
-              "nullable": false
+              "nullable": false,
+              "maps": "Shipment.parcels.weightG"
             },
             {
               "name": "contents",
               "type": "text",
-              "nullable": false
+              "nullable": false,
+              "maps": "Shipment.parcels.contents"
             }
           ],
           "persists": {
@@ -258,17 +279,20 @@
                 "table": "delivery.core.pg.parcels",
                 "column": "id",
                 "onDelete": "cascade"
-              }
+              },
+              "maps": "Shipment.scans.parcelId"
             },
             {
               "name": "location",
               "type": "text",
-              "nullable": false
+              "nullable": false,
+              "maps": "Shipment.scans.location"
             },
             {
               "name": "scanned_at",
               "type": "timestamptz",
-              "nullable": false
+              "nullable": false,
+              "maps": "Shipment.scans.scannedAt"
             }
           ],
           "indexes": [
@@ -285,6 +309,58 @@
             "aggregate": "delivery.core.shipment"
           },
           "role": "child"
+        },
+        {
+          "id": "delivery.core.pg.outbox",
+          "name": "outbox",
+          "columns": [
+            {
+              "name": "id",
+              "type": "bigserial",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "uuid",
+              "type": "uuid",
+              "nullable": false
+            },
+            {
+              "name": "topic",
+              "type": "text",
+              "nullable": false
+            },
+            {
+              "name": "payload",
+              "type": "jsonb",
+              "nullable": false
+            },
+            {
+              "name": "metadata",
+              "type": "jsonb",
+              "nullable": false
+            },
+            {
+              "name": "created_at",
+              "type": "timestamptz",
+              "nullable": false
+            },
+            {
+              "name": "published_at",
+              "type": "timestamptz",
+              "nullable": true
+            }
+          ],
+          "indexes": [
+            {
+              "name": "outbox_unpublished",
+              "columns": [
+                "id"
+              ],
+              "unique": false
+            }
+          ],
+          "role": "outbox"
         }
       ],
       "views": [
@@ -299,7 +375,8 @@
               "nullable": false,
               "from": [
                 "delivery.core.pg.routes.id"
-              ]
+              ],
+              "maps": "Route.id"
             },
             {
               "name": "vehicle",
@@ -307,7 +384,8 @@
               "nullable": false,
               "from": [
                 "delivery.core.pg.routes.vehicle"
-              ]
+              ],
+              "maps": "Route.vehicle"
             },
             {
               "name": "planned_for",
@@ -315,7 +393,8 @@
               "nullable": false,
               "from": [
                 "delivery.core.pg.routes.planned_for"
-              ]
+              ],
+              "maps": "Route.plannedFor"
             },
             {
               "name": "stops",
@@ -323,7 +402,8 @@
               "nullable": false,
               "from": [
                 "delivery.core.pg.route_stops.seq"
-              ]
+              ],
+              "maps": "Route.stops.seq"
             },
             {
               "name": "done",
@@ -331,7 +411,8 @@
               "nullable": false,
               "from": [
                 "delivery.core.pg.route_stops.seq"
-              ]
+              ],
+              "maps": "Route.stops.seq"
             }
           ],
           "reads": [
