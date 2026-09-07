@@ -1224,6 +1224,14 @@ html,
 body,
 #root {
   height: 100%;
+  overflow: hidden;
+}
+
+/* Keep the app shell anchored to the viewport. A long page owns its scroll in
+   its pane; its descendants must not enlarge the document scrollport. */
+#root {
+  position: fixed;
+  inset: 0;
 }
 
 body {
