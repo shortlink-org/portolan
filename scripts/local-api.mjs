@@ -419,7 +419,7 @@ function pluginOptions(plugin, project, detectedOptions = {}) {
   if (plugin === "celery") return { ...common, ...detectedOptions, out: "celery.json" };
   if (plugin === "graphql") return { ...common, ...detectedOptions, out: "graphql.json" };
   if (plugin === "proto") return { ...common, ...detectedOptions, out: "proto.json" };
-  if (plugin === "glossary") return { context: project.context, ...detectedOptions, out: "glossary.json" };
+  if (plugin === "glossary") return { context: group, ...detectedOptions, out: "glossary.json" };
   if (plugin === "adr") return { ...detectedOptions, out: "adr.json" };
   return {};
 }
@@ -473,15 +473,12 @@ export function planProject(workspace, manifest, request) {
   return { project, plugins, steps, source, discovery, fetch };
 }
 
-export function writeProject(workspace, request) {
-  const manifestPath = join(workspace, "portolan.json");
-  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-  const plan = planProject(workspace, manifest, request);
+function manifestWithProject(manifest, plan, { isolated = false } = {}) {
   const fetchIndex = (manifest.extract ?? []).findIndex((step) => step.plugin === "git");
-  const extract = [...(manifest.extract ?? [])];
+  const extract = isolated ? [] : [...(manifest.extract ?? [])];
   if (plan.fetch) {
     if (!manifest.plugins?.some((plugin) => plugin.name === "git")) throw new Error("The built-in git fetcher is not declared in portolan.json.");
-    if (fetchIndex >= 0) {
+    if (!isolated && fetchIndex >= 0) {
       const fetchStep = extract[fetchIndex];
       extract[fetchIndex] = { ...fetchStep, options: { ...fetchStep.options, repos: [...(fetchStep.options?.repos ?? []), plan.fetch] } };
     } else {
@@ -489,22 +486,35 @@ export function writeProject(workspace, request) {
     }
   }
   extract.push(...plan.steps);
-  const next = {
+  return {
     ...manifest,
-    projects: [...(manifest.projects ?? []), plan.project],
-    sources: [...new Set([...(manifest.sources ?? []), ...(plan.fetch ? ["vendor/repos/*/*/git.repo.json"] : []), plan.source])],
+    projects: isolated ? [plan.project] : [...(manifest.projects ?? []), plan.project],
+    sources: isolated
+      ? [...(plan.fetch ? ["vendor/repos/*/*/git.repo.json"] : []), plan.source]
+      : [...new Set([...(manifest.sources ?? []), ...(plan.fetch ? ["vendor/repos/*/*/git.repo.json"] : []), plan.source])],
     extract,
+    ...(isolated ? { verify: [], generate: [] } : {}),
   };
-  const staging = mkdtempSync(join(dirname(manifestPath), ".portolan-manifest-"));
+}
+
+function writeManifest(path, manifest) {
+  const staging = mkdtempSync(join(dirname(path), ".portolan-manifest-"));
   const temp = join(staging, "portolan.json");
   try {
-    writeFileSync(temp, `${JSON.stringify(next, null, 2)}\n`, { flag: "wx" });
+    writeFileSync(temp, `${JSON.stringify(manifest, null, 2)}\n`, { flag: "wx" });
     const validation = loadManifest(temp);
     if (validation.problems.length) throw new Error(validation.problems.join("\n"));
-    renameSync(temp, manifestPath);
+    renameSync(temp, path);
   } finally {
     rmSync(staging, { recursive: true, force: true });
   }
+}
+
+export function writeProject(workspace, request) {
+  const manifestPath = join(workspace, "portolan.json");
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+  const plan = planProject(workspace, manifest, request);
+  writeManifest(manifestPath, manifestWithProject(manifest, plan));
   return plan;
 }
 
@@ -648,17 +658,117 @@ export function diffGeneratedFiles(workspace, snapshot, events) {
   return { files: shown, totalFiles: all.length, truncated: all.length > shown.length || contentTruncated };
 }
 
-function startJob(workspace, mode, approvedPreview) {
+const TRIAL_FACTS = [
+  ["contexts", "contexts"],
+  ["services", "components"],
+  ["contracts", "API contracts"],
+  ["apiOperations", "API operations"],
+  ["integrations", "integrations"],
+  ["aggregates", "aggregates"],
+  ["entities", "entities"],
+  ["domainOperations", "domain operations"],
+  ["events", "domain events"],
+  ["channels", "message channels"],
+  ["messages", "messages"],
+  ["stores", "data stores"],
+  ["tables", "tables"],
+  ["keyPatterns", "key patterns"],
+  ["flows", "flows"],
+  ["adrs", "ADRs"],
+  ["terms", "glossary terms"],
+];
+
+/** Summarise the catalog facts written by a project's selected extractors. */
+export function summarizeProjectTrial(snapshot, plan, events) {
+  const stepOutputs = new Set(plan.steps.map((step) => step.out));
+  const steps = events
+    .filter((event) => event.type === "step-finished" && event.phase === "extract" && stepOutputs.has(event.output) && plan.plugins.includes(event.plugin))
+    .map((event) => ({
+      plugin: event.plugin,
+      status: event.status,
+      durationMs: event.durationMs,
+      fileCount: event.fileCount,
+      changedCount: event.changedCount,
+      warnings: event.warnings ?? [],
+      ...(event.message ? { message: event.message } : {}),
+    }));
+  const facts = new Map(TRIAL_FACTS.map(([key]) => [key, new Set()]));
+  const add = (key, id) => { if (id !== undefined && id !== null && String(id)) facts.get(key)?.add(String(id)); };
+  const visitService = (service, contextId = "") => {
+    const serviceId = service.id ?? `${contextId}/${service.slug ?? service.name ?? "service"}`;
+    add("services", serviceId);
+    for (const contract of service.provides ?? []) {
+      const contractId = `${serviceId}/${contract.id ?? contract.name ?? "contract"}`;
+      add("contracts", contractId);
+      for (const method of contract.methods ?? []) add("apiOperations", `${contractId}/${method.name ?? method.id}`);
+    }
+    for (const integration of service.consumes ?? []) add("integrations", `${serviceId}/${integration.id ?? integration.peer ?? JSON.stringify(integration)}`);
+    for (const aggregate of service.aggregates ?? []) {
+      add("aggregates", aggregate.id ?? `${serviceId}/${aggregate.slug ?? aggregate.name}`);
+      for (const entity of aggregate.entities ?? []) add("entities", entity.id ?? `${serviceId}/${entity.name}`);
+      for (const event of aggregate.events ?? []) add("events", event.id ?? `${serviceId}/${event.name}`);
+      for (const operation of aggregate.operations ?? []) add("domainOperations", `${serviceId}/${aggregate.id ?? "aggregate"}/${operation.name ?? operation.id}`);
+    }
+    for (const channel of service.channels ?? []) {
+      const channelId = `${serviceId}/${channel.address ?? channel.name ?? "channel"}`;
+      add("channels", channelId);
+      for (const message of channel.messages ?? []) add("messages", `${channelId}/${message.name ?? message.id}`);
+    }
+  };
+  const files = [...new Set(events
+    .filter((event) => event.type === "step-finished" && event.phase === "extract" && stepOutputs.has(event.output) && plan.plugins.includes(event.plugin))
+    .flatMap((event) => event.files ?? []))];
+  for (const name of files) {
+    let fragment;
+    try { fragment = JSON.parse(readFileSync(join(snapshot, name), "utf8")); } catch { continue; }
+    for (const context of fragment.contexts ?? []) {
+      const contextId = context.id ?? context.slug ?? context.name;
+      add("contexts", contextId);
+      for (const service of context.services ?? []) visitService(service, contextId);
+    }
+    for (const store of fragment.stores ?? []) {
+      const storeId = store.id ?? store.slug ?? store.name;
+      add("stores", storeId);
+      for (const table of store.tables ?? []) add("tables", `${storeId}/${table.id ?? table.name}`);
+      for (const pattern of store.keyspaces ?? store.keyPatterns ?? store.keys ?? []) add("keyPatterns", `${storeId}/${pattern.id ?? pattern.pattern ?? pattern.name ?? JSON.stringify(pattern)}`);
+    }
+    for (const flow of fragment.flows ?? []) add("flows", flow.id ?? flow.slug ?? flow.name);
+    for (const adr of fragment.adrs ?? []) add("adrs", adr.id ?? adr.slug ?? adr.title);
+    for (const term of fragment.terms ?? []) add("terms", term.id ?? term.slug ?? term.name);
+  }
+  const warnings = steps.flatMap((step) => step.warnings.map((message) => ({ plugin: step.plugin, message })));
+  return {
+    steps,
+    facts: TRIAL_FACTS.map(([key, label]) => ({ key, label, count: facts.get(key)?.size ?? 0 })).filter((fact) => fact.count > 0),
+    warnings,
+    generatedFiles: files.length,
+  };
+}
+
+function prepareProjectTrial(workspace, request) {
+  const manifest = JSON.parse(readFileSync(join(workspace, "portolan.json"), "utf8"));
+  const plan = planProject(workspace, manifest, request);
+  const fingerprint = workspaceFingerprint(workspace);
+  const snapshot = snapshotWorkspace(workspace);
+  if (workspaceFingerprint(workspace) !== fingerprint) {
+    rmSync(snapshot.holder, { recursive: true, force: true });
+    throw new Error("Files changed while the trial workspace was being created. Try again.");
+  }
+  writeManifest(join(snapshot.snapshot, "portolan.json"), manifestWithProject(manifest, plan, { isolated: true }));
+  return { ...snapshot, fingerprint, plan };
+}
+
+function startJob(workspace, mode, approvedPreview, preparedTrial) {
   const id = randomUUID();
-  const preview = mode === "preview";
-  const fingerprint = preview ? workspaceFingerprint(workspace) : approvedPreview?.fingerprint;
-  const snapshot = preview ? snapshotWorkspace(workspace) : null;
-  if (preview && workspaceFingerprint(workspace) !== fingerprint) {
+  const preview = mode === "preview" || mode === "project-preview";
+  const fingerprint = preparedTrial?.fingerprint ?? (preview ? workspaceFingerprint(workspace) : approvedPreview?.fingerprint);
+  const snapshot = preparedTrial ?? (preview ? snapshotWorkspace(workspace) : null);
+  if (preview && !preparedTrial && workspaceFingerprint(workspace) !== fingerprint) {
     rmSync(snapshot.holder, { recursive: true, force: true });
     throw new Error("Files changed while the preview workspace was being created. Try again.");
   }
   const generatedAt = preview ? new Date().toISOString() : approvedPreview?.generatedAt;
-  const job = { id, mode, status: "running", events: [], subscribers: new Set(), buffers: { stdout: "", stderr: "" }, child: null, runRoot: snapshot?.snapshot ?? workspace, snapshotHolder: snapshot?.holder ?? null, fingerprint, generatedAt };
+  const job = { id, mode, status: "running", events: [], subscribers: new Set(), buffers: { stdout: "", stderr: "" }, child: null, runRoot: snapshot?.snapshot ?? workspace, snapshotHolder: snapshot?.holder ?? null, fingerprint, generatedAt, projectPlan: preparedTrial?.plan ?? null, projectRequest: preparedTrial ? structuredClone(preparedTrial.request) : null };
   jobs.set(id, job);
   const command = process.platform === "win32" ? "npm.cmd" : "npm";
   const child = spawn(command, ["run", mode === "check" ? "gen:check" : "gen"], {
@@ -679,12 +789,23 @@ function startJob(workspace, mode, approvedPreview) {
       try { job.preview = diffGeneratedFiles(workspace, job.runRoot, job.events); emit(job, { type: "preview-ready", ...job.preview }); }
       catch (cause) { job.status = "failed"; emit(job, { type: "log", stream: "stderr", message: `Could not build preview: ${cause instanceof Error ? cause.message : String(cause)}` }); }
     }
+    if (mode === "project-preview" && job.status === "ok") {
+      try { job.trial = summarizeProjectTrial(job.runRoot, job.projectPlan, job.events); emit(job, { type: "project-trial-ready", plan: job.projectPlan, ...job.trial }); }
+      catch (cause) { job.status = "failed"; emit(job, { type: "log", stream: "stderr", message: `Could not summarise project trial: ${cause instanceof Error ? cause.message : String(cause)}` }); }
+    }
     emit(job, { type: "process-finished", status: job.status, code, signal });
     for (const response of job.subscribers) response.end();
     job.subscribers.clear();
     if (job.snapshotHolder) rmSync(job.snapshotHolder, { recursive: true, force: true });
   });
   return job;
+}
+
+function startProjectTrial(workspace, request) {
+  const prepared = prepareProjectTrial(workspace, request);
+  prepared.request = request;
+  try { return startJob(workspace, "project-preview", null, prepared); }
+  catch (cause) { rmSync(prepared.holder, { recursive: true, force: true }); throw cause; }
 }
 
 export function localApiPlugin(workspace = process.cwd()) {
@@ -718,6 +839,23 @@ export function localApiPlugin(workspace = process.cwd()) {
           if (url.pathname === `${LOCAL_API_PREFIX}/source`) return send(res, 200, readLocalSource(workspace, input.path));
           if (url.pathname === `${LOCAL_API_PREFIX}/repositories/prepare`) return send(res, 200, prepareRepository(workspace, input));
           if (url.pathname === `${LOCAL_API_PREFIX}/discover`) return send(res, 200, discoverProject(workspace, input.path));
+          if (url.pathname === `${LOCAL_API_PREFIX}/projects/trials`) {
+            if ([...jobs.values()].some((job) => job.status === "running")) return send(res, 409, { error: "A generator run is already active." });
+            const job = startProjectTrial(workspace, input);
+            return send(res, 202, { runId: job.id, mode: job.mode, plan: job.projectPlan });
+          }
+          const applyTrialMatch = url.pathname.match(/^\/__portolan\/projects\/trials\/([^/]+)\/apply$/);
+          if (applyTrialMatch) {
+            if ([...jobs.values()].some((job) => job.status === "running")) return send(res, 409, { error: "A generator run is already active." });
+            const trial = jobs.get(applyTrialMatch[1]);
+            if (!trial?.projectRequest || !trial.trial || trial.status !== "ok") return send(res, 409, { error: "Run a successful project trial before adding it." });
+            if (trial.applied) return send(res, 409, { error: "This project trial was already applied." });
+            if (workspaceFingerprint(workspace) !== trial.fingerprint) return send(res, 409, { error: "Files changed after this project trial. Run it again." });
+            const result = writeProject(workspace, trial.projectRequest);
+            trial.applied = true;
+            const generation = input.generate ? startJob(workspace, "write", trial) : null;
+            return send(res, 201, { ...result, setup: setup(workspace), run: generation ? { runId: generation.id, mode: generation.mode } : null });
+          }
           if (url.pathname === `${LOCAL_API_PREFIX}/projects/preview`) {
             const manifest = JSON.parse(readFileSync(join(workspace, "portolan.json"), "utf8"));
             return send(res, 200, planProject(workspace, manifest, input));

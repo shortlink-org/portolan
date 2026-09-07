@@ -33,13 +33,13 @@ import type {
   SetupRunStepStatus,
 } from "../lib/setup-info";
 import {
-  addProject,
+  applyProjectTrial,
   cancelGeneration,
   discover,
   inspectRepository,
   localStatus,
-  previewProject,
   startGeneration,
+  startProjectTrial,
   subscribeToRun,
 } from "../lib/local-api";
 import type { Discovery, ProjectDraft, ProjectPlan, RunEvent } from "../lib/local-api";
@@ -517,9 +517,31 @@ function AddProjectCard({ onClick }: { onClick: () => void }) {
   );
 }
 
-function Wizard({ open, onClose, onAdded, onGenerate }: { open: boolean; onClose: () => void; onAdded: (setup: SetupInfo) => void; onGenerate: () => Promise<void> }) {
+const CAPABILITIES: Record<string, { title: string; summary: string }> = {
+  project: { title: "Component metadata", summary: "Name, ownership, repository and runnable commands." },
+  "go-domain": { title: "Go domain model", summary: "Aggregates, entities, value objects and domain events." },
+  "ts-domain": { title: "TypeScript domain model", summary: "Aggregates, entities, value objects and domain events." },
+  "rust-domain": { title: "Rust domain model", summary: "Aggregates, entities, value objects and domain events." },
+  "java-domain": { title: "Java domain model", summary: "Aggregates, entities, value objects and domain events." },
+  "django-domain": { title: "Django data model", summary: "Models and their relationships." },
+  openapi: { title: "HTTP API contract", summary: "Operations and messages declared by OpenAPI or Swagger." },
+  wsdl: { title: "SOAP contract", summary: "Services, operations and messages declared by WSDL." },
+  "http-clients": { title: "Outbound integrations", summary: "HTTP and SOAP calls, provider branches and code flows." },
+  redis: { title: "Redis data model", summary: "Clients, key patterns and stored value hints." },
+  river: { title: "River jobs", summary: "Job producers, workers and their code flows." },
+  watermill: { title: "Watermill messaging", summary: "Publishers, handlers, topics and their code flows." },
+  asyncapi: { title: "Messaging contract", summary: "Channels and messages declared by AsyncAPI." },
+  celery: { title: "Celery jobs", summary: "Tasks, producers and worker flows." },
+  graphql: { title: "GraphQL contract", summary: "Queries, mutations and schema types." },
+  proto: { title: "Protobuf contract", summary: "gRPC services, methods and messages." },
+  sql: { title: "SQL data model", summary: "Stores, tables, columns and relationships." },
+  adr: { title: "Architecture decisions", summary: "ADRs and their catalog relationships." },
+  glossary: { title: "Glossary", summary: "Project language and shared definitions." },
+};
+
+function Wizard({ open, onClose, onAdded, onRunStarted }: { open: boolean; onClose: () => void; onAdded: (setup: SetupInfo) => void; onRunStarted: (runId: string) => void }) {
   const [source, setSource] = useState<"local" | "external">("local");
-  const [stage, setStage] = useState<"source" | "configure" | "review">("source");
+  const [stage, setStage] = useState<"source" | "configure" | "trial">("source");
   const [path, setPath] = useState("");
   const [repository, setRepository] = useState("");
   const [ref, setRef] = useState("main");
@@ -527,14 +549,25 @@ function Wizard({ open, onClose, onAdded, onGenerate }: { open: boolean; onClose
   const [discovery, setDiscovery] = useState<Discovery | null>(null);
   const [draft, setDraft] = useState<ProjectDraft | null>(null);
   const [plan, setPlan] = useState<ProjectPlan | null>(null);
+  const [trialRunId, setTrialRunId] = useState<string | null>(null);
+  const [trialEvents, setTrialEvents] = useState<RunEvent[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     if (!open) {
-      setStage("source"); setSource("local"); setPath(""); setRepository(""); setRef("main"); setSourcePath(""); setDiscovery(null); setDraft(null); setPlan(null); setError(""); setBusy(false);
+      setStage("source"); setSource("local"); setPath(""); setRepository(""); setRef("main"); setSourcePath(""); setDiscovery(null); setDraft(null); setPlan(null); setTrialRunId(null); setTrialEvents([]); setError(""); setBusy(false);
     }
   }, [open]);
+
+  useEffect(() => {
+    if (!trialRunId) return;
+    return subscribeToRun(
+      trialRunId,
+      (event) => setTrialEvents((current) => [...current, event]),
+      () => {},
+    );
+  }, [trialRunId]);
 
   async function detect() {
     setBusy(true); setError("");
@@ -548,32 +581,49 @@ function Wizard({ open, onClose, onAdded, onGenerate }: { open: boolean; onClose
     finally { setBusy(false); }
   }
 
-  async function review() {
+  async function runTrial() {
     if (!draft) return;
     setBusy(true); setError("");
-    try { setPlan(await previewProject(draft)); setStage("review"); }
+    try {
+      const result = await startProjectTrial(draft);
+      setPlan(result.plan); setTrialEvents([]); setTrialRunId(result.runId); setStage("trial");
+    }
     catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
     finally { setBusy(false); }
   }
 
-  async function save(generate: boolean) {
-    if (!draft) return;
+  async function applyTrial(generate: boolean) {
+    if (!trialRunId) return;
     setBusy(true); setError("");
     try {
-      const result = await addProject(draft);
+      const result = await applyProjectTrial(trialRunId, generate);
       onAdded(result.setup);
       onClose();
-      if (generate) await onGenerate();
+      if (result.run) onRunStarted(result.run.runId);
     } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); setBusy(false); }
   }
 
-  const heading = stage === "source" ? "Add a project" : stage === "configure" ? "Configure discovery" : "Review changes";
+  const finished = trialEvents.slice().reverse().find((event): event is Extract<RunEvent, { type: "process-finished" }> => event.type === "process-finished");
+  const pipeline = trialEvents.find((event): event is Extract<RunEvent, { type: "pipeline-ready" }> => event.type === "pipeline-ready");
+  const completedSteps = trialEvents.filter((event): event is Extract<RunEvent, { type: "step-finished" }> => event.type === "step-finished");
+  const activeStep = trialEvents.slice().reverse().find((event): event is Extract<RunEvent, { type: "step-started" }> => event.type === "step-started");
+  const trial = trialEvents.find((event): event is Extract<RunEvent, { type: "project-trial-ready" }> => event.type === "project-trial-ready");
+  const logs = trialEvents.filter((event): event is Extract<RunEvent, { type: "log" }> => event.type === "log");
+  const trialRunning = stage === "trial" && !finished;
+  const totalSteps = pipeline?.stepCount ?? plan?.steps.length ?? 0;
+  const percent = totalSteps ? Math.round((completedSteps.length / totalSteps) * 100) : 0;
+  const heading = stage === "source" ? "Add a project" : stage === "configure" ? "Review discovery" : "Trial extraction";
+  function back() {
+    if (stage === "trial") { setStage("configure"); setTrialRunId(null); setTrialEvents([]); setPlan(null); }
+    else setStage("source");
+    setError("");
+  }
   return (
-    <Modal open={open} onClose={busy ? () => {} : onClose} label={heading} width="min(760px,94vw)">
+    <Modal open={open} onClose={busy || trialRunning ? () => {} : onClose} label={heading} width="min(800px,94vw)">
       <div className="flex items-center gap-3 border-b border-line px-5 py-4">
-        {stage !== "source" ? <button type="button" className="tbtn p-1.5" onClick={() => setStage(stage === "review" ? "configure" : "source")} aria-label="Back"><ArrowLeft size={16} /></button> : null}
-        <div className="min-w-0 flex-1"><div className="font-semibold text-ink">{heading}</div><div className="mono mt-0.5 text-muted">{stage === "source" ? "1 / 3 · source" : stage === "configure" ? "2 / 3 · plugins" : "3 / 3 · manifest"}</div></div>
-        <button type="button" className="tbtn p-1.5" onClick={onClose} aria-label="Close"><X size={16} /></button>
+        {stage !== "source" ? <button type="button" className="tbtn p-1.5" onClick={back} disabled={trialRunning || busy} aria-label="Back"><ArrowLeft size={16} /></button> : null}
+        <div className="min-w-0 flex-1"><div className="font-semibold text-ink">{heading}</div><div className="mono mt-0.5 text-muted">{stage === "source" ? "1 / 3 · source" : stage === "configure" ? "2 / 3 · capabilities" : "3 / 3 · proof"}</div></div>
+        <button type="button" className="tbtn p-1.5" onClick={onClose} disabled={busy || trialRunning} aria-label="Close"><X size={16} /></button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-5">
         {stage === "source" ? (
@@ -591,27 +641,36 @@ function Wizard({ open, onClose, onAdded, onGenerate }: { open: boolean; onClose
               <Field label="group" value={draft.group} onChange={(group) => setDraft({ ...draft, group })} />
               <Field label="component slug" value={draft.component} onChange={(component) => setDraft({ ...draft, component })} />
             </div>
-            <div><div className="label mb-2">detected plugins</div>
-              {discovery.detections.length ? <div className="divide-y divide-line rounded-control border border-line">{discovery.detections.map((item) => {
+            <div><div className="label mb-2">detected capabilities</div>
+              {discovery.detections.length ? <div className="grid gap-2">{discovery.detections.map((item) => {
                 const checked = draft.plugins.includes(item.plugin);
-                return <label key={item.plugin} className="flex cursor-pointer items-start gap-3 px-3 py-2 hover:bg-surface"><input className="mt-0.5" type="checkbox" checked={checked} onChange={() => setDraft({ ...draft, plugins: checked ? draft.plugins.filter((name) => name !== item.plugin) : [...draft.plugins, item.plugin] })} /><span className="mono text-ink">{item.plugin}</span><span className="ml-auto min-w-0 text-right"><span className="block truncate text-muted" title={item.evidence}>{item.evidence}</span>{Object.keys(item.options).length ? <code className="mono block truncate text-faint" title={JSON.stringify(item.options)}>{JSON.stringify(item.options)}</code> : null}</span><span className={`chip ${item.confidence === "high" ? "status-verified" : "status-declared"}`}>{item.confidence}</span></label>;
+                const capability = CAPABILITIES[item.plugin] ?? { title: item.plugin, summary: "Catalog facts extracted from project files." };
+                return <label key={item.plugin} className={`flex cursor-pointer items-start gap-3 rounded-control border px-3 py-3 transition-colors ${checked ? "border-accent bg-surface" : "border-line hover:bg-surface"}`}><input className="mt-1" type="checkbox" checked={checked} onChange={() => setDraft({ ...draft, plugins: checked ? draft.plugins.filter((name) => name !== item.plugin) : [...draft.plugins, item.plugin] })} /><span className="min-w-0 flex-1"><span className="flex flex-wrap items-center gap-2"><span className="font-medium text-ink">{capability.title}</span><span className={`chip ${item.confidence === "high" ? "status-verified" : "status-declared"}`}>{item.confidence} confidence</span>{item.candidates.length > 1 ? <span className="chip status-declared">{item.candidates.length} candidates</span> : null}</span><span className="mt-0.5 block text-muted">{capability.summary}</span><span className="mono mt-1 block truncate text-faint" title={item.evidence}>evidence · {item.evidence}</span><span className="mono mt-0.5 block text-faint">extractor · {item.plugin}</span></span></label>;
               })}</div> : <Empty>no supported project signals found</Empty>}
             </div>
           </div>
-        ) : stage === "review" && plan ? (
+        ) : stage === "trial" && plan ? (
           <div className="space-y-5">
-            <div className="rounded-card border border-line bg-surface p-4"><div className="font-semibold text-ink">{plan.project.name}</div><div className="mono mt-1 text-muted">{plan.project.root}</div></div>
-            <div><div className="label mb-2">portolan.json changes</div><dl className="mono grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-muted"><dt>project</dt><dd className="text-ink">{plan.project.id}</dd>{plan.fetch ? <><dt>pin</dt><dd className="truncate text-ink">{plan.fetch.commit.slice(0, 12)}</dd></> : null}<dt>source</dt><dd className="truncate text-ink">{plan.source}</dd><dt>pipeline</dt><dd className="text-ink">{plan.steps.length + (plan.fetch ? 1 : 0)} {plural(plan.steps.length + (plan.fetch ? 1 : 0), "extract step")}</dd></dl></div>
-            <div className="divide-y divide-line rounded-control border border-line">{plan.steps.map((step) => <div key={step.plugin} className="mono grid gap-1 px-3 py-2 sm:grid-cols-[8rem_1fr]"><span className="text-ink">{step.plugin}</span><span className="truncate text-muted">{step.in} → {step.out}</span></div>)}</div>
+            <div className={`rounded-control border px-3 py-3 ${trial ? "border-verified bg-surface" : finished?.status === "failed" ? "border-unresolved" : "border-line bg-surface"}`}>
+              <div className="flex items-start gap-3">{trial ? <Check size={18} className="mt-0.5 shrink-0 text-verified" /> : finished?.status === "failed" ? <CircleAlert size={18} className="mt-0.5 shrink-0 text-unresolved" /> : <LoaderCircle size={18} className="mt-0.5 shrink-0 animate-spin text-accent" />}<div><div className="font-medium text-ink">{trial ? "Extraction succeeded — repository unchanged" : finished?.status === "failed" ? "Trial extraction failed" : activeStep ? `Running ${activeStep.plugin}` : "Creating an isolated workspace…"}</div><p className="mt-0.5 text-muted">{trial ? "These results came from real catalog fragments. Apply is now safe to continue." : "Portolan is running the selected extractors without writing to portolan.json or your project."}</p></div></div>
+              {!finished ? <><div className="mt-3 h-1.5 overflow-hidden rounded-full bg-canvas"><div className="h-full bg-accent transition-[width]" style={{ width: `${percent}%` }} /></div><div className="mono mt-1 text-right text-muted">{completedSteps.length} / {totalSteps || "?"} steps</div></> : null}
+            </div>
+            {trial?.facts.length ? <section><div className="label mb-2">catalog facts found</div><div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{trial.facts.map((fact) => <div key={fact.key} className="rounded-control border border-line bg-canvas px-3 py-2"><div className="tnum text-lg font-semibold text-ink">{fact.count}</div><div className="text-muted">{fact.label}</div></div>)}</div></section> : null}
+            <section><div className="label mb-2">extractor results</div><div className="divide-y divide-line rounded-control border border-line">{(trial?.steps ?? completedSteps).map((step) => <div key={`${step.plugin}:${"ordinal" in step ? step.ordinal : "trial"}`} className="grid gap-1 px-3 py-2 sm:grid-cols-[1fr_auto_auto]"><span><span className="font-medium text-ink">{CAPABILITIES[step.plugin]?.title ?? step.plugin}</span><span className="mono ml-2 text-faint">{step.plugin}</span>{step.message ? <span className="mt-1 block text-unresolved">{step.message}</span> : null}</span><span className="mono text-muted">{step.fileCount} {plural(step.fileCount, "file")}</span><span className={`chip ${step.status === "failed" ? "status-unresolved" : "status-verified"}`}>{step.status === "failed" ? "failed" : "read"}</span></div>)}</div></section>
+            {trial?.warnings.length ? <section><div className="label mb-2">warnings · {trial.warnings.length}</div><div className="space-y-2">{trial.warnings.map((warning, index) => <div key={`${warning.plugin}:${index}`} className="flex gap-2 rounded-control border border-declared px-3 py-2 text-muted"><CircleAlert size={15} className="mt-0.5 shrink-0 text-declared" /><span><span className="mono text-ink">{warning.plugin}</span> · {warning.message}</span></div>)}</div></section> : null}
+            {finished?.status === "failed" && logs.length ? <details><summary className="cursor-pointer text-muted">Generator log · {logs.length} lines</summary><pre className="mono mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded-control bg-surface p-3 text-muted">{logs.map((event) => event.message).join("\n")}</pre></details> : null}
+            {trial ? <div><div className="label mb-2">changes after apply</div><dl className="mono grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-muted"><dt>project</dt><dd className="text-ink">{plan.project.id}</dd>{plan.fetch ? <><dt>pin</dt><dd className="truncate text-ink">{plan.fetch.commit.slice(0, 12)}</dd></> : null}<dt>source</dt><dd className="truncate text-ink">{plan.source}</dd><dt>pipeline</dt><dd className="text-ink">{plan.steps.length + (plan.fetch ? 1 : 0)} {plural(plan.steps.length + (plan.fetch ? 1 : 0), "extract step")}</dd><dt>fragments</dt><dd className="text-ink">{trial.generatedFiles} generated</dd></dl></div> : null}
           </div>
         ) : null}
         {error ? <div role="alert" className="mt-4 rounded-control border border-unresolved px-3 py-2 text-unresolved">{error}</div> : null}
       </div>
       <div className="flex flex-wrap justify-end gap-2 border-t border-line px-5 py-4">
-        <button type="button" className="tbtn" onClick={onClose} disabled={busy}>Cancel</button>
+        <button type="button" className="tbtn" onClick={onClose} disabled={busy || trialRunning}>Cancel</button>
         {stage === "source" ? <button type="button" className="btn-accent" onClick={() => void detect()} disabled={busy || (source === "local" ? !path.trim() : !repository.trim())}>{busy ? <LoaderCircle size={15} className="animate-spin" /> : null} {source === "external" ? "Inspect repository" : "Detect project"}</button> : null}
-        {stage === "configure" ? <button type="button" className="btn-accent" onClick={() => void review()} disabled={busy || !draft?.plugins.length}>{busy ? <LoaderCircle size={15} className="animate-spin" /> : null} Review</button> : null}
-        {stage === "review" ? <><button type="button" className="tbtn" onClick={() => void save(false)} disabled={busy}>Add only</button><button type="button" className="btn-accent" onClick={() => void save(true)} disabled={busy}>{busy ? <LoaderCircle size={15} className="animate-spin" /> : <Play size={15} />} Add & preview</button></> : null}
+        {stage === "configure" ? <button type="button" className="btn-accent" onClick={() => void runTrial()} disabled={busy || !draft?.plugins.length}>{busy ? <LoaderCircle size={15} className="animate-spin" /> : <Play size={15} />} Run trial extraction</button> : null}
+        {stage === "trial" && trialRunning ? <button type="button" className="tbtn" onClick={() => trialRunId && void cancelGeneration(trialRunId)}>Cancel trial</button> : null}
+        {stage === "trial" && finished && !trial ? <button type="button" className="btn-accent" onClick={back}>Back to configuration</button> : null}
+        {stage === "trial" && trial ? <><button type="button" className="tbtn" onClick={() => void applyTrial(false)} disabled={busy}>Add without generating</button><button type="button" className="btn-accent" onClick={() => void applyTrial(true)} disabled={busy}>{busy ? <LoaderCircle size={15} className="animate-spin" /> : <Play size={15} />} Add & generate</button></> : null}
       </div>
     </Modal>
   );
@@ -724,7 +783,7 @@ export function Settings() {
   return (
     <SetupContext.Provider value={setup}>
       <SettingsContent local={local} onAdd={() => setWizard(true)} onGenerate={() => void generate()} />
-      <Wizard open={wizard} onClose={() => setWizard(false)} onAdded={setSetup} onGenerate={generate} />
+      <Wizard open={wizard} onClose={() => setWizard(false)} onAdded={setSetup} onRunStarted={(id) => { setRunId(id); setRunOpen(true); }} />
       <RunDialog runId={runId} open={runOpen} onClose={() => setRunOpen(false)} onFinished={refresh} onApply={(preview) => void generate(preview)} />
     </SetupContext.Provider>
   );

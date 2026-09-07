@@ -62,12 +62,37 @@ export interface GeneratedFileDiff {
   diff: string;
 }
 
+export interface ProjectTrialFact {
+  key: string;
+  label: string;
+  count: number;
+}
+
+export interface ProjectTrialStep {
+  plugin: string;
+  status: SetupRunStepStatus;
+  durationMs: number;
+  fileCount: number;
+  changedCount: number;
+  warnings: string[];
+  message?: string;
+}
+
+export interface ProjectTrial {
+  plan: ProjectPlan;
+  steps: ProjectTrialStep[];
+  facts: ProjectTrialFact[];
+  warnings: Array<{ plugin: string; message: string }>;
+  generatedFiles: number;
+}
+
 export type RunEvent =
-  | { type: "run-started"; at: string; runId: string; mode: "write" | "check" | "preview" }
+  | { type: "run-started"; at: string; runId: string; mode: "write" | "check" | "preview" | "project-preview" }
   | { type: "pipeline-ready"; at: string; stepCount: number }
   | { type: "step-started"; at: string; ordinal: number; phase: SetupPhase; plugin: string; input?: string; output: string }
   | { type: "step-finished"; at: string; ordinal: number; phase: SetupPhase; plugin: string; status: SetupRunStepStatus; durationMs: number; fileCount: number; changedCount: number; changes: Array<{ kind: "added" | "changed" | "removed"; path: string }>; files: string[]; warnings?: string[]; message?: string }
   | { type: "preview-ready"; at: string; files: GeneratedFileDiff[]; totalFiles: number; truncated: boolean }
+  | ({ type: "project-trial-ready"; at: string } & ProjectTrial)
   | { type: "run-finished"; at: string; status: string; durationMs?: number; message?: string }
   | { type: "process-finished"; at: string; status: string; durationMs?: number; message?: string }
   | { type: "log"; at: string; stream: "stdout" | "stderr"; message: string };
@@ -97,6 +122,14 @@ export async function previewProject(draft: ProjectDraft): Promise<ProjectPlan> 
 
 export async function addProject(draft: ProjectDraft): Promise<ProjectPlan & { setup: SetupInfo }> {
   return json("/projects", { method: "POST", headers: LOCAL_HEADER, body: JSON.stringify(draft) });
+}
+
+export async function startProjectTrial(draft: ProjectDraft): Promise<{ runId: string; mode: "project-preview"; plan: ProjectPlan }> {
+  return json("/projects/trials", { method: "POST", headers: LOCAL_HEADER, body: JSON.stringify(draft) });
+}
+
+export async function applyProjectTrial(runId: string, generate: boolean): Promise<ProjectPlan & { setup: SetupInfo; run: { runId: string; mode: "write" } | null }> {
+  return json(`/projects/trials/${encodeURIComponent(runId)}/apply`, { method: "POST", headers: LOCAL_HEADER, body: JSON.stringify({ generate }) });
 }
 
 export async function startGeneration(mode: "write" | "check" | "preview" = "preview", previewRunId?: string): Promise<{ runId: string; mode: "write" | "check" | "preview" }> {

@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { rmSync } from "node:fs";
 
-import { diffGeneratedFiles, discoverProject, inspectionRoot, planProject, readLocalSource, writeProject } from "./local-api.mjs";
+import { diffGeneratedFiles, discoverProject, inspectionRoot, planProject, readLocalSource, summarizeProjectTrial, writeProject } from "./local-api.mjs";
 
 const roots = [];
 afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
@@ -184,6 +184,21 @@ describe("local project setup", () => {
     });
   });
 
+  it("passes the selected group to the glossary extractor", () => {
+    const root = workspace();
+    writeFileSync(join(root, "services/billing/GLOSSARY.md"), "# Glossary\n\n## Invoice\nA bill.\n");
+    const manifest = JSON.parse(readFileSync(join(root, "portolan.json"), "utf8"));
+    manifest.plugins.push({ name: "glossary", process: { command: "true" } });
+    const plan = planProject(root, manifest, {
+      root: "services/billing", id: "billing", name: "Billing", group: "finance", component: "billing", repository: "", plugins: ["project", "glossary"],
+    });
+    expect(plan.steps.find((step) => step.plugin === "glossary")?.options).toMatchObject({
+      context: "finance",
+      files: ["GLOSSARY.md"],
+      out: "glossary.json",
+    });
+  });
+
   it("writes a validated manifest and rejects duplicate roots", () => {
     const root = workspace();
     const request = { root: "services/billing", id: "billing", name: "Billing", group: "finance", component: "billing", context: "", service: "", repository: "", plugins: ["project", "openapi"] };
@@ -233,5 +248,50 @@ describe("local project setup", () => {
     expect(result.files[0].diff).toContain("+after");
     expect(result.files[1]).toMatchObject({ path: "docs/new.md", status: "added" });
     expect(readFileSync(join(root, "docs/service.md"), "utf8")).toBe("before\n");
+  });
+
+  it("summarises catalog facts and warnings from the selected project extractors", () => {
+    const root = workspace();
+    mkdirSync(join(root, "services/billing/portolan"), { recursive: true });
+    writeFileSync(join(root, "services/billing/portolan/api.json"), JSON.stringify({
+      contexts: [{
+        id: "finance",
+        services: [{
+          id: "finance.billing",
+          provides: [{ id: "billing.v1", methods: [{ name: "charge" }, { name: "refund" }] }],
+          consumes: [{ id: "ledger.v1/post", peer: "finance.ledger" }],
+          channels: [{ address: "billing.events", messages: [{ name: "charged" }] }],
+        }],
+      }],
+      flows: [{ id: "billing-charge" }],
+    }));
+    writeFileSync(join(root, "services/billing/portolan/redis.json"), JSON.stringify({
+      contexts: [{ id: "finance", services: [{ id: "finance.billing" }] }],
+      stores: [{ id: "finance.billing.redis", keyspaces: [{ pattern: "invoice:{id}" }, { pattern: "payment:{id}" }] }],
+    }));
+    const output = "services/billing/portolan";
+    const result = summarizeProjectTrial(root, {
+      plugins: ["openapi", "redis"],
+      steps: [{ plugin: "openapi", out: output }, { plugin: "redis", out: output }],
+    }, [
+      { type: "step-finished", phase: "extract", plugin: "openapi", output, status: "written", durationMs: 4, fileCount: 1, changedCount: 1, files: [`${output}/api.json`], warnings: ["one route has no description"] },
+      { type: "step-finished", phase: "extract", plugin: "redis", output, status: "written", durationMs: 3, fileCount: 1, changedCount: 1, files: [`${output}/redis.json`], warnings: [] },
+      { type: "step-finished", phase: "generate", plugin: "markdown", output: "docs", status: "written", durationMs: 2, fileCount: 10, changedCount: 10, files: ["docs/index.md"], warnings: [] },
+    ]);
+    expect(Object.fromEntries(result.facts.map((fact) => [fact.key, fact.count]))).toMatchObject({
+      contexts: 1,
+      services: 1,
+      contracts: 1,
+      apiOperations: 2,
+      integrations: 1,
+      channels: 1,
+      messages: 1,
+      stores: 1,
+      keyPatterns: 2,
+      flows: 1,
+    });
+    expect(result.steps.map((step) => step.plugin)).toEqual(["openapi", "redis"]);
+    expect(result.warnings).toEqual([{ plugin: "openapi", message: "one route has no description" }]);
+    expect(result.generatedFiles).toBe(2);
   });
 });
