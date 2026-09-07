@@ -418,7 +418,7 @@ payment was captured, and what that means for a parcel is decided here.'
   client -[uses]-> storefront.bff '9 flows' {
     style { color declared  line dashed  head normal }
   }
-  client -[uses]-> shop.billing '4 flows' {
+  client -[uses]-> shop.billing '7 flows' {
     style { color declared  line dashed  head normal }
   }
   client -[uses]-> shop.cart '6 flows' {

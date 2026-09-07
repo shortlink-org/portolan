@@ -1096,6 +1096,40 @@ views {
     }
   }
 
+  dynamic view flow_billing_invoice_list {
+    title 'Invoice list'
+    description 'Invoices over HTTP. Every action here runs one function of services.py.'
+    client -> shop.billing 'invoice_list' {
+      color declared  line dashed  head normal
+      notes 'examples/shop/billing/invoices/views.py:10'
+    }
+  }
+
+  dynamic view flow_billing_invoice_list_cross {
+    title 'Invoice list — crossings only'
+    client -> shop.billing 'invoice_list' {
+      color declared  line dashed  head normal
+      notes 'examples/shop/billing/invoices/views.py:10'
+    }
+  }
+
+  dynamic view flow_billing_invoice_partial_update {
+    title 'Invoice partial update'
+    description 'Invoices over HTTP. Every action here runs one function of services.py.'
+    client -> shop.billing 'invoice_partial_update' {
+      color declared  line dashed  head normal
+      notes 'examples/shop/billing/invoices/views.py:10'
+    }
+  }
+
+  dynamic view flow_billing_invoice_partial_update_cross {
+    title 'Invoice partial update — crossings only'
+    client -> shop.billing 'invoice_partial_update' {
+      color declared  line dashed  head normal
+      notes 'examples/shop/billing/invoices/views.py:10'
+    }
+  }
+
   dynamic view flow_billing_invoice_retrieve {
     title 'Invoice retrieve'
     description 'Reads one invoice and the lines it is made of.'
@@ -1114,6 +1148,23 @@ views {
     client -> shop.billing 'invoice_retrieve → Invoice' {
       color declared  line dashed  head normal
       notes 'examples/shop/billing/invoices/views.py:24'
+    }
+  }
+
+  dynamic view flow_billing_invoice_update {
+    title 'Invoice update'
+    description 'Invoices over HTTP. Every action here runs one function of services.py.'
+    client -> shop.billing 'invoice_update' {
+      color declared  line dashed  head normal
+      notes 'examples/shop/billing/invoices/views.py:10'
+    }
+  }
+
+  dynamic view flow_billing_invoice_update_cross {
+    title 'Invoice update — crossings only'
+    client -> shop.billing 'invoice_update' {
+      color declared  line dashed  head normal
+      notes 'examples/shop/billing/invoices/views.py:10'
     }
   }
 
