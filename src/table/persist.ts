@@ -1,10 +1,11 @@
 // What a table remembers about itself.
 //
-// Column widths and hidden columns are per table id, because they are answers
-// to "what am I looking at" rather than a global preference: a reader who
-// widened the title column on the decisions index has said nothing about the
-// schema table on an event page. Zebra striping is the opposite - it is a
-// statement about tables in general - so it is stored once.
+// Column widths, hidden columns and the column the rows are grouped by are per
+// table id, because they are answers to "what am I looking at" rather than a
+// global preference: a reader who widened the title column on the decisions
+// index has said nothing about the schema table on an event page. Zebra
+// striping is the opposite - it is a statement about tables in general - so it
+// is stored once.
 //
 // localStorage is a thing that fails: private mode throws on write, and what
 // comes back was last written by an older build, or by hand. Everything here
@@ -18,9 +19,11 @@ export interface TableMemory {
   sizing: Record<string, number>;
   /** Column ids the reader has switched off. */
   hidden: string[];
+  /** The column the rows are folded under, or null for a flat table. */
+  group: string | null;
 }
 
-export const EMPTY_MEMORY: TableMemory = { sizing: {}, hidden: [] };
+export const EMPTY_MEMORY: TableMemory = { sizing: {}, hidden: [], group: null };
 
 /** Reads whatever is in storage into the shape the table expects, or nothing. */
 export function parseMemory(raw: string | null): TableMemory {
@@ -32,7 +35,7 @@ export function parseMemory(raw: string | null): TableMemory {
     return EMPTY_MEMORY;
   }
   if (typeof parsed !== "object" || parsed === null) return EMPTY_MEMORY;
-  const record = parsed as { sizing?: unknown; hidden?: unknown };
+  const record = parsed as { sizing?: unknown; hidden?: unknown; group?: unknown };
 
   const sizing: Record<string, number> = {};
   if (typeof record.sizing === "object" && record.sizing !== null) {
@@ -48,7 +51,12 @@ export function parseMemory(raw: string | null): TableMemory {
     ? record.hidden.filter((id): id is string => typeof id === "string")
     : [];
 
-  return { sizing, hidden };
+  // A group is a column id or nothing; whether the column still exists is
+  // for the table to say.
+  const group =
+    typeof record.group === "string" && record.group !== "" ? record.group : null;
+
+  return { sizing, hidden, group };
 }
 
 export function serializeMemory(memory: TableMemory): string {

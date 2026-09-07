@@ -910,6 +910,14 @@
     background: var(--surface);
   }
 
+  /* A group's heading row, tinted apart from the leaves under it. Painted on
+     the cell, and after the sticky-column rule, for the same reason the
+     stripe is: under a pinned first column a <tr> background never shows. */
+  .tbl tbody tr.tbl-group td,
+  .tbl-sticky tbody tr.tbl-group td:first-child {
+    background: var(--surface-2);
+  }
+
   /* A column edge you can take hold of. Four pixels wide and invisible until
      the pointer is on the header, so the header is not a row of handles. */
   .col-resize {

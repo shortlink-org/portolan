@@ -9,16 +9,13 @@ import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 import { Download, Ellipsis, Rows3, Search, X } from "lucide-react";
 import type { ReactNode } from "react";
 import { Facets } from "./Facets";
-import type { FacetValue } from "./Facets";
 import { ColumnsMenu } from "./ColumnsMenu";
 import type { ColumnToggle } from "./ColumnsMenu";
+import { GroupMenu } from "./GroupMenu";
+import type { FacetGroup } from "./facet-groups";
+import type { GroupOption } from "./grouping";
 
-export interface FacetGroup {
-  columnId: string;
-  label: string;
-  values: FacetValue[];
-  selected: string[];
-}
+export type { FacetGroup } from "./facet-groups";
 
 export interface ExportActions {
   copyMarkdown: () => void;
@@ -83,6 +80,9 @@ export function Toolbar({
   onClearFilters,
   columns,
   onToggleColumn,
+  groupBy = null,
+  groupOptions,
+  onGroupBy,
   zebra,
   onToggleZebra,
   exports,
@@ -99,6 +99,11 @@ export function Toolbar({
   /** Omitted below six columns, where there is nothing worth hiding. */
   columns?: readonly ColumnToggle[];
   onToggleColumn?: (id: string) => void;
+  /** The column the rows are folded under. */
+  groupBy?: string | null;
+  /** The columns that may fold the rows: the ones with a chip-set. Omitted on a markdown table. */
+  groupOptions?: readonly GroupOption[];
+  onGroupBy?: (id: string | null) => void;
   zebra: boolean;
   /** Omitted on a markdown table, which offers a text filter and nothing else. */
   onToggleZebra?: () => void;
@@ -148,6 +153,12 @@ export function Toolbar({
       ) : null}
 
       <div className="ml-auto flex items-center gap-2">
+        {/* Still offered while a grouping is on, even if the set that
+            offered it has since shrunk: a fold the reader cannot undo is a
+            trap. */}
+        {onGroupBy && groupOptions && (groupOptions.length > 0 || groupBy !== null) ? (
+          <GroupMenu options={groupOptions} value={groupBy} onChange={onGroupBy} />
+        ) : null}
         {onToggleZebra ? (
           <button
             type="button"

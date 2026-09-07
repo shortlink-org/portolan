@@ -9,8 +9,14 @@ import {
 
 describe("parseMemory", () => {
   it("round-trips what it wrote", () => {
-    const memory = { sizing: { title: 320 }, hidden: ["scope"] };
+    const memory = { sizing: { title: 320 }, hidden: ["scope"], group: "status" };
     expect(parseMemory(serializeMemory(memory))).toEqual(memory);
+  });
+
+  it("drops a group that is not a column id", () => {
+    expect(parseMemory(JSON.stringify({ group: 4 })).group).toBeNull();
+    expect(parseMemory(JSON.stringify({ group: "" })).group).toBeNull();
+    expect(parseMemory(JSON.stringify({ group: null })).group).toBeNull();
   });
 
   it("reads nothing out of nothing", () => {
@@ -43,6 +49,7 @@ describe("parseMemory", () => {
     expect(parseMemory('{"hidden":["a"]}')).toEqual({
       sizing: {},
       hidden: ["a"],
+      group: null,
     });
   });
 });

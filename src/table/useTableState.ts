@@ -2,13 +2,20 @@
 //
 // Four different lifetimes, deliberately: the sort lives in the URL when the
 // page has one to spare, so a sorted view can be sent to someone; the filters
-// live for as long as the reader is looking; widths and hidden columns live in
-// localStorage under the table's id; zebra striping lives once, globally,
-// because it is a statement about tables rather than about this table.
+// live for as long as the reader is looking; widths, hidden columns and the
+// column the rows are grouped by live in localStorage under the table's id;
+// zebra striping lives once, globally, because it is a statement about tables
+// rather than about this table. Which groups are folded shut lives only as
+// long as the grouping does.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
-import type { ColumnFiltersState, SortingState, Updater } from "@tanstack/react-table";
+import type {
+  ColumnFiltersState,
+  ExpandedState,
+  SortingState,
+  Updater,
+} from "@tanstack/react-table";
 import {
   hiddenOf,
   readMemory,
@@ -49,6 +56,12 @@ export interface TableState {
   setColumnVisibility: (updater: Updater<Record<string, boolean>>) => void;
   columnSizing: Record<string, number>;
   setColumnSizing: (updater: Updater<Record<string, number>>) => void;
+  /** The column the rows are folded under, or null for a flat table. */
+  groupBy: string | null;
+  setGroupBy: (id: string | null) => void;
+  /** Which groups are open. `true` is all of them. */
+  expanded: ExpandedState;
+  setExpanded: (updater: Updater<ExpandedState>) => void;
   filtersActive: boolean;
   clearFilters: () => void;
 }
@@ -133,6 +146,24 @@ export function useTableState({
   const [columnSizing, setSizingState] = useState<Record<string, number>>(
     () => memory.sizing,
   );
+  // A remembered column this table no longer has is forgotten, not kept for
+  // a day it comes back.
+  const [groupBy, setGroupByState] = useState<string | null>(() =>
+    memory.group !== null && columnIds.includes(memory.group) ? memory.group : null,
+  );
+  const [expanded, setExpandedState] = useState<ExpandedState>(true);
+
+  // Folded groups belong to the column that made them; a new column opens
+  // everything again.
+  const setGroupBy = useCallback((id: string | null) => {
+    setGroupByState(id);
+    setExpandedState(true);
+  }, []);
+  const setExpanded = useCallback(
+    (updater: Updater<ExpandedState>) =>
+      setExpandedState((previous) => applyUpdater(updater, previous)),
+    [],
+  );
 
   const setColumnVisibility = useCallback(
     (updater: Updater<Record<string, boolean>>) =>
@@ -156,8 +187,9 @@ export function useTableState({
     writeMemory(tableId, {
       sizing: columnSizing,
       hidden: hiddenOf(columnVisibility),
+      group: groupBy,
     });
-  }, [tableId, columnSizing, columnVisibility]);
+  }, [tableId, columnSizing, columnVisibility, groupBy]);
 
   const filtersActive = globalFilter !== "" || columnFilters.length > 0;
   const clearFilters = useCallback(() => {
@@ -178,6 +210,10 @@ export function useTableState({
     setColumnVisibility,
     columnSizing,
     setColumnSizing,
+    groupBy,
+    setGroupBy,
+    expanded,
+    setExpanded,
     filtersActive,
     clearFilters,
   };

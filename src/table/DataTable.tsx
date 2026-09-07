@@ -10,6 +10,13 @@
 // the density, the j/k list, the selected row, the widths the reader dragged.
 // TanStack owns the models. Neither owns the markup, which stays here as the
 // same .tbl the app already had.
+//
+// Facet counts and groups come from TanStack's models too, never from a second
+// pass over the data. Grouping is the reader's, one column at a time, chosen
+// from the columns that already offer a chip-set; a group is one full-width
+// row, so there is nothing to aggregate. The grouped column is sorted first -
+// derived here and never written back, so the URL still says only what the
+// reader clicked.
 
 import {
   Fragment,
@@ -21,21 +28,27 @@ import {
   useState,
 } from "react";
 import { Link, useNavigate } from "react-router";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronUp } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
+  columnFacetingFeature,
   columnFilteringFeature,
+  columnGroupingFeature,
   columnResizingFeature,
   columnSizingFeature,
   columnVisibilityFeature,
+  createExpandedRowModel,
+  createFacetedUniqueValues,
   createFilteredRowModel,
+  createGroupedRowModel,
   createSortedRowModel,
   globalFilteringFeature,
+  rowExpandingFeature,
   rowSortingFeature,
   tableFeatures,
   useTable,
 } from "@tanstack/react-table";
-import type { ColumnDef, Row, RowData } from "@tanstack/react-table";
+import type { ColumnDef, GroupingState, Row, RowData } from "@tanstack/react-table";
 import type { ReactNode } from "react";
 import { useDensity } from "../app/density";
 import { useToastStore } from "../app/toast";
@@ -45,20 +58,46 @@ import { toClipboard } from "../lib/clipboard";
 import { comparatorFor } from "./compare";
 import { defaultCell } from "./cells";
 import { Toolbar } from "./Toolbar";
-import type { ExportActions, FacetGroup } from "./Toolbar";
+import type { ExportActions } from "./Toolbar";
 import { csvFilename, toCsv, toExcelCsv, toMarkdown } from "./export";
+import { facetGroupFrom } from "./facet-groups";
+import type { FacetGroup } from "./facet-groups";
+import {
+  activeGroup,
+  groupOptions,
+  groupingSorting,
+  leafRows,
+  stripeParity,
+} from "./grouping";
 import { applyUpdater, useTableState } from "./useTableState";
 import type { SortEntry } from "./sort-url";
 import type { CellValue, ColumnSpec } from "./types";
 import { canFacet, cellText, defaultAlign, isTextish } from "./types";
 
-/** Registered features, and only those: v9 installs nothing it is not asked for. */
+/**
+ * Registered features, and only those: v9 installs nothing it is not asked for.
+ *
+ * No `facetedRowModel`: without it a column's unique values are counted over
+ * every row, so a chip's count is the whole table's and the set never changes
+ * shape under the reader. Registering `createFacetedRowModel()` here would
+ * make the counts follow the other filters and the search instead, and would
+ * finally reach the `count === 0` branch in Facets.tsx.
+ *
+ * No `rowAggregationFeature`: a group is drawn as one full-width row, so its
+ * other cells are never asked for a value.
+ */
 const FEATURES = tableFeatures({
   rowSortingFeature,
   sortedRowModel: createSortedRowModel(),
   columnFilteringFeature,
   globalFilteringFeature,
   filteredRowModel: createFilteredRowModel(),
+  columnFacetingFeature,
+  facetedUniqueValues: createFacetedUniqueValues(),
+  columnGroupingFeature,
+  groupedRowModel: createGroupedRowModel(),
+  rowExpandingFeature,
+  expandedRowModel: createExpandedRowModel(),
   columnVisibilityFeature,
   columnSizingFeature,
   columnResizingFeature,
@@ -190,6 +229,10 @@ export function DataTable<T extends RowData>({
           sortUndefined: "last" as const,
           enableSorting: (spec.enableSorting ?? true) && !plain,
           enableHiding: hideable(spec, primaryId),
+          // Foldable where there is a chip-set. Static on purpose: the other
+          // half of that - two or more values - is read off the table, which
+          // does not exist yet here, and a fold with one group is harmless.
+          enableGrouping: Boolean(spec.facet) && canFacet(spec.type) && !plain && !minimal,
           // A chip-set narrows to the values it has switched on; an empty set
           // is not a filter.
           filterFn: (row: Row<Features, T>, id: string, value: unknown) => {
@@ -200,8 +243,23 @@ export function DataTable<T extends RowData>({
           minSize: spec.minSize ?? MIN_WIDTH,
         };
       }),
-    [specs, plain, primaryId],
+    [specs, plain, minimal, primaryId],
   );
+
+  // The columns that may fold the rows, and the one that does. A fold is only
+  // offered where the toolbar is: below that, there is nothing to fold.
+  const foldable = useMemo(
+    () =>
+      plain || minimal || data.length < toolbarAt
+        ? []
+        : specs.filter((spec) => spec.facet && canFacet(spec.type)).map((spec) => spec.id),
+    [specs, plain, minimal, data.length, toolbarAt],
+  );
+  const groupBy = activeGroup(state.groupBy, foldable);
+  const grouping = useMemo<GroupingState>(() => (groupBy ? [groupBy] : []), [groupBy]);
+  // The grouped column sorted first, derived and never written back: the
+  // updater TanStack hands to setSorting is applied to the reader's own sort.
+  const sorting = useMemo(() => groupingSorting(state.sorting, groupBy), [state.sorting, groupBy]);
 
   const table = useTable<Features, T>({
     features: FEATURES,
@@ -209,15 +267,26 @@ export function DataTable<T extends RowData>({
     data: data as T[],
     getRowId: (row) => rowId(row),
     state: {
-      sorting: state.sorting,
+      sorting,
       globalFilter: state.globalFilter,
       columnFilters: state.columnFilters,
       columnVisibility: state.columnVisibility,
       columnSizing: sizing,
+      grouping,
+      expanded: state.expanded,
     },
     onSortingChange: state.setSorting,
     onColumnFiltersChange: state.setColumnFilters,
     onColumnVisibilityChange: state.setColumnVisibility,
+    onGroupingChange: (updater) => state.setGroupBy(applyUpdater(updater, grouping)[0] ?? null),
+    onExpandedChange: state.setExpanded,
+    // Columns stay where they are when one of them folds the rows; the fold
+    // is a row above them, not a column moved to the front.
+    groupedColumnMode: false,
+    enableGrouping: !plain && !minimal,
+    // TanStack would open every group again whenever a filter or the data
+    // changed; here a fold lasts until the grouping column changes.
+    autoResetExpanded: false,
     onColumnSizingChange: (updater) => {
       const next = applyUpdater(updater, sizing);
       // Only what differs from the measured layout is the reader's doing, and
@@ -250,7 +319,10 @@ export function DataTable<T extends RowData>({
 
   const visibleColumns = table.getVisibleLeafColumns();
   const visibleIds = visibleColumns.map((column) => column.id).join(",");
+  // What is drawn: group rows with the leaves of the open ones beneath them.
   const rows = table.getRowModel().rows;
+  // What the filter left: leaves only, folded or not.
+  const shown = table.getFilteredRowModel().rows.length;
   const total = data.length;
 
   // Measure once per column set, before paint, so the resize handles have a
@@ -298,38 +370,24 @@ export function DataTable<T extends RowData>({
 
   // --- The toolbar's inputs ------------------------------------------------
 
+  // TanStack counts a column's values once per data set; `data` is in the
+  // dependencies so the toolbar is rebuilt when it does.
   const facetGroups = useMemo<FacetGroup[]>(() => {
     if (plain || minimal) return [];
-    const groups: FacetGroup[] = [];
-    for (const spec of specs) {
-      if (!spec.facet || !canFacet(spec.type)) continue;
-      const counts = new Map<string, number>();
-      for (const row of data) {
-        const value = cellText(spec.value(row));
-        if (value === "") continue;
-        counts.set(value, (counts.get(value) ?? 0) + 1);
-      }
-      if (counts.size < 2) continue;
-      const compare = comparatorFor(spec.type);
-      groups.push({
-        columnId: spec.id,
-        label: spec.header,
-        // The chips read in the column's own order, so a status set is not
-        // alphabetical and a kind set is not either.
-        values: [...counts.entries()]
-          .sort(([a], [b]) => compare(a, b))
-          .map(([value, count]) => ({ value, count })),
-        selected: state.facetValues(spec.id),
-      });
-    }
-    return groups;
-  }, [specs, data, plain, minimal, state.facetValues]);
+    return specs.flatMap((spec) => {
+      const counts = table.getColumn(spec.id)?.getFacetedUniqueValues();
+      const group = counts ? facetGroupFrom(spec, counts, state.facetValues(spec.id)) : null;
+      return group ? [group] : [];
+    });
+  }, [table, specs, data, plain, minimal, state.facetValues]);
 
+  // Leaves only, in display order, folded or not: an export is the view, and
+  // a folded group is still in it.
   const sheet = useCallback(() => {
     const leaves = table.getVisibleLeafColumns();
     return {
       headers: leaves.map((column) => specById.get(column.id)?.header ?? column.id),
-      rows: rows.map((row) =>
+      rows: leafRows(table.getSortedRowModel().rows).map((row) =>
         leaves.map((column) => cellText(row.getValue<CellValue>(column.id))),
       ),
     };
@@ -408,7 +466,57 @@ export function DataTable<T extends RowData>({
 
   const columnCount = visibleColumns.length + (rowActions ? 1 : 0);
 
+  // Striping reads off the display position rather than nth-child, so a
+  // virtualized body's spacer rows cannot flip the parity; a group row has
+  // none, and the count starts again beneath it.
+  const parity = useMemo(() => stripeParity(rows.map((row) => row.getIsGrouped())), [rows]);
+
+  /**
+   * A group: one row across every column, at the same height as the rows it
+   * holds so the virtualizer's arithmetic still stands. Its label is the
+   * column's own cell drawn over the first leaf - a facet column's cell
+   * renders its value and nothing else, which is what makes the first leaf a
+   * fair stand-in for the group. Not a j/k stop and not a row link: it is a
+   * heading, and the only thing it does is fold.
+   */
+  const renderGroupRow = (row: Row<Features, T>) => {
+    const spec = row.groupingColumnId ? specById.get(row.groupingColumnId) : undefined;
+    const label = spec
+      ? spec.cell
+        ? spec.cell(row.original)
+        : defaultCell(spec.type, row.getValue<CellValue>(spec.id))
+      : null;
+    const open = row.getIsExpanded();
+    return (
+      <tr
+        key={row.id}
+        data-group={row.id}
+        className="tbl-group"
+        style={virtual ? { height: rowHeight } : undefined}
+      >
+        <td colSpan={columnCount} className="px-4 align-middle">
+          <button
+            type="button"
+            onClick={row.getToggleExpandedHandler()}
+            aria-expanded={open}
+            title={open ? "Fold this group" : "Open this group"}
+            className="mono flex max-w-full items-center gap-1.5 rounded-control text-muted hover:text-ink"
+          >
+            {open ? (
+              <ChevronDown size={12} aria-hidden className="shrink-0" />
+            ) : (
+              <ChevronRight size={12} aria-hidden className="shrink-0" />
+            )}
+            <span className="min-w-0 truncate text-ink">{label}</span>
+            <span className="tnum">{row.subRows.length}</span>
+          </button>
+        </td>
+      </tr>
+    );
+  };
+
   const renderRow = (row: Row<Features, T>, index: number) => {
+    if (row.getIsGrouped()) return renderGroupRow(row);
     const original = row.original;
     const link = rowLink?.(original) ?? null;
     const active = selectedRowId !== null && row.id === selectedRowId;
@@ -416,9 +524,7 @@ export function DataTable<T extends RowData>({
       <tr
         key={row.id}
         data-row={row.id}
-        /* Striping reads off the display position rather than nth-child, so a
-           virtualized body's spacer rows cannot flip the parity. */
-        data-even={index % 2 === 0}
+        data-even={parity[index] ?? undefined}
         data-selected={active || undefined}
         style={virtual ? { height: rowHeight } : undefined}
         className={active ? "bg-surface" : undefined}
@@ -510,7 +616,7 @@ export function DataTable<T extends RowData>({
           onFilter={state.setGlobalFilter}
           facets={facetGroups}
           onToggleFacet={state.toggleFacet}
-          shown={rows.length}
+          shown={shown}
           total={total}
           filtersActive={state.filtersActive}
           onClearFilters={state.clearFilters}
@@ -523,6 +629,9 @@ export function DataTable<T extends RowData>({
               ? (id) => table.getColumn(id)?.toggleVisibility()
               : undefined
           }
+          groupBy={groupBy}
+          groupOptions={minimal ? undefined : groupOptions(facetGroups)}
+          onGroupBy={minimal ? undefined : state.setGroupBy}
           /* A README gets a text filter and nothing else; striping is a
              preference about the app, and a README is not where it is set. */
           zebra={zebra}
@@ -557,9 +666,12 @@ export function DataTable<T extends RowData>({
                   const spec = specById.get(header.column.id);
                   if (!spec) return null;
                   const align = spec.align ?? defaultAlign(spec.type);
+                  // The direction is the table's, so a grouped column shows
+                  // the way its groups run; the rank is the reader's, so their
+                  // first key is not badged as the second.
                   const sorted = header.column.getIsSorted();
                   const canSort = header.column.getCanSort();
-                  const rank = header.column.getSortIndex();
+                  const rank = state.sorting.findIndex((entry) => entry.id === header.column.id);
                   return (
                     <th
                       key={header.id}
