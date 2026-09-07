@@ -6,9 +6,9 @@
 // the same object.
 //
 // Two rules hold everywhere. Nothing fires while a text field has focus - a
-// reader typing "flows" into the filter must not be teleported four times - and
-// ⌘K keeps working regardless, because opening the palette is the one thing a
-// reader does *from* a field.
+// reader typing "flows" into a table's filter must not be teleported four
+// times - and ⌘K keeps working regardless, because opening the palette is the
+// one thing a reader does *from* a field.
 
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router";

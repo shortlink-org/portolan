@@ -206,35 +206,3 @@ export function registryUrl(module: ProtoModule): string | null {
   return `https://${module.registry}/${module.name}${at}`;
 }
 
-/**
- * Modules matching a sidebar query, keeping the packages that matched.
- *
- * The `matchStores` contract: a hit on the module keeps everything inside it,
- * and otherwise only what matched survives.
- */
-export interface ModuleMatch {
-  module: ProtoModule;
-  packages: string[];
-}
-
-export function matchModules(
-  all: ProtoModule[],
-  hit: (...fields: string[]) => boolean,
-): ModuleMatch[] {
-  const out: ModuleMatch[] = [];
-
-  for (const module of all) {
-    const matched = hit(
-      module.id,
-      module.name,
-      module.slug,
-      module.registry ?? "",
-    );
-    const packages = matched
-      ? module.packages
-      : module.packages.filter((name) => hit(name));
-    if (matched || packages.length > 0) out.push({ module, packages });
-  }
-
-  return out;
-}

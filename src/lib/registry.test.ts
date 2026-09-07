@@ -8,7 +8,6 @@ import {
   dependenciesOf,
   dependentsOf,
   interfacesOf,
-  matchModules,
   moduleBySlug,
   modules,
   packageOf,
@@ -177,31 +176,6 @@ describe("dependencies", () => {
   });
 });
 
-describe("matching, for the sidebar", () => {
-  const hitting =
-    (needle: string) =>
-    (...fields: string[]) =>
-      fields.some((f) => f.toLowerCase().includes(needle));
-
-  it("keeps every package when the module itself matched", () => {
-    const found = matchModules(modules(catalog), hitting("acme/shop"));
-
-    expect(found).toHaveLength(1);
-    expect(found[0]?.packages).toEqual(shop().packages);
-  });
-
-  it("keeps only the packages that matched otherwise", () => {
-    const found = matchModules(modules(catalog), hitting("shop.events"));
-
-    expect(found).toHaveLength(1);
-    expect(found[0]?.packages).toEqual(["shop.events.v1"]);
-  });
-
-  it("finds nothing when nothing matches", () => {
-    expect(matchModules(modules(catalog), hitting("zzz"))).toEqual([]);
-  });
-});
-
 // THE REQUIREMENT THE WHOLE FEATURE HAS TO MEET BEFORE IT HAS ANY DATA.
 //
 // An estate that has never published a proto must render exactly as it did
@@ -230,7 +204,6 @@ describe("a catalog with no modules at all", () => {
     expect(dependentsOf(bare, nothing)).toEqual([]);
     expect(callsThrough(bare, nothing)).toEqual([]);
     expect(packagesOf(empty, nothing)).toEqual([]);
-    expect(matchModules([], () => true)).toEqual([]);
   });
 
   it("counts nothing", () => {

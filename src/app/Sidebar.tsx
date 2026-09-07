@@ -7,11 +7,9 @@ import {
   m,
   transitions,
 } from "../lib/motion";
-import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import {
   Check,
   ChevronRight,
-  Filter,
   GripVertical,
   PanelLeftOpen,
   PinOff,
@@ -35,13 +33,12 @@ import type {
   Enum,
 } from "../catalog";
 import { allModules, allTerms, enumsOf, storeViews } from "../catalog";
-import { adrNumber, newestAccepted, sortAdrs } from "../lib/adr";
+import { adrNumber, newestAccepted } from "../lib/adr";
 import { contextName, ctxStyle } from "../lib/context-color";
 import { contextStats, problems } from "../lib/derive";
 import { dataProblems } from "../lib/data-problems";
 import { protoProblems } from "../lib/proto-problems";
-import { matchModules } from "../lib/registry";
-import { matchTerms, vocabularies } from "../language/cards";
+import { vocabularies } from "../language/cards";
 import {
   FLOW_HEALTH_NOTE,
   groupFlowsByOwner,
@@ -49,7 +46,6 @@ import {
   visibleEntries,
 } from "../lib/flow-tree";
 import type { FlowEntry, FlowHealth, FlowGroup } from "../lib/flow-tree";
-import { KIND_CHIP, LEAF_KINDS, LEAF_KIND_ROWS } from "../lib/kinds";
 import type { Kind, LeafKind } from "../lib/kinds";
 import { plural } from "../lib/format";
 import {
@@ -65,24 +61,18 @@ import { isStruck } from "../components/primitives";
 import { packageAnchor, paths } from "../routes";
 import { selectionHash } from "../selection/hash";
 import { STORE_KIND_LABEL, StoreKindMark } from "../er/StoreHeader";
-import { useSearch } from "./search";
 import { resolvePin, usePinsStore } from "./pins";
 import { resolveSelection, selectionFor } from "../selection/model";
 import { selectsInPlace } from "../selection/pages";
 import { useSelectionStore } from "../selection/store";
 
-function matches(q: string, ...haystack: string[]): boolean {
-  if (!q) return true;
-  const needle = q.toLowerCase();
-  return haystack.some((h) => h.toLowerCase().includes(needle));
-}
-
 // ---------------------------------------------------------------------------
-// Filtering. A hit on a parent shows everything under it; otherwise only the
-// children that match survive, so the tree never hides what was searched for.
+// The rows under a service, grouped the way the tree draws them. The tree
+// shows everything: searching the catalog is ⌘K's job, and a second box that
+// narrowed this pane was the same question asked twice on one screen.
 // ---------------------------------------------------------------------------
 
-interface AggregateMatch {
+interface AggregateRows {
   aggregate: Aggregate;
   valueObjects: Block[];
   entities: Block[];
@@ -92,150 +82,74 @@ interface AggregateMatch {
   queries: Operation[];
 }
 
-interface StoreMatch {
+interface StoreRows {
   store: Store;
   tables: Table[];
   views: View[];
 }
 
-interface ServiceMatch {
+interface ServiceRows {
   service: Service;
-  aggregates: AggregateMatch[];
-  endpoints: EndpointMatch[];
-  stores: StoreMatch[];
+  aggregates: AggregateRows[];
+  endpoints: EndpointRows[];
+  stores: StoreRows[];
 }
 
-interface EndpointMatch {
+interface EndpointRows {
   provided: RpcService;
   methods: RpcMethod[];
 }
 
-/**
- * What the service answers, filtered. A hit on the interface keeps every
- * method it declares; otherwise only the methods that matched survive, exactly
- * like an aggregate or a store.
- */
-function matchEndpoints(
-  service: Service,
-  q: string,
-  parentHit: boolean,
-): EndpointMatch[] {
-  const out: EndpointMatch[] = [];
-
-  for (const provided of service.provides) {
-    const hit = parentHit || matches(q, provided.id, provided.source);
-    const methods = hit
-      ? provided.methods
-      : provided.methods.filter((method) =>
-          matches(q, method.name, `${provided.id}/${method.name}`),
-        );
-    if (hit || methods.length > 0) out.push({ provided, methods });
-  }
-
-  return out;
+/** What the service answers, one entry per interface it declares. */
+function endpointRows(service: Service): EndpointRows[] {
+  return service.provides.map((provided) => ({
+    provided,
+    methods: provided.methods,
+  }));
 }
 
 /**
- * The stores a service owns, filtered. A hit on the store keeps every table and
- * view; otherwise only the ones that matched survive, exactly like an
- * aggregate. Read-only stores are left out: the tree is a map of what each
- * service is responsible for, and a store it borrows belongs under its owner.
+ * The stores a service owns. Read-only stores are left out: the tree is a map
+ * of what each service is responsible for, and a store it borrows belongs
+ * under its owner.
  */
-function matchStores(
-  service: Service,
-  q: string,
-  parentHit: boolean,
-): StoreMatch[] {
-  const out: StoreMatch[] = [];
-  for (const store of catalog.stores ?? []) {
-    if (store.owner !== service.id) continue;
-    const hit = parentHit || matches(q, store.id, store.name, store.slug);
-    const tables = hit
-      ? store.tables
-      : store.tables.filter((t) =>
-          matches(q, t.id, t.name, t.persists?.aggregate ?? ""),
-        );
-    const views = hit
-      ? storeViews(store)
-      : storeViews(store).filter((v) =>
-          matches(q, v.id, v.name, v.persists?.aggregate ?? ""),
-        );
-    if (hit || tables.length > 0 || views.length > 0) {
-      out.push({ store, tables, views });
-    }
-  }
-  return out;
+function storeRows(service: Service): StoreRows[] {
+  return (catalog.stores ?? [])
+    .filter((store) => store.owner === service.id)
+    .map((store) => ({
+      store,
+      tables: store.tables,
+      views: storeViews(store),
+    }));
 }
 
-function matchAggregate(
-  aggregate: Aggregate,
-  q: string,
-  parentHit: boolean,
-): AggregateMatch | null {
-  const hit =
-    parentHit ||
-    matches(q, aggregate.id, aggregate.name, aggregate.slug, aggregate.root);
-  const keepBlocks = (list: Block[]): Block[] =>
-    hit ? list : list.filter((b) => matches(q, b.id, b.name, b.slug));
-  const ops = (kind: "command" | "query"): Operation[] => {
-    const list = aggregate.operations.filter((o) => o.kind === kind);
-    return hit ? list : list.filter((o) => matches(q, o.id));
-  };
-
-  const match: AggregateMatch = {
+function aggregateRows(aggregate: Aggregate): AggregateRows {
+  const ops = (kind: "command" | "query"): Operation[] =>
+    aggregate.operations.filter((o) => o.kind === kind);
+  return {
     aggregate,
-    valueObjects: keepBlocks(aggregate.valueObjects),
-    entities: keepBlocks(aggregate.entities),
-    enums: hit
-      ? enumsOf(aggregate)
-      : enumsOf(aggregate).filter((e) =>
-          matches(q, e.id, e.name, e.slug, ...e.values.map((v) => v.name)),
-        ),
-    events: hit
-      ? aggregate.events
-      : aggregate.events.filter((e) => matches(q, e.id, e.name, e.slug)),
+    valueObjects: aggregate.valueObjects,
+    entities: aggregate.entities,
+    enums: enumsOf(aggregate),
+    events: aggregate.events,
     commands: ops("command"),
     queries: ops("query"),
   };
-
-  const anyChild =
-    match.valueObjects.length +
-      match.entities.length +
-      match.enums.length +
-      match.events.length +
-      match.commands.length +
-      match.queries.length >
-    0;
-  return hit || anyChild ? match : null;
 }
 
-function matchContext(
-  context: BoundedContext,
-  q: string,
-): { context: BoundedContext; services: ServiceMatch[] } | null {
-  const contextHit = matches(q, context.id, context.name);
-  const services: ServiceMatch[] = [];
-
-  for (const service of context.services) {
-    const serviceHit =
-      contextHit || matches(q, service.id, service.name, service.slug);
-    const aggregates = service.aggregates
-      .map((a) => matchAggregate(a, q, serviceHit))
-      .filter((a): a is AggregateMatch => a !== null);
-    const endpoints = matchEndpoints(service, q, serviceHit);
-    const stores = matchStores(service, q, serviceHit);
-    if (
-      serviceHit ||
-      aggregates.length > 0 ||
-      endpoints.length > 0 ||
-      stores.length > 0
-    ) {
-      services.push({ service, aggregates, endpoints, stores });
-    }
-  }
-
-  if (services.length === 0 && !contextHit) return null;
-  return { context, services };
+function contextRows(context: BoundedContext): {
+  context: BoundedContext;
+  services: ServiceRows[];
+} {
+  return {
+    context,
+    services: context.services.map((service) => ({
+      service,
+      aggregates: service.aggregates.map(aggregateRows),
+      endpoints: endpointRows(service),
+      stores: storeRows(service),
+    })),
+  };
 }
 
 /**
@@ -543,7 +457,7 @@ function Section({
   count: number;
   open: boolean;
   onToggle: () => void;
-  /** The first section needs no air above it - the filter box is already there. */
+  /** The first section needs no air above it - the header is already there. */
   first?: boolean;
   children: React.ReactNode;
 }) {
@@ -564,131 +478,9 @@ function Section({
   );
 }
 
-/**
- * A section of the tree with nothing under it. "no match" is an answer to the
- * filter box; before the filter box is touched it accuses the reader of
- * hiding something they never hid, so the two silences say different things.
- */
+/** A section of the tree with nothing under it, and why. */
 function TreeNote({ children }: { children: React.ReactNode }) {
   return <div className="px-3 py-1 text-muted">{children}</div>;
-}
-
-// ---------------------------------------------------------------------------
-// The kind filter. Seven switches that used to sit under the box permanently,
-// now behind the funnel beside it.
-//
-// They are hidden by default because they answer a question a reader asks once
-// a week - "stop showing me tables" - while costing two rows of the one pane
-// that is always on screen. What is NOT hidden is the consequence: the moment a
-// kind is off, the funnel carries a dot and a line under the box names what is
-// missing, because a tree quietly leaving rows out is a tree that lies.
-// ---------------------------------------------------------------------------
-
-function KindFilter({
-  hidden,
-  onToggle,
-  onReset,
-}: {
-  hidden: Set<LeafKind>;
-  onToggle: (kind: LeafKind) => void;
-  onReset: () => void;
-}) {
-  const any = hidden.size > 0;
-  return (
-    <Popover className="relative shrink-0">
-      <PopoverButton
-        aria-label={
-          any
-            ? `Kinds shown — ${hidden.size} hidden`
-            : "Kinds shown — all of them"
-        }
-        title={any ? "Kinds shown — some are hidden" : "Kinds shown"}
-        className={({ open }) =>
-          `relative flex size-8 items-center justify-center rounded-control border t-micro transition-colors border-line hover:bg-surface ${
-            open || any ? "text-accent" : "text-muted hover:text-ink"
-          }`
-        }
-      >
-        <Filter size={15} aria-hidden />
-        {any ? (
-          <span
-            aria-hidden
-            className="absolute top-1 right-1 size-1.5 rounded-full"
-            style={{ background: "var(--accent)" }}
-          />
-        ) : null}
-      </PopoverButton>
-      <PopoverPanel
-        anchor={{ to: "bottom end", gap: 4, padding: 8 }}
-        className="palette-in z-50 w-72 rounded-control border bg-canvas p-2 border-line-strong shadow-md focus:outline-none"
-      >
-        <div className="label mb-1.5 px-1">show kinds</div>
-        {/* A row per group: what an aggregate holds, what the service
-            answers, what a store holds. Seven labels on one row ellipsized
-            every one of them, and the break lands where the meaning does. */}
-        <div className="seg-stack w-full" role="group" aria-label="Show kinds">
-          {LEAF_KIND_ROWS.map((row) => (
-            <div key={row[0]} className="seg">
-              {row.map((kind) => {
-                const on = !hidden.has(kind);
-                return (
-                  <button
-                    key={kind}
-                    type="button"
-                    onClick={() => onToggle(kind)}
-                    aria-pressed={on}
-                    title={`${on ? "Hide" : "Show"} ${KIND_GROUP_LABEL[kind]} across the tree`}
-                    className={`min-w-0 flex-auto truncate text-center !px-1.5 ${
-                      on ? "is-on" : ""
-                    }`}
-                  >
-                    {KIND_CHIP[kind]}
-                  </button>
-                );
-              })}
-            </div>
-          ))}
-        </div>
-        {any ? (
-          <button
-            type="button"
-            onClick={onReset}
-            className="mono mt-2 w-full rounded-control px-1 py-1 text-left text-accent hover:bg-surface"
-          >
-            show every kind
-          </button>
-        ) : null}
-      </PopoverPanel>
-    </Popover>
-  );
-}
-
-/** What the tree is leaving out, in words, with the way back beside it. */
-function HidingLine({
-  hidden,
-  onReset,
-}: {
-  hidden: Set<LeafKind>;
-  onReset: () => void;
-}) {
-  const names = [...LEAF_KINDS]
-    .filter((k) => hidden.has(k))
-    .map((k) => KIND_GROUP_LABEL[k]);
-  if (names.length === 0) return null;
-  return (
-    <div className="mono mt-1.5 flex items-center gap-1.5 text-muted">
-      <span className="trunc" title={`hiding: ${names.join(", ")}`}>
-        hiding: {names.join(", ")}
-      </span>
-      <button
-        type="button"
-        onClick={onReset}
-        className="shrink-0 rounded-control text-accent hover:underline"
-      >
-        reset
-      </button>
-    </div>
-  );
 }
 
 // ---------------------------------------------------------------------------
@@ -1091,9 +883,7 @@ export function Sidebar({
   railed?: boolean;
   onExpand?: () => void;
 }) {
-  const { query, setQuery, inputRef } = useSearch();
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
-  const [hidden, setHidden] = useState<Set<LeafKind>>(new Set());
 
   // Which bands and which owner groups are folded. Both outlive the session:
   // they are a reader's standing answer to "I do not work on that", unlike the
@@ -1121,37 +911,13 @@ export function Sidebar({
   const isOpen = (key: string, def: boolean): boolean => collapsed[key] ?? def;
   const toggle = (key: string, def: boolean) =>
     setCollapsed((c) => ({ ...c, [key]: !(c[key] ?? def) }));
-  const shows = (kind: LeafKind) => !hidden.has(kind);
-  const toggleKind = (kind: LeafKind) =>
-    setHidden((prev) => {
-      const next = new Set(prev);
-      if (next.has(kind)) next.delete(kind);
-      else next.add(kind);
-      return next;
-    });
-
-  const flowGroups = useMemo(
-    () =>
-      groupFlowsByOwner(
-        catalog.flows.filter((f) =>
-          matches(query, f.id, f.slug, f.name, f.summary),
-        ),
-      ),
-    [query],
-  );
+  const flowGroups = useMemo(() => groupFlowsByOwner(catalog.flows), []);
   const flowCount = flowGroups.reduce((n, g) => n + g.entries.length, 0);
 
   // One row per vocabulary, not per word: thirty-eight terms in the tree would
   // be a dictionary nobody scrolls past to reach the model. The row opens the
-  // page already filtered to that context, and the filter box narrows to the
-  // contexts that still have a word in them.
-  const vocabs = useMemo(
-    () =>
-      vocabularies(catalog)
-        .map((v) => ({ ...v, terms: matchTerms(v.terms, query) }))
-        .filter((v) => v.terms.length > 0),
-    [query],
-  );
+  // page already filtered to that context.
+  const vocabs = useMemo(() => vocabularies(catalog), []);
   const termCount = vocabs.reduce((n, v) => n + v.terms.length, 0);
 
   // Core first, then supporting, then generic, then the ones nobody has rated;
@@ -1165,40 +931,16 @@ export function Sidebar({
               classificationRank(b.classification) ||
             a.name.localeCompare(b.name),
         )
-        .map((c) => matchContext(c, query))
-        .filter(
-          (x): x is { context: BoundedContext; services: ServiceMatch[] } =>
-            x !== null,
-        ),
-    [query],
+        .map(contextRows),
+    [],
   );
 
-  // The schema modules, filtered. Nothing at all when the estate has never
-  // published a proto, which is what keeps the band from appearing empty.
-  const modules = useMemo(
-    () =>
-      matchModules(allModules(catalog), (...fields) =>
-        matches(query, ...fields),
-      ),
-    [query],
-  );
+  // The schema modules. Nothing at all when the estate has never published a
+  // proto, which is what keeps the band from appearing empty.
+  const modules = useMemo(() => allModules(catalog), []);
 
-  // Unfiltered, this is a standing list of what currently holds. With a filter
-  // typed, it searches every decision, including the ones that no longer do.
-  const adrs = useMemo(
-    () =>
-      query.trim()
-        ? sortAdrs(
-            catalog.adrs.filter((a) =>
-              matches(query, a.id, a.slug, a.title, adrNumber(a)),
-            ),
-          ).slice(0, 8)
-        : newestAccepted(catalog, 5),
-    [query],
-  );
-
-  // While filtering, everything is expanded: hiding matches would defeat the filter.
-  const filtering = query.trim().length > 0;
+  // A standing list of what currently holds; every decision is on its page.
+  const adrs = useMemo(() => newestAccepted(catalog, 5), []);
 
   // --- following the selection --------------------------------------------
 
@@ -1250,22 +992,6 @@ export function Sidebar({
       for (const k of keys) next[k] = true;
       return next;
     });
-
-    // A kind switched off behind the funnel would swallow the row silently.
-    const chip: LeafKind | null =
-      resolved.kind === "event"
-        ? "event"
-        : "store" in resolved
-          ? "table"
-          : null;
-    if (chip) {
-      setHidden((prev) => {
-        if (!prev.has(chip)) return prev;
-        const next = new Set(prev);
-        next.delete(chip);
-        return next;
-      });
-    }
   }, [selection]);
 
   // Scroll only when the row is actually out of sight: yanking the tree under
@@ -1289,11 +1015,10 @@ export function Sidebar({
       row.scrollIntoView({ block: "nearest", behavior: "smooth" });
     }, DURATION.panel * 1000);
     return () => clearTimeout(timer);
-  }, [selection, collapsed, hidden, sections, groups]);
+  }, [selection, collapsed, sections, groups]);
 
   if (railed) return <IconRail onExpand={() => onExpand?.()} />;
 
-  const resetKinds = () => setHidden(new Set());
   // Namespaces the selection light's layoutId to this tree.
   const treeId = useId();
 
@@ -1303,35 +1028,10 @@ export function Sidebar({
       aria-label="Catalog"
     >
     <LayoutGroup id={treeId}>
-        {/* Two rows, and only two: the mark and the name, then the filter box
-            with the funnel beside it. Everything the funnel holds used to live
-            here as a third and fourth row, in the one pane that is always on
-            screen. */}
+        {/* One row: the mark and the name. Searching lives in ⌘K, so nothing
+            else competes for the one pane that is always on screen. */}
         <div className="shrink-0 border-b px-3 pt-2.5 pb-2 border-line">
           <Wordmark />
-          <div className="mt-2 flex items-center gap-2">
-            <input
-              ref={inputRef}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") {
-                  setQuery("");
-                  e.currentTarget.blur();
-                }
-              }}
-              placeholder="filter"
-              spellCheck={false}
-              className="mono h-8 min-w-0 flex-1 rounded-control border bg-transparent px-2 outline-none placeholder:text-muted border-line t-micro transition-colors hover:border-line-strong"
-              aria-label="Filter catalog"
-            />
-            <KindFilter
-              hidden={hidden}
-              onToggle={toggleKind}
-              onReset={resetKinds}
-            />
-          </div>
-          <HidingLine hidden={hidden} onReset={resetKinds} />
         </div>
 
         <div
@@ -1347,11 +1047,11 @@ export function Sidebar({
           <Section
             title="Flows"
             count={flowCount}
-            open={filtering || sectionOpen("flows")}
+            open={sectionOpen("flows")}
             onToggle={() => toggleSection("flows")}
           >
             {flowGroups.length === 0 ? (
-              <TreeNote>{filtering ? "no match" : "none charted yet"}</TreeNote>
+              <TreeNote>none charted yet</TreeNote>
             ) : null}
             {flowGroups.map((group) => {
               const key = group.owner ?? "unowned";
@@ -1359,7 +1059,7 @@ export function Sidebar({
                 <FlowGroupNode
                   key={key}
                   group={group}
-                  open={filtering || groupOpen(key)}
+                  open={groupOpen(key)}
                   onToggle={() => toggleGroup(key)}
                 />
               );
@@ -1369,17 +1069,17 @@ export function Sidebar({
           <Section
             title="Contexts"
             count={contexts.length}
-            open={filtering || sectionOpen("contexts")}
+            open={sectionOpen("contexts")}
             onToggle={() => toggleSection("contexts")}
           >
             {contexts.length === 0 ? (
               <TreeNote>
-                {filtering ? "no match" : "nothing extracted yet"}
+                nothing extracted yet
               </TreeNote>
             ) : null}
             {contexts.map(({ context, services }) => {
               const ckey = `c:${context.id}`;
-              const copen = filtering || isOpen(ckey, true);
+              const copen = isOpen(ckey, true);
               const unresolved = contextStats(context).unresolved;
               return (
                 <div key={context.id}>
@@ -1435,7 +1135,7 @@ export function Sidebar({
                     {services.map(
                         ({ service, aggregates, endpoints, stores }) => {
                           const skey = `s:${service.id}`;
-                          const sopen = filtering || isOpen(skey, true);
+                          const sopen = isOpen(skey, true);
                           return (
                             <div key={service.id}>
                               <Branch
@@ -1452,16 +1152,14 @@ export function Sidebar({
                                 </span>
                               </Branch>
                               <Unfold open={sopen}>
-                              {aggregates.map((match) => (
+                              {aggregates.map((rows) => (
                                     <AggregateNode
-                                      key={match.aggregate.id}
-                                      match={match}
+                                      key={rows.aggregate.id}
+                                      rows={rows}
                                       contextId={context.id}
                                       serviceSlug={service.slug}
-                                      filtering={filtering}
                                       isOpen={isOpen}
                                       toggle={toggle}
-                                      shows={shows}
                                     />
                                   ))}
                               {/* Between the model and where it is kept: an
@@ -1471,7 +1169,7 @@ export function Sidebar({
                                 an operationId is unique across a document, so
                                 the extra level would carry no information and
                                 cost a line of indent in a narrow tree. */}
-                              {shows("endpoint") && endpoints.length > 0 ? (
+                              {endpoints.length > 0 ? (
                                 <Group
                                   kind="endpoint"
                                   label="api"
@@ -1480,7 +1178,7 @@ export function Sidebar({
                                     0,
                                   )}
                                   depth={2}
-                                  open={filtering || isOpen(`${skey}:api`, false)}
+                                  open={isOpen(`${skey}:api`, false)}
                                   onToggle={() => toggle(`${skey}:api`, false)}
                                 >
                                   {endpoints.flatMap(({ provided, methods }) =>
@@ -1505,32 +1203,27 @@ export function Sidebar({
                                 before where it is kept. Closed by default: this
                                 is the answer to a question about deployment, not
                                 the one the tree is usually open for. */}
-                              {shows("table") ? (
-                                <Group
-                                  kind="table"
-                                  label="data"
-                                  count={stores.length}
-                                  depth={2}
-                                  open={
-                                    filtering || isOpen(`${skey}:data`, false)
-                                  }
-                                  onToggle={() => toggle(`${skey}:data`, false)}
-                                >
-                                  {stores.map(({ store, tables, views }) => (
-                                    <StoreNode
-                                      key={store.id}
-                                      store={store}
-                                      tables={tables}
-                                      views={shows("view") ? views : []}
-                                      contextId={context.id}
-                                      serviceSlug={service.slug}
-                                      filtering={filtering}
-                                      isOpen={isOpen}
-                                      toggle={toggle}
-                                    />
-                                  ))}
-                                </Group>
-                              ) : null}
+                              <Group
+                                kind="table"
+                                label="data"
+                                count={stores.length}
+                                depth={2}
+                                open={isOpen(`${skey}:data`, false)}
+                                onToggle={() => toggle(`${skey}:data`, false)}
+                              >
+                                {stores.map(({ store, tables, views }) => (
+                                  <StoreNode
+                                    key={store.id}
+                                    store={store}
+                                    tables={tables}
+                                    views={views}
+                                    contextId={context.id}
+                                    serviceSlug={service.slug}
+                                    isOpen={isOpen}
+                                    toggle={toggle}
+                                  />
+                                ))}
+                              </Group>
                               </Unfold>
                             </div>
                           );
@@ -1549,11 +1242,11 @@ export function Sidebar({
             <Section
               title="Registry"
               count={modules.length}
-              open={filtering || sectionOpen("registry")}
+              open={sectionOpen("registry")}
               onToggle={() => toggleSection("registry")}
             >
-              {modules.map(({ module, packages }) => {
-                const open = filtering || isOpen(`mod:${module.id}`, false);
+              {modules.map((module) => {
+                const open = isOpen(`mod:${module.id}`, false);
 
                 return (
                   <div key={module.id}>
@@ -1586,7 +1279,7 @@ export function Sidebar({
                         them, and listing them again would say the estate has
                         twice as many. */}
                     {open
-                      ? packages.map((name) => (
+                      ? module.packages.map((name) => (
                           <Leaf
                             key={name}
                             to={`${paths.module(module.slug)}?tab=interfaces#${packageAnchor(name)}`}
@@ -1614,12 +1307,12 @@ export function Sidebar({
           <Section
             title="Decisions"
             count={adrs.length}
-            open={filtering || sectionOpen("decisions")}
+            open={sectionOpen("decisions")}
             onToggle={() => toggleSection("decisions")}
           >
             {adrs.length === 0 ? (
               <TreeNote>
-                {filtering ? "no match" : "nothing on the record yet"}
+                nothing on the record yet
               </TreeNote>
             ) : null}
             {adrs.map((adr) => (
@@ -1659,10 +1352,9 @@ export function Sidebar({
             <Section
               title="Language"
               count={termCount}
-              open={filtering || sectionOpen("language")}
+              open={sectionOpen("language")}
               onToggle={() => toggleSection("language")}
             >
-              {vocabs.length === 0 ? <TreeNote>no match</TreeNote> : null}
               {vocabs.map((vocabulary) => (
                 <Leaf
                   key={vocabulary.contextId}
@@ -1703,7 +1395,6 @@ function StoreNode({
   views,
   contextId,
   serviceSlug,
-  filtering,
   isOpen,
   toggle,
 }: {
@@ -1712,12 +1403,11 @@ function StoreNode({
   views: View[];
   contextId: string;
   serviceSlug: string;
-  filtering: boolean;
   isOpen: (key: string, def: boolean) => boolean;
   toggle: (key: string, def: boolean) => void;
 }) {
   const key = `st:${store.id}`;
-  const open = filtering || isOpen(key, false);
+  const open = isOpen(key, false);
   const to = paths.store(contextId, serviceSlug, store.slug);
 
   return (
@@ -1791,32 +1481,28 @@ function StoreNode({
 }
 
 function AggregateNode({
-  match,
+  rows,
   contextId,
   serviceSlug,
-  filtering,
   isOpen,
   toggle,
-  shows,
 }: {
-  match: AggregateMatch;
+  rows: AggregateRows;
   contextId: string;
   serviceSlug: string;
-  filtering: boolean;
   isOpen: (key: string, def: boolean) => boolean;
   toggle: (key: string, def: boolean) => void;
-  shows: (kind: LeafKind) => boolean;
 }) {
-  const { aggregate } = match;
+  const { aggregate } = rows;
   const akey = `a:${aggregate.id}`;
-  const aopen = filtering || isOpen(akey, false);
+  const aopen = isOpen(akey, false);
   const to = paths.aggregate(contextId, serviceSlug, aggregate.slug);
 
   // Events are the group that opens by itself: they are what other contexts
   // actually depend on. The structural groups stay shut until asked for.
   const group = (kind: LeafKind, def: boolean) => ({
     kind,
-    open: filtering || isOpen(`${akey}:${kind}`, def),
+    open: isOpen(`${akey}:${kind}`, def),
     onToggle: () => toggle(`${akey}:${kind}`, def),
   });
 
@@ -1873,127 +1559,115 @@ function AggregateNode({
 
       <Unfold open={aopen}>
         <>
-          {shows("vo") ? (
-            <Group
-              {...group("vo", false)}
-              count={match.valueObjects.length}
-              depth={3}
-            >
-              {match.valueObjects.map((b) => blockLeaf("vo", b))}
-            </Group>
-          ) : null}
+          <Group
+            {...group("vo", false)}
+            count={rows.valueObjects.length}
+            depth={3}
+          >
+            {rows.valueObjects.map((b) => blockLeaf("vo", b))}
+          </Group>
 
-          {shows("entity") ? (
-            <Group
-              {...group("entity", false)}
-              count={match.entities.length}
-              depth={3}
-            >
-              {match.entities.map((b) => blockLeaf("entity", b))}
-            </Group>
-          ) : null}
+          <Group
+            {...group("entity", false)}
+            count={rows.entities.length}
+            depth={3}
+          >
+            {rows.entities.map((b) => blockLeaf("entity", b))}
+          </Group>
 
-          {shows("enum") ? (
-            <Group
-              {...group("enum", false)}
-              count={match.enums.length}
-              depth={3}
-            >
-              {match.enums.map((item) => (
+          <Group
+            {...group("enum", false)}
+            count={rows.enums.length}
+            depth={3}
+          >
+            {rows.enums.map((item) => (
+              <Leaf
+                key={item.id}
+                to={paths.enum(contextId, serviceSlug, aggregate.slug, item.slug)}
+                depth={4}
+                title={item.doc || item.id}
+              >
+                <KindIcon kind="enum" />
+                <span className="mono truncate">{item.name}</span>
+                <span className="mono ml-auto shrink-0 text-muted">
+                  {item.values.length}
+                </span>
+              </Leaf>
+            ))}
+          </Group>
+
+          <Group
+            {...group("event", true)}
+            count={rows.events.length}
+            depth={3}
+          >
+            {rows.events.map((event) => {
+              const latest = event.versions[event.versions.length - 1];
+              return (
                 <Leaf
-                  key={item.id}
-                  to={paths.enum(contextId, serviceSlug, aggregate.slug, item.slug)}
+                  key={event.id}
+                  to={paths.event(
+                    contextId,
+                    serviceSlug,
+                    aggregate.slug,
+                    event.slug,
+                  )}
                   depth={4}
-                  title={item.doc || item.id}
+                  title={event.id}
+                  selId={event.id}
                 >
-                  <KindIcon kind="enum" />
-                  <span className="mono truncate">{item.name}</span>
-                  <span className="mono ml-auto shrink-0 text-muted">
-                    {item.values.length}
-                  </span>
-                </Leaf>
-              ))}
-            </Group>
-          ) : null}
-
-          {shows("event") ? (
-            <Group
-              {...group("event", true)}
-              count={match.events.length}
-              depth={3}
-            >
-              {match.events.map((event) => {
-                const latest = event.versions[event.versions.length - 1];
-                return (
-                  <Leaf
-                    key={event.id}
-                    to={paths.event(
-                      contextId,
-                      serviceSlug,
-                      aggregate.slug,
-                      event.slug,
-                    )}
-                    depth={4}
-                    title={event.id}
-                    selId={event.id}
+                  <KindIcon kind="event" />
+                  <span
+                    className="mono truncate"
+                    style={{ color: "var(--kind-event)" }}
                   >
-                    <KindIcon kind="event" />
-                    <span
-                      className="mono truncate"
-                      style={{ color: "var(--kind-event)" }}
-                    >
-                      {event.name}
+                    {event.name}
+                  </span>
+                  {latest ? (
+                    <span className="mono ml-auto shrink-0 border px-1 border-line text-muted">
+                      {latest.version}
                     </span>
-                    {latest ? (
-                      <span className="mono ml-auto shrink-0 border px-1 border-line text-muted">
-                        {latest.version}
-                      </span>
-                    ) : null}
-                  </Leaf>
-                );
-              })}
-            </Group>
-          ) : null}
-
-          {shows("command") ? (
-            <Group
-              {...group("command", false)}
-              count={match.commands.length}
-              depth={3}
-            >
-              {match.commands.map((op) => (
-                <Leaf
-                  key={op.id}
-                  to={`${to}#bb-commands`}
-                  depth={4}
-                  title={op.id}
-                >
-                  <KindIcon kind="command" />
-                  <span className="mono truncate text-muted">{op.id}</span>
+                  ) : null}
                 </Leaf>
-              ))}
-            </Group>
-          ) : null}
+              );
+            })}
+          </Group>
 
-          {shows("query") ? (
-            <Group
-              {...group("query", false)}
-              count={match.queries.length}
-              depth={3}
-            >
-              {match.queries.map((op) => (
-                <Leaf
-                  key={op.id}
-                  to={`${to}#bb-queries`}
-                  depth={4}
-                  title={op.id}
-                >
-                  <KindIcon kind="query" />
-                  <span className="mono truncate text-muted">{op.id}</span>
-                </Leaf>
-              ))}
-            </Group>
-          ) : null}
+          <Group
+            {...group("command", false)}
+            count={rows.commands.length}
+            depth={3}
+          >
+            {rows.commands.map((op) => (
+              <Leaf
+                key={op.id}
+                to={`${to}#bb-commands`}
+                depth={4}
+                title={op.id}
+              >
+                <KindIcon kind="command" />
+                <span className="mono truncate text-muted">{op.id}</span>
+              </Leaf>
+            ))}
+          </Group>
+
+          <Group
+            {...group("query", false)}
+            count={rows.queries.length}
+            depth={3}
+          >
+            {rows.queries.map((op) => (
+              <Leaf
+                key={op.id}
+                to={`${to}#bb-queries`}
+                depth={4}
+                title={op.id}
+              >
+                <KindIcon kind="query" />
+                <span className="mono truncate text-muted">{op.id}</span>
+              </Leaf>
+            ))}
+          </Group>
         </>
       </Unfold>
     </div>

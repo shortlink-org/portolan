@@ -49,7 +49,6 @@ import { HashScroll } from "./HashScroll";
 import { CommandPalette } from "./CommandPalette";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
-import { SearchProvider } from "./search";
 import { ThemeProvider } from "./theme";
 import { DensityProvider } from "./density";
 import { useNarrow, usePhone } from "./responsive";
@@ -433,11 +432,9 @@ export function App() {
         <DensityProvider>
           <QueryClientProvider client={queryClient}>
             <ForgeAccessProvider>
-              <SearchProvider>
-                <BrowserRouter basename={import.meta.env.BASE_URL}>
-                  <Shell />
-                </BrowserRouter>
-              </SearchProvider>
+              <BrowserRouter basename={import.meta.env.BASE_URL}>
+                <Shell />
+              </BrowserRouter>
             </ForgeAccessProvider>
           </QueryClientProvider>
         </DensityProvider>

@@ -1,11 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
-  KIND_CHIP,
   KIND_LABEL,
   KIND_PLURAL,
   KIND_PREFIXES,
   LEAF_KINDS,
-  LEAF_KIND_ROWS,
   canonicalPrefix,
   isLeafKind,
   kindForPrefix,
@@ -22,7 +20,6 @@ describe("the taxonomy", () => {
       expect(KIND_PLURAL[kind], kind).toBeTruthy();
       expect(KIND_PREFIXES[kind].length, kind).toBeGreaterThan(0);
     }
-    for (const kind of LEAF_KINDS) expect(KIND_CHIP[kind], kind).toBeTruthy();
   });
 
   it("never gives one prefix to two kinds", () => {
@@ -46,12 +43,6 @@ describe("the taxonomy", () => {
     expect(kindForPrefix("q")).toBe("query");
     expect(kindForPrefix("ENT")).toBe("entity");
     expect(kindForPrefix("nope")).toBeNull();
-  });
-
-  // The sidebar draws a row per group. A kind added to the taxonomy but to
-  // neither group would vanish from the filter without failing anything else.
-  it("puts every leaf kind in exactly one filter row", () => {
-    expect(LEAF_KIND_ROWS.flatMap((row) => [...row])).toEqual([...LEAF_KINDS]);
   });
 
   it("names only leaf kinds as leaves", () => {

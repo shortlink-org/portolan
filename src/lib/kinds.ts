@@ -40,16 +40,13 @@ export type Kind =
   /**
    * One entry of a context's glossary. Not a building block and not a page of
    * its own: a term is what a building block is CALLED, which is why it sits
-   * outside the leaf kinds the tree filters.
+   * outside the leaf kinds the tree groups.
    */
   | "term";
 
 /**
- * The leaf kinds a filter chip can switch off, in two groups because the tree
- * has two: what an aggregate holds, then what a store holds. The sidebar draws
- * a row per group - seven labels on one row ellipsized every one of them at
- * every sidebar width, and the break has to land somewhere, so it lands where
- * the meaning already breaks.
+ * The leaf kinds the tree groups under a service, in two groups because the
+ * tree has two: what an aggregate holds, then what a store holds.
  */
 export const MODEL_LEAF_KINDS = [
   "event",
@@ -67,18 +64,6 @@ export const STORE_LEAF_KINDS = ["table", "view"] as const;
  * the one and eventually moves the other. Its own group, and a row of its own.
  */
 export const INTERFACE_LEAF_KINDS = ["endpoint"] as const;
-
-/**
- * The groups as the filter draws them, one row each. Written once because the
- * chip rows, the line that says what is hidden, and the test that holds every
- * leaf to exactly one row all have to agree, and three copies of a list is how
- * a kind ends up filterable nowhere.
- */
-export const LEAF_KIND_ROWS = [
-  MODEL_LEAF_KINDS,
-  INTERFACE_LEAF_KINDS,
-  STORE_LEAF_KINDS,
-] as const;
 
 /** Every group, in tree order. */
 export const LEAF_KINDS = [
@@ -134,19 +119,6 @@ export const KIND_PLURAL: Record<Kind, string> = {
   flow: "flows",
   adr: "decisions",
   term: "terms",
-};
-
-/** Short label for a filter chip, where the row has no room for the plural. */
-export const KIND_CHIP: Record<LeafKind, string> = {
-  event: "events",
-  vo: "VO",
-  entity: "entities",
-  enum: "enums",
-  command: "cmd",
-  query: "qry",
-  endpoint: "api",
-  table: "tables",
-  view: "views",
 };
 
 /**
