@@ -18,6 +18,10 @@ Every link below is a markdown page beside this file. [llms-full.txt](llms-full.
 
 - [Invoices](billing/invoices/README.md): in Billing. Aggregates: Invoice
 
+## Aggregates
+
+- [Invoice](billing/invoices/aggregates/invoice.md): in [Invoices](billing/invoices/README.md). root `Invoice`. 1 command, 1 query, 1 event. One invoice, one customer, one currency
+
 ## Outside the estate
 
 - [PSP gateway](externals/psp-gateway.md): outside the estate. Answers on psp.v1.Charges. The card network the invoices are settled through. Nobody here builds it; the copy of its document vendored beside the client is all the catalog may claim
