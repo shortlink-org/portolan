@@ -116,6 +116,16 @@ class Fragment(unittest.TestCase):
             {"type": "array", "items": {"$ref": "#/components/schemas/InvoiceLineSerializer"}},
         )
 
+        # Who may call: the settings say a JWT bearer and a caller; the view
+        # relaxes reads, and the issue action insists again.
+        self.assertEqual(spec["security"], [{"jwtAuth": []}])
+        self.assertEqual(spec["components"]["securitySchemes"], {"jwtAuth": {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"}})
+        self.assertEqual(retrieve["security"], [{"jwtAuth": []}, {}])
+        self.assertEqual(retrieve["x-portolan-permissions"], ["IsAuthenticatedOrReadOnly"])
+        self.assertEqual(spec["paths"]["/api/invoices/{id}/"]["put"]["security"], [{"jwtAuth": []}])
+        self.assertEqual(spec["paths"]["/api/invoices/{id}/issue/"]["post"]["security"], [{"jwtAuth": []}])
+        self.assertEqual(spec["paths"]["/api/invoices/{id}/issue/"]["post"]["x-portolan-permissions"], ["IsAuthenticated"])
+
         parameter = {item["name"]: item for item in retrieve["parameters"]}
         self.assertEqual(parameter["currency"]["schema"], {"type": "string", "default": "USD"})
         self.assertEqual(parameter["limit"]["schema"], {"type": "integer", "default": 25})
@@ -271,7 +281,7 @@ class Reading(unittest.TestCase):
         framework = found["billing-invoice-create"]["steps"][1]
         self.assertEqual(framework["status"], "declared")
         self.assertIn("Supplied by DRF ModelViewSet", framework["note"])
-        self.assertTrue(framework["line"].endswith("invoices/views.py:16"))
+        self.assertTrue(framework["line"].endswith("invoices/views.py:17"))
 
     def test_a_branch_with_a_hop_in_it_is_an_alt_and_a_loop_is_a_note(self):
         steps = {f["slug"]: f["steps"] for f in self.fragment["flows"]}["billing-invoice-issue"]

@@ -13,6 +13,7 @@ import re
 from typing import Any, Dict, List
 
 import apps as apps_module
+import auth as auth_module
 import catalog
 import clients as clients_module
 import contracts
@@ -59,6 +60,7 @@ def extract(input_: Input, opts: Options, b: Builder, cwd: str = "") -> None:
     for app in endpoint_apps:
         endpoints += [(app, endpoint) for endpoint in transport.read_endpoints(app, b, route_table)]
     serializer_registry = serializers_module.read(project, endpoint_apps)
+    auth_registry = auth_module.Registry(project, opts.settings, b)
 
     known_events: Dict[str, Any] = {}
     use_cases: List[operations.UseCase] = []
@@ -165,6 +167,7 @@ def extract(input_: Input, opts: Options, b: Builder, cwd: str = "") -> None:
             b,
             serializer_registry,
             "" if opts.service_name else schema_name,
+            auth_registry,
         )))
 
     if route_table.runtime_schema and service_obj["provides"]:
@@ -283,7 +286,7 @@ def http_contracts(endpoints, svc_id: str, source: str) -> List[Dict[str, Any]]:
     return out
 
 
-def openapi_document(endpoints, service_name: str, b: Builder, serializer_registry=None, api_title: str = "") -> Dict[str, Any]:
+def openapi_document(endpoints, service_name: str, b: Builder, serializer_registry=None, api_title: str = "", auth_registry=None) -> Dict[str, Any]:
     """A conservative OpenAPI view over facts Django declares statically.
 
     Routes and verbs are evidence. A bound DRF serializer and generic view add
@@ -383,6 +386,12 @@ def openapi_document(endpoints, service_name: str, b: Builder, serializer_regist
                 }
             if detail.responses:
                 operation["responses"] = detail.responses
+        if auth_registry is not None:
+            security = auth_registry.security_for(endpoint)
+            if security.requirement is not None:
+                operation["security"] = security.requirement
+            if security.permissions:
+                operation["x-portolan-permissions"] = security.permissions
         path_item[method] = operation
 
     document = {
@@ -400,6 +409,14 @@ def openapi_document(endpoints, service_name: str, b: Builder, serializer_regist
     components = serializer_registry.components() if serializer_registry is not None else {}
     if components:
         document["components"] = {"schemas": components}
+    if auth_registry is not None:
+        # The document-level requirement is what the settings alone decide,
+        # and the schemes are every one an operation or that default named.
+        default = auth_registry.default_security()
+        if default is not None:
+            document["security"] = default
+        if auth_registry.schemes:
+            document.setdefault("components", {})["securitySchemes"] = {name: auth_registry.schemes[name] for name in sorted(auth_registry.schemes)}
     return document
 
 

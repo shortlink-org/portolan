@@ -3,6 +3,7 @@
 from django.utils import timezone
 from rest_framework import viewsets
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
@@ -17,6 +18,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     """Invoices over HTTP."""
 
     serializer_class = InvoiceSerializer
+    permission_classes = (IsAuthenticatedOrReadOnly,)
     filterset_fields = ("status",)
     search_fields = ("number", "order_id")
     ordering_fields = ("issued_at",)
@@ -61,7 +63,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         },
         tags=["invoice commands"],
     )
-    @action(detail=True, methods=["post"])
+    @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
     def issue(self, request, pk=None):
         """Issues the invoice drawn up for an order."""
         event = issue_invoice(

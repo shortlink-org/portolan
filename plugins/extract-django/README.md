@@ -116,6 +116,26 @@ literal defaults and simple numeric casts. `filterset_fields`, `search_fields`,
 filter, search, ordering and page parameters. A parameter is marked required only when a missing value is
 statically followed by a raise.
 
+**Auth, in the contract.** Who may call an operation is read off DRF's
+`permission_classes` and `authentication_classes`, in the order DRF applies
+them: the action's own (`@action(permission_classes=…)`, or the decorators on
+an `@api_view` function), then a `get_permissions()` a `self.action` branch
+can decide, then the class attribute — the view's own or one a local base
+class declares — then `REST_FRAMEWORK` in the settings, and past all of those
+DRF's defaults. An authentication class is written as an OpenAPI security
+scheme under the id drf-spectacular would give it (`SessionAuthentication` →
+`cookieAuth`, `TokenAuthentication` → `tokenAuth`, a JWT class → `jwtAuth`),
+and the permissions decide the operation's `security`: required for
+`IsAuthenticated` and its kin, optional (`{}` among the alternatives) for
+`AllowAny`, and for `IsAuthenticatedOrReadOnly` required on everything but
+`GET`, `HEAD` and `OPTIONS`. The classes as the code names them are kept under
+`x-portolan-permissions`. `extend_schema(auth=…)` and
+`swagger_auto_schema(security=…)` win outright when written as literals. A
+permission the reader does not know — a project's own `IsOwner` — is not
+guessed at: the operation carries no `security` of its own, the class is still
+named, and the diagnostic says so; a custom authentication class becomes a
+scheme of its own whose transport is said to be unknown.
+
 **Lifecycle.** Read off the table the model keeps, never off the branches of
 its methods. Either the table is a `TRANSITIONS` mapping beside the
 `TextChoices` that names the states —
@@ -270,6 +290,8 @@ These cases do not become facts in the fragment:
 - a table with an edge no method makes, a method moving into a state the table
   lacks, a status assigned to something the states do not name, and a model
   that moves its status while declaring no table at all;
+- a permission class DRF does not ship, and a permission or authentication
+  list built with `|`, `&` or anything but a literal list of classes;
 - a client with no document beside it, and a route its document does not
   declare;
 - an api id the manifest names no peer for;

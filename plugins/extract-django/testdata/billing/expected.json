@@ -392,7 +392,7 @@
           "kind": "rpc",
           "label": "invoice_create",
           "status": "declared",
-          "line": "plugins/extract-django/testdata/billing/invoices/views.py:16"
+          "line": "plugins/extract-django/testdata/billing/invoices/views.py:17"
         },
         {
           "type": "step",
@@ -403,7 +403,7 @@
           "label": "Validate InvoiceCreateSerializer",
           "status": "declared",
           "note": "Supplied by DRF ModelViewSet. Model resolved from queryset or serializer metadata.",
-          "line": "plugins/extract-django/testdata/billing/invoices/views.py:16"
+          "line": "plugins/extract-django/testdata/billing/invoices/views.py:17"
         },
         {
           "type": "step",
@@ -414,7 +414,7 @@
           "label": "Invoice.objects.create",
           "status": "declared",
           "note": "Supplied by DRF ModelViewSet. Model resolved from queryset or serializer metadata.",
-          "line": "plugins/extract-django/testdata/billing/invoices/views.py:16"
+          "line": "plugins/extract-django/testdata/billing/invoices/views.py:17"
         }
       ]
     },
@@ -456,7 +456,7 @@
           "kind": "rpc",
           "label": "invoice_destroy",
           "status": "declared",
-          "line": "plugins/extract-django/testdata/billing/invoices/views.py:80"
+          "line": "plugins/extract-django/testdata/billing/invoices/views.py:82"
         },
         {
           "type": "step",
@@ -540,7 +540,7 @@
           "kind": "rpc",
           "label": "invoice_issue",
           "status": "declared",
-          "line": "plugins/extract-django/testdata/billing/invoices/views.py:65"
+          "line": "plugins/extract-django/testdata/billing/invoices/views.py:67"
         },
         {
           "type": "step",
@@ -664,7 +664,7 @@
           "kind": "rpc",
           "label": "invoice_list",
           "status": "declared",
-          "line": "plugins/extract-django/testdata/billing/invoices/views.py:16"
+          "line": "plugins/extract-django/testdata/billing/invoices/views.py:17"
         },
         {
           "type": "step",
@@ -675,7 +675,7 @@
           "label": "Invoice.objects.all",
           "status": "declared",
           "note": "Supplied by DRF ModelViewSet. Model resolved from queryset or serializer metadata.",
-          "line": "plugins/extract-django/testdata/billing/invoices/views.py:16"
+          "line": "plugins/extract-django/testdata/billing/invoices/views.py:17"
         },
         {
           "type": "step",
@@ -686,7 +686,7 @@
           "label": "Serialize InvoiceSerializer collection",
           "status": "declared",
           "note": "Supplied by DRF ModelViewSet. Model resolved from queryset or serializer metadata.",
-          "line": "plugins/extract-django/testdata/billing/invoices/views.py:16"
+          "line": "plugins/extract-django/testdata/billing/invoices/views.py:17"
         }
       ]
     },
@@ -723,7 +723,7 @@
           "kind": "rpc",
           "label": "invoice_partial_update",
           "status": "declared",
-          "line": "plugins/extract-django/testdata/billing/invoices/views.py:16"
+          "line": "plugins/extract-django/testdata/billing/invoices/views.py:17"
         },
         {
           "type": "step",
@@ -734,7 +734,7 @@
           "label": "Invoice.objects.get",
           "status": "declared",
           "note": "Supplied by DRF ModelViewSet. Model resolved from queryset or serializer metadata.",
-          "line": "plugins/extract-django/testdata/billing/invoices/views.py:16"
+          "line": "plugins/extract-django/testdata/billing/invoices/views.py:17"
         },
         {
           "type": "step",
@@ -745,7 +745,7 @@
           "label": "Validate InvoiceSerializer (partial)",
           "status": "declared",
           "note": "Supplied by DRF ModelViewSet. Model resolved from queryset or serializer metadata.",
-          "line": "plugins/extract-django/testdata/billing/invoices/views.py:16"
+          "line": "plugins/extract-django/testdata/billing/invoices/views.py:17"
         },
         {
           "type": "step",
@@ -756,7 +756,7 @@
           "label": "Invoice.save",
           "status": "declared",
           "note": "Supplied by DRF ModelViewSet. Model resolved from queryset or serializer metadata.",
-          "line": "plugins/extract-django/testdata/billing/invoices/views.py:16"
+          "line": "plugins/extract-django/testdata/billing/invoices/views.py:17"
         }
       ]
     },
@@ -793,7 +793,7 @@
           "kind": "rpc",
           "label": "invoice_retrieve",
           "status": "declared",
-          "line": "plugins/extract-django/testdata/billing/invoices/views.py:29"
+          "line": "plugins/extract-django/testdata/billing/invoices/views.py:31"
         },
         {
           "type": "step",
@@ -840,7 +840,7 @@
           "kind": "rpc",
           "label": "invoice_update",
           "status": "declared",
-          "line": "plugins/extract-django/testdata/billing/invoices/views.py:16"
+          "line": "plugins/extract-django/testdata/billing/invoices/views.py:17"
         },
         {
           "type": "step",
@@ -851,7 +851,7 @@
           "label": "Invoice.objects.get",
           "status": "declared",
           "note": "Supplied by DRF ModelViewSet. Model resolved from queryset or serializer metadata.",
-          "line": "plugins/extract-django/testdata/billing/invoices/views.py:16"
+          "line": "plugins/extract-django/testdata/billing/invoices/views.py:17"
         },
         {
           "type": "step",
@@ -862,7 +862,7 @@
           "label": "Validate InvoiceSerializer",
           "status": "declared",
           "note": "Supplied by DRF ModelViewSet. Model resolved from queryset or serializer metadata.",
-          "line": "plugins/extract-django/testdata/billing/invoices/views.py:16"
+          "line": "plugins/extract-django/testdata/billing/invoices/views.py:17"
         },
         {
           "type": "step",
@@ -873,7 +873,7 @@
           "label": "Invoice.save",
           "status": "declared",
           "note": "Supplied by DRF ModelViewSet. Model resolved from queryset or serializer metadata.",
-          "line": "plugins/extract-django/testdata/billing/invoices/views.py:16"
+          "line": "plugins/extract-django/testdata/billing/invoices/views.py:17"
         }
       ]
     },
