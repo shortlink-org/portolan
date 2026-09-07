@@ -1,6 +1,6 @@
 # Pricing database
 
-*Generated from the portolan catalog · commit `12 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `13 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
 
 - **Id:** `shop.pricing.pg`
 - **Kind:** postgres
@@ -34,8 +34,8 @@ child · persists [shop.pricing.price-list](../aggregates/price-list.md)
 | Column | Type | Null | Key | Maps |
 | --- | --- | --- | --- | --- |
 | `price_list_id` | `text` | not null | PK | PriceList.id |
-| `sku` | `text` | not null | PK | — |
-| `amount_minor` | `bigint` | not null | — | — |
+| `sku` | `text` | not null | PK | PriceList.rows.sku |
+| `amount_minor` | `bigint` | not null | — | PriceList.rows.price |
 
 <a id="relation-shop-pricing-pg-quotes"></a>
 ### quotes
@@ -65,10 +65,10 @@ child · persists [shop.pricing.quote](../aggregates/quote.md)
 | Column | Type | Null | Key | Maps |
 | --- | --- | --- | --- | --- |
 | `quote_id` | `text` | not null | PK | Quote.id |
-| `sku` | `text` | not null | PK | — |
-| `quantity` | `integer` | not null | — | — |
-| `unit_price_minor` | `bigint` | not null | — | — |
-| `currency` | `char(3)` | not null | — | — |
+| `sku` | `text` | not null | PK | Quote.lines.sku |
+| `quantity` | `integer` | not null | — | Quote.lines.quantity |
+| `unit_price_minor` | `bigint` | not null | — | Quote.lines.unitPrice |
+| `currency` | `char(3)` | not null | — | Quote.lines.unitPrice |
 
 <a id="relation-shop-pricing-pg-outbox"></a>
 ### outbox
@@ -104,7 +104,7 @@ computed on read · reads [`shop.pricing.pg.price_lists`](pg.md#relation-shop-pr
 | `price_list_id` | `text` | not null | PriceList.ID | `shop.pricing.pg.price_lists.id` |
 | `name` | `text` | not null | PriceList.Name | `shop.pricing.pg.price_lists.name` |
 | `currency` | `char(3)` | not null | PriceList.Currency | `shop.pricing.pg.price_lists.currency` |
-| `rows_priced` | `text` | not null | — | `shop.pricing.pg.price_rows.sku` |
+| `rows_priced` | `text` | not null | PriceList.Rows.SKU | `shop.pricing.pg.price_rows.sku` |
 
 ```sql
 CREATE VIEW v_price_list_use AS

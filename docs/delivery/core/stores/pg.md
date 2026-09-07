@@ -1,6 +1,6 @@
 # Delivery database
 
-*Generated from the portolan catalog · commit `12 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `13 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
 
 - **Id:** `delivery.core.pg`
 - **Kind:** postgres
@@ -14,12 +14,12 @@
 
 aggregate-root · persists [delivery.core.route](../aggregates/route.md)
 
-| Column | Type | Null | Key |
-| --- | --- | --- | --- |
-| `id` | `text` | not null | PK |
-| `vehicle` | `text` | not null | — |
-| `planned_for` | `date` | not null | — |
-| `status` | `text` | not null | — |
+| Column | Type | Null | Key | Maps |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | not null | PK | Route.id |
+| `vehicle` | `text` | not null | — | Route.vehicle |
+| `planned_for` | `date` | not null | — | Route.plannedFor |
+| `status` | `text` | not null | — | Route.status |
 
 | Index | Columns | Kind |
 | --- | --- | --- |
@@ -30,30 +30,30 @@ aggregate-root · persists [delivery.core.route](../aggregates/route.md)
 
 child · persists [delivery.core.route](../aggregates/route.md)
 
-| Column | Type | Null | Key | From |
-| --- | --- | --- | --- | --- |
-| `route_id` | `text` | not null | PK | — |
-| `seq` | `integer` | not null | PK | — |
-| `shipment_id` | `text` | not null | → [`delivery.core.pg.packages`](pg.md#relation-delivery-core-pg-packages).id (restrict) | — |
-| `address` | `text` | not null | — | `delivery.core.pg.packages.ship_to` |
-| `window_from` | `timestamptz` | not null | — | — |
-| `window_to` | `timestamptz` | not null | — | — |
-| `done` | `boolean` | not null | — | — |
+| Column | Type | Null | Key | Maps | From |
+| --- | --- | --- | --- | --- | --- |
+| `route_id` | `text` | not null | PK | Route.id | — |
+| `seq` | `integer` | not null | PK | Route.stops.seq | — |
+| `shipment_id` | `text` | not null | → [`delivery.core.pg.packages`](pg.md#relation-delivery-core-pg-packages).id (restrict) | Route.stops.shipmentId | — |
+| `address` | `jsonb` | not null | — | Route.stops.address | `delivery.core.pg.packages.ship_to` |
+| `window_from` | `timestamptz` | not null | — | Route.stops.window.from | — |
+| `window_to` | `timestamptz` | not null | — | Route.stops.window.to | — |
+| `done` | `boolean` | not null | — | Route.stops.done | — |
 
 <a id="relation-delivery-core-pg-packages"></a>
 ### packages
 
 aggregate-root · persists [delivery.core.shipment](../aggregates/shipment.md)
 
-| Column | Type | Null | Key |
-| --- | --- | --- | --- |
-| `id` | `text` | not null | PK |
-| `order_id` | `text` | not null | → [`shop.oms.pg.orders`](../../../shop/oms/stores/pg.md#relation-shop-oms-pg-orders).id (restrict) |
-| `ship_to` | `text` | not null | — |
-| `status` | `text` | not null | — |
-| `tracking` | `text` | null | — |
-| `route_id` | `text` | null | — |
-| `dispatched_at` | `timestamptz` | null | — |
+| Column | Type | Null | Key | Maps |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | not null | PK | Shipment.id |
+| `order_id` | `text` | not null | → [`shop.oms.pg.orders`](../../../shop/oms/stores/pg.md#relation-shop-oms-pg-orders).id (restrict) | Shipment.orderId |
+| `ship_to` | `jsonb` | not null | — | Shipment.shipTo |
+| `status` | `text` | not null | — | Shipment.status |
+| `tracking` | `text` | null | — | Shipment.tracking.value |
+| `route_id` | `text` | null | — | Shipment.routeId |
+| `dispatched_at` | `timestamptz` | null | — | — |
 
 | Index | Columns | Kind |
 | --- | --- | --- |
@@ -65,28 +65,47 @@ aggregate-root · persists [delivery.core.shipment](../aggregates/shipment.md)
 
 child · persists [delivery.core.shipment](../aggregates/shipment.md)
 
-| Column | Type | Null | Key |
-| --- | --- | --- | --- |
-| `id` | `text` | not null | PK |
-| `package_id` | `text` | not null | → [`delivery.core.pg.packages`](pg.md#relation-delivery-core-pg-packages).id (cascade) |
-| `weight_g` | `integer` | not null | — |
-| `contents` | `text` | not null | — |
+| Column | Type | Null | Key | Maps |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | not null | PK | Shipment.parcels.id |
+| `package_id` | `text` | not null | → [`delivery.core.pg.packages`](pg.md#relation-delivery-core-pg-packages).id (cascade) | Shipment.id |
+| `weight_g` | `integer` | not null | — | Shipment.parcels.weightG |
+| `contents` | `text` | not null | — | Shipment.parcels.contents |
 
 <a id="relation-delivery-core-pg-scans"></a>
 ### scans
 
 child · persists [delivery.core.shipment](../aggregates/shipment.md)
 
-| Column | Type | Null | Key |
-| --- | --- | --- | --- |
-| `id` | `bigserial` | not null | PK |
-| `parcel_id` | `text` | not null | → [`delivery.core.pg.parcels`](pg.md#relation-delivery-core-pg-parcels).id (cascade) |
-| `location` | `text` | not null | — |
-| `scanned_at` | `timestamptz` | not null | — |
+| Column | Type | Null | Key | Maps |
+| --- | --- | --- | --- | --- |
+| `id` | `bigserial` | not null | PK | — |
+| `parcel_id` | `text` | not null | → [`delivery.core.pg.parcels`](pg.md#relation-delivery-core-pg-parcels).id (cascade) | Shipment.scans.parcelId |
+| `location` | `text` | not null | — | Shipment.scans.location |
+| `scanned_at` | `timestamptz` | not null | — | Shipment.scans.scannedAt |
 
 | Index | Columns | Kind |
 | --- | --- | --- |
 | `scans_by_parcel` | parcel_id, scanned_at | index |
+
+<a id="relation-delivery-core-pg-outbox"></a>
+### outbox
+
+outbox
+
+| Column | Type | Null | Key |
+| --- | --- | --- | --- |
+| `id` | `bigserial` | not null | PK |
+| `uuid` | `uuid` | not null | — |
+| `topic` | `text` | not null | — |
+| `payload` | `jsonb` | not null | — |
+| `metadata` | `jsonb` | not null | — |
+| `created_at` | `timestamptz` | not null | — |
+| `published_at` | `timestamptz` | null | — |
+
+| Index | Columns | Kind |
+| --- | --- | --- |
+| `outbox_unpublished` | id | index |
 
 ## Views
 
@@ -95,13 +114,13 @@ child · persists [delivery.core.shipment](../aggregates/shipment.md)
 
 **materialized** — rows are stored, and can be stale · reads [`delivery.core.pg.routes`](pg.md#relation-delivery-core-pg-routes), [`delivery.core.pg.route_stops`](pg.md#relation-delivery-core-pg-route-stops)
 
-| Column | Type | Null | From |
-| --- | --- | --- | --- |
-| `route_id` | `text` | not null | `delivery.core.pg.routes.id` |
-| `vehicle` | `text` | not null | `delivery.core.pg.routes.vehicle` |
-| `planned_for` | `date` | not null | `delivery.core.pg.routes.planned_for` |
-| `stops` | `integer` | not null | `delivery.core.pg.route_stops.seq` |
-| `done` | `integer` | not null | `delivery.core.pg.route_stops.seq` |
+| Column | Type | Null | Maps | From |
+| --- | --- | --- | --- | --- |
+| `route_id` | `text` | not null | Route.id | `delivery.core.pg.routes.id` |
+| `vehicle` | `text` | not null | Route.vehicle | `delivery.core.pg.routes.vehicle` |
+| `planned_for` | `date` | not null | Route.plannedFor | `delivery.core.pg.routes.planned_for` |
+| `stops` | `integer` | not null | Route.stops.seq | `delivery.core.pg.route_stops.seq` |
+| `done` | `integer` | not null | Route.stops.seq | `delivery.core.pg.route_stops.seq` |
 
 ```sql
 CREATE MATERIALIZED VIEW mv_route_load AS

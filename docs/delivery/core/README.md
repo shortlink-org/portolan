@@ -1,6 +1,6 @@
 # Delivery Core
 
-*Generated from the portolan catalog · commit `12 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `13 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
 
 - **Id:** `delivery.core`
 - **Context:** [Delivery](../README.md)
@@ -71,19 +71,27 @@ arrow of both lifecycle tables is one of these.
 A sketch for the catalog, not the reference service; `examples/auth` is
 that. What it has: two aggregates whose lifecycle tables are enforced and
 whose every move is an event, use cases that answer with what a caller may
-see, a policy that reacts to the ledger's fact through a use case, and the
-records above. What it deliberately does not have yet, and the review skill
-will name: no repository or server behind the ports, so nothing here runs;
-no version on the aggregates; no unit of work, so `plan_route` writes a
-route and its shipments one save at a time; no sentinel errors or status
-mapping at the edge; no tests; no tracing. Each is a known gap, not an
-oversight, and none of them changes what the catalog shows.
+see, a policy that reacts to the ledger's fact through a use case, Postgres
+repositories behind both ports that write the events to an outbox in the
+same transaction, and the records above. What it deliberately does not have
+yet, and the review skill will name: no server, so nothing here listens; no
+version on the aggregates, so a stale write wins; no unit of work, so
+`plan_route` writes a route and its shipments one save at a time; no
+sentinel errors or status mapping at the edge; no tracing. Each is a known
+gap, not an oversight, and none of them changes what the catalog shows.
 
 ## Running it
 
 ```bash
 docker compose up -d db
 npm install && npm run gen && npm run build
+```
+
+The repository tests bring up their own Postgres through Docker and are
+skipped without it:
+
+```bash
+npm test
 ```
 
 ## Aggregates
@@ -352,7 +360,7 @@ npm install && npm run gen && npm run build
 
 | Store | Kind | Access | Schema |
 | --- | --- | --- | --- |
-| [Delivery database](stores/pg.md) | postgres | owns | 5 tables |
+| [Delivery database](stores/pg.md) | postgres | owns | 6 tables |
 
 ## Commands
 
@@ -361,6 +369,7 @@ npm install && npm run gen && npm run build
 | `npm run build` | `tsc -p tsconfig.build.json` | [`examples/shop/delivery/core/package.json:9`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/package.json#L9) |
 | `npm run typecheck` | `tsc --noEmit` | [`examples/shop/delivery/core/package.json:10`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/package.json#L10) |
 | `npm run gen` | `buf generate src/infrastructure/transport/grpc/shipment/proto -o src/infrastructure/transport/grpc/shipment/gen && buf generate src/infrastructure/transport/grpc/route/proto -o src/infrastructure/transport/grpc/route/gen && buf generate src/infrastructure/oms/proto -o src/infrastructure/oms/gen` | [`examples/shop/delivery/core/package.json:11`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/package.json#L11) |
+| `npm test` | `vitest run` | [`examples/shop/delivery/core/package.json:12`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/package.json#L12) |
 
 ## Decisions
 

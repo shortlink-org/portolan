@@ -2,7 +2,7 @@
 
 > Architecture catalog of Example estate: 6 bounded contexts, 11 services, 12 aggregates, 7 stores, 7 schema modules, 1 system outside the estate, 59 flows and 42 decision records, read from the code, the specs and the traces of the estate.
 
-*Generated from the portolan catalog · commit `12 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `13 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
 
 Every link below is a markdown page beside this file. [llms-full.txt](llms-full.txt) is all of those pages in one file, in the order the site lists them.
 
@@ -177,7 +177,7 @@ Every link below is a markdown page beside this file. [llms-full.txt](llms-full.
 ## Optional
 
 - [Auth database](auth/auth/stores/pg.md): postgres store of [Authentication & Sessions](auth/auth/README.md). 3 tables
-- [Delivery database](delivery/core/stores/pg.md): postgres store of [Delivery Core](delivery/core/README.md). 5 tables
+- [Delivery database](delivery/core/stores/pg.md): postgres store of [Delivery Core](delivery/core/README.md). 6 tables
 - [Ledger database](payments/ledger/stores/pg.md): postgres store of [Ledger](payments/ledger/README.md). 3 tables
 - [Billing database](shop/billing/stores/pg.md): postgres store of [Billing](shop/billing/README.md). 2 tables
 - [Cart database](shop/cart/stores/pg.md): postgres store of [Shopping Cart](shop/cart/README.md). 3 tables
