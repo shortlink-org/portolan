@@ -258,8 +258,20 @@ describe("local project setup", () => {
     expect(plan.steps).toHaveLength(2);
     expect(plan.steps[0]).toMatchObject({
       plugin: "project",
-      options: { group: "finance", component: "billing", groupKind: "system", out: "project.json" },
+      options: { group: "finance", component: "billing", componentName: "Billing", groupKind: "system", out: "project.json" },
     });
+  });
+
+  it("passes the project's human-readable name to project and domain extractors", () => {
+    const root = workspace();
+    mkdirSync(join(root, "services/billing/internal/domain/invoice"), { recursive: true });
+    writeFileSync(join(root, "services/billing/internal/domain/invoice/invoice.go"), "package invoice\n\ntype Invoice struct{}\n");
+    const manifest = JSON.parse(readFileSync(join(root, "portolan.json"), "utf8"));
+    const plan = planProject(root, manifest, {
+      root: "services/billing", id: "billing", name: "Billing Control", group: "finance", component: "billing", repository: "", plugins: ["project", "go-domain"],
+    });
+    expect(plan.steps[0].options.componentName).toBe("Billing Control");
+    expect(plan.steps[1].options.serviceName).toBe("Billing Control");
   });
 
   it("passes the selected group to the glossary extractor", () => {

@@ -592,6 +592,7 @@ function pluginOptions(plugin, project, detectedOptions = {}) {
       group,
       component,
       ...detectedOptions,
+      componentName: project.name,
       ...(project.groupKind ? { groupKind: project.groupKind } : {}),
       ...(project.componentKind ? { componentKind: project.componentKind } : {}),
       ...(project.repository ? { repo: repositoryParts(project.repository).web } : {}),
@@ -599,7 +600,7 @@ function pluginOptions(plugin, project, detectedOptions = {}) {
     };
   }
   if (["go-domain", "ts-domain", "rust-domain", "java-domain", "django-domain"].includes(plugin)) {
-    return { ...common, ...(project.repository ? { repo: repositoryParts(project.repository).web } : {}), ...detectedOptions, out: "domain.json" };
+    return { ...common, ...(project.repository ? { repo: repositoryParts(project.repository).web } : {}), ...detectedOptions, serviceName: project.name, out: "domain.json" };
   }
   if (plugin === "sql") return { ...common, store: "pg", ...detectedOptions, out: "stores.json" };
   if (plugin === "redis") return { ...common, store: "redis", ...detectedOptions, out: "redis.json" };

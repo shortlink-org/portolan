@@ -63,6 +63,17 @@ func TestExplicitKindsWin(t *testing.T) {
 	}
 }
 
+func TestMarkdownTitleIgnoresShellCommentsInsideFences(t *testing.T) {
+	md := "## Getting started\n\n```sh\nmake migrate\n# add superuser\n```\n\n# Actual service\n"
+	if got := markdownTitle(md); got != "Actual service" {
+		t.Fatalf("markdownTitle = %q", got)
+	}
+	md = "~~~sh\n# also not a title\n~~~\n"
+	if got := markdownTitle(md); got != "" {
+		t.Fatalf("markdownTitle without a real H1 = %q", got)
+	}
+}
+
 func TestRecognizesMessagingLibrariesAsTechnologies(t *testing.T) {
 	root := t.TempDir()
 	mustWrite(t, filepath.Join(root, "go.mod"), `module example.com/worker

@@ -15,7 +15,7 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(1, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "pyplugin"))
 
-from extract import extract, response_statuses  # noqa: E402
+from extract import extract, readme_title, response_statuses, schema_title, service_name_from_schema  # noqa: E402
 from options import Options  # noqa: E402
 from protocol import Builder, Input  # noqa: E402
 
@@ -181,6 +181,15 @@ class Fragment(unittest.TestCase):
     def test_an_option_nobody_reads_is_refused_rather_than_dropped(self):
         with self.assertRaises(ValueError):
             Options.of({"context": "shop", "storeKnd": "postgres"})
+
+    def test_service_metadata_beats_readme_and_fenced_comments_are_not_titles(self):
+        routes = type("Routes", (), {"root": type("Root", (), {"tree": ast.parse(
+            'schema_view = get_schema_view(openapi.Info(title="Avia Admin API", default_version="v1"))'
+        )})()})()
+        self.assertEqual(schema_title(routes), "Avia Admin API")
+        self.assertEqual(service_name_from_schema("Avia Admin API"), "Avia Admin")
+        self.assertEqual(readme_title("```sh\n# add superuser\n```\n"), "")
+        self.assertEqual(readme_title("```sh\n# not it\n```\n# Billing\n"), "Billing")
 
 
 class Reading(unittest.TestCase):

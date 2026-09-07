@@ -29,7 +29,7 @@ import transport
 from ids import service_id, slug, title
 from options import Options
 from protocol import Builder, Input
-from source import Project, dotted, read
+from source import Project, const_str, dotted, keyword, read
 
 
 def extract(input_: Input, opts: Options, b: Builder, cwd: str = "") -> None:
@@ -122,13 +122,15 @@ def extract(input_: Input, opts: Options, b: Builder, cwd: str = "") -> None:
 
     readme_path = os.path.join(root, "README.md")
     readme = read(readme_path).strip() if os.path.isfile(readme_path) else ""
+    schema_name = schema_title(route_table)
+    display_name = opts.service_name or service_name_from_schema(schema_name) or readme_title(readme) or title(service)
 
     openapi_name = opts.openapi_out or "openapi.inferred.yaml"
     openapi_source = generated_source(input_, root, rel, openapi_name)
     service_obj = {
         "id": svc_id,
         "slug": service,
-        "name": opts.service_name or readme_title(readme) or title(service),
+        "name": display_name,
         "repo": opts.repo or project_repo(root),
         "path": rel(root),
         "readme": readme,
@@ -157,7 +159,13 @@ def extract(input_: Input, opts: Options, b: Builder, cwd: str = "") -> None:
         fragment["contexts"][0]["classification"] = opts.classification
     b.files.append(dump(opts.out or "domain.json", fragment))
     if service_obj["provides"]:
-        b.files.append(dump(openapi_name, openapi_document(endpoints, opts.service_name or title(service), b, serializer_registry)))
+        b.files.append(dump(openapi_name, openapi_document(
+            endpoints,
+            display_name,
+            b,
+            serializer_registry,
+            "" if opts.service_name else schema_name,
+        )))
 
     if route_table.runtime_schema and service_obj["provides"]:
         b.warn(
@@ -275,7 +283,7 @@ def http_contracts(endpoints, svc_id: str, source: str) -> List[Dict[str, Any]]:
     return out
 
 
-def openapi_document(endpoints, service_name: str, b: Builder, serializer_registry=None) -> Dict[str, Any]:
+def openapi_document(endpoints, service_name: str, b: Builder, serializer_registry=None, api_title: str = "") -> Dict[str, Any]:
     """A conservative OpenAPI view over facts Django declares statically.
 
     Routes and verbs are evidence. A bound DRF serializer and generic view add
@@ -380,7 +388,7 @@ def openapi_document(endpoints, service_name: str, b: Builder, serializer_regist
     document = {
         "openapi": "3.1.0",
         "info": {
-            "title": "%s HTTP API" % service_name,
+            "title": api_title or "%s HTTP API" % service_name,
             "version": "inferred",
             "description": "Generated statically from Django URLConf, DRF declarations, schema decorators and handler expressions. Unknown details are left unspecified.",
         },
@@ -483,11 +491,46 @@ def routed_applications(project: Project, model_apps, routes: routing.Routes):
 
 
 def readme_title(markdown: str) -> str:
+    fence = ""
     for line in markdown.split("\n"):
         text = line.strip()
+        marker = "```" if text.startswith("```") else "~~~" if text.startswith("~~~") else ""
+        if marker:
+            if not fence:
+                fence = marker
+            elif fence == marker:
+                fence = ""
+            continue
+        if fence:
+            continue
         if text.startswith("# "):
             return text[2:].strip()
     return ""
+
+
+def schema_title(routes: routing.Routes) -> str:
+    """The human API title declared by drf-yasg in the root URLConf.
+
+    This is read from the AST only: importing a Django URLConf would execute
+    application code merely to name its documentation.
+    """
+    if routes.root is None:
+        return ""
+    for node in ast.walk(routes.root.tree):
+        if not isinstance(node, ast.Call) or dotted(node.func).split(".")[-1] != "Info":
+            continue
+        value = const_str(keyword(node, "title"))
+        if not value and node.args:
+            value = const_str(node.args[0])
+        if value:
+            return value.strip()
+    return ""
+
+
+def service_name_from_schema(value: str) -> str:
+    """Turn an API document title into the component name shown in catalog."""
+    without_suffix = re.sub(r"\s+(?:HTTP\s+)?API\s*$", "", value, flags=re.IGNORECASE).strip()
+    return without_suffix or value.strip()
 
 
 def project_repo(root: str) -> str:

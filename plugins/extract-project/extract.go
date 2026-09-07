@@ -148,8 +148,27 @@ func read(path string) string {
 }
 
 func markdownTitle(md string) string {
+	fence := ""
 	for _, line := range strings.Split(md, "\n") {
-		if value, ok := strings.CutPrefix(strings.TrimSpace(line), "# "); ok {
+		trimmed := strings.TrimSpace(line)
+		marker := ""
+		if strings.HasPrefix(trimmed, "```") {
+			marker = "```"
+		} else if strings.HasPrefix(trimmed, "~~~") {
+			marker = "~~~"
+		}
+		if marker != "" {
+			if fence == "" {
+				fence = marker
+			} else if fence == marker {
+				fence = ""
+			}
+			continue
+		}
+		if fence != "" {
+			continue
+		}
+		if value, ok := strings.CutPrefix(trimmed, "# "); ok {
 			return strings.TrimSpace(value)
 		}
 	}
