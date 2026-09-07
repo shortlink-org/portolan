@@ -34,6 +34,27 @@
               "source": "plugins/extract-celery/testdata/drift/jobs/services.py:19"
             },
             {
+              "address": "rebuild",
+              "kind": "job",
+              "title": "Celery · rebuild",
+              "doc": "Tasks enqueued and worked through Celery over amqp.",
+              "messages": [
+                {
+                  "name": "jobs.tasks.build_report",
+                  "title": "build_report",
+                  "doc": "Sent by Celery beat, every_other_day() (`rebuild`). Builds the monthly report.",
+                  "direction": "send"
+                },
+                {
+                  "name": "jobs.tasks.build_report",
+                  "title": "build_report",
+                  "doc": "Worked by `build_report`, named at the call. Set off by Celery beat, every_other_day() (`rebuild`). Builds the monthly report.",
+                  "direction": "receive"
+                }
+              ],
+              "source": "plugins/extract-celery/testdata/drift/config/celery.py:16"
+            },
+            {
               "address": "reports.default",
               "kind": "job",
               "title": "Celery · reports.default",
@@ -137,6 +158,76 @@
             "kind": "job",
             "transport": "celery",
             "channel": "reports.default",
+            "message": "jobs.tasks.build_report",
+            "direction": "receive"
+          }
+        }
+      ]
+    },
+    {
+      "id": "flow.reports-celery-build-report-beat",
+      "slug": "reports-celery-build-report-beat",
+      "name": "Build Report task, on schedule",
+      "summary": "Celery beat enqueues `jobs.tasks.build_report` on `rebuild` every_other_day(), and `build_report` works it.",
+      "source": "plugins/extract-celery/testdata/drift/config/celery.py",
+      "trigger": {
+        "kind": "scheduled",
+        "label": "every_other_day()",
+        "confidence": "high"
+      },
+      "owner": "ops",
+      "participants": [
+        {
+          "id": "celery-beat",
+          "kind": "actor",
+          "context": null,
+          "label": "Celery beat"
+        },
+        {
+          "id": "ops.reports",
+          "kind": "service",
+          "context": "ops"
+        },
+        {
+          "id": "celery-rebuild",
+          "kind": "broker",
+          "context": null,
+          "label": "Celery · rebuild"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "enqueue",
+          "from": "celery-beat",
+          "to": "celery-rebuild",
+          "kind": "call",
+          "label": "enqueue build_report",
+          "status": "declared",
+          "note": "Scheduled every_other_day() (`rebuild`). Builds the monthly report.",
+          "line": "plugins/extract-celery/testdata/drift/config/celery.py:16",
+          "handoff": {
+            "kind": "job",
+            "transport": "celery",
+            "channel": "rebuild",
+            "message": "jobs.tasks.build_report",
+            "direction": "send"
+          }
+        },
+        {
+          "type": "step",
+          "id": "work",
+          "from": "celery-rebuild",
+          "to": "ops.reports",
+          "kind": "call",
+          "label": "build_report",
+          "status": "declared",
+          "note": "Celery hands `jobs.tasks.build_report` to the worker consuming `rebuild`, named at the call.",
+          "line": "plugins/extract-celery/testdata/drift/jobs/tasks.py:9",
+          "handoff": {
+            "kind": "job",
+            "transport": "celery",
+            "channel": "rebuild",
             "message": "jobs.tasks.build_report",
             "direction": "receive"
           }

@@ -8,10 +8,11 @@ every key is spelled in upper case under that prefix. Both are read here, the
 settings first and the app's own assignments over them, which is the order
 Celery applies them in.
 
-Three keys decide a queue and are the only ones read: `task_routes`,
-`task_default_queue` and `broker_url`. A value that is not a literal is read
-as far as it goes - `os.environ.get("X", default)` is its default - and past
-that it is unknown, which is said rather than guessed.
+Three keys decide a queue: `task_routes`, `task_default_queue` and
+`broker_url`. A fourth, `beat_schedule`, says what the clock sets off - and
+so does `app.add_periodic_task(...)`, wherever it is called. A value that is
+not a literal is read as far as it goes - `os.environ.get("X", default)` is
+its default - and past that it is unknown, which is said rather than guessed.
 """
 
 from __future__ import annotations
@@ -21,7 +22,7 @@ from dataclasses import dataclass, field
 from fnmatch import fnmatchcase
 from typing import Dict, List, Optional, Tuple
 
-from source import Module, Project, assigned, const_str, dotted, keyword
+from source import Module, Project, assigned, const_str, dotted, keyword, keyword_str
 
 # Celery's own default queue, used when nothing in the tree says otherwise.
 DEFAULT_QUEUE = "celery"
@@ -31,9 +32,13 @@ LEGACY = {
     "CELERY_ROUTES": "task_routes",
     "CELERY_DEFAULT_QUEUE": "task_default_queue",
     "BROKER_URL": "broker_url",
+    "CELERYBEAT_SCHEDULE": "beat_schedule",
 }
 
-KNOWN = {"task_routes", "task_default_queue", "broker_url"}
+KNOWN = {"task_routes", "task_default_queue", "broker_url", "beat_schedule"}
+
+# The application that keeps the schedule in the database instead of the tree.
+BEAT_IN_DATABASE = "django_celery_beat"
 
 
 @dataclass
@@ -48,6 +53,26 @@ class App:
 
 
 @dataclass
+class Schedule:
+    """One thing the clock sets off: a `beat_schedule` entry, or one call of
+    `add_periodic_task`. The task is named on the wire (`task`) or as the
+    signature spells it (`ref`, resolved by whoever holds the task index)."""
+
+    name: str  # the entry's key, or the `name=` the call gave
+    when: str  # "cron 0 9 * * *", "every 6h" - or the expression as written, when opaque
+    module: Module  # where it is declared
+    node: ast.AST
+    task: str = ""  # the wire name, when the entry says one
+    ref: str = ""  # the task as `add_periodic_task` names it, when it is a signature
+    queue: str = ""  # `options={"queue": ...}` or a `queue=` on the call
+    opaque: bool = False  # the schedule was not readable as syntax
+
+    @property
+    def where(self) -> str:
+        return self.module.where(self.node)
+
+
+@dataclass
 class Config:
     routes: List[Tuple[str, str]] = field(default_factory=list)  # pattern -> queue, in declaration order
     default_queue: str = ""
@@ -56,6 +81,9 @@ class Config:
     settings_found: bool = False
     opaque: List[str] = field(default_factory=list)  # where a value could not be read
     apps: List[App] = field(default_factory=list)
+    schedules: List[Schedule] = field(default_factory=list)  # in declaration order
+    opaque_schedules: List[str] = field(default_factory=list)  # where a beat_schedule was not a mapping
+    beat_in_database: bool = False  # django_celery_beat is installed
 
     @property
     def broker_scheme(self) -> str:
@@ -110,6 +138,10 @@ def read_config(project: Project, settings: str) -> Config:
             key = settings_key(name, namespaces)
             if key:
                 apply(cfg, key, value, module)
+            if name == "INSTALLED_APPS":
+                installed = follow(value, module)
+                if isinstance(installed, (ast.List, ast.Tuple)) and any(const_str(e) == BEAT_IN_DATABASE for e in installed.elts):
+                    cfg.beat_in_database = True
 
     # Then what the app module assigns itself, over the settings.
     for app in cfg.apps:
@@ -124,7 +156,28 @@ def read_config(project: Project, settings: str) -> Config:
                 for kw in call.keywords:
                     if kw.arg:
                         apply(cfg, kw.arg.lower(), kw.value, app.module)
+
+    # `add_periodic_task` is the other way to say what the clock sets off,
+    # usually under `@app.on_after_configure.connect`, where the app arrives
+    # as `sender`; so it is read by the method's name, wherever it is called.
+    for module in sorted(project.modules.values(), key=lambda m: m.rel):
+        for node in ast.walk(module.tree):
+            if isinstance(node, ast.Call) and dotted(node.func).split(".")[-1] == "add_periodic_task" and len(node.args) >= 2:
+                cfg.schedules.append(periodic_task(node, module))
     return cfg
+
+
+def periodic_task(call: ast.Call, module: Module) -> Schedule:
+    """`sender.add_periodic_task(crontab(hour=3), close_stale_drafts.s(), name="...")`."""
+    when, readable = schedule_text(call.args[0], module)
+    signature = call.args[1]
+    ref = ""
+    if isinstance(signature, ast.Call) and isinstance(signature.func, ast.Attribute) and signature.func.attr in ("s", "si", "signature", "subtask"):
+        ref = dotted(signature.func.value)
+    else:
+        ref = dotted(signature)
+    name = keyword_str(call, "name") or ref.split(".")[-1]
+    return Schedule(name, when, module, call, ref=ref, queue=keyword_str(call, "queue"), opaque=not readable)
 
 
 def settings_key(name: str, namespaces: List[str]) -> str:
@@ -154,6 +207,120 @@ def apply(cfg: Config, key: str, value: ast.AST, module: Module) -> None:
         cfg.default_queue = str_value(value, module) or cfg.default_queue
     elif key == "broker_url":
         cfg.broker = str_value(value, module) or cfg.broker
+    elif key == "beat_schedule":
+        read_beat(cfg, value, module)
+
+
+def read_beat(cfg: Config, node: ast.AST, module: Module) -> None:
+    """`{"nightly": {"task": "pkg.tasks.nightly", "schedule": crontab(hour=2),
+    "options": {"queue": "slow"}}}`, entry by entry, in the order written."""
+    node = follow(node, module)
+    if not isinstance(node, ast.Dict):
+        cfg.opaque_schedules.append(module.where(node) if node is not None else module.rel)
+        return
+    for key, spec in zip(node.keys, node.values):
+        name = const_str(key) if key is not None else ""
+        spec = follow(spec, module)
+        if not name or not isinstance(spec, ast.Dict):
+            cfg.opaque_schedules.append(module.where(spec if spec is not None else node))
+            continue
+        fields = {const_str(k): v for k, v in zip(spec.keys, spec.values) if k is not None and const_str(k)}
+        when, readable = schedule_text(fields.get("schedule"), module)
+        cfg.schedules.append(
+            Schedule(
+                name,
+                when,
+                module,
+                spec,
+                task=str_value(fields.get("task"), module),
+                queue=route_queue(fields["options"], module) if "options" in fields else "",
+                opaque=not readable,
+            )
+        )
+
+
+# --- a schedule, as text ----------------------------------------------------
+#
+# Celery's schedule is an object - a crontab, a timedelta, a number of seconds
+# - and the page wants a sentence. The forms the documentation gives are read
+# into the spellings a reader already knows: `cron 0 9 * * *` in crontab's own
+# field order, `every 6h` for an interval. Anything else is kept as written and
+# marked opaque, which the caller says out loud.
+
+CRON_FIELDS = ("minute", "hour", "day_of_month", "month_of_year", "day_of_week")
+
+
+def schedule_text(node: Optional[ast.AST], module: Module) -> Tuple[str, bool]:
+    """(text, readable): the schedule as a sentence, and whether syntax
+    actually said so."""
+    node = follow(node, module)
+    if node is None:
+        return "", False
+    if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)) and not isinstance(node.value, bool):
+        return "every " + interval(float(node.value)), True
+    if isinstance(node, ast.Call):
+        last = dotted(node.func).split(".")[-1]
+        if last == "crontab":
+            given = {kw.arg: cron_field(kw.value) for kw in node.keywords if kw.arg in CRON_FIELDS}
+            for position, arg in enumerate(node.args[: len(CRON_FIELDS)]):
+                given.setdefault(CRON_FIELDS[position], cron_field(arg))
+            if any(value is None for value in given.values()):
+                return unparse(node), False
+            return "cron " + " ".join(given.get(field_, "*") or "*" for field_ in CRON_FIELDS), True
+        if last == "timedelta":
+            seconds = timedelta_seconds(node)
+            if seconds is None:
+                return unparse(node), False
+            return "every " + interval(seconds), True
+        if last == "schedule":
+            inner = keyword(node, "run_every") if keyword(node, "run_every") is not None else (node.args[0] if node.args else None)
+            return schedule_text(inner, module)
+        if last == "solar" and node.args and const_str(node.args[0]):
+            return "solar " + const_str(node.args[0]), True
+    return unparse(node), False
+
+
+def cron_field(node: ast.AST) -> Optional[str]:
+    if isinstance(node, ast.Constant) and isinstance(node.value, (str, int)) and not isinstance(node.value, bool):
+        return str(node.value)
+    return None
+
+
+TIMEDELTA_UNITS = {"weeks": 604800.0, "days": 86400.0, "hours": 3600.0, "minutes": 60.0, "seconds": 1.0, "milliseconds": 0.001}
+TIMEDELTA_POSITIONS = ("days", "seconds", "microseconds", "milliseconds", "minutes", "hours", "weeks")
+
+
+def timedelta_seconds(call: ast.Call) -> Optional[float]:
+    total = 0.0
+    parts = [(TIMEDELTA_POSITIONS[i], arg) for i, arg in enumerate(call.args[: len(TIMEDELTA_POSITIONS)])]
+    parts += [(kw.arg or "", kw.value) for kw in call.keywords]
+    for unit, value in parts:
+        if unit not in TIMEDELTA_UNITS or not (isinstance(value, ast.Constant) and isinstance(value.value, (int, float)) and not isinstance(value.value, bool)):
+            return None
+        total += float(value.value) * TIMEDELTA_UNITS[unit]
+    return total
+
+
+def interval(seconds: float) -> str:
+    """90 -> "1m30s", 21600 -> "6h", 0.5 -> "0.5s"."""
+    if seconds != int(seconds):
+        return "%gs" % seconds
+    whole = int(seconds)
+    out = ""
+    for unit, size in (("d", 86400), ("h", 3600), ("m", 60)):
+        if whole >= size:
+            out += "%d%s" % (whole // size, unit)
+            whole %= size
+    if whole or not out:
+        out += "%ds" % whole
+    return out
+
+
+def unparse(node: ast.AST) -> str:
+    try:
+        return ast.unparse(node)
+    except Exception:  # a node ast.unparse does not know
+        return type(node).__name__
 
 
 def read_routes(node: ast.AST, module: Module) -> Optional[List[Tuple[str, str]]]:

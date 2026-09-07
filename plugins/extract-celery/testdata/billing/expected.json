@@ -34,7 +34,19 @@
                 {
                   "name": "billing.archive_invoice",
                   "title": "archive_invoice",
-                  "doc": "Worked by `archive_invoice`, the default queue. Moves a closed invoice to cold storage.",
+                  "doc": "Worked by `archive_invoice`, the default queue. Set off by Celery beat, cron 30 2 * * * (`archive-closed-invoices`). Moves a closed invoice to cold storage.",
+                  "direction": "receive"
+                },
+                {
+                  "name": "invoices.tasks.close_stale_drafts",
+                  "title": "close_stale_drafts",
+                  "doc": "Sent by Celery beat, cron 0 3 * * * (`close-stale-drafts`). Voids the drafts nobody issued in a month.",
+                  "direction": "send"
+                },
+                {
+                  "name": "invoices.tasks.close_stale_drafts",
+                  "title": "close_stale_drafts",
+                  "doc": "Worked by `close_stale_drafts`, the default queue. Set off by Celery beat, cron 0 3 * * * (`close-stale-drafts`). Voids the drafts nobody issued in a month.",
                   "direction": "receive"
                 }
               ],
@@ -76,7 +88,7 @@
                 {
                   "name": "invoices.tasks.remind_unpaid_invoice",
                   "title": "remind_unpaid_invoice",
-                  "doc": "Worked by `remind_unpaid_invoice`, named on the task. Nudges the customer about an invoice that has stayed unpaid.",
+                  "doc": "Worked by `remind_unpaid_invoice`, named on the task. Set off by Celery beat, every 6h (`remind-unpaid-invoices`). Nudges the customer about an invoice that has stayed unpaid.",
                   "direction": "receive"
                 }
               ],
@@ -142,12 +154,152 @@
           "label": "archive_invoice",
           "status": "declared",
           "note": "Celery hands `billing.archive_invoice` to the worker consuming `billing`, the default queue.",
-          "line": "plugins/extract-celery/testdata/billing/invoices/tasks.py:22",
+          "line": "plugins/extract-celery/testdata/billing/invoices/tasks.py:23",
           "handoff": {
             "kind": "job",
             "transport": "celery",
             "channel": "billing",
             "message": "billing.archive_invoice",
+            "direction": "receive"
+          }
+        }
+      ]
+    },
+    {
+      "id": "flow.billing-celery-archive-invoice-beat",
+      "slug": "billing-celery-archive-invoice-beat",
+      "name": "Archive Invoice task, on schedule",
+      "summary": "Celery beat enqueues `billing.archive_invoice` on `billing` cron 30 2 * * *, and `archive_invoice` works it.",
+      "source": "plugins/extract-celery/testdata/billing/config/settings.py",
+      "trigger": {
+        "kind": "scheduled",
+        "label": "cron 30 2 * * *",
+        "confidence": "high"
+      },
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "celery-beat",
+          "kind": "actor",
+          "context": null,
+          "label": "Celery beat"
+        },
+        {
+          "id": "shop.billing",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "celery-billing",
+          "kind": "broker",
+          "context": null,
+          "label": "Celery · billing"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "enqueue",
+          "from": "celery-beat",
+          "to": "celery-billing",
+          "kind": "call",
+          "label": "enqueue archive_invoice",
+          "status": "declared",
+          "note": "Scheduled cron 30 2 * * * (`archive-closed-invoices`). Moves a closed invoice to cold storage.",
+          "line": "plugins/extract-celery/testdata/billing/config/settings.py:28",
+          "handoff": {
+            "kind": "job",
+            "transport": "celery",
+            "channel": "billing",
+            "message": "billing.archive_invoice",
+            "direction": "send"
+          }
+        },
+        {
+          "type": "step",
+          "id": "work",
+          "from": "celery-billing",
+          "to": "shop.billing",
+          "kind": "call",
+          "label": "archive_invoice",
+          "status": "declared",
+          "note": "Celery hands `billing.archive_invoice` to the worker consuming `billing`, the default queue.",
+          "line": "plugins/extract-celery/testdata/billing/invoices/tasks.py:23",
+          "handoff": {
+            "kind": "job",
+            "transport": "celery",
+            "channel": "billing",
+            "message": "billing.archive_invoice",
+            "direction": "receive"
+          }
+        }
+      ]
+    },
+    {
+      "id": "flow.billing-celery-close-stale-drafts",
+      "slug": "billing-celery-close-stale-drafts",
+      "name": "Close Stale Drafts task, on schedule",
+      "summary": "Celery beat enqueues `invoices.tasks.close_stale_drafts` on `billing` cron 0 3 * * *, and `close_stale_drafts` works it.",
+      "source": "plugins/extract-celery/testdata/billing/config/celery.py",
+      "trigger": {
+        "kind": "scheduled",
+        "label": "cron 0 3 * * *",
+        "confidence": "high"
+      },
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "celery-beat",
+          "kind": "actor",
+          "context": null,
+          "label": "Celery beat"
+        },
+        {
+          "id": "shop.billing",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "celery-billing",
+          "kind": "broker",
+          "context": null,
+          "label": "Celery · billing"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "enqueue",
+          "from": "celery-beat",
+          "to": "celery-billing",
+          "kind": "call",
+          "label": "enqueue close_stale_drafts",
+          "status": "declared",
+          "note": "Scheduled cron 0 3 * * * (`close-stale-drafts`). Voids the drafts nobody issued in a month.",
+          "line": "plugins/extract-celery/testdata/billing/config/celery.py:22",
+          "handoff": {
+            "kind": "job",
+            "transport": "celery",
+            "channel": "billing",
+            "message": "invoices.tasks.close_stale_drafts",
+            "direction": "send"
+          }
+        },
+        {
+          "type": "step",
+          "id": "work",
+          "from": "celery-billing",
+          "to": "shop.billing",
+          "kind": "call",
+          "label": "close_stale_drafts",
+          "status": "declared",
+          "note": "Celery hands `invoices.tasks.close_stale_drafts` to the worker consuming `billing`, the default queue.",
+          "line": "plugins/extract-celery/testdata/billing/invoices/tasks.py:28",
+          "handoff": {
+            "kind": "job",
+            "transport": "celery",
+            "channel": "billing",
+            "message": "invoices.tasks.close_stale_drafts",
             "direction": "receive"
           }
         }
@@ -206,7 +358,77 @@
           "label": "remind_unpaid_invoice",
           "status": "declared",
           "note": "Celery hands `invoices.tasks.remind_unpaid_invoice` to the worker consuming `billing.slow`, named on the task.",
-          "line": "plugins/extract-celery/testdata/billing/invoices/tasks.py:17",
+          "line": "plugins/extract-celery/testdata/billing/invoices/tasks.py:18",
+          "handoff": {
+            "kind": "job",
+            "transport": "celery",
+            "channel": "billing.slow",
+            "message": "invoices.tasks.remind_unpaid_invoice",
+            "direction": "receive"
+          }
+        }
+      ]
+    },
+    {
+      "id": "flow.billing-celery-remind-unpaid-invoice-beat",
+      "slug": "billing-celery-remind-unpaid-invoice-beat",
+      "name": "Remind Unpaid Invoice task, on schedule",
+      "summary": "Celery beat enqueues `invoices.tasks.remind_unpaid_invoice` on `billing.slow` every 6h, and `remind_unpaid_invoice` works it.",
+      "source": "plugins/extract-celery/testdata/billing/config/settings.py",
+      "trigger": {
+        "kind": "scheduled",
+        "label": "every 6h",
+        "confidence": "high"
+      },
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "celery-beat",
+          "kind": "actor",
+          "context": null,
+          "label": "Celery beat"
+        },
+        {
+          "id": "shop.billing",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "celery-billing-slow",
+          "kind": "broker",
+          "context": null,
+          "label": "Celery · billing.slow"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "enqueue",
+          "from": "celery-beat",
+          "to": "celery-billing-slow",
+          "kind": "call",
+          "label": "enqueue remind_unpaid_invoice",
+          "status": "declared",
+          "note": "Scheduled every 6h (`remind-unpaid-invoices`). Nudges the customer about an invoice that has stayed unpaid.",
+          "line": "plugins/extract-celery/testdata/billing/config/settings.py:27",
+          "handoff": {
+            "kind": "job",
+            "transport": "celery",
+            "channel": "billing.slow",
+            "message": "invoices.tasks.remind_unpaid_invoice",
+            "direction": "send"
+          }
+        },
+        {
+          "type": "step",
+          "id": "work",
+          "from": "celery-billing-slow",
+          "to": "shop.billing",
+          "kind": "call",
+          "label": "remind_unpaid_invoice",
+          "status": "declared",
+          "note": "Celery hands `invoices.tasks.remind_unpaid_invoice` to the worker consuming `billing.slow`, named on the task.",
+          "line": "plugins/extract-celery/testdata/billing/invoices/tasks.py:18",
           "handoff": {
             "kind": "job",
             "transport": "celery",
@@ -270,7 +492,7 @@
           "label": "send_invoice_email",
           "status": "declared",
           "note": "Celery hands `invoices.tasks.send_invoice_email` to the worker consuming `billing.mail`, routed by task_routes.",
-          "line": "plugins/extract-celery/testdata/billing/invoices/tasks.py:12",
+          "line": "plugins/extract-celery/testdata/billing/invoices/tasks.py:13",
           "handoff": {
             "kind": "job",
             "transport": "celery",

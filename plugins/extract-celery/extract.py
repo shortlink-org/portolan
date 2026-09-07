@@ -21,7 +21,7 @@ import celery_conf as conf
 import celery_conf as routes
 from names import slug, title
 from options import Options
-from producers import Producer, read_producers
+from producers import Producer, read_producers, resolve
 from protocol import Builder, File, Input
 from source import Project
 from celery_tasks import Task, index, read_tasks
@@ -38,6 +38,7 @@ class Queue:
         self.sends: Dict[str, List[Producer]] = {}  # wire name -> its producers, in path order
         self.works: Dict[str, Task] = {}  # wire name -> the task declared here
         self.how: Dict[str, str] = {}  # wire name -> which rule routed it
+        self.schedules: Dict[str, List[conf.Schedule]] = {}  # wire name -> what the clock sets off
 
 
 def extract(input_: Input, opts: Options, b: Builder, cwd: str = "") -> None:
@@ -104,6 +105,32 @@ def extract(input_: Input, opts: Options, b: Builder, cwd: str = "") -> None:
         else:
             b.warn(producer.line, "`%s` is sent as a task no function in this tree declares; recorded as a send with no handler here" % wire)
 
+    # Beat is one more producer: the clock enqueues the task, and the entry
+    # says which task, when, and on which queue.
+    if cfg.beat_in_database:
+        b.warn(svc_id, "%s is installed, so the schedules live in the database and are not read from this tree" % conf.BEAT_IN_DATABASE)
+    for where in cfg.opaque_schedules:
+        b.warn(where, "beat_schedule is not a literal mapping of entries, so what the clock sets off is not read")
+    for entry in cfg.schedules:
+        task = by_name.get(entry.task) if entry.task else None
+        if task is None and entry.ref:
+            key = resolve(project, entry.module, entry.ref)
+            task = by_key.get(key) if key else None
+            if task is None:
+                same = [t for t in tasks if t.short == entry.ref.split(".")[-1]]
+                task = same[0] if len(same) == 1 else None
+        if task is None:
+            b.warn(entry.where, "beat entry `%s` schedules `%s`, which no task in this tree declares" % (entry.name, entry.task or entry.ref))
+            continue
+        if entry.opaque:
+            b.warn(entry.where, "beat entry `%s` has a schedule this reader cannot read as syntax: `%s`" % (entry.name, entry.when))
+        address, how = routes.queue_for(task.name, entry.queue, task.queue, cfg)
+        q = queue(address)
+        q.works[task.name] = task
+        q.how.setdefault(task.name, how)
+        q.schedules.setdefault(task.name, []).append(entry)
+        enqueued.add(task.key)
+
     for task in tasks:
         if task.key in enqueued:
             continue
@@ -117,10 +144,14 @@ def extract(input_: Input, opts: Options, b: Builder, cwd: str = "") -> None:
     flows = []
     for address in sorted(queues):
         q = queues[address]
-        for wire in sorted(q.sends):
+        for wire in sorted(set(q.sends) | set(q.schedules)):
             task = q.works.get(wire)
-            if task is not None:
+            if task is None:
+                continue
+            if wire in q.sends:
                 flows.append(flow_of(svc_id, context, service, q, wire, task, queues))
+            if wire in q.schedules:
+                flows.append(beat_flow_of(svc_id, context, service, q, wire, task, queues))
     flows.sort(key=lambda f: f["slug"])
 
     fragment: Dict[str, Any] = {
@@ -161,13 +192,19 @@ def channel_of(q: Queue, cfg: conf.Config) -> Dict[str, Any]:
     for wire in sorted(set(q.sends) | set(q.works)):
         task = q.works.get(wire)
         producers = q.sends.get(wire, [])
+        schedules = q.schedules.get(wire, [])
         doc = task.doc if task else ""
         if producers:
             messages.append(catalog.message(wire, task.short if task else wire, doc, "send"))
             source = source or producers[0].line
+        elif schedules:
+            messages.append(catalog.message(wire, task.short if task else wire, ("Sent by Celery beat, %s. " % when_of(schedules) + doc).strip(), "send"))
+            source = source or schedules[0].where
         if task:
             handled = "Worked by `%s`, %s." % (task.short, q.how[wire])
-            if not producers:
+            if schedules:
+                handled += " Set off by Celery beat, %s." % when_of(schedules)
+            if not producers and not schedules:
                 handled += " Nothing in this tree enqueues it."
             messages.append(catalog.message(wire, task.short, (handled + " " + doc).strip(), "receive"))
             source = source or task.line
@@ -235,4 +272,73 @@ def flow_of(svc_id: str, context: str, service: str, q: Queue, wire: str, task: 
             ),
         ],
         trigger={"kind": "job", "label": "Celery · " + q.address, "confidence": "high"},
+    )
+
+
+def when_of(schedules: List[conf.Schedule]) -> str:
+    """`cron 0 9 * * * (remind-unpaid-invoices)`, one per entry."""
+    return ", ".join("%s (`%s`)" % (entry.when, entry.name) for entry in schedules)
+
+
+def beat_flow_of(svc_id: str, context: str, service: str, q: Queue, wire: str, task: Task, queues: Dict[str, Queue]) -> Dict[str, Any]:
+    """The flow the clock opens: beat enqueues the task, and the worker runs
+    it. A task the code also enqueues keeps that flow and gets this one beside
+    it, told apart by `-beat`, because what happens when the clock fires and
+    what happens when a request does are two different questions."""
+    slugged = slug(service + "-celery-" + task.short)
+    if any(wire in other.sends for other in queues.values()):
+        slugged += "-beat"
+    if sum(1 for other in queues.values() if wire in other.schedules and wire in other.works) > 1:
+        slugged += "-" + slug(q.address)
+    broker = "celery-" + slug(q.address)
+    schedules = q.schedules[wire]
+    first = schedules[0]
+
+    def handoff(direction: str) -> Dict[str, str]:
+        return {
+            "kind": "job",
+            "transport": "celery",
+            "channel": q.address,
+            "message": wire,
+            "direction": direction,
+        }
+
+    enqueue_note = "Scheduled %s. " % when_of(schedules) + task.doc
+    return catalog.flow(
+        "flow." + slugged,
+        slugged,
+        title(task.short) + " task, on schedule",
+        "Celery beat enqueues `%s` on `%s` %s, and `%s` works it." % (wire, q.address, ", ".join(e.when for e in schedules), task.short),
+        first.module.rel,
+        context,
+        [
+            catalog.participant("celery-beat", "actor", None, "Celery beat"),
+            catalog.participant(svc_id, "service", context),
+            catalog.participant(broker, "broker", None, "Celery · " + q.address),
+        ],
+        [
+            catalog.step(
+                "enqueue",
+                "celery-beat",
+                broker,
+                "call",
+                "enqueue " + task.short,
+                catalog.DECLARED,
+                note=enqueue_note.strip(),
+                line=first.where,
+                handoff=handoff("send"),
+            ),
+            catalog.step(
+                "work",
+                broker,
+                svc_id,
+                "call",
+                task.short,
+                catalog.DECLARED,
+                note="Celery hands `%s` to the worker consuming `%s`, %s." % (wire, q.address, q.how[wire]),
+                line=task.line,
+                handoff=handoff("receive"),
+            ),
+        ],
+        trigger={"kind": "scheduled", "label": ", ".join(e.when for e in schedules), "confidence": "high"},
     )

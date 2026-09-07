@@ -3,6 +3,7 @@
 Three tasks, each placed by a different rule: the first by `CELERY_TASK_ROUTES`
 in the settings, the second by the `queue=` on its own decorator, the third by
 `CELERY_TASK_DEFAULT_QUEUE`, under a name it was given rather than composed.
+A fourth nothing in the code enqueues: the clock does, from config/celery.py.
 """
 
 from celery import shared_task
@@ -21,3 +22,8 @@ def remind_unpaid_invoice(invoice_id):
 @shared_task(name="billing.archive_invoice")
 def archive_invoice(invoice_id):
     """Moves a closed invoice to cold storage."""
+
+
+@shared_task
+def close_stale_drafts():
+    """Voids the drafts nobody issued in a month."""

@@ -38,6 +38,48 @@ class Order(unittest.TestCase):
         self.assertEqual(routes.unmatched(self.cfg, ["other.task"]), ["app.tasks.send", "app.tasks.*"])
 
 
+class Schedules(unittest.TestCase):
+    """A schedule object, as the sentence the page says."""
+
+    def text(self, source):
+        import ast
+
+        from source import Module
+
+        module = Module.__new__(Module)
+        module.tree = ast.parse("x = " + source)
+        return conf.schedule_text(module.tree.body[0].value, module)
+
+    def test_crontab_in_its_own_field_order_with_stars_for_what_is_not_said(self):
+        self.assertEqual(self.text("crontab(minute=0, hour='*/3')"), ("cron 0 */3 * * *", True))
+        self.assertEqual(self.text("crontab(hour=9, minute=30, day_of_week='mon-fri')"), ("cron 30 9 * * mon-fri", True))
+        self.assertEqual(self.text("crontab()"), ("cron * * * * *", True))
+
+    def test_an_interval_in_seconds_or_a_timedelta(self):
+        self.assertEqual(self.text("30.0"), ("every 30s", True))
+        self.assertEqual(self.text("90"), ("every 1m30s", True))
+        self.assertEqual(self.text("timedelta(hours=6)"), ("every 6h", True))
+        self.assertEqual(self.text("timedelta(days=1, hours=12)"), ("every 1d12h", True))
+        self.assertEqual(self.text("schedule(run_every=timedelta(minutes=5))"), ("every 5m", True))
+
+    def test_a_solar_event_and_anything_else_as_written(self):
+        self.assertEqual(self.text("solar('sunset', 59.9, 10.7)"), ("solar sunset", True))
+        self.assertEqual(self.text("crontab(minute=MINUTE)"), ("crontab(minute=MINUTE)", False))
+        self.assertEqual(self.text("every_other_day()"), ("every_other_day()", False))
+
+    def test_the_entries_are_read_off_the_settings_and_the_app_module(self):
+        cfg = conf.read_config(project("billing"), "")
+        self.assertEqual(
+            [(s.name, s.task or s.ref, s.when, s.queue, s.opaque) for s in cfg.schedules],
+            [
+                ("remind-unpaid-invoices", "invoices.tasks.remind_unpaid_invoice", "every 6h", "", False),
+                ("archive-closed-invoices", "billing.archive_invoice", "cron 30 2 * * *", "", False),
+                ("close-stale-drafts", "close_stale_drafts", "cron 0 3 * * *", "", False),
+            ],
+        )
+        self.assertFalse(cfg.beat_in_database)
+
+
 class Reading(unittest.TestCase):
     def test_the_settings_under_the_namespace_the_app_names(self):
         cfg = conf.read_config(project("billing"), "")

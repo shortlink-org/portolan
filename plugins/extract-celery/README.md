@@ -35,6 +35,21 @@ fact about *when* a message leaves that the code states plainly. A
 `countdown=` or an `eta=` is noted too. Every module of the tree is searched:
 services, views, receivers, other tasks.
 
+**A schedule** is what the clock sets off: an entry of `beat_schedule` —
+`CELERY_BEAT_SCHEDULE` in the settings, `app.conf.beat_schedule`, the legacy
+`CELERYBEAT_SCHEDULE` — or a call of `add_periodic_task(schedule, task.s(),
+name=...)`, wherever it is made, usually under `@app.on_after_configure.connect`.
+The entry names the task on the wire, the call names it through its
+signature, and `options={"queue": ...}` or a `queue=` on the call places it
+before the task's own queue. The schedule object is read into a sentence:
+`crontab(minute=0, hour="*/3")` is `cron 0 */3 * * *` in crontab's own field
+order with `*` for what is not said, a number of seconds or a `timedelta` is
+`every 6h`, `solar("sunset", …)` is `solar sunset`; anything else is kept as
+written and said to be unreadable. Beat is a producer like any other, so a
+task only the clock enqueues is not reported as one nothing enqueues. A
+project with `django_celery_beat` installed keeps its schedule in the
+database, which is said once and not read.
+
 **The queue** is decided the way Celery decides it: the `queue=` at the call,
 then the decorator's, then `task_routes` — an exact name before a glob, in the
 order written — then `task_default_queue`, and past all of those Celery's own
@@ -70,11 +85,18 @@ job handoff. This lets a Django endpoint flow that calls `.delay()` or
 `.apply_async()` continue at the corresponding worker step without repeating
 the enqueue.
 
+One more `flow` per task the clock sets off: `celery-beat → broker : call
+enqueue <task>` at the entry, then the same worker step, with the trigger
+`scheduled` and the schedule as its label. A task the code also enqueues
+keeps that flow and gets this one beside it, told apart by `-beat` in the
+slug — what happens when the clock fires and what happens when a request does
+are two different questions, and a reader asks them separately.
+
 ## What it does not read
 
-Named here rather than left to be discovered: **beat schedules** (a move the
-clock makes is not a move, and nothing in the tree runs when it fires),
-**retries, rate limits and time limits**, **the result backend**, **task
+Named here rather than left to be discovered: **a schedule kept in the
+database** (`django_celery_beat`), **the bodies of tasks**, **retries, rate
+limits and time limits**, **the result backend**, **task
 priority**, a **router function** in `task_routes`, a **regex** route, and a
 **worker's `-Q`** — which queues a worker actually consumes is a fact about a
 deployment, not the tree.
