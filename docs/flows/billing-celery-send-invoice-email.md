@@ -1,6 +1,6 @@
 # Send Invoice Email task
 
-*Generated from the portolan catalog · commit `13 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `12 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
 
 - **Id:** `flow.billing-celery-send-invoice-email`
 - **Owner:** [shop](../shop/README.md)
@@ -8,7 +8,7 @@
 - **Root confidence:** high
 - **Source:** [`examples/shop/billing/invoices/services.py`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py)
 
-Celery task `invoices.tasks.send_invoice_email` is enqueued on `billing.mail` and worked by `send_invoice_email`.
+Celery task `invoices.tasks.send_invoice_email` is enqueued on `billing.mail` and worked by `send_invoice_email`. Source-backed cross-protocol continuations are included.
 
 ## Participants
 
@@ -16,6 +16,7 @@ Celery task `invoices.tasks.send_invoice_email` is enqueued on `billing.mail` an
 | --- | --- | --- | --- |
 | `shop.billing` | service | [shop](../shop/README.md) | — |
 | `celery-billing-mail` | broker | — | Celery · billing.mail |
+| `billing-pg` | store | [shop](../shop/README.md) | — |
 
 ## Sequence
 
@@ -24,8 +25,10 @@ sequenceDiagram
     autonumber
     participant p0 as shop.billing
     participant p1 as Celery · billing.mail
+    participant p2 as billing-pg
     p0->>p1: enqueue send_invoice_email
     p1->>p0: send_invoice_email
+    p0->>p2: Invoice.objects.get
 ```
 
 ## Steps
@@ -36,3 +39,6 @@ sequenceDiagram
 <a id="step-work"></a>
 2. **celery-billing-mail** → **shop.billing** — send_invoice_email
    status: declared · [`examples/shop/billing/invoices/tasks.py:18`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/tasks.py#L18) · Celery hands `invoices.tasks.send_invoice_email` to the worker consuming `billing.mail`, routed by task_routes.
+<a id="step-continuation-billing-celery-body-invoices-tasks-send-invoice-email-work-s1"></a>
+3. **shop.billing** → **billing-pg** — Invoice.objects.get
+   status: declared · [`examples/shop/billing/invoices/tasks.py:20`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/tasks.py#L20)

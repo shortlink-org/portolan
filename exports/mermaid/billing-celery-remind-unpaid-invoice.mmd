@@ -2,5 +2,7 @@ sequenceDiagram
     autonumber
     participant p0 as shop.billing
     participant p1 as Celery · billing
+    participant p2 as billing-pg
     p0->>p1: enqueue remind_unpaid_invoice
     p1->>p0: remind_unpaid_invoice
+    p0->>p2: Invoice.objects.filter

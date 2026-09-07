@@ -122,6 +122,7 @@
           "status": "declared",
           "note": "Celery hands `invoices.tasks.remind_unpaid_invoice` to the worker consuming `billing`, the default queue.",
           "line": "examples/shop/billing/invoices/tasks.py:30",
+          "continuesAt": "python:invoices.tasks:remind_unpaid_invoice",
           "handoff": {
             "kind": "job",
             "transport": "celery",
@@ -186,6 +187,7 @@
           "status": "declared",
           "note": "Celery hands `invoices.tasks.send_invoice_email` to the worker consuming `billing.mail`, routed by task_routes.",
           "line": "examples/shop/billing/invoices/tasks.py:18",
+          "continuesAt": "python:invoices.tasks:send_invoice_email",
           "handoff": {
             "kind": "job",
             "transport": "celery",

@@ -945,7 +945,7 @@ views {
 
   dynamic view flow_billing_celery_remind_unpaid_invoice {
     title 'Remind Unpaid Invoice task'
-    description 'Celery task `invoices.tasks.remind_unpaid_invoice` is enqueued on `billing` and worked by `remind_unpaid_invoice`.'
+    description 'Celery task `invoices.tasks.remind_unpaid_invoice` is enqueued on `billing` and worked by `remind_unpaid_invoice`. Source-backed cross-protocol continuations are included.'
     shop.billing -> celery_billing 'enqueue remind_unpaid_invoice' {
       color declared  line dashed  head none
       notes 'Enqueued after the transaction commits, for later, with a countdown or an eta. Nudges the customer about an invoice that has stayed unpaid. — examples/shop/billing/invoices/services.py:50'
@@ -953,6 +953,10 @@ views {
     celery_billing -> shop.billing 'remind_unpaid_invoice' {
       color declared  line dashed  head none
       notes 'Celery hands `invoices.tasks.remind_unpaid_invoice` to the worker consuming `billing`, the default queue. — examples/shop/billing/invoices/tasks.py:30'
+    }
+    shop.billing -> billing_pg 'Invoice.objects.filter' {
+      color declared  line dashed  head none
+      notes 'examples/shop/billing/invoices/tasks.py:32'
     }
   }
 
@@ -963,7 +967,7 @@ views {
 
   dynamic view flow_billing_celery_send_invoice_email {
     title 'Send Invoice Email task'
-    description 'Celery task `invoices.tasks.send_invoice_email` is enqueued on `billing.mail` and worked by `send_invoice_email`.'
+    description 'Celery task `invoices.tasks.send_invoice_email` is enqueued on `billing.mail` and worked by `send_invoice_email`. Source-backed cross-protocol continuations are included.'
     shop.billing -> celery_billing_mail 'enqueue send_invoice_email' {
       color declared  line dashed  head none
       notes 'Enqueued after the transaction commits. Emails the customer the invoice they were asked to pay. — examples/shop/billing/invoices/services.py:49'
@@ -971,6 +975,10 @@ views {
     celery_billing_mail -> shop.billing 'send_invoice_email' {
       color declared  line dashed  head none
       notes 'Celery hands `invoices.tasks.send_invoice_email` to the worker consuming `billing.mail`, routed by task_routes. — examples/shop/billing/invoices/tasks.py:18'
+    }
+    shop.billing -> billing_pg 'Invoice.objects.get' {
+      color declared  line dashed  head none
+      notes 'examples/shop/billing/invoices/tasks.py:20'
     }
   }
 
@@ -1064,6 +1072,10 @@ views {
       color declared  line dashed  head none
       notes 'Celery hands `invoices.tasks.send_invoice_email` to the worker consuming `billing.mail`, routed by task_routes. — examples/shop/billing/invoices/tasks.py:18'
     }
+    shop.billing -> billing_pg 'Invoice.objects.get' {
+      color declared  line dashed  head none
+      notes 'examples/shop/billing/invoices/tasks.py:20'
+    }
     shop.billing -> celery_billing 'enqueue remind_unpaid_invoice' {
       color declared  line dashed  head none
       notes 'in one transaction, after the transaction commits. — examples/shop/billing/invoices/services.py:50'
@@ -1071,6 +1083,10 @@ views {
     celery_billing -> shop.billing 'remind_unpaid_invoice' {
       color declared  line dashed  head none
       notes 'Celery hands `invoices.tasks.remind_unpaid_invoice` to the worker consuming `billing`, the default queue. — examples/shop/billing/invoices/tasks.py:30'
+    }
+    shop.billing -> billing_pg 'Invoice.objects.filter' {
+      color declared  line dashed  head none
+      notes 'examples/shop/billing/invoices/tasks.py:32'
     }
     shop.billing -> bus 'InvoiceIssued' {
       color declared  line dashed  head onormal

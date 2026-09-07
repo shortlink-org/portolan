@@ -890,6 +890,72 @@
           "line": "examples/shop/billing/invoices/services.py:62"
         }
       ]
+    },
+    {
+      "id": "flow.billing-celery-body-invoices-tasks-send-invoice-email",
+      "slug": "billing-celery-body-invoices-tasks-send-invoice-email",
+      "name": "Send invoice email work",
+      "summary": "Emails the customer the invoice they were asked to pay. Observable work performed by the Celery task.",
+      "source": "examples/shop/billing/invoices/tasks.py",
+      "entrypoint": "python:invoices.tasks:send_invoice_email",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "shop.billing",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "billing-pg",
+          "kind": "store",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "shop.billing",
+          "to": "billing-pg",
+          "kind": "call",
+          "label": "Invoice.objects.get",
+          "status": "declared",
+          "line": "examples/shop/billing/invoices/tasks.py:20"
+        }
+      ]
+    },
+    {
+      "id": "flow.billing-celery-body-invoices-tasks-remind-unpaid-invoice",
+      "slug": "billing-celery-body-invoices-tasks-remind-unpaid-invoice",
+      "name": "Remind unpaid invoice work",
+      "summary": "Nudges the customer about an invoice that has stayed unpaid. Observable work performed by the Celery task.",
+      "source": "examples/shop/billing/invoices/tasks.py",
+      "entrypoint": "python:invoices.tasks:remind_unpaid_invoice",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "shop.billing",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "billing-pg",
+          "kind": "store",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "shop.billing",
+          "to": "billing-pg",
+          "kind": "call",
+          "label": "Invoice.objects.filter",
+          "status": "declared",
+          "line": "examples/shop/billing/invoices/tasks.py:32"
+        }
+      ]
     }
   ],
   "adrs": []

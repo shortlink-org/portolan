@@ -4,7 +4,10 @@ here."""
 
 from celery import shared_task
 
+from .models import Invoice
+
 
 @shared_task
 def send_invoice_email(invoice_id):
     """Emails the customer the invoice they were asked to pay."""
+    Invoice.objects.get(id=invoice_id)

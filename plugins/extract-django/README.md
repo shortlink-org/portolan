@@ -207,6 +207,39 @@ a hop, and a branch ending in a `return` or a `raise` is terminal; a `for`, a
 `while`, a `with transaction.atomic()` and an `except` are a note on the steps
 inside them. `await` is transparent. Every step is `declared`.
 
+The worker receive is also a source seam. When `extract-celery` is enabled,
+its transport flow continues into the task function body read here, so one
+request flow can show `HTTP → enqueue → worker → database/API` without
+repeating the enqueue. The task-body fragment is source-backed and disappears
+as a standalone fragment once composition consumes it.
+
+**Project wrappers.** Some repositories deliberately put a semantic boundary
+around infrastructure or a business integration. `flowWrappers` maps that
+callable's fully qualified Python name to the step the reader should show,
+instead of expanding its implementation on every call:
+
+```json
+{
+  "flowWrappers": {
+    "util.logger.send_log": {
+      "label": "Record application log",
+      "technical": true
+    },
+    "mailer.client.send": {
+      "label": "Send email",
+      "target": "messaging.mailer"
+    }
+  }
+}
+```
+
+`technical: true` keeps one counted step per flow (`×N`) rather than flooding
+every branch with the same logger, metric or tracing implementation. It does
+not silently discard the calls: their count, wrapper name and first source
+line remain visible. A wrapper without `technical` is a normal semantic step
+and is kept at every call site. `target` is an optional catalog service id;
+without it the wrapper is shown as an operation inside the current service.
+
 **Peer.** `clients/<peer>/` holds the class that calls and the document it was
 vendored from. The code names the verb and the route —
 `self._http.post("/v1/quotes")`, httpx or requests alike — and the document

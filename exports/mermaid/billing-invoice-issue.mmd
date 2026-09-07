@@ -13,6 +13,8 @@ sequenceDiagram
     p1->>p3: Invoice.save
     p1->>p4: enqueue send_invoice_email
     p4->>p1: send_invoice_email
+    p1->>p3: Invoice.objects.get
     p1->>p5: enqueue remind_unpaid_invoice
     p5->>p1: remind_unpaid_invoice
+    p1->>p3: Invoice.objects.filter
     p1-)p6: InvoiceIssued

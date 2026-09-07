@@ -1,6 +1,6 @@
 # Example estate
 
-*Generated from the portolan catalog · commit `13 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `12 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
 
 
 ## Contexts
@@ -52,8 +52,8 @@
 | [Query shipment](flows/bff-query-shipment.md) | [storefront](storefront/README.md) | — |
 | [Query viewer](flows/bff-query-viewer.md) | [storefront](storefront/README.md) | Who the request belongs to. Auth is asked on every call rather than a token being read here: this service holds no key and could not tell a forged one from a live one. |
 | [Subscription order status](flows/bff-subscription-order-status.md) | [storefront](storefront/README.md) | Every move of one order, for as long as somebody is watching it. |
-| [Remind Unpaid Invoice task](flows/billing-celery-remind-unpaid-invoice.md) | [shop](shop/README.md) | Celery task `invoices.tasks.remind_unpaid_invoice` is enqueued on `billing` and worked by `remind_unpaid_invoice`. |
-| [Send Invoice Email task](flows/billing-celery-send-invoice-email.md) | [shop](shop/README.md) | Celery task `invoices.tasks.send_invoice_email` is enqueued on `billing.mail` and worked by `send_invoice_email`. |
+| [Remind Unpaid Invoice task](flows/billing-celery-remind-unpaid-invoice.md) | [shop](shop/README.md) | Celery task `invoices.tasks.remind_unpaid_invoice` is enqueued on `billing` and worked by `remind_unpaid_invoice`. Source-backed cross-protocol continuations are included. |
+| [Send Invoice Email task](flows/billing-celery-send-invoice-email.md) | [shop](shop/README.md) | Celery task `invoices.tasks.send_invoice_email` is enqueued on `billing.mail` and worked by `send_invoice_email`. Source-backed cross-protocol continuations are included. |
 | [Close invoice on payment](flows/billing-close-invoice-on-payment.md) | [shop](shop/README.md) | Closes the invoice for an order once the ledger says the money arrived. |
 | [Invoice create](flows/billing-invoice-create.md) | [shop](shop/README.md) | Draws up a draft invoice for an order, with a line for each thing sold. |
 | [Invoice destroy](flows/billing-invoice-destroy.md) | [shop](shop/README.md) | Ends an invoice nobody is going to pay. |

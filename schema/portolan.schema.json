@@ -1456,6 +1456,41 @@
             }
           ]
         },
+        "flowWrappers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "label": {
+                "type": "string",
+                "description": "Business-facing label shown instead of expanding the wrapper's implementation. Defaults to the callable name, titled."
+              },
+              "target": {
+                "type": "string",
+                "description": "Service id the wrapper calls. Omit for a semantic operation inside this service."
+              },
+              "technical": {
+                "type": "boolean",
+                "default": false,
+                "description": "Collapse every call to this wrapper in one flow into one counted step."
+              }
+            }
+          },
+          "description": "Project callables that form a meaningful flow boundary, keyed as module.function or module.Class.method. Their internals are replaced by one semantic step; technical wrappers are also deduplicated per flow.",
+          "examples": [
+            {
+              "util.logger.send_log": {
+                "label": "Record application log",
+                "technical": true
+              },
+              "mailer.client.send": {
+                "label": "Send email",
+                "target": "messaging.mailer"
+              }
+            }
+          ]
+        },
         "source": {
           "type": "string",
           "description": "The directory the applications are looked for in, relative to the input root.",

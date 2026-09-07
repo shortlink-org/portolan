@@ -85,6 +85,12 @@ job handoff. This lets a Django endpoint flow that calls `.delay()` or
 `.apply_async()` continue at the corresponding worker step without repeating
 the enqueue.
 
+The worker step also carries the task function's source entrypoint. When the
+Django extractor reads the same tree, enrichment appends the task body's
+database, event and API effects after that receive step. This produces one
+continuous synchronous-to-asynchronous scenario while keeping Celery as the
+owner of queue and routing facts.
+
 One more `flow` per task the clock sets off: `celery-beat → broker : call
 enqueue <task>` at the entry, then the same worker step, with the trigger
 `scheduled` and the schedule as its label. A task the code also enqueues
@@ -95,7 +101,8 @@ are two different questions, and a reader asks them separately.
 ## What it does not read
 
 Named here rather than left to be discovered: **a schedule kept in the
-database** (`django_celery_beat`), **the bodies of tasks**, **retries, rate
+database** (`django_celery_beat`), **task bodies when no Django extractor is
+paired with this plugin**, **retries, rate
 limits and time limits**, **the result backend**, **task
 priority**, a **router function** in `task_routes`, a **regex** route, and a
 **worker's `-Q`** — which queues a worker actually consumes is a fact about a

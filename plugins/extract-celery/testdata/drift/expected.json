@@ -154,6 +154,7 @@
           "status": "declared",
           "note": "Celery hands `jobs.tasks.build_report` to the worker consuming `reports.default`, the default queue.",
           "line": "plugins/extract-celery/testdata/drift/jobs/tasks.py:9",
+          "continuesAt": "python:jobs.tasks:build_report",
           "handoff": {
             "kind": "job",
             "transport": "celery",
@@ -224,6 +225,7 @@
           "status": "declared",
           "note": "Celery hands `jobs.tasks.build_report` to the worker consuming `rebuild`, named at the call.",
           "line": "plugins/extract-celery/testdata/drift/jobs/tasks.py:9",
+          "continuesAt": "python:jobs.tasks:build_report",
           "handoff": {
             "kind": "job",
             "transport": "celery",
@@ -288,6 +290,7 @@
           "status": "declared",
           "note": "Celery hands `jobs.tasks.deliver_report` to the worker consuming `reports.default`, the default queue.",
           "line": "plugins/extract-celery/testdata/drift/jobs/tasks.py:14",
+          "continuesAt": "python:jobs.tasks:deliver_report",
           "handoff": {
             "kind": "job",
             "transport": "celery",

@@ -47,6 +47,11 @@ class Task:
     def doc(self) -> str:
         return doc(self.node)
 
+    @property
+    def entrypoint(self) -> str:
+        """Stable source seam shared by the task transport and body readers."""
+        return "python:%s:%s" % (package_of(self.module), self.short)
+
 
 def read_tasks(project: Project) -> List[Task]:
     out = []

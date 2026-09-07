@@ -97,6 +97,7 @@ def extract(input_: Input, opts: Options, b: Builder, cwd: str = "") -> None:
             stores=store_aliases,
             peers=dict(opts.peers),
             events=dict(opts.events),
+            flow_wrappers=dict(opts.flow_wrappers),
             settings=opts.settings,
         ),
         project,
@@ -124,6 +125,7 @@ def extract(input_: Input, opts: Options, b: Builder, cwd: str = "") -> None:
             flow = reader.policy_flow(agg, module, node, decorator)
             if flow is not None:
                 found_flows.append(flow)
+    found_flows.extend(reader.task_flows())
 
     for agg in aggregates:
         life = lifecycle.read(agg, known_events, b)

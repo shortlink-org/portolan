@@ -71,6 +71,7 @@ class Options:
     stores: Dict[str, str] = dc_field(default_factory=dict)
     peers: Dict[str, str] = dc_field(default_factory=dict)
     events: Dict[str, str] = dc_field(default_factory=dict)
+    flow_wrappers: Dict[str, object] = dc_field(default_factory=dict)
     settings: str = ""  # the Django settings module Celery is configured from
 
 
@@ -84,6 +85,7 @@ class Draft:
         self.sinks: List[List[Dict[str, object]]] = []
         self.n = 0
         self.notes: List[str] = []
+        self.technical_wrappers: Dict[str, Tuple[Dict[str, object], int]] = {}
 
     def lane(self, id_: str, kind: str, context: Optional[str], label: str = "") -> str:
         if not any(l["id"] == id_ for l in self.lanes):
@@ -147,6 +149,29 @@ class Draft:
         self.n += 1
         self.sink().append(catalog.alt("alt%d" % self.n, branches))
 
+    def add_wrapper(self, key: str, label: str, target: str, technical: bool, service: str, line: str) -> None:
+        """Keep a configured project boundary semantic and compact repeated
+        infrastructure calls without discarding the fact that they happen."""
+        if technical and key in self.technical_wrappers:
+            step, count = self.technical_wrappers[key]
+            count += 1
+            self.technical_wrappers[key] = (step, count)
+            step["label"] = "%s ×%d" % (label, count)
+            step["note"] = "Project wrapper `%s`; %d call sites are collapsed in this flow." % (key, count)
+            return
+        to = target or service
+        kind = "rpc" if target and target != service else "call"
+        self.add(
+            service,
+            to,
+            kind,
+            label,
+            note="Project wrapper `%s`.%s" % (key, " Technical calls are collapsed." if technical else ""),
+            line=line,
+        )
+        if technical:
+            self.technical_wrappers[key] = (self.sink()[-1], 1)
+
 
 def sentence(text: str) -> str:
     words = text.replace("-", " ").replace("_", " ").strip()
@@ -177,6 +202,14 @@ class CallableTarget:
     @property
     def key(self) -> Tuple[str, str, str]:
         return (self.module.dotted, self.owner.node.name if self.owner is not None else "", getattr(self.node, "name", ""))
+
+    @property
+    def qualified(self) -> str:
+        parts = [self.module.dotted]
+        if self.owner is not None:
+            parts.append(self.owner.node.name)
+        parts.append(getattr(self.node, "name", ""))
+        return ".".join(part for part in parts if part)
 
 
 class Frame:
@@ -384,6 +417,36 @@ class FlowReader:
             d.steps,
         )
 
+    def task_flows(self) -> List[Dict[str, object]]:
+        """Source-backed continuations for Celery worker bodies.
+
+        The Celery extractor owns transport truth. These fragments start at a
+        shared source seam, so enrichment appends observable task work after
+        the worker receive without replaying the enqueue.
+        """
+        out = []
+        for task in celery_tasks.read_tasks(self.project):
+            d = Draft()
+            self.service_lane(d)
+            self.walk(d, Frame(task.module, self.module_env(task.module)), task.node.body, 0, [])
+            if not d.steps:
+                continue
+            ident = "%s-celery-body-%s" % (self.opts.service, slug(task.name))
+            out.append(
+                catalog.flow(
+                    "flow." + ident,
+                    ident,
+                    sentence(task.short) + " work",
+                    (task.doc + " Observable work performed by the Celery task.").strip(),
+                    task.module.rel,
+                    self.opts.context,
+                    d.lanes,
+                    d.steps,
+                    entrypoint=task.entrypoint,
+                )
+            )
+        return out
+
     def trigger(self, module: Module, decorator: ast.Call) -> Optional[Tuple[str, str, str]]:
         """What a receiver reacts to: the signal it is given, resolved to an
         event of this service, or placed by the manifest's `events`."""
@@ -458,6 +521,10 @@ class FlowReader:
         elif isinstance(stmt, ast.If):
             self.choice(d, frame, stmt, depth, ran)
         elif isinstance(stmt, (ast.For, ast.AsyncFor)):
+            # Creating or advancing an iterable may itself perform the
+            # observable work: project wrappers commonly return generators
+            # around streaming HTTP responses.
+            self.value(d, frame, stmt.iter, depth, ran)
             d.enter("for each %s" % condition(stmt.target))
             self.walk(d, frame, stmt.body, depth, ran)
             d.leave()
@@ -610,6 +677,10 @@ class FlowReader:
         # publish operation.
         called = self.callable_target(frame, node.func, holder)
         if called is not None and (holder is None or holder[0] == "object"):
+            wrapper = self.wrapper(called)
+            if wrapper is not None:
+                self.wrapper_step(d, called, wrapper, line)
+                return None
             return self.inline_callable(d, frame, called, positional, named, depth, ran)
 
         # An event handed to anything is the event leaving for the bus, which
@@ -633,6 +704,9 @@ class FlowReader:
             return ("model", model)
         if last in self.clients:
             return ("client", self.clients[last])
+        constructed = self.constructed(frame.module, node)
+        if constructed is not None:
+            return constructed
 
         # The ORM: a manager on a model class, or a write on an instance.
         parts = name.split(".")
@@ -667,6 +741,10 @@ class FlowReader:
 
         called = self.callable_target(frame, node.func, holder)
         if called is not None:
+            wrapper = self.wrapper(called)
+            if wrapper is not None:
+                self.wrapper_step(d, called, wrapper, line)
+                return None
             return self.inline_callable(d, frame, called, positional, named, depth, ran)
 
         if holder is not None and holder[0] == "model":
@@ -701,6 +779,27 @@ class FlowReader:
         self.bind_arguments(inner, target.node, positional, named, target.owner is not None)
         self.walk(d, inner, getattr(target.node, "body", []), depth + 1, ran)
         return inner.returned
+
+    def wrapper(self, target: CallableTarget) -> Optional[Dict[str, object]]:
+        configured = self.opts.flow_wrappers.get(target.qualified)
+        return configured if isinstance(configured, dict) else None
+
+    def wrapper_step(self, d: Draft, target: CallableTarget, wrapper: Dict[str, object], line: str) -> None:
+        configured_label = wrapper.get("label")
+        label = configured_label if isinstance(configured_label, str) and configured_label else sentence(getattr(target.node, "name", ""))
+        configured_target = wrapper.get("target")
+        target_id = configured_target if isinstance(configured_target, str) else ""
+        if target_id:
+            context = target_id.split(".", 1)[0] if "." in target_id else None
+            d.lane(target_id, "service", context)
+        d.add_wrapper(
+            target.qualified,
+            label,
+            target_id,
+            wrapper.get("technical") is True,
+            self.opts.svc_id,
+            line,
+        )
 
     def bind_arguments(self, frame: Frame, node: ast.AST, positional, named, method: bool) -> None:
         args = getattr(node, "args", None)

@@ -182,6 +182,106 @@ class WidgetView:
 
         self.assertEqual([step["label"] for step in flow["steps"]], ["widget_get", "Widget.objects.get"])
 
+    def test_configured_wrappers_are_semantic_and_technical_ones_are_counted(self):
+        views = module(
+            "app.views",
+            """
+from app.helpers import record_log, send_mail
+
+class StatusView:
+    def post(self, request):
+        record_log("started")
+        send_mail(request.email)
+        record_log("finished")
+""",
+        )
+        helpers = module(
+            "app.helpers",
+            """
+from requests import post
+
+def record_log(message):
+    post("https://logger.example/logs", json={"message": message})
+
+def send_mail(email):
+    post("https://mailer.example/messages", json={"email": email})
+""",
+        )
+        reader = flows.FlowReader(
+            flows.Options(
+                context="app",
+                svc_id="app.web",
+                service="web",
+                store="",
+                flow_wrappers={
+                    "app.helpers.record_log": {"label": "Record application log", "technical": True},
+                    "app.helpers.send_mail": {"label": "Send email", "target": "messaging.mailer"},
+                },
+            ),
+            Project([views, helpers]),
+            [],
+            [],
+            [],
+            [],
+            {},
+            lambda path: path,
+            Warnings(),
+        )
+        view = views.classes()[0]
+        handler = next(node for node in view.body if getattr(node, "name", "") == "post")
+        endpoint = SimpleNamespace(id="status_post", module=views, node=handler, view="StatusView", doc="", use_cases=[])
+
+        flow = reader.endpoint_flow(endpoint)
+
+        self.assertEqual(
+            [step["label"] for step in flow["steps"]],
+            ["status_post", "Record application log ×2", "Send email"],
+        )
+        self.assertEqual(flow["steps"][1]["from"], "app.web")
+        self.assertEqual(flow["steps"][1]["to"], "app.web")
+        self.assertIn("2 call sites are collapsed", flow["steps"][1]["note"])
+        self.assertEqual(flow["steps"][2]["to"], "messaging.mailer")
+        self.assertNotIn("logger.example", [lane.get("label") for lane in flow["participants"]])
+
+    def test_task_body_is_a_source_backed_continuation(self):
+        tasks = module(
+            "app.tasks",
+            """
+from celery import shared_task
+from requests import post
+
+class Refresher:
+    def run(self):
+        for item in self.items():
+            pass
+
+    def items(self):
+        return post("https://peer.example/refresh")
+
+@shared_task(name="app.refresh")
+def refresh():
+    refresher = Refresher()
+    refresher.run()
+""",
+        )
+        reader = flows.FlowReader(
+            flows.Options(context="app", svc_id="app.web", service="web", store=""),
+            Project([tasks]),
+            [],
+            [],
+            [],
+            [],
+            {},
+            lambda path: path,
+            Warnings(),
+        )
+
+        found = reader.task_flows()
+
+        self.assertEqual(len(found), 1)
+        self.assertEqual(found[0]["entrypoint"], "python:app.tasks:refresh")
+        self.assertEqual([step["label"] for step in found[0]["steps"]], ["POST /refresh"])
+
 
 if __name__ == "__main__":
     unittest.main()

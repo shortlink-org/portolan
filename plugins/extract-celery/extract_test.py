@@ -118,6 +118,7 @@ class Billing(unittest.TestCase):
             [(step["handoff"]["direction"], step["handoff"]["message"]) for step in flow["steps"]],
             [("send", "invoices.tasks.send_invoice_email"), ("receive", "invoices.tasks.send_invoice_email")],
         )
+        self.assertEqual(flow["steps"][1]["continuesAt"], "python:invoices.tasks:send_invoice_email")
 
 
 class Drift(unittest.TestCase):
