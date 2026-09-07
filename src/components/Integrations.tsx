@@ -176,7 +176,11 @@ export function Integrations({ groups }: { groups: IntegrationGroup[] }) {
                     view contract <ExternalLink size={12} />
                   </Link>
                 ) : internalPath ? (
-                  <Link to={internalPath} className="btn-quiet shrink-0">
+                  <Link
+                    to={internalPath}
+                    data-peek={group.service?.id}
+                    className="btn-quiet shrink-0"
+                  >
                     view service
                   </Link>
                 ) : null}

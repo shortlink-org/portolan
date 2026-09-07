@@ -71,6 +71,7 @@ function Row({ link }: { link: Backlink }) {
         <Link
           to={to}
           data-nav-item
+          data-peek={link.id}
           className="mono shrink-0 rounded-control"
           style={
             link.kind === "event" ? { color: KIND_COLOR.event } : undefined
@@ -180,6 +181,7 @@ export function WhatLinksHere({
               <Link
                 key={`${link.kind}:${link.id}:${link.name}`}
                 to={to}
+                data-peek={link.id}
                 className="chip border-line-strong hover:text-ink"
                 title={title}
               >

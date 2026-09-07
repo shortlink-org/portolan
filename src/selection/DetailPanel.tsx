@@ -86,6 +86,7 @@ function SelectLink({ id, children }: { id: string; children: ReactNode }) {
       type="button"
       onClick={() => select(id, "panel")}
       title={id}
+      data-peek={id}
       className="mono trunc rounded-control text-left text-accent hover:underline"
     >
       {children}

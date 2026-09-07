@@ -60,7 +60,11 @@ function MessageRow({
             {message.direction}
           </span>
           {published ? (
-            <Link to={published.path} className="mono text-accent hover:underline">
+            <Link
+              to={published.path}
+              data-peek={published.event.id}
+              className="mono text-accent hover:underline"
+            >
               {message.name}
             </Link>
           ) : (

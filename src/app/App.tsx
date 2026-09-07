@@ -54,6 +54,7 @@ import { DensityProvider } from "./density";
 import { useNarrow, usePhone } from "./responsive";
 import { ShortcutsSheet, useShortcuts } from "./shortcuts";
 import { Toaster } from "./toast";
+import { PeekLayer } from "../peek/PeekLayer";
 import { useUiStore } from "./ui-store";
 import { ForgeAccessProvider } from "./forge-access";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -411,6 +412,9 @@ function Shell() {
           in the sidebar: a pin can be taken from a page whose tree is folded
           away to a 48px rail. */}
       <Toaster />
+      {/* A card on hover, for any row that names an entity. Mounted once,
+          here, because the rows it answers for are on every page. */}
+      <PeekLayer />
     </div>
   );
 }
