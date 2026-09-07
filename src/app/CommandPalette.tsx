@@ -8,7 +8,7 @@
 // Rows carry the same kind icons as the sidebar tree, and the same taxonomy
 // narrows the list: "e: item" searches events, "vo: money" value objects.
 
-import { useMemo, useRef, useState } from "react";
+import { Fragment, useMemo, useRef, useState } from "react";
 import {
   Combobox,
   ComboboxInput,
@@ -20,6 +20,9 @@ import { Modal } from "../components/Overlay";
 import { catalog } from "../data";
 import { paletteItems, search } from "../lib/palette";
 import type { PaletteHit, PaletteItem } from "../lib/palette";
+import { recentSections } from "../lib/palette-recent";
+import { useTrailStore } from "../trail/store";
+import { usePinsStore } from "./pins";
 import { KIND_LABEL, KIND_PREFIXES, canonicalPrefix } from "../lib/kinds";
 import type { Kind } from "../lib/kinds";
 import { ctxStyle } from "../lib/context-color";
@@ -41,6 +44,67 @@ const HINT_KINDS: Kind[] = [
   "query",
 ];
 
+/** One row of the list, drawn the same whether it was searched for or recalled. */
+function Row({ hit: { item, excerpt } }: { hit: PaletteHit }) {
+  return (
+    <ComboboxOption
+      value={{ item, ...(excerpt ? { excerpt } : {}) }}
+      /* The 2px edge is always drawn and only changes colour, so the row
+         under the cursor never nudges the text beside it. */
+      className={({ focus }) =>
+        `flex w-full cursor-pointer flex-col gap-0.5 border-l-2 px-4 py-1.5 text-left t-micro transition-colors ${
+          focus ? "bg-raised border-accent" : "border-transparent"
+        }`
+      }
+    >
+      {() => (
+        <>
+          <span className="flex w-full items-center gap-2">
+            <span className="flex shrink-0" style={ctxStyle(item.context)}>
+              <KindIcon
+                kind={item.kind}
+                {...(item.context ? { contextId: item.context } : {})}
+              />
+            </span>
+            <span
+              className="mono shrink-0"
+              title={item.name}
+              style={
+                item.kind === "event"
+                  ? { color: "var(--kind-event)" }
+                  : undefined
+              }
+            >
+              {item.name}
+            </span>
+            <span className="mono truncate text-muted" title={item.detail}>
+              {item.detail}
+            </span>
+            <span className="mono ml-auto flex shrink-0 items-center gap-2 text-muted">
+              {item.badge ? (
+                <span className="rounded-[4px] border px-1 border-line">
+                  {item.badge}
+                </span>
+              ) : null}
+              <span className="label">{KIND_LABEL[item.kind]}</span>
+            </span>
+          </span>
+          {/* Why this row is here. Sans, not mono: the line above is
+              identifiers, this one is a sentence, and the two must not be
+              mistaken for each other. */}
+          {excerpt ? (
+            <span className="w-full truncate pl-6 text-xs text-muted">
+              {excerpt.before}
+              <span style={{ color: "var(--accent)" }}>{excerpt.match}</span>
+              {excerpt.after}
+            </span>
+          ) : null}
+        </>
+      )}
+    </ComboboxOption>
+  );
+}
+
 export function CommandPalette({
   open,
   onClose,
@@ -57,6 +121,20 @@ export function CommandPalette({
 
   const result = useMemo(() => search(ITEMS, open ? query : ""), [open, query]);
   const results = open ? result.hits : [];
+
+  // Under an empty input: where the reader has been and what they pinned,
+  // when they have either. The full index is what a reader with neither
+  // gets, and what typing anything switches back to.
+  const visits = useTrailStore((s) => s.visits);
+  const pins = usePinsStore((s) => s.pins);
+  const sections = useMemo(() => {
+    if (!open || query.trim() !== "") return null;
+    const found = recentSections(visits, pins, ITEMS, location.pathname);
+    return found.length > 0 ? found : null;
+  }, [open, query, visits, pins, location.pathname]);
+  const shown = sections
+    ? sections.reduce((n, s) => n + s.hits.length, 0)
+    : results.length;
 
   const close = (): void => {
     onClose();
@@ -168,7 +246,7 @@ export function CommandPalette({
             )}
           </div>
 
-          {results.length === 0 ? (
+          {shown === 0 ? (
             <div className="glow mono px-4 py-8 text-center text-muted">
               no match
             </div>
@@ -177,74 +255,22 @@ export function CommandPalette({
                state to render, and the modal around it is what "closed" means
                here. */
             <ComboboxOptions static className="min-h-0 flex-1 overflow-y-auto">
-              {results.map(({ item, excerpt }) => (
-                <ComboboxOption
-                  key={`${item.kind}:${item.id}`}
-                  value={{ item, ...(excerpt ? { excerpt } : {}) }}
-                  /* The 2px edge is always drawn and only changes colour, so
-                     the row under the cursor never nudges the text beside it. */
-                  className={({ focus }) =>
-                    `flex w-full cursor-pointer flex-col gap-0.5 border-l-2 px-4 py-1.5 text-left t-micro transition-colors ${
-                      focus ? "bg-raised border-accent" : "border-transparent"
-                    }`
-                  }
-                >
-                  {() => (
-                    <>
-                      <span className="flex w-full items-center gap-2">
-                        <span
-                          className="flex shrink-0"
-                          style={ctxStyle(item.context)}
-                        >
-                          <KindIcon
-                            kind={item.kind}
-                            {...(item.context
-                              ? { contextId: item.context }
-                              : {})}
-                          />
-                        </span>
-                        <span
-                          className="mono shrink-0"
-                          title={item.name}
-                          style={
-                            item.kind === "event"
-                              ? { color: "var(--kind-event)" }
-                              : undefined
-                          }
-                        >
-                          {item.name}
-                        </span>
-                        <span
-                          className="mono truncate text-muted"
-                          title={item.detail}
-                        >
-                          {item.detail}
-                        </span>
-                        <span className="mono ml-auto flex shrink-0 items-center gap-2 text-muted">
-                          {item.badge ? (
-                            <span className="rounded-[4px] border px-1 border-line">
-                              {item.badge}
-                            </span>
-                          ) : null}
-                          <span className="label">{KIND_LABEL[item.kind]}</span>
-                        </span>
-                      </span>
-                      {/* Why this row is here. Sans, not mono: the line above
-                          is identifiers, this one is a sentence, and the two
-                          must not be mistaken for each other. */}
-                      {excerpt ? (
-                        <span className="w-full truncate pl-6 text-xs text-muted">
-                          {excerpt.before}
-                          <span style={{ color: "var(--accent)" }}>
-                            {excerpt.match}
-                          </span>
-                          {excerpt.after}
-                        </span>
-                      ) : null}
-                    </>
-                  )}
-                </ComboboxOption>
-              ))}
+              {sections
+                ? sections.map((section) => (
+                    <Fragment key={section.title}>
+                      {/* A heading, not an option: ↑↓ skip it, and the
+                          list reads as two short lists rather than one. */}
+                      <div className="label sticky top-0 z-10 px-4 pt-2 pb-1 bg-canvas">
+                        {section.title}
+                      </div>
+                      {section.hits.map((hit) => (
+                        <Row key={`${hit.item.kind}:${hit.item.id}`} hit={hit} />
+                      ))}
+                    </Fragment>
+                  ))
+                : results.map((hit) => (
+                    <Row key={`${hit.item.kind}:${hit.item.id}`} hit={hit} />
+                  ))}
             </ComboboxOptions>
           )}
         </Combobox>
@@ -254,8 +280,10 @@ export function CommandPalette({
           <span>⏎ select</span>
           <span>esc close</span>
           <span className="ml-auto">
-            {results.length} shown
-            {result.truncated > 0 ? ` · +${result.truncated} more` : ""}
+            {shown} shown
+            {!sections && result.truncated > 0
+              ? ` · +${result.truncated} more`
+              : ""}
           </span>
         </div>
       </div>
