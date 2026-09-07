@@ -93,6 +93,19 @@ function compose() {
         description:
           "Globs of the catalog fragments that make up the estate. They are merged, then validated as a union, so a fragment naming a peer it does not own is normal rather than broken.",
       },
+      defaultCatalog: {
+        type: "string",
+        minLength: 1,
+        pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+        description: "Catalog profile selected when the URL does not name one.",
+      },
+      catalogs: {
+        type: "array",
+        minItems: 1,
+        items: { $ref: "#/$defs/catalogProfile" },
+        description:
+          "Independent presentations of the available fragments. Each profile is merged, enriched and validated on its own.",
+      },
       projects: {
         type: "array",
         items: { $ref: "#/$defs/project" },
@@ -122,6 +135,37 @@ function compose() {
       },
     },
     $defs: {
+      catalogProfile: {
+        type: "object",
+        additionalProperties: false,
+        required: ["id", "title", "sources", "contexts", "projects"],
+        properties: {
+          id: {
+            type: "string",
+            minLength: 1,
+            pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            description: "Stable profile id used in URLs and generator steps.",
+          },
+          title: { type: "string", minLength: 1 },
+          sources: {
+            type: "array",
+            minItems: 1,
+            items: { type: "string" },
+            description: "Catalog fragment globs merged for this profile.",
+          },
+          contexts: {
+            type: "array",
+            minItems: 1,
+            items: { type: "string", minLength: 1 },
+            description: "Top-level catalog groups visible in this profile.",
+          },
+          projects: {
+            type: "array",
+            items: { type: "string", minLength: 1 },
+            description: "Project ids belonging to this profile.",
+          },
+        },
+      },
       project: {
         type: "object",
         additionalProperties: false,
@@ -255,6 +299,15 @@ function step(phase) {
         enum: names,
         description: "A plugin declared above, one that belongs in this phase.",
       },
+      ...(!reads
+        ? {
+            catalog: {
+              type: "string",
+              minLength: 1,
+              description: "Catalog profile supplied to this generator.",
+            },
+          }
+        : {}),
       ...(reads
         ? {
             in: {

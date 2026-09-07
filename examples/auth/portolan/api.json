@@ -17,7 +17,7 @@
           "readme": "",
           "provides": [
             {
-              "id": "auth.v1.Users",
+              "id": "auth.v1",
               "methods": [
                 {
                   "name": "registerUser",
@@ -43,6 +43,31 @@
                   "http": {
                     "method": "POST",
                     "path": "/v1/users/me/password"
+                  }
+                },
+                {
+                  "name": "login",
+                  "request": "LoginRequest",
+                  "response": "Session",
+                  "http": {
+                    "method": "POST",
+                    "path": "/v1/sessions"
+                  }
+                },
+                {
+                  "name": "validateSession",
+                  "response": "SessionInfo",
+                  "http": {
+                    "method": "GET",
+                    "path": "/v1/sessions/current"
+                  }
+                },
+                {
+                  "name": "logout",
+                  "response": "204",
+                  "http": {
+                    "method": "DELETE",
+                    "path": "/v1/sessions/current"
                   }
                 }
               ],
@@ -112,40 +137,7 @@
                       "doc": ""
                     }
                   ]
-                }
-              ]
-            },
-            {
-              "id": "auth.v1.Sessions",
-              "methods": [
-                {
-                  "name": "login",
-                  "request": "LoginRequest",
-                  "response": "Session",
-                  "http": {
-                    "method": "POST",
-                    "path": "/v1/sessions"
-                  }
                 },
-                {
-                  "name": "validateSession",
-                  "response": "SessionInfo",
-                  "http": {
-                    "method": "GET",
-                    "path": "/v1/sessions/current"
-                  }
-                },
-                {
-                  "name": "logout",
-                  "response": "204",
-                  "http": {
-                    "method": "DELETE",
-                    "path": "/v1/sessions/current"
-                  }
-                }
-              ],
-              "source": "examples/auth/internal/transport/http/gen/openapi.yaml",
-              "messages": [
                 {
                   "name": "LoginRequest",
                   "fields": [
@@ -173,21 +165,6 @@
                       "name": "expiresAt",
                       "type": "string (date-time)",
                       "doc": ""
-                    }
-                  ]
-                },
-                {
-                  "name": "Error",
-                  "fields": [
-                    {
-                      "name": "message",
-                      "type": "string",
-                      "doc": "One sentence, always present. A client that shows the user a single\nline shows this one."
-                    },
-                    {
-                      "name": "reasons",
-                      "type": "[]string",
-                      "doc": "Optional. One entry per rule the request broke, present only where rules\napply - a 404 or a 500 has none. Each entry names its own field, so\nit can be shown on its own without knowing what it referred to."
                     }
                   ]
                 },

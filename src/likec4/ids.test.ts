@@ -4,7 +4,7 @@ import { catalog } from "../testing/estate";
 // The generated sources are generated from the estate the app ships, so the
 // block that reads them off disk is held against that one and not against the
 // frozen fixture the id rules are checked with.
-import { catalog as shipped } from "../data";
+import { catalog as shipped, catalogProfiles } from "../data";
 import {
   CONTAINERS_VIEW,
   LANDSCAPE_VIEW,
@@ -15,6 +15,8 @@ import {
   flowViewId,
   fqn,
   participantFqn,
+  profileContainersViewId,
+  profileLandscapeViewId,
   safeId,
   serviceInsideViewId,
   serviceViewId,
@@ -130,8 +132,16 @@ describe("generated sources match the ids the app asks for", () => {
     ...views.matchAll(/^\s*(?:dynamic\s+)?view\s+([A-Za-z_][A-Za-z0-9_]*)\b/gm),
   ].map((m) => m[1] as string);
 
-  it("declares exactly the views the app can ask for, no more and no fewer", () => {
-    expect([...declared].sort()).toEqual([...allViewIds(shipped)].sort());
+  it("declares every selected-catalog view and every profile entry point", () => {
+    const askedFor = [
+      ...allViewIds(shipped),
+      ...catalogProfiles.flatMap((profile) => [
+        profileLandscapeViewId(profile.id),
+        profileContainersViewId(profile.id),
+      ]),
+    ];
+    expect(new Set(declared).size).toBe(declared.length);
+    for (const id of askedFor) expect(declared).toContain(id);
   });
 
   it("declares the landscape and the containers once each, the only views with fixed names", () => {

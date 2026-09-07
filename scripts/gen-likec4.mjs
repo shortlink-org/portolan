@@ -15,7 +15,8 @@ import reserved from "../src/likec4/reserved.json" with { type: "json" };
 // Every source, not one file: a service that publishes its own facts gets a
 // C4 view like any other, and generating from a single file would leave it out
 // of the pictures while the rest of the app knows about it.
-const { catalog } = await loadCatalog();
+const { catalog, manifest } = await loadCatalog();
+const profiles = manifest.catalogs ?? [];
 
 // --- ids (mirrors src/likec4/ids.ts; kept in step by src/likec4/ids.test.ts) ---
 // The reserved words are not mirrored, they are the same file: a word the
@@ -34,6 +35,8 @@ const serviceViewId = (s) => `svc_${safeId(s.id)}`;
 const serviceInsideViewId = (s) => `${serviceViewId(s)}_inside`;
 const LANDSCAPE_VIEW = "landscape";
 const CONTAINERS_VIEW = "containers";
+const profileLandscapeViewId = (profile) => `${LANDSCAPE_VIEW}_${safeId(profile.id)}`;
+const profileContainersViewId = (profile) => `${CONTAINERS_VIEW}_${safeId(profile.id)}`;
 
 const q = (text) => `'${String(text).replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
 
@@ -686,6 +689,69 @@ views.push(
 views.push(...containerPredicates([...callPairs.values()], carriedByBus, "    "));
 views.push("  }");
 views.push("");
+
+// The model is the union so shared edges and per-context views are declared
+// once. These two views per profile are the isolated estate entry points the
+// UI uses: only the configured groups and the outsiders their own flows name
+// are included.
+for (const profile of profiles) {
+  const profileContexts = catalog.contexts.filter((context) => profile.contexts.includes(context.id));
+  const profileContextIds = new Set(profileContexts.map((context) => context.id));
+  const profileServices = profileContexts.flatMap((context) => context.services);
+  const profileServiceIds = new Set(profileServices.map((service) => service.id));
+  const profileRoots = new Set();
+  for (const flow of catalog.flows) {
+    if (!profileContextIds.has(flow.owner)) continue;
+    for (const participant of flow.participants) {
+      if (!profileServiceIds.has(participant.id)) profileRoots.add(participant.id);
+    }
+  }
+  for (const service of profileServices) {
+    for (const call of service.consumes) {
+      const peer = peerParticipant(call.peer);
+      if (peer && !profileServiceIds.has(peer)) profileRoots.add(peer);
+    }
+    for (const aggregate of service.aggregates) {
+      for (const event of aggregate.events) {
+        for (const consumer of event.consumers) {
+          if (!profileServiceIds.has(consumer.service)) profileRoots.add(consumer.service);
+        }
+      }
+    }
+  }
+  const profileOutside = [...profileRoots]
+    .filter((id) => OUTSIDE.has(rootParticipants.get(id)?.kind))
+    .map(safeId);
+  const profileBrokers = [...profileRoots]
+    .filter((id) => rootParticipants.get(id)?.kind === "broker")
+    .map(safeId);
+  const profileStores = (catalog.stores ?? []).filter((store) => profileServiceIds.has(store.owner));
+
+  views.push(`  view ${profileLandscapeViewId(profile)} {`);
+  views.push(`    title ${q(profile.title)}`);
+  views.push(`    description 'The groups and outside systems selected by this catalog profile.'`);
+  views.push(`    include ${[...profileContexts.map((context) => safeId(context.id)), ...profileOutside].join(", ")}`);
+  views.push("  }");
+  views.push("");
+
+  views.push(`  view ${profileContainersViewId(profile)} {`);
+  views.push(`    title ${q(`${profile.title} containers`)}`);
+  views.push(`    description 'The services, stores and transports selected by this catalog profile.'`);
+  views.push(`    include ${[
+    ...profileContexts.map((context) => safeId(context.id)),
+    ...profileServices.map((service) => fqn(service.id)),
+    ...profileStores.map((store) => fqn(store.id)),
+    ...profileBrokers,
+    ...profileOutside,
+  ].join(", ")}`);
+  views.push(...containerPredicates(
+    [...callPairs.values()].filter((pair) => profileServiceIds.has(pair.from) && profileServiceIds.has(pair.to)),
+    carriedByBus.filter((pair) => profileServiceIds.has(pair.from) && profileServiceIds.has(pair.to)),
+    "    ",
+  ));
+  views.push("  }");
+  views.push("");
+}
 
 for (const context of catalog.contexts) {
   // --- C4 level 2: the containers of one context --------------------------

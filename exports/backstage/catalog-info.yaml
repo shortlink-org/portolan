@@ -244,24 +244,23 @@ spec:
     lifecycle: production
     owner: shortlink-org/identity
     providesApis:
-        - api:default/auth-v1-sessions
-        - api:default/auth-v1-users
+        - api:default/auth-v1
     system: auth
     type: service
 ---
 apiVersion: backstage.io/v1alpha1
 kind: API
 metadata:
-    name: auth-v1-users
-    title: auth.v1.Users
+    name: auth-v1
+    title: auth.v1
     description: Interface provided by Authentication & Sessions
     annotations:
         backstage.io/source-location: url:https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/transport/http/gen/openapi.yaml
-        portolan.io/id: auth.v1.Users
+        portolan.io/id: auth.v1
 spec:
     definition: |-
         {
-          "id": "auth.v1.Users",
+          "id": "auth.v1",
           "messages": [
             {
               "name": "RegisterRequest",
@@ -327,57 +326,7 @@ spec:
                   "doc": ""
                 }
               ]
-            }
-          ],
-          "methods": [
-            {
-              "name": "registerUser",
-              "request": "RegisterRequest",
-              "response": "User",
-              "http": {
-                "method": "POST",
-                "path": "/v1/users"
-              }
             },
-            {
-              "name": "getUser",
-              "response": "User",
-              "http": {
-                "method": "GET",
-                "path": "/v1/users/{userId}"
-              }
-            },
-            {
-              "name": "changePassword",
-              "request": "ChangePasswordRequest",
-              "response": "204",
-              "http": {
-                "method": "POST",
-                "path": "/v1/users/me/password"
-              }
-            }
-          ],
-          "module": ""
-        }
-    lifecycle: production
-    owner: shortlink-org/identity
-    system: auth
-    type: portolan
----
-apiVersion: backstage.io/v1alpha1
-kind: API
-metadata:
-    name: auth-v1-sessions
-    title: auth.v1.Sessions
-    description: Interface provided by Authentication & Sessions
-    annotations:
-        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/transport/http/gen/openapi.yaml
-        portolan.io/id: auth.v1.Sessions
-spec:
-    definition: |-
-        {
-          "id": "auth.v1.Sessions",
-          "messages": [
             {
               "name": "LoginRequest",
               "fields": [
@@ -409,21 +358,6 @@ spec:
               ]
             },
             {
-              "name": "Error",
-              "fields": [
-                {
-                  "name": "message",
-                  "type": "string",
-                  "doc": "One sentence, always present. A client that shows the user a single\nline shows this one."
-                },
-                {
-                  "name": "reasons",
-                  "type": "[]string",
-                  "doc": "Optional. One entry per rule the request broke, present only where rules\napply - a 404 or a 500 has none. Each entry names its own field, so\nit can be shown on its own without knowing what it referred to."
-                }
-              ]
-            },
-            {
               "name": "SessionInfo",
               "fields": [
                 {
@@ -440,6 +374,32 @@ spec:
             }
           ],
           "methods": [
+            {
+              "name": "registerUser",
+              "request": "RegisterRequest",
+              "response": "User",
+              "http": {
+                "method": "POST",
+                "path": "/v1/users"
+              }
+            },
+            {
+              "name": "getUser",
+              "response": "User",
+              "http": {
+                "method": "GET",
+                "path": "/v1/users/{userId}"
+              }
+            },
+            {
+              "name": "changePassword",
+              "request": "ChangePasswordRequest",
+              "response": "204",
+              "http": {
+                "method": "POST",
+                "path": "/v1/users/me/password"
+              }
+            },
             {
               "name": "login",
               "request": "LoginRequest",
@@ -1274,137 +1234,6 @@ spec:
 apiVersion: backstage.io/v1alpha1
 kind: System
 metadata:
-    name: portolan
-    title: Portolan
-    description: 'The tool that reads this estate: a browser for an architecture catalog, read out of the code and specs that already describe it. Nothing in the shop calls it and it calls nothing; it is here because a catalog that cannot describe its own reader is a catalog with a hole in it.'
-    annotations:
-        portolan.io/id: portolan
-spec:
-    domain: example-estate
-    owner: architecture
----
-apiVersion: backstage.io/v1alpha1
-kind: Component
-metadata:
-    name: portolan-host
-    title: Host
-    description: Host
-    annotations:
-        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/scripts
-        portolan.io/commands: |-
-            npm run dev
-            npm run build
-            npm run preview
-            npm test
-            npm run test:go
-            npm run test:watch
-            npm run typecheck
-            npm run likec4:gen
-            npm run likec4:validate
-            npm run plugins:build
-            npm run schema
-            npm run schema:check
-            npm run gen
-            npm run gen:check
-            npm run diff
-        portolan.io/id: portolan.host
-    tags:
-        - node-js
-    links:
-        - url: https://github.com/shortlink-org/portolan/blob/main/package.json#L7
-          title: npm run dev
-          type: command
-        - url: https://github.com/shortlink-org/portolan/blob/main/package.json#L8
-          title: npm run build
-          type: command
-        - url: https://github.com/shortlink-org/portolan/blob/main/package.json#L9
-          title: npm run preview
-          type: command
-        - url: https://github.com/shortlink-org/portolan/blob/main/package.json#L10
-          title: npm test
-          type: command
-        - url: https://github.com/shortlink-org/portolan/blob/main/package.json#L11
-          title: npm run test:go
-          type: command
-        - url: https://github.com/shortlink-org/portolan/blob/main/package.json#L12
-          title: npm run test:watch
-          type: command
-        - url: https://github.com/shortlink-org/portolan/blob/main/package.json#L13
-          title: npm run typecheck
-          type: command
-        - url: https://github.com/shortlink-org/portolan/blob/main/package.json#L14
-          title: npm run likec4:gen
-          type: command
-        - url: https://github.com/shortlink-org/portolan/blob/main/package.json#L15
-          title: npm run likec4:validate
-          type: command
-        - url: https://github.com/shortlink-org/portolan/blob/main/package.json#L17
-          title: npm run plugins:build
-          type: command
-        - url: https://github.com/shortlink-org/portolan/blob/main/package.json#L18
-          title: npm run schema
-          type: command
-        - url: https://github.com/shortlink-org/portolan/blob/main/package.json#L19
-          title: npm run schema:check
-          type: command
-        - url: https://github.com/shortlink-org/portolan/blob/main/package.json#L20
-          title: npm run gen
-          type: command
-        - url: https://github.com/shortlink-org/portolan/blob/main/package.json#L21
-          title: npm run gen:check
-          type: command
-        - url: https://github.com/shortlink-org/portolan/blob/main/package.json#L22
-          title: npm run diff
-          type: command
-spec:
-    lifecycle: production
-    owner: shortlink-org/platform
-    system: portolan
-    type: tool
----
-apiVersion: backstage.io/v1alpha1
-kind: Component
-metadata:
-    name: portolan-plugins
-    title: Plugins
-    description: Generators
-    annotations:
-        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/plugins
-        portolan.io/id: portolan.plugins
-    tags:
-        - go
-        - java
-        - python
-        - rust
-        - typescript
-spec:
-    lifecycle: production
-    owner: shortlink-org/platform
-    system: portolan
-    type: tool
----
-apiVersion: backstage.io/v1alpha1
-kind: Component
-metadata:
-    name: portolan-site
-    title: Site
-    description: Site
-    annotations:
-        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/src
-        portolan.io/id: portolan.site
-    tags:
-        - react
-        - typescript
-        - vite
-spec:
-    lifecycle: production
-    owner: shortlink-org/platform
-    system: portolan
-    type: website
----
-apiVersion: backstage.io/v1alpha1
-kind: System
-metadata:
     name: shop
     title: Shop
     description: 'What a customer is buying, what it costs and what they owe for it: the basket while it is still changing, the price it was promised at, the order it became, and the invoice for it. It moves no money and delivers nothing.'
@@ -1424,15 +1253,13 @@ metadata:
         backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/examples/shop/billing
         portolan.io/id: shop.billing
 spec:
-    consumesApis:
-        - api:default/auth-v1-sessions
     dependsOn:
         - component:default/auth-auth
         - resource:default/shop-billing-pg
     lifecycle: production
     owner: shortlink-org/shop
     providesApis:
-        - api:default/billing-v1-invoices
+        - api:default/billing-v1
         - api:default/shop-billing-invoices
     system: shop
     type: service
@@ -1440,16 +1267,16 @@ spec:
 apiVersion: backstage.io/v1alpha1
 kind: API
 metadata:
-    name: billing-v1-invoices
-    title: billing.v1.Invoices
+    name: billing-v1
+    title: billing.v1
     description: Interface provided by Billing
     annotations:
         backstage.io/source-location: url:https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/schema/openapi.yaml
-        portolan.io/id: billing.v1.Invoices
+        portolan.io/id: billing.v1
 spec:
     definition: |-
         {
-          "id": "billing.v1.Invoices",
+          "id": "billing.v1",
           "messages": [
             {
               "name": "DrawUpRequest",
@@ -1723,7 +1550,7 @@ metadata:
           type: command
 spec:
     consumesApis:
-        - api:default/auth-v1-sessions
+        - api:default/auth-v1
         - api:default/shop-v1-pricing
     dependsOn:
         - component:default/auth-auth
@@ -1732,23 +1559,23 @@ spec:
     lifecycle: production
     owner: shortlink-org/shop
     providesApis:
-        - api:default/cart-v1-baskets
+        - api:default/cart-v1
     system: shop
     type: service
 ---
 apiVersion: backstage.io/v1alpha1
 kind: API
 metadata:
-    name: cart-v1-baskets
-    title: cart.v1.Baskets
+    name: cart-v1
+    title: cart.v1
     description: Interface provided by Shopping Cart
     annotations:
         backstage.io/source-location: url:https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/http/gen/openapi.yaml
-        portolan.io/id: cart.v1.Baskets
+        portolan.io/id: cart.v1
 spec:
     definition: |-
         {
-          "id": "cart.v1.Baskets",
+          "id": "cart.v1",
           "messages": [
             {
               "name": "BasketCreated",
@@ -2557,8 +2384,6 @@ metadata:
           type: command
 spec:
     consumesApis:
-        - api:default/auth-v1-sessions
-        - api:default/cart-v1-baskets
         - api:default/delivery-v1-delivery
         - api:default/shop-v1-orderservice
     dependsOn:

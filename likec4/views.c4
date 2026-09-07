@@ -18,7 +18,7 @@ views {
     include payments.ledger -> shop.oms with { title 'GetOrder'  technology 'gRPC'  color declared  line dashed }
     include payments.ledger -> stripe with { title '4 calls'  technology 'HTTP'  color declared  line dashed }
     include shop.billing -> auth.auth with { title 'validateSession'  technology 'HTTP'  color declared  line dashed }
-    include shop.cart -> auth.auth with { title 'validateSession'  technology 'HTTP'  color verified  line solid }
+    include shop.cart -> auth.auth with { title '2 calls'  technology 'HTTP'  color verified  line solid }
     include shop.cart -> shop.pricing with { title 'GetQuote'  technology 'gRPC'  color declared  line dashed }
     include shop.oms -> payments.ledger with { title 'Authorize'  technology 'gRPC'  color declared  line dashed }
     include delivery.core -> shop.oms with { title 'GetOrder'  technology 'gRPC'  color declared  line dashed }
@@ -28,6 +28,40 @@ views {
     exclude shop.cart -> shop.oms where kind is consumes
     exclude shop.cart -> shop.pricing where kind is consumes
     exclude shop.oms -> payments.ledger where kind is consumes
+  }
+
+  view landscape_portolan {
+    title 'Portolan'
+    description 'The groups and outside systems selected by this catalog profile.'
+    include portolan, developer
+  }
+
+  view containers_portolan {
+    title 'Portolan containers'
+    description 'The services, stores and transports selected by this catalog profile.'
+    include portolan, portolan.host, portolan.plugins, portolan.site, developer
+  }
+
+  view landscape_example {
+    title 'Example estate'
+    description 'The groups and outside systems selected by this catalog profile.'
+    include auth, storefront, payments, shop, delivery, client, risk_v1, stripe
+  }
+
+  view containers_example {
+    title 'Example estate containers'
+    description 'The services, stores and transports selected by this catalog profile.'
+    include auth, storefront, payments, shop, delivery, auth.auth, storefront.bff, payments.ledger, shop.billing, shop.cart, shop.oms, shop.pricing, delivery.core, auth.auth.pg, payments.ledger.pg, shop.billing.pg, shop.cart.pg, delivery.core.pg, shop.oms.pg, shop.pricing.pg, bus, celery_billing, celery_billing_mail, client, risk_v1, stripe
+    include storefront.bff -> auth.auth with { title 'validateSession'  technology 'HTTP'  color declared  line dashed }
+    include storefront.bff -> shop.cart with { title '4 calls'  technology 'HTTP'  color declared  line dashed }
+    include storefront.bff -> delivery.core with { title 'GetShipment'  technology 'gRPC'  color declared  line dashed }
+    include storefront.bff -> shop.oms with { title '2 calls'  technology 'gRPC'  color declared  line dashed }
+    include payments.ledger -> shop.oms with { title 'GetOrder'  technology 'gRPC'  color declared  line dashed }
+    include shop.billing -> auth.auth with { title 'validateSession'  technology 'HTTP'  color declared  line dashed }
+    include shop.cart -> auth.auth with { title '2 calls'  technology 'HTTP'  color verified  line solid }
+    include shop.cart -> shop.pricing with { title 'GetQuote'  technology 'gRPC'  color declared  line dashed }
+    include shop.oms -> payments.ledger with { title 'Authorize'  technology 'gRPC'  color declared  line dashed }
+    include delivery.core -> shop.oms with { title 'GetOrder'  technology 'gRPC'  color declared  line dashed }
   }
 
   view ctx_auth of auth {
@@ -451,7 +485,7 @@ views {
       color declared  line dashed  head normal
       notes 'examples/bff/src/schema/basket/resolvers/Query/basket.ts:4'
     }
-    storefront.bff -> shop.cart 'getBasket → Basket' {
+    storefront.bff -> shop.cart 'getBasket' {
       color declared  line dashed  head normal
       notes 'examples/bff/src/schema/basket/resolvers/Query/basket.ts:5'
     }
@@ -463,7 +497,7 @@ views {
       color declared  line dashed  head normal
       notes 'examples/bff/src/schema/basket/resolvers/Query/basket.ts:4'
     }
-    storefront.bff -> shop.cart 'getBasket → Basket' {
+    storefront.bff -> shop.cart 'getBasket' {
       color declared  line dashed  head normal
       notes 'examples/bff/src/schema/basket/resolvers/Query/basket.ts:5'
     }
@@ -526,7 +560,7 @@ views {
       color declared  line dashed  head normal
       notes 'examples/bff/src/schema/viewer/resolvers/Query/viewer.ts:8'
     }
-    storefront.bff -> auth.auth 'validateSession → SessionInfo' {
+    storefront.bff -> auth.auth 'validateSession' {
       color declared  line dashed  head normal
       notes 'examples/bff/src/schema/viewer/resolvers/Query/viewer.ts:9'
     }
@@ -538,7 +572,7 @@ views {
       color declared  line dashed  head normal
       notes 'examples/bff/src/schema/viewer/resolvers/Query/viewer.ts:8'
     }
-    storefront.bff -> auth.auth 'validateSession → SessionInfo' {
+    storefront.bff -> auth.auth 'validateSession' {
       color declared  line dashed  head normal
       notes 'examples/bff/src/schema/viewer/resolvers/Query/viewer.ts:9'
     }
@@ -551,7 +585,7 @@ views {
       color declared  line dashed  head normal
       notes 'examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts:8'
     }
-    storefront.bff -> shop.cart 'addItem → Basket' {
+    storefront.bff -> shop.cart 'addItem' {
       color declared  line dashed  head normal
       notes 'examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts:9'
     }
@@ -563,7 +597,7 @@ views {
       color declared  line dashed  head normal
       notes 'examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts:8'
     }
-    storefront.bff -> shop.cart 'addItem → Basket' {
+    storefront.bff -> shop.cart 'addItem' {
       color declared  line dashed  head normal
       notes 'examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts:9'
     }
@@ -576,7 +610,7 @@ views {
       color declared  line dashed  head normal
       notes 'examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts:11'
     }
-    storefront.bff -> shop.cart 'checkout → CheckedOut' {
+    storefront.bff -> shop.cart 'checkout' {
       color declared  line dashed  head normal
       notes 'examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts:12'
     }
@@ -588,7 +622,7 @@ views {
       color declared  line dashed  head normal
       notes 'examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts:11'
     }
-    storefront.bff -> shop.cart 'checkout → CheckedOut' {
+    storefront.bff -> shop.cart 'checkout' {
       color declared  line dashed  head normal
       notes 'examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts:12'
     }
@@ -601,7 +635,7 @@ views {
       color declared  line dashed  head normal
       notes 'examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts:3'
     }
-    storefront.bff -> shop.cart 'removeItem → Basket' {
+    storefront.bff -> shop.cart 'removeItem' {
       color declared  line dashed  head normal
       notes 'examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts:4'
     }
@@ -613,7 +647,7 @@ views {
       color declared  line dashed  head normal
       notes 'examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts:3'
     }
-    storefront.bff -> shop.cart 'removeItem → Basket' {
+    storefront.bff -> shop.cart 'removeItem' {
       color declared  line dashed  head normal
       notes 'examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts:4'
     }
@@ -1052,7 +1086,7 @@ views {
       color declared  line dashed  head normal
       notes 'examples/shop/billing/invoices/views.py:29'
     }
-    shop.billing -> auth.auth 'validateSession → SessionInfo' {
+    shop.billing -> auth.auth 'validateSession' {
       color declared  line dashed  head normal
       notes 'examples/shop/billing/invoices/services.py:40'
     }
@@ -1100,7 +1134,7 @@ views {
       color declared  line dashed  head normal
       notes 'examples/shop/billing/invoices/views.py:29'
     }
-    shop.billing -> auth.auth 'validateSession → SessionInfo' {
+    shop.billing -> auth.auth 'validateSession' {
       color declared  line dashed  head normal
       notes 'examples/shop/billing/invoices/services.py:40'
     }
@@ -1251,9 +1285,9 @@ views {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:60'
     }
-    shop.cart -> auth.auth 'validateSession → SessionInfo' {
-      color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:44'
+    shop.cart -> auth.auth 'validateSession' {
+      color declared  line dashed  head normal
+      notes 'examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:44'
     }
     shop.cart -> cart_pg 'byId' {
       color declared  line dashed  head none
@@ -1279,9 +1313,9 @@ views {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:60'
     }
-    shop.cart -> auth.auth 'validateSession → SessionInfo' {
-      color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:44'
+    shop.cart -> auth.auth 'validateSession' {
+      color declared  line dashed  head normal
+      notes 'examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:44'
     }
     shop.cart -> bus 'BasketCheckedOut' {
       color verified  line solid  head onormal
@@ -1342,9 +1376,9 @@ views {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:54'
     }
-    shop.cart -> auth.auth 'validateSession → SessionInfo' {
-      color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:28'
+    shop.cart -> auth.auth 'validateSession' {
+      color declared  line dashed  head normal
+      notes 'examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:28'
     }
     shop.cart -> cart_pg 'openFor' {
       color declared  line dashed  head none
@@ -1378,9 +1412,9 @@ views {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:54'
     }
-    shop.cart -> auth.auth 'validateSession → SessionInfo' {
-      color verified  line solid  head normal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:28'
+    shop.cart -> auth.auth 'validateSession' {
+      color declared  line dashed  head normal
+      notes 'examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:28'
     }
     shop.cart -> bus 'BasketCreated' {
       color verified  line solid  head onormal

@@ -231,7 +231,7 @@ payment was captured, and what that means for a parcel is decided here.'
     }
   }
   portolan = context 'Portolan' {
-    description 'system · The tool that reads this estate: a browser for an architecture catalog, read out of the code and specs that already describe it. Nothing in the shop calls it and it calls nothing; it is here because a catalog that cannot describe its own reader is a catalog with a hole in it.'
+    description 'system · The tool that reads an architecture catalog from the code and specifications that already describe a software estate. It is documented here as the system that extracts, merges, validates and presents those facts.'
     style { color ctx5 }
     host = service 'Host' {
       description 'cli · Node.js · github.com/shortlink-org/portolan/scripts'
@@ -311,10 +311,13 @@ payment was captured, and what that means for a parcel is decided here.'
     style { color declared  line dashed  head onormal }
   }
   shop.cart -[calls]-> auth.auth 'validateSession' 'HTTP' {
-    style { color verified  line solid  head normal }
+    style { color declared  line dashed  head normal }
   }
   shop.cart -[calls]-> shop.pricing 'GetQuote' 'gRPC' {
     style { color declared  line dashed  head normal }
+  }
+  shop.cart -[calls]-> auth.auth 'validateSession' {
+    style { color verified  line solid  head normal }
   }
   shop.oms -[consumes]-> payments.ledger 'OrderCancelled' {
     style { color declared  line dashed  head onormal }

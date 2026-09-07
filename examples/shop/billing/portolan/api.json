@@ -17,7 +17,7 @@
           "readme": "",
           "provides": [
             {
-              "id": "billing.v1.Invoices",
+              "id": "billing.v1",
               "methods": [
                 {
                   "name": "invoice_create",

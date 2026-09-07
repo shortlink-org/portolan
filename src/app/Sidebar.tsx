@@ -304,16 +304,29 @@ function Chevron({ open }: { open: boolean }) {
  * Clicking a row always selects. Whether it also navigates is the question the
  * page on screen answers: on a flow page, picking something that flow already
  * draws is a question about that sequence, so the reader stays put.
+ *
+ * Only the in-place case writes the store here. A row that navigates carries
+ * its selection in the link's hash instead (see `rowTarget`): writing the
+ * store first and then letting the link go would race SelectionSync, whose
+ * `replace` lands with the pathname it rendered with - the page being left -
+ * and undoes the navigation. A selection in the URL wins on arrival, so one
+ * write does both jobs. The palette works the same way.
  */
 function useRowClick(selId: string | undefined) {
   const select = useSelectionStore((s) => s.select);
   const { pathname } = useLocation();
   return (e: React.MouseEvent) => {
     if (selId === undefined) return;
-    const selection = selectionFor(selId);
+    if (!selectsInPlace(pathname, selectionFor(selId))) return;
+    e.preventDefault();
     select(selId, "sidebar");
-    if (selectsInPlace(pathname, selection)) e.preventDefault();
   };
+}
+
+/** Where a row's link goes: its page, with the row's selection in the hash. */
+function rowTarget(to: string, selId: string | undefined): string {
+  if (selId === undefined || to.includes("#")) return to;
+  return `${to}${selectionHash(selectionFor(selId))}`;
 }
 
 /**
@@ -341,7 +354,7 @@ function Leaf({
   const onClick = useRowClick(selId);
   return (
     <NavLink
-      to={to}
+      to={rowTarget(to, selId)}
       end
       title={title}
       data-sel={selId}
@@ -427,7 +440,7 @@ function Branch({
           <Chevron open={open} />
         </button>
         <NavLink
-          to={to}
+          to={rowTarget(to, selId)}
           end
           data-sel={selId}
           data-nav-item
@@ -1738,7 +1751,7 @@ function StoreNode({
         ? tables.map((table) => (
             <Leaf
               key={table.id}
-              to={`${to}${selectionHash({ kind: "table", id: table.id })}`}
+              to={to}
               depth={4}
               title={table.doc ?? table.id}
               selId={table.id}
@@ -1760,7 +1773,7 @@ function StoreNode({
         ? views.map((view) => (
             <Leaf
               key={view.id}
-              to={`${to}${selectionHash({ kind: "view", id: view.id })}`}
+              to={to}
               depth={4}
               title={view.doc ?? view.id}
               selId={view.id}

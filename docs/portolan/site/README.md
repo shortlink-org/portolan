@@ -1,6 +1,6 @@
 # Site
 
-*Generated from the portolan catalog · commit `12 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Id:** `portolan.site`
 - **Group:** [Portolan](../README.md)
@@ -8,7 +8,6 @@
 - **Path:** [`src/`](https://github.com/shortlink-org/portolan/tree/main/src)
 - **Kind:** webapp
 - **Technologies:** TypeScript, React, Vite
-- **Owners:** `@shortlink-org/platform`
 
 The browser: a React single-page application that loads every source the
 manifest names, merges them, validates the union and renders the estate.

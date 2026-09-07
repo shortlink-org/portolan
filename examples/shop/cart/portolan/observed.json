@@ -18,7 +18,7 @@
           "provides": [],
           "consumes": [
             {
-              "id": "auth.v1.Sessions/validateSession",
+              "id": "auth.v1/validateSession",
               "peer": "auth.auth",
               "status": "verified",
               "source": "telemetry/traces.jsonl"
@@ -155,8 +155,7 @@
           "kind": "rpc",
           "ref": "auth.v1.Sessions/validateSession",
           "label": "validateSession",
-          "status": "verified",
-          "note": "Seen running in telemetry/traces.jsonl (1 trace).",
+          "status": "declared",
           "line": "examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:44"
         },
         {
@@ -356,8 +355,7 @@
           "kind": "rpc",
           "ref": "auth.v1.Sessions/validateSession",
           "label": "validateSession",
-          "status": "verified",
-          "note": "Seen running in telemetry/traces.jsonl (1 trace).",
+          "status": "declared",
           "line": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:28"
         },
         {

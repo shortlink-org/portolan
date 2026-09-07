@@ -1,190 +1,33 @@
-# Example estate
+# Portolan
 
-> Architecture catalog of Example estate: 6 bounded contexts, 11 services, 12 aggregates, 7 stores, 7 schema modules, 1 system outside the estate, 59 flows and 47 decision records, read from the code, the specs and the traces of the estate.
+> Architecture catalog of Portolan: 1 bounded context, 3 services, 0 aggregates, 0 stores, 1 flow and 5 decision records, read from the code, the specs and the traces of the estate.
 
-*Generated from the portolan catalog · commit `12 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 Every link below is a markdown page beside this file. [llms-full.txt](llms-full.txt) is all of those pages in one file, in the order the site lists them.
 
 ## Contexts
 
-- [Authentication](auth/README.md): generic. Who someone is, and whether they are still logged in. The only service in the estate that stores credentials, and the only one allowed to mint or revoke a session
-- [Delivery](delivery/README.md): supporting. Parcels, vans and the day they are driven. Told what to carry and asked where it got to; it decides neither
-- [Payments](payments/README.md): supporting. Money, and the record of every movement of it. Nothing here decides whether to charge - it is asked, and it writes down what happened either way
-- [Portolan](portolan/README.md): The tool that reads this estate: a browser for an architecture catalog, read out of the code and specs that already describe it. Nothing in the shop calls it and it calls nothing; it is here because a catalog that cannot describe its own reader is a catalog with a hole in it
-- [Shop](shop/README.md): core. What a customer is buying, what it costs and what they owe for it: the basket while it is still changing, the price it was promised at, the order it became, and the invoice for it. It moves no money and delivers nothing
-- [Storefront](storefront/README.md): supporting. One graph in front of the estate, for one kind of client. It owns nothing: everything it answers with it asked somebody else for a moment earlier, and translated into the words a shopper's screen uses
+- [Portolan](portolan/README.md): The tool that reads an architecture catalog from the code and specifications that already describe a software estate. It is documented here as the system that extracts, merges, validates and presents those facts
 
 ## Glossaries
 
-- [Glossary of Authentication](auth/glossary.md): 27 terms. Attempt, Authenticate, Bus, Conflict, Credential, Email address, Expiry, Locked, Lockout, Login, Logout, Outbox, Password hash, Password policy, Policy, Reason, Refusal, Register, Revoke, Risk, Session, Threshold, Token, User, Validate, Verdict, Version
-- [Glossary of Delivery](delivery/glossary.md): 13 terms. Address, Awaiting payment, Dispatch, Order, Package, Parcel, Released, Route, Scan, Shipment, Stop, Tracking code, Window
-- [Glossary of Payments](payments/glossary.md): 12 terms. Attempt, Capture, Decline, Gateway, Hold, Journal, Money, Order, Payment, Posting, Refund, Void
 - [Glossary of Portolan](portolan/glossary.md): 44 terms. ADR, Aggregate, Answer, Catalog, Chain, Component, Context, Declared, Estate, Event, External, Extractor, Fetcher, Flow, Fragment, Generator, Group, Hop, Host, Lifecycle, Manifest, Module, Owner, Participant, Peer, Phase, Pin, Plugin, Problem, Project, Repository pin, Service, Source, Stamp, Status, Step, Store, Term, Trail, Unknown, Unresolved, Verified, Verifier, Wire format
-- [Glossary of Shop](shop/glossary.md): 11 terms. Basket, Bus, Cancelled, Confirmed, Line, Money, Order, Outbox, Payments, Placed, Relay
-- [Glossary of Storefront](storefront/glossary.md): 13 terms. Adapter, Basket, Checkout, Line, Money, Order, Order move, Order state, Peer, Port, Shipment, Storefront, Viewer
 
 ## Services
 
-- [Authentication & Sessions](auth/auth/README.md): in Authentication. Aggregates: Lockout, Session, User
-- [Delivery Core](delivery/core/README.md): in Delivery. Aggregates: Route, Shipment
-- [Ledger](payments/ledger/README.md): in Payments. Aggregates: Payment, Refund
 - [Host](portolan/host/README.md): in Portolan
 - [Plugins](portolan/plugins/README.md): in Portolan
 - [Site](portolan/site/README.md): in Portolan
-- [Billing](shop/billing/README.md): in Shop. Aggregates: Invoice
-- [Shopping Cart](shop/cart/README.md): in Shop. Aggregates: Basket
-- [Order Management](shop/oms/README.md): in Shop. Aggregates: Order
-- [Pricing](shop/pricing/README.md): in Shop. Aggregates: Price List, Quote
-- [Storefront BFF](storefront/bff/README.md): in Storefront
-
-## Aggregates
-
-- [Lockout](auth/auth/aggregates/lockout.md): in [Authentication & Sessions](auth/auth/README.md). root `Lockout`. 2 commands, 1 query, 1 event. How many wrong passwords in a row an account has taken, and whether it is refusing logins because of them
-- [Session](auth/auth/aggregates/session.md): in [Authentication & Sessions](auth/auth/README.md). root `Session`. 3 commands, 1 query, 2 events. Proof that a user logged in, how long that proof is good for, and whether it has been taken away
-- [User](auth/auth/aggregates/user.md): in [Authentication & Sessions](auth/auth/README.md). root `User`. 2 commands, 2 queries, 2 events. A person, the address they log in with, and the opaque hash of the password they log in by
-- [Route](delivery/core/aggregates/route.md): in [Delivery Core](delivery/core/README.md). root `Route`. 3 commands, 1 query, 3 events. One van, one day, in the order the stops are driven
-- [Shipment](delivery/core/aggregates/shipment.md): in [Delivery Core](delivery/core/README.md). root `Shipment`. 4 commands, 2 queries, 5 events. What is being carried to one address for one order
-- [Payment](payments/ledger/aggregates/payment.md): in [Ledger](payments/ledger/README.md). root `Payment`. 3 commands, 1 query, 3 events. What one order owes, and everything that has happened to that money
-- [Refund](payments/ledger/aggregates/refund.md): in [Ledger](payments/ledger/README.md). root `Refund`. 1 command, 1 query, 1 event. Money going back, against a payment that was captured
-- [Invoice](shop/billing/aggregates/invoice.md): in [Billing](shop/billing/README.md). root `Invoice`. 4 commands, 1 query, 3 events. What a customer owes for one order, and what happens to it between being drawn up and being closed
-- [Basket](shop/cart/aggregates/basket.md): in [Shopping Cart](shop/cart/README.md). root `Basket`. 6 commands, 1 query, 6 events. The one mutable thing between a customer arriving and an order existing: a visitor's or a customer's lines, under one lock
-- [Order](shop/oms/aggregates/order.md): in [Order Management](shop/oms/README.md). root `Order`. 3 commands, 1 query, 3 events. What a basket became at checkout: the lines and the total the customer agreed to, copied and never repriced, under one lock
-- [Price List](shop/pricing/aggregates/price-list.md): in [Pricing](shop/pricing/README.md). root `PriceList`. 2 commands, 1 query, 0 events. What things cost before anybody asks
-- [Quote](shop/pricing/aggregates/quote.md): in [Pricing](shop/pricing/README.md). root `Quote`. 2 commands, 1 query, 2 events. What a basket costs, promised until a moment
-
-## Outside the estate
-
-- [Stripe](externals/stripe.md): outside the estate. Answers on stripe.v1. The card network the ledger moves money through. Nobody in the estate provides it; the copy of its document beside the ledger's adapter is narrowed to the four operations the ledger calls, and is all the catalog claims about it
-
-## Schema modules
-
-- [shortlink-org/portolan-delivery-route](modules/shortlink-org-portolan-delivery-route.md): schema module. published by [delivery.core](delivery/core/README.md). delivery.v1
-- [shortlink-org/portolan-delivery-shipment](modules/shortlink-org-portolan-delivery-shipment.md): schema module. published by [delivery.core](delivery/core/README.md). delivery.v1
-- [shortlink-org/portolan-payments-payment](modules/shortlink-org-portolan-payments-payment.md): schema module. published by [payments.ledger](payments/ledger/README.md). payments.v1
-- [shortlink-org/portolan-payments-refund](modules/shortlink-org-portolan-payments-refund.md): schema module. published by [payments.ledger](payments/ledger/README.md). payments.v1
-- [shortlink-org/portolan-shop-order](modules/shortlink-org-portolan-shop-order.md): schema module. published by [shop.oms](shop/oms/README.md). shop.v1
-- [shortlink-org/portolan-shop-price-list](modules/shortlink-org-portolan-shop-price-list.md): schema module. published by [shop.pricing](shop/pricing/README.md). shop.v1
-- [shortlink-org/portolan-shop-quote](modules/shortlink-org-portolan-shop-quote.md): schema module. published by [shop.pricing](shop/pricing/README.md). shop.v1
 
 ## Flows
 
-- [Change password](flows/auth-change-password.md): owned by [auth](auth/README.md). Replaces the password of a user, given the current one
-- [Get user](flows/auth-get-user.md): owned by [auth](auth/README.md). Reads a user by id
-- [Login](flows/auth-login.md): owned by [auth](auth/README.md). Turns credentials into a session
-- [Logout](flows/auth-logout.md): owned by [auth](auth/README.md). Ends the session behind a token
-- [Register user](flows/auth-register-user.md): owned by [auth](auth/README.md). Creates a user from an email address and a password
-- [Revoke sessions on password change](flows/auth-revoke-sessions-on-password-change.md): owned by [auth](auth/README.md). Ends the sessions issued against a password that has just been replaced
-- [Validate session](flows/auth-validate-session.md): owned by [auth](auth/README.md). Resolves a token to a live session: who is calling, and how long the answer stays good
-- [Mutation add item](flows/bff-mutation-add-item.md): owned by [storefront](storefront/README.md). Add a line. The price travels as the customer was shown it; the cart captures it and never recomputes it, and nothing here checks it - a storefront that priced things would be a second place prices live
-- [Mutation cancel order](flows/bff-mutation-cancel-order.md): owned by [storefront](storefront/README.md). Cancel an order. Whether it is too late to is the order service's judgement and its refusal travels back unchanged; this service does not know what dispatch means
-- [Mutation checkout](flows/bff-mutation-checkout.md): owned by [storefront](storefront/README.md). Freeze the basket and hand it on
-- [Mutation remove item](flows/bff-mutation-remove-item.md): owned by [storefront](storefront/README.md)
-- [Query basket](flows/bff-query-basket.md): owned by [storefront](storefront/README.md). The basket as the cart has it, in the storefront's words
-- [Query order](flows/bff-query-order.md): owned by [storefront](storefront/README.md)
-- [Query shipment](flows/bff-query-shipment.md): owned by [storefront](storefront/README.md)
-- [Query viewer](flows/bff-query-viewer.md): owned by [storefront](storefront/README.md). Who the request belongs to. Auth is asked on every call rather than a token being read here: this service holds no key and could not tell a forged one from a live one
-- [Subscription order status](flows/bff-subscription-order-status.md): owned by [storefront](storefront/README.md). Every move of one order, for as long as somebody is watching it
-- [Remind Unpaid Invoice task](flows/billing-celery-remind-unpaid-invoice.md): owned by [shop](shop/README.md). Celery task `invoices.tasks.remind_unpaid_invoice` is enqueued on `billing` and worked by `remind_unpaid_invoice`. Source-backed cross-protocol continuations are included
-- [Send Invoice Email task](flows/billing-celery-send-invoice-email.md): owned by [shop](shop/README.md). Celery task `invoices.tasks.send_invoice_email` is enqueued on `billing.mail` and worked by `send_invoice_email`. Source-backed cross-protocol continuations are included
-- [Close invoice on payment](flows/billing-close-invoice-on-payment.md): owned by [shop](shop/README.md). Closes the invoice for an order once the ledger says the money arrived
-- [Invoice create](flows/billing-invoice-create.md): owned by [shop](shop/README.md). Draws up a draft invoice for an order, with a line for each thing sold
-- [Invoice destroy](flows/billing-invoice-destroy.md): owned by [shop](shop/README.md). Ends an invoice nobody is going to pay
-- [Invoice issue](flows/billing-invoice-issue.md): owned by [shop](shop/README.md). Confirms the session, freezes the invoice and asks the customer to pay. Source-backed cross-protocol continuations are included
-- [Invoice list](flows/billing-invoice-list.md): owned by [shop](shop/README.md). Invoices over HTTP. Every action here runs one function of services.py
-- [Invoice partial update](flows/billing-invoice-partial-update.md): owned by [shop](shop/README.md). Invoices over HTTP. Every action here runs one function of services.py
-- [Invoice retrieve](flows/billing-invoice-retrieve.md): owned by [shop](shop/README.md). Reads one invoice and the lines it is made of
-- [Invoice update](flows/billing-invoice-update.md): owned by [shop](shop/README.md). Invoices over HTTP. Every action here runs one function of services.py
-- [Add item](flows/cart-add-item.md): owned by [shop](shop/README.md)
-- [Checkout](flows/cart-checkout.md): owned by [shop](shop/README.md)
-- [Create basket](flows/cart-create-basket.md): owned by [shop](shop/README.md)
-- [Get basket](flows/cart-get-basket.md): owned by [shop](shop/README.md)
-- [Merge baskets](flows/cart-merge-baskets.md): owned by [shop](shop/README.md)
-- [Remove item](flows/cart-remove-item.md): owned by [shop](shop/README.md)
-- [Close route](flows/core-close-route.md): owned by [delivery](delivery/README.md). Ends the day, whatever is left undone
-- [Dispatch](flows/core-dispatch.md): owned by [delivery](delivery/README.md). One shipment, for whoever is asking about an order
-- [Get route](flows/core-get-route.md): owned by [delivery](delivery/README.md). One route, as the depot reads it
-- [Get shipment](flows/core-get-shipment.md): owned by [delivery](delivery/README.md). One shipment, for whoever is asking about an order
-- [Plan route](flows/core-plan-route.md): owned by [delivery](delivery/README.md). Builds a van's day out of the shipments waiting to go out
-- [Record delivery](flows/core-record-delivery.md): owned by [delivery](delivery/README.md). Ends a shipment at the door
-- [Record scan](flows/core-record-scan.md): owned by [delivery](delivery/README.md). Writes down that a parcel was seen somewhere
-- [Release shipment on payment captured](flows/core-release-shipment-on-payment-captured.md): owned by [delivery](delivery/README.md). Nothing leaves the warehouse before the money has moved (ADR core.0002)
-- [Start route](flows/core-start-route.md): owned by [delivery](delivery/README.md). The van is out
-- [Track shipment](flows/core-track-shipment.md): owned by [delivery](delivery/README.md). What the customer sees when they paste a tracking code
 - [npm run gen](flows/gen.md): owned by [portolan](portolan/README.md). Three passes over the manifest, each after the previous one's files are on disk: extract reads trees and specifications into fragments, verify overlays evidence on the merged catalog, generate turns it into pages. Every plugin is one JSON message in and one out; the host writes, the plugin never does
-- [Authorize](flows/ledger-authorize.md): owned by [payments](payments/README.md). Asks the gateway to hold the money for an order, and records either that it agreed or that it refused
-- [Capture](flows/ledger-capture.md): owned by [payments](payments/README.md). Moves the money the gateway was holding, writes the pair of postings for it, and says so on the bus
-- [Get payment](flows/ledger-get-payment.md): owned by [payments](payments/README.md). Reads one payment, for whoever is asking what happened to the money
-- [Issue refund](flows/ledger-issue-refund.md): owned by [payments](payments/README.md). Sends money back against a captured payment, in full or in part
-- [List refunds](flows/ledger-list-refunds.md): owned by [payments](payments/README.md). Every refund against one payment, newest first
-- [Void payment on order cancelled](flows/ledger-void-payment-on-order-cancelled.md): owned by [payments](payments/README.md). Gives back what was held once the order it was held for is gone
-- [Cancel order](flows/oms-cancel-order.md): owned by [shop](shop/README.md). Reads one order by id
-- [Confirm order on payment authorized](flows/oms-confirm-order-on-payment-authorized.md): owned by [shop](shop/README.md). Confirms the order once the payment for it is authorised (ADR oms.0005). The publisher is `payments.ledger`, and the name is the one it puts on the message: every service on this bus names its events after itself
-- [Get order](flows/oms-get-order.md): owned by [shop](shop/README.md). Reads one order by id
-- [Place order on basket checked out](flows/oms-place-order-on-basket-checked-out.md): owned by [shop](shop/README.md). Places the order the basket was checked out for (ADR oms.0002). The order takes the basket's id, so the same checkout heard twice places one order
-- [Archive price list](flows/pricing-archive-price-list.md): owned by [shop](shop/README.md). Package archive_price_list takes a price list out of use without losing it
-- [Expire quote on checkout](flows/pricing-expire-quote-on-checkout.md): owned by [shop](shop/README.md). Ends the promise once the basket it priced is checked out
-- [Get quote](flows/pricing-get-quote.md): owned by [shop](shop/README.md). Package get_quote reads one quote
-- [Import price list](flows/pricing-import-price-list.md): owned by [shop](shop/README.md). Package import_price_list takes in a whole price list
-- [Issue quote](flows/pricing-issue-quote.md): owned by [shop](shop/README.md). Package issue_quote prices a basket and promises the price for a while
-- [List price lists](flows/pricing-list-price-lists.md): owned by [shop](shop/README.md). Package list_price_lists reads every price list there is
 
 ## Decisions
 
-- [auth.0001](adr/auth.0001.md): Aggregates return their events; they do not buffer them (accepted, 2026-08-20)
-- [auth.0002](adr/auth.0002.md): Session is its own aggregate, linked to User by id (accepted, 2026-08-20)
-- [auth.0003](adr/auth.0003.md): Session expiry publishes no event (accepted, 2026-08-22)
-- [auth.0004](adr/auth.0004.md): Lockout is its own aggregate, keyed by user id (accepted, 2026-09-04)
-- [auth.0005](adr/auth.0005.md): Validation lives in constructors, as specifications, and applies when a value is made (accepted, 2026-08-22)
-- [auth.0006](adr/auth.0006.md): A password change ends sessions through a policy, and the domains never import each other (accepted, 2026-08-22)
-- [auth.0007](adr/auth.0007.md): Login asks a risk service, and a blocked attempt is treated as a compromise (accepted, 2026-09-04)
-- [auth.0008](adr/auth.0008.md): A cache in front of the token lookup, and nothing else (accepted, 2026-09-01)
-- [auth.0009](adr/auth.0009.md): A locked account answers exactly like a wrong password (accepted, 2026-09-04)
-- [auth.0010](adr/auth.0010.md): A revocation is written to the cache, not only dropped from it (accepted, 2026-09-05)
-- [auth.0011](adr/auth.0011.md): The relay reads every topic and hands it to a bus; policies subscribe to the bus (accepted, 2026-09-05)
-- [auth.0012](adr/auth.0012.md): Feature slices own their layers and local assembly (accepted, 2026-09-07)
-- [auth.0013](adr/auth.0013.md): Domain events become integration events at the transactional outbox boundary (accepted, 2026-09-07)
-- [auth.0014](adr/auth.0014.md): Session tokens are opaque, stored, revocable, and expire after 24 hours (accepted, 2026-09-07)
-- [auth.0015](adr/auth.0015.md): Errors are owned by their layer and classified at the edge (accepted, 2026-09-07)
-- [auth.0016](adr/auth.0016.md): Password cryptography is an application port (accepted, 2026-09-07)
-- [bff.0001](adr/bff.0001.md): GraphQL over Yoga, and the schema comes first (accepted, 2026-09-05)
-- [bff.0002](adr/bff.0002.md): The storefront owns no state (accepted, 2026-09-05)
-- [bff.0003](adr/bff.0003.md): The schema speaks the client's words, not the peers' (accepted, 2026-09-05)
-- [bff.0004](adr/bff.0004.md): A subscription is the bus, forwarded (accepted, 2026-09-05)
-- [cart.0001](adr/cart.0001.md): TypeScript on Node.js, and the stack around it (accepted, 2026-09-04)
-- [cart.0002](adr/cart.0002.md): A basket freezes its currency at the first item (accepted, 2026-09-04)
-- [cart.0003](adr/cart.0003.md): Line prices are captured when added, never recomputed (accepted, 2026-09-04)
-- [cart.0004](adr/cart.0004.md): Checkout confirms the session with `auth` and the total with `pricing` (accepted, 2026-09-04)
-- [cart.0005](adr/cart.0005.md): A merge moves every line or none (accepted, 2026-09-04)
-- [cart.0006](adr/cart.0006.md): Abandonment is a sweep inside the service, and it publishes (accepted, 2026-09-04)
-- [cart.0007](adr/cart.0007.md): An anonymous basket is owned by whoever holds its token (accepted, 2026-09-04)
-- [cart.0008](adr/cart.0008.md): Events leave the service over NATS JetStream, and the outbox stays (accepted, 2026-09-05)
-- [core.0001](adr/core.0001.md): `packages.order_id` is a foreign key into the order service's table (accepted, 2026-09-05)
-- [core.0002](adr/core.0002.md): A shipment waits for the money, and the ledger's fact releases it (accepted, 2026-09-05)
-- [ledger.0001](adr/ledger.0001.md): A gateway that did not answer has not refused (accepted, 2026-09-05)
-- [ledger.0002](adr/ledger.0002.md): Another service's events are read off the bus by an adapter and republished in process (accepted, 2026-09-05)
-- [ledger.0003](adr/ledger.0003.md): The card network is Stripe, and stays outside the estate (accepted, 2026-09-06)
-- [oms.0001](adr/oms.0001.md): Rust on Tokio, and the stack around it (accepted, 2026-09-05)
-- [oms.0002](adr/oms.0002.md): An order is placed from a checked-out basket, not by a call (accepted, 2026-09-05)
-- [oms.0003](adr/oms.0003.md): Lines and the total are copied from the basket, never repriced (accepted, 2026-09-05)
-- [oms.0004](adr/oms.0004.md): Cancelling is allowed until the parcel moves (accepted, 2026-09-05)
-- [oms.0005](adr/oms.0005.md): Confirmation waits for a payment service that does not exist yet (accepted, 2026-09-05)
-- [org.0001](adr/org.0001.md): Client proto copies live in the consumer's infrastructure layer (accepted, 2025-03-11)
-- [org.0002](adr/org.0002.md): Domain event schema version is encoded in the package path (events/v1) (accepted, 2025-05-02)
-- [org.0003](adr/org.0003.md): Ownership is read from CODEOWNERS, never typed and never resolved (accepted, 2026-09-05)
-- [payments.0004](adr/payments.0004.md): Journal entries are idempotent by (order_id, attempt) (proposed, 2026-02-09)
 - [portolan.0001](adr/portolan.0001.md): A plugin names files and never writes them (accepted, 2026-09-02)
 - [portolan.0002](adr/portolan.0002.md): The host stamps a fragment from its input's last commit (accepted, 2026-09-02)
 - [portolan.0003](adr/portolan.0003.md): The Go catalog is a mirror held by a round-trip test (accepted, 2026-09-02)
 - [portolan.0004](adr/portolan.0004.md): `contexts` and `services` stay the wire format (accepted, 2026-09-06)
 - [portolan.0005](adr/portolan.0005.md): CSS moves what appears; Motion moves what leaves or changes place (accepted, 2026-09-06)
-
-## Optional
-
-- [Auth database](auth/auth/stores/pg.md): postgres store of [Authentication & Sessions](auth/auth/README.md). 3 tables
-- [Delivery database](delivery/core/stores/pg.md): postgres store of [Delivery Core](delivery/core/README.md). 6 tables
-- [Ledger database](payments/ledger/stores/pg.md): postgres store of [Ledger](payments/ledger/README.md). 3 tables
-- [Billing database](shop/billing/stores/pg.md): postgres store of [Billing](shop/billing/README.md). 2 tables
-- [Cart database](shop/cart/stores/pg.md): postgres store of [Shopping Cart](shop/cart/README.md). 3 tables
-- [Order database](shop/oms/stores/pg.md): postgres store of [Order Management](shop/oms/README.md). 3 tables
-- [Pricing database](shop/pricing/stores/pg.md): postgres store of [Pricing](shop/pricing/README.md). 5 tables

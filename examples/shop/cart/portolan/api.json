@@ -17,7 +17,7 @@
           "readme": "",
           "provides": [
             {
-              "id": "cart.v1.Baskets",
+              "id": "cart.v1",
               "methods": [
                 {
                   "name": "createBasket",

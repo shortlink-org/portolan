@@ -2,6 +2,7 @@ import { Link } from "react-router";
 import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import {
   Keyboard,
+  Layers3,
   Map,
   Menu,
   MessageSquare,
@@ -24,6 +25,7 @@ import { useTheme } from "./theme";
 import { useChatAvailable } from "../chat/prefs";
 import { useChatUi } from "../chat/store";
 import { paths } from "../routes";
+import { activeCatalogProfile, catalogProfiles } from "../data";
 
 export function TopBar({
   onOpenPalette,
@@ -97,6 +99,7 @@ export function TopBar({
             : "contents"
         }
       >
+        <CatalogPicker compact={phone} />
         <BranchPicker compact={phone} />
 
         {/* Opens the palette rather than filtering in place: the sidebar box
@@ -139,6 +142,39 @@ export function TopBar({
         <BuildStamp compact={phone} />
       </div>
     </header>
+  );
+}
+
+function CatalogPicker({ compact }: { compact: boolean }) {
+  if (catalogProfiles.length < 2) return null;
+
+  const change = (id: string) => {
+    if (id === activeCatalogProfile.id) return;
+    const next = new URL(import.meta.env.BASE_URL, window.location.origin);
+    next.searchParams.set("catalog", id);
+    window.location.assign(next);
+  };
+
+  return (
+    <label
+      className="mono flex shrink-0 items-center gap-1.5 rounded-control border border-line px-2 py-1.5 text-muted hover:border-line-strong hover:text-ink"
+      title="Catalog profile"
+    >
+      <Layers3 size={16} aria-hidden className="shrink-0" />
+      <span className="sr-only">Catalog</span>
+      <select
+        aria-label="Catalog profile"
+        value={activeCatalogProfile.id}
+        onChange={(event) => change(event.target.value)}
+        className={`bg-transparent text-ink outline-none ${compact ? "max-w-20" : "max-w-36"}`}
+      >
+        {catalogProfiles.map((profile) => (
+          <option key={profile.id} value={profile.id}>
+            {profile.title}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 

@@ -1,6 +1,6 @@
 # Plugins
 
-*Generated from the portolan catalog · commit `12 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Id:** `portolan.plugins`
 - **Group:** [Portolan](../README.md)
@@ -8,7 +8,6 @@
 - **Path:** [`plugins/`](https://github.com/shortlink-org/portolan/tree/main/plugins)
 - **Kind:** cli
 - **Technologies:** Go, TypeScript, Rust, Java, Python
-- **Owners:** `@shortlink-org/platform`
 
 ## Generators
 
@@ -219,6 +218,15 @@ message's name; a direct call names no message, and its direction is in the
 channel's doc. A subject read off a database row is a warning at the call,
 not a channel. Consumer configs give the filter subject and the durable name;
 streams, wildcard subjects and work-queue retention are not read yet.
+
+`extract-python-kafka` is the framework-independent Kafka enrichment for
+Python. It recognizes confluent-kafka, kafka-python and aiokafka by their
+imported client types, follows literal topics through constants, environment
+defaults, settings and local factories, and emits generic message streams with
+producer and consumer flows. Only client-side configuration proven in source
+is retained; authentication values are omitted, while broker-side partitions,
+replication and retention remain explicitly unknown. See
+`extract-python-kafka/README.md` for the supported call shapes.
 
 `extract-wsdl` reads WSDL 1.1 contracts as structured SOAP APIs. It follows
 local WSDL imports and XSD imports/includes without network access, keeps

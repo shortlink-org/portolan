@@ -72,6 +72,12 @@ export const LANDSCAPE_VIEW = "landscape";
  */
 export const CONTAINERS_VIEW = "containers";
 
+/** Whole-estate views narrowed to one configured catalog profile. */
+export const profileLandscapeViewId = (profile: string): string =>
+  `${LANDSCAPE_VIEW}_${safeId(profile)}`;
+export const profileContainersViewId = (profile: string): string =>
+  `${CONTAINERS_VIEW}_${safeId(profile)}`;
+
 /** C4 level 2, one context: its services, their stores, and the brokers they use. */
 export const contextViewId = (context: BoundedContext | string): string =>
   `ctx_${safeId(typeof context === "string" ? context : context.id)}`;

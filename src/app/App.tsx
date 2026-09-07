@@ -5,6 +5,7 @@ import {
   Route,
   Routes,
   useLocation,
+  useNavigate,
 } from "react-router";
 import type { Location } from "react-router";
 import {
@@ -37,7 +38,7 @@ import { ModulePage } from "../pages/ModulePage";
 import { ExternalPage } from "../pages/ExternalPage";
 import { NotFoundPage } from "../pages/NotFound";
 import { CatalogFailure } from "../pages/CatalogFailure";
-import { catalogError } from "../data";
+import { activeCatalogProfile, catalogError } from "../data";
 import { SidePanel } from "../components/Overlay";
 import { Empty } from "../components/PageHeader";
 import { WithDetail } from "../selection/DetailPanel";
@@ -239,6 +240,7 @@ function Shell() {
   const chatOpen = useChatUi((s) => s.open);
   const [railed, setRailed] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const { pathname } = location;
   const settle = useCanvasResize();
   const sidebarRef = usePanelRef();
@@ -247,6 +249,19 @@ function Shell() {
   const setDrawer = useUiStore((s) => s.setDrawer);
   const toggleDetail = useUiStore((s) => s.toggleDetail);
   const revealNonce = useUiStore((s) => s.revealNonce);
+
+  // Keep the selected catalog shareable even though most route builders do
+  // not know about presentation state. Changing the profile itself reloads
+  // the bundle; ordinary navigation only restores its URL marker.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("catalog") === activeCatalogProfile.id) return;
+    params.set("catalog", activeCatalogProfile.id);
+    navigate(
+      { pathname: location.pathname, search: `?${params}`, hash: location.hash },
+      { replace: true },
+    );
+  }, [location.hash, location.pathname, location.search, navigate]);
 
   // Collapsed is a fact about pixels, not about who dragged: the rail appears
   // whether the reader dragged past the minimum or pressed a rail button.

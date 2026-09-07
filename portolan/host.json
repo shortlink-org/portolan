@@ -6,7 +6,7 @@
       "id": "portolan",
       "slug": "portolan",
       "name": "Portolan",
-      "summary": "The tool that reads this estate: a browser for an architecture catalog, read out of the code and specs that already describe it. Nothing in the shop calls it and it calls nothing; it is here because a catalog that cannot describe its own reader is a catalog with a hole in it.",
+      "summary": "The tool that reads an architecture catalog from the code and specifications that already describe a software estate. It is documented here as the system that extracts, merges, validates and presents those facts.",
       "kind": "system",
       "services": [
         {

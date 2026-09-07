@@ -15,6 +15,13 @@
 
 import { buildIndex, CatalogError, validateCatalog } from "./catalog";
 import type { Catalog, CatalogIndex } from "./catalog";
+import {
+  catalogProfileNamed,
+  catalogProfiles as profilesFromManifest,
+  filterCatalogForProfile,
+  profileIncludesSource,
+} from "./catalog-profile";
+import type { CatalogProfile, CatalogProfileManifest } from "./catalog-profile";
 import { enrichCatalog } from "./enrich";
 import type { DerivedEdge } from "./enrich";
 import { mergeCatalogs } from "./merge";
@@ -24,6 +31,15 @@ import type {
   SourceCatalog,
   SourceStamp,
 } from "./merge";
+import manifestJson from "../portolan.json";
+
+const manifest = manifestJson as CatalogProfileManifest & { sources: string[] };
+export const catalogProfiles: CatalogProfile[] = profilesFromManifest(manifest);
+const requestedProfile =
+  typeof window === "undefined"
+    ? null
+    : new URLSearchParams(window.location.search).get("catalog");
+export const activeCatalogProfile = catalogProfileNamed(manifest, requestedProfile);
 
 /**
  * Where sources are looked for. The patterns are written out because
@@ -88,22 +104,23 @@ interface Loaded {
 }
 
 function load(): Loaded {
-  const sources: CatalogSource[] = Object.entries(modules).map(
-    ([path, catalog]) => ({
+  const sources: CatalogSource[] = Object.entries(modules)
+    .map(([path, catalog]) => ({
       // Vite keys a glob by its pattern-relative path; the leading ../ is an
       // artefact of this file's location, not part of where anything lives.
       path: path.replace(/^\.\.\//, ""),
       // A SOURCE, not a catalog: the two stamps are optional in a file, and
       // the estate's authored facts carry neither.
       catalog: catalog as SourceCatalog,
-    }),
-  );
+    }))
+    .filter((source) => profileIncludesSource(activeCatalogProfile, source.path));
 
   const merged = mergeCatalogs(sources);
   // Enriched before it is validated: the edges the flows imply are part of
   // the union the way a peer named by another source is, and the validator
   // resolves a step's call against them.
-  const enriched = enrichCatalog(merged.catalog);
+  const scoped = filterCatalogForProfile(merged.catalog, activeCatalogProfile);
+  const enriched = enrichCatalog(scoped);
 
   try {
     return {
@@ -172,7 +189,7 @@ export const derivedEdges: DerivedEdge[] = loaded.derived;
  * Where the catalog is read from, as a reader would type it. Empty states name
  * it, so it is written once here rather than spelled out on five pages.
  */
-export const CATALOG_PATH = SOURCE_GLOBS.join(" · ");
+export const CATALOG_PATH = activeCatalogProfile.sources.join(" · ");
 
 /** Non-null when the catalog failed validation; the shell renders it instead. */
 export const catalogError: CatalogError | null = loaded.error;

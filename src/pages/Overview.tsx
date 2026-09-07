@@ -2,7 +2,7 @@ import { useDocumentTitle } from "../app/title";
 import { useState } from "react";
 import { Link } from "react-router";
 import { AlertTriangle } from "lucide-react";
-import { CATALOG_PATH, catalog, index } from "../data";
+import { activeCatalogProfile, CATALOG_PATH, catalog, index } from "../data";
 import { contextOwners, contextStats, problems, widestFlows } from "../lib/derive";
 import type { ContextOwner } from "../lib/derive";
 import { dataProblems } from "../lib/data-problems";
@@ -15,7 +15,7 @@ import { usePhone } from "../app/responsive";
 import { CONTEXT_ANCHOR, OVERVIEW_ANCHOR, paths } from "../routes";
 import { Blank, SectionTitle } from "../components/PageHeader";
 import { C4View } from "../likec4/C4View";
-import { CONTAINERS_VIEW, LANDSCAPE_VIEW } from "../likec4/ids";
+import { profileContainersViewId, profileLandscapeViewId } from "../likec4/ids";
 import { LevelSwitch } from "../likec4/levels";
 import type { C4Level } from "../likec4/levels";
 import { CatalogStamp } from "../components/CatalogStamp";
@@ -173,7 +173,11 @@ export function Overview() {
           Landscape
         </SectionTitle>
         <C4View
-          viewId={level === 2 ? CONTAINERS_VIEW : LANDSCAPE_VIEW}
+          viewId={
+            level === 2
+              ? profileContainersViewId(activeCatalogProfile.id)
+              : profileLandscapeViewId(activeCatalogProfile.id)
+          }
           height={phone ? 300 : level === 2 ? 560 : 400}
           controls={phone}
         />

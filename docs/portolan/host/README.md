@@ -1,6 +1,6 @@
 # Host
 
-*Generated from the portolan catalog · commit `12 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Id:** `portolan.host`
 - **Group:** [Portolan](../README.md)
@@ -8,7 +8,6 @@
 - **Path:** [`scripts/`](https://github.com/shortlink-org/portolan/tree/main/scripts)
 - **Kind:** cli
 - **Technologies:** Node.js
-- **Owners:** `@shortlink-org/platform`
 
 The side of portolan that runs. `npm run gen` reads the manifest, runs every
 plugin it names, stamps and writes what comes back, merges the sources into

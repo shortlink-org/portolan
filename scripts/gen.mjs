@@ -168,10 +168,13 @@ async function generate() {
 
   for (const step of manifest.generate ?? []) {
     const plugin = pluginNamed(step.plugin);
+    const generatedCatalog = step.catalog
+      ? (await loadSources({ profile: step.catalog })).catalog
+      : catalog;
     await executeStep("generate", step, `${step.plugin} → ${step.out}`, async () =>
       runPlugin(plugin, {
         portolanVersion: PORTOLAN_VERSION,
-        catalog,
+        catalog: generatedCatalog,
         options: step.options ?? {},
       }),
     );

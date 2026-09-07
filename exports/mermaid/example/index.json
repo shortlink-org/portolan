@@ -1,0 +1,469 @@
+{
+  "flows": [
+    {
+      "id": "flow.auth-change-password",
+      "slug": "auth-change-password",
+      "name": "Change password",
+      "owner": "auth",
+      "source": "examples/auth/internal/user/infrastructure/http/change_password.go",
+      "diagram": "auth-change-password.mmd"
+    },
+    {
+      "id": "flow.auth-get-user",
+      "slug": "auth-get-user",
+      "name": "Get user",
+      "owner": "auth",
+      "source": "examples/auth/internal/user/infrastructure/http/get.go",
+      "diagram": "auth-get-user.mmd"
+    },
+    {
+      "id": "flow.auth-login",
+      "slug": "auth-login",
+      "name": "Login",
+      "owner": "auth",
+      "source": "examples/auth/internal/session/infrastructure/http/login.go",
+      "diagram": "auth-login.mmd"
+    },
+    {
+      "id": "flow.auth-logout",
+      "slug": "auth-logout",
+      "name": "Logout",
+      "owner": "auth",
+      "source": "examples/auth/internal/session/infrastructure/http/logout.go",
+      "diagram": "auth-logout.mmd"
+    },
+    {
+      "id": "flow.auth-register-user",
+      "slug": "auth-register-user",
+      "name": "Register user",
+      "owner": "auth",
+      "source": "examples/auth/internal/user/infrastructure/http/register.go",
+      "diagram": "auth-register-user.mmd"
+    },
+    {
+      "id": "flow.auth-revoke-sessions-on-password-change",
+      "slug": "auth-revoke-sessions-on-password-change",
+      "name": "Revoke sessions on password change",
+      "owner": "auth",
+      "source": "examples/auth/internal/session/infrastructure/messaging/policy/revoke_sessions_on_password_change.go",
+      "diagram": "auth-revoke-sessions-on-password-change.mmd"
+    },
+    {
+      "id": "flow.auth-validate-session",
+      "slug": "auth-validate-session",
+      "name": "Validate session",
+      "owner": "auth",
+      "source": "examples/auth/internal/session/infrastructure/http/validate.go",
+      "diagram": "auth-validate-session.mmd"
+    },
+    {
+      "id": "flow.bff-mutation-add-item",
+      "slug": "bff-mutation-add-item",
+      "name": "Mutation add item",
+      "owner": "storefront",
+      "source": "examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts",
+      "diagram": "bff-mutation-add-item.mmd"
+    },
+    {
+      "id": "flow.bff-mutation-cancel-order",
+      "slug": "bff-mutation-cancel-order",
+      "name": "Mutation cancel order",
+      "owner": "storefront",
+      "source": "examples/bff/src/schema/order/resolvers/Mutation/cancelOrder.ts",
+      "diagram": "bff-mutation-cancel-order.mmd"
+    },
+    {
+      "id": "flow.bff-mutation-checkout",
+      "slug": "bff-mutation-checkout",
+      "name": "Mutation checkout",
+      "owner": "storefront",
+      "source": "examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts",
+      "diagram": "bff-mutation-checkout.mmd"
+    },
+    {
+      "id": "flow.bff-mutation-remove-item",
+      "slug": "bff-mutation-remove-item",
+      "name": "Mutation remove item",
+      "owner": "storefront",
+      "source": "examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts",
+      "diagram": "bff-mutation-remove-item.mmd"
+    },
+    {
+      "id": "flow.bff-query-basket",
+      "slug": "bff-query-basket",
+      "name": "Query basket",
+      "owner": "storefront",
+      "source": "examples/bff/src/schema/basket/resolvers/Query/basket.ts",
+      "diagram": "bff-query-basket.mmd"
+    },
+    {
+      "id": "flow.bff-query-order",
+      "slug": "bff-query-order",
+      "name": "Query order",
+      "owner": "storefront",
+      "source": "examples/bff/src/schema/order/resolvers/Query/order.ts",
+      "diagram": "bff-query-order.mmd"
+    },
+    {
+      "id": "flow.bff-query-shipment",
+      "slug": "bff-query-shipment",
+      "name": "Query shipment",
+      "owner": "storefront",
+      "source": "examples/bff/src/schema/delivery/resolvers/Query/shipment.ts",
+      "diagram": "bff-query-shipment.mmd"
+    },
+    {
+      "id": "flow.bff-query-viewer",
+      "slug": "bff-query-viewer",
+      "name": "Query viewer",
+      "owner": "storefront",
+      "source": "examples/bff/src/schema/viewer/resolvers/Query/viewer.ts",
+      "diagram": "bff-query-viewer.mmd"
+    },
+    {
+      "id": "flow.bff-subscription-order-status",
+      "slug": "bff-subscription-order-status",
+      "name": "Subscription order status",
+      "owner": "storefront",
+      "source": "examples/bff/src/schema/order/resolvers/Subscription/orderStatus.ts",
+      "diagram": "bff-subscription-order-status.mmd"
+    },
+    {
+      "id": "flow.billing-celery-remind-unpaid-invoice",
+      "slug": "billing-celery-remind-unpaid-invoice",
+      "name": "Remind Unpaid Invoice task",
+      "owner": "shop",
+      "source": "examples/shop/billing/invoices/services.py",
+      "diagram": "billing-celery-remind-unpaid-invoice.mmd"
+    },
+    {
+      "id": "flow.billing-celery-send-invoice-email",
+      "slug": "billing-celery-send-invoice-email",
+      "name": "Send Invoice Email task",
+      "owner": "shop",
+      "source": "examples/shop/billing/invoices/services.py",
+      "diagram": "billing-celery-send-invoice-email.mmd"
+    },
+    {
+      "id": "flow.billing-close-invoice-on-payment",
+      "slug": "billing-close-invoice-on-payment",
+      "name": "Close invoice on payment",
+      "owner": "shop",
+      "source": "examples/shop/billing/invoices/handlers.py",
+      "diagram": "billing-close-invoice-on-payment.mmd"
+    },
+    {
+      "id": "flow.billing-invoice-create",
+      "slug": "billing-invoice-create",
+      "name": "Invoice create",
+      "owner": "shop",
+      "source": "examples/shop/billing/invoices/views.py",
+      "diagram": "billing-invoice-create.mmd"
+    },
+    {
+      "id": "flow.billing-invoice-destroy",
+      "slug": "billing-invoice-destroy",
+      "name": "Invoice destroy",
+      "owner": "shop",
+      "source": "examples/shop/billing/invoices/views.py",
+      "diagram": "billing-invoice-destroy.mmd"
+    },
+    {
+      "id": "flow.billing-invoice-issue",
+      "slug": "billing-invoice-issue",
+      "name": "Invoice issue",
+      "owner": "shop",
+      "source": "examples/shop/billing/invoices/views.py",
+      "diagram": "billing-invoice-issue.mmd"
+    },
+    {
+      "id": "flow.billing-invoice-list",
+      "slug": "billing-invoice-list",
+      "name": "Invoice list",
+      "owner": "shop",
+      "source": "examples/shop/billing/invoices/views.py",
+      "diagram": "billing-invoice-list.mmd"
+    },
+    {
+      "id": "flow.billing-invoice-partial-update",
+      "slug": "billing-invoice-partial-update",
+      "name": "Invoice partial update",
+      "owner": "shop",
+      "source": "examples/shop/billing/invoices/views.py",
+      "diagram": "billing-invoice-partial-update.mmd"
+    },
+    {
+      "id": "flow.billing-invoice-retrieve",
+      "slug": "billing-invoice-retrieve",
+      "name": "Invoice retrieve",
+      "owner": "shop",
+      "source": "examples/shop/billing/invoices/views.py",
+      "diagram": "billing-invoice-retrieve.mmd"
+    },
+    {
+      "id": "flow.billing-invoice-update",
+      "slug": "billing-invoice-update",
+      "name": "Invoice update",
+      "owner": "shop",
+      "source": "examples/shop/billing/invoices/views.py",
+      "diagram": "billing-invoice-update.mmd"
+    },
+    {
+      "id": "flow.cart-add-item",
+      "slug": "cart-add-item",
+      "name": "Add item",
+      "owner": "shop",
+      "source": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts",
+      "diagram": "cart-add-item.mmd"
+    },
+    {
+      "id": "flow.cart-checkout",
+      "slug": "cart-checkout",
+      "name": "Checkout",
+      "owner": "shop",
+      "source": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts",
+      "diagram": "cart-checkout.mmd"
+    },
+    {
+      "id": "flow.cart-create-basket",
+      "slug": "cart-create-basket",
+      "name": "Create basket",
+      "owner": "shop",
+      "source": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts",
+      "diagram": "cart-create-basket.mmd"
+    },
+    {
+      "id": "flow.cart-get-basket",
+      "slug": "cart-get-basket",
+      "name": "Get basket",
+      "owner": "shop",
+      "source": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts",
+      "diagram": "cart-get-basket.mmd"
+    },
+    {
+      "id": "flow.cart-merge-baskets",
+      "slug": "cart-merge-baskets",
+      "name": "Merge baskets",
+      "owner": "shop",
+      "source": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts",
+      "diagram": "cart-merge-baskets.mmd"
+    },
+    {
+      "id": "flow.cart-remove-item",
+      "slug": "cart-remove-item",
+      "name": "Remove item",
+      "owner": "shop",
+      "source": "examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts",
+      "diagram": "cart-remove-item.mmd"
+    },
+    {
+      "id": "flow.core-close-route",
+      "slug": "core-close-route",
+      "name": "Close route",
+      "owner": "delivery",
+      "source": "examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts",
+      "diagram": "core-close-route.mmd"
+    },
+    {
+      "id": "flow.core-dispatch",
+      "slug": "core-dispatch",
+      "name": "Dispatch",
+      "owner": "delivery",
+      "source": "examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts",
+      "diagram": "core-dispatch.mmd"
+    },
+    {
+      "id": "flow.core-get-route",
+      "slug": "core-get-route",
+      "name": "Get route",
+      "owner": "delivery",
+      "source": "examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts",
+      "diagram": "core-get-route.mmd"
+    },
+    {
+      "id": "flow.core-get-shipment",
+      "slug": "core-get-shipment",
+      "name": "Get shipment",
+      "owner": "delivery",
+      "source": "examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts",
+      "diagram": "core-get-shipment.mmd"
+    },
+    {
+      "id": "flow.core-plan-route",
+      "slug": "core-plan-route",
+      "name": "Plan route",
+      "owner": "delivery",
+      "source": "examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts",
+      "diagram": "core-plan-route.mmd"
+    },
+    {
+      "id": "flow.core-record-delivery",
+      "slug": "core-record-delivery",
+      "name": "Record delivery",
+      "owner": "delivery",
+      "source": "examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts",
+      "diagram": "core-record-delivery.mmd"
+    },
+    {
+      "id": "flow.core-record-scan",
+      "slug": "core-record-scan",
+      "name": "Record scan",
+      "owner": "delivery",
+      "source": "examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts",
+      "diagram": "core-record-scan.mmd"
+    },
+    {
+      "id": "flow.core-release-shipment-on-payment-captured",
+      "slug": "core-release-shipment-on-payment-captured",
+      "name": "Release shipment on payment captured",
+      "owner": "delivery",
+      "source": "examples/shop/delivery/core/src/application/policy/release-shipment-on-payment-captured.ts",
+      "diagram": "core-release-shipment-on-payment-captured.mmd"
+    },
+    {
+      "id": "flow.core-start-route",
+      "slug": "core-start-route",
+      "name": "Start route",
+      "owner": "delivery",
+      "source": "examples/shop/delivery/core/src/infrastructure/transport/grpc/route/handlers.ts",
+      "diagram": "core-start-route.mmd"
+    },
+    {
+      "id": "flow.core-track-shipment",
+      "slug": "core-track-shipment",
+      "name": "Track shipment",
+      "owner": "delivery",
+      "source": "examples/shop/delivery/core/src/infrastructure/transport/grpc/shipment/handlers.ts",
+      "diagram": "core-track-shipment.mmd"
+    },
+    {
+      "id": "flow.ledger-authorize",
+      "slug": "ledger-authorize",
+      "name": "Authorize",
+      "owner": "payments",
+      "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java",
+      "diagram": "ledger-authorize.mmd"
+    },
+    {
+      "id": "flow.ledger-capture",
+      "slug": "ledger-capture",
+      "name": "Capture",
+      "owner": "payments",
+      "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java",
+      "diagram": "ledger-capture.mmd"
+    },
+    {
+      "id": "flow.ledger-get-payment",
+      "slug": "ledger-get-payment",
+      "name": "Get payment",
+      "owner": "payments",
+      "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/payment/PaymentGrpcService.java",
+      "diagram": "ledger-get-payment.mmd"
+    },
+    {
+      "id": "flow.ledger-issue-refund",
+      "slug": "ledger-issue-refund",
+      "name": "Issue refund",
+      "owner": "payments",
+      "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/RefundGrpcService.java",
+      "diagram": "ledger-issue-refund.mmd"
+    },
+    {
+      "id": "flow.ledger-list-refunds",
+      "slug": "ledger-list-refunds",
+      "name": "List refunds",
+      "owner": "payments",
+      "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/infrastructure/transport/grpc/refund/RefundGrpcService.java",
+      "diagram": "ledger-list-refunds.mmd"
+    },
+    {
+      "id": "flow.ledger-void-payment-on-order-cancelled",
+      "slug": "ledger-void-payment-on-order-cancelled",
+      "name": "Void payment on order cancelled",
+      "owner": "payments",
+      "source": "examples/payments/ledger/src/main/java/org/portolan/payments/ledger/application/policy/VoidPaymentOnOrderCancelled.java",
+      "diagram": "ledger-void-payment-on-order-cancelled.mmd"
+    },
+    {
+      "id": "flow.oms-cancel-order",
+      "slug": "oms-cancel-order",
+      "name": "Cancel order",
+      "owner": "shop",
+      "source": "examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs",
+      "diagram": "oms-cancel-order.mmd"
+    },
+    {
+      "id": "flow.oms-confirm-order-on-payment-authorized",
+      "slug": "oms-confirm-order-on-payment-authorized",
+      "name": "Confirm order on payment authorized",
+      "owner": "shop",
+      "source": "examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs",
+      "diagram": "oms-confirm-order-on-payment-authorized.mmd"
+    },
+    {
+      "id": "flow.oms-get-order",
+      "slug": "oms-get-order",
+      "name": "Get order",
+      "owner": "shop",
+      "source": "examples/shop/oms/src/infrastructure/transport/grpc/order/handlers.rs",
+      "diagram": "oms-get-order.mmd"
+    },
+    {
+      "id": "flow.oms-place-order-on-basket-checked-out",
+      "slug": "oms-place-order-on-basket-checked-out",
+      "name": "Place order on basket checked out",
+      "owner": "shop",
+      "source": "examples/shop/oms/src/application/policy/place_order_on_basket_checked_out.rs",
+      "diagram": "oms-place-order-on-basket-checked-out.mmd"
+    },
+    {
+      "id": "flow.pricing-archive-price-list",
+      "slug": "pricing-archive-price-list",
+      "name": "Archive price list",
+      "owner": "shop",
+      "source": "examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go",
+      "diagram": "pricing-archive-price-list.mmd"
+    },
+    {
+      "id": "flow.pricing-expire-quote-on-checkout",
+      "slug": "pricing-expire-quote-on-checkout",
+      "name": "Expire quote on checkout",
+      "owner": "shop",
+      "source": "examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go",
+      "diagram": "pricing-expire-quote-on-checkout.mmd"
+    },
+    {
+      "id": "flow.pricing-get-quote",
+      "slug": "pricing-get-quote",
+      "name": "Get quote",
+      "owner": "shop",
+      "source": "examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go",
+      "diagram": "pricing-get-quote.mmd"
+    },
+    {
+      "id": "flow.pricing-import-price-list",
+      "slug": "pricing-import-price-list",
+      "name": "Import price list",
+      "owner": "shop",
+      "source": "examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go",
+      "diagram": "pricing-import-price-list.mmd"
+    },
+    {
+      "id": "flow.pricing-issue-quote",
+      "slug": "pricing-issue-quote",
+      "name": "Issue quote",
+      "owner": "shop",
+      "source": "examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go",
+      "diagram": "pricing-issue-quote.mmd"
+    },
+    {
+      "id": "flow.pricing-list-price-lists",
+      "slug": "pricing-list-price-lists",
+      "name": "List price lists",
+      "owner": "shop",
+      "source": "examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go",
+      "diagram": "pricing-list-price-lists.mmd"
+    }
+  ],
+  "version": 1
+}

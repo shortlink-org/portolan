@@ -1,6 +1,30 @@
 {
   "$schema": "./schema/portolan.schema.json",
   "$comment": "Where the facts come from, what produces them, and what turns them into something to read.",
+  "defaultCatalog": "portolan",
+  "catalogs": [
+    {
+      "id": "portolan",
+      "title": "Portolan",
+      "sources": ["portolan/*.json"],
+      "contexts": ["portolan"],
+      "projects": ["portolan"]
+    },
+    {
+      "id": "example",
+      "title": "Example estate",
+      "sources": [
+        "data/*.json",
+        "examples/*/portolan/*.json",
+        "examples/*/*/portolan/*.json",
+        "examples/*/*/*/portolan/*.json",
+        "vendor/repos/*/*/git.repo.json",
+        "vendor/repos/**/portolan/*.json"
+      ],
+      "contexts": ["auth", "shop", "delivery", "payments", "storefront"],
+      "projects": ["auth", "shop-cart", "shop-billing", "shop-pricing", "delivery-core", "payments-ledger", "shop-oms"]
+    }
+  ],
   "projects": [
     {
       "id": "auth",
@@ -302,7 +326,7 @@
       "options": {
         "group": "portolan",
         "groupName": "Portolan",
-        "groupSummary": "The tool that reads this estate: a browser for an architecture catalog, read out of the code and specs that already describe it. Nothing in the shop calls it and it calls nothing; it is here because a catalog that cannot describe its own reader is a catalog with a hole in it.",
+        "groupSummary": "The tool that reads an architecture catalog from the code and specifications that already describe a software estate. It is documented here as the system that extracts, merges, validates and presents those facts.",
         "component": "host",
         "componentName": "Host",
         "componentKind": "cli",
@@ -1001,7 +1025,25 @@
   "generate": [
     {
       "plugin": "markdown",
+      "catalog": "portolan",
       "out": "docs",
+      "options": {
+        "title": "Portolan",
+        "sourceBaseUrl": "https://github.com/shortlink-org/portolan/blob/main"
+      }
+    },
+    {
+      "plugin": "mermaid",
+      "catalog": "portolan",
+      "out": "exports/mermaid",
+      "options": {
+        "title": "Portolan flows"
+      }
+    },
+    {
+      "plugin": "markdown",
+      "catalog": "example",
+      "out": "docs/example",
       "options": {
         "title": "Example estate",
         "sourceBaseUrl": "https://github.com/shortlink-org/portolan/blob/main"
@@ -1009,13 +1051,15 @@
     },
     {
       "plugin": "mermaid",
-      "out": "exports/mermaid",
+      "catalog": "example",
+      "out": "exports/mermaid/example",
       "options": {
         "title": "Example estate flows"
       }
     },
     {
       "plugin": "backstage",
+      "catalog": "example",
       "out": "exports/backstage",
       "options": {
         "domain": "example-estate",
