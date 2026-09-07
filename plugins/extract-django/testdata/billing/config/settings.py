@@ -6,7 +6,7 @@ INSTALLED_APPS = [
     "invoices",
 ]
 
-DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 
 # Who may call, when a view does not say: a JWT bearer, and only a caller.
 REST_FRAMEWORK = {
@@ -14,7 +14,10 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
 }
 
-DATABASES = {"default": {"ENGINE": "django.db.backends.postgresql", "NAME": "billing"}}
+DATABASES = {
+    "default": {"ENGINE": "psqlextra.backend", "NAME": "billing"},
+    "archive": {"ENGINE": "django.db.backends.postgresql", "NAME": "billing_archive"},
+}
 
 # Read by config/celery.py under the CELERY_ prefix: the one task with a
 # queue of its own, and where the rest land.

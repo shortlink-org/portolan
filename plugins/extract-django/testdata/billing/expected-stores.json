@@ -139,7 +139,7 @@
           "columns": [
             {
               "name": "id",
-              "type": "bigserial",
+              "type": "serial",
               "nullable": false,
               "pk": true
             },
@@ -188,6 +188,137 @@
             "block": "shop.billing.invoice.invoice-line"
           },
           "role": "child"
+        },
+        {
+          "id": "shop.billing.pg.ledger_ledgerentry",
+          "name": "ledger_ledgerentry",
+          "columns": [
+            {
+              "name": "id",
+              "type": "serial",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "created_at",
+              "type": "timestamptz",
+              "nullable": false
+            },
+            {
+              "name": "updated_at",
+              "type": "timestamptz",
+              "nullable": false
+            },
+            {
+              "name": "reference",
+              "type": "varchar(64)",
+              "nullable": false
+            },
+            {
+              "name": "tags",
+              "type": "varchar(16)[4]",
+              "nullable": false
+            },
+            {
+              "name": "modes",
+              "type": "varchar(32)",
+              "nullable": false
+            },
+            {
+              "name": "audit_code",
+              "type": "varchar(12)",
+              "nullable": false
+            },
+            {
+              "name": "owner_id",
+              "type": "integer",
+              "nullable": false
+            }
+          ]
+        },
+        {
+          "id": "shop.billing.pg.ledger_ledgerentry_audits",
+          "name": "ledger_ledgerentry_audits",
+          "doc": "Django-generated many-to-many table for LedgerEntry.audits.",
+          "columns": [
+            {
+              "name": "id",
+              "type": "serial",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "ledgerentry_id",
+              "type": "integer",
+              "nullable": false,
+              "fk": {
+                "table": "shop.billing.pg.ledger_ledgerentry",
+                "column": "id",
+                "onDelete": "cascade"
+              }
+            },
+            {
+              "name": "auditrecord_id",
+              "type": "integer",
+              "nullable": false,
+              "fk": {
+                "table": "shop.billing.pg.ledger_auditrecord",
+                "column": "id",
+                "onDelete": "cascade"
+              }
+            }
+          ],
+          "indexes": [
+            {
+              "name": "ledger_ledgerentry_audits_ledgerentry_id_auditrecord_id_key",
+              "columns": [
+                "ledgerentry_id",
+                "auditrecord_id"
+              ],
+              "unique": true
+            }
+          ]
+        },
+        {
+          "id": "shop.billing.pg.ledger_auditrecord",
+          "name": "ledger_auditrecord",
+          "columns": [
+            {
+              "name": "id",
+              "type": "serial",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "created_at",
+              "type": "timestamptz",
+              "nullable": false
+            },
+            {
+              "name": "updated_at",
+              "type": "timestamptz",
+              "nullable": false
+            },
+            {
+              "name": "code",
+              "type": "varchar(12)",
+              "nullable": false
+            },
+            {
+              "name": "note",
+              "type": "text",
+              "nullable": false
+            }
+          ],
+          "indexes": [
+            {
+              "name": "ledger_auditrecord_code_key",
+              "columns": [
+                "code"
+              ],
+              "unique": true
+            }
+          ]
         }
       ],
       "source": "plugins/extract-django/testdata/billing"

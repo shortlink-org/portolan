@@ -591,8 +591,8 @@ export function ServicePage() {
         <TabPanel>
           {stores.length === 0 ? (
             <Empty>
-              nothing says where this service keeps its state — stores are read
-              from migrations, and none were found for this repository
+              nothing says where this service keeps its state — no database
+              schema or statically readable ORM configuration was found for this repository
             </Empty>
           ) : null}
 

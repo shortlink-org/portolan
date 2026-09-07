@@ -39,6 +39,7 @@ class FieldDef:
     kind: str  # the field class as written, last segment: "CharField"
     call: ast.Call
     node: ast.AST
+    integers: Dict[str, int] = dc_field(default_factory=dict)
 
     @property
     def relation(self) -> str:
@@ -55,6 +56,9 @@ class FieldDef:
     def help(self) -> str:
         return keyword_str(self.call, "help_text")
 
+    def integer(self, name: str) -> Optional[int]:
+        return self.integers.get(name)
+
 
 @dataclass
 class ModelDef:
@@ -63,7 +67,12 @@ class ModelDef:
     module: Module
     app: App
     abstract: bool = False
+    proxy: bool = False
     fields: List[FieldDef] = dc_field(default_factory=list)
+
+    @property
+    def concrete(self) -> bool:
+        return not self.abstract and not self.proxy
 
     @property
     def meta(self) -> Optional[ast.ClassDef]:
@@ -109,33 +118,113 @@ def is_dataclass(node: ast.ClassDef) -> bool:
     return False
 
 
-def read_fields(node: ast.ClassDef) -> List[FieldDef]:
+def integer_value(value: Optional[ast.AST], module: Module, modules: Dict[str, Module], depth: int = 0) -> Optional[int]:
+    """A small integer expression, including constants imported from a model module."""
+    if value is None or depth > 5:
+        return None
+    if isinstance(value, ast.Constant) and isinstance(value.value, int) and not isinstance(value.value, bool):
+        return value.value
+    if isinstance(value, ast.Name):
+        imported = module.imports.get(value.id)
+        target = modules.get(imported.module) if imported is not None else module
+        name = imported.name if imported is not None else value.id
+        if target is None:
+            return None
+        for assigned_name, assigned_value, _ in assigned(target.tree):
+            if assigned_name == name:
+                return integer_value(assigned_value, target, modules, depth + 1)
+    if isinstance(value, ast.BinOp):
+        left = integer_value(value.left, module, modules, depth + 1)
+        right = integer_value(value.right, module, modules, depth + 1)
+        if left is None or right is None:
+            return None
+        if isinstance(value.op, ast.Add):
+            return left + right
+        if isinstance(value.op, ast.Mult):
+            return left * right
+        if isinstance(value.op, ast.LShift):
+            return left << right
+    return None
+
+
+def read_fields(node: ast.ClassDef, module: Module, modules: Dict[str, Module]) -> List[FieldDef]:
     out = []
     for name, value, stmt in assigned(node):
         if not isinstance(value, ast.Call):
             continue
         kind = dotted(value.func).split(".")[-1]
         if kind.endswith("Field") or kind in RELATIONS:
-            out.append(FieldDef(name=name, kind=kind, call=value, node=stmt))
+            integers = {
+                option: found
+                for option in ("max_length", "max_digits", "decimal_places", "size")
+                if (found := integer_value(keyword(value, option), module, modules)) is not None
+            }
+            out.append(FieldDef(name=name, kind=kind, call=value, node=stmt, integers=integers))
     return out
 
 
+def meta_flag(node: ast.ClassDef, name: str) -> bool:
+    meta = inner_class(node, "Meta")
+    if meta is None:
+        return False
+    for attr, value, _ in assigned(meta):
+        if attr == name and isinstance(value, ast.Constant):
+            return value.value is True
+    return False
+
+
+def inherited_fields(model: ModelDef, models: Dict[str, ModelDef], modules: Dict[str, Module], active=None) -> List[FieldDef]:
+    """Fields copied from abstract bases, followed by fields on the model.
+
+    Django copies abstract-base fields into each concrete child. Model modules
+    are independent Python files, so their path order must not decide whether
+    an imported base is understood.
+    """
+    active = set(active or ())
+    if model.name in active:
+        return read_fields(model.node, model.module, modules)
+    active.add(model.name)
+    fields: List[FieldDef] = []
+    for base in bases(model.node):
+        parent = models.get(base.split(".")[-1])
+        if parent is not None and parent.abstract:
+            fields.extend(inherited_fields(parent, models, modules, active))
+    fields.extend(read_fields(model.node, model.module, modules))
+    by_name: Dict[str, FieldDef] = {}
+    for field in fields:
+        by_name[field.name] = field
+    return list(by_name.values())
+
+
 def read_models(app: App) -> List[ModelDef]:
-    """Every model of an application, in the order the files declare them."""
-    out: List[ModelDef] = []
+    """Every model of an application, independent of module path order."""
+    classes = [(module, node) for module in app.models for node in module.classes()]
     known: Dict[str, ast.ClassDef] = {}
-    for module in app.models:
-        for node in module.classes():
-            if not is_model(node, known):
+    changed = True
+    while changed:
+        changed = False
+        for _module, node in classes:
+            if node.name in known or not is_model(node, known):
                 continue
             known[node.name] = node
-            meta = inner_class(node, "Meta")
-            abstract = False
-            if meta is not None:
-                for name, value, _ in assigned(meta):
-                    if name == "abstract" and isinstance(value, ast.Constant) and value.value is True:
-                        abstract = True
-            out.append(ModelDef(name=node.name, node=node, module=module, app=app, abstract=abstract, fields=read_fields(node)))
+            changed = True
+
+    out = [
+        ModelDef(
+            name=node.name,
+            node=node,
+            module=module,
+            app=app,
+            abstract=meta_flag(node, "abstract"),
+            proxy=meta_flag(node, "proxy"),
+        )
+        for module, node in classes
+        if node.name in known
+    ]
+    definitions = {model.name: model for model in out}
+    modules = {module.dotted: module for module in app.models}
+    for model in out:
+        model.fields = inherited_fields(model, definitions, modules)
     return out
 
 
@@ -162,7 +251,7 @@ def block_fields(node: ast.ClassDef) -> List[Dict[str, object]]:
 def root_of(app: App, models: List[ModelDef], named: Dict[str, str], b) -> Optional[ModelDef]:
     """The root is the model named after the application - `invoices` holds
     `Invoice` - or the only model there is, or the one the manifest names."""
-    concrete = [m for m in models if not m.abstract]
+    concrete = [m for m in models if m.concrete]
     want = named.get(app.dotted) or named.get(app.label)
     if want:
         for m in concrete:
@@ -186,14 +275,23 @@ def root_of(app: App, models: List[ModelDef], named: Dict[str, str], b) -> Optio
     return None
 
 
-def read_aggregates(project: Project, applications: List[App], svc_id: str, named: Dict[str, str], b) -> List[Aggregate]:
+def read_aggregates(
+    project: Project,
+    applications: List[App],
+    svc_id: str,
+    named: Dict[str, str],
+    b,
+    models_by_app: Optional[Dict[str, List[ModelDef]]] = None,
+) -> List[Aggregate]:
     out = []
     for app in applications:
-        models = read_models(app)
+        models = (models_by_app or {}).get(app.dotted)
+        if models is None:
+            models = read_models(app)
         root = root_of(app, models, named, b)
         if root is None:
             continue
-        concrete = [m for m in models if not m.abstract]
+        concrete = [m for m in models if m.concrete]
         ordered = [root] + [m for m in concrete if m is not root]
         agg_slug = slug(root.name)
         agg_id = aggregate_id(svc_id, agg_slug)

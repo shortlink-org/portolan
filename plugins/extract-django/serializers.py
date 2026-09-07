@@ -292,6 +292,7 @@ def read(project: Project, apps: List[App]) -> Registry:
     models = []
     for app in apps:
         app_models = domain.read_models(app)
+        model_modules = {module.dotted: module for module in app.models}
         known_models = {(model.module.dotted, model.name) for model in app_models}
         # A project-specific model base is still a model when the class body
         # declares Django fields. Domain boundary discovery stays stricter;
@@ -299,7 +300,7 @@ def read(project: Project, apps: List[App]) -> Registry:
         for module in app.models:
             for node in module.classes():
                 key = (module.dotted, node.name)
-                fields = domain.read_fields(node)
+                fields = domain.read_fields(node, module, model_modules)
                 if key not in known_models and fields:
                     app_models.append(domain.ModelDef(node.name, node, module, app, fields=fields))
                     known_models.add(key)

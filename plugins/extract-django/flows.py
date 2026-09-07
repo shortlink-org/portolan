@@ -68,6 +68,7 @@ class Options:
     svc_id: str
     service: str
     store: str
+    stores: Dict[str, str] = dc_field(default_factory=dict)
     peers: Dict[str, str] = dc_field(default_factory=dict)
     events: Dict[str, str] = dc_field(default_factory=dict)
     settings: str = ""  # the Django settings module Celery is configured from
@@ -207,12 +208,20 @@ class FlowReader:
         self.models: Dict[str, ModelDef] = {}
         self.models_by_name: Dict[str, List[ModelDef]] = {}
         self.emitters: Dict[Tuple[str, str], str] = {}  # (model, method) -> event id
+        seen_models = set()
         for model in models:
+            key = (model.module.dotted, model.name)
+            if key in seen_models:
+                continue
+            seen_models.add(key)
             self.models_by_name.setdefault(model.name, []).append(model)
         for agg in aggregates:
             for model in agg.models:
-                if model not in self.models_by_name.setdefault(model.name, []):
-                    self.models_by_name[model.name].append(model)
+                key = (model.module.dotted, model.name)
+                if key in seen_models:
+                    continue
+                seen_models.add(key)
+                self.models_by_name.setdefault(model.name, []).append(model)
         for name, candidates in self.models_by_name.items():
             self.models[name] = candidates[0]
         self.use_cases: Dict[str, UseCase] = {}
@@ -239,13 +248,15 @@ class FlowReader:
     def service_lane(self, d: Draft) -> str:
         return d.lane(self.opts.svc_id, "service", self.opts.context)
 
-    def store_lane(self, d: Draft) -> str:
-        if not self.opts.store:
+    def store_lane(self, d: Draft, alias: str = "default") -> str:
+        store = self.opts.stores.get(alias, self.opts.store if alias == "default" else "")
+        if not store:
             if not self._warned_store:
-                self.b.warn(self.opts.svc_id, "no store named in the options, so calls into the ORM stay on the service's own lane")
+                self.b.warn(self.opts.svc_id, "no readable database configuration or `store` option, so calls into the ORM stay on the service's own lane")
                 self._warned_store = True
             return self.opts.svc_id
-        return d.lane("%s-%s" % (self.opts.service, self.opts.store), "store", self.opts.context)
+        label = "" if alias == "default" else alias
+        return d.lane("%s-%s" % (self.opts.service, store), "store", self.opts.context, label)
 
     def peer_lane(self, d: Draft, pkg: str) -> Tuple[str, str, str]:
         service = self.opts.peers.get(pkg, "")
@@ -567,7 +578,7 @@ class FlowReader:
         # says where. Read before the plain event rule so the address is
         # not lost to it.
         event = next((a for a in args if isinstance(a, tuple) and a[0] == "event"), None)
-        if holder is None or holder[0] not in ("client", "model"):
+        if holder is None or holder[0] not in ("client", "model", "model-store"):
             address = ""
             if last in PRODUCE_METHODS and node.args:
                 address = self.address_of(frame.module, node.args[0])
@@ -627,12 +638,20 @@ class FlowReader:
         parts = name.split(".")
         manager_model = self.model_for(frame.module, ".".join(parts[:-2])) if len(parts) >= 3 and parts[-2] == "objects" else None
         if manager_model is not None:
+            if last in ("using", "db_manager"):
+                alias = binding_string(positional[0]) if positional else ""
+                return ("model-store", (manager_model, alias or "default"))
             d.add(self.opts.svc_id, self.store_lane(d), "call", "%s.objects.%s" % (parts[-3], last), line=line)
             return ("model", manager_model)
+        if holder is not None and holder[0] == "model-store":
+            model, alias = holder[1]
+            d.add(self.opts.svc_id, self.store_lane(d, alias), "call", "%s.objects.%s" % (model.name, last), line=line)
+            return ("model", model)
         if holder is not None and holder[0] == "model":
             model: ModelDef = holder[1]
             if last in STORE_METHODS or (len(parts) >= 2 and parts[-2] == "objects"):
-                d.add(self.opts.svc_id, self.store_lane(d), "call", "%s.%s" % (model.name, last), line=line)
+                alias = binding_string(named.get("using")) or "default"
+                d.add(self.opts.svc_id, self.store_lane(d, alias), "call", "%s.%s" % (model.name, last), line=line)
                 return holder
             emitted = self.emits(model, last)
             if emitted:

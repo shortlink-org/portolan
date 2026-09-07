@@ -53,4 +53,4 @@ def void_invoice(invoice_id, reason):
 
 def get_invoice(invoice_id):
     """Reads one invoice."""
-    return Invoice.objects.filter(id=invoice_id).first()
+    return Invoice.objects.using("archive").filter(id=invoice_id).first()

@@ -35,7 +35,7 @@
     },
     "store": {
       "type": "string",
-      "description": "Slug of the database this service keeps its state in. The models are read as its schema, and a call into the ORM lands on its lane; without it neither is claimed.",
+      "description": "Slug of the database this service keeps its state in. Defaults from the kind of DATABASES['default'] when that setting is statically readable. The models are read as its schema, and a call into the ORM lands on its lane.",
       "examples": ["pg"]
     },
     "storeName": {
@@ -44,7 +44,7 @@
     },
     "storeKind": {
       "enum": ["postgres", "mysql", "sqlite", "redis", "mongodb", "clickhouse", "s3", "other"],
-      "description": "Which database the models are the schema of. Read off DATABASES['default']['ENGINE'] in the settings module when left out, and postgres when that says nothing readable; given here, it wins, and a disagreement with the settings is reported. It picks the column types a field becomes; only postgres has a mapping, and a kind without one keeps the field's own name and says so."
+      "description": "Which database the models are the schema of. Read off DATABASES['default']['ENGINE'] in the settings module when left out; given here, it wins, and a disagreement with the settings is reported. It picks the column types a field becomes; only postgres has a mapping, and a kind without one keeps the field's own name and says so."
     },
     "apps": {
       "type": "array",
@@ -87,7 +87,7 @@
     },
     "storesOut": {
       "type": "string",
-      "description": "Name of the fragment holding the database the models describe, inside the step's output directory. Written only when store is set.",
+      "description": "Name of the fragment holding the database the models describe, inside the step's output directory. Written when store is set or inferred from DATABASES['default'].",
       "default": "stores.json"
     },
     "openapiOut": {

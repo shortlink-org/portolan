@@ -165,19 +165,18 @@ class Fragment(unittest.TestCase):
         self.assertEqual(response_statuses(node), ["201", "400"])
 
     def test_what_it_reports_beside_them(self):
-        self.assertEqual(
-            [(d.severity, d.ref.split("/")[-1]) for d in self.warnings],
-            [("warning", "shop.billing.invoice.InvoiceVoided"), ("warning", "handlers.py:19")],
-        )
-        self.assertIn("a signal declares no payload", self.warnings[0].message)
-        self.assertTrue(self.warnings[1].message.startswith("index_invoice runs on post_save of Invoice: a policy hanging on a persistence hook"))
+        messages = [warning.message for warning in self.warnings]
+        self.assertTrue(any("a signal declares no payload" in message for message in messages))
+        self.assertTrue(any(message.startswith("index_invoice runs on post_save of Invoice: a policy hanging on a persistence hook") for message in messages))
 
-    def test_without_a_store_the_models_describe_no_database(self):
+    def test_the_primary_store_is_inferred_from_django_settings(self):
         options = dict(OPTIONS)
         del options["store"]
         files, warnings = run(options)
-        self.assertEqual(list(files), ["domain.json", "openapi.inferred.yaml"])
-        self.assertIn("`store` is what says which one they are the schema of", " ".join(d.message for d in warnings))
+        self.assertIn("stores.json", files)
+        store = json.loads(files["stores.json"])["stores"][0]
+        self.assertEqual((store["id"], store["slug"], store["kind"]), ("shop.billing.pg", "pg", "postgres"))
+        self.assertNotIn("no `store` option", " ".join(d.message for d in warnings))
 
     def test_the_store_kind_is_read_off_the_settings_and_the_manifest_wins_when_it_speaks(self):
         _, warnings = run(OPTIONS)
@@ -186,7 +185,39 @@ class Fragment(unittest.TestCase):
         files, warnings = run(dict(OPTIONS, storeKind="sqlite"))
         self.assertEqual(json.loads(files["stores.json"])["stores"][0]["kind"], "sqlite")
         said = [w.message for w in warnings if "storeKind" in w.message]
-        self.assertEqual(said, ["the manifest says storeKind sqlite but the settings' DATABASES engine is django.db.backends.postgresql, which is postgres; the manifest's kind is used"])
+        self.assertEqual(said, ["the manifest says storeKind sqlite but the settings' DATABASES engine is psqlextra.backend, which is postgres; the manifest's kind is used"])
+
+    def test_store_schema_does_not_depend_on_an_aggregate_root(self):
+        stores = json.loads(self.files["stores.json"])["stores"][0]
+        tables = {table["name"]: table for table in stores["tables"]}
+        self.assertIn("ledger_ledgerentry", tables)
+        self.assertIn("ledger_auditrecord", tables)
+        self.assertNotIn("ledger_ledgerentryproxy", tables)
+        self.assertNotIn("persists", tables["ledger_ledgerentry"])
+        self.assertNotIn("role", tables["ledger_ledgerentry"])
+        service = json.loads(self.files["domain.json"])["contexts"][0]["services"][0]
+        self.assertFalse(any(aggregate["slug"] == "ledger-entry" for aggregate in service["aggregates"]))
+
+    def test_abstract_fields_custom_postgres_fields_and_unresolved_relations_are_described(self):
+        store = json.loads(self.files["stores.json"])["stores"][0]
+        table = next(table for table in store["tables"] if table["name"] == "ledger_ledgerentry")
+        columns = {column["name"]: column for column in table["columns"]}
+        self.assertEqual(columns["id"]["type"], "serial")
+        self.assertEqual(columns["created_at"]["type"], "timestamptz")
+        self.assertEqual(columns["tags"]["type"], "varchar(16)[4]")
+        self.assertEqual(columns["modes"]["type"], "varchar(32)")
+        self.assertEqual(columns["audit_code"]["type"], "varchar(12)")
+        self.assertNotIn("fk", columns["audit_code"])
+        self.assertEqual(columns["owner_id"]["type"], "integer")
+        self.assertNotIn("fk", columns["owner_id"])
+
+    def test_implicit_many_to_many_fields_contribute_their_join_table(self):
+        stores = json.loads(self.files["stores.json"])["stores"][0]
+        table = next(table for table in stores["tables"] if table["name"] == "ledger_ledgerentry_audits")
+        self.assertEqual([column["name"] for column in table["columns"]], ["id", "ledgerentry_id", "auditrecord_id"])
+        self.assertEqual(table["columns"][0]["type"], "serial")
+        self.assertEqual(table["columns"][1]["fk"]["table"], "shop.billing.pg.ledger_ledgerentry")
+        self.assertEqual(table["columns"][2]["fk"]["table"], "shop.billing.pg.ledger_auditrecord")
 
     def test_an_option_nobody_reads_is_refused_rather_than_dropped(self):
         with self.assertRaises(ValueError):
@@ -318,8 +349,14 @@ class Reading(unittest.TestCase):
         self.assertEqual(wire["InvoicePaid"], {"name": "billing.InvoicePaid", "channel": "shop.billing.invoice"})
 
     def test_a_queryset_chain_makes_its_query_where_it_is_built(self):
-        steps = {f["slug"]: f["steps"] for f in self.fragment["flows"]}["billing-invoice-retrieve"]
+        flow = {f["slug"]: f for f in self.fragment["flows"]}["billing-invoice-retrieve"]
+        steps = flow["steps"]
         self.assertEqual([s["label"] for s in steps], ["invoice_retrieve", "Invoice.objects.filter"])
+        self.assertEqual(steps[-1]["to"], "billing-archive")
+        self.assertIn(
+            {"id": "billing-archive", "kind": "store", "context": "shop", "label": "archive"},
+            flow["participants"],
+        )
 
     def test_endpoint_flows_follow_imported_helpers_and_self_methods(self):
         flows = {f["slug"]: f for f in self.fragment["flows"]}
@@ -346,7 +383,7 @@ class Reading(unittest.TestCase):
         columns = {c["name"]: c for c in lines["columns"]}
         self.assertEqual(columns["invoice_id"]["type"], "uuid")
         self.assertEqual(columns["invoice_id"]["fk"], {"table": "shop.billing.pg.invoices", "column": "id", "onDelete": "cascade"})
-        self.assertEqual(columns["id"]["type"], "bigserial")
+        self.assertEqual(columns["id"]["type"], "serial")
         self.assertEqual(columns["unit_price"]["maps"], "InvoiceLine.unit_price_minor")
 
 

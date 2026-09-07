@@ -779,9 +779,10 @@
           "context": "shop"
         },
         {
-          "id": "billing-pg",
+          "id": "billing-archive",
           "kind": "store",
-          "context": "shop"
+          "context": "shop",
+          "label": "archive"
         }
       ],
       "steps": [
@@ -799,7 +800,7 @@
           "type": "step",
           "id": "s2",
           "from": "shop.billing",
-          "to": "billing-pg",
+          "to": "billing-archive",
           "kind": "call",
           "label": "Invoice.objects.filter",
           "status": "declared",

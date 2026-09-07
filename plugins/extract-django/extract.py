@@ -53,7 +53,23 @@ def extract(input_: Input, opts: Options, b: Builder, cwd: str = "") -> None:
     if not applications:
         b.warn(svc_id, "no Django application under %s: a directory with a models module is what this reads" % rel(source))
 
-    aggregates = domain.read_aggregates(project, applications, svc_id, dict(opts.aggregates), b)
+    models_by_app = {app.dotted: domain.read_models(app) for app in applications}
+    concrete_models = [model for models in models_by_app.values() for model in models if model.concrete]
+    configured_databases = database.databases_of(project, opts.settings)
+    primary_database = next((item for item in configured_databases if item.alias == "default"), None)
+    effective_store = opts.store
+    if not effective_store and concrete_models and primary_database is not None and primary_database.kind:
+        effective_store = database.store_slug(primary_database.kind)
+    store_aliases = {item.alias: (effective_store if item.alias == "default" else slug(item.alias)) for item in configured_databases}
+
+    aggregates = domain.read_aggregates(
+        project,
+        applications,
+        svc_id,
+        dict(opts.aggregates),
+        b,
+        models_by_app,
+    )
     route_table = routing.read(project, opts.settings)
     endpoint_apps = routed_applications(project, applications, route_table)
     endpoints = []
@@ -73,10 +89,19 @@ def extract(input_: Input, opts: Options, b: Builder, cwd: str = "") -> None:
         clients += clients_module.read_clients(agg.app, dict(opts.peers), rel, b)
 
     reader = flows.FlowReader(
-        flows.Options(context=context, svc_id=svc_id, service=service, store=opts.store, peers=dict(opts.peers), events=dict(opts.events), settings=opts.settings),
+        flows.Options(
+            context=context,
+            svc_id=svc_id,
+            service=service,
+            store=effective_store,
+            stores=store_aliases,
+            peers=dict(opts.peers),
+            events=dict(opts.events),
+            settings=opts.settings,
+        ),
         project,
         aggregates,
-        serializer_registry.models,
+        concrete_models + serializer_registry.models,
         use_cases,
         clients,
         known_events,
@@ -176,17 +201,25 @@ def extract(input_: Input, opts: Options, b: Builder, cwd: str = "") -> None:
             "OpenAPI/Swagger is generated at runtime; the emitted OpenAPI document is inferred from URLConf, DRF declarations, schema decorators and handler expressions, so details assembled only at runtime remain unavailable without a checked-in document",
         )
 
-    if not opts.store:
-        b.warn(svc_id, "no store named in the options, so the models describe no database: `store` is what says which one they are the schema of")
+    if not effective_store:
+        b.warn(
+            svc_id,
+            "the project has ORM models, but DATABASES['default'] cannot be read and no `store` option names their database",
+        )
         return
     kind, engine, implied = database.store_kind(project, opts.settings, opts.store_kind)
     if implied:
         b.warn(svc_id, "the manifest says storeKind %s but the settings' DATABASES engine is %s, which is %s; the manifest's kind is used" % (kind, engine, implied))
-    tables = []
-    names = store_module.index(aggregates)
-    for agg in aggregates:
-        tables += store_module.read(agg, names, svc_id, opts.store, kind, b)
-    store_id = "%s.%s" % (svc_id, opts.store)
+    tables = store_module.read_all(
+        models_by_app,
+        aggregates,
+        svc_id,
+        effective_store,
+        kind,
+        database.default_auto_field(project, opts.settings),
+        b,
+    )
+    store_id = "%s.%s" % (svc_id, effective_store)
     stores_fragment = {
         "generatedAt": input_.generated_at,
         "commit": input_.commit,
@@ -218,7 +251,7 @@ def extract(input_: Input, opts: Options, b: Builder, cwd: str = "") -> None:
         "stores": [
             catalog.store(
                 store_id,
-                opts.store,
+                effective_store,
                 opts.store_name or title(service) + " database",
                 kind,
                 svc_id,

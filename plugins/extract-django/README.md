@@ -230,6 +230,22 @@ emits, so `CharField(max_length=32)` is `varchar(32)` and a key into a
 would name with a hash of its own is called after its table and columns, since
 inventing the hash would be a name no database has.
 
+The primary store is inferred from `DATABASES["default"]` when that setting is
+statically readable; `store` remains the override for settings assembled at
+runtime or for a catalog that needs a different stable slug. Every concrete,
+non-proxy model becomes a table even when its application has several possible
+aggregate roots: ambiguity limits the domain model, not the persistence
+schema. Fields from abstract model bases are copied into those tables
+regardless of which model module sorts first. `DEFAULT_AUTO_FIELD` supplies
+implicit primary-key types. PostgreSQL `ArrayField` nesting and
+`MultiSelectField` storage are rendered as their database types; `to_field`
+selects a relation's referenced column, and `db_constraint=False` keeps a
+logical relation from being drawn as a physical foreign-key constraint. An
+implicit `ManyToManyField` contributes the join table Django creates, while an
+explicit `through` model is already a normal model and therefore a normal
+table. Calls routed through `.using("alias")` or `.db_manager("alias")` keep
+that alias on the flow instead of being attributed to the primary store.
+
 ## What it does not read
 
 Named here rather than left to be discovered: **migrations** (the models are
@@ -237,8 +253,8 @@ the schema; a migration is how it got there), **the bodies of Celery tasks**
 (an enqueue is a hop to its queue, and what the worker does there is
 `extract-celery`'s), **admin**, **templates**, **middleware**, **management
 commands**, **signals connected outside a `@receiver`**, and a **many-to-many**
-field's join table — which is reported, since Django makes a table there that
-this does not name.
+field with an explicit `through` model beyond the table represented by that
+model itself.
 
 ## Options
 
@@ -260,14 +276,13 @@ this does not name.
 
 `source` is the directory the applications are looked for in, the input root
 unless said otherwise; `apps` names them outright for a project that keeps them
-somewhere a models module would not be found. `store` is what says which
-database the models are the schema of — without it they describe none, and
-calls into the ORM stay on the service's own lane. `storeKind` is read off
+somewhere a models module would not be found. `store` overrides the stable slug
+inferred from `DATABASES["default"]`; it is required only when the settings are
+not statically readable. `storeKind` is read off
 `DATABASES["default"]["ENGINE"]` in the settings module when left out —
-`postgresql` and `postgis` are `postgres`, `sqlite3` is `sqlite`, and a
-project that configures the database through a URL the tree does not hold is
-`postgres` by default; given, it wins, and a disagreement with the settings is
-reported. `settings` names the Django settings module — for the database, and
+`postgresql`, `postgis` and `psqlextra.backend` are `postgres`, and `sqlite3`
+is `sqlite`; given, it wins, and a disagreement with the settings is reported.
+`settings` names the Django settings module — for the database, and
 for the queues Celery is configured with — only where `manage.py` does not.
 Everything else means what it means for `extract-ts`.
 
