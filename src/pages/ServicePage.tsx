@@ -533,6 +533,28 @@ export function ServicePage() {
             <SchemaDocument source={spec.source} />
           ) : spec.kind === "wsdl" ? (
             <WsdlReference source={spec.source} provided={service.provides} />
+          ) : spec.kind === "inferred-http" ? (
+            <div className="flex flex-col gap-4">
+              <div className="rounded-card border border-line bg-surface px-4 py-3">
+                <p className="font-medium text-ink">HTTP contract inferred from Django</p>
+                <p className="mt-1 text-muted">
+                  No OpenAPI document is checked into this repository. These routes were read
+                  statically from Django URLConf and DRF views; request and response schemas stay
+                  unknown until the generated Swagger document is exported into the repository.
+                </p>
+              </div>
+              {service.provides
+                .filter((provided) => provided.methods.some((method) => method.http))
+                .map((provided) => (
+                  <div key={provided.id} className="rounded-card border border-line">
+                    <div className="mono flex flex-wrap items-center gap-x-3 border-b border-line bg-surface px-3 py-1.5">
+                      <Ident value={provided.id} className="text-ink" />
+                      <Ident value={docPathOf(provided.source)} className="ml-auto" title={provided.source} />
+                    </div>
+                    <MethodRows provided={provided} open={openShapes} onToggle={toggleShape} />
+                  </div>
+                ))}
+            </div>
           ) : (
             /* A proto is drawn from the catalog rather than as raw text. The
                rule ApiReference states - draw the document because the catalog

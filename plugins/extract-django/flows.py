@@ -13,6 +13,7 @@ from __future__ import annotations
 import ast
 from dataclasses import dataclass, field as dc_field
 from typing import Dict, List, Optional, Tuple
+from urllib.parse import urlparse
 
 import catalog
 from clients import Client
@@ -46,6 +47,9 @@ PRODUCE_METHODS = {"send", "produce", "publish", "group_send"}
 # Django's own model signals: a hook on the row, not an event. A receiver on
 # one is reported, not drawn.
 ORM_SIGNALS = {"pre_init", "post_init", "pre_save", "post_save", "pre_delete", "post_delete", "m2m_changed", "pre_migrate", "post_migrate"}
+HTTP_LIBRARIES = {"requests", "httpx", "aiohttp"}
+HTTP_METHODS = {"get", "post", "put", "patch", "delete", "head", "options"}
+MAX_CALL_DEPTH = 5
 
 
 def sender_of(decorator: ast.Call) -> str:
@@ -131,17 +135,42 @@ def condition(node: ast.AST) -> str:
     return text if len(text) <= 72 else text[:69] + "..."
 
 
+@dataclass(frozen=True)
+class ClassTarget:
+    module: Module
+    node: ast.ClassDef
+
+
+@dataclass(frozen=True)
+class CallableTarget:
+    module: Module
+    node: ast.AST
+    owner: Optional[ClassTarget] = None
+
+    @property
+    def key(self) -> Tuple[str, str, str]:
+        return (self.module.dotted, self.owner.node.name if self.owner is not None else "", getattr(self.node, "name", ""))
+
+
 class Frame:
     """What a name means inside one body being walked."""
 
-    def __init__(self, module: Module, variables: Optional[Dict[str, Tuple[str, object]]] = None):
+    def __init__(
+        self,
+        module: Module,
+        variables: Optional[Dict[str, Tuple[str, object]]] = None,
+        owner: Optional[ClassTarget] = None,
+        active: Tuple[Tuple[str, str, str], ...] = (),
+    ):
         self.module = module
         self.vars: Dict[str, Tuple[str, object]] = dict(variables or {})
         self.returned: Optional[Tuple[str, object]] = None
+        self.owner = owner
+        self.active = active
 
 
 class FlowReader:
-    def __init__(self, opts: Options, project: Project, aggregates: List[Aggregate], use_cases: List[UseCase], clients: List[Client], events: Dict[str, object], rel, b):
+    def __init__(self, opts: Options, project: Project, aggregates: List[Aggregate], models: List[ModelDef], use_cases: List[UseCase], clients: List[Client], events: Dict[str, object], rel, b):
         self.opts = opts
         self.project = project
         self.aggregates = aggregates
@@ -150,10 +179,16 @@ class FlowReader:
         self.calls: Dict[str, Dict[str, object]] = {}
         self.referenced = set()
         self.models: Dict[str, ModelDef] = {}
+        self.models_by_name: Dict[str, List[ModelDef]] = {}
         self.emitters: Dict[Tuple[str, str], str] = {}  # (model, method) -> event id
+        for model in models:
+            self.models_by_name.setdefault(model.name, []).append(model)
         for agg in aggregates:
             for model in agg.models:
-                self.models[model.name] = model
+                if model not in self.models_by_name.setdefault(model.name, []):
+                    self.models_by_name[model.name].append(model)
+        for name, candidates in self.models_by_name.items():
+            self.models[name] = candidates[0]
         self.use_cases: Dict[str, UseCase] = {}
         for use_case in use_cases:
             self.use_cases[use_case.key] = use_case
@@ -164,6 +199,14 @@ class FlowReader:
         self._celery: Optional[Tuple[celery_conf.Config, Dict[Tuple[str, str], celery_tasks.Task]]] = None
         self.produced: Dict[str, List[Tuple[str, str]]] = {}  # event id -> (address, line) it was put on the wire at
         self._settings: Optional[Module] = None
+        self.classes: Dict[Tuple[str, str], ClassTarget] = {}
+        self.functions: Dict[Tuple[str, str], CallableTarget] = {}
+        for module in project.modules.values():
+            for node in module.classes():
+                target = ClassTarget(module, node)
+                self.classes[(module.dotted, node.name)] = target
+            for node in module.functions():
+                self.functions[(module.dotted, node.name)] = CallableTarget(module, node)
 
     # --- lanes ---------------------------------------------------------------
 
@@ -196,14 +239,18 @@ class FlowReader:
 
     # --- the two openings ----------------------------------------------------
 
-    def endpoint_flow(self, agg: Aggregate, endpoint) -> Optional[Dict[str, object]]:
+    def endpoint_flow(self, endpoint, serializer=None, model: Optional[ModelDef] = None) -> Optional[Dict[str, object]]:
         d = Draft()
         d.lane(LANE_CLIENT, "actor", None)
         self.service_lane(d)
         d.add(LANE_CLIENT, self.opts.svc_id, "rpc", endpoint.id, line=endpoint.module.where(endpoint.node))
-        frame = Frame(endpoint.module, self.attributes(endpoint))
         ran: List[UseCase] = []
-        self.walk(d, frame, endpoint.node.body, 0, ran)
+        if isinstance(endpoint.node, ast.ClassDef):
+            self.inherited_endpoint(d, endpoint, serializer, model)
+        else:
+            owner = self.class_target(endpoint.module, endpoint.view) if endpoint.view else None
+            frame = Frame(endpoint.module, self.attributes(endpoint), owner=owner)
+            self.walk(d, frame, endpoint.node.body, 0, ran)
         endpoint.use_cases = [u.key for u in ran]
         name = slug(endpoint.id)
         ident = "%s-%s" % (self.opts.service, name)
@@ -217,6 +264,48 @@ class FlowReader:
             d.lanes,
             d.steps,
         )
+
+    def inherited_endpoint(self, d: Draft, endpoint, serializer, model: Optional[ModelDef]) -> None:
+        """Materialise the behaviour DRF supplies for inherited CRUD actions.
+
+        The action itself is known from the concrete generic base. Persistence
+        is drawn only when ``queryset`` or serializer metadata proves a model;
+        the extractor never invents a table from the URL or view name.
+        """
+        action = endpoint.action
+        serializer_name = getattr(serializer, "name", "")
+        framework = next(
+            (
+                dotted(base).split(".")[-1]
+                for base in endpoint.node.bases
+                if dotted(base).split(".")[-1].endswith(("APIView", "ViewSet"))
+            ),
+            "generic view",
+        )
+        source = endpoint.module.where(endpoint.node)
+        model_note = "Model resolved from queryset or serializer metadata." if model is not None else "No model is declared by queryset or serializer metadata."
+        note = "Supplied by DRF %s. %s" % (framework, model_note)
+
+        if action in ("retrieve", "update", "partial_update", "destroy") and model is not None:
+            d.add(self.opts.svc_id, self.store_lane(d), "call", "%s.objects.get" % model.name, note=note, line=source)
+        elif action == "list" and model is not None:
+            d.add(self.opts.svc_id, self.store_lane(d), "call", "%s.objects.all" % model.name, note=note, line=source)
+
+        if action in ("create", "update", "partial_update") and serializer_name:
+            suffix = " (partial)" if action == "partial_update" else ""
+            d.add(self.opts.svc_id, self.opts.svc_id, "call", "Validate %s%s" % (serializer_name, suffix), note=note, line=source)
+
+        if model is not None:
+            if action == "create":
+                d.add(self.opts.svc_id, self.store_lane(d), "call", "%s.objects.create" % model.name, note=note, line=source)
+            elif action in ("update", "partial_update"):
+                d.add(self.opts.svc_id, self.store_lane(d), "call", "%s.save" % model.name, note=note, line=source)
+            elif action == "destroy":
+                d.add(self.opts.svc_id, self.store_lane(d), "call", "%s.delete" % model.name, note=note, line=source)
+
+        if action in ("list", "retrieve") and serializer_name:
+            suffix = " collection" if action == "list" else ""
+            d.add(self.opts.svc_id, self.opts.svc_id, "call", "Serialize %s%s" % (serializer_name, suffix), note=note, line=source)
 
     def policy_flow(self, agg: Aggregate, module: Module, node: ast.AST, decorator: ast.Call) -> Optional[Dict[str, object]]:
         signal = dotted(decorator.args[0]).split(".")[-1] if decorator.args else ""
@@ -282,7 +371,7 @@ class FlowReader:
             if node.name != endpoint.view:
                 continue
             for name, value, _ in assigned(node):
-                binding = self.constructed(value)
+                binding = self.constructed(endpoint.module, value)
                 if binding is not None:
                     out["self." + name] = binding
             init = None
@@ -292,17 +381,23 @@ class FlowReader:
             if init is not None:
                 for stmt in ast.walk(init):
                     if isinstance(stmt, ast.Assign) and len(stmt.targets) == 1 and isinstance(stmt.targets[0], ast.Attribute):
-                        binding = self.constructed(stmt.value)
+                        binding = self.constructed(endpoint.module, stmt.value)
                         if binding is not None:
                             out["self." + stmt.targets[0].attr] = binding
         return out
 
-    def constructed(self, value: ast.AST) -> Optional[Tuple[str, object]]:
+    def constructed(self, module: Module, value: ast.AST) -> Optional[Tuple[str, object]]:
         if not isinstance(value, ast.Call):
             return None
         name = dotted(value.func).split(".")[-1]
         if name in self.clients:
             return ("client", self.clients[name])
+        external = self.external_name(module, dotted(value.func))
+        if external in ("requests.Session", "httpx.Client", "httpx.AsyncClient", "aiohttp.ClientSession"):
+            return ("http", external.split(".", 1)[0])
+        target = self.resolve_class(module, dotted(value.func))
+        if target is not None:
+            return ("object", target)
         return None
 
     # --- the walk ------------------------------------------------------------
@@ -348,6 +443,8 @@ class FlowReader:
             self.walk(d, frame, stmt.finalbody, depth, ran)
         elif isinstance(stmt, ast.Raise):
             return
+        elif isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            frame.vars[stmt.name] = ("callable", CallableTarget(frame.module, stmt, frame.owner))
 
     def choice(self, d: Draft, frame: Frame, stmt: ast.If, depth: int, ran: List[UseCase]) -> None:
         branches = []
@@ -367,6 +464,8 @@ class FlowReader:
                 branches.append(catalog.branch("otherwise", d.pop(), terminal(rest)))
             current = None
         if any(branch["steps"] for branch in branches):
+            if len(branches) == 1:
+                branches.append(catalog.branch("otherwise", []))
             d.add_alt(branches)
 
     def bind(self, frame: Frame, target: ast.AST, binding) -> None:
@@ -387,7 +486,11 @@ class FlowReader:
         if name in frame.vars:
             return frame.vars[name]
         base = name.split(".")[0]
-        return frame.vars.get(base)
+        found = frame.vars.get(base)
+        if found is not None:
+            return found
+        model = self.model_for(frame.module, name)
+        return ("model", model) if model is not None else None
 
     def value(self, d: Draft, frame: Frame, node: ast.AST, depth: int, ran: List[UseCase]):
         """What an expression holds, and every hop it makes on the way."""
@@ -396,9 +499,14 @@ class FlowReader:
         if isinstance(node, (ast.Tuple, ast.List)):
             return ("many", [self.value(d, frame, element, depth, ran) for element in node.elts])
         if isinstance(node, (ast.Name, ast.Attribute)):
-            return self.lookup(frame, node)
+            binding = self.lookup(frame, node)
+            if binding is not None:
+                return binding
+            text = self.string_value(frame.module, node)
+            return ("string", text) if text else None
         if not isinstance(node, ast.Call):
-            return None
+            text = self.string_value(frame.module, node)
+            return ("string", text) if text else None
 
         # The receiver first, then the arguments: a chain is read the way it is
         # written, so `Invoice.objects.filter(...).first()` makes its query
@@ -407,18 +515,26 @@ class FlowReader:
         if isinstance(node.func, ast.Attribute):
             inner = node.func.value
             holder = self.value(d, frame, inner, depth, ran) if isinstance(inner, ast.Call) else self.lookup(frame, inner)
-        args = [self.value(d, frame, arg, depth, ran) for arg in node.args]
-        args += [self.value(d, frame, kw.value, depth, ran) for kw in node.keywords]
+        positional = [self.value(d, frame, arg, depth, ran) for arg in node.args]
+        named = {kw.arg: self.value(d, frame, kw.value, depth, ran) for kw in node.keywords if kw.arg}
+        args = positional + list(named.values())
         name = dotted(node.func)
         last = name.split(".")[-1]
         line = frame.module.where(node)
+
+        if self.external_name(frame.module, name) == "urllib.parse.urljoin" and len(node.args) >= 2:
+            left = binding_string(positional[0]) or self.string_value(frame.module, node.args[0])
+            right = binding_string(positional[1]) or self.string_value(frame.module, node.args[1])
+            text = left.rstrip("/") + "/" + right.lstrip("/") if left or right else ""
+            if text:
+                return ("string", text)
 
         # A use case of this service: its steps are these steps. Looked for
         # first, so a use case handed an event is followed rather than read as
         # a publish of it.
         use_case = self.use_case(frame.module, name)
         if use_case is not None:
-            return self.inline(d, use_case, args, depth, ran, line)
+            return self.inline(d, use_case, positional, named, depth, ran, line)
 
         # A publish with an address, or a project's own helper that makes one
         # when handed an event: the event leaves for the bus, and the step
@@ -451,6 +567,14 @@ class FlowReader:
                 self.enqueue(d, task, keyword_str(node, "queue"), line)
                 return None
 
+        # A project helper is evidence stronger than its call shape. Follow it
+        # before the generic "an event was handed to something" fallback, so a
+        # formatter or validator receiving an event is not invented as a
+        # publish operation.
+        called = self.callable_target(frame, node.func, holder)
+        if called is not None and (holder is None or holder[0] == "object"):
+            return self.inline_callable(d, frame, called, positional, named, depth, ran)
+
         # An event handed to anything is the event leaving for the bus, which
         # is the rule that catches a project's own `publish()` helper as well
         # as a signal's `send`. A list it is being collected into is not one.
@@ -467,16 +591,18 @@ class FlowReader:
         # An event, a model or a client, constructed.
         if last in self.events and isinstance(node.func, (ast.Name, ast.Attribute)):
             return ("event", self.events[last].id)
-        if last in self.models and ".objects." not in name:
-            return ("model", self.models[last])
+        model = self.model_for(frame.module, name)
+        if model is not None and ".objects." not in name:
+            return ("model", model)
         if last in self.clients:
             return ("client", self.clients[last])
 
         # The ORM: a manager on a model class, or a write on an instance.
         parts = name.split(".")
-        if len(parts) >= 3 and parts[-2] == "objects" and parts[-3] in self.models:
+        manager_model = self.model_for(frame.module, ".".join(parts[:-2])) if len(parts) >= 3 and parts[-2] == "objects" else None
+        if manager_model is not None:
             d.add(self.opts.svc_id, self.store_lane(d), "call", "%s.objects.%s" % (parts[-3], last), line=line)
-            return ("model", self.models[parts[-3]])
+            return ("model", manager_model)
         if holder is not None and holder[0] == "model":
             model: ModelDef = holder[1]
             if last in STORE_METHODS or (len(parts) >= 2 and parts[-2] == "objects"):
@@ -485,13 +611,25 @@ class FlowReader:
             emitted = self.emits(model, last)
             if emitted:
                 return ("event", emitted)
-            return holder
         if holder is not None and holder[0] == "client":
             return self.rpc(d, holder[1], last, line)
 
+        http = self.http_call(frame.module, node, holder, positional)
+        if http is not None:
+            method, target = http
+            self.http_step(d, method, target, line)
+            return None
+
+        called = self.callable_target(frame, node.func, holder)
+        if called is not None:
+            return self.inline_callable(d, frame, called, positional, named, depth, ran)
+
+        if holder is not None and holder[0] == "model":
+            return holder
+
         return None
 
-    def inline(self, d: Draft, use_case: UseCase, args, depth: int, ran: List[UseCase], line: str):
+    def inline(self, d: Draft, use_case: UseCase, positional, named, depth: int, ran: List[UseCase], line: str):
         """A use case runs here, so its steps are drawn here - two deep at
         most, past which the call itself is the step."""
         if use_case not in ran:
@@ -500,11 +638,39 @@ class FlowReader:
             d.add(self.opts.svc_id, self.opts.svc_id, "call", use_case.id, note="Runs the use case, whose steps are not drawn again here.", line=line)
             return None
         inner = Frame(use_case.module, self.module_env(use_case.module))
-        for parameter, binding in zip(getattr(use_case.node.args, "args", []), args):
-            if binding is not None:
-                inner.vars[parameter.arg] = binding
+        self.bind_arguments(inner, use_case.node, positional, named, False)
         self.walk(d, inner, use_case.node.body, depth + 1, ran)
         return inner.returned
+
+    def inline_callable(self, d: Draft, caller: Frame, target: CallableTarget, positional, named, depth: int, ran: List[UseCase]):
+        """Follow a project function or method until its observable effects."""
+        if depth >= MAX_CALL_DEPTH or target.key in caller.active:
+            return None
+        variables = self.module_env(target.module)
+        if target.module is caller.module:
+            variables.update(caller.vars)
+        if target.owner is not None:
+            variables.update(self.class_env(target.owner))
+            variables.update({name: value for name, value in caller.vars.items() if name.startswith("self.")})
+        inner = Frame(target.module, variables, owner=target.owner, active=caller.active + (target.key,))
+        self.bind_arguments(inner, target.node, positional, named, target.owner is not None)
+        self.walk(d, inner, getattr(target.node, "body", []), depth + 1, ran)
+        return inner.returned
+
+    def bind_arguments(self, frame: Frame, node: ast.AST, positional, named, method: bool) -> None:
+        args = getattr(node, "args", None)
+        if args is None:
+            return
+        parameters = list(getattr(args, "posonlyargs", [])) + list(getattr(args, "args", []))
+        if method and parameters and parameters[0].arg in ("self", "cls"):
+            parameters = parameters[1:]
+        for parameter, binding in zip(parameters, positional):
+            if binding is not None:
+                frame.vars[parameter.arg] = binding
+        for parameter in parameters:
+            binding = named.get(parameter.arg)
+            if binding is not None:
+                frame.vars[parameter.arg] = binding
 
     def deferred(self, d: Draft, frame: Frame, node: ast.AST, depth: int, ran: List[UseCase]) -> None:
         """What `on_commit` was handed: a lambda, whose body is read where the
@@ -654,6 +820,197 @@ class FlowReader:
             self.calls[call.id] = catalog.rpc_call(call.id, peer, catalog.UNRESOLVED, call.source)
         return None
 
+    # --- project calls and standard HTTP clients ----------------------------
+
+    def class_target(self, module: Module, name: str) -> Optional[ClassTarget]:
+        return self.classes.get((module.dotted, name))
+
+    def resolve_class(self, module: Module, name: str) -> Optional[ClassTarget]:
+        if not name:
+            return None
+        if "." not in name:
+            hit = self.project.resolve(module, name)
+            if hit is not None:
+                return self.classes.get((hit[0].dotted, hit[1]))
+            return self.classes.get((module.dotted, name))
+        parts = name.split(".")
+        imported = module.imports.get(parts[0])
+        if imported is None:
+            return None
+        if imported.name == "*":
+            target_module = self.project.module(".".join([imported.module] + parts[1:-1]))
+            return self.classes.get((target_module.dotted, parts[-1])) if target_module is not None else None
+        direct = self.classes.get((imported.module, imported.name))
+        if direct is not None and len(parts) == 1:
+            return direct
+        module_name = imported.module + "." + imported.name
+        target_module = self.project.module(".".join([module_name] + parts[1:-1]))
+        return self.classes.get((target_module.dotted, parts[-1])) if target_module is not None else None
+
+    def callable_target(self, frame: Frame, func: ast.AST, holder) -> Optional[CallableTarget]:
+        name = dotted(func)
+        if not name:
+            return None
+        local = frame.vars.get(name)
+        if local is not None and local[0] == "callable":
+            return local[1]
+        if isinstance(func, ast.Attribute):
+            if isinstance(func.value, ast.Call) and dotted(func.value.func) == "super":
+                return self.super_method(frame.owner, func.attr)
+            receiver = dotted(func.value)
+            if receiver in ("self", "cls") and frame.owner is not None:
+                return self.method_target(frame.owner, func.attr)
+            if holder is not None and holder[0] == "object":
+                return self.method_target(holder[1], func.attr)
+            owner = self.resolve_class(frame.module, receiver)
+            if owner is not None:
+                return self.method_target(owner, func.attr)
+        return self.resolve_function(frame.module, name)
+
+    def resolve_function(self, module: Module, name: str) -> Optional[CallableTarget]:
+        parts = name.split(".")
+        if len(parts) == 1:
+            hit = self.project.resolve(module, name)
+            if hit is None:
+                return None
+            return self.functions.get((hit[0].dotted, hit[1]))
+        imported = module.imports.get(parts[0])
+        if imported is None:
+            return None
+        if imported.name == "*":
+            target = self.project.module(".".join([imported.module] + parts[1:-1]))
+        else:
+            module_name = imported.module + "." + imported.name
+            target = self.project.module(".".join([module_name] + parts[1:-1]))
+            if target is None and len(parts) == 2:
+                target = self.project.module(imported.module)
+        return self.functions.get((target.dotted, parts[-1])) if target is not None else None
+
+    def method_target(self, owner: ClassTarget, name: str) -> Optional[CallableTarget]:
+        node = next((item for item in methods(owner.node) if item.name == name), None)
+        if node is not None:
+            return CallableTarget(owner.module, node, owner)
+        for base in owner.node.bases:
+            parent = self.resolve_class(owner.module, dotted(base))
+            if parent is not None:
+                found = self.method_target(parent, name)
+                if found is not None:
+                    return found
+        return None
+
+    def super_method(self, owner: Optional[ClassTarget], name: str) -> Optional[CallableTarget]:
+        if owner is None:
+            return None
+        for base in owner.node.bases:
+            parent = self.resolve_class(owner.module, dotted(base))
+            if parent is not None:
+                found = self.method_target(parent, name)
+                if found is not None:
+                    return found
+        return None
+
+    def class_env(self, target: ClassTarget) -> Dict[str, Tuple[str, object]]:
+        out: Dict[str, Tuple[str, object]] = {}
+        for name, value, _ in assigned(target.node):
+            binding = self.constructed(target.module, value)
+            if binding is not None:
+                out["self." + name] = binding
+        init = next((node for node in methods(target.node) if node.name == "__init__"), None)
+        if init is not None:
+            for stmt in ast.walk(init):
+                if isinstance(stmt, ast.Assign) and len(stmt.targets) == 1 and isinstance(stmt.targets[0], ast.Attribute):
+                    binding = self.constructed(target.module, stmt.value)
+                    if binding is not None:
+                        out["self." + stmt.targets[0].attr] = binding
+        return out
+
+    def model_for(self, module: Module, name: str) -> Optional[ModelDef]:
+        short = name.split(".")[-1]
+        candidates = self.models_by_name.get(short, [])
+        if not candidates:
+            return None
+        hit = self.project.resolve(module, short) if "." not in name else None
+        if hit is not None:
+            exact = [model for model in candidates if model.module.dotted == hit[0].dotted and model.name == hit[1]]
+            if len(exact) == 1:
+                return exact[0]
+        same_package = [model for model in candidates if module.dotted == model.app.dotted or module.dotted.startswith(model.app.dotted + ".")]
+        if len(same_package) == 1:
+            return same_package[0]
+        return candidates[0] if len(candidates) == 1 else None
+
+    def external_name(self, module: Module, name: str) -> str:
+        if not name:
+            return ""
+        parts = name.split(".")
+        imported = module.imports.get(parts[0])
+        if imported is None:
+            return name
+        base = imported.module if imported.name == "*" else imported.module + "." + imported.name
+        return ".".join([base] + parts[1:])
+
+    def http_call(self, module: Module, node: ast.Call, holder, positional) -> Optional[Tuple[str, str]]:
+        name = dotted(node.func)
+        last = name.split(".")[-1].lower()
+        if holder is not None and holder[0] == "http" and last in HTTP_METHODS:
+            url = binding_string(positional[0]) if positional else ""
+            url = url or (self.string_value(module, node.args[0]) if node.args else "")
+            return last.upper(), url or expression(node.args[0] if node.args else None)
+        external = self.external_name(module, name)
+        library = external.split(".", 1)[0]
+        if library not in HTTP_LIBRARIES:
+            return None
+        if last == "request" and len(node.args) >= 2:
+            method = binding_string(positional[0]).upper() if positional else ""
+            target = binding_string(positional[1]) if len(positional) > 1 else ""
+            return method or "HTTP", target or self.string_value(module, node.args[1]) or expression(node.args[1])
+        if last not in HTTP_METHODS:
+            return None
+        url = binding_string(positional[0]) if positional else ""
+        url = url or (self.string_value(module, node.args[0]) if node.args else "")
+        return last.upper(), url or expression(node.args[0] if node.args else None)
+
+    def string_value(self, module: Module, node: Optional[ast.AST], depth: int = 0) -> str:
+        if node is None or depth > 5:
+            return ""
+        text = celery_conf.str_value(node, module)
+        if text:
+            return text
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+            left = self.string_value(module, node.left, depth + 1)
+            right = self.string_value(module, node.right, depth + 1)
+            return left + right if left or right else ""
+        if isinstance(node, ast.JoinedStr):
+            chunks = []
+            for item in node.values:
+                if isinstance(item, ast.Constant) and isinstance(item.value, str):
+                    chunks.append(item.value)
+                elif isinstance(item, ast.FormattedValue):
+                    chunks.append("{%s}" % expression(item.value))
+            return "".join(chunks)
+        if isinstance(node, ast.Call) and self.external_name(module, dotted(node.func)) == "urllib.parse.urljoin" and len(node.args) >= 2:
+            left = self.string_value(module, node.args[0], depth + 1)
+            right = self.string_value(module, node.args[1], depth + 1)
+            return left.rstrip("/") + "/" + right.lstrip("/") if left or right else ""
+        name = dotted(node)
+        if not name:
+            return ""
+        if name.startswith("settings."):
+            return self.address_of(module, node)
+        if "." not in name:
+            hit = self.project.resolve(module, name)
+            if hit is not None and hit[0] is not module:
+                return self.string_value(hit[0], ast.Name(id=hit[1]), depth + 1)
+        return ""
+
+    def http_step(self, d: Draft, method: str, target: str, line: str) -> None:
+        parsed = urlparse(target)
+        peer = parsed.netloc or parsed.path.split("/", 1)[0] or "external-http"
+        path = parsed.path if parsed.netloc else target
+        label = "%s %s" % (method, path or "/")
+        lane = d.lane("http-" + slug(peer), "unknown", None, peer)
+        d.add(self.opts.svc_id, lane, "rpc", label, catalog.UNRESOLVED, line=line)
+
     def use_case(self, module: Module, name: str) -> Optional[UseCase]:
         """`issue_invoice(...)` imported from the services module,
         `services.issue_invoice(...)` through the module itself, or a function
@@ -678,7 +1035,7 @@ class FlowReader:
         module keeps as singletons, which is how a Django project holds one."""
         out: Dict[str, Tuple[str, object]] = {}
         for name, value, _ in assigned(module.tree):
-            binding = self.constructed(value)
+            binding = self.constructed(module, value)
             if binding is not None:
                 out[name] = binding
         return out
@@ -686,3 +1043,16 @@ class FlowReader:
 
 def terminal(body: List[ast.AST]) -> bool:
     return bool(body) and isinstance(body[-1], (ast.Return, ast.Raise))
+
+
+def expression(node: Optional[ast.AST]) -> str:
+    if node is None:
+        return ""
+    try:
+        return " ".join(ast.unparse(node).split())  # type: ignore[attr-defined]
+    except Exception:
+        return dotted(node)
+
+
+def binding_string(binding) -> str:
+    return binding[1] if isinstance(binding, tuple) and len(binding) > 1 and binding[0] == "string" else ""

@@ -23,6 +23,8 @@ pub struct Input {
     #[serde(default)]
     pub root: String,
     #[serde(default)]
+    pub output: String,
+    #[serde(default)]
     pub commit: String,
     #[serde(default)]
     pub generated_at: String,

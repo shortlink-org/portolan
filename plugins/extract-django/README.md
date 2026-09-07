@@ -72,13 +72,49 @@ creates, deletes, updates or publishes — or opens a transaction — and a quer
 when it does not. The doc is the function's docstring, first paragraph.
 `exposedBy` names the endpoints that run it.
 
-**Endpoint.** A DRF `ViewSet`'s actions — the five it inherits and every
-`@action` it adds — and an `@api_view` function. The id is the router's
-basename and the action: `router.register("invoices", InvoiceViewSet,
-basename="invoice")` makes `invoice_issue`, which is the name a
-drf-spectacular document would give it too. The route itself is not read here:
-a path is a fact about the document, and the document is `extract-openapi`'s to
-read.
+**Endpoint and inferred HTTP contract.** The root URLConf is found through
+`DJANGO_SETTINGS_MODULE` and `ROOT_URLCONF`; nested `include()` prefixes,
+`path`/`re_path`, DRF router registrations, concrete generic views and local
+HTTP handlers are then followed without importing the project. A `ViewSet`'s
+inherited actions and every `@action` it adds are included. The id is the
+router basename and action: `router.register("invoices", InvoiceViewSet,
+basename="invoice")` makes `invoice_issue` at the collection or detail route.
+
+Those operations become a partial `provides` interface and an
+`openapi.inferred.yaml` OpenAPI 3.1 document even when Swagger is generated
+only at runtime. The normal API reference can therefore render the result. It
+is partial deliberately and carries `x-portolan-inferred`: URLConf proves the
+verb and path, while request and response schemas and status codes stay absent
+unless source code proves them. A checked-in document remains
+`extract-openapi`'s richer source of truth. Stateless Django applications with
+routes but no models contribute to this HTTP contract without being invented
+as domain aggregates.
+
+**DRF payload schemas.** A `Serializer` becomes an OpenAPI object from its
+declared fields. A `ModelSerializer` joins `Meta.fields` to the named model's
+Django fields and honours explicit overrides and `read_only_fields`.
+Inheritance and nested serializers (including `many=True`) become component
+references. The field mapping carries scalar formats, nullability, length,
+help text, defaults and read/write direction where syntax proves them.
+
+An endpoint is joined to `serializer_class`, an action's own
+`serializer_class`, or a statically decidable `get_serializer_class()` branch.
+Standard generic actions supply list/object response shapes and the normal
+`200`, `201` and `204` statuses. A concrete `Response` or `JsonResponse`
+supplies the statuses written in its handler. Operations without that evidence
+keep an unknown default response rather than borrowing a nearby serializer.
+
+For custom handlers, literal response objects and lists are read recursively;
+`Serializer(...).data` and `self.get_serializer(..., many=True).data` retain
+their component references even when nested in an envelope such as
+`{"data": serializer.data}`. `swagger_auto_schema` and `extend_schema` take
+precedence where they declare request/response schemas, operation text, tags,
+ids or manual parameters. Query parameters come from explicit
+`request.GET.get(...)` and `request.query_params.get(...)` reads, including
+literal defaults and simple numeric casts. `filterset_fields`, `search_fields`,
+`ordering_fields` and an explicit pagination class add the conventional DRF
+filter, search, ordering and page parameters. A parameter is marked required only when a missing value is
+statically followed by a raise.
 
 **Lifecycle.** Read off the table the model keeps, never off the branches of
 its methods. Either the table is a `TRANSITIONS` mapping beside the
@@ -100,7 +136,20 @@ starts; a state nothing leads out of is terminal, which is derived on the page
 and never written down.
 
 **Flow, from an endpoint.** Each view action opens one: `client → service : rpc
-<endpoint>`, then the steps of every service function it runs, in order.
+<endpoint>`, then follows project-local calls through imported functions,
+`self.method()`, `super().method()` and class or static methods until it reaches
+observable effects. Traversal is bounded and cycles are cut by symbol, so a
+recursive helper cannot make extraction recursive. ORM models from routed
+applications remain visible here even when the application has no unambiguous
+aggregate root. An inherited DRF generic action has no local handler body, so
+its framework behaviour is reconstructed instead: list/retrieve read the
+model, create/update validate through the selected serializer and persist it,
+and destroy reads then deletes it. The model must be proven by `queryset`,
+`get_queryset()` or a serializer's `Meta.model`; a URL or class name is never
+used to invent a persistence hop. These steps point at the view declaration
+and say that DRF supplied them, keeping inferred framework behaviour distinct
+from a custom handler read directly from code.
+
 **Flow, from a policy.** Each `@receiver` opens one on the bus: `bus → service
 : event <ref>`, where the event is the signal it is given — one of this
 service's own, or another service's placed by the manifest's `events`. A
@@ -118,15 +167,17 @@ back; an event handed to anything — a signal's `send`, a project's own
 `publish` — is the event leaving for the bus, and where the call names an
 address — `producer.send("topic", …)`, `produce`, NATS' or Redis' `publish`,
 Channels' `group_send`, as a literal, a module constant or a `settings.X` —
-or is a function of the project, one hop away, whose body does, the step says
-`on <address>`; a call on a vendored client is an rpc to the peer; a `.delay()` or `.apply_async()` on a function decorated
+or is a function of the project whose body does, the step says `on <address>`;
+a standard `requests`, `httpx` or `aiohttp` call is an unresolved rpc to the
+URL's host, including URLs carried through local variables, settings and
+`urljoin`; a call on a vendored client is an rpc to the peer; a `.delay()` or `.apply_async()` on a function decorated
 `@shared_task` or `@app.task`, directly or through `.s()`, is a hop to the
 queue it lands on, `celery-<queue>` — decided the way Celery decides it, by the
 reader `extract-celery` shares through `pyplugin`: the `queue=` at the call,
 then the decorator's, then `task_routes`, then `task_default_queue` — so the
 two flows meet on one participant; and `transaction.on_commit(…)` around it,
-as a lambda or a `partial`, is the note that it waits for the commit. A call into `services.py` is followed, two deep at most, and
-past that the call itself is the step. `if` becomes an alt when some arm holds
+as a lambda or a `partial`, is the note that it waits for the commit. A call into `services.py` and ordinary project helpers is followed within the same
+bounded traversal. `if` becomes an alt when some arm holds
 a hop, and a branch ending in a `return` or a `raise` is terminal; a `for`, a
 `while`, a `with transaction.atomic()` and an `except` are a note on the steps
 inside them. `await` is transparent. Every step is `declared`.
@@ -159,7 +210,7 @@ inventing the hash would be a name no database has.
 Named here rather than left to be discovered: **migrations** (the models are
 the schema; a migration is how it got there), **the bodies of Celery tasks**
 (an enqueue is a hop to its queue, and what the worker does there is
-`extract-celery`'s), **admin**, **serializers**, **templates**, **middleware**, **management
+`extract-celery`'s), **admin**, **templates**, **middleware**, **management
 commands**, **signals connected outside a `@receiver`**, and a **many-to-many**
 field's join table — which is reported, since Django makes a table there that
 this does not name.
@@ -199,13 +250,18 @@ Everything else means what it means for `extract-ts`.
 
 These cases do not become facts in the fragment:
 
-- an application with no models, or with several and no root among them named
-  after it;
+- a domain aggregate for an application with no models, or with several and no
+  root among them named after it (its statically resolvable HTTP routes are
+  still included);
 - a model that declares no fields;
 - an events module holding a class with no wire name, and a signal with no
   payload;
 - an application with no services module;
-- a view no router registers;
+- a dynamically assembled URLConf target or an unrestricted function view
+  whose HTTP method cannot be proven from syntax;
+- serializer fields created dynamically, a `get_serializer_class()` decision
+  that is not reducible to `self.action`, and custom serializer classes that
+  do not derive from DRF `Serializer`/`ModelSerializer`;
 - a table with an edge no method makes, a method moving into a state the table
   lacks, a status assigned to something the states do not name, and a model
   that moves its status while declaring no table at all;

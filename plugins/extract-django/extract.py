@@ -7,6 +7,7 @@ it.
 
 from __future__ import annotations
 
+import ast
 import os
 import re
 from typing import Any, Dict, List
@@ -14,18 +15,21 @@ from typing import Any, Dict, List
 import apps as apps_module
 import catalog
 import clients as clients_module
+import contracts
 import database
 import domain
 import events as events_module
 import flows
 import lifecycle
 import operations
+import routing
+import serializers as serializers_module
 import store as store_module
 import transport
-from ids import service_id, title
+from ids import service_id, slug, title
 from options import Options
 from protocol import Builder, Input
-from source import Project, read
+from source import Project, dotted, read
 
 
 def extract(input_: Input, opts: Options, b: Builder, cwd: str = "") -> None:
@@ -49,23 +53,28 @@ def extract(input_: Input, opts: Options, b: Builder, cwd: str = "") -> None:
         b.warn(svc_id, "no Django application under %s: a directory with a models module is what this reads" % rel(source))
 
     aggregates = domain.read_aggregates(project, applications, svc_id, dict(opts.aggregates), b)
+    route_table = routing.read(project, opts.settings)
+    endpoint_apps = routed_applications(project, applications, route_table)
+    endpoints = []
+    for app in endpoint_apps:
+        endpoints += [(app, endpoint) for endpoint in transport.read_endpoints(app, b, route_table)]
+    serializer_registry = serializers_module.read(project, endpoint_apps)
 
     known_events: Dict[str, Any] = {}
     use_cases: List[operations.UseCase] = []
-    endpoints = []
     clients: List[clients_module.Client] = []
     for agg in aggregates:
         found, registry = events_module.read_events(agg, service, b)
         agg.aggregate["events"] = found
         known_events.update(registry)
         use_cases += operations.read_use_cases(agg, b)
-        endpoints += [(agg, endpoint) for endpoint in transport.read_endpoints(agg.app, b)]
         clients += clients_module.read_clients(agg.app, dict(opts.peers), rel, b)
 
     reader = flows.FlowReader(
         flows.Options(context=context, svc_id=svc_id, service=service, store=opts.store, peers=dict(opts.peers), events=dict(opts.events), settings=opts.settings),
         project,
         aggregates,
+        serializer_registry.models,
         use_cases,
         clients,
         known_events,
@@ -75,8 +84,10 @@ def extract(input_: Input, opts: Options, b: Builder, cwd: str = "") -> None:
 
     found_flows = []
     exposed: Dict[str, List[str]] = {}
-    for agg, endpoint in endpoints:
-        flow = reader.endpoint_flow(agg, endpoint)
+    for _app, endpoint in endpoints:
+        serializer = serializer_registry.for_endpoint(endpoint)
+        model = serializer_registry.model_for_endpoint(endpoint) if isinstance(endpoint.node, ast.ClassDef) else None
+        flow = reader.endpoint_flow(endpoint, serializer, model)
         if flow is not None:
             found_flows.append(flow)
         for key in endpoint.use_cases:
@@ -112,6 +123,8 @@ def extract(input_: Input, opts: Options, b: Builder, cwd: str = "") -> None:
     readme_path = os.path.join(root, "README.md")
     readme = read(readme_path).strip() if os.path.isfile(readme_path) else ""
 
+    openapi_name = opts.openapi_out or "openapi.inferred.yaml"
+    openapi_source = generated_source(input_, root, rel, openapi_name)
     service_obj = {
         "id": svc_id,
         "slug": service,
@@ -119,7 +132,7 @@ def extract(input_: Input, opts: Options, b: Builder, cwd: str = "") -> None:
         "repo": opts.repo or project_repo(root),
         "path": rel(root),
         "readme": readme,
-        "provides": [],
+        "provides": http_contracts(endpoints, svc_id, openapi_source),
         "consumes": reader.consumes(),
         "aggregates": [agg.aggregate for agg in aggregates],
     }
@@ -143,6 +156,14 @@ def extract(input_: Input, opts: Options, b: Builder, cwd: str = "") -> None:
     if opts.classification:
         fragment["contexts"][0]["classification"] = opts.classification
     b.files.append(dump(opts.out or "domain.json", fragment))
+    if service_obj["provides"]:
+        b.files.append(dump(openapi_name, openapi_document(endpoints, opts.service_name or title(service), b, serializer_registry)))
+
+    if route_table.runtime_schema and service_obj["provides"]:
+        b.warn(
+            route_table.runtime_schema,
+            "OpenAPI/Swagger is generated at runtime; the emitted OpenAPI document is inferred from URLConf, DRF declarations, schema decorators and handler expressions, so details assembled only at runtime remain unavailable without a checked-in document",
+        )
 
     if not opts.store:
         b.warn(svc_id, "no store named in the options, so the models describe no database: `store` is what says which one they are the schema of")
@@ -204,6 +225,261 @@ def dump(name: str, fragment: Dict[str, Any]):
     from protocol import File
 
     return File(name=name, contents=json.dumps(fragment, indent=2, ensure_ascii=False) + "\n")
+
+
+def generated_source(input_: Input, root: str, rel, name: str) -> str:
+    """Repository-relative location at which the host writes ``name``.
+
+    New hosts tell plugins the exact output directory. The conventional
+    ``<service>/portolan`` fallback keeps direct and older hosts useful.
+    """
+    output = input_.output.strip("/")
+    if output:
+        return "%s/%s" % (output, name)
+    return rel(os.path.join(root, "portolan", name))
+
+
+def http_contracts(endpoints, svc_id: str, source: str) -> List[Dict[str, Any]]:
+    """Interfaces the service answers on, grouped by Django application.
+
+    A runtime Swagger generator proves that a document can be served, not that
+    a static document exists for this process to read.  URLConf plus the view
+    declarations still prove the operation and its route, which is enough for
+    a useful partial contract and is labelled as inferred by its Python source.
+    """
+    grouped: Dict[str, List[Any]] = {}
+    apps: Dict[str, Any] = {}
+    for app, endpoint in endpoints:
+        if not endpoint.verb or not endpoint.path:
+            continue
+        grouped.setdefault(app.dotted, []).append(endpoint)
+        apps[app.dotted] = app
+    out = []
+    for dotted_name in sorted(grouped):
+        app = apps[dotted_name]
+        methods = []
+        seen = set()
+        for endpoint in sorted(grouped[dotted_name], key=lambda item: (item.id, item.verb, item.path)):
+            name = endpoint.id
+            if name in seen:
+                name = "%s_%s" % (name, slug(endpoint.path))
+            seen.add(name)
+            method = {"name": name}
+            if endpoint.doc:
+                method["doc"] = endpoint.doc
+            method["http"] = {"method": endpoint.verb, "path": endpoint.path}
+            methods.append(method)
+        if not methods:
+            continue
+        out.append({"id": "%s.%s" % (svc_id, slug(app.label)), "methods": methods, "source": source})
+    return out
+
+
+def openapi_document(endpoints, service_name: str, b: Builder, serializer_registry=None) -> Dict[str, Any]:
+    """A conservative OpenAPI view over facts Django declares statically.
+
+    Routes and verbs are evidence. A bound DRF serializer and generic view add
+    the payload and framework response semantics; other operations retain an
+    explicitly unknown default response.
+    """
+    paths: Dict[str, Dict[str, Any]] = {}
+    tags = set()
+    operation_ids = set()
+    for app, endpoint in sorted(endpoints, key=lambda item: (item[1].path, item[1].verb, item[0].label, item[1].id)):
+        if not endpoint.path or not endpoint.verb:
+            continue
+        method = endpoint.verb.lower()
+        path_item = paths.setdefault(endpoint.path, {})
+        if method in path_item:
+            b.warn(endpoint.route_source, "%s %s is declared more than once; the first route is kept in inferred OpenAPI" % (endpoint.verb, endpoint.path))
+            continue
+        tag = app.label
+        tags.add(tag)
+        operation_id = slug("%s-%s" % (tag, endpoint.id)).replace("-", "_")
+        base = operation_id
+        suffix = 2
+        while operation_id in operation_ids:
+            operation_id = "%s_%d" % (base, suffix)
+            suffix += 1
+        operation_ids.add(operation_id)
+        summary = endpoint.doc.strip().splitlines()[0] if endpoint.doc.strip() else title(endpoint.action)
+        operation: Dict[str, Any] = {
+            "operationId": operation_id,
+            "summary": summary,
+            "tags": [tag],
+            "responses": {
+                "default": {
+                    "description": "Response schema and status are not available from static Django route analysis."
+                }
+            },
+            "x-portolan-inferred": True,
+            "x-portolan-source": endpoint.route_source,
+        }
+        if endpoint.doc.strip() and "\n" in endpoint.doc.strip():
+            operation["description"] = endpoint.doc.strip()
+        parameters = []
+        for name in dict.fromkeys(re.findall(r"\{([A-Za-z_][A-Za-z0-9_]*)\}", endpoint.path)):
+            converter = endpoint.path_parameters.get(name, "str")
+            schema: Dict[str, Any] = {"type": "integer"} if converter == "int" else {"type": "string"}
+            if converter == "uuid":
+                schema["format"] = "uuid"
+            elif converter == "slug":
+                schema["pattern"] = "^[-a-zA-Z0-9_]+$"
+            parameters.append(
+                {
+                    "name": name,
+                    "in": "path",
+                    "required": True,
+                    "description": "Inferred from Django's %s path converter." % converter if name in endpoint.path_parameters else "Type was not recoverable from the resolved Django route.",
+                    "schema": schema,
+                    "x-portolan-inferred": True,
+                }
+            )
+        if parameters:
+            operation["parameters"] = parameters
+        statuses = response_statuses(endpoint.node)
+        serializer = serializer_registry.for_endpoint(endpoint) if serializer_registry is not None else None
+        if serializer is not None and serializer_registry.describes_contract(endpoint):
+            attach_serializer_contract(operation, endpoint, serializer, serializer_registry, statuses)
+        elif statuses:
+            operation["responses"] = {
+                status: {
+                    "description": "No content response read from the Django handler."
+                    if status == "204"
+                    else "Error response status read from the Django handler; its schema is unknown."
+                    if not status.startswith("2")
+                    else "Response status read from the Django handler; its schema is unknown."
+                }
+                for status in statuses
+            }
+        if serializer_registry is not None:
+            detail = contracts.read(endpoint, serializer_registry)
+            if detail.summary:
+                operation["summary"] = detail.summary
+            if detail.description:
+                operation["description"] = detail.description
+            if detail.operation_id:
+                operation_ids.discard(operation["operationId"])
+                operation["operationId"] = unique_operation_id(detail.operation_id, operation_ids)
+            if detail.tags:
+                operation["tags"] = detail.tags
+                tags.update(detail.tags)
+            if detail.parameters:
+                operation.setdefault("parameters", [])
+                for parameter in detail.parameters:
+                    contracts.upsert_parameter(operation["parameters"], parameter)
+            if detail.request_schema is not None:
+                operation["requestBody"] = {
+                    "required": True,
+                    "content": {"application/json": {"schema": detail.request_schema}},
+                }
+            if detail.responses:
+                operation["responses"] = detail.responses
+        path_item[method] = operation
+
+    document = {
+        "openapi": "3.1.0",
+        "info": {
+            "title": "%s HTTP API" % service_name,
+            "version": "inferred",
+            "description": "Generated statically from Django URLConf, DRF declarations, schema decorators and handler expressions. Unknown details are left unspecified.",
+        },
+        "tags": [{"name": name} for name in sorted(tags)],
+        "paths": paths,
+        "x-portolan-inferred": True,
+        "x-portolan-generator": "extract-django",
+    }
+    components = serializer_registry.components() if serializer_registry is not None else {}
+    if components:
+        document["components"] = {"schemas": components}
+    return document
+
+
+def unique_operation_id(preferred: str, used: set) -> str:
+    candidate = slug(preferred).replace("-", "_")
+    if candidate in used:
+        suffix = 2
+        while "%s_%d" % (candidate, suffix) in used:
+            suffix += 1
+        candidate = "%s_%d" % (candidate, suffix)
+    used.add(candidate)
+    return candidate
+
+
+def attach_serializer_contract(operation: Dict[str, Any], endpoint, serializer, registry, statuses: List[str]) -> None:
+    reference: Dict[str, Any] = {"$ref": "#/components/schemas/%s" % serializer.component}
+    verb = endpoint.verb.upper()
+    if verb in ("POST", "PUT", "PATCH"):
+        request_schema: Dict[str, Any] = dict(reference)
+        if verb == "PATCH":
+            request_schema = {"allOf": [reference], "x-portolan-partial": True}
+        operation["requestBody"] = {
+            "required": True,
+            "content": {"application/json": {"schema": request_schema}},
+        }
+
+    if not statuses and (verb == "DELETE" or endpoint.action == "destroy"):
+        operation["responses"] = {"204": {"description": "Deleted successfully."}}
+        return
+
+    response_schema: Dict[str, Any] = reference
+    if registry.is_list(endpoint):
+        response_schema = {"type": "array", "items": reference}
+    statuses = statuses or (["201"] if endpoint.action == "create" else ["200"])
+    operation["responses"] = {}
+    for status in statuses:
+        success = status.startswith("2")
+        response: Dict[str, Any] = {
+            "description": (
+                "No content response read from the Django handler."
+                if status == "204"
+                else "Serialized response inferred from DRF view configuration."
+                if success
+                else "Error response status read from the Django handler; its schema is unknown."
+            ),
+        }
+        if success and status != "204":
+            response["content"] = {"application/json": {"schema": response_schema}}
+        operation["responses"][status] = response
+
+
+def response_statuses(node: ast.AST) -> List[str]:
+    if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+        return []
+    out = set()
+    for call in ast.walk(node):
+        if not isinstance(call, ast.Call) or dotted(call.func).split(".")[-1] not in ("Response", "JsonResponse"):
+            continue
+        value = next((kw.value for kw in call.keywords if kw.arg == "status"), None)
+        if value is None and dotted(call.func).split(".")[-1] == "Response" and len(call.args) > 1:
+            value = call.args[1]
+        if isinstance(value, ast.Constant) and isinstance(value.value, int):
+            out.add(str(value.value))
+            continue
+        symbolic = dotted(value)
+        match = re.search(r"HTTP_(\d{3})_", symbolic)
+        out.add(match.group(1) if match else "200")
+    return sorted(out)
+
+
+def routed_applications(project: Project, model_apps, routes: routing.Routes):
+    """Django applications that expose routes, including stateless ones.
+
+    ``apps.discover`` intentionally uses a models module as the application
+    boundary for domain extraction.  HTTP is a different concern: health,
+    proxy and mailer applications often own URLConf and views but no model.
+    Their routes remain part of the service contract.
+    """
+    out = {app.dotted: app for app in model_apps}
+    for route in routes.entries:
+        marker = ".views"
+        package = route.module.split(marker, 1)[0] if marker in route.module else route.module.rsplit(".", 1)[0]
+        if not package or package in out:
+            continue
+        app = apps_module.build(project, package)
+        if app is not None:
+            out[package] = app
+    return [out[name] for name in sorted(out, key=lambda name: out[name].rel)]
 
 
 def readme_title(markdown: str) -> str:

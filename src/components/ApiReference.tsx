@@ -51,6 +51,13 @@ const SPECS = import.meta.glob<string>(
     "../../vendor/repos/**/swagger*.yaml",
     "../../vendor/repos/**/swagger*.yml",
     "../../vendor/repos/**/swagger*.json",
+    // Local onboarding writes generated documents under the project's
+    // conventional portolan directory, wherever that project lives.
+    "../../**/portolan/openapi*.yaml",
+    "../../**/portolan/openapi*.yml",
+    "../../**/portolan/openapi*.json",
+    "!../../node_modules/**",
+    "!../../dist/**",
   ],
   { query: "?raw", import: "default" },
 );

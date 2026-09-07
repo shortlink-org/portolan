@@ -121,4 +121,11 @@ describe("pickSpec", () => {
     ).toBeNull();
     expect(pickSpec(service([]), held)).toBeNull();
   });
+
+  it("shows an honest inferred contract for HTTP routes read from framework code", () => {
+    const inferred = service([{ id: "avia.aviadmin.http", source: "adminavia/urls.py" }]);
+    inferred.provides[0]!.methods = [{ name: "orders_get", http: { method: "GET", path: "/orders/" } }];
+
+    expect(pickSpec(inferred, () => false)).toEqual({ kind: "inferred-http" });
+  });
 });

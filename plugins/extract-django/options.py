@@ -29,6 +29,7 @@ class Options:
     settings: str = ""
     out: str = "domain.json"
     stores_out: str = "stores.json"
+    openapi_out: str = "openapi.inferred.yaml"
 
     # The option as the manifest spells it, against the field that holds it.
     KEYS = {
@@ -50,6 +51,7 @@ class Options:
         "settings": "settings",
         "out": "out",
         "storesOut": "stores_out",
+        "openapiOut": "openapi_out",
     }
 
     @staticmethod

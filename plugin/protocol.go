@@ -45,6 +45,11 @@ type Input struct {
 	// Root is the directory to read, relative to the repository.
 	Root string `json:"root"`
 
+	// Output is the directory where the host will place the files returned by
+	// this plugin, relative to the repository. Extractors use it only when a
+	// catalog entry needs to point at a generated companion document.
+	Output string `json:"output,omitempty"`
+
 	// Commit and GeneratedAt stamp the fragment (portolan.0002). The host works them out - the
 	// last commit that touched Root, and its date - rather than the plugin
 	// reading a clock, because a fragment that changes on every run cannot be

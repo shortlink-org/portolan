@@ -55,7 +55,8 @@ export type SpecChoice =
   | { kind: "openapi"; source: string }
   | { kind: "graphql"; source: string }
   | { kind: "wsdl"; source: string }
-  | { kind: "module"; moduleId: string };
+  | { kind: "module"; moduleId: string }
+  | { kind: "inferred-http" };
 
 /**
  * The document to show for a service.
@@ -88,6 +89,14 @@ export function pickSpec(
 
   for (const provided of service.provides) {
     if (provided.module) return { kind: "module", moduleId: provided.module };
+  }
+
+  // Frameworks such as Django can build Swagger at runtime without keeping a
+  // document in the repository.  The extractor can still prove the routes
+  // from URLConf and DRF view declarations.  That is a partial contract worth
+  // showing, but it must not be presented as a source OpenAPI document.
+  if (service.provides.some((provided) => provided.methods.some((method) => method.http))) {
+    return { kind: "inferred-http" };
   }
 
   return null;

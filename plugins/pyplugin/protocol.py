@@ -20,13 +20,19 @@ class Input:
     """Where the source is, and the stamp the host put on this run."""
 
     root: str = ""
+    output: str = ""
     commit: str = ""
     generated_at: str = ""
 
     @staticmethod
     def of(raw: Any) -> "Input":
         raw = raw or {}
-        return Input(root=raw.get("root", ""), commit=raw.get("commit", ""), generated_at=raw.get("generatedAt", ""))
+        return Input(
+            root=raw.get("root", ""),
+            output=raw.get("output", ""),
+            commit=raw.get("commit", ""),
+            generated_at=raw.get("generatedAt", ""),
+        )
 
 
 def read_options(opts: Any, keys: Dict[str, str], raw: Any) -> Any:

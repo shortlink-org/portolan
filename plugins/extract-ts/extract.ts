@@ -38,6 +38,7 @@ export interface Options {
 
 export interface Input {
   root: string;
+  output?: string;
   commit: string;
   generatedAt: string;
 }

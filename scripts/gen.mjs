@@ -124,7 +124,7 @@ async function generate() {
     await executeStep("extract", step, `${step.plugin} ← ${step.in}`, async () =>
       runPlugin(plugin, {
         portolanVersion: PORTOLAN_VERSION,
-        input: { root: step.in, commit: stamp.commit, generatedAt: stamp.generatedAt },
+        input: { root: step.in, output: step.out, commit: stamp.commit, generatedAt: stamp.generatedAt },
         options: step.options ?? {},
       }),
     );
@@ -144,7 +144,7 @@ async function generate() {
     await executeStep("verify", step, `${step.plugin} ⇐ ${step.in}`, async () =>
       runPlugin(plugin, {
         portolanVersion: PORTOLAN_VERSION,
-        input: { root: step.in, commit: stamp.commit, generatedAt: stamp.generatedAt },
+        input: { root: step.in, output: step.out, commit: stamp.commit, generatedAt: stamp.generatedAt },
         catalog,
         options: step.options ?? {},
       }),

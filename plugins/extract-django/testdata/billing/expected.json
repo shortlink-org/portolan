@@ -15,7 +15,70 @@
           "repo": "github.com/acme/shop",
           "path": "plugins/extract-django/testdata/billing",
           "readme": "# Billing\n\nService `billing` — bounded context **shop**. A fixture: the Django layout\nextract-django reads, each shape it claims to read present once.",
-          "provides": [],
+          "provides": [
+            {
+              "id": "shop.billing.invoices",
+              "methods": [
+                {
+                  "name": "invoice_create",
+                  "doc": "Invoices over HTTP.",
+                  "http": {
+                    "method": "POST",
+                    "path": "/api/invoices/"
+                  }
+                },
+                {
+                  "name": "invoice_destroy",
+                  "doc": "Voids an invoice.",
+                  "http": {
+                    "method": "DELETE",
+                    "path": "/api/invoices/{id}/"
+                  }
+                },
+                {
+                  "name": "invoice_issue",
+                  "doc": "Issues the invoice drawn up for an order.",
+                  "http": {
+                    "method": "POST",
+                    "path": "/api/invoices/{id}/issue/"
+                  }
+                },
+                {
+                  "name": "invoice_list",
+                  "doc": "Invoices over HTTP.",
+                  "http": {
+                    "method": "GET",
+                    "path": "/api/invoices/"
+                  }
+                },
+                {
+                  "name": "invoice_partial_update",
+                  "doc": "Invoices over HTTP.",
+                  "http": {
+                    "method": "PATCH",
+                    "path": "/api/invoices/{id}/"
+                  }
+                },
+                {
+                  "name": "invoice_retrieve",
+                  "doc": "Reads one invoice.",
+                  "http": {
+                    "method": "GET",
+                    "path": "/api/invoices/{id}/"
+                  }
+                },
+                {
+                  "name": "invoice_update",
+                  "doc": "Invoices over HTTP.",
+                  "http": {
+                    "method": "PUT",
+                    "path": "/api/invoices/{id}/"
+                  }
+                }
+              ],
+              "source": "plugins/extract-django/testdata/billing/portolan/openapi.inferred.yaml"
+            }
+          ],
           "consumes": [
             {
               "id": "pricing.v1.Quotes/createQuote",
@@ -297,6 +360,65 @@
   "defs": {},
   "flows": [
     {
+      "id": "flow.billing-invoice-create",
+      "slug": "billing-invoice-create",
+      "name": "Invoice create",
+      "summary": "Invoices over HTTP.",
+      "source": "plugins/extract-django/testdata/billing/invoices/views.py",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.billing",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "billing-pg",
+          "kind": "store",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.billing",
+          "kind": "rpc",
+          "label": "invoice_create",
+          "status": "declared",
+          "line": "plugins/extract-django/testdata/billing/invoices/views.py:16"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.billing",
+          "to": "shop.billing",
+          "kind": "call",
+          "label": "Validate InvoiceCreateSerializer",
+          "status": "declared",
+          "note": "Supplied by DRF ModelViewSet. Model resolved from queryset or serializer metadata.",
+          "line": "plugins/extract-django/testdata/billing/invoices/views.py:16"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "shop.billing",
+          "to": "billing-pg",
+          "kind": "call",
+          "label": "Invoice.objects.create",
+          "status": "declared",
+          "note": "Supplied by DRF ModelViewSet. Model resolved from queryset or serializer metadata.",
+          "line": "plugins/extract-django/testdata/billing/invoices/views.py:16"
+        }
+      ]
+    },
+    {
       "id": "flow.billing-invoice-destroy",
       "slug": "billing-invoice-destroy",
       "name": "Invoice destroy",
@@ -334,7 +456,7 @@
           "kind": "rpc",
           "label": "invoice_destroy",
           "status": "declared",
-          "line": "plugins/extract-django/testdata/billing/invoices/views.py:29"
+          "line": "plugins/extract-django/testdata/billing/invoices/views.py:80"
         },
         {
           "type": "step",
@@ -418,7 +540,7 @@
           "kind": "rpc",
           "label": "invoice_issue",
           "status": "declared",
-          "line": "plugins/extract-django/testdata/billing/invoices/views.py:19"
+          "line": "plugins/extract-django/testdata/billing/invoices/views.py:65"
         },
         {
           "type": "step",
@@ -449,6 +571,10 @@
                   "line": "plugins/extract-django/testdata/billing/invoices/services.py:20"
                 }
               ]
+            },
+            {
+              "title": "otherwise",
+              "steps": []
             }
           ]
         },
@@ -499,6 +625,135 @@
       ]
     },
     {
+      "id": "flow.billing-invoice-list",
+      "slug": "billing-invoice-list",
+      "name": "Invoice list",
+      "summary": "Invoices over HTTP.",
+      "source": "plugins/extract-django/testdata/billing/invoices/views.py",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.billing",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "billing-pg",
+          "kind": "store",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.billing",
+          "kind": "rpc",
+          "label": "invoice_list",
+          "status": "declared",
+          "line": "plugins/extract-django/testdata/billing/invoices/views.py:16"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.billing",
+          "to": "billing-pg",
+          "kind": "call",
+          "label": "Invoice.objects.all",
+          "status": "declared",
+          "note": "Supplied by DRF ModelViewSet. Model resolved from queryset or serializer metadata.",
+          "line": "plugins/extract-django/testdata/billing/invoices/views.py:16"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "shop.billing",
+          "to": "shop.billing",
+          "kind": "call",
+          "label": "Serialize InvoiceSerializer collection",
+          "status": "declared",
+          "note": "Supplied by DRF ModelViewSet. Model resolved from queryset or serializer metadata.",
+          "line": "plugins/extract-django/testdata/billing/invoices/views.py:16"
+        }
+      ]
+    },
+    {
+      "id": "flow.billing-invoice-partial-update",
+      "slug": "billing-invoice-partial-update",
+      "name": "Invoice partial update",
+      "summary": "Invoices over HTTP.",
+      "source": "plugins/extract-django/testdata/billing/invoices/views.py",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.billing",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "billing-pg",
+          "kind": "store",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.billing",
+          "kind": "rpc",
+          "label": "invoice_partial_update",
+          "status": "declared",
+          "line": "plugins/extract-django/testdata/billing/invoices/views.py:16"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.billing",
+          "to": "billing-pg",
+          "kind": "call",
+          "label": "Invoice.objects.get",
+          "status": "declared",
+          "note": "Supplied by DRF ModelViewSet. Model resolved from queryset or serializer metadata.",
+          "line": "plugins/extract-django/testdata/billing/invoices/views.py:16"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "shop.billing",
+          "to": "shop.billing",
+          "kind": "call",
+          "label": "Validate InvoiceSerializer (partial)",
+          "status": "declared",
+          "note": "Supplied by DRF ModelViewSet. Model resolved from queryset or serializer metadata.",
+          "line": "plugins/extract-django/testdata/billing/invoices/views.py:16"
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "shop.billing",
+          "to": "billing-pg",
+          "kind": "call",
+          "label": "Invoice.save",
+          "status": "declared",
+          "note": "Supplied by DRF ModelViewSet. Model resolved from queryset or serializer metadata.",
+          "line": "plugins/extract-django/testdata/billing/invoices/views.py:16"
+        }
+      ]
+    },
+    {
       "id": "flow.billing-invoice-retrieve",
       "slug": "billing-invoice-retrieve",
       "name": "Invoice retrieve",
@@ -531,7 +786,7 @@
           "kind": "rpc",
           "label": "invoice_retrieve",
           "status": "declared",
-          "line": "plugins/extract-django/testdata/billing/invoices/views.py:14"
+          "line": "plugins/extract-django/testdata/billing/invoices/views.py:29"
         },
         {
           "type": "step",
@@ -542,6 +797,76 @@
           "label": "Invoice.objects.filter",
           "status": "declared",
           "line": "plugins/extract-django/testdata/billing/invoices/services.py:56"
+        }
+      ]
+    },
+    {
+      "id": "flow.billing-invoice-update",
+      "slug": "billing-invoice-update",
+      "name": "Invoice update",
+      "summary": "Invoices over HTTP.",
+      "source": "plugins/extract-django/testdata/billing/invoices/views.py",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.billing",
+          "kind": "service",
+          "context": "shop"
+        },
+        {
+          "id": "billing-pg",
+          "kind": "store",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.billing",
+          "kind": "rpc",
+          "label": "invoice_update",
+          "status": "declared",
+          "line": "plugins/extract-django/testdata/billing/invoices/views.py:16"
+        },
+        {
+          "type": "step",
+          "id": "s2",
+          "from": "shop.billing",
+          "to": "billing-pg",
+          "kind": "call",
+          "label": "Invoice.objects.get",
+          "status": "declared",
+          "note": "Supplied by DRF ModelViewSet. Model resolved from queryset or serializer metadata.",
+          "line": "plugins/extract-django/testdata/billing/invoices/views.py:16"
+        },
+        {
+          "type": "step",
+          "id": "s3",
+          "from": "shop.billing",
+          "to": "shop.billing",
+          "kind": "call",
+          "label": "Validate InvoiceSerializer",
+          "status": "declared",
+          "note": "Supplied by DRF ModelViewSet. Model resolved from queryset or serializer metadata.",
+          "line": "plugins/extract-django/testdata/billing/invoices/views.py:16"
+        },
+        {
+          "type": "step",
+          "id": "s4",
+          "from": "shop.billing",
+          "to": "billing-pg",
+          "kind": "call",
+          "label": "Invoice.save",
+          "status": "declared",
+          "note": "Supplied by DRF ModelViewSet. Model resolved from queryset or serializer metadata.",
+          "line": "plugins/extract-django/testdata/billing/invoices/views.py:16"
         }
       ]
     },

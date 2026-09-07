@@ -89,6 +89,11 @@
       "type": "string",
       "description": "Name of the fragment holding the database the models describe, inside the step's output directory. Written only when store is set.",
       "default": "stores.json"
+    },
+    "openapiOut": {
+      "type": "string",
+      "description": "Name of the inferred OpenAPI 3.1 document, inside the step's output directory. Written when URLConf exposes HTTP operations.",
+      "default": "openapi.inferred.yaml"
     }
   }
 }

@@ -1,23 +1,21 @@
 """The way in.
 
-A DRF view is the handler: a `ViewSet`'s actions - the five it inherits and
-every `@action` it adds - and an `@api_view` function. The router registration
-in `<app>/urls.py` says what the endpoint is called, so an endpoint id here is
-the one a reader would see in a drf-spectacular document: `invoice_issue`.
-
-The route itself is not read. A path is a fact about the document, and the
-document is `extract-openapi`'s to read - which is also what pairs these
-endpoints with the interface a service provides.
+A DRF view is the handler: local HTTP methods, concrete generic actions and a
+ViewSet's inherited or decorated actions.  ``routing`` supplies the URLConf
+mount, so the same endpoint opens a code flow and contributes its verb/path to
+the service's inferred HTTP contract.
 """
 
 from __future__ import annotations
 
 import ast
+import re
 from dataclasses import dataclass, field as dc_field
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from apps import App
 from ids import slug
+from routing import Route, Routes
 from source import Module, const_str, doc, dotted, keyword, methods
 
 # The actions a ViewSet has without writing one.
@@ -32,6 +30,23 @@ ACTIONS = {
 
 VIEW_BASES = ("ViewSet", "ModelViewSet", "ReadOnlyModelViewSet", "GenericViewSet", "APIView", "View", "GenericAPIView")
 
+# Methods supplied by DRF's concrete generic views even when the project does
+# not override them.  These are framework declarations, not guesses about the
+# application's code.
+GENERIC_ACTIONS = {
+    "ListAPIView": [("list", "GET")],
+    "CreateAPIView": [("create", "POST")],
+    "ListCreateAPIView": [("list", "GET"), ("create", "POST")],
+    "RetrieveAPIView": [("retrieve", "GET")],
+    "UpdateAPIView": [("update", "PUT"), ("partial_update", "PATCH")],
+    "DestroyAPIView": [("destroy", "DELETE")],
+    "RetrieveUpdateAPIView": [("retrieve", "GET"), ("update", "PUT"), ("partial_update", "PATCH")],
+    "RetrieveDestroyAPIView": [("retrieve", "GET"), ("destroy", "DELETE")],
+    "RetrieveUpdateDestroyAPIView": [("retrieve", "GET"), ("update", "PUT"), ("partial_update", "PATCH"), ("destroy", "DELETE")],
+    "ModelViewSet": list(ACTIONS.items()),
+    "ReadOnlyModelViewSet": [("list", "GET"), ("retrieve", "GET")],
+}
+
 
 @dataclass
 class Endpoint:
@@ -41,8 +56,11 @@ class Endpoint:
     verb: str
     node: ast.AST
     module: Module
+    path: str = ""
+    route_source: str = ""
     doc: str = ""
     use_cases: List[str] = dc_field(default_factory=list)
+    path_parameters: Dict[str, str] = dc_field(default_factory=dict)
 
 
 def basenames(app: App) -> Dict[str, str]:
@@ -91,18 +109,64 @@ def verb_of(node: ast.AST, action: str) -> str:
     return ACTIONS.get(action, "" if action not in ("get", "post", "put", "patch", "delete") else action.upper())
 
 
-def read_endpoints(app: App, b) -> List[Endpoint]:
+def route_base(route: Route, fallback: str) -> str:
+    if route.router:
+        return route.basename or fallback
+    named = slug(route.name).replace("-", "_") if route.name else ""
+    path = re.sub(r"[^a-z0-9]+", "_", route.path.lower()).strip("_")
+    return named or path or fallback
+
+
+def action_path(route: Route, node: ast.AST, action: str) -> str:
+    if not route.router:
+        return route.path
+    if action in ("list", "create"):
+        return route.path
+    detail = action in ("retrieve", "update", "partial_update", "destroy")
+    suffix = action.replace("_", "-")
+    for dec in getattr(node, "decorator_list", []):
+        if not isinstance(dec, ast.Call) or dotted(dec.func).split(".")[-1] != "action":
+            continue
+        detail_node = keyword(dec, "detail")
+        detail = isinstance(detail_node, ast.Constant) and detail_node.value is True
+        suffix = const_str(keyword(dec, "url_path")) or suffix
+    base = route.path.rstrip("/")
+    return base + ("/{id}" if detail else "") + ("/" + suffix if action not in ACTIONS else "") + "/"
+
+
+def endpoint(node: ast.AST, module: Module, view: str, action: str, verb: str, base: str, route: Optional[Route], description: str = "") -> Endpoint:
+    ident = base if base == action or base.endswith("_" + action) else "%s_%s" % (base, action)
+    return Endpoint(
+        id=ident,
+        action=action,
+        view=view,
+        verb=verb,
+        node=node,
+        module=module,
+        path=action_path(route, node, action) if route else "",
+        route_source=route.source if route else "",
+        doc=description,
+        path_parameters=dict(route.parameters) if route else {},
+    )
+
+
+def read_endpoints(app: App, b, routes: Optional[Routes] = None) -> List[Endpoint]:
     registered = basenames(app)
     out: List[Endpoint] = []
     for module in app.package("views"):
         for node in module.classes():
-            if not any(base.split(".")[-1] in VIEW_BASES for base in [d for d in map(dotted, node.bases)]):
+            bases = [base.split(".")[-1] for base in map(dotted, node.bases)]
+            mounted = routes.for_view(module.dotted, node.name) if routes else []
+            mounted += [route for route in (routes.entries if routes else []) if route.module == module.dotted and route.view.startswith(node.name + ".")]
+            if not any(base in VIEW_BASES or base in GENERIC_ACTIONS for base in bases) and not mounted:
                 continue
             base = registered.get(node.name)
-            if base is None:
+            if base is None and not mounted:
                 base = view_name(node.name)
                 b.warn(module.rel, "%s is registered by no router in %s/urls.py; its endpoints are named after the class" % (node.name, app.rel))
-            for handler in methods(node):
+            handlers = {handler.name: handler for handler in methods(node)}
+            declared = []
+            for handler in handlers.values():
                 if handler.name.startswith("_"):
                     continue
                 is_action = any(
@@ -110,32 +174,40 @@ def read_endpoints(app: App, b) -> List[Endpoint]:
                 )
                 if handler.name not in ACTIONS and not is_action and handler.name not in ("get", "post", "put", "patch", "delete"):
                     continue
-                out.append(
-                    Endpoint(
-                        id="%s_%s" % (base, handler.name),
-                        action=handler.name,
-                        view=node.name,
-                        verb=verb_of(handler, handler.name),
-                        node=handler,
-                        module=module,
-                        doc=doc(handler),
-                    )
-                )
-        for node in module.functions():
-            if not any(isinstance(dec, ast.Call) and dotted(dec.func).split(".")[-1] == "api_view" for dec in getattr(node, "decorator_list", [])):
+                declared.append((handler.name, verb_of(handler, handler.name), handler, doc(handler)))
+            inherited = []
+            for inherited_base in bases:
+                inherited += GENERIC_ACTIONS.get(inherited_base, [])
+            for action, verb in inherited:
+                same_direct_handler = mounted and all(not route.router for route in mounted) and any(item[1] == verb for item in declared)
+                if action not in handlers and not any(item[0] == action for item in declared) and not same_direct_handler:
+                    declared.append((action, verb, node, doc(node)))
+            class_routes = routes.for_view(module.dotted, node.name) if routes else []
+            method_routes = {route.view.split(".", 1)[1]: route for route in mounted if "." in route.view}
+            if not class_routes and not method_routes:
+                for action, verb, handler, description in declared:
+                    out.append(endpoint(handler, module, node.name, action, verb, base or view_name(node.name), None, description))
                 continue
-            out.append(
-                Endpoint(
-                    id=node.name,
-                    action=node.name,
-                    view="",
-                    verb=verb_of(node, node.name),
-                    node=node,
-                    module=module,
-                    doc=doc(node),
-                )
-            )
-    return sorted(out, key=lambda e: e.id)
+            for action, verb, handler, description in declared:
+                targets = class_routes or ([method_routes[action]] if action in method_routes else [])
+                for route in targets:
+                    out.append(endpoint(handler, module, node.name, action, verb, route_base(route, base or view_name(node.name)), route, description))
+        for node in module.functions():
+            mounted = routes.for_view(module.dotted, node.name) if routes else []
+            if not mounted and not any(isinstance(dec, ast.Call) and dotted(dec.func).split(".")[-1] == "api_view" for dec in getattr(node, "decorator_list", [])):
+                continue
+            verb = verb_of(node, node.name)
+            if not verb:
+                continue
+            if mounted:
+                for route in mounted:
+                    out.append(endpoint(node, module, "", verb.lower(), verb, route_base(route, node.name), route, doc(node)))
+            else:
+                out.append(Endpoint(id=node.name, action=node.name, view="", verb=verb, node=node, module=module, doc=doc(node)))
+    unique = {}
+    for found in out:
+        unique[(found.id, found.verb, found.path, found.module.rel)] = found
+    return sorted(unique.values(), key=lambda e: (e.id, e.verb, e.path))
 
 
 def receivers(app: App) -> List[ast.AST]:
