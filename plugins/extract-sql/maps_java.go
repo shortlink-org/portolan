@@ -39,7 +39,7 @@ var (
 
 func readMapsJava(root, repositoryDir, aggregate string, b *plugin.Builder) map[string]map[string]string {
 	out := map[string]map[string]string{}
-	dir := repositoryDir
+	dir := mapSourceDir(root, repositoryDir, aggregate)
 
 	entries, err := os.ReadDir(filepath.Join(root, filepath.FromSlash(dir)))
 	if err != nil {

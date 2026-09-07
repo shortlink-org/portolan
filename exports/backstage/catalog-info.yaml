@@ -256,7 +256,7 @@ metadata:
     title: auth.v1.Users
     description: Interface provided by Authentication & Sessions
     annotations:
-        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/infrastructure/transport/http/gen/openapi.yaml
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/transport/http/gen/openapi.yaml
         portolan.io/id: auth.v1.Users
 spec:
     definition: |-
@@ -371,7 +371,7 @@ metadata:
     title: auth.v1.Sessions
     description: Interface provided by Authentication & Sessions
     annotations:
-        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/infrastructure/transport/http/gen/openapi.yaml
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/transport/http/gen/openapi.yaml
         portolan.io/id: auth.v1.Sessions
 spec:
     definition: |-
@@ -2983,7 +2983,7 @@ metadata:
     title: Auth database
     description: State owned by auth.auth
     annotations:
-        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/examples/auth/internal/infrastructure/repository
+        backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/examples/auth/internal/*/infrastructure/repository
         portolan.io/id: auth.auth.pg
 spec:
     owner: shortlink-org/identity

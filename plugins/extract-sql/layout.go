@@ -207,3 +207,15 @@ func storageSource(root string, dirs []string) string {
 
 	return filepath.ToSlash(filepath.Join(root, filepath.FromSlash(strings.Join(parts, "/"))))
 }
+
+// mapSourceDir accepts both supported repository shapes: a collection root
+// with one child package per aggregate, and a feature repository package that
+// is already the aggregate's source directory.
+func mapSourceDir(root, repositoryDir, aggregate string) string {
+	child := path.Join(repositoryDir, aggregate)
+	if info, err := os.Stat(filepath.Join(root, filepath.FromSlash(child))); err == nil && info.IsDir() {
+		return child
+	}
+
+	return repositoryDir
+}

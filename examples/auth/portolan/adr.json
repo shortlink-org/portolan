@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-09-06T23:37:35+07:00",
-  "commit": "1600d039",
+  "generatedAt": "2026-09-08T00:04:47+07:00",
+  "commit": "8d5f4da8",
   "contexts": [],
   "defs": {},
   "flows": [],
@@ -43,6 +43,11 @@
         "commit": "bf50e400a8a590cbc67e071cb9a20b7f51489619",
         "author": "Victor Login",
         "date": "2026-09-04T19:43:11+07:00"
+      },
+      "revised": {
+        "commit": "34b9b7c970b9f3e533f28b701465161ca8481a69",
+        "author": "Victor Login",
+        "date": "2026-09-07T23:48:27+07:00"
       }
     },
     {
@@ -83,6 +88,11 @@
         "commit": "51248bafdf5e1a966052d1feadbfc26588955118",
         "author": "Victor Login",
         "date": "2026-09-04T21:22:05+07:00"
+      },
+      "revised": {
+        "commit": "34b9b7c970b9f3e533f28b701465161ca8481a69",
+        "author": "Victor Login",
+        "date": "2026-09-07T23:48:27+07:00"
       }
     },
     {
@@ -123,6 +133,11 @@
         "commit": "7576ca72b348d8642180d3e79a8b85a740905dd6",
         "author": "Victor Login",
         "date": "2026-09-04T22:39:26+07:00"
+      },
+      "revised": {
+        "commit": "34b9b7c970b9f3e533f28b701465161ca8481a69",
+        "author": "Victor Login",
+        "date": "2026-09-07T23:48:27+07:00"
       }
     },
     {
@@ -143,6 +158,11 @@
         "commit": "7576ca72b348d8642180d3e79a8b85a740905dd6",
         "author": "Victor Login",
         "date": "2026-09-04T22:39:26+07:00"
+      },
+      "revised": {
+        "commit": "34b9b7c970b9f3e533f28b701465161ca8481a69",
+        "author": "Victor Login",
+        "date": "2026-09-07T23:48:27+07:00"
       }
     },
     {
@@ -229,6 +249,11 @@
         "commit": "dab46a5ab46a30074d22c1453c72ae70353e47c9",
         "author": "Victor Login",
         "date": "2026-09-05T08:12:07+07:00"
+      },
+      "revised": {
+        "commit": "34b9b7c970b9f3e533f28b701465161ca8481a69",
+        "author": "Victor Login",
+        "date": "2026-09-07T23:48:27+07:00"
       }
     },
     {
@@ -244,7 +269,12 @@
       },
       "body": "## Context and Problem Statement\n\nThe previous tree grouped all domains, all use cases, and all adapters into\nglobal horizontal directories. Changing one capability meant navigating the\nwhole service, and ownership of policies and dependency wiring was unclear.\n\n## Decision Outcome\n\nThe primary boundary is the feature module: `user`, `session`, and `lockout`.\nEach module owns `domain`, `application`, `infrastructure`, `integration`, and\n`di`. Use cases remain individual slices inside `application`.\n\nCross-module behaviour belongs to the module whose state it changes. Thus the\npassword-change reaction is a session policy. Ports are declared by their\nconsumer; infrastructure adapters may know both sides, while domain and\napplication packages may not import another module.\n\nOnly genuinely service-wide mechanics remain outside the modules:\n`platform`, the generated HTTP server, and the composition root.\nWire sets are split by module and by application/infrastructure/HTTP concerns;\nthe root only composes those sets and shared resources.\n\nThe boundaries are executable documentation in `.golangci.yml`, using the\nbuilt-in `depguard` linter. Tests are excluded from dependency rules so they\nmay use concrete adapters. Their setup helpers stay in package-local `_test.go`\nfiles instead of forming another shared package.\n\n### Consequences\n\n- Good: a capability's behaviour and adapters are discoverable in one subtree.\n- Good: module dependencies are visible at adapter and root-assembly seams.\n- Good: forbidden inward dependencies fail lint in CI.\n- Good: test support remains owned by the package whose behaviour it exercises.\n- Bad: there are more small DI and adapter packages.\n- Bad: integration-test setup is repeated between packages.\n- Neutral: this changes code ownership and imports, not HTTP or business rules.\n",
       "relates": {},
-      "source": "examples/auth/docs/adr/0012-feature-slices-own-their-layers.md"
+      "source": "examples/auth/docs/adr/0012-feature-slices-own-their-layers.md",
+      "created": {
+        "commit": "34b9b7c970b9f3e533f28b701465161ca8481a69",
+        "author": "Victor Login",
+        "date": "2026-09-07T23:48:27+07:00"
+      }
     },
     {
       "id": "auth.0013",
@@ -259,7 +289,12 @@
       },
       "body": "## Context and Problem Statement\n\nAn immutable event useful inside an aggregate is not automatically a stable\ncontract for policies or another service. At the same time, saving state and\nannouncing its change must not split into two independent commits.\n\n## Decision Outcome\n\nEach module defines two event representations:\n\n- `domain/event` contains immutable facts returned by aggregate operations;\n- `integration/event` contains public-field DTOs, JSON metadata, stable names,\n  and the mapping to and from outbox messages.\n\nThe repository accepts domain events alongside the changed aggregate. Inside\none unit of work it stores the aggregate, maps those events to integration\nDTOs, and appends the messages to the outbox. The database router and outbox\npublisher resolve the same transaction from context. Publishing without a\nunit of work is refused.\n\nAfter commit, the relay reads every module topic and publishes integration\nevents to typed module buses. Policies subscribe to those DTOs and do not\nimport aggregate event types. Unknown event names are acknowledged so a newer\nproducer cannot permanently block an older relay; malformed known payloads\nfail delivery.\n\n### Consequences\n\n- Good: state and its durable fact commit or roll back together.\n- Good: domain events stay immutable and free of serialization concerns.\n- Good: integration payloads can be versioned without changing aggregates.\n- Bad: each published event needs an explicit mapping and round-trip test.\n- Neutral: the outbox is at-least-once; consumers must remain idempotent.\n",
       "relates": {},
-      "source": "examples/auth/docs/adr/0013-domain-events-become-integration-events-at-the-outbox.md"
+      "source": "examples/auth/docs/adr/0013-domain-events-become-integration-events-at-the-outbox.md",
+      "created": {
+        "commit": "34b9b7c970b9f3e533f28b701465161ca8481a69",
+        "author": "Victor Login",
+        "date": "2026-09-07T23:48:27+07:00"
+      }
     },
     {
       "id": "auth.0014",
@@ -274,7 +309,12 @@
       },
       "body": "## Context and Problem Statement\n\nThe refactor needs an explicit token lifecycle so structural changes do not\nquietly introduce JWT claims, refresh tokens, rotation, or different expiry\nand revocation behaviour.\n\n## Decision Outcome\n\nA successful login creates one session with one cryptographically random\n32-byte token encoded as unpadded base64url. The token is opaque and carries no\nclaims. It is stored in the current persistence shape and looked up server-side;\nan optional cache accelerates only `ByToken`.\n\nThe session is valid when it exists, has not been revoked, and `now` is before\n`ExpiresAt`. Its fixed TTL remains 24 hours. Logout and security policies revoke\nit irreversibly and emit `SessionEnded`; login creates a new session rather than\nreviving or rotating one. Expiry is derived from time and emits no event. There\nis no refresh token or refresh endpoint.\n\nMalformed, unknown, expired, and revoked tokens all produce the same external\n401 response. Internally they remain distinct errors for diagnosis and tests.\n\n### Consequences\n\n- Good: revocation takes effect through server-side state and cached tombstones.\n- Good: tokens reveal no identity or authorization data.\n- Bad: validation requires a cache or database lookup.\n- Deferred: hashing tokens at rest can be a separate migration; doing it in an\n  architecture-only refactor would change persistence and operational recovery.\n",
       "relates": {},
-      "source": "examples/auth/docs/adr/0014-session-token-lifecycle.md"
+      "source": "examples/auth/docs/adr/0014-session-token-lifecycle.md",
+      "created": {
+        "commit": "34b9b7c970b9f3e533f28b701465161ca8481a69",
+        "author": "Victor Login",
+        "date": "2026-09-07T23:48:27+07:00"
+      }
     },
     {
       "id": "auth.0015",
@@ -289,7 +329,12 @@
       },
       "body": "## Context and Problem Statement\n\nThe service needs stable errors for control flow without coupling domain code\nto HTTP status codes or exposing storage and security detail to clients.\n\n## Decision Outcome\n\nDomain packages own invariant, lifecycle, repository-contract, and optimistic\nconflict sentinels in `errors.go`. Application slices own orchestration outcomes\nsuch as invalid credentials and a risk-blocked login. Adapters wrap causes with\noperational context using `%w`; callers classify only with `errors.Is` or\n`errors.As`.\n\nHTTP adapters are the sole mapping from those errors to status and public text.\nUser input validation is 400, uniqueness and optimistic conflicts are 409, and\nknown user lookup is 404. All credential failures and every invalid-token state\ncollapse to a non-enumerating 401. Unknown errors are 500 with no internal\ndetail.\n\nThere is deliberately no shared service-wide `apperror` type. Ownership and\n`errors.Is` preserve module boundaries; the edge supplies protocol semantics.\n\n### Consequences\n\n- Good: domains remain transport-independent.\n- Good: wrapped infrastructure errors retain context and classification.\n- Good: authentication responses do not reveal whether an identity or token\n  exists.\n- Bad: every new public error requires an explicit transport mapping and test.\n",
       "relates": {},
-      "source": "examples/auth/docs/adr/0015-errors-are-owned-and-classified-at-the-edge.md"
+      "source": "examples/auth/docs/adr/0015-errors-are-owned-and-classified-at-the-edge.md",
+      "created": {
+        "commit": "34b9b7c970b9f3e533f28b701465161ca8481a69",
+        "author": "Victor Login",
+        "date": "2026-09-07T23:48:27+07:00"
+      }
     },
     {
       "id": "auth.0016",
@@ -304,7 +349,12 @@
       },
       "body": "## Context and Problem Statement\n\nPassword policy is a domain rule, while random salt generation, key derivation,\nconstant-time comparison, and algorithm upgrades are cryptographic mechanisms.\nKeeping both in the value object made the domain choose infrastructure.\n\n## Decision Outcome\n\nThe domain retains password policy and an opaque immutable `password.Hash`.\nEach user application slice declares only the cryptographic port it consumes:\n`register.PasswordHasher` hashes, `check_credentials.PasswordVerifier` verifies,\nand `change_password.PasswordHasher` does both. The infrastructure adapter\nimplements all three while preserving the existing PBKDF2-SHA256 format,\niteration count, random salt size, and constant-time verification.\n\nRegistration and password change apply today's policy before hashing.\nAuthentication never reapplies that policy, so credentials accepted under an\nolder rule remain usable. Plaintext never enters the aggregate or repository.\n\n### Consequences\n\n- Good: cryptographic implementation can change behind consumer-owned ports.\n- Good: no shared application package pretends to be another feature.\n- Good: aggregate state contains only an opaque stored hash.\n- Good: persistence remains compatible with existing hashes.\n- Deferred: automatic rehash on login needs an explicit business decision\n  because it introduces a write and conflict behaviour on the read path.\n",
       "relates": {},
-      "source": "examples/auth/docs/adr/0016-password-cryptography-is-an-application-port.md"
+      "source": "examples/auth/docs/adr/0016-password-cryptography-is-an-application-port.md",
+      "created": {
+        "commit": "34b9b7c970b9f3e533f28b701465161ca8481a69",
+        "author": "Victor Login",
+        "date": "2026-09-07T23:48:27+07:00"
+      }
     }
   ]
 }

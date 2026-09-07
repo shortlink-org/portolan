@@ -4,7 +4,7 @@
 
 - **Id:** `flow.auth-register-user`
 - **Owner:** [auth](../auth/README.md)
-- **Source:** [`examples/auth/internal/infrastructure/transport/http/user/register.go`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/infrastructure/transport/http/user/register.go)
+- **Source:** [`examples/auth/internal/user/infrastructure/http/register.go`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/infrastructure/http/register.go)
 
 Creates a user from an email address and a password.
 
@@ -36,13 +36,13 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **auth.auth** — registerUser → User
-   [`examples/auth/internal/infrastructure/transport/http/user/register.go:16`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/infrastructure/transport/http/user/register.go#L16) · Seen running in telemetry/traces.jsonl (2 traces).
+   [`examples/auth/internal/user/infrastructure/http/register.go:16`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/infrastructure/http/register.go#L16) · Seen running in telemetry/traces.jsonl (2 traces).
 <a id="step-s2"></a>
 2. **auth.auth** → **auth-pg** — ByEmail
-   status: declared · [`examples/auth/internal/application/user/usecases/register/usecase.go:36`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/application/user/usecases/register/usecase.go#L36)
+   status: declared · [`examples/auth/internal/user/application/register/usecase.go:36`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/register/usecase.go#L36)
 <a id="step-s3"></a>
 3. **auth.auth** → **auth-pg** — Save
-   status: declared · [`examples/auth/internal/application/user/usecases/register/usecase.go:49`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/application/user/usecases/register/usecase.go#L49)
+   status: declared · [`examples/auth/internal/user/application/register/usecase.go:53`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/register/usecase.go#L53)
 <a id="step-s4"></a>
 4. **auth.auth** → **bus** — UserRegistered
-   [`auth.auth.user.UserRegistered`](../auth/auth/aggregates/user.md#event-auth-auth-user-userregistered) · [`examples/auth/internal/application/user/usecases/register/usecase.go:49`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/application/user/usecases/register/usecase.go#L49) · Seen running in telemetry/traces.jsonl (2 traces).
+   [`auth.auth.user.UserRegistered`](../auth/auth/aggregates/user.md#event-auth-auth-user-userregistered) · [`examples/auth/internal/user/application/register/usecase.go:53`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/register/usecase.go#L53) · Seen running in telemetry/traces.jsonl (2 traces).

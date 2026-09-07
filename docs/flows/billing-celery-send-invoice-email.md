@@ -4,6 +4,8 @@
 
 - **Id:** `flow.billing-celery-send-invoice-email`
 - **Owner:** [shop](../shop/README.md)
+- **Trigger:** `job` · Celery · billing.mail
+- **Root confidence:** high
 - **Source:** [`examples/shop/billing/invoices/services.py`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py)
 
 Celery task `invoices.tasks.send_invoice_email` is enqueued on `billing.mail` and worked by `send_invoice_email`.

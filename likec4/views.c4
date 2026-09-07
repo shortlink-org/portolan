@@ -166,15 +166,15 @@ views {
     }
     auth.auth -> auth_pg 'ByID' {
       color declared  line dashed  head none
-      notes 'examples/auth/internal/user/application/change_password/usecase.go:31'
+      notes 'examples/auth/internal/user/application/change_password/usecase.go:33'
     }
     auth.auth -> auth_pg 'Save' {
       color declared  line dashed  head none
-      notes 'examples/auth/internal/user/application/change_password/usecase.go:40'
+      notes 'examples/auth/internal/user/application/change_password/usecase.go:49'
     }
     auth.auth -> bus 'PasswordChanged' {
       color verified  line solid  head onormal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/auth/internal/user/application/change_password/usecase.go:40'
+      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/auth/internal/user/application/change_password/usecase.go:49'
     }
   }
 
@@ -186,7 +186,7 @@ views {
     }
     auth.auth -> bus 'PasswordChanged' {
       color verified  line solid  head onormal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/auth/internal/user/application/change_password/usecase.go:40'
+      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/auth/internal/user/application/change_password/usecase.go:49'
     }
   }
 
@@ -218,28 +218,28 @@ views {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/auth/internal/session/infrastructure/http/login.go:11'
     }
-    auth.auth -> auth.auth 'Authenticate' {
+    auth.auth -> auth.auth 'CheckCredentials' {
       color declared  line dashed  head none
-      notes 'Port `Authenticator`, bound at assembly to the Authenticate use case. — examples/auth/internal/session/application/login/usecase.go:58'
+      notes 'Port `Authenticator`, bound at assembly to the CheckCredentials use case. — examples/auth/internal/session/application/login/usecase.go:58'
     }
     auth.auth -> auth_pg 'ByEmail' {
       color declared  line dashed  head none
-      notes 'examples/auth/internal/user/application/authenticate/usecase.go:41'
+      notes 'examples/auth/internal/user/application/check_credentials/usecase.go:43'
     }
     auth.auth -> auth.auth 'Check' {
       color declared  line dashed  head none
-      notes 'Port `Lockout`, bound at assembly to the Check use case. — examples/auth/internal/user/application/authenticate/usecase.go:49'
+      notes 'Port `Lockout`, bound at assembly to the Check use case. — examples/auth/internal/user/application/check_credentials/usecase.go:51'
     }
     auth.auth -> auth_pg 'ByUserID' {
       color declared  line dashed  head none
       notes 'examples/auth/internal/lockout/application/check/usecase.go:27'
     }
     alt {
-      when 'err != nil' {
+      when '!uc.verifier.Verify(in.Password, u.Password)' {
         break 'ends the flow' {
           auth.auth -> auth.auth 'RecordFailure' {
             color declared  line dashed  head none
-            notes 'Port `Lockout`, bound at assembly to the RecordFailure use case. — examples/auth/internal/user/application/authenticate/usecase.go:58'
+            notes 'Port `Lockout`, bound at assembly to the RecordFailure use case. — examples/auth/internal/user/application/check_credentials/usecase.go:60'
           }
           auth.auth -> auth_pg 'ByUserID' {
             color declared  line dashed  head none
@@ -249,6 +249,10 @@ views {
             color declared  line dashed  head none
             notes 'inside a loop over `retries`. — examples/auth/internal/lockout/application/record_failure/usecase.go:54'
           }
+          auth.auth -> bus 'AccountLocked' {
+            color declared  line dashed  head onormal
+            notes 'inside a loop over `retries`. — examples/auth/internal/lockout/application/record_failure/usecase.go:54'
+          }
         }
       }
       else 'otherwise' {
@@ -256,7 +260,7 @@ views {
     }
     auth.auth -> auth.auth 'RecordSuccess' {
       color declared  line dashed  head none
-      notes 'Port `Lockout`, bound at assembly to the RecordSuccess use case. — examples/auth/internal/user/application/authenticate/usecase.go:67'
+      notes 'Port `Lockout`, bound at assembly to the RecordSuccess use case. — examples/auth/internal/user/application/check_credentials/usecase.go:69'
     }
     auth.auth -> auth_pg 'ByUserID' {
       color declared  line dashed  head none
@@ -305,6 +309,16 @@ views {
     client -> auth.auth 'login → Session' {
       color verified  line solid  head normal
       notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/auth/internal/session/infrastructure/http/login.go:11'
+    }
+    alt {
+      when '!uc.verifier.Verify(in.Password, u.Password)' {
+        break 'ends the flow' {
+          auth.auth -> bus 'AccountLocked' {
+            color declared  line dashed  head onormal
+            notes 'inside a loop over `retries`. — examples/auth/internal/lockout/application/record_failure/usecase.go:54'
+          }
+        }
+      }
     }
     auth.auth -> risk_v1 'Assess' {
       color unresolved  line dotted  head normal
@@ -368,15 +382,15 @@ views {
     }
     auth.auth -> auth_pg 'ByEmail' {
       color declared  line dashed  head none
-      notes 'examples/auth/internal/user/application/register/usecase.go:36'
+      notes 'examples/auth/internal/user/application/register/usecase.go:37'
     }
     auth.auth -> auth_pg 'Save' {
       color declared  line dashed  head none
-      notes 'examples/auth/internal/user/application/register/usecase.go:49'
+      notes 'examples/auth/internal/user/application/register/usecase.go:54'
     }
     auth.auth -> bus 'UserRegistered' {
       color verified  line solid  head onormal
-      notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/auth/internal/user/application/register/usecase.go:49'
+      notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/auth/internal/user/application/register/usecase.go:54'
     }
   }
 
@@ -388,7 +402,7 @@ views {
     }
     auth.auth -> bus 'UserRegistered' {
       color verified  line solid  head onormal
-      notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/auth/internal/user/application/register/usecase.go:49'
+      notes 'Seen running in telemetry/traces.jsonl (2 traces). — examples/auth/internal/user/application/register/usecase.go:54'
     }
   }
 
@@ -418,27 +432,7 @@ views {
     description 'Ends the sessions issued against a password that has just been replaced.'
     bus -> auth.auth 'PasswordChanged' {
       color verified  line solid  head onormal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/auth/internal/session/infrastructure/messaging/policy/revoke_sessions_on_password_change.go:41'
-    }
-    auth.auth -> auth.auth 'EndAfterCredentialChange' {
-      color declared  line dashed  head none
-      notes 'examples/auth/internal/session/infrastructure/messaging/policy/revoke_sessions_on_password_change.go:47'
-    }
-    auth.auth -> auth_pg 'ByUserID' {
-      color declared  line dashed  head none
-      notes 'examples/auth/internal/session/application/end_after_credential_change/usecase.go:40'
-    }
-    auth.auth -> auth_pg 'ByID' {
-      color declared  line dashed  head none
-      notes 'inside a loop over `change.Ends(sessions, uc.now())`, inside a loop over `retries`. — examples/auth/internal/session/application/end_after_credential_change/usecase.go:62'
-    }
-    auth.auth -> auth_pg 'Save' {
-      color declared  line dashed  head none
-      notes 'inside a loop over `change.Ends(sessions, uc.now())`, inside a loop over `retries`. — examples/auth/internal/session/application/end_after_credential_change/usecase.go:77'
-    }
-    auth.auth -> bus 'SessionEnded' {
-      color verified  line solid  head onormal
-      notes 'inside a loop over `change.Ends(sessions, uc.now())`, inside a loop over `retries`. — examples/auth/internal/session/application/end_after_credential_change/usecase.go:77'
+      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/auth/internal/session/infrastructure/messaging/policy/revoke_sessions_on_password_change.go:47'
     }
   }
 
@@ -446,11 +440,7 @@ views {
     title 'Revoke sessions on password change — crossings only'
     bus -> auth.auth 'PasswordChanged' {
       color verified  line solid  head onormal
-      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/auth/internal/session/infrastructure/messaging/policy/revoke_sessions_on_password_change.go:41'
-    }
-    auth.auth -> bus 'SessionEnded' {
-      color verified  line solid  head onormal
-      notes 'inside a loop over `change.Ends(sessions, uc.now())`, inside a loop over `retries`. — examples/auth/internal/session/application/end_after_credential_change/usecase.go:77'
+      notes 'Seen running in telemetry/traces.jsonl (1 trace). — examples/auth/internal/session/infrastructure/messaging/policy/revoke_sessions_on_password_change.go:47'
     }
   }
 
@@ -1049,7 +1039,7 @@ views {
 
   dynamic view flow_billing_invoice_issue {
     title 'Invoice issue'
-    description 'Confirms the session, freezes the invoice and asks the customer to pay.'
+    description 'Confirms the session, freezes the invoice and asks the customer to pay. Source-backed cross-protocol continuations are included.'
     client -> shop.billing 'invoice_issue → InvoiceId' {
       color declared  line dashed  head normal
       notes 'examples/shop/billing/invoices/views.py:29'
@@ -1070,9 +1060,17 @@ views {
       color declared  line dashed  head none
       notes 'in one transaction, after the transaction commits. — examples/shop/billing/invoices/services.py:49'
     }
+    celery_billing_mail -> shop.billing 'send_invoice_email' {
+      color declared  line dashed  head none
+      notes 'Celery hands `invoices.tasks.send_invoice_email` to the worker consuming `billing.mail`, routed by task_routes. — examples/shop/billing/invoices/tasks.py:18'
+    }
     shop.billing -> celery_billing 'enqueue remind_unpaid_invoice' {
       color declared  line dashed  head none
       notes 'in one transaction, after the transaction commits. — examples/shop/billing/invoices/services.py:50'
+    }
+    celery_billing -> shop.billing 'remind_unpaid_invoice' {
+      color declared  line dashed  head none
+      notes 'Celery hands `invoices.tasks.remind_unpaid_invoice` to the worker consuming `billing`, the default queue. — examples/shop/billing/invoices/tasks.py:30'
     }
     shop.billing -> bus 'InvoiceIssued' {
       color declared  line dashed  head onormal

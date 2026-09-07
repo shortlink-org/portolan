@@ -25,7 +25,7 @@
 | [Close invoice on payment](billing-close-invoice-on-payment.md) | [shop](../shop/README.md) | Closes the invoice for an order once the ledger says the money arrived. |
 | [Invoice create](billing-invoice-create.md) | [shop](../shop/README.md) | Draws up a draft invoice for an order, with a line for each thing sold. |
 | [Invoice destroy](billing-invoice-destroy.md) | [shop](../shop/README.md) | Ends an invoice nobody is going to pay. |
-| [Invoice issue](billing-invoice-issue.md) | [shop](../shop/README.md) | Confirms the session, freezes the invoice and asks the customer to pay. |
+| [Invoice issue](billing-invoice-issue.md) | [shop](../shop/README.md) | Confirms the session, freezes the invoice and asks the customer to pay. Source-backed cross-protocol continuations are included. |
 | [Invoice list](billing-invoice-list.md) | [shop](../shop/README.md) | Invoices over HTTP. Every action here runs one function of services.py. |
 | [Invoice partial update](billing-invoice-partial-update.md) | [shop](../shop/README.md) | Invoices over HTTP. Every action here runs one function of services.py. |
 | [Invoice retrieve](billing-invoice-retrieve.md) | [shop](../shop/README.md) | Reads one invoice and the lines it is made of. |

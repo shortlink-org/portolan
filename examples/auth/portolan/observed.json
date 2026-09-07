@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-09-06T23:37:35+07:00",
-  "commit": "1600d039",
+  "generatedAt": "2026-09-08T00:04:47+07:00",
+  "commit": "8d5f4da8",
   "contexts": [
     {
       "id": "auth",
@@ -122,7 +122,7 @@
           "kind": "call",
           "label": "ByToken",
           "status": "declared",
-          "line": "examples/auth/internal/session/application/validate/usecase.go:34"
+          "line": "examples/auth/internal/session/application/validate/usecase.go:33"
         },
         {
           "type": "step",
@@ -132,7 +132,7 @@
           "kind": "call",
           "label": "ByID",
           "status": "declared",
-          "line": "examples/auth/internal/user/application/change_password/usecase.go:33"
+          "line": "examples/auth/internal/user/application/change_password/usecase.go:32"
         },
         {
           "type": "step",
@@ -142,7 +142,7 @@
           "kind": "call",
           "label": "Save",
           "status": "declared",
-          "line": "examples/auth/internal/user/application/change_password/usecase.go:49"
+          "line": "examples/auth/internal/user/application/change_password/usecase.go:48"
         },
         {
           "type": "step",
@@ -154,7 +154,7 @@
           "label": "PasswordChanged",
           "status": "verified",
           "note": "Seen running in telemetry/traces.jsonl (1 trace).",
-          "line": "examples/auth/internal/user/application/change_password/usecase.go:49"
+          "line": "examples/auth/internal/user/application/change_password/usecase.go:48"
         }
       ]
     },
@@ -202,7 +202,7 @@
           "kind": "call",
           "label": "ByID",
           "status": "declared",
-          "line": "examples/auth/internal/user/application/get/usecase.go:23"
+          "line": "examples/auth/internal/user/application/get/usecase.go:22"
         }
       ]
     },
@@ -262,7 +262,7 @@
           "label": "CheckCredentials",
           "status": "declared",
           "note": "Port `Authenticator`, bound at assembly to the CheckCredentials use case.",
-          "line": "examples/auth/internal/session/application/login/usecase.go:58"
+          "line": "examples/auth/internal/session/application/login/usecase.go:57"
         },
         {
           "type": "step",
@@ -272,7 +272,7 @@
           "kind": "call",
           "label": "ByEmail",
           "status": "declared",
-          "line": "examples/auth/internal/user/application/check_credentials/usecase.go:43"
+          "line": "examples/auth/internal/user/application/check_credentials/usecase.go:42"
         },
         {
           "type": "step",
@@ -283,7 +283,7 @@
           "label": "Check",
           "status": "declared",
           "note": "Port `Lockout`, bound at assembly to the Check use case.",
-          "line": "examples/auth/internal/user/application/check_credentials/usecase.go:51"
+          "line": "examples/auth/internal/user/application/check_credentials/usecase.go:50"
         },
         {
           "type": "step",
@@ -293,7 +293,7 @@
           "kind": "call",
           "label": "ByUserID",
           "status": "declared",
-          "line": "examples/auth/internal/lockout/application/check/usecase.go:27"
+          "line": "examples/auth/internal/lockout/application/check/usecase.go:26"
         },
         {
           "type": "alt",
@@ -311,7 +311,7 @@
                   "label": "RecordFailure",
                   "status": "declared",
                   "note": "Port `Lockout`, bound at assembly to the RecordFailure use case.",
-                  "line": "examples/auth/internal/user/application/check_credentials/usecase.go:60"
+                  "line": "examples/auth/internal/user/application/check_credentials/usecase.go:59"
                 },
                 {
                   "type": "step",
@@ -322,7 +322,7 @@
                   "label": "ByUserID",
                   "status": "declared",
                   "note": "inside a loop over `retries`.",
-                  "line": "examples/auth/internal/lockout/application/record_failure/usecase.go:37"
+                  "line": "examples/auth/internal/lockout/application/record_failure/usecase.go:36"
                 },
                 {
                   "type": "step",
@@ -333,7 +333,7 @@
                   "label": "Save",
                   "status": "declared",
                   "note": "inside a loop over `retries`.",
-                  "line": "examples/auth/internal/lockout/application/record_failure/usecase.go:54"
+                  "line": "examples/auth/internal/lockout/application/record_failure/usecase.go:53"
                 },
                 {
                   "type": "step",
@@ -345,7 +345,7 @@
                   "label": "AccountLocked",
                   "status": "declared",
                   "note": "inside a loop over `retries`.",
-                  "line": "examples/auth/internal/lockout/application/record_failure/usecase.go:54"
+                  "line": "examples/auth/internal/lockout/application/record_failure/usecase.go:53"
                 }
               ],
               "terminal": true
@@ -365,7 +365,7 @@
           "label": "RecordSuccess",
           "status": "declared",
           "note": "Port `Lockout`, bound at assembly to the RecordSuccess use case.",
-          "line": "examples/auth/internal/user/application/check_credentials/usecase.go:69"
+          "line": "examples/auth/internal/user/application/check_credentials/usecase.go:68"
         },
         {
           "type": "step",
@@ -376,7 +376,7 @@
           "label": "ByUserID",
           "status": "declared",
           "note": "inside a loop over `retries`.",
-          "line": "examples/auth/internal/lockout/application/record_success/usecase.go:32"
+          "line": "examples/auth/internal/lockout/application/record_success/usecase.go:31"
         },
         {
           "type": "step",
@@ -387,7 +387,7 @@
           "label": "Save",
           "status": "declared",
           "note": "inside a loop over `retries`.",
-          "line": "examples/auth/internal/lockout/application/record_success/usecase.go:44"
+          "line": "examples/auth/internal/lockout/application/record_success/usecase.go:43"
         },
         {
           "type": "step",
@@ -398,7 +398,7 @@
           "ref": "risk.v1.RiskService/Assess",
           "label": "Assess",
           "status": "unresolved",
-          "line": "examples/auth/internal/session/application/login/usecase.go:63"
+          "line": "examples/auth/internal/session/application/login/usecase.go:62"
         },
         {
           "type": "alt",
@@ -415,7 +415,7 @@
                   "kind": "call",
                   "label": "ByUserID",
                   "status": "declared",
-                  "line": "examples/auth/internal/session/application/login/usecase.go:92"
+                  "line": "examples/auth/internal/session/application/login/usecase.go:91"
                 },
                 {
                   "type": "step",
@@ -426,7 +426,7 @@
                   "label": "Save",
                   "status": "declared",
                   "note": "inside a loop over `sessions`.",
-                  "line": "examples/auth/internal/session/application/login/usecase.go:102"
+                  "line": "examples/auth/internal/session/application/login/usecase.go:101"
                 },
                 {
                   "type": "step",
@@ -438,7 +438,7 @@
                   "label": "SessionEnded",
                   "status": "declared",
                   "note": "inside a loop over `sessions`.",
-                  "line": "examples/auth/internal/session/application/login/usecase.go:102"
+                  "line": "examples/auth/internal/session/application/login/usecase.go:101"
                 }
               ],
               "terminal": true
@@ -457,7 +457,7 @@
           "kind": "call",
           "label": "Save",
           "status": "declared",
-          "line": "examples/auth/internal/session/application/login/usecase.go:78"
+          "line": "examples/auth/internal/session/application/login/usecase.go:77"
         },
         {
           "type": "step",
@@ -469,7 +469,7 @@
           "label": "SessionStarted",
           "status": "verified",
           "note": "Seen running in telemetry/traces.jsonl (2 traces).",
-          "line": "examples/auth/internal/session/application/login/usecase.go:78"
+          "line": "examples/auth/internal/session/application/login/usecase.go:77"
         }
       ]
     },
@@ -522,7 +522,7 @@
           "kind": "call",
           "label": "ByToken",
           "status": "declared",
-          "line": "examples/auth/internal/session/application/logout/usecase.go:35"
+          "line": "examples/auth/internal/session/application/logout/usecase.go:34"
         },
         {
           "type": "step",
@@ -532,7 +532,7 @@
           "kind": "call",
           "label": "Save",
           "status": "declared",
-          "line": "examples/auth/internal/session/application/logout/usecase.go:49"
+          "line": "examples/auth/internal/session/application/logout/usecase.go:48"
         },
         {
           "type": "step",
@@ -544,7 +544,7 @@
           "label": "SessionEnded",
           "status": "verified",
           "note": "Seen running in telemetry/traces.jsonl (1 trace).",
-          "line": "examples/auth/internal/session/application/logout/usecase.go:49"
+          "line": "examples/auth/internal/session/application/logout/usecase.go:48"
         }
       ]
     },
@@ -597,7 +597,7 @@
           "kind": "call",
           "label": "ByEmail",
           "status": "declared",
-          "line": "examples/auth/internal/user/application/register/usecase.go:37"
+          "line": "examples/auth/internal/user/application/register/usecase.go:36"
         },
         {
           "type": "step",
@@ -607,7 +607,7 @@
           "kind": "call",
           "label": "Save",
           "status": "declared",
-          "line": "examples/auth/internal/user/application/register/usecase.go:54"
+          "line": "examples/auth/internal/user/application/register/usecase.go:53"
         },
         {
           "type": "step",
@@ -619,7 +619,7 @@
           "label": "UserRegistered",
           "status": "verified",
           "note": "Seen running in telemetry/traces.jsonl (2 traces).",
-          "line": "examples/auth/internal/user/application/register/usecase.go:54"
+          "line": "examples/auth/internal/user/application/register/usecase.go:53"
         }
       ]
     },
@@ -701,7 +701,7 @@
           "kind": "call",
           "label": "ByToken",
           "status": "declared",
-          "line": "examples/auth/internal/session/application/validate/usecase.go:34"
+          "line": "examples/auth/internal/session/application/validate/usecase.go:33"
         }
       ]
     }

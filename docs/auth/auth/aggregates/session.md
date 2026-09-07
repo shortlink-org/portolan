@@ -52,6 +52,18 @@ Revoking twice is the "nothing to do" answer, not a refusal: the caller asked
 for something already true. Ending it again would publish a `SessionEnded`
 for an ending that did not happen.
 
+## Token lifecycle
+
+Login creates one session and one 32-byte random, base64url-encoded opaque
+token. There is no refresh token and no rotation endpoint. The token contains
+no claims: validation always resolves server-side state, through the optional
+cache in front of the repository, and then checks revocation and expiry.
+
+The current persistence shape stores the token so existing deployments and
+API behaviour remain unchanged. Logout and security policies revoke the
+session; expiry is derived at validation time after 24 hours and emits no
+event. A new login always creates a new session and token.
+
 ## Entities
 
 ### Session — aggregate root
@@ -102,7 +114,7 @@ stateDiagram-v2
 
 | From | To | On | Emits | Source |
 | --- | --- | --- | --- | --- |
-| `live` | `revoked` | `Revoke` | `SessionEnded` | [`examples/auth/internal/domain/session/session.go:88`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/domain/session/session.go#L88) |
+| `live` | `revoked` | `Revoke` | `SessionEnded` | [`examples/auth/internal/session/domain/session.go:76`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/domain/session.go#L76) |
 
 ## Operations
 
@@ -126,7 +138,7 @@ On the wire as `auth.SessionEnded`, on `auth_session`.
 
 SessionEnded is published when a session is deliberately ended.
 
-Source: [`examples/auth/internal/domain/session/event/session_ended.go`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/domain/session/event/session_ended.go)
+Source: [`examples/auth/internal/session/domain/event/session_ended.go`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/domain/event/session_ended.go)
 
 | Field | Type |
 | --- | --- |
@@ -146,7 +158,7 @@ On the wire as `auth.SessionStarted`, on `auth_session`.
 
 SessionStarted is published on a successful login. ExpiresAt is on the event so a consumer can reason about the session's lifetime without asking auth again on every check.
 
-Source: [`examples/auth/internal/domain/session/event/session_started.go`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/domain/session/event/session_started.go)
+Source: [`examples/auth/internal/session/domain/event/session_started.go`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/domain/event/session_started.go)
 
 | Field | Type |
 | --- | --- |

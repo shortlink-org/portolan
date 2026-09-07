@@ -6,8 +6,8 @@
 - **Service:** [Authentication & Sessions](../README.md)
 - **Root:** `User`
 
-A person, the address they log in with, and the hash of the password they log
-in by. Identity is the id, minted at registration; the address can change.
+A person, the address they log in with, and the opaque hash of the password
+they log in by. Identity is the id, minted at registration.
 
 ## States
 
@@ -15,25 +15,30 @@ One state. A user that exists is registered, and nothing here ends that:
 there is no deletion, no suspension, no lockout. Each of those is a real
 requirement somewhere and none of them is here.
 
-`ChangePassword` changes a value, not a state. It is a command with a guard
-(the current password) and an event, and the user is the same user afterwards.
+`ChangePassword` changes a value, not a state. Credential verification and
+hashing happen in application services through consumer-owned password ports;
+the aggregate accepts only an already-produced hash and never sees plaintext.
 
 ```mermaid
 stateDiagram-v2
     [*] --> Registered : Register / UserRegistered
-    Registered --> Registered : ChangePassword(current, next) / PasswordChanged
+    Registered --> Registered : ChangePassword(hash) / PasswordChanged
 ```
 
 ## Commands
 
 | Command | Guard | Event |
 |---|---|---|
-| `Register` | address and password pass their policies | `UserRegistered` |
-| `ChangePassword` | the current password matches; the new one passes the policy | `PasswordChanged` |
-| `Authenticate` | — | none; a read that answers one refusal for every failure |
+| `Register` | valid address and a non-empty password hash | `UserRegistered` |
+| `ChangePassword` | non-empty password hash | `PasswordChanged` |
+
+`check_credentials` is an application use case because it coordinates repository
+lookup, lockout and password verification. It is intentionally not an
+aggregate method and never issues a session; `session/application/login`
+depends on it through its own `Authenticator` port.
 
 No command here touches a session. That a password change ends sessions is a
-rule about sessions, applied by the policy in `internal/application/policy`.
+rule about sessions, applied by the policy in `internal/session/infrastructure/messaging/policy`.
 
 ## Entities
 
@@ -61,21 +66,18 @@ Address is a normalised email address.
 
 ### password.Hash
 
-Hash is what the user domain stores in place of a password. The plaintext never lives on an aggregate and never leaves the function that hashed it.
+Hash is an opaque, immutable stored password hash. Hashing and verification are deliberately implemented behind the application port, outside domain.
 
 | Field | Type |
 | --- | --- |
-| `algorithm` | `string` |
-| `iterations` | `int` |
-| `salt` | `[]byte` |
-| `digest` | `[]byte` |
+| `encoded` | `string` |
 
 ## Operations
 
 | Operation | Kind | Exposed by | Doc |
 | --- | --- | --- | --- |
-| `Authenticate` | query | *internal* | Checks an address and a password, and says which user they belong to. |
 | `ChangePassword` | command | `changePassword` | Replaces the password of a user, given the current one. |
+| `CheckCredentials` | query | *internal* | Checks an address and a password, and says which user they belong to. |
 | `Get` | query | `getUser` | Reads a user by id. |
 | `Register` | command | `registerUser` | Creates a user from an email address and a password. |
 
@@ -96,7 +98,7 @@ On the wire as `auth.PasswordChanged`, on `auth_user`.
 
 PasswordChanged is published when a user's password is replaced. It says the password is different now; it does not carry the password, old or new, in any form.
 
-Source: [`examples/auth/internal/domain/user/event/password_changed.go`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/domain/user/event/password_changed.go)
+Source: [`examples/auth/internal/user/domain/event/password_changed.go`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/domain/event/password_changed.go)
 
 | Field | Type |
 | --- | --- |
@@ -115,7 +117,7 @@ On the wire as `auth.UserRegistered`, on `auth_user`.
 
 UserRegistered is published once per user, at registration. It carries the address because consumers routinely need to reach the person, and asking auth for it on every event would make the bus useless.
 
-Source: [`examples/auth/internal/domain/user/event/user_registered.go`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/domain/user/event/user_registered.go)
+Source: [`examples/auth/internal/user/domain/event/user_registered.go`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/domain/event/user_registered.go)
 
 | Field | Type |
 | --- | --- |

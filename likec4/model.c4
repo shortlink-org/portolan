@@ -361,7 +361,7 @@ payment was captured, and what that means for a parcel is decided here.'
   shop.pricing.quote -[persists]-> shop.pricing.pg 'quotes, quote_lines' {
     style { color declared  line dashed  head normal }
   }
-  auth.auth -[bus]-> bus '4 events' {
+  auth.auth -[bus]-> bus '5 events' {
     style { color verified  line solid  head onormal }
   }
   bus -[bus]-> auth.auth 'PasswordChanged' {

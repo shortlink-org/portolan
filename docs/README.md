@@ -57,7 +57,7 @@
 | [Close invoice on payment](flows/billing-close-invoice-on-payment.md) | [shop](shop/README.md) | Closes the invoice for an order once the ledger says the money arrived. |
 | [Invoice create](flows/billing-invoice-create.md) | [shop](shop/README.md) | Draws up a draft invoice for an order, with a line for each thing sold. |
 | [Invoice destroy](flows/billing-invoice-destroy.md) | [shop](shop/README.md) | Ends an invoice nobody is going to pay. |
-| [Invoice issue](flows/billing-invoice-issue.md) | [shop](shop/README.md) | Confirms the session, freezes the invoice and asks the customer to pay. |
+| [Invoice issue](flows/billing-invoice-issue.md) | [shop](shop/README.md) | Confirms the session, freezes the invoice and asks the customer to pay. Source-backed cross-protocol continuations are included. |
 | [Invoice list](flows/billing-invoice-list.md) | [shop](shop/README.md) | Invoices over HTTP. Every action here runs one function of services.py. |
 | [Invoice partial update](flows/billing-invoice-partial-update.md) | [shop](shop/README.md) | Invoices over HTTP. Every action here runs one function of services.py. |
 | [Invoice retrieve](flows/billing-invoice-retrieve.md) | [shop](shop/README.md) | Reads one invoice and the lines it is made of. |
@@ -111,6 +111,11 @@
 | [auth.0009](adr/auth.0009.md) | A locked account answers exactly like a wrong password | accepted | 2026-09-04 |
 | [auth.0010](adr/auth.0010.md) | A revocation is written to the cache, not only dropped from it | accepted | 2026-09-05 |
 | [auth.0011](adr/auth.0011.md) | The relay reads every topic and hands it to a bus; policies subscribe to the bus | accepted | 2026-09-05 |
+| [auth.0012](adr/auth.0012.md) | Feature slices own their layers and local assembly | accepted | 2026-09-07 |
+| [auth.0013](adr/auth.0013.md) | Domain events become integration events at the transactional outbox boundary | accepted | 2026-09-07 |
+| [auth.0014](adr/auth.0014.md) | Session tokens are opaque, stored, revocable, and expire after 24 hours | accepted | 2026-09-07 |
+| [auth.0015](adr/auth.0015.md) | Errors are owned by their layer and classified at the edge | accepted | 2026-09-07 |
+| [auth.0016](adr/auth.0016.md) | Password cryptography is an application port | accepted | 2026-09-07 |
 | [bff.0001](adr/bff.0001.md) | GraphQL over Yoga, and the schema comes first | accepted | 2026-09-05 |
 | [bff.0002](adr/bff.0002.md) | The storefront owns no state | accepted | 2026-09-05 |
 | [bff.0003](adr/bff.0003.md) | The schema speaks the client's words, not the peers' | accepted | 2026-09-05 |

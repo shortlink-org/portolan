@@ -4,7 +4,7 @@
 
 - **Id:** `flow.auth-get-user`
 - **Owner:** [auth](../auth/README.md)
-- **Source:** [`examples/auth/internal/infrastructure/transport/http/user/get.go`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/infrastructure/transport/http/user/get.go)
+- **Source:** [`examples/auth/internal/user/infrastructure/http/get.go`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/infrastructure/http/get.go)
 
 Reads a user by id.
 
@@ -32,7 +32,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **auth.auth** — getUser → User
-   [`examples/auth/internal/infrastructure/transport/http/user/get.go:11`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/infrastructure/transport/http/user/get.go#L11) · Seen running in telemetry/traces.jsonl (3 traces).
+   [`examples/auth/internal/user/infrastructure/http/get.go:11`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/infrastructure/http/get.go#L11) · Seen running in telemetry/traces.jsonl (3 traces).
 <a id="step-s2"></a>
 2. **auth.auth** → **auth-pg** — ByID
-   status: declared · [`examples/auth/internal/application/user/usecases/get/usecase.go:23`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/application/user/usecases/get/usecase.go#L23)
+   status: declared · [`examples/auth/internal/user/application/get/usecase.go:22`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/application/get/usecase.go#L22)
