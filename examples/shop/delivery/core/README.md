@@ -63,17 +63,25 @@ arrow of both lifecycle tables is one of these.
 A sketch for the catalog, not the reference service; `examples/auth` is
 that. What it has: two aggregates whose lifecycle tables are enforced and
 whose every move is an event, use cases that answer with what a caller may
-see, a policy that reacts to the ledger's fact through a use case, and the
-records above. What it deliberately does not have yet, and the review skill
-will name: no repository or server behind the ports, so nothing here runs;
-no version on the aggregates; no unit of work, so `plan_route` writes a
-route and its shipments one save at a time; no sentinel errors or status
-mapping at the edge; no tests; no tracing. Each is a known gap, not an
-oversight, and none of them changes what the catalog shows.
+see, a policy that reacts to the ledger's fact through a use case, Postgres
+repositories behind both ports that write the events to an outbox in the
+same transaction, and the records above. What it deliberately does not have
+yet, and the review skill will name: no server, so nothing here listens; no
+version on the aggregates, so a stale write wins; no unit of work, so
+`plan_route` writes a route and its shipments one save at a time; no
+sentinel errors or status mapping at the edge; no tracing. Each is a known
+gap, not an oversight, and none of them changes what the catalog shows.
 
 ## Running it
 
 ```bash
 docker compose up -d db
 npm install && npm run gen && npm run build
+```
+
+The repository tests bring up their own Postgres through Docker and are
+skipped without it:
+
+```bash
+npm test
 ```

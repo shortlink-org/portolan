@@ -13,6 +13,20 @@ import type { Pin } from "./pins";
 const pin = (n: number): Pin => ({ kind: "event", id: `e${n}` });
 const many = (n: number): Pin[] => Array.from({ length: n }, (_, i) => pin(i));
 
+describe("what can be pinned", () => {
+  it("keeps a context and a store, which have pages of their own", () => {
+    const raw = JSON.stringify([
+      { kind: "context", id: "shop" },
+      { kind: "store", id: "shop.oms.pg" },
+      { kind: "column", id: "shop.oms.pg.orders.id" },
+    ]);
+    expect(parsePins(raw)).toEqual([
+      { kind: "context", id: "shop" },
+      { kind: "store", id: "shop.oms.pg" },
+    ]);
+  });
+});
+
 describe("addPin", () => {
   it("appends, so the newest pin is the one at the bottom", () => {
     const { pins } = addPin([pin(0)], pin(1));

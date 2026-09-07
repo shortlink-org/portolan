@@ -4,6 +4,12 @@
 
 export type Kind =
   | "context"
+  /**
+   * A third party the estate calls - a payment provider, a carrier's API.
+   * Outside every context, with a page of its own, which is why the palette
+   * has to know it: nothing else in the tree leads there.
+   */
+  | "external"
   | "service"
   | "aggregate"
   | "store"
@@ -88,6 +94,7 @@ export function isLeafKind(kind: Kind): kind is LeafKind {
 
 export const KIND_LABEL: Record<Kind, string> = {
   context: "context",
+  external: "external API",
   service: "service",
   aggregate: "aggregate",
   store: "store",
@@ -109,6 +116,7 @@ export const KIND_LABEL: Record<Kind, string> = {
 
 export const KIND_PLURAL: Record<Kind, string> = {
   context: "contexts",
+  external: "external APIs",
   service: "services",
   aggregate: "aggregates",
   store: "stores",
@@ -174,6 +182,7 @@ export const KIND_PREFIXES: Record<Kind, string[]> = {
   view: ["view", "views", "vw"],
   service: ["svc", "service", "services"],
   context: ["ctx", "context", "contexts"],
+  external: ["ext", "external", "externals"],
   flow: ["flow", "flows"],
   adr: ["adr", "adrs", "decision", "decisions"],
   // A term is the word, not the thing: "t: session" finds what the glossary

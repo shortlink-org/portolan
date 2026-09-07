@@ -1,3 +1,4 @@
+import { useDocumentTitle } from "../app/title";
 import { useMemo } from "react";
 import { CATALOG_PATH, catalog, index } from "../data";
 import type { ProtoModule } from "../catalog";
@@ -75,6 +76,7 @@ const COLUMNS: ColumnSpec<ProtoModule>[] = [
 ];
 
 export function RegistryIndex() {
+  useDocumentTitle("Registry");
   const rows = useMemo(() => modules(catalog), []);
   const bare = rows.length === 0;
 

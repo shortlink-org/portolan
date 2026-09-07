@@ -1,3 +1,4 @@
+import { useDocumentTitle } from "../app/title";
 import {
   AlertTriangle,
   ArrowRight,
@@ -132,6 +133,7 @@ function RepositoryAccess({ repo, reveal }: { repo: ForgeRepo; reveal: boolean }
 }
 
 export function Changes() {
+  useDocumentTitle("Changes");
   const [params, setParams] = useSearchParams();
   const current = buildInfo.branch || "main";
   const base = params.get("base") || current;

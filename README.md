@@ -165,8 +165,10 @@ npm test             # vitest; npm run test:go for the Go catalog mirror
 npm run build        # likec4:gen + tsc --noEmit + vite build
 ```
 
-Generated output is committed, so a change to it shows up in a diff; CI runs the
-`--check` variants to keep it honest.
+Generated output is committed, so a change to it shows up in a diff. CI builds
+the site (`npm run build`); the `--check` variants and the test suites are run
+locally before a change lands, since they need the Go, Java, Rust and Python
+toolchains the plugins are written in.
 
 ### In a pull request
 

@@ -1,3 +1,4 @@
+import { useDocumentTitle } from "../app/title";
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { ArrowUpDown, X } from "lucide-react";
@@ -37,6 +38,7 @@ const HEALTH_COLOR: Record<FlowHealth, string> = {
 };
 
 export function FlowIndex() {
+  useDocumentTitle("Flows");
   const [sort, setSort] = useState<Sort>("contexts");
   const [active, setActive] = useState<Set<string>>(new Set());
   // `?owner=` is how the sidebar's "view all n" arrives: the reader asked for

@@ -1,6 +1,6 @@
 # Pricing database
 
-*Generated from the portolan catalog · commit `12 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `13 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
 
 - **Id:** `shop.pricing.pg`
 - **Kind:** postgres
@@ -14,13 +14,13 @@
 
 aggregate-root · persists [shop.pricing.price-list](../aggregates/price-list.md)
 
-| Column | Type | Null | Key |
-| --- | --- | --- | --- |
-| `id` | `text` | not null | PK |
-| `name` | `text` | not null | — |
-| `currency` | `char(3)` | not null | — |
-| `valid_from` | `timestamptz` | not null | — |
-| `archived` | `boolean` | not null | — |
+| Column | Type | Null | Key | Maps |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | not null | PK | PriceList.id |
+| `name` | `text` | not null | — | PriceList.name |
+| `currency` | `char(3)` | not null | — | PriceList.currency |
+| `valid_from` | `timestamptz` | not null | — | PriceList.validFrom |
+| `archived` | `boolean` | not null | — | PriceList.archived |
 
 | Index | Columns | Kind |
 | --- | --- | --- |
@@ -31,26 +31,26 @@ aggregate-root · persists [shop.pricing.price-list](../aggregates/price-list.md
 
 child · persists [shop.pricing.price-list](../aggregates/price-list.md)
 
-| Column | Type | Null | Key |
-| --- | --- | --- | --- |
-| `price_list_id` | `text` | not null | PK |
-| `sku` | `text` | not null | PK |
-| `amount_minor` | `bigint` | not null | — |
+| Column | Type | Null | Key | Maps |
+| --- | --- | --- | --- | --- |
+| `price_list_id` | `text` | not null | PK | PriceList.id |
+| `sku` | `text` | not null | PK | PriceList.rows.sku |
+| `amount_minor` | `bigint` | not null | — | PriceList.rows.price |
 
 <a id="relation-shop-pricing-pg-quotes"></a>
 ### quotes
 
 aggregate-root · persists [shop.pricing.quote](../aggregates/quote.md)
 
-| Column | Type | Null | Key |
-| --- | --- | --- | --- |
-| `id` | `text` | not null | PK |
-| `basket_id` | `text` | not null | — |
-| `total_minor` | `bigint` | not null | — |
-| `currency` | `char(3)` | not null | — |
-| `state` | `text` | not null | — |
-| `issued_at` | `timestamptz` | not null | — |
-| `expires_at` | `timestamptz` | not null | — |
+| Column | Type | Null | Key | Maps |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | not null | PK | Quote.id |
+| `basket_id` | `text` | not null | — | Quote.basketID |
+| `total_minor` | `bigint` | not null | — | Quote.total |
+| `currency` | `char(3)` | not null | — | Quote.total |
+| `state` | `text` | not null | — | Quote.state |
+| `issued_at` | `timestamptz` | not null | — | Quote.issuedAt |
+| `expires_at` | `timestamptz` | not null | — | Quote.expiresAt |
 
 | Index | Columns | Kind |
 | --- | --- | --- |
@@ -62,13 +62,13 @@ aggregate-root · persists [shop.pricing.quote](../aggregates/quote.md)
 
 child · persists [shop.pricing.quote](../aggregates/quote.md)
 
-| Column | Type | Null | Key |
-| --- | --- | --- | --- |
-| `quote_id` | `text` | not null | PK |
-| `sku` | `text` | not null | PK |
-| `quantity` | `integer` | not null | — |
-| `unit_price_minor` | `bigint` | not null | — |
-| `currency` | `char(3)` | not null | — |
+| Column | Type | Null | Key | Maps |
+| --- | --- | --- | --- | --- |
+| `quote_id` | `text` | not null | PK | Quote.id |
+| `sku` | `text` | not null | PK | Quote.lines.sku |
+| `quantity` | `integer` | not null | — | Quote.lines.quantity |
+| `unit_price_minor` | `bigint` | not null | — | Quote.lines.unitPrice |
+| `currency` | `char(3)` | not null | — | Quote.lines.unitPrice |
 
 <a id="relation-shop-pricing-pg-outbox"></a>
 ### outbox
@@ -99,12 +99,12 @@ outbox
 
 computed on read · reads [`shop.pricing.pg.price_lists`](pg.md#relation-shop-pricing-pg-price-lists), [`shop.pricing.pg.price_rows`](pg.md#relation-shop-pricing-pg-price-rows)
 
-| Column | Type | Null | From |
-| --- | --- | --- | --- |
-| `price_list_id` | `text` | not null | `shop.pricing.pg.price_lists.id` |
-| `name` | `text` | not null | `shop.pricing.pg.price_lists.name` |
-| `currency` | `char(3)` | not null | `shop.pricing.pg.price_lists.currency` |
-| `rows_priced` | `text` | not null | `shop.pricing.pg.price_rows.sku` |
+| Column | Type | Null | Maps | From |
+| --- | --- | --- | --- | --- |
+| `price_list_id` | `text` | not null | PriceList.ID | `shop.pricing.pg.price_lists.id` |
+| `name` | `text` | not null | PriceList.Name | `shop.pricing.pg.price_lists.name` |
+| `currency` | `char(3)` | not null | PriceList.Currency | `shop.pricing.pg.price_lists.currency` |
+| `rows_priced` | `text` | not null | PriceList.Rows.SKU | `shop.pricing.pg.price_rows.sku` |
 
 ```sql
 CREATE VIEW v_price_list_use AS

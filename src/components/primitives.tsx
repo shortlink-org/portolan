@@ -12,27 +12,17 @@ import { adrNumber } from "../lib/adr";
 import { ctxStyle } from "../lib/context-color";
 import { paths } from "../routes";
 
-export const STATUS_LABEL: Record<Status, string> = {
+const STATUS_LABEL: Record<Status, string> = {
   verified: "verified",
   declared: "declared",
   unresolved: "unresolved",
 };
 
 /** Component class that paints text and border for a status. */
-export const STATUS_CLASS: Record<Status, string> = {
+const STATUS_CLASS: Record<Status, string> = {
   verified: "status-verified",
   declared: "status-declared",
   unresolved: "status-unresolved",
-};
-
-/**
- * Written out rather than composed, because Tailwind scans source text for
- * class names: `text-${status}` would never be generated.
- */
-export const STATUS_TEXT: Record<Status, string> = {
-  verified: "text-verified",
-  declared: "text-declared",
-  unresolved: "text-unresolved",
 };
 
 /** Raw value, for SVG strokes and React Flow edges that cannot take a class. */

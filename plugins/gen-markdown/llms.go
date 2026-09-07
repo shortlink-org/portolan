@@ -3,6 +3,7 @@ package main
 import (
 	"strings"
 
+	"github.com/shortlink-org/portolan/catalog"
 	"github.com/shortlink-org/portolan/plugin"
 )
 
@@ -86,6 +87,41 @@ func (s *site) llmsIndex() string {
 	section(&b, "Glossaries", list(glossaries))
 
 	section(&b, "Services", list(services))
+
+	// The pages a model has most to learn from: the shape of the data, the
+	// commands and the events of the estate all live here, and nowhere else
+	// on the site is the readme of an aggregate printed in full.
+	var aggregates []string
+	for i := range s.cat.Contexts {
+		ctx := &s.cat.Contexts[i]
+		for j := range ctx.Services {
+			svc := &ctx.Services[j]
+			for k := range svc.Aggregates {
+				agg := &svc.Aggregates[k]
+				commands, queries := 0, 0
+				for _, op := range agg.Operations {
+					if op.Kind == catalog.OperationQuery {
+						queries++
+					} else {
+						commands++
+					}
+				}
+				shape := []string{plural(commands, "command")}
+				if queries > 0 {
+					shape = append(shape, plural(queries, "query", "queries"))
+				}
+				shape = append(shape, plural(len(agg.Events), "event"))
+				aggregates = append(aggregates, entry(
+					s.ref(self, agg.ID, agg.Name),
+					"in "+s.ref(self, svc.ID, svc.Name),
+					"root "+code(agg.Root),
+					strings.Join(shape, ", "),
+					firstSentence(body(agg.Readme, agg.Name)),
+				))
+			}
+		}
+	}
+	section(&b, "Aggregates", list(aggregates))
 
 	externals := make([]string, 0, len(s.cat.Externals))
 	for i := range s.cat.Externals {
@@ -230,6 +266,31 @@ func entry(link string, notes ...string) string {
 	}
 
 	return "- " + link + ": " + strings.Join(kept, ". ")
+}
+
+// firstSentence is the opening of a readme as one line: the first paragraph
+// unwrapped, cut at the end of its first sentence. A readme is wrapped at
+// some column by whoever wrote it, so the first line alone stops mid-phrase.
+func firstSentence(md string) string {
+	md = strings.TrimSpace(md)
+	if md == "" {
+		return ""
+	}
+	para := md
+	if i := strings.Index(md, "\n\n"); i >= 0 {
+		para = md[:i]
+	}
+	if strings.HasPrefix(para, "#") {
+		return ""
+	}
+	para = strings.Join(strings.Fields(para), " ")
+	for i := 0; i < len(para); i++ {
+		if para[i] == '.' && (i+1 == len(para) || para[i+1] == ' ') {
+			return para[:i]
+		}
+	}
+
+	return para
 }
 
 func list(items []string) string {

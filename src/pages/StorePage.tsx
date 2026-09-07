@@ -9,16 +9,13 @@
 import { Link, useParams } from "react-router";
 import { catalog } from "../data";
 import { PageHeader } from "../components/PageHeader";
-import { servicePath } from "../routes";
+import { paths } from "../routes";
 import { ContextPill } from "../components/primitives";
+import { WhatLinksHere } from "../components/WhatLinksHere";
 import { ErCanvas } from "../er/ErCanvas";
 import { StoreHeader } from "../er/StoreHeader";
 import { RedisSchema } from "../er/RedisSchema";
-import {
-  readersOfStore,
-  storeColumnCount,
-  storeViewCount,
-} from "../lib/data-model";
+import { storeColumnCount, storeViewCount } from "../lib/data-model";
 import { plural } from "../lib/format";
 import { NotFound } from "./NotFound";
 
@@ -43,16 +40,26 @@ export function StorePage() {
 
   const columns = storeColumnCount(store);
   const views = storeViewCount(store);
-  const readers = readersOfStore(catalog, store.id, store.owner);
   const keyspaces = store.keyspaces ?? [];
 
   return (
     <div className="flex h-full flex-col">
       <PageHeader
-        kind="store"
+        kind={
+          <>
+            store ·{" "}
+            <Link
+              to={paths.service(context.id, service.slug)}
+              className="rounded-control hover:text-ink hover:underline"
+            >
+              {service.id}
+            </Link>
+          </>
+        }
         name={store.name}
         id={store.id}
         contextId={context.id}
+        pin={{ kind: "store", id: store.id }}
         right={<ContextPill id={context.id} name={context.name} />}
       >
         <div className="mt-3 max-w-table">
@@ -83,30 +90,14 @@ export function StorePage() {
               </>
             ) : null}
           </span>
-          {/* Who else reads this schema. Not a warning — reading someone
-              else's store is allowed, and it is the writers the Problems page
-              objects to — but it is what makes a column rename expensive. */}
-          {readers.length > 0 ? (
-            <span className="flex flex-wrap items-center gap-x-2">
-              <span aria-hidden>·</span>
-              read by
-              {readers.map((reader) => {
-                const to = servicePath(reader.id);
-                return to ? (
-                  <Link
-                    key={reader.id}
-                    to={to}
-                    className="rounded-control text-accent hover:underline"
-                  >
-                    {reader.id}
-                  </Link>
-                ) : (
-                  <span key={reader.id}>{reader.id}</span>
-                );
-              })}
-            </span>
-          ) : null}
         </div>
+        {/* Who depends on this schema: the services that read it, and the
+            aggregates its tables hold. A line rather than a section, because
+            the canvas below takes the whole pane. */}
+        <WhatLinksHere
+          variant="line"
+          target={{ kind: "store", id: store.id }}
+        />
       </PageHeader>
 
       {/* The canvas takes the rest of the pane rather than a fixed height: on

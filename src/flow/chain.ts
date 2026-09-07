@@ -104,7 +104,7 @@ export interface ChainOptions {
   maxNodes?: number;
 }
 
-export const CHAIN_DEPTH = 4;
+const CHAIN_DEPTH = 4;
 export const CHAIN_BUDGET = 200;
 
 /** Which arm of which alt a step sits in, innermost last. */

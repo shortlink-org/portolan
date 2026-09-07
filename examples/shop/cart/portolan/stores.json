@@ -1,6 +1,6 @@
 {
   "generatedAt": "2026-09-06T23:37:35+07:00",
-  "commit": "1600d03",
+  "commit": "1600d039",
   "contexts": [
     {
       "id": "shop",
@@ -56,12 +56,14 @@
             {
               "name": "customer_id",
               "type": "text",
-              "nullable": true
+              "nullable": true,
+              "maps": "Basket.customerId"
             },
             {
               "name": "currency",
               "type": "char(3)",
-              "nullable": true
+              "nullable": true,
+              "maps": "Basket.currency.code"
             },
             {
               "name": "status",
@@ -123,25 +125,25 @@
               "type": "text",
               "nullable": false,
               "pk": true,
-              "maps": "Basket.sku"
+              "maps": "Basket.items.sku"
             },
             {
               "name": "quantity",
               "type": "integer",
               "nullable": false,
-              "maps": "Basket.quantity"
+              "maps": "Basket.items.quantity"
             },
             {
               "name": "unit_price_minor",
               "type": "bigint",
               "nullable": false,
-              "maps": "Basket.unitPrice.amountMinor"
+              "maps": "Basket.items.unitPrice.amountMinor"
             },
             {
               "name": "currency",
               "type": "char(3)",
               "nullable": false,
-              "maps": "Basket.unitPrice.currency.code"
+              "maps": "Basket.items.unitPrice.currency.code"
             }
           ],
           "persists": {

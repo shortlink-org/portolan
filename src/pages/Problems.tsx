@@ -4,6 +4,7 @@
 // catalog knows about or it does not, and the only useful ordering is the one
 // the reader can act on: by the service that owns the near end.
 
+import { useDocumentTitle } from "../app/title";
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { catalog, index } from "../data";
@@ -63,6 +64,7 @@ const KIND_NOTE: Record<Problem["kind"], string> = {
 };
 
 export function Problems() {
+  useDocumentTitle("Problems");
   // `?context=` is how the sidebar's unresolved-edge count arrives here: the
   // reader clicked a number against one context, so that context is what the
   // page opens filtered to. It seeds the chips rather than replacing them -

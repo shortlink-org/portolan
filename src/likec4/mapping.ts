@@ -52,8 +52,3 @@ const toCatalogId = catalogIdMap(catalog);
 export function catalogIdOf(likec4Id: string): string {
   return toCatalogId.get(likec4Id) ?? likec4Id;
 }
-
-/** Every LikeC4 element id the catalog can produce. */
-export function knownLikeC4Ids(): string[] {
-  return [...toCatalogId.keys()];
-}

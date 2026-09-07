@@ -8,7 +8,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
-    "gen": "buf generate src/infrastructure/transport/grpc/shipment/proto -o src/infrastructure/transport/grpc/shipment/gen && buf generate src/infrastructure/transport/grpc/route/proto -o src/infrastructure/transport/grpc/route/gen && buf generate src/infrastructure/oms/proto -o src/infrastructure/oms/gen"
+    "gen": "buf generate src/infrastructure/transport/grpc/shipment/proto -o src/infrastructure/transport/grpc/shipment/gen && buf generate src/infrastructure/transport/grpc/route/proto -o src/infrastructure/transport/grpc/route/gen && buf generate src/infrastructure/oms/proto -o src/infrastructure/oms/gen",
+    "test": "vitest run"
   },
   "dependencies": {
     "@bufbuild/protobuf": "^2.9.0",
@@ -18,8 +19,11 @@
     "pg": "^8.16.3"
   },
   "devDependencies": {
+    "@testcontainers/postgresql": "^12.1.0",
     "@types/node": "^26.4.0",
     "@types/pg": "^8.15.6",
-    "typescript": "^7.0.2"
+    "testcontainers": "^12.1.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
   }
 }

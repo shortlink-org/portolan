@@ -10,6 +10,7 @@
 // contexts is the one fact no single glossary can state, and it is what a
 // reader crossing a boundary gets wrong.
 
+import { useDocumentTitle } from "../app/title";
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { CATALOG_PATH, catalog, index } from "../data";
@@ -24,6 +25,7 @@ import { homonyms, matchTerms, vocabularies } from "../language/cards";
 import { bindTerms } from "../lib/terms";
 
 export function Language() {
+  useDocumentTitle("Language");
   // `?context=` is how the sidebar arrives here: the reader clicked one
   // vocabulary, so the page opens showing it. It seeds the chips rather than
   // replacing them - once here, the filter is theirs to widen.

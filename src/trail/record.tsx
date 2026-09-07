@@ -14,7 +14,7 @@ import { useTrailStore } from "./store";
 
 /** Long enough to skip a page passed through, short enough to be there on
  *  arrival — the trail is read after a move, not during one. */
-export const VISIT_SETTLE_MS = 400;
+const VISIT_SETTLE_MS = 400;
 
 export function TrailRecorder() {
   const { pathname } = useLocation();

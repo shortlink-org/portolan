@@ -186,10 +186,15 @@ export function payloadColumn(table: Table): Column | null {
  * The shape a type has, once the spelling is set aside. Widths are kept apart
  * on purpose: `int32` in the model against `bigint` in the column is exactly
  * the kind of quiet disagreement this whole comparison exists to surface.
+ *
+ * `int` is the one width that is no width: Go's `int` is whatever the platform
+ * says, Java's is what the schema author was not thinking about. Either agrees
+ * with any integer column - a `bigint` under a Go `int` is a choice, not a bug.
  */
 export type TypeClass =
   | "uuid"
   | "text"
+  | "int"
   | "int16"
   | "int32"
   | "int64"
@@ -259,7 +264,7 @@ const DOMAIN_CLASSES: Record<string, TypeClass> = {
   int32: "int32",
   rune: "int32",
   int64: "int64",
-  int: "int64",
+  int: "int",
   uint64: "int64",
   uint32: "int32",
   float32: "float",
@@ -270,7 +275,27 @@ const DOMAIN_CLASSES: Record<string, TypeClass> = {
   "decimal.decimal": "decimal",
   "json.rawmessage": "json",
   byte: "bytes",
+  // Java. `bare` lowercases, so `Integer` and `Long` land here too.
+  long: "int64",
+  integer: "int32",
+  short: "int16",
+  double: "float",
+  boolean: "bool",
+  bigdecimal: "decimal",
+  instant: "time",
+  offsetdatetime: "time",
+  localdatetime: "time",
+  localdate: "time",
+  // TypeScript. `string`, `boolean` above; `number` is deliberately unknown.
+  date: "time",
 };
+
+const INTEGER_CLASSES: ReadonlySet<TypeClass> = new Set([
+  "int",
+  "int16",
+  "int32",
+  "int64",
+]);
 
 export function dbClass(type: string): TypeClass {
   return DB_CLASSES[bare(type)] ?? "unknown";
@@ -292,7 +317,9 @@ export function typesDisagree(dbType: string, domainType: string): boolean {
   const a = dbClass(dbType);
   const b = domainClass(domainType);
   if (a === "unknown" || b === "unknown") return false;
-  return a !== b;
+  if (a === b) return false;
+  // A width-less integer fits any integer column.
+  return !(b === "int" && INTEGER_CLASSES.has(a));
 }
 
 // ---------------------------------------------------------------------------

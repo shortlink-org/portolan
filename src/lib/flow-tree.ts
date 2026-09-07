@@ -131,7 +131,7 @@ export function groupFlowsByOwner(flows: Flow[]): FlowGroup[] {
  * Past this the tree is no longer something a reader scans - the index page
  * is, and the last row says so.
  */
-export const GROUP_SHOW_LIMIT = 8;
+const GROUP_SHOW_LIMIT = 8;
 export const GROUP_SHOW_HEAD = 5;
 
 /** The rows a group actually draws, and how many it is standing in for. */
@@ -149,7 +149,7 @@ export function visibleEntries(entries: FlowEntry[]): {
 }
 
 /** Up to three reach dots, and what the "+n" after them stands for. */
-export const REACH_DOTS = 3;
+const REACH_DOTS = 3;
 
 export function reachDots(reach: string[]): {
   dots: string[];

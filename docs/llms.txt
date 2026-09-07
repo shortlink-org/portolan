@@ -1,8 +1,8 @@
 # Example estate
 
-> Architecture catalog of Example estate: 6 bounded contexts, 11 services, 12 aggregates, 7 stores, 7 schema modules, 1 system outside the estate, 56 flows and 42 decision records, read from the code, the specs and the traces of the estate.
+> Architecture catalog of Example estate: 6 bounded contexts, 11 services, 12 aggregates, 7 stores, 7 schema modules, 1 system outside the estate, 59 flows and 42 decision records, read from the code, the specs and the traces of the estate.
 
-*Generated from the portolan catalog · commit `12 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `13 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
 
 Every link below is a markdown page beside this file. [llms-full.txt](llms-full.txt) is all of those pages in one file, in the order the site lists them.
 
@@ -37,6 +37,21 @@ Every link below is a markdown page beside this file. [llms-full.txt](llms-full.
 - [Order Management](shop/oms/README.md): in Shop. Aggregates: Order
 - [Pricing](shop/pricing/README.md): in Shop. Aggregates: Price List, Quote
 - [Storefront BFF](storefront/bff/README.md): in Storefront
+
+## Aggregates
+
+- [Lockout](auth/auth/aggregates/lockout.md): in [Authentication & Sessions](auth/auth/README.md). root `Lockout`. 2 commands, 1 query, 1 event. How many wrong passwords in a row an account has taken, and whether it is refusing logins because of them
+- [Session](auth/auth/aggregates/session.md): in [Authentication & Sessions](auth/auth/README.md). root `Session`. 3 commands, 1 query, 2 events. Proof that a user logged in, how long that proof is good for, and whether it has been taken away
+- [User](auth/auth/aggregates/user.md): in [Authentication & Sessions](auth/auth/README.md). root `User`. 2 commands, 2 queries, 2 events. A person, the address they log in with, and the hash of the password they log in by
+- [Route](delivery/core/aggregates/route.md): in [Delivery Core](delivery/core/README.md). root `Route`. 3 commands, 1 query, 3 events. One van, one day, in the order the stops are driven
+- [Shipment](delivery/core/aggregates/shipment.md): in [Delivery Core](delivery/core/README.md). root `Shipment`. 4 commands, 2 queries, 5 events. What is being carried to one address for one order
+- [Payment](payments/ledger/aggregates/payment.md): in [Ledger](payments/ledger/README.md). root `Payment`. 3 commands, 1 query, 3 events. What one order owes, and everything that has happened to that money
+- [Refund](payments/ledger/aggregates/refund.md): in [Ledger](payments/ledger/README.md). root `Refund`. 1 command, 1 query, 1 event. Money going back, against a payment that was captured
+- [Invoice](shop/billing/aggregates/invoice.md): in [Billing](shop/billing/README.md). root `Invoice`. 4 commands, 1 query, 3 events. What a customer owes for one order, and what happens to it between being drawn up and being closed
+- [Basket](shop/cart/aggregates/basket.md): in [Shopping Cart](shop/cart/README.md). root `Basket`. 6 commands, 1 query, 6 events. The one mutable thing between a customer arriving and an order existing: a visitor's or a customer's lines, under one lock
+- [Order](shop/oms/aggregates/order.md): in [Order Management](shop/oms/README.md). root `Order`. 3 commands, 1 query, 3 events. What a basket became at checkout: the lines and the total the customer agreed to, copied and never repriced, under one lock
+- [Price List](shop/pricing/aggregates/price-list.md): in [Pricing](shop/pricing/README.md). root `PriceList`. 2 commands, 1 query, 0 events. What things cost before anybody asks
+- [Quote](shop/pricing/aggregates/quote.md): in [Pricing](shop/pricing/README.md). root `Quote`. 2 commands, 1 query, 2 events. What a basket costs, promised until a moment
 
 ## Outside the estate
 
@@ -76,7 +91,10 @@ Every link below is a markdown page beside this file. [llms-full.txt](llms-full.
 - [Invoice create](flows/billing-invoice-create.md): owned by [shop](shop/README.md). Draws up a draft invoice for an order, with a line for each thing sold
 - [Invoice destroy](flows/billing-invoice-destroy.md): owned by [shop](shop/README.md). Ends an invoice nobody is going to pay
 - [Invoice issue](flows/billing-invoice-issue.md): owned by [shop](shop/README.md). Confirms the session, freezes the invoice and asks the customer to pay
+- [Invoice list](flows/billing-invoice-list.md): owned by [shop](shop/README.md). Invoices over HTTP. Every action here runs one function of services.py
+- [Invoice partial update](flows/billing-invoice-partial-update.md): owned by [shop](shop/README.md). Invoices over HTTP. Every action here runs one function of services.py
 - [Invoice retrieve](flows/billing-invoice-retrieve.md): owned by [shop](shop/README.md). Reads one invoice and the lines it is made of
+- [Invoice update](flows/billing-invoice-update.md): owned by [shop](shop/README.md). Invoices over HTTP. Every action here runs one function of services.py
 - [Add item](flows/cart-add-item.md): owned by [shop](shop/README.md)
 - [Checkout](flows/cart-checkout.md): owned by [shop](shop/README.md)
 - [Create basket](flows/cart-create-basket.md): owned by [shop](shop/README.md)
@@ -159,7 +177,7 @@ Every link below is a markdown page beside this file. [llms-full.txt](llms-full.
 ## Optional
 
 - [Auth database](auth/auth/stores/pg.md): postgres store of [Authentication & Sessions](auth/auth/README.md). 3 tables
-- [Delivery database](delivery/core/stores/pg.md): postgres store of [Delivery Core](delivery/core/README.md). 5 tables
+- [Delivery database](delivery/core/stores/pg.md): postgres store of [Delivery Core](delivery/core/README.md). 6 tables
 - [Ledger database](payments/ledger/stores/pg.md): postgres store of [Ledger](payments/ledger/README.md). 3 tables
 - [Billing database](shop/billing/stores/pg.md): postgres store of [Billing](shop/billing/README.md). 2 tables
 - [Cart database](shop/cart/stores/pg.md): postgres store of [Shopping Cart](shop/cart/README.md). 3 tables

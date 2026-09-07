@@ -11,6 +11,7 @@
 // it. A pattern chip that could not be checked would be an opinion in a tool
 // whose whole claim is that it does not hold opinions.
 
+import { useDocumentTitle } from "../app/title";
 import { useMemo } from "react";
 import { Link } from "react-router";
 import { ArrowRight, ArrowLeftRight, Boxes, Minus } from "lucide-react";
@@ -435,6 +436,7 @@ function SeparateWays({
 }
 
 export function ContextMap() {
+  useDocumentTitle("Context map");
   const relations = useMemo(() => contextMap(catalog), []);
   const joined = relations.filter(
     (r) => r.dependencies.length > 0 || r.shared.length > 0,

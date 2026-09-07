@@ -15,7 +15,7 @@ import type { Pin } from "./pins";
 
 export const SECTIONS_KEY = "portolan.sidebar.sections";
 export const FLOW_GROUPS_KEY = "portolan.sidebar.flow-groups";
-export const PINS_KEY = "portolan.sidebar.pins";
+const PINS_KEY = "portolan.sidebar.pins";
 
 /** A set of named booleans - "is this section folded" - and nothing else. */
 export type Flags = Record<string, boolean>;

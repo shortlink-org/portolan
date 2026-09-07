@@ -4,13 +4,6 @@
 import type { Status } from "../catalog";
 
 /**
- * The corner of every card on a canvas. 8px is Stripe's card radius, and it
- * is the one the CSS `--radius-node` token carries; this constant is the same
- * number for the places that size a box in TypeScript before CSS sees it.
- */
-export const NODE_RADIUS = 8;
-
-/**
  * Edge weight. One width for a line at rest, one for a line the selection has
  * lit, on every canvas - a reader who has learned that a thick line means
  * "this one" on the dependency graph should not have to relearn it on the

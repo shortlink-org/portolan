@@ -177,12 +177,36 @@
       "diagram": "billing-invoice-issue.mmd"
     },
     {
+      "id": "flow.billing-invoice-list",
+      "slug": "billing-invoice-list",
+      "name": "Invoice list",
+      "owner": "shop",
+      "source": "examples/shop/billing/invoices/views.py",
+      "diagram": "billing-invoice-list.mmd"
+    },
+    {
+      "id": "flow.billing-invoice-partial-update",
+      "slug": "billing-invoice-partial-update",
+      "name": "Invoice partial update",
+      "owner": "shop",
+      "source": "examples/shop/billing/invoices/views.py",
+      "diagram": "billing-invoice-partial-update.mmd"
+    },
+    {
       "id": "flow.billing-invoice-retrieve",
       "slug": "billing-invoice-retrieve",
       "name": "Invoice retrieve",
       "owner": "shop",
       "source": "examples/shop/billing/invoices/views.py",
       "diagram": "billing-invoice-retrieve.mmd"
+    },
+    {
+      "id": "flow.billing-invoice-update",
+      "slug": "billing-invoice-update",
+      "name": "Invoice update",
+      "owner": "shop",
+      "source": "examples/shop/billing/invoices/views.py",
+      "diagram": "billing-invoice-update.mmd"
     },
     {
       "id": "flow.cart-add-item",

@@ -55,6 +55,7 @@ export function ContextPage() {
         name={context.name}
         id={context.id}
         contextId={context.id}
+        pin={{ kind: "context", id: context.id }}
         right={
           <>
             <span className="chip-lg">{groupKind(context)}</span>

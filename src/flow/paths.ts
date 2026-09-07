@@ -44,7 +44,7 @@ export interface FlowPaths {
 }
 
 /** Enough for any flow a person is going to read; a guard, not a design limit. */
-export const MAX_PATHS = 64;
+const MAX_PATHS = 64;
 
 /**
  * Every way this flow can run. A flow with no alt yields exactly one path with

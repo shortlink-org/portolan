@@ -1,6 +1,6 @@
 # Pricing
 
-*Generated from the portolan catalog · commit `12 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `13 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
 
 - **Id:** `shop.pricing`
 - **Context:** [Shop](../README.md)
@@ -260,7 +260,7 @@ Source: [`internal/di/app.go:67`](https://github.com/shortlink-org/portolan/blob
 
 ## Stores
 
-| Store | Kind | Access | Tables |
+| Store | Kind | Access | Schema |
 | --- | --- | --- | --- |
 | [Pricing database](stores/pg.md) | postgres | owns | 5 tables |
 

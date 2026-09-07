@@ -329,6 +329,21 @@ export function paletteItems(catalog: Catalog): PaletteItem[] {
     }
   }
 
+  // A third party has no context and no tree row: the palette is the one way
+  // to its page besides a call that names it.
+  for (const external of catalog.externals ?? []) {
+    items.push({
+      kind: "external",
+      id: external.id,
+      name: external.name,
+      detail: "outside the estate",
+      path: paths.external(external.slug),
+      context: null,
+      keywords: external.provides.map((provided) => provided.id),
+      text: flattenProse(external.summary),
+    });
+  }
+
   for (const flow of catalog.flows) {
     const keywords = new Set<string>();
     for (const p of flow.participants) keywords.add(p.id);
@@ -421,16 +436,16 @@ export function score(item: PaletteItem, term: string): number | null {
 }
 
 /** The first keyword the term is found in, or undefined. */
-export function keywordHit(item: PaletteItem, needle: string): string | undefined {
+function keywordHit(item: PaletteItem, needle: string): string | undefined {
   if (needle.length < PROSE_MIN) return undefined;
   return item.keywords?.find((k) => k.toLowerCase().includes(needle));
 }
 
 /** The score a keyword hit returns; it owes an excerpt naming the keyword. */
-export const KEYWORD_SCORE = 6;
+const KEYWORD_SCORE = 6;
 
 /** Shortest term the prose tier will answer. Below it, names only. */
-export const PROSE_MIN = 3;
+const PROSE_MIN = 3;
 
 /** How much of the sentence around a hit comes back with it. */
 const LEAD = 32;
@@ -487,6 +502,7 @@ const KIND_RANK: Record<Kind, number> = {
   entity: 3,
   service: 4,
   context: 5,
+  external: 5,
   command: 6,
   query: 7,
   // After the operation it exposes: a reader searching for "register" wants

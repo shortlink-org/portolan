@@ -14,7 +14,7 @@ interface Crumb {
   to: string;
 }
 
-function crumbsFor(pathname: string): Crumb[] {
+export function crumbsFor(pathname: string): Crumb[] {
   const parts = pathname.split("/").filter(Boolean);
   if (parts.length === 0) return [];
 
@@ -29,7 +29,7 @@ function crumbsFor(pathname: string): Crumb[] {
   }
 
   if (parts[0] === "adrs") {
-    const crumbs: Crumb[] = [{ label: "adrs", to: "/adrs" }];
+    const crumbs: Crumb[] = [{ label: "decisions", to: paths.adrs() }];
     const slug = parts[1];
     if (slug) {
       const adr = index.adrBySlug.get(slug);
@@ -65,6 +65,22 @@ function crumbsFor(pathname: string): Crumb[] {
     ];
   }
 
+  if (parts[0] === "language")
+    return [{ label: "language", to: paths.language() }];
+
+  if (parts[0] === "problems")
+    return [{ label: "problems", to: paths.problems() }];
+
+  if (parts[0] === "registry") {
+    const crumbs: Crumb[] = [{ label: "registry", to: paths.registry() }];
+    const slug = parts[1];
+    if (slug) {
+      const module = index.moduleBySlug.get(slug);
+      crumbs.push({ label: module?.name ?? slug, to: paths.module(slug) });
+    }
+    return crumbs;
+  }
+
   if (parts[0] === "c") {
     const [, contextId, serviceSlug, aggregateSlug, eventSlug] = parts;
     const crumbs: Crumb[] = [];
@@ -73,6 +89,25 @@ function crumbsFor(pathname: string): Crumb[] {
     if (!serviceSlug) return crumbs;
     crumbs.push({ label: serviceSlug, to: `/c/${contextId}/${serviceSlug}` });
     if (!aggregateSlug) return crumbs;
+
+    // "data" is a literal too: a store hangs off its service, and the segment
+    // after it is the store slug, not an event of an aggregate called "data".
+    if (aggregateSlug === "data") {
+      const storeSlug = parts[4];
+      if (!storeSlug) return crumbs;
+      const service = catalog.contexts
+        .find((c) => c.id === contextId)
+        ?.services.find((s) => s.slug === serviceSlug);
+      const store = (catalog.stores ?? []).find(
+        (s) => s.slug === storeSlug && s.owner === service?.id,
+      );
+      crumbs.push({
+        label: store?.name ?? storeSlug,
+        to: paths.store(contextId, serviceSlug, storeSlug),
+      });
+      return crumbs;
+    }
+
     crumbs.push({
       label: aggregateSlug,
       to: `/c/${contextId}/${serviceSlug}/${aggregateSlug}`,

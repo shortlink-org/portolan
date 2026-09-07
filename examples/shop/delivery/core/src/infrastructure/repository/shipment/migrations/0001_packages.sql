@@ -7,7 +7,9 @@ CREATE TABLE packages (
     order_id      text NOT NULL REFERENCES orders (id) ON DELETE RESTRICT,
     -- Where it goes. Handed over with the dispatch: the order service holds
     -- no address, and asking it for one would be asking the wrong service.
-    ship_to       text NOT NULL,
+    -- Five lines read back whole and never queried by part, so one document
+    -- rather than five columns.
+    ship_to       jsonb NOT NULL,
     status        text NOT NULL,
     tracking      text,
     route_id      text,

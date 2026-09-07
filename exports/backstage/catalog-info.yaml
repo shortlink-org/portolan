@@ -497,6 +497,7 @@ metadata:
             npm run build
             npm run typecheck
             npm run gen
+            npm test
         portolan.io/id: delivery.core
     links:
         - url: https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/package.json#L9
@@ -507,6 +508,9 @@ metadata:
           type: command
         - url: https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/package.json#L11
           title: npm run gen
+          type: command
+        - url: https://github.com/shortlink-org/portolan/blob/main/examples/shop/delivery/core/package.json#L12
+          title: npm test
           type: command
 spec:
     consumesApis:

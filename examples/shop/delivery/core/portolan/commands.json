@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-09-05T16:34:53+07:00",
-  "commit": "d76a56c",
+  "generatedAt": "2026-09-07T10:35:12Z",
+  "commit": "d14d1def",
   "contexts": [
     {
       "id": "delivery",
@@ -39,6 +39,13 @@
               "run": "npm run gen",
               "body": "buf generate src/infrastructure/transport/grpc/shipment/proto -o src/infrastructure/transport/grpc/shipment/gen \u0026\u0026 buf generate src/infrastructure/transport/grpc/route/proto -o src/infrastructure/transport/grpc/route/gen \u0026\u0026 buf generate src/infrastructure/oms/proto -o src/infrastructure/oms/gen",
               "source": "examples/shop/delivery/core/package.json:11"
+            },
+            {
+              "runner": "npm",
+              "name": "test",
+              "run": "npm test",
+              "body": "vitest run",
+              "source": "examples/shop/delivery/core/package.json:12"
             }
           ]
         }

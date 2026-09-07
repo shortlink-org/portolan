@@ -13,7 +13,7 @@ CREATE TABLE route_stops (
     seq         integer     NOT NULL,
     shipment_id text        NOT NULL REFERENCES packages (id) ON DELETE RESTRICT,
     -- from: delivery.core.pg.packages.ship_to
-    address     text        NOT NULL,
+    address     jsonb       NOT NULL,
     window_from timestamptz NOT NULL,
     window_to   timestamptz NOT NULL,
     done        boolean     NOT NULL DEFAULT false,

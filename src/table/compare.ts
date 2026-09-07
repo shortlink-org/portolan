@@ -44,6 +44,7 @@ const KIND_RANK: Record<Kind, number> = {
   view: 11,
   service: 12,
   context: 13,
+  external: 13,
   flow: 14,
   adr: 15,
   term: 16,
@@ -56,7 +57,7 @@ export function compareText(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
 }
 
-export function compareNumber(a: number, b: number): number {
+function compareNumber(a: number, b: number): number {
   return a - b;
 }
 

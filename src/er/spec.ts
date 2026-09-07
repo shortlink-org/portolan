@@ -31,7 +31,7 @@ import { lineageEdgeId } from "./lineage";
 export const HEADER_H = 28;
 export const ROW_H = 18;
 export const MORE_H = 16;
-export const TABLE_W = 208;
+const TABLE_W = 208;
 
 /**
  * Rows drawn before a card starts scrolling inside itself. Twelve is where a

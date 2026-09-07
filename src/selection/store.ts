@@ -44,16 +44,3 @@ function next(selection: Selection | null, source: SelectionSource) {
 
 export const useSelection = (): Selection | null =>
   useSelectionStore((s) => s.selection);
-
-export const useSelectionSource = (): SelectionSource | null =>
-  useSelectionStore((s) => s.source);
-
-export const useSelect = (): SelectionState["select"] =>
-  useSelectionStore((s) => s.select);
-
-export const useClearSelection = (): SelectionState["clear"] =>
-  useSelectionStore((s) => s.clear);
-
-/** True when `id` is the current selection. Cheap enough for every tree row. */
-export const useIsSelected = (id: string): boolean =>
-  useSelectionStore((s) => s.selection?.id === id);

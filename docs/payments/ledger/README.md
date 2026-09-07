@@ -1,6 +1,6 @@
 # Ledger
 
-*Generated from the portolan catalog · commit `12 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `13 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
 
 - **Id:** `payments.ledger`
 - **Context:** [Payments](../README.md)
@@ -294,7 +294,7 @@ gap, not an oversight, and none of them changes what the catalog shows.
 
 ## Stores
 
-| Store | Kind | Access | Tables |
+| Store | Kind | Access | Schema |
 | --- | --- | --- | --- |
 | [Ledger database](stores/pg.md) | postgres | owns | 3 tables |
 

@@ -1145,10 +1145,6 @@ export function allEvents(catalog: Catalog): Event[] {
   );
 }
 
-export function allRpcCalls(catalog: Catalog): RpcCall[] {
-  return allServices(catalog).flatMap((s) => s.consumes);
-}
-
 export function allAggregates(catalog: Catalog): Aggregate[] {
   return allServices(catalog).flatMap((s) => s.aggregates);
 }
@@ -1183,10 +1179,6 @@ export function technologiesOf(component: Component): string[] {
 
 export function commandsOf(component: Component): Command[] {
   return component.commands ?? [];
-}
-
-export function allTables(catalog: Catalog): Table[] {
-  return allStores(catalog).flatMap((s) => s.tables);
 }
 
 /** Every view in every store. Absent means none, exactly as with tables. */

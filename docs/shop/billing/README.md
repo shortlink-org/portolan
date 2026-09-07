@@ -1,6 +1,6 @@
 # Billing
 
-*Generated from the portolan catalog · commit `12 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `13 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
 
 - **Id:** `shop.billing`
 - **Context:** [Shop](../README.md)
@@ -191,6 +191,6 @@ Source: [`examples/shop/billing/invoices/bus/asyncapi.yaml`](https://github.com/
 
 ## Stores
 
-| Store | Kind | Access | Tables |
+| Store | Kind | Access | Schema |
 | --- | --- | --- | --- |
 | [Billing database](stores/pg.md) | postgres | owns | 2 tables |

@@ -19,10 +19,12 @@ import type {
   Aggregate,
   Alt,
   AltBranch,
+  Block,
   BoundedContext,
   Catalog,
   Channel,
   External,
+  Field,
   Flow,
   FlowNode,
   Loop,
@@ -32,6 +34,7 @@ import type {
   Service,
   Status,
   Step,
+  Store,
   TypeDef,
 } from "./catalog";
 
@@ -310,13 +313,113 @@ export function mergeCatalogs(sources: CatalogSource[]): MergeResult {
     flows,
     adrs,
   };
-  if (stores.length > 0) merged.stores = stores;
+  if (stores.length > 0) merged.stores = foldMaps(merged, stores);
   if (modules.length > 0) merged.modules = modules;
   if (terms.length > 0) merged.terms = terms;
   if (repos.length > 0) merged.repos = repos;
   if (externals.size > 0) merged.externals = [...externals.values()];
 
   return { catalog: merged, sources: stamps, conflicts };
+}
+
+/**
+ * Spells every column's `maps` path the way the aggregate declares the field.
+ *
+ * An extractor reads the path off the code that writes the row, and what the
+ * code says there is the accessor - `q.ID()`, `q.BasketID()` - while the field
+ * behind it is `id` or `basketID`. One name in two cases, and the extractor
+ * that read the store never saw the domain to know which. Here both have
+ * arrived, so the store's spelling is folded onto the domain's when exactly
+ * one declared field matches ignoring case. A path that already names a field,
+ * or names none, is left as read: the first needs nothing, and the second is
+ * a claim the reader should see as the code made it.
+ *
+ * Returns new stores rather than rewriting the sources' own objects.
+ */
+function foldMaps(catalog: Catalog, stores: Store[]): Store[] {
+  const aggregates = new Map<string, Aggregate>();
+  for (const context of catalog.contexts) {
+    for (const service of context.services) {
+      for (const aggregate of service.aggregates) {
+        aggregates.set(aggregate.id, aggregate);
+      }
+    }
+  }
+
+  // The same reading `blockFields` gives a page; repeated rather than
+  // imported because this file is loaded by node as it is, without a bundler
+  // to resolve a value import of the catalog module.
+  const fieldsOf = (block: Block): Field[] =>
+    block.fields ?? (block.ref ? catalog.defs[block.ref]?.fields : []) ?? [];
+  const blockNamed = (
+    aggregate: Aggregate,
+    name: string,
+  ): Block | undefined => {
+    const blocks = [...aggregate.valueObjects, ...aggregate.entities];
+    return (
+      blocks.find((b) => b.name === name) ??
+      blocks.find((b) => b.name.toLowerCase() === name.toLowerCase())
+    );
+  };
+  // The block a field's type names, when it names one of this aggregate's:
+  // `Scan[]`, `[]line.Line` and `Money | undefined` all point at a block by
+  // the last word of the type, whatever the language wrapped it in.
+  const blockOf = (aggregate: Aggregate, field: Field): Block | undefined => {
+    const word = field.type
+      .replace(/\s*\|\s*(undefined|null)\s*$/g, "")
+      .replace(/^\[\]|\[\]$/g, "")
+      .replace(/^readonly\s+/, "")
+      .split(".")
+      .pop();
+    return word ? blockNamed(aggregate, word) : undefined;
+  };
+  const fieldNamed = (fields: Field[], name: string): Field | undefined => {
+    const exact = fields.find((f) => f.name === name);
+    if (exact) return exact;
+    const same = fields.filter(
+      (f) => f.name.toLowerCase() === name.toLowerCase(),
+    );
+    return same.length === 1 ? same[0] : undefined;
+  };
+
+  const fold = (aggregate: Aggregate, maps: string): string => {
+    const [head, ...path] = maps.split(".");
+    if (!head || path.length === 0) return maps;
+    let block = blockNamed(aggregate, head);
+    if (!block) return maps;
+    const spelled: string[] = [block.name];
+    for (const segment of path) {
+      const field = block ? fieldNamed(fieldsOf(block), segment) : undefined;
+      if (!field) {
+        // Nothing declared matches from here on: the rest stays as read,
+        // a claim for the reader to see rather than for the merge to hide.
+        spelled.push(segment);
+        block = undefined;
+        continue;
+      }
+      spelled.push(field.name);
+      block = blockOf(aggregate, field);
+    }
+    return spelled.join(".");
+  };
+
+  return stores.map((store) => ({
+    ...store,
+    tables: store.tables.map((table) => {
+      const aggregate = table.persists?.aggregate
+        ? aggregates.get(table.persists.aggregate)
+        : undefined;
+      if (!aggregate) return table;
+      return {
+        ...table,
+        columns: table.columns.map((column) => {
+          if (!column.maps) return column;
+          const maps = fold(aggregate, column.maps);
+          return maps === column.maps ? column : { ...column, maps };
+        }),
+      };
+    }),
+  }));
 }
 
 /**

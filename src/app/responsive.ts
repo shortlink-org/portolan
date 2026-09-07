@@ -15,8 +15,8 @@
 
 import { useEffect, useState } from "react";
 
-export const NARROW_QUERY = "(max-width: 1099px)";
-export const PHONE_QUERY = "(max-width: 639px)";
+const NARROW_QUERY = "(max-width: 1099px)";
+const PHONE_QUERY = "(max-width: 639px)";
 
 function match(query: string): boolean {
   if (typeof window === "undefined" || !window.matchMedia) return false;

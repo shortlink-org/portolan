@@ -56,7 +56,8 @@ describe("the sample estate", () => {
       "shop.oms.pg.orders.id",
       "shop.oms.pg.order_items.quantity",
       "delivery.core.pg.packages.order_id",
-      "auth.auth.pg.lockouts.failures",
+      // Not lockouts.failures: `integer` under a Go `int` is a width the
+      // model never named, not a disagreement.
       "shop.cart.pg.baskets.id",
       "shop.cart.pg.basket_items.basket_id",
     ]);

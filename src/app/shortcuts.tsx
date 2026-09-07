@@ -31,11 +31,17 @@ export const GO_TO: { key: string; to: string; what: string }[] = [
   {
     key: "d",
     to: `${paths.overview()}#${OVERVIEW_ANCHOR.contexts}`,
-    what: "domains — the contexts, on the overview",
+    what: "the contexts, on the overview",
   },
   { key: "m", to: paths.map(), what: "the context map" },
   { key: "p", to: paths.problems(), what: "problems" },
   { key: "o", to: paths.overview(), what: "overview" },
+  { key: "a", to: paths.adrs(), what: "decisions" },
+  { key: "g", to: paths.graph(), what: "the dependency graph" },
+  { key: "l", to: paths.language(), what: "language" },
+  { key: "r", to: paths.registry(), what: "registry" },
+  { key: "c", to: paths.changes(), what: "changes" },
+  { key: "s", to: paths.settings(), what: "settings" },
 ];
 
 export const SHORTCUT_GROUPS: { group: string; items: Shortcut[] }[] = [

@@ -1,6 +1,6 @@
 # Cart database
 
-*Generated from the portolan catalog · commit `12 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `13 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
 
 - **Id:** `shop.cart.pg`
 - **Kind:** postgres
@@ -18,8 +18,8 @@ aggregate-root · persists [shop.cart.basket](../aggregates/basket.md)
 | --- | --- | --- | --- | --- |
 | `id` | `uuid` | not null | PK | Basket.id |
 | `token` | `text` | not null | — | Basket.token |
-| `customer_id` | `text` | null | — | — |
-| `currency` | `char(3)` | null | — | — |
+| `customer_id` | `text` | null | — | Basket.customerId |
+| `currency` | `char(3)` | null | — | Basket.currency.code |
 | `status` | `text` | not null | — | Basket.status |
 | `touched_at` | `timestamptz` | not null | — | Basket.touchedAt |
 | `version` | `integer` | not null | — | — |
@@ -37,10 +37,10 @@ child · persists [shop.cart.basket](../aggregates/basket.md)
 | Column | Type | Null | Key | Maps |
 | --- | --- | --- | --- | --- |
 | `basket_id` | `uuid` | not null | PK | Basket.id |
-| `sku` | `text` | not null | PK | Basket.sku |
-| `quantity` | `integer` | not null | — | Basket.quantity |
-| `unit_price_minor` | `bigint` | not null | — | Basket.unitPrice.amountMinor |
-| `currency` | `char(3)` | not null | — | Basket.unitPrice.currency.code |
+| `sku` | `text` | not null | PK | Basket.items.sku |
+| `quantity` | `integer` | not null | — | Basket.items.quantity |
+| `unit_price_minor` | `bigint` | not null | — | Basket.items.unitPrice.amountMinor |
+| `currency` | `char(3)` | not null | — | Basket.items.unitPrice.currency.code |
 
 <a id="relation-shop-cart-pg-outbox"></a>
 ### outbox

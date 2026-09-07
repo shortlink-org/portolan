@@ -1,3 +1,4 @@
+import { useDocumentTitle } from "../app/title";
 import {
   useCallback,
   useEffect,
@@ -6,7 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { Link, useParams } from "react-router";
+import { useParams } from "react-router";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { saveCanvasImage } from "../lib/export-canvas";
 import { allRepos, flowContexts, walkSteps } from "../catalog";
@@ -52,6 +53,7 @@ import { Ident } from "../components/Ident";
 import { ContextPill } from "../components/primitives";
 import { WhatLinksHere } from "../components/WhatLinksHere";
 import { FlowTrigger } from "../components/FlowTrigger";
+import { NotFound } from "./NotFound";
 
 /**
  * The summary, clamped to two lines.
@@ -356,17 +358,9 @@ export function FlowDetail() {
     return () => window.removeEventListener("keydown", onKey);
   }, [move]);
 
-  if (!flow) {
-    return (
-      <div className="p-6">
-        <h1 className="text-lg font-semibold">Flow not found</h1>
-        <p className="meta mt-2">no flow with slug “{slug}” in the catalog</p>
-        <Link to="/flows" className="mono mt-4 inline-block text-accent">
-          ← all flows
-        </Link>
-      </div>
-    );
-  }
+  useDocumentTitle(flow?.name ?? "Flow not found");
+
+  if (!flow) return <NotFound kind="Flow" id={slug} />;
 
   const contexts = flowContexts(flow);
   const viewId = crossOnly ? flowCrossViewId(flow) : flowViewId(flow);

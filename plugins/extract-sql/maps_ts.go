@@ -43,6 +43,8 @@ func readMapsTS(root, repositoryDir, aggregate string, b *plugin.Builder) map[st
 		if err != nil {
 			continue
 		}
+		roots := rootVarsTS(string(source), root_)
+		aliases := loopAliasesTS(string(source))
 		for _, stmt := range insertCalls(string(source)) {
 			table, columns, values := parseInsert(stmt.sql)
 			if table == "" {
@@ -74,7 +76,7 @@ func readMapsTS(root, repositoryDir, aggregate string, b *plugin.Builder) map[st
 					b.Warn(table, "the insert refers to $"+itoa(number)+" but the call passes "+itoa(len(stmt.args))+" values; "+column+" is left unmapped")
 					continue
 				}
-				field := fieldOfTS(stmt.args[number-1])
+				field := fieldOfTS(stmt.args[number-1], roots, aliases)
 				if field == "" {
 					continue
 				}
@@ -240,8 +242,13 @@ var tsChain = regexp.MustCompile(`^[A-Za-z_$][\w$]*(?:\??\.[A-Za-z_$][\w$]*)+$`)
 // is touchedAt, `nullable(basket.checkedOutAt)` is checkedOutAt. A bare name,
 // a literal, a call that makes its own value - `randomUUID()`, `new Date()` -
 // and a call over several values carry no field.
-func fieldOfTS(expr string) string {
+func fieldOfTS(expr string, roots map[string]bool, aliases map[string]string) string {
 	expr = strings.TrimSpace(expr)
+	// `basket.customerId ?? null` writes the field with a default for its
+	// absence; the column still carries the field.
+	if at := strings.LastIndex(expr, "??"); at >= 0 && tsLiteral.MatchString(strings.TrimSpace(expr[at+2:])) {
+		expr = strings.TrimSpace(expr[:at])
+	}
 	for strings.HasSuffix(expr, ")") {
 		open := openingParen(expr)
 		if open <= 0 {
@@ -250,9 +257,14 @@ func fieldOfTS(expr string) string {
 		callee, inner := expr[:open], expr[open+1:len(expr)-1]
 		args := splitTopLevel(inner)
 		switch {
-		case tsChain.MatchString(callee) && len(args) == 0:
-			// A method on the value: the value is the chain before it.
-			expr = callee[:strings.LastIndexAny(callee, ".")]
+		case tsChain.MatchString(callee) && (len(args) == 0 || tsChain.MatchString(strings.TrimSuffix(callee[:strings.LastIndex(callee, ".")], "?"))):
+			// A method on the value: the value is the chain before it. With
+			// no arguments it is a conversion of the value - toISOString() -
+			// and with some it is still the value's own method when what it
+			// stands on is itself a chain: basket.items.slice(1) walks the
+			// items, where JSON.stringify(x) stands on a bare name and is
+			// the conversion read below.
+			expr = callee[:strings.LastIndex(callee, ".")]
 			expr = strings.TrimSuffix(expr, "?")
 		case len(args) == 1:
 			// A conversion wrapped round the value.
@@ -265,8 +277,84 @@ func fieldOfTS(expr string) string {
 		return ""
 	}
 	parts := strings.Split(strings.ReplaceAll(expr, "?.", "."), ".")
+	if over, ok := aliases[parts[0]]; ok {
+		// The variable of a loop stands for one element of what it walks:
+		// `for (const item of basket.items)` makes item.sku items.sku. What
+		// is walked is read as an argument is, so a slice of the items is
+		// still the items. The alias is forgotten for the rest of the read,
+		// so that a loop written over its own name cannot stand for itself.
+		rest := make(map[string]string, len(aliases))
+		for name, chain := range aliases {
+			if name != parts[0] {
+				rest[name] = chain
+			}
+		}
+		head := fieldOfTS(over, roots, rest)
+		if head == "" {
+			return ""
+		}
+
+		return strings.Join(append([]string{head}, parts[1:]...), ".")
+	}
+	if roots != nil && !roots[parts[0]] {
+		return ""
+	}
 
 	return strings.Join(parts[1:], ".")
+}
+
+// tsForOf is the head of a for-of loop, up to what it walks:
+// `for (const item of `. What follows runs to the parenthesis that closes
+// the loop's own, found by matching rather than by pattern because a slice
+// or a filter carries parentheses of its own.
+var tsForOf = regexp.MustCompile(`for\s*\(\s*(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s+of\s+`)
+
+// loopAliasesTS reads every for-of loop of the file: the variable, and the
+// expression it walks.
+func loopAliasesTS(source string) map[string]string {
+	var aliases map[string]string
+	for _, m := range tsForOf.FindAllStringSubmatchIndex(source, -1) {
+		open := strings.IndexByte(source[m[0]:], '(') + m[0]
+		close := matchingBracket(source, open)
+		if close < 0 || close < m[1] {
+			continue
+		}
+		if aliases == nil {
+			aliases = map[string]string{}
+		}
+		aliases[source[m[2]:m[3]]] = strings.TrimSpace(source[m[1]:close])
+	}
+
+	return aliases
+}
+
+// tsLiteral is what may stand after `??` without changing which field the
+// argument carries: nothing, or a constant.
+var tsLiteral = regexp.MustCompile(`^(null|undefined|true|false|-?\d+(\.\d+)?|"[^"]*"|'[^']*')$`)
+
+// tsParam is a name declared with the type after it: a parameter, a field, a
+// variable. `route: Route` is the aggregate wherever it appears in the file.
+var tsParam = regexp.MustCompile(`\b([A-Za-z_$][\w$]*)\??\s*:\s*([A-Za-z_$][\w$]*)\b`)
+
+// rootVarsTS names the variables the file declares with the root's type, or
+// nil when it declares none. Inside save(route: Route, ...) the aggregate is
+// route and nothing else: the loop variable over its stops carries a stop's
+// fields, and a column mapped from it onto the root would be a claim about
+// the wrong type. A file that never names the type - a repository over a row
+// type of its own - is read as before, any bare name standing for the root.
+func rootVarsTS(source, root string) map[string]bool {
+	var roots map[string]bool
+	for _, m := range tsParam.FindAllStringSubmatch(source, -1) {
+		if m[2] != root {
+			continue
+		}
+		if roots == nil {
+			roots = map[string]bool{}
+		}
+		roots[m[1]] = true
+	}
+
+	return roots
 }
 
 // openingParen finds the `(` that the closing paren at the end of expr pairs
