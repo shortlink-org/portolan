@@ -8,6 +8,11 @@
 - State which layer was verified: source fragment, merged catalog, generated model, or rendered UI. Do not describe an earlier layer as an end-to-end UI result.
 - Keep external-project source trees unchanged and keep their generated preview artifacts outside this repository.
 
+## Direct answers and scope
+
+- When the user asks a simple yes-or-no question about work already completed, answer directly from the known conversation state. Do not run status, log, test, or other verification commands unless the user asks for verification or the answer is genuinely unknown.
+- Do not turn a straightforward request into an audit. Perform only the action requested and avoid narrating or checking unrelated workspace state.
+
 ## Focused verification
 
 - For a narrowly scoped feature, run the tests and generated/UI checks that cover the changed behavior. Do not spend time on repository-wide regression suites (for example, all Go or TypeScript tests) unless the change crosses those boundaries, a focused check exposes a broader risk, or the user explicitly asks for them.
