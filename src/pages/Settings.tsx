@@ -43,13 +43,14 @@ import {
   forgetRepositoryCredential,
   inspectRepository,
   LocalApiError,
-  localStatus,
   saveRepositoryCredential,
   startGeneration,
   startProjectTrial,
   subscribeToRun,
 } from "../lib/local-api";
 import type { Discovery, ProjectDraft, ProjectPlan, RunEvent } from "../lib/local-api";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { localKeys, localStatusQuery } from "../lib/queries";
 import { sourceHref, treeHref } from "../lib/source-link";
 import { paths } from "../routes";
 import { Empty, SectionTitle } from "../components/PageHeader";
@@ -904,17 +905,29 @@ function SettingsContent({ local, onAdd, onGenerate }: { local: boolean; onAdd: 
 
 export function Settings() {
   useDocumentTitle("Settings");
-  const [setup, setSetup] = useState<SetupInfo>(staticSetupInfo);
-  const [local, setLocal] = useState(false);
+  const queryClient = useQueryClient();
+  const status = useQuery(localStatusQuery());
+  // No local server means no local mode; the static build-time setup stands in.
+  const local = status.isSuccess;
+  const setup = status.data?.setup ?? staticSetupInfo;
   const [wizard, setWizard] = useState(false);
   const [runId, setRunId] = useState<string | null>(null);
   const [runOpen, setRunOpen] = useState(false);
   const say = useToastStore((state) => state.say);
-  const refresh = useCallback(async () => {
-    try { const status = await localStatus(); setLocal(true); setSetup(status.setup); if (status.activeRun) { setRunId(status.activeRun.id); setRunOpen(true); } }
-    catch { setLocal(false); }
-  }, []);
-  useEffect(() => { void refresh(); }, [refresh]);
+  const activeRunId = status.data?.activeRun?.id ?? null;
+  useEffect(() => {
+    if (!activeRunId) return;
+    setRunId(activeRunId);
+    setRunOpen(true);
+  }, [activeRunId]);
+  const refresh = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: localKeys.status });
+  }, [queryClient]);
+  // The wizard hands back the setup the server now has; keep the status in
+  // step without a round trip.
+  const setSetup = useCallback((next: SetupInfo) => {
+    queryClient.setQueryData(localKeys.status, (current) => current ? { ...current, setup: next } : current);
+  }, [queryClient]);
   async function generate(previewRunId?: string) {
     try {
       const run = await startGeneration(previewRunId ? "write" : "preview", previewRunId);

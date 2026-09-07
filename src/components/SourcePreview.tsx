@@ -21,9 +21,10 @@ import type {
   ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { useQuery } from "@tanstack/react-query";
 import { useForgeAccess } from "../app/forge-access";
+import { sourceCodeQuery } from "../lib/queries";
 import {
-  loadSourceCode,
   sourceLanguage,
   sourceWindow,
   SourceLoadError,
@@ -214,30 +215,10 @@ function PreviewPanel({
   const access = useForgeAccess();
   const token =
     location.kind === "remote" ? access.tokenFor(location.origin) : "";
-  const [file, setFile] = useState<SourceFile | null>(null);
-  const [error, setError] = useState<Error | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let live = true;
-    setFile(null);
-    setError(null);
-    setLoading(true);
-    loadSourceCode(location, token)
-      .then((result) => {
-        if (live) setFile(result);
-      })
-      .catch((cause: unknown) => {
-        if (live)
-          setError(cause instanceof Error ? cause : new Error(String(cause)));
-      })
-      .finally(() => {
-        if (live) setLoading(false);
-      });
-    return () => {
-      live = false;
-    };
-  }, [location, token]);
+  const source = useQuery(sourceCodeQuery(location, token));
+  const file = source.data ?? null;
+  const error = source.error;
+  const loading = source.isLoading;
 
   const auth =
     location.kind === "remote" &&

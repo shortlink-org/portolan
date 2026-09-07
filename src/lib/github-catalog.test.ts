@@ -1,13 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   catalogGlob,
-  clearGitHubCatalogCache,
   forgeRepoFromUrl,
   githubRepoFromUrl,
   listForgeBranches,
   listForgeRefs,
   listGitHubBranches,
-  listGitHubTags,
   loadForgeCatalog,
   loadGitHubCatalog,
 } from "./github-catalog";
@@ -41,7 +39,6 @@ function memoryCacheStorage() {
 }
 
 afterEach(() => {
-  clearGitHubCatalogCache();
   vi.unstubAllGlobals();
 });
 
@@ -74,7 +71,7 @@ describe("catalogGlob", () => {
 });
 
 describe("listGitHubBranches", () => {
-  it("reads branch heads from the runtime API and caches the result", async () => {
+  it("reads branch heads from the runtime API", async () => {
     const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify([
       { name: "main", commit: { sha: SHA }, protected: true },
     ]), { status: 200, headers: { "content-type": "application/json" } }));
@@ -83,7 +80,6 @@ describe("listGitHubBranches", () => {
     await expect(listGitHubBranches(REPO)).resolves.toEqual([
       { name: "main", commit: SHA, protected: true, kind: "branch" },
     ]);
-    await listGitHubBranches(REPO);
 
     expect(fetch).toHaveBeenCalledOnce();
     expect(fetch.mock.calls[0]?.[0]).toContain("/repos/acme/portolan/branches?per_page=100&page=1");
@@ -104,7 +100,6 @@ describe("listGitHubBranches", () => {
       { name: "main", commit: SHA, protected: true, kind: "branch" },
       { name: "v1.2.0", commit: "b".repeat(40), protected: false, kind: "tag" },
     ]);
-    await listGitHubTags(REPO);
 
     expect(fetch).toHaveBeenCalledTimes(2);
     expect(fetch.mock.calls.map(([url]) => url)).toContainEqual(expect.stringContaining("/repos/acme/portolan/tags?per_page=100&page=1"));
@@ -174,7 +169,7 @@ describe("loadGitHubCatalog", () => {
     expect(fetch.mock.calls[2]?.[0]).toContain(`/${SHA}/data/catalog.json`);
   });
 
-  it("reuses a validated catalog from Cache Storage after the page memory is cleared", async () => {
+  it("reuses a validated catalog from Cache Storage on the next load", async () => {
     const source = {
       generatedAt: "2026-09-05T00:00:00Z",
       commit: SHA,
@@ -195,7 +190,6 @@ describe("loadGitHubCatalog", () => {
     vi.stubGlobal("fetch", fetch);
 
     await loadGitHubCatalog(REPO, SHA);
-    clearGitHubCatalogCache();
     const restored = await loadGitHubCatalog(REPO, SHA);
 
     expect(restored.commit).toBe(SHA);
