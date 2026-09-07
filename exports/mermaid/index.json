@@ -5,7 +5,7 @@
       "slug": "auth-change-password",
       "name": "Change password",
       "owner": "auth",
-      "source": "examples/auth/internal/infrastructure/transport/http/user/change_password.go",
+      "source": "examples/auth/internal/user/infrastructure/http/change_password.go",
       "diagram": "auth-change-password.mmd"
     },
     {
@@ -13,7 +13,7 @@
       "slug": "auth-get-user",
       "name": "Get user",
       "owner": "auth",
-      "source": "examples/auth/internal/infrastructure/transport/http/user/get.go",
+      "source": "examples/auth/internal/user/infrastructure/http/get.go",
       "diagram": "auth-get-user.mmd"
     },
     {
@@ -21,7 +21,7 @@
       "slug": "auth-login",
       "name": "Login",
       "owner": "auth",
-      "source": "examples/auth/internal/infrastructure/transport/http/session/login.go",
+      "source": "examples/auth/internal/session/infrastructure/http/login.go",
       "diagram": "auth-login.mmd"
     },
     {
@@ -29,7 +29,7 @@
       "slug": "auth-logout",
       "name": "Logout",
       "owner": "auth",
-      "source": "examples/auth/internal/infrastructure/transport/http/session/logout.go",
+      "source": "examples/auth/internal/session/infrastructure/http/logout.go",
       "diagram": "auth-logout.mmd"
     },
     {
@@ -37,7 +37,7 @@
       "slug": "auth-register-user",
       "name": "Register user",
       "owner": "auth",
-      "source": "examples/auth/internal/infrastructure/transport/http/user/register.go",
+      "source": "examples/auth/internal/user/infrastructure/http/register.go",
       "diagram": "auth-register-user.mmd"
     },
     {
@@ -45,7 +45,7 @@
       "slug": "auth-revoke-sessions-on-password-change",
       "name": "Revoke sessions on password change",
       "owner": "auth",
-      "source": "examples/auth/internal/application/policy/revoke_sessions_on_password_change.go",
+      "source": "examples/auth/internal/session/infrastructure/messaging/policy/revoke_sessions_on_password_change.go",
       "diagram": "auth-revoke-sessions-on-password-change.mmd"
     },
     {
@@ -53,7 +53,7 @@
       "slug": "auth-validate-session",
       "name": "Validate session",
       "owner": "auth",
-      "source": "examples/auth/internal/infrastructure/transport/http/session/validate.go",
+      "source": "examples/auth/internal/session/infrastructure/http/validate.go",
       "diagram": "auth-validate-session.mmd"
     },
     {

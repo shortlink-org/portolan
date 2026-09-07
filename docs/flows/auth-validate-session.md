@@ -4,7 +4,7 @@
 
 - **Id:** `flow.auth-validate-session`
 - **Owner:** [auth](../auth/README.md)
-- **Source:** [`examples/auth/internal/infrastructure/transport/http/session/validate.go`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/infrastructure/transport/http/session/validate.go)
+- **Source:** [`examples/auth/internal/session/infrastructure/http/validate.go`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/http/validate.go)
 
 Resolves a token to a live session: who is calling, and how long the answer stays good.
 
@@ -32,7 +32,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **auth.auth** — validateSession → SessionInfo
-   [`examples/auth/internal/infrastructure/transport/http/session/validate.go:12`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/infrastructure/transport/http/session/validate.go#L12) · Seen running in telemetry/traces.jsonl (2 traces).
+   [`examples/auth/internal/session/infrastructure/http/validate.go:12`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/http/validate.go#L12) · Seen running in telemetry/traces.jsonl (2 traces).
 <a id="step-s2"></a>
 2. **auth.auth** → **auth-pg** — ByToken
-   status: declared · [`examples/auth/internal/application/session/usecases/validate/usecase.go:34`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/application/session/usecases/validate/usecase.go#L34)
+   status: declared · [`examples/auth/internal/session/application/validate/usecase.go:33`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/validate/usecase.go#L33)

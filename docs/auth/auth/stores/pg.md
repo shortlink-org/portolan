@@ -5,7 +5,7 @@
 - **Id:** `auth.auth.pg`
 - **Kind:** postgres
 - **Owner:** [auth.auth](../README.md)
-- **Source:** [`examples/auth/internal/infrastructure/repository`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/infrastructure/repository)
+- **Source:** [`examples/auth/internal/*/infrastructure/repository`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/%2A/infrastructure/repository)
 
 ## Tables
 

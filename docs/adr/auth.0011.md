@@ -7,6 +7,7 @@
 - **Scope:** [auth.auth](../auth/auth/README.md)
 - **Source:** [`examples/auth/docs/adr/0011-the-relay-feeds-a-bus-and-policies-subscribe-to-the-bus.md`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/docs/adr/0011-the-relay-feeds-a-bus-and-policies-subscribe-to-the-bus.md)
 - **Committed:** Victor Login, 2026-09-05 (`dab46a5`)
+- **Revised:** Victor Login, 2026-09-07 (`34b9b7c`)
 
 ### Context and Problem Statement
 
@@ -68,12 +69,10 @@ listens to leaves the outbox, reaches a bus with no subscriber and is done;
 the row is delivered, and the trace shows a publish with no consumer under
 it, which is the truth.
 
-What is given up: the split between "domain" and "integration" events is not
-in the schema. Both go through the same table, the same relay and the same
-bus, and the bus is where a broker will one day fan the second kind out. That
-is cheaper than deciding, at publish time and in the domain, which audience a
-fact is for - a decision the domain has no business making, and one that a
-later subscriber would reverse.
+Domain and integration events are different types (auth.0013). The repository
+publisher maps the immutable domain fact to its versionable integration DTO
+before appending it to the shared outbox. The relay and buses carry only that
+integration contract; policies therefore do not couple to aggregate types.
 
 #### Consequences
 

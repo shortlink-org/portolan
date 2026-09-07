@@ -4,7 +4,7 @@
 
 - **Id:** `flow.auth-logout`
 - **Owner:** [auth](../auth/README.md)
-- **Source:** [`examples/auth/internal/infrastructure/transport/http/session/logout.go`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/infrastructure/transport/http/session/logout.go)
+- **Source:** [`examples/auth/internal/session/infrastructure/http/logout.go`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/http/logout.go)
 
 Ends the session behind a token.
 
@@ -36,13 +36,13 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **auth.auth** — logout → 204
-   [`examples/auth/internal/infrastructure/transport/http/session/logout.go:15`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/infrastructure/transport/http/session/logout.go#L15) · Seen running in telemetry/traces.jsonl (1 trace).
+   [`examples/auth/internal/session/infrastructure/http/logout.go:15`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/http/logout.go#L15) · Seen running in telemetry/traces.jsonl (1 trace).
 <a id="step-s2"></a>
 2. **auth.auth** → **auth-pg** — ByToken
-   status: declared · [`examples/auth/internal/application/session/usecases/logout/usecase.go:35`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/application/session/usecases/logout/usecase.go#L35)
+   status: declared · [`examples/auth/internal/session/application/logout/usecase.go:34`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/logout/usecase.go#L34)
 <a id="step-s3"></a>
 3. **auth.auth** → **auth-pg** — Save
-   status: declared · [`examples/auth/internal/application/session/usecases/logout/usecase.go:49`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/application/session/usecases/logout/usecase.go#L49)
+   status: declared · [`examples/auth/internal/session/application/logout/usecase.go:48`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/logout/usecase.go#L48)
 <a id="step-s4"></a>
 4. **auth.auth** → **bus** — SessionEnded
-   [`auth.auth.session.SessionEnded`](../auth/auth/aggregates/session.md#event-auth-auth-session-sessionended) · [`examples/auth/internal/application/session/usecases/logout/usecase.go:49`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/application/session/usecases/logout/usecase.go#L49) · Seen running in telemetry/traces.jsonl (1 trace).
+   [`auth.auth.session.SessionEnded`](../auth/auth/aggregates/session.md#event-auth-auth-session-sessionended) · [`examples/auth/internal/session/application/logout/usecase.go:48`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/application/logout/usecase.go#L48) · Seen running in telemetry/traces.jsonl (1 trace).

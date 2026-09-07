@@ -53,6 +53,13 @@ stateDiagram-v2
 `Allows(now)` and `Locked(now)` are the read, for the caller that asks
 before checking a password.
 
+Every persisted lockout carries a `Version`. Updates use
+`WHERE user_id = ? AND version = ?`; the first insert relies on the unique user
+id. A competing writer therefore gets `ErrConflict`, reloads the winning
+version, reapplies its `Fail` or `Succeed`, and retries. The version field is
+the detection mechanism; the conditional write plus retry is what makes the
+read-modify-write operation safe under concurrency.
+
 One event for the whole aggregate. A wrong password that locked nothing is a
 count, not a fact anybody consumes; a count going back to zero is
 bookkeeping; the lock running out is time passing. `AccountLocked` carries
@@ -84,9 +91,9 @@ stateDiagram-v2
 
 | From | To | On | Emits | Source |
 | --- | --- | --- | --- | --- |
-| `open` | `locked` | `Fail` | `AccountLocked` | [`examples/auth/internal/domain/lockout/lockout.go:95`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/domain/lockout/lockout.go#L95) |
-| `locked` | `open` | `Fail` | — | [`examples/auth/internal/domain/lockout/lockout.go:88`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/domain/lockout/lockout.go#L88) |
-| `locked` | `open` | `Succeed` | — | [`examples/auth/internal/domain/lockout/lockout.go:121`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/domain/lockout/lockout.go#L121) |
+| `open` | `locked` | `Fail` | `AccountLocked` | [`examples/auth/internal/lockout/domain/lockout.go:85`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/domain/lockout.go#L85) |
+| `locked` | `open` | `Fail` | — | [`examples/auth/internal/lockout/domain/lockout.go:78`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/domain/lockout.go#L78) |
+| `locked` | `open` | `Succeed` | — | [`examples/auth/internal/lockout/domain/lockout.go:111`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/domain/lockout.go#L111) |
 
 ## Operations
 
@@ -109,7 +116,7 @@ On the wire as `auth.AccountLocked`, on `auth_lockout`.
 
 AccountLocked is published when an account starts refusing logins because of too many wrong passwords in a row. Until says when it stops.
 
-Source: [`examples/auth/internal/domain/lockout/event/account_locked.go`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/domain/lockout/event/account_locked.go)
+Source: [`examples/auth/internal/lockout/domain/event/account_locked.go`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/domain/event/account_locked.go)
 
 | Field | Type |
 | --- | --- |

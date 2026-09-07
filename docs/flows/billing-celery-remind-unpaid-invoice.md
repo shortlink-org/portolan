@@ -4,6 +4,8 @@
 
 - **Id:** `flow.billing-celery-remind-unpaid-invoice`
 - **Owner:** [shop](../shop/README.md)
+- **Trigger:** `job` · Celery · billing
+- **Root confidence:** high
 - **Source:** [`examples/shop/billing/invoices/services.py`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py)
 
 Celery task `invoices.tasks.remind_unpaid_invoice` is enqueued on `billing` and worked by `remind_unpaid_invoice`.

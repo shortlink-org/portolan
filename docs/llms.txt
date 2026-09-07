@@ -1,6 +1,6 @@
 # Example estate
 
-> Architecture catalog of Example estate: 6 bounded contexts, 11 services, 12 aggregates, 7 stores, 7 schema modules, 1 system outside the estate, 59 flows and 42 decision records, read from the code, the specs and the traces of the estate.
+> Architecture catalog of Example estate: 6 bounded contexts, 11 services, 12 aggregates, 7 stores, 7 schema modules, 1 system outside the estate, 59 flows and 47 decision records, read from the code, the specs and the traces of the estate.
 
 *Generated from the portolan catalog · commit `13 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
 
@@ -42,7 +42,7 @@ Every link below is a markdown page beside this file. [llms-full.txt](llms-full.
 
 - [Lockout](auth/auth/aggregates/lockout.md): in [Authentication & Sessions](auth/auth/README.md). root `Lockout`. 2 commands, 1 query, 1 event. How many wrong passwords in a row an account has taken, and whether it is refusing logins because of them
 - [Session](auth/auth/aggregates/session.md): in [Authentication & Sessions](auth/auth/README.md). root `Session`. 3 commands, 1 query, 2 events. Proof that a user logged in, how long that proof is good for, and whether it has been taken away
-- [User](auth/auth/aggregates/user.md): in [Authentication & Sessions](auth/auth/README.md). root `User`. 2 commands, 2 queries, 2 events. A person, the address they log in with, and the hash of the password they log in by
+- [User](auth/auth/aggregates/user.md): in [Authentication & Sessions](auth/auth/README.md). root `User`. 2 commands, 2 queries, 2 events. A person, the address they log in with, and the opaque hash of the password they log in by
 - [Route](delivery/core/aggregates/route.md): in [Delivery Core](delivery/core/README.md). root `Route`. 3 commands, 1 query, 3 events. One van, one day, in the order the stops are driven
 - [Shipment](delivery/core/aggregates/shipment.md): in [Delivery Core](delivery/core/README.md). root `Shipment`. 4 commands, 2 queries, 5 events. What is being carried to one address for one order
 - [Payment](payments/ledger/aggregates/payment.md): in [Ledger](payments/ledger/README.md). root `Payment`. 3 commands, 1 query, 3 events. What one order owes, and everything that has happened to that money
@@ -90,7 +90,7 @@ Every link below is a markdown page beside this file. [llms-full.txt](llms-full.
 - [Close invoice on payment](flows/billing-close-invoice-on-payment.md): owned by [shop](shop/README.md). Closes the invoice for an order once the ledger says the money arrived
 - [Invoice create](flows/billing-invoice-create.md): owned by [shop](shop/README.md). Draws up a draft invoice for an order, with a line for each thing sold
 - [Invoice destroy](flows/billing-invoice-destroy.md): owned by [shop](shop/README.md). Ends an invoice nobody is going to pay
-- [Invoice issue](flows/billing-invoice-issue.md): owned by [shop](shop/README.md). Confirms the session, freezes the invoice and asks the customer to pay
+- [Invoice issue](flows/billing-invoice-issue.md): owned by [shop](shop/README.md). Confirms the session, freezes the invoice and asks the customer to pay. Source-backed cross-protocol continuations are included
 - [Invoice list](flows/billing-invoice-list.md): owned by [shop](shop/README.md). Invoices over HTTP. Every action here runs one function of services.py
 - [Invoice partial update](flows/billing-invoice-partial-update.md): owned by [shop](shop/README.md). Invoices over HTTP. Every action here runs one function of services.py
 - [Invoice retrieve](flows/billing-invoice-retrieve.md): owned by [shop](shop/README.md). Reads one invoice and the lines it is made of
@@ -142,6 +142,11 @@ Every link below is a markdown page beside this file. [llms-full.txt](llms-full.
 - [auth.0009](adr/auth.0009.md): A locked account answers exactly like a wrong password (accepted, 2026-09-04)
 - [auth.0010](adr/auth.0010.md): A revocation is written to the cache, not only dropped from it (accepted, 2026-09-05)
 - [auth.0011](adr/auth.0011.md): The relay reads every topic and hands it to a bus; policies subscribe to the bus (accepted, 2026-09-05)
+- [auth.0012](adr/auth.0012.md): Feature slices own their layers and local assembly (accepted, 2026-09-07)
+- [auth.0013](adr/auth.0013.md): Domain events become integration events at the transactional outbox boundary (accepted, 2026-09-07)
+- [auth.0014](adr/auth.0014.md): Session tokens are opaque, stored, revocable, and expire after 24 hours (accepted, 2026-09-07)
+- [auth.0015](adr/auth.0015.md): Errors are owned by their layer and classified at the edge (accepted, 2026-09-07)
+- [auth.0016](adr/auth.0016.md): Password cryptography is an application port (accepted, 2026-09-07)
 - [bff.0001](adr/bff.0001.md): GraphQL over Yoga, and the schema comes first (accepted, 2026-09-05)
 - [bff.0002](adr/bff.0002.md): The storefront owns no state (accepted, 2026-09-05)
 - [bff.0003](adr/bff.0003.md): The schema speaks the client's words, not the peers' (accepted, 2026-09-05)

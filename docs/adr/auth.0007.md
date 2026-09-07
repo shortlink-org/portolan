@@ -7,6 +7,7 @@
 - **Scope:** [auth.auth](../auth/auth/README.md)
 - **Source:** [`examples/auth/docs/adr/0007-login-asks-risk-and-a-block-is-a-compromise.md`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/docs/adr/0007-login-asks-risk-and-a-block-is-a-compromise.md)
 - **Committed:** Victor Login, 2026-09-04 (`7576ca7`)
+- **Revised:** Victor Login, 2026-09-07 (`34b9b7c`)
 
 ### Context and Problem Statement
 
@@ -20,10 +21,15 @@ Login asks `risk.v1.RiskService/Assess` after the credentials are checked and
 before a session is issued. The use case declares the need as a port of its
 own, `login.Risk`; assembly fills it with an adapter over the generated
 client, from a narrowed copy of the contract vendored under
-`internal/infrastructure/risk` - the same shape as the Authenticator, so that
-the knowledge that another service exists lives in one place, and it is not
-the domain. Without `RISK_ADDR` every attempt is allowed, so a laptop needs no
-risk service.
+`internal/session/infrastructure/risk` - the same shape as the Authenticator,
+so that the knowledge that another service exists lives in one place, and it
+is not the domain.
+
+The adapter is controlled by `RISK_ENABLED`. Disabled is the local permissive
+implementation, so the example has no external runtime dependency. Enabled
+requires `RISK_ADDR`; an RPC failure is returned and no session is issued
+(fail closed). For compatibility, setting `RISK_ADDR` without setting the
+toggle also enables the adapter.
 
 A blocked attempt is treated as the account being compromised: whoever is
 trying has the right password. Every live session the account has is ended

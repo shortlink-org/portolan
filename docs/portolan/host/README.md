@@ -20,8 +20,10 @@ one estate and validates the union. Nothing here draws anything.
   the schema `npm run schema` composes out of what every declared plugin says
   it can be told.
 - Runs three phases in order, extract, verify, generate, and hands each
-  plugin one JSON message: the input root and its stamp for an extractor, the
-  merged catalog for a verifier or a generator, the step's options unread.
+  plugin one JSON message: the input root, output directory and stamp for an
+  extractor, the merged catalog for a verifier or a generator, the step's
+  options unread. The output path lets a fragment point at a companion file
+  returned in the same response without letting the plugin write it itself.
 - Stamps a fragment from the last commit that touched its input, never from a
   clock, so a committed fragment changes exactly when its subject does
   (portolan.0002).

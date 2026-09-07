@@ -28,6 +28,28 @@ or revoke a session.
 - Locks an account after five wrong passwords in a row, for fifteen minutes,
   and says so with an event.
 
+## Structure
+
+The service is split vertically by capability. `user`, `session`, and
+`lockout` each own their domain, use cases, adapters, integration-event DTOs,
+and a local Wire set. Cross-module policies live with the module whose state
+they change; the password-change policy therefore lives under `session`.
+
+Shared runtime mechanics are deliberately outside the feature modules:
+
+- `internal/platform` — unit of work, messaging and tracing adapters;
+- `internal/transport/http` — the one generated OpenAPI server;
+- `internal/di` — the service composition root and shared resources.
+
+Test setup is not a shared package. Application and policy tests use
+Mockery-generated mocks in their own package; Postgres and Redis containers
+exist only beside the infrastructure, platform, or composition-root behaviour
+they exercise.
+
+Domain events are immutable in-process facts. Before they enter the outbox,
+each module maps them to a public integration-event DTO. Aggregate storage and
+the outbox append share one transaction through `platform/uow`.
+
 ## What it does not do
 
 No profile data, no addresses, no payment instruments, no roles or scopes.
@@ -52,6 +74,11 @@ authentication.
 - [auth.0009](../../adr/auth.0009.md) — A locked account answers exactly like a wrong password
 - [auth.0010](../../adr/auth.0010.md) — A revocation is written to the cache, not only dropped from it
 - [auth.0011](../../adr/auth.0011.md) — The relay reads every topic and hands it to a bus; policies subscribe to the bus
+- [auth.0012](../../adr/auth.0012.md) — Feature slices own their layers and local assembly
+- [auth.0013](../../adr/auth.0013.md) — Domain events become integration events at the transactional outbox boundary
+- [auth.0014](../../adr/auth.0014.md) — Session tokens are opaque, stored, revocable, and expire after 24 hours
+- [auth.0015](../../adr/auth.0015.md) — Errors are owned by their layer and classified at the edge
+- [auth.0016](../../adr/auth.0016.md) — Password cryptography is an application port
 
 ## Running it
 
@@ -62,12 +89,18 @@ STORE_POSTGRES_URI=postgres://auth:auth@localhost:5432/auth?sslmode=disable \
   go run ./cmd/auth
 ```
 
-`CACHE_TYPE=redis` with `STORE_REDIS_URI` turns the cache on; `RISK_ADDR`
-points login at a risk service; `TRACER_URI` switches tracing on. Unset, each
-is a stand-in that keeps nothing, allows everything, or costs nothing. The
-schema is brought up to date at startup. `go test ./...` runs everything;
-without Docker the packages that need Postgres or redis are skipped.
-`go generate ./...` regenerates the server from the spec and the wire graph.
+`CACHE_TYPE=redis` with `STORE_REDIS_URI` turns the cache on. Risk is disabled
+by default: `RISK_ENABLED=true` plus `RISK_ADDR=host:port` enables the gRPC
+adapter; `RISK_ADDR` alone remains supported for compatibility. Disabled risk
+uses the local permissive adapter, while enabled-but-unreachable risk fails
+closed and issues no session. `TRACER_URI` switches tracing on.
+
+The schema is brought up to date at startup. `go test ./...` runs everything;
+without Docker the packages that need Postgres or Redis are skipped.
+`go generate ./...` regenerates the server, Wire graph, and package-local test
+mocks from each feature slice's `.mockery.yml`.
+`golangci-lint run` also enforces module boundaries through its built-in
+`depguard` linter and `.golangci.yml`; no custom linter binary is required.
 
 ## Aggregates
 
@@ -81,7 +114,7 @@ without Docker the packages that need Postgres or redis are skipped.
 
 ### auth.v1.Sessions
 
-- **Source:** [`examples/auth/internal/infrastructure/transport/http/gen/openapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/infrastructure/transport/http/gen/openapi.yaml)
+- **Source:** [`examples/auth/internal/transport/http/gen/openapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/transport/http/gen/openapi.yaml)
 
 | Method | Route | Request | Response |
 | --- | --- | --- | --- |
@@ -131,7 +164,7 @@ without Docker the packages that need Postgres or redis are skipped.
 
 ### auth.v1.Users
 
-- **Source:** [`examples/auth/internal/infrastructure/transport/http/gen/openapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/infrastructure/transport/http/gen/openapi.yaml)
+- **Source:** [`examples/auth/internal/transport/http/gen/openapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/transport/http/gen/openapi.yaml)
 
 | Method | Route | Request | Response |
 | --- | --- | --- | --- |
@@ -184,7 +217,7 @@ without Docker the packages that need Postgres or redis are skipped.
 
 | Call | Peer | Status | Source |
 | --- | --- | --- | --- |
-| `risk.v1.RiskService/Assess` | `risk.v1` | unresolved | [`examples/auth/internal/infrastructure/risk/gen/riskpb/risk_grpc.pb.go`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/infrastructure/risk/gen/riskpb/risk_grpc.pb.go) |
+| `risk.v1.RiskService/Assess` | `risk.v1` | unresolved | [`examples/auth/internal/session/infrastructure/risk/gen/riskpb/risk_grpc.pb.go`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/risk/gen/riskpb/risk_grpc.pb.go) |
 
 ## Publishes
 
@@ -217,3 +250,8 @@ without Docker the packages that need Postgres or redis are skipped.
 | [auth.0009](../../adr/auth.0009.md) | A locked account answers exactly like a wrong password | accepted | 2026-09-04 |
 | [auth.0010](../../adr/auth.0010.md) | A revocation is written to the cache, not only dropped from it | accepted | 2026-09-05 |
 | [auth.0011](../../adr/auth.0011.md) | The relay reads every topic and hands it to a bus; policies subscribe to the bus | accepted | 2026-09-05 |
+| [auth.0012](../../adr/auth.0012.md) | Feature slices own their layers and local assembly | accepted | 2026-09-07 |
+| [auth.0013](../../adr/auth.0013.md) | Domain events become integration events at the transactional outbox boundary | accepted | 2026-09-07 |
+| [auth.0014](../../adr/auth.0014.md) | Session tokens are opaque, stored, revocable, and expire after 24 hours | accepted | 2026-09-07 |
+| [auth.0015](../../adr/auth.0015.md) | Errors are owned by their layer and classified at the edge | accepted | 2026-09-07 |
+| [auth.0016](../../adr/auth.0016.md) | Password cryptography is an application port | accepted | 2026-09-07 |

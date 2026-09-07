@@ -15,6 +15,11 @@
 | [auth.0009](auth.0009.md) | A locked account answers exactly like a wrong password | accepted | 2026-09-04 | [auth.auth](../auth/auth/README.md) |
 | [auth.0010](auth.0010.md) | A revocation is written to the cache, not only dropped from it | accepted | 2026-09-05 | [auth.auth](../auth/auth/README.md) |
 | [auth.0011](auth.0011.md) | The relay reads every topic and hands it to a bus; policies subscribe to the bus | accepted | 2026-09-05 | [auth.auth](../auth/auth/README.md) |
+| [auth.0012](auth.0012.md) | Feature slices own their layers and local assembly | accepted | 2026-09-07 | [auth.auth](../auth/auth/README.md) |
+| [auth.0013](auth.0013.md) | Domain events become integration events at the transactional outbox boundary | accepted | 2026-09-07 | [auth.auth](../auth/auth/README.md) |
+| [auth.0014](auth.0014.md) | Session tokens are opaque, stored, revocable, and expire after 24 hours | accepted | 2026-09-07 | [auth.auth](../auth/auth/README.md) |
+| [auth.0015](auth.0015.md) | Errors are owned by their layer and classified at the edge | accepted | 2026-09-07 | [auth.auth](../auth/auth/README.md) |
+| [auth.0016](auth.0016.md) | Password cryptography is an application port | accepted | 2026-09-07 | [auth.auth](../auth/auth/README.md) |
 | [bff.0001](bff.0001.md) | GraphQL over Yoga, and the schema comes first | accepted | 2026-09-05 | [storefront.bff](../storefront/bff/README.md) |
 | [bff.0002](bff.0002.md) | The storefront owns no state | accepted | 2026-09-05 | [storefront.bff](../storefront/bff/README.md) |
 | [bff.0003](bff.0003.md) | The schema speaks the client's words, not the peers' | accepted | 2026-09-05 | [storefront.bff](../storefront/bff/README.md) |
