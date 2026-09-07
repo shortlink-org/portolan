@@ -367,7 +367,49 @@ function repositoryParts(repository) {
   }
   const segments = path.replace(/^\//, "").replace(/\.git$/, "").split("/").filter(Boolean);
   if (segments.length < 2) throw new Error("Repository must name an owner and repository.");
-  return { value, fetchUrl, host, owner: segments.at(-2), name: segments.at(-1), web: `${host}/${segments.at(-2)}/${segments.at(-1)}` };
+  const normalizedHost = host.toLowerCase();
+  const provider = normalizedHost === "github.com" || normalizedHost.endsWith(".github.com")
+    ? "GitHub"
+    : normalizedHost === "gitlab.com" || normalizedHost.endsWith(".gitlab.com")
+      ? "GitLab"
+      : "Git server";
+  return { value, fetchUrl, host, provider, owner: segments.at(-2), name: segments.at(-1), web: `${host}/${segments.at(-2)}/${segments.at(-1)}` };
+}
+
+class LocalApiError extends Error {
+  constructor(message, { code = "request_failed", status = 400, retryable = false, provider } = {}) {
+    super(message);
+    this.name = "LocalApiError";
+    this.code = code;
+    this.status = status;
+    this.retryable = retryable;
+    this.provider = provider;
+  }
+}
+
+/** Turn unstable git stderr and timeout shapes into a small, safe API contract. */
+export function classifyRepositoryFailure(cause, provider = "Git server", phase = "inspect the repository") {
+  const text = [cause?.message, cause?.stderr, cause?.stdout].filter(Boolean).map(String).join("\n");
+  const lower = text.toLowerCase();
+  const timedOut = cause?.code === "ETIMEDOUT" || /timed? out|timeout|signal sigterm/.test(lower) && cause?.status == null;
+  if (timedOut) {
+    return new LocalApiError(`${provider} did not respond in time while Portolan tried to ${phase}. Check your network or VPN, then retry.`, {
+      code: "repository_timeout", status: 504, retryable: true, provider,
+    });
+  }
+  if (/returned error:\s*403|http[^\n]*403|status(?: code)?\s*403/.test(lower) || /permission denied|access denied|not authorized/.test(lower)) {
+    return new LocalApiError(`${provider} refused access to this repository. Check repository permissions and organization or SSO authorization, then retry.`, {
+      code: "repository_forbidden", status: 403, retryable: true, provider,
+    });
+  }
+  if (/returned error:\s*401|http[^\n]*401|status(?: code)?\s*401|authentication failed|could not read username|terminal prompts disabled|invalid credentials/.test(lower)) {
+    return new LocalApiError(`${provider} requires authentication for this repository. Authenticate Git with a read-only credential, then retry.`, {
+      code: "repository_auth_required", status: 401, retryable: true, provider,
+    });
+  }
+  return new LocalApiError(`Could not ${phase}. Check the repository URL, ref and network access, then retry.`, {
+    code: "repository_unavailable", status: 400, retryable: true, provider,
+  });
 }
 
 function remoteCommit(repository, ref) {
@@ -376,6 +418,7 @@ function remoteCommit(repository, ref) {
   const query = ref.trim() || "HEAD";
   const output = execFileSync("git", ["ls-remote", "--quiet", repository, query, `${query}^{}`], {
     encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
     timeout: 30_000,
     maxBuffer: 1024 * 1024,
     env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
@@ -406,7 +449,9 @@ export function prepareRepository(workspace, request) {
   const repo = repositoryParts(request.repository);
   const ref = String(request.ref ?? "").trim();
   const sourcePath = cleanSourcePath(request.sourcePath);
-  const commit = remoteCommit(repo.fetchUrl, ref);
+  let commit;
+  try { commit = remoteCommit(repo.fetchUrl, ref); }
+  catch (cause) { throw classifyRepositoryFailure(cause, repo.provider, "resolve the requested ref"); }
   const root = inspectionRoot(repo.value, commit, sourcePath);
   const checkout = join(workspace, ".portolan", "inspect", inspectionKey(repo.value, commit, sourcePath));
   if (!lstatExists(checkout)) {
@@ -420,7 +465,7 @@ export function prepareRepository(workspace, request) {
       execFileSync("git", ["checkout", "--quiet", "--detach", "FETCH_HEAD"], options);
       renameSync(staging, checkout);
     } catch (cause) {
-      throw new Error(`Could not inspect repository: ${cause instanceof Error ? cause.message.split("\n")[0] : String(cause)}`);
+      throw classifyRepositoryFailure(cause, repo.provider, "download the repository");
     } finally {
       if (lstatExists(staging)) rmSync(staging, { recursive: true, force: true });
     }
@@ -999,7 +1044,10 @@ export function localApiPlugin(workspace = process.cwd()) {
           }
           return send(res, 404, { error: "Local API route not found." });
         } catch (error) {
-          return send(res, 400, { error: error instanceof Error ? error.message : String(error) });
+          return send(res, error instanceof LocalApiError ? error.status : 400, {
+            error: error instanceof Error ? error.message : String(error),
+            ...(error instanceof LocalApiError ? { code: error.code, retryable: error.retryable, provider: error.provider } : {}),
+          });
         }
       });
     },

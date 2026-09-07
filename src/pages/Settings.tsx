@@ -38,6 +38,7 @@ import {
   discover,
   disposeProjectTrial,
   inspectRepository,
+  LocalApiError,
   localStatus,
   startGeneration,
   startProjectTrial,
@@ -559,10 +560,12 @@ function Wizard({ open, onClose, onAdded, onRunStarted }: { open: boolean; onClo
   const [trialEvents, setTrialEvents] = useState<RunEvent[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [repositoryError, setRepositoryError] = useState<LocalApiError | null>(null);
+  const [retryComponent, setRetryComponent] = useState<{ path: string; batch: boolean } | null>(null);
 
   useEffect(() => {
     if (!open) {
-      setStage("source"); setSource("local"); setPath(""); setRepository(""); setRef("main"); setSourcePath(""); setDiscovery(null); setScopeDiscovery(null); setInspectionCommit(""); setSelectedComponents([]); setPendingComponents([]); setBatchPosition(null); setDraft(null); setPlan(null); setTrialRunId(null); setTrialEvents([]); setError(""); setBusy(false);
+      setStage("source"); setSource("local"); setPath(""); setRepository(""); setRef("main"); setSourcePath(""); setDiscovery(null); setScopeDiscovery(null); setInspectionCommit(""); setSelectedComponents([]); setPendingComponents([]); setBatchPosition(null); setDraft(null); setPlan(null); setTrialRunId(null); setTrialEvents([]); setError(""); setRepositoryError(null); setRetryComponent(null); setBusy(false);
     }
   }, [open]);
 
@@ -577,6 +580,7 @@ function Wizard({ open, onClose, onAdded, onRunStarted }: { open: boolean; onClo
 
   async function detect() {
     setBusy(true); setError("");
+    setRepositoryError(null); setRetryComponent(null);
     setScopeDiscovery(null);
     setSelectedComponents([]); setPendingComponents([]); setBatchPosition(null);
     try {
@@ -588,7 +592,7 @@ function Wizard({ open, onClose, onAdded, onRunStarted }: { open: boolean; onClo
         const onlyComponent = found.components.length === 1 ? found.components[0]?.path : undefined;
         setScopeDiscovery(found); setSelectedComponents(onlyComponent ? [onlyComponent] : []); setStage("scope");
       } else configure(found, commit, sourcePath);
-    } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
+    } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); setRepositoryError(cause instanceof LocalApiError && cause.code?.startsWith("repository_") ? cause : null); }
     finally { setBusy(false); }
   }
 
@@ -601,6 +605,7 @@ function Wizard({ open, onClose, onAdded, onRunStarted }: { open: boolean; onClo
   async function chooseComponent(componentPath: string, batch = false) {
     if (!scopeDiscovery) return;
     setBusy(true); setError("");
+    setRepositoryError(null); setRetryComponent(null);
     try {
       const projectId = batch && componentPath !== "." ? componentPath.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") : undefined;
       if (source === "external") {
@@ -612,7 +617,7 @@ function Wizard({ open, onClose, onAdded, onRunStarted }: { open: boolean; onClo
         const selected = componentPath === "." ? base : [base === "." ? "" : base, componentPath].filter(Boolean).join("/");
         configure(componentPath === "." ? scopeDiscovery : await discover(selected), "", "", projectId);
       }
-    } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
+    } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); setRepositoryError(cause instanceof LocalApiError && cause.code?.startsWith("repository_") ? cause : null); setRetryComponent({ path: componentPath, batch }); }
     finally { setBusy(false); }
   }
 
@@ -629,6 +634,7 @@ function Wizard({ open, onClose, onAdded, onRunStarted }: { open: boolean; onClo
   async function runTrial() {
     if (!draft) return;
     setBusy(true); setError("");
+    setRepositoryError(null); setRetryComponent(null);
     try {
       const result = await startProjectTrial(draft);
       setPlan(result.plan); setTrialEvents([]); setTrialRunId(result.runId); setStage("trial");
@@ -670,7 +676,7 @@ function Wizard({ open, onClose, onAdded, onRunStarted }: { open: boolean; onClo
     if (stage === "trial") { if (trialRunId) void disposeProjectTrial(trialRunId); setStage("configure"); setTrialRunId(null); setTrialEvents([]); setPlan(null); }
     else if (stage === "configure" && scopeDiscovery) { setStage("scope"); setPendingComponents([]); setBatchPosition(null); }
     else setStage("source");
-    setError("");
+    setError(""); setRepositoryError(null); setRetryComponent(null);
   }
   return (
     <Modal open={open} onClose={busy || trialRunning ? () => {} : onClose} label={heading} width="min(800px,94vw)">
@@ -724,12 +730,12 @@ function Wizard({ open, onClose, onAdded, onRunStarted }: { open: boolean; onClo
             {trial ? <div><div className="label mb-2">changes after apply</div><dl className="mono grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-muted"><dt>project</dt><dd className="text-ink">{plan.project.id}</dd>{plan.fetch ? <><dt>pin</dt><dd className="truncate text-ink">{plan.fetch.commit.slice(0, 12)}</dd></> : null}<dt>source</dt><dd className="truncate text-ink">{plan.source}</dd><dt>pipeline</dt><dd className="text-ink">{plan.steps.length + (plan.fetch ? 1 : 0)} {plural(plan.steps.length + (plan.fetch ? 1 : 0), "extract step")}</dd><dt>fragments</dt><dd className="text-ink">{trial.generatedFiles} generated</dd></dl></div> : null}
           </div>
         ) : null}
-        {error ? <div role="alert" className="mt-4 rounded-control border border-unresolved px-3 py-2 text-unresolved">{error}</div> : null}
+        {error ? repositoryError ? <div role="alert" className="mt-4 rounded-control border border-unresolved bg-surface px-3 py-3"><div className="flex items-start gap-3"><CircleAlert size={18} className="mt-0.5 shrink-0 text-unresolved" /><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className="font-medium text-ink">{repositoryError.code === "repository_auth_required" ? "Authentication required" : repositoryError.code === "repository_forbidden" ? "Repository access denied" : repositoryError.code === "repository_timeout" ? "Repository timed out" : "Repository unavailable"}</span><span className="chip status-unresolved">{repositoryError.status}</span>{repositoryError.provider ? <span className="chip status-declared">{repositoryError.provider}</span> : null}</div><p className="mt-1 text-muted">{error}</p><p className="mt-2 text-muted">{repositoryError.code === "repository_auth_required" ? "Authenticate with your Git credential helper or provider CLI, then retry here." : repositoryError.code === "repository_forbidden" ? "Confirm read access and, where required, approve the credential for organization SSO." : repositoryError.code === "repository_timeout" ? "Check connectivity, VPN and proxy settings. The retry stays on this step." : "Verify the repository URL and ref before retrying."}</p></div></div></div> : <div role="alert" className="mt-4 rounded-control border border-unresolved px-3 py-2 text-unresolved">{error}</div> : null}
       </div>
       <div className="flex flex-wrap justify-end gap-2 border-t border-line px-5 py-4">
         <button type="button" className="tbtn" onClick={onClose} disabled={busy || trialRunning}>Cancel</button>
-        {stage === "source" ? <button type="button" className="btn-accent" onClick={() => void detect()} disabled={busy || (source === "local" ? !path.trim() : !repository.trim())}>{busy ? <LoaderCircle size={15} className="animate-spin" /> : null} {source === "external" ? "Inspect repository" : "Detect project"}</button> : null}
-        {stage === "scope" ? <button type="button" className="btn-accent" onClick={() => void reviewSelectedComponents()} disabled={busy || !selectedComponents.length}>{busy ? <LoaderCircle size={15} className="animate-spin" /> : <Play size={15} />} Review {selectedComponents.length || "selected"} {selectedComponents.length === 1 ? "component" : "components"}</button> : null}
+        {stage === "source" ? <button key={repositoryError?.retryable ? "retry-inspection" : source} type="button" className="btn-accent" aria-label={repositoryError?.retryable ? "Retry inspection" : source === "external" ? "Inspect repository" : "Detect project"} onClick={() => void detect()} disabled={busy || (source === "local" ? !path.trim() : !repository.trim())}>{busy ? <LoaderCircle size={15} className="animate-spin" /> : null} {repositoryError?.retryable ? "Retry inspection" : source === "external" ? "Inspect repository" : "Detect project"}</button> : null}
+        {stage === "scope" ? <button key={repositoryError?.retryable ? "retry-component" : "review-components"} type="button" className="btn-accent" aria-label={repositoryError?.retryable ? "Retry inspection" : `Review ${selectedComponents.length || "selected"} ${selectedComponents.length === 1 ? "component" : "components"}`} onClick={() => void (repositoryError?.retryable && retryComponent ? chooseComponent(retryComponent.path, retryComponent.batch) : reviewSelectedComponents())} disabled={busy || (!repositoryError?.retryable && !selectedComponents.length)}>{busy ? <LoaderCircle size={15} className="animate-spin" /> : <Play size={15} />} {repositoryError?.retryable ? "Retry inspection" : <>Review {selectedComponents.length || "selected"} {selectedComponents.length === 1 ? "component" : "components"}</>}</button> : null}
         {stage === "configure" ? <button type="button" className="btn-accent" onClick={() => void runTrial()} disabled={busy || !draft?.plugins.length}>{busy ? <LoaderCircle size={15} className="animate-spin" /> : <Play size={15} />} Run trial extraction</button> : null}
         {stage === "trial" && trialRunning ? <button type="button" className="tbtn" onClick={() => trialRunId && void cancelGeneration(trialRunId)}>Cancel trial</button> : null}
         {stage === "trial" && finished && !trial ? <button type="button" className="btn-accent" onClick={back}>Back to configuration</button> : null}

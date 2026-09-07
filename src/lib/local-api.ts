@@ -103,9 +103,30 @@ export type RunEvent =
 
 async function json<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${ROOT}${path}`, init);
-  const value = await response.json() as T & { error?: string };
-  if (!response.ok) throw new Error(value.error || `Local API returned ${response.status}.`);
+  const value = await response.json() as T & { error?: string; code?: string; retryable?: boolean; provider?: string };
+  if (!response.ok) throw new LocalApiError(value.error || `Local API returned ${response.status}.`, {
+    status: response.status,
+    code: value.code,
+    retryable: value.retryable,
+    provider: value.provider,
+  });
   return value;
+}
+
+export class LocalApiError extends Error {
+  readonly status: number;
+  readonly code?: string;
+  readonly retryable: boolean;
+  readonly provider?: string;
+
+  constructor(message: string, options: { status: number; code?: string; retryable?: boolean; provider?: string }) {
+    super(message);
+    this.name = "LocalApiError";
+    this.status = options.status;
+    this.code = options.code;
+    this.retryable = options.retryable ?? false;
+    this.provider = options.provider;
+  }
 }
 
 export async function localStatus(): Promise<{ local: true; setup: SetupInfo; activeRun: { id: string; mode: "write" | "check" | "preview" } | null }> {

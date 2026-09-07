@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { rmSync } from "node:fs";
 
-import { diffGeneratedFiles, discoverProject, inspectionRoot, planProject, readLocalSource, summarizeProjectTrial, writeProject } from "./local-api.mjs";
+import { classifyRepositoryFailure, diffGeneratedFiles, discoverProject, inspectionRoot, planProject, readLocalSource, summarizeProjectTrial, writeProject } from "./local-api.mjs";
 
 const roots = [];
 afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
@@ -29,6 +29,18 @@ function workspace() {
 }
 
 describe("local project setup", () => {
+  it("classifies repository authentication, authorization, and timeout failures", () => {
+    expect(classifyRepositoryFailure(new Error("fatal: Authentication failed"), "GitHub")).toMatchObject({
+      code: "repository_auth_required", status: 401, retryable: true, provider: "GitHub",
+    });
+    expect(classifyRepositoryFailure(new Error("The requested URL returned error: 403"), "GitLab")).toMatchObject({
+      code: "repository_forbidden", status: 403, retryable: true, provider: "GitLab",
+    });
+    expect(classifyRepositoryFailure(Object.assign(new Error("spawnSync git ETIMEDOUT"), { code: "ETIMEDOUT" }), "GitHub")).toMatchObject({
+      code: "repository_timeout", status: 504, retryable: true, provider: "GitHub",
+    });
+  });
+
   it("reads UTF-8 source inside the workspace", () => {
     const root = workspace();
     writeFileSync(join(root, "services/billing/client.go"), "package billing\n");
