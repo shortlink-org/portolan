@@ -24,7 +24,10 @@ Standalone Mermaid sequence diagrams generated from the portolan catalog.
 - [Invoice create](billing-invoice-create.mmd) — `flow.billing-invoice-create`
 - [Invoice destroy](billing-invoice-destroy.mmd) — `flow.billing-invoice-destroy`
 - [Invoice issue](billing-invoice-issue.mmd) — `flow.billing-invoice-issue`
+- [Invoice list](billing-invoice-list.mmd) — `flow.billing-invoice-list`
+- [Invoice partial update](billing-invoice-partial-update.mmd) — `flow.billing-invoice-partial-update`
 - [Invoice retrieve](billing-invoice-retrieve.mmd) — `flow.billing-invoice-retrieve`
+- [Invoice update](billing-invoice-update.mmd) — `flow.billing-invoice-update`
 - [Add item](cart-add-item.mmd) — `flow.cart-add-item`
 - [Checkout](cart-checkout.mmd) — `flow.cart-checkout`
 - [Create basket](cart-create-basket.mmd) — `flow.cart-create-basket`

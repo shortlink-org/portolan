@@ -1,6 +1,6 @@
 # Example estate
 
-*Generated from the portolan catalog · commit `12 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `10 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
 
 
 ## Contexts
@@ -58,7 +58,10 @@
 | [Invoice create](flows/billing-invoice-create.md) | [shop](shop/README.md) | Draws up a draft invoice for an order, with a line for each thing sold. |
 | [Invoice destroy](flows/billing-invoice-destroy.md) | [shop](shop/README.md) | Ends an invoice nobody is going to pay. |
 | [Invoice issue](flows/billing-invoice-issue.md) | [shop](shop/README.md) | Confirms the session, freezes the invoice and asks the customer to pay. |
+| [Invoice list](flows/billing-invoice-list.md) | [shop](shop/README.md) | Invoices over HTTP. Every action here runs one function of services.py. |
+| [Invoice partial update](flows/billing-invoice-partial-update.md) | [shop](shop/README.md) | Invoices over HTTP. Every action here runs one function of services.py. |
 | [Invoice retrieve](flows/billing-invoice-retrieve.md) | [shop](shop/README.md) | Reads one invoice and the lines it is made of. |
+| [Invoice update](flows/billing-invoice-update.md) | [shop](shop/README.md) | Invoices over HTTP. Every action here runs one function of services.py. |
 | [Add item](flows/cart-add-item.md) | [shop](shop/README.md) | — |
 | [Checkout](flows/cart-checkout.md) | [shop](shop/README.md) | — |
 | [Create basket](flows/cart-create-basket.md) | [shop](shop/README.md) | — |

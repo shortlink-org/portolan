@@ -1,6 +1,6 @@
 # Delivery Core
 
-*Generated from the portolan catalog · commit `12 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `10 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
 
 - **Id:** `delivery.core`
 - **Context:** [Delivery](../README.md)
@@ -350,7 +350,7 @@ npm install && npm run gen && npm run build
 
 ## Stores
 
-| Store | Kind | Access | Tables |
+| Store | Kind | Access | Schema |
 | --- | --- | --- | --- |
 | [Delivery database](stores/pg.md) | postgres | owns | 5 tables |
 
