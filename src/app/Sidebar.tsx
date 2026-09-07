@@ -1,4 +1,7 @@
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import type { KeyboardEvent as ReactKeyboardEvent } from "react";
+import { TREE_KEYS, treeKey } from "./tree-keys";
+import type { TreeRow } from "./tree-keys";
 import { Link, NavLink, useLocation, useMatch } from "react-router";
 import {
   DURATION,
@@ -272,6 +275,8 @@ function Leaf({
       end
       title={title}
       data-sel={selId}
+      data-tree-row
+      data-tree-depth={depth}
       onClick={onClick}
       style={({ isActive }) => ({
         paddingLeft: indent(depth),
@@ -349,6 +354,7 @@ function Branch({
           onClick={onToggle}
           aria-expanded={open}
           aria-label={`${open ? "Collapse" : "Expand"} ${label}`}
+          data-tree-toggle
           className="flex shrink-0 items-center pr-1"
         >
           <Chevron open={open} />
@@ -358,6 +364,9 @@ function Branch({
           end
           data-sel={selId}
           data-nav-item
+          data-tree-row
+          data-tree-depth={depth}
+          data-tree-open={open}
           onClick={onClick}
           className={`flex min-w-0 items-center gap-1.5 py-[3px] pr-2 ${
             end ? "shrink" : "flex-1"
@@ -407,6 +416,9 @@ function Group({
         type="button"
         onClick={onToggle}
         aria-expanded={open}
+        data-tree-row
+        data-tree-depth={depth}
+        data-tree-open={open}
         style={{ paddingLeft: indent(depth) }}
         className="tree-row group-row"
       >
@@ -479,6 +491,36 @@ function Section({
 }
 
 /** A section of the tree with nothing under it, and why. */
+// ---------------------------------------------------------------------------
+// The rows as the arrow keys see them. Every leaf, branch link and group
+// header carries `data-tree-row`; a closed branch's children are not in the
+// DOM at all, and a row mid-fold has no box yet, so what is left is exactly
+// what is on screen.
+// ---------------------------------------------------------------------------
+
+function treeRowsOf(scroller: HTMLElement): HTMLElement[] {
+  return [...scroller.querySelectorAll<HTMLElement>("[data-tree-row]")].filter(
+    (el) => el.offsetParent !== null,
+  );
+}
+
+function describeRow(el: HTMLElement): TreeRow {
+  const open = el.dataset.treeOpen;
+  return {
+    depth: Number(el.dataset.treeDepth ?? 0),
+    open: open === "true" ? true : open === "false" ? false : null,
+  };
+}
+
+/** The control that opens or closes a row: itself for a group, the chevron beside a branch. */
+function toggleOf(row: HTMLElement): HTMLElement | null {
+  if (row.hasAttribute("aria-expanded")) return row;
+  return (
+    row.parentElement?.querySelector<HTMLElement>(":scope > [data-tree-toggle]") ??
+    null
+  );
+}
+
 function TreeNote({ children }: { children: React.ReactNode }) {
   return <div className="px-3 py-1 text-muted">{children}</div>;
 }
@@ -947,6 +989,30 @@ export function Sidebar({
   const selection = useSelectionStore((s) => s.selection);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
 
+  // The arrow keys, on whatever row has focus. The rows describe themselves
+  // - depth, and open or closed for a branch - and `treeKey` says what the
+  // key does; this only reads the rows off the DOM and carries it out. A
+  // branch's toggle is the chevron beside its link; a group toggles itself.
+  const onTreeKey = useCallback((e: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (!TREE_KEYS.has(e.key)) return;
+    if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    const rows = treeRowsOf(scroller);
+    const at = rows.indexOf(document.activeElement as HTMLElement);
+    const move = treeKey(rows.map(describeRow), at, e.key);
+    if (!move) return;
+    e.preventDefault();
+    const row = rows[move.index];
+    if (!row) return;
+    if (move.type === "focus") {
+      row.focus();
+      row.scrollIntoView({ block: "nearest" });
+    } else {
+      toggleOf(row)?.click();
+    }
+  }, []);
+
   // Opening the ancestors is not optional. A selection made on a diagram or in
   // the palette has to be findable in the tree, and a tree row inside three
   // collapsed parents may as well not exist.
@@ -1037,6 +1103,7 @@ export function Sidebar({
         <div
           ref={scrollerRef}
           data-nav-list
+          onKeyDown={onTreeKey}
           className="pane flex-1 overflow-y-auto pb-3"
         >
           <PinnedSection

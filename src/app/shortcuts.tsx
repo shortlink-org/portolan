@@ -65,6 +65,15 @@ export const SHORTCUT_GROUPS: { group: string; items: Shortcut[] }[] = [
     ],
   },
   {
+    group: "The catalog tree",
+    items: [
+      { keys: ["↓"], what: "next row" },
+      { keys: ["↑"], what: "previous row" },
+      { keys: ["→"], what: "open the branch, or step into it" },
+      { keys: ["←"], what: "close the branch, or go up to its parent" },
+    ],
+  },
+  {
     group: "Everywhere",
     items: [
       { keys: ["⌘", "K"], what: "search the whole catalog" },
