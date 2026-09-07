@@ -99,7 +99,7 @@ func TestFieldOfFollowsARangeVariable(t *testing.T) {
 // lines are written from a loop variable over them.
 func TestMapsThroughGetters(t *testing.T) {
 	b := builderFor(t)
-	mapped := readMaps("../../examples/shop/pricing", "internal/infrastructure/repository", "quote", b)
+	mapped := readMaps("../../examples/shop/pricing", "internal/infrastructure/repository/quote", "quote", b)
 
 	want := map[string]map[string]string{
 		"quotes": {

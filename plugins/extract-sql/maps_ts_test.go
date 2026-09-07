@@ -82,7 +82,7 @@ for (const scan of basket.scans.slice(stored.rows[0]?.n ?? 0)) {}`)
 
 func TestMapsTSAgainstTheRealService(t *testing.T) {
 	b := builderFor(t)
-	mapped := readMapsTS("../../examples/shop/cart", "src/infrastructure/repository", "basket", b)
+	mapped := readMapsTS("../../examples/shop/cart", "src/infrastructure/repository/basket", "basket", b)
 
 	want := map[string]map[string]string{
 		"baskets": {

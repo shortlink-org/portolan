@@ -63,8 +63,9 @@ describe("unexposed", () => {
         .map((r) => r.operation.id)
         .sort(),
     ).toEqual([
-      // The lockout's three are asked by check-credentials through a port, and
-      // check-credentials itself by login: none of the four has a route of its own.
+      // The lockout's three are asked by the credential check through a
+      // port, and the check itself by login: none of the four has a route of
+      // its own.
       "Check",
       "CheckCredentials",
       "EndAfterCredentialChange",
