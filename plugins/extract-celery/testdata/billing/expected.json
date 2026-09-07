@@ -95,6 +95,11 @@
       "name": "Archive Invoice task",
       "summary": "Celery task `billing.archive_invoice` is enqueued on `billing` and worked by `archive_invoice`.",
       "source": "plugins/extract-celery/testdata/billing/invoices/handlers.py",
+      "trigger": {
+        "kind": "job",
+        "label": "Celery · billing",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -119,7 +124,14 @@
           "label": "enqueue archive_invoice",
           "status": "declared",
           "note": "Enqueued after the transaction commits. Moves a closed invoice to cold storage. Also enqueued at plugins/extract-celery/testdata/billing/invoices/services.py:23.",
-          "line": "plugins/extract-celery/testdata/billing/invoices/handlers.py:15"
+          "line": "plugins/extract-celery/testdata/billing/invoices/handlers.py:15",
+          "handoff": {
+            "kind": "job",
+            "transport": "celery",
+            "channel": "billing",
+            "message": "billing.archive_invoice",
+            "direction": "send"
+          }
         },
         {
           "type": "step",
@@ -130,7 +142,14 @@
           "label": "archive_invoice",
           "status": "declared",
           "note": "Celery hands `billing.archive_invoice` to the worker consuming `billing`, the default queue.",
-          "line": "plugins/extract-celery/testdata/billing/invoices/tasks.py:22"
+          "line": "plugins/extract-celery/testdata/billing/invoices/tasks.py:22",
+          "handoff": {
+            "kind": "job",
+            "transport": "celery",
+            "channel": "billing",
+            "message": "billing.archive_invoice",
+            "direction": "receive"
+          }
         }
       ]
     },
@@ -140,6 +159,11 @@
       "name": "Remind Unpaid Invoice task",
       "summary": "Celery task `invoices.tasks.remind_unpaid_invoice` is enqueued on `billing.slow` and worked by `remind_unpaid_invoice`.",
       "source": "plugins/extract-celery/testdata/billing/invoices/services.py",
+      "trigger": {
+        "kind": "job",
+        "label": "Celery · billing.slow",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -164,7 +188,14 @@
           "label": "enqueue remind_unpaid_invoice",
           "status": "declared",
           "note": "Enqueued for later, with a countdown or an eta. Nudges the customer about an invoice that has stayed unpaid.",
-          "line": "plugins/extract-celery/testdata/billing/invoices/services.py:18"
+          "line": "plugins/extract-celery/testdata/billing/invoices/services.py:18",
+          "handoff": {
+            "kind": "job",
+            "transport": "celery",
+            "channel": "billing.slow",
+            "message": "invoices.tasks.remind_unpaid_invoice",
+            "direction": "send"
+          }
         },
         {
           "type": "step",
@@ -175,7 +206,14 @@
           "label": "remind_unpaid_invoice",
           "status": "declared",
           "note": "Celery hands `invoices.tasks.remind_unpaid_invoice` to the worker consuming `billing.slow`, named on the task.",
-          "line": "plugins/extract-celery/testdata/billing/invoices/tasks.py:17"
+          "line": "plugins/extract-celery/testdata/billing/invoices/tasks.py:17",
+          "handoff": {
+            "kind": "job",
+            "transport": "celery",
+            "channel": "billing.slow",
+            "message": "invoices.tasks.remind_unpaid_invoice",
+            "direction": "receive"
+          }
         }
       ]
     },
@@ -185,6 +223,11 @@
       "name": "Send Invoice Email task",
       "summary": "Celery task `invoices.tasks.send_invoice_email` is enqueued on `billing.mail` and worked by `send_invoice_email`.",
       "source": "plugins/extract-celery/testdata/billing/invoices/services.py",
+      "trigger": {
+        "kind": "job",
+        "label": "Celery · billing.mail",
+        "confidence": "high"
+      },
       "owner": "shop",
       "participants": [
         {
@@ -209,7 +252,14 @@
           "label": "enqueue send_invoice_email",
           "status": "declared",
           "note": "Enqueued after the transaction commits. Emails the customer the invoice they were asked to pay.",
-          "line": "plugins/extract-celery/testdata/billing/invoices/services.py:12"
+          "line": "plugins/extract-celery/testdata/billing/invoices/services.py:12",
+          "handoff": {
+            "kind": "job",
+            "transport": "celery",
+            "channel": "billing.mail",
+            "message": "invoices.tasks.send_invoice_email",
+            "direction": "send"
+          }
         },
         {
           "type": "step",
@@ -220,7 +270,14 @@
           "label": "send_invoice_email",
           "status": "declared",
           "note": "Celery hands `invoices.tasks.send_invoice_email` to the worker consuming `billing.mail`, routed by task_routes.",
-          "line": "plugins/extract-celery/testdata/billing/invoices/tasks.py:12"
+          "line": "plugins/extract-celery/testdata/billing/invoices/tasks.py:12",
+          "handoff": {
+            "kind": "job",
+            "transport": "celery",
+            "channel": "billing.mail",
+            "message": "invoices.tasks.send_invoice_email",
+            "direction": "receive"
+          }
         }
       ]
     }

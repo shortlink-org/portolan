@@ -85,6 +85,11 @@
       "name": "Build Report task",
       "summary": "Celery task `jobs.tasks.build_report` is enqueued on `reports.default` and worked by `build_report`.",
       "source": "plugins/extract-celery/testdata/drift/jobs/services.py",
+      "trigger": {
+        "kind": "job",
+        "label": "Celery · reports.default",
+        "confidence": "high"
+      },
       "owner": "ops",
       "participants": [
         {
@@ -109,7 +114,14 @@
           "label": "enqueue build_report",
           "status": "declared",
           "note": "Enqueued in a chain. Builds the monthly report.",
-          "line": "plugins/extract-celery/testdata/drift/jobs/services.py:14"
+          "line": "plugins/extract-celery/testdata/drift/jobs/services.py:14",
+          "handoff": {
+            "kind": "job",
+            "transport": "celery",
+            "channel": "reports.default",
+            "message": "jobs.tasks.build_report",
+            "direction": "send"
+          }
         },
         {
           "type": "step",
@@ -120,7 +132,14 @@
           "label": "build_report",
           "status": "declared",
           "note": "Celery hands `jobs.tasks.build_report` to the worker consuming `reports.default`, the default queue.",
-          "line": "plugins/extract-celery/testdata/drift/jobs/tasks.py:9"
+          "line": "plugins/extract-celery/testdata/drift/jobs/tasks.py:9",
+          "handoff": {
+            "kind": "job",
+            "transport": "celery",
+            "channel": "reports.default",
+            "message": "jobs.tasks.build_report",
+            "direction": "receive"
+          }
         }
       ]
     },
@@ -130,6 +149,11 @@
       "name": "Deliver Report task",
       "summary": "Celery task `jobs.tasks.deliver_report` is enqueued on `reports.default` and worked by `deliver_report`.",
       "source": "plugins/extract-celery/testdata/drift/jobs/services.py",
+      "trigger": {
+        "kind": "job",
+        "label": "Celery · reports.default",
+        "confidence": "high"
+      },
       "owner": "ops",
       "participants": [
         {
@@ -154,7 +178,14 @@
           "label": "enqueue deliver_report",
           "status": "declared",
           "note": "Enqueued in a chain. Sends the report to whoever asked for it.",
-          "line": "plugins/extract-celery/testdata/drift/jobs/services.py:14"
+          "line": "plugins/extract-celery/testdata/drift/jobs/services.py:14",
+          "handoff": {
+            "kind": "job",
+            "transport": "celery",
+            "channel": "reports.default",
+            "message": "jobs.tasks.deliver_report",
+            "direction": "send"
+          }
         },
         {
           "type": "step",
@@ -165,7 +196,14 @@
           "label": "deliver_report",
           "status": "declared",
           "note": "Celery hands `jobs.tasks.deliver_report` to the worker consuming `reports.default`, the default queue.",
-          "line": "plugins/extract-celery/testdata/drift/jobs/tasks.py:14"
+          "line": "plugins/extract-celery/testdata/drift/jobs/tasks.py:14",
+          "handoff": {
+            "kind": "job",
+            "transport": "celery",
+            "channel": "reports.default",
+            "message": "jobs.tasks.deliver_report",
+            "direction": "receive"
+          }
         }
       ]
     }

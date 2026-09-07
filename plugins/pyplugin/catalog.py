@@ -105,7 +105,19 @@ def participant(id_: str, kind: str, context: Optional[str], label: str = "") ->
     return out
 
 
-def step(id_: str, from_: str, to: str, kind: str, label: str, status: str, ref: str = "", note: str = "", line: str = "") -> Dict[str, Any]:
+def step(
+    id_: str,
+    from_: str,
+    to: str,
+    kind: str,
+    label: str,
+    status: str,
+    ref: str = "",
+    note: str = "",
+    line: str = "",
+    continues_at: str = "",
+    handoff: Optional[Dict[str, str]] = None,
+) -> Dict[str, Any]:
     out: Dict[str, Any] = {"type": "step", "id": id_, "from": from_, "to": to, "kind": kind}
     if label:
         out["label"] = label
@@ -116,6 +128,10 @@ def step(id_: str, from_: str, to: str, kind: str, label: str, status: str, ref:
         out["note"] = note
     if line:
         out["line"] = line
+    if continues_at:
+        out["continuesAt"] = continues_at
+    if handoff:
+        out["handoff"] = handoff
     return out
 
 
@@ -130,17 +146,33 @@ def branch(title: str, steps: List[Dict[str, Any]], terminal: bool = False) -> D
     return out
 
 
-def flow(id_: str, slug: str, name: str, summary: str, source: str, owner: str, participants: List[Dict[str, Any]], steps: List[Dict[str, Any]]) -> Dict[str, Any]:
-    return {
+def flow(
+    id_: str,
+    slug: str,
+    name: str,
+    summary: str,
+    source: str,
+    owner: str,
+    participants: List[Dict[str, Any]],
+    steps: List[Dict[str, Any]],
+    trigger: Optional[Dict[str, str]] = None,
+    entrypoint: str = "",
+) -> Dict[str, Any]:
+    out: Dict[str, Any] = {
         "id": id_,
         "slug": slug,
         "name": name,
         "summary": summary,
         "source": source,
-        "owner": owner,
-        "participants": participants,
-        "steps": steps,
     }
+    if trigger:
+        out["trigger"] = trigger
+    if entrypoint:
+        out["entrypoint"] = entrypoint
+    out["owner"] = owner
+    out["participants"] = participants
+    out["steps"] = steps
+    return out
 
 
 def column(name: str, type_: str, nullable: bool, pk: bool = False, fk: Optional[Dict[str, str]] = None, maps: str = "", doc: str = "") -> Dict[str, Any]:

@@ -112,9 +112,35 @@ class Draft:
         prefix = ", ".join(outer) + "." if outer else ""
         return (prefix + " " + own).strip()
 
-    def add(self, from_: str, to: str, kind: str, label: str, status: str = catalog.DECLARED, ref: str = "", note: str = "", line: str = "") -> None:
+    def add(
+        self,
+        from_: str,
+        to: str,
+        kind: str,
+        label: str,
+        status: str = catalog.DECLARED,
+        ref: str = "",
+        note: str = "",
+        line: str = "",
+        continues_at: str = "",
+        handoff: Optional[Dict[str, str]] = None,
+    ) -> None:
         self.n += 1
-        self.sink().append(catalog.step("s%d" % self.n, from_, to, kind, label, status, ref, self.note(note), line))
+        self.sink().append(
+            catalog.step(
+                "s%d" % self.n,
+                from_,
+                to,
+                kind,
+                label,
+                status,
+                ref,
+                self.note(note),
+                line,
+                continues_at,
+                handoff,
+            )
+        )
 
     def add_alt(self, branches: List[Dict[str, object]]) -> None:
         self.n += 1
@@ -726,7 +752,20 @@ class FlowReader:
         cfg, _ = self.celery()
         address, _ = celery_conf.queue_for(task.name, at_call, task.queue, cfg)
         lane = d.lane("celery-" + slug(address), "broker", None, "Celery · " + address)
-        d.add(self.opts.svc_id, lane, "call", "enqueue " + task.short, line=line)
+        d.add(
+            self.opts.svc_id,
+            lane,
+            "call",
+            "enqueue " + task.short,
+            line=line,
+            handoff={
+                "kind": "job",
+                "transport": "celery",
+                "channel": address,
+                "message": task.name,
+                "direction": "send",
+            },
+        )
 
     def address_of(self, module: Module, node: ast.AST) -> str:
         """The topic a producer was handed, as far as syntax carries it: the

@@ -279,6 +279,16 @@ class Reading(unittest.TestCase):
         self.assertEqual(step["to"], "celery-billing-mail")
         self.assertEqual(step["note"], "in one transaction, after the transaction commits.")
         self.assertTrue(step["line"].endswith("invoices/services.py:32"))
+        self.assertEqual(
+            step["handoff"],
+            {
+                "kind": "job",
+                "transport": "celery",
+                "channel": "billing.mail",
+                "message": "invoices.tasks.send_invoice_email",
+                "direction": "send",
+            },
+        )
 
     def test_a_producer_names_the_address_and_the_event_takes_it_as_its_channel(self):
         flow = {f["slug"]: f for f in self.fragment["flows"]}["billing-mark-invoice-paid"]

@@ -141,7 +141,11 @@ and never written down.
 observable effects. Traversal is bounded and cycles are cut by symbol, so a
 recursive helper cannot make extraction recursive. ORM models from routed
 applications remain visible here even when the application has no unambiguous
-aggregate root. An inherited DRF generic action has no local handler body, so
+aggregate root. A URLConf may directly mount an arbitrarily named method of a
+plain class, such as `Planet.fetch`; that is still an HTTP flow root. When no
+decorator or conventional handler name proves one verb, the flow is retained
+but the route is omitted from inferred OpenAPI rather than guessed. An
+inherited DRF generic action has no local handler body, so
 its framework behaviour is reconstructed instead: list/retrieve read the
 model, create/update validate through the selected serializer and persist it,
 and destroy reads then deletes it. The model must be proven by `queryset`,
@@ -175,7 +179,8 @@ URL's host, including URLs carried through local variables, settings and
 queue it lands on, `celery-<queue>` — decided the way Celery decides it, by the
 reader `extract-celery` shares through `pyplugin`: the `queue=` at the call,
 then the decorator's, then `task_routes`, then `task_default_queue` — so the
-two flows meet on one participant; and `transaction.on_commit(…)` around it,
+endpoint and task flows carry the same exact queue and task wire name and are
+composed at the worker receive step; and `transaction.on_commit(…)` around it,
 as a lambda or a `partial`, is the note that it waits for the commit. A call into `services.py` and ordinary project helpers is followed within the same
 bounded traversal. `if` becomes an alt when some arm holds
 a hop, and a branch ending in a `return` or a `raise` is terminal; a `for`, a

@@ -190,6 +190,15 @@ def flow_of(svc_id: str, context: str, service: str, q: Queue, wire: str, task: 
     enqueue_note = ("Enqueued " + ", ".join(notes) + ". " if notes else "") + task.doc
     if len(producers) > 1:
         enqueue_note = (enqueue_note + " Also enqueued at %s." % ", ".join(p.line for p in producers[1:])).strip()
+
+    def handoff(direction: str) -> Dict[str, str]:
+        return {
+            "kind": "job",
+            "transport": "celery",
+            "channel": q.address,
+            "message": wire,
+            "direction": direction,
+        }
     return catalog.flow(
         "flow." + slugged,
         slugged,
@@ -202,7 +211,28 @@ def flow_of(svc_id: str, context: str, service: str, q: Queue, wire: str, task: 
             catalog.participant(broker, "broker", None, "Celery · " + q.address),
         ],
         [
-            catalog.step("enqueue", svc_id, broker, "call", "enqueue " + task.short, catalog.DECLARED, note=enqueue_note.strip(), line=first.line),
-            catalog.step("work", broker, svc_id, "call", task.short, catalog.DECLARED, note="Celery hands `%s` to the worker consuming `%s`, %s." % (wire, q.address, q.how[wire]), line=task.line),
+            catalog.step(
+                "enqueue",
+                svc_id,
+                broker,
+                "call",
+                "enqueue " + task.short,
+                catalog.DECLARED,
+                note=enqueue_note.strip(),
+                line=first.line,
+                handoff=handoff("send"),
+            ),
+            catalog.step(
+                "work",
+                broker,
+                svc_id,
+                "call",
+                task.short,
+                catalog.DECLARED,
+                note="Celery hands `%s` to the worker consuming `%s`, %s." % (wire, q.address, q.how[wire]),
+                line=task.line,
+                handoff=handoff("receive"),
+            ),
         ],
+        trigger={"kind": "job", "label": "Celery · " + q.address, "confidence": "high"},
     )

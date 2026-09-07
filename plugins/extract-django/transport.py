@@ -173,7 +173,18 @@ def read_endpoints(app: App, b, routes: Optional[Routes] = None) -> List[Endpoin
                     isinstance(dec, ast.Call) and dotted(dec.func).split(".")[-1] == "action" for dec in getattr(handler, "decorator_list", [])
                 )
                 if handler.name not in ACTIONS and not is_action and handler.name not in ("get", "post", "put", "patch", "delete"):
-                    continue
+                    # A plain Django class may expose an arbitrarily named
+                    # method directly in URLConf (`Planet.fetch`). The route
+                    # proves the HTTP entrypoint but, without a method
+                    # decorator or request-method branch, not one particular
+                    # verb. Keep it as a flow root and leave it out of the
+                    # inferred OpenAPI contract.
+                    if handler.name not in {
+                        route.view.split(".", 1)[1]
+                        for route in mounted
+                        if "." in route.view
+                    }:
+                        continue
                 declared.append((handler.name, verb_of(handler, handler.name), handler, doc(handler)))
             inherited = []
             for inherited_base in bases:
@@ -191,6 +202,12 @@ def read_endpoints(app: App, b, routes: Optional[Routes] = None) -> List[Endpoin
             for action, verb, handler, description in declared:
                 targets = class_routes or ([method_routes[action]] if action in method_routes else [])
                 for route in targets:
+                    if not verb:
+                        b.warn(
+                            route.source,
+                            "%s is mounted as an HTTP view, but no HTTP verb is declared; its flow is extracted and the route is omitted from inferred OpenAPI"
+                            % route.view,
+                        )
                     out.append(endpoint(handler, module, node.name, action, verb, route_base(route, base or view_name(node.name)), route, description))
         for node in module.functions():
             mounted = routes.for_view(module.dotted, node.name) if routes else []

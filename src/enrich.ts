@@ -241,9 +241,22 @@ function composeExecutionContinuations(input: Catalog): Catalog {
   const byHandoff = new Map<string, Flow | null>();
   for (const flow of input.flows) {
     if (flow.entrypoint) addUniqueFlow(byEntry, flow.entrypoint, flow);
-    const opening = walkSteps(flow.steps)[0];
-    if (opening?.handoff?.direction === "receive") {
-      addUniqueFlow(byHandoff, handoffKey(opening.handoff), flow);
+    // A task extractor often keeps the locally observed enqueue before the
+    // worker receive in one standalone flow. External producers must join at
+    // the receive boundary, not replay that local enqueue. Top-level slicing
+    // preserves everything the worker does afterwards, including branches.
+    for (let index = 0; index < flow.steps.length; index += 1) {
+      const opening = flow.steps[index];
+      if (
+        opening?.type !== "step" ||
+        opening.handoff?.direction !== "receive"
+      ) {
+        continue;
+      }
+      addUniqueFlow(byHandoff, handoffKey(opening.handoff), {
+        ...flow,
+        steps: flow.steps.slice(index),
+      });
     }
   }
   if (byEntry.size === 0 && byHandoff.size === 0) {

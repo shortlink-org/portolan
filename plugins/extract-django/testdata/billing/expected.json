@@ -609,7 +609,14 @@
           "label": "enqueue send_invoice_email",
           "status": "declared",
           "note": "in one transaction, after the transaction commits.",
-          "line": "plugins/extract-django/testdata/billing/invoices/services.py:32"
+          "line": "plugins/extract-django/testdata/billing/invoices/services.py:32",
+          "handoff": {
+            "kind": "job",
+            "transport": "celery",
+            "channel": "billing.mail",
+            "message": "invoices.tasks.send_invoice_email",
+            "direction": "send"
+          }
         },
         {
           "type": "step",

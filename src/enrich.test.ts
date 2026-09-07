@@ -296,6 +296,60 @@ describe("enrichCatalog: asynchronous outbound continuations", () => {
     expect(enrichCatalog(once).catalog).toEqual(once);
   });
 
+  it("joins a Django enqueue at the Celery worker without replaying the task flow enqueue", () => {
+    const handoff = (direction: "send" | "receive") => ({
+      kind: "job" as const,
+      transport: "celery",
+      channel: "billing.mail",
+      message: "invoices.tasks.send_invoice_email",
+      direction,
+    });
+    const api = {
+      ...flow("issue-invoice", [
+        step("client", "shop.oms", "rpc", {
+          label: "POST /invoices/{id}/issue",
+        }),
+        step("shop.oms", "bus", "call", {
+          label: "enqueue send_invoice_email",
+          handoff: handoff("send"),
+        }),
+      ]),
+      trigger: {
+        kind: "http",
+        label: "POST /invoices/{id}/issue",
+        confidence: "high",
+      } as const,
+    };
+    const task = {
+      ...flow("send-invoice-email", [
+        step("shop.oms", "bus", "call", {
+          label: "enqueue send_invoice_email",
+          handoff: handoff("send"),
+        }),
+        step("bus", "shop.oms", "call", {
+          label: "send_invoice_email",
+          handoff: handoff("receive"),
+        }),
+      ]),
+      trigger: {
+        kind: "job",
+        label: "Celery · billing.mail",
+        confidence: "high",
+      } as const,
+    };
+
+    const result = enrichCatalog(estate([api, task])).catalog;
+    const root = result.flows.find((item) => item.slug === "issue-invoice")!;
+
+    expect(walkSteps(root.steps).map((item) => item.label)).toEqual([
+      "POST /invoices/{id}/issue",
+      "enqueue send_invoice_email",
+      "send_invoice_email",
+    ]);
+    expect(root.includes).toEqual(["send-invoice-email"]);
+    expect(enrichCatalog(result).catalog).toEqual(result);
+  });
+
   it("composes a message handoff and its nested outbound call", () => {
     const handler = "messages/email:Handle";
     const publish = {
@@ -447,7 +501,10 @@ describe("enrichCatalog: asynchronous outbound continuations", () => {
     });
 
     const once = enrichCatalog(
-      estate([chained("alpha", "alpha", "beta"), chained("beta", "beta", "alpha")]),
+      estate([
+        chained("alpha", "alpha", "beta"),
+        chained("beta", "beta", "alpha"),
+      ]),
     ).catalog;
     expect(once.flows[0]!.includes).toEqual(["beta"]);
     expect(walkSteps(once.flows[0]!.steps)).toHaveLength(4);

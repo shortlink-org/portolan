@@ -88,6 +88,11 @@ class Billing(unittest.TestCase):
         self.assertEqual([p["id"] for p in flow["participants"]], ["shop.billing", "celery-billing-mail"])
         self.assertEqual([(s["from"], s["to"], s["label"]) for s in flow["steps"]], [("shop.billing", "celery-billing-mail", "enqueue send_invoice_email"), ("celery-billing-mail", "shop.billing", "send_invoice_email")])
         self.assertTrue(flow["steps"][1]["line"].endswith("invoices/tasks.py:12"))
+        self.assertEqual(flow["trigger"], {"kind": "job", "label": "Celery · billing.mail", "confidence": "high"})
+        self.assertEqual(
+            [(step["handoff"]["direction"], step["handoff"]["message"]) for step in flow["steps"]],
+            [("send", "invoices.tasks.send_invoice_email"), ("receive", "invoices.tasks.send_invoice_email")],
+        )
 
 
 class Drift(unittest.TestCase):

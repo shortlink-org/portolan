@@ -79,11 +79,16 @@ class OrderViewSet(viewsets.ModelViewSet):
 class Health:
     def get(request):
         pass
+
+class Maintenance:
+    @classmethod
+    def fetch(cls, request):
+        return None
 ''',
             "orders/urls.py": '''
 from django.urls import path, re_path
 from rest_framework.routers import DefaultRouter
-from .views import Health, OrderDetail, OrderList, OrderViewSet
+from .views import Health, Maintenance, OrderDetail, OrderList, OrderViewSet
 
 router = DefaultRouter()
 router.register("orders", OrderViewSet, basename="order")
@@ -91,6 +96,7 @@ urlpatterns = [
     path("manual/", OrderList.as_view(), name="order-list"),
     path("manual/<uuid:pk>/", OrderDetail.as_view(), name="order-detail"),
     re_path(r"^health/(?P<region>[^/]+)/$", Health.get),
+    path("maintenance/fetch", Maintenance.fetch),
 ] + router.urls
 ''',
         }
@@ -133,6 +139,8 @@ urlpatterns = [
         self.assertIn(("GET", "/api/v2/orders/{id}/"), http)
         self.assertIn(("PATCH", "/api/v2/orders/{id}/"), http)
         self.assertIn(("GET", "/api/v2/health/{region}/"), http)
+        flow_only = next(item for item in endpoints if item.view == "Maintenance" and item.action == "fetch")
+        self.assertEqual((flow_only.verb, flow_only.path), ("", "/api/v2/maintenance/fetch"))
         detail = next(item for item in endpoints if item.verb == "GET" and item.path.endswith("manual/{pk}/"))
         self.assertEqual(detail.path_parameters, {"pk": "uuid"})
         spec = openapi_document([(app, item) for item in endpoints], "Orders", Builder())

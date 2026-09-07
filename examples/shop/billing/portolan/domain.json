@@ -1,6 +1,6 @@
 {
   "generatedAt": "2026-09-06T18:19:25+07:00",
-  "commit": "62e352b",
+  "commit": "62e352b5",
   "contexts": [
     {
       "id": "shop",
@@ -574,7 +574,14 @@
           "label": "enqueue send_invoice_email",
           "status": "declared",
           "note": "in one transaction, after the transaction commits.",
-          "line": "examples/shop/billing/invoices/services.py:49"
+          "line": "examples/shop/billing/invoices/services.py:49",
+          "handoff": {
+            "kind": "job",
+            "transport": "celery",
+            "channel": "billing.mail",
+            "message": "invoices.tasks.send_invoice_email",
+            "direction": "send"
+          }
         },
         {
           "type": "step",
@@ -585,7 +592,14 @@
           "label": "enqueue remind_unpaid_invoice",
           "status": "declared",
           "note": "in one transaction, after the transaction commits.",
-          "line": "examples/shop/billing/invoices/services.py:50"
+          "line": "examples/shop/billing/invoices/services.py:50",
+          "handoff": {
+            "kind": "job",
+            "transport": "celery",
+            "channel": "billing",
+            "message": "invoices.tasks.remind_unpaid_invoice",
+            "direction": "send"
+          }
         },
         {
           "type": "step",
@@ -598,6 +612,70 @@
           "ref": "shop.billing.invoice.InvoiceIssued",
           "note": "on shop.billing.invoice",
           "line": "examples/shop/billing/invoices/services.py:51"
+        }
+      ]
+    },
+    {
+      "id": "flow.billing-invoice-list",
+      "slug": "billing-invoice-list",
+      "name": "Invoice list",
+      "summary": "Invoices over HTTP. Every action here runs one function of services.py.",
+      "source": "examples/shop/billing/invoices/views.py",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.billing",
+          "kind": "service",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.billing",
+          "kind": "rpc",
+          "label": "invoice_list",
+          "status": "declared",
+          "line": "examples/shop/billing/invoices/views.py:10"
+        }
+      ]
+    },
+    {
+      "id": "flow.billing-invoice-partial-update",
+      "slug": "billing-invoice-partial-update",
+      "name": "Invoice partial update",
+      "summary": "Invoices over HTTP. Every action here runs one function of services.py.",
+      "source": "examples/shop/billing/invoices/views.py",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.billing",
+          "kind": "service",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.billing",
+          "kind": "rpc",
+          "label": "invoice_partial_update",
+          "status": "declared",
+          "line": "examples/shop/billing/invoices/views.py:10"
         }
       ]
     },
@@ -645,6 +723,38 @@
           "label": "Invoice.objects.get",
           "status": "declared",
           "line": "examples/shop/billing/invoices/services.py:77"
+        }
+      ]
+    },
+    {
+      "id": "flow.billing-invoice-update",
+      "slug": "billing-invoice-update",
+      "name": "Invoice update",
+      "summary": "Invoices over HTTP. Every action here runs one function of services.py.",
+      "source": "examples/shop/billing/invoices/views.py",
+      "owner": "shop",
+      "participants": [
+        {
+          "id": "client",
+          "kind": "actor",
+          "context": null
+        },
+        {
+          "id": "shop.billing",
+          "kind": "service",
+          "context": "shop"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "s1",
+          "from": "client",
+          "to": "shop.billing",
+          "kind": "rpc",
+          "label": "invoice_update",
+          "status": "declared",
+          "line": "examples/shop/billing/invoices/views.py:10"
         }
       ]
     },

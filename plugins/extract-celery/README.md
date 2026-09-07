@@ -65,7 +65,10 @@ One `flow` per task that is both enqueued and declared here: `service →
 broker : call enqueue <task>` at the first call in path order, with the
 others named in the note, then `broker → service : call <task>` at the
 function. The broker participant is `celery-<queue>`. Every step is
-`declared`.
+`declared`. Both steps carry the exact Celery queue and task wire name as a
+job handoff. This lets a Django endpoint flow that calls `.delay()` or
+`.apply_async()` continue at the corresponding worker step without repeating
+the enqueue.
 
 ## What it does not read
 
