@@ -57,6 +57,7 @@ import { useUiStore } from "./ui-store";
 import { ForgeAccessProvider } from "./forge-access";
 import { AnimatePresence, MotionProvider, m, page } from "../lib/motion";
 import { useChatUi } from "../chat/store";
+import { projectPreview } from "../lib/project-preview";
 
 // The chat is a chunk of its own, and a build with VITE_CHAT=off has no such
 // chunk: the test is on the literal Vite substitutes, so the import below is
@@ -295,6 +296,11 @@ function Shell() {
         onToggleSidebar={toggleSidebar}
         narrow={narrow}
       />
+      {projectPreview ? (
+        <div className="shrink-0 border-b border-declared/40 bg-declared/10 px-gutter py-2 text-center text-sm text-declared">
+          Temporary project preview · the repository has not been changed · expires after 15 minutes
+        </div>
+      ) : null}
       {/* Under the bar, above everything: the trail is about the whole shell,
           not about the page inside it. */}
       <Trail />

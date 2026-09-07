@@ -36,6 +36,7 @@ import {
   applyProjectTrial,
   cancelGeneration,
   discover,
+  disposeProjectTrial,
   inspectRepository,
   localStatus,
   startGeneration,
@@ -541,12 +542,17 @@ const CAPABILITIES: Record<string, { title: string; summary: string }> = {
 
 function Wizard({ open, onClose, onAdded, onRunStarted }: { open: boolean; onClose: () => void; onAdded: (setup: SetupInfo) => void; onRunStarted: (runId: string) => void }) {
   const [source, setSource] = useState<"local" | "external">("local");
-  const [stage, setStage] = useState<"source" | "configure" | "trial">("source");
+  const [stage, setStage] = useState<"source" | "scope" | "configure" | "trial">("source");
   const [path, setPath] = useState("");
   const [repository, setRepository] = useState("");
   const [ref, setRef] = useState("main");
   const [sourcePath, setSourcePath] = useState("");
   const [discovery, setDiscovery] = useState<Discovery | null>(null);
+  const [scopeDiscovery, setScopeDiscovery] = useState<Discovery | null>(null);
+  const [inspectionCommit, setInspectionCommit] = useState("");
+  const [selectedComponents, setSelectedComponents] = useState<string[]>([]);
+  const [pendingComponents, setPendingComponents] = useState<string[]>([]);
+  const [batchPosition, setBatchPosition] = useState<{ current: number; total: number } | null>(null);
   const [draft, setDraft] = useState<ProjectDraft | null>(null);
   const [plan, setPlan] = useState<ProjectPlan | null>(null);
   const [trialRunId, setTrialRunId] = useState<string | null>(null);
@@ -556,7 +562,7 @@ function Wizard({ open, onClose, onAdded, onRunStarted }: { open: boolean; onClo
 
   useEffect(() => {
     if (!open) {
-      setStage("source"); setSource("local"); setPath(""); setRepository(""); setRef("main"); setSourcePath(""); setDiscovery(null); setDraft(null); setPlan(null); setTrialRunId(null); setTrialEvents([]); setError(""); setBusy(false);
+      setStage("source"); setSource("local"); setPath(""); setRepository(""); setRef("main"); setSourcePath(""); setDiscovery(null); setScopeDiscovery(null); setInspectionCommit(""); setSelectedComponents([]); setPendingComponents([]); setBatchPosition(null); setDraft(null); setPlan(null); setTrialRunId(null); setTrialEvents([]); setError(""); setBusy(false);
     }
   }, [open]);
 
@@ -571,14 +577,53 @@ function Wizard({ open, onClose, onAdded, onRunStarted }: { open: boolean; onClo
 
   async function detect() {
     setBusy(true); setError("");
+    setScopeDiscovery(null);
+    setSelectedComponents([]); setPendingComponents([]); setBatchPosition(null);
     try {
       const inspection = source === "external" ? await inspectRepository(repository, ref, sourcePath) : null;
       const found = inspection?.discovery ?? await discover(path);
-      setDiscovery(found);
-      setDraft({ source, root: found.root, repository, ref, commit: inspection?.commit ?? "", sourcePath, ...found.defaults, plugins: found.detections.filter((item) => item.selected).map((item) => item.plugin) });
-      setStage("configure");
+      const commit = inspection?.commit ?? "";
+      setInspectionCommit(commit);
+      if (!sourcePath.trim() && found.components.some((component) => component.path !== ".")) {
+        const onlyComponent = found.components.length === 1 ? found.components[0]?.path : undefined;
+        setScopeDiscovery(found); setSelectedComponents(onlyComponent ? [onlyComponent] : []); setStage("scope");
+      } else configure(found, commit, sourcePath);
     } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
     finally { setBusy(false); }
+  }
+
+  function configure(found: Discovery, commit: string, selectedSourcePath: string, projectId?: string) {
+    setDiscovery(found);
+    setDraft({ source, root: found.root, repository, ref, commit, sourcePath: selectedSourcePath, ...found.defaults, ...(projectId ? { id: projectId } : {}), plugins: found.detections.filter((item) => item.selected).map((item) => item.plugin) });
+    setStage("configure");
+  }
+
+  async function chooseComponent(componentPath: string, batch = false) {
+    if (!scopeDiscovery) return;
+    setBusy(true); setError("");
+    try {
+      const projectId = batch && componentPath !== "." ? componentPath.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") : undefined;
+      if (source === "external") {
+        const selected = componentPath === "." ? "" : componentPath;
+        const inspection = await inspectRepository(repository, inspectionCommit || ref, selected);
+        configure(inspection.discovery, inspection.commit, selected, projectId);
+      } else {
+        const base = path.replace(/\/$/, "");
+        const selected = componentPath === "." ? base : [base === "." ? "" : base, componentPath].filter(Boolean).join("/");
+        configure(componentPath === "." ? scopeDiscovery : await discover(selected), "", "", projectId);
+      }
+    } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
+    finally { setBusy(false); }
+  }
+
+  async function reviewSelectedComponents() {
+    if (!scopeDiscovery || selectedComponents.length === 0) return;
+    const ordered = scopeDiscovery.components.map((component) => component.path).filter((componentPath) => selectedComponents.includes(componentPath));
+    const first = ordered[0];
+    if (!first) return;
+    setPendingComponents(ordered.slice(1));
+    setBatchPosition(ordered.length > 1 ? { current: 1, total: ordered.length } : null);
+    await chooseComponent(first, ordered.length > 1);
   }
 
   async function runTrial() {
@@ -598,8 +643,16 @@ function Wizard({ open, onClose, onAdded, onRunStarted }: { open: boolean; onClo
     try {
       const result = await applyProjectTrial(trialRunId, generate);
       onAdded(result.setup);
-      onClose();
-      if (result.run) onRunStarted(result.run.runId);
+      if (pendingComponents.length > 0) {
+        const [next, ...remaining] = pendingComponents;
+        if (!next) throw new Error("The next selected component is missing.");
+        setPendingComponents(remaining); setBatchPosition((position) => position ? { ...position, current: position.current + 1 } : null);
+        setTrialRunId(null); setTrialEvents([]); setPlan(null);
+        await chooseComponent(next, true);
+      } else {
+        onClose();
+        if (result.run) onRunStarted(result.run.runId);
+      }
     } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); setBusy(false); }
   }
 
@@ -612,9 +665,10 @@ function Wizard({ open, onClose, onAdded, onRunStarted }: { open: boolean; onClo
   const trialRunning = stage === "trial" && !finished;
   const totalSteps = pipeline?.stepCount ?? plan?.steps.length ?? 0;
   const percent = totalSteps ? Math.round((completedSteps.length / totalSteps) * 100) : 0;
-  const heading = stage === "source" ? "Add a project" : stage === "configure" ? "Review discovery" : "Trial extraction";
+  const heading = stage === "source" ? "Add a project" : stage === "scope" ? "Choose a component" : stage === "configure" ? "Review discovery" : "Trial extraction";
   function back() {
-    if (stage === "trial") { setStage("configure"); setTrialRunId(null); setTrialEvents([]); setPlan(null); }
+    if (stage === "trial") { if (trialRunId) void disposeProjectTrial(trialRunId); setStage("configure"); setTrialRunId(null); setTrialEvents([]); setPlan(null); }
+    else if (stage === "configure" && scopeDiscovery) { setStage("scope"); setPendingComponents([]); setBatchPosition(null); }
     else setStage("source");
     setError("");
   }
@@ -622,7 +676,7 @@ function Wizard({ open, onClose, onAdded, onRunStarted }: { open: boolean; onClo
     <Modal open={open} onClose={busy || trialRunning ? () => {} : onClose} label={heading} width="min(800px,94vw)">
       <div className="flex items-center gap-3 border-b border-line px-5 py-4">
         {stage !== "source" ? <button type="button" className="tbtn p-1.5" onClick={back} disabled={trialRunning || busy} aria-label="Back"><ArrowLeft size={16} /></button> : null}
-        <div className="min-w-0 flex-1"><div className="font-semibold text-ink">{heading}</div><div className="mono mt-0.5 text-muted">{stage === "source" ? "1 / 3 · source" : stage === "configure" ? "2 / 3 · capabilities" : "3 / 3 · proof"}</div></div>
+        <div className="min-w-0 flex-1"><div className="font-semibold text-ink">{heading}</div><div className="mono mt-0.5 text-muted">{stage === "source" ? "1 / 4 · source" : stage === "scope" ? "2 / 4 · scope" : stage === "configure" ? `3 / 4 · capabilities${batchPosition ? ` · ${batchPosition.current} / ${batchPosition.total}` : ""}` : `4 / 4 · proof${batchPosition ? ` · ${batchPosition.current} / ${batchPosition.total}` : ""}`}</div></div>
         <button type="button" className="tbtn p-1.5" onClick={onClose} disabled={busy || trialRunning} aria-label="Close"><X size={16} /></button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-5">
@@ -631,6 +685,12 @@ function Wizard({ open, onClose, onAdded, onRunStarted }: { open: boolean; onClo
             <div className="seg inline-flex" role="group" aria-label="Project source"><button type="button" className={source === "local" ? "is-on" : ""} aria-pressed={source === "local"} onClick={() => setSource("local")}>local directory</button><button type="button" className={source === "external" ? "is-on" : ""} aria-pressed={source === "external"} onClick={() => setSource("external")}>external repository</button></div>
             <p className="text-muted">Detection reads project files but does not execute project code. External repositories are pinned and vendored through the built-in git fetcher.</p>
             {source === "local" ? <><Field label="local path" value={path} onChange={setPath} placeholder="services/billing" required /><Field label="repository URL · optional" value={repository} onChange={setRepository} placeholder="https://github.com/acme/billing" /></> : <><Field label="repository URL" value={repository} onChange={setRepository} placeholder="https://github.com/acme/platform" required /><div className="grid gap-4 sm:grid-cols-2"><Field label="branch, tag or commit" value={ref} onChange={setRef} placeholder="main" /><Field label="component path · optional" value={sourcePath} onChange={setSourcePath} placeholder="services/billing" /></div></>}
+          </div>
+        ) : stage === "scope" && scopeDiscovery ? (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-start justify-between gap-2"><div><p className="text-ink">Portolan found {scopeDiscovery.components.length} possible {plural(scopeDiscovery.components.length, "component")}.</p><p className="mt-1 text-muted">Select one or several modules. Each selected component gets its own scoped discovery and trial before it is added. In a batch, confirmed components are applied one at a time, so you can stop between them.</p></div><div className="flex gap-2"><button type="button" className="tbtn" onClick={() => setSelectedComponents(scopeDiscovery.components.map((component) => component.path))}>Select all</button><button type="button" className="tbtn" onClick={() => setSelectedComponents([])} disabled={!selectedComponents.length}>Clear</button></div></div>
+            <div className="grid gap-2">{scopeDiscovery.components.map((component) => { const selected = selectedComponents.includes(component.path); return <button type="button" key={component.path} aria-pressed={selected} onClick={() => setSelectedComponents((current) => selected ? current.filter((item) => item !== component.path) : [...current, component.path])} disabled={busy} className={`flex items-center gap-3 rounded-control border px-3 py-3 text-left transition-colors hover:border-accent hover:bg-surface ${selected ? "border-accent bg-surface" : "border-line"}`}><span className={`flex size-9 shrink-0 items-center justify-center rounded-control ${selected ? "bg-accent text-canvas" : "bg-surface text-muted"}`}>{selected ? <Check size={17} /> : <FolderGit2 size={17} />}</span><span className="min-w-0 flex-1"><span className="font-medium text-ink">{component.name}</span><span className="mono mt-0.5 block truncate text-muted">{component.path === "." ? "repository root" : component.path}</span></span><span className="flex flex-wrap justify-end gap-1">{component.technologies.map((technology) => <span key={technology} className="chip status-declared">{technology}</span>)}</span></button>; })}</div>
+            {scopeDiscovery.componentsTruncated ? <p className="text-declared">Showing the first {scopeDiscovery.components.length} component roots. Narrow the source path to inspect the rest.</p> : null}
           </div>
         ) : stage === "configure" && discovery && draft ? (
           <div className="space-y-5">
@@ -653,6 +713,8 @@ function Wizard({ open, onClose, onAdded, onRunStarted }: { open: boolean; onClo
           <div className="space-y-5">
             <div className={`rounded-control border px-3 py-3 ${trial ? "border-verified bg-surface" : finished?.status === "failed" ? "border-unresolved" : "border-line bg-surface"}`}>
               <div className="flex items-start gap-3">{trial ? <Check size={18} className="mt-0.5 shrink-0 text-verified" /> : finished?.status === "failed" ? <CircleAlert size={18} className="mt-0.5 shrink-0 text-unresolved" /> : <LoaderCircle size={18} className="mt-0.5 shrink-0 animate-spin text-accent" />}<div><div className="font-medium text-ink">{trial ? "Extraction succeeded — repository unchanged" : finished?.status === "failed" ? "Trial extraction failed" : activeStep ? `Running ${activeStep.plugin}` : "Creating an isolated workspace…"}</div><p className="mt-0.5 text-muted">{trial ? "These results came from real catalog fragments. Apply is now safe to continue." : "Portolan is running the selected extractors without writing to portolan.json or your project."}</p></div></div>
+              {trial?.previewUrl ? <a className="btn-accent mt-3 inline-flex" href={trial.previewUrl} target="_blank" rel="noreferrer">Open catalog preview ↗</a> : null}
+              {trial?.previewError ? <p className="mt-2 text-declared">The extraction is valid, but the temporary site could not start: {trial.previewError}</p> : null}
               {!finished ? <><div className="mt-3 h-1.5 overflow-hidden rounded-full bg-canvas"><div className="h-full bg-accent transition-[width]" style={{ width: `${percent}%` }} /></div><div className="mono mt-1 text-right text-muted">{completedSteps.length} / {totalSteps || "?"} steps</div></> : null}
             </div>
             {trial?.facts.length ? <section><div className="label mb-2">catalog facts found</div><div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{trial.facts.map((fact) => <div key={fact.key} className="rounded-control border border-line bg-canvas px-3 py-2"><div className="tnum text-lg font-semibold text-ink">{fact.count}</div><div className="text-muted">{fact.label}</div></div>)}</div></section> : null}
@@ -667,10 +729,11 @@ function Wizard({ open, onClose, onAdded, onRunStarted }: { open: boolean; onClo
       <div className="flex flex-wrap justify-end gap-2 border-t border-line px-5 py-4">
         <button type="button" className="tbtn" onClick={onClose} disabled={busy || trialRunning}>Cancel</button>
         {stage === "source" ? <button type="button" className="btn-accent" onClick={() => void detect()} disabled={busy || (source === "local" ? !path.trim() : !repository.trim())}>{busy ? <LoaderCircle size={15} className="animate-spin" /> : null} {source === "external" ? "Inspect repository" : "Detect project"}</button> : null}
+        {stage === "scope" ? <button type="button" className="btn-accent" onClick={() => void reviewSelectedComponents()} disabled={busy || !selectedComponents.length}>{busy ? <LoaderCircle size={15} className="animate-spin" /> : <Play size={15} />} Review {selectedComponents.length || "selected"} {selectedComponents.length === 1 ? "component" : "components"}</button> : null}
         {stage === "configure" ? <button type="button" className="btn-accent" onClick={() => void runTrial()} disabled={busy || !draft?.plugins.length}>{busy ? <LoaderCircle size={15} className="animate-spin" /> : <Play size={15} />} Run trial extraction</button> : null}
         {stage === "trial" && trialRunning ? <button type="button" className="tbtn" onClick={() => trialRunId && void cancelGeneration(trialRunId)}>Cancel trial</button> : null}
         {stage === "trial" && finished && !trial ? <button type="button" className="btn-accent" onClick={back}>Back to configuration</button> : null}
-        {stage === "trial" && trial ? <><button type="button" className="tbtn" onClick={() => void applyTrial(false)} disabled={busy}>Add without generating</button><button type="button" className="btn-accent" onClick={() => void applyTrial(true)} disabled={busy}>{busy ? <LoaderCircle size={15} className="animate-spin" /> : <Play size={15} />} Add & generate</button></> : null}
+        {stage === "trial" && trial ? pendingComponents.length > 0 ? <button type="button" className="btn-accent" onClick={() => void applyTrial(false)} disabled={busy}>{busy ? <LoaderCircle size={15} className="animate-spin" /> : <Play size={15} />} Add & review next</button> : <><button type="button" className="tbtn" onClick={() => void applyTrial(false)} disabled={busy}>Add without generating</button><button type="button" className="btn-accent" onClick={() => void applyTrial(true)} disabled={busy}>{busy ? <LoaderCircle size={15} className="animate-spin" /> : <Play size={15} />} Add & generate</button></> : null}
       </div>
     </Modal>
   );

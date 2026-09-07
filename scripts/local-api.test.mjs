@@ -63,6 +63,26 @@ describe("local project setup", () => {
     expect(discovery.detections.find((item) => item.plugin === "adr")?.selected).toBe(false);
   });
 
+  it("finds component roots in a monorepo without reading dependency directories", () => {
+    const root = workspace();
+    mkdirSync(join(root, "services/orders"), { recursive: true });
+    mkdirSync(join(root, "apps/storefront"), { recursive: true });
+    mkdirSync(join(root, "node_modules/ignored"), { recursive: true });
+    mkdirSync(join(root, ".worktrees/ignored"), { recursive: true });
+    mkdirSync(join(root, "services/orders/testdata/ignored"), { recursive: true });
+    writeFileSync(join(root, "services/orders/go.mod"), "module example.com/orders\n");
+    writeFileSync(join(root, "apps/storefront/package.json"), "{}\n");
+    writeFileSync(join(root, "node_modules/ignored/package.json"), "{}\n");
+    writeFileSync(join(root, ".worktrees/ignored/package.json"), "{}\n");
+    writeFileSync(join(root, "services/orders/testdata/ignored/go.mod"), "module example.com/ignored\n");
+    const discovery = discoverProject(root, ".");
+    expect(discovery.components).toEqual([
+      { path: "apps/storefront", name: "Storefront", markers: ["package.json"], technologies: ["Node.js"] },
+      { path: "services/billing", name: "Billing", markers: ["go.mod"], technologies: ["Go"] },
+      { path: "services/orders", name: "Orders", markers: ["go.mod"], technologies: ["Go"] },
+    ]);
+  });
+
   it("only offers the Go domain extractor when the layout contains an aggregate root", () => {
     const root = workspace();
     mkdirSync(join(root, "services/billing/internal/domain/invoice"), { recursive: true });

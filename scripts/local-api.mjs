@@ -15,6 +15,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
+import { createServer as createNetServer } from "node:net";
 import { basename, dirname, join, posix, relative, resolve, sep } from "node:path";
 
 import { publicSetupFrom } from "../src/lib/setup-info.ts";
@@ -25,9 +26,11 @@ export const GENERATOR_EVENT_PREFIX = "::portolan-event::";
 
 const SKIP = new Set([".git", ".portolan", "build", "dist", "node_modules", "target", "vendor"]);
 const MAX_FILES = 12_000;
+const MAX_COMPONENTS = 100;
 const MAX_SOURCE_BYTES = 1024 * 1024;
 const jobs = new Map();
 const SNAPSHOT_SKIP = new Set([".git", ".portolan", "dist", "node_modules", "target"]);
+const PROJECT_PREVIEW_TTL_MS = 15 * 60 * 1000;
 
 function safeRoot(workspace, input) {
   if (typeof input !== "string" || !input.trim()) throw new Error("Project path is required.");
@@ -77,7 +80,7 @@ function walk(root) {
   while (pending.length && files.size < MAX_FILES) {
     const current = pending.pop();
     for (const entry of readdirSync(current.absolute, { withFileTypes: true })) {
-      if (SKIP.has(entry.name)) continue;
+      if (SKIP.has(entry.name) || (entry.isDirectory() && entry.name.startsWith("."))) continue;
       const name = current.relative ? `${current.relative}/${entry.name}` : entry.name;
       const absolute = join(current.absolute, entry.name);
       const stat = lstatSync(absolute);
@@ -101,6 +104,44 @@ function matches(files, pattern) {
 function compactDirectories(paths) {
   const directories = [...new Set(paths.map((name) => posix.dirname(name)))].sort((a, b) => a.length - b.length);
   return directories.filter((dir, index) => !directories.some((parent, other) => other < index && (dir === parent || dir.startsWith(`${parent}/`))));
+}
+
+const COMPONENT_MARKERS = new Map([
+  ["go.mod", "Go"],
+  ["package.json", "Node.js"],
+  ["Cargo.toml", "Rust"],
+  ["pom.xml", "Java"],
+  ["build.gradle", "Java"],
+  ["build.gradle.kts", "Kotlin"],
+  ["manage.py", "Django"],
+]);
+
+function componentCandidates(files) {
+  const roots = new Map();
+  for (const name of files) {
+    const marker = posix.basename(name);
+    const technology = COMPONENT_MARKERS.get(marker);
+    if (!technology) continue;
+    const path = posix.dirname(name);
+    const key = path === "." ? "." : path;
+    if (key.split("/").some((segment) => ["fixture", "fixtures", "test", "tests", "testdata"].includes(segment.toLowerCase()))) continue;
+    const found = roots.get(key) ?? { path: key, markers: new Set(), technologies: new Set() };
+    found.markers.add(marker);
+    found.technologies.add(technology);
+    roots.set(key, found);
+  }
+  return [...roots.values()]
+    .sort((a, b) => a.path === "." ? -1 : b.path === "." ? 1 : a.path.localeCompare(b.path))
+    .slice(0, MAX_COMPONENTS)
+    .map((candidate) => {
+      const base = candidate.path === "." ? "repository root" : posix.basename(candidate.path);
+      return {
+        path: candidate.path,
+        name: base.split(/[^a-zA-Z0-9]+/).filter(Boolean).map((part) => part[0]?.toUpperCase() + part.slice(1)).join(" ") || base,
+        markers: [...candidate.markers].sort(),
+        technologies: [...candidate.technologies].sort(),
+      };
+    });
 }
 
 function detected(plugin, candidates, options = {}, label = candidates[0], ambiguous = false, selected = true) {
@@ -288,11 +329,14 @@ export function discoverProject(workspace, input) {
   const { root, absolute } = safeRoot(workspace, input);
   const files = walk(absolute);
   const detections = detectionsFor(absolute, files);
+  const components = componentCandidates(files);
   const id = slug(basename(absolute)) || "service";
   return {
     root,
     filesScanned: files.size,
     truncated: files.size >= MAX_FILES,
+    components,
+    componentsTruncated: components.length >= MAX_COMPONENTS,
     defaults: { id, name: id.split("-").map((part) => part[0]?.toUpperCase() + part.slice(1)).join(" "), group: id, component: id, context: id, service: id },
     detections,
   };
@@ -758,6 +802,61 @@ function prepareProjectTrial(workspace, request) {
   return { ...snapshot, fingerprint, plan };
 }
 
+function freeLocalPort() {
+  return new Promise((resolvePort, reject) => {
+    const server = createNetServer();
+    server.unref();
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      const port = typeof address === "object" && address ? address.port : 0;
+      server.close((error) => error ? reject(error) : resolvePort(port));
+    });
+  });
+}
+
+async function waitForPreview(url, child) {
+  for (let attempt = 0; attempt < 80; attempt += 1) {
+    if (child.previewError) throw child.previewError;
+    if (child.exitCode !== null) throw new Error("The preview server stopped before it became ready.");
+    try {
+      const response = await fetch(url, { signal: AbortSignal.timeout(500) });
+      if (response.ok) return;
+    } catch {}
+    await new Promise((done) => setTimeout(done, 100));
+  }
+  throw new Error("The preview server did not become ready in time.");
+}
+
+function disposeProjectTrial(job) {
+  if (job.previewTimer) { clearTimeout(job.previewTimer); job.previewTimer = null; }
+  if (job.previewChild?.exitCode === null) job.previewChild.kill("SIGTERM");
+  job.previewChild = null;
+  job.previewUrl = null;
+  if (job.snapshotHolder && lstatExists(job.snapshotHolder)) rmSync(job.snapshotHolder, { recursive: true, force: true });
+  job.snapshotHolder = null;
+  job.runRoot = null;
+}
+
+async function startProjectPreview(job) {
+  const port = await freeLocalPort();
+  const origin = `http://127.0.0.1:${port}`;
+  const child = spawn(process.execPath, [join(job.runRoot, "node_modules/vite/bin/vite.js"), "--host", "127.0.0.1", "--port", String(port), "--strictPort"], {
+    cwd: job.runRoot,
+    env: { ...process.env, PORTOLAN_PROJECT_PREVIEW: "1" },
+    stdio: "ignore",
+  });
+  child.once("error", (error) => { child.previewError = error; });
+  job.previewChild = child;
+  await waitForPreview(origin, child);
+  const context = job.projectPlan.project.group ?? job.projectPlan.discovery.defaults.group;
+  const component = job.projectPlan.project.component ?? job.projectPlan.discovery.defaults.component;
+  job.previewUrl = `${origin}/c/${encodeURIComponent(context)}/${encodeURIComponent(component)}`;
+  job.previewTimer = setTimeout(() => disposeProjectTrial(job), PROJECT_PREVIEW_TTL_MS);
+  job.previewTimer.unref();
+  return job.previewUrl;
+}
+
 function startJob(workspace, mode, approvedPreview, preparedTrial) {
   const id = randomUUID();
   const preview = mode === "preview" || mode === "project-preview";
@@ -782,7 +881,7 @@ function startJob(workspace, mode, approvedPreview, preparedTrial) {
   child.stdout.on("data", (chunk) => feed(job, "stdout", chunk));
   child.stderr.on("data", (chunk) => feed(job, "stderr", chunk));
   child.on("error", (error) => emit(job, { type: "run-finished", status: "failed", message: error.message }));
-  child.on("close", (code, signal) => {
+  child.on("close", async (code, signal) => {
     for (const stream of ["stdout", "stderr"]) if (job.buffers[stream]) emit(job, { type: "log", stream, message: job.buffers[stream] });
     job.status = signal ? "cancelled" : code === 0 ? "ok" : "failed";
     if (preview && job.status !== "cancelled") {
@@ -790,13 +889,18 @@ function startJob(workspace, mode, approvedPreview, preparedTrial) {
       catch (cause) { job.status = "failed"; emit(job, { type: "log", stream: "stderr", message: `Could not build preview: ${cause instanceof Error ? cause.message : String(cause)}` }); }
     }
     if (mode === "project-preview" && job.status === "ok") {
-      try { job.trial = summarizeProjectTrial(job.runRoot, job.projectPlan, job.events); emit(job, { type: "project-trial-ready", plan: job.projectPlan, ...job.trial }); }
+      try {
+        job.trial = summarizeProjectTrial(job.runRoot, job.projectPlan, job.events);
+        try { job.trial.previewUrl = await startProjectPreview(job); }
+        catch (cause) { job.trial.previewError = cause instanceof Error ? cause.message : String(cause); }
+        emit(job, { type: "project-trial-ready", plan: job.projectPlan, ...job.trial });
+      }
       catch (cause) { job.status = "failed"; emit(job, { type: "log", stream: "stderr", message: `Could not summarise project trial: ${cause instanceof Error ? cause.message : String(cause)}` }); }
     }
     emit(job, { type: "process-finished", status: job.status, code, signal });
     for (const response of job.subscribers) response.end();
     job.subscribers.clear();
-    if (job.snapshotHolder) rmSync(job.snapshotHolder, { recursive: true, force: true });
+    if (job.snapshotHolder && !(mode === "project-preview" && job.status === "ok" && job.previewUrl)) disposeProjectTrial(job);
   });
   return job;
 }
@@ -851,10 +955,19 @@ export function localApiPlugin(workspace = process.cwd()) {
             if (!trial?.projectRequest || !trial.trial || trial.status !== "ok") return send(res, 409, { error: "Run a successful project trial before adding it." });
             if (trial.applied) return send(res, 409, { error: "This project trial was already applied." });
             if (workspaceFingerprint(workspace) !== trial.fingerprint) return send(res, 409, { error: "Files changed after this project trial. Run it again." });
+            disposeProjectTrial(trial);
             const result = writeProject(workspace, trial.projectRequest);
             trial.applied = true;
             const generation = input.generate ? startJob(workspace, "write", trial) : null;
             return send(res, 201, { ...result, setup: setup(workspace), run: generation ? { runId: generation.id, mode: generation.mode } : null });
+          }
+          const disposeTrialMatch = url.pathname.match(/^\/__portolan\/projects\/trials\/([^/]+)\/dispose$/);
+          if (disposeTrialMatch) {
+            const trial = jobs.get(disposeTrialMatch[1]);
+            if (!trial?.projectRequest) return send(res, 404, { error: "Project trial not found." });
+            if (trial.status === "running") return send(res, 409, { error: "Cancel the running project trial first." });
+            disposeProjectTrial(trial);
+            return send(res, 200, { runId: trial.id, status: "disposed" });
           }
           if (url.pathname === `${LOCAL_API_PREFIX}/projects/preview`) {
             const manifest = JSON.parse(readFileSync(join(workspace, "portolan.json"), "utf8"));

@@ -16,6 +16,8 @@ export interface Discovery {
   root: string;
   filesScanned: number;
   truncated: boolean;
+  components: Array<{ path: string; name: string; markers: string[]; technologies: string[] }>;
+  componentsTruncated: boolean;
   defaults: { id: string; name: string; group: string; component: string; context: string; service: string };
   detections: Detection[];
 }
@@ -84,6 +86,8 @@ export interface ProjectTrial {
   facts: ProjectTrialFact[];
   warnings: Array<{ plugin: string; message: string }>;
   generatedFiles: number;
+  previewUrl?: string;
+  previewError?: string;
 }
 
 export type RunEvent =
@@ -130,6 +134,10 @@ export async function startProjectTrial(draft: ProjectDraft): Promise<{ runId: s
 
 export async function applyProjectTrial(runId: string, generate: boolean): Promise<ProjectPlan & { setup: SetupInfo; run: { runId: string; mode: "write" } | null }> {
   return json(`/projects/trials/${encodeURIComponent(runId)}/apply`, { method: "POST", headers: LOCAL_HEADER, body: JSON.stringify({ generate }) });
+}
+
+export async function disposeProjectTrial(runId: string): Promise<void> {
+  await json(`/projects/trials/${encodeURIComponent(runId)}/dispose`, { method: "POST", headers: LOCAL_HEADER, body: "{}" });
 }
 
 export async function startGeneration(mode: "write" | "check" | "preview" = "preview", previewRunId?: string): Promise<{ runId: string; mode: "write" | "check" | "preview" }> {

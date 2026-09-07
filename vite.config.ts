@@ -143,6 +143,7 @@ export default defineConfig({
   define: {
     __BUILD_INFO__: JSON.stringify(buildInfo),
     __SETUP_INFO__: JSON.stringify(setupInfo),
+    __PROJECT_PREVIEW__: JSON.stringify(env.PORTOLAN_PROJECT_PREVIEW === "1"),
   },
   plugins: [
     localApiPlugin(),
