@@ -903,3 +903,109 @@ describe("externals", () => {
     expect(merged.catalog.externals).toBeUndefined();
   });
 });
+
+describe("mergeCatalogs: maps", () => {
+  // The store extractor read `q.ID()` and `q.BasketID()` off the repository;
+  // the domain extractor read `id` and `basketID` off the struct. Once both
+  // are in one catalog the column can be spelled the way the field is, which
+  // is the only spelling every reader looks a field up by.
+  const domain = () => {
+    const c = context("shop", ["shop.pricing"]);
+    c.services[0]!.aggregates = [
+      {
+        id: "shop.pricing.quote",
+        slug: "quote",
+        name: "Quote",
+        readme: "",
+        root: "Quote",
+        entities: [
+          {
+            id: "shop.pricing.quote.quote",
+            slug: "quote",
+            name: "Quote",
+            doc: "",
+            fields: [
+              { name: "id", type: "string", doc: "" },
+              { name: "basketID", type: "string", doc: "" },
+              { name: "total", type: "Money", doc: "" },
+            ],
+          },
+        ],
+        valueObjects: [],
+        operations: [],
+        events: [],
+      },
+    ];
+
+    return c;
+  };
+  const store = (maps: Record<string, string>) => ({
+    id: "shop.pricing.pg",
+    slug: "pg",
+    name: "pg",
+    kind: "postgres" as const,
+    owner: "shop.pricing",
+    tables: [
+      {
+        id: "shop.pricing.pg.quotes",
+        name: "quotes",
+        persists: { aggregate: "shop.pricing.quote" },
+        columns: Object.entries(maps).map(([name, m]) => ({
+          name,
+          type: "text",
+          nullable: false,
+          maps: m,
+        })),
+      },
+    ],
+  });
+
+  it("spells a column's field the way the aggregate declares it", () => {
+    const merged = mergeCatalogs([
+      source("domain.json", { contexts: [domain()] }),
+      source("stores.json", {
+        stores: [
+          store({
+            id: "Quote.ID",
+            basket_id: "Quote.BasketID",
+            total_minor: "Quote.Total.AmountMinor",
+            currency: "Quote.total",
+            state: "Quote.State",
+          }),
+        ],
+      }),
+    ]);
+
+    const columns = merged.catalog.stores?.[0]?.tables[0]?.columns ?? [];
+    const maps = Object.fromEntries(columns.map((c) => [c.name, c.maps]));
+    expect(maps).toEqual({
+      id: "Quote.id",
+      basket_id: "Quote.basketID",
+      total_minor: "Quote.total.AmountMinor",
+      currency: "Quote.total",
+      // No field of any case is called State: the claim stays as the code
+      // made it, for a reader to see rather than for the merge to hide.
+      state: "Quote.State",
+    });
+  });
+
+  it("leaves the sources' own objects alone", () => {
+    const stores = [store({ id: "Quote.ID" })];
+    mergeCatalogs([
+      source("domain.json", { contexts: [domain()] }),
+      source("stores.json", { stores }),
+    ]);
+
+    expect(stores[0]!.tables[0]!.columns[0]!.maps).toBe("Quote.ID");
+  });
+
+  it("does nothing for a table that persists no aggregate this catalog knows", () => {
+    const merged = mergeCatalogs([
+      source("stores.json", { stores: [store({ id: "Quote.ID" })] }),
+    ]);
+
+    expect(merged.catalog.stores?.[0]?.tables[0]?.columns[0]?.maps).toBe(
+      "Quote.ID",
+    );
+  });
+});

@@ -44,27 +44,32 @@
               "name": "id",
               "type": "text",
               "nullable": false,
-              "pk": true
+              "pk": true,
+              "maps": "PriceList.ID"
             },
             {
               "name": "name",
               "type": "text",
-              "nullable": false
+              "nullable": false,
+              "maps": "PriceList.Name"
             },
             {
               "name": "currency",
               "type": "char(3)",
-              "nullable": false
+              "nullable": false,
+              "maps": "PriceList.Currency"
             },
             {
               "name": "valid_from",
               "type": "timestamptz",
-              "nullable": false
+              "nullable": false,
+              "maps": "PriceList.ValidFrom"
             },
             {
               "name": "archived",
               "type": "boolean",
-              "nullable": false
+              "nullable": false,
+              "maps": "PriceList.Archived"
             }
           ],
           "indexes": [
@@ -95,7 +100,8 @@
                 "table": "shop.pricing.pg.price_lists",
                 "column": "id",
                 "onDelete": "cascade"
-              }
+              },
+              "maps": "PriceList.ID"
             },
             {
               "name": "sku",
@@ -122,37 +128,44 @@
               "name": "id",
               "type": "text",
               "nullable": false,
-              "pk": true
+              "pk": true,
+              "maps": "Quote.ID"
             },
             {
               "name": "basket_id",
               "type": "text",
-              "nullable": false
+              "nullable": false,
+              "maps": "Quote.BasketID"
             },
             {
               "name": "total_minor",
               "type": "bigint",
-              "nullable": false
+              "nullable": false,
+              "maps": "Quote.Total"
             },
             {
               "name": "currency",
               "type": "char(3)",
-              "nullable": false
+              "nullable": false,
+              "maps": "Quote.Total"
             },
             {
               "name": "state",
               "type": "text",
-              "nullable": false
+              "nullable": false,
+              "maps": "Quote.State"
             },
             {
               "name": "issued_at",
               "type": "timestamptz",
-              "nullable": false
+              "nullable": false,
+              "maps": "Quote.IssuedAt"
             },
             {
               "name": "expires_at",
               "type": "timestamptz",
-              "nullable": false
+              "nullable": false,
+              "maps": "Quote.ExpiresAt"
             }
           ],
           "indexes": [
@@ -190,7 +203,8 @@
                 "table": "shop.pricing.pg.quotes",
                 "column": "id",
                 "onDelete": "cascade"
-              }
+              },
+              "maps": "Quote.ID"
             },
             {
               "name": "sku",
@@ -300,7 +314,8 @@
               "nullable": false,
               "from": [
                 "shop.pricing.pg.price_lists.id"
-              ]
+              ],
+              "maps": "PriceList.ID"
             },
             {
               "name": "name",
@@ -308,7 +323,8 @@
               "nullable": false,
               "from": [
                 "shop.pricing.pg.price_lists.name"
-              ]
+              ],
+              "maps": "PriceList.Name"
             },
             {
               "name": "currency",
@@ -316,7 +332,8 @@
               "nullable": false,
               "from": [
                 "shop.pricing.pg.price_lists.currency"
-              ]
+              ],
+              "maps": "PriceList.Currency"
             },
             {
               "name": "rows_priced",

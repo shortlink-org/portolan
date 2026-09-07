@@ -73,71 +73,169 @@ func readMaps(root, repositories, aggregate string, b *plugin.Builder) map[strin
 	constants := stringConstants(files)
 
 	for _, file := range files {
-		ast.Inspect(file, func(node ast.Node) bool {
-			call, ok := node.(*ast.CallExpr)
-			if !ok {
-				return true
-			}
+		packages := importNames(file)
 
-			table, sql, columns, values, args := readInsert(call, constants)
-			if table == "" {
-				return true
+		// One walk per declaration rather than one per file, because which
+		// identifier is the aggregate changes at every function: in Save it
+		// is the parameter typed as the root, and inside the loop over its
+		// lines the same shape of expression on the loop variable is a line's
+		// field, not the aggregate's.
+		for _, decl := range file.Decls {
+			fn, ok := decl.(*ast.FuncDecl)
+			if !ok || fn.Body == nil {
+				continue
 			}
+			s := scope{packages: packages, roots: rootParams(fn, root_)}
 
-			mapped := out[table]
-			if mapped == nil {
-				mapped = map[string]string{}
-				out[table] = mapped
-			}
+			ast.Inspect(fn.Body, func(node ast.Node) bool {
+				call, ok := node.(*ast.CallExpr)
+				if !ok {
+					return true
+				}
 
-			// The parser records that a value IS a placeholder but not which
-			// one - ParamRef.Number comes back zero - so the numbers are read
-			// off the text and paired with the placeholders in order. If the
-			// two do not agree on how many there are, nothing is mapped:
-			// mapping by position from a disagreement is how a column ends up
-			// confidently pointing at the wrong field.
-			numbers := placeholderNumbers(sql)
-			if numbers == nil || countParams(values) != len(numbers) {
-				if countParams(values) > 0 {
-					b.Warn(table, "the insert into "+table+" has placeholders this reader cannot number; its columns are left unmapped")
+				table, sql, columns, values, args := readInsert(call, constants)
+				if table == "" {
+					return true
+				}
+
+				mapped := out[table]
+				if mapped == nil {
+					mapped = map[string]string{}
+					out[table] = mapped
+				}
+
+				// The parser records that a value IS a placeholder but not which
+				// one - ParamRef.Number comes back zero - so the numbers are read
+				// off the text and paired with the placeholders in order. If the
+				// two do not agree on how many there are, nothing is mapped:
+				// mapping by position from a disagreement is how a column ends up
+				// confidently pointing at the wrong field.
+				numbers := placeholderNumbers(sql)
+				if numbers == nil || countParams(values) != len(numbers) {
+					if countParams(values) > 0 {
+						b.Warn(table, "the insert into "+table+" has placeholders this reader cannot number; its columns are left unmapped")
+					}
+
+					return true
+				}
+
+				seen := 0
+				for i, column := range columns {
+					if i >= len(values) {
+						break
+					}
+
+					if _, ok := values[i].(*nodes.ParamRef); !ok {
+						// A literal, a default, an expression: written by the
+						// statement rather than carried from the aggregate.
+						continue
+					}
+
+					number := numbers[seen]
+					seen++
+
+					if number < 1 || number > len(args) {
+						b.Warn(table, "the insert refers to $"+itoa(number)+" but the call passes "+itoa(len(args))+" values; "+column+" is left unmapped")
+
+						continue
+					}
+
+					field := fieldOf(args[number-1], s)
+					if field == "" {
+						continue
+					}
+					mapped[column] = root_ + "." + field
 				}
 
 				return true
-			}
-
-			seen := 0
-			for i, column := range columns {
-				if i >= len(values) {
-					break
-				}
-
-				if _, ok := values[i].(*nodes.ParamRef); !ok {
-					// A literal, a default, an expression: written by the
-					// statement rather than carried from the aggregate.
-					continue
-				}
-
-				number := numbers[seen]
-				seen++
-
-				if number < 1 || number > len(args) {
-					b.Warn(table, "the insert refers to $"+itoa(number)+" but the call passes "+itoa(len(args))+" values; "+column+" is left unmapped")
-
-					continue
-				}
-
-				field := fieldOf(args[number-1])
-				if field == "" {
-					continue
-				}
-				mapped[column] = root_ + "." + field
-			}
-
-			return true
-		})
+			})
+		}
 	}
 
 	return out
+}
+
+// scope is what fieldOf needs to know about the code around an argument that
+// the argument itself does not say: which bare names are packages, and which
+// one is the aggregate.
+type scope struct {
+	// packages are the names the file's imports bind. `time.Now()` and
+	// `q.ID()` are the same shape of expression, and this is what tells them
+	// apart without a type checker.
+	packages map[string]bool
+	// roots are the parameters of the enclosing function typed as the
+	// aggregate's root. Nil when it has none, in which case any bare name is
+	// taken for the aggregate, as it always was; a function that names the
+	// root can only mean the root by it.
+	roots map[string]bool
+}
+
+// receiver says whether a bare identifier stands for the aggregate.
+func (s scope) receiver(ident *ast.Ident) bool {
+	if s.packages[ident.Name] {
+		return false
+	}
+
+	return s.roots == nil || s.roots[ident.Name]
+}
+
+// importNames reads what the file calls each package it imports: the alias
+// when there is one, the last path element otherwise. The last element is a
+// guess only for a package whose directory is not its name, and a package like
+// that used as a receiver would have to be a variable of the same name to be
+// wrong.
+func importNames(file *ast.File) map[string]bool {
+	names := map[string]bool{}
+	for _, spec := range file.Imports {
+		name := ""
+		if spec.Name != nil {
+			name = spec.Name.Name
+		} else {
+			name = path.Base(unquote(spec.Path.Value))
+		}
+		if name == "" || name == "_" || name == "." {
+			continue
+		}
+		names[name] = true
+	}
+
+	return names
+}
+
+// rootParams names the parameters of fn whose type is the aggregate's root:
+// `u *user.User` when the root is User, whether the type is a pointer, is
+// qualified by its package or is written bare. Nil when there is none.
+func rootParams(fn *ast.FuncDecl, root string) map[string]bool {
+	var roots map[string]bool
+	if fn.Type.Params == nil {
+		return nil
+	}
+	for _, param := range fn.Type.Params.List {
+		if !typeNamed(param.Type, root) {
+			continue
+		}
+		for _, name := range param.Names {
+			if roots == nil {
+				roots = map[string]bool{}
+			}
+			roots[name.Name] = true
+		}
+	}
+
+	return roots
+}
+
+func typeNamed(expr ast.Expr, name string) bool {
+	switch t := expr.(type) {
+	case *ast.StarExpr:
+		return typeNamed(t.X, name)
+	case *ast.SelectorExpr:
+		return t.Sel.Name == name
+	case *ast.Ident:
+		return t.Name == name
+	}
+
+	return false
 }
 
 // readInsert pulls the parts out of a call whose argument is an INSERT: the
@@ -317,26 +415,38 @@ func insertValues(insert *nodes.InsertStmt) []nodes.Node {
 
 // fieldOf reads the field an argument came from: `u.ID` is ID, and
 // `u.Email.String()` is Email, because what the column carries is the value
-// object, not the conversion applied to it on the way out.
+// object, not the conversion applied to it on the way out. An aggregate that
+// keeps its fields unexported hands them out through getters, and `q.ID()` is
+// ID by the same reading: a method with no arguments on the aggregate itself
+// is the field it is named after, in whatever case the domain spells it.
 //
-// The first selector standing on a plain identifier wins. Anything with no
-// such selector - a local variable, a function of several fields, a literal -
+// The first selector standing on the aggregate wins. Anything with no such
+// selector - a local variable, a function of several fields, a literal -
 // answers empty, and the column stays unmapped.
-func fieldOf(arg ast.Expr) string {
+func fieldOf(arg ast.Expr, s scope) string {
 	for {
 		switch expr := arg.(type) {
 		case *ast.CallExpr:
-			// Two shapes hide the field in different places, and they look
-			// alike: `u.Email.String()` reads it off its receiver, while
-			// `pgtype.Text(u.Email)` takes it as an argument. What tells them
-			// apart without a type checker is the depth of the selector - a
-			// method on a field stands on another selector, a package function
-			// stands on a bare name.
+			// Three shapes hide the field in different places, and they look
+			// alike. `u.Email.String()` and `q.Total().AmountMinor()` read it
+			// off their receiver, which is itself a selector or a call on
+			// one; `q.ID()` reads it off the aggregate, with nothing to pass;
+			// `pgtype.Text(u.Email)` takes it as an argument. What tells the
+			// last from the second without a type checker is the file's
+			// imports: a call with no arguments on a package name is a
+			// function, and on anything else a getter.
 			if method, ok := expr.Fun.(*ast.SelectorExpr); ok {
-				if _, nested := method.X.(*ast.SelectorExpr); nested {
+				switch on := method.X.(type) {
+				case *ast.SelectorExpr, *ast.CallExpr:
 					arg = expr.Fun
 
 					continue
+				case *ast.Ident:
+					if len(expr.Args) == 0 && !s.packages[on.Name] {
+						arg = expr.Fun
+
+						continue
+					}
 				}
 			}
 
@@ -348,7 +458,11 @@ func fieldOf(arg ast.Expr) string {
 			}
 			arg = expr.Args[0]
 		case *ast.SelectorExpr:
-			if _, ok := expr.X.(*ast.Ident); ok {
+			if ident, ok := expr.X.(*ast.Ident); ok {
+				if !s.receiver(ident) {
+					return ""
+				}
+
 				return expr.Sel.Name
 			}
 			arg = expr.X

@@ -32,6 +32,7 @@ import type {
   Service,
   Status,
   Step,
+  Store,
   TypeDef,
 } from "./catalog";
 
@@ -310,13 +311,76 @@ export function mergeCatalogs(sources: CatalogSource[]): MergeResult {
     flows,
     adrs,
   };
-  if (stores.length > 0) merged.stores = stores;
+  if (stores.length > 0) merged.stores = foldMaps(merged, stores);
   if (modules.length > 0) merged.modules = modules;
   if (terms.length > 0) merged.terms = terms;
   if (repos.length > 0) merged.repos = repos;
   if (externals.size > 0) merged.externals = [...externals.values()];
 
   return { catalog: merged, sources: stamps, conflicts };
+}
+
+/**
+ * Spells every column's `maps` path the way the aggregate declares the field.
+ *
+ * An extractor reads the path off the code that writes the row, and what the
+ * code says there is the accessor - `q.ID()`, `q.BasketID()` - while the field
+ * behind it is `id` or `basketID`. One name in two cases, and the extractor
+ * that read the store never saw the domain to know which. Here both have
+ * arrived, so the store's spelling is folded onto the domain's when exactly
+ * one declared field matches ignoring case. A path that already names a field,
+ * or names none, is left as read: the first needs nothing, and the second is
+ * a claim the reader should see as the code made it.
+ *
+ * Returns new stores rather than rewriting the sources' own objects.
+ */
+function foldMaps(catalog: Catalog, stores: Store[]): Store[] {
+  const aggregates = new Map<string, Aggregate>();
+  for (const context of catalog.contexts) {
+    for (const service of context.services) {
+      for (const aggregate of service.aggregates) {
+        aggregates.set(aggregate.id, aggregate);
+      }
+    }
+  }
+
+  const fold = (aggregate: Aggregate, maps: string): string => {
+    const [head, field, ...rest] = maps.split(".");
+    if (!head || !field) return maps;
+    const block = [...aggregate.valueObjects, ...aggregate.entities].find(
+      (b) => b.name === head,
+    );
+    if (!block) return maps;
+    // The same reading `blockFields` gives a page; repeated rather than
+    // imported because this file is loaded by node as it is, without a
+    // bundler to resolve a value import of the catalog module.
+    const fields =
+      block.fields ?? (block.ref ? catalog.defs[block.ref]?.fields : []) ?? [];
+    if (fields.some((f) => f.name === field)) return maps;
+    const same = fields.filter(
+      (f) => f.name.toLowerCase() === field.toLowerCase(),
+    );
+    if (same.length !== 1) return maps;
+    return [head, same[0]!.name, ...rest].join(".");
+  };
+
+  return stores.map((store) => ({
+    ...store,
+    tables: store.tables.map((table) => {
+      const aggregate = table.persists?.aggregate
+        ? aggregates.get(table.persists.aggregate)
+        : undefined;
+      if (!aggregate) return table;
+      return {
+        ...table,
+        columns: table.columns.map((column) => {
+          if (!column.maps) return column;
+          const maps = fold(aggregate, column.maps);
+          return maps === column.maps ? column : { ...column, maps };
+        }),
+      };
+    }),
+  }));
 }
 
 /**
