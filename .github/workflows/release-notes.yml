@@ -10,6 +10,12 @@ on:
 permissions:
   contents: write # a release is created for a tag that has none
 
+# One tag at a time: two runs would race on the same release section, and a
+# run that has started writing it is left to finish.
+concurrency:
+  group: release-notes
+  cancel-in-progress: false
+
 jobs:
   describe:
     runs-on: ubuntu-latest
