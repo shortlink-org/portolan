@@ -5,16 +5,20 @@ import {
   ListboxOptions,
 } from "@headlessui/react";
 import { Check, ChevronDown, ExternalLink, GitBranch, LoaderCircle, Tag } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
 import { branchCompareHref } from "../lib/branch-compare";
 import { buildInfo } from "../lib/build-info";
 import { findRef, sortRefs } from "../lib/forge-refs";
-import { forgeRepoFromUrl, listForgeRefs } from "../lib/github-catalog";
+import { forgeRepoFromUrl } from "../lib/github-catalog";
 import type { ForgeRef } from "../lib/github-catalog";
 import { forgetComparison, rememberComparison } from "../lib/comparison-memory";
+import { forgeRefsQuery } from "../lib/queries";
 import { paths } from "../routes";
 import { useForgeAccess } from "./forge-access";
+
+const NO_REFS: ForgeRef[] = [];
 
 function refNote(ref: ForgeRef, current: string): string {
   if (ref.kind === "branch" && ref.name === current) return `${ref.commit.slice(0, 7)} · current catalog`;
@@ -32,35 +36,13 @@ export function BranchPicker({ compact = false }: { compact?: boolean }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [search] = useSearchParams();
-  const [remote, setRemote] = useState<ForgeRef[]>([]);
-  const [loading, setLoading] = useState(Boolean(repo));
-  const [error, setError] = useState("");
   const token = repo ? access.tokenFor(repo) : "";
-
-  useEffect(() => {
-    let live = true;
-    if (!repo) {
-      setRemote([]);
-      setLoading(false);
-      return;
-    }
-    setRemote([]);
-    setLoading(true);
-    setError("");
-    listForgeRefs(repo, { token })
-      .then((refs) => {
-        if (live) setRemote(refs);
-      })
-      .catch((cause: unknown) => {
-        if (live) setError(cause instanceof Error ? cause.message : String(cause));
-      })
-      .finally(() => {
-        if (live) setLoading(false);
-      });
-    return () => {
-      live = false;
-    };
-  }, [repo?.provider, repo?.webUrl, token]);
+  // The same query the changes page reads: whichever mounts first fetches,
+  // the other one joins it.
+  const refsQuery = useQuery(forgeRefsQuery(repo, token));
+  const remote = refsQuery.data ?? NO_REFS;
+  const loading = refsQuery.isLoading;
+  const error = refsQuery.error?.message ?? "";
 
   const refs = useMemo(() => {
     const known = remote.some((ref) => ref.kind === "branch" && ref.name === current)

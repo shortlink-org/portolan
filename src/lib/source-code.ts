@@ -1,8 +1,6 @@
 import type { RemoteSourceLocation, SourceLocation } from "./source-link";
 
 const MAX_SOURCE_BYTES = 1024 * 1024;
-const MAX_CACHE_ENTRIES = 40;
-const sourceCache = new Map<string, Promise<SourceFile>>();
 
 export type SourceFile = {
   content: string;
@@ -183,44 +181,18 @@ async function loadLocal(
   return { content: value.content, path: location.path, ref: "working tree" };
 }
 
-function cacheKey(location: SourceLocation): string {
-  return location.kind === "remote"
-    ? `${location.provider}:${location.repositoryUrl}@${location.ref}:${location.path}`
-    : `local:${location.path}`;
-}
-
-function remember(key: string, pending: Promise<SourceFile>): void {
-  sourceCache.set(key, pending);
-  while (sourceCache.size > MAX_CACHE_ENTRIES) {
-    const oldest = sourceCache.keys().next().value as string | undefined;
-    if (!oldest) break;
-    sourceCache.delete(oldest);
-  }
-  pending.catch(() => sourceCache.delete(key));
-}
-
-/** Load one source file. Authenticated responses live only in this in-memory LRU. */
+/**
+ * Load one source file. Nothing is remembered here: the query layer keeps
+ * the answer for the tab, in memory only, so an authenticated file never
+ * reaches Cache Storage.
+ */
 export function loadSourceCode(
   location: SourceLocation,
   token = "",
 ): Promise<SourceFile> {
-  const key = cacheKey(location);
-  const cached = sourceCache.get(key);
-  if (cached) {
-    sourceCache.delete(key);
-    sourceCache.set(key, cached);
-    return cached;
-  }
-  const pending =
-    location.kind === "remote"
-      ? loadRemote(location, token)
-      : loadLocal(location);
-  remember(key, pending);
-  return pending;
-}
-
-export function clearSourceCodeCache(): void {
-  sourceCache.clear();
+  return location.kind === "remote"
+    ? loadRemote(location, token)
+    : loadLocal(location);
 }
 
 /** The bounded window rendered by the popover, with the catalog line marked. */

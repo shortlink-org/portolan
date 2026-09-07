@@ -7,25 +7,20 @@ import {
   RefreshCw,
   Search,
 } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { useSearchParams } from "react-router";
-import type { Catalog } from "../catalog";
 import { catalog } from "../data";
 import { branchCompareHref } from "../lib/branch-compare";
 import { buildInfo } from "../lib/build-info";
-import { diffCatalogs, SEVERITIES } from "../lib/catalog-diff";
-import type { Change, Severity } from "../lib/catalog-diff";
+import { SEVERITIES } from "../lib/catalog-diff";
+import type { Severity } from "../lib/catalog-diff";
 import { rememberComparison, rememberedComparison } from "../lib/comparison-memory";
-import {
-  clearForgeCatalogCache,
-  forgeRepoFromUrl,
-  listForgeRefs,
-  loadForgeCatalog,
-} from "../lib/github-catalog";
-import type { ForgeRef, ForgeRepo } from "../lib/github-catalog";
-import { findRef } from "../lib/forge-refs";
+import { forgeRepoFromUrl } from "../lib/github-catalog";
+import type { ForgeRepo } from "../lib/github-catalog";
 import { plural } from "../lib/format";
+import { comparisonQuery, comparisonSide, forgeKeys, forgeRefsQuery } from "../lib/queries";
 import { useForgeAccess } from "../app/forge-access";
 
 const LABEL: Record<Severity, string> = {
@@ -40,30 +35,12 @@ const TONE: Record<Severity, string> = {
   change: "text-accent border-accent/30 bg-accent/5",
 };
 
-type Loaded = {
-  changes: Change[];
-  baseSha: string;
-  headSha: string;
-};
-
 function short(sha: string): string {
   return sha.slice(0, 7) || "unknown";
 }
 
-async function catalogFor(
-  name: string,
-  current: string,
-  repo: ForgeRepo,
-  refs: ForgeRef[],
-  token: string,
-): Promise<{ catalog: Catalog; sha: string }> {
-  if (name === current) return { catalog, sha: buildInfo.commit };
-  const ref = findRef(refs, name);
-  if (!ref) throw new Error(`Branch or tag “${name}” no longer exists on ${repo.provider === "gitlab" ? "GitLab" : "GitHub"}.`);
-  return {
-    catalog: await loadForgeCatalog(repo, ref.commit, { token }),
-    sha: ref.commit,
-  };
+function forgeName(repo: ForgeRepo): string {
+  return repo.provider === "gitlab" ? "GitLab" : "GitHub";
 }
 
 function RepositoryAccess({ repo, reveal }: { repo: ForgeRepo; reveal: boolean }) {
@@ -140,10 +117,7 @@ export function Changes() {
   const head = params.get("head") || "";
   const repo = forgeRepoFromUrl(buildInfo.repoUrl, buildInfo.forge);
   const access = useForgeAccess();
-  const [loaded, setLoaded] = useState<Loaded | null>(null);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [retry, setRetry] = useState(0);
+  const queryClient = useQueryClient();
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query.trim().toLowerCase());
   const [active, setActive] = useState<Set<Severity>>(() => new Set(SEVERITIES));
@@ -158,41 +132,28 @@ export function Changes() {
     if (previous) setParams(previous, { replace: true });
   }, [base, head, setParams]);
 
-  useEffect(() => {
-    let live = true;
-    setLoaded(null);
-    setError("");
-    if (!head) return;
-    if (!repo) {
-      setError("Runtime comparison needs a GitHub or GitLab repository URL in the build metadata.");
-      return;
-    }
-    setLoading(true);
-    listForgeRefs(repo, { token })
-      .then(async (refs) => {
-        const [before, after] = await Promise.all([
-          catalogFor(base, current, repo, refs, token),
-          catalogFor(head, current, repo, refs, token),
-        ]);
-        return {
-          changes: diffCatalogs(before.catalog, after.catalog),
-          baseSha: before.sha,
-          headSha: after.sha,
-        };
-      })
-      .then((result) => {
-        if (live) setLoaded(result);
-      })
-      .catch((cause: unknown) => {
-        if (live) setError(cause instanceof Error ? cause.message : String(cause));
-      })
-      .finally(() => {
-        if (live) setLoading(false);
-      });
-    return () => {
-      live = false;
-    };
-  }, [base, current, head, repo?.provider, repo?.webUrl, retry, token]);
+  // Refs first, shared with the header's picker; then the two catalogs and
+  // their diff, keyed by the commits the names resolved to. A name that no
+  // longer exists is not a request that failed but a side that did not
+  // resolve, so it is reported here and the second query never starts.
+  const refsQuery = useQuery({ ...forgeRefsQuery(repo, token), enabled: repo !== null && Boolean(head) });
+  const refs = refsQuery.data;
+  const bundled = { name: current, sha: buildInfo.commit, catalog };
+  const baseSide = refs && head ? comparisonSide(base, refs, bundled) : null;
+  const headSide = refs && head ? comparisonSide(head, refs, bundled) : null;
+  const missing = refs && head ? (!baseSide ? base : !headSide ? head : "") : "";
+  const comparison = useQuery(comparisonQuery(repo, token, baseSide, headSide));
+  const loaded = comparison.data ?? null;
+  const loading = refsQuery.isLoading || comparison.isLoading;
+  const error = !head
+    ? ""
+    : !repo
+      ? "Runtime comparison needs a GitHub or GitLab repository URL in the build metadata."
+      : refsQuery.error
+        ? refsQuery.error.message
+        : missing
+          ? `Branch or tag “${missing}” no longer exists on ${forgeName(repo)}.`
+          : comparison.error?.message ?? "";
 
   const shown = useMemo(() => {
     if (!loaded) return [];
@@ -212,9 +173,10 @@ export function Changes() {
     });
   };
 
+  // Forget every forge answer and ask again. Cache Storage is left alone:
+  // it holds catalogs by commit, and a commit does not change.
   const reload = () => {
-    clearForgeCatalogCache();
-    setRetry((value) => value + 1);
+    void queryClient.resetQueries({ queryKey: forgeKeys.all });
   };
 
   return (

@@ -6,9 +6,9 @@ import {
   useState,
 } from "react";
 import type { ReactNode } from "react";
-import { clearForgeCatalogCache } from "../lib/github-catalog";
+import { useQueryClient } from "@tanstack/react-query";
 import type { ForgeRepo } from "../lib/github-catalog";
-import { clearSourceCodeCache } from "../lib/source-code";
+import { forgeKeys, sourceKeys } from "../lib/queries";
 
 interface ForgeAccessState {
   tokenFor: (repo: ForgeRepo | string) => string;
@@ -26,10 +26,13 @@ const Context = createContext<ForgeAccessState | null>(null);
  */
 export function ForgeAccessProvider({ children }: { children: ReactNode }) {
   const [tokens, setTokens] = useState<Readonly<Record<string, string>>>({});
+  const queryClient = useQueryClient();
+  // A token change makes every forge answer somebody else's. Dropping the
+  // queries, not just marking them stale, also drops the old token's keys.
   const clearRuntimeCaches = useCallback(() => {
-    clearForgeCatalogCache();
-    clearSourceCodeCache();
-  }, []);
+    queryClient.removeQueries({ queryKey: forgeKeys.all });
+    queryClient.removeQueries({ queryKey: sourceKeys.all });
+  }, [queryClient]);
   const connect = useCallback((repo: ForgeRepo | string, token: string) => {
     const scope = forgeCredentialScope(repo);
     const next = token.trim();

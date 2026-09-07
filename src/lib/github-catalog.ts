@@ -60,10 +60,6 @@ type TreeResponse = {
   truncated: boolean;
 };
 
-const branchCache = new Map<string, Promise<ForgeRef[]>>();
-const tagCache = new Map<string, Promise<ForgeRef[]>>();
-const catalogCache = new Map<string, Promise<Catalog>>();
-
 /** A github.com repository page, reduced to the two API path segments. */
 export function githubRepoFromUrl(value: string): GitHubRepo | null {
   try {
@@ -294,41 +290,26 @@ async function fetchText(
 
 /** Branch heads as they exist on GitHub now, not when the site was built. */
 /**
- * Every page of a ref listing, once per repository and kind while the request
- * is anonymous. A token makes the answer the token's, so it is never kept.
+ * Every page of a ref listing. Sharing one listing between readers is the
+ * query layer's job (see lib/queries); this only walks the pages.
  */
-function listRefs(
-  cache: Map<string, Promise<ForgeRef[]>>,
-  repo: ForgeRepo,
-  access: ForgeAccess,
+async function listRefs(
   page: (index: number) => Promise<ForgeRef[]>,
 ): Promise<ForgeRef[]> {
-  const key = repoKey(repo);
-  const cached = access.token ? undefined : cache.get(key);
-  if (cached) return cached;
-
-  const pending = (async () => {
-    const refs: ForgeRef[] = [];
-    for (let index = 1; index <= MAX_REF_PAGES; index++) {
-      const found = await page(index);
-      refs.push(...found);
-      if (found.length < PAGE_SIZE) break;
-    }
-    return refs;
-  })();
-
-  if (!access.token) {
-    cache.set(key, pending);
-    pending.catch(() => cache.delete(key));
+  const refs: ForgeRef[] = [];
+  for (let index = 1; index <= MAX_REF_PAGES; index++) {
+    const found = await page(index);
+    refs.push(...found);
+    if (found.length < PAGE_SIZE) break;
   }
-  return pending;
+  return refs;
 }
 
 export function listGitHubBranches(
   repo: GitHubRepo,
   access: ForgeAccess = {},
 ): Promise<GitHubBranch[]> {
-  return listRefs(branchCache, repo, access, async (page) => {
+  return listRefs(async (page) => {
     const found = await githubJson<Array<{
       name: string;
       commit: { sha: string };
@@ -348,7 +329,7 @@ export function listGitLabBranches(
   repo: GitLabRepo,
   access: ForgeAccess = {},
 ): Promise<ForgeBranch[]> {
-  return listRefs(branchCache, repo, access, async (page) => {
+  return listRefs(async (page) => {
     const found = await gitlabJson<Array<{
       name: string;
       protected: boolean;
@@ -385,7 +366,7 @@ export function listGitHubTags(
   repo: GitHubRepo,
   access: ForgeAccess = {},
 ): Promise<ForgeRef[]> {
-  return listRefs(tagCache, repo, access, async (page) => {
+  return listRefs(async (page) => {
     const found = await githubJson<Array<{
       name: string;
       commit: { sha: string };
@@ -403,7 +384,7 @@ export function listGitLabTags(
   repo: GitLabRepo,
   access: ForgeAccess = {},
 ): Promise<ForgeRef[]> {
-  return listRefs(tagCache, repo, access, async (page) => {
+  return listRefs(async (page) => {
     const found = await gitlabJson<Array<{
       name: string;
       protected?: boolean;
@@ -483,162 +464,139 @@ async function inBatches<T, R>(
 
 /**
  * The merged catalog at an immutable commit. Public catalogs may use Cache
- * Storage; authenticated catalogs are kept only in this page load.
+ * Storage; authenticated catalogs are kept only in this page load, by the
+ * query cache.
  */
-export function loadGitHubCatalog(
+export async function loadGitHubCatalog(
   repo: GitHubRepo,
   sha: string,
   access: ForgeAccess = {},
 ): Promise<Catalog> {
   if (!/^[0-9a-f]{40}$/i.test(sha)) {
-    return Promise.reject(new Error("GitHub returned an invalid commit SHA."));
+    throw new Error("GitHub returned an invalid commit SHA.");
   }
-  const key = `${repoKey(repo)}@${sha}`;
-  const cached = access.token ? undefined : catalogCache.get(key);
-  if (cached) return cached;
+  const remembered = access.token ? null : await cachedCatalog(repo, sha);
+  if (remembered) return remembered;
 
-  const pending = (async () => {
-    const remembered = access.token ? null : await cachedCatalog(repo, sha);
-    if (remembered) return remembered;
-
-    const manifestText = access.token
-      ? await fetchText(
-          apiUrl(repo, `/contents/portolan.json?ref=${encodeURIComponent(sha)}`),
-          "portolan.json",
-          { headers: githubHeaders(access.token, "application/vnd.github.raw+json") },
-          githubError,
-        )
-      : await fetchText(rawUrl(repo, sha, "portolan.json"), "portolan.json");
-    const manifest = parseJson(manifestText, "portolan.json") as { sources?: unknown };
-    if (!Array.isArray(manifest.sources) || !manifest.sources.every((source) => typeof source === "string")) {
-      throw new Error("portolan.json has no valid sources list.");
-    }
-    const patterns = (manifest.sources as string[]).map(catalogGlob);
-    const tree = await githubJson<TreeResponse>(
-      apiUrl(repo, `/git/trees/${sha}?recursive=1`),
-      access.token,
-    );
-    if (tree.truncated) {
-      throw new Error("The GitHub tree is too large to load safely; its recursive response was truncated.");
-    }
-    const files = tree.tree
-      .filter((item) => item.type === "blob" && patterns.some((pattern) => pattern.test(item.path)))
-      .sort((a, b) => a.path.localeCompare(b.path));
-    if (files.length === 0) {
-      throw new Error("This branch has no catalog sources matching portolan.json.");
-    }
-    const declaredBytes = files.reduce((total, file) => total + (file.size ?? 0), 0);
-    if (declaredBytes > MAX_CATALOG_BYTES) {
-      throw new Error("The catalog is larger than the 25 MB runtime limit.");
-    }
-
-    const sources = await inBatches(files, 8, async (file): Promise<CatalogSource> => {
-      const text = access.token
-        ? file.sha
-          ? await fetchText(
-              apiUrl(repo, `/git/blobs/${file.sha}`),
-              file.path,
-              { headers: githubHeaders(access.token, "application/vnd.github.raw+json") },
-              githubError,
-            )
-          : await Promise.reject(new Error(`GitHub returned no blob SHA for ${file.path}.`))
-        : await fetchText(rawUrl(repo, sha, file.path), file.path);
-      return { path: file.path, catalog: parseJson(text, file.path) as SourceCatalog };
-    });
-    const merged = mergeCatalogs(sources);
-    const enriched = enrichCatalog(merged.catalog);
-    const catalog = validateCatalog(enriched.catalog);
-    if (!access.token) await rememberCatalog(repo, sha, catalog);
-    return catalog;
-  })();
-
-  if (!access.token) {
-    catalogCache.set(key, pending);
-    pending.catch(() => catalogCache.delete(key));
+  const manifestText = access.token
+    ? await fetchText(
+        apiUrl(repo, `/contents/portolan.json?ref=${encodeURIComponent(sha)}`),
+        "portolan.json",
+        { headers: githubHeaders(access.token, "application/vnd.github.raw+json") },
+        githubError,
+      )
+    : await fetchText(rawUrl(repo, sha, "portolan.json"), "portolan.json");
+  const manifest = parseJson(manifestText, "portolan.json") as { sources?: unknown };
+  if (!Array.isArray(manifest.sources) || !manifest.sources.every((source) => typeof source === "string")) {
+    throw new Error("portolan.json has no valid sources list.");
   }
-  return pending;
+  const patterns = (manifest.sources as string[]).map(catalogGlob);
+  const tree = await githubJson<TreeResponse>(
+    apiUrl(repo, `/git/trees/${sha}?recursive=1`),
+    access.token,
+  );
+  if (tree.truncated) {
+    throw new Error("The GitHub tree is too large to load safely; its recursive response was truncated.");
+  }
+  const files = tree.tree
+    .filter((item) => item.type === "blob" && patterns.some((pattern) => pattern.test(item.path)))
+    .sort((a, b) => a.path.localeCompare(b.path));
+  if (files.length === 0) {
+    throw new Error("This branch has no catalog sources matching portolan.json.");
+  }
+  const declaredBytes = files.reduce((total, file) => total + (file.size ?? 0), 0);
+  if (declaredBytes > MAX_CATALOG_BYTES) {
+    throw new Error("The catalog is larger than the 25 MB runtime limit.");
+  }
+
+  const sources = await inBatches(files, 8, async (file): Promise<CatalogSource> => {
+    const text = access.token
+      ? file.sha
+        ? await fetchText(
+            apiUrl(repo, `/git/blobs/${file.sha}`),
+            file.path,
+            { headers: githubHeaders(access.token, "application/vnd.github.raw+json") },
+            githubError,
+          )
+        : await Promise.reject(new Error(`GitHub returned no blob SHA for ${file.path}.`))
+      : await fetchText(rawUrl(repo, sha, file.path), file.path);
+    return { path: file.path, catalog: parseJson(text, file.path) as SourceCatalog };
+  });
+  const merged = mergeCatalogs(sources);
+  const enriched = enrichCatalog(merged.catalog);
+  const catalog = validateCatalog(enriched.catalog);
+  if (!access.token) await rememberCatalog(repo, sha, catalog);
+  return catalog;
 }
 
 /** A validated catalog read from GitLab's repository API at one commit. */
-export function loadGitLabCatalog(
+export async function loadGitLabCatalog(
   repo: GitLabRepo,
   sha: string,
   access: ForgeAccess = {},
 ): Promise<Catalog> {
   if (!/^[0-9a-f]{40}$/i.test(sha)) {
-    return Promise.reject(new Error("GitLab returned an invalid commit SHA."));
+    throw new Error("GitLab returned an invalid commit SHA.");
   }
-  const key = `${repoKey(repo)}@${sha}`;
-  const cached = access.token ? undefined : catalogCache.get(key);
-  if (cached) return cached;
+  const remembered = access.token ? null : await cachedCatalog(repo, sha);
+  if (remembered) return remembered;
 
-  const pending = (async () => {
-    const remembered = access.token ? null : await cachedCatalog(repo, sha);
-    if (remembered) return remembered;
+  const encodedSha = encodeURIComponent(sha);
+  const manifestText = await fetchText(
+    gitlabApiUrl(repo, `/repository/files/${encodeURIComponent("portolan.json")}/raw?ref=${encodedSha}`),
+    "portolan.json",
+    { headers: gitlabHeaders(access.token) },
+    gitlabError,
+  );
+  const manifest = parseJson(manifestText, "portolan.json") as { sources?: unknown };
+  if (!Array.isArray(manifest.sources) || !manifest.sources.every((source) => typeof source === "string")) {
+    throw new Error("portolan.json has no valid sources list.");
+  }
+  const patterns = (manifest.sources as string[]).map(catalogGlob);
 
-    const encodedSha = encodeURIComponent(sha);
-    const manifestText = await fetchText(
-      gitlabApiUrl(repo, `/repository/files/${encodeURIComponent("portolan.json")}/raw?ref=${encodedSha}`),
-      "portolan.json",
+  const tree: TreeItem[] = [];
+  for (let page = 1; page <= MAX_TREE_PAGES; page++) {
+    const found = await gitlabJson<Array<{
+      id: string;
+      path: string;
+      type: "blob" | "tree";
+    }>>(
+      gitlabApiUrl(repo, `/repository/tree?recursive=true&ref=${encodedSha}&per_page=${PAGE_SIZE}&page=${page}`),
+      access.token,
+    );
+    tree.push(...found.map((item) => ({ path: item.path, type: item.type, sha: item.id })));
+    if (found.length < PAGE_SIZE) break;
+    if (page === MAX_TREE_PAGES) {
+      throw new Error("The GitLab repository tree is larger than the runtime comparison limit.");
+    }
+  }
+
+  const files = tree
+    .filter((item) => item.type === "blob" && patterns.some((pattern) => pattern.test(item.path)))
+    .sort((a, b) => a.path.localeCompare(b.path));
+  if (files.length === 0) {
+    throw new Error("This branch has no catalog sources matching portolan.json.");
+  }
+
+  let loadedBytes = 0;
+  const sources = await inBatches(files, 8, async (file): Promise<CatalogSource> => {
+    const text = await fetchText(
+      gitlabApiUrl(repo, `/repository/files/${encodeURIComponent(file.path)}/raw?ref=${encodedSha}`),
+      file.path,
       { headers: gitlabHeaders(access.token) },
       gitlabError,
     );
-    const manifest = parseJson(manifestText, "portolan.json") as { sources?: unknown };
-    if (!Array.isArray(manifest.sources) || !manifest.sources.every((source) => typeof source === "string")) {
-      throw new Error("portolan.json has no valid sources list.");
+    loadedBytes += new TextEncoder().encode(text).byteLength;
+    if (loadedBytes > MAX_CATALOG_BYTES) {
+      throw new Error("The catalog is larger than the 25 MB runtime limit.");
     }
-    const patterns = (manifest.sources as string[]).map(catalogGlob);
-
-    const tree: TreeItem[] = [];
-    for (let page = 1; page <= MAX_TREE_PAGES; page++) {
-      const found = await gitlabJson<Array<{
-        id: string;
-        path: string;
-        type: "blob" | "tree";
-      }>>(
-        gitlabApiUrl(repo, `/repository/tree?recursive=true&ref=${encodedSha}&per_page=${PAGE_SIZE}&page=${page}`),
-        access.token,
-      );
-      tree.push(...found.map((item) => ({ path: item.path, type: item.type, sha: item.id })));
-      if (found.length < PAGE_SIZE) break;
-      if (page === MAX_TREE_PAGES) {
-        throw new Error("The GitLab repository tree is larger than the runtime comparison limit.");
-      }
-    }
-
-    const files = tree
-      .filter((item) => item.type === "blob" && patterns.some((pattern) => pattern.test(item.path)))
-      .sort((a, b) => a.path.localeCompare(b.path));
-    if (files.length === 0) {
-      throw new Error("This branch has no catalog sources matching portolan.json.");
-    }
-
-    let loadedBytes = 0;
-    const sources = await inBatches(files, 8, async (file): Promise<CatalogSource> => {
-      const text = await fetchText(
-        gitlabApiUrl(repo, `/repository/files/${encodeURIComponent(file.path)}/raw?ref=${encodedSha}`),
-        file.path,
-        { headers: gitlabHeaders(access.token) },
-        gitlabError,
-      );
-      loadedBytes += new TextEncoder().encode(text).byteLength;
-      if (loadedBytes > MAX_CATALOG_BYTES) {
-        throw new Error("The catalog is larger than the 25 MB runtime limit.");
-      }
-      return { path: file.path, catalog: parseJson(text, file.path) as SourceCatalog };
-    });
-    const merged = mergeCatalogs(sources);
-    const enriched = enrichCatalog(merged.catalog);
-    const catalog = validateCatalog(enriched.catalog);
-    if (!access.token) await rememberCatalog(repo, sha, catalog);
-    return catalog;
-  })();
-
-  if (!access.token) {
-    catalogCache.set(key, pending);
-    pending.catch(() => catalogCache.delete(key));
-  }
-  return pending;
+    return { path: file.path, catalog: parseJson(text, file.path) as SourceCatalog };
+  });
+  const merged = mergeCatalogs(sources);
+  const enriched = enrichCatalog(merged.catalog);
+  const catalog = validateCatalog(enriched.catalog);
+  if (!access.token) await rememberCatalog(repo, sha, catalog);
+  return catalog;
 }
 
 export function loadForgeCatalog(
@@ -650,12 +608,3 @@ export function loadForgeCatalog(
     ? loadGitHubCatalog(repo, sha, access)
     : loadGitLabCatalog(repo, sha, access);
 }
-
-/** Test-only: runtime caches must never leak between isolated cases. */
-export function clearGitHubCatalogCache(): void {
-  branchCache.clear();
-  tagCache.clear();
-  catalogCache.clear();
-}
-
-export const clearForgeCatalogCache = clearGitHubCatalogCache;

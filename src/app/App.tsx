@@ -56,6 +56,8 @@ import { ShortcutsSheet, useShortcuts } from "./shortcuts";
 import { Toaster } from "./toast";
 import { useUiStore } from "./ui-store";
 import { ForgeAccessProvider } from "./forge-access";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "./query-client";
 import { AnimatePresence, MotionProvider, m, page } from "../lib/motion";
 import { useChatUi } from "../chat/store";
 import { projectPreview } from "../lib/project-preview";
@@ -414,13 +416,15 @@ export function App() {
     <ThemeProvider>
       <MotionProvider>
         <DensityProvider>
-          <ForgeAccessProvider>
-            <SearchProvider>
-              <BrowserRouter basename={import.meta.env.BASE_URL}>
-                <Shell />
-              </BrowserRouter>
-            </SearchProvider>
-          </ForgeAccessProvider>
+          <QueryClientProvider client={queryClient}>
+            <ForgeAccessProvider>
+              <SearchProvider>
+                <BrowserRouter basename={import.meta.env.BASE_URL}>
+                  <Shell />
+                </BrowserRouter>
+              </SearchProvider>
+            </ForgeAccessProvider>
+          </QueryClientProvider>
         </DensityProvider>
       </MotionProvider>
     </ThemeProvider>

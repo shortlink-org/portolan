@@ -1,6 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  clearSourceCodeCache,
   loadSourceCode,
   sourceLanguage,
   sourceGrammar,
@@ -28,7 +27,6 @@ const gitlab: RemoteSourceLocation = {
   href: "https://gitlab.example.test/platform/acme/shop/-/blob/a/internal/cart/cart.go#L3",
 };
 
-beforeEach(() => clearSourceCodeCache());
 afterEach(() => vi.unstubAllGlobals());
 
 describe("loadSourceCode", () => {
@@ -73,18 +71,18 @@ describe("loadSourceCode", () => {
     expect(error).toMatchObject({ status: 404, authRequired: true });
   });
 
-  it("does not cache rejected requests, but reuses a successful immutable file", async () => {
+  it("asks the forge every time; remembering the answer is the query layer's job", async () => {
     const fetch = vi
       .fn()
       .mockResolvedValueOnce(new Response("", { status: 404 }))
-      .mockResolvedValue(new Response("ok\n", { status: 200 }));
+      .mockImplementation(async () => new Response("ok\n", { status: 200 }));
     vi.stubGlobal("fetch", fetch);
     await expect(loadSourceCode(github)).rejects.toBeInstanceOf(
       SourceLoadError,
     );
     await loadSourceCode(github, "token");
     await loadSourceCode(github, "token");
-    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(fetch).toHaveBeenCalledTimes(3);
   });
 
   it("uses the localhost-only endpoint for a local source", async () => {
@@ -124,7 +122,6 @@ describe("loadSourceCode", () => {
         ),
     );
     await expect(loadSourceCode(github)).rejects.toThrow("binary file");
-    clearSourceCodeCache();
     vi.stubGlobal(
       "fetch",
       vi
