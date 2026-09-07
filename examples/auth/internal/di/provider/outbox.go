@@ -14,13 +14,10 @@ import (
 	sdkwatermill "github.com/shortlink-org/go-sdk/watermill"
 	"go.opentelemetry.io/otel"
 
-	lockoutdomain "github.com/shortlink-org/portolan/examples/auth/internal/domain/lockout"
-	sessiondomain "github.com/shortlink-org/portolan/examples/auth/internal/domain/session"
-	userdomain "github.com/shortlink-org/portolan/examples/auth/internal/domain/user"
-	lockoutrepo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/lockout"
-	sessionrepo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/session"
-	userrepo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/user"
-	"github.com/shortlink-org/portolan/examples/auth/internal/pkg/messaging"
+	lockoutrepo "github.com/shortlink-org/portolan/examples/auth/internal/lockout/infrastructure/repository"
+	"github.com/shortlink-org/portolan/examples/auth/internal/platform/messaging"
+	sessionrepo "github.com/shortlink-org/portolan/examples/auth/internal/session/infrastructure/repository"
+	userrepo "github.com/shortlink-org/portolan/examples/auth/internal/user/infrastructure/repository"
 )
 
 // Outbox binds the Publisher ports to the outbox and builds the relay that
@@ -33,12 +30,6 @@ import (
 var Outbox = wire.NewSet(
 	ProvideOutboxPublisher,
 	messaging.NewBackend,
-	userrepo.NewPublisher,
-	wire.Bind(new(userdomain.Publisher), new(*userrepo.Publisher)),
-	sessionrepo.NewPublisher,
-	wire.Bind(new(sessiondomain.Publisher), new(*sessionrepo.Publisher)),
-	lockoutrepo.NewPublisher,
-	wire.Bind(new(lockoutdomain.Publisher), new(*lockoutrepo.Publisher)),
 	ProvideWatermill,
 	ProvideRelay,
 )

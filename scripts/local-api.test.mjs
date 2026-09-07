@@ -135,6 +135,21 @@ describe("local project setup", () => {
     expect(discovery.detections.find((item) => item.plugin === "go-domain")?.evidence).toBe("internal/domain/invoice/invoice.go");
   });
 
+  it("offers the Go domain extractor for a feature-sliced aggregate", () => {
+    const root = workspace();
+    mkdirSync(join(root, "services/billing/internal/invoice/domain"), { recursive: true });
+    mkdirSync(join(root, "services/billing/internal/invoice/infrastructure/repository/migrations"), { recursive: true });
+    mkdirSync(join(root, "services/billing/internal/payment/infrastructure/repository/migrations"), { recursive: true });
+    writeFileSync(join(root, "services/billing/internal/invoice/domain/invoice.go"), "package invoice\n\ntype Invoice struct{}\n");
+    writeFileSync(join(root, "services/billing/internal/invoice/infrastructure/repository/migrations/0001_invoice.sql"), "CREATE TABLE invoices (id text PRIMARY KEY);\n");
+    writeFileSync(join(root, "services/billing/internal/payment/infrastructure/repository/migrations/0001_payment.sql"), "CREATE TABLE payments (id text PRIMARY KEY);\n");
+    const discovery = discoverProject(root, "services/billing");
+    expect(discovery.detections.map((item) => item.plugin)).toContain("go-domain");
+    expect(discovery.detections.find((item) => item.plugin === "go-domain")?.evidence).toBe("internal/invoice/domain/invoice.go");
+    expect(discovery.detections.find((item) => item.plugin === "sql")?.options).toEqual({});
+    expect(discovery.detections.find((item) => item.plugin === "sql")?.evidence).toBe("2 repository packages");
+  });
+
   it("offers the River extractor when the Go module uses River", () => {
     const root = workspace();
     writeFileSync(join(root, "services/billing/go.mod"), "module example.com/billing\nrequire github.com/riverqueue/river v0.26.0\n");

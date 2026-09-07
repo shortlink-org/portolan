@@ -13,3 +13,8 @@
 | [auth.0009](0009-a-lock-answers-like-a-wrong-password.md) | A locked account answers exactly like a wrong password | accepted | 2026-09-04 |
 | [auth.0010](0010-a-revocation-is-written-to-the-cache.md) | A revocation is written to the cache, not only dropped from it | accepted | 2026-09-05 |
 | [auth.0011](0011-the-relay-feeds-a-bus-and-policies-subscribe-to-the-bus.md) | The relay reads every topic and hands it to a bus; policies subscribe to the bus | accepted | 2026-09-05 |
+| [auth.0012](0012-feature-slices-own-their-layers.md) | Feature slices own their layers and local assembly | accepted | 2026-09-07 |
+| [auth.0013](0013-domain-events-become-integration-events-at-the-outbox.md) | Domain events become integration events at the transactional outbox boundary | accepted | 2026-09-07 |
+| [auth.0014](0014-session-token-lifecycle.md) | Session tokens are opaque, stored, revocable, and expire after 24 hours | accepted | 2026-09-07 |
+| [auth.0015](0015-errors-are-owned-and-classified-at-the-edge.md) | Errors are owned by their layer and classified at the edge | accepted | 2026-09-07 |
+| [auth.0016](0016-password-cryptography-is-an-application-port.md) | Password cryptography is an application port | accepted | 2026-09-07 |

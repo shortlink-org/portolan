@@ -29,6 +29,7 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	}
 
 	svcID := serviceID(opts.Context, opts.Service)
+	layout := discoverLayout(root)
 
 	readme := readFile(filepath.Join(root, "README.md"))
 	service := catalog.Service{
@@ -46,15 +47,15 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	// use case sits under, so they are gathered first and handed out below.
 	// What exposes each one is read from the transport layer beside it, and the
 	// endpoints that came back are where the flows start.
-	exposures, endpoints := extractTransport(root, b)
-	operations := extractOperations(root, exposures, b)
+	exposures, endpoints := extractTransport(root, layout, b)
+	operations := extractOperations(root, layout, exposures, b)
 
-	for _, dir := range subdirs(root, "internal/domain") {
-		aggregate, ok := extractAggregate(root, dir, svcID, b)
+	for _, aggregateName := range sortedKeys(layout.domains) {
+		aggregate, ok := extractAggregate(root, aggregateName, layout.domains[aggregateName], layout, svcID, b)
 		if !ok {
 			continue
 		}
-		aggregate.Operations = operations[dir]
+		aggregate.Operations = operations[aggregateName]
 		if aggregate.Operations == nil {
 			aggregate.Operations = []catalog.Operation{}
 		}
@@ -63,13 +64,13 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	}
 
 	if len(service.Aggregates) == 0 {
-		b.Warn(svcID, "no aggregates found under internal/domain; the fragment describes a service with no model")
+		b.Warn(svcID, "no aggregate domain packages found; supported layouts include internal/domain/<aggregate> and internal/<aggregate>/domain")
 		service.Aggregates = []catalog.Aggregate{}
 	}
 
 	for aggregate, ops := range operations {
 		if !hasAggregate(service.Aggregates, aggregateID(svcID, slug(aggregate))) {
-			b.Warn(svcID, "internal/application/"+aggregate+" has "+plural(len(ops))+" but there is no matching aggregate under internal/domain")
+			b.Warn(svcID, "application slice "+aggregate+" has "+plural(len(ops))+" but there is no matching aggregate domain package")
 		}
 	}
 
@@ -83,7 +84,7 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 		peers:     opts.Peers,
 		externals: opts.Externals,
 		events:    opts.Events,
-	}, endpoints, eventIDs(service.Aggregates), b)
+	}, layout, endpoints, eventIDs(service.Aggregates), b)
 	// What the service calls is read off its flows: the generated client in
 	// the tree names the rpc, and a step on it is the call being made.
 	service.Consumes = calls

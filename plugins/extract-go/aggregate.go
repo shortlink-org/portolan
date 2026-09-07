@@ -10,31 +10,31 @@ import (
 	"github.com/shortlink-org/portolan/plugin"
 )
 
-// extractAggregate reads one package under internal/domain.
+// extractAggregate reads one discovered aggregate domain package.
 //
 // The layout is the claim: a directory there is an aggregate, the struct named
 // after it is the root, `vo/` holds its value objects and `event/` the facts it
 // publishes. Nothing is inferred from a comment or a marker interface, so a
 // package that does not follow the layout produces a diagnostic instead of a
 // half-right aggregate.
-func extractAggregate(root, dir, svcID string, b *plugin.Builder) (catalog.Aggregate, bool) {
-	pkg, err := parsePkg(root, path.Join("internal/domain", dir))
+func extractAggregate(root, aggregateName, domainPath string, layout sourceLayout, svcID string, b *plugin.Builder) (catalog.Aggregate, bool) {
+	pkg, err := parsePkg(root, domainPath)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			b.Warn(aggregateID(svcID, dir), "internal/domain/"+dir+" could not be parsed: "+err.Error())
+			b.Warn(aggregateID(svcID, aggregateName), domainPath+" could not be parsed: "+err.Error())
 		}
 
 		return catalog.Aggregate{}, false
 	}
 
-	id := aggregateID(svcID, slug(dir))
+	id := aggregateID(svcID, slug(aggregateName))
 	name := title(pkg.name)
 
 	aggregate := catalog.Aggregate{
 		ID:           id,
-		Slug:         slug(dir),
+		Slug:         slug(aggregateName),
 		Name:         name,
-		Readme:       aggregateReadme(root, dir, pkg.name, name, pkg.doc()),
+		Readme:       aggregateReadme(root, domainPath, pkg.name, name, pkg.doc()),
 		Entities:     []catalog.Block{},
 		ValueObjects: []catalog.Block{},
 		Operations:   []catalog.Operation{},
@@ -64,38 +64,38 @@ func extractAggregate(root, dir, svcID string, b *plugin.Builder) (catalog.Aggre
 	aggregate.Root = pascal(pkg.name)
 	if !hasBlock(aggregate.Entities, aggregate.Root) {
 		if len(aggregate.Entities) == 0 {
-			b.Warn(id, "internal/domain/"+dir+" declares no exported struct, so the aggregate has no root")
+			b.Warn(id, domainPath+" declares no exported struct, so the aggregate has no root")
 
 			return catalog.Aggregate{}, false
 		}
 
-		b.Warn(id, "internal/domain/"+dir+" has no struct called "+pascal(pkg.name)+", so it is not read as an aggregate; the root is the struct named after its package")
+		b.Warn(id, domainPath+" has no struct called "+pascal(pkg.name)+", so it is not read as an aggregate; the root is the struct named after its package")
 
 		return catalog.Aggregate{}, false
 	}
 
-	aggregate.ValueObjects = extractValueObjects(root, dir, id, b)
-	aggregate.Enums = extractEnums(root, dir, id, pkg, b)
-	aggregate.Events = extractEvents(root, dir, id, b)
+	aggregate.ValueObjects = extractValueObjects(root, domainPath, id, b)
+	aggregate.Enums = extractEnums(root, domainPath, id, pkg, b)
+	aggregate.Events = extractEvents(root, aggregateName, domainPath, layout, id, b)
 	aggregate.Lifecycle = readLifecycle(pkg, aggregate.Root, aggregate.Events, id, b)
 
 	return aggregate, true
 }
 
-// extractValueObjects reads internal/domain/<aggregate>/vo/*.
+// extractValueObjects reads vo/* below a discovered aggregate domain package.
 //
 // Each directory there is one value object, and the exported struct inside it
 // is its shape. `rules/` is skipped: a validation specification is how the
 // value object refuses a value, not part of what it holds.
-func extractValueObjects(root, dir, aggID string, b *plugin.Builder) []catalog.Block {
+func extractValueObjects(root, domainPath, aggID string, b *plugin.Builder) []catalog.Block {
 	out := []catalog.Block{}
 
-	for _, name := range subdirs(root, path.Join("internal/domain", dir, "vo")) {
+	for _, name := range subdirs(root, path.Join(domainPath, "vo")) {
 		if name == "rules" {
 			continue
 		}
 
-		pkg, err := parsePkg(root, path.Join("internal/domain", dir, "vo", name))
+		pkg, err := parsePkg(root, path.Join(domainPath, "vo", name))
 		if err != nil {
 			continue
 		}
@@ -128,7 +128,7 @@ func extractValueObjects(root, dir, aggID string, b *plugin.Builder) []catalog.B
 		}
 
 		if !found {
-			b.Warn(aggID, "internal/domain/"+dir+"/vo/"+name+" declares no exported struct; skipped")
+			b.Warn(aggID, path.Join(domainPath, "vo", name)+" declares no exported struct; skipped")
 		}
 	}
 
@@ -164,8 +164,8 @@ func exported(name string) bool {
 // for whoever opens the file next. Same preference as operationDoc, for the
 // same reason. The comment is a fallback, not a second source: a package that
 // has both is described by its README alone.
-func aggregateReadme(root, dir, pkgName, name, doc string) string {
-	if md := readFile(filepath.Join(root, "internal", "domain", filepath.FromSlash(dir), "README.md")); md != "" {
+func aggregateReadme(root, domainPath, pkgName, name, doc string) string {
+	if md := readFile(filepath.Join(root, filepath.FromSlash(domainPath), "README.md")); md != "" {
 		return md
 	}
 

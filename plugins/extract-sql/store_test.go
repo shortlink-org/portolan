@@ -48,8 +48,11 @@ func TestOneStoreHoldsEveryAggregatesTables(t *testing.T) {
 	for _, table := range store.Tables {
 		persists[table.Name] = table.Persists.Aggregate
 	}
-	if persists["users"] != "auth.auth.user" || persists["sessions"] != "auth.auth.session" {
+	if persists["users"] != "auth.auth.user" || persists["sessions"] != "auth.auth.session" || persists["lockouts"] != "auth.auth.lockout" {
 		t.Errorf("tables are linked to the wrong aggregates: %v", persists)
+	}
+	if store.Source != "../../examples/auth/internal/*/infrastructure/repository" {
+		t.Errorf("feature repository source = %q", store.Source)
 	}
 }
 

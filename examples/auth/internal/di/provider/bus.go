@@ -3,14 +3,13 @@ package provider
 import (
 	"github.com/google/wire"
 
-	"github.com/shortlink-org/portolan/examples/auth/internal/application/policy"
-	userevent "github.com/shortlink-org/portolan/examples/auth/internal/domain/user/event"
-	lockoutbus "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/bus/lockout"
-	sessionbus "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/bus/session"
-	userbus "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/bus/user"
-	lockoutdto "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/lockout/dto"
-	sessiondto "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/session/dto"
-	userdto "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/user/dto"
+	lockoutbus "github.com/shortlink-org/portolan/examples/auth/internal/lockout/infrastructure/bus"
+	lockoutevent "github.com/shortlink-org/portolan/examples/auth/internal/lockout/integration/event"
+	sessionbus "github.com/shortlink-org/portolan/examples/auth/internal/session/infrastructure/bus"
+	"github.com/shortlink-org/portolan/examples/auth/internal/session/infrastructure/messaging/policy"
+	sessionevent "github.com/shortlink-org/portolan/examples/auth/internal/session/integration/event"
+	userbus "github.com/shortlink-org/portolan/examples/auth/internal/user/infrastructure/bus"
+	userevent "github.com/shortlink-org/portolan/examples/auth/internal/user/integration/event"
 )
 
 // Bus builds the buses the relay hands events to, and says who listens.
@@ -43,12 +42,12 @@ type Buses struct {
 // whose events leave the outbox and reach nobody, on purpose, until something
 // here or beyond this service wants them.
 func ProvideBuses(revokeSessions *policy.RevokeSessionsOnPasswordChange) *Buses {
-	users := userbus.NewInProc(userdto.Topic)
-	users.Subscribe(userevent.TopicPasswordChanged, revokeSessions.Handle)
+	users := userbus.NewInProc(userevent.Topic)
+	users.Subscribe(userevent.NamePasswordChanged, revokeSessions.Handle)
 
 	return &Buses{
 		Users:    users,
-		Sessions: sessionbus.NewInProc(sessiondto.Topic),
-		Lockouts: lockoutbus.NewInProc(lockoutdto.Topic),
+		Sessions: sessionbus.NewInProc(sessionevent.Topic),
+		Lockouts: lockoutbus.NewInProc(lockoutevent.Topic),
 	}
 }

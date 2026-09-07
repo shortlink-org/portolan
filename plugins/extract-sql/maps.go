@@ -5,7 +5,6 @@ import (
 	"go/parser"
 	"go/token"
 	"os"
-	"path"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -38,10 +37,10 @@ import (
 // to argument to field is unambiguous, or the column gets no `maps` at all -
 // a blank is a reader looking the column up themselves, and a wrong one is a
 // reader believing something untrue.
-func readMaps(root, repositories, aggregate string, b *plugin.Builder) map[string]map[string]string {
+func readMaps(root, repositoryDir, aggregate string, b *plugin.Builder) map[string]map[string]string {
 	out := map[string]map[string]string{}
 
-	dir := path.Join(repositories, aggregate)
+	dir := repositoryDir
 	entries, err := os.ReadDir(filepath.Join(root, filepath.FromSlash(dir)))
 	if err != nil {
 		return out

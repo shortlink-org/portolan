@@ -1,0 +1,53 @@
+all: false
+template: testify
+formatter: goimports
+force-file-write: true
+log-level: warn
+inpackage: false
+
+packages:
+  github.com/shortlink-org/portolan/examples/auth/internal/user/domain:
+    interfaces:
+      Repository:
+        configs:
+          - dir: "{{.ConfigDir}}/application/register"
+            filename: mock_repository_test.go
+            pkgname: register_test
+          - dir: "{{.ConfigDir}}/application/get"
+            filename: mock_repository_test.go
+            pkgname: get_test
+          - dir: "{{.ConfigDir}}/application/check_credentials"
+            filename: mock_repository_test.go
+            pkgname: check_credentials_test
+          - dir: "{{.ConfigDir}}/application/change_password"
+            filename: mock_repository_test.go
+            pkgname: change_password_test
+
+  github.com/shortlink-org/portolan/examples/auth/internal/user/application/register:
+    interfaces:
+      PasswordHasher:
+        configs:
+          - dir: "{{.ConfigDir}}/application/register"
+            filename: mock_password_hasher_test.go
+            pkgname: register_test
+
+  github.com/shortlink-org/portolan/examples/auth/internal/user/application/check_credentials:
+    interfaces:
+      PasswordVerifier:
+        configs:
+          - dir: "{{.ConfigDir}}/application/check_credentials"
+            filename: mock_password_verifier_test.go
+            pkgname: check_credentials_test
+      Lockout:
+        configs:
+          - dir: "{{.ConfigDir}}/application/check_credentials"
+            filename: mock_lockout_test.go
+            pkgname: check_credentials_test
+
+  github.com/shortlink-org/portolan/examples/auth/internal/user/application/change_password:
+    interfaces:
+      PasswordHasher:
+        configs:
+          - dir: "{{.ConfigDir}}/application/change_password"
+            filename: mock_password_hasher_test.go
+            pkgname: change_password_test

@@ -14,25 +14,26 @@ import (
 	sdkoutbox "github.com/shortlink-org/go-sdk/outbox"
 	sdkuow "github.com/shortlink-org/go-sdk/uow"
 
-	"github.com/shortlink-org/portolan/examples/auth/internal/application/policy"
-	"github.com/shortlink-org/portolan/examples/auth/internal/application/session/usecases/end_after_credential_change"
 	"github.com/shortlink-org/portolan/examples/auth/internal/di/provider"
-	lockoutevent "github.com/shortlink-org/portolan/examples/auth/internal/domain/lockout/event"
-	"github.com/shortlink-org/portolan/examples/auth/internal/domain/session"
-	sessionevent "github.com/shortlink-org/portolan/examples/auth/internal/domain/session/event"
-	userevent "github.com/shortlink-org/portolan/examples/auth/internal/domain/user/event"
-	lockoutrepo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/lockout"
-	sessionrepo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/session"
-	userrepo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/user"
-	"github.com/shortlink-org/portolan/examples/auth/internal/pkg/messaging"
-	"github.com/shortlink-org/portolan/examples/auth/internal/pkg/postgrestest"
+	lockoutdomainevent "github.com/shortlink-org/portolan/examples/auth/internal/lockout/domain/event"
+	lockoutrepo "github.com/shortlink-org/portolan/examples/auth/internal/lockout/infrastructure/repository"
+	lockoutevent "github.com/shortlink-org/portolan/examples/auth/internal/lockout/integration/event"
+	"github.com/shortlink-org/portolan/examples/auth/internal/platform/messaging"
+	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/end_after_credential_change"
+	"github.com/shortlink-org/portolan/examples/auth/internal/session/domain"
+	"github.com/shortlink-org/portolan/examples/auth/internal/session/infrastructure/messaging/policy"
+	sessionrepo "github.com/shortlink-org/portolan/examples/auth/internal/session/infrastructure/repository"
+	sessionevent "github.com/shortlink-org/portolan/examples/auth/internal/session/integration/event"
+	userdomainevent "github.com/shortlink-org/portolan/examples/auth/internal/user/domain/event"
+	userrepo "github.com/shortlink-org/portolan/examples/auth/internal/user/infrastructure/repository"
+	userevent "github.com/shortlink-org/portolan/examples/auth/internal/user/integration/event"
 )
 
 var change = time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
 
 func TestMain(m *testing.M) {
 	code := m.Run()
-	postgrestest.Stop()
+	stopPostgres()
 	os.Exit(code)
 }
 
@@ -61,9 +62,9 @@ func (s *seen) count(name string) int {
 func TestEverythingWrittenToTheOutboxIsRead(t *testing.T) {
 	ctx := context.Background()
 
-	store, router, unit := postgrestest.StoreWithDB(t,
-		postgrestest.Source{FS: sessionrepo.Migrations, Name: sessionrepo.Name},
-		postgrestest.Source{FS: sdkoutbox.Migrations, Name: "outbox"},
+	store, router, unit := testStoreWithDB(t,
+		migrationSource{FS: sessionrepo.Migrations, Name: sessionrepo.Name},
+		migrationSource{FS: sdkoutbox.Migrations, Name: "outbox"},
 	)
 
 	appended, err := sdkoutbox.NewPublisher(sdkuow.FromContext)
@@ -113,14 +114,14 @@ func TestEverythingWrittenToTheOutboxIsRead(t *testing.T) {
 		t.Fatal(err)
 	}
 	err = unit.Do(ctx, func(ctx context.Context) error {
-		if err := users.Publish(ctx, []userevent.Event{
-			userevent.NewUserRegistered("u1", "ada@example.com", issued),
-			userevent.NewPasswordChanged("u1", "", change),
+		if err := users.Publish(ctx, []userdomainevent.Event{
+			userdomainevent.NewUserRegistered("u1", "ada@example.com", issued),
+			userdomainevent.NewPasswordChanged("u1", "", change),
 		}); err != nil {
 			return err
 		}
-		return lockouts.Publish(ctx, []lockoutevent.Event{
-			lockoutevent.NewAccountLocked("u2", change.Add(15*time.Minute), change),
+		return lockouts.Publish(ctx, []lockoutdomainevent.Event{
+			lockoutdomainevent.NewAccountLocked("u2", change.Add(15*time.Minute), change),
 		})
 	})
 	if err != nil {

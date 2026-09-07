@@ -1,0 +1,64 @@
+all: false
+template: testify
+formatter: goimports
+force-file-write: true
+log-level: warn
+inpackage: false
+
+packages:
+  github.com/shortlink-org/portolan/examples/auth/internal/session/domain:
+    interfaces:
+      Repository:
+        configs:
+          - dir: "{{.ConfigDir}}/application/login"
+            filename: mock_repository_test.go
+            pkgname: login_test
+          - dir: "{{.ConfigDir}}/application/logout"
+            filename: mock_repository_test.go
+            pkgname: logout_test
+          - dir: "{{.ConfigDir}}/application/validate"
+            filename: mock_repository_test.go
+            pkgname: validate_test
+          - dir: "{{.ConfigDir}}/application/end_after_credential_change"
+            filename: mock_repository_test.go
+            pkgname: end_after_credential_change_test
+          - dir: "{{.ConfigDir}}/infrastructure/repository"
+            filename: mock_repository_test.go
+            pkgname: session_test
+
+  github.com/shortlink-org/portolan/examples/auth/internal/session/application/login:
+    interfaces:
+      Authenticator:
+        configs:
+          - dir: "{{.ConfigDir}}/application/login"
+            filename: mock_authenticator_test.go
+            pkgname: login_test
+      Risk:
+        configs:
+          - dir: "{{.ConfigDir}}/application/login"
+            filename: mock_risk_test.go
+            pkgname: login_test
+
+  github.com/shortlink-org/portolan/examples/auth/internal/session/infrastructure/messaging/policy:
+    interfaces:
+      SessionEnder:
+        configs:
+          - dir: "{{.ConfigDir}}/infrastructure/messaging/policy"
+            filename: mock_session_ender_test.go
+            pkgname: policy_test
+
+  github.com/shortlink-org/go-sdk/cache:
+    interfaces:
+      Cache:
+        configs:
+          - dir: "{{.ConfigDir}}/infrastructure/repository"
+            filename: mock_cache_test.go
+            pkgname: session_test
+
+  github.com/jackc/pgx/v5:
+    interfaces:
+      Tx:
+        configs:
+          - dir: "{{.ConfigDir}}/infrastructure/repository"
+            filename: mock_tx_test.go
+            pkgname: session_test

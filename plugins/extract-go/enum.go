@@ -23,16 +23,16 @@ import (
 	"github.com/shortlink-org/portolan/plugin"
 )
 
-func extractEnums(root, dir, aggID string, main *pkg, b *plugin.Builder) []catalog.Enum {
+func extractEnums(root, domainPath, aggID string, main *pkg, b *plugin.Builder) []catalog.Enum {
 	var out []catalog.Enum
 
 	out = append(out, enumsIn(main, aggID, "")...)
 
-	for _, name := range subdirs(root, path.Join("internal/domain", dir, "vo")) {
+	for _, name := range subdirs(root, path.Join(domainPath, "vo")) {
 		if name == "rules" {
 			continue
 		}
-		p, err := parsePkg(root, path.Join("internal/domain", dir, "vo", name))
+		p, err := parsePkg(root, path.Join(domainPath, "vo", name))
 		if err != nil {
 			continue
 		}
@@ -41,7 +41,7 @@ func extractEnums(root, dir, aggID string, main *pkg, b *plugin.Builder) []catal
 		out = append(out, enumsIn(p, aggID, p.name)...)
 	}
 
-	if p, err := parsePkg(root, path.Join("internal/domain", dir, "event")); err == nil {
+	if p, err := parsePkg(root, path.Join(domainPath, "event")); err == nil {
 		out = append(out, enumsIn(p, aggID, "")...)
 	}
 

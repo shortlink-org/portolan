@@ -1,0 +1,96 @@
+version: "2"
+
+linters:
+  enable:
+    - depguard
+  settings:
+    depguard:
+      rules:
+        # Package entries are prefixes in depguard. Denying the service's
+        # internal root and allowing a longer prefix means a newly added layer
+        # or feature is forbidden automatically rather than added to a list.
+        user-domain:
+          list-mode: lax
+          files:
+            - "**/internal/user/domain/**/*.go"
+          allow:
+            - &user-domain github.com/shortlink-org/portolan/examples/auth/internal/user/domain
+          deny:
+            - pkg: &auth-internal github.com/shortlink-org/portolan/examples/auth/internal
+              desc: user domain may depend only on its own domain
+
+        session-domain:
+          list-mode: lax
+          files:
+            - "**/internal/session/domain/**/*.go"
+          allow:
+            - &session-domain github.com/shortlink-org/portolan/examples/auth/internal/session/domain
+          deny:
+            - pkg: *auth-internal
+              desc: session domain may depend only on its own domain
+
+        lockout-domain:
+          list-mode: lax
+          files:
+            - "**/internal/lockout/domain/**/*.go"
+          allow:
+            - &lockout-domain github.com/shortlink-org/portolan/examples/auth/internal/lockout/domain
+          deny:
+            - pkg: *auth-internal
+              desc: lockout domain may depend only on its own domain
+
+        user-application:
+          list-mode: lax
+          files:
+            - "**/internal/user/application/**/*.go"
+          allow:
+            - github.com/shortlink-org/portolan/examples/auth/internal/user/application
+            - *user-domain
+          deny:
+            - pkg: *auth-internal
+              desc: user application may depend only on its application and domain
+
+        session-application:
+          list-mode: lax
+          files:
+            - "**/internal/session/application/**/*.go"
+          allow:
+            - github.com/shortlink-org/portolan/examples/auth/internal/session/application
+            - *session-domain
+          deny:
+            - pkg: *auth-internal
+              desc: session application may depend only on its application and domain
+
+        lockout-application:
+          list-mode: lax
+          files:
+            - "**/internal/lockout/application/**/*.go"
+          allow:
+            - github.com/shortlink-org/portolan/examples/auth/internal/lockout/application
+            - *lockout-domain
+          deny:
+            - pkg: *auth-internal
+              desc: lockout application may depend only on its application and domain
+
+        application-tests:
+          files:
+            - "**/internal/*/application/**/*_test.go"
+          deny:
+            - pkg: github.com/testcontainers/testcontainers-go
+              desc: containers belong in infrastructure integration tests
+
+        integration-contracts:
+          list-mode: lax
+          files:
+            - "**/internal/*/integration/**/*.go"
+          allow:
+            - github.com/shortlink-org/portolan/examples/auth/internal/user/integration
+            - github.com/shortlink-org/portolan/examples/auth/internal/session/integration
+            - github.com/shortlink-org/portolan/examples/auth/internal/lockout/integration
+            - github.com/shortlink-org/portolan/examples/auth/internal/user/domain/event
+            - github.com/shortlink-org/portolan/examples/auth/internal/session/domain/event
+            - github.com/shortlink-org/portolan/examples/auth/internal/lockout/domain/event
+            - github.com/shortlink-org/portolan/examples/auth/internal/platform/messaging
+          deny:
+            - pkg: *auth-internal
+              desc: integration contracts may depend only on contracts and messaging primitives

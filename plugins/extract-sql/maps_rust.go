@@ -19,7 +19,6 @@ package main
 
 import (
 	"os"
-	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -28,9 +27,9 @@ import (
 	"github.com/shortlink-org/portolan/plugin"
 )
 
-func readMapsRust(root, repositories, aggregate string, b *plugin.Builder) map[string]map[string]string {
+func readMapsRust(root, repositoryDir, aggregate string, b *plugin.Builder) map[string]map[string]string {
 	out := map[string]map[string]string{}
-	dir := path.Join(repositories, aggregate)
+	dir := repositoryDir
 	entries, err := os.ReadDir(filepath.Join(root, filepath.FromSlash(dir)))
 	if err != nil {
 		return out

@@ -48,7 +48,7 @@ func readLifecycle(p *pkg, root string, events []catalog.Event, aggID string, b 
 		}
 	}
 	if mover == "" {
-		b.Warn(aggID, "internal/domain/"+p.name+" declares a fsm.TransitionRuleSet but no method of "+root+" calls TriggerEvent, so nothing is read as moving along it")
+		b.Warn(aggID, p.dir+" declares a fsm.TransitionRuleSet but no method of "+root+" calls TriggerEvent, so nothing is read as moving along it")
 
 		return &catalog.Lifecycle{States: states, Transitions: []catalog.Transition{}}
 	}

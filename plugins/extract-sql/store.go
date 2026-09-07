@@ -21,12 +21,13 @@ import (
 // own package and each keeps its own schema_migrations table, but they are all
 // applied to the same database. The numbering is about who waits for whom, not
 // about where the rows live.
-func readStore(root, repositories, projectors, storeID, owner string, b *plugin.Builder) ([]catalog.Table, []catalog.View) {
+func readStore(root string, layout storageLayout, storeID, owner string, b *plugin.Builder) ([]catalog.Table, []catalog.View) {
 	tables := []catalog.Table{}
 	views := []catalog.View{}
 
-	for _, aggregate := range subdirs(root, repositories) {
-		dir := path.Join(repositories, aggregate, "migrations")
+	for _, repository := range layout.repositories {
+		aggregate := repository.name
+		dir := repository.migrations
 
 		state, copies, _, ok := readMigrations(root, dir, storeID, owner, b)
 		if !ok {
@@ -40,11 +41,11 @@ func readStore(root, repositories, projectors, storeID, owner string, b *plugin.
 		aggregateID := owner + "." + slug(aggregate)
 		// Which column carries which field, read from the statements that
 		// write the rows rather than from the column names.
-		mapped := readMaps(root, repositories, aggregate, b)
+		mapped := readMaps(root, repository.dir, aggregate, b)
 		for _, more := range []map[string]map[string]string{
-			readMapsTS(root, repositories, aggregate, b),
-			readMapsRust(root, repositories, aggregate, b),
-			readMapsJava(root, repositories, aggregate, b),
+			readMapsTS(root, repository.dir, aggregate, b),
+			readMapsRust(root, repository.dir, aggregate, b),
+			readMapsJava(root, repository.dir, aggregate, b),
 		} {
 			for table, columns := range more {
 				if _, ok := mapped[table]; !ok {
@@ -102,8 +103,8 @@ func readStore(root, repositories, projectors, storeID, owner string, b *plugin.
 	// of another service's aggregate lives here too, and its name is not in
 	// any directory of this tree - so the link is taken from the migration
 	// when it is written there (`-- aggregate:`) and left out when it is not.
-	for _, projection := range subdirs(root, projectors) {
-		dir := path.Join(projectors, projection, "migrations")
+	for _, projector := range layout.projectors {
+		dir := projector.migrations
 
 		state, copies, projected, ok := readMigrations(root, dir, storeID, owner, b)
 		if !ok {

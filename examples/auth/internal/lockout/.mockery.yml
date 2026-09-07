@@ -1,0 +1,15 @@
+all: false
+template: testify
+formatter: goimports
+force-file-write: true
+log-level: warn
+inpackage: false
+
+packages:
+  github.com/shortlink-org/portolan/examples/auth/internal/lockout/domain:
+    interfaces:
+      Repository:
+        configs:
+          - dir: "{{.ConfigDir}}/application/record_failure"
+            filename: mock_repository_test.go
+            pkgname: record_failure_test

@@ -65,6 +65,7 @@ type flowOptions struct {
 type flowReader struct {
 	root     string
 	opts     flowOptions
+	layout   sourceLayout
 	b        *plugin.Builder
 	bindings map[string]string
 	useCases map[string]*pkg
@@ -78,8 +79,9 @@ type flowReader struct {
 	module string
 	// adapters are the ports assembly fills with something other than a use
 	// case; clients are the generated clients already read, by import path.
-	adapters map[string]adapterDecl
-	clients  map[string]map[string]client
+	adapters       map[string]adapterDecl
+	wireBoundPorts map[string]bool
+	clients        map[string]map[string]client
 	// calls are the rpcs some step made, by id, for the service's consumes.
 	calls      map[string]catalog.RpcCall
 	warnedPeer map[string]bool
@@ -87,8 +89,8 @@ type flowReader struct {
 
 // extractFlows reads every sequence the service runs, in a fixed order:
 // endpoints by operation id, then policies by type name.
-func extractFlows(root string, opts flowOptions, endpoints []endpointDecl, events []string, b *plugin.Builder) ([]catalog.Flow, []catalog.RpcCall) {
-	r := newFlowReader(root, opts, b)
+func extractFlows(root string, opts flowOptions, layout sourceLayout, endpoints []endpointDecl, events []string, b *plugin.Builder) ([]catalog.Flow, []catalog.RpcCall) {
+	r := newFlowReader(root, opts, b, layout)
 
 	out := []catalog.Flow{}
 	for _, endpoint := range endpoints {
@@ -107,20 +109,27 @@ func extractFlows(root string, opts flowOptions, endpoints []endpointDecl, event
 	return out, r.consumes()
 }
 
-func newFlowReader(root string, opts flowOptions, b *plugin.Builder) *flowReader {
+func newFlowReader(root string, opts flowOptions, b *plugin.Builder, layouts ...sourceLayout) *flowReader {
+	layout := discoverLayout(root)
+	if len(layouts) > 0 {
+		layout = layouts[0]
+	}
+
 	return &flowReader{
-		root:       root,
-		opts:       opts,
-		b:          b,
-		bindings:   portBindings(root),
-		adapters:   adapterBindings(root),
-		module:     modulePath(root),
-		useCases:   map[string]*pkg{},
-		domains:    map[string]*pkg{},
-		clients:    map[string]map[string]client{},
-		calls:      map[string]catalog.RpcCall{},
-		referenced: map[string]bool{},
-		warnedPeer: map[string]bool{},
+		root:           root,
+		opts:           opts,
+		layout:         layout,
+		b:              b,
+		bindings:       portBindings(root, layout),
+		adapters:       adapterBindings(root, layout),
+		wireBoundPorts: wireBoundPorts(root, layout),
+		module:         modulePath(root),
+		useCases:       map[string]*pkg{},
+		domains:        map[string]*pkg{},
+		clients:        map[string]map[string]client{},
+		calls:          map[string]catalog.RpcCall{},
+		referenced:     map[string]bool{},
+		warnedPeer:     map[string]bool{},
 	}
 }
 
@@ -176,8 +185,8 @@ func (r *flowReader) endpointFlow(endpoint endpointDecl) (catalog.Flow, bool) {
 	}, true
 }
 
-// policyFlows reads internal/application/policy: a rule of the form "when X has
-// happened, do Y", which is a flow that opens on the bus.
+// policyFlows reads every discovered policy package: a rule of the form "when
+// X has happened, do Y", which is a flow that opens on the bus.
 //
 // It opens with the event rather than with the policy, and that is what lets
 // the two halves meet: a flow whose FIRST step names the same event another
@@ -186,7 +195,17 @@ func (r *flowReader) endpointFlow(endpoint endpointDecl) (catalog.Flow, bool) {
 func (r *flowReader) policyFlows() []catalog.Flow {
 	out := []catalog.Flow{}
 
-	pkg, err := parsePkg(r.root, "internal/application/policy")
+	for _, dir := range r.layout.policies {
+		out = append(out, r.policyFlowsIn(dir)...)
+	}
+
+	return out
+}
+
+func (r *flowReader) policyFlowsIn(dir string) []catalog.Flow {
+	out := []catalog.Flow{}
+
+	pkg, err := parsePkg(r.root, dir)
 	if err != nil {
 		return out
 	}
@@ -310,7 +329,7 @@ func (r *flowReader) assertedEvent(fn *ast.FuncDecl, imports map[string]string) 
 			return false
 		}
 		// The same thing with nobody to place it: named, and left to the merge.
-		if importPath != "" && strings.Contains(importPath, "/internal/infrastructure/") {
+		if importPath != "" && (strings.Contains(importPath, "/internal/infrastructure/") || strings.Contains(importPath, "/internal/integration/")) {
 			out = eventRef{name: name, foreign: importPath}
 			found = true
 
@@ -698,6 +717,24 @@ func endsWithReturn(block *ast.BlockStmt) bool {
 }
 
 func (r *flowReader) call(d *flowDraft, s *scope, site callSite, depth int) {
+	if ident, ok := site.call.Fun.(*ast.Ident); ok && ident.Name == "append" {
+		// Preserve an event while it is collected into a variadic slice before
+		// Save(ctx, aggregate, events...). The slice is still carrying that
+		// domain fact even though its static type is []event.Event.
+		for _, arg := range site.call.Args[1:] {
+			name, ok := arg.(*ast.Ident)
+			if !ok {
+				continue
+			}
+			ref, tracked := s.vars[name.Name]
+			if tracked && ref.event {
+				bind(s, site, []domainRef{ref})
+				break
+			}
+		}
+		return
+	}
+
 	selector, ok := site.call.Fun.(*ast.SelectorExpr)
 	if !ok {
 		return
@@ -784,9 +821,22 @@ func (r *flowReader) portCall(d *flowDraft, s *scope, field, method string, site
 		return
 	}
 
+	// A consumer-owned interface bound directly to a concrete adapter by Wire
+	// is local work. There is no architectural lane to draw for password
+	// hashing, encoding, or another in-process mechanism.
+	if r.wireBoundPorts[s.key+"."+declared] {
+		return
+	}
+
 	// A port of the domain: the store is at the other end of it.
 	aggregate, name, ok := domainSelector(declared, s.imports)
 	if !ok {
+		selector, _, _ := strings.Cut(strings.TrimPrefix(declared, "*"), ".")
+		if applicationSupportImport(s.imports[selector]) {
+			// Application services such as password hashing are local work,
+			// not a hop to another participant in the architecture flow.
+			return
+		}
 		r.b.Warn(s.key, s.pkg.dir+": port `"+field+" "+declared+"` is neither a domain port nor a use case; its calls are left out of the flow")
 
 		return
@@ -1262,6 +1312,15 @@ func importsOf(pkg *pkg) map[string]string {
 				name = spec.Name.Name
 			}
 			out[name] = importPath
+
+			// A feature-sliced domain commonly lives in .../user/domain while
+			// declaring `package user`. Go binds the declared package name, not
+			// the final path segment, so retain that logical name as well.
+			if spec.Name == nil {
+				if aggregate, ok := domainImport(importPath); ok {
+					out[aggregate] = importPath
+				}
+			}
 		}
 	}
 
@@ -1271,25 +1330,13 @@ func importsOf(pkg *pkg) map[string]string {
 // domainPackage reads an import of the service's own domain back to the
 // aggregate it belongs to, and says no to everything else.
 func domainPackage(importPath string) (string, bool) {
-	_, after, found := strings.Cut(importPath, "/internal/domain/")
-	if !found || after == "" || strings.Contains(after, "/") {
-		return "", false
-	}
-
-	return after, true
+	return domainImport(importPath)
 }
 
-// eventPackage is the same for `internal/domain/<aggregate>/event`, which is
-// where a fact the aggregate publishes is declared.
+// eventPackage recognizes the event package below either supported domain
+// layout, plus a feature's integration-event package.
 func eventPackage(importPath string) (string, bool) {
-	_, after, found := strings.Cut(importPath, "/internal/domain/")
-	if !found {
-		return "", false
-	}
-
-	aggregate, rest, found := strings.Cut(after, "/")
-
-	return aggregate, found && rest == "event"
+	return eventImport(importPath)
 }
 
 // domainSelector reads a field type like `session.Repository` back to the
@@ -1313,19 +1360,12 @@ func useCaseSelector(declared string, imports map[string]string) (string, bool) 
 		return "", false
 	}
 
-	importPath := imports[selector]
-
-	_, after, found := strings.Cut(importPath, "/internal/application/")
+	aggregate, useCaseName, found := useCaseImport(imports[selector])
 	if !found {
 		return "", false
 	}
 
-	aggregate, rest, found := strings.Cut(after, "/usecases/")
-	if !found || strings.Contains(rest, "/") {
-		return "", false
-	}
-
-	return aggregate + "/" + rest, true
+	return aggregate + "/" + useCaseName, true
 }
 
 func (r *flowReader) useCasePkg(key string) *pkg {
@@ -1333,10 +1373,10 @@ func (r *flowReader) useCasePkg(key string) *pkg {
 		return cached
 	}
 
-	aggregate, name, _ := strings.Cut(key, "/")
-	pkg, err := parsePkg(r.root, path.Join("internal/application", aggregate, "usecases", name))
+	dir := r.layout.useCases[key]
+	pkg, err := parsePkg(r.root, dir)
 	if err != nil {
-		r.b.Warn(key, "internal/application/"+aggregate+"/usecases/"+name+" could not be parsed; its steps are missing from every flow that runs it")
+		r.b.Warn(key, dir+" could not be parsed; its steps are missing from every flow that runs it")
 		pkg = nil
 	}
 	r.useCases[key] = pkg
@@ -1349,7 +1389,7 @@ func (r *flowReader) domainPkg(aggregate string) *pkg {
 		return cached
 	}
 
-	pkg, err := parsePkg(r.root, path.Join("internal/domain", aggregate))
+	pkg, err := parsePkg(r.root, r.layout.domains[aggregate])
 	if err != nil {
 		pkg = nil
 	}
@@ -1364,9 +1404,7 @@ func (r *flowReader) useCaseDoc(key string) string {
 		return ""
 	}
 
-	aggregate, name, _ := strings.Cut(key, "/")
-
-	return operationDoc(r.root, path.Join("internal/application", aggregate, "usecases", name), pkg)
+	return operationDoc(r.root, r.layout.useCases[key], pkg)
 }
 
 func operationName(key string) string {

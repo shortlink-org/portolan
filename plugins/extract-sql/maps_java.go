@@ -37,9 +37,9 @@ var (
 	javaName   = regexp.MustCompile(`name\s*=\s*"([^"]+)"`)
 )
 
-func readMapsJava(root, repositories, aggregate string, b *plugin.Builder) map[string]map[string]string {
+func readMapsJava(root, repositoryDir, aggregate string, b *plugin.Builder) map[string]map[string]string {
 	out := map[string]map[string]string{}
-	dir := path.Join(repositories, aggregate)
+	dir := repositoryDir
 
 	entries, err := os.ReadDir(filepath.Join(root, filepath.FromSlash(dir)))
 	if err != nil {

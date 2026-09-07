@@ -7,27 +7,31 @@
 package di
 
 import (
-	"github.com/shortlink-org/portolan/examples/auth/internal/application/lockout/usecases/check"
-	"github.com/shortlink-org/portolan/examples/auth/internal/application/lockout/usecases/record_failure"
-	"github.com/shortlink-org/portolan/examples/auth/internal/application/lockout/usecases/record_success"
-	"github.com/shortlink-org/portolan/examples/auth/internal/application/policy"
-	"github.com/shortlink-org/portolan/examples/auth/internal/application/session/usecases/end_after_credential_change"
-	"github.com/shortlink-org/portolan/examples/auth/internal/application/session/usecases/login"
-	"github.com/shortlink-org/portolan/examples/auth/internal/application/session/usecases/logout"
-	"github.com/shortlink-org/portolan/examples/auth/internal/application/session/usecases/validate"
-	"github.com/shortlink-org/portolan/examples/auth/internal/application/user/usecases/authenticate"
-	"github.com/shortlink-org/portolan/examples/auth/internal/application/user/usecases/change_password"
-	"github.com/shortlink-org/portolan/examples/auth/internal/application/user/usecases/get"
-	"github.com/shortlink-org/portolan/examples/auth/internal/application/user/usecases/register"
 	"github.com/shortlink-org/portolan/examples/auth/internal/di/provider"
-	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/lockout"
-	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/session"
-	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/user"
-	"github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/transport/http"
-	session2 "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/transport/http/session"
-	user2 "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/transport/http/user"
-	"github.com/shortlink-org/portolan/examples/auth/internal/pkg/messaging"
-	"github.com/shortlink-org/portolan/examples/auth/internal/pkg/uow"
+	"github.com/shortlink-org/portolan/examples/auth/internal/lockout/application/check"
+	"github.com/shortlink-org/portolan/examples/auth/internal/lockout/application/record_failure"
+	"github.com/shortlink-org/portolan/examples/auth/internal/lockout/application/record_success"
+	"github.com/shortlink-org/portolan/examples/auth/internal/lockout/infrastructure/repository"
+	"github.com/shortlink-org/portolan/examples/auth/internal/platform/messaging"
+	"github.com/shortlink-org/portolan/examples/auth/internal/platform/uow"
+	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/end_after_credential_change"
+	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/login"
+	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/logout"
+	"github.com/shortlink-org/portolan/examples/auth/internal/session/application/validate"
+	"github.com/shortlink-org/portolan/examples/auth/internal/session/di"
+	session2 "github.com/shortlink-org/portolan/examples/auth/internal/session/infrastructure/http"
+	"github.com/shortlink-org/portolan/examples/auth/internal/session/infrastructure/identity"
+	"github.com/shortlink-org/portolan/examples/auth/internal/session/infrastructure/messaging/policy"
+	"github.com/shortlink-org/portolan/examples/auth/internal/session/infrastructure/repository"
+	"github.com/shortlink-org/portolan/examples/auth/internal/transport/http"
+	"github.com/shortlink-org/portolan/examples/auth/internal/user/application/change_password"
+	"github.com/shortlink-org/portolan/examples/auth/internal/user/application/check_credentials"
+	"github.com/shortlink-org/portolan/examples/auth/internal/user/application/get"
+	"github.com/shortlink-org/portolan/examples/auth/internal/user/application/register"
+	user2 "github.com/shortlink-org/portolan/examples/auth/internal/user/infrastructure/http"
+	lockout2 "github.com/shortlink-org/portolan/examples/auth/internal/user/infrastructure/lockout"
+	"github.com/shortlink-org/portolan/examples/auth/internal/user/infrastructure/password"
+	"github.com/shortlink-org/portolan/examples/auth/internal/user/infrastructure/repository"
 )
 
 // Injectors from wire.go:
@@ -66,11 +70,12 @@ func New() (App, error) {
 	}
 	userPublisher := user.NewPublisher(publisher)
 	postgres := user.NewPostgres(router, unitOfWork, userPublisher)
+	hasher := password.NewHasher()
 	v := provider.ProvideNow()
 	v2 := provider.ProvideNewID()
-	useCase := register.New(postgres, v, v2)
+	useCase := register.New(postgres, hasher, v, v2)
 	getUseCase := get.New(postgres)
-	change_passwordUseCase := change_password.New(postgres, v)
+	change_passwordUseCase := change_password.New(postgres, hasher, v)
 	sessionPublisher := session.NewPublisher(publisher)
 	sessionPostgres := session.NewPostgres(router, unitOfWork, sessionPublisher)
 	cache, err := provider.ProvideCache(config)
@@ -78,7 +83,7 @@ func New() (App, error) {
 		return App{}, err
 	}
 	duration := provider.ProvideCacheTTL(config)
-	repository := provider.ProvideSessionRepository(sessionPostgres, cache, duration, v)
+	repository := di.ProvideRepository(sessionPostgres, cache, duration, v)
 	validateUseCase := validate.New(repository, v)
 	users := user2.NewUsers(useCase, getUseCase, change_passwordUseCase, validateUseCase)
 	lockoutPublisher := lockout.NewPublisher(publisher)
@@ -86,14 +91,14 @@ func New() (App, error) {
 	checkUseCase := check.New(lockoutPostgres, v)
 	record_failureUseCase := record_failure.New(lockoutPostgres, v)
 	record_successUseCase := record_success.New(lockoutPostgres, v)
-	authenticateLockout := provider.ProvideLockout(checkUseCase, record_failureUseCase, record_successUseCase)
-	authenticateUseCase := authenticate.New(postgres, authenticateLockout)
-	authenticator := provider.ProvideAuthenticator(authenticateUseCase)
-	riskServiceClient, err := provider.ProvideRiskClient(config)
+	check_credentialsLockout := lockout2.New(checkUseCase, record_failureUseCase, record_successUseCase)
+	check_credentialsUseCase := check_credentials.New(postgres, check_credentialsLockout, hasher)
+	authenticator := identity.NewAuthenticator(check_credentialsUseCase)
+	riskServiceClient, err := di.ProvideRiskClient(config)
 	if err != nil {
 		return App{}, err
 	}
-	risk := provider.ProvideRisk(riskServiceClient)
+	risk := di.ProvideRisk(riskServiceClient)
 	loginUseCase := login.New(repository, authenticator, risk, v, v2)
 	logoutUseCase := logout.New(repository, v)
 	sessions := session2.NewSessions(loginUseCase, logoutUseCase, validateUseCase)

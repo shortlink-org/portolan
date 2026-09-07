@@ -30,12 +30,10 @@ type Options struct {
 	Name  string `json:"name,omitempty"`
 	Kind  string `json:"kind,omitempty"`
 
-	// Repositories is where the adapters live, relative to the input root:
-	// one package per aggregate, its migrations beside it.
+	// Repositories optionally pins where adapters live, relative to the input
+	// root. Empty discovers horizontal and feature-sliced layouts.
 	Repositories string `json:"repositories,omitempty"`
-	// Projectors is where the projectors live, relative to the input root: one
-	// package per projection, its migrations beside it. Every table created
-	// there is a projection.
+	// Projectors does the same for projection adapters.
 	Projectors string `json:"projectors,omitempty"`
 
 	Out string `json:"out,omitempty"`
@@ -74,17 +72,11 @@ func extract(in plugin.Input, opts Options) plugin.Response {
 	if opts.Kind == "" {
 		opts.Kind = string(catalog.StoreKindPostgres)
 	}
-	if opts.Repositories == "" {
-		opts.Repositories = "internal/infrastructure/repository"
-	}
-	if opts.Projectors == "" {
-		opts.Projectors = "internal/infrastructure/projector"
-	}
-
 	owner := opts.Context + "." + opts.Service
 	storeID := owner + "." + opts.Store
+	layout := discoverStorageLayout(root, opts.Repositories, opts.Projectors)
 
-	tables, views := readStore(root, opts.Repositories, opts.Projectors, storeID, owner, b)
+	tables, views := readStore(root, layout, storeID, owner, b)
 	resolveForeignKeys(storeID, tables, b)
 	foreignSchemas(root, modulePath(root), b, storeID)
 
@@ -112,7 +104,7 @@ func extract(in plugin.Input, opts Options) plugin.Response {
 	}
 
 	if len(tables) == 0 {
-		b.Warn(storeID, "no migrations under "+opts.Repositories+" or "+opts.Projectors+"; the service is described as keeping no state")
+		b.Warn(storeID, "no repository or projector migrations found; the service is described as keeping no state")
 	} else {
 		fragment.Stores = []catalog.Store{{
 			ID:     storeID,
@@ -120,7 +112,7 @@ func extract(in plugin.Input, opts Options) plugin.Response {
 			Name:   firstNonEmpty(opts.Name, opts.Service+" database"),
 			Kind:   catalog.StoreKind(opts.Kind),
 			Owner:  owner,
-			Source: filepath.ToSlash(filepath.Join(root, opts.Repositories)),
+			Source: layout.source,
 			Tables: tables,
 			Views:  views,
 		}}

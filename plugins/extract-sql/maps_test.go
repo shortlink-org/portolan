@@ -85,7 +85,7 @@ func TestStringValueFoldsConstantsAndConcatenation(t *testing.T) {
 // password_hash -> Password, and the statement that writes the row does.
 func TestMapsAgainstTheRealService(t *testing.T) {
 	b := builderFor(t)
-	mapped := readMaps("../../examples/auth", "internal/infrastructure/repository", "user", b)
+	mapped := readMaps("../../examples/auth", "internal/user/infrastructure/repository", "user", b)
 
 	users := mapped["users"]
 	if users["password_hash"] != "User.Password" {
@@ -105,7 +105,7 @@ func TestMapsAgainstTheRealService(t *testing.T) {
 // wraps one value in a conversion, so it exercises both readings at once.
 func TestMapsThroughAConstantColumnList(t *testing.T) {
 	b := builderFor(t)
-	mapped := readMaps("../../examples/auth", "internal/infrastructure/repository", "session", b)
+	mapped := readMaps("../../examples/auth", "internal/session/infrastructure/repository", "session", b)
 
 	sessions := mapped["sessions"]
 	if sessions["revoked_at"] != "Session.RevokedAt" {

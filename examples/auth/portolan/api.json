@@ -1,6 +1,6 @@
 {
   "generatedAt": "2026-09-06T23:37:35+07:00",
-  "commit": "1600d03",
+  "commit": "1600d039",
   "contexts": [
     {
       "id": "auth",
@@ -46,7 +46,7 @@
                   }
                 }
               ],
-              "source": "examples/auth/internal/infrastructure/transport/http/gen/openapi.yaml",
+              "source": "examples/auth/internal/transport/http/gen/openapi.yaml",
               "messages": [
                 {
                   "name": "RegisterRequest",
@@ -144,7 +144,7 @@
                   }
                 }
               ],
-              "source": "examples/auth/internal/infrastructure/transport/http/gen/openapi.yaml",
+              "source": "examples/auth/internal/transport/http/gen/openapi.yaml",
               "messages": [
                 {
                   "name": "LoginRequest",

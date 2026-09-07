@@ -11,8 +11,10 @@ package di
 import (
 	"github.com/google/wire"
 
-	"github.com/shortlink-org/portolan/examples/auth/internal/application/policy"
 	"github.com/shortlink-org/portolan/examples/auth/internal/di/provider"
+	lockoutdi "github.com/shortlink-org/portolan/examples/auth/internal/lockout/di"
+	sessiondi "github.com/shortlink-org/portolan/examples/auth/internal/session/di"
+	userdi "github.com/shortlink-org/portolan/examples/auth/internal/user/di"
 )
 
 // New assembles the whole service.
@@ -27,14 +29,14 @@ func New() (App, error) {
 		provider.Storage,
 		provider.Cache,
 		provider.Ambient,
-		provider.Repository,
 		provider.Outbox,
+		lockoutdi.Set,
+		userdi.Set,
+		sessiondi.Set,
+		sessiondi.PolicySet,
 		provider.Bus,
-		provider.UseCase,
-		provider.Authenticator,
-		provider.Lockout,
-		provider.Risk,
-		policy.New,
+		userdi.HTTPSet,
+		sessiondi.HTTPSet,
 		provider.Transport,
 		wire.Struct(new(App), "*"),
 	)

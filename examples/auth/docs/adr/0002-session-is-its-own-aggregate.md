@@ -44,4 +44,4 @@ than the use case, so every way a password can change gets it.
   other devices still work; `end_after_credential_change` says why that is
   correct rather than a bug.
 - Neutral: login needs the user domain to vouch for a credential. It states
-  that as a port, and assembly adapts the authenticate use case to it.
+  that as a port, and assembly adapts the `check_credentials` use case to it.

@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/shortlink-org/portolan/examples/auth/internal/di"
-	"github.com/shortlink-org/portolan/examples/auth/internal/pkg/tracing"
+	"github.com/shortlink-org/portolan/examples/auth/internal/platform/tracing"
 )
 
 const (
@@ -30,7 +30,7 @@ func main() {
 	}
 
 	// Tracing goes first: the parts assembled below take the global tracer
-	// provider as they are built. Why is in internal/pkg/tracing.
+	// provider as they are built. Why is in internal/platform/tracing.
 	stopTracing, err := tracing.Start(context.Background())
 	if err != nil {
 		log.Fatalf("auth: %v", err)

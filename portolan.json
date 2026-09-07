@@ -391,7 +391,7 @@
       "options": {
         "context": "auth",
         "service": "auth",
-        "spec": "internal/infrastructure/transport/http/gen/openapi.yaml",
+        "spec": "internal/transport/http/gen/openapi.yaml",
         "out": "api.json"
       }
     },

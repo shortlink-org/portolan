@@ -38,13 +38,11 @@
     },
     "repositories": {
       "type": "string",
-      "description": "Where the adapters live, relative to the input root: one package per aggregate, its migrations under migrations/ (every .sql that is not a .down.sql). The migrations are read from there, and so is which aggregate a table persists and which field a column carries - off the statements that write the rows, in Go, in TypeScript or in Rust.",
-      "default": "internal/infrastructure/repository"
+      "description": "Optional adapter root relative to the input root: either one package per aggregate with migrations below each package, or one feature repository package with migrations directly below it. When omitted, Go layouts are discovered under both internal/infrastructure/repository/<aggregate> and internal/<aggregate>/infrastructure/repository. The migrations and repository writes determine which aggregate and fields the tables persist."
     },
     "projectors": {
       "type": "string",
-      "description": "Where the projectors live, relative to the input root: one package per projection, its migrations under migrations/ (every .sql that is not a .down.sql), numbered from 1 like an aggregate's. Every table created there gets the role projection. Which aggregate it is a picture of is not in the layout, so it is read from a `-- aggregate: <id>` line above the CREATE TABLE when the migration has one - a bare slug is an aggregate of this service, a dotted name is a full id - and left out when it does not. Columns copied from elsewhere carry `-- from:` as anywhere else.",
-      "default": "internal/infrastructure/projector"
+      "description": "Optional projector root relative to the input root, using the same collection-or-feature-package convention as repositories. When omitted, horizontal and feature-sliced Go projector packages are discovered. Every table created there gets the role projection. Its aggregate is read from a `-- aggregate: <id>` line above CREATE TABLE; columns copied from elsewhere carry `-- from:`."
     },
     "out": {
       "type": "string",

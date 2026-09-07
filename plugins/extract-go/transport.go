@@ -3,7 +3,6 @@ package main
 import (
 	"go/ast"
 	"go/types"
-	"path"
 	"sort"
 	"strings"
 
@@ -25,14 +24,16 @@ import (
 // which aggregate's use case that is. None of it needs a type checker, and
 // none of it needs the OpenAPI document - which is the point, because the
 // document is read by a different extractor that knows nothing about Go.
-func extractTransport(root string, b *plugin.Builder) (map[string][]string, []endpointDecl) {
+func extractTransport(root string, layout sourceLayout, b *plugin.Builder) (map[string][]string, []endpointDecl) {
 	out := map[string][]string{}
 	var endpoints []endpointDecl
 
-	for _, endpoint := range readTransport(root, "internal/infrastructure/transport/http", isHandler, lowerFirst, b) {
-		endpoints = append(endpoints, endpoint)
-		for _, useCase := range endpoint.useCases {
-			out[useCase] = appendOnce(out[useCase], endpoint.id)
+	for _, dir := range layout.http {
+		for _, endpoint := range readTransportPackage(root, dir, layout, isHandler, lowerFirst, b) {
+			endpoints = append(endpoints, endpoint)
+			for _, useCase := range endpoint.useCases {
+				out[useCase] = appendOnce(out[useCase], endpoint.id)
+			}
 		}
 	}
 
@@ -40,10 +41,12 @@ func extractTransport(root string, b *plugin.Builder) (map[string][]string, []en
 	// marks a method as one of the contract's, and what the endpoint is called.
 	// An rpc is named the same on both sides - GetQuote is GetQuote - so the
 	// method name is the id, and it is the id extract-proto puts in `provides`.
-	for _, endpoint := range readTransport(root, "internal/infrastructure/transport/grpc", isRpcHandler, sameName, b) {
-		endpoints = append(endpoints, endpoint)
-		for _, useCase := range endpoint.useCases {
-			out[useCase] = appendOnce(out[useCase], endpoint.id)
+	for _, dir := range layout.grpc {
+		for _, endpoint := range readTransportPackage(root, dir, layout, isRpcHandler, sameName, b) {
+			endpoints = append(endpoints, endpoint)
+			for _, useCase := range endpoint.useCases {
+				out[useCase] = appendOnce(out[useCase], endpoint.id)
+			}
 		}
 	}
 
@@ -58,27 +61,18 @@ func extractTransport(root string, b *plugin.Builder) (map[string][]string, []en
 	return out, endpoints
 }
 
-// readTransport walks one transport layer: a package per handler, a struct per
+// readTransportPackage reads one discovered handler package: a struct per
 // server, and the methods of it that answer something.
-func readTransport(root, base string, handler func(*ast.FuncDecl) bool, id func(string) string, b *plugin.Builder) []endpointDecl {
+func readTransportPackage(root, dir string, layout sourceLayout, handler func(*ast.FuncDecl) bool, id func(string) string, b *plugin.Builder) []endpointDecl {
 	var endpoints []endpointDecl
 
-	for _, dir := range subdirs(root, base) {
-		// The generated server is not a handler package: it declares the
-		// interface these implement, and reading it would pair every operation
-		// with itself.
-		if dir == "gen" {
-			continue
-		}
+	pkg, err := parsePkg(root, dir)
+	if err != nil {
+		return endpoints
+	}
 
-		pkg, err := parsePkg(root, path.Join(base, dir))
-		if err != nil {
-			continue
-		}
-
-		for name, useCase := range handlerFields(pkg) {
-			endpoints = append(endpoints, operationsRunning(pkg, name, useCase, handler, id, b)...)
-		}
+	for name, useCase := range handlerFields(pkg, layout) {
+		endpoints = append(endpoints, operationsRunning(pkg, name, useCase, handler, id, b)...)
 	}
 
 	return endpoints
@@ -87,11 +81,11 @@ func readTransport(root, base string, handler func(*ast.FuncDecl) bool, id func(
 // handlerFields maps each handler struct to the use case behind each of its
 // fields: Users{register: *register.UseCase} gives {"Users": {"register":
 // "user/register"}}.
-func handlerFields(pkg *pkg) map[string]map[string]string {
+func handlerFields(pkg *pkg, layouts ...sourceLayout) map[string]map[string]string {
 	out := map[string]map[string]string{}
 
 	for _, file := range pkg.files {
-		useCases := useCaseImports(file)
+		useCases := useCaseImports(file, layouts...)
 		if len(useCases) == 0 {
 			continue
 		}
@@ -146,28 +140,28 @@ func handlerFields(pkg *pkg) map[string]map[string]string {
 // The aggregate is carried because a use case directory name is only unique
 // within one: two aggregates may each have a `get`, and pairing an endpoint
 // with the wrong one would be worse than pairing it with nothing.
-func useCaseImports(file *ast.File) map[string]string {
+func useCaseImports(file *ast.File, layouts ...sourceLayout) map[string]string {
 	out := map[string]string{}
 
 	for _, spec := range file.Imports {
 		importPath := strings.Trim(spec.Path.Value, `"`)
 
-		before, after, found := strings.Cut(importPath, "/internal/application/")
-		if !found || before == "" {
+		aggregate, useCaseName, found := useCaseImport(importPath)
+		if !found {
 			continue
 		}
-
-		aggregate, rest, found := strings.Cut(after, "/usecases/")
-		// Anything deeper - a use case's dto package, say - is not the use case.
-		if !found || strings.Contains(rest, "/") {
-			continue
+		key := aggregate + "/" + useCaseName
+		if len(layouts) > 0 {
+			if _, discovered := layouts[0].useCases[key]; !discovered {
+				continue
+			}
 		}
 
-		name := rest
+		name := useCaseName
 		if spec.Name != nil {
 			name = spec.Name.Name
 		}
-		out[name] = aggregate + "/" + rest
+		out[name] = key
 	}
 
 	return out

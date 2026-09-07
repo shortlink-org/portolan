@@ -15,14 +15,15 @@ The rule spans two aggregates that are kept apart on purpose (auth.0002):
 1. **The use case does both**: change the password, then end the sessions,
    in one transaction.
 2. **A policy**: `user` publishes `PasswordChanged`; a policy in
-   `internal/application/policy` hears it and runs the session use case that
+   `internal/session/infrastructure/messaging/policy` hears it and runs the session use case that
    ends what the change invalidates.
 
 ## Decision Outcome
 
-Chosen option: **a policy**. `session` never imports `user`, `user` never
-imports `session`; the one place that knows both exist is assembly, which
-subscribes the policy to the event.
+Chosen option: **a policy owned by `session`**. Session domain/application never
+import user, and user domain/application never import session. The policy
+imports the user's integration event and the session use case; root assembly
+only subscribes that policy to the user bus.
 
 Which sessions end is a domain service in `session`: the one the change was
 made from is kept, anything started after the change was issued against the

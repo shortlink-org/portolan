@@ -25,7 +25,7 @@ by anybody who knows the address.
 1. **A separate `Lockout` aggregate**, one row per user id, created on the
    first wrong password, in its own table.
 2. **Two columns on `User`**: `failures` and `locked_until`, written by
-   `Authenticate`.
+   `check_credentials`.
 3. **Counting by address or client** in a store keyed by what was typed, so
    that unknown addresses count too.
 
@@ -45,11 +45,18 @@ concurrent password change would fail on a stranger's typo. Option 3 counts
 the wrong thing: the account is what is being guessed at, and letting an
 unknown address accumulate anything lets anybody deny anybody.
 
-The price of option 1 is a port. `authenticate` in the user domain has to
+The price of option 1 is a port. `check_credentials` in the user application has to
 ask the lockout and tell it how the check went, and neither domain may
-import the other; so `authenticate` declares a three-method interface and
+import the other; so `check_credentials` declares a three-method interface and
 assembly adapts the lockout's use cases to it, the same shape as `login`'s
 `Authenticator`.
+
+Concurrent attempts use optimistic concurrency. Every row carries a version;
+an update succeeds only when the stored version still equals the version that
+was read, and the unique user id protects two simultaneous first inserts. A
+loser receives `ErrConflict`, reloads, reapplies the operation and retries.
+A version field by itself would only detect the race; the conditional write
+and retry are what prevent a failed attempt from being silently overwritten.
 
 ### Consequences
 

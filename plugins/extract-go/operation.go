@@ -2,8 +2,6 @@ package main
 
 import (
 	"go/ast"
-	"os"
-	"path"
 	"path/filepath"
 	"strings"
 
@@ -11,43 +9,36 @@ import (
 	"github.com/shortlink-org/portolan/plugin"
 )
 
-// extractOperations reads internal/application/<aggregate>/usecases/*, keyed by
-// the aggregate the use cases sit under.
+// extractOperations reads every discovered application use case, keyed by the
+// aggregate or feature the use case sits under.
 //
 // The application layer is where the commands and queries actually are. The
 // aggregate's own methods are the mechanics of one - Register, ChangePassword -
 // but a use case is the whole operation, it already has a name a reader would
 // recognise, and in this codebase it has a README of its own.
-func extractOperations(root string, exposures map[string][]string, b *plugin.Builder) map[string][]catalog.Operation {
+func extractOperations(root string, layout sourceLayout, exposures map[string][]string, b *plugin.Builder) map[string][]catalog.Operation {
 	out := map[string][]catalog.Operation{}
 
-	for _, aggregate := range subdirs(root, "internal/application") {
-		base := path.Join("internal/application", aggregate, "usecases")
-		if _, err := os.Stat(filepath.Join(root, base)); err != nil {
-			// Not every directory in the application layer is a set of use
-			// cases; a policy or a saga lives there too.
+	for _, key := range sortedKeys(layout.useCases) {
+		aggregate, name, _ := strings.Cut(key, "/")
+		dir := layout.useCases[key]
+		pkg, err := parsePkg(root, dir)
+		if err != nil {
+			b.Warn(aggregate, dir+" could not be parsed; skipped")
+
 			continue
 		}
 
-		for _, name := range subdirs(root, base) {
-			pkg, err := parsePkg(root, path.Join(base, name))
-			if err != nil {
-				b.Warn(aggregate, base+"/"+name+" could not be parsed; skipped")
-
-				continue
-			}
-
-			out[aggregate] = append(out[aggregate], catalog.Operation{
-				ID:   camel(name),
-				Kind: operationKind(pkg),
-				Doc:  operationDoc(root, path.Join(base, name), pkg),
-				// Which endpoints run it, read from the transport layer. Absent
-				// is the honest answer for a use case nothing outside can
-				// reach - and in this service that is a deliberate design, not
-				// an oversight.
-				ExposedBy: exposures[aggregate+"/"+name],
-			})
-		}
+		out[aggregate] = append(out[aggregate], catalog.Operation{
+			ID:   camel(name),
+			Kind: operationKind(pkg),
+			Doc:  operationDoc(root, dir, pkg),
+			// Which endpoints run it, read from the transport layer. Absent
+			// is the honest answer for a use case nothing outside can
+			// reach - and in this service that is a deliberate design, not
+			// an oversight.
+			ExposedBy: exposures[key],
+		})
 	}
 
 	return out

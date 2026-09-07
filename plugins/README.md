@@ -152,8 +152,20 @@ GraphQL, proto and SQL extractors merge their facts into the same component.
 
 The language-specific domain extractors are optional enrichments. The local
 setup wizard offers one only when it finds the structure that extractor
-requires; for Go this means a package under `internal/domain` containing the
-root struct named after that package.
+requires; for Go this means an aggregate package in either
+`internal/domain/<aggregate>` or `internal/<aggregate>/domain`, containing the
+root struct named after that aggregate. The extractor follows the same choice
+for application use cases, transport adapters, policies, integration-event
+DTOs, and assembly bindings, so horizontal layers and feature slices can
+coexist while a service is being migrated.
+
+The SQL extractor follows the same migration path. With no `repositories` or
+`projectors` option it discovers both
+`internal/infrastructure/repository/<aggregate>/migrations` and
+`internal/<aggregate>/infrastructure/repository/migrations` (and the matching
+projector forms), merging every package into one store. An explicit root keeps
+the original collection layout for TypeScript, Rust, Java, or custom trees and
+may also point directly at one feature repository.
 
 `extract-river` is another independent enrichment for Go repositories. It
 joins a job argument's `Kind()` to `Client.Insert`/`InsertTx`, the selected

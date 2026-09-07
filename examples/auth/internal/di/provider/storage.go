@@ -18,10 +18,10 @@ import (
 	sdkoutbox "github.com/shortlink-org/go-sdk/outbox"
 	sdkuow "github.com/shortlink-org/go-sdk/uow"
 
-	lockoutrepo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/lockout"
-	sessionrepo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/session"
-	userrepo "github.com/shortlink-org/portolan/examples/auth/internal/infrastructure/repository/user"
-	"github.com/shortlink-org/portolan/examples/auth/internal/pkg/uow"
+	lockoutrepo "github.com/shortlink-org/portolan/examples/auth/internal/lockout/infrastructure/repository"
+	"github.com/shortlink-org/portolan/examples/auth/internal/platform/uow"
+	sessionrepo "github.com/shortlink-org/portolan/examples/auth/internal/session/infrastructure/repository"
+	userrepo "github.com/shortlink-org/portolan/examples/auth/internal/user/infrastructure/repository"
 )
 
 // Storage opens the database, brings its schema up to date, and produces the

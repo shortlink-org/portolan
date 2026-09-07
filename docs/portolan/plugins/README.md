@@ -1,6 +1,6 @@
 # Plugins
 
-*Generated from the portolan catalog · commit `12 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `10 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
 
 - **Id:** `portolan.plugins`
 - **Group:** [Portolan](../README.md)
@@ -132,6 +132,28 @@ Terminal states are derived on the page - nothing leads out - and never
 written down. A move the clock makes, a session expiring, a lock running out,
 is not a move: nothing runs when it happens, so it is not in the table.
 
+### Enums
+
+An aggregate's fields take some of their values from closed sets - a reason,
+a status, a code - and a consumer of its events switches on them. Those sets
+are the aggregate's `enums`: one entry per set, id `<aggregate>.<slug>`,
+the values in declaration order, each with its doc and a `deprecated` mark
+when the source carries one. A status enum is read here as well as by the
+lifecycle: the lifecycle keeps the moves, the enum keeps the doc on each
+value, and a page may draw both.
+
+What counts as one is a convention per language, and each extractor's README
+says which. In Go, which has no enum, it is a named type over a basic one -
+`type Reason string` - and a const block whose constants are of that type,
+looked for in the aggregate's package, under `vo/`, and under `event/`;
+a value's name is the constant's literal, because that is what the wire
+carries, and the constant's own name only for an iota. A `Deprecated:`
+paragraph in the doc marks the value. In Rust it is a `pub enum` whose every
+variant is a bare name, the literal an `as_str` answers standing in for the
+variant. In Java it is a top-level enum in the aggregate's package. In proto,
+the enums the messages reach through their fields sit on the interface as
+`enums`, with the numbers the wire uses.
+
 ### A repository without a domain model
 
 `extract-project` is the baseline extractor for any repository. It reads only
@@ -142,14 +164,34 @@ GraphQL, proto and SQL extractors merge their facts into the same component.
 
 The language-specific domain extractors are optional enrichments. The local
 setup wizard offers one only when it finds the structure that extractor
-requires; for Go this means a package under `internal/domain` containing the
-root struct named after that package.
+requires; for Go this means an aggregate package in either
+`internal/domain/<aggregate>` or `internal/<aggregate>/domain`, containing the
+root struct named after that aggregate. The extractor follows the same choice
+for application use cases, transport adapters, policies, integration-event
+DTOs, and assembly bindings, so horizontal layers and feature slices can
+coexist while a service is being migrated.
+
+The SQL extractor follows the same migration path. With no `repositories` or
+`projectors` option it discovers both
+`internal/infrastructure/repository/<aggregate>/migrations` and
+`internal/<aggregate>/infrastructure/repository/migrations` (and the matching
+projector forms), merging every package into one store. An explicit root keeps
+the original collection layout for TypeScript, Rust, Java, or custom trees and
+may also point directly at one feature repository.
 
 `extract-river` is another independent enrichment for Go repositories. It
 joins a job argument's `Kind()` to `Client.Insert`/`InsertTx`, the selected
 queue, `Worker[Args].Work`, and `river.AddWorker`. The result is a work-queue
 channel plus a two-hop enqueue/dispatch flow, with payload fields and source
 lines. It does not need aggregates and does not treat a job as a domain event.
+
+`extract-redis` finds runtime construction of go-redis, rueidis and redigo
+clients in non-test Go source. That source evidence adds a service-owned Redis
+store to the catalog even when the repository has no SQL migrations or domain
+model. It follows literals, constants, concatenation, `fmt.Sprintf`, helper
+functions and conditional suffixes into common Redis operations, producing
+key patterns with their read/write/delete use, TTL, value type and source. The
+patterns remain Redis keyspaces rather than being presented as SQL tables.
 
 `extract-watermill` reads Watermill `Router.AddHandler` and
 `AddNoPublisherHandler` registrations. It resolves literal and constant topics,

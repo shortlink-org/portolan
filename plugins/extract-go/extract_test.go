@@ -206,7 +206,7 @@ func TestAggregateReadmePrefersTheFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if got := aggregateReadme(root, "session", "session", "Session", "Package session holds the Session aggregate."); got != "# Session\n\nHolds the Session aggregate." {
+	if got := aggregateReadme(root, "internal/domain/session", "session", "Session", "Package session holds the Session aggregate."); got != "# Session\n\nHolds the Session aggregate." {
 		t.Errorf("without a README = %q", got)
 	}
 
@@ -214,7 +214,7 @@ func TestAggregateReadmePrefersTheFile(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "README.md"), []byte(md+"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if got := aggregateReadme(root, "session", "session", "Session", "Package session holds the Session aggregate."); got != strings.TrimSpace(md) {
+	if got := aggregateReadme(root, "internal/domain/session", "session", "Session", "Package session holds the Session aggregate."); got != strings.TrimSpace(md) {
 		t.Errorf("with a README = %q", got)
 	}
 }

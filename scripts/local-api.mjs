@@ -166,12 +166,14 @@ function compatibleAdrs(root, candidates) {
 }
 
 function goDomainEvidence(root, files) {
-  const candidates = matches(files, /^internal\/domain\/([^/]+)\/[^/]+\.go$/i);
+  const layout = /^internal\/(?:domain\/([^/]+)|([^/]+)\/domain)\/[^/]+\.go$/i;
+  const candidates = matches(files, layout);
   for (const name of candidates) {
-    const match = /^internal\/domain\/([^/]+)\//i.exec(name);
+    const match = layout.exec(name);
     if (!match) continue;
-    const packageName = match[1].replace(/[^a-zA-Z0-9_]/g, "_");
-    const rootName = match[1]
+    const aggregate = match[1] ?? match[2];
+    const packageName = aggregate.replace(/[^a-zA-Z0-9_]/g, "_");
+    const rootName = aggregate
       .split(/[^a-zA-Z0-9]+|_/)
       .filter(Boolean)
       .map((part) => part[0]?.toUpperCase() + part.slice(1))
@@ -271,11 +273,13 @@ function detectionsFor(root, files) {
   // The app module is the one file a Celery project always has; the tasks
   // and the calls that enqueue them are found from there.
   const celery = matches(files, /(^|\/)celery\.py$/);
-  const sqlRoot = sql.map((name) => {
+  const sqlRoots = [...new Set(sql.map((name) => {
     const segments = name.split("/");
     const repository = segments.findIndex((part) => /^(repository|repositories)$/i.test(part));
     return repository >= 0 ? segments.slice(0, repository + 1).join("/") : "";
-  }).find(Boolean);
+  }).filter(Boolean))];
+  const featureSql = sqlRoots.some((name) => /^internal\/[^/]+\/infrastructure\/repository$/i.test(name));
+  const sqlRoot = sqlRoots.length === 1 && !featureSql ? sqlRoots[0] : "";
   const graphqlDirs = compactDirectories(graphql);
   const protoDirs = compactDirectories(protos);
   const projectMarkers = ["go.mod", "package.json", "Cargo.toml", "pom.xml", "build.gradle", "build.gradle.kts", "manage.py", "Dockerfile", "README.md"].filter((name) => files.has(name));
@@ -313,7 +317,7 @@ function detectionsFor(root, files) {
     detected("asyncapi", asyncapi, asyncapi[0] ? { spec: asyncapi[0] } : {}, asyncapi[0], true),
     detected("graphql", graphql, graphqlDirs[0] ? { schema: graphqlDirs.length === 1 ? graphqlDirs[0] : graphql[0] } : {}, graphqlDirs.length === 1 ? graphqlDirs[0] : graphql[0]),
     detected("proto", protos, protoDirs.length ? { paths: protoDirs } : {}, protoDirs.join(", ")),
-    detected("sql", sql, sqlRoot ? { repositories: sqlRoot } : {}, sqlRoot || sql[0]),
+    detected("sql", sql, sqlRoot ? { repositories: sqlRoot } : {}, sqlRoot || (sqlRoots.length > 1 ? `${sqlRoots.length} repository packages` : sql[0])),
     detected(
       "adr",
       adrs,

@@ -397,6 +397,36 @@ func ProvideSomethingElse(uc *authenticate.UseCase) (login.Authenticator, error)
 	}
 }
 
+func TestDirectWireBindingsMarkConsumerOwnedAdapterPorts(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "internal/user/di")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	const assembly = `package di
+
+import (
+	"github.com/google/wire"
+	"github.com/example/auth/internal/user/application/register"
+	"github.com/example/auth/internal/user/infrastructure/password"
+)
+
+var Set = wire.NewSet(
+	password.NewHasher,
+	wire.Bind(new(register.PasswordHasher), new(*password.Hasher)),
+)
+`
+	if err := os.WriteFile(filepath.Join(dir, "infrastructure.go"), []byte(assembly), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got := wireBoundPorts(root)
+	if !got["user/register.PasswordHasher"] {
+		t.Errorf("bindings = %v, want user/register.PasswordHasher", got)
+	}
+}
+
 // A port filled by several use cases, one per method, is bound per method:
 // the signature names the use cases, the adapter's methods say which is which.
 func TestAPortOverSeveralUseCasesIsBoundPerMethod(t *testing.T) {

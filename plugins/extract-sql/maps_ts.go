@@ -2,7 +2,6 @@ package main
 
 import (
 	"os"
-	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -26,9 +25,9 @@ import (
 // aggregate - possibly wrapped in one conversion. Anything else is left
 // unmapped, for the same reason as in the Go reader: a blank is a reader
 // looking the column up, a wrong one is a reader believing something untrue.
-func readMapsTS(root, repositories, aggregate string, b *plugin.Builder) map[string]map[string]string {
+func readMapsTS(root, repositoryDir, aggregate string, b *plugin.Builder) map[string]map[string]string {
 	out := map[string]map[string]string{}
-	dir := path.Join(repositories, aggregate)
+	dir := repositoryDir
 	entries, err := os.ReadDir(filepath.Join(root, filepath.FromSlash(dir)))
 	if err != nil {
 		return out

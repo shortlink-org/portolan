@@ -38,58 +38,61 @@ import (
 //
 // A provider that builds its port out of something else is not a binding
 // between use cases and does not appear here.
-func portBindings(root string) map[string]string {
+func portBindings(root string, layouts ...sourceLayout) map[string]string {
 	out := map[string]string{}
 
-	pkg, err := parsePkg(root, "internal/di/provider")
-	if err != nil {
-		return out
+	packages := goPackageDirs(root, "internal")
+	if len(layouts) > 0 {
+		packages = layouts[0].packages
 	}
 
-	for _, file := range pkg.files {
-		useCases := useCaseImports(file)
-		if len(useCases) == 0 {
+	for _, dir := range packages {
+		pkg, err := parsePkg(root, dir)
+		if err != nil {
 			continue
 		}
-
-		for _, decl := range file.Decls {
-			fn, ok := decl.(*ast.FuncDecl)
-			if !ok || fn.Recv != nil || fn.Type.Results == nil {
-				continue
-			}
-			if len(fn.Type.Results.List) != 1 {
-				// A provider that returns a port and an error is still a
-				// provider, but two results here means the port is not the
-				// whole answer and reading it as one would be a guess.
+		for _, file := range pkg.files {
+			useCases := useCaseImports(file, layouts...)
+			if len(useCases) == 0 {
 				continue
 			}
 
-			port, ok := portName(fn.Type.Results.List[0].Type, useCases)
-			if !ok {
-				continue
-			}
-
-			var bound []string
-			for _, param := range params(fn) {
-				if useCase, ok := useCaseParam(param, useCases); ok {
-					bound = append(bound, useCase)
-				}
-			}
-			if len(bound) == 0 {
-				continue
-			}
-
-			if len(bound) > 1 {
-				perMethod := methodBindings(file, fn, useCases)
-				for method, useCase := range perMethod {
-					out[port+"."+method] = useCase
-				}
-				if len(perMethod) > 0 {
+			for _, decl := range file.Decls {
+				fn, ok := decl.(*ast.FuncDecl)
+				if !ok || fn.Recv != nil || fn.Type.Results == nil {
 					continue
 				}
-			}
+				if len(fn.Type.Results.List) != 1 {
+					continue
+				}
 
-			out[port] = bound[0]
+				port, ok := portName(fn.Type.Results.List[0].Type, useCases)
+				if !ok {
+					continue
+				}
+
+				var bound []string
+				for _, param := range params(fn) {
+					if useCase, ok := useCaseParam(param, useCases); ok {
+						bound = append(bound, useCase)
+					}
+				}
+				if len(bound) == 0 {
+					continue
+				}
+
+				if len(bound) > 1 {
+					perMethod := methodBindings(file, fn, useCases)
+					for method, useCase := range perMethod {
+						out[port+"."+method] = useCase
+					}
+					if len(perMethod) > 0 {
+						continue
+					}
+				}
+
+				out[port] = bound[0]
+			}
 		}
 	}
 
@@ -283,51 +286,138 @@ type adapterDecl struct {
 // generated client, say. What that something is, and what the adapter does
 // with it, is left to the reader that follows it; here the declaration is
 // enough to know which provider to follow.
-func adapterBindings(root string) map[string]adapterDecl {
+func adapterBindings(root string, layouts ...sourceLayout) map[string]adapterDecl {
 	out := map[string]adapterDecl{}
-	pkg, err := parsePkg(root, "internal/di/provider")
-	if err != nil {
-		return out
+	packages := goPackageDirs(root, "internal")
+	if len(layouts) > 0 {
+		packages = layouts[0].packages
 	}
 
-	for _, file := range pkg.files {
-		useCases := useCaseImports(file)
-		if len(useCases) == 0 {
+	for _, dir := range packages {
+		pkg, err := parsePkg(root, dir)
+		if err != nil {
 			continue
 		}
-		imports := map[string]string{}
-		for _, spec := range file.Imports {
-			importPath := strings.Trim(spec.Path.Value, `"`)
-			name := importPath[strings.LastIndex(importPath, "/")+1:]
-			if spec.Name != nil {
-				name = spec.Name.Name
-			}
-			imports[name] = importPath
-		}
-
-		for _, decl := range file.Decls {
-			fn, ok := decl.(*ast.FuncDecl)
-			if !ok || fn.Recv != nil || fn.Type.Results == nil || len(fn.Type.Results.List) != 1 {
+		for _, file := range pkg.files {
+			useCases := useCaseImports(file, layouts...)
+			if len(useCases) == 0 {
 				continue
 			}
-			port, ok := portName(fn.Type.Results.List[0].Type, useCases)
-			if !ok {
-				continue
-			}
-			bound := false
-			for _, param := range params(fn) {
-				if _, ok := useCaseParam(param, useCases); ok {
-					bound = true
+			imports := map[string]string{}
+			for _, spec := range file.Imports {
+				importPath := strings.Trim(spec.Path.Value, `"`)
+				name := importPath[strings.LastIndex(importPath, "/")+1:]
+				if spec.Name != nil {
+					name = spec.Name.Name
 				}
+				imports[name] = importPath
 			}
-			if bound {
-				continue
+
+			for _, decl := range file.Decls {
+				fn, ok := decl.(*ast.FuncDecl)
+				if !ok || fn.Recv != nil || fn.Type.Results == nil || len(fn.Type.Results.List) != 1 {
+					continue
+				}
+				port, ok := portName(fn.Type.Results.List[0].Type, useCases)
+				if !ok {
+					continue
+				}
+				bound := false
+				for _, param := range params(fn) {
+					if _, ok := useCaseParam(param, useCases); ok {
+						bound = true
+					}
+				}
+				if bound {
+					continue
+				}
+				out[port] = adapterDecl{pkg: pkg, fn: fn, imports: imports}
 			}
-			out[port] = adapterDecl{pkg: pkg, fn: fn, imports: imports}
 		}
 	}
 
 	return out
+}
+
+// wireBoundPorts reads direct Wire bindings from a use case's local interface
+// to a concrete adapter:
+//
+//	wire.Bind(new(register.PasswordHasher), new(*password.Hasher))
+//
+// Unlike a provider function, this binding has no body to follow. It still
+// proves that the port is deliberate local work rather than a missing domain
+// or use-case binding, so the flow reader can omit the call without warning.
+func wireBoundPorts(root string, layouts ...sourceLayout) map[string]bool {
+	out := map[string]bool{}
+	packages := goPackageDirs(root, "internal")
+	if len(layouts) > 0 {
+		packages = layouts[0].packages
+	}
+
+	for _, dir := range packages {
+		pkg, err := parsePkg(root, dir)
+		if err != nil {
+			continue
+		}
+		for _, file := range pkg.files {
+			useCases := useCaseImports(file, layouts...)
+			if len(useCases) == 0 {
+				continue
+			}
+
+			wireNames := map[string]bool{}
+			for _, spec := range file.Imports {
+				if strings.Trim(spec.Path.Value, `"`) != "github.com/google/wire" {
+					continue
+				}
+				name := "wire"
+				if spec.Name != nil {
+					name = spec.Name.Name
+				}
+				wireNames[name] = true
+			}
+
+			ast.Inspect(file, func(node ast.Node) bool {
+				call, ok := node.(*ast.CallExpr)
+				if !ok || len(call.Args) < 2 {
+					return true
+				}
+				sel, ok := call.Fun.(*ast.SelectorExpr)
+				if !ok || sel.Sel.Name != "Bind" {
+					return true
+				}
+				owner, ok := sel.X.(*ast.Ident)
+				if !ok || !wireNames[owner.Name] {
+					return true
+				}
+
+				bound, ok := newArgument(call.Args[0])
+				if !ok {
+					return true
+				}
+				if port, ok := portName(bound, useCases); ok {
+					out[port] = true
+				}
+
+				return true
+			})
+		}
+	}
+
+	return out
+}
+
+func newArgument(expr ast.Expr) (ast.Expr, bool) {
+	call, ok := expr.(*ast.CallExpr)
+	if !ok || len(call.Args) != 1 {
+		return nil, false
+	}
+	name, ok := call.Fun.(*ast.Ident)
+	if !ok || name.Name != "new" {
+		return nil, false
+	}
+
+	return call.Args[0], true
 }
 
 func params(fn *ast.FuncDecl) []ast.Expr {

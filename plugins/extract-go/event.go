@@ -7,36 +7,40 @@ import (
 	"github.com/shortlink-org/portolan/plugin"
 )
 
-// extractEvents reads internal/domain/<aggregate>/event.
+// extractEvents reads event below a discovered aggregate domain package.
 //
 // An event is a struct with a `Name() string` that returns a literal - which is
 // both how the domain declares the event's name on the wire and how this tells
 // an event apart from the helper types that live beside it.
-func extractEvents(root, dir, aggID string, b *plugin.Builder) []catalog.Event {
+func extractEvents(root, aggregateName, domainPath string, layout sourceLayout, aggID string, b *plugin.Builder) []catalog.Event {
 	out := []catalog.Event{}
 
-	pkg, err := parsePkg(root, path.Join("internal/domain", dir, "event"))
+	pkg, err := parsePkg(root, path.Join(domainPath, "event"))
 	if err != nil {
 		return out
 	}
 
-	out = eventsIn(pkg, aggID, channelOf(root, dir))
+	out = eventsIn(pkg, aggID, channelOf(root, aggregateName, layout))
 	if len(out) == 0 {
-		b.Warn(aggID, "internal/domain/"+dir+"/event declares no struct with a Name() method; the aggregate publishes nothing")
+		b.Warn(aggID, path.Join(domainPath, "event")+" declares no struct with a Name() method; the aggregate publishes nothing")
 	}
 
 	return out
 }
 
 // channelOf reads where an aggregate's events go: the `Topic` constant of
-// internal/infrastructure/repository/<aggregate>/dto, the package that turns
-// a domain event into a message. The domain names the event and the adapter
+// the discovered integration event DTO package, which may live beside a
+// feature or beside a legacy repository adapter. The domain names the event and the adapter
 // names the channel, because the channel is a fact about the transport, not
 // about what happened. Empty when the package or the constant is missing: a
 // domain nobody publishes has no channel to name, and saying so is better
 // than guessing one from the aggregate's name.
-func channelOf(root, dir string) string {
-	pkg, err := parsePkg(root, path.Join("internal/infrastructure/repository", dir, "dto"))
+func channelOf(root, aggregateName string, layout sourceLayout) string {
+	dir := layout.integrationEvents[aggregateName]
+	if dir == "" {
+		return ""
+	}
+	pkg, err := parsePkg(root, dir)
 	if err != nil {
 		return ""
 	}
