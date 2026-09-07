@@ -73,6 +73,25 @@ function crumbsFor(pathname: string): Crumb[] {
     if (!serviceSlug) return crumbs;
     crumbs.push({ label: serviceSlug, to: `/c/${contextId}/${serviceSlug}` });
     if (!aggregateSlug) return crumbs;
+
+    // "data" is a literal too: a store hangs off its service, and the segment
+    // after it is the store slug, not an event of an aggregate called "data".
+    if (aggregateSlug === "data") {
+      const storeSlug = parts[4];
+      if (!storeSlug) return crumbs;
+      const service = catalog.contexts
+        .find((c) => c.id === contextId)
+        ?.services.find((s) => s.slug === serviceSlug);
+      const store = (catalog.stores ?? []).find(
+        (s) => s.slug === storeSlug && s.owner === service?.id,
+      );
+      crumbs.push({
+        label: store?.name ?? storeSlug,
+        to: paths.store(contextId, serviceSlug, storeSlug),
+      });
+      return crumbs;
+    }
+
     crumbs.push({
       label: aggregateSlug,
       to: `/c/${contextId}/${serviceSlug}/${aggregateSlug}`,

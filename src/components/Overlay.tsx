@@ -103,7 +103,7 @@ export function SidePanel({
             style={{ background: SCRIM }}
           />
           <div
-            className={`fixed inset-0 flex `}
+            className={`fixed inset-0 flex ${left ? "justify-start" : "justify-end"}`}
           >
             {/* Arrives from the edge it belongs to, at the panel duration, and
                 leaves by the same edge: it is a panel, it has just run out of
@@ -112,7 +112,7 @@ export function SidePanel({
               as={m.div}
               {...slideFrom(left ? "-100%" : "100%")}
               aria-label={label}
-              className={` h-full shadow-md`}
+              className={`${left ? "bg-canvas " : ""}h-full shadow-md`}
               style={{ width }}
             >
               {children}

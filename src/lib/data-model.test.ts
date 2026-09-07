@@ -60,9 +60,25 @@ describe("type classes", () => {
     expect(domainClass("int32")).toBe("int32");
   });
 
+  it("reads java and typescript spellings", () => {
+    expect(domainClass("long")).toBe("int64");
+    expect(domainClass("Long")).toBe("int64");
+    expect(domainClass("Integer")).toBe("int32");
+    expect(domainClass("String")).toBe("text");
+    expect(domainClass("BigDecimal")).toBe("decimal");
+    expect(domainClass("Instant")).toBe("time");
+    expect(domainClass("Date")).toBe("time");
+  });
+
+  it("gives a width-less int its own class", () => {
+    expect(domainClass("int")).toBe("int");
+    expect(domainClass("*int")).toBe("int");
+  });
+
   it("knows nothing about a named domain shape, and says so", () => {
     expect(domainClass("Money")).toBe("unknown");
     expect(domainClass("GatewayRef")).toBe("unknown");
+    expect(domainClass("number")).toBe("unknown");
   });
 });
 
@@ -76,6 +92,19 @@ describe("typesDisagree", () => {
     expect(typesDisagree("text", "string")).toBe(false);
     expect(typesDisagree("timestamptz", "time.Time")).toBe(false);
     expect(typesDisagree("integer", "int32")).toBe(false);
+    expect(typesDisagree("bigserial", "long")).toBe(false);
+    expect(typesDisagree("timestamptz", "Instant")).toBe(false);
+  });
+
+  it("lets a width-less int sit on any integer column, and nothing else", () => {
+    // Go's `int` is whatever the platform says; Postgres `integer` under it
+    // is a choice, not a disagreement. Only a non-integer column is.
+    expect(typesDisagree("integer", "int")).toBe(false);
+    expect(typesDisagree("bigint", "int")).toBe(false);
+    expect(typesDisagree("smallint", "int")).toBe(false);
+    expect(typesDisagree("uuid", "int")).toBe(true);
+    expect(typesDisagree("text", "int")).toBe(true);
+    expect(typesDisagree("numeric", "int")).toBe(true);
   });
 
   it("stays quiet when either side is a shape it does not know", () => {

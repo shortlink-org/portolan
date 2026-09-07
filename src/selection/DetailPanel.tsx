@@ -1241,7 +1241,7 @@ export function DetailPanel() {
           onClick={() => clear("panel")}
           aria-label="Close selection detail (Esc)"
           title="Esc"
-          className="ml-auto rounded-control p-1 text-muted t-micro transition-colors hover:bg-surface hover:text-ink"
+          className="rounded-control p-1 text-muted t-micro transition-colors hover:bg-surface hover:text-ink"
         >
           <X size={16} aria-hidden />
         </button>
