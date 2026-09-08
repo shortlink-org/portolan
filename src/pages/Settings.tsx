@@ -8,6 +8,7 @@ import {
   ChevronDown,
   CircleAlert,
   FolderGit2,
+  GitBranch,
   KeyRound,
   LoaderCircle,
   Play,
@@ -54,6 +55,7 @@ import { DeliverySettings } from "./settings/DeliverySettings";
 import { PreferencesSettings } from "./settings/PreferencesSettings";
 
 type Health = "healthy" | "changed" | "failed" | "unchecked";
+type ProjectSource = ProjectDraft["source"];
 
 const SetupContext = createContext<SetupInfo>(staticSetupInfo);
 const useSetup = () => useContext(SetupContext);
@@ -486,15 +488,27 @@ function Field({ label, value, onChange, placeholder, required = false }: { labe
   );
 }
 
-function AddProjectCard({ onClick }: { onClick: () => void }) {
+function AddProjectCard({ onAdd }: { onAdd: (source: ProjectSource) => void }) {
   return (
-    <button type="button" onClick={onClick} className="group flex min-h-52 items-center justify-center rounded-card border border-dashed border-line-strong bg-canvas p-card text-left shadow-xs transition-colors hover:border-accent hover:bg-surface">
-      <span className="flex max-w-72 flex-col items-center text-center">
-        <span className="flex size-9 items-center justify-center rounded-full border border-line-strong text-muted group-hover:border-accent group-hover:text-accent"><Plus size={18} aria-hidden /></span>
-        <span className="mt-3 font-semibold text-ink">Add a project</span>
-        <span className="mt-1 text-muted">Point Portolan at a local component or repository and it will suggest the extractors to use.</span>
-      </span>
-    </button>
+    <article className="rounded-card border border-line bg-canvas p-card shadow-xs xl:col-span-2">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-control border border-line-strong bg-surface text-accent">
+          <Plus size={19} aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="font-semibold text-ink">Add a project</div>
+          <p className="mt-1 text-muted">Connect a local folder or Git repository. Portolan will detect the right extractors.</p>
+        </div>
+        <div className="flex flex-wrap gap-2 sm:justify-end">
+          <button type="button" className="tbtn px-3 py-1.5" onClick={() => onAdd("local")}>
+            <FolderGit2 size={15} aria-hidden /> Local folder
+          </button>
+          <button type="button" className="product-primary" onClick={() => onAdd("external")}>
+            <GitBranch size={15} aria-hidden /> Git repository
+          </button>
+        </div>
+      </div>
+    </article>
   );
 }
 
@@ -546,8 +560,8 @@ function RepositoryFailure({ failure, message, token, onTokenChange, onForget, b
   );
 }
 
-function Wizard({ open, onClose, onAdded, onRunStarted }: { open: boolean; onClose: () => void; onAdded: (setup: SetupInfo) => void; onRunStarted: (runId: string) => void }) {
-  const [source, setSource] = useState<"local" | "external">("local");
+function Wizard({ open, initialSource, onClose, onAdded, onRunStarted }: { open: boolean; initialSource: ProjectSource; onClose: () => void; onAdded: (setup: SetupInfo) => void; onRunStarted: (runId: string) => void }) {
+  const [source, setSource] = useState<ProjectSource>(initialSource);
   const [stage, setStage] = useState<"source" | "scope" | "configure" | "trial">("source");
   const [path, setPath] = useState("");
   const [repository, setRepository] = useState("");
@@ -570,10 +584,14 @@ function Wizard({ open, onClose, onAdded, onRunStarted }: { open: boolean; onClo
   const [credentialToken, setCredentialToken] = useState("");
 
   useEffect(() => {
+    if (open) {
+      setSource(initialSource);
+      return;
+    }
     if (!open) {
       setStage("source"); setSource("local"); setPath(""); setRepository(""); setRef("main"); setSourcePath(""); setDiscovery(null); setScopeDiscovery(null); setInspectionCommit(""); setSelectedComponents([]); setPendingComponents([]); setBatchPosition(null); setDraft(null); setPlan(null); setTrialRunId(null); setTrialEvents([]); setError(""); setRepositoryError(null); setRetryComponent(null); setCredentialToken(""); setBusy(false);
     }
-  }, [open]);
+  }, [initialSource, open]);
 
   useEffect(() => {
     if (!trialRunId) return;
@@ -894,12 +912,12 @@ function OverviewSettings() {
   );
 }
 
-function ProjectsSettings({ local, onAdd }: { local: boolean; onAdd: () => void }) {
+function ProjectsSettings({ local, onAdd }: { local: boolean; onAdd: (source: ProjectSource) => void }) {
   const setupInfo = useSetup();
   return (
     <section>
-      <SectionTitle right={local ? "editable in local mode" : "declared in portolan.json"}>Projects</SectionTitle>
-      {setupInfo.projects.length === 0 && !local ? <Empty>portolan.json names no projects — every input here is the estate's own</Empty> : <div className="grid gap-grid xl:grid-cols-2">{setupInfo.projects.map((project) => <ProjectCard key={project.id} project={project} />)}{local ? <AddProjectCard onClick={onAdd} /> : null}</div>}
+      <SectionTitle right={local ? <div className="flex items-center gap-3"><span className="hidden sm:inline">editable in local mode</span><button type="button" className="tbtn text-ink" onClick={() => onAdd("local")}><Plus size={14} aria-hidden /> Add project</button></div> : "declared in portolan.json"}>Projects</SectionTitle>
+      {setupInfo.projects.length === 0 && !local ? <Empty>portolan.json names no projects — every input here is the estate's own</Empty> : <div className="grid gap-grid xl:grid-cols-2">{setupInfo.projects.map((project) => <ProjectCard key={project.id} project={project} />)}{local ? <AddProjectCard onAdd={onAdd} /> : null}</div>}
     </section>
   );
 }
@@ -929,7 +947,7 @@ function PipelineSettings() {
   );
 }
 
-function SettingsContent({ local, onAdd, onGenerate }: { local: boolean; onAdd: () => void; onGenerate: () => void }) {
+function SettingsContent({ local, onAdd, onGenerate }: { local: boolean; onAdd: (source: ProjectSource) => void; onGenerate: () => void }) {
   return (
     <div className="h-full overflow-y-auto p-gutter">
       <div className="max-w-table">
@@ -964,7 +982,7 @@ export function Settings() {
   // No local server means no local mode; the static build-time setup stands in.
   const local = status.isSuccess;
   const setup = status.data?.setup ?? staticSetupInfo;
-  const [wizard, setWizard] = useState(false);
+  const [wizardSource, setWizardSource] = useState<ProjectSource | null>(null);
   const [runId, setRunId] = useState<string | null>(null);
   const [runOpen, setRunOpen] = useState(false);
   const say = useToastStore((state) => state.say);
@@ -992,8 +1010,8 @@ export function Settings() {
   }
   return (
     <SetupContext.Provider value={setup}>
-      <SettingsContent local={local} onAdd={() => setWizard(true)} onGenerate={() => void generate()} />
-      <Wizard open={wizard} onClose={() => setWizard(false)} onAdded={setSetup} onRunStarted={(id) => { setRunId(id); setRunOpen(true); }} />
+      <SettingsContent local={local} onAdd={setWizardSource} onGenerate={() => void generate()} />
+      <Wizard open={wizardSource !== null} initialSource={wizardSource ?? "local"} onClose={() => setWizardSource(null)} onAdded={setSetup} onRunStarted={(id) => { setRunId(id); setRunOpen(true); }} />
       <RunDialog runId={runId} open={runOpen} onClose={() => setRunOpen(false)} onFinished={refresh} onApply={(preview) => void generate(preview)} />
     </SetupContext.Provider>
   );
