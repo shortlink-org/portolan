@@ -11,7 +11,7 @@ import { basename, posix, resolve } from "node:path";
 
 import * as p from "@clack/prompts";
 
-import { builtinDefinition } from "../scripts/builtin-plugins.mjs";
+import { INSTALL_ROOT, builtinDefinition } from "../scripts/builtin-plugins.mjs";
 import { discoverProject, manifestWithProject, planProject, writeManifest } from "../scripts/local-api.mjs";
 
 const TOOLCHAINS = { go: "Go", cargo: "Cargo", java: "Java", python3: "Python 3" };
@@ -246,7 +246,13 @@ export function toolchainFor(plugin, declared = null) {
   const command = declared?.process?.command ?? builtinDefinition(plugin)?.process?.command;
   const label = TOOLCHAINS[command];
   if (!label) return null;
-  if (!toolchainChecks.has(command)) toolchainChecks.set(command, commandWorks(command, VERSION_FLAGS[command]));
+  if (!toolchainChecks.has(command)) {
+    // The Rust extractor ships as a binary in the Docker image, and
+    // run-builtin uses it before it would ever ask for Cargo; doctor and init
+    // agree, or the image would report a toolchain it does not need.
+    const prebuilt = command === "cargo" && !declared && existsSync(resolve(INSTALL_ROOT, "plugins/extract-rust/target/release/portolan-extract-rust"));
+    toolchainChecks.set(command, prebuilt || commandWorks(command, VERSION_FLAGS[command]));
+  }
   return { command, label, missing: !toolchainChecks.get(command) };
 }
 

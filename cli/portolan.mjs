@@ -226,7 +226,10 @@ async function prepareSite(workspace) {
 
 function generateLikeC4(stage) {
   runNode(resolve(stage, "scripts/gen-likec4.mjs"), [], stage);
-  runNode(packageBin("likec4", "bin/likec4.mjs"), ["gen", "react", "likec4", "-o", "src/likec4/generated.jsx"], stage);
+  // Inside a container likec4 switches to a graphviz binary by default and,
+  // finding none, reports "no views found". The wasm engine it uses
+  // everywhere else is the one wanted, so it is asked for by name.
+  runNode(packageBin("likec4", "bin/likec4.mjs"), ["gen", "react", "likec4", "-o", "src/likec4/generated.jsx", "--no-use-dot"], stage);
 }
 
 async function matchedFiles(workspace, patterns) {
