@@ -57,7 +57,7 @@ export function HeroMap() {
 
   return (
     <div
-      className="relative h-[440px]"
+      className="relative h-full"
       onPointerDown={() => setTouched(true)}
       onPointerEnter={() => setHovering(true)}
       onPointerLeave={() => setHovering(false)}
@@ -69,6 +69,10 @@ export function HeroMap() {
           catalog={catalog}
           relations={relations}
           zoomOnScroll={false}
+          compactLayout
+          showExport={false}
+          inactiveEdgeOpacity={0.36}
+          inactiveNodeOpacity={0.78}
         />
       </div>
       <AnimatePresence mode="wait">

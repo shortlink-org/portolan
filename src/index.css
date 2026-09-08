@@ -701,6 +701,22 @@
     top: -570px;
     right: -280px;
   }
+  .landing-hero .landing-canvas .react-flow__edge-path {
+    stroke-width: 1.75 !important;
+  }
+  .landing-hero-title {
+    line-height: 0.96 !important;
+  }
+  @media (min-width: 1024px) and (max-height: 760px) {
+    .landing-hero-grid {
+      padding-top: 2rem !important;
+      padding-bottom: 2rem !important;
+    }
+    .landing-hero-title {
+      font-size: clamp(3.5rem, 4.8vw, 3.9rem) !important;
+      line-height: 0.94 !important;
+    }
+  }
 
   /* Non-navigable header for a group of leaves inside an aggregate. */
   .group-row {

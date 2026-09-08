@@ -51,14 +51,14 @@ const tours: Array<{
     id: "estate",
     number: "01",
     title: "See the whole estate",
-    copy: "Every service and every event between them, laid out by elk. Switch modes, focus a service, export the picture.",
+    copy: "See every service and event between them. Switch views, focus a service, or export the map.",
     icon: Network,
   },
   {
     id: "flow",
     number: "02",
     title: "Follow one real flow",
-    copy: "Watch a checkout travel across HTTP, gRPC, the database and the bus, one step at a time, with its source line.",
+    copy: "Follow a checkout across HTTP, gRPC, the database and the bus, one step at a time, with its source line.",
     icon: GitBranch,
   },
   {
@@ -72,7 +72,7 @@ const tours: Array<{
     id: "problems",
     number: "04",
     title: "Catch architecture drift",
-    copy: "Calls that resolve to nothing, second writers, channels nobody publishes on - found by the merge, not by a review.",
+    copy: "Catch unresolved calls, second writers and unpublished channels during the merge, before review.",
     icon: AlertTriangle,
   },
 ];
@@ -313,8 +313,8 @@ export function ProductTour() {
                 aria-selected={on}
                 aria-controls="landing-product-demo"
                 onClick={() => setActive(tour.id)}
-                className={`group relative rounded-card border border-transparent p-4 text-left transition-colors ${
-                  on ? "" : "hover:border-line hover:bg-surface"
+                className={`group relative rounded-card border border-line/60 p-4 text-left transition-colors ${
+                  on ? "" : "hover:border-line-strong hover:bg-surface"
                 }`}
               >
                 {on ? (

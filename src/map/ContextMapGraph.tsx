@@ -70,12 +70,23 @@ export interface ContextMapGraphProps {
    * zoomed by pinch or by the fit control instead.
    */
   zoomOnScroll?: boolean;
+  /** Tighter geometry for small embedded canvases such as the landing hero. */
+  compactLayout?: boolean;
+  /** The full map exports files; embedded previews keep the canvas focused. */
+  showExport?: boolean;
+  /** Embedded previews keep the surrounding estate readable while touring it. */
+  inactiveEdgeOpacity?: number;
+  inactiveNodeOpacity?: number;
 }
 
 export function ContextMapGraph({
   catalog,
   relations,
   zoomOnScroll = true,
+  compactLayout = false,
+  showExport = true,
+  inactiveEdgeOpacity = DIM,
+  inactiveNodeOpacity = 0.55,
 }: ContextMapGraphProps) {
   const navigate = useNavigate();
   const selectionId = useSelectionStore((s) => s.selection?.id ?? null);
@@ -135,8 +146,8 @@ export function ContextMapGraph({
         // Far enough apart that a pattern name fits in the gap: "customer /
         // supplier" is 110px of mono, and a label wider than the space between
         // two boxes is a label lying across one of them.
-        edgeLength: 300,
-        nodeSpacing: 130,
+        edgeLength: compactLayout ? 210 : 300,
+        nodeSpacing: compactLayout ? 80 : 130,
       });
       if (cancelled) return;
 
@@ -194,7 +205,7 @@ export function ContextMapGraph({
     return () => {
       cancelled = true;
     };
-  }, [catalog, lines]);
+  }, [catalog, compactLayout, lines]);
 
   const fitKey = drawn.ready
     ? `fit-${drawn.nodes.length}-${drawn.edges.length}`
@@ -210,11 +221,14 @@ export function ContextMapGraph({
       // line and its dimmed label can never disagree.
       return {
         ...edge,
-        style: { ...edge.style, opacity: lit ? 1 : DIM },
+        style: {
+          ...edge.style,
+          opacity: lit ? 1 : inactiveEdgeOpacity,
+        },
         zIndex: lit ? 10 : 0,
       };
     });
-  }, [drawn.edges, selectionId]);
+  }, [drawn.edges, inactiveEdgeOpacity, selectionId]);
 
   const shownNodes = useMemo(
     () =>
@@ -223,10 +237,13 @@ export function ContextMapGraph({
         selected: node.id === selectionId,
         style: {
           ...node.style,
-          opacity: selectionId && selectionId !== node.id ? 0.55 : 1,
+          opacity:
+            selectionId && selectionId !== node.id
+              ? inactiveNodeOpacity
+              : 1,
         },
       })),
-    [drawn.nodes, selectionId],
+    [drawn.nodes, inactiveNodeOpacity, selectionId],
   );
 
   const onNodeClick = useCallback(
@@ -255,7 +272,7 @@ export function ContextMapGraph({
         elementsSelectable
         proOptions={{ hideAttribution: true }}
         fitView
-        fitViewOptions={{ padding: 0.16 }}
+        fitViewOptions={{ padding: compactLayout ? 0.06 : 0.16 }}
         zoomOnScroll={zoomOnScroll}
         preventScrolling={zoomOnScroll}
         minZoom={0.2}
@@ -265,9 +282,11 @@ export function ContextMapGraph({
         <Background gap={20} size={2} />
         {/* The map has no modes to switch, so its only control is the way
             out: the drawing as a file, for the page that explains it. */}
-        <Panel position="top-right">
-          <ExportSeg name="context-map" />
-        </Panel>
+        {showExport ? (
+          <Panel position="top-right">
+            <ExportSeg name="context-map" />
+          </Panel>
+        ) : null}
       </ReactFlow>
     </div>
   );

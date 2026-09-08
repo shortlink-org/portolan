@@ -1,20 +1,22 @@
 import {
   ArrowRight,
+  Bot,
   Braces,
   Check,
   CircleDotDashed,
   Code2,
-  Database,
+  Copy,
   FileSearch,
+  Files,
+  FileText,
   GitBranch,
   Moon,
   Network,
-  Search,
   ShieldCheck,
   Sun,
   Terminal,
 } from "lucide-react";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useState } from "react";
 import { Link } from "react-router";
 import { CompassRose, Wordmark } from "../components/logo";
 import { DiagramSkeleton } from "../components/DiagramSkeleton";
@@ -29,6 +31,7 @@ import { ProductFrame } from "./ProductFrame";
 import { ProductTour } from "./ProductTour";
 
 const REPOSITORY = "https://github.com/shortlink-org/portolan";
+const EXAMPLE_DOCS = "https://shortlink-org.github.io/portolan/docs/example";
 const exampleTo = catalogTo(paths.overview());
 
 // The hero's map carries elk and React Flow. The words arrive first; the map
@@ -105,7 +108,7 @@ function HeroDemo() {
         <div className="min-w-0">
           <div className="font-semibold text-ink">Context map</div>
           <div className="mono mt-0.5 truncate text-faint">
-            one line per relationship · click a domain · double-click opens it
+            one line per relationship · select a domain · open its catalog
           </div>
         </div>
         <div className="flex gap-2">
@@ -120,7 +123,7 @@ function HeroDemo() {
           ))}
         </div>
       </div>
-      <div className="relative h-[440px]">
+      <div className="relative h-[420px] sm:h-[440px] lg:h-[420px]">
         <Suspense fallback={<DiagramSkeleton />}>
           <HeroMap />
         </Suspense>
@@ -129,51 +132,105 @@ function HeroDemo() {
   );
 }
 
-const inputs = [
-  "Go",
-  "TypeScript",
-  "Java",
-  "Rust",
-  "Django",
-  "OpenAPI",
-  "GraphQL",
-  "Protobuf",
-  "SQL",
-  "OTel",
+const inputGroups = [
+  { label: "code", items: ["Go", "TypeScript", "Java", "Rust", "Django"] },
+  { label: "contracts", items: ["OpenAPI", "GraphQL", "Protobuf"] },
+  { label: "runtime + data", items: ["SQL", "OTel"] },
 ];
 
 const features = [
   {
-    icon: Network,
-    title: "One navigable model",
-    copy: "Contexts, services, aggregates, APIs, events, stores and ADRs stay connected instead of becoming separate documentation islands.",
-  },
-  {
-    icon: GitBranch,
-    title: "Flows across boundaries",
-    copy: "Follow behavior across HTTP, RPC, messaging, workers and persistence with the responsible source beside every step.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Declared versus verified",
-    copy: "See what the code says, what traces have observed and what references still point outside the known architecture.",
-  },
-  {
     icon: FileSearch,
-    title: "Reviewable by design",
-    copy: "Generated fragments, docs and exports are ordinary files. Architecture changes can travel through the same review as code.",
-  },
-  {
-    icon: Search,
     title: "Source-level answers",
     copy: "Open the exact file and line behind an event, field, call or flow step without leaving the architecture context.",
   },
   {
-    icon: Database,
-    title: "Data relationships included",
-    copy: "Explore stores, tables, views, foreign keys and column lineage—including ownership violations across service boundaries.",
+    icon: ShieldCheck,
+    title: "Drift caught before merge",
+    copy: "Unresolved calls, mismatched schemas, second writers and missing publishers become explicit checks instead of tribal knowledge.",
+  },
+  {
+    icon: GitBranch,
+    title: "Made for pull requests",
+    copy: "Generated docs, diagrams and exports are ordinary files, while portolan check fails when committed architecture is stale.",
   },
 ];
+
+const agentDocs = [
+  {
+    icon: FileText,
+    name: "llms.txt",
+    label: "Index for retrieval",
+    href: `${EXAMPLE_DOCS}/llms.txt`,
+    copy: "Contexts, services, aggregates, flows, glossaries and ADRs, linked to page-sized Markdown. An agent starts here and fetches only what the task needs.",
+  },
+  {
+    icon: Files,
+    name: "llms-full.txt",
+    label: "Complete context",
+    href: `${EXAMPLE_DOCS}/llms-full.txt`,
+    copy: "Every generated architecture page in one ordered file, for models that have room to reason across the whole estate at once.",
+  },
+];
+
+const quickStartCommand = "npx @shortlink-org/portolan init";
+const setupCommands = [
+  quickStartCommand,
+  "npm install --save-dev @shortlink-org/portolan",
+  "npx portolan generate",
+  "npx portolan dev",
+].join("\n");
+
+function CopyCommand({
+  text,
+  label = "Copy",
+  className = "",
+}: {
+  text: string;
+  label?: string;
+  className?: string;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const copy = async () => {
+    let written = false;
+    if (navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(text);
+        written = true;
+      } catch {
+        // Fall through to the selection-based path used by stricter browsers.
+      }
+    }
+    if (!written) {
+      const field = document.createElement("textarea");
+      field.value = text;
+      field.readOnly = true;
+      field.style.position = "fixed";
+      field.style.left = "-9999px";
+      document.body.appendChild(field);
+      field.select();
+      written = document.execCommand("copy");
+      field.remove();
+    }
+    if (written) {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={() => void copy()}
+      className={`tbtn shrink-0 ${className}`}
+      aria-label={`${label}: ${text}`}
+    >
+      {copied ? <Check size={14} /> : <Copy size={14} />}
+      {copied ? "Copied" : label}
+    </button>
+  );
+}
 
 const pipeline = [
   {
@@ -212,7 +269,7 @@ export function LandingPage() {
         <section className="landing-hero relative overflow-hidden border-b border-line">
           <div className="landing-orbit landing-orbit-one" aria-hidden />
           <div className="landing-orbit landing-orbit-two" aria-hidden />
-          <div className="relative mx-auto grid max-w-[1200px] items-center gap-14 px-5 py-20 sm:px-8 sm:py-28 lg:grid-cols-[minmax(0,0.92fr)_minmax(500px,1.08fr)] lg:py-32">
+          <div className="landing-hero-grid relative mx-auto grid max-w-[1200px] items-center gap-14 px-5 py-20 sm:px-8 sm:py-24 lg:grid-cols-[minmax(0,0.92fr)_minmax(500px,1.08fr)] lg:py-20">
             <m.div
               className="max-w-[680px]"
               variants={heroColumn}
@@ -228,7 +285,7 @@ export function LandingPage() {
               </m.div>
               <m.h1
                 variants={heroLine}
-                className="max-w-[760px] text-[clamp(3rem,6.4vw,5.8rem)] leading-[0.96] font-semibold tracking-[-0.055em] text-ink"
+                className="landing-hero-title max-w-[760px] text-[clamp(3rem,6.4vw,5.8rem)] leading-[0.96] font-semibold tracking-[-0.055em] text-ink"
               >
                 Your architecture, read from the code.
               </m.h1>
@@ -237,7 +294,7 @@ export function LandingPage() {
                 className="mt-7 max-w-[620px] text-[17px] leading-7 text-muted sm:text-[19px] sm:leading-8"
               >
                 Portolan turns code, specifications, schemas, traces and ADRs
-                into a static, navigable map of your software estate.
+                into a validated, navigable map of your software estate.
               </m.p>
               <m.div
                 variants={heroLine}
@@ -258,13 +315,13 @@ export function LandingPage() {
                 className="mono mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-faint"
               >
                 <span className="flex items-center gap-1.5">
-                  <Check size={12} className="text-verified" /> no backend
+                  <Check size={12} className="text-verified" /> no hosted backend
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <Check size={12} className="text-verified" /> static output
+                  <Check size={12} className="text-verified" /> exact source links
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <Check size={12} className="text-verified" /> reviewable in git
+                  <Check size={12} className="text-verified" /> llms.txt for agents
                 </span>
               </m.div>
             </m.div>
@@ -279,16 +336,29 @@ export function LandingPage() {
           </div>
         </section>
 
-        <section aria-label="Supported inputs" className="border-b border-line">
+        <section aria-label="Built-in inputs" className="border-b border-line">
           <div className="mx-auto flex max-w-[1200px] flex-col gap-5 px-5 py-7 sm:px-8 lg:flex-row lg:items-center">
-            <div className="mono shrink-0 text-faint">
-              READS WHAT ALREADY EXISTS
+            <div className="shrink-0">
+              <div className="mono text-faint">BUILT-IN INPUTS</div>
+              <a
+                href={`${REPOSITORY}#plugins`}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-1 inline-flex items-center gap-1 text-sm text-accent hover:underline"
+              >
+                See every extractor <ArrowRight size={12} />
+              </a>
             </div>
-            <div className="flex flex-wrap gap-x-5 gap-y-2 lg:ml-auto lg:justify-end">
-              {inputs.map((input) => (
-                <span key={input} className="mono text-muted">
-                  {input}
-                </span>
+            <div className="flex flex-wrap gap-x-7 gap-y-3 lg:ml-auto lg:justify-end">
+              {inputGroups.map((group) => (
+                <div key={group.label} className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span className="mono text-faint">{group.label}</span>
+                  {group.items.map((input) => (
+                    <span key={input} className="mono text-muted">
+                      {input}
+                    </span>
+                  ))}
+                </div>
               ))}
             </div>
           </div>
@@ -356,17 +426,17 @@ export function LandingPage() {
           <div className="mx-auto max-w-[1200px] px-5 py-20 sm:px-8 sm:py-28">
             <Reveal className="grid items-end gap-5 md:grid-cols-2">
               <div>
-                <div className="label text-accent">ONE CONNECTED VIEW</div>
+                <div className="label text-accent">WHY PORTOLAN</div>
                 <h2 className="mt-4 max-w-[700px] text-[clamp(2rem,4vw,3.75rem)] leading-[1.04] font-semibold tracking-[-0.04em]">
-                  Read the system, not six disconnected inventories.
+                  Evidence that travels with the change.
                 </h2>
               </div>
               <p className="max-w-[520px] text-[17px] leading-7 text-muted md:justify-self-end">
-                Domain structure, runtime relationships and persistence stay in
-                one model, while deeper tools remain one click away.
+                Every view keeps its source, validation status and reviewable
+                artifact close enough to act on.
               </p>
             </Reveal>
-            <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-12 grid gap-4 md:grid-cols-3">
               {features.map((feature, index) => {
                 const Icon = feature.icon;
                 return (
@@ -391,19 +461,91 @@ export function LandingPage() {
           </div>
         </section>
 
+        <section
+          id="ai-output"
+          aria-label="Architecture output for coding agents"
+          className="border-b border-line bg-surface/40"
+        >
+          <div className="mx-auto grid max-w-[1200px] gap-12 px-5 py-20 sm:px-8 sm:py-24 lg:grid-cols-[minmax(0,0.8fr)_minmax(520px,1.2fr)] lg:items-center">
+            <Reveal className="max-w-[560px]">
+              <div className="label flex items-center gap-2 text-accent">
+                <Bot size={14} /> FOR CODING AGENTS
+              </div>
+              <h2 className="mt-4 text-[clamp(2rem,4vw,3.75rem)] leading-[1.04] font-semibold tracking-[-0.04em]">
+                Give agents the map before they change the territory.
+              </h2>
+              <p className="mt-5 text-[17px] leading-7 text-muted">
+                Portolan publishes the measured catalog as model-readable
+                Markdown. It is generated from the same pages people browse,
+                so there is no second AI summary to keep in sync.
+              </p>
+              <div className="mono mt-6 flex flex-wrap gap-x-5 gap-y-2 text-faint">
+                <span className="flex items-center gap-1.5">
+                  <Check size={12} className="text-verified" /> same catalog
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Check size={12} className="text-verified" /> source commit stamped
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Check size={12} className="text-verified" /> static files
+                </span>
+              </div>
+            </Reveal>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {agentDocs.map((doc, index) => {
+                const Icon = doc.icon;
+                return (
+                  <Reveal
+                    key={doc.name}
+                    delay={index * 0.08}
+                    className="flex min-w-0 flex-col rounded-card border border-line bg-canvas p-5 shadow-xs"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <span className="flow-tile text-accent">
+                        <Icon size={14} />
+                      </span>
+                      <span className="mono text-faint">{doc.label}</span>
+                    </div>
+                    <h3 className="mono mt-7 text-lg font-semibold text-ink">
+                      {doc.name}
+                    </h3>
+                    <p className="mt-3 flex-1 text-sm leading-6 text-muted">
+                      {doc.copy}
+                    </p>
+                    <a
+                      href={doc.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-6 inline-flex items-center gap-1 text-sm text-accent hover:underline"
+                    >
+                      Open live example <ArrowRight size={13} />
+                    </a>
+                  </Reveal>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
         <section id="get-started" className="scroll-mt-20 border-b border-line">
-          <div className="mx-auto grid max-w-[1200px] items-center gap-12 px-5 py-20 sm:px-8 sm:py-28 lg:grid-cols-[minmax(0,0.9fr)_minmax(440px,1.1fr)]">
-            <Reveal>
+          <div className="mx-auto grid max-w-[1200px] grid-cols-1 items-center gap-12 px-5 py-20 sm:px-8 sm:py-28 lg:grid-cols-[minmax(0,0.9fr)_minmax(440px,1.1fr)]">
+            <Reveal className="min-w-0">
               <div className="label text-accent">GET STARTED</div>
               <h2 className="mt-4 text-[clamp(2rem,4vw,3.75rem)] leading-[1.04] font-semibold tracking-[-0.04em]">
-                Point Portolan at a repository.
+                Start with one command.
               </h2>
               <p className="mt-5 max-w-[580px] text-[17px] leading-7 text-muted">
-                The initializer detects projects and specifications, proposes a
-                manifest, and keeps generated artifacts beside the code they
-                describe.
+                Run the initializer at a repository root. It detects projects,
+                specifications and toolchains, then proposes the manifest.
               </p>
-              <div className="mt-7 flex flex-wrap gap-3">
+              <div className="mt-7 flex min-w-0 items-center gap-3 rounded-card border border-line bg-surface p-2 pl-3 shadow-xs">
+                <Terminal size={15} className="shrink-0 text-accent" />
+                <code className="mono min-w-0 flex-1 truncate text-sm text-ink">
+                  {quickStartCommand}
+                </code>
+                <CopyCommand text={quickStartCommand} label="Copy" />
+              </div>
+              <div className="mt-4 flex flex-wrap gap-3">
                 <Link to={exampleTo} className="btn-accent px-4 py-2.5">
                   Open the example <ArrowRight size={15} />
                 </Link>
@@ -419,15 +561,20 @@ export function LandingPage() {
             </Reveal>
             <Reveal
               delay={0.1}
-              className="overflow-hidden rounded-[14px] border border-line bg-[#090c10] shadow-md"
+              className="min-w-0 overflow-hidden rounded-[14px] border border-line bg-[#090c10] shadow-md"
             >
               <div className="flex h-11 items-center gap-1.5 border-b border-white/10 px-4">
                 <span className="size-2 rounded-full bg-white/15" />
                 <span className="size-2 rounded-full bg-white/15" />
                 <span className="size-2 rounded-full bg-white/15" />
-                <span className="mono ml-auto text-white/35">terminal</span>
+                <span className="mono ml-auto text-white/35">next steps</span>
+                <CopyCommand
+                  text={setupCommands}
+                  label="Copy all"
+                  className="h-7 border-white/10 bg-white/5 px-2 text-white/60 hover:bg-white/10 hover:text-white"
+                />
               </div>
-              <pre className="overflow-x-auto p-5 text-[13px] leading-7 text-white/75 sm:p-7"><code><span className="text-white/35">$</span> npx @shortlink-org/portolan init{"\n"}<span className="text-white/35">$</span> npm install --save-dev @shortlink-org/portolan{"\n"}<span className="text-white/35">$</span> npx portolan generate{"\n"}<span className="text-white/35">$</span> npx portolan dev{"\n\n"}<span className="text-[#72d5c4]">✓</span> catalog merged and validated{"\n"}<span className="text-[#72d5c4]">✓</span> site ready at http://localhost:5173</code></pre>
+              <pre className="overflow-x-auto p-5 text-[13px] leading-7 text-white/75 sm:p-7"><code><span className="text-white/35">$</span> npx @shortlink-org/portolan init{"\n"}<span className="text-[#72d5c4]">✓</span> projects and specifications detected{"\n"}<span className="text-[#72d5c4]">✓</span> portolan.json ready{"\n\n"}<span className="text-white/35">$</span> npm install --save-dev @shortlink-org/portolan{"\n"}<span className="text-white/35">$</span> npx portolan generate{"\n"}<span className="text-[#72d5c4]">✓</span> catalog merged and validated{"\n\n"}<span className="text-white/35">$</span> npx portolan dev{"\n"}<span className="text-[#72d5c4]">✓</span> site ready at http://localhost:5173</code></pre>
             </Reveal>
           </div>
         </section>
