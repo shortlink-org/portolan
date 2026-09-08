@@ -35,11 +35,26 @@ import manifestJson from "../portolan.json";
 
 const manifest = manifestJson as CatalogProfileManifest & { sources: string[] };
 export const catalogProfiles: CatalogProfile[] = profilesFromManifest(manifest);
-const requestedProfile =
-  typeof window === "undefined"
-    ? null
-    : new URLSearchParams(window.location.search).get("catalog");
-export const activeCatalogProfile = catalogProfileNamed(manifest, requestedProfile);
+/**
+ * The catalog the public landing page demonstrates. The landing has no
+ * `?catalog=` of its own - it is a page about the product, not about one
+ * estate - and the product is best shown on the example estate rather than on
+ * the three-service catalog Portolan keeps about itself. A manifest without
+ * an `example` profile falls back to its default, as any unknown name does.
+ */
+const LANDING_PROFILE = "example";
+
+function requestedProfileFromUrl(): string | null {
+  if (typeof window === "undefined") return null;
+  const named = new URLSearchParams(window.location.search).get("catalog");
+  if (named) return named;
+  return /\/landing\/?$/.test(window.location.pathname) ? LANDING_PROFILE : null;
+}
+
+export const activeCatalogProfile = catalogProfileNamed(
+  manifest,
+  requestedProfileFromUrl(),
+);
 
 /**
  * Where sources are looked for. The patterns are written out because

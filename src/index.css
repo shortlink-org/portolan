@@ -654,6 +654,72 @@
     background: color-mix(in srgb, currentColor 12%, transparent);
   }
 
+  /* Landing-only presentation surfaces. They reuse the application's canvas
+     and status tokens, but carry no catalog data or diagram runtime. */
+  .landing-grid {
+    background-color: var(--flow-pane);
+    background-image: radial-gradient(var(--flow-dot) 1px, transparent 1px);
+    background-size: 18px 18px;
+  }
+  .landing-product-shadow {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--accent) 8%, transparent),
+      0 28px 80px -34px color-mix(in srgb, var(--accent) 42%, transparent),
+      var(--shadow-md);
+  }
+  .landing-hero {
+    background-image: radial-gradient(
+      70% 85% at 72% 22%,
+      color-mix(in srgb, var(--accent) 9%, transparent),
+      transparent 70%
+    );
+  }
+  .landing-final {
+    background-image: radial-gradient(
+      55% 100% at 50% 100%,
+      color-mix(in srgb, var(--accent) 10%, transparent),
+      transparent 72%
+    );
+  }
+  .landing-orbit {
+    position: absolute;
+    border: 1px solid color-mix(in srgb, var(--accent) 10%, transparent);
+    border-radius: 9999px;
+    pointer-events: none;
+  }
+  .landing-orbit-one {
+    width: 700px;
+    height: 700px;
+    top: -430px;
+    right: -140px;
+  }
+  .landing-orbit-two {
+    width: 980px;
+    height: 980px;
+    top: -570px;
+    right: -280px;
+  }
+  /* A canvas embedded in the landing. The boxes rise in as elk places them
+     and the lines follow a beat later; anything a playback or a selection
+     dims fades rather than snaps. The node's own transform is its position,
+     so what rises is the card inside it, never the node. */
+  .landing-canvas .react-flow__node {
+    animation: fade-in var(--dur-narrative) var(--ease-out) both;
+    transition: opacity var(--dur-narrative) var(--ease-in-out);
+  }
+  .landing-canvas .react-flow__node > * {
+    animation: row-in var(--dur-narrative) var(--ease-out) both;
+  }
+  .landing-canvas .react-flow__edge {
+    animation: fade-in var(--dur-narrative) var(--ease-out) both;
+    animation-delay: 180ms;
+  }
+  .landing-canvas .react-flow__edge-path {
+    transition:
+      opacity var(--dur-narrative) var(--ease-in-out),
+      stroke-width var(--dur-micro) var(--ease-out);
+  }
+
   /* Non-navigable header for a group of leaves inside an aggregate. */
   .group-row {
     @apply mono flex w-full items-center gap-1.5 py-[3px] pr-2 text-left text-muted hover:bg-surface;

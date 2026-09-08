@@ -8,6 +8,7 @@ import { selectionHash } from "./selection/hash";
 import { flowStepId } from "./selection/model";
 
 export const paths = {
+  landing: () => "/landing",
   overview: () => "/",
   flows: () => "/flows",
   flow: (slug: string) => `/flows/${slug}`,
@@ -355,6 +356,7 @@ export function backlinkPath(link: Backlink): string | null {
 
 /** Route patterns declared in App.tsx, in the same order. */
 const ROUTES: RegExp[] = [
+  /^\/landing$/,
   /^\/$/,
   /^\/flows$/,
   /^\/flows\/[^/]+$/,

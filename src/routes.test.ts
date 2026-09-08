@@ -18,6 +18,11 @@ import { allAggregates, allStores, allViews, enumsOf } from "./catalog";
 import { registryCatalog } from "./lib/scenarios";
 
 describe("routes", () => {
+  it("routes the public landing page", () => {
+    expect(paths.landing()).toBe("/landing");
+    expect(isRoutable(paths.landing())).toBe(true);
+  });
+
   it("routes every URL the catalog can produce", () => {
     const unroutable = allCatalogPaths(catalog).filter((p) => !isRoutable(p));
     expect(unroutable).toEqual([]);

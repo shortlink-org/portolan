@@ -51,6 +51,12 @@ export interface DependencyGraphProps {
    * one it replaced.
    */
   fitKey: string;
+  /**
+   * Whether the wheel zooms the canvas. On the graph's own page it does; on a
+   * page the graph is embedded in, the wheel belongs to the page and the
+   * canvas is zoomed by pinch or by the fit control instead.
+   */
+  zoomOnScroll?: boolean;
 }
 
 export function DependencyGraph({
@@ -58,6 +64,7 @@ export function DependencyGraph({
   mode,
   onMode,
   fitKey,
+  zoomOnScroll = true,
 }: DependencyGraphProps) {
   const navigate = useNavigate();
   const [layout, setLayout] = useState<Layout | null>(null);
@@ -238,6 +245,8 @@ export function DependencyGraph({
           proOptions={{ hideAttribution: true }}
           fitView
           fitViewOptions={FIT_OPTIONS}
+          zoomOnScroll={zoomOnScroll}
+          preventScrolling={zoomOnScroll}
           minZoom={0.08}
           maxZoom={2}
           key={ready ? `fit-${fitKey}-${nodes.length}-${edges.length}` : "pending"}

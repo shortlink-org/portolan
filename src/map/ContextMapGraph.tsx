@@ -61,13 +61,22 @@ interface Drawn {
   ready: boolean;
 }
 
+export interface ContextMapGraphProps {
+  catalog: Catalog;
+  relations: readonly ContextRelation[];
+  /**
+   * Whether the wheel zooms the map. On the map's own page it does; on a page
+   * the map is embedded in, the wheel belongs to the page and the map is
+   * zoomed by pinch or by the fit control instead.
+   */
+  zoomOnScroll?: boolean;
+}
+
 export function ContextMapGraph({
   catalog,
   relations,
-}: {
-  catalog: Catalog;
-  relations: readonly ContextRelation[];
-}) {
+  zoomOnScroll = true,
+}: ContextMapGraphProps) {
   const navigate = useNavigate();
   const selectionId = useSelectionStore((s) => s.selection?.id ?? null);
   const select = useSelectionStore((s) => s.select);
@@ -247,6 +256,8 @@ export function ContextMapGraph({
         proOptions={{ hideAttribution: true }}
         fitView
         fitViewOptions={{ padding: 0.16 }}
+        zoomOnScroll={zoomOnScroll}
+        preventScrolling={zoomOnScroll}
         minZoom={0.2}
         maxZoom={1.6}
         key={fitKey}
@@ -262,10 +273,7 @@ export function ContextMapGraph({
   );
 }
 
-export function ContextMapPane(props: {
-  catalog: Catalog;
-  relations: readonly ContextRelation[];
-}) {
+export function ContextMapPane(props: ContextMapGraphProps) {
   return (
     <ReactFlowProvider>
       <ContextMapGraph {...props} />
