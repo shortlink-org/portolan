@@ -161,7 +161,7 @@ export function FocusedEventGraph({
   return (
     <div
       style={{ height: canvasHeight }}
-      className="relative w-full overflow-hidden rounded-card border border-line shadow-xs"
+      className="canvas-motion relative w-full overflow-hidden rounded-card border border-line shadow-xs"
     >
       {ready ? null : <DiagramSkeleton />}
       <ReactFlow

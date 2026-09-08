@@ -701,26 +701,6 @@
     top: -570px;
     right: -280px;
   }
-  /* A canvas embedded in the landing. The boxes rise in as elk places them
-     and the lines follow a beat later; anything a playback or a selection
-     dims fades rather than snaps. The node's own transform is its position,
-     so what rises is the card inside it, never the node. */
-  .landing-canvas .react-flow__node {
-    animation: fade-in var(--dur-narrative) var(--ease-out) both;
-    transition: opacity var(--dur-narrative) var(--ease-in-out);
-  }
-  .landing-canvas .react-flow__node > * {
-    animation: row-in var(--dur-narrative) var(--ease-out) both;
-  }
-  .landing-canvas .react-flow__edge {
-    animation: fade-in var(--dur-narrative) var(--ease-out) both;
-    animation-delay: 180ms;
-  }
-  .landing-canvas .react-flow__edge-path {
-    transition:
-      opacity var(--dur-narrative) var(--ease-in-out),
-      stroke-width var(--dur-micro) var(--ease-out);
-  }
 
   /* Non-navigable header for a group of leaves inside an aggregate. */
   .group-row {
@@ -1591,6 +1571,30 @@ h3 {
   --xy-selection-border: 1px solid
     color-mix(in srgb, var(--accent) 60%, transparent);
   font-family: var(--font-sans);
+}
+
+/* How a canvas of this app arrives and changes. The boxes rise in as elk
+   places them and the lines follow a beat later, so the picture is drawn
+   rather than dropped in over the skeleton; anything a selection, a focus or
+   a playback dims fades rather than snaps. The node's own transform is its
+   position, so what rises is the card inside it, never the node. Opt-in by
+   class: LikeC4 draws its canvases with the same library and its own motion,
+   and must not inherit this. */
+.canvas-motion .react-flow__node {
+  animation: fade-in var(--dur-narrative) var(--ease-out) both;
+  transition: opacity var(--dur-narrative) var(--ease-in-out);
+}
+.canvas-motion .react-flow__node > * {
+  animation: row-in var(--dur-narrative) var(--ease-out) both;
+}
+.canvas-motion .react-flow__edge {
+  animation: fade-in var(--dur-narrative) var(--ease-out) both;
+  animation-delay: 180ms;
+}
+.canvas-motion .react-flow__edge-path {
+  transition:
+    opacity var(--dur-narrative) var(--ease-in-out),
+    stroke-width var(--dur-micro) var(--ease-out);
 }
 
 /* Selection is the ring, on the node's own box. The event pill is the one

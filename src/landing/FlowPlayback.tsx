@@ -130,7 +130,7 @@ function Canvas({ flow, steps, at }: { flow: Flow; steps: Step[]; at: number }) 
   );
 
   return (
-    <div className="landing-canvas relative h-[340px] overflow-hidden rounded-card border border-line">
+    <div className="canvas-motion relative h-[340px] overflow-hidden rounded-card border border-line">
       {state.ready ? null : <DiagramSkeleton />}
       <ReactFlow
         nodes={nodes}

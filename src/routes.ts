@@ -202,6 +202,7 @@ export const OVERVIEW_ANCHOR = {
   landscape: "landscape",
   contexts: "contexts",
   flows: "flows-by-reach",
+  problems: "problems",
 } as const;
 
 /** Path to the page that owns an event, or null if the event is not in the catalog. */

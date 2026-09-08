@@ -240,7 +240,7 @@ export function ContextMapGraph({
   );
 
   return (
-    <div className="relative h-full w-full">
+    <div className="canvas-motion relative h-full w-full">
       {drawn.ready ? null : <DiagramSkeleton />}
       <ReactFlow
         nodes={shownNodes}

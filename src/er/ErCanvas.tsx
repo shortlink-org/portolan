@@ -342,7 +342,7 @@ function Canvas({
         wrapper={wrapper}
         name={store.id}
       />
-      <div className="relative min-h-0 flex-1">
+      <div className="canvas-motion relative min-h-0 flex-1">
         {layout.ready ? null : <DiagramSkeleton />}
         <ReactFlow
           nodes={nodes}

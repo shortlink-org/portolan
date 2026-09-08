@@ -495,7 +495,11 @@ export function ContextMap() {
               Map
             </SectionTitle>
             <div className="h-[340px] overflow-hidden rounded-card border border-line">
-              <ContextMapPane catalog={catalog} relations={relations} />
+              <ContextMapPane
+                catalog={catalog}
+                relations={relations}
+                zoomOnScroll={false}
+              />
             </div>
           </section>
 

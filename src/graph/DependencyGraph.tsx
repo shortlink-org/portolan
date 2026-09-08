@@ -224,7 +224,7 @@ export function DependencyGraph({
   return (
     /* The box is the box whether elk has answered or not: the skeleton is
        laid over it, never in place of it, so nothing reflows on arrival. */
-    <div className="relative h-full w-full">
+    <div className="canvas-motion relative h-full w-full">
       {ready ? null : <DiagramSkeleton />}
       <TinyZoom.Provider value={tiny}>
         <ReactFlow

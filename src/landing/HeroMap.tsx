@@ -57,7 +57,7 @@ export function HeroMap() {
 
   return (
     <div
-      className="landing-canvas relative h-[440px]"
+      className="relative h-[440px]"
       onPointerDown={() => setTouched(true)}
       onPointerEnter={() => setHovering(true)}
       onPointerLeave={() => setHovering(false)}

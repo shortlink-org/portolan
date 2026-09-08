@@ -3,11 +3,9 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { AlertTriangle } from "lucide-react";
 import { activeCatalogProfile, CATALOG_PATH, catalog, index } from "../data";
-import { contextOwners, contextStats, problems, widestFlows } from "../lib/derive";
+import { contextOwners, contextStats, widestFlows } from "../lib/derive";
 import type { ContextOwner } from "../lib/derive";
-import { dataProblems } from "../lib/data-problems";
-import { protoProblems } from "../lib/proto-problems";
-import { wireProblems } from "../lib/wire-problems";
+import { allProblems } from "../lib/all-problems";
 import { ctxStyle } from "../lib/context-color";
 import { middleTruncate, plural } from "../lib/format";
 import { useCountUp, staggerStyle } from "../lib/motion";
@@ -19,12 +17,16 @@ import { profileContainersViewId, profileLandscapeViewId } from "../likec4/ids";
 import { LevelSwitch } from "../likec4/levels";
 import type { C4Level } from "../likec4/levels";
 import { CatalogStamp } from "../components/CatalogStamp";
+import { ProblemRow } from "../components/ProblemRow";
 import { RowActions } from "../components/RowActions";
 import { MachineDocs } from "../components/MachineDocs";
 import {
   ClassificationBadge,
   ContextPill,
 } from "../components/primitives";
+
+/** How many problems the overview lists before pointing at the page that lists them all. */
+const OVERVIEW_PROBLEMS = 4;
 
 /**
  * A measurement that arrives rather than appears - 200ms, linear, once - and
@@ -99,12 +101,9 @@ export function Overview() {
     (count, context) => count + context.services.length,
     0,
   );
-  const issueCount = [
-    ...problems(catalog),
-    ...protoProblems(catalog, index),
-    ...dataProblems(catalog, index),
-    ...wireProblems(catalog, index),
-  ].length;
+  const issues = allProblems(catalog, index);
+  const issueCount = issues.length;
+  const errorCount = issues.filter((p) => p.severity === "error").length;
 
   return (
     <div className="h-full overflow-y-auto p-gutter">
@@ -144,7 +143,7 @@ export function Overview() {
         <HealthMetric
           value={issueCount}
           unit="problem"
-          to={paths.problems()}
+          to={issueCount > 0 ? `#${OVERVIEW_ANCHOR.problems}` : paths.problems()}
           problem
         />
       </div>
@@ -337,6 +336,62 @@ export function Overview() {
           })}
         </div>
       </section>
+
+      {/* The first few problems, errors first, on the page a reader lands on.
+          The count in the health row says how many; this says which, so
+          "13 problems" is a list to start on rather than a number to worry
+          about. Nothing is shown for a clean estate - the metric already
+          says zero, and a heading over an empty list is a dead end. */}
+      {issueCount > 0 ? (
+        <section id={OVERVIEW_ANCHOR.problems} className="mt-section">
+          <SectionTitle
+            anchor={OVERVIEW_ANCHOR.problems}
+            right={
+              <span className="flex items-center gap-2">
+                <span className="section-aside">
+                  <span className="text-unresolved">
+                    {errorCount} {plural(errorCount, "error")}
+                  </span>
+                  {issueCount - errorCount > 0 ? (
+                    <>
+                      {" · "}
+                      <span className="text-declared">
+                        {issueCount - errorCount}{" "}
+                        {plural(issueCount - errorCount, "warning")}
+                      </span>
+                    </>
+                  ) : null}
+                </span>
+                <Link
+                  to={paths.problems()}
+                  className="rounded-control px-1 text-accent hover:underline"
+                >
+                  all problems →
+                </Link>
+              </span>
+            }
+          >
+            Problems
+          </SectionTitle>
+          <div className="flex max-w-table flex-col gap-2" data-nav-list>
+            {issues.slice(0, OVERVIEW_PROBLEMS).map((problem, i) => (
+              <ProblemRow
+                key={`${problem.kind}:${problem.id}:${problem.peer}`}
+                problem={problem}
+                index={i}
+              />
+            ))}
+            {issueCount > OVERVIEW_PROBLEMS ? (
+              <Link
+                to={paths.problems()}
+                className="mono self-start rounded-control px-1 text-muted hover:text-ink"
+              >
+                {issueCount - OVERVIEW_PROBLEMS} more →
+              </Link>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
 
       <MachineDocs className="mt-section pb-section" />
     </div>

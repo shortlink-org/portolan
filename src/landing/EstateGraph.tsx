@@ -15,7 +15,7 @@ export function EstateGraph() {
   useSelectionCleared();
 
   return (
-    <div className="landing-canvas h-[470px]">
+    <div className="h-[470px]">
       <DependencyGraphPane
         graph={graph}
         mode={mode}

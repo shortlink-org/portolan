@@ -17,10 +17,7 @@ import {
 import { catalog, index } from "../data";
 import { DiagramSkeleton } from "../components/DiagramSkeleton";
 import { contextVar } from "../lib/context-color";
-import { dataProblems } from "../lib/data-problems";
-import { problems } from "../lib/derive";
-import { protoProblems } from "../lib/proto-problems";
-import { wireProblems } from "../lib/wire-problems";
+import { allProblems } from "../lib/all-problems";
 import {
   AnimatePresence,
   LayoutGroup,
@@ -196,20 +193,7 @@ function ContractDemo() {
 const SHOWN_PROBLEMS = 4;
 
 function ProblemsDemo() {
-  // The same four readings the problems page makes, errors first: edges
-  // that resolve to nothing, then everything the schemas disagree on.
-  const all = useMemo(() => {
-    const found = [
-      ...problems(catalog),
-      ...protoProblems(catalog, index),
-      ...dataProblems(catalog, index),
-      ...wireProblems(catalog, index),
-    ];
-    return [
-      ...found.filter((p) => p.severity === "error"),
-      ...found.filter((p) => p.severity === "warning"),
-    ];
-  }, []);
+  const all = useMemo(() => allProblems(catalog, index), []);
   const errors = all.filter((p) => p.severity === "error").length;
   const shown = all.slice(0, SHOWN_PROBLEMS);
 
