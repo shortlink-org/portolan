@@ -66,13 +66,11 @@ export function GraphToolbar({
           type="button"
           onClick={() => onFocusing(!focusing)}
           aria-pressed={focusing}
-          className={focusing ? "is-on" : undefined}
+          className={`flex items-center gap-1.5 ${focusing ? "is-on" : ""}`}
           title="Click a service to dim everything more than one hop away (Esc clears)"
         >
           <Crosshair size={13} aria-hidden />
-          <span className="ml-1.5">
-            {focused && focusing ? focusedLabel(focused) : "focus"}
-          </span>
+          <span>{focused && focusing ? focusedLabel(focused) : "focus"}</span>
         </button>
       </div>
 
