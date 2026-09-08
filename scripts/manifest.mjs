@@ -13,7 +13,8 @@ import { normalize } from "node:path";
 
 import Ajv from "ajv/dist/2020.js";
 
-const SCHEMA = process.env.PORTOLAN_SCHEMA || "schema/portolan.schema.json";
+// Read when asked, not when loaded: the CLI sets PORTOLAN_SCHEMA after its imports.
+const schemaFile = () => process.env.PORTOLAN_SCHEMA || "schema/portolan.schema.json";
 
 /**
  * Reads the manifest and validates it.
@@ -28,7 +29,7 @@ export function loadManifest(path = "portolan.json") {
 
   let schema;
   try {
-    schema = JSON.parse(readFileSync(SCHEMA, "utf8"));
+    schema = JSON.parse(readFileSync(schemaFile(), "utf8"));
   } catch {
     return { manifest, problems: [] };
   }

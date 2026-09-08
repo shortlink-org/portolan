@@ -121,9 +121,19 @@ npx portolan generate
 npx portolan dev
 ```
 
-`init` writes a minimal `portolan.json`, adds `.portolan/` to `.gitignore`,
-and, when the repository has a `package.json`, adds these scripts without
-replacing scripts that are already there:
+`init` looks at the repository the way the site's Settings page does when a
+project is added: it finds the directories that hold a build file, the domain
+layouts, API specifications, schemas, migrations, ADRs and glossaries it can
+read, and proposes a `portolan.json` with an extractor for each. In a terminal
+it asks which directories are projects, what to read in each, and whether to
+run `portolan generate` straight away; every question has the detected answer
+as its default. With `--yes`, or without a terminal, it takes those defaults
+and asks nothing. A plugin whose toolchain is not on `PATH` is pointed out
+before anything is written.
+
+`init` never overwrites an existing `portolan.json`. It adds `.portolan/` to
+`.gitignore` and, when the repository has a `package.json`, adds these scripts
+without replacing scripts that are already there:
 
 ```json
 {
@@ -142,7 +152,7 @@ deployable static site.
 
 | command | purpose |
 | --- | --- |
-| `portolan init` | create the first manifest without overwriting an existing one |
+| `portolan init` | inspect the repository and write the first manifest; `--yes` takes every detected default |
 | `portolan dev` | run the local site and setup UI |
 | `portolan generate` | update fragments, documentation, and exports |
 | `portolan check` | fail when committed generated files are stale, without writing them |

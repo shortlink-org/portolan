@@ -651,7 +651,7 @@ export function planProject(workspace, manifest, request) {
     ...(String(request.componentKind ?? "").trim() ? { componentKind: String(request.componentKind).trim() } : {}),
     ...(String(request.repository ?? "").trim() ? { repository: String(request.repository).trim() } : {}),
   };
-  const out = `${finalRoot}/portolan`;
+  const out = posix.join(finalRoot, "portolan");
   const detectionByPlugin = new Map(discovery.detections.map((item) => [item.plugin, item]));
   const hasDomainModel = plugins.some((plugin) => ["go-domain", "ts-domain", "rust-domain", "java-domain", "django-domain"].includes(plugin));
   const steps = plugins.map((plugin) => ({
@@ -671,7 +671,7 @@ export function planProject(workspace, manifest, request) {
   return { project, plugins, steps, source, discovery, fetch };
 }
 
-function manifestWithProject(manifest, plan, { isolated = false } = {}) {
+export function manifestWithProject(manifest, plan, { isolated = false } = {}) {
   const fetchIndex = (manifest.extract ?? []).findIndex((step) => step.plugin === "git");
   const extract = isolated ? [] : [...(manifest.extract ?? [])];
   if (plan.fetch) {
@@ -695,7 +695,7 @@ function manifestWithProject(manifest, plan, { isolated = false } = {}) {
   };
 }
 
-function writeManifest(path, manifest) {
+export function writeManifest(path, manifest) {
   const staging = mkdtempSync(join(dirname(path), ".portolan-manifest-"));
   const temp = join(staging, "portolan.json");
   try {

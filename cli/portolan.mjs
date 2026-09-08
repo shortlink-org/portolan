@@ -18,6 +18,8 @@ import { glob } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { InitError, commandWorks, init as runInit, isInteractive, promptAnswers } from "./init.mjs";
+
 const installRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const packageJson = JSON.parse(readFileSync(resolve(installRoot, "package.json"), "utf8"));
 
@@ -84,7 +86,7 @@ function help() {
 Usage: portolan <command> [options]
 
 Commands:
-  init       create a minimal portolan.json for this repository
+  init       inspect this repository and create portolan.json
   dev        open the local architecture site
   generate   update catalog fragments, docs, and exports
   check      fail when committed generated files are out of date
@@ -99,57 +101,19 @@ Options:
   --base PATH     deployed URL base (default: /)
   --host HOST     dev server host (default: 127.0.0.1)
   --port PORT     dev server port
-  --yes, -y       accept non-destructive init defaults`);
+  --yes, -y       init without questions: take every detected default`);
 }
 
-function init(workspace) {
-  const manifestPath = resolve(workspace, "portolan.json");
-  if (existsSync(manifestPath)) fail("portolan.json already exists; init did not change it");
-
-  const projectPackage = readJson(resolve(workspace, "package.json"));
-  const rawName = String(projectPackage?.name ?? basename(workspace)).replace(/^@[^/]+\//, "");
-  const id = slug(rawName) || "project";
-  const title = titleOf(id);
-  const manifest = {
-    $schema: `https://raw.githubusercontent.com/shortlink-org/portolan/${VERSION}/schema/portolan.schema.json`,
-    sources: ["portolan/*.json"],
-    projects: [{ id, name: title, root: ".", group: id, component: id }],
-    extract: [{
-      plugin: "project",
-      in: ".",
-      out: "portolan",
-      options: { group: id, groupName: title, component: id, componentName: title },
-    }],
-    generate: [
-      { plugin: "markdown", out: "docs", options: { title } },
-      { plugin: "mermaid", out: "exports/mermaid", options: { title: `${title} flows` } },
-    ],
-  };
-  writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, { flag: "wx" });
-
-  if (projectPackage) {
-    const scripts = { ...(projectPackage.scripts ?? {}) };
-    const defaults = {
-      "architecture": "portolan dev",
-      "architecture:gen": "portolan generate",
-      "architecture:check": "portolan check",
-      "architecture:build": "portolan build",
-    };
-    for (const [name, command] of Object.entries(defaults)) {
-      if (!(name in scripts)) scripts[name] = command;
-    }
-    writeFileSync(resolve(workspace, "package.json"), `${JSON.stringify({ ...projectPackage, scripts }, null, 2)}\n`);
+async function init(workspace, options) {
+  const interactive = !options.yes && isInteractive();
+  let result;
+  try {
+    result = await runInit(workspace, { version: VERSION, ask: interactive ? promptAnswers(VERSION) : undefined });
+  } catch (error) {
+    if (error instanceof InitError) fail(error.message);
+    throw error;
   }
-
-  const ignorePath = resolve(workspace, ".gitignore");
-  const ignore = existsSync(ignorePath) ? readFileSync(ignorePath, "utf8") : "";
-  if (!ignore.split(/\r?\n/).includes(".portolan/")) {
-    writeFileSync(ignorePath, `${ignore}${ignore && !ignore.endsWith("\n") ? "\n" : ""}\n# Portolan local build state\n.portolan/\n`);
-  }
-
-  console.log("created portolan.json");
-  if (projectPackage) console.log("added architecture scripts to package.json");
-  console.log("next: portolan generate && portolan dev");
+  if (result.generate) runScript("scripts/gen.mjs", [], workspace);
 }
 
 function doctor(workspace) {
@@ -339,23 +303,6 @@ function assertWorkspace(workspace) {
 function inside(root, target) {
   const path = relative(resolve(root), resolve(target));
   return path === "" || (!path.startsWith(`..${sep}`) && path !== ".." && !isAbsolute(path));
-}
-
-function commandWorks(command, args) {
-  const result = spawnSync(command, args, { stdio: "ignore" });
-  return !result.error && result.status === 0;
-}
-
-function readJson(path) {
-  try { return JSON.parse(readFileSync(path, "utf8")); } catch { return null; }
-}
-
-function slug(value) {
-  return String(value).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-}
-
-function titleOf(value) {
-  return value.split("-").filter(Boolean).map((part) => part[0].toUpperCase() + part.slice(1)).join(" ");
 }
 
 function fail(message) {
