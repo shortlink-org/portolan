@@ -25,6 +25,7 @@ import {
   clipPage,
   instructions,
   pagePath,
+  promptPageContext,
 } from "../../src/chat/prompt.ts";
 
 const MAX_BODY = 400_000; // characters: a conversation, not a catalog
@@ -32,26 +33,42 @@ const MAX_MESSAGES = 60;
 /** The site's files, cached at the edge for five minutes. */
 const CACHED = { cf: { cacheTtl: 300, cacheEverything: true } };
 
-async function readIndex(env) {
-  const response = await fetch(`${env.DOCS_BASE}llms.txt`, CACHED);
+function catalogId(raw) {
+  return typeof raw === "string" && /^[a-z0-9][a-z0-9_-]{0,63}$/.test(raw)
+    ? raw
+    : "portolan";
+}
+
+function docsUrls(env, rawCatalogId) {
+  const profile = catalogId(rawCatalogId);
+  if (profile === "portolan") {
+    return { index: `${env.DOCS_BASE}llms.txt`, pages: `${env.DOCS_BASE}docs/` };
+  }
+  const root = `${env.DOCS_BASE}docs/${profile}/`;
+  return { index: `${root}llms.txt`, pages: root };
+}
+
+async function readIndex(env, rawCatalogId) {
+  const response = await fetch(docsUrls(env, rawCatalogId).index, CACHED);
   if (!response.ok) throw new Error(`llms.txt answered ${response.status}`);
   return response.text();
 }
 
-async function readPage(env, raw) {
+async function readPage(env, rawCatalogId, raw) {
   const path = pagePath(raw);
   if (!path) return "That is not a page of the catalog. Use a path from the index.";
-  const response = await fetch(`${env.DOCS_BASE}${path}`, CACHED);
+  const relative = path.slice("docs/".length);
+  const response = await fetch(`${docsUrls(env, rawCatalogId).pages}${relative}`, CACHED);
   if (!response.ok) return `No page at ${path}. Use a path from the index.`;
   return clipPage(await response.text());
 }
 
-function tools(env) {
+function tools(env, rawCatalogId) {
   const set = {
     read_page: tool({
       description: TOOL_SPECS.read_page.description,
       inputSchema: jsonSchema(TOOL_SPECS.read_page.input),
-      execute: ({ path }) => readPage(env, path),
+      execute: ({ path }) => readPage(env, rawCatalogId, path),
     }),
   };
   // Drawn by the browser from the catalog it holds; here they only exist so
@@ -113,7 +130,7 @@ export default {
 
     let index;
     try {
-      index = await readIndex(env);
+      index = await readIndex(env, body.catalogId);
     } catch (error) {
       return reply(502, `the catalog index could not be read: ${describe(error)}`);
     }
@@ -121,8 +138,8 @@ export default {
     const google = createGoogleGenerativeAI({ apiKey: env.GEMINI_API_KEY });
     const agent = new ToolLoopAgent({
       model: google(env.MODEL),
-      instructions: instructions(index),
-      tools: tools(env),
+      instructions: instructions(index, promptPageContext(body.pageContext)),
+      tools: tools(env, body.catalogId),
       stopWhen: stepCountIs(MAX_STEPS),
     });
 

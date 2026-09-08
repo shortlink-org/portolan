@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef } from "react";
 import type { ReactNode } from "react";
-import type { DiagramApi } from "likec4/react";
+import type { DiagramApi, ViewPadding } from "likec4/react";
 import { ReactLikeC4, isLikeC4ViewId } from "./generated";
 import { useTheme } from "../app/theme";
 import { Ident } from "../components/Ident";
@@ -12,6 +12,8 @@ export interface InteractiveViewProps {
   /** Sequence for flows, diagram for element views. */
   variant?: "diagram" | "sequence";
   controls?: boolean;
+  /** Space around an initially fitted diagram. */
+  fitViewPadding?: ViewPadding;
   walkthrough?: boolean;
   /** LikeC4 element ids to mark; everything else on the canvas is dimmed. */
   highlightNodes?: readonly string[];
@@ -71,6 +73,7 @@ export function InteractiveView({
   viewId,
   variant = "diagram",
   controls = false,
+  fitViewPadding,
   walkthrough = false,
   highlightNodes = [],
   highlightEdges = [],
@@ -122,6 +125,7 @@ export function InteractiveView({
         background="dots"
         controls={controls}
         fitView
+        fitViewPadding={fitViewPadding}
         pannable
         zoomable
         enableDynamicViewWalkthrough={walkthrough}

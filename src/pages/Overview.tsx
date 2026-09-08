@@ -177,8 +177,9 @@ export function Overview() {
               ? profileContainersViewId(activeCatalogProfile.id)
               : profileLandscapeViewId(activeCatalogProfile.id)
           }
-          height={phone ? 300 : level === 2 ? 560 : 400}
+          height={phone ? 320 : level === 2 ? 660 : 580}
           controls={phone}
+          fitViewPadding={{ x: 8, y: 8 }}
         />
       </section>
 

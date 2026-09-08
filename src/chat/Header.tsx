@@ -3,6 +3,7 @@
 import { Eraser, MessageSquare, Settings2, X } from "lucide-react";
 import { routeLabel } from "./flags";
 import type { ChatRoute } from "./flags";
+import type { ChatPageContext } from "./page-context";
 
 const ICON =
   "flex size-8 items-center justify-center rounded-control text-muted t-micro transition-colors hover:bg-surface hover:text-ink";
@@ -12,8 +13,10 @@ export function Header({
   onSettings,
   onClear,
   onClose,
+  page,
 }: {
   route: ChatRoute;
+  page?: ChatPageContext | null;
   onSettings: () => void;
   /** Present once there is a conversation to start over from. */
   onClear?: () => void;
@@ -27,8 +30,16 @@ export function Header({
         <div className="font-semibold leading-tight text-ink">
           ask the catalog
         </div>
-        <div className="mono truncate text-muted">
-          {routeLabel(route) || "nothing set to answer"}
+        <div className="mono flex min-w-0 items-center gap-1.5 truncate text-muted">
+          <span className="truncate">{routeLabel(route) || "nothing set to answer"}</span>
+          {page ? (
+            <>
+              <span aria-hidden className="text-faint">·</span>
+              <span className="truncate text-ink" title={`${page.kind} ${page.id}`}>
+                {page.kind} · {page.title}
+              </span>
+            </>
+          ) : null}
         </div>
       </div>
       <div className="ml-auto flex shrink-0 items-center">

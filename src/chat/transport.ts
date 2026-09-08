@@ -14,7 +14,11 @@ import {
 import type { ChatTransport, UIMessage, UIMessageChunk } from "ai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type { ChatRoute, OwnModel } from "./flags";
-import { instructions, MAX_STEPS } from "./prompt";
+import {
+  instructions,
+  MAX_STEPS,
+  promptPageContext,
+} from "./prompt";
 import { useChatUi } from "./store";
 import { browserTools, loadIndex } from "./tools";
 
@@ -22,10 +26,11 @@ type Answering = Extract<ChatRoute, { kind: "proxy" | "own" }>;
 
 class OwnTransport implements ChatTransport<UIMessage> {
   private inner: Promise<ChatTransport<UIMessage>> | null = null;
+  private contextKey = "";
 
   constructor(private readonly own: OwnModel) {}
 
-  private async build(): Promise<ChatTransport<UIMessage>> {
+  private async build(pageContext: unknown): Promise<ChatTransport<UIMessage>> {
     const ui = useChatUi.getState();
     ui.setPhase("index");
     let index: string;
@@ -41,7 +46,7 @@ class OwnTransport implements ChatTransport<UIMessage> {
     });
     const agent = new ToolLoopAgent({
       model: provider.chatModel(this.own.model.trim()),
-      instructions: instructions(index),
+      instructions: instructions(index, promptPageContext(pageContext)),
       tools: browserTools(),
       stopWhen: stepCountIs(MAX_STEPS),
     });
@@ -51,7 +56,14 @@ class OwnTransport implements ChatTransport<UIMessage> {
   async sendMessages(
     options: Parameters<ChatTransport<UIMessage>["sendMessages"]>[0],
   ): Promise<ReadableStream<UIMessageChunk>> {
-    this.inner ??= this.build().catch((error: unknown) => {
+    const pageContext = (options.body as { pageContext?: unknown } | undefined)
+      ?.pageContext;
+    const nextContextKey = JSON.stringify(promptPageContext(pageContext));
+    if (this.contextKey !== nextContextKey) {
+      this.inner = null;
+      this.contextKey = nextContextKey;
+    }
+    this.inner ??= this.build(pageContext).catch((error: unknown) => {
       this.inner = null;
       throw error;
     });

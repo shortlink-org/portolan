@@ -108,6 +108,43 @@ export const DISPLAY_TOOLS: readonly ToolName[] = [
 /** How many model calls one answer may take: reads, then the text, then a card. */
 export const MAX_STEPS = 6;
 
+/** Navigation context sent by the browser with one question. */
+export interface PromptPageContext {
+  kind: string;
+  id: string;
+  title: string;
+  docPath: string | null;
+}
+
+/** Keep request-supplied context small and inert before it reaches a prompt. */
+export function promptPageContext(input: unknown): PromptPageContext | null {
+  if (!input || typeof input !== "object") return null;
+  const value = input as Record<string, unknown>;
+  if (
+    typeof value.kind !== "string" ||
+    typeof value.id !== "string" ||
+    typeof value.title !== "string" ||
+    (value.docPath !== null && typeof value.docPath !== "string")
+  ) {
+    return null;
+  }
+  const clean = (text: string) => text.replace(/[\r\n]+/g, " ").trim().slice(0, 240);
+  const kind = clean(value.kind);
+  const id = clean(value.id);
+  const title = clean(value.title);
+  const normalizedPage =
+    value.docPath === null ? null : pagePath(clean(value.docPath));
+  const docPath = normalizedPage?.slice("docs/".length) ?? null;
+  if (
+    !/^[a-z][a-z-]{0,31}$/.test(kind) ||
+    !/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,239}$/.test(id) ||
+    !title
+  ) {
+    return null;
+  }
+  return { kind, id, title, docPath };
+}
+
 /**
  * A page path the tool may open, or null. The index links pages as
  * `docs/<context>/<page>.md`; the model is allowed to drop the `docs/` and
@@ -140,8 +177,12 @@ export function clipPage(text: string): string {
 }
 
 /** The system prompt, with the index folded in. */
-export function instructions(index: string): string {
+export function instructions(index: string, page?: PromptPageContext | null): string {
+  const current = page
+    ? `\nCurrent page: ${page.kind} \`${page.id}\`. Treat “this”, “it” and similar references as this catalog entity. This route is only navigation context, not evidence: read ${page.docPath ? `\`docs/${page.docPath}\`` : "the relevant page from the index"} before making claims about it.\n`
+    : "";
   return `You are the guide to an architecture catalog: bounded contexts, services, aggregates, events, flows and decisions (ADRs). The index of its pages is below.
+${current}
 
 How to answer:
 - Answer in the language the question was asked in.

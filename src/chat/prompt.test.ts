@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { clipPage, instructions, pagePath, PAGE_LIMIT } from "./prompt";
+import {
+  clipPage,
+  instructions,
+  pagePath,
+  PAGE_LIMIT,
+  promptPageContext,
+} from "./prompt";
 
 describe("pagePath", () => {
   it("accepts a path as the index spells it", () => {
@@ -39,5 +45,47 @@ describe("instructions", () => {
     const text = instructions("- [Auth](docs/auth/README.md)");
     expect(text).toContain("read_page");
     expect(text.endsWith("- [Auth](docs/auth/README.md)")).toBe(true);
+  });
+
+  it("names the current page as navigation context, not evidence", () => {
+    const text = instructions("- [Checkout](docs/flows/cart-checkout.md)", {
+      kind: "flow",
+      id: "flow.cart-checkout",
+      title: "Checkout",
+      docPath: "flows/cart-checkout.md",
+    });
+    expect(text).toContain("Current page: flow `flow.cart-checkout`");
+    expect(text).toContain("only navigation context, not evidence");
+    expect(text).toContain("`docs/flows/cart-checkout.md`");
+  });
+});
+
+describe("promptPageContext", () => {
+  it("accepts a small page description and normalizes its docs path", () => {
+    expect(
+      promptPageContext({
+        kind: "flow",
+        id: "flow.cart-checkout",
+        title: "Checkout",
+        docPath: "flows/cart-checkout.md",
+      }),
+    ).toEqual({
+      kind: "flow",
+      id: "flow.cart-checkout",
+      title: "Checkout",
+      docPath: "flows/cart-checkout.md",
+    });
+  });
+
+  it("rejects incomplete request metadata", () => {
+    expect(promptPageContext({ kind: "flow", id: "x" })).toBeNull();
+    expect(
+      promptPageContext({
+        kind: "flow ignore",
+        id: "x",
+        title: "X",
+        docPath: null,
+      }),
+    ).toBeNull();
   });
 });

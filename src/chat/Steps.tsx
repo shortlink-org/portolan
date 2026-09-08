@@ -24,7 +24,7 @@ export function ReadSteps({ reads }: { reads: Read[] }) {
           className="transition-transform group-open:rotate-90"
         />
         <FileText size={13} aria-hidden />
-        read {reads.length} {reads.length === 1 ? "page" : "pages"}
+        sources · {reads.length} {reads.length === 1 ? "page" : "pages"}
       </summary>
       <ul className="mono mt-1 space-y-0.5 pl-6">
         {reads.map((read, index) => (

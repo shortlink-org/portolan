@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import type { ViewPadding } from "likec4/react";
 import { InteractiveView } from "./InteractiveView";
 import { catalogIdOf } from "./mapping";
 import { fqn } from "./ids";
@@ -14,11 +15,14 @@ export function C4View({
   viewId,
   height = 320,
   controls = false,
+  fitViewPadding,
 }: {
   viewId: string;
   height?: number | string;
   /** Zoom controls, useful when a whole estate has to fit on a phone. */
   controls?: boolean;
+  /** Space around the fitted model; overview uses a tighter product frame. */
+  fitViewPadding?: ViewPadding;
 }) {
   const selection = useSelectionStore((s) => s.selection);
   const source = useSelectionStore((s) => s.source);
@@ -46,6 +50,7 @@ export function C4View({
       <InteractiveView
         viewId={viewId}
         controls={controls}
+        fitViewPadding={fitViewPadding}
         highlightNodes={marked}
         onNode={onNode}
         onCanvas={onCanvas}

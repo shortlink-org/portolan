@@ -7,12 +7,12 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import { Chat, useChat } from "@ai-sdk/react";
 import { getToolName, isToolUIPart } from "ai";
 import type { ChatStatus, UIMessage } from "ai";
 import { Markdown } from "../components/Markdown";
-import { catalog } from "../data";
+import { activeCatalogProfile, catalog } from "../data";
 import { paletteItems } from "../lib/palette";
 import { ToolCard, toolOutput } from "./Cards";
 import { Composer } from "./Composer";
@@ -30,6 +30,7 @@ import type { Read } from "./Steps";
 import { useChatUi } from "./store";
 import { transportFor } from "./transport";
 import { Sprite } from "./Waiting";
+import { pageContext } from "./page-context";
 
 export type Answering = Extract<ChatRoute, { kind: "proxy" | "own" }>;
 
@@ -205,6 +206,8 @@ export function Conversation({
   const phase = useChatUi((s) => s.phase);
   const took = useChatUi((s) => s.took);
   const navigate = useNavigate();
+  const location = useLocation();
+  const page = useMemo(() => pageContext(location.pathname), [location.pathname]);
   const list = useRef<HTMLDivElement>(null);
   const busy = status === "submitted" || status === "streaming";
   const waiting = waitingLabel(messages, status, phase);
@@ -237,7 +240,15 @@ export function Conversation({
   const send = (question: string) => {
     if (busy) return;
     useChatUi.getState().setAskedAt(Date.now());
-    void sendMessage({ text: question });
+    void sendMessage(
+      { text: question },
+      {
+        body: {
+          catalogId: activeCatalogProfile.id,
+          ...(page ? { pageContext: page } : {}),
+        },
+      },
+    );
   };
 
   // Links in an answer point into the app; follow them without a reload, and
@@ -257,6 +268,7 @@ export function Conversation({
     <>
       <Header
         route={route}
+        page={page}
         onSettings={onSettings}
         {...(onClose ? { onClose } : {})}
         {...(messages.length > 0 && !busy
@@ -273,7 +285,7 @@ export function Conversation({
         {seeded ? (
           <SeededExchange onNavigate={onClose ?? stayHere} />
         ) : messages.length === 0 ? (
-          <Starter onAsk={send} />
+          <Starter onAsk={send} page={page} />
         ) : null}
         {messages.map((message) =>
           message.role === "user" ? (
@@ -310,7 +322,12 @@ export function Conversation({
               onRetry={() => {
                 clearError();
                 useChatUi.getState().setAskedAt(Date.now());
-                void regenerate();
+                void regenerate({
+                  body: {
+                    catalogId: activeCatalogProfile.id,
+                    ...(page ? { pageContext: page } : {}),
+                  },
+                });
               }}
               onOwnKey={onOwnKey}
             />

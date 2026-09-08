@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 import { useParams } from "react-router";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, MessageSquare } from "lucide-react";
 import { saveCanvasImage } from "../lib/export-canvas";
 import { allRepos, flowContexts, walkSteps } from "../catalog";
 import type { Flow, Status, Step } from "../catalog";
@@ -55,6 +55,8 @@ import { ContextPill } from "../components/primitives";
 import { WhatLinksHere } from "../components/WhatLinksHere";
 import { FlowTrigger } from "../components/FlowTrigger";
 import { NotFound } from "./NotFound";
+import { useChatAvailable } from "../chat/prefs";
+import { useChatUi } from "../chat/store";
 
 /**
  * The summary, clamped to two lines.
@@ -117,6 +119,7 @@ export function FlowDetail() {
   const [statusFilter, setStatusFilter] = useState<Status | null>(null);
   const [exporting, setExporting] = useState(false);
   const say = useToastStore((s) => s.say);
+  const chatAvailable = useChatAvailable();
   /** Empty means every branch at once — the union, not a run. */
   const [pathId, setPathId] = useState("");
   /** Chapters the reader has folded away. Empty means the whole flow is open. */
@@ -441,12 +444,23 @@ export function FlowDetail() {
         {/* A flow belongs to no single context, so the wash takes the first one
             it crosses - the context it starts in. */}
         <div aria-hidden className="hero-wash" style={ctxStyle(contexts[0])} />
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <h1 className="text-md font-semibold" title={flow.name}>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <h1 className="text-lg font-semibold" title={flow.name}>
             {flow.name}
           </h1>
           <Ident value={flow.id} className="text-muted" />
           <div className="ml-auto flex items-center gap-2">
+            {chatAvailable ? (
+              <button
+                type="button"
+                onClick={() => useChatUi.getState().setOpen(true)}
+                className="product-primary"
+                title={`Ask the catalog about ${flow.name}`}
+              >
+                <MessageSquare size={14} aria-hidden />
+                ask this flow
+              </button>
+            ) : null}
             <PinButton kind="flow" id={flow.id} label={flow.name} />
           </div>
         </div>
@@ -465,7 +479,8 @@ export function FlowDetail() {
             What the row does NOT carry is anything about the picture: the view
             id and the filter's own count are facts about what is on the canvas
             right now, and they live with the controls that changed them. */}
-        <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+        <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 rounded-control border border-line bg-surface px-2.5 py-1.5 shadow-xs">
+          <span className="label shrink-0 text-faint">evidence</span>
           {flow.trigger ? <FlowTrigger trigger={flow.trigger} /> : null}
           {flow.includes && flow.includes.length > 0 ? (
             <span
@@ -501,9 +516,11 @@ export function FlowDetail() {
             variant="line"
             className="mt-0"
           />
-          {contexts.map((c) => (
-            <ContextPill key={c} id={c} name={contextName(c)} />
-          ))}
+          <div className="flex flex-wrap items-center gap-1.5 sm:ml-auto">
+            {contexts.map((c) => (
+              <ContextPill key={c} id={c} name={contextName(c)} />
+            ))}
+          </div>
         </div>
 
         <FlowToolbar

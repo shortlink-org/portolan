@@ -7,8 +7,9 @@ it back in the AI SDK's message protocol, which `useChat` in the panel reads.
 
 The loop is the same one the browser runs with a reader's own key: the
 instructions and the tools are imported from `src/chat/prompt.ts`, not copied.
-The model gets `llms.txt` (the index) and a `read_page` tool that opens one
-page of `docs/` at a time; the `show_*` tools have no body here — a call to one
+The model gets the active catalog profile's `llms.txt` (the index) and a
+`read_page` tool that opens one page of its `docs/` tree at a time; the
+`show_*` tools have no body here — a call to one
 ends the answer, and the panel draws the card from the catalog it holds.
 
 What it enforces:
@@ -18,7 +19,8 @@ What it enforces:
 - Body up to 400k characters and 60 messages, otherwise 413 / 400.
 - A page path must be a markdown file under `docs/`; anything else is refused
   to the model, not fetched.
-- The model is fixed by `MODEL`; the site it reads is fixed by `DOCS_BASE`.
+- The model is fixed by `MODEL`; the site it reads is fixed by `DOCS_BASE`,
+  while `catalogId` selects one generated profile below that site.
 
 ## Deploy
 
