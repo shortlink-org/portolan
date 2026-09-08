@@ -215,7 +215,7 @@ docker run --rm \
   -e HOME=/tmp \
   -v "$PWD:/workspace" \
   -w /workspace \
-  ghcr.io/shortlink-org/portolan:0.1.0 generate
+  ghcr.io/shortlink-org/portolan:0.2.0 generate
 ```
 
 Use immutable versions in CI. `latest` is intended for trying the CLI, not for

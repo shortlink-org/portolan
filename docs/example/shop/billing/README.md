@@ -1,6 +1,6 @@
 # Billing
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
 
 - **Id:** `shop.billing`
 - **Context:** [Shop](../README.md)
@@ -48,12 +48,12 @@ aggregate and the schema, `events.py` is what leaves and `bus.py` the subject
 it leaves on, `services.py` is what can be asked for, the DRF view and
 `urls.py` are the way in, and `handlers.py` is what runs when somebody else's
 event arrives. The rules are in
-[plugins/extract-django/README.md](../../../plugins/extract-django/README.md).
+[plugins/extract-django/README.md](https://github.com/shortlink-org/portolan/blob/main/plugins/extract-django/README.md).
 `extract-celery` reads the rest: `invoices/tasks.py` is what runs later, the
 `.delay()` and `.apply_async()` in `services.py` are where it is set off, and
 the `CELERY_` lines in `config/settings.py` say which queue each task lands
 on. The rules are in
-[plugins/extract-celery/README.md](../../../plugins/extract-celery/README.md).
+[plugins/extract-celery/README.md](https://github.com/shortlink-org/portolan/blob/main/plugins/extract-celery/README.md).
 
 ```bash
 docker compose up -d db redis

@@ -1,6 +1,6 @@
 # Ledger
 
-*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
 
 - **Id:** `payments.ledger`
 - **Context:** [Payments](../README.md)
@@ -64,7 +64,7 @@ The vocabulary is [GLOSSARY.md](../glossary.md). Nothing here is annotated for
 the catalog, but plenty is annotated for the model: `@AggregateRoot`, `@Entity`, `@ValueObject`, `@Repository`,
 `@SecondaryPort` and `@DomainEvent` are jMolecules, and `extract-java` reads
 what they say rather than guessing from the layout. The rules are in
-[plugins/extract-java/README.md](../../../plugins/extract-java/README.md).
+[plugins/extract-java/README.md](https://github.com/shortlink-org/portolan/blob/main/plugins/extract-java/README.md).
 
 Two things follow from that and are worth knowing when reading the pages:
 

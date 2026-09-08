@@ -111,10 +111,21 @@ func (s *site) rewriteServiceReadmeLinks(from string, ctx *catalog.BoundedContex
 
 		sourceTarget := path.Clean(path.Join(readmeDir, destination))
 		generated, ok := targets[sourceTarget]
-		if !ok {
+		if ok {
+			return "](" + rel(from, generated) + suffix + parts[2] + ")"
+		}
+
+		// Everything else still points into the source tree. Its relative path
+		// was written for the README's old directory, not for the generated
+		// page, so make it a stable forge link instead. sourcePrefix also does
+		// the right thing for a vendored service whose repository has an
+		// immutable pin in the catalog.
+		prefix, ok := s.sourcePrefix(svc, strings.HasSuffix(destination, "/"))
+		remote := remotePath(sourceTarget, svc)
+		if !ok || remote == "." || remote == "" || remote == ".." || strings.HasPrefix(remote, "../") {
 			return match
 		}
-		return "](" + rel(from, generated) + suffix + parts[2] + ")"
+		return "](" + strings.TrimSuffix(prefix, "/") + "/" + escapePath(strings.TrimSuffix(remote, "/")) + suffix + parts[2] + ")"
 	})
 }
 

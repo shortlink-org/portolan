@@ -1,6 +1,6 @@
 # Host
 
-*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `4 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Id:** `portolan.host`
 - **Group:** [Portolan](../README.md)
@@ -73,7 +73,7 @@ one estate and validates the union. Nothing here draws anything.
 | `npm run test:package` | `node scripts/package-smoke.mjs` | [`package.json:55`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L55) |
 | `npm run test:watch` | `vitest` | [`package.json:56`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L56) |
 | `npm run typecheck` | `tsc --noEmit && tsc -p plugins/extract-ts` | [`package.json:57`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L57) |
-| `npm run likec4:gen` | `node scripts/gen-likec4.mjs && likec4 gen react likec4 -o src/likec4/generated.jsx` | [`package.json:58`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L58) |
+| `npm run likec4:gen` | `node scripts/gen-likec4.mjs && likec4 gen react likec4 -o src/likec4/generated.jsx --no-use-dot` | [`package.json:58`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L58) |
 | `npm run likec4:validate` | `likec4 validate likec4` | [`package.json:59`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L59) |
 | `npm run plugins:build` | `GOOS=wasip1 GOARCH=wasm go build -trimpath -ldflags="-s -w" -o plugins/portolan-go.wasm ./plugins/cmd/portolan-go && javac --release 21 -d plugins/extract-java/build plugins/extract-java/src/org/portolan/extract/*.java` | [`package.json:61`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L61) |
 | `npm run schema` | `npm run plugins:build && node scripts/schema.mjs` | [`package.json:62`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L62) |

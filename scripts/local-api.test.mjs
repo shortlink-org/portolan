@@ -66,7 +66,7 @@ describe("local project setup", () => {
     const installed = installDeliveryPreset(root, { provider: "github", revision: preview.revision });
     expect(installed.written).toHaveLength(2);
     expect(installed.status).toBe("installed");
-    expect(readFileSync(join(root, ".github/workflows/portolan-check.yml"), "utf8")).toContain("shortlink-org/portolan@0.1.0");
+    expect(readFileSync(join(root, ".github/workflows/portolan-check.yml"), "utf8")).toContain("shortlink-org/portolan@0.2.0");
     expect(readFileSync(join(root, ".github/workflows/portolan-pages.yml"), "utf8")).toContain("base: /${{ github.event.repository.name }}/");
     expect(installDeliveryPreset(root, { provider: "github", revision: installed.revision }).written).toEqual([]);
   });

@@ -1,13 +1,13 @@
 # portolan.0008 — A plugin that needs a socket runs inside the host
 
-*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `4 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-08
 - **Scope:** [portolan](../portolan/README.md)
 - **Source:** [`adr/0008-a-plugin-that-needs-a-socket-runs-inside-the-host.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0008-a-plugin-that-needs-a-socket-runs-inside-the-host.md)
 - **Committed:** Victor Login, 2026-09-08 (`f629480`)
-- **Revised:** Victor Login, 2026-09-08 (`1d6b90b`)
+- **Revised:** Victor Login, 2026-09-08 (`711bc59`)
 
 ### Context and Problem Statement
 

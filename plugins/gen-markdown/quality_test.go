@@ -138,6 +138,20 @@ func TestSemanticFieldsAndImmutableSourcesAreRendered(t *testing.T) {
 	}
 }
 
+func TestServiceReadmeLinksOutsideGeneratedDocsUseSourceTree(t *testing.T) {
+	cat := fixtureCatalog(t)
+	svc := &cat.Contexts[0].Services[0]
+	svc.Readme += "\n\n[Extractor](../../plugins/extract-example/README.md#usage)"
+
+	files := renderedFiles(render(plugin.Request{Catalog: cat}, Options{
+		SourceBaseURL: "https://github.com/example/billing/blob/main",
+	}))
+	want := "https://github.com/example/billing/blob/main/plugins/extract-example/README.md#usage"
+	if body := files["billing/invoices/README.md"]; !strings.Contains(body, want) {
+		t.Fatalf("service README did not rewrite a source-tree link to %q:\n%s", want, body)
+	}
+}
+
 func TestNeutralComponentDoesNotPretendToHaveADomainModel(t *testing.T) {
 	cat := catalog.Catalog{
 		GeneratedAt: "2026-09-06T00:00:00Z",
