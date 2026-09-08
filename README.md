@@ -10,8 +10,9 @@ The catalog and site are static end to end and require no backend. Optional
 branch comparison and source previews read immutable files from GitHub or
 GitLab at runtime; local development uses a localhost-only control plane.
 
-Live: <https://shortlink-org.github.io/portolan/> (the example estate in
-`examples/`).
+Live: <https://shortlink-org.github.io/portolan/landing> — the product page,
+and the example estate in `examples/` behind it:
+<https://shortlink-org.github.io/portolan/?catalog=example>.
 
 ## What it does
 
