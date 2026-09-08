@@ -1,21 +1,21 @@
-import { useId, useRef, useState } from "react";
+import { useId, useState } from "react";
 import type { KeyboardEvent, ReactNode } from "react";
 import { animate, useDragControls, useMotionValue } from "motion/react";
 import type { PanInfo } from "motion/react";
 import { m } from "../lib/motion";
 
 const cats = [
-  "/landing/cats/thread-tangle.webp",
-  "/landing/cats/map-inspector.webp",
-  "/landing/cats/laptop.webp",
-  "/landing/cats/diagrammer.webp",
-  "/landing/cats/compass-nap.webp",
-  "/landing/cats/docs-reader.webp",
-  "/landing/cats/bug-hunter.webp",
-  "/landing/cats/system-builder.webp",
-  "/landing/cats/server-break.webp",
-  "/landing/cats/star-mapper.webp",
-] as const;
+  "thread-tangle.webp",
+  "map-inspector.webp",
+  "laptop.webp",
+  "diagrammer.webp",
+  "compass-nap.webp",
+  "docs-reader.webp",
+  "bug-hunter.webp",
+  "system-builder.webp",
+  "server-break.webp",
+  "star-mapper.webp",
+].map((file) => `${import.meta.env.BASE_URL}landing/cats/${file}`);
 
 const X_LIMIT = 300;
 const Y_LIMIT = 190;
@@ -47,12 +47,12 @@ export function DraggableReveal({
   const descriptionId = useId();
   const x = useMotionValue(0);
   const y = useMotionValue(0);
-  const dragEdgeLocked = useRef(false);
   const [dragging, setDragging] = useState(false);
   const [revealEdge, setRevealEdge] = useState<RevealEdge>("right");
   const [cat] = useState(
     () => cats[Math.floor(Math.random() * cats.length)] ?? cats[0],
   );
+  const [mirrored] = useState(() => Math.random() < 0.5);
 
   const returnToOrigin = () => {
     const transition = {
@@ -90,14 +90,12 @@ export function DraggableReveal({
     _event: MouseEvent | TouchEvent | PointerEvent,
     info: PanInfo,
   ) => {
-    if (dragEdgeLocked.current || Math.hypot(info.offset.x, info.offset.y) < 16)
-      return;
+    if (Math.hypot(info.offset.x, info.offset.y) < 16) return;
     if (Math.abs(info.offset.x) >= Math.abs(info.offset.y)) {
       setRevealEdge(info.offset.x < 0 ? "right" : "left");
     } else {
       setRevealEdge(info.offset.y < 0 ? "bottom" : "top");
     }
-    dragEdgeLocked.current = true;
   };
 
   return (
@@ -113,6 +111,7 @@ export function DraggableReveal({
           width={800}
           height={800}
           decoding="async"
+          style={{ scaleX: mirrored ? -1 : 1 }}
           animate={{
             opacity: dragging ? 1 : 0.84,
             scale: dragging ? 1 : 0.96,
@@ -149,10 +148,7 @@ export function DraggableReveal({
         aria-label={label}
         aria-describedby={descriptionId}
         onKeyDown={onKeyDown}
-        onDragStart={() => {
-          dragEdgeLocked.current = false;
-          setDragging(true);
-        }}
+        onDragStart={() => setDragging(true)}
         onDrag={onDrag}
         onDragEnd={() => {
           setDragging(false);
