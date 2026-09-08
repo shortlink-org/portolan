@@ -6,6 +6,7 @@ import {
   allCatalogPaths,
   blockPath,
   eventPath,
+  isLandingPath,
   isRoutable,
   paths,
   servicePath,
@@ -20,7 +21,10 @@ import { registryCatalog } from "./lib/scenarios";
 describe("routes", () => {
   it("routes the public landing page", () => {
     expect(paths.landing()).toBe("/landing");
+    expect(isLandingPath("/landing")).toBe(true);
+    expect(isLandingPath("/landing/")).toBe(true);
     expect(isRoutable(paths.landing())).toBe(true);
+    expect(isRoutable("/landing/")).toBe(true);
   });
 
   it("routes every URL the catalog can produce", () => {

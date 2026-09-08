@@ -108,6 +108,11 @@ export const paths = {
     `/c/${contextId}/${serviceSlug}/data/${storeSlug}`,
 } as const;
 
+/** GitHub Pages canonicalizes extensionless routes with a trailing slash. */
+export function isLandingPath(pathname: string): boolean {
+  return /^\/landing\/?$/.test(pathname);
+}
+
 /** The section anchors on an aggregate page, as used by the building-blocks strip. */
 export const AGGREGATE_ANCHOR = {
   entities: "bb-entities",
@@ -361,7 +366,7 @@ export function backlinkPath(link: Backlink): string | null {
 
 /** Route patterns declared in App.tsx, in the same order. */
 const ROUTES: RegExp[] = [
-  /^\/landing$/,
+  /^\/landing\/?$/,
   /^\/$/,
   /^\/flows$/,
   /^\/flows\/[^/]+$/,

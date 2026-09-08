@@ -1,7 +1,7 @@
 import { lazy, Suspense } from "react";
 import { BrowserRouter, useLocation } from "react-router";
 import { LandingPage } from "../landing/LandingPage";
-import { paths } from "../routes";
+import { isLandingPath } from "../routes";
 import { MotionProvider } from "../lib/motion";
 import { ThemeProvider } from "./theme";
 
@@ -15,7 +15,7 @@ const CatalogApp = lazy(() =>
 function RoutedApp() {
   const { pathname } = useLocation();
 
-  if (pathname === paths.landing()) return <LandingPage />;
+  if (isLandingPath(pathname)) return <LandingPage />;
 
   return (
     <Suspense
