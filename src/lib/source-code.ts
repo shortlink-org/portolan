@@ -1,6 +1,7 @@
 import type { RemoteSourceLocation, SourceLocation } from "./source-link";
 
 const MAX_SOURCE_BYTES = 1024 * 1024;
+const LOCAL_SOURCE_URL = `${import.meta.env.BASE_URL}__portolan/source`;
 
 export type SourceFile = {
   content: string;
@@ -145,7 +146,7 @@ async function loadRemote(
 async function loadLocal(
   location: Extract<SourceLocation, { kind: "local" }>,
 ): Promise<SourceFile> {
-  const response = await fetch("/__portolan/source", {
+  const response = await fetch(LOCAL_SOURCE_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Portolan-Local": "1" },
     body: JSON.stringify({ path: location.path }),

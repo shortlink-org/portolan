@@ -34,6 +34,15 @@ const repositoryCredentials = new Map();
 const SNAPSHOT_SKIP = new Set([".git", ".portolan", "dist", "node_modules", "target"]);
 const PROJECT_PREVIEW_TTL_MS = 15 * 60 * 1000;
 
+/** Remove Vite's configured base before matching a local control-plane route. */
+export function localApiPath(pathname, base = "/") {
+  const root = base.endsWith("/") ? base : `${base}/`;
+  if (root !== "/" && pathname.startsWith(root)) {
+    return `/${pathname.slice(root.length)}`;
+  }
+  return pathname;
+}
+
 function safeRoot(workspace, input) {
   if (typeof input !== "string" || !input.trim()) throw new Error("Project path is required.");
   const clean = input.replaceAll("\\", "/").replace(/^\.\//, "").replace(/\/$/, "");
@@ -1092,6 +1101,7 @@ export function localApiPlugin(workspace = process.cwd()) {
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
         const url = new URL(req.url ?? "/", "http://localhost");
+        url.pathname = localApiPath(url.pathname, server.config.base);
         if (!url.pathname.startsWith(LOCAL_API_PREFIX)) return next();
         if (!localRequest(req)) return send(res, 403, { error: "The local API is available only through localhost." });
         try {

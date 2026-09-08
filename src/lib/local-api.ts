@@ -1,6 +1,6 @@
 import type { SetupInfo, SetupPhase, SetupRunStepStatus } from "./setup-info";
 
-const ROOT = "/__portolan";
+const ROOT = `${import.meta.env.BASE_URL}__portolan`;
 const LOCAL_HEADER = { "Content-Type": "application/json", "X-Portolan-Local": "1" };
 
 export interface Detection {

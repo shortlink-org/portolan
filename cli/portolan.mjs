@@ -171,6 +171,7 @@ async function dev(workspace, options) {
   runNode(packageBin("vite", "bin/vite.js"), args, workspace, {
     ...process.env,
     PORTOLAN_WORKSPACE: workspace,
+    BASE_PATH: options.base ?? process.env.BASE_PATH ?? "/",
   });
 }
 

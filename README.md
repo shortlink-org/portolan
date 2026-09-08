@@ -240,6 +240,10 @@ jobs:
 The action deliberately separates building from deployment, so the Pages
 permissions are held only by the deploy job.
 
+The same base can be exercised locally with `portolan dev --base /portolan/`.
+`portolan build --base /portolan/` applies it to the static build; alternatively,
+set `BASE_PATH` for either command.
+
 ### Run without installing Node or language toolchains
 
 The same CLI is published at `ghcr.io/shortlink-org/portolan`. On Linux, pass

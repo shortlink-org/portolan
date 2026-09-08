@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { rmSync } from "node:fs";
 
-import { classifyRepositoryFailure, diffGeneratedFiles, discoverProject, forgetRepositoryCredential, inspectionRoot, planProject, readLocalSource, resolveRepositoryCommit, storeRepositoryCredential, summarizeProjectTrial, writeProject } from "./local-api.mjs";
+import { classifyRepositoryFailure, diffGeneratedFiles, discoverProject, forgetRepositoryCredential, inspectionRoot, localApiPath, planProject, readLocalSource, resolveRepositoryCommit, storeRepositoryCredential, summarizeProjectTrial, writeProject } from "./local-api.mjs";
 
 const roots = [];
 afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
@@ -27,6 +27,15 @@ function workspace() {
   }, null, 2)}\n`);
   return root;
 }
+
+describe("local API base path", () => {
+  it("matches control-plane routes below the configured site base", () => {
+    expect(localApiPath("/portolan/__portolan/status", "/portolan/")).toBe("/__portolan/status");
+    expect(localApiPath("/portolan/__portolan/status", "/portolan")).toBe("/__portolan/status");
+    expect(localApiPath("/__portolan/status", "/portolan/")).toBe("/__portolan/status");
+    expect(localApiPath("/another/status", "/portolan/")).toBe("/another/status");
+  });
+});
 
 describe("local project setup", () => {
   it("classifies repository authentication, authorization, and timeout failures", () => {
