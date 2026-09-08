@@ -13,17 +13,19 @@ export function Composer({
   busy,
   onSend,
   onStop,
+  focusOnMount = true,
 }: {
   busy: boolean;
   onSend: (question: string) => void;
   onStop: () => void;
+  focusOnMount?: boolean;
 }) {
   const [draft, setDraft] = useState("");
   const field = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    field.current?.focus();
-  }, []);
+    if (focusOnMount) field.current?.focus();
+  }, [focusOnMount]);
 
   // Grow with the text, up to the limit; shrink back when it is deleted.
   useEffect(() => {

@@ -29,6 +29,7 @@ import {
 import { eventPath, paths } from "../routes";
 import { catalogTo } from "./catalog";
 import { ProductFrame } from "./ProductFrame";
+import { DraggableReveal } from "./DraggableReveal";
 
 type DemoId = "estate" | "flow" | "contract" | "problems";
 
@@ -348,20 +349,22 @@ export function ProductTour() {
       </LayoutGroup>
 
       <div id="landing-product-demo" role="tabpanel" aria-live="polite">
-        <ProductFrame
-          title={`${selected.title} · portolan`}
-          eyebrow={active}
-          // The two canvases want every pixel of width they can get.
-          aside={active === "contract" || active === "problems"}
-        >
-          <AnimatePresence mode="wait" initial={false}>
-            <m.div key={active} {...page} className="relative min-h-[470px]">
-              <Suspense fallback={<DiagramSkeleton />}>
-                <Demo id={active} />
-              </Suspense>
-            </m.div>
-          </AnimatePresence>
-        </ProductFrame>
+        <DraggableReveal>
+          <ProductFrame
+            title={`${selected.title} · portolan`}
+            eyebrow={active}
+            // The two canvases want every pixel of width they can get.
+            aside={active === "contract" || active === "problems"}
+          >
+            <AnimatePresence mode="wait" initial={false}>
+              <m.div key={active} {...page} className="relative min-h-[470px]">
+                <Suspense fallback={<DiagramSkeleton />}>
+                  <Demo id={active} />
+                </Suspense>
+              </m.div>
+            </AnimatePresence>
+          </ProductFrame>
+        </DraggableReveal>
       </div>
     </div>
   );

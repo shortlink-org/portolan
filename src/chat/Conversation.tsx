@@ -334,7 +334,12 @@ export function Conversation({
           </div>
         ) : null}
       </div>
-      <Composer busy={busy} onSend={send} onStop={() => void stop()} />
+      <Composer
+        busy={busy}
+        onSend={send}
+        onStop={() => void stop()}
+        focusOnMount={!seeded}
+      />
     </>
   );
 }

@@ -26,6 +26,7 @@ import { catalog } from "../data";
 import { m } from "../lib/motion";
 import { paths } from "../routes";
 import { catalogTo } from "./catalog";
+import { DraggableReveal } from "./DraggableReveal";
 import { heroColumn, heroLine, Reveal } from "./motion";
 import { ProductFrame } from "./ProductFrame";
 import { ProductTour } from "./ProductTour";
@@ -349,7 +350,9 @@ export function LandingPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, ease: [0.2, 0, 0, 1], delay: 0.25 }}
             >
-              <HeroDemo />
+              <DraggableReveal>
+                <HeroDemo />
+              </DraggableReveal>
             </m.div>
           </div>
         </section>
@@ -592,19 +595,26 @@ export function LandingPage() {
 
               {EmbeddedChat ? (
                 <div id="catalog-chat" className="min-w-0 scroll-mt-20">
-                  <Reveal
-                    delay={0.08}
-                    className="h-[650px] min-w-0 overflow-hidden rounded-card border border-line-strong bg-canvas shadow-md"
-                  >
-                    <Suspense
-                      fallback={
-                        <div className="mono flex h-full items-center justify-center text-muted">
-                          loading the catalog chat…
+                  <Reveal delay={0.08} className="min-w-0">
+                    <DraggableReveal label="Movable catalog chat">
+                      <ProductFrame
+                        title="Ask the catalog · portolan"
+                        eyebrow="agents"
+                        aside={false}
+                      >
+                        <div className="h-[605px] overflow-hidden bg-canvas">
+                          <Suspense
+                            fallback={
+                              <div className="mono flex h-full items-center justify-center text-muted">
+                                loading the catalog chat…
+                              </div>
+                            }
+                          >
+                            <EmbeddedChat embedded />
+                          </Suspense>
                         </div>
-                      }
-                    >
-                      <EmbeddedChat embedded />
-                    </Suspense>
+                      </ProductFrame>
+                    </DraggableReveal>
                   </Reveal>
                 </div>
               ) : null}
@@ -647,41 +657,47 @@ export function LandingPage() {
                 </a>
               </div>
             </Reveal>
-            <Reveal
-              delay={0.1}
-              className="min-w-0 overflow-hidden rounded-[14px] border border-line bg-[#090c10] shadow-md"
-            >
-              <div className="flex h-11 items-center gap-1.5 border-b border-white/10 px-4">
-                <span className="size-2 rounded-full bg-white/15" />
-                <span className="size-2 rounded-full bg-white/15" />
-                <span className="size-2 rounded-full bg-white/15" />
-                <span className="mono ml-auto text-white/35">next steps</span>
-                <CopyCommand
-                  text={setupCommands}
-                  label="Copy all"
-                  className="h-7 border-white/10 bg-white/5 px-2 text-white/60 hover:bg-white/10 hover:text-white"
-                />
-              </div>
-              <pre className="overflow-x-auto p-5 text-[13px] leading-7 text-white/75 sm:p-7">
-                <code>
-                  <span className="text-white/35">$</span> npx
-                  @shortlink-org/portolan init{"\n"}
-                  <span className="text-[#72d5c4]">✓</span> projects and
-                  specifications detected{"\n"}
-                  <span className="text-[#72d5c4]">✓</span> portolan.json ready
-                  {"\n\n"}
-                  <span className="text-white/35">$</span> npm install
-                  --save-dev @shortlink-org/portolan{"\n"}
-                  <span className="text-white/35">$</span> npx portolan generate
-                  {"\n"}
-                  <span className="text-[#72d5c4]">✓</span> catalog merged and
-                  validated{"\n\n"}
-                  <span className="text-white/35">$</span> npx portolan dev
-                  {"\n"}
-                  <span className="text-[#72d5c4]">✓</span> site ready at
-                  http://localhost:5173
-                </code>
-              </pre>
+            <Reveal delay={0.1} className="min-w-0">
+              <DraggableReveal
+                handleClassName="right-24 left-0"
+                label="Movable setup terminal"
+              >
+                <div className="min-w-0 overflow-hidden rounded-[14px] border border-line bg-[#090c10] shadow-md">
+                  <div className="flex h-11 items-center gap-1.5 border-b border-white/10 px-4">
+                    <span className="size-2 rounded-full bg-white/15" />
+                    <span className="size-2 rounded-full bg-white/15" />
+                    <span className="size-2 rounded-full bg-white/15" />
+                    <span className="mono ml-auto text-white/35">
+                      next steps
+                    </span>
+                    <CopyCommand
+                      text={setupCommands}
+                      label="Copy all"
+                      className="h-7 border-white/10 bg-white/5 px-2 text-white/60 hover:bg-white/10 hover:text-white"
+                    />
+                  </div>
+                  <pre className="overflow-x-auto p-5 text-[13px] leading-7 text-white/75 sm:p-7">
+                    <code>
+                      <span className="text-white/35">$</span> npx
+                      @shortlink-org/portolan init{"\n"}
+                      <span className="text-[#72d5c4]">✓</span> projects and
+                      specifications detected{"\n"}
+                      <span className="text-[#72d5c4]">✓</span> portolan.json
+                      ready{"\n\n"}
+                      <span className="text-white/35">$</span> npm install
+                      --save-dev @shortlink-org/portolan{"\n"}
+                      <span className="text-white/35">$</span> npx portolan
+                      generate{"\n"}
+                      <span className="text-[#72d5c4]">✓</span> catalog merged
+                      and validated{"\n\n"}
+                      <span className="text-white/35">$</span> npx portolan dev
+                      {"\n"}
+                      <span className="text-[#72d5c4]">✓</span> site ready at
+                      http://localhost:5173
+                    </code>
+                  </pre>
+                </div>
+              </DraggableReveal>
             </Reveal>
           </div>
         </section>
