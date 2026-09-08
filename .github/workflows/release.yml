@@ -51,8 +51,6 @@ jobs:
       - run: npm pack --dry-run --ignore-scripts
 
       - name: Publish npm package
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           package=$(node -p '`${require("./package.json").name}@${require("./package.json").version}`')
           if npm view "$package" version --registry=https://registry.npmjs.org >/dev/null 2>&1; then

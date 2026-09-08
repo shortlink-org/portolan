@@ -284,13 +284,14 @@ toolchains the plugins are written in.
 
 ### Release Portolan
 
-Give the repository an `NPM_TOKEN` Actions secret that can publish the
-`@shortlink-org/portolan` package. Push a tag matching the version in
-`package.json`, for example `0.1.0`. The release workflow verifies the package,
-publishes it to npm with provenance, builds multi-platform container images at
-`ghcr.io/shortlink-org/portolan`, attests the image, and creates or updates the
-GitHub release notes. The tag itself is also the immutable version of the
-composite action used by consumer repositories.
+Configure `release.yml` as the `@shortlink-org/portolan` package's GitHub
+Actions Trusted Publisher on npm. The release uses GitHub's short-lived OIDC
+identity, so the repository needs no npm write token. Push a tag matching the
+version in `package.json`, for example `0.1.0`. The release workflow verifies
+the package, publishes it to npm with provenance, builds multi-platform
+container images at `ghcr.io/shortlink-org/portolan`, attests the image, and
+creates or updates the GitHub release notes. The tag itself is also the
+immutable version of the composite action used by consumer repositories.
 
 ### In a pull request
 
