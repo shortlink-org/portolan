@@ -23,7 +23,13 @@ import { Empty } from "./PageHeader";
  * it has nothing to show.
  */
 const SCHEMAS = import.meta.glob<string>(
-  ["../../examples/**/*.graphql", "../../examples/**/*.graphqls"],
+  [
+    "../../**/*.graphql",
+    "../../**/*.graphqls",
+    "!../../node_modules/**",
+    "!../../dist/**",
+    "!../../.portolan/**",
+  ],
   { query: "?raw", import: "default" },
 );
 

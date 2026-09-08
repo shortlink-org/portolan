@@ -1,0 +1,13 @@
+.git
+.claude
+.portolan
+dist
+docs
+examples
+exports
+likec4
+node_modules
+plugins/**/target
+plugins/extract-java/build
+*.local
+.DS_Store

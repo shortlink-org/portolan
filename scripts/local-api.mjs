@@ -20,6 +20,7 @@ import { basename, dirname, join, posix, relative, resolve, sep } from "node:pat
 
 import { publicSetupFrom } from "../src/lib/setup-info.ts";
 import { loadManifest } from "./manifest.mjs";
+import { builtinPluginNames } from "./builtin-plugins.mjs";
 
 export const LOCAL_API_PREFIX = "/__portolan";
 export const GENERATOR_EVENT_PREFIX = "::portolan-event::";
@@ -625,7 +626,10 @@ export function planProject(workspace, manifest, request) {
   if (external && !/^[0-9a-f]{40}$/i.test(String(request.commit ?? ""))) throw new Error("Inspect the repository to resolve an immutable commit first.");
   const inspectedRoot = external ? inspectionRoot(repo.value, String(request.commit), sourcePath) : request.root;
   const discovery = discoverProject(workspace, inspectedRoot);
-  const declared = new Set((manifest.plugins ?? []).map((plugin) => plugin.name));
+  const declared = new Set([
+    ...builtinPluginNames(),
+    ...(manifest.plugins ?? []).map((plugin) => plugin.name),
+  ]);
   const detected = new Set(discovery.detections.map((item) => item.plugin));
   const requested = Array.isArray(request.plugins) ? request.plugins : [];
   const plugins = [...new Set(requested)].filter((plugin) => detected.has(plugin) && declared.has(plugin));
@@ -671,7 +675,7 @@ function manifestWithProject(manifest, plan, { isolated = false } = {}) {
   const fetchIndex = (manifest.extract ?? []).findIndex((step) => step.plugin === "git");
   const extract = isolated ? [] : [...(manifest.extract ?? [])];
   if (plan.fetch) {
-    if (!manifest.plugins?.some((plugin) => plugin.name === "git")) throw new Error("The built-in git fetcher is not declared in portolan.json.");
+    if (!builtinPluginNames().has("git") && !manifest.plugins?.some((plugin) => plugin.name === "git")) throw new Error("The built-in git fetcher is not available.");
     if (!isolated && fetchIndex >= 0) {
       const fetchStep = extract[fetchIndex];
       extract[fetchIndex] = { ...fetchStep, options: { ...fetchStep.options, repos: [...(fetchStep.options?.repos ?? []), plan.fetch] } };
@@ -991,9 +995,14 @@ function disposeProjectTrial(job) {
 async function startProjectPreview(job) {
   const port = await freeLocalPort();
   const origin = `http://127.0.0.1:${port}`;
-  const child = spawn(process.execPath, [join(job.runRoot, "node_modules/vite/bin/vite.js"), "--host", "127.0.0.1", "--port", String(port), "--strictPort"], {
+  const cli = process.env.PORTOLAN_CLI;
+  const command = cli ? process.execPath : join(job.runRoot, "node_modules/vite/bin/vite.js");
+  const args = cli
+    ? [cli, "dev", "--cwd", job.runRoot, "--host", "127.0.0.1", "--port", String(port)]
+    : ["--host", "127.0.0.1", "--port", String(port), "--strictPort"];
+  const child = spawn(command, args, {
     cwd: job.runRoot,
-    env: { ...process.env, PORTOLAN_PROJECT_PREVIEW: "1" },
+    env: { ...process.env, PORTOLAN_PROJECT_PREVIEW: "1", ...(cli ? { PORTOLAN_CLI: cli } : {}) },
     stdio: "ignore",
   });
   child.once("error", (error) => { child.previewError = error; });
@@ -1020,10 +1029,14 @@ function startJob(workspace, mode, approvedPreview, preparedTrial) {
   const gitAuth = gitAuthEnvironment();
   const job = { id, mode, status: "running", events: [], subscribers: new Set(), buffers: { stdout: "", stderr: "" }, child: null, gitAuth, runRoot: snapshot?.snapshot ?? workspace, snapshotHolder: snapshot?.holder ?? null, fingerprint, generatedAt, projectPlan: preparedTrial?.plan ?? null, projectRequest: preparedTrial ? structuredClone(preparedTrial.request) : null };
   jobs.set(id, job);
-  const command = process.platform === "win32" ? "npm.cmd" : "npm";
+  const cli = process.env.PORTOLAN_CLI;
+  const command = cli ? process.execPath : process.platform === "win32" ? "npm.cmd" : "npm";
+  const args = cli
+    ? [cli, mode === "check" ? "check" : "generate", "--cwd", job.runRoot]
+    : ["run", mode === "check" ? "gen:check" : "gen"];
   let child;
   try {
-    child = spawn(command, ["run", mode === "check" ? "gen:check" : "gen"], {
+    child = spawn(command, args, {
       cwd: job.runRoot,
       env: { ...gitAuth.env, PORTOLAN_EVENTS: "1", ...(generatedAt ? { PORTOLAN_GENERATED_AT: generatedAt } : {}) },
       stdio: ["ignore", "pipe", "pipe"],

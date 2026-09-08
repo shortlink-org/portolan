@@ -149,7 +149,148 @@ Each plugin describes its own options; `npm run schema` asks all of them and
 composes `schema/portolan.schema.json`, which editors complete against and `gen`
 checks before running anything.
 
-## Getting started
+## Use it in your project
+
+Run the setup once from the root of a repository:
+
+```bash
+npx @shortlink-org/portolan init
+npm install --save-dev @shortlink-org/portolan
+npx portolan generate
+npx portolan dev
+```
+
+`init` writes a minimal `portolan.json`, adds `.portolan/` to `.gitignore`,
+and, when the repository has a `package.json`, adds these scripts without
+replacing scripts that are already there:
+
+```json
+{
+  "scripts": {
+    "architecture": "portolan dev",
+    "architecture:gen": "portolan generate",
+    "architecture:check": "portolan check",
+    "architecture:build": "portolan build"
+  }
+}
+```
+
+The generated fragments, Markdown, and exports are ordinary reviewable files
+and should be committed. `.portolan/` is local build state and `dist/` is the
+deployable static site.
+
+| command | purpose |
+| --- | --- |
+| `portolan init` | create the first manifest without overwriting an existing one |
+| `portolan dev` | run the local site and setup UI |
+| `portolan generate` | update fragments, documentation, and exports |
+| `portolan check` | fail when committed generated files are stale, without writing them |
+| `portolan build` | build the static site into `dist/` |
+| `portolan diff BASE` | describe the architecture change from a branch, tag, or commit |
+| `portolan doctor` | show which optional plugin toolchains are available |
+
+Node.js 24 is required. A process extractor also needs the toolchain of the
+language it reads: Go for the Go extractors, Python 3 for Python, Java 21 for
+Java, and Cargo for Rust. `portolan doctor` reports the local set. The Docker
+image contains all of them.
+
+### Check pull requests with GitHub Actions
+
+Generated files are checked rather than silently rewritten in CI:
+
+```yaml
+name: Architecture
+on: [pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: shortlink-org/portolan@0.1.0
+        with:
+          command: check
+          version: 0.1.0
+```
+
+Full history is required because fragments are stamped with the last commit
+that changed their input. A shallow clone would make that stamp unreliable.
+
+### Publish the site to GitHub Pages
+
+```yaml
+name: Architecture site
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: shortlink-org/portolan@0.1.0
+        with:
+          command: build
+          version: 0.1.0
+          output: dist
+          base: /${{ github.event.repository.name }}/
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
+```
+
+The action deliberately separates building from deployment, so the Pages
+permissions are held only by the deploy job.
+
+### Run without installing Node or language toolchains
+
+The same CLI is published at `ghcr.io/shortlink-org/portolan`. On Linux, pass
+the host uid and gid so generated files remain owned by the developer:
+
+```bash
+docker run --rm \
+  --user "$(id -u):$(id -g)" \
+  -e HOME=/tmp \
+  -v "$PWD:/workspace" \
+  -w /workspace \
+  ghcr.io/shortlink-org/portolan:0.1.0 generate
+```
+
+Use immutable versions in CI. `latest` is intended for trying the CLI, not for
+a reproducible build.
+
+### One repository or an estate repository
+
+For one application or a monorepo, keep `portolan.json` at its root and write
+fragments beside each component. An organization-wide catalog can instead
+live in a dedicated architecture repository: `fetch-git` pins the service
+repositories at immutable commits and the normal merge, check, diff, and build
+commands operate on the combined estate.
+
+## Develop Portolan itself
 
 ```bash
 npm install
@@ -169,6 +310,16 @@ Generated output is committed, so a change to it shows up in a diff. CI builds
 the site (`npm run build`); the `--check` variants and the test suites are run
 locally before a change lands, since they need the Go, Java, Rust and Python
 toolchains the plugins are written in.
+
+### Release Portolan
+
+Give the repository an `NPM_TOKEN` Actions secret that can publish the
+`@shortlink-org/portolan` package. Push a tag matching the version in
+`package.json`, for example `0.1.0`. The release workflow verifies the package,
+publishes it to npm with provenance, builds multi-platform container images at
+`ghcr.io/shortlink-org/portolan`, attests the image, and creates or updates the
+GitHub release notes. The tag itself is also the immutable version of the
+composite action used by consumer repositories.
 
 ### In a pull request
 

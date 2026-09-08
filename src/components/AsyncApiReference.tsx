@@ -44,7 +44,13 @@ const Reference = lazy(async () => {
  * to show.
  */
 const SPECS = import.meta.glob<string>(
-  ["../../examples/**/asyncapi.yaml", "../../examples/**/asyncapi.yml"],
+  [
+    "../../**/asyncapi.yaml",
+    "../../**/asyncapi.yml",
+    "!../../node_modules/**",
+    "!../../dist/**",
+    "!../../.portolan/**",
+  ],
   { query: "?raw", import: "default" },
 );
 

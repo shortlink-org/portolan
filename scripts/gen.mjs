@@ -34,6 +34,7 @@ import {
   safeOutputPath,
   writeOutputFile,
 } from "./output-path.mjs";
+import { builtinPlugin } from "./builtin-plugins.mjs";
 
 const PORTOLAN_VERSION = "0.1.0";
 const EVENTS = process.env.PORTOLAN_EVENTS === "1";
@@ -292,11 +293,12 @@ function persistReport() {
 
 function pluginNamed(name) {
   const plugin = (manifest.plugins ?? []).find((p) => p.name === name);
-  if (!plugin) {
+  const shipped = builtinPlugin(name);
+  if (!plugin && !shipped) {
     fail(`portolan.json: a step names plugin "${name}", which is not declared`);
   }
 
-  return plugin;
+  return plugin ?? shipped;
 }
 
 /** Prints what a step did, and says whether it left the tree out of date. */

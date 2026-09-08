@@ -1,6 +1,7 @@
 import { execSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
@@ -27,6 +28,7 @@ function git(args: string): string {
 }
 
 const env = process.env;
+const workspace = resolve(env.PORTOLAN_WORKSPACE ?? ".");
 
 // The stamp in the top bar, resolved at build time. Every field takes the
 // first answer it gets:
@@ -110,14 +112,14 @@ const buildInfo = {
 // manifest here, while building, and expose only the read-only inventory the
 // Settings page needs.
 const manifestText = readFileSync(
-  new URL("./portolan.json", import.meta.url),
+  resolve(workspace, "portolan.json"),
   "utf8",
 );
 let buildReport: unknown;
 try {
   buildReport = JSON.parse(
     readFileSync(
-      new URL("./.portolan/build-report.json", import.meta.url),
+      resolve(workspace, ".portolan/build-report.json"),
       "utf8",
     ),
   ) as unknown;
@@ -146,8 +148,8 @@ export default defineConfig({
     __PROJECT_PREVIEW__: JSON.stringify(env.PORTOLAN_PROJECT_PREVIEW === "1"),
   },
   plugins: [
-    localApiPlugin(),
-    siteDocsPlugin(),
+    localApiPlugin(workspace),
+    siteDocsPlugin(workspace),
     react(),
     tailwindcss(),
     // The AsyncAPI reference brings a parser written for Node, and it calls

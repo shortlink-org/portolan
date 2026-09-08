@@ -39,6 +39,12 @@ const Reference = lazy(async () => {
  */
 const SPECS = import.meta.glob<string>(
   [
+    "../../**/openapi*.yaml",
+    "../../**/openapi*.yml",
+    "../../**/openapi*.json",
+    "../../**/swagger*.yaml",
+    "../../**/swagger*.yml",
+    "../../**/swagger*.json",
     "../../examples/**/openapi*.yaml",
     "../../examples/**/openapi*.yml",
     "../../examples/**/openapi*.json",
@@ -58,6 +64,7 @@ const SPECS = import.meta.glob<string>(
     "../../**/portolan/openapi*.json",
     "!../../node_modules/**",
     "!../../dist/**",
+    "!../../.portolan/**",
   ],
   { query: "?raw", import: "default" },
 );

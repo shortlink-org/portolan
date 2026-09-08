@@ -13,7 +13,7 @@ import { normalize } from "node:path";
 
 import Ajv from "ajv/dist/2020.js";
 
-const SCHEMA = "schema/portolan.schema.json";
+const SCHEMA = process.env.PORTOLAN_SCHEMA || "schema/portolan.schema.json";
 
 /**
  * Reads the manifest and validates it.

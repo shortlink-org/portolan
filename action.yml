@@ -1,0 +1,82 @@
+name: Portolan architecture catalog
+description: Generate, verify, or build a Portolan architecture catalog.
+author: shortlink-org
+
+branding:
+  icon: map
+  color: blue
+
+inputs:
+  command:
+    description: One of generate, check, or build.
+    required: false
+    default: check
+  version:
+    description: Published @shortlink-org/portolan version to run.
+    required: false
+    default: latest
+  working-directory:
+    description: Project directory containing portolan.json.
+    required: false
+    default: .
+  node-version:
+    description: Node.js version used by the CLI.
+    required: false
+    default: "24"
+  go-version:
+    description: Go version used by built-in Go extractors.
+    required: false
+    default: "1.27"
+  java-version:
+    description: Java version used by the built-in Java extractor.
+    required: false
+    default: "21"
+  output:
+    description: Static-site output directory for the build command.
+    required: false
+    default: dist
+  base:
+    description: URL base for the build command.
+    required: false
+    default: /
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@v7
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Set up Go
+      uses: actions/setup-go@v6
+      with:
+        go-version: ${{ inputs.go-version }}
+
+    - name: Set up Java
+      uses: actions/setup-java@v5
+      with:
+        distribution: temurin
+        java-version: ${{ inputs.java-version }}
+
+    - name: Run Portolan
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        PORTOLAN_COMMAND: ${{ inputs.command }}
+        PORTOLAN_VERSION: ${{ inputs.version }}
+        PORTOLAN_OUTPUT: ${{ inputs.output }}
+        PORTOLAN_BASE: ${{ inputs.base }}
+      run: |
+        case "$PORTOLAN_COMMAND" in
+          generate|check)
+            npm exec --yes --package="@shortlink-org/portolan@$PORTOLAN_VERSION" -- portolan "$PORTOLAN_COMMAND"
+            ;;
+          build)
+            npm exec --yes --package="@shortlink-org/portolan@$PORTOLAN_VERSION" -- portolan build --output "$PORTOLAN_OUTPUT" --base "$PORTOLAN_BASE"
+            ;;
+          *)
+            echo "Portolan action: command must be generate, check, or build" >&2
+            exit 2
+            ;;
+        esac

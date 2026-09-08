@@ -1,14 +1,63 @@
 {
-  "name": "portolan",
-  "private": true,
+  "name": "@shortlink-org/portolan",
+  "description": "Generate a navigable architecture catalog from code and specifications.",
+  "private": false,
   "version": "0.1.0",
   "type": "module",
+  "license": "MIT",
+  "homepage": "https://github.com/shortlink-org/portolan#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shortlink-org/portolan.git"
+  },
+  "bugs": {
+    "url": "https://github.com/shortlink-org/portolan/issues"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "bin": {
+    "portolan": "cli/portolan.mjs"
+  },
+  "files": [
+    "cli",
+    "scripts",
+    "src",
+    "public",
+    "schema",
+    "plugins/*.wasm",
+    "plugins/*/*.go",
+    "plugins/*/*.py",
+    "plugins/*/*.ts",
+    "plugins/*/*.json",
+    "plugins/*/*.md",
+    "plugins/*/*.toml",
+    "plugins/*/*.lock",
+    "plugins/*/src",
+    "plugins/extract-java/build",
+    "plugin",
+    "catalog",
+    "internal",
+    "index.html",
+    "vite.config.ts",
+    "tsconfig.json",
+    "portolan.json",
+    "go.mod",
+    "go.sum",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "scripts": {
-    "dev": "vite",
-    "build": "npm run likec4:gen && tsc --noEmit && vite build && node scripts/site-docs.mjs",
+    "dev": "node cli/portolan.mjs dev",
+    "build": "node cli/portolan.mjs build",
     "preview": "vite preview",
     "test": "vitest run",
     "test:go": "go test ./...",
+    "test:package": "node scripts/package-smoke.mjs",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit && tsc -p plugins/extract-ts",
     "likec4:gen": "node scripts/gen-likec4.mjs && likec4 gen react likec4 -o src/likec4/generated.jsx",
@@ -19,9 +68,12 @@
     "schema:check": "npm run plugins:build && node scripts/schema.mjs --check",
     "gen": "npm run plugins:build && node scripts/gen.mjs",
     "gen:check": "npm run plugins:build && node scripts/gen.mjs --check",
-    "diff": "node scripts/diff.mjs"
+    "diff": "node scripts/diff.mjs",
+    "prepack": "npm run plugins:build"
   },
   "dependencies": {
+    "@tailwindcss/vite": "^4.0.0",
+    "@vitejs/plugin-react": "^6.1.1",
     "@ai-sdk/openai-compatible": "3.0.44",
     "@ai-sdk/react": "4.0.96",
     "@asyncapi/react-component": "^3.1.8",
@@ -32,6 +84,7 @@
     "@tanstack/react-virtual": "^3.14.10",
     "@xyflow/react": "^12.11.5",
     "ai": "7.0.93",
+    "ajv": "^8.20.0",
     "elkjs": "^0.12.0",
     "html-to-image": "^1.11.13",
     "likec4": "^1.59.2",
@@ -39,6 +92,7 @@
     "lucide-react": "^1.38.0",
     "mermaid": "^11.17.2",
     "motion": "^13.2.0",
+    "oxc-parser": "^0.149.0",
     "oxc-resolver": "^11.24.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -47,20 +101,16 @@
     "react-router": "^8.3.1",
     "remark-gfm": "^4.0.0",
     "simple-icons": "^16.30.0",
+    "tailwindcss": "^4.0.0",
+    "vite": "^8.2.2",
+    "vite-plugin-node-polyfills": "^0.28.0",
     "zustand": "^5.0.15"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.0.0",
     "@types/node": "^26.4.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "@vitejs/plugin-react": "^6.1.1",
-    "ajv": "^8.20.0",
-    "oxc-parser": "^0.149.0",
-    "tailwindcss": "^4.0.0",
     "typescript": "^7.0.2",
-    "vite": "^8.2.2",
-    "vite-plugin-node-polyfills": "^0.28.0",
     "vitest": "^5.0.0"
   }
 }

@@ -17,11 +17,38 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
 
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
       - run: npm ci
+      - run: npx vitest run scripts/local-api.test.mjs scripts/manifest.test.mjs scripts/plugin-host.test.mjs
+      - run: npm run test:package
+      - run: npm run plugins:build
+      - run: npm pack --dry-run --ignore-scripts
       - run: npm run build
+
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          tags: portolan:ci
