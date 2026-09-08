@@ -127,7 +127,7 @@ async function generate() {
         portolanVersion: PORTOLAN_VERSION,
         input: { root: step.in, output: step.out, commit: stamp.commit, generatedAt: stamp.generatedAt },
         options: step.options ?? {},
-      }),
+      }, {}, { workspace: process.cwd() }),
     );
   }
 
@@ -148,7 +148,7 @@ async function generate() {
         input: { root: step.in, output: step.out, commit: stamp.commit, generatedAt: stamp.generatedAt },
         catalog,
         options: step.options ?? {},
-      }),
+      }, {}, { workspace: process.cwd() }),
     );
   }
 

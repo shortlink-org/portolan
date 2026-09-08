@@ -36,12 +36,11 @@
 // root. The host dates a fragment from the last commit to touch the step's
 // input, and the subject of this one is the CODEOWNERS file: rooted at the
 // repository, it would be restamped by every commit ever made.
-package main
+package verifycodeowners
 
 import (
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/shortlink-org/portolan/plugin"
 )
@@ -57,11 +56,11 @@ type Options struct {
 	Out string `json:"out,omitempty"`
 }
 
-func main() {
-	if err := run(os.Stdin, os.Stdout); err != nil {
-		fmt.Fprintln(os.Stderr, "portolan-verify-codeowners:", err)
-		os.Exit(1)
-	}
+// Serve answers one request on stdin with one response on stdout. The
+// process entrypoint and the wasm dispatcher in plugins/cmd/portolan-go both
+// call it.
+func Serve(stdin io.Reader, stdout io.Writer) error {
+	return run(stdin, stdout)
 }
 
 func run(stdin io.Reader, stdout io.Writer) error {

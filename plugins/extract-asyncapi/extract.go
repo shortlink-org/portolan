@@ -1,4 +1,4 @@
-package main
+package extractasyncapi
 
 import (
 	"encoding/json"

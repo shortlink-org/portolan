@@ -11,10 +11,11 @@ import { basename, posix, resolve } from "node:path";
 
 import * as p from "@clack/prompts";
 
-import { builtinPlugin } from "../scripts/builtin-plugins.mjs";
+import { builtinDefinition } from "../scripts/builtin-plugins.mjs";
 import { discoverProject, manifestWithProject, planProject, writeManifest } from "../scripts/local-api.mjs";
 
 const TOOLCHAINS = { go: "Go", cargo: "Cargo", java: "Java", python3: "Python 3" };
+const VERSION_FLAGS = { go: ["version"], cargo: ["--version"], java: ["-version"], python3: ["--version"] };
 
 export const SCRIPTS = {
   "architecture": "portolan dev",
@@ -56,7 +57,7 @@ export async function init(workspace, { version, ask = defaultAnswers, log = con
     usedIds.add(identity.id);
 
     const plugins = found.detections.length
-      ? await ask.plugins(root, found.detections.map((detection) => ({ ...detection, requirement: requirement(detection.plugin) })))
+      ? await ask.plugins(root, found.detections.map((detection) => ({ ...detection, requirement: toolchainFor(detection.plugin) })))
       : [];
     projects.push({ root, ...identity, plugins });
   }
@@ -241,18 +242,18 @@ function buildManifest(workspace, projects, { version, title }) {
 
 const toolchainChecks = new Map();
 
-function requirement(plugin) {
-  const command = builtinPlugin(plugin)?.process?.command;
+export function toolchainFor(plugin, declared = null) {
+  const command = declared?.process?.command ?? builtinDefinition(plugin)?.process?.command;
   const label = TOOLCHAINS[command];
   if (!label) return null;
-  if (!toolchainChecks.has(command)) toolchainChecks.set(command, commandWorks(command, command === "java" ? ["-version"] : ["version"]));
+  if (!toolchainChecks.has(command)) toolchainChecks.set(command, commandWorks(command, VERSION_FLAGS[command]));
   return { command, label, missing: !toolchainChecks.get(command) };
 }
 
 function missingToolchains(plugins) {
   const missing = new Map();
   for (const plugin of new Set(plugins)) {
-    const need = requirement(plugin);
+    const need = toolchainFor(plugin);
     if (!need?.missing) continue;
     missing.set(need.label, [...(missing.get(need.label) ?? []), plugin]);
   }

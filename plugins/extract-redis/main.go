@@ -1,11 +1,10 @@
-// Package main is portolan-extract-redis: source-backed Redis client
+// Package extractredis is portolan-extract-redis: source-backed Redis client
 // construction in a Go repository in, a Redis store owned by the service out.
-package main
+package extractredis
 
 import (
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
 
 	"github.com/shortlink-org/portolan/internal/goscan"
@@ -20,11 +19,11 @@ type Options struct {
 	Out     string `json:"out,omitempty"`
 }
 
-func main() {
-	if err := run(os.Stdin, os.Stdout); err != nil {
-		fmt.Fprintln(os.Stderr, "portolan-extract-redis:", err)
-		os.Exit(1)
-	}
+// Serve answers one request on stdin with one response on stdout. The
+// process entrypoint and the wasm dispatcher in plugins/cmd/portolan-go both
+// call it.
+func Serve(stdin io.Reader, stdout io.Writer) error {
+	return run(stdin, stdout)
 }
 
 func run(stdin io.Reader, stdout io.Writer) error {

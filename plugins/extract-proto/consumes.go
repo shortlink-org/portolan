@@ -1,4 +1,4 @@
-package main
+package extractproto
 
 // What a service CALLS, read from the client copies it vendors.
 //

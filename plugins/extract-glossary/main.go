@@ -14,12 +14,11 @@
 // impossible to find. One shape, held to here, is what lets a page put "is"
 // and "is not" on two lines everywhere in the estate. The format is described
 // in plugins/README.md and held to by parse_test.go.
-package main
+package extractglossary
 
 import (
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/shortlink-org/portolan/plugin"
 )
@@ -41,11 +40,11 @@ type Options struct {
 	Out string `json:"out,omitempty"`
 }
 
-func main() {
-	if err := run(os.Stdin, os.Stdout); err != nil {
-		fmt.Fprintln(os.Stderr, "portolan-extract-glossary:", err)
-		os.Exit(1)
-	}
+// Serve answers one request on stdin with one response on stdout. The
+// process entrypoint and the wasm dispatcher in plugins/cmd/portolan-go both
+// call it.
+func Serve(stdin io.Reader, stdout io.Writer) error {
+	return run(stdin, stdout)
 }
 
 func run(stdin io.Reader, stdout io.Writer) error {

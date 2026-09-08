@@ -1,4 +1,4 @@
-package main
+package extractadr
 
 // The mapping: records in a tree, a catalog fragment out.
 //

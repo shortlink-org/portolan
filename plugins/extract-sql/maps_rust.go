@@ -1,4 +1,4 @@
-package main
+package extractsql
 
 // The same fact read out of a repository written in Rust, where sqlx puts the
 // statement first and the values after it, one `bind` each:

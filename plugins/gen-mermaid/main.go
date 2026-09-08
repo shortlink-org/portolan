@@ -1,18 +1,16 @@
-package main
+package genmermaid
 
 import (
-	"fmt"
 	"io"
-	"os"
 
 	"github.com/shortlink-org/portolan/plugin"
 )
 
-func main() {
-	if err := run(os.Stdin, os.Stdout); err != nil {
-		fmt.Fprintln(os.Stderr, "portolan-gen-mermaid:", err)
-		os.Exit(1)
-	}
+// Serve answers one request on stdin with one response on stdout. The
+// process entrypoint and the wasm dispatcher in plugins/cmd/portolan-go both
+// call it.
+func Serve(stdin io.Reader, stdout io.Writer) error {
+	return run(stdin, stdout)
 }
 
 func run(stdin io.Reader, stdout io.Writer) error {

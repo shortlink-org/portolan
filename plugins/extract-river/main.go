@@ -1,11 +1,10 @@
-// Package main is portolan-extract-river: River job declarations, producers
+// Package extractriver is portolan-extract-river: River job declarations, producers
 // and registered workers in a Go repository in, work queues and job flows out.
-package main
+package extractriver
 
 import (
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
 
 	"github.com/shortlink-org/portolan/internal/goscan"
@@ -18,11 +17,11 @@ type Options struct {
 	Out     string `json:"out,omitempty"`
 }
 
-func main() {
-	if err := run(os.Stdin, os.Stdout); err != nil {
-		fmt.Fprintln(os.Stderr, "portolan-extract-river:", err)
-		os.Exit(1)
-	}
+// Serve answers one request on stdin with one response on stdout. The
+// process entrypoint and the wasm dispatcher in plugins/cmd/portolan-go both
+// call it.
+func Serve(stdin io.Reader, stdout io.Writer) error {
+	return run(stdin, stdout)
 }
 
 func run(stdin io.Reader, stdout io.Writer) error {

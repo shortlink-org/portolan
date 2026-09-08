@@ -18,7 +18,7 @@ import { glob } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { InitError, commandWorks, init as runInit, isInteractive, promptAnswers } from "./init.mjs";
+import { InitError, commandWorks, init as runInit, isInteractive, promptAnswers, toolchainFor } from "./init.mjs";
 
 const installRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const packageJson = JSON.parse(readFileSync(resolve(installRoot, "package.json"), "utf8"));
@@ -117,19 +117,32 @@ async function init(workspace, options) {
 }
 
 function doctor(workspace) {
+  const manifestPath = resolve(workspace, "portolan.json");
+  const manifest = existsSync(manifestPath) ? JSON.parse(readFileSync(manifestPath, "utf8")) : null;
   const checks = [
     ["Node.js >= 24", Number(process.versions.node.split(".")[0]) >= 24, process.version],
-    ["portolan.json", existsSync(resolve(workspace, "portolan.json")), "required"],
+    ["portolan.json", Boolean(manifest), "required"],
     ["Git", commandWorks("git", ["--version"]), "used for deterministic source stamps"],
-    ["Go", commandWorks("go", ["version"]), "required by built-in Go extractors"],
-    ["Python 3", commandWorks("python3", ["--version"]), "required by Python extractors"],
-    ["Java", commandWorks("java", ["-version"]), "required by the Java extractor"],
-    ["Cargo", commandWorks("cargo", ["--version"]), "required by the Rust extractor"],
   ];
+
+  // A toolchain is required only when a step in this manifest names a plugin
+  // that runs in it; the built-in Go plugins run as wasm and ask for nothing.
+  const needed = new Map();
+  const steps = manifest ? ["extract", "verify", "generate"].flatMap((phase) => manifest[phase] ?? []) : [];
+  for (const name of new Set(steps.map((step) => step.plugin))) {
+    const need = toolchainFor(name, (manifest.plugins ?? []).find((plugin) => plugin.name === name));
+    if (need) needed.set(need.label, [...(needed.get(need.label) ?? []), name]);
+  }
+  for (const [label, command, args] of [["Go", "go", ["version"]], ["Python 3", "python3", ["--version"]], ["Java", "java", ["-version"]], ["Cargo", "cargo", ["--version"]]]) {
+    const plugins = needed.get(label);
+    const present = commandWorks(command, args);
+    checks.push([label, present || !plugins, plugins ? `needed by ${plugins.join(", ")}${present ? "" : "; not on PATH"}` : `${present ? "present" : "absent"}; nothing in portolan.json needs it`]);
+  }
+
   for (const [label, ok, note] of checks) {
     console.log(`${ok ? "ok" : "--"}  ${label}${note ? ` — ${note}` : ""}`);
   }
-  if (!checks[0][1] || !checks[1][1]) process.exitCode = 1;
+  if (checks.some(([, ok]) => !ok)) process.exitCode = 1;
 }
 
 async function build(workspace, options) {

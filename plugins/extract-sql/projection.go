@@ -1,4 +1,4 @@
-package main
+package extractsql
 
 // Whose rows a projection is a picture of, when the migration says.
 //

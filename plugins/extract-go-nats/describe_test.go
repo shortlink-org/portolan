@@ -1,4 +1,4 @@
-package main
+package extractgonats
 
 import (
 	"testing"

@@ -1,4 +1,4 @@
-package main
+package genmarkdown
 
 // The vocabulary of one context, as a page of its own.
 //

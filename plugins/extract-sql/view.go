@@ -1,4 +1,4 @@
-package main
+package extractsql
 
 // Reading a view.
 //

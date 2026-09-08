@@ -14,12 +14,11 @@
 // is still in force - it says in bullets under the title, and everything from
 // the first `##` onward is the record itself, carried through untouched. The
 // format is described in plugins/README.md and held to by parse_test.go.
-package main
+package extractadr
 
 import (
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/shortlink-org/portolan/plugin"
 )
@@ -47,11 +46,11 @@ type Options struct {
 	Out string `json:"out,omitempty"`
 }
 
-func main() {
-	if err := run(os.Stdin, os.Stdout); err != nil {
-		fmt.Fprintln(os.Stderr, "portolan-extract-adr:", err)
-		os.Exit(1)
-	}
+// Serve answers one request on stdin with one response on stdout. The
+// process entrypoint and the wasm dispatcher in plugins/cmd/portolan-go both
+// call it.
+func Serve(stdin io.Reader, stdout io.Writer) error {
+	return run(stdin, stdout)
 }
 
 func run(stdin io.Reader, stdout io.Writer) error {

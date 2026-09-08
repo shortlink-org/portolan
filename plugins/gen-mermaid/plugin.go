@@ -1,4 +1,4 @@
-package main
+package genmermaid
 
 import (
 	"encoding/json"

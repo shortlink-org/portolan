@@ -1,4 +1,4 @@
-package main
+package extractcommands
 
 import (
 	_ "embed"

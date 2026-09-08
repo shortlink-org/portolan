@@ -11,12 +11,10 @@
 // way; it says the hop happened. It does not say a repository method was called,
 // so `call` steps stay declared; and it does not put a service in the catalog,
 // so a call whose far end is not there stays unresolved however often it ran.
-package main
+package verifyotel
 
 import (
-	"fmt"
 	"io"
-	"os"
 
 	"github.com/shortlink-org/portolan/plugin"
 )
@@ -41,11 +39,11 @@ type Options struct {
 	Out string `json:"out,omitempty"`
 }
 
-func main() {
-	if err := run(os.Stdin, os.Stdout); err != nil {
-		fmt.Fprintln(os.Stderr, "portolan-verify-otel:", err)
-		os.Exit(1)
-	}
+// Serve answers one request on stdin with one response on stdout. The
+// process entrypoint and the wasm dispatcher in plugins/cmd/portolan-go both
+// call it.
+func Serve(stdin io.Reader, stdout io.Writer) error {
+	return run(stdin, stdout)
 }
 
 func run(in io.Reader, out io.Writer) error {

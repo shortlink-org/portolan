@@ -1,6 +1,6 @@
 # Host
 
-*Generated from the portolan catalog · commit `6 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Id:** `portolan.host`
 - **Group:** [Portolan](../README.md)
@@ -65,18 +65,20 @@ one estate and validates the union. Nothing here draws anything.
 
 | Run | Body | Source |
 | --- | --- | --- |
-| `npm run dev` | `vite` | [`package.json:7`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L7) |
-| `npm run build` | `npm run likec4:gen && tsc --noEmit && vite build && node scripts/site-docs.mjs` | [`package.json:8`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L8) |
-| `npm run preview` | `vite preview` | [`package.json:9`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L9) |
-| `npm test` | `vitest run` | [`package.json:10`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L10) |
-| `npm run test:go` | `go test ./...` | [`package.json:11`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L11) |
-| `npm run test:watch` | `vitest` | [`package.json:12`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L12) |
-| `npm run typecheck` | `tsc --noEmit && tsc -p plugins/extract-ts` | [`package.json:13`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L13) |
-| `npm run likec4:gen` | `node scripts/gen-likec4.mjs && likec4 gen react likec4 -o src/likec4/generated.jsx` | [`package.json:14`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L14) |
-| `npm run likec4:validate` | `likec4 validate likec4` | [`package.json:15`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L15) |
-| `npm run plugins:build` | `GOOS=wasip1 GOARCH=wasm go build -o plugins/gen-markdown.wasm ./plugins/gen-markdown && GOOS=wasip1 GOARCH=wasm go build -o plugins/gen-mermaid.wasm ./plugins/gen-mermaid && GOOS=wasip1 GOARCH=wasm go build -o plugins/gen-backstage.wasm ./plugins/gen-backstage && javac --release 21 -d plugins/extract-java/build plugins/extract-java/src/org/portolan/extract/*.java` | [`package.json:17`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L17) |
-| `npm run schema` | `npm run plugins:build && node scripts/schema.mjs` | [`package.json:18`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L18) |
-| `npm run schema:check` | `npm run plugins:build && node scripts/schema.mjs --check` | [`package.json:19`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L19) |
-| `npm run gen` | `npm run plugins:build && node scripts/gen.mjs` | [`package.json:20`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L20) |
-| `npm run gen:check` | `npm run plugins:build && node scripts/gen.mjs --check` | [`package.json:21`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L21) |
-| `npm run diff` | `node scripts/diff.mjs` | [`package.json:22`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L22) |
+| `npm run dev` | `node cli/portolan.mjs dev` | [`package.json:56`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L56) |
+| `npm run build` | `node cli/portolan.mjs build` | [`package.json:57`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L57) |
+| `npm run preview` | `vite preview` | [`package.json:58`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L58) |
+| `npm test` | `vitest run` | [`package.json:59`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L59) |
+| `npm run test:go` | `go test ./...` | [`package.json:60`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L60) |
+| `npm run test:package` | `node scripts/package-smoke.mjs` | [`package.json:62`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L62) |
+| `npm run test:watch` | `vitest` | [`package.json:63`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L63) |
+| `npm run typecheck` | `tsc --noEmit && tsc -p plugins/extract-ts` | [`package.json:64`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L64) |
+| `npm run likec4:gen` | `node scripts/gen-likec4.mjs && likec4 gen react likec4 -o src/likec4/generated.jsx` | [`package.json:65`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L65) |
+| `npm run likec4:validate` | `likec4 validate likec4` | [`package.json:66`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L66) |
+| `npm run plugins:build` | `GOOS=wasip1 GOARCH=wasm go build -trimpath -ldflags="-s -w" -o plugins/portolan-go.wasm ./plugins/cmd/portolan-go && javac --release 21 -d plugins/extract-java/build plugins/extract-java/src/org/portolan/extract/*.java` | [`package.json:68`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L68) |
+| `npm run schema` | `npm run plugins:build && node scripts/schema.mjs` | [`package.json:69`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L69) |
+| `npm run schema:check` | `npm run plugins:build && node scripts/schema.mjs --check` | [`package.json:70`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L70) |
+| `npm run gen` | `npm run plugins:build && node scripts/gen.mjs` | [`package.json:71`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L71) |
+| `npm run gen:check` | `npm run plugins:build && node scripts/gen.mjs --check` | [`package.json:72`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L72) |
+| `npm run diff` | `node scripts/diff.mjs` | [`package.json:73`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L73) |
+| `npm run prepack` | `npm run plugins:build` | [`package.json:74`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L74) |

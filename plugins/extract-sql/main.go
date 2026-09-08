@@ -1,17 +1,16 @@
-// Package main is portolan-extract-sql: the migrations of a service in, a
+// Package extractsql is portolan-extract-sql: the migrations of a service in, a
 // catalog fragment describing where its state lives out.
 //
 // It reads the DDL with PostgreSQL's own grammar ported to Go, so it needs no
 // database, no Docker and no external binary - the same property every other
 // extractor here has, and the reason this does not shell out to a migration
 // tool to be told what the files build.
-package main
+package extractsql
 
 import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
 
 	"github.com/shortlink-org/portolan/catalog"
@@ -39,11 +38,11 @@ type Options struct {
 	Out string `json:"out,omitempty"`
 }
 
-func main() {
-	if err := run(os.Stdin, os.Stdout); err != nil {
-		fmt.Fprintln(os.Stderr, "portolan-extract-sql:", err)
-		os.Exit(1)
-	}
+// Serve answers one request on stdin with one response on stdout. The
+// process entrypoint and the wasm dispatcher in plugins/cmd/portolan-go both
+// call it.
+func Serve(stdin io.Reader, stdout io.Writer) error {
+	return run(stdin, stdout)
 }
 
 func run(stdin io.Reader, stdout io.Writer) error {

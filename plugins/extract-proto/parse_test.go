@@ -1,4 +1,4 @@
-package main
+package extractproto
 
 // The parser, on its own. Nothing here knows the catalog exists: a proto is
 // read into an AST, and whether that AST becomes a service or a message is

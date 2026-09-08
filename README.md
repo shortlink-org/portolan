@@ -158,12 +158,16 @@ deployable static site.
 | `portolan check` | fail when committed generated files are stale, without writing them |
 | `portolan build` | build the static site into `dist/` |
 | `portolan diff BASE` | describe the architecture change from a branch, tag, or commit |
-| `portolan doctor` | show which optional plugin toolchains are available |
+| `portolan doctor` | show which toolchains the manifest's plugins need and which are on `PATH` |
 
-Node.js 24 is required. A process extractor also needs the toolchain of the
-language it reads: Go for the Go extractors, Python 3 for Python, Java 21 for
-Java, and Cargo for Rust. `portolan doctor` reports the local set. The Docker
-image contains all of them.
+Node.js 24 is required, and for a repository the Go extractors can read on
+their own it is the only requirement: they run as one wasm module over the
+workspace (`adr/0006`), so a Go, TypeScript, OpenAPI, proto, SQL or GraphQL
+tree is read without Go installed. An extractor that runs in its own runtime
+still needs it: Python 3 for Django and Celery, Java 21 for Java, Cargo for
+Rust, and Go for `adr`, which reads git history. `portolan doctor` reports
+what the manifest asks for against what is on `PATH`. The Docker image
+contains all of them.
 
 ### Check pull requests with GitHub Actions
 

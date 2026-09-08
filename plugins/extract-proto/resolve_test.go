@@ -1,4 +1,4 @@
-package main
+package extractproto
 
 // Name resolution, on its own. A proto reference means whatever the innermost
 // enclosing scope that declares it means, and a name nothing declares is a

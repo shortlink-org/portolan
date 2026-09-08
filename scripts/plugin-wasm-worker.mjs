@@ -11,13 +11,16 @@ async function run() {
       version: "preview1",
       args: [workerData.name],
       env: {},
-      preopens: {},
+      // Empty for a generator or a describe request. An extract or verify
+      // step gets the workspace as `/`, and nothing else (portolan.0006).
+      preopens: workerData.workspace ? { "/": workerData.workspace } : {},
       stdin,
       stdout,
       stderr,
     });
-    const module = await WebAssembly.compile(workerData.bytes);
-    const instance = await WebAssembly.instantiate(module, wasi.getImportObject());
+    // The module was compiled once by the host and shared; a 20 MB module
+    // compiled per step would cost more than the step.
+    const instance = await WebAssembly.instantiate(workerData.module, wasi.getImportObject());
     return wasi.start(instance);
   } finally {
     closeSync(stdin);

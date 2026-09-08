@@ -1,4 +1,4 @@
-package main
+package extractgo
 
 import (
 	"io/fs"

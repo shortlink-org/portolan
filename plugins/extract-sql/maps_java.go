@@ -1,4 +1,4 @@
-package main
+package extractsql
 
 // The same fact read out of a repository written in Java, where JPA already
 // writes it down: an entity says which table it is and each field says which

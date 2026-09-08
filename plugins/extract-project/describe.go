@@ -1,4 +1,4 @@
-package main
+package extractproject
 
 import (
 	_ "embed"

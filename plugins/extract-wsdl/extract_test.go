@@ -1,4 +1,4 @@
-package main
+package extractwsdl
 
 import (
 	"encoding/json"

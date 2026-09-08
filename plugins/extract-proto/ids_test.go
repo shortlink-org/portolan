@@ -1,4 +1,4 @@
-package main
+package extractproto
 
 // The id rules, which are the join between fragments that never see each other.
 

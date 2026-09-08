@@ -1,4 +1,4 @@
-package main
+package genmarkdown
 
 // What the glossary page promises, said once here rather than read out of the
 // golden tree: the golden proves the bytes, these prove the intent.

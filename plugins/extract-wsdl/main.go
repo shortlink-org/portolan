@@ -1,11 +1,10 @@
-// Package main is portolan-extract-wsdl: WSDL contracts and their local XSD
+// Package extractwsdl is portolan-extract-wsdl: WSDL contracts and their local XSD
 // graph in, structured SOAP interfaces in the catalog out.
-package main
+package extractwsdl
 
 import (
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
 
 	"github.com/shortlink-org/portolan/internal/wsdl"
@@ -30,11 +29,11 @@ type Options struct {
 	Out             string `json:"out,omitempty"`
 }
 
-func main() {
-	if err := run(os.Stdin, os.Stdout); err != nil {
-		fmt.Fprintln(os.Stderr, "portolan-extract-wsdl:", err)
-		os.Exit(1)
-	}
+// Serve answers one request on stdin with one response on stdout. The
+// process entrypoint and the wasm dispatcher in plugins/cmd/portolan-go both
+// call it.
+func Serve(stdin io.Reader, stdout io.Writer) error {
+	return run(stdin, stdout)
 }
 
 func run(stdin io.Reader, stdout io.Writer) error {

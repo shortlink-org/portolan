@@ -1,11 +1,12 @@
-// Runs a portolan generator plugin and returns what it wants written.
+// Runs a portolan plugin and returns what it wants written.
 //
-// A plugin never touches the tree (portolan.0001). It is handed a request on stdin and answers
-// with named files on stdout; writing them - and refusing a name that climbs
-// out of the output directory - is this file's job. That split is what lets the
-// same plugin run as a sandboxed wasm module with no directory preopened at
-// all, and it is why `--check` can compare a render against disk without the
-// plugin knowing there is a disk.
+// A plugin never writes the tree (portolan.0001). It is handed a request on
+// stdin and answers with named files on stdout; writing them - and refusing a
+// name that climbs out of the output directory - is this file's job. That split
+// is what lets a generator run as a wasm module with no directory preopened at
+// all, an extractor as one with only the workspace preopened (portolan.0006),
+// and it is why `--check` can compare a render against disk without the plugin
+// knowing there is a disk.
 
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -18,7 +19,7 @@ import {
 } from "node:fs";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { isAbsolute, join } from "node:path";
+import { isAbsolute, join, resolve } from "node:path";
 import { Worker } from "node:worker_threads";
 
 const PORTOLAN_VERSION = "0.1.0";
@@ -35,9 +36,14 @@ const HOST_LIMITS = Object.freeze({
  *
  * @param {{name: string, wasm?: {url: string, sha256?: string}, process?: {command: string, args?: string[]}}} plugin
  * @param {unknown} request
+ * @param {{workspace?: string}} [access] `workspace` is the directory a wasm
+ *   module may read, preopened as `/` (portolan.0006). Left out, the module
+ *   gets no filesystem at all, which is what a generator and a describe
+ *   request should get. A process plugin is unaffected: it already has the
+ *   whole machine.
  * @returns {Promise<{files: {name: string, contents: string}[], describe?: object}>}
  */
-export async function runPlugin(plugin, request, requestedLimits = {}) {
+export async function runPlugin(plugin, request, requestedLimits = {}, access = {}) {
   const limits = lowerLimits(requestedLimits);
   let payload;
   try {
@@ -53,7 +59,7 @@ export async function runPlugin(plugin, request, requestedLimits = {}) {
   }
 
   const result = plugin.wasm
-    ? await runWasm(plugin, payload, limits)
+    ? await runWasm(plugin, payload, limits, access)
     : await runProcess(plugin, payload, limits);
   if (result.stderr) process.stderr.write(result.stderr);
 
@@ -191,12 +197,29 @@ export async function describePlugin(plugin) {
 //
 // Node's WASI takes file descriptors rather than pipes, so the request and the
 // response go through a scratch directory. That is the only place the sandbox
-// leaks, and it leaks into a temporary directory the plugin is not told about:
-// `preopens` stays empty, so the module cannot open a path even if it tries.
+// leaks, and it leaks into a temporary directory the plugin is not told about.
+// A generator gets no preopen at all. An extract or verify step gets the
+// workspace as `/` (portolan.0006) - read-write, because that is all WASI
+// offers, and nothing beyond it: no network, no environment, no way to spawn.
 // ---------------------------------------------------------------------------
 
-async function runWasm(plugin, payload, limits) {
+/** Compiled modules by digest: one module answers for every built-in plugin. */
+const compiled = new Map();
+
+async function compileWasm(plugin, limits) {
   const bytes = await loadWasm(plugin, limits);
+  const digest = createHash("sha256").update(bytes).digest("hex");
+  let module = compiled.get(digest);
+  if (!module) {
+    module = await WebAssembly.compile(bytes);
+    compiled.set(digest, module);
+  }
+  return module;
+}
+
+async function runWasm(plugin, payload, limits, access) {
+  const module = await compileWasm(plugin, limits);
+  const workspace = access.workspace ? resolve(access.workspace) : "";
 
   const dir = await mkdtemp(join(tmpdir(), "portolan-plugin-"));
   const inPath = join(dir, "request.json");
@@ -209,7 +232,10 @@ async function runWasm(plugin, payload, limits) {
 
   try {
     const worker = new Worker(new URL("./plugin-wasm-worker.mjs", import.meta.url), {
-      workerData: { name: plugin.name, bytes, inPath, outPath, errPath },
+      workerData: { name: plugin.name, module, workspace, inPath, outPath, errPath },
+      // node:wasi announces itself as experimental on every import; once per
+      // step, that is sixty lines of noise in a generate.
+      execArgv: [...process.execArgv, "--disable-warning=ExperimentalWarning"],
     });
     const code = await new Promise((resolve, reject) => {
       let settled = false;
@@ -350,10 +376,10 @@ function verifyDigest(name, bytes, expected) {
 // ---------------------------------------------------------------------------
 // process
 //
-// The escape hatch for a generator that needs a toolchain - one reading Go
-// source has to run `go list`, which no wasm module can. It gets the same
-// protocol and none of the sandbox, which is the trade being made and the
-// reason it is not the default.
+// The escape hatch for a plugin that needs a toolchain or a socket - the Rust
+// extractor runs under Cargo, `adr` asks git for history, `fetch-git` clones.
+// It gets the same protocol and none of the sandbox, which is the trade being
+// made and the reason it is not the default.
 // ---------------------------------------------------------------------------
 
 function runProcess(plugin, payload, limits) {

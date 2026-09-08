@@ -1,4 +1,4 @@
-package main
+package extractsql
 
 // Where a column's value came from, when it came from somewhere else.
 //

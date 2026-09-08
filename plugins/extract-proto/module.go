@@ -1,4 +1,4 @@
-package main
+package extractproto
 
 // Where a set of .proto files came from.
 //

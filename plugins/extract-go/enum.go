@@ -1,4 +1,4 @@
-package main
+package extractgo
 
 // The closed sets an aggregate's fields take values from.
 //

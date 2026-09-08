@@ -1,4 +1,4 @@
-package main
+package extractproto
 
 // The tokens of a .proto file, and the comments attached to them.
 //

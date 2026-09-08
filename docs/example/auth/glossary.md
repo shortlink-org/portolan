@@ -1,6 +1,6 @@
 # Glossary — Authentication
 
-*Generated from the portolan catalog · commit `8 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `7 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
 
 - **Context:** [Authentication](README.md)
 - **Terms:** 27

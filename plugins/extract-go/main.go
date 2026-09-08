@@ -1,4 +1,4 @@
-// Package main is portolan-extract-go: a Go service in, a catalog fragment out.
+// Package extractgo is portolan-extract-go: a Go service in, a catalog fragment out.
 //
 // It reads the source with go/parser alone - no go/packages, no `go list`, no
 // module download. The domain layer of a service laid out this way is regular
@@ -8,12 +8,11 @@
 // What it does not know, it says. An aggregate whose root it cannot identify,
 // an event with no name, a use case it cannot classify - each is a diagnostic
 // beside the fragment rather than a guess inside it.
-package main
+package extractgo
 
 import (
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/shortlink-org/portolan/plugin"
 )
@@ -61,11 +60,11 @@ type Options struct {
 	Out string `json:"out,omitempty"`
 }
 
-func main() {
-	if err := run(os.Stdin, os.Stdout); err != nil {
-		fmt.Fprintln(os.Stderr, "portolan-extract-go:", err)
-		os.Exit(1)
-	}
+// Serve answers one request on stdin with one response on stdout. The
+// process entrypoint and the wasm dispatcher in plugins/cmd/portolan-go both
+// call it.
+func Serve(stdin io.Reader, stdout io.Writer) error {
+	return run(stdin, stdout)
 }
 
 func run(stdin io.Reader, stdout io.Writer) error {

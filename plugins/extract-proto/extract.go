@@ -1,4 +1,4 @@
-package main
+package extractproto
 
 // Protos in, a catalog fragment out.
 //

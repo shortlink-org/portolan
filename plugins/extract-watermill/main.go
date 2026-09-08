@@ -1,11 +1,10 @@
-// Package main is portolan-extract-watermill: Watermill router declarations
+// Package extractwatermill is portolan-extract-watermill: Watermill router declarations
 // and publications in a Go repository in, channels and source-backed flows out.
-package main
+package extractwatermill
 
 import (
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
 
 	"github.com/shortlink-org/portolan/internal/goscan"
@@ -18,11 +17,11 @@ type Options struct {
 	Out     string `json:"out,omitempty"`
 }
 
-func main() {
-	if err := run(os.Stdin, os.Stdout); err != nil {
-		fmt.Fprintln(os.Stderr, "portolan-extract-watermill:", err)
-		os.Exit(1)
-	}
+// Serve answers one request on stdin with one response on stdout. The
+// process entrypoint and the wasm dispatcher in plugins/cmd/portolan-go both
+// call it.
+func Serve(stdin io.Reader, stdout io.Writer) error {
+	return run(stdin, stdout)
 }
 
 func run(stdin io.Reader, stdout io.Writer) error {

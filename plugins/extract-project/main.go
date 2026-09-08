@@ -1,11 +1,10 @@
-// Package main is portolan-extract-project: a repository component in, a
+// Package extractproject is portolan-extract-project: a repository component in, a
 // neutral catalog fragment out. It deliberately makes no DDD assumptions.
-package main
+package extractproject
 
 import (
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/shortlink-org/portolan/plugin"
 )
@@ -24,11 +23,11 @@ type Options struct {
 	Out           string   `json:"out,omitempty"`
 }
 
-func main() {
-	if err := run(os.Stdin, os.Stdout); err != nil {
-		fmt.Fprintln(os.Stderr, "portolan-extract-project:", err)
-		os.Exit(1)
-	}
+// Serve answers one request on stdin with one response on stdout. The
+// process entrypoint and the wasm dispatcher in plugins/cmd/portolan-go both
+// call it.
+func Serve(stdin io.Reader, stdout io.Writer) error {
+	return run(stdin, stdout)
 }
 
 func run(stdin io.Reader, stdout io.Writer) error {

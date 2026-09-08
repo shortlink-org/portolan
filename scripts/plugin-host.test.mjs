@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { join } from "node:path";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { fileURLToPath } from "node:url";
 
 import { runPlugin, validateResponse, warningsIn } from "./plugin-host.mjs";
 
@@ -95,6 +96,54 @@ describe("wasm plugins", () => {
         ),
       ).rejects.toThrow("timed out after 100 ms");
     } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+// The built-in module, when `npm run plugins:build` has produced it. These
+// tests read a tree through it, which is what portolan.0006 allows an extract
+// step and denies everything else.
+const builtinModule = fileURLToPath(new URL("../plugins/portolan-go.wasm", import.meta.url));
+const describeBuiltin = existsSync(builtinModule) ? describe : describe.skip;
+
+describeBuiltin("wasm preopen", () => {
+  const plugin = { name: "project", wasm: { url: `file://${builtinModule}` } };
+  const request = {
+    portolanVersion: "0.1.0",
+    input: { root: ".", output: "portolan", commit: "abc1234", generatedAt: "2026-09-08T00:00:00Z" },
+    options: { group: "fixture", component: "fixture", componentName: "Fixture", out: "project.json" },
+  };
+  const workspace = () => {
+    const dir = mkdtempSync(join(tmpdir(), "portolan-preopen-"));
+    writeFileSync(join(dir, "README.md"), "# Fixture\n");
+    writeFileSync(join(dir, "go.mod"), "module example.com/fixture\n\ngo 1.24\n");
+    return dir;
+  };
+  const serviceIn = (result) => JSON.parse(result.files[0].contents).contexts[0].services[0];
+
+  it("reads the workspace an extract step is given", async () => {
+    const dir = workspace();
+    try {
+      const service = serviceIn(await runPlugin(plugin, request, {}, { workspace: dir }));
+      expect(service.readme).toBe("# Fixture");
+      expect(service.technologies).toContain("Go");
+      expect(service.repo).toBe("example.com/fixture");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("sees nothing when no workspace is given, as a generator or describe never should", async () => {
+    const dir = workspace();
+    const cwd = process.cwd();
+    process.chdir(dir);
+    try {
+      const service = serviceIn(await runPlugin(plugin, request));
+      expect(service.readme).toBe("");
+      expect(service.technologies ?? []).not.toContain("Go");
+    } finally {
+      process.chdir(cwd);
       rmSync(dir, { recursive: true, force: true });
     }
   });

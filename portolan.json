@@ -95,23 +95,20 @@
   "plugins": [
     {
       "name": "project",
-      "process": {
-        "command": "go",
-        "args": ["run", "./plugins/extract-project"]
+      "wasm": {
+        "url": "file://plugins/portolan-go.wasm"
       }
     },
     {
       "name": "commands",
-      "process": {
-        "command": "go",
-        "args": ["run", "./plugins/extract-commands"]
+      "wasm": {
+        "url": "file://plugins/portolan-go.wasm"
       }
     },
     {
       "name": "go-domain",
-      "process": {
-        "command": "go",
-        "args": ["run", "./plugins/extract-go"]
+      "wasm": {
+        "url": "file://plugins/portolan-go.wasm"
       }
     },
     {
@@ -158,131 +155,111 @@
     },
     {
       "name": "openapi",
-      "process": {
-        "command": "go",
-        "args": ["run", "./plugins/extract-openapi"]
+      "wasm": {
+        "url": "file://plugins/portolan-go.wasm"
       }
     },
     {
       "name": "wsdl",
-      "process": {
-        "command": "go",
-        "args": ["run", "./plugins/extract-wsdl"]
+      "wasm": {
+        "url": "file://plugins/portolan-go.wasm"
       }
     },
     {
       "name": "http-clients",
-      "process": {
-        "command": "go",
-        "args": ["run", "./plugins/extract-http-clients"]
+      "wasm": {
+        "url": "file://plugins/portolan-go.wasm"
       }
     },
     {
       "name": "redis",
-      "process": {
-        "command": "go",
-        "args": ["run", "./plugins/extract-redis"]
+      "wasm": {
+        "url": "file://plugins/portolan-go.wasm"
       }
     },
     {
       "name": "river",
-      "process": {
-        "command": "go",
-        "args": ["run", "./plugins/extract-river"]
+      "wasm": {
+        "url": "file://plugins/portolan-go.wasm"
       }
     },
     {
       "name": "watermill",
-      "process": {
-        "command": "go",
-        "args": ["run", "./plugins/extract-watermill"]
+      "wasm": {
+        "url": "file://plugins/portolan-go.wasm"
       }
     },
     {
       "name": "go-nats",
-      "process": {
-        "command": "go",
-        "args": ["run", "./plugins/extract-go-nats"]
+      "wasm": {
+        "url": "file://plugins/portolan-go.wasm"
       }
     },
     {
       "name": "asyncapi",
-      "process": {
-        "command": "go",
-        "args": ["run", "./plugins/extract-asyncapi"]
+      "wasm": {
+        "url": "file://plugins/portolan-go.wasm"
       }
     },
     {
       "name": "graphql",
-      "process": {
-        "command": "go",
-        "args": ["run", "./plugins/extract-graphql"]
+      "wasm": {
+        "url": "file://plugins/portolan-go.wasm"
       }
     },
     {
       "name": "sql",
-      "process": {
-        "command": "go",
-        "args": ["run", "./plugins/extract-sql"]
+      "wasm": {
+        "url": "file://plugins/portolan-go.wasm"
       }
     },
     {
       "name": "markdown",
       "wasm": {
-        "url": "file://plugins/gen-markdown.wasm"
+        "url": "file://plugins/portolan-go.wasm"
       }
     },
     {
       "name": "mermaid",
       "wasm": {
-        "url": "file://plugins/gen-mermaid.wasm"
+        "url": "file://plugins/portolan-go.wasm"
       }
     },
     {
       "name": "backstage",
       "wasm": {
-        "url": "file://plugins/gen-backstage.wasm"
+        "url": "file://plugins/portolan-go.wasm"
       }
     },
     {
       "name": "otel",
-      "process": {
-        "command": "go",
-        "args": ["run", "./plugins/verify-otel"]
+      "wasm": {
+        "url": "file://plugins/portolan-go.wasm"
       }
     },
     {
       "name": "codeowners",
-      "process": {
-        "command": "go",
-        "args": ["run", "./plugins/verify-codeowners"]
+      "wasm": {
+        "url": "file://plugins/portolan-go.wasm"
       }
     },
     {
       "name": "adr",
       "process": {
         "command": "go",
-        "args": [
-          "run",
-          "./plugins/extract-adr"
-        ]
+        "args": ["run", "./plugins/cmd/portolan-go", "adr"]
       }
     },
     {
       "name": "glossary",
-      "process": {
-        "command": "go",
-        "args": [
-          "run",
-          "./plugins/extract-glossary"
-        ]
+      "wasm": {
+        "url": "file://plugins/portolan-go.wasm"
       }
     },
     {
       "name": "flows",
-      "process": {
-        "command": "go",
-        "args": ["run", "./plugins/extract-flows"]
+      "wasm": {
+        "url": "file://plugins/portolan-go.wasm"
       }
     },
     {
@@ -301,9 +278,8 @@
     },
     {
       "name": "proto",
-      "process": {
-        "command": "go",
-        "args": ["run", "./plugins/extract-proto"]
+      "wasm": {
+        "url": "file://plugins/portolan-go.wasm"
       }
     }
   ],

@@ -1,4 +1,4 @@
-package main
+package extractglossary
 
 // The mapping: glossaries in a tree, a catalog fragment out.
 //

@@ -25,6 +25,16 @@ export function builtinPluginNames() {
   return new Set(shippedDefinitions().keys());
 }
 
+/**
+ * The definition as portolan.json declares it - `wasm`, or the `process`
+ * with the real command - rather than the adapter `builtinPlugin` runs it
+ * through. What `init` and `doctor` read to know which toolchain a plugin
+ * asks for.
+ */
+export function builtinDefinition(name) {
+  return shippedDefinitions().get(name) ?? null;
+}
+
 /** Return a runnable built-in definition, or null when the package has none. */
 export function builtinPlugin(name) {
   const declared = shippedDefinitions().get(name);

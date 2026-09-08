@@ -1,16 +1,15 @@
-// Package main is portolan-extract-graphql: a GraphQL schema in, a catalog
+// Package extractgraphql is portolan-extract-graphql: a GraphQL schema in, a catalog
 // fragment out.
 //
 // It describes one aspect of a service - what a client may ask it for - and
 // nothing else. Who answers underneath is a different fact, read by whichever
 // extractor reads the resolvers, and the two meet in the merge. Neither knows
 // the other exists, which is the whole reason each of them stays small.
-package main
+package extractgraphql
 
 import (
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/shortlink-org/portolan/plugin"
 )
@@ -33,11 +32,11 @@ type Options struct {
 	Out string `json:"out,omitempty"`
 }
 
-func main() {
-	if err := run(os.Stdin, os.Stdout); err != nil {
-		fmt.Fprintln(os.Stderr, "portolan-extract-graphql:", err)
-		os.Exit(1)
-	}
+// Serve answers one request on stdin with one response on stdout. The
+// process entrypoint and the wasm dispatcher in plugins/cmd/portolan-go both
+// call it.
+func Serve(stdin io.Reader, stdout io.Writer) error {
+	return run(stdin, stdout)
 }
 
 func run(stdin io.Reader, stdout io.Writer) error {

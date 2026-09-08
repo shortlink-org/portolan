@@ -1,4 +1,4 @@
-package main
+package extractredis
 
 import (
 	"go/ast"

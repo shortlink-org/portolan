@@ -1,4 +1,4 @@
-package main
+package verifycodeowners
 
 // Whether a rule owns a directory.
 //

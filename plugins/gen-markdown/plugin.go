@@ -1,4 +1,4 @@
-// Package main is portolan-gen-markdown: a catalog in, a directory of markdown
+// Package genmarkdown is portolan-gen-markdown: a catalog in, a directory of markdown
 // out.
 //
 // The plugin never touches the filesystem. It is handed a catalog on stdin and
@@ -7,7 +7,7 @@
 // preopened at all, and it is what makes `--check` cheap: the host compares
 // what came back against what is on disk without the plugin knowing there is a
 // disk.
-package main
+package genmarkdown
 
 import (
 	"fmt"

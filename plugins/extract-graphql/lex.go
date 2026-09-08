@@ -1,4 +1,4 @@
-package main
+package extractgraphql
 
 // The tokens of a GraphQL SDL document, and the descriptions attached to them.
 //

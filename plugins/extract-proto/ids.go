@@ -1,4 +1,4 @@
-package main
+package extractproto
 
 // The id and slug rules, written once.
 //

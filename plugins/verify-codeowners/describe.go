@@ -1,4 +1,4 @@
-package main
+package verifycodeowners
 
 import (
 	_ "embed"

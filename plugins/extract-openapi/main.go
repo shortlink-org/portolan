@@ -1,16 +1,15 @@
-// Package main is portolan-extract-openapi: an OpenAPI document in, a catalog
+// Package extractopenapi is portolan-extract-openapi: an OpenAPI document in, a catalog
 // fragment out.
 //
 // It describes one aspect of a service - what it answers - and nothing else.
 // The aggregates come from a different extractor reading a different part of
 // the tree, and the two meet in the merge. Neither knows the other exists,
 // which is the whole reason each of them stays small.
-package main
+package extractopenapi
 
 import (
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/shortlink-org/portolan/plugin"
 )
@@ -57,11 +56,11 @@ type Options struct {
 	Out string `json:"out,omitempty"`
 }
 
-func main() {
-	if err := run(os.Stdin, os.Stdout); err != nil {
-		fmt.Fprintln(os.Stderr, "portolan-extract-openapi:", err)
-		os.Exit(1)
-	}
+// Serve answers one request on stdin with one response on stdout. The
+// process entrypoint and the wasm dispatcher in plugins/cmd/portolan-go both
+// call it.
+func Serve(stdin io.Reader, stdout io.Writer) error {
+	return run(stdin, stdout)
 }
 
 func run(stdin io.Reader, stdout io.Writer) error {

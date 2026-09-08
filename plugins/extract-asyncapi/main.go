@@ -1,4 +1,4 @@
-// Package main is portolan-extract-asyncapi: an AsyncAPI document in, a catalog
+// Package extractasyncapi is portolan-extract-asyncapi: an AsyncAPI document in, a catalog
 // fragment out.
 //
 // It describes one aspect of a service - what it puts on the bus and what it
@@ -7,12 +7,11 @@
 // aggregate raises BasketCreated and calls it `cart.BasketCreated` on the wire,
 // this one says the service declares a channel carrying that name. Neither
 // knows the other exists, and the pages hold the two against each other.
-package main
+package extractasyncapi
 
 import (
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/shortlink-org/portolan/plugin"
 )
@@ -30,11 +29,11 @@ type Options struct {
 	Out string `json:"out,omitempty"`
 }
 
-func main() {
-	if err := run(os.Stdin, os.Stdout); err != nil {
-		fmt.Fprintln(os.Stderr, "portolan-extract-asyncapi:", err)
-		os.Exit(1)
-	}
+// Serve answers one request on stdin with one response on stdout. The
+// process entrypoint and the wasm dispatcher in plugins/cmd/portolan-go both
+// call it.
+func Serve(stdin io.Reader, stdout io.Writer) error {
+	return run(stdin, stdout)
 }
 
 func run(stdin io.Reader, stdout io.Writer) error {

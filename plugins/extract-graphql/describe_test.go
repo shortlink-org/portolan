@@ -1,4 +1,4 @@
-package main
+package extractgraphql
 
 import (
 	"testing"

@@ -1,4 +1,4 @@
-package main
+package extractproto
 
 // A tolerant recursive-descent parser for .proto.
 //

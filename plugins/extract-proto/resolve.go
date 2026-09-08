@@ -1,4 +1,4 @@
-package main
+package extractproto
 
 // Turning a name as written into the thing it names.
 //

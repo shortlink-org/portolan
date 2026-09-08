@@ -1,4 +1,4 @@
-package main
+package verifycodeowners
 
 // The CODEOWNERS grammar, which is smaller than its reputation.
 //

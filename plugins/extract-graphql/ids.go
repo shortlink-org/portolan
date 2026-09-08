@@ -1,4 +1,4 @@
-package main
+package extractgraphql
 
 // What a schema's parts are called in the catalog.
 //

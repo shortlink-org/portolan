@@ -1,4 +1,4 @@
-package main
+package extractglossary
 
 import (
 	"encoding/json"

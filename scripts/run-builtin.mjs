@@ -44,7 +44,9 @@ if (command === "go" && args[0] === "run" && args[1]) {
     process.exit(1);
   }
   if (built.status !== 0 || !existsSync(binary)) process.exit(built.status ?? 1);
-  run(binary, []);
+  // What follows the package path is the binary's own argv: the plugin name
+  // for the multi-call portolan-go.
+  run(binary, args.slice(2));
 } else if (command === "cargo" && existsSync(resolve(installRoot, "plugins/extract-rust/target/release/portolan-extract-rust"))) {
   run(resolve(installRoot, "plugins/extract-rust/target/release/portolan-extract-rust"), []);
 } else {

@@ -1,4 +1,4 @@
-package main
+package genmarkdown
 
 import (
 	"testing"

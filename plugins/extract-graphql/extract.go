@@ -1,4 +1,4 @@
-package main
+package extractgraphql
 
 // The schema in, the interfaces a service provides out.
 //

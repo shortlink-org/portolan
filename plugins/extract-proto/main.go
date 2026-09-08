@@ -1,4 +1,4 @@
-// Package main is portolan-extract-proto: .proto files in, a catalog fragment
+// Package extractproto is portolan-extract-proto: .proto files in, a catalog fragment
 // out.
 //
 // It is a `process` plugin because it walks the input tree, and it would be a
@@ -34,12 +34,11 @@
 // Declared AFTER any fetch-bsr step that writes into the same tree: extract
 // steps run in list order, so a fetch declared first has already written its
 // protos and its lock by the time this reads them.
-package main
+package extractproto
 
 import (
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/shortlink-org/portolan/plugin"
 )
@@ -82,11 +81,11 @@ type Options struct {
 	Out string `json:"out,omitempty"`
 }
 
-func main() {
-	if err := run(os.Stdin, os.Stdout); err != nil {
-		fmt.Fprintln(os.Stderr, "portolan-extract-proto:", err)
-		os.Exit(1)
-	}
+// Serve answers one request on stdin with one response on stdout. The
+// process entrypoint and the wasm dispatcher in plugins/cmd/portolan-go both
+// call it.
+func Serve(stdin io.Reader, stdout io.Writer) error {
+	return run(stdin, stdout)
 }
 
 func run(stdin io.Reader, stdout io.Writer) error {

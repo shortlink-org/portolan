@@ -1,4 +1,4 @@
-package main
+package extractproto
 
 // What a .proto file says, as it says it.
 //

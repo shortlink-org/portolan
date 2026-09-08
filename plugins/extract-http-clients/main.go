@@ -1,11 +1,10 @@
-// Package main is portolan-extract-http-clients: outbound HTTP and SOAP calls
+// Package extracthttpclients is portolan-extract-http-clients: outbound HTTP and SOAP calls
 // in a Go repository in, source-backed dependencies and flows out.
-package main
+package extracthttpclients
 
 import (
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
 
 	"github.com/shortlink-org/portolan/plugin"
@@ -19,11 +18,11 @@ type Options struct {
 	Out       string            `json:"out,omitempty"`
 }
 
-func main() {
-	if err := run(os.Stdin, os.Stdout); err != nil {
-		fmt.Fprintln(os.Stderr, "portolan-extract-http-clients:", err)
-		os.Exit(1)
-	}
+// Serve answers one request on stdin with one response on stdout. The
+// process entrypoint and the wasm dispatcher in plugins/cmd/portolan-go both
+// call it.
+func Serve(stdin io.Reader, stdout io.Writer) error {
+	return run(stdin, stdout)
 }
 
 func run(stdin io.Reader, stdout io.Writer) error {

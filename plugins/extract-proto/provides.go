@@ -1,4 +1,4 @@
-package main
+package extractproto
 
 // What a service ANSWERS, read from the protos it publishes.
 //

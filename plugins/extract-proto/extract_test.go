@@ -1,4 +1,4 @@
-package main
+package extractproto
 
 // The mapping: protos in a tree, a catalog fragment out.
 //

@@ -1,4 +1,4 @@
-package main
+package extractgraphql
 
 // The definitions of a schema, read straight out of the SDL.
 //
