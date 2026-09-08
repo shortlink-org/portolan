@@ -152,7 +152,11 @@ export default defineConfig({
     __PROJECT_PREVIEW__: JSON.stringify(env.PORTOLAN_PROJECT_PREVIEW === "1"),
   },
   plugins: [
-    localApiPlugin(workspace),
+    // Inject the TypeScript projection from the staged Vite config rather than
+    // importing it from local-api.mjs. The latter is also loaded directly by
+    // `portolan init` from the published package, and Node does not strip
+    // TypeScript below node_modules.
+    localApiPlugin(workspace, publicSetupFrom),
     siteDocsPlugin(workspace),
     react(),
     tailwindcss(),

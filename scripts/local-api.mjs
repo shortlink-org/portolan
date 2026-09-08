@@ -18,7 +18,6 @@ import { tmpdir } from "node:os";
 import { createServer as createNetServer } from "node:net";
 import { basename, dirname, join, posix, relative, resolve, sep } from "node:path";
 
-import { publicSetupFrom } from "../src/lib/setup-info.ts";
 import { loadManifest } from "./manifest.mjs";
 import { builtinPluginNames } from "./builtin-plugins.mjs";
 import { installDeliveryPreset, planDeliveryPreset, publicDeliveryPreset } from "./delivery-presets.mjs";
@@ -726,7 +725,7 @@ export function writeProject(workspace, request) {
   return plan;
 }
 
-function setup(workspace) {
+function setup(workspace, publicSetupFrom) {
   const manifestText = readFileSync(join(workspace, "portolan.json"), "utf8");
   let report;
   try { report = JSON.parse(readFileSync(join(workspace, ".portolan/build-report.json"), "utf8")); } catch {}
@@ -1095,7 +1094,7 @@ function startProjectTrial(workspace, request) {
   catch (cause) { rmSync(prepared.holder, { recursive: true, force: true }); throw cause; }
 }
 
-export function localApiPlugin(workspace = process.cwd()) {
+export function localApiPlugin(workspace = process.cwd(), publicSetupFrom) {
   return {
     name: "portolan-local-api",
     apply: "serve",
@@ -1108,7 +1107,7 @@ export function localApiPlugin(workspace = process.cwd()) {
         try {
           if (req.method === "GET" && url.pathname === `${LOCAL_API_PREFIX}/status`) {
             const active = [...jobs.values()].find((job) => job.status === "running");
-            return send(res, 200, { local: true, workspace: realpathSync(workspace), setup: setup(workspace), activeRun: active ? { id: active.id, mode: active.mode } : null });
+            return send(res, 200, { local: true, workspace: realpathSync(workspace), setup: setup(workspace, publicSetupFrom), activeRun: active ? { id: active.id, mode: active.mode } : null });
           }
           if (req.method === "GET" && url.pathname === `${LOCAL_API_PREFIX}/delivery-presets`) {
             return send(res, 200, publicDeliveryPreset(planDeliveryPreset(workspace, url.searchParams.get("provider"))));
@@ -1151,7 +1150,7 @@ export function localApiPlugin(workspace = process.cwd()) {
             const result = writeProject(workspace, trial.projectRequest);
             trial.applied = true;
             const generation = input.generate ? startJob(workspace, "write", trial) : null;
-            return send(res, 201, { ...result, setup: setup(workspace), run: generation ? { runId: generation.id, mode: generation.mode } : null });
+            return send(res, 201, { ...result, setup: setup(workspace, publicSetupFrom), run: generation ? { runId: generation.id, mode: generation.mode } : null });
           }
           const disposeTrialMatch = url.pathname.match(/^\/__portolan\/projects\/trials\/([^/]+)\/dispose$/);
           if (disposeTrialMatch) {
@@ -1167,7 +1166,7 @@ export function localApiPlugin(workspace = process.cwd()) {
           }
           if (url.pathname === `${LOCAL_API_PREFIX}/projects`) {
             const result = writeProject(workspace, input);
-            return send(res, 201, { ...result, setup: setup(workspace) });
+            return send(res, 201, { ...result, setup: setup(workspace, publicSetupFrom) });
           }
           if (url.pathname === `${LOCAL_API_PREFIX}/runs`) {
             if ([...jobs.values()].some((job) => job.status === "running")) return send(res, 409, { error: "A generator run is already active." });

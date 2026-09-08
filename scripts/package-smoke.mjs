@@ -2,16 +2,32 @@
 // This catches accidental cwd coupling before the same package reaches npm.
 
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
-const cli = resolve(root, "cli/portolan.mjs");
 const fixture = mkdtempSync(resolve(tmpdir(), "portolan-package-smoke-"));
+const install = mkdtempSync(resolve(tmpdir(), "portolan-package-install-"));
 
 try {
+  // Exercise the tarball from a real node_modules path. Node permits native
+  // TypeScript stripping in a checkout but rejects it below node_modules, so
+  // invoking the source-tree CLI did not catch broken published entry graphs.
+  const tarball = execFileSync("npm", ["pack", "--ignore-scripts", "--pack-destination", install], {
+    cwd: root,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "inherit"],
+  }).trim().split("\n").at(-1);
+  const scope = resolve(install, "node_modules/@shortlink-org");
+  mkdirSync(scope, { recursive: true });
+  execFileSync("tar", ["-xzf", resolve(install, tarball), "-C", scope]);
+  const installed = resolve(scope, "portolan");
+  renameSync(resolve(scope, "package"), installed);
+  symlinkSync(resolve(root, "node_modules"), resolve(installed, "node_modules"), process.platform === "win32" ? "junction" : "dir");
+  const cli = resolve(installed, "cli/portolan.mjs");
+
   writeFileSync(resolve(fixture, "package.json"), '{"name":"package-smoke","version":"1.0.0"}\n');
   writeFileSync(resolve(fixture, "README.md"), "# Package smoke\n");
   // A Go domain layout: init should notice it and wire the extractor without being asked.
@@ -34,6 +50,7 @@ try {
   console.log("package smoke: init, generate, check, and build passed outside the repository");
 } finally {
   rmSync(fixture, { recursive: true, force: true });
+  rmSync(install, { recursive: true, force: true });
 }
 
 function run(command, args) {
