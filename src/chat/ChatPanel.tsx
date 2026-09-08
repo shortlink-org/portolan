@@ -35,6 +35,7 @@ function ChatBody({
           route={route}
           onOwnKey={onSettings}
           onSettings={onSettings}
+          seeded={embedded}
           {...(onClose ? { onClose } : {})}
         />
       ) : (

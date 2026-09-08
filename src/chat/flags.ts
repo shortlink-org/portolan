@@ -39,7 +39,13 @@ export type ChatRoute =
 
 export const BUILD: ChatBuild = {
   built: import.meta.env.VITE_CHAT !== "off",
-  proxyUrl: (import.meta.env.VITE_CHAT_PROXY_URL ?? "").trim(),
+  // The public build receives the worker URL from CI. In development Vite
+  // exposes the same worker through a same-origin proxy, so the real demo chat
+  // works on any local port without weakening the worker's CORS allowlist.
+  proxyUrl: (
+    import.meta.env.VITE_CHAT_PROXY_URL ??
+    (import.meta.env.DEV ? "/api/portolan-chat" : "")
+  ).trim(),
 };
 
 const OFF: ChatRoute = { kind: "off" };
@@ -66,7 +72,7 @@ export function chatRoute(build: ChatBuild, prefs: ChatPrefs): ChatRoute {
 export function routeLabel(route: ChatRoute): string {
   switch (route.kind) {
     case "proxy":
-      return "demo proxy";
+      return "default model · demo proxy";
     case "own": {
       let host = route.model.baseUrl;
       try {

@@ -485,82 +485,113 @@ export function LandingPage() {
         <section
           id="ai-output"
           aria-label="Architecture output for coding agents"
-          className="border-b border-line bg-surface/40"
+          className="relative overflow-hidden border-b border-line bg-surface/40"
         >
-          <div className="mx-auto grid max-w-[1200px] gap-12 px-5 py-20 sm:px-8 sm:py-24 lg:grid-cols-[minmax(0,0.8fr)_minmax(520px,1.2fr)] lg:items-start">
-            <Reveal className="max-w-[560px]">
-              <div className="label flex items-center gap-2 text-accent">
-                <Bot size={14} /> FOR CODING AGENTS
+          <div
+            aria-hidden
+            className="pointer-events-none absolute top-[-240px] right-[-180px] size-[620px] rounded-full bg-accent/[0.045] blur-3xl"
+          />
+          <div className="relative mx-auto max-w-[1200px] px-5 py-20 sm:px-8 sm:py-24">
+            <Reveal className="grid gap-7 lg:grid-cols-[minmax(0,1.15fr)_minmax(380px,0.85fr)] lg:items-end">
+              <div className="max-w-[720px]">
+                <div className="label flex items-center gap-2 text-accent">
+                  <Bot size={14} /> FOR CODING AGENTS
+                </div>
+                <h2 className="mt-4 text-[clamp(2rem,4vw,3.75rem)] leading-[1.04] font-semibold tracking-[-0.04em]">
+                  Give agents the map before they change the territory.
+                </h2>
               </div>
-              <h2 className="mt-4 text-[clamp(2rem,4vw,3.75rem)] leading-[1.04] font-semibold tracking-[-0.04em]">
-                Give agents the map before they change the territory.
-              </h2>
-              <p className="mt-5 text-[17px] leading-7 text-muted">
-                Portolan publishes the measured catalog as model-readable
-                Markdown. It is generated from the same pages people browse, so
-                there is no second AI summary to keep in sync. Those files also
-                ground the built-in chat beside you: answers keep their catalog
-                links, cards and diagrams.
-              </p>
-              <div className="mono mt-6 flex flex-wrap gap-x-5 gap-y-2 text-faint">
-                <span className="flex items-center gap-1.5">
-                  <Check size={12} className="text-verified" /> same catalog
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Check size={12} className="text-verified" /> source commit
-                  stamped
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Check size={12} className="text-verified" /> static files
-                </span>
-              </div>
-              <a
-                href="#catalog-chat"
-                className="mt-7 inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:underline"
-              >
-                Try the live chat <ArrowRight size={13} className="rotate-90" />
-              </a>
-            </Reveal>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {agentDocs.map((doc, index) => {
-                const Icon = doc.icon;
-                return (
-                  <Reveal
-                    key={doc.name}
-                    delay={index * 0.08}
-                    className="flex min-w-0 flex-col rounded-card border border-line bg-canvas p-5 shadow-xs"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <span className="flow-tile text-accent">
-                        <Icon size={14} />
-                      </span>
-                      <span className="mono text-faint">{doc.label}</span>
-                    </div>
-                    <h3 className="mono mt-7 text-lg font-semibold text-ink">
-                      {doc.name}
-                    </h3>
-                    <p className="mt-3 flex-1 text-sm leading-6 text-muted">
-                      {doc.copy}
-                    </p>
-                    <a
-                      href={doc.href}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-6 inline-flex items-center gap-1 text-sm text-accent hover:underline"
-                    >
-                      Open live example <ArrowRight size={13} />
-                    </a>
-                  </Reveal>
-                );
-              })}
-              {EmbeddedChat ? (
-                <div
-                  id="catalog-chat"
-                  className="min-w-0 scroll-mt-20 sm:col-span-2"
+              <div className="max-w-[520px] lg:justify-self-end">
+                <p className="text-[17px] leading-7 text-muted">
+                  Portolan turns the same measured catalog people browse into
+                  model-readable context. The built-in chat answers with links,
+                  cards and diagrams — not a second AI summary that can drift.
+                </p>
+                <div className="mono mt-5 flex flex-wrap gap-x-5 gap-y-2 text-faint">
+                  <span className="flex items-center gap-1.5">
+                    <Check size={12} className="text-verified" /> same catalog
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <Check size={12} className="text-verified" /> commit stamped
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <Check size={12} className="text-verified" /> source linked
+                  </span>
+                </div>
+                <a
+                  href="#catalog-chat"
+                  className="mt-6 inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:underline"
                 >
+                  Try the live chat{" "}
+                  <ArrowRight size={13} className="rotate-90" />
+                </a>
+              </div>
+            </Reveal>
+
+            <div className="mt-12 grid min-w-0 gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
+              <Reveal className="flex min-w-0 flex-col rounded-card border border-line bg-canvas p-4 shadow-xs sm:p-5">
+                <div className="flex items-center justify-between gap-3 border-b border-line pb-4">
+                  <div>
+                    <div className="label text-accent">MODEL CONTEXT</div>
+                    <div className="mono mt-1 text-faint">
+                      generated together
+                    </div>
+                  </div>
+                  <span className="flow-tile text-accent">
+                    <Files size={14} />
+                  </span>
+                </div>
+
+                <div className="mt-4 space-y-3">
+                  {agentDocs.map((doc) => {
+                    const Icon = doc.icon;
+                    return (
+                      <a
+                        key={doc.name}
+                        href={doc.href}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="group block rounded-card border border-line bg-surface/55 p-4 transition-colors hover:border-line-strong hover:bg-raised"
+                      >
+                        <div className="flex items-start gap-3">
+                          <Icon
+                            size={15}
+                            className="mt-0.5 shrink-0 text-accent"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <h3 className="mono font-semibold text-ink">
+                                {doc.name}
+                              </h3>
+                              <ArrowRight
+                                size={12}
+                                className="text-faint transition-transform group-hover:translate-x-0.5 group-hover:text-accent"
+                              />
+                            </div>
+                            <div className="mono mt-1 text-faint">
+                              {doc.label}
+                            </div>
+                          </div>
+                        </div>
+                        <p className="mt-3 text-sm leading-6 text-muted">
+                          {doc.copy}
+                        </p>
+                      </a>
+                    );
+                  })}
+                </div>
+
+                <div className="mono mt-auto flex items-start gap-2 border-t border-line pt-4 text-faint">
+                  <Bot size={13} className="mt-0.5 shrink-0 text-accent" />
+                  <span>choose the index or load the whole estate</span>
+                </div>
+              </Reveal>
+
+              {EmbeddedChat ? (
+                <div id="catalog-chat" className="min-w-0 scroll-mt-20">
                   <Reveal
-                    delay={0.16}
-                    className="h-[600px] min-w-0 overflow-hidden rounded-card border border-line bg-canvas shadow-xs sm:h-[550px]"
+                    delay={0.08}
+                    className="h-[650px] min-w-0 overflow-hidden rounded-card border border-line-strong bg-canvas shadow-md"
                   >
                     <Suspense
                       fallback={

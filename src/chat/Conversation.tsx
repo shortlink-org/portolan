@@ -34,6 +34,7 @@ import { Sprite } from "./Waiting";
 export type Answering = Extract<ChatRoute, { kind: "proxy" | "own" }>;
 
 const base = import.meta.env.BASE_URL;
+const stayHere = () => {};
 
 /** Every id the catalog has a page for, and the page. */
 const LINKS: ReadonlyMap<string, string> = (() => {
@@ -153,17 +154,41 @@ function Answer({
   );
 }
 
+function SeededExchange({ onNavigate }: { onNavigate: () => void }) {
+  return (
+    <>
+      <Message role="user">Show the “Checkout” flow.</Message>
+      <Message role="assistant" foot="grounded in flows/cart-checkout.md">
+        <ReadSteps reads={[{ path: "flows/cart-checkout.md" }]} />
+        <p className="leading-6 text-muted">
+          <span className="font-medium text-ink">shop.cart</span> validates the
+          session with auth.auth, loads the basket, requests its total from
+          shop.pricing, saves it, then publishes BasketCheckedOut.
+        </p>
+        <ToolCard
+          name="show_flow"
+          input={{ id: "flow.cart-checkout" }}
+          onNavigate={onNavigate}
+        />
+      </Message>
+    </>
+  );
+}
+
 export function Conversation({
   route,
   onOwnKey,
   onSettings,
   onClose,
+  seeded = false,
 }: {
   route: Answering;
   onOwnKey: () => void;
   onSettings: () => void;
   /** Omitted when the conversation is embedded in a page. */
   onClose?: () => void;
+  /** Show one useful, catalog-grounded exchange before the reader asks. */
+  seeded?: boolean;
 }) {
   const chat = useMemo(() => chatFor(route), [route]);
   const {
@@ -245,7 +270,11 @@ export function Conversation({
         aria-live="polite"
         className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-4"
       >
-        {messages.length === 0 ? <Starter onAsk={send} /> : null}
+        {seeded ? (
+          <SeededExchange onNavigate={onClose ?? stayHere} />
+        ) : messages.length === 0 ? (
+          <Starter onAsk={send} />
+        ) : null}
         {messages.map((message) =>
           message.role === "user" ? (
             <Message key={message.id} role="user">
@@ -261,7 +290,7 @@ export function Conversation({
                 ? { foot: `took ${took[message.id]}s` }
                 : {})}
             >
-              <Answer message={message} onNavigate={onClose ?? (() => {})} />
+              <Answer message={message} onNavigate={onClose ?? stayHere} />
             </Message>
           ) : null,
         )}

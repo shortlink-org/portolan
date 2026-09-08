@@ -111,17 +111,11 @@ const buildInfo = {
 // the executable commands or arbitrary options in portolan.json. Reduce the
 // manifest here, while building, and expose only the read-only inventory the
 // Settings page needs.
-const manifestText = readFileSync(
-  resolve(workspace, "portolan.json"),
-  "utf8",
-);
+const manifestText = readFileSync(resolve(workspace, "portolan.json"), "utf8");
 let buildReport: unknown;
 try {
   buildReport = JSON.parse(
-    readFileSync(
-      resolve(workspace, ".portolan/build-report.json"),
-      "utf8",
-    ),
+    readFileSync(resolve(workspace, ".portolan/build-report.json"), "utf8"),
   ) as unknown;
 } catch {
   // A clean checkout has no run to report yet. Settings says so explicitly.
@@ -141,6 +135,16 @@ export default defineConfig({
     // .portolan. Their tsconfig files and generated output are inputs to the
     // local control plane, not another Vite application to hot-reload.
     watch: { ignored: ["**/.portolan/**"] },
+    proxy: {
+      "/api/portolan-chat": {
+        target: "https://portolan-chat.batazor.workers.dev",
+        changeOrigin: true,
+        rewrite: () => "/chat",
+        // The browser talks to Vite on the same origin. Vite talks to the
+        // worker as the public demo, whose origin is deliberately allowlisted.
+        headers: { Origin: "https://shortlink-org.github.io" },
+      },
+    },
   },
   define: {
     __BUILD_INFO__: JSON.stringify(buildInfo),
