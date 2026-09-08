@@ -1,4 +1,4 @@
-package main
+package extractcsr
 
 // The lock, as this side reads it.
 //

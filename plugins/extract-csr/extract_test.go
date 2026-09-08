@@ -1,4 +1,4 @@
-package main
+package extractcsr
 
 import (
 	"encoding/json"

@@ -960,8 +960,8 @@ its protos and locks are on disk by the time the parser reads them.
 ```json
 {
   "plugins": [
-    { "name": "bsr",   "process": { "command": "go", "args": ["run", "./plugins/fetch-bsr"] } },
-    { "name": "proto", "process": { "command": "go", "args": ["run", "./plugins/extract-proto"] } }
+    { "name": "bsr",   "host": "fetch-bsr" },
+    { "name": "proto", "wasm": { "url": "file://plugins/portolan-go.wasm" } }
   ],
   "extract": [
     {
@@ -998,12 +998,14 @@ decides what to do with them — and not an oversight to work around.
 
 ### Why fetch-bsr can never be wasm
 
-It needs a socket and a credential. `process` exists for exactly that trade, and
-`auth.go` is the only file in either plugin that reads the environment. The
-protocol's "no ambient state" rule is about *facts*: nothing about the estate may
-come from anywhere but the request. A credential is not a fact about the estate —
-it decides whether the fetch succeeds, never what the fetch says — and a test
-asserts the output is byte-identical with and without a token.
+It needs a socket and a credential, which is why it runs inside the host
+(`scripts/host-plugins/fetch-bsr.mjs`, portolan.0008) and is declared with
+`host`. The protocol's "no ambient state" rule is about *facts*: nothing about
+the estate may come from anywhere but the request. A credential is not a fact
+about the estate — it decides whether the fetch succeeds, never what the fetch
+says — and a test asserts the output is byte-identical with and without a
+token. The token comes from `BUF_TOKEN` or the netrc `buf registry login`
+wrote, never from the manifest.
 
 ### Pinning, and the offline rule
 
@@ -1069,6 +1071,11 @@ the reading over a tree it can verify without a registry existing at all.
 | output | one schema and a `csr.lock.json` per subject | one catalog fragment |
 | deterministic | only because it is pinned and cached | absolutely |
 
+Declared as `{ "name": "csr", "host": "fetch-csr" }` and
+`{ "name": "csr-schemas", "wasm": { "url": "file://plugins/portolan-go.wasm" } }`:
+the fetcher runs inside the host (`scripts/host-plugins/fetch-csr.mjs`,
+portolan.0008), the reader in the shared module.
+
 A registered version is immutable: subject `orders-value` at version 3 is the
 same bytes today and next year, and re-registering a changed schema makes
 version 4. That is the promise a BSR commit makes, so the same four rules govern
@@ -1082,8 +1089,8 @@ Each lands in its own directory, and the referring subject's lock is what an
 offline run follows to find them.
 
 Avro and JSON schemas arrive minified onto one line. They are written out
-indented — with `json.Indent`, which reformats without reordering, so the file
-still says what the registry said in the order it said it — because a version
+indented — re-spaced token by token, never re-parsed, so the file still says
+what the registry said in the order it said it — because a version
 bump that is one unreadable line is a review nobody can do. The digest is over
 the bytes as written, so verifying needs no reformatting of anything.
 

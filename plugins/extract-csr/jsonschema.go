@@ -1,4 +1,4 @@
-package main
+package extractcsr
 
 // JSON Schema, read for the same two things Avro is read for.
 //

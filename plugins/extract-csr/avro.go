@@ -1,4 +1,4 @@
-package main
+package extractcsr
 
 // Avro, read for the two things the catalog keeps: what a record is called and
 // what fields it has.

@@ -198,23 +198,23 @@ one estate and validates the union. Nothing here draws anything.
 
 | Run | Body | Source |
 | --- | --- | --- |
-| `npm run dev` | `node cli/portolan.mjs dev` | [`package.json:56`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L56) |
-| `npm run build` | `node cli/portolan.mjs build` | [`package.json:57`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L57) |
-| `npm run preview` | `vite preview` | [`package.json:58`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L58) |
-| `npm test` | `vitest run` | [`package.json:59`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L59) |
-| `npm run test:go` | `go test ./...` | [`package.json:60`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L60) |
-| `npm run test:package` | `node scripts/package-smoke.mjs` | [`package.json:62`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L62) |
-| `npm run test:watch` | `vitest` | [`package.json:63`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L63) |
-| `npm run typecheck` | `tsc --noEmit && tsc -p plugins/extract-ts` | [`package.json:64`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L64) |
-| `npm run likec4:gen` | `node scripts/gen-likec4.mjs && likec4 gen react likec4 -o src/likec4/generated.jsx` | [`package.json:65`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L65) |
-| `npm run likec4:validate` | `likec4 validate likec4` | [`package.json:66`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L66) |
-| `npm run plugins:build` | `GOOS=wasip1 GOARCH=wasm go build -trimpath -ldflags="-s -w" -o plugins/portolan-go.wasm ./plugins/cmd/portolan-go && javac --release 21 -d plugins/extract-java/build plugins/extract-java/src/org/portolan/extract/*.java` | [`package.json:68`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L68) |
-| `npm run schema` | `npm run plugins:build && node scripts/schema.mjs` | [`package.json:69`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L69) |
-| `npm run schema:check` | `npm run plugins:build && node scripts/schema.mjs --check` | [`package.json:70`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L70) |
-| `npm run gen` | `npm run plugins:build && node scripts/gen.mjs` | [`package.json:71`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L71) |
-| `npm run gen:check` | `npm run plugins:build && node scripts/gen.mjs --check` | [`package.json:72`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L72) |
-| `npm run diff` | `node scripts/diff.mjs` | [`package.json:73`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L73) |
-| `npm run prepack` | `npm run plugins:build` | [`package.json:74`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L74) |
+| `npm run dev` | `node cli/portolan.mjs dev` | [`package.json:49`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L49) |
+| `npm run build` | `node cli/portolan.mjs build` | [`package.json:50`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L50) |
+| `npm run preview` | `vite preview` | [`package.json:51`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L51) |
+| `npm test` | `vitest run` | [`package.json:52`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L52) |
+| `npm run test:go` | `go test ./...` | [`package.json:53`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L53) |
+| `npm run test:package` | `node scripts/package-smoke.mjs` | [`package.json:55`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L55) |
+| `npm run test:watch` | `vitest` | [`package.json:56`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L56) |
+| `npm run typecheck` | `tsc --noEmit && tsc -p plugins/extract-ts` | [`package.json:57`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L57) |
+| `npm run likec4:gen` | `node scripts/gen-likec4.mjs && likec4 gen react likec4 -o src/likec4/generated.jsx` | [`package.json:58`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L58) |
+| `npm run likec4:validate` | `likec4 validate likec4` | [`package.json:59`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L59) |
+| `npm run plugins:build` | `GOOS=wasip1 GOARCH=wasm go build -trimpath -ldflags="-s -w" -o plugins/portolan-go.wasm ./plugins/cmd/portolan-go && javac --release 21 -d plugins/extract-java/build plugins/extract-java/src/org/portolan/extract/*.java` | [`package.json:61`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L61) |
+| `npm run schema` | `npm run plugins:build && node scripts/schema.mjs` | [`package.json:62`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L62) |
+| `npm run schema:check` | `npm run plugins:build && node scripts/schema.mjs --check` | [`package.json:63`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L63) |
+| `npm run gen` | `npm run plugins:build && node scripts/gen.mjs` | [`package.json:64`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L64) |
+| `npm run gen:check` | `npm run plugins:build && node scripts/gen.mjs --check` | [`package.json:65`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L65) |
+| `npm run diff` | `node scripts/diff.mjs` | [`package.json:66`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L66) |
+| `npm run prepack` | `npm run plugins:build` | [`package.json:67`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L67) |
 
 <!-- portolan/plugins/README.md -->
 
@@ -1191,8 +1191,8 @@ its protos and locks are on disk by the time the parser reads them.
 ```json
 {
   "plugins": [
-    { "name": "bsr",   "process": { "command": "go", "args": ["run", "./plugins/fetch-bsr"] } },
-    { "name": "proto", "process": { "command": "go", "args": ["run", "./plugins/extract-proto"] } }
+    { "name": "bsr",   "host": "fetch-bsr" },
+    { "name": "proto", "wasm": { "url": "file://plugins/portolan-go.wasm" } }
   ],
   "extract": [
     {
@@ -1229,12 +1229,14 @@ decides what to do with them — and not an oversight to work around.
 
 #### Why fetch-bsr can never be wasm
 
-It needs a socket and a credential. `process` exists for exactly that trade, and
-`auth.go` is the only file in either plugin that reads the environment. The
-protocol's "no ambient state" rule is about *facts*: nothing about the estate may
-come from anywhere but the request. A credential is not a fact about the estate —
-it decides whether the fetch succeeds, never what the fetch says — and a test
-asserts the output is byte-identical with and without a token.
+It needs a socket and a credential, which is why it runs inside the host
+(`scripts/host-plugins/fetch-bsr.mjs`, portolan.0008) and is declared with
+`host`. The protocol's "no ambient state" rule is about *facts*: nothing about
+the estate may come from anywhere but the request. A credential is not a fact
+about the estate — it decides whether the fetch succeeds, never what the fetch
+says — and a test asserts the output is byte-identical with and without a
+token. The token comes from `BUF_TOKEN` or the netrc `buf registry login`
+wrote, never from the manifest.
 
 #### Pinning, and the offline rule
 
@@ -1300,6 +1302,11 @@ the reading over a tree it can verify without a registry existing at all.
 | output | one schema and a `csr.lock.json` per subject | one catalog fragment |
 | deterministic | only because it is pinned and cached | absolutely |
 
+Declared as `{ "name": "csr", "host": "fetch-csr" }` and
+`{ "name": "csr-schemas", "wasm": { "url": "file://plugins/portolan-go.wasm" } }`:
+the fetcher runs inside the host (`scripts/host-plugins/fetch-csr.mjs`,
+portolan.0008), the reader in the shared module.
+
 A registered version is immutable: subject `orders-value` at version 3 is the
 same bytes today and next year, and re-registering a changed schema makes
 version 4. That is the promise a BSR commit makes, so the same four rules govern
@@ -1313,8 +1320,8 @@ Each lands in its own directory, and the referring subject's lock is what an
 offline run follows to find them.
 
 Avro and JSON schemas arrive minified onto one line. They are written out
-indented — with `json.Indent`, which reformats without reordering, so the file
-still says what the registry said in the order it said it — because a version
+indented — re-spaced token by token, never re-parsed, so the file still says
+what the registry said in the order it said it — because a version
 bump that is one unreadable line is a review nobody can do. The digest is over
 the bytes as written, so verifying needs no reformatting of anything.
 
@@ -2156,6 +2163,8 @@ process was the state this record replaces.
 - **Date:** 2026-09-08
 - **Scope:** [portolan](../portolan/README.md)
 - **Source:** [`adr/0008-a-plugin-that-needs-a-socket-runs-inside-the-host.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0008-a-plugin-that-needs-a-socket-runs-inside-the-host.md)
+- **Committed:** Victor Login, 2026-09-08 (`f629480`)
+- **Revised:** Victor Login, 2026-09-08 (`1d6b90b`)
 
 ### Context and Problem Statement
 
@@ -2202,11 +2211,14 @@ and warnings, and the host validates, writes and reports them exactly as it
 does for a wasm module. A describe request is answered by the module's own
 descriptor, so the manifest schema is composed as before.
 
-`fetch-git` is the first: the same options, the same `git.lock.json` and
-`git.repo.json`, the same offline and CI replay, the same fallback to the
-committed copy when the forge is gone. It reads the tree of the fetched
-commit with `git ls-tree` and `git cat-file --batch` rather than an
-archive, which changes nothing anyone can see.
+`fetch-git`, `fetch-bsr` and `fetch-csr` move this way with the same
+options, the same locks and pins, the same offline and CI replay, the same
+fallback to the committed copy when the far end is gone, and the same
+credentials from the same places. `fetch-git` reads the tree of the fetched
+commit with `git ls-tree` and `git cat-file --batch` rather than an archive;
+`fetch-csr` re-spaces a schema token by token where Go used `json.Indent`.
+Neither changes a byte anyone can see; the vendored module in `examples/`
+is re-fetched live and stays identical.
 
 A network need in the request was rejected because a fetch is a
 conversation, not a value: resolving a ref, then fetching a commit, then
@@ -2216,8 +2228,10 @@ Go for exactly the users this is for.
 
 #### Consequences
 
-- Good: no `go run` in the package for git; the Go sources ship only for
-  `fetch-bsr` until it follows.
+- Good: `fetch-git`, `fetch-bsr` and `fetch-csr` all run this way, so no
+  `go run` is left in the package and the Go sources, `go.mod` and the Go
+  packages stop shipping; Go is needed to build the wasm module, never to
+  use it.
 - Good: a host plugin is ordinary code in the host's own language, tested
   with the host's tests, with no protocol boundary to cross for what is
   the host's business anyway.

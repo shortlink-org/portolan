@@ -49,11 +49,14 @@ and warnings, and the host validates, writes and reports them exactly as it
 does for a wasm module. A describe request is answered by the module's own
 descriptor, so the manifest schema is composed as before.
 
-`fetch-git` is the first: the same options, the same `git.lock.json` and
-`git.repo.json`, the same offline and CI replay, the same fallback to the
-committed copy when the forge is gone. It reads the tree of the fetched
-commit with `git ls-tree` and `git cat-file --batch` rather than an
-archive, which changes nothing anyone can see.
+`fetch-git`, `fetch-bsr` and `fetch-csr` move this way with the same
+options, the same locks and pins, the same offline and CI replay, the same
+fallback to the committed copy when the far end is gone, and the same
+credentials from the same places. `fetch-git` reads the tree of the fetched
+commit with `git ls-tree` and `git cat-file --batch` rather than an archive;
+`fetch-csr` re-spaces a schema token by token where Go used `json.Indent`.
+Neither changes a byte anyone can see; the vendored module in `examples/`
+is re-fetched live and stays identical.
 
 A network need in the request was rejected because a fetch is a
 conversation, not a value: resolving a ref, then fetching a commit, then
@@ -63,8 +66,10 @@ Go for exactly the users this is for.
 
 ### Consequences
 
-- Good: no `go run` in the package for git; the Go sources ship only for
-  `fetch-bsr` until it follows.
+- Good: `fetch-git`, `fetch-bsr` and `fetch-csr` all run this way, so no
+  `go run` is left in the package and the Go sources, `go.mod` and the Go
+  packages stop shipping; Go is needed to build the wasm module, never to
+  use it.
 - Good: a host plugin is ordinary code in the host's own language, tested
   with the host's tests, with no protocol boundary to cross for what is
   the host's business anyway.

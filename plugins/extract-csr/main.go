@@ -1,4 +1,4 @@
-// Package main is portolan-extract-csr: schemas vendored out of a Confluent
+// Package extractcsr is portolan-extract-csr: schemas vendored out of a Confluent
 // Schema Registry in, a catalog fragment out.
 //
 // It reads what portolan-fetch-csr committed - a directory per subject, each
@@ -25,12 +25,11 @@
 // portolan-extract-proto's whole job, and a second, worse parser here would
 // be a second answer to one question. Point extract-proto at the vendored
 // directory for those.
-package main
+package extractcsr
 
 import (
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/shortlink-org/portolan/plugin"
 )
@@ -66,11 +65,11 @@ type Options struct {
 	Out string `json:"out,omitempty"`
 }
 
-func main() {
-	if err := run(os.Stdin, os.Stdout); err != nil {
-		fmt.Fprintln(os.Stderr, "portolan-extract-csr:", err)
-		os.Exit(1)
-	}
+// Serve answers one request on stdin with one response on stdout. The
+// process entrypoint and the wasm dispatcher in plugins/cmd/portolan-go both
+// call it.
+func Serve(stdin io.Reader, stdout io.Writer) error {
+	return run(stdin, stdout)
 }
 
 func run(stdin io.Reader, stdout io.Writer) error {

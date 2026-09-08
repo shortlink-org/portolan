@@ -1,4 +1,4 @@
-package main
+package extractcsr
 
 // Reading a subject name.
 //

@@ -263,14 +263,21 @@
     },
     {
       "name": "bsr",
-      "process": {
-        "command": "go",
-        "args": ["run", "./plugins/fetch-bsr"]
-      }
+      "host": "fetch-bsr"
     },
     {
       "name": "git",
       "host": "fetch-git"
+    },
+    {
+      "name": "csr",
+      "host": "fetch-csr"
+    },
+    {
+      "name": "csr-schemas",
+      "wasm": {
+        "url": "file://plugins/portolan-go.wasm"
+      }
     },
     {
       "name": "proto",

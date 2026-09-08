@@ -2,12 +2,12 @@
 
 // Process adapter for plugins bundled in the npm package. It keeps the
 // plugin's cwd in the user's workspace while resolving source and toolchain
-// files from the installation. Go plugins are compiled into the ignored
-// `.portolan/bin` directory because `go run` changes the child cwd to the
-// module containing the plugin.
+// files from the installation. The Go plugins no longer come through here:
+// they are one wasm module (portolan.0006), and the fetchers run inside the
+// host (portolan.0008).
 
-import { spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { spawn } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -25,29 +25,7 @@ if (!plugin?.process) {
 const command = plugin.process.command;
 const args = [...(plugin.process.args ?? [])];
 
-if (command === "go" && args[0] === "run" && args[1]) {
-  const binDir = resolve(workspace, ".portolan", "bin");
-  const suffix = process.platform === "win32" ? ".exe" : "";
-  const binary = resolve(binDir, `${name}${suffix}`);
-  mkdirSync(binDir, { recursive: true });
-
-  // Rebuilding is deliberately left to Go's build cache. Package upgrades can
-  // change shared extractor code without changing this plugin directory, so a
-  // timestamp shortcut here would make an old binary look current.
-  const built = spawnSync(
-    "go",
-    ["build", "-o", binary, args[1]],
-    { cwd: installRoot, stdio: ["ignore", "ignore", "inherit"] },
-  );
-  if (built.error) {
-    console.error(`portolan: could not start Go to build ${name}: ${built.error.message}`);
-    process.exit(1);
-  }
-  if (built.status !== 0 || !existsSync(binary)) process.exit(built.status ?? 1);
-  // What follows the package path is the binary's own argv: the plugin name
-  // for the multi-call portolan-go.
-  run(binary, args.slice(2));
-} else if (command === "cargo" && existsSync(resolve(installRoot, "plugins/extract-rust/target/release/portolan-extract-rust"))) {
+if (command === "cargo" && existsSync(resolve(installRoot, "plugins/extract-rust/target/release/portolan-extract-rust"))) {
   run(resolve(installRoot, "plugins/extract-rust/target/release/portolan-extract-rust"), []);
 } else {
   if (command === "cargo") {

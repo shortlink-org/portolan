@@ -34,6 +34,10 @@
         }
       }
     },
+    "registry": {
+      "type": "string",
+      "description": "Overrides the registry in every module name, for a self-hosted BSR: a host, or a URL when it is not https."
+    },
     "cache": {
       "type": "string",
       "description": "Where the last run's files were written, repo-relative: the same path as the step's out. An offline run replays what is there and checks it against the lock beside it."

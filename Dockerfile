@@ -1,8 +1,9 @@
 # syntax=docker/dockerfile:1.27
 
-# Node supplies the CLI/runtime; the Go base supplies the most common source
-# extractor. Trixie provides Java 21, Python 3 and Cargo for the remaining
-# built-in process plugins.
+# Node supplies the CLI/runtime. Go is here only to build plugins/portolan-go.wasm
+# (every built-in Go plugin runs as that module, portolan.0006); nothing runs
+# `go` afterwards. Trixie provides Java 21, Python 3 and Cargo for the
+# extractors that still run in their own toolchains.
 FROM rust:1.98.0-trixie AS rust-builder
 
 WORKDIR /opt/portolan
