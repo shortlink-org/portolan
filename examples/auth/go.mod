@@ -7,7 +7,7 @@ require (
 	github.com/go-chi/chi/v5 v5.3.2
 	github.com/google/uuid v1.6.0
 	github.com/google/wire v0.7.0
-	github.com/jackc/pgx/v5 v5.10.0
+	github.com/jackc/pgx/v5 v5.11.0
 	github.com/oapi-codegen/runtime v1.7.0
 	github.com/shortlink-org/go-sdk/cache v0.0.0-20260905203440-c7a4f3ba3610
 	github.com/shortlink-org/go-sdk/config v0.0.0-20260905203440-c7a4f3ba3610
@@ -19,6 +19,7 @@ require (
 	github.com/shortlink-org/go-sdk/specification v0.0.0-20260905203440-c7a4f3ba3610
 	github.com/shortlink-org/go-sdk/uow v0.0.0-20260905203440-c7a4f3ba3610
 	github.com/shortlink-org/go-sdk/watermill v0.0.0-20260905203440-c7a4f3ba3610
+	github.com/stretchr/testify v1.12.1
 	github.com/testcontainers/testcontainers-go v0.44.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.44.0
 	github.com/testcontainers/testcontainers-go/modules/redis v0.44.0
@@ -99,7 +100,6 @@ require (
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/spf13/viper v1.21.0 // indirect
 	github.com/stretchr/objx v0.5.3 // indirect
-	github.com/stretchr/testify v1.12.1 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/tklauser/go-sysconf v0.4.0 // indirect
 	github.com/tklauser/numcpus v0.12.0 // indirect
