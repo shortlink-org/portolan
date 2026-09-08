@@ -91,7 +91,8 @@ function waitingLabel(
   if (!last || last.role !== "assistant") return "thinking…";
   const part = last.parts[last.parts.length - 1];
   if (!part) return "thinking…";
-  if (part.type === "text") return part.state === "streaming" ? null : "thinking…";
+  if (part.type === "text")
+    return part.state === "streaming" ? null : "thinking…";
   if (isToolUIPart(part) && getToolName(part) === "read_page") {
     if (part.state === "input-streaming" || part.state === "input-available") {
       return `reading ${pathOf(part.input) ?? "a page"}`;
@@ -138,7 +139,12 @@ function Answer({
         }
         if (isDisplayTool(name) && part.state !== "input-streaming") {
           return (
-            <ToolCard key={index} name={name} input={part.input} onNavigate={onNavigate} />
+            <ToolCard
+              key={index}
+              name={name}
+              input={part.input}
+              onNavigate={onNavigate}
+            />
           );
         }
         return null;
@@ -156,7 +162,8 @@ export function Conversation({
   route: Answering;
   onOwnKey: () => void;
   onSettings: () => void;
-  onClose: () => void;
+  /** Omitted when the conversation is embedded in a page. */
+  onClose?: () => void;
 }) {
   const chat = useMemo(() => chatFor(route), [route]);
   const {
@@ -218,7 +225,7 @@ export function Conversation({
     if (!href.startsWith(base) || /^[a-z]+:/i.test(href)) return;
     event.preventDefault();
     navigate(`/${href.slice(base.length)}`);
-    onClose();
+    onClose?.();
   };
 
   return (
@@ -226,8 +233,10 @@ export function Conversation({
       <Header
         route={route}
         onSettings={onSettings}
-        onClose={onClose}
-        {...(messages.length > 0 && !busy ? { onClear: () => setMessages([]) } : {})}
+        {...(onClose ? { onClose } : {})}
+        {...(messages.length > 0 && !busy
+          ? { onClear: () => setMessages([]) }
+          : {})}
       />
       <div
         ref={list}
@@ -240,15 +249,19 @@ export function Conversation({
         {messages.map((message) =>
           message.role === "user" ? (
             <Message key={message.id} role="user">
-              {message.parts.map((part) => (part.type === "text" ? part.text : "")).join("")}
+              {message.parts
+                .map((part) => (part.type === "text" ? part.text : ""))
+                .join("")}
             </Message>
           ) : message.role === "assistant" ? (
             <Message
               key={message.id}
               role="assistant"
-              {...(took[message.id] !== undefined ? { foot: `took ${took[message.id]}s` } : {})}
+              {...(took[message.id] !== undefined
+                ? { foot: `took ${took[message.id]}s` }
+                : {})}
             >
-              <Answer message={message} onNavigate={onClose} />
+              <Answer message={message} onNavigate={onClose ?? (() => {})} />
             </Message>
           ) : null,
         )}

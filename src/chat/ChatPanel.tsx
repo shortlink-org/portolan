@@ -16,14 +16,103 @@ import { ACTION_ACCENT, Notice } from "./Notice";
 import { useChatRoute } from "./prefs";
 import { useChatUi } from "./store";
 
+function ChatBody({
+  onClose,
+  onSettings,
+  embedded,
+}: {
+  onClose?: () => void;
+  onSettings: () => void;
+  embedded: boolean;
+}) {
+  const route = useChatRoute();
+  const answering = route.kind === "proxy" || route.kind === "own";
+
+  return (
+    <div className="flex h-full flex-col bg-canvas text-ink">
+      {answering ? (
+        <Conversation
+          route={route}
+          onOwnKey={onSettings}
+          onSettings={onSettings}
+          {...(onClose ? { onClose } : {})}
+        />
+      ) : (
+        <>
+          <Header
+            route={route}
+            onSettings={onSettings}
+            {...(onClose ? { onClose } : {})}
+          />
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+            {embedded ? (
+              <>
+                <Notice tone="info" title="bring the model you already use">
+                  Connect any OpenAI-compatible endpoint. Its address and key
+                  stay in this browser; Portolan supplies the catalog context.
+                </Notice>
+                <div className="mt-5">
+                  <ModelForm />
+                </div>
+              </>
+            ) : (
+              <Notice
+                tone="info"
+                title="nothing answers yet"
+                actions={
+                  <button
+                    type="button"
+                    onClick={onSettings}
+                    className={ACTION_ACCENT}
+                  >
+                    <KeyRound size={13} aria-hidden /> set a model
+                  </button>
+                }
+              >
+                This build has no proxy of its own, so the chat needs a model of
+                yours: any OpenAI-compatible endpoint and, usually, a key. Both
+                stay in this browser.
+              </Notice>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function ModelModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      label="Model settings"
+      width="min(540px,92vw)"
+    >
+      <div className="overflow-y-auto p-4">
+        <ModelForm onDone={onClose} />
+      </div>
+    </Modal>
+  );
+}
+
+export function ChatSurface({ embedded = false }: { embedded?: boolean }) {
+  const [settings, setSettings] = useState(false);
+
+  return (
+    <>
+      <ChatBody embedded={embedded} onSettings={() => setSettings(true)} />
+      <ModelModal open={settings} onClose={() => setSettings(false)} />
+    </>
+  );
+}
+
 export default function ChatPanel() {
   const open = useChatUi((s) => s.open);
   const setOpen = useChatUi((s) => s.setOpen);
-  const route = useChatRoute();
   const phone = usePhone();
   const [settings, setSettings] = useState(false);
   const close = () => setOpen(false);
-  const answering = route.kind === "proxy" || route.kind === "own";
 
   return (
     <>
@@ -34,46 +123,13 @@ export default function ChatPanel() {
         label="Ask the catalog"
         width={phone ? "100vw" : "min(560px,92vw)"}
       >
-        <div className="flex h-full flex-col bg-canvas text-ink">
-          {answering ? (
-            <Conversation
-              route={route}
-              onOwnKey={() => setSettings(true)}
-              onSettings={() => setSettings(true)}
-              onClose={close}
-            />
-          ) : (
-            <>
-              <Header route={route} onSettings={() => setSettings(true)} onClose={close} />
-              <div className="px-4 py-4">
-              <Notice
-                tone="info"
-                title="nothing answers yet"
-                actions={
-                  <button type="button" onClick={() => setSettings(true)} className={ACTION_ACCENT}>
-                    <KeyRound size={13} aria-hidden /> set a model
-                  </button>
-                }
-              >
-                This build has no proxy of its own, so the chat needs a model of
-                yours: any OpenAI-compatible endpoint and, usually, a key. Both
-                stay in this browser.
-              </Notice>
-              </div>
-            </>
-          )}
-        </div>
+        <ChatBody
+          embedded={false}
+          onClose={close}
+          onSettings={() => setSettings(true)}
+        />
       </SidePanel>
-      <Modal
-        open={settings}
-        onClose={() => setSettings(false)}
-        label="Model settings"
-        width="min(540px,92vw)"
-      >
-        <div className="overflow-y-auto p-4">
-          <ModelForm onDone={() => setSettings(false)} />
-        </div>
-      </Modal>
+      <ModelModal open={settings} onClose={() => setSettings(false)} />
     </>
   );
 }

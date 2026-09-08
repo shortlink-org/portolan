@@ -40,6 +40,15 @@ const HeroMap = lazy(() =>
   import("./HeroMap").then((mod) => ({ default: mod.HeroMap })),
 );
 
+const EmbeddedChat =
+  import.meta.env.VITE_CHAT !== "off"
+    ? lazy(() =>
+        import("../chat/ChatPanel").then((mod) => ({
+          default: mod.ChatSurface,
+        })),
+      )
+    : null;
+
 function Header() {
   const { theme, toggle } = useTheme();
 
@@ -58,6 +67,9 @@ function Header() {
           </a>
           <a className="hover:text-ink" href="#how-it-works">
             How it works
+          </a>
+          <a className="hover:text-ink" href="#ai-output">
+            For agents
           </a>
           <a className="hover:text-ink" href="#get-started">
             Get started
@@ -303,10 +315,7 @@ export function LandingPage() {
                 <Link to={exampleTo} className="btn-accent px-4 py-2.5">
                   Explore example catalog <ArrowRight size={15} />
                 </Link>
-                <a
-                  href="#get-started"
-                  className="tbtn px-4 py-2.5 text-ink"
-                >
+                <a href="#get-started" className="tbtn px-4 py-2.5 text-ink">
                   <Terminal size={15} /> Get started
                 </a>
               </m.div>
@@ -315,14 +324,20 @@ export function LandingPage() {
                 className="mono mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-faint"
               >
                 <span className="flex items-center gap-1.5">
-                  <Check size={12} className="text-verified" /> no hosted backend
+                  <Check size={12} className="text-verified" /> no hosted
+                  backend
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <Check size={12} className="text-verified" /> exact source links
+                  <Check size={12} className="text-verified" /> exact source
+                  links
                 </span>
-                <span className="flex items-center gap-1.5">
-                  <Check size={12} className="text-verified" /> llms.txt for agents
-                </span>
+                <a
+                  href="#ai-output"
+                  className="flex items-center gap-1.5 hover:text-accent"
+                >
+                  <Check size={12} className="text-verified" /> llms.txt for
+                  agents
+                </a>
               </m.div>
             </m.div>
             <m.div
@@ -351,7 +366,10 @@ export function LandingPage() {
             </div>
             <div className="flex flex-wrap gap-x-7 gap-y-3 lg:ml-auto lg:justify-end">
               {inputGroups.map((group) => (
-                <div key={group.label} className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <div
+                  key={group.label}
+                  className="flex flex-wrap items-center gap-x-3 gap-y-1"
+                >
                   <span className="mono text-faint">{group.label}</span>
                   {group.items.map((input) => (
                     <span key={input} className="mono text-muted">
@@ -383,7 +401,10 @@ export function LandingPage() {
           </div>
         </section>
 
-        <section id="how-it-works" className="scroll-mt-20 border-b border-line bg-surface/40">
+        <section
+          id="how-it-works"
+          className="scroll-mt-20 border-b border-line bg-surface/40"
+        >
           <div className="mx-auto max-w-[1200px] px-5 py-20 sm:px-8 sm:py-28">
             <Reveal className="max-w-[760px]">
               <div className="label text-accent">HOW IT WORKS</div>
@@ -466,7 +487,7 @@ export function LandingPage() {
           aria-label="Architecture output for coding agents"
           className="border-b border-line bg-surface/40"
         >
-          <div className="mx-auto grid max-w-[1200px] gap-12 px-5 py-20 sm:px-8 sm:py-24 lg:grid-cols-[minmax(0,0.8fr)_minmax(520px,1.2fr)] lg:items-center">
+          <div className="mx-auto grid max-w-[1200px] gap-12 px-5 py-20 sm:px-8 sm:py-24 lg:grid-cols-[minmax(0,0.8fr)_minmax(520px,1.2fr)] lg:items-start">
             <Reveal className="max-w-[560px]">
               <div className="label flex items-center gap-2 text-accent">
                 <Bot size={14} /> FOR CODING AGENTS
@@ -476,20 +497,29 @@ export function LandingPage() {
               </h2>
               <p className="mt-5 text-[17px] leading-7 text-muted">
                 Portolan publishes the measured catalog as model-readable
-                Markdown. It is generated from the same pages people browse,
-                so there is no second AI summary to keep in sync.
+                Markdown. It is generated from the same pages people browse, so
+                there is no second AI summary to keep in sync. Those files also
+                ground the built-in chat beside you: answers keep their catalog
+                links, cards and diagrams.
               </p>
               <div className="mono mt-6 flex flex-wrap gap-x-5 gap-y-2 text-faint">
                 <span className="flex items-center gap-1.5">
                   <Check size={12} className="text-verified" /> same catalog
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <Check size={12} className="text-verified" /> source commit stamped
+                  <Check size={12} className="text-verified" /> source commit
+                  stamped
                 </span>
                 <span className="flex items-center gap-1.5">
                   <Check size={12} className="text-verified" /> static files
                 </span>
               </div>
+              <a
+                href="#catalog-chat"
+                className="mt-7 inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:underline"
+              >
+                Try the live chat <ArrowRight size={13} className="rotate-90" />
+              </a>
             </Reveal>
             <div className="grid gap-4 sm:grid-cols-2">
               {agentDocs.map((doc, index) => {
@@ -523,6 +553,27 @@ export function LandingPage() {
                   </Reveal>
                 );
               })}
+              {EmbeddedChat ? (
+                <div
+                  id="catalog-chat"
+                  className="min-w-0 scroll-mt-20 sm:col-span-2"
+                >
+                  <Reveal
+                    delay={0.16}
+                    className="h-[600px] min-w-0 overflow-hidden rounded-card border border-line bg-canvas shadow-xs sm:h-[550px]"
+                  >
+                    <Suspense
+                      fallback={
+                        <div className="mono flex h-full items-center justify-center text-muted">
+                          loading the catalog chat…
+                        </div>
+                      }
+                    >
+                      <EmbeddedChat embedded />
+                    </Suspense>
+                  </Reveal>
+                </div>
+              ) : null}
             </div>
           </div>
         </section>
@@ -574,7 +625,26 @@ export function LandingPage() {
                   className="h-7 border-white/10 bg-white/5 px-2 text-white/60 hover:bg-white/10 hover:text-white"
                 />
               </div>
-              <pre className="overflow-x-auto p-5 text-[13px] leading-7 text-white/75 sm:p-7"><code><span className="text-white/35">$</span> npx @shortlink-org/portolan init{"\n"}<span className="text-[#72d5c4]">✓</span> projects and specifications detected{"\n"}<span className="text-[#72d5c4]">✓</span> portolan.json ready{"\n\n"}<span className="text-white/35">$</span> npm install --save-dev @shortlink-org/portolan{"\n"}<span className="text-white/35">$</span> npx portolan generate{"\n"}<span className="text-[#72d5c4]">✓</span> catalog merged and validated{"\n\n"}<span className="text-white/35">$</span> npx portolan dev{"\n"}<span className="text-[#72d5c4]">✓</span> site ready at http://localhost:5173</code></pre>
+              <pre className="overflow-x-auto p-5 text-[13px] leading-7 text-white/75 sm:p-7">
+                <code>
+                  <span className="text-white/35">$</span> npx
+                  @shortlink-org/portolan init{"\n"}
+                  <span className="text-[#72d5c4]">✓</span> projects and
+                  specifications detected{"\n"}
+                  <span className="text-[#72d5c4]">✓</span> portolan.json ready
+                  {"\n\n"}
+                  <span className="text-white/35">$</span> npm install
+                  --save-dev @shortlink-org/portolan{"\n"}
+                  <span className="text-white/35">$</span> npx portolan generate
+                  {"\n"}
+                  <span className="text-[#72d5c4]">✓</span> catalog merged and
+                  validated{"\n\n"}
+                  <span className="text-white/35">$</span> npx portolan dev
+                  {"\n"}
+                  <span className="text-[#72d5c4]">✓</span> site ready at
+                  http://localhost:5173
+                </code>
+              </pre>
             </Reveal>
           </div>
         </section>
@@ -614,7 +684,10 @@ export function LandingPage() {
             <a className="hover:text-ink" href={`${REPOSITORY}#readme`}>
               Docs
             </a>
-            <a className="hover:text-ink" href={`${REPOSITORY}/blob/main/LICENSE`}>
+            <a
+              className="hover:text-ink"
+              href={`${REPOSITORY}/blob/main/LICENSE`}
+            >
               MIT License
             </a>
             <a className="hover:text-ink" href={REPOSITORY}>
