@@ -8,6 +8,7 @@ import { rmSync } from "node:fs";
 import { classifyRepositoryFailure, diffGeneratedFiles, discoverProject, forgetRepositoryCredential, inspectionRoot, localApiPath, planProject, readLocalSource, resolveRepositoryCommit, storeRepositoryCredential, summarizeProjectTrial, writeProject } from "./local-api.mjs";
 import { installDeliveryPreset, planDeliveryPreset, providerFromRemote, publicDeliveryPreset } from "./delivery-presets.mjs";
 
+const PACKAGE_VERSION = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).version;
 const roots = [];
 afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
 
@@ -66,7 +67,7 @@ describe("local project setup", () => {
     const installed = installDeliveryPreset(root, { provider: "github", revision: preview.revision });
     expect(installed.written).toHaveLength(2);
     expect(installed.status).toBe("installed");
-    expect(readFileSync(join(root, ".github/workflows/portolan-check.yml"), "utf8")).toContain("shortlink-org/portolan@0.2.0");
+    expect(readFileSync(join(root, ".github/workflows/portolan-check.yml"), "utf8")).toContain(`shortlink-org/portolan@${PACKAGE_VERSION}`);
     expect(readFileSync(join(root, ".github/workflows/portolan-pages.yml"), "utf8")).toContain("base: /${{ github.event.repository.name }}/");
     expect(installDeliveryPreset(root, { provider: "github", revision: installed.revision }).written).toEqual([]);
   });
