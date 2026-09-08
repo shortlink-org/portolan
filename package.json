@@ -57,6 +57,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:go": "go test ./...",
+    "pretest:package": "npm run plugins:build",
     "test:package": "node scripts/package-smoke.mjs",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit && tsc -p plugins/extract-ts",
