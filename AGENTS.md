@@ -12,6 +12,7 @@
 
 - When the user asks a simple yes-or-no question about work already completed, answer directly from the known conversation state. Do not run status, log, test, or other verification commands unless the user asks for verification or the answer is genuinely unknown.
 - Do not turn a straightforward request into an audit. Perform only the action requested and avoid narrating or checking unrelated workspace state.
+- After a requested push succeeds, consider the work complete and stop. Do not monitor CI/CD, wait for workflows, or verify a release, deployment, or package publication unless the user explicitly asks for that follow-up.
 
 ## Focused verification
 
