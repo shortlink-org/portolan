@@ -1,18 +1,44 @@
-# portolan
+<p align="center">
+  <img src="./public/readme-header.webp" alt="A software architecture landscape mapped by Portolan" width="100%" />
+</p>
 
-A browser for a software estate's architecture catalog: systems or bounded
-contexts, components, interfaces, events, flows, stores and ADRs, read out of
-the code and specs that already describe them, and rendered as a navigable
-site. DDD enriches the model when a repository really uses it; it is not a
-prerequisite.
+<h1 align="center">Portolan</h1>
 
-The catalog and site are static end to end and require no backend. Optional
-branch comparison and source previews read immutable files from GitHub or
-GitLab at runtime; local development uses a localhost-only control plane.
+<p align="center"><strong>Your architecture, read from the code.</strong></p>
 
-Live: <https://shortlink-org.github.io/portolan/landing> — the product page,
-and the example estate in `examples/` behind it:
-<https://shortlink-org.github.io/portolan/?catalog=example>.
+<p align="center">
+  Turn code, contracts, schemas, traces and ADRs into a validated, navigable map of your software estate.
+</p>
+
+<p align="center">
+  <a href="https://shortlink-org.github.io/portolan/landing">View the product tour</a>
+  ·
+  <a href="https://shortlink-org.github.io/portolan/?catalog=example">Explore the example catalog</a>
+</p>
+
+## Make architecture visible — and keep it honest
+
+Architecture documentation loses value when it becomes another system teams
+must remember to maintain. Portolan starts with the evidence your repositories
+already contain and turns it into one coherent, searchable view of the system.
+
+See how bounded contexts, services, APIs, events, data stores, flows and
+decisions fit together. Follow any relationship back to its source. Surface
+missing contracts, ownership conflicts and architectural drift before they
+become production surprises.
+
+- **Understand the whole estate.** Move from the landscape to a single flow,
+  service, schema or decision without losing context.
+- **Trust what you see.** Portolan merges and validates facts from code,
+  specifications and observed traces instead of relying on a second hand-built
+  inventory.
+- **Publish anywhere.** The catalog and site are static end to end, require no
+  hosted backend and fit naturally into pull requests and CI.
+
+DDD enriches the model when a repository uses it; it is never a prerequisite.
+Optional branch comparison and source previews read immutable files from GitHub
+or GitLab at runtime, while local development uses a localhost-only control
+plane.
 
 ## What it does
 
