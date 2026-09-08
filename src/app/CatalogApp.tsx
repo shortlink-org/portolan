@@ -115,7 +115,7 @@ function AppRoutes({ location }: { location: Location }) {
       <Route path="/language" element={<Language />} />
       <Route path="/adrs/:adr" element={<AdrDetail />} />
       <Route path="/problems" element={<Problems />} />
-      <Route path="/settings" element={<Settings />} />
+      <Route path="/settings/*" element={<Settings />} />
       <Route path="/changes" element={<Changes />} />
       <Route path="/externals/:external" element={<ExternalPage />} />
       {/* A module sits at the estate level, not under a service: it is

@@ -1,10 +1,12 @@
-import { mkdtempSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { rmSync } from "node:fs";
 
 import { classifyRepositoryFailure, diffGeneratedFiles, discoverProject, forgetRepositoryCredential, inspectionRoot, localApiPath, planProject, readLocalSource, resolveRepositoryCommit, storeRepositoryCredential, summarizeProjectTrial, writeProject } from "./local-api.mjs";
+import { installDeliveryPreset, planDeliveryPreset, providerFromRemote, publicDeliveryPreset } from "./delivery-presets.mjs";
 
 const roots = [];
 afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
@@ -28,6 +30,14 @@ function workspace() {
   return root;
 }
 
+function gitWorkspace(provider = "github") {
+  const root = workspace();
+  execFileSync("git", ["init", "-q", "-b", "main"], { cwd: root });
+  const remote = provider === "github" ? "git@github.com:acme/shop.git" : "https://gitlab.com/acme/shop.git";
+  execFileSync("git", ["remote", "add", "origin", remote], { cwd: root });
+  return root;
+}
+
 describe("local API base path", () => {
   it("matches control-plane routes below the configured site base", () => {
     expect(localApiPath("/portolan/__portolan/status", "/portolan/")).toBe("/__portolan/status");
@@ -38,6 +48,69 @@ describe("local API base path", () => {
 });
 
 describe("local project setup", () => {
+  it("detects GitHub and GitLab remotes without treating arbitrary hosts as a forge", () => {
+    expect(providerFromRemote("git@github.com:acme/shop.git")).toBe("github");
+    expect(providerFromRemote("https://gitlab.example.com/acme/shop.git")).toBe("gitlab");
+    expect(providerFromRemote("ssh://git@example.com/acme/shop.git")).toBeNull();
+  });
+
+  it("previews and installs GitHub delivery workflows idempotently", () => {
+    const root = gitWorkspace("github");
+    const preview = planDeliveryPreset(root);
+    expect(preview).toMatchObject({ provider: "github", detectedProvider: "github", repository: "shop", defaultBranch: "main", status: "available" });
+    expect(preview.files.map((file) => [file.path, file.status])).toEqual([
+      [".github/workflows/portolan-check.yml", "added"],
+      [".github/workflows/portolan-pages.yml", "added"],
+    ]);
+    expect(publicDeliveryPreset(preview).files[0]).not.toHaveProperty("next");
+    const installed = installDeliveryPreset(root, { provider: "github", revision: preview.revision });
+    expect(installed.written).toHaveLength(2);
+    expect(installed.status).toBe("installed");
+    expect(readFileSync(join(root, ".github/workflows/portolan-check.yml"), "utf8")).toContain("shortlink-org/portolan@0.1.0");
+    expect(readFileSync(join(root, ".github/workflows/portolan-pages.yml"), "utf8")).toContain("base: /${{ github.event.repository.name }}/");
+    expect(installDeliveryPreset(root, { provider: "github", revision: installed.revision }).written).toEqual([]);
+  });
+
+  it("refuses to overwrite an unmanaged GitHub workflow or apply a stale preview", () => {
+    const root = gitWorkspace("github");
+    mkdirSync(join(root, ".github/workflows"), { recursive: true });
+    writeFileSync(join(root, ".github/workflows/portolan-check.yml"), "name: Mine\n");
+    const conflict = planDeliveryPreset(root, "github");
+    expect(conflict.status).toBe("conflict");
+    expect(() => installDeliveryPreset(root, { provider: "github", revision: conflict.revision })).toThrow(/was not created by Portolan/);
+    const clean = gitWorkspace("github");
+    const preview = planDeliveryPreset(clean, "github");
+    mkdirSync(join(clean, ".github/workflows"), { recursive: true });
+    writeFileSync(join(clean, ".github/workflows/portolan-check.yml"), "name: Arrived later\n");
+    expect(() => installDeliveryPreset(clean, { provider: "github", revision: preview.revision })).toThrow(/Preview it again/);
+  });
+
+  it("refuses a delivery target below a symlinked directory", () => {
+    const root = gitWorkspace("github");
+    const outside = mkdtempSync(join(tmpdir(), "portolan-preset-outside-"));
+    roots.push(outside);
+    symlinkSync(outside, join(root, ".github"), "dir");
+    const preview = planDeliveryPreset(root, "github");
+    expect(preview.status).toBe("conflict");
+    expect(() => installDeliveryPreset(root, { provider: "github", revision: preview.revision })).toThrow(/was not created by Portolan/);
+    expect(existsSync(join(outside, "workflows/portolan-check.yml"))).toBe(false);
+  });
+
+  it("adds and updates one managed GitLab region while preserving the pipeline", () => {
+    const root = gitWorkspace("gitlab");
+    writeFileSync(join(root, ".gitlab-ci.yml"), "lint:\n  script: echo lint\n");
+    const preview = planDeliveryPreset(root);
+    expect(preview).toMatchObject({ provider: "gitlab", detectedProvider: "gitlab", status: "available" });
+    expect(preview.files[0].diff).toContain("+\"portolan:check\":");
+    const installed = installDeliveryPreset(root, { provider: "gitlab", revision: preview.revision });
+    expect(installed.status).toBe("installed");
+    const pipeline = readFileSync(join(root, ".gitlab-ci.yml"), "utf8");
+    expect(pipeline).toContain("lint:\n  script: echo lint");
+    expect(pipeline).toContain("# >>> Portolan delivery preset >>>");
+    expect(pipeline).toContain("pages:\n    publish: dist");
+    expect(existsSync(join(root, ".github"))).toBe(false);
+  });
+
   it("classifies repository authentication, authorization, and timeout failures", () => {
     expect(classifyRepositoryFailure(new Error("fatal: Authentication failed"), "GitHub")).toMatchObject({
       code: "repository_auth_required", status: 401, retryable: true, provider: "GitHub",

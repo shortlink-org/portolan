@@ -197,80 +197,12 @@ in its own runtime still needs it: Python 3 for Django and Celery, Java 21
 for Java, Cargo for Rust. `portolan doctor` reports what the manifest asks
 for against what is on `PATH`. The Docker image contains all of them.
 
-### Check pull requests with GitHub Actions
+### Add delivery automation
 
-Generated files are checked rather than silently rewritten in CI:
-
-```yaml
-name: Architecture
-on: [pull_request]
-
-permissions:
-  contents: read
-
-jobs:
-  check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-      - uses: shortlink-org/portolan@0.1.0
-        with:
-          command: check
-          version: 0.1.0
-```
-
-Full history is required because fragments are stamped with the last commit
-that changed their input. A shallow clone would make that stamp unreliable.
-
-### Publish the site to GitHub Pages
-
-```yaml
-name: Architecture site
-on:
-  push:
-    branches: [main]
-  workflow_dispatch:
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: shortlink-org/portolan@0.1.0
-        with:
-          command: build
-          version: 0.1.0
-          output: dist
-          base: /${{ github.event.repository.name }}/
-      - uses: actions/configure-pages@v6
-      - uses: actions/upload-pages-artifact@v5
-        with:
-          path: dist
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v5
-```
-
-The action deliberately separates building from deployment, so the Pages
-permissions are held only by the deploy job.
-
-The same base can be exercised locally with `portolan dev --base /portolan/`.
-`portolan build --base /portolan/` applies it to the static build; alternatively,
-set `BASE_PATH` for either command.
+While `portolan dev` is running, open **Settings → Delivery presets**. Portolan
+detects GitHub or GitLab from the repository's `origin`, previews the exact CI
+changes, and installs architecture checks and static catalog publishing in one
+step. Existing unmanaged workflow files are never overwritten.
 
 ### Run without installing Node or language toolchains
 

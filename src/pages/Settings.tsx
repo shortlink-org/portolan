@@ -1,6 +1,6 @@
 import { useDocumentTitle } from "../app/title";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { Link } from "react-router";
+import { Link, Navigate, NavLink, Route, Routes } from "react-router";
 import {
   ArrowLeft,
   Box,
@@ -10,24 +10,14 @@ import {
   FolderGit2,
   KeyRound,
   LoaderCircle,
-  Moon,
   Play,
   Plus,
-  Rows2,
-  Rows4,
   ShieldCheck,
-  Sun,
   Terminal,
   Trash2,
   X,
 } from "lucide-react";
 import { catalog, catalogSources } from "../data";
-import { useDensity } from "../app/density";
-import { useEditorStore } from "../components/EditorLink";
-import { Select } from "../components/Select";
-import { EDITORS } from "../lib/editor-link";
-import { parseEditor } from "../lib/editor-prefs";
-import { useTheme } from "../app/theme";
 import { useToastStore } from "../app/toast";
 import { absoluteTime, plural, relativeTime } from "../lib/format";
 import { setupInfo as staticSetupInfo } from "../lib/setup-info";
@@ -60,8 +50,8 @@ import { paths } from "../routes";
 import { Empty, SectionTitle } from "../components/PageHeader";
 import { Modal } from "../components/Overlay";
 import { MachineDocs } from "../components/MachineDocs";
-import { ChatSection } from "../chat/ChatSettings";
-import { BUILD as CHAT_BUILD } from "../chat/flags";
+import { DeliverySettings } from "./settings/DeliverySettings";
+import { PreferencesSettings } from "./settings/PreferencesSettings";
 
 type Health = "healthy" | "changed" | "failed" | "unchecked";
 
@@ -339,7 +329,7 @@ function ProjectCard({ project }: { project: SetupProject }) {
       </dl>
 
       <div className="mt-4 flex flex-wrap gap-1.5" aria-label="Active plugins">
-        {pluginNames.map((name) => <a key={name} href={`#plugin-${name}`} className="chip border-line-strong hover:border-accent hover:text-accent">{name}</a>)}
+        {pluginNames.map((name) => <Link key={name} to={`${paths.settingsPipeline()}#plugin-${name}`} className="chip border-line-strong hover:border-accent hover:text-accent">{name}</Link>)}
       </div>
 
       <details className="group mt-4 border-t border-line pt-3">
@@ -471,7 +461,7 @@ function PluginsList() {
                     <div><div className="label mb-2">last run</div><PipelineSteps steps={runSteps} /></div>
                     <div className="space-y-4">
                       <div><div className="label mb-2">runtime</div><p className="mono"><Runtime plugin={plugin} /></p></div>
-                      <div><div className="label mb-2">used by</div>{plugin.projectIds.length > 0 ? <div className="flex flex-wrap gap-1.5">{plugin.projectIds.map((id) => <a key={id} href={`#project-${id}`} className="chip border-line-strong hover:border-accent hover:text-accent">{projectNames.get(id) ?? id}</a>)}</div> : <p className="mono text-muted">{plugin.stepCount > 0 ? "Estate-wide catalog" : "No pipeline step uses this plugin."}</p>}</div>
+                      <div><div className="label mb-2">used by</div>{plugin.projectIds.length > 0 ? <div className="flex flex-wrap gap-1.5">{plugin.projectIds.map((id) => <Link key={id} to={`${paths.settingsProjects()}#project-${id}`} className="chip border-line-strong hover:border-accent hover:text-accent">{projectNames.get(id) ?? id}</Link>)}</div> : <p className="mono text-muted">{plugin.stepCount > 0 ? "Estate-wide catalog" : "No pipeline step uses this plugin."}</p>}</div>
                       {outputs.length > 0 ? <div><div className="label mb-2">outputs</div><ul className="mono space-y-1 text-muted">{outputs.map((output) => <li key={output} className="truncate"><FileLink path={output} /></li>)}</ul></div> : null}
                     </div>
                   </div>
@@ -481,54 +471,6 @@ function PluginsList() {
           })}
         </section>
       ))}
-    </div>
-  );
-}
-
-/**
- * Which editor the "edit ↗" links hand a file to. The links exist only in
- * local mode; the choice is offered everywhere, because a reader sets it once
- * and the static build they open tomorrow is the same browser.
- */
-function EditorChoice() {
-  const editor = useEditorStore((s) => s.editor);
-  const setEditor = useEditorStore((s) => s.set);
-  const options = EDITORS.map((e) => ({ value: e.id, label: e.name }));
-  return (
-    <div className="rounded-card border border-line p-card shadow-xs">
-      <div className="label mb-3">open source in</div>
-      <Select
-        value={editor}
-        options={options}
-        onChange={(value) => setEditor(parseEditor(value))}
-        label="Editor for source links"
-        menuWidth={200}
-      />
-      <p className="mono mt-2 text-muted">Used by the edit links in local mode.</p>
-    </div>
-  );
-}
-
-function Appearance() {
-  const { theme, toggle: toggleTheme } = useTheme();
-  const { density, toggle: toggleDensity } = useDensity();
-  return (
-    <div className="grid gap-grid sm:grid-cols-2 xl:grid-cols-3">
-      <div className="rounded-card border border-line p-card shadow-xs">
-        <div className="label mb-3">theme</div>
-        <div className="seg inline-flex" role="group" aria-label="Theme">
-          <button type="button" aria-pressed={theme === "dark"} onClick={() => theme !== "dark" && toggleTheme()} className={`flex items-center gap-1.5 ${theme === "dark" ? "is-on" : ""}`}><Moon size={15} aria-hidden /> dark</button>
-          <button type="button" aria-pressed={theme === "light"} onClick={() => theme !== "light" && toggleTheme()} className={`flex items-center gap-1.5 ${theme === "light" ? "is-on" : ""}`}><Sun size={15} aria-hidden /> light</button>
-        </div>
-      </div>
-      <div className="rounded-card border border-line p-card shadow-xs">
-        <div className="label mb-3">row density</div>
-        <div className="seg inline-flex" role="group" aria-label="Row density">
-          <button type="button" aria-pressed={density === "comfortable"} onClick={() => density !== "comfortable" && toggleDensity()} className={`flex items-center gap-1.5 ${density === "comfortable" ? "is-on" : ""}`}><Rows4 size={15} aria-hidden /> comfortable</button>
-          <button type="button" aria-pressed={density === "compact"} onClick={() => density !== "compact" && toggleDensity()} className={`flex items-center gap-1.5 ${density === "compact" ? "is-on" : ""}`}><Rows2 size={15} aria-hidden /> compact</button>
-        </div>
-      </div>
-      <EditorChoice />
     </div>
   );
 }
@@ -885,50 +827,131 @@ function RunDialog({ runId, open, onClose, onFinished, onApply }: { runId: strin
   );
 }
 
-function SettingsContent({ local, onAdd, onGenerate }: { local: boolean; onAdd: () => void; onGenerate: () => void }) {
+const SETTINGS_LINKS = [
+  ["Overview", paths.settings()],
+  ["Projects", paths.settingsProjects()],
+  ["Pipeline", paths.settingsPipeline()],
+  ["Delivery", paths.settingsDelivery()],
+  ["Preferences", paths.settingsPreferences()],
+] as const;
+
+function SettingsNav() {
+  return (
+    <nav className="mt-5 border-b border-line" aria-label="Settings sections">
+      <div className="tab-scroll flex overflow-x-auto">
+        {SETTINGS_LINKS.map(([label, to], index) => (
+          <NavLink
+            key={to}
+            to={to}
+            end={index === 0}
+            className={({ isActive }) =>
+              `mono shrink-0 border-b-2 px-3 py-2 transition-colors ${
+                isActive
+                  ? "border-accent text-ink"
+                  : "border-transparent text-muted hover:text-ink"
+              }`
+            }
+          >
+            {label}
+          </NavLink>
+        ))}
+      </div>
+    </nav>
+  );
+}
+
+function OverviewSettings() {
   const setupInfo = useSetup();
   const active = setupInfo.plugins.filter((plugin) => plugin.stepCount > 0);
   return (
+    <>
+      <BuildHealth />
+      <div className="mt-4 grid grid-cols-2 gap-grid lg:grid-cols-4">
+        <Metric value={setupInfo.projects.length} label="project" />
+        <Metric value={active.length} label="active plugin" />
+        <Metric value={setupInfo.steps.length} label="pipeline step" />
+        <Metric value={catalogSources.length} label="catalog source" />
+      </div>
+      <div className="mt-section grid gap-grid sm:grid-cols-2">
+        <Link to={paths.settingsProjects()} className="card">
+          <div className="font-semibold text-ink">Projects</div>
+          <p className="mt-1 text-muted">Sources, scopes and extraction coverage for {setupInfo.projects.length} {plural(setupInfo.projects.length, "project")}.</p>
+        </Link>
+        <Link to={paths.settingsPipeline()} className="card">
+          <div className="font-semibold text-ink">Pipeline</div>
+          <p className="mt-1 text-muted">Inspect {active.length} active {plural(active.length, "plugin")} and their generated outputs.</p>
+        </Link>
+        <Link to={paths.settingsDelivery()} className="card">
+          <div className="font-semibold text-ink">Delivery</div>
+          <p className="mt-1 text-muted">Install review checks and static catalog publishing for GitHub or GitLab.</p>
+        </Link>
+        <Link to={paths.settingsPreferences()} className="card">
+          <div className="font-semibold text-ink">Preferences</div>
+          <p className="mt-1 text-muted">Theme, row density, source editor and Ask the catalog.</p>
+        </Link>
+      </div>
+    </>
+  );
+}
+
+function ProjectsSettings({ local, onAdd }: { local: boolean; onAdd: () => void }) {
+  const setupInfo = useSetup();
+  return (
+    <section>
+      <SectionTitle right={local ? "editable in local mode" : "declared in portolan.json"}>Projects</SectionTitle>
+      {setupInfo.projects.length === 0 && !local ? <Empty>portolan.json names no projects — every input here is the estate's own</Empty> : <div className="grid gap-grid xl:grid-cols-2">{setupInfo.projects.map((project) => <ProjectCard key={project.id} project={project} />)}{local ? <AddProjectCard onClick={onAdd} /> : null}</div>}
+    </section>
+  );
+}
+
+function PipelineSettings() {
+  const setupInfo = useSetup();
+  const active = setupInfo.plugins.filter((plugin) => plugin.stepCount > 0);
+  return (
+    <div className="space-y-section">
+      <section>
+        <SectionTitle right={`${active.length} of ${setupInfo.plugins.length} active`}>Plugins</SectionTitle>
+        <PluginsList />
+        <p className="mono mt-2 text-muted">WASM runs without network or environment access, and a generator without a filesystem. A host process runs with the permissions of the build; a plugin in the host is Portolan's own code doing what needs a socket, such as fetching another repository.</p>
+      </section>
+      <details className="rounded-card border border-line shadow-xs">
+        <summary className="cursor-pointer select-none px-4 py-3 font-semibold text-ink">Advanced build inputs</summary>
+        <div className="border-t border-line p-4">
+          <div className="label mb-2">catalog source patterns</div>
+          {setupInfo.sources.length === 0 ? <Empty>no source patterns declared</Empty> : <ul className="mono space-y-1 text-muted">{setupInfo.sources.map((source) => <li key={source}>{source}</li>)}</ul>}
+          <div className="label mt-5 mb-2">pipeline</div>
+          {setupInfo.steps.length === 0 ? <Empty>no pipeline steps declared</Empty> : <div className="space-y-1">{setupInfo.steps.map((step, index) => <div key={`${step.phase}:${step.plugin}:${step.input ?? "catalog"}:${index}`} className="mono grid gap-x-3 text-muted sm:grid-cols-[5rem_9rem_1fr]"><span>{step.phase}</span><span className="text-ink">{step.plugin}</span><span className="truncate" title={step.input ?? "merged catalog"}>{step.input ?? "merged catalog"} → {step.output}</span></div>)}</div>}
+          <div className="label mt-5 mb-2">generated documentation</div>
+          <MachineDocs />
+        </div>
+      </details>
+    </div>
+  );
+}
+
+function SettingsContent({ local, onAdd, onGenerate }: { local: boolean; onAdd: () => void; onGenerate: () => void }) {
+  return (
     <div className="h-full overflow-y-auto p-gutter">
       <div className="max-w-table">
-        <div className="flex flex-wrap items-start justify-between gap-3"><div><div className="flex items-center gap-2"><h1 className="text-lg font-semibold">Settings</h1>{local ? <span className="chip status-verified">local mode</span> : null}</div><p className="mt-1 max-w-prose text-muted">The projects, plugins and local preferences used by this catalog. {local ? "This local session can update portolan.json and preview generator output." : "Build configuration is read-only here and comes from portolan.json."}</p></div>{local ? <button type="button" className="btn-accent" onClick={onGenerate}><Play size={15} /> Preview generated diff</button> : null}</div>
-        <BuildHealth />
-
-        <div className="mt-4 grid grid-cols-2 gap-grid lg:grid-cols-4">
-          <Metric value={setupInfo.projects.length} label="project" />
-          <Metric value={active.length} label="active plugin" />
-          <Metric value={setupInfo.steps.length} label="pipeline step" />
-          <Metric value={catalogSources.length} label="catalog source" />
-        </div>
-
-        <section className="mt-section">
-          <SectionTitle right={local ? "editable in local mode" : "declared in portolan.json"}>Projects</SectionTitle>
-          {setupInfo.projects.length === 0 && !local ? <Empty>portolan.json names no projects — every input here is the estate's own</Empty> : <div className="grid gap-grid xl:grid-cols-2">{setupInfo.projects.map((project) => <ProjectCard key={project.id} project={project} />)}{local ? <AddProjectCard onClick={onAdd} /> : null}</div>}
-        </section>
-
-        <section className="mt-section">
-          <SectionTitle right={`${active.length} of ${setupInfo.plugins.length} active`}>Plugins</SectionTitle>
-          <PluginsList />
-          <p className="mono mt-2 text-muted">WASM runs without network or environment access, and a generator without a filesystem. A host process runs with the permissions of the build; a plugin in the host is Portolan's own code doing what needs a socket, such as fetching another repository.</p>
-        </section>
-
-        <section className="mt-section"><SectionTitle right="stored in this browser">Appearance</SectionTitle><Appearance /></section>
-
-        {CHAT_BUILD.built ? <section className="mt-section"><SectionTitle right="stored in this browser">Ask the catalog</SectionTitle><ChatSection /></section> : null}
-
-        <details className="mt-section rounded-card border border-line shadow-xs">
-          <summary className="cursor-pointer select-none px-4 py-3 font-semibold text-ink">Advanced build inputs</summary>
-          <div className="border-t border-line p-4">
-            <div className="label mb-2">catalog source patterns</div>
-            {setupInfo.sources.length === 0 ? <Empty>no source patterns declared</Empty> : <ul className="mono space-y-1 text-muted">{setupInfo.sources.map((source) => <li key={source}>{source}</li>)}</ul>}
-            <div className="label mt-5 mb-2">pipeline</div>
-            {setupInfo.steps.length === 0 ? <Empty>no pipeline steps declared</Empty> : <div className="space-y-1">{setupInfo.steps.map((step, index) => <div key={`${step.phase}:${step.plugin}:${step.input ?? "catalog"}:${index}`} className="mono grid gap-x-3 text-muted sm:grid-cols-[5rem_9rem_1fr]"><span>{step.phase}</span><span className="text-ink">{step.plugin}</span><span className="truncate" title={step.input ?? "merged catalog"}>{step.input ?? "merged catalog"} → {step.output}</span></div>)}</div>}
-            <div className="label mt-5 mb-2">generated documentation</div>
-            <MachineDocs />
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2"><h1 className="text-lg font-semibold">Settings</h1>{local ? <span className="chip status-verified">local mode</span> : null}</div>
+            <p className="mt-1 max-w-prose text-muted">Configure projects, extraction, delivery automation and local preferences. {local ? "This local session can write reviewed changes." : "Build configuration is read-only here."}</p>
           </div>
-        </details>
-
-        <div className="mono mt-section flex items-center gap-2 pb-section text-muted"><Box size={14} aria-hidden />{local ? "Changes are written to portolan.json; generated files remain reviewable in git." : "Configuration is embedded at build time; changing it requires a new catalog build."}</div>
+          {local ? <button type="button" className="btn-accent" onClick={onGenerate}><Play size={15} /> Preview generated diff</button> : null}
+        </div>
+        <SettingsNav />
+        <div className="mt-section">
+          <Routes>
+            <Route index element={<OverviewSettings />} />
+            <Route path="projects" element={<ProjectsSettings local={local} onAdd={onAdd} />} />
+            <Route path="pipeline" element={<PipelineSettings />} />
+            <Route path="delivery" element={<section><SectionTitle right={local ? "preview before writing" : "local mode required"}>Delivery presets</SectionTitle><DeliverySettings local={local} /></section>} />
+            <Route path="preferences" element={<PreferencesSettings />} />
+            <Route path="*" element={<Navigate to={paths.settings()} replace />} />
+          </Routes>
+        </div>
+        <div className="mono mt-section flex items-center gap-2 pb-section text-muted"><Box size={14} aria-hidden />{local ? "Changes are written only after preview; generated files remain reviewable in git." : "Configuration is embedded at build time; changing it requires a new catalog build."}</div>
       </div>
     </div>
   );

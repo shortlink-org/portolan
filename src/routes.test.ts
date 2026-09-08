@@ -162,6 +162,17 @@ describe("routes", () => {
   it("routes the build settings page", () => {
     expect(paths.settings()).toBe("/settings");
     expect(isRoutable(paths.settings())).toBe(true);
+    expect(paths.settingsProjects()).toBe("/settings/projects");
+    expect(paths.settingsPipeline()).toBe("/settings/pipeline");
+    expect(paths.settingsDelivery()).toBe("/settings/delivery");
+    expect(paths.settingsPreferences()).toBe("/settings/preferences");
+    for (const path of [
+      paths.settingsProjects(),
+      paths.settingsPipeline(),
+      paths.settingsDelivery(),
+      paths.settingsPreferences(),
+    ]) expect(isRoutable(path)).toBe(true);
+    expect(isRoutable("/settings/nope")).toBe(false);
     expect(allCatalogPaths(catalog)).toContain(paths.settings());
   });
 

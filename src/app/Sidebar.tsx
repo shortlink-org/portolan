@@ -833,7 +833,6 @@ function BottomGroup() {
       </NavLink>
       <NavLink
         to={paths.settings()}
-        end
         data-nav-item
         title="Settings — projects, plugins and appearance"
         style={({ isActive }) => ({

@@ -45,8 +45,21 @@ export function crumbsFor(pathname: string): Crumb[] {
 
   if (parts[0] === "map") return [{ label: "map", to: "/map" }];
 
-  if (parts[0] === "settings")
-    return [{ label: "settings", to: paths.settings() }];
+  if (parts[0] === "settings") {
+    const subsection = parts[1];
+    const labels: Record<string, string> = {
+      projects: "projects",
+      pipeline: "pipeline",
+      delivery: "delivery",
+      preferences: "preferences",
+    };
+    return [
+      { label: "settings", to: paths.settings() },
+      ...(subsection && labels[subsection]
+        ? [{ label: labels[subsection], to: pathname }]
+        : []),
+    ];
+  }
 
   if (parts[0] === "changes")
     return [{ label: "changes", to: paths.changes() }];

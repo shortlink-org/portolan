@@ -26,6 +26,13 @@ describe("crumbsFor", () => {
     expect(crumbsFor("/adrs")[0]).toEqual({ label: "decisions", to: "/adrs" });
   });
 
+  it("keeps the active settings section in the trail", () => {
+    expect(crumbsFor("/settings/delivery")).toEqual([
+      { label: "settings", to: "/settings" },
+      { label: "delivery", to: "/settings/delivery" },
+    ]);
+  });
+
   it("reads 'data' as a literal, not as an aggregate", () => {
     const crumbs = crumbsFor("/c/ctx/svc/data/pg");
     expect(crumbs.map((c) => c.to)).toEqual([

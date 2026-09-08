@@ -64,6 +64,27 @@ export interface GeneratedFileDiff {
   diff: string;
 }
 
+export type DeliveryProvider = "github" | "gitlab";
+
+export interface DeliveryPresetFile {
+  path: string;
+  status: "added" | "changed" | "unchanged" | "conflict";
+  diff: string;
+  message?: string;
+}
+
+export interface DeliveryPreset {
+  provider: DeliveryProvider;
+  detectedProvider: DeliveryProvider | null;
+  remote: string | null;
+  repository: string;
+  defaultBranch: string;
+  status: "available" | "installed" | "update" | "conflict";
+  revision: string;
+  features: string[];
+  files: DeliveryPresetFile[];
+}
+
 export interface ProjectTrialFact {
   key: string;
   label: string;
@@ -140,6 +161,19 @@ export class LocalApiError extends Error {
 
 export async function localStatus(): Promise<{ local: true; workspace: string; setup: SetupInfo; activeRun: { id: string; mode: "write" | "check" | "preview" } | null }> {
   return json("/status");
+}
+
+export async function previewDeliveryPreset(provider?: DeliveryProvider): Promise<DeliveryPreset> {
+  const query = provider ? `?provider=${encodeURIComponent(provider)}` : "";
+  return json(`/delivery-presets${query}`);
+}
+
+export async function installDeliveryPreset(provider: DeliveryProvider, revision: string): Promise<DeliveryPreset & { written: string[] }> {
+  return json("/delivery-presets/install", {
+    method: "POST",
+    headers: LOCAL_HEADER,
+    body: JSON.stringify({ provider, revision }),
+  });
 }
 
 export async function discover(path: string): Promise<Discovery> {

@@ -21,6 +21,7 @@ import { basename, dirname, join, posix, relative, resolve, sep } from "node:pat
 import { publicSetupFrom } from "../src/lib/setup-info.ts";
 import { loadManifest } from "./manifest.mjs";
 import { builtinPluginNames } from "./builtin-plugins.mjs";
+import { installDeliveryPreset, planDeliveryPreset, publicDeliveryPreset } from "./delivery-presets.mjs";
 
 export const LOCAL_API_PREFIX = "/__portolan";
 export const GENERATOR_EVENT_PREFIX = "::portolan-event::";
@@ -1109,6 +1110,9 @@ export function localApiPlugin(workspace = process.cwd()) {
             const active = [...jobs.values()].find((job) => job.status === "running");
             return send(res, 200, { local: true, workspace: realpathSync(workspace), setup: setup(workspace), activeRun: active ? { id: active.id, mode: active.mode } : null });
           }
+          if (req.method === "GET" && url.pathname === `${LOCAL_API_PREFIX}/delivery-presets`) {
+            return send(res, 200, publicDeliveryPreset(planDeliveryPreset(workspace, url.searchParams.get("provider"))));
+          }
           const eventMatch = url.pathname.match(/^\/__portolan\/runs\/([^/]+)\/events$/);
           if (req.method === "GET" && eventMatch) {
             const job = jobs.get(eventMatch[1]);
@@ -1123,6 +1127,9 @@ export function localApiPlugin(workspace = process.cwd()) {
             return send(res, 405, { error: "Use a local JSON request." });
           }
           const input = await body(req);
+          if (url.pathname === `${LOCAL_API_PREFIX}/delivery-presets/install`) {
+            return send(res, 201, installDeliveryPreset(workspace, input));
+          }
           if (url.pathname === `${LOCAL_API_PREFIX}/source`) return send(res, 200, readLocalSource(workspace, input.path));
           if (url.pathname === `${LOCAL_API_PREFIX}/repositories/credentials`) return send(res, 201, storeRepositoryCredential(input));
           if (url.pathname === `${LOCAL_API_PREFIX}/repositories/credentials/forget`) return send(res, 200, forgetRepositoryCredential(input));
@@ -1184,7 +1191,8 @@ export function localApiPlugin(workspace = process.cwd()) {
           }
           return send(res, 404, { error: "Local API route not found." });
         } catch (error) {
-          return send(res, error instanceof LocalApiError ? error.status : 400, {
+          const status = error instanceof LocalApiError ? error.status : Number.isInteger(error?.status) ? error.status : 400;
+          return send(res, status, {
             error: error instanceof Error ? error.message : String(error),
             ...(error instanceof LocalApiError ? {
               code: error.code,
