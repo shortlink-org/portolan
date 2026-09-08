@@ -49,45 +49,6 @@ Facts carry a status: `declared` (a fragment says so), `verified` (a recorded
 trace showed it happening), `unresolved` (nothing in the catalog answers the
 reference).
 
-### Projects without DDD
-
-`extract-project` is the neutral baseline. It reads repository metadata and
-deployment/build manifests without executing project code, creates a `system`,
-`product`, `team` or `namespace` containing a component, and records its role
-(`application`, `worker`, `job`, `cli`, `library`, and so on) and technologies.
-It also lists the commands the runner files declare - make targets, npm
-scripts, just recipes, Taskfile and poe/pdm tasks, Maven and Gradle goals,
-cargo aliases and xtask subcommands - which `extract-commands` does on its
-own for a service a domain extractor describes.
-Contract, messaging and data extractors then add OpenAPI, AsyncAPI, GraphQL,
-proto, SQL, Redis, River, Watermill and outbound HTTP/SOAP facts to that same
-component.
-For Go services, the HTTP client extractor also joins common router
-registrations to handlers, interface calls, string-keyed factory branches and
-concrete providers. Constructor maps, fixed factories, capability assertions,
-composite/direct field assignment and setter injection are followed when the
-source proves one concrete target. The resulting flow starts at the inbound
-endpoint and fans out by the provider choices proved by source; when a
-provider's transport lives in another module, the flow stops at that
-implementation and says that the outbound transport could not be resolved.
-Endpoints without provider selection are composed too, including handlers
-passed through closures and local variables. Swagger `@Router` evidence can
-root a handler factory behind a custom registry, while calls reached from a
-`main → Run` assembly path become startup flows. These generated transport and
-async flows carry their trigger kind and static-confidence level; `AddFunc`,
-`AfterFunc`, and `Schedule` registrations become scheduled roots. A transport
-fragment with no proven root is marked `unproven` instead of looking like a
-complete scenario.
-
-The older JSON keys `contexts` and `services` remain the wire format, so old
-catalogs need no migration (portolan.0004). Optional `kind` fields say when those nodes should
-be read as a neutral group and component. When `kind` is absent, the historical
-`bounded-context` and `service` meanings apply.
-
-The setup wizard always offers the neutral extractor. A language-specific DDD
-extractor is selected only when its expected model structure is present; a
-`go.mod` or a directory merely named `internal/domain` is not sufficient.
-
 ## What the site shows
 
 - **Entity pages** — context, service, aggregate (entities, value objects,
