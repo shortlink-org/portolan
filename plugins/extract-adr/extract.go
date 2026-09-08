@@ -52,7 +52,7 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 		b.Warn(in.Root, "no decision records matched "+strings.Join(patterns, ", ")+"; the fragment holds none")
 	}
 
-	history := newHistory(in.Root, opts.History, b)
+	history := newHistory(in, opts.History, b)
 
 	adrs := []catalog.Adr{}
 	ids := map[string]string{}

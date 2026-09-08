@@ -6,8 +6,7 @@
 - **Date:** 2025-05-02
 - **Scope:** org
 - **Source:** [`data/adr/0002-event-version-in-package-path.md`](https://github.com/shortlink-org/portolan/blob/main/data/adr/0002-event-version-in-package-path.md)
-- **Committed:** Victor Login, 2026-09-02 (`7db6b6e`)
-- **Revised:** Victor Login, 2026-09-05 (`615d900`)
+- **Committed:** Victor Login, 2026-09-05 (`615d900`)
 
 ### Context and Problem Statement
 

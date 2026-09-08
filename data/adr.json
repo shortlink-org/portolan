@@ -24,11 +24,6 @@
       },
       "source": "data/adr/0001-client-protos-in-consumer-infrastructure.md",
       "created": {
-        "commit": "7db6b6ef11d6dbaa97b43931a06d5cd42a1a71b8",
-        "author": "Victor Login",
-        "date": "2026-09-02T02:14:11+08:00"
-      },
-      "revised": {
         "commit": "615d9004ca0f600d61e79877b425f56ecf64ac78",
         "author": "Victor Login",
         "date": "2026-09-05T11:35:44+07:00"
@@ -52,11 +47,6 @@
       },
       "source": "data/adr/0002-event-version-in-package-path.md",
       "created": {
-        "commit": "7db6b6ef11d6dbaa97b43931a06d5cd42a1a71b8",
-        "author": "Victor Login",
-        "date": "2026-09-02T02:14:11+08:00"
-      },
-      "revised": {
         "commit": "615d9004ca0f600d61e79877b425f56ecf64ac78",
         "author": "Victor Login",
         "date": "2026-09-05T11:35:44+07:00"
@@ -100,11 +90,6 @@
       },
       "source": "data/adr/0004-idempotent-journal-entries.md",
       "created": {
-        "commit": "7db6b6ef11d6dbaa97b43931a06d5cd42a1a71b8",
-        "author": "Victor Login",
-        "date": "2026-09-02T02:14:11+08:00"
-      },
-      "revised": {
         "commit": "615d9004ca0f600d61e79877b425f56ecf64ac78",
         "author": "Victor Login",
         "date": "2026-09-05T11:35:44+07:00"

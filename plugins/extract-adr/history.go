@@ -1,9 +1,7 @@
 package extractadr
 
 import (
-	"os/exec"
 	"path/filepath"
-	"strings"
 
 	"github.com/shortlink-org/portolan/catalog"
 	"github.com/shortlink-org/portolan/plugin"
@@ -15,85 +13,52 @@ import (
 // own commits, following renames, so a record moved into docs/adr keeps the
 // day it was first committed.
 //
-// This is the one place an extractor reads history rather than the tree. It
-// is still a function of the checkout: the same commit gives the same answer
-// on every machine, which is what lets the fragment be committed and checked.
+// The extractor does not read git itself: it asks for the history in its
+// descriptor (plugin.NeedHistory) and the host hands it over in the request
+// (portolan.0007), which is what lets this run as a wasm module. It is still
+// a function of the checkout: the same commit gives the same answer on every
+// machine, which is what lets the fragment be committed and checked.
 
 type history struct {
-	root string
-	// repo is the working tree the root belongs to, or "" when there is none
-	// and every record is answered with nothing.
-	repo string
+	// files is what the host read, keyed the way the extractor names a file;
+	// nil when the host had no checkout to read, and every record is answered
+	// with nothing.
+	files map[string]plugin.FileHistory
 }
 
-func newHistory(root, mode string, b *plugin.Builder) *history {
-	h := &history{root: root}
+func newHistory(in plugin.Input, mode string, b *plugin.Builder) *history {
 	if mode == "none" {
-		return h
+		return &history{}
+	}
+	if in.History == nil {
+		b.Warn(in.Root, "not inside a git checkout, so the records say nothing about who committed them; set `history` to \"none\" to stop hearing this")
+
+		return &history{}
 	}
 
-	top, err := git(root, "rev-parse", "--show-toplevel")
-	if err != nil || top == "" {
-		b.Warn(root, "not inside a git checkout, so the records say nothing about who committed them; set `history` to \"none\" to stop hearing this")
-
-		return h
-	}
-	h.repo = top
-
-	return h
+	return &history{files: in.History}
 }
 
 // of answers with the commit that first added the file and the one that last
 // touched it, or nothing when the file has no history - it is new, or the
 // root is not a checkout.
 func (h *history) of(file string) (created, revised *catalog.AdrCommit) {
-	if h.repo == "" {
+	entry, ok := h.files[filepath.ToSlash(filepath.Clean(file))]
+	if !ok {
 		return nil, nil
+	}
+	created = commitOf(entry.Created)
+	if entry.Revised != nil && entry.Revised.Commit != entry.Created.Commit {
+		revised = commitOf(*entry.Revised)
 	}
 
-	// The file is named from where the extractor runs; git is asked from the
-	// top of the checkout, so the path is made absolute rather than left to
-	// be read against a directory it was not written for.
-	abs, err := filepath.Abs(file)
-	if err != nil {
-		return nil, nil
-	}
-	out, err := git(h.repo, "log", "--follow", "--format=%H%x1f%an%x1f%cI", "--", abs)
-	if err != nil || out == "" {
-		return nil, nil
-	}
-
-	lines := strings.Split(out, "\n")
-	first := commitOf(lines[len(lines)-1])
-	last := commitOf(lines[0])
-	if first == nil {
-		return nil, nil
-	}
-	if last != nil && last.Commit != first.Commit {
-		return first, last
-	}
-
-	return first, nil
+	return created, revised
 }
 
-func commitOf(line string) *catalog.AdrCommit {
-	parts := strings.Split(line, "\x1f")
-	if len(parts) != 3 || parts[0] == "" {
+func commitOf(commit plugin.Commit) *catalog.AdrCommit {
+	if commit.Commit == "" {
 		return nil
 	}
 
-	return &catalog.AdrCommit{Commit: parts[0], Author: parts[1], Date: parts[2]}
-}
-
-// git runs one command in the directory and answers with its trimmed output.
-// Its stderr is not this run's diagnostics: a directory that is not a
-// checkout is a fact newHistory reports once, in its own words.
-func git(dir string, args ...string) (string, error) {
-	cmd := exec.Command("git", append([]string{"-C", filepath.Clean(dir)}, args...)...)
-	out, err := cmd.Output()
-	if err != nil {
-		return "", err
-	}
-
-	return strings.TrimSpace(string(out)), nil
+	return &catalog.AdrCommit{Commit: commit.Commit, Author: commit.Author, Date: commit.Date}
 }

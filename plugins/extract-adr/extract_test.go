@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"flag"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -249,24 +248,13 @@ func firstDifference(want, got string) string {
 	return "want " + strconv.Itoa(len(a)) + " lines, got " + strconv.Itoa(len(b))
 }
 
-// Who wrote a record down and when comes from the file's own commits: the
-// first commit is when it was created, the last when it was revised, and a
-// file committed once has no revision. A tree that is not a checkout says
-// nothing, once.
-func TestWhoCommittedARecordComesFromGit(t *testing.T) {
+// Who wrote a record down and when comes from the file's own commits, which
+// the host read and put in the request (portolan.0007): the first commit is
+// when it was created, the last when it was revised, and a file committed once
+// has no revision. A request with no history - the tree is not a checkout -
+// is said so, once.
+func TestWhoCommittedARecordComesFromTheRequest(t *testing.T) {
 	root := t.TempDir()
-	run := func(args ...string) {
-		t.Helper()
-		cmd := exec.Command("git", append([]string{"-C", root}, args...)...)
-		cmd.Env = append(os.Environ(),
-			"GIT_AUTHOR_NAME=Ada Lovelace", "GIT_AUTHOR_EMAIL=ada@example.com",
-			"GIT_COMMITTER_NAME=Ada Lovelace", "GIT_COMMITTER_EMAIL=ada@example.com",
-			"GIT_COMMITTER_DATE=2026-01-01T09:00:00Z", "GIT_AUTHOR_DATE=2026-01-01T09:00:00Z",
-		)
-		if out, err := cmd.CombinedOutput(); err != nil {
-			t.Fatalf("git %v: %v\n%s", args, err, out)
-		}
-	}
 	write := func(name, contents string) {
 		t.Helper()
 		if err := os.MkdirAll(filepath.Join(root, "docs", "adr"), 0o755); err != nil {
@@ -279,25 +267,19 @@ func TestWhoCommittedARecordComesFromGit(t *testing.T) {
 	record := func(title, body string) string {
 		return "# " + title + "\n\nDate: 2026-01-01\n\n## Status\n\nAccepted\n\n## Context\n\n" + body + "\n"
 	}
-
-	run("init", "-q")
 	write("0001-first.md", record("1. First", "As written."))
-	write("0002-second.md", record("2. Second", "As written."))
-	run("add", ".")
-	run("commit", "-q", "-m", "two records")
-
 	write("0002-second.md", record("2. Second", "Reworded."))
-	cmd := exec.Command("git", "-C", root, "commit", "-q", "-am", "reword")
-	cmd.Env = append(os.Environ(),
-		"GIT_AUTHOR_NAME=Grace Hopper", "GIT_AUTHOR_EMAIL=grace@example.com",
-		"GIT_COMMITTER_NAME=Grace Hopper", "GIT_COMMITTER_EMAIL=grace@example.com",
-		"GIT_COMMITTER_DATE=2026-01-03T17:30:00Z", "GIT_AUTHOR_DATE=2026-01-03T17:30:00Z",
-	)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("git commit: %v\n%s", err, out)
+
+	ada := plugin.Commit{Commit: strings.Repeat("a", 40), Author: "Ada Lovelace", Date: "2026-01-01T09:00:00Z"}
+	grace := plugin.Commit{Commit: strings.Repeat("b", 40), Author: "Grace Hopper", Date: "2026-01-03T17:30:00Z"}
+	// Keyed the way the extractor names a file: the root joined to the match.
+	in := input(root)
+	in.History = map[string]plugin.FileHistory{
+		filepath.ToSlash(filepath.Join(root, "docs/adr/0001-first.md")):  {Created: ada},
+		filepath.ToSlash(filepath.Join(root, "docs/adr/0002-second.md")): {Created: ada, Revised: &grace},
 	}
 
-	resp, err := extract(input(root), Options{Scope: "org"})
+	resp, err := extract(in, Options{Scope: "org"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -310,7 +292,7 @@ func TestWhoCommittedARecordComesFromGit(t *testing.T) {
 	}
 
 	first, second := cat.Adrs[0], cat.Adrs[1]
-	if first.Created == nil || first.Created.Author != "Ada Lovelace" || first.Created.Date != "2026-01-01T09:00:00Z" || len(first.Created.Commit) != 40 {
+	if first.Created == nil || *first.Created != (catalog.AdrCommit{Commit: ada.Commit, Author: ada.Author, Date: ada.Date}) {
 		t.Errorf("first created = %+v", first.Created)
 	}
 	if first.Revised != nil {
@@ -319,32 +301,49 @@ func TestWhoCommittedARecordComesFromGit(t *testing.T) {
 	if second.Created == nil || second.Created.Author != "Ada Lovelace" {
 		t.Errorf("second created = %+v", second.Created)
 	}
-	if second.Revised == nil || second.Revised.Author != "Grace Hopper" || second.Revised.Date != "2026-01-03T17:30:00Z" || second.Revised.Commit == second.Created.Commit {
+	if second.Revised == nil || second.Revised.Author != "Grace Hopper" || second.Revised.Date != "2026-01-03T17:30:00Z" || second.Revised.Commit != grace.Commit {
 		t.Errorf("second revised = %+v", second.Revised)
 	}
 
+	// A revision that is the creating commit is no revision.
+	in.History[filepath.ToSlash(filepath.Join(root, "docs/adr/0001-first.md"))] = plugin.FileHistory{Created: ada, Revised: &ada}
+	resp, err = extract(in, Options{Scope: "org"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal([]byte(resp.Files[0].Contents), &cat); err != nil {
+		t.Fatal(err)
+	}
+	if cat.Adrs[0].Revised != nil {
+		t.Errorf("revised by its own creating commit: %+v", cat.Adrs[0].Revised)
+	}
+
 	// Told not to look, the extractor does not.
-	resp, err = extract(input(root), Options{Scope: "org", History: "none"})
+	resp, err = extract(in, Options{Scope: "org", History: "none"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if strings.Contains(resp.Files[0].Contents, "\"created\"") {
-		t.Error("history \"none\" still read git")
+		t.Error("history \"none\" still read the history")
 	}
 
-	// A tree with no checkout around it says so once and carries on.
-	bare := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(bare, "docs", "adr"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(bare, "docs", "adr", "0001-first.md"), []byte(record("1. First", "As written.")), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	resp, err = extract(input(bare), Options{Scope: "org"})
+	// No history in the request: the tree is not a checkout. Said once, and
+	// the records are read all the same.
+	resp, err = extract(input(root), Options{Scope: "org"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !warned(resp, "not inside a git checkout") {
 		t.Errorf("warnings = %+v", resp.Warnings())
+	}
+	if strings.Contains(resp.Files[0].Contents, "\"created\"") {
+		t.Error("a request without history still produced one")
+	}
+}
+
+// The descriptor is how the host learns to send the history at all.
+func TestTheDescriptorAsksForHistory(t *testing.T) {
+	if needs := descriptor().Needs; len(needs) != 1 || needs[0] != plugin.NeedHistory {
+		t.Errorf("needs = %v", needs)
 	}
 }

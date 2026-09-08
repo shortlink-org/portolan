@@ -26,8 +26,9 @@ import {
   writeBuildReport,
 } from "./build-report.mjs";
 import { loadCatalog } from "./catalog-sources.mjs";
+import { historyFor } from "./history.mjs";
 import { loadManifest, stepKeys } from "./manifest.mjs";
-import { runPlugin } from "./plugin-host.mjs";
+import { describePlugin, runPlugin } from "./plugin-host.mjs";
 import { vendoredCommit } from "./vendor-lock.mjs";
 import {
   removeOutputFile,
@@ -73,6 +74,8 @@ const report = createBuildReport({
 let manifest = {};
 let keys = stepKeys({});
 let drifted = false;
+// What each plugin said it needs from the host (portolan.0007), by name.
+const pluginNeeds = new Map();
 
 // What each step wrote into each directory on this run, by key. The listing
 // on disk says what was written last time; in check mode it is never updated,
@@ -122,10 +125,20 @@ async function generate() {
   for (const step of manifest.extract ?? []) {
     const plugin = pluginNamed(step.plugin);
     const stamp = stampFor(step.in, step.out);
+    // A plugin that asks for history gets the root's, read once per checkout
+    // (portolan.0007); left out when the root is not in a checkout, which the
+    // plugin reports in its own words.
+    const history = (await needsOf(plugin)).has("history") ? historyFor(process.cwd(), step.in) : undefined;
     await executeStep("extract", step, `${step.plugin} ← ${step.in}`, async () =>
       runPlugin(plugin, {
         portolanVersion: PORTOLAN_VERSION,
-        input: { root: step.in, output: step.out, commit: stamp.commit, generatedAt: stamp.generatedAt },
+        input: {
+          root: step.in,
+          output: step.out,
+          commit: stamp.commit,
+          generatedAt: stamp.generatedAt,
+          ...(history ? { history } : {}),
+        },
         options: step.options ?? {},
       }, {}, { workspace: process.cwd() }),
     );
@@ -299,6 +312,26 @@ function pluginNamed(name) {
   }
 
   return plugin ?? shipped;
+}
+
+/**
+ * What a plugin's descriptor says it needs from the host, asked once per
+ * plugin per run. A plugin that does not describe itself needs nothing it
+ * could be given.
+ */
+
+async function needsOf(plugin) {
+  if (!pluginNeeds.has(plugin.name)) {
+    let descriptor = null;
+    try {
+      descriptor = await describePlugin(plugin);
+    } catch {
+      // A plugin that cannot answer describe cannot ask for anything either;
+      // whatever is wrong with it, the step itself will say.
+    }
+    pluginNeeds.set(plugin.name, new Set(descriptor?.needs ?? []));
+  }
+  return pluginNeeds.get(plugin.name);
 }
 
 /** Prints what a step did, and says whether it left the tree out of date. */

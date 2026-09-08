@@ -1,12 +1,12 @@
 *llms-full.txt: every page of Portolan, one after another. A page begins with a comment naming its file, and the links inside it are relative to that file's directory.*
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `4 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 <!-- README.md -->
 
 # Portolan
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `4 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 
 ## Contexts
@@ -30,12 +30,14 @@
 | [portolan.0003](adr/portolan.0003.md) | The Go catalog is a mirror held by a round-trip test | accepted | 2026-09-02 |
 | [portolan.0004](adr/portolan.0004.md) | `contexts` and `services` stay the wire format | accepted | 2026-09-06 |
 | [portolan.0005](adr/portolan.0005.md) | CSS moves what appears; Motion moves what leaves or changes place | accepted | 2026-09-06 |
+| [portolan.0006](adr/portolan.0006.md) | An extractor runs as wasm over a preopened workspace | accepted | 2026-09-08 |
+| [portolan.0007](adr/portolan.0007.md) | The host reads history for a plugin that asks | accepted | 2026-09-08 |
 
 <!-- portolan/README.md -->
 
 # Portolan
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `4 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Id:** `portolan`
 - **Kind:** system
@@ -63,12 +65,14 @@ The tool that reads an architecture catalog from the code and specifications tha
 | [portolan.0003](../adr/portolan.0003.md) | The Go catalog is a mirror held by a round-trip test | accepted | 2026-09-02 |
 | [portolan.0004](../adr/portolan.0004.md) | `contexts` and `services` stay the wire format | accepted | 2026-09-06 |
 | [portolan.0005](../adr/portolan.0005.md) | CSS moves what appears; Motion moves what leaves or changes place | accepted | 2026-09-06 |
+| [portolan.0006](../adr/portolan.0006.md) | An extractor runs as wasm over a preopened workspace | accepted | 2026-09-08 |
+| [portolan.0007](../adr/portolan.0007.md) | The host reads history for a plugin that asks | accepted | 2026-09-08 |
 
 <!-- portolan/glossary.md -->
 
 # Glossary — Portolan
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `4 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Context:** [Portolan](README.md)
 - **Terms:** 44
@@ -127,7 +131,7 @@ One meaning per word inside this context, as the glossary beside the code states
 
 # Host
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `4 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Id:** `portolan.host`
 - **Group:** [Portolan](../README.md)
@@ -214,7 +218,7 @@ one estate and validates the union. Nothing here draws anything.
 
 # Plugins
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `4 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Id:** `portolan.plugins`
 - **Group:** [Portolan](../README.md)
@@ -281,7 +285,7 @@ either be rendered or be explicitly acknowledged by the relevant exporter.
 
 ### Adding one
 
-1. Write it. In Go, a new directory here with a `main` that hands its options
+1. Write it. In Go, a new package here whose `run` hands its options
    type to `plugin.Serve`, which reads the request, answers a describe and calls
    the work; `catalog.Catalog` from `github.com/shortlink-org/portolan/catalog`
    is the mirror of the schema, and `internal/goscan` is the tree as syntax -
@@ -296,8 +300,12 @@ either be rendered or be explicitly acknowledged by the relevant exporter.
    `go:embed` and returned in the descriptor. `schematest.Check` in a test keeps
    it from drifting from the options struct: a field renamed on one side and not
    the other fails, and so does an option with no description.
-3. Build it. For a wasm plugin, `GOOS=wasip1 GOARCH=wasm go build`. Add the
-   line to `plugins:build` in `package.json`.
+3. Build it. A built-in Go plugin is a library package with
+   `Serve(io.Reader, io.Writer) error`; add it to the map in
+   `plugins/cmd/portolan-go/main.go`, and `plugins:build` in `package.json`
+   puts it in `plugins/portolan-go.wasm` with the rest (a test keeps the map
+   and `portolan.json` in step). A plugin of your own is its own module:
+   `GOOS=wasip1 GOARCH=wasm go build`.
 4. Declare it in `portolan.json`, under `plugins` (how to run it) and
    `generate` (what to run it on), then run `npm run schema` so the manifest
    schema learns its options.
@@ -305,7 +313,7 @@ either be rendered or be explicitly acknowledged by the relevant exporter.
 ```json
 {
   "plugins": [
-    { "name": "markdown", "wasm": { "url": "file://plugins/gen-markdown.wasm" } }
+    { "name": "markdown", "wasm": { "url": "file://plugins/portolan-go.wasm" } }
   ],
   "generate": [
     { "plugin": "markdown", "out": "docs", "options": { "title": "Example estate" } }
@@ -674,7 +682,7 @@ only left out of its own stamp when the output is *inside* the input root, and
 
 ```json
 {
-  "plugins": [{ "name": "adr", "process": { "cmd": "go run ./plugins/extract-adr" } }],
+  "plugins": [{ "name": "adr", "wasm": { "url": "file://plugins/portolan-go.wasm" } }],
   "extract": [
     {
       "plugin": "adr",
@@ -739,7 +747,7 @@ is the point of the id; the same word twice in one context is an error.
 
 ```json
 {
-  "plugins": [{ "name": "glossary", "process": { "cmd": "go run ./plugins/extract-glossary" } }],
+  "plugins": [{ "name": "glossary", "wasm": { "url": "file://plugins/portolan-go.wasm" } }],
   "extract": [
     {
       "plugin": "glossary",
@@ -813,7 +821,7 @@ runner files sit beside the service, so the step is told which one it is.
 
 ```json
 {
-  "plugins": [{ "name": "commands", "process": { "cmd": "go run ./plugins/extract-commands" } }],
+  "plugins": [{ "name": "commands", "wasm": { "url": "file://plugins/portolan-go.wasm" } }],
   "extract": [
     {
       "plugin": "commands",
@@ -1033,15 +1041,24 @@ the forge looks.
 
 ### wasm or process
 
-`wasm` is the default and should stay that way. The module gets no filesystem,
-no network and no environment; a plugin from somebody else's repository can be
-run over your source tree without reading it.
+`wasm` is the default and should stay that way. The module gets no network, no
+environment and no way to start a process. A generator gets no filesystem
+either. An extract or verify step gets the workspace preopened as `/`
+(portolan.0006), which is how the built-in Go extractors read a tree without a
+Go toolchain on the machine: every one of them, and the three generators, is
+the single module `plugins/portolan-go.wasm`, which answers to the plugin name
+the host passes as `argv[0]`. WASI preopens read-write, so an extractor is
+trusted not to write the tree it reads, the same trust a process plugin has
+today; a `sha256` pins that trust to a build.
 
-`process` is the escape hatch for a generator that needs a toolchain — one
-reading Go source has to run `go list`, and no wasm module can spawn anything.
-It gets the same protocol and none of the sandbox, which is the trade being made
-and the reason it is not the default. It declares `command` and an `args` array;
-the host never feeds a command string through a shell.
+`process` is the escape hatch for a plugin that needs a toolchain or a socket:
+the Rust, Java, Python and TypeScript extractors run in their own runtimes,
+`fetch-git` clones, `fetch-bsr` talks to a registry. It gets
+the same protocol and none of the sandbox, which is the trade being made and
+the reason it is not the default. It declares `command` and an `args` array;
+the host never feeds a command string through a shell. A built-in Go plugin
+that still runs as a process is the same code reached as
+`go run ./plugins/cmd/portolan-go <name>`.
 
 A plugin fetched over `https://` must declare its `sha256`; the host verifies it
 and caches by digest. A `file://` plugin may declare one, but a checksum
@@ -1388,7 +1405,7 @@ plainly.
 
 # Site
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `4 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Id:** `portolan.site`
 - **Group:** [Portolan](../README.md)
@@ -1438,7 +1455,7 @@ Static end to end; there is no backend and no runtime query.
 
 # Flows
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `4 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 | Flow | Owner | Summary |
 | --- | --- | --- |
@@ -1448,7 +1465,7 @@ Static end to end; there is no backend and no runtime query.
 
 # npm run gen
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `4 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Id:** `flow.gen`
 - **Owner:** [portolan](../portolan/README.md)
@@ -1547,7 +1564,7 @@ sequenceDiagram
 
 # Decision records
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `4 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 | ADR | Title | Status | Date | Scope |
 | --- | --- | --- | --- | --- |
@@ -1556,12 +1573,14 @@ sequenceDiagram
 | [portolan.0003](portolan.0003.md) | The Go catalog is a mirror held by a round-trip test | accepted | 2026-09-02 | [portolan](../portolan/README.md) |
 | [portolan.0004](portolan.0004.md) | `contexts` and `services` stay the wire format | accepted | 2026-09-06 | [portolan](../portolan/README.md) |
 | [portolan.0005](portolan.0005.md) | CSS moves what appears; Motion moves what leaves or changes place | accepted | 2026-09-06 | [portolan](../portolan/README.md) |
+| [portolan.0006](portolan.0006.md) | An extractor runs as wasm over a preopened workspace | accepted | 2026-09-08 | [portolan](../portolan/README.md) |
+| [portolan.0007](portolan.0007.md) | The host reads history for a plugin that asks | accepted | 2026-09-08 | [portolan](../portolan/README.md) |
 
 <!-- adr/portolan.0001.md -->
 
 # portolan.0001 — A plugin names files and never writes them
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `4 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-02
@@ -1635,7 +1654,7 @@ shape rather than a restriction worked around.
 
 # portolan.0002 — The host stamps a fragment from its input's last commit
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `4 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-02
@@ -1705,7 +1724,7 @@ a build that must reproduce.
 
 # portolan.0003 — The Go catalog is a mirror held by a round-trip test
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `4 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-02
@@ -1775,7 +1794,7 @@ is not.
 
 # portolan.0004 — `contexts` and `services` stay the wire format
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `4 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-06
@@ -1845,7 +1864,7 @@ glossary: `GLOSSARY.md` names all four and says which is the term.
 
 # portolan.0005 — CSS moves what appears; Motion moves what leaves or changes place
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `4 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-06
@@ -1930,3 +1949,172 @@ library by one careless import.
 - Bad: about 30 kB of JavaScript after first paint, in a chunk of its own.
 - Neutral: `useCountUp` and `staggerStyle` stay as they were. A count and a
   stagger are neither exits nor layout.
+
+<!-- adr/portolan.0006.md -->
+
+# portolan.0006 — An extractor runs as wasm over a preopened workspace
+
+*Generated from the portolan catalog · commit `4 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-09-08
+- **Scope:** [portolan](../portolan/README.md)
+- **Source:** [`adr/0006-an-extractor-runs-as-wasm-over-a-preopened-workspace.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0006-an-extractor-runs-as-wasm-over-a-preopened-workspace.md)
+- **Committed:** Victor Login, 2026-09-08 (`7cd7fee`)
+
+### Context and Problem Statement
+
+portolan.0001 made a generator a wasm module with nothing preopened, and left
+the read side alone in its last consequence: an extractor reads a tree, so
+extractors stayed processes. This record amends that consequence. Every built-in Go extractor, `project` included, is therefore
+`go run`, and the first `portolan generate` after `portolan init` fails on a
+machine without Go even when the repository is TypeScript. The toolchain
+being asked for is not the one the repository uses; it is the one the
+extractor happens to be written in.
+
+A module compiled for `wasip1` can read a directory the host preopens. Every
+Go extractor and verifier compiles for that target unchanged, and over a
+preopened workspace produces the same fragment, byte for byte, in tens of
+milliseconds instead of a compile.
+
+### Decision Drivers
+
+- `init → generate → dev` must run with Node alone for a repository that
+  needs no other toolchain. Go, Cargo, Java and Python are asked for only by
+  the extractor of that language.
+- An extractor from somebody else's repository must still not get the
+  network, the environment, or a way to start a process.
+- The protocol of portolan.0001 stays: a plugin names files, the host writes
+  them.
+- The package must stay small enough to `npx`.
+
+### Considered Options
+
+1. **Preopen the workspace for extract and verify steps; generators keep
+   nothing.** One multi-call module carries every Go plugin.
+2. **Keep extractors as processes and ship prebuilt native binaries** per
+   platform.
+3. **Keep extractors as processes** and document the Go requirement.
+
+### Decision Outcome
+
+Chosen option: **preopen the workspace for extract and verify steps**.
+
+The host preopens the manifest's workspace as `/` for the extract and verify
+phases only, and passes the step's `in` as the relative root it always did.
+A generate step, and a `describe` request, still run with nothing preopened.
+A module gets the plugin name as `argv[0]`, which is how one module answers
+for every built-in Go plugin: `plugins/portolan-go.wasm` dispatches on it,
+and the same package runs as a process for a plugin that still needs one.
+
+What the sandbox now promises for an extractor is: no network, no
+environment, no way to spawn, and no path outside the workspace. It does not
+promise read-only. Node's WASI preopens a directory read-write, and a module
+that wanted to could write into the tree it was asked to read. That is the
+same trust as a process plugin has today, minus everything else a process
+can do, and it is the honest statement rather than a stronger one the runtime
+cannot back. A `sha256` on a fetched module is what pins that trust to a
+build.
+
+Native binaries were rejected because a matrix of platforms is exactly the
+packaging burden wasm removes. Documenting the requirement was rejected
+because it keeps the failure where new users meet it first.
+
+#### Consequences
+
+- Good: a TypeScript repository reads itself with Node alone; `init` and
+  `doctor` derive toolchain requirements from plugin definitions and stop
+  naming Go.
+- Good: one module instead of nineteen binaries; a step starts in
+  milliseconds; the package ships one `.wasm` and no longer needs
+  `go build` at first use.
+- Bad: a wasm extractor cannot read git history. `adr` reads when a record
+  was first committed, so it stays a process until the host supplies history
+  in the request.
+- Bad: extractors are not read-only in the WASI sense. A module that writes
+  into the workspace is a bug the host cannot prevent, only a diff will show.
+- Neutral: `fetch-git` and `fetch-bsr` need a socket and stay processes, as
+  do the Rust, Java, Python and TypeScript extractors, which run in their own
+  toolchains.
+
+<!-- adr/portolan.0007.md -->
+
+# portolan.0007 — The host reads history for a plugin that asks
+
+*Generated from the portolan catalog · commit `4 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-09-08
+- **Scope:** [portolan](../portolan/README.md)
+- **Source:** [`adr/0007-the-host-reads-history-for-a-plugin-that-asks.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0007-the-host-reads-history-for-a-plugin-that-asks.md)
+
+### Context and Problem Statement
+
+`adr` says who first committed a decision record and who last changed it.
+That is a fact about the checkout, not the tree, and the extractor read it by
+running `git log --follow` per file - the one thing in it a wasm module cannot
+do. portolan.0006 moved every other built-in Go plugin into one sandboxed
+module and left `adr` a process for exactly this reason, which kept `go run`,
+the Go sources and a Go toolchain in the package for a single field.
+
+The host already reads git: every fragment's stamp comes from it
+(portolan.0002). The question is where the file history should be read, and
+how a plugin says it wants it.
+
+### Decision Drivers
+
+- No plugin runs git; a built-in Go plugin must be able to run as wasm.
+- The fragment must not change: the same commit gives the same `created` and
+  `revised` on every machine, and the committed fragments must stay
+  byte-identical across the move.
+- A plugin that does not need history must not pay for it, and a repository
+  with a long history must pay once, not once per file.
+- The request must stay one JSON message; there is no second round trip.
+
+### Considered Options
+
+1. **The plugin declares a need and the host puts the history in the
+   request** - `needs: ["history"]` in the descriptor, `input.history` keyed
+   by file path, read from one `git log` over the checkout.
+2. **The host answers a callback** - a second protocol message the plugin
+   sends when it wants a file's history.
+3. **The plugin reads `.git` itself** through the preopened workspace.
+4. **`adr` stays a process.**
+
+### Decision Outcome
+
+Chosen option: **the plugin declares a need and the host puts the history in
+the request**.
+
+The descriptor gains `needs`, a list of what the host must add to the
+request beyond the tree; `history` is its first value. Before an extract
+step the host asks the plugin to describe itself once per run, and for a
+plugin that asks it reads `git log --reverse --name-status -M` over the
+whole checkout once, follows renames forward, and hands the step the files
+under its root as `input.history`: for each path, the commit that first
+added it and, when a later commit touched it, the last one. The map is
+absent when the root is not inside a checkout, which the plugin reports in
+its own words, as it did when git said so. A plugin told `history: "none"`
+ignores the map, as it ignored git.
+
+A callback would have made the protocol two messages for one field. Reading
+`.git` from a module means a git implementation in every language a plugin
+is written in, and a rename followed differently in each. Leaving `adr` a
+process was the state this record replaces.
+
+#### Consequences
+
+- Good: `adr` is in `plugins/portolan-go.wasm` with the rest; no built-in
+  extractor, verifier or generator runs as a process. The fragments did not
+  change.
+- Good: history is read once per checkout per run, and only when a step's
+  plugin asks. A plugin that wants nothing beyond the tree is unaffected.
+- Bad: a plugin's file names must match the host's: the path as the plugin
+  would open it, relative to the workspace. A plugin that renames what it
+  reads finds nothing in the map.
+- Bad: one log over the whole checkout is what makes renames from outside a
+  root followable, and on a very large repository it is the cost of the
+  first `adr` step in a run.
+- Neutral: `fetch-git` and `fetch-bsr` are still processes. They need a
+  socket, which no need in a request supplies, and the Go sources ship for
+  them until they move into the host.

@@ -170,6 +170,9 @@ function validateDescriptor(pluginName, descriptor) {
   if (!descriptor.options || typeof descriptor.options !== "object" || Array.isArray(descriptor.options)) {
     throw new Error(`plugin ${pluginName}: describe.options is invalid`);
   }
+  if (descriptor.needs !== undefined && (!Array.isArray(descriptor.needs) || descriptor.needs.some((need) => need !== "history"))) {
+    throw new Error(`plugin ${pluginName}: describe.needs may only name "history"`);
+  }
 }
 
 /**

@@ -1,6 +1,6 @@
 # Plugins
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `4 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Id:** `portolan.plugins`
 - **Group:** [Portolan](../README.md)
@@ -67,7 +67,7 @@ either be rendered or be explicitly acknowledged by the relevant exporter.
 
 ### Adding one
 
-1. Write it. In Go, a new directory here with a `main` that hands its options
+1. Write it. In Go, a new package here whose `run` hands its options
    type to `plugin.Serve`, which reads the request, answers a describe and calls
    the work; `catalog.Catalog` from `github.com/shortlink-org/portolan/catalog`
    is the mirror of the schema, and `internal/goscan` is the tree as syntax -
@@ -82,8 +82,12 @@ either be rendered or be explicitly acknowledged by the relevant exporter.
    `go:embed` and returned in the descriptor. `schematest.Check` in a test keeps
    it from drifting from the options struct: a field renamed on one side and not
    the other fails, and so does an option with no description.
-3. Build it. For a wasm plugin, `GOOS=wasip1 GOARCH=wasm go build`. Add the
-   line to `plugins:build` in `package.json`.
+3. Build it. A built-in Go plugin is a library package with
+   `Serve(io.Reader, io.Writer) error`; add it to the map in
+   `plugins/cmd/portolan-go/main.go`, and `plugins:build` in `package.json`
+   puts it in `plugins/portolan-go.wasm` with the rest (a test keeps the map
+   and `portolan.json` in step). A plugin of your own is its own module:
+   `GOOS=wasip1 GOARCH=wasm go build`.
 4. Declare it in `portolan.json`, under `plugins` (how to run it) and
    `generate` (what to run it on), then run `npm run schema` so the manifest
    schema learns its options.
@@ -91,7 +95,7 @@ either be rendered or be explicitly acknowledged by the relevant exporter.
 ```json
 {
   "plugins": [
-    { "name": "markdown", "wasm": { "url": "file://plugins/gen-markdown.wasm" } }
+    { "name": "markdown", "wasm": { "url": "file://plugins/portolan-go.wasm" } }
   ],
   "generate": [
     { "plugin": "markdown", "out": "docs", "options": { "title": "Example estate" } }
@@ -460,7 +464,7 @@ only left out of its own stamp when the output is *inside* the input root, and
 
 ```json
 {
-  "plugins": [{ "name": "adr", "process": { "cmd": "go run ./plugins/extract-adr" } }],
+  "plugins": [{ "name": "adr", "wasm": { "url": "file://plugins/portolan-go.wasm" } }],
   "extract": [
     {
       "plugin": "adr",
@@ -525,7 +529,7 @@ is the point of the id; the same word twice in one context is an error.
 
 ```json
 {
-  "plugins": [{ "name": "glossary", "process": { "cmd": "go run ./plugins/extract-glossary" } }],
+  "plugins": [{ "name": "glossary", "wasm": { "url": "file://plugins/portolan-go.wasm" } }],
   "extract": [
     {
       "plugin": "glossary",
@@ -599,7 +603,7 @@ runner files sit beside the service, so the step is told which one it is.
 
 ```json
 {
-  "plugins": [{ "name": "commands", "process": { "cmd": "go run ./plugins/extract-commands" } }],
+  "plugins": [{ "name": "commands", "wasm": { "url": "file://plugins/portolan-go.wasm" } }],
   "extract": [
     {
       "plugin": "commands",
@@ -819,15 +823,24 @@ the forge looks.
 
 ### wasm or process
 
-`wasm` is the default and should stay that way. The module gets no filesystem,
-no network and no environment; a plugin from somebody else's repository can be
-run over your source tree without reading it.
+`wasm` is the default and should stay that way. The module gets no network, no
+environment and no way to start a process. A generator gets no filesystem
+either. An extract or verify step gets the workspace preopened as `/`
+(portolan.0006), which is how the built-in Go extractors read a tree without a
+Go toolchain on the machine: every one of them, and the three generators, is
+the single module `plugins/portolan-go.wasm`, which answers to the plugin name
+the host passes as `argv[0]`. WASI preopens read-write, so an extractor is
+trusted not to write the tree it reads, the same trust a process plugin has
+today; a `sha256` pins that trust to a build.
 
-`process` is the escape hatch for a generator that needs a toolchain — one
-reading Go source has to run `go list`, and no wasm module can spawn anything.
-It gets the same protocol and none of the sandbox, which is the trade being made
-and the reason it is not the default. It declares `command` and an `args` array;
-the host never feeds a command string through a shell.
+`process` is the escape hatch for a plugin that needs a toolchain or a socket:
+the Rust, Java, Python and TypeScript extractors run in their own runtimes,
+`fetch-git` clones, `fetch-bsr` talks to a registry. It gets
+the same protocol and none of the sandbox, which is the trade being made and
+the reason it is not the default. It declares `command` and an `args` array;
+the host never feeds a command string through a shell. A built-in Go plugin
+that still runs as a process is the same code reached as
+`go run ./plugins/cmd/portolan-go <name>`.
 
 A plugin fetched over `https://` must declare its `sha256`; the host verifies it
 and caches by digest. A `file://` plugin may declare one, but a checksum

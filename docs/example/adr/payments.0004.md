@@ -6,8 +6,7 @@
 - **Date:** 2026-02-09
 - **Scope:** [payments](../payments/README.md)
 - **Source:** [`data/adr/0004-idempotent-journal-entries.md`](https://github.com/shortlink-org/portolan/blob/main/data/adr/0004-idempotent-journal-entries.md)
-- **Committed:** Victor Login, 2026-09-02 (`7db6b6e`)
-- **Revised:** Victor Login, 2026-09-05 (`615d900`)
+- **Committed:** Victor Login, 2026-09-05 (`615d900`)
 
 ### Context and Problem Statement
 

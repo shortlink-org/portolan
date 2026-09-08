@@ -57,6 +57,30 @@ type Input struct {
 	// the source it describes changes.
 	Commit      string `json:"commit"`
 	GeneratedAt string `json:"generatedAt"`
+
+	// History is when each file under Root was first committed and last
+	// changed, keyed by the file's path as the plugin would name it - the same
+	// relative form as Root. Present only for a plugin whose descriptor asks
+	// (NeedHistory) and only when Root lies inside a git checkout; a plugin
+	// that asked and finds nil knows there was no history to read. The host
+	// reads it (portolan.0007) so that no plugin has to run git, which a wasm
+	// module cannot.
+	History map[string]FileHistory `json:"history,omitempty"`
+}
+
+// FileHistory is one file's first and last commit. Revised is nil when the
+// file has one commit.
+type FileHistory struct {
+	Created Commit  `json:"created"`
+	Revised *Commit `json:"revised,omitempty"`
+}
+
+// Commit is one commit as the host read it: full sha, author name, and the
+// committer date in strict ISO 8601.
+type Commit struct {
+	Commit string `json:"commit"`
+	Author string `json:"author"`
+	Date   string `json:"date"`
 }
 
 // Response is what comes back.

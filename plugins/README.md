@@ -31,6 +31,13 @@ is what makes that worth having: `encoding/json` drops a field it does not
 recognise, so before this a misspelled option was no option at all and nothing
 said so.
 
+A descriptor may also carry `needs`: what the host must put in the request
+beyond the tree, because a sandboxed module cannot reach it. The one need so
+far is `history` (portolan.0007) - when each file under the root was first
+committed and last changed, read by the host from one `git log` and handed
+over as `input.history`, keyed by the path the plugin would open. `extract-adr`
+asks for it; a plugin that does not ask is handed nothing.
+
 A generator **names** files; it never writes them. `scripts/gen.mjs` writes what
 comes back, refuses a name that points outside the output directory, and deletes
 pages that stopped being generated. That is what lets a generator run as a wasm
@@ -453,7 +460,7 @@ only left out of its own stamp when the output is *inside* the input root, and
 
 ```json
 {
-  "plugins": [{ "name": "adr", "process": { "command": "go", "args": ["run", "./plugins/cmd/portolan-go", "adr"] } }],
+  "plugins": [{ "name": "adr", "wasm": { "url": "file://plugins/portolan-go.wasm" } }],
   "extract": [
     {
       "plugin": "adr",
@@ -824,7 +831,7 @@ today; a `sha256` pins that trust to a build.
 
 `process` is the escape hatch for a plugin that needs a toolchain or a socket:
 the Rust, Java, Python and TypeScript extractors run in their own runtimes,
-`adr` asks git when a record was first committed, `fetch-git` clones. It gets
+`fetch-git` clones, `fetch-bsr` talks to a registry. It gets
 the same protocol and none of the sandbox, which is the trade being made and
 the reason it is not the default. It declares `command` and an `args` array;
 the host never feeds a command string through a shell. A built-in Go plugin

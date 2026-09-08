@@ -50,7 +50,18 @@ type Descriptor struct {
 	// key is the error worth catching, and a schema that accepts anything
 	// catches nothing.
 	Options json.RawMessage `json:"options,omitempty"`
+
+	// Needs names what the host must put in the request beyond the tree: a
+	// fact a sandboxed module cannot reach on its own. The one need so far is
+	// NeedHistory (portolan.0007). A host that cannot supply a need leaves
+	// the field out, and the plugin says what it could not do without it.
+	Needs []string `json:"needs,omitempty"`
 }
+
+// NeedHistory asks the host for Input.History: when each file under the root
+// was first committed and last changed, read from git by the host so that the
+// plugin need not run anything.
+const NeedHistory = "history"
 
 // Serve reads one request and writes one response - the whole of a plugin's
 // main, apart from the work itself.

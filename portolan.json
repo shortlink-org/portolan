@@ -245,9 +245,8 @@
     },
     {
       "name": "adr",
-      "process": {
-        "command": "go",
-        "args": ["run", "./plugins/cmd/portolan-go", "adr"]
+      "wasm": {
+        "url": "file://plugins/portolan-go.wasm"
       }
     },
     {

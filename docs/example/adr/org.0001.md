@@ -6,8 +6,7 @@
 - **Date:** 2025-03-11
 - **Scope:** org
 - **Source:** [`data/adr/0001-client-protos-in-consumer-infrastructure.md`](https://github.com/shortlink-org/portolan/blob/main/data/adr/0001-client-protos-in-consumer-infrastructure.md)
-- **Committed:** Victor Login, 2026-09-02 (`7db6b6e`)
-- **Revised:** Victor Login, 2026-09-05 (`615d900`)
+- **Committed:** Victor Login, 2026-09-05 (`615d900`)
 
 ### Context and Problem Statement
 

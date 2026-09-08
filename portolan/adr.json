@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-09-06T22:45:59+07:00",
-  "commit": "8c250c8b",
+  "generatedAt": "2026-09-08T16:29:08+07:00",
+  "commit": "7cd7fee3",
   "contexts": [],
   "defs": {},
   "flows": [],
@@ -109,6 +109,41 @@
         "author": "Victor Login",
         "date": "2026-09-06T22:45:59+07:00"
       }
+    },
+    {
+      "id": "portolan.0006",
+      "slug": "portolan-0006-an-extractor-runs-as-wasm-over-a-preopened-workspace",
+      "number": 6,
+      "title": "An extractor runs as wasm over a preopened workspace",
+      "status": "accepted",
+      "date": "2026-09-08",
+      "scope": {
+        "kind": "context",
+        "context": "portolan"
+      },
+      "body": "## Context and Problem Statement\n\nportolan.0001 made a generator a wasm module with nothing preopened, and left\nthe read side alone in its last consequence: an extractor reads a tree, so\nextractors stayed processes. This record amends that consequence. Every built-in Go extractor, `project` included, is therefore\n`go run`, and the first `portolan generate` after `portolan init` fails on a\nmachine without Go even when the repository is TypeScript. The toolchain\nbeing asked for is not the one the repository uses; it is the one the\nextractor happens to be written in.\n\nA module compiled for `wasip1` can read a directory the host preopens. Every\nGo extractor and verifier compiles for that target unchanged, and over a\npreopened workspace produces the same fragment, byte for byte, in tens of\nmilliseconds instead of a compile.\n\n## Decision Drivers\n\n- `init → generate → dev` must run with Node alone for a repository that\n  needs no other toolchain. Go, Cargo, Java and Python are asked for only by\n  the extractor of that language.\n- An extractor from somebody else's repository must still not get the\n  network, the environment, or a way to start a process.\n- The protocol of portolan.0001 stays: a plugin names files, the host writes\n  them.\n- The package must stay small enough to `npx`.\n\n## Considered Options\n\n1. **Preopen the workspace for extract and verify steps; generators keep\n   nothing.** One multi-call module carries every Go plugin.\n2. **Keep extractors as processes and ship prebuilt native binaries** per\n   platform.\n3. **Keep extractors as processes** and document the Go requirement.\n\n## Decision Outcome\n\nChosen option: **preopen the workspace for extract and verify steps**.\n\nThe host preopens the manifest's workspace as `/` for the extract and verify\nphases only, and passes the step's `in` as the relative root it always did.\nA generate step, and a `describe` request, still run with nothing preopened.\nA module gets the plugin name as `argv[0]`, which is how one module answers\nfor every built-in Go plugin: `plugins/portolan-go.wasm` dispatches on it,\nand the same package runs as a process for a plugin that still needs one.\n\nWhat the sandbox now promises for an extractor is: no network, no\nenvironment, no way to spawn, and no path outside the workspace. It does not\npromise read-only. Node's WASI preopens a directory read-write, and a module\nthat wanted to could write into the tree it was asked to read. That is the\nsame trust as a process plugin has today, minus everything else a process\ncan do, and it is the honest statement rather than a stronger one the runtime\ncannot back. A `sha256` on a fetched module is what pins that trust to a\nbuild.\n\nNative binaries were rejected because a matrix of platforms is exactly the\npackaging burden wasm removes. Documenting the requirement was rejected\nbecause it keeps the failure where new users meet it first.\n\n### Consequences\n\n- Good: a TypeScript repository reads itself with Node alone; `init` and\n  `doctor` derive toolchain requirements from plugin definitions and stop\n  naming Go.\n- Good: one module instead of nineteen binaries; a step starts in\n  milliseconds; the package ships one `.wasm` and no longer needs\n  `go build` at first use.\n- Bad: a wasm extractor cannot read git history. `adr` reads when a record\n  was first committed, so it stays a process until the host supplies history\n  in the request.\n- Bad: extractors are not read-only in the WASI sense. A module that writes\n  into the workspace is a bug the host cannot prevent, only a diff will show.\n- Neutral: `fetch-git` and `fetch-bsr` need a socket and stay processes, as\n  do the Rust, Java, Python and TypeScript extractors, which run in their own\n  toolchains.\n",
+      "relates": {},
+      "source": "adr/0006-an-extractor-runs-as-wasm-over-a-preopened-workspace.md",
+      "created": {
+        "commit": "7cd7fee348fe7c0d5efd79dc6c42afdc39a50054",
+        "author": "Victor Login",
+        "date": "2026-09-08T16:29:08+07:00"
+      }
+    },
+    {
+      "id": "portolan.0007",
+      "slug": "portolan-0007-the-host-reads-history-for-a-plugin-that-asks",
+      "number": 7,
+      "title": "The host reads history for a plugin that asks",
+      "status": "accepted",
+      "date": "2026-09-08",
+      "scope": {
+        "kind": "context",
+        "context": "portolan"
+      },
+      "body": "## Context and Problem Statement\n\n`adr` says who first committed a decision record and who last changed it.\nThat is a fact about the checkout, not the tree, and the extractor read it by\nrunning `git log --follow` per file - the one thing in it a wasm module cannot\ndo. portolan.0006 moved every other built-in Go plugin into one sandboxed\nmodule and left `adr` a process for exactly this reason, which kept `go run`,\nthe Go sources and a Go toolchain in the package for a single field.\n\nThe host already reads git: every fragment's stamp comes from it\n(portolan.0002). The question is where the file history should be read, and\nhow a plugin says it wants it.\n\n## Decision Drivers\n\n- No plugin runs git; a built-in Go plugin must be able to run as wasm.\n- The fragment must not change: the same commit gives the same `created` and\n  `revised` on every machine, and the committed fragments must stay\n  byte-identical across the move.\n- A plugin that does not need history must not pay for it, and a repository\n  with a long history must pay once, not once per file.\n- The request must stay one JSON message; there is no second round trip.\n\n## Considered Options\n\n1. **The plugin declares a need and the host puts the history in the\n   request** - `needs: [\"history\"]` in the descriptor, `input.history` keyed\n   by file path, read from one `git log` over the checkout.\n2. **The host answers a callback** - a second protocol message the plugin\n   sends when it wants a file's history.\n3. **The plugin reads `.git` itself** through the preopened workspace.\n4. **`adr` stays a process.**\n\n## Decision Outcome\n\nChosen option: **the plugin declares a need and the host puts the history in\nthe request**.\n\nThe descriptor gains `needs`, a list of what the host must add to the\nrequest beyond the tree; `history` is its first value. Before an extract\nstep the host asks the plugin to describe itself once per run, and for a\nplugin that asks it reads `git log --reverse --name-status -M` over the\nwhole checkout once, follows renames forward, and hands the step the files\nunder its root as `input.history`: for each path, the commit that first\nadded it and, when a later commit touched it, the last one. The map is\nabsent when the root is not inside a checkout, which the plugin reports in\nits own words, as it did when git said so. A plugin told `history: \"none\"`\nignores the map, as it ignored git.\n\nA callback would have made the protocol two messages for one field. Reading\n`.git` from a module means a git implementation in every language a plugin\nis written in, and a rename followed differently in each. Leaving `adr` a\nprocess was the state this record replaces.\n\n### Consequences\n\n- Good: `adr` is in `plugins/portolan-go.wasm` with the rest; no built-in\n  extractor, verifier or generator runs as a process. The fragments did not\n  change.\n- Good: history is read once per checkout per run, and only when a step's\n  plugin asks. A plugin that wants nothing beyond the tree is unaffected.\n- Bad: a plugin's file names must match the host's: the path as the plugin\n  would open it, relative to the workspace. A plugin that renames what it\n  reads finds nothing in the map.\n- Bad: one log over the whole checkout is what makes renames from outside a\n  root followable, and on a very large repository it is the cost of the\n  first `adr` step in a run.\n- Neutral: `fetch-git` and `fetch-bsr` are still processes. They need a\n  socket, which no need in a request supplies, and the Go sources ship for\n  them until they move into the host.\n",
+      "relates": {},
+      "source": "adr/0007-the-host-reads-history-for-a-plugin-that-asks.md"
     }
   ]
 }
