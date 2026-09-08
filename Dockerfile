@@ -3,6 +3,12 @@
 # Node supplies the CLI/runtime; the Go base supplies the most common source
 # extractor. Trixie provides Java 21, Python 3 and Cargo for the remaining
 # built-in process plugins.
+FROM rust:1.98.0-trixie AS rust-builder
+
+WORKDIR /opt/portolan
+COPY plugins/extract-rust plugins/extract-rust
+RUN cargo build --release --manifest-path plugins/extract-rust/Cargo.toml
+
 FROM node:24-trixie AS node
 
 FROM golang:1.27-trixie
@@ -20,8 +26,10 @@ RUN npm ci
 
 COPY . .
 RUN npm run plugins:build \
-    && npm link \
-    && cargo build --release --manifest-path plugins/extract-rust/Cargo.toml
+    && npm link
+
+COPY --from=rust-builder /opt/portolan/plugins/extract-rust/target/release/portolan-extract-rust \
+    /opt/portolan/plugins/extract-rust/target/release/portolan-extract-rust
 
 RUN useradd --create-home --uid 10001 portolan
 

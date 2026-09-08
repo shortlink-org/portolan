@@ -53,7 +53,13 @@ jobs:
       - name: Publish npm package
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish --access public --provenance
+        run: |
+          package=$(node -p '`${require("./package.json").name}@${require("./package.json").version}`')
+          if npm view "$package" version --registry=https://registry.npmjs.org >/dev/null 2>&1; then
+            echo "$package is already published; continuing the release"
+          else
+            npm publish --access public --provenance
+          fi
 
   container:
     needs: npm
