@@ -226,11 +226,16 @@ function compose() {
         type: "object",
         additionalProperties: false,
         required: ["name"],
-        oneOf: [{ required: ["wasm"] }, { required: ["process"] }],
+        oneOf: [{ required: ["wasm"] }, { required: ["process"] }, { required: ["host"] }],
         properties: {
           name: {
             type: "string",
             description: "What the steps below call this plugin. It need not be the plugin's own name.",
+          },
+          host: {
+            enum: ["fetch-git"],
+            description:
+              "A plugin the host runs inside its own process, because it needs a socket or a git binary (portolan.0008). Only the ones shipped with Portolan can be named.",
           },
           wasm: {
             type: "object",

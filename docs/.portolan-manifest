@@ -9,6 +9,7 @@
     "adr/portolan.0005.md",
     "adr/portolan.0006.md",
     "adr/portolan.0007.md",
+    "adr/portolan.0008.md",
     "flows/README.md",
     "flows/gen.md",
     "llms-full.txt",

@@ -1,11 +1,12 @@
 # portolan.0007 — The host reads history for a plugin that asks
 
-*Generated from the portolan catalog · commit `4 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-08
 - **Scope:** [portolan](../portolan/README.md)
 - **Source:** [`adr/0007-the-host-reads-history-for-a-plugin-that-asks.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0007-the-host-reads-history-for-a-plugin-that-asks.md)
+- **Committed:** Victor Login, 2026-09-08 (`c2a4c6b`)
 
 ### Context and Problem Statement
 
@@ -64,8 +65,12 @@ process was the state this record replaces.
 #### Consequences
 
 - Good: `adr` is in `plugins/portolan-go.wasm` with the rest; no built-in
-  extractor, verifier or generator runs as a process. The fragments did not
-  change.
+  extractor, verifier or generator runs as a process.
+- Good, and a change: `git log --follow` also follows copies, and had dated
+  three records in `data/adr` by the generated page under `docs/` they were
+  ninety percent similar to. The host follows renames only, so a record is
+  dated by the commit that added it, which is what "created" was meant to
+  say. Every other fragment is byte-identical.
 - Good: history is read once per checkout per run, and only when a step's
   plugin asks. A plugin that wants nothing beyond the tree is unaffected.
 - Bad: a plugin's file names must match the host's: the path as the plugin

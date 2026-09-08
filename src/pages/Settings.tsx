@@ -378,7 +378,9 @@ function Runtime({ plugin, icon = false }: { plugin: SetupPlugin; icon?: boolean
   const [Icon, tone, name] =
     plugin.runtime === "wasm"
       ? ([ShieldCheck, "text-verified", "WASM sandbox"] as const)
-      : ([Terminal, "text-declared", "host process"] as const);
+      : plugin.runtime === "host"
+        ? ([Terminal, "text-declared", "in the host"] as const)
+        : ([Terminal, "text-declared", "host process"] as const);
   return icon ? (
     <span className={tone} title={name}>
       <Icon size={14} aria-hidden />
@@ -907,7 +909,7 @@ function SettingsContent({ local, onAdd, onGenerate }: { local: boolean; onAdd: 
         <section className="mt-section">
           <SectionTitle right={`${active.length} of ${setupInfo.plugins.length} active`}>Plugins</SectionTitle>
           <PluginsList />
-          <p className="mono mt-2 text-muted">WASM runs without filesystem, network or environment access. A host process runs with the permissions of the build.</p>
+          <p className="mono mt-2 text-muted">WASM runs without network or environment access, and a generator without a filesystem. A host process runs with the permissions of the build; a plugin in the host is Portolan's own code doing what needs a socket, such as fetching another repository.</p>
         </section>
 
         <section className="mt-section"><SectionTitle right="stored in this browser">Appearance</SectionTitle><Appearance /></section>

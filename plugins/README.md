@@ -829,14 +829,21 @@ the host passes as `argv[0]`. WASI preopens read-write, so an extractor is
 trusted not to write the tree it reads, the same trust a process plugin has
 today; a `sha256` pins that trust to a build.
 
-`process` is the escape hatch for a plugin that needs a toolchain or a socket:
-the Rust, Java, Python and TypeScript extractors run in their own runtimes,
-`fetch-git` clones, `fetch-bsr` talks to a registry. It gets
-the same protocol and none of the sandbox, which is the trade being made and
-the reason it is not the default. It declares `command` and an `args` array;
-the host never feeds a command string through a shell. A built-in Go plugin
-that still runs as a process is the same code reached as
+`process` is the escape hatch for a plugin that needs a toolchain: the Rust,
+Java, Python and TypeScript extractors run in their own runtimes, and
+`fetch-bsr` still talks to its registry from Go. It gets the same protocol
+and none of the sandbox, which is the trade being made and the reason it is
+not the default. It declares `command` and an `args` array; the host never
+feeds a command string through a shell. A built-in Go plugin that still runs
+as a process is the same code reached as
 `go run ./plugins/cmd/portolan-go <name>`.
+
+`host` is for Portolan's own code that needs what only the host has - a git
+binary, a socket - and so runs inside the host process (portolan.0008):
+`{ "name": "git", "host": "fetch-git" }`. The name is resolved against the
+modules shipped in `scripts/host-plugins/` and nothing else, so a manifest
+cannot point the host at arbitrary code; the contract is the same as any
+plugin's, files named and never written.
 
 A plugin fetched over `https://` must declare its `sha256`; the host verifies it
 and caches by digest. A `file://` plugin may declare one, but a checksum
@@ -858,10 +865,15 @@ paths inside the copy are the repository's own, which is the point: the
 extract step that follows points its `in` at the vendored service and reads
 it exactly as it would read that service's checkout.
 
+It runs inside the host (`scripts/host-plugins/fetch-git.mjs`,
+portolan.0008) rather than as a module, because it needs a git binary and a
+socket, and a manifest names it with `host` rather than `wasm` or `process`.
+The contract is the same: it names files, the host writes them.
+
 ```json
 {
   "sources": ["data/*.json", "vendor/repos/*/*/git.repo.json"],
-  "plugins": [{ "name": "git", "process": { "command": "go", "args": ["run", "./plugins/fetch-git"] } }],
+  "plugins": [{ "name": "git", "host": "fetch-git" }],
   "extract": [
     {
       "plugin": "git",

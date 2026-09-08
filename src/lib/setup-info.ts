@@ -32,7 +32,7 @@ export interface SetupStep {
 
 export interface SetupPlugin {
   name: string;
-  runtime: "wasm" | "process";
+  runtime: "wasm" | "process" | "host";
   phases: SetupPhase[];
   stepCount: number;
   projectIds: string[];
@@ -82,6 +82,7 @@ interface ManifestPlugin {
   name?: unknown;
   wasm?: unknown;
   process?: unknown;
+  host?: unknown;
 }
 
 interface ManifestStep {
@@ -345,7 +346,7 @@ function pluginFrom(
     // Settings prints this as a promise about filesystem, network and
     // environment access, so a `wasm` that is not a module - null, a bare
     // true, a half-written object - answers "process", which promises nothing.
-    runtime: typeof record(item.wasm)["url"] === "string" ? "wasm" : "process",
+    runtime: typeof record(item.wasm)["url"] === "string" ? "wasm" : typeof item.host === "string" ? "host" : "process",
     phases: PHASES.filter((phase) => own.some((step) => step.phase === phase)),
     stepCount: own.length,
     projectIds: [

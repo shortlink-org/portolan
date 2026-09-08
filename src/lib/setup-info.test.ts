@@ -16,6 +16,7 @@ describe("publicSetupFrom", () => {
         },
         { name: "docs", wasm: { url: "https://example.com/docs.wasm" } },
         { name: "unused", process: { command: "unused" } },
+        { name: "vendor", host: "fetch-git" },
       ],
       extract: [
         {
@@ -54,6 +55,13 @@ describe("publicSetupFrom", () => {
       {
         name: "unused",
         runtime: "process",
+        phases: [],
+        stepCount: 0,
+        projectIds: [],
+      },
+      {
+        name: "vendor",
+        runtime: "host",
         phases: [],
         stepCount: 0,
         projectIds: [],

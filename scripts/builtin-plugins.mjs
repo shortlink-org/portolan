@@ -48,6 +48,10 @@ export function builtinPlugin(name) {
     return { ...declared, builtin: true, wasm: { ...declared.wasm, url } };
   }
 
+  // A plugin the host runs in its own process (portolan.0008): one that
+  // needs a socket or a git binary, which the host holds and no module gets.
+  if (declared.host) return { ...declared, builtin: true };
+
   return {
     name,
     builtin: true,

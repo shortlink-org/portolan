@@ -58,6 +58,11 @@ export async function runPlugin(plugin, request, requestedLimits = {}, access = 
     throw new Error(`plugin ${plugin.name}: request exceeds ${limits.requestBytes} bytes`);
   }
 
+  if (plugin.host) {
+    const { response, warnings } = await runHost(plugin, request);
+    return { ...validateResponse(plugin.name, response), warnings };
+  }
+
   const result = plugin.wasm
     ? await runWasm(plugin, payload, limits, access)
     : await runProcess(plugin, payload, limits);
@@ -73,6 +78,31 @@ export async function runPlugin(plugin, request, requestedLimits = {}, access = 
   }
 
   return { ...validateResponse(plugin.name, response), warnings: warningsIn(result.stderr) };
+}
+
+// ---------------------------------------------------------------------------
+// host
+//
+// A plugin that needs what only the host has - a socket, a git binary - and
+// so runs inside it (portolan.0008). It speaks the same protocol as any other:
+// a request in, named files out, warnings beside them; the host writes and
+// validates exactly as it would for a module. Only the modules shipped here
+// can be named, so a manifest cannot point the host at arbitrary code.
+// ---------------------------------------------------------------------------
+
+const HOST_PLUGINS = new Set(["fetch-git"]);
+
+async function runHost(plugin, request) {
+  const name = String(plugin.host);
+  if (!HOST_PLUGINS.has(name)) throw new Error(`plugin ${plugin.name}: the host has no plugin named ${JSON.stringify(name)}`);
+  const module = await import(`./host-plugins/${name}.mjs`);
+  if (request?.kind === "describe") return { response: { files: [], describe: module.describe() }, warnings: [] };
+  const { files, warnings = [] } = await module.run(request);
+  // Said the way a module says it on stderr, and kept the way warningsIn
+  // keeps it, so the build report reads the same whoever ran the step.
+  const lines = warnings.map((warning) => `${warning.ref ? `${warning.ref}: ` : ""}${warning.message}`);
+  for (const line of lines) process.stderr.write(`warning: ${line}\n`);
+  return { response: { files }, warnings: lines };
 }
 
 /**

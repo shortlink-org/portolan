@@ -270,10 +270,7 @@
     },
     {
       "name": "git",
-      "process": {
-        "command": "go",
-        "args": ["run", "./plugins/fetch-git"]
-      }
+      "host": "fetch-git"
     },
     {
       "name": "proto",

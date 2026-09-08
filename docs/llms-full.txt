@@ -1,12 +1,12 @@
 *llms-full.txt: every page of Portolan, one after another. A page begins with a comment naming its file, and the links inside it are relative to that file's directory.*
 
-*Generated from the portolan catalog · commit `4 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 <!-- README.md -->
 
 # Portolan
 
-*Generated from the portolan catalog · commit `4 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 
 ## Contexts
@@ -32,12 +32,13 @@
 | [portolan.0005](adr/portolan.0005.md) | CSS moves what appears; Motion moves what leaves or changes place | accepted | 2026-09-06 |
 | [portolan.0006](adr/portolan.0006.md) | An extractor runs as wasm over a preopened workspace | accepted | 2026-09-08 |
 | [portolan.0007](adr/portolan.0007.md) | The host reads history for a plugin that asks | accepted | 2026-09-08 |
+| [portolan.0008](adr/portolan.0008.md) | A plugin that needs a socket runs inside the host | accepted | 2026-09-08 |
 
 <!-- portolan/README.md -->
 
 # Portolan
 
-*Generated from the portolan catalog · commit `4 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Id:** `portolan`
 - **Kind:** system
@@ -67,12 +68,13 @@ The tool that reads an architecture catalog from the code and specifications tha
 | [portolan.0005](../adr/portolan.0005.md) | CSS moves what appears; Motion moves what leaves or changes place | accepted | 2026-09-06 |
 | [portolan.0006](../adr/portolan.0006.md) | An extractor runs as wasm over a preopened workspace | accepted | 2026-09-08 |
 | [portolan.0007](../adr/portolan.0007.md) | The host reads history for a plugin that asks | accepted | 2026-09-08 |
+| [portolan.0008](../adr/portolan.0008.md) | A plugin that needs a socket runs inside the host | accepted | 2026-09-08 |
 
 <!-- portolan/glossary.md -->
 
 # Glossary — Portolan
 
-*Generated from the portolan catalog · commit `4 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Context:** [Portolan](README.md)
 - **Terms:** 44
@@ -131,7 +133,7 @@ One meaning per word inside this context, as the glossary beside the code states
 
 # Host
 
-*Generated from the portolan catalog · commit `4 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Id:** `portolan.host`
 - **Group:** [Portolan](../README.md)
@@ -218,7 +220,7 @@ one estate and validates the union. Nothing here draws anything.
 
 # Plugins
 
-*Generated from the portolan catalog · commit `4 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Id:** `portolan.plugins`
 - **Group:** [Portolan](../README.md)
@@ -259,6 +261,13 @@ written and `gen` checks before it runs anything. `additionalProperties: false`
 is what makes that worth having: `encoding/json` drops a field it does not
 recognise, so before this a misspelled option was no option at all and nothing
 said so.
+
+A descriptor may also carry `needs`: what the host must put in the request
+beyond the tree, because a sandboxed module cannot reach it. The one need so
+far is `history` (portolan.0007) - when each file under the root was first
+committed and last changed, read by the host from one `git log` and handed
+over as `input.history`, keyed by the path the plugin would open. `extract-adr`
+asks for it; a plugin that does not ask is handed nothing.
 
 A generator **names** files; it never writes them. `scripts/gen.mjs` writes what
 comes back, refuses a name that points outside the output directory, and deletes
@@ -1051,14 +1060,21 @@ the host passes as `argv[0]`. WASI preopens read-write, so an extractor is
 trusted not to write the tree it reads, the same trust a process plugin has
 today; a `sha256` pins that trust to a build.
 
-`process` is the escape hatch for a plugin that needs a toolchain or a socket:
-the Rust, Java, Python and TypeScript extractors run in their own runtimes,
-`fetch-git` clones, `fetch-bsr` talks to a registry. It gets
-the same protocol and none of the sandbox, which is the trade being made and
-the reason it is not the default. It declares `command` and an `args` array;
-the host never feeds a command string through a shell. A built-in Go plugin
-that still runs as a process is the same code reached as
+`process` is the escape hatch for a plugin that needs a toolchain: the Rust,
+Java, Python and TypeScript extractors run in their own runtimes, and
+`fetch-bsr` still talks to its registry from Go. It gets the same protocol
+and none of the sandbox, which is the trade being made and the reason it is
+not the default. It declares `command` and an `args` array; the host never
+feeds a command string through a shell. A built-in Go plugin that still runs
+as a process is the same code reached as
 `go run ./plugins/cmd/portolan-go <name>`.
+
+`host` is for Portolan's own code that needs what only the host has - a git
+binary, a socket - and so runs inside the host process (portolan.0008):
+`{ "name": "git", "host": "fetch-git" }`. The name is resolved against the
+modules shipped in `scripts/host-plugins/` and nothing else, so a manifest
+cannot point the host at arbitrary code; the contract is the same as any
+plugin's, files named and never written.
 
 A plugin fetched over `https://` must declare its `sha256`; the host verifies it
 and caches by digest. A `file://` plugin may declare one, but a checksum
@@ -1080,10 +1096,15 @@ paths inside the copy are the repository's own, which is the point: the
 extract step that follows points its `in` at the vendored service and reads
 it exactly as it would read that service's checkout.
 
+It runs inside the host (`scripts/host-plugins/fetch-git.mjs`,
+portolan.0008) rather than as a module, because it needs a git binary and a
+socket, and a manifest names it with `host` rather than `wasm` or `process`.
+The contract is the same: it names files, the host writes them.
+
 ```json
 {
   "sources": ["data/*.json", "vendor/repos/*/*/git.repo.json"],
-  "plugins": [{ "name": "git", "process": { "command": "go", "args": ["run", "./plugins/fetch-git"] } }],
+  "plugins": [{ "name": "git", "host": "fetch-git" }],
   "extract": [
     {
       "plugin": "git",
@@ -1405,7 +1426,7 @@ plainly.
 
 # Site
 
-*Generated from the portolan catalog · commit `4 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Id:** `portolan.site`
 - **Group:** [Portolan](../README.md)
@@ -1455,7 +1476,7 @@ Static end to end; there is no backend and no runtime query.
 
 # Flows
 
-*Generated from the portolan catalog · commit `4 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 | Flow | Owner | Summary |
 | --- | --- | --- |
@@ -1465,7 +1486,7 @@ Static end to end; there is no backend and no runtime query.
 
 # npm run gen
 
-*Generated from the portolan catalog · commit `4 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Id:** `flow.gen`
 - **Owner:** [portolan](../portolan/README.md)
@@ -1564,7 +1585,7 @@ sequenceDiagram
 
 # Decision records
 
-*Generated from the portolan catalog · commit `4 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 | ADR | Title | Status | Date | Scope |
 | --- | --- | --- | --- | --- |
@@ -1575,12 +1596,13 @@ sequenceDiagram
 | [portolan.0005](portolan.0005.md) | CSS moves what appears; Motion moves what leaves or changes place | accepted | 2026-09-06 | [portolan](../portolan/README.md) |
 | [portolan.0006](portolan.0006.md) | An extractor runs as wasm over a preopened workspace | accepted | 2026-09-08 | [portolan](../portolan/README.md) |
 | [portolan.0007](portolan.0007.md) | The host reads history for a plugin that asks | accepted | 2026-09-08 | [portolan](../portolan/README.md) |
+| [portolan.0008](portolan.0008.md) | A plugin that needs a socket runs inside the host | accepted | 2026-09-08 | [portolan](../portolan/README.md) |
 
 <!-- adr/portolan.0001.md -->
 
 # portolan.0001 — A plugin names files and never writes them
 
-*Generated from the portolan catalog · commit `4 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-02
@@ -1654,7 +1676,7 @@ shape rather than a restriction worked around.
 
 # portolan.0002 — The host stamps a fragment from its input's last commit
 
-*Generated from the portolan catalog · commit `4 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-02
@@ -1724,7 +1746,7 @@ a build that must reproduce.
 
 # portolan.0003 — The Go catalog is a mirror held by a round-trip test
 
-*Generated from the portolan catalog · commit `4 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-02
@@ -1794,7 +1816,7 @@ is not.
 
 # portolan.0004 — `contexts` and `services` stay the wire format
 
-*Generated from the portolan catalog · commit `4 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-06
@@ -1864,7 +1886,7 @@ glossary: `GLOSSARY.md` names all four and says which is the term.
 
 # portolan.0005 — CSS moves what appears; Motion moves what leaves or changes place
 
-*Generated from the portolan catalog · commit `4 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-06
@@ -1954,7 +1976,7 @@ library by one careless import.
 
 # portolan.0006 — An extractor runs as wasm over a preopened workspace
 
-*Generated from the portolan catalog · commit `4 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-08
@@ -2041,12 +2063,13 @@ because it keeps the failure where new users meet it first.
 
 # portolan.0007 — The host reads history for a plugin that asks
 
-*Generated from the portolan catalog · commit `4 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-08
 - **Scope:** [portolan](../portolan/README.md)
 - **Source:** [`adr/0007-the-host-reads-history-for-a-plugin-that-asks.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0007-the-host-reads-history-for-a-plugin-that-asks.md)
+- **Committed:** Victor Login, 2026-09-08 (`c2a4c6b`)
 
 ### Context and Problem Statement
 
@@ -2105,8 +2128,12 @@ process was the state this record replaces.
 #### Consequences
 
 - Good: `adr` is in `plugins/portolan-go.wasm` with the rest; no built-in
-  extractor, verifier or generator runs as a process. The fragments did not
-  change.
+  extractor, verifier or generator runs as a process.
+- Good, and a change: `git log --follow` also follows copies, and had dated
+  three records in `data/adr` by the generated page under `docs/` they were
+  ninety percent similar to. The host follows renames only, so a record is
+  dated by the commit that added it, which is what "created" was meant to
+  say. Every other fragment is byte-identical.
 - Good: history is read once per checkout per run, and only when a step's
   plugin asks. A plugin that wants nothing beyond the tree is unaffected.
 - Bad: a plugin's file names must match the host's: the path as the plugin
@@ -2118,3 +2145,85 @@ process was the state this record replaces.
 - Neutral: `fetch-git` and `fetch-bsr` are still processes. They need a
   socket, which no need in a request supplies, and the Go sources ship for
   them until they move into the host.
+
+<!-- adr/portolan.0008.md -->
+
+# portolan.0008 — A plugin that needs a socket runs inside the host
+
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-09-08
+- **Scope:** [portolan](../portolan/README.md)
+- **Source:** [`adr/0008-a-plugin-that-needs-a-socket-runs-inside-the-host.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0008-a-plugin-that-needs-a-socket-runs-inside-the-host.md)
+
+### Context and Problem Statement
+
+After portolan.0006 and portolan.0007 every built-in extractor, verifier and
+generator runs as one wasm module. What remained as `go run` were the
+fetchers: `fetch-git`, which clones another repository at a commit, and
+`fetch-bsr`, which talks to a schema registry. Neither reads the tree; both
+need what no sandboxed module has, a socket and, for git, a binary. For
+those two the package still shipped its Go sources, `go.mod` and the
+expectation of a Go toolchain on any machine whose manifest vendors a
+service.
+
+A need in the request (portolan.0007) does not fit: history is a value the
+host can compute before the step, a fetch is an interaction the step
+drives.
+
+### Decision Drivers
+
+- A manifest that vendors from another repository must not require Go.
+- The protocol of portolan.0001 stays: files are named, the host writes
+  them, `--check` compares, the sweep removes what is no longer named.
+- Locks, pins, offline replay and the four fetch rules must not change;
+  the committed copies must stay byte-identical.
+- A manifest must not be able to point the host at arbitrary code.
+
+### Considered Options
+
+1. **The fetchers become the host's own code**, declared with `host` and
+   run in the host process through the same `runPlugin` path.
+2. **A `needs: ["network"]` request** answered by the host - a second
+   protocol message per request the module wants to make.
+3. **Prebuilt native binaries** of the Go fetchers per platform.
+4. **A separate npm package** holding the Go fetchers.
+
+### Decision Outcome
+
+Chosen option: **the fetchers become the host's own code**.
+
+A built-in may now be declared as `{ "name": "git", "host": "fetch-git" }`.
+The host resolves the name against the modules it ships under
+`scripts/host-plugins/` and nothing else, imports the module, and calls it
+with the same request any plugin gets; the module answers with named files
+and warnings, and the host validates, writes and reports them exactly as it
+does for a wasm module. A describe request is answered by the module's own
+descriptor, so the manifest schema is composed as before.
+
+`fetch-git` is the first: the same options, the same `git.lock.json` and
+`git.repo.json`, the same offline and CI replay, the same fallback to the
+committed copy when the forge is gone. It reads the tree of the fetched
+commit with `git ls-tree` and `git cat-file --batch` rather than an
+archive, which changes nothing anyone can see.
+
+A network need in the request was rejected because a fetch is a
+conversation, not a value: resolving a ref, then fetching a commit, then
+reading it, with the module deciding each from the last. Native binaries
+are the platform matrix portolan.0006 removed. A second package would keep
+Go for exactly the users this is for.
+
+#### Consequences
+
+- Good: no `go run` in the package for git; the Go sources ship only for
+  `fetch-bsr` until it follows.
+- Good: a host plugin is ordinary code in the host's own language, tested
+  with the host's tests, with no protocol boundary to cross for what is
+  the host's business anyway.
+- Bad: a host plugin has everything the host has. It is Portolan's own
+  code and is named from a closed list, which is the whole of the
+  protection; it is not a place for a plugin from somebody else's
+  repository.
+- Neutral: `host` is a third way to declare a plugin beside `wasm` and
+  `process`, and the Settings page says so.
