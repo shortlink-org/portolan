@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.7
+# syntax=docker/dockerfile:1.27
 
 # Node supplies the CLI/runtime; the Go base supplies the most common source
 # extractor. Trixie provides Java 21, Python 3 and Cargo for the remaining
