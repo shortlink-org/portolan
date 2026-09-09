@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { catalog, index } from "../testing/estate";
-import { backlinkCount, backlinksFor, stepsInto } from "./backlinks";
+import {
+  backlinkCount,
+  backlinksFor,
+  distinctBacklinks,
+  stepsInto,
+} from "./backlinks";
 import type { BacklinkGroup, BacklinkTarget } from "./backlinks";
 import type { Kind } from "./kinds";
 
@@ -289,6 +294,16 @@ describe("grouping", () => {
   it("counts every link across every group", () => {
     const g = groups({ kind: "service", id: "shop.oms" });
     expect(backlinkCount(g)).toBe(g.reduce((n, x) => n + x.links.length, 0));
+  });
+
+  it("collapses repeated entities for compact backlink lines", () => {
+    const links = distinctBacklinks(
+      groups({ kind: "store", id: "shop.oms.pg" }),
+    );
+    const ids = links.map((link) => `${link.kind}:${link.id}`);
+
+    expect(ids).toEqual([...new Set(ids)]);
+    expect(ids).toContain("aggregate:shop.oms.order");
   });
 });
 

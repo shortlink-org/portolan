@@ -14,7 +14,11 @@ import { useMemo } from "react";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { catalog, index } from "../data";
-import { backlinkCount, backlinksFor } from "../lib/backlinks";
+import {
+  backlinkCount,
+  backlinksFor,
+  distinctBacklinks,
+} from "../lib/backlinks";
 import type { Backlink, BacklinkGroup, BacklinkTarget } from "../lib/backlinks";
 import { plural } from "../lib/format";
 import { KIND_LABEL, KIND_PLURAL } from "../lib/kinds";
@@ -163,9 +167,7 @@ export function WhatLinksHere({
         className={`mono flex flex-wrap items-center gap-1.5 text-muted ${className || "mt-2"}`}
       >
         linked from
-        {groups
-          .flatMap((g) => g.links)
-          .map((link) => {
+        {distinctBacklinks(groups).map((link) => {
             const to = backlinkPath(link);
             const body = (
               <>

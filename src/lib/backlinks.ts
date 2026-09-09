@@ -100,6 +100,26 @@ export function backlinkCount(groups: readonly BacklinkGroup[]): number {
   return groups.reduce((n, g) => n + g.links.length, 0);
 }
 
+/**
+ * One link per entity for compact surfaces that cannot show each link's
+ * reason. The full section deliberately keeps separate edges (for example an
+ * aggregate persisted by two tables), but two identical chips would only look
+ * like an accidental duplicate when `via` is not visible.
+ */
+export function distinctBacklinks(
+  groups: readonly BacklinkGroup[],
+): Backlink[] {
+  const seen = new Set<string>();
+  return groups.flatMap((group) =>
+    group.links.filter((link) => {
+      const key = `${link.kind}:${link.id}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }),
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Row builders. One per kind of thing that can do the pointing.
 // ---------------------------------------------------------------------------
