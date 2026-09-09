@@ -3,6 +3,7 @@ import {
   buildHref,
   buildLabel,
   buildTitle,
+  repositoryCommitHref,
   type BuildInfo,
 } from "./build-info";
 
@@ -42,6 +43,34 @@ describe("buildHref", () => {
 
   it("is null when there is nowhere to go", () => {
     expect(buildHref(UNKNOWN)).toBeNull();
+  });
+});
+
+describe("repositoryCommitHref", () => {
+  it("links a GitLab commit through the repository page", () => {
+    expect(repositoryCommitHref("abc123", CI)).toBe(
+      "https://gitlab.com/acme/portolan/-/commit/abc123",
+    );
+  });
+
+  it("links a GitHub commit through the repository page", () => {
+    expect(
+      repositoryCommitHref("abc123", {
+        ...CI,
+        repoUrl: "https://github.com/acme/portolan/",
+        forge: "github",
+      }),
+    ).toBe("https://github.com/acme/portolan/commit/abc123");
+  });
+
+  it("does not guess a route for an unknown forge", () => {
+    expect(
+      repositoryCommitHref("abc123", {
+        ...CI,
+        repoUrl: "https://code.example.com/acme/portolan",
+        forge: undefined,
+      }),
+    ).toBeNull();
   });
 });
 

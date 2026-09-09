@@ -6,6 +6,7 @@ import {
   listForgeBranches,
   listForgeRefs,
   listGitHubBranches,
+  loadForgeCommit,
   loadForgeCatalog,
   loadGitHubCatalog,
 } from "./github-catalog";
@@ -137,6 +138,56 @@ describe("listGitHubBranches", () => {
     expect(new Headers(fetch.mock.calls[0]?.[1]?.headers).get("authorization")).toBe("Bearer github-secret");
     expect(fetch.mock.calls[1]?.[0]).toContain("/api/v4/projects/acme%2Fplatform%2Fportolan/repository/branches");
     expect(new Headers(fetch.mock.calls[1]?.[1]?.headers).get("private-token")).toBe("gitlab-secret");
+  });
+});
+
+describe("loadForgeCommit", () => {
+  it("normalizes GitHub commit metadata for the hover card", async () => {
+    const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      sha: SHA,
+      html_url: `${REPO.webUrl}/commit/${SHA}`,
+      commit: {
+        message: "Explain the decision\n\nKeep the useful detail.",
+        author: { name: "Ada", date: "2026-09-08T10:00:00Z" },
+      },
+      author: { login: "ada", avatar_url: "https://avatars.example/ada" },
+      stats: { additions: 12, deletions: 3 },
+    }), { status: 200 }));
+    vi.stubGlobal("fetch", fetch);
+
+    await expect(loadForgeCommit(REPO, SHA, { token: "secret" })).resolves.toEqual({
+      sha: SHA,
+      title: "Explain the decision",
+      body: "Keep the useful detail.",
+      author: "ada",
+      authoredAt: "2026-09-08T10:00:00Z",
+      avatarUrl: "https://avatars.example/ada",
+      additions: 12,
+      deletions: 3,
+      webUrl: `${REPO.webUrl}/commit/${SHA}`,
+    });
+    expect(new Headers(fetch.mock.calls[0]?.[1]?.headers).get("authorization")).toBe("Bearer secret");
+  });
+
+  it("normalizes GitLab commit metadata for the same card", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      id: SHA,
+      title: "Explain the decision",
+      message: "Explain the decision\n\nKeep the useful detail.",
+      author_name: "Ada",
+      authored_date: "2026-09-08T10:00:00Z",
+      web_url: `${GITLAB_REPO.webUrl}/-/commit/${SHA}`,
+      stats: { additions: 12, deletions: 3 },
+    }), { status: 200 })));
+
+    await expect(loadForgeCommit(GITLAB_REPO, SHA)).resolves.toMatchObject({
+      sha: SHA,
+      title: "Explain the decision",
+      body: "Keep the useful detail.",
+      author: "Ada",
+      additions: 12,
+      deletions: 3,
+    });
   });
 });
 

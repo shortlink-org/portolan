@@ -50,6 +50,27 @@ export function buildHref(info: BuildInfo = buildInfo): string | null {
   return info.commitUrl || info.buildUrl || null;
 }
 
+/** An immutable commit in the repository this bundle was built from. */
+export function repositoryCommitHref(
+  commit: string,
+  info: BuildInfo = buildInfo,
+): string | null {
+  if (!commit || !info.repoUrl) return null;
+
+  const repo = info.repoUrl.replace(/\/$/, "");
+  const forge =
+    info.forge ??
+    (/gitlab/i.test(repo)
+      ? "gitlab"
+      : /github/i.test(repo)
+        ? "github"
+        : null);
+  if (!forge) return null;
+
+  const route = forge === "gitlab" ? "/-/commit/" : "/commit/";
+  return `${repo}${route}${encodeURIComponent(commit)}`;
+}
+
 /**
  * What the stamp reads: the commit, because that is the thing you can look up
  * in the repo. The build number is CI bookkeeping and lives in the tooltip.

@@ -33,6 +33,18 @@ export type ForgeRepo = GitHubRepo | GitLabRepo;
 
 export type ForgeAccess = { token?: string };
 
+export type ForgeCommit = {
+  sha: string;
+  title: string;
+  body: string;
+  author: string;
+  authoredAt: string;
+  avatarUrl: string;
+  additions: number | null;
+  deletions: number | null;
+  webUrl: string;
+};
+
 /**
  * A name the forge resolves to a commit: a branch head as it is now, or a
  * tag. Both are what a reader compares against; the kind is kept because a
@@ -261,6 +273,63 @@ function gitlabError(response: Response): Error {
     return new Error(`GitLab API rate limit reached${when}.`);
   }
   return new Error(`GitLab API request failed (${response.status}).`);
+}
+
+/** Commit metadata for a hover card, normalized across GitHub and GitLab. */
+export async function loadForgeCommit(
+  repo: ForgeRepo,
+  sha: string,
+  access: ForgeAccess = {},
+): Promise<ForgeCommit> {
+  if (repo.provider === "github") {
+    const found = await githubJson<{
+      sha: string;
+      html_url: string;
+      commit: {
+        message: string;
+        author: { name: string; date: string } | null;
+      };
+      author: { login: string; avatar_url: string } | null;
+      stats?: { additions: number; deletions: number };
+    }>(apiUrl(repo, `/commits/${encodeURIComponent(sha)}`), access.token);
+    const [title = found.sha.slice(0, 7), ...body] = found.commit.message.split("\n");
+    return {
+      sha: found.sha,
+      title,
+      body: body.join("\n").trim(),
+      author: found.author?.login || found.commit.author?.name || "unknown",
+      authoredAt: found.commit.author?.date || "",
+      avatarUrl: found.author?.avatar_url || "",
+      additions: found.stats?.additions ?? null,
+      deletions: found.stats?.deletions ?? null,
+      webUrl: found.html_url,
+    };
+  }
+
+  const found = await gitlabJson<{
+    id: string;
+    title: string;
+    message: string;
+    author_name: string;
+    authored_date: string;
+    web_url: string;
+    stats?: { additions: number; deletions: number };
+  }>(
+    gitlabApiUrl(repo, `/repository/commits/${encodeURIComponent(sha)}`),
+    access.token,
+  );
+  const body = found.message.slice(found.title.length).trim();
+  return {
+    sha: found.id,
+    title: found.title,
+    body,
+    author: found.author_name || "unknown",
+    authoredAt: found.authored_date || "",
+    avatarUrl: "",
+    additions: found.stats?.additions ?? null,
+    deletions: found.stats?.deletions ?? null,
+    webUrl: found.web_url,
+  };
 }
 
 async function fetchText(

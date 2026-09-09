@@ -16,7 +16,7 @@ import type { Catalog } from "../catalog";
 import { diffCatalogs } from "./catalog-diff";
 import type { Change } from "./catalog-diff";
 import { findRef } from "./forge-refs";
-import { listForgeRefs, loadForgeCatalog } from "./github-catalog";
+import { listForgeRefs, loadForgeCatalog, loadForgeCommit } from "./github-catalog";
 import type { ForgeRef, ForgeRepo } from "./github-catalog";
 import { localStatus } from "./local-api";
 import { loadSourceCode } from "./source-code";
@@ -30,6 +30,8 @@ export const forgeKeys = {
     ["forge", "refs", repo?.provider ?? "", repo?.webUrl ?? "", token] as const,
   comparison: (repo: ForgeRepo | null, token: string, baseSha: string, headSha: string) =>
     ["forge", "comparison", repo?.provider ?? "", repo?.webUrl ?? "", baseSha, headSha, token] as const,
+  commit: (repo: ForgeRepo | null, token: string, sha: string) =>
+    ["forge", "commit", repo?.provider ?? "", repo?.webUrl ?? "", sha, token] as const,
 };
 
 export const sourceKeys = {
@@ -53,6 +55,19 @@ export function forgeRefsQuery(repo: ForgeRepo | null, token: string) {
       return listForgeRefs(repo, { token });
     },
     enabled: repo !== null,
+  });
+}
+
+/** One immutable commit, fetched only when its hover card is open. */
+export function forgeCommitQuery(repo: ForgeRepo | null, token: string, sha: string) {
+  return queryOptions({
+    queryKey: forgeKeys.commit(repo, token, sha),
+    queryFn: () => {
+      if (!repo) throw new Error("No forge repository is configured.");
+      return loadForgeCommit(repo, sha, { token });
+    },
+    enabled: repo !== null && Boolean(sha),
+    staleTime: Infinity,
   });
 }
 
