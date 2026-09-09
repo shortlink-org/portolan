@@ -25,7 +25,19 @@ const schemaFile = () => process.env.PORTOLAN_SCHEMA || "schema/portolan.schema.
  *   that has not run `npm run schema` yet should still be able to generate.
  */
 export function loadManifest(path = "portolan.json") {
-  const manifest = JSON.parse(readFileSync(path, "utf8"));
+  return parseManifest(readFileSync(path, "utf8"), path);
+}
+
+/**
+ * Parses and validates manifest text. This is for manifests that do not live
+ * in the working tree, such as the copy read from another git revision.
+ *
+ * @param {string} text
+ * @param {string} path
+ * @returns {{manifest: object, problems: string[]}}
+ */
+export function parseManifest(text, path = "portolan.json") {
+  const manifest = JSON.parse(text);
 
   let schema;
   try {
@@ -40,6 +52,35 @@ export function loadManifest(path = "portolan.json") {
   if (validate(manifest)) return { manifest, problems: [] };
 
   return { manifest, problems: explain(validate.errors ?? [], manifest, schema, path) };
+}
+
+/**
+ * The runtime entry point: a caller either gets a schema-valid manifest or a
+ * single actionable error. Code that wants to present every problem itself
+ * can keep using loadManifest/parseManifest.
+ *
+ * @param {string} path
+ * @returns {object}
+ */
+export function readManifest(path = "portolan.json") {
+  return requireValidManifest(loadManifest(path));
+}
+
+/** @param {string} text @param {string} [path] */
+export function readManifestText(text, path = "portolan.json") {
+  return requireValidManifest(parseManifest(text, path));
+}
+
+/** @param {{manifest: object, problems: string[]}} loaded */
+export function requireValidManifest(loaded) {
+  if (loaded.problems.length > 0) {
+    throw new Error(
+      `portolan.json does not match schema/portolan.schema.json:\n${loaded.problems
+        .map((problem) => `  - ${problem}`)
+        .join("\n")}`,
+    );
+  }
+  return loaded.manifest;
 }
 
 /**

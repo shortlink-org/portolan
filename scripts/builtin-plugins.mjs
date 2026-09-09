@@ -4,9 +4,10 @@
 // package happens to run them. Custom plugins may still be declared in the
 // manifest with `process` or `wasm`; those declarations always win.
 
-import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { readManifest } from "./manifest.mjs";
 
 export const INSTALL_ROOT = process.env.PORTOLAN_INSTALL_ROOT
   ? resolve(process.env.PORTOLAN_INSTALL_ROOT)
@@ -16,7 +17,7 @@ let definitions;
 
 function shippedDefinitions() {
   if (definitions) return definitions;
-  const manifest = JSON.parse(readFileSync(resolve(INSTALL_ROOT, "portolan.json"), "utf8"));
+  const manifest = readManifest(resolve(INSTALL_ROOT, "portolan.json"));
   definitions = new Map((manifest.plugins ?? []).map((plugin) => [plugin.name, plugin]));
   return definitions;
 }

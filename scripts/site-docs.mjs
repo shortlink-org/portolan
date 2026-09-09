@@ -26,7 +26,7 @@ import { cpSync, existsSync, readFileSync, statSync, writeFileSync } from "node:
 import { extname, isAbsolute, join, normalize, posix, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { loadManifest } from "./manifest.mjs";
+import { loadManifest, readManifest } from "./manifest.mjs";
 
 const LLMS = "llms.txt";
 const LLMS_FULL = "llms-full.txt";
@@ -261,7 +261,7 @@ export function siteDocsPlugin(workspace = process.cwd()) {
         const url = new URL(req.url ?? "/", "http://localhost");
         let manifest;
         try {
-          manifest = JSON.parse(readFileSync(join(workspace, "portolan.json"), "utf8"));
+          manifest = readManifest(join(workspace, "portolan.json"));
         } catch {
           return next();
         }

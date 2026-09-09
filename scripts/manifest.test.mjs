@@ -8,7 +8,14 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { loadManifest, stepKeys } from "./manifest.mjs";
+import {
+  loadManifest,
+  parseManifest,
+  readManifest,
+  readManifestText,
+  requireValidManifest,
+  stepKeys,
+} from "./manifest.mjs";
 
 const dir = mkdtempSync(join(tmpdir(), "portolan-manifest-"));
 
@@ -107,6 +114,22 @@ describe("the manifest schema", () => {
 
     expect(problems).toHaveLength(1);
     expect(problems[0]).toContain('extract/0: "out" is missing');
+  });
+
+  it("parses manifest text through the same validator", () => {
+    expect(parseManifest(JSON.stringify(good), "from-git:portolan.json").problems).toEqual([]);
+  });
+
+  it("gives runtime callers only a valid manifest", () => {
+    const path = join(dir, "good.json");
+    writeFileSync(path, JSON.stringify(good));
+    expect(readManifest(path)).toEqual(good);
+    expect(readManifestText(JSON.stringify(good), "memory:portolan.json")).toEqual(good);
+
+    expect(() => requireValidManifest({
+      manifest: {},
+      problems: ['portolan.json: "sources" is missing'],
+    })).toThrow('portolan.json: "sources" is missing');
   });
 });
 

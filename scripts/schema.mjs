@@ -23,6 +23,10 @@ import { describePlugin } from "./plugin-host.mjs";
 const OUT = "schema/portolan.schema.json";
 
 const check = process.argv.includes("--check");
+// Bootstrap exception: this command produces the schema that loadManifest
+// validates against, so requiring the previous schema here would make a new
+// manifest field impossible to introduce. Every consumer of the composed
+// schema goes through scripts/manifest.mjs.
 const manifest = JSON.parse(readFileSync("portolan.json", "utf8"));
 
 const described = new Map();

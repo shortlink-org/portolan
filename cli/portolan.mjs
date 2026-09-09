@@ -19,6 +19,7 @@ import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "nod
 import { fileURLToPath } from "node:url";
 
 import { InitError, commandWorks, init as runInit, isInteractive, promptAnswers, toolchainFor } from "./init.mjs";
+import { loadManifest, readManifest } from "../scripts/manifest.mjs";
 
 const installRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const packageJson = JSON.parse(readFileSync(resolve(installRoot, "package.json"), "utf8"));
@@ -133,10 +134,24 @@ async function init(workspace, options) {
 
 function doctor(workspace) {
   const manifestPath = resolve(workspace, "portolan.json");
-  const manifest = existsSync(manifestPath) ? JSON.parse(readFileSync(manifestPath, "utf8")) : null;
+  let manifest = null;
+  let manifestProblems = [];
+  if (existsSync(manifestPath)) {
+    try {
+      const loaded = loadManifest(manifestPath);
+      manifest = loaded.manifest;
+      manifestProblems = loaded.problems;
+    } catch (cause) {
+      manifestProblems = [cause instanceof Error ? cause.message : String(cause)];
+    }
+  }
   const checks = [
     ["Node.js >= 24", Number(process.versions.node.split(".")[0]) >= 24, process.version],
-    ["portolan.json", Boolean(manifest), "required"],
+    [
+      "portolan.json",
+      Boolean(manifest) && manifestProblems.length === 0,
+      manifestProblems.length > 0 ? manifestProblems.join("; ") : "required",
+    ],
     ["Git", commandWorks("git", ["--version"]), "used for deterministic source stamps"],
   ];
 
@@ -172,7 +187,7 @@ async function build(workspace, options) {
   runNode(packageBin("vite", "bin/vite.js"), ["build", stage, "--config", resolve(stage, "vite.config.ts"), "--outDir", output, "--emptyOutDir"], workspace, env);
 
   const { siteDocs } = await import(resolve(installRoot, "scripts/site-docs.mjs"));
-  const manifest = JSON.parse(readFileSync(resolve(workspace, "portolan.json"), "utf8"));
+  const manifest = readManifest(resolve(workspace, "portolan.json"));
   const written = siteDocs({ manifest, dist: output });
   copyFileSync(resolve(output, "index.html"), resolve(output, "404.html"));
   console.log(`site: ${relative(workspace, output) || "."}${written.length ? `; mounted ${written.join(", ")}` : ""}`);
@@ -193,7 +208,7 @@ async function dev(workspace, options) {
 export async function prepareSite(workspace) {
   const manifestPath = resolve(workspace, "portolan.json");
   if (!existsSync(manifestPath)) fail("portolan.json is missing; run portolan init first");
-  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+  const manifest = readManifest(manifestPath);
   const stage = resolve(workspace, ".portolan", "site");
   rmSync(stage, { recursive: true, force: true });
   mkdirSync(stage, { recursive: true });

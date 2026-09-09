@@ -29,7 +29,17 @@ describe("catalog sources", () => {
 
   it("still reports missing sources for a configured project", async () => {
     const { path, missing } = manifest({ sources: [], projects: [] });
-    writeFileSync(path, `${JSON.stringify({ sources: [missing], projects: [{ id: "billing" }], extract: [] }, null, 2)}\n`);
+    writeFileSync(path, `${JSON.stringify({
+      sources: [missing],
+      projects: [{
+        id: "billing",
+        name: "Billing",
+        root: "services/billing",
+        context: "shop",
+        service: "billing",
+      }],
+      extract: [],
+    }, null, 2)}\n`);
     await expect(loadCatalog(path)).rejects.toThrow(/no catalog matched/);
   });
 });

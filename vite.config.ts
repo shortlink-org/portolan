@@ -7,6 +7,8 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { nodePolyfills } from "vite-plugin-node-polyfills";
 import { publicSetupFrom } from "./src/lib/setup-info.ts";
+// @ts-expect-error plain JavaScript module intentionally has no browser types
+import { readManifest } from "./scripts/manifest.mjs";
 // The local control plane is a Node-only Vite plugin kept as plain ESM so its
 // pure discovery functions can also be tested directly.
 // @ts-expect-error plain JavaScript module intentionally has no browser types
@@ -121,7 +123,7 @@ try {
   // A clean checkout has no run to report yet. Settings says so explicitly.
 }
 const setupInfo = publicSetupFrom(
-  JSON.parse(manifestText) as unknown,
+  readManifest(resolve(workspace, "portolan.json")) as unknown,
   buildReport,
   createHash("sha256").update(manifestText).digest("hex"),
 );

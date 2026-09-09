@@ -29,6 +29,7 @@ import { enrichCatalog } from "../src/enrich.ts";
 import { mergeCatalogs } from "../src/merge.ts";
 import { diffCatalogs, SEVERITIES } from "../src/lib/catalog-diff.ts";
 import { loadCatalog } from "./catalog-sources.mjs";
+import { readManifestText } from "./manifest.mjs";
 
 const HEADINGS = {
   breaking: "Breaking",
@@ -142,7 +143,10 @@ function defaultBase() {
 
 /** The merged, enriched, validated catalog as it stood at `ref`. */
 function catalogAt(ref) {
-  const manifest = JSON.parse(git(["show", ref + ":portolan.json"]));
+  const manifest = readManifestText(
+    git(["show", ref + ":portolan.json"]),
+    `${ref}:portolan.json`,
+  );
   const patterns = (manifest.sources ?? []).map(globToRegExp);
 
   const paths = git(["ls-tree", "-r", "--name-only", ref])

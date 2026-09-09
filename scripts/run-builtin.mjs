@@ -7,14 +7,16 @@
 // host (portolan.0008).
 
 import { spawn } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { readManifest } from "./manifest.mjs";
 
 const installRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const workspace = process.cwd();
 const name = process.argv[2];
-const manifest = JSON.parse(readFileSync(resolve(installRoot, "portolan.json"), "utf8"));
+const manifest = readManifest(resolve(installRoot, "portolan.json"));
 const plugin = (manifest.plugins ?? []).find((candidate) => candidate.name === name);
 
 if (!plugin?.process) {

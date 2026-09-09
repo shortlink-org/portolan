@@ -14,6 +14,7 @@ import { validateCatalog } from "../src/catalog.ts";
 import { filterCatalogForProfile } from "../src/catalog-profile.ts";
 import { enrichCatalog } from "../src/enrich.ts";
 import { mergeCatalogs } from "../src/merge.ts";
+import { readManifest } from "./manifest.mjs";
 
 /**
  * `exclude` names source files to leave out, as the manifest would spell
@@ -22,7 +23,7 @@ import { mergeCatalogs } from "../src/merge.ts";
  * what it wrote last time would count as what it saw this time.
  */
 export async function loadCatalog(manifestPath = "portolan.json", { exclude = [], profile } = {}) {
-  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+  const manifest = readManifest(manifestPath);
   const excluded = new Set(exclude.map((path) => normalize(path)));
   const selected = profile
     ? (manifest.catalogs ?? []).find((candidate) => candidate.id === profile)
