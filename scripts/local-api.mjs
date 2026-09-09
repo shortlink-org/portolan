@@ -30,6 +30,7 @@ const MAX_FILES = 12_000;
 const MAX_COMPONENTS = 100;
 const MAX_SOURCE_BYTES = 1024 * 1024;
 const jobs = new Map();
+const removalUndos = new Map();
 const repositoryCredentials = new Map();
 const SNAPSHOT_SKIP = new Set([".git", ".portolan", "dist", "node_modules", "target"]);
 const PROJECT_PREVIEW_TTL_MS = 15 * 60 * 1000;
@@ -345,16 +346,26 @@ export function discoverProject(workspace, input) {
   const files = walk(absolute);
   const detections = detectionsFor(absolute, files);
   const components = componentCandidates(files);
-  const id = slug(basename(absolute)) || "service";
   return {
     root,
     filesScanned: files.size,
     truncated: files.size >= MAX_FILES,
     components,
     componentsTruncated: components.length >= MAX_COMPONENTS,
-    defaults: { id, name: id.split("-").map((part) => part[0]?.toUpperCase() + part.slice(1)).join(" "), group: id, component: id, context: id, service: id },
+    defaults: projectDefaults(basename(absolute)),
     detections,
   };
+}
+
+function projectDefaults(value) {
+  const id = slug(value) || "service";
+  return { id, name: id.split("-").map((part) => part[0]?.toUpperCase() + part.slice(1)).join(" "), group: id, component: id, context: id, service: id };
+}
+
+export function externalProjectDefaults(repository, sourcePath = "") {
+  const repo = repositoryParts(repository);
+  const clean = cleanSourcePath(sourcePath);
+  return projectDefaults(clean ? posix.basename(clean) : repo.name);
 }
 
 function repositoryParts(repository) {
@@ -585,7 +596,8 @@ export function prepareRepository(workspace, request) {
     }
   }
   if (sourcePath && !lstatExists(join(checkout, sourcePath))) throw new Error(`Repository path \"${sourcePath}\" does not exist at ${commit.slice(0, 7)}.`);
-  const discovery = discoverProject(workspace, root);
+  const discovered = discoverProject(workspace, root);
+  const discovery = { ...discovered, defaults: externalProjectDefaults(repo.value, sourcePath) };
   return { repository: repo.value, ref, commit, sourcePath, checkoutRoot: root, discovery };
 }
 
@@ -671,7 +683,20 @@ export function planProject(workspace, manifest, request) {
       plugin,
       project,
       plugin === "project"
-        ? { groupKind: hasDomainModel ? "bounded-context" : "system", ...(hasDomainModel ? { componentKind: "service" } : {}) }
+        ? {
+            groupKind: hasDomainModel ? "bounded-context" : "system",
+            ...(hasDomainModel ? { componentKind: "service" } : {}),
+            ...(String(request.contextName ?? "").trim() ? { groupName: String(request.contextName).trim() } : {}),
+            ...(String(request.contextSummary ?? "").trim() ? { groupSummary: String(request.contextSummary).trim() } : {}),
+            ...(String(request.classification ?? "").trim() ? { classification: String(request.classification).trim() } : {}),
+          }
+        : ["go-domain", "ts-domain", "rust-domain", "java-domain", "django-domain"].includes(plugin)
+          ? {
+              ...detectionByPlugin.get(plugin)?.options,
+              ...(String(request.contextName ?? "").trim() ? { contextName: String(request.contextName).trim() } : {}),
+              ...(String(request.contextSummary ?? "").trim() ? { contextSummary: String(request.contextSummary).trim() } : {}),
+              ...(String(request.classification ?? "").trim() ? { classification: String(request.classification).trim() } : {}),
+            }
         : detectionByPlugin.get(plugin)?.options,
     ),
   }));
@@ -698,6 +723,15 @@ export function manifestWithProject(manifest, plan, { isolated = false } = {}) {
     && (manifest.extract ?? []).length === 0
     && (manifest.sources ?? []).length === 1
     && manifest.sources[0] === "portolan/*.json";
+  const targetCatalog = manifest.defaultCatalog ?? manifest.catalogs?.[0]?.id;
+  const catalogs = !isolated && manifest.catalogs
+    ? manifest.catalogs.map((catalog) => catalog.id === targetCatalog ? {
+        ...catalog,
+        sources: [...new Set([...catalog.sources, plan.source])],
+        contexts: [...new Set([...catalog.contexts, plan.project.group ?? plan.project.context].filter(Boolean))],
+        projects: [...new Set([...catalog.projects, plan.project.id])],
+      } : catalog)
+    : manifest.catalogs;
   return {
     ...manifest,
     projects: isolated ? [plan.project] : [...(manifest.projects ?? []), plan.project],
@@ -705,6 +739,7 @@ export function manifestWithProject(manifest, plan, { isolated = false } = {}) {
       ? [...(plan.fetch ? ["vendor/repos/*/*/git.repo.json"] : []), plan.source]
       : [...new Set([...(emptyStarterSources ? [] : (manifest.sources ?? [])), ...(plan.fetch ? ["vendor/repos/*/*/git.repo.json"] : []), plan.source])],
     extract,
+    ...(catalogs ? { catalogs } : {}),
     ...(isolated ? { verify: [], generate: [] } : {}),
   };
 }
@@ -762,7 +797,23 @@ export function manifestWithoutProject(manifest, projectId) {
     if (catalogs[0]) next.defaultCatalog = catalogs[0].id;
     else delete next.defaultCatalog;
   }
-  return { manifest: next, project, removedOutputs };
+  return { manifest: next, project, projectOut, removedOutputs };
+}
+
+export function starterManifestProject(manifest) {
+  if ((manifest.projects ?? []).length !== 1) return null;
+  const project = manifest.projects[0];
+  if (project.root !== "." || project.groupKind || project.componentKind) return null;
+  const output = posix.join(project.root, "portolan");
+  const steps = (manifest.extract ?? []).filter((step) => step.out === output);
+  return steps.length === 1 && steps[0]?.plugin === "project" ? project : null;
+}
+
+function projectRequestPlan(workspace, manifest, request) {
+  const starter = request.replaceStarter ? starterManifestProject(manifest) : null;
+  const base = starter ? manifestWithoutProject(manifest, starter.id).manifest : manifest;
+  const plan = planProject(workspace, base, request);
+  return { base, plan, starter };
 }
 
 export function writeManifest(path, manifest) {
@@ -780,18 +831,77 @@ export function writeManifest(path, manifest) {
 
 export function writeProject(workspace, request) {
   const manifestPath = join(workspace, "portolan.json");
-  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-  const plan = planProject(workspace, manifest, request);
-  writeManifest(manifestPath, manifestWithProject(manifest, plan));
-  return plan;
+  const before = readFileSync(manifestPath, "utf8");
+  const manifest = JSON.parse(before);
+  const { base, plan, starter } = projectRequestPlan(workspace, manifest, request);
+  writeManifest(manifestPath, manifestWithProject(base, plan));
+  const undoToken = rememberManifestUndo(workspace, before, readFileSync(manifestPath, "utf8"));
+  return { ...plan, ...(starter ? { replacedProject: starter } : {}), undoToken };
+}
+
+function rememberManifestUndo(workspace, before, after) {
+  const undoToken = randomUUID();
+  removalUndos.set(undoToken, {
+    workspace: realpathSync(workspace),
+    before,
+    afterSha256: createHash("sha256").update(after).digest("hex"),
+    expiresAt: Date.now() + 15 * 60 * 1000,
+  });
+  return undoToken;
+}
+
+function backupGeneratedSlice(workspace, output) {
+  const root = resolve(workspace);
+  const target = resolve(root, output);
+  if (target === root || !target.startsWith(`${root}${sep}`)) throw new Error(`Generated output \"${output}\" resolves outside this repository.`);
+  if (!lstatExists(target)) return null;
+  const holder = mkdtempSync(join(tmpdir(), "portolan-undo-"));
+  const backup = join(holder, "slice");
+  cpSync(target, backup, { recursive: true });
+  return { target, holder, backup };
 }
 
 export function removeProject(workspace, projectId) {
   const manifestPath = join(workspace, "portolan.json");
-  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+  const before = readFileSync(manifestPath, "utf8");
+  const manifest = JSON.parse(before);
   const result = manifestWithoutProject(manifest, projectId);
-  writeManifest(manifestPath, result.manifest);
-  return { project: result.project, removedOutputs: result.removedOutputs };
+  const generated = backupGeneratedSlice(workspace, result.projectOut);
+  try {
+    writeManifest(manifestPath, result.manifest);
+    if (generated) rmSync(generated.target, { recursive: true, force: true });
+  } catch (cause) {
+    writeManifest(manifestPath, manifest);
+    if (generated) {
+      rmSync(generated.target, { recursive: true, force: true });
+      mkdirSync(dirname(generated.target), { recursive: true });
+      cpSync(generated.backup, generated.target, { recursive: true });
+      rmSync(generated.holder, { recursive: true, force: true });
+    }
+    throw cause;
+  }
+  const after = readFileSync(manifestPath, "utf8");
+  const undoToken = rememberManifestUndo(workspace, before, after);
+  removalUndos.get(undoToken).generated = generated;
+  return { project: result.project, removedOutputs: result.removedOutputs, undoToken };
+}
+
+export function undoProjectRemoval(workspace, undoToken) {
+  const undo = removalUndos.get(String(undoToken ?? ""));
+  if (!undo || undo.expiresAt < Date.now() || undo.workspace !== realpathSync(workspace)) throw new Error("This removal can no longer be undone.");
+  const manifestPath = join(workspace, "portolan.json");
+  const current = readFileSync(manifestPath, "utf8");
+  if (createHash("sha256").update(current).digest("hex") !== undo.afterSha256) throw new Error("portolan.json changed after the removal; undo would overwrite newer work.");
+  const manifest = JSON.parse(undo.before);
+  writeManifest(manifestPath, manifest);
+  if (undo.generated) {
+    rmSync(undo.generated.target, { recursive: true, force: true });
+    mkdirSync(dirname(undo.generated.target), { recursive: true });
+    cpSync(undo.generated.backup, undo.generated.target, { recursive: true });
+    rmSync(undo.generated.holder, { recursive: true, force: true });
+  }
+  removalUndos.delete(String(undoToken));
+  return { restored: true };
 }
 
 function setup(workspace, publicSetupFrom) {
@@ -1023,7 +1133,7 @@ export function summarizeProjectTrial(snapshot, plan, events) {
 
 function prepareProjectTrial(workspace, request) {
   const manifest = JSON.parse(readFileSync(join(workspace, "portolan.json"), "utf8"));
-  const plan = planProject(workspace, manifest, request);
+  const { plan } = projectRequestPlan(workspace, manifest, request);
   const fingerprint = workspaceFingerprint(workspace);
   const snapshot = snapshotWorkspace(workspace);
   if (workspaceFingerprint(workspace) !== fingerprint) {
@@ -1231,7 +1341,7 @@ export function localApiPlugin(workspace = process.cwd(), publicSetupFrom) {
           }
           if (url.pathname === `${LOCAL_API_PREFIX}/projects/preview`) {
             const manifest = JSON.parse(readFileSync(join(workspace, "portolan.json"), "utf8"));
-            return send(res, 200, planProject(workspace, manifest, input));
+            return send(res, 200, projectRequestPlan(workspace, manifest, input).plan);
           }
           if (url.pathname === `${LOCAL_API_PREFIX}/projects`) {
             const result = writeProject(workspace, input);
@@ -1241,6 +1351,10 @@ export function localApiPlugin(workspace = process.cwd(), publicSetupFrom) {
           if (removeProjectMatch) {
             if ([...jobs.values()].some((job) => job.status === "running")) return send(res, 409, { error: "A generator run is already active." });
             const result = removeProject(workspace, decodeURIComponent(removeProjectMatch[1]));
+            return send(res, 200, { ...result, setup: setup(workspace, publicSetupFrom) });
+          }
+          if (url.pathname === `${LOCAL_API_PREFIX}/projects/removals/undo`) {
+            const result = undoProjectRemoval(workspace, input.undoToken);
             return send(res, 200, { ...result, setup: setup(workspace, publicSetupFrom) });
           }
           if (url.pathname === `${LOCAL_API_PREFIX}/runs`) {

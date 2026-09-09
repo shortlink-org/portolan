@@ -37,6 +37,7 @@ const LANDSCAPE_VIEW = "landscape";
 const CONTAINERS_VIEW = "containers";
 const profileLandscapeViewId = (profile) => `${LANDSCAPE_VIEW}_${safeId(profile.id)}`;
 const profileContainersViewId = (profile) => `${CONTAINERS_VIEW}_${safeId(profile.id)}`;
+const includeTargets = (targets) => targets.length > 0 ? targets.join(", ") : "*";
 
 const q = (text) => `'${String(text).replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
 
@@ -652,7 +653,7 @@ views.push(
     : "    description 'Every bounded context, and everything outside the estate that touches one.'",
 );
 views.push(
-  `    include ${[...catalog.contexts.map((c) => safeId(c.id)), ...outside].join(", ")}`,
+  `    include ${includeTargets([...catalog.contexts.map((c) => safeId(c.id)), ...outside])}`,
 );
 views.push("  }");
 views.push("");
@@ -678,13 +679,13 @@ views.push(
   "    description 'Every service, the store it keeps its state in, the brokers between them, and everything outside the estate that touches one.'",
 );
 views.push(
-  `    include ${[
+  `    include ${includeTargets([
     ...catalog.contexts.map((c) => safeId(c.id)),
     ...allServices.map((s) => fqn(s.id)),
     ...(catalog.stores ?? []).map((store) => fqn(store.id)),
     ...drawnBrokers.map(safeId),
     ...outside,
-  ].join(", ")}`,
+  ])}`,
 );
 views.push(...containerPredicates([...callPairs.values()], carriedByBus, "    "));
 views.push("  }");
@@ -730,20 +731,20 @@ for (const profile of profiles) {
   views.push(`  view ${profileLandscapeViewId(profile)} {`);
   views.push(`    title ${q(profile.title)}`);
   views.push(`    description 'The groups and outside systems selected by this catalog profile.'`);
-  views.push(`    include ${[...profileContexts.map((context) => safeId(context.id)), ...profileOutside].join(", ")}`);
+  views.push(`    include ${includeTargets([...profileContexts.map((context) => safeId(context.id)), ...profileOutside])}`);
   views.push("  }");
   views.push("");
 
   views.push(`  view ${profileContainersViewId(profile)} {`);
   views.push(`    title ${q(`${profile.title} containers`)}`);
   views.push(`    description 'The services, stores and transports selected by this catalog profile.'`);
-  views.push(`    include ${[
+  views.push(`    include ${includeTargets([
     ...profileContexts.map((context) => safeId(context.id)),
     ...profileServices.map((service) => fqn(service.id)),
     ...profileStores.map((store) => fqn(store.id)),
     ...profileBrokers,
     ...profileOutside,
-  ].join(", ")}`);
+  ])}`);
   views.push(...containerPredicates(
     [...callPairs.values()].filter((pair) => profileServiceIds.has(pair.from) && profileServiceIds.has(pair.to)),
     carriedByBus.filter((pair) => profileServiceIds.has(pair.from) && profileServiceIds.has(pair.to)),

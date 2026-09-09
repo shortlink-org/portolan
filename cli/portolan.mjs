@@ -175,7 +175,7 @@ async function dev(workspace, options) {
   });
 }
 
-async function prepareSite(workspace) {
+export async function prepareSite(workspace) {
   const manifestPath = resolve(workspace, "portolan.json");
   if (!existsSync(manifestPath)) fail("portolan.json is missing; run portolan init first");
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
@@ -196,7 +196,11 @@ async function prepareSite(workspace) {
   for (const patterns of patternSets) {
     for (const path of await matchedFiles(workspace, patterns)) allSources.add(path);
   }
-  if (allSources.size === 0) fail("no catalog source matches portolan.json; run portolan generate first");
+  const emptyWorkspace = Array.isArray(manifest.projects)
+    && manifest.projects.length === 0
+    && (manifest.extract ?? []).length === 0
+    && (manifest.verify ?? []).length === 0;
+  if (allSources.size === 0 && !emptyWorkspace) fail("no catalog source matches portolan.json; run portolan generate first");
 
   const flattened = new Map();
   let ordinal = 0;
@@ -204,16 +208,27 @@ async function prepareSite(workspace) {
     const name = `portolan/source-${String(++ordinal).padStart(4, "0")}.json`;
     flattened.set(source, name);
     copyIntoStage(workspace, stage, source, name);
-    copyReferencedFiles(workspace, stage, JSON.parse(readFileSync(resolve(workspace, source), "utf8")));
+    const catalog = JSON.parse(readFileSync(resolve(workspace, source), "utf8"));
+    copyReferencedFiles(workspace, stage, catalog);
+    copyReadmeAssets(workspace, stage, catalog);
+  }
+  let stagedSources = [...flattened.values()];
+  if (allSources.size === 0) {
+    const name = "portolan/source-0000.json";
+    mkdirSync(dirname(resolve(stage, name)), { recursive: true });
+    writeFileSync(resolve(stage, name), `${JSON.stringify({ generatedAt: "1970-01-01T00:00:00Z", commit: "empty", contexts: [], defs: {}, flows: [], adrs: [] }, null, 2)}\n`);
+    stagedSources = [name];
   }
 
   const stagedManifest = {
     ...manifest,
-    sources: [...flattened.values()],
+    sources: stagedSources,
     ...(manifest.catalogs ? {
       catalogs: await Promise.all(manifest.catalogs.map(async (profile) => ({
         ...profile,
-        sources: (await matchedFiles(workspace, profile.sources ?? [])).map((path) => flattened.get(path)).filter(Boolean),
+        sources: allSources.size === 0
+          ? stagedSources
+          : (await matchedFiles(workspace, profile.sources ?? [])).map((path) => flattened.get(path)).filter(Boolean),
       }))),
     } : {}),
   };
@@ -256,6 +271,40 @@ function copyReferencedFiles(workspace, stage, value) {
     copyIntoStage(workspace, stage, clean, clean);
   };
   visit(value);
+}
+
+function copyReadmeAssets(workspace, stage, catalog) {
+  for (const context of catalog.contexts ?? []) {
+    for (const service of context.services ?? []) {
+      if (typeof service.path !== "string" || typeof service.readme !== "string") continue;
+      const root = resolve(workspace, service.path);
+      if (!inside(workspace, root)) continue;
+      for (const target of markdownTargets(service.readme)) {
+        const source = resolveMarkdownTarget(root, target);
+        if (!source || !inside(root, source) || !existsSync(source) || !statSync(source).isFile()) continue;
+        const relativeSource = relative(workspace, source).split(sep).join("/");
+        copyIntoStage(workspace, stage, relativeSource, `public/portolan-assets/${relativeSource}`);
+      }
+    }
+  }
+}
+
+function markdownTargets(markdown) {
+  const targets = [];
+  const links = /!?\[[^\]]*\]\(\s*(?:<([^>\n]+)>|([^\s)\n]+))(?:\s+["'][^"']*["'])?\s*\)/g;
+  for (const match of markdown.matchAll(links)) targets.push(match[1] ?? match[2]);
+  const html = /<(?:img|source)\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi;
+  for (const match of markdown.matchAll(html)) targets.push(match[1]);
+  return targets.filter(Boolean);
+}
+
+function resolveMarkdownTarget(root, target) {
+  const value = String(target).trim();
+  if (!value || value.startsWith("#") || value.startsWith("/") || /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(value)) return null;
+  const pathname = value.split(/[?#]/, 1)[0];
+  if (!pathname) return null;
+  try { return resolve(root, decodeURIComponent(pathname)); }
+  catch { return null; }
 }
 
 function copyIntoStage(workspace, stage, source, target) {

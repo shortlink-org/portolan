@@ -35,6 +35,10 @@ export interface ProjectDraft {
   component: string;
   context?: string;
   service?: string;
+  contextName?: string;
+  contextSummary?: string;
+  classification?: "core" | "supporting" | "generic";
+  replaceStarter?: boolean;
   groupKind?: "bounded-context" | "system" | "product" | "team" | "namespace";
   componentKind?: "service" | "application" | "webapp" | "worker" | "job" | "function" | "cli" | "library" | "data-pipeline";
   plugins: string[];
@@ -196,19 +200,23 @@ export async function previewProject(draft: ProjectDraft): Promise<ProjectPlan> 
   return json("/projects/preview", { method: "POST", headers: LOCAL_HEADER, body: JSON.stringify(draft) });
 }
 
-export async function addProject(draft: ProjectDraft): Promise<ProjectPlan & { setup: SetupInfo }> {
+export async function addProject(draft: ProjectDraft): Promise<ProjectPlan & { undoToken: string; setup: SetupInfo }> {
   return json("/projects", { method: "POST", headers: LOCAL_HEADER, body: JSON.stringify(draft) });
 }
 
-export async function removeProject(id: string): Promise<{ project: SetupProject; removedOutputs: string[]; setup: SetupInfo }> {
+export async function removeProject(id: string): Promise<{ project: SetupProject; removedOutputs: string[]; undoToken: string; setup: SetupInfo }> {
   return json(`/projects/${encodeURIComponent(id)}/remove`, { method: "POST", headers: LOCAL_HEADER, body: "{}" });
+}
+
+export async function undoProjectRemoval(undoToken: string): Promise<{ restored: true; setup: SetupInfo }> {
+  return json("/projects/removals/undo", { method: "POST", headers: LOCAL_HEADER, body: JSON.stringify({ undoToken }) });
 }
 
 export async function startProjectTrial(draft: ProjectDraft): Promise<{ runId: string; mode: "project-preview"; plan: ProjectPlan }> {
   return json("/projects/trials", { method: "POST", headers: LOCAL_HEADER, body: JSON.stringify(draft) });
 }
 
-export async function applyProjectTrial(runId: string, generate: boolean): Promise<ProjectPlan & { setup: SetupInfo; run: { runId: string; mode: "write" } | null }> {
+export async function applyProjectTrial(runId: string, generate: boolean): Promise<ProjectPlan & { undoToken: string; setup: SetupInfo; run: { runId: string; mode: "write" } | null }> {
   return json(`/projects/trials/${encodeURIComponent(runId)}/apply`, { method: "POST", headers: LOCAL_HEADER, body: JSON.stringify({ generate }) });
 }
 

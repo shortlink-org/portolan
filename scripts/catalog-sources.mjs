@@ -37,7 +37,11 @@ export async function loadCatalog(manifestPath = "portolan.json", { exclude = []
     if (!excluded.has(normalize(path))) paths.push(path);
   }
 
-  if (paths.length === 0) {
+  const emptyWorkspace = Array.isArray(manifest.projects)
+    && manifest.projects.length === 0
+    && (manifest.extract ?? []).length === 0
+    && (manifest.verify ?? []).length === 0;
+  if (paths.length === 0 && !emptyWorkspace) {
     throw new Error(
       `${manifestPath}: no catalog matched ${JSON.stringify(patterns)}`,
     );
@@ -49,6 +53,13 @@ export async function loadCatalog(manifestPath = "portolan.json", { exclude = []
       catalog: JSON.parse(readFileSync(path, "utf8")),
     })),
   );
+  if (paths.length === 0) {
+    // An intentionally empty workspace still needs a valid, deterministic
+    // catalog value for generators and the local preview. These are state
+    // markers, not provenance claims: there is no source file to stamp.
+    merged.catalog.generatedAt = "1970-01-01T00:00:00Z";
+    merged.catalog.commit = "empty";
+  }
 
   // The edges the flows imply are added before validation, the same way the
   // app does it, so a generator draws the same estate the reader sees.

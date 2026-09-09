@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { rmSync } from "node:fs";
 
-import { classifyRepositoryFailure, diffGeneratedFiles, discoverProject, forgetRepositoryCredential, inspectionRoot, localApiPath, manifestWithoutProject, manifestWithProject, planProject, readLocalSource, resolveRepositoryCommit, storeRepositoryCredential, summarizeProjectTrial, writeProject } from "./local-api.mjs";
+import { classifyRepositoryFailure, diffGeneratedFiles, discoverProject, externalProjectDefaults, forgetRepositoryCredential, inspectionRoot, localApiPath, manifestWithoutProject, manifestWithProject, planProject, readLocalSource, removeProject, resolveRepositoryCommit, starterManifestProject, storeRepositoryCredential, summarizeProjectTrial, undoProjectRemoval, writeProject } from "./local-api.mjs";
 import { installDeliveryPreset, planDeliveryPreset, providerFromRemote, publicDeliveryPreset } from "./delivery-presets.mjs";
 
 const PACKAGE_VERSION = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).version;
@@ -187,6 +187,18 @@ describe("local project setup", () => {
     expect(discovery.detections.find((item) => item.plugin === "sql")?.options).toEqual({});
     expect(discovery.detections.find((item) => item.plugin === "adr")?.options).toEqual({});
     expect(discovery.detections.find((item) => item.plugin === "adr")?.selected).toBe(false);
+  });
+
+  it("names external projects from the repository or selected component instead of the inspection cache", () => {
+    expect(externalProjectDefaults("https://github.com/batazor/microservice-template-ddd")).toEqual({
+      id: "microservice-template-ddd",
+      name: "Microservice Template Ddd",
+      group: "microservice-template-ddd",
+      component: "microservice-template-ddd",
+      context: "microservice-template-ddd",
+      service: "microservice-template-ddd",
+    });
+    expect(externalProjectDefaults("git@github.com:acme/platform.git", "services/payments").id).toBe("payments");
   });
 
   it("finds component roots in a monorepo without reading dependency directories", () => {
@@ -437,6 +449,61 @@ describe("local project setup", () => {
     expect(added.steps[0].options).toMatchObject({ group: "avia", groupKind: "bounded-context" });
     const manifest = { sources: ["portolan/*.json"], projects: [], extract: [] };
     expect(manifestWithProject(manifest, added).sources).toEqual(["services/billing/portolan/*.json"]);
+  });
+
+  it("adds the project slice to the default catalog profile", () => {
+    const root = workspace();
+    const manifest = {
+      sources: ["portolan/*.json"],
+      defaultCatalog: "company",
+      catalogs: [{ id: "company", title: "Company", sources: ["portolan/*.json"], contexts: ["platform"], projects: ["portolan"] }],
+      projects: [{ id: "portolan", root: ".", group: "platform", component: "portolan" }],
+      extract: [],
+    };
+    const added = planProject(root, manifest, {
+      root: "services/billing", id: "billing", name: "Billing", group: "finance", component: "billing", plugins: ["project"],
+    });
+    expect(manifestWithProject(manifest, added).catalogs[0]).toMatchObject({
+      sources: ["portolan/*.json", "services/billing/portolan/*.json"],
+      contexts: ["platform", "finance"],
+      projects: ["portolan", "billing"],
+    });
+  });
+
+  it("replaces a starter atomically after project discovery succeeds", () => {
+    const root = workspace();
+    const manifest = JSON.parse(readFileSync(join(root, "portolan.json"), "utf8"));
+    Object.assign(manifest, {
+      sources: ["portolan/*.json"],
+      projects: [{ id: "starter", name: "Starter", root: ".", group: "starter", component: "starter" }],
+      extract: [{ plugin: "project", in: ".", out: "portolan", options: { group: "starter", component: "starter" } }],
+    });
+    writeFileSync(join(root, "portolan.json"), `${JSON.stringify(manifest, null, 2)}\n`);
+    expect(starterManifestProject(manifest)?.id).toBe("starter");
+    const result = writeProject(root, {
+      root: "services/billing", id: "aviaadmin", name: "Avia Admin", group: "avia", contextName: "Aviation", contextSummary: "Flight administration.", classification: "core", groupKind: "bounded-context", component: "aviaadmin", componentKind: "service", replaceStarter: true, plugins: ["project"],
+    });
+    const written = JSON.parse(readFileSync(join(root, "portolan.json"), "utf8"));
+    expect(result.replacedProject?.id).toBe("starter");
+    expect(written.projects.map((project) => project.id)).toEqual(["aviaadmin"]);
+    expect(starterManifestProject(written)).toBeNull();
+    expect(written.sources).toEqual(["services/billing/portolan/*.json"]);
+    expect(written.extract).toHaveLength(1);
+    expect(written.extract[0].options).toMatchObject({ group: "avia", groupName: "Aviation", groupSummary: "Flight administration.", classification: "core", groupKind: "bounded-context", componentKind: "service" });
+  });
+
+  it("undoes a project removal only while the manifest is unchanged", () => {
+    const root = workspace();
+    writeProject(root, { root: "services/billing", id: "billing", name: "Billing", group: "finance", component: "billing", plugins: ["project"] });
+    mkdirSync(join(root, "services/billing/portolan"), { recursive: true });
+    writeFileSync(join(root, "services/billing/portolan/project.json"), "generated slice\n");
+    const removed = removeProject(root, "billing");
+    expect(JSON.parse(readFileSync(join(root, "portolan.json"), "utf8")).projects).toEqual([]);
+    expect(existsSync(join(root, "services/billing/portolan/project.json"))).toBe(false);
+    expect(undoProjectRemoval(root, removed.undoToken)).toEqual({ restored: true });
+    expect(JSON.parse(readFileSync(join(root, "portolan.json"), "utf8")).projects[0].id).toBe("billing");
+    expect(readFileSync(join(root, "services/billing/portolan/project.json"), "utf8")).toBe("generated slice\n");
+    expect(() => undoProjectRemoval(root, removed.undoToken)).toThrow(/can no longer be undone/);
   });
 
   it("plans a pinned external repository through the built-in git fetcher", () => {

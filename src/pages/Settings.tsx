@@ -1,6 +1,6 @@
 import { useDocumentTitle } from "../app/title";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { Link, Navigate, NavLink, Route, Routes } from "react-router";
+import { Link, Navigate, NavLink, Route, Routes, useLocation } from "react-router";
 import {
   ArrowLeft,
   Box,
@@ -43,6 +43,7 @@ import {
   startGeneration,
   startProjectTrial,
   subscribeToRun,
+  undoProjectRemoval,
 } from "../lib/local-api";
 import type { Discovery, ProjectDraft, ProjectPlan, RunEvent } from "../lib/local-api";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -218,6 +219,13 @@ function projectHref(project: SetupProject): string | null {
       item.id === `${context.id}.${component}`,
   );
   return service ? paths.service(context.id, service.slug) : paths.context(context.id);
+}
+
+function starterProject(setupInfo: SetupInfo): SetupProject | undefined {
+  if (setupInfo.projects.length !== 1) return undefined;
+  const project = setupInfo.projects[0];
+  const steps = setupInfo.steps.filter((step) => step.projectId === project?.id);
+  return project?.root === "." && !project.groupKind && !project.componentKind && steps.length === 1 && steps[0]?.plugin === "project" ? project : undefined;
 }
 
 function forge(project: SetupProject): { href: string; title: string } | null {
@@ -480,6 +488,21 @@ function PluginsList() {
 }
 
 const FIELD = "mono w-full rounded-control border border-line bg-canvas px-3 py-2 text-ink outline-none focus:border-accent";
+const PROJECT_RESUME_KEY = "portolan.onboarding.project-source.v1";
+const PROJECT_PRESETS: Array<{ label: string; kind: NonNullable<ProjectDraft["componentKind"]>; summary: string }> = [
+  { label: "Service", kind: "service", summary: "A deployable business capability." },
+  { label: "Web app", kind: "webapp", summary: "A browser-facing application." },
+  { label: "Worker", kind: "worker", summary: "A long-running background consumer." },
+  { label: "CLI", kind: "cli", summary: "A command-line application." },
+  { label: "Library", kind: "library", summary: "Reusable code, not deployed alone." },
+];
+
+function readProjectResume(): { source: ProjectSource; path: string; repository: string; ref: string; sourcePath: string } | null {
+  try {
+    const value = JSON.parse(localStorage.getItem(PROJECT_RESUME_KEY) ?? "null");
+    return value && (value.source === "local" || value.source === "external") ? value : null;
+  } catch { return null; }
+}
 
 function Field({ label, value, onChange, placeholder, required = false }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string; required?: boolean }) {
   return (
@@ -523,19 +546,19 @@ function OnboardingCard({ starter, onAdd, onRemove }: { starter?: SetupProject; 
       </div>
       <div className="grid gap-0 md:grid-cols-2">
         <div className="flex items-start gap-3 p-card md:border-r md:border-line">
-          <span className={`flex size-7 shrink-0 items-center justify-center rounded-full ${starter ? "bg-surface text-muted" : "bg-verified text-canvas"}`}>{starter ? "1" : <Check size={15} aria-hidden />}</span>
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-accent text-canvas"><Plus size={15} aria-hidden /></span>
           <div className="min-w-0 flex-1">
-            <div className="font-medium text-ink">Remove starter documentation</div>
-            <p className="mt-1 text-muted">Drop the Portolan example project and its dedicated catalog configuration.</p>
-            {starter ? <button type="button" className="tbtn mt-3 text-unresolved" onClick={() => onRemove(starter)}><Trash2 size={14} aria-hidden /> Remove Portolan documentation</button> : <div className="mono mt-2 text-verified">starter removed</div>}
+            <div className="flex flex-wrap items-center gap-2"><span className="font-medium text-ink">Add your first project</span><span className="chip status-verified">recommended</span></div>
+            <p className="mt-1 text-muted">A successful trial replaces the starter and adds your project in one reviewed change.</p>
+            <div className="mt-3 flex flex-wrap gap-2"><button type="button" className="product-primary" onClick={() => onAdd("local")}><FolderGit2 size={14} aria-hidden /> Local folder</button><button type="button" className="tbtn" onClick={() => onAdd("external")}><GitBranch size={14} aria-hidden /> Git repository</button></div>
           </div>
         </div>
         <div className="flex items-start gap-3 p-card">
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-surface text-muted">2</span>
+          <span className={`flex size-7 shrink-0 items-center justify-center rounded-full ${starter ? "bg-surface text-muted" : "bg-verified text-canvas"}`}>{starter ? <Trash2 size={14} aria-hidden /> : <Check size={15} aria-hidden />}</span>
           <div className="min-w-0 flex-1">
-            <div className="font-medium text-ink">Add your project</div>
-            <p className="mt-1 text-muted">For example, connect <span className="mono text-ink">aviaadmin</span> and place it in bounded context <span className="mono text-ink">avia</span>.</p>
-            <div className="mt-3 flex flex-wrap gap-2"><button type="button" className="product-primary" onClick={() => onAdd("local")}><FolderGit2 size={14} aria-hidden /> Local folder</button><button type="button" className="tbtn" onClick={() => onAdd("external")}><GitBranch size={14} aria-hidden /> Git repository</button></div>
+            <div className="font-medium text-ink">Or start with an empty catalog</div>
+            <p className="mt-1 text-muted">Remove the starter now if you want to connect projects later. Application source code is never touched.</p>
+            {starter ? <button type="button" className="tbtn mt-3 text-unresolved" onClick={() => onRemove(starter)}><Trash2 size={14} aria-hidden /> Remove starter only</button> : <div className="mono mt-2 text-verified">starter removed</div>}
           </div>
         </div>
       </div>
@@ -592,6 +615,9 @@ function RepositoryFailure({ failure, message, token, onTokenChange, onForget, b
 }
 
 function Wizard({ open, initialSource, onClose, onAdded, onRunStarted }: { open: boolean; initialSource: ProjectSource; onClose: () => void; onAdded: (setup: SetupInfo) => void; onRunStarted: (runId: string) => void }) {
+  const setupInfo = useSetup();
+  const starter = starterProject(setupInfo);
+  const say = useToastStore((state) => state.say);
   const [source, setSource] = useState<ProjectSource>(initialSource);
   const [stage, setStage] = useState<"source" | "scope" | "configure" | "trial">("source");
   const [path, setPath] = useState("");
@@ -613,16 +639,26 @@ function Wizard({ open, initialSource, onClose, onAdded, onRunStarted }: { open:
   const [repositoryError, setRepositoryError] = useState<LocalApiError | null>(null);
   const [retryComponent, setRetryComponent] = useState<{ path: string; batch: boolean } | null>(null);
   const [credentialToken, setCredentialToken] = useState("");
+  const [resumed, setResumed] = useState(false);
 
   useEffect(() => {
     if (open) {
       setSource(initialSource);
+      const saved = readProjectResume();
+      if (saved?.source === initialSource) {
+        setPath(saved.path); setRepository(saved.repository); setRef(saved.ref); setSourcePath(saved.sourcePath); setResumed(true);
+      }
       return;
     }
     if (!open) {
-      setStage("source"); setSource("local"); setPath(""); setRepository(""); setRef("main"); setSourcePath(""); setDiscovery(null); setScopeDiscovery(null); setInspectionCommit(""); setSelectedComponents([]); setPendingComponents([]); setBatchPosition(null); setDraft(null); setPlan(null); setTrialRunId(null); setTrialEvents([]); setError(""); setRepositoryError(null); setRetryComponent(null); setCredentialToken(""); setBusy(false);
+      setStage("source"); setSource("local"); setPath(""); setRepository(""); setRef("main"); setSourcePath(""); setDiscovery(null); setScopeDiscovery(null); setInspectionCommit(""); setSelectedComponents([]); setPendingComponents([]); setBatchPosition(null); setDraft(null); setPlan(null); setTrialRunId(null); setTrialEvents([]); setError(""); setRepositoryError(null); setRetryComponent(null); setCredentialToken(""); setResumed(false); setBusy(false);
     }
   }, [initialSource, open]);
+
+  useEffect(() => {
+    if (!open || (!path.trim() && !repository.trim())) return;
+    try { localStorage.setItem(PROJECT_RESUME_KEY, JSON.stringify({ source, path, repository, ref, sourcePath })); } catch {}
+  }, [open, path, ref, repository, source, sourcePath]);
 
   useEffect(() => {
     if (!trialRunId) return;
@@ -640,6 +676,11 @@ function Wizard({ open, initialSource, onClose, onAdded, onRunStarted }: { open:
   function selectSource(next: "local" | "external") {
     setSource(next);
     clearRepositoryFailure();
+  }
+
+  function startOver() {
+    try { localStorage.removeItem(PROJECT_RESUME_KEY); } catch {}
+    setSource(initialSource); setPath(""); setRepository(""); setRef("main"); setSourcePath(""); setResumed(false); clearRepositoryFailure();
   }
 
   async function detect() {
@@ -664,7 +705,7 @@ function Wizard({ open, initialSource, onClose, onAdded, onRunStarted }: { open:
     setDiscovery(found);
     const plugins = found.detections.filter((item) => item.selected).map((item) => item.plugin);
     const domainModel = plugins.some((plugin) => ["go-domain", "ts-domain", "rust-domain", "java-domain", "django-domain"].includes(plugin));
-    setDraft({ source, root: found.root, repository, ref, commit, sourcePath: selectedSourcePath, ...found.defaults, ...(projectId ? { id: projectId } : {}), groupKind: domainModel ? "bounded-context" : "system", componentKind: domainModel ? "service" : "application", plugins });
+    setDraft({ source, root: found.root, repository, ref, commit, sourcePath: selectedSourcePath, ...found.defaults, ...(projectId ? { id: projectId } : {}), contextName: found.defaults.group ? found.defaults.group.replace(/(^|-)([a-z])/g, (_, gap, letter) => `${gap ? " " : ""}${letter.toUpperCase()}`) : "", contextSummary: "", classification: "supporting", groupKind: domainModel ? "bounded-context" : "system", componentKind: domainModel ? "service" : "application", replaceStarter: Boolean(starter), plugins });
     setStage("configure");
   }
 
@@ -754,8 +795,19 @@ function Wizard({ open, initialSource, onClose, onAdded, onRunStarted }: { open:
         setTrialRunId(null); setTrialEvents([]); setPlan(null);
         await chooseComponent(next, true);
       } else {
+        try { localStorage.removeItem(PROJECT_RESUME_KEY); } catch {}
         onClose();
         if (result.run) onRunStarted(result.run.runId);
+        else say(`${result.project.name} added to portolan.json.`, {
+          label: "Undo",
+          run: () => { void (async () => {
+            try {
+              const restored = await undoProjectRemoval(result.undoToken);
+              onAdded(restored.setup);
+              say(`${result.project.name} addition undone.`);
+            } catch (cause) { say(cause instanceof Error ? cause.message : String(cause)); }
+          })(); },
+        });
       }
     } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); setBusy(false); }
   }
@@ -767,9 +819,15 @@ function Wizard({ open, initialSource, onClose, onAdded, onRunStarted }: { open:
   const trial = trialEvents.find((event): event is Extract<RunEvent, { type: "project-trial-ready" }> => event.type === "project-trial-ready");
   const logs = trialEvents.filter((event): event is Extract<RunEvent, { type: "log" }> => event.type === "log");
   const trialRunning = stage === "trial" && !finished;
+  const quality = trial && draft ? [
+    { label: "Stable project identity", done: Boolean(draft.id.trim() && draft.name.trim()) },
+    { label: "Architecture placement", done: Boolean(draft.group.trim() && draft.component.trim()) },
+    { label: "Catalog facts extracted", done: trial.facts.some((fact) => fact.count > 0) },
+    { label: "Extraction without warnings", done: trial.warnings.length === 0 },
+  ] : [];
   const totalSteps = pipeline?.stepCount ?? plan?.steps.length ?? 0;
   const percent = totalSteps ? Math.round((completedSteps.length / totalSteps) * 100) : 0;
-  const heading = stage === "source" ? "Add a project" : stage === "scope" ? "Choose a component" : stage === "configure" ? "Review discovery" : "Trial extraction";
+  const heading = stage === "source" ? "Add a project" : stage === "scope" ? "Choose a component" : stage === "configure" ? "Place the project" : "Trial extraction";
   function back() {
     if (stage === "trial") { if (trialRunId) void disposeProjectTrial(trialRunId); setStage("configure"); setTrialRunId(null); setTrialEvents([]); setPlan(null); }
     else if (stage === "configure" && scopeDiscovery) { setStage("scope"); setPendingComponents([]); setBatchPosition(null); }
@@ -780,14 +838,16 @@ function Wizard({ open, initialSource, onClose, onAdded, onRunStarted }: { open:
     <Modal open={open} onClose={busy || trialRunning ? () => {} : onClose} label={heading} width="min(800px,94vw)">
       <div className="flex items-center gap-3 border-b border-line px-5 py-4">
         {stage !== "source" ? <button type="button" className="tbtn p-1.5" onClick={back} disabled={trialRunning || busy} aria-label="Back"><ArrowLeft size={16} /></button> : null}
-        <div className="min-w-0 flex-1"><div className="font-semibold text-ink">{heading}</div><div className="mono mt-0.5 text-muted">{stage === "source" ? "1 / 4 · source" : stage === "scope" ? "2 / 4 · scope" : stage === "configure" ? `3 / 4 · capabilities${batchPosition ? ` · ${batchPosition.current} / ${batchPosition.total}` : ""}` : `4 / 4 · proof${batchPosition ? ` · ${batchPosition.current} / ${batchPosition.total}` : ""}`}</div></div>
+        <div className="min-w-0 flex-1"><div className="font-semibold text-ink">{heading}</div><div className="mono mt-0.5 text-muted">{stage === "source" ? "1 / 4 · source" : stage === "scope" ? "2 / 4 · scope" : stage === "configure" ? `3 / 4 · identity & scope${batchPosition ? ` · ${batchPosition.current} / ${batchPosition.total}` : ""}` : `4 / 4 · proof${batchPosition ? ` · ${batchPosition.current} / ${batchPosition.total}` : ""}`}</div></div>
         <button type="button" className="tbtn p-1.5" onClick={onClose} disabled={busy || trialRunning} aria-label="Close"><X size={16} /></button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-5">
         {stage === "source" ? (
           repositoryError ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-control border border-line bg-surface px-3 py-2"><div className="min-w-0"><div className="mono truncate text-ink">{repository}</div><div className="mono mt-0.5 text-muted">{ref || "HEAD"}{sourcePath ? ` · ${sourcePath}` : ""}</div></div><button type="button" className="tbtn" onClick={clearRepositoryFailure}>Edit source</button></div> : <div className="space-y-5">
+            {resumed ? <div className="flex flex-wrap items-center justify-between gap-2 rounded-control border border-accent bg-surface px-3 py-2"><span className="text-muted"><span className="font-medium text-ink">Draft restored.</span> Continue with the source from your last session.</span><button type="button" className="tbtn" onClick={startOver}>Start over</button></div> : null}
             <div className="seg inline-flex" role="group" aria-label="Project source"><button type="button" className={source === "local" ? "is-on" : ""} aria-pressed={source === "local"} onClick={() => selectSource("local")}>local directory</button><button type="button" className={source === "external" ? "is-on" : ""} aria-pressed={source === "external"} onClick={() => selectSource("external")}>external repository</button></div>
             <p className="text-muted">Detection reads project files but does not execute project code. External repositories are pinned and vendored through the built-in git fetcher.</p>
+            <div className="rounded-control border border-line bg-surface px-3 py-2 text-muted"><span className="font-medium text-ink">Tip:</span> local paths are relative to this workspace. To connect a separate repository such as <span className="mono text-ink">aviaadmin</span>, choose external repository.</div>
             {source === "local" ? <><Field label="local path" value={path} onChange={setPath} placeholder="services/billing" required /><Field label="repository URL · optional" value={repository} onChange={(value) => { setRepository(value); clearRepositoryFailure(); }} placeholder="https://github.com/acme/billing" /></> : <><Field label="repository URL" value={repository} onChange={(value) => { setRepository(value); clearRepositoryFailure(); }} placeholder="https://github.com/acme/platform" required /><div className="grid gap-4 sm:grid-cols-2"><Field label="branch, tag or commit" value={ref} onChange={(value) => { setRef(value); clearRepositoryFailure(); }} placeholder="main" /><Field label="component path · optional" value={sourcePath} onChange={(value) => { setSourcePath(value); clearRepositoryFailure(); }} placeholder="services/billing" /></div></>}
           </div>
         ) : stage === "scope" && scopeDiscovery ? (
@@ -799,13 +859,10 @@ function Wizard({ open, initialSource, onClose, onAdded, onRunStarted }: { open:
         ) : stage === "configure" && discovery && draft ? (
           <div className="space-y-5">
             <div className="rounded-control border border-line bg-surface px-3 py-2 text-muted"><span className="mono text-ink">{draft.source === "external" ? `${draft.repository}@${draft.commit.slice(0, 7)}${draft.sourcePath ? `/${draft.sourcePath}` : ""}` : discovery.root}</span> · scanned {discovery.filesScanned} files{discovery.truncated ? " (limit reached)" : ""}</div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="project name" value={draft.name} onChange={(name) => setDraft({ ...draft, name })} required />
-              <Field label="project id" value={draft.id} onChange={(id) => setDraft({ ...draft, id })} required />
-              <Field label="bounded context / group" value={draft.group} onChange={(group) => setDraft({ ...draft, group })} placeholder="avia" />
-              <Field label="component slug" value={draft.component} onChange={(component) => setDraft({ ...draft, component })} />
-              <label className="block"><span className="label mb-1.5 block">group kind</span><select className={FIELD} value={draft.groupKind ?? "system"} onChange={(event) => setDraft({ ...draft, groupKind: event.target.value as ProjectDraft["groupKind"] })}><option value="bounded-context">bounded context</option><option value="system">system</option><option value="product">product</option><option value="team">team</option><option value="namespace">namespace</option></select></label>
-            </div>
+            {starter ? <label className="flex cursor-pointer items-start gap-3 rounded-control border border-accent bg-surface px-3 py-3"><input className="mt-1" type="checkbox" checked={draft.replaceStarter ?? false} onChange={(event) => setDraft({ ...draft, replaceStarter: event.target.checked })} /><span><span className="font-medium text-ink">Replace {starter.name} starter after the trial succeeds</span><span className="mt-0.5 block text-muted">The new project and starter removal are written together, so a failed trial leaves the workspace unchanged.</span></span></label> : null}
+            <section><div className="label mb-2">component preset</div><div className="grid grid-cols-2 gap-2 md:grid-cols-3">{PROJECT_PRESETS.map((preset) => <button key={preset.kind} type="button" className={`rounded-control border px-3 py-2 text-left transition-colors ${draft.componentKind === preset.kind ? "border-accent bg-surface" : "border-line hover:bg-surface"}`} aria-pressed={draft.componentKind === preset.kind} onClick={() => setDraft({ ...draft, componentKind: preset.kind, ...(preset.kind === "service" ? { groupKind: "bounded-context" as const } : {}) })}><span className="font-medium text-ink">{preset.label}</span><span className="mt-0.5 block text-muted">{preset.summary}</span></button>)}</div></section>
+            <section><div className="label mb-2">project identity</div><div className="grid gap-4 rounded-control border border-line p-4 sm:grid-cols-2"><Field label="display name" value={draft.name} onChange={(name) => setDraft({ ...draft, name })} required /><Field label="stable project id" value={draft.id} onChange={(id) => setDraft({ ...draft, id })} required /><p className="text-muted sm:col-span-2">The id connects this project to its extraction steps. Keep it stable even if the display name changes.</p></div></section>
+            <section><div className="mb-2 flex flex-wrap items-center justify-between gap-2"><div className="label">architecture placement</div><span className="chip status-declared">{draft.group || "group"} → {draft.component || "component"}</span></div><div className="grid gap-4 rounded-control border border-line p-4 sm:grid-cols-2">{catalog.contexts.length ? <label className="block sm:col-span-2"><span className="label mb-1.5 block">start from</span><select className={FIELD} value={catalog.contexts.some((context) => context.id === draft.group) ? draft.group : "__new__"} onChange={(event) => { const existing = catalog.contexts.find((context) => context.id === event.target.value); setDraft(existing ? { ...draft, group: existing.id, contextName: existing.name, contextSummary: existing.summary, classification: existing.classification || "supporting", groupKind: existing.kind || "bounded-context" } : { ...draft, group: draft.id, contextName: draft.name, contextSummary: "", classification: "supporting", groupKind: "bounded-context" }); }}><option value="__new__">Create a new context or group</option>{catalog.contexts.map((context) => <option key={context.id} value={context.id}>Use {context.name} ({context.id})</option>)}</select></label> : null}<Field label="bounded context / group" value={draft.group} onChange={(group) => setDraft({ ...draft, group })} placeholder="avia" /><Field label="context name" value={draft.contextName ?? ""} onChange={(contextName) => setDraft({ ...draft, contextName })} placeholder="Aviation" /><label className="block sm:col-span-2"><span className="label mb-1.5 block">responsibility · optional</span><textarea className={`${FIELD} min-h-20 resize-y`} value={draft.contextSummary ?? ""} onChange={(event) => setDraft({ ...draft, contextSummary: event.target.value })} placeholder="What business decisions and language belong inside this boundary?" /></label><Field label="component slug" value={draft.component} onChange={(component) => setDraft({ ...draft, component })} placeholder="aviaadmin" /><label className="block"><span className="label mb-1.5 block">component kind</span><select className={FIELD} value={draft.componentKind ?? "application"} onChange={(event) => setDraft({ ...draft, componentKind: event.target.value as ProjectDraft["componentKind"] })}><option value="service">service</option><option value="application">application</option><option value="webapp">web app</option><option value="worker">worker</option><option value="job">job</option><option value="function">function</option><option value="cli">CLI</option><option value="library">library</option><option value="data-pipeline">data pipeline</option></select></label><label className="block"><span className="label mb-1.5 block">group kind</span><select className={FIELD} value={draft.groupKind ?? "system"} onChange={(event) => setDraft({ ...draft, groupKind: event.target.value as ProjectDraft["groupKind"] })}><option value="bounded-context">bounded context</option><option value="system">system</option><option value="product">product</option><option value="team">team</option><option value="namespace">namespace</option></select></label>{draft.groupKind === "bounded-context" ? <label className="block"><span className="label mb-1.5 block">classification</span><select className={FIELD} value={draft.classification ?? "supporting"} onChange={(event) => setDraft({ ...draft, classification: event.target.value as ProjectDraft["classification"] })}><option value="core">core</option><option value="supporting">supporting</option><option value="generic">generic</option></select></label> : null}<p className="rounded-control bg-surface px-3 py-2 text-muted sm:col-span-2"><span className="font-medium text-ink">Tip:</span> {draft.groupKind === "bounded-context" ? "use one bounded context for components that share the same business language and rules — it does not have to match the folder tree." : "choose bounded context when this group owns a distinct business language; use system for a primarily technical boundary."}</p></div></section>
             <div><div className="label mb-2">detected capabilities</div>
               {discovery.detections.length ? <div className="grid gap-2">{discovery.detections.map((item) => {
                 const checked = draft.plugins.includes(item.plugin);
@@ -822,7 +879,8 @@ function Wizard({ open, initialSource, onClose, onAdded, onRunStarted }: { open:
               {trial?.previewError ? <p className="mt-2 text-declared">The extraction is valid, but the temporary site could not start: {trial.previewError}</p> : null}
               {!finished ? <><div className="mt-3 h-1.5 overflow-hidden rounded-full bg-canvas"><div className="h-full bg-accent transition-[width]" style={{ width: `${percent}%` }} /></div><div className="mono mt-1 text-right text-muted">{completedSteps.length} / {totalSteps || "?"} steps</div></> : null}
             </div>
-            {trial?.facts.length ? <section><div className="label mb-2">catalog facts found</div><div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{trial.facts.map((fact) => <div key={fact.key} className="rounded-control border border-line bg-canvas px-3 py-2"><div className="tnum text-lg font-semibold text-ink">{fact.count}</div><div className="text-muted">{fact.label}</div></div>)}</div></section> : null}
+            {trial ? <section><div className="label mb-2">what Portolan found</div>{trial.facts.length ? <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{trial.facts.map((fact) => <div key={fact.key} className="rounded-control border border-line bg-canvas px-3 py-2"><div className="tnum text-lg font-semibold text-ink">{fact.count}</div><div className="text-muted">{fact.label}</div></div>)}</div> : <div className="rounded-control border border-line bg-surface px-3 py-3 text-muted">Only component metadata was found. You can add APIs, domain models and stores later without re-adding the project.</div>}</section> : null}
+            {trial ? <section><div className="label mb-2">catalog readiness</div><div className="grid gap-2 sm:grid-cols-2">{quality.map((item) => <div key={item.label} className="flex items-center gap-2 rounded-control border border-line px-3 py-2"><span className={`flex size-5 items-center justify-center rounded-full ${item.done ? "bg-verified text-canvas" : "bg-surface text-declared"}`}>{item.done ? <Check size={12} aria-hidden /> : <CircleAlert size={12} aria-hidden />}</span><span className={item.done ? "text-ink" : "text-muted"}>{item.label}</span></div>)}</div></section> : null}
             <section><div className="label mb-2">extractor results</div><div className="divide-y divide-line rounded-control border border-line">{(trial?.steps ?? completedSteps).map((step) => <div key={`${step.plugin}:${"ordinal" in step ? step.ordinal : "trial"}`} className="grid gap-1 px-3 py-2 sm:grid-cols-[1fr_auto_auto]"><span><span className="font-medium text-ink">{CAPABILITIES[step.plugin]?.title ?? step.plugin}</span><span className="mono ml-2 text-faint">{step.plugin}</span>{step.message ? <span className="mt-1 block text-unresolved">{step.message}</span> : null}</span><span className="mono text-muted">{step.fileCount} {plural(step.fileCount, "file")}</span><span className={`chip ${step.status === "failed" ? "status-unresolved" : "status-verified"}`}>{step.status === "failed" ? "failed" : "read"}</span></div>)}</div></section>
             {trial?.warnings.length ? <section><div className="label mb-2">warnings · {trial.warnings.length}</div><div className="space-y-2">{trial.warnings.map((warning, index) => <div key={`${warning.plugin}:${index}`} className="flex gap-2 rounded-control border border-declared px-3 py-2 text-muted"><CircleAlert size={15} className="mt-0.5 shrink-0 text-declared" /><span><span className="mono text-ink">{warning.plugin}</span> · {warning.message}</span></div>)}</div></section> : null}
             {finished?.status === "failed" && logs.length ? <details><summary className="cursor-pointer text-muted">Generator log · {logs.length} lines</summary><pre className="mono mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded-control bg-surface p-3 text-muted">{logs.map((event) => event.message).join("\n")}</pre></details> : null}
@@ -874,7 +932,7 @@ function RunDialog({ runId, open, onClose, onFinished, onApply }: { runId: strin
         {preview ? <section className="mt-5"><div className="label mb-2">generated diff · {preview.totalFiles} {plural(preview.totalFiles, "file")}</div>{preview.files.length ? <div className="divide-y divide-line overflow-hidden rounded-control border border-line">{preview.files.map((file) => <details key={file.path} className="group"><summary className="flex cursor-pointer items-center gap-2 px-3 py-2 hover:bg-surface"><span className={`chip ${file.status === "removed" ? "status-unresolved" : file.status === "added" ? "status-verified" : "status-declared"}`}>{file.status}</span><span className="mono truncate text-ink">{file.path}</span><ChevronDown size={15} className="ml-auto shrink-0 text-muted transition-transform group-open:rotate-180" /></summary><pre className="mono max-h-80 overflow-auto whitespace-pre p-3 text-muted bg-surface">{file.diff || "Binary file changed"}</pre></details>)}</div> : <div className="rounded-control border border-line bg-surface px-3 py-3 text-muted">Generated documentation is already up to date.</div>}{preview.truncated ? <p className="mt-2 text-muted">Showing the first {preview.files.length} changed files.</p> : null}</section> : null}
         {logs.length ? <details className="mt-4"><summary className="cursor-pointer text-muted">Generator log · {logs.length} lines</summary><pre className="mono mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded-control bg-surface p-3 text-muted">{logs.map((event) => event.type === "log" ? event.message : "").join("\n")}</pre></details> : null}
       </div>
-      <div className="flex justify-end gap-2 border-t border-line px-5 py-4">{finished ? <><button type="button" className="tbtn" onClick={onClose}>{preview?.files.length ? "Cancel" : "Done"}</button>{preview?.files.length && finished.status === "ok" && runId ? <button type="button" className="product-primary" onClick={() => onApply(runId)}><Play size={15} /> Apply changes</button> : null}</> : <button type="button" className="tbtn" onClick={() => runId && void cancelGeneration(runId)}>Cancel generation</button>}</div>
+      <div className="flex flex-wrap justify-end gap-2 border-t border-line px-5 py-4">{finished ? <>{run?.mode === "write" && finished.status === "ok" ? <><Link to={`${paths.map()}?tour=1`} className="product-primary" onClick={onClose}>Explore the map</Link><Link to={paths.settingsDelivery()} className="tbtn" onClick={onClose}>Set up publishing</Link></> : null}<button type="button" className="tbtn" onClick={onClose}>{preview?.files.length ? "Cancel" : "Done"}</button>{preview?.files.length && finished.status === "ok" && runId ? <button type="button" className="product-primary" onClick={() => onApply(runId)}><Play size={15} /> Apply changes</button> : null}</> : <button type="button" className="tbtn" onClick={() => runId && void cancelGeneration(runId)}>Cancel generation</button>}</div>
     </Modal>
   );
 }
@@ -912,11 +970,49 @@ function SettingsNav() {
   );
 }
 
-function OverviewSettings() {
+function GettingStarted({ onGenerate }: { onGenerate: () => void }) {
+  const setupInfo = useSetup();
+  const starter = starterProject(setupInfo);
+  const ownProjects = starter ? [] : setupInfo.projects;
+  const connected = ownProjects.length > 0;
+  const placed = connected && ownProjects.some((project) => (project.group ?? project.context) && (project.component ?? project.service));
+  const generated = placed && Boolean(setupInfo.run && !setupInfo.reportStale && setupInfo.run.status === "ok");
+  const steps = [
+    { label: "Clear the starter", detail: "Remove the placeholder project and catalog.", done: !starter },
+    { label: "Connect a project", detail: placed ? "Project and architecture placement are configured." : "Choose a source and place it in a bounded context.", done: placed },
+    { label: "Review the result", detail: "Preview and apply the generated documentation.", done: generated },
+  ];
+  const completed = steps.filter((step) => step.done).length;
+  if (completed === steps.length) return null;
+  const tip = starter
+    ? "The starter is only configuration and generated catalog data. Removing it never touches application source code."
+    : !connected
+      ? "Start with one deployable component. A useful small catalog is easier to grow than a perfect estate-wide model."
+      : !placed
+        ? "A bounded context describes a language and responsibility boundary, not necessarily a directory or team."
+        : "Preview first: Portolan shows the exact generated-file diff before anything is applied.";
+  return (
+    <section className="mb-section overflow-hidden rounded-card border border-accent bg-canvas shadow-xs">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line bg-surface px-card py-3">
+        <div><div className="font-semibold text-ink">Getting started</div><p className="mt-1 text-muted">One path from an empty workspace to useful architecture documentation.</p></div>
+        <div className="mono text-muted">{completed} / {steps.length} complete</div>
+      </div>
+      <div className="grid lg:grid-cols-[minmax(0,1.45fr)_minmax(16rem,0.75fr)]">
+        <ol className="divide-y divide-line lg:border-r lg:border-line">
+          {steps.map((step, index) => <li key={step.label} className="flex items-start gap-3 px-card py-3"><span className={`mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full ${step.done ? "bg-verified text-canvas" : index === completed ? "bg-accent text-canvas" : "bg-surface text-muted"}`}>{step.done ? <Check size={14} aria-hidden /> : index + 1}</span><span><span className="font-medium text-ink">{step.label}</span><span className="mt-0.5 block text-muted">{step.detail}</span></span></li>)}
+        </ol>
+        <div className="flex flex-col justify-between gap-4 p-card"><div><div className="label mb-2">tip for this step</div><p className="text-muted">{tip}</p></div>{starter || !placed ? <Link to={paths.settingsProjects()} className="product-primary self-start">{starter ? "Replace starter" : "Add a project"}</Link> : <button type="button" className="product-primary self-start" onClick={onGenerate}><Play size={15} aria-hidden /> Preview generated diff</button>}</div>
+      </div>
+    </section>
+  );
+}
+
+function OverviewSettings({ local, onGenerate }: { local: boolean; onGenerate: () => void }) {
   const setupInfo = useSetup();
   const active = setupInfo.plugins.filter((plugin) => plugin.stepCount > 0);
   return (
     <>
+      {local ? <GettingStarted onGenerate={onGenerate} /> : null}
       <BuildHealth />
       <div className="mt-4 grid grid-cols-2 gap-grid lg:grid-cols-4">
         <Metric value={setupInfo.projects.length} label="project" />
@@ -948,7 +1044,7 @@ function OverviewSettings() {
 
 function ProjectsSettings({ local, onAdd, onRemove }: { local: boolean; onAdd: (source: ProjectSource) => void; onRemove: (project: SetupProject) => void }) {
   const setupInfo = useSetup();
-  const starter = setupInfo.projects.find((project) => project.id === "portolan" && project.root === ".");
+  const starter = starterProject(setupInfo);
   return (
     <section>
       <SectionTitle right={local ? <div className="flex items-center gap-3"><span className="hidden sm:inline">editable in local mode</span><button type="button" className="tbtn text-ink" onClick={() => onAdd("local")}><Plus size={14} aria-hidden /> Add project</button></div> : "declared in portolan.json"}>Projects</SectionTitle>
@@ -984,6 +1080,7 @@ function PipelineSettings() {
 }
 
 function SettingsContent({ local, onAdd, onRemove, onGenerate }: { local: boolean; onAdd: (source: ProjectSource) => void; onRemove: (project: SetupProject) => void; onGenerate: () => void }) {
+  const overview = useLocation().pathname.replace(/\/$/, "") === paths.settings();
   return (
     <div className="h-full overflow-y-auto p-gutter">
       <div className="max-w-table">
@@ -992,12 +1089,12 @@ function SettingsContent({ local, onAdd, onRemove, onGenerate }: { local: boolea
             <div className="flex items-center gap-2"><h1 className="text-lg font-semibold">Settings</h1>{local ? <span className="chip status-verified">local mode</span> : null}</div>
             <p className="mt-1 max-w-prose text-muted">Configure projects, extraction, delivery automation and local preferences. {local ? "This local session can write reviewed changes." : "Build configuration is read-only here."}</p>
           </div>
-          {local ? <button type="button" className="product-primary" onClick={onGenerate}><Play size={15} /> Preview generated diff</button> : null}
+          {local && !overview ? <button type="button" className="product-primary" onClick={onGenerate}><Play size={15} /> Preview generated diff</button> : null}
         </div>
         <SettingsNav />
         <div className="mt-section">
           <Routes>
-            <Route index element={<OverviewSettings />} />
+            <Route index element={<OverviewSettings local={local} onGenerate={onGenerate} />} />
             <Route path="projects" element={<ProjectsSettings local={local} onAdd={onAdd} onRemove={onRemove} />} />
             <Route path="pipeline" element={<PipelineSettings />} />
             <Route path="delivery" element={<section><SectionTitle right={local ? "preview before writing" : "local mode required"}>Delivery presets</SectionTitle><DeliverySettings local={local} /></section>} />
@@ -1053,8 +1150,16 @@ export function Settings() {
       const result = await removeLocalProject(removeTarget.id);
       setSetup(result.setup);
       setRemoveTarget(null);
-      say(`${result.project.name} removed from portolan.json.`);
-      await generate();
+      say(`${result.project.name} removed from portolan.json.`, {
+        label: "Undo",
+        run: () => { void (async () => {
+          try {
+            const restored = await undoProjectRemoval(result.undoToken);
+            setSetup(restored.setup);
+            say(`${result.project.name} restored.`);
+          } catch (cause) { say(cause instanceof Error ? cause.message : String(cause)); }
+        })(); },
+      });
     } catch (cause) {
       say(cause instanceof Error ? cause.message : String(cause));
     } finally {
@@ -1067,7 +1172,7 @@ export function Settings() {
       <Wizard open={wizardSource !== null} initialSource={wizardSource ?? "local"} onClose={() => setWizardSource(null)} onAdded={setSetup} onRunStarted={(id) => { setRunId(id); setRunOpen(true); }} />
       <Modal open={removeTarget !== null} onClose={removeBusy ? () => {} : () => setRemoveTarget(null)} label={`Remove ${removeTarget?.name ?? "project"}`} width="min(520px,92vw)">
         <div className="border-b border-line px-5 py-4"><div className="font-semibold text-ink">Remove {removeTarget?.name}?</div></div>
-        <div className="p-5"><p className="text-muted">This removes the project, its extraction steps and its dedicated catalog configuration from <span className="mono text-ink">portolan.json</span>. Your source code stays untouched.</p><p className="mt-3 text-muted">Next, Portolan opens a generated-file preview so documentation changes remain reviewable before they are applied.</p></div>
+        <div className="p-5"><p className="text-muted">This removes the project, its extraction steps and its dedicated catalog configuration from <span className="mono text-ink">portolan.json</span>. Your source code stays untouched.</p><p className="mt-3 text-muted">You can undo immediately. Generated documentation changes remain pending until you preview and apply them.</p></div>
         <div className="flex justify-end gap-2 border-t border-line px-5 py-4"><button type="button" className="tbtn" onClick={() => setRemoveTarget(null)} disabled={removeBusy}>Cancel</button><button type="button" className="product-primary" onClick={() => void confirmRemove()} disabled={removeBusy}>{removeBusy ? <LoaderCircle size={15} className="animate-spin" /> : <Trash2 size={15} />} Remove project</button></div>
       </Modal>
       <RunDialog runId={runId} open={runOpen} onClose={() => setRunOpen(false)} onFinished={refresh} onApply={(preview) => void generate(preview)} />

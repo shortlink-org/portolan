@@ -485,21 +485,23 @@ function apply(files, out, key, checkOnly) {
   for (const file of files) {
     const target = safeJoin(out, file.name);
     written.add(file.name);
+    const binary = file.encoding === "base64";
+    const wanted = binary ? Buffer.from(file.contents, "base64") : file.contents;
 
     let current = null;
     try {
-      current = readFileSync(target, "utf8");
+      current = readFileSync(target, binary ? undefined : "utf8");
     } catch {
       // Absent, which the comparison below reports as added.
     }
 
-    if (current === file.contents) continue;
+    if (binary ? Buffer.isBuffer(current) && current.equals(wanted) : current === wanted) continue;
 
     changes.push({ kind: current === null ? "added" : "changed", path: join(out, file.name) });
     if (checkOnly) continue;
 
     try {
-      writeOutputFile(out, file.name, file.contents);
+      writeOutputFile(out, file.name, wanted);
     } catch (cause) {
       fail(cause.message);
     }

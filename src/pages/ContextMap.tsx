@@ -12,8 +12,8 @@
 // whose whole claim is that it does not hold opinions.
 
 import { useDocumentTitle } from "../app/title";
-import { useMemo } from "react";
-import { Link } from "react-router";
+import { useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router";
 import { ArrowRight, ArrowLeftRight, Boxes, Minus } from "lucide-react";
 import { catalog } from "../data";
 import { plural } from "../lib/format";
@@ -437,12 +437,20 @@ function SeparateWays({
 
 export function ContextMap() {
   useDocumentTitle("Context map");
+  const [search, setSearch] = useSearchParams();
+  const [tour, setTour] = useState(() => search.get("tour") === "1");
   const relations = useMemo(() => contextMap(catalog), []);
   const joined = relations.filter(
     (r) => r.dependencies.length > 0 || r.shared.length > 0,
   );
   const apart = relations.filter((r) => !joined.includes(r));
   const wired = joined.length;
+
+  if (catalog.contexts.length === 0) {
+    return (
+      <div className="h-full overflow-y-auto p-gutter"><div className="mx-auto mt-[12vh] max-w-2xl rounded-card border border-accent bg-canvas p-6 shadow-xs"><div className="label mb-2">context map</div><h1 className="text-xl font-semibold text-ink">Your architecture will appear here</h1><p className="mt-2 text-muted">Connect one project first. Portolan will turn detected components, APIs and dependencies into the first map without asking you to draw it by hand.</p><div className="mt-5 flex flex-wrap gap-2"><Link to={paths.settingsProjects()} className="product-primary">Connect your first project</Link><Link to={paths.settings()} className="tbtn">See setup steps</Link></div></div></div>
+    );
+  }
 
   return (
     <div className="h-full overflow-y-auto">
@@ -482,6 +490,7 @@ export function ContextMap() {
 
       <div className="flex gap-section p-gutter">
         <div className="min-w-0 flex-1">
+          {tour ? <section className="mb-section overflow-hidden rounded-card border border-accent bg-canvas shadow-xs"><div className="flex items-start justify-between gap-3 border-b border-line bg-surface px-card py-3"><div><div className="font-semibold text-ink">Your first map</div><p className="mt-1 text-muted">Three things are enough to start exploring.</p></div><button type="button" className="tbtn" onClick={() => { setTour(false); search.delete("tour"); setSearch(search, { replace: true }); try { localStorage.setItem("portolan.onboarding.map-tour.v1", "seen"); } catch {} }}>Got it</button></div><ol className="grid md:grid-cols-3"><li className="border-b border-line p-card md:border-r md:border-b-0"><span className="label text-accent">1 · contexts</span><p className="mt-1 text-muted">Each large boundary owns a language and responsibility.</p></li><li className="border-b border-line p-card md:border-r md:border-b-0"><span className="label text-accent">2 · components</span><p className="mt-1 text-muted">Click a context to highlight it; double-click to open its components.</p></li><li className="p-card"><span className="label text-accent">3 · evidence</span><p className="mt-1 text-muted">Relations below explain which calls and events created each connection.</p></li></ol></section> : null}
           <section id={MAP_ANCHOR.model}>
             <SectionTitle
               anchor={MAP_ANCHOR.model}

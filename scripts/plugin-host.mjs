@@ -41,7 +41,7 @@ const HOST_LIMITS = Object.freeze({
  *   gets no filesystem at all, which is what a generator and a describe
  *   request should get. A process plugin is unaffected: it already has the
  *   whole machine.
- * @returns {Promise<{files: {name: string, contents: string}[], describe?: object}>}
+ * @returns {Promise<{files: {name: string, contents: string, encoding?: "base64"}[], describe?: object}>}
  */
 export async function runPlugin(plugin, request, requestedLimits = {}, access = {}) {
   const limits = lowerLimits(requestedLimits);
@@ -158,7 +158,7 @@ export function validateResponse(name, response) {
       throw new Error(`plugin ${name}: files[${index}] is not an object`);
     }
     const keys = Object.keys(file);
-    if (keys.some((key) => !["name", "contents"].includes(key))) {
+    if (keys.some((key) => !["name", "contents", "encoding"].includes(key))) {
       throw new Error(`plugin ${name}: files[${index}] has unsupported properties`);
     }
     if (typeof file.name !== "string" || !safeFileName(file.name)) {
@@ -167,15 +167,26 @@ export function validateResponse(name, response) {
     if (typeof file.contents !== "string") {
       throw new Error(`plugin ${name}: files[${index}].contents is not a string`);
     }
+    if (file.encoding !== undefined && file.encoding !== "base64") {
+      throw new Error(`plugin ${name}: files[${index}].encoding is not supported`);
+    }
+    if (file.encoding === "base64" && !validBase64(file.contents)) {
+      throw new Error(`plugin ${name}: files[${index}].contents is not valid base64`);
+    }
     if (seen.has(file.name)) {
       throw new Error(`plugin ${name}: duplicate output file ${file.name}`);
     }
     seen.add(file.name);
-    return { name: file.name, contents: file.contents };
+    return { name: file.name, contents: file.contents, ...(file.encoding ? { encoding: file.encoding } : {}) };
   });
 
   if (response.describe !== undefined) validateDescriptor(name, response.describe);
   return { files, ...(response.describe === undefined ? {} : { describe: response.describe }) };
+}
+
+function validBase64(value) {
+  return value.length % 4 === 0
+    && /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value);
 }
 
 function safeFileName(name) {

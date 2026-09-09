@@ -1025,6 +1025,14 @@
           ],
           "description": "Semantic role of the top-level group. Defaults to system for this neutral extractor."
         },
+        "classification": {
+          "enum": [
+            "core",
+            "supporting",
+            "generic"
+          ],
+          "description": "DDD classification of a bounded context when the group represents one."
+        },
         "component": {
           "type": "string",
           "description": "Slug of the component. Defaults to the input directory name."

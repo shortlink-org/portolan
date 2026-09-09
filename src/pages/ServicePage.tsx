@@ -284,7 +284,7 @@ export function ServicePage() {
               height={300}
             />
             <div className="mt-section" />
-            <Markdown mermaid>{service.readme}</Markdown>
+            <Markdown mermaid sourceRoot={service.path}>{service.readme}</Markdown>
             {/* What to type to build, test and run it. Under the README
                 rather than in a tab of its own: the list is short, it is the
                 first thing a reader new to the checkout wants, and the README

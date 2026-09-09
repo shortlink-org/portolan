@@ -69,6 +69,7 @@ export function describe() {
  */
 export function run(request, { env = process.env } = {}) {
   const options = request.options ?? {};
+  const generatedAt = String(request.input?.generatedAt ?? "");
   const repos = Array.isArray(options.repos) ? options.repos : [];
   if (repos.length === 0) throw new Error("no repositories to fetch: name at least one in the manifest");
   if (!options.cache) {
@@ -86,7 +87,7 @@ export function run(request, { env = process.env } = {}) {
     const at = join(options.cache, ...dir.split("/"));
 
     if (skip) {
-      emitCached(out, dir, at, want, "offline");
+      emitCached(out, dir, at, want, "offline", generatedAt);
       continue;
     }
 
@@ -97,14 +98,14 @@ export function run(request, { env = process.env } = {}) {
       // Rule 2: the tree still holds a good copy, so the output is unchanged
       // and `--check` stays clean.
       try {
-        emitCached(out, dir, at, want, cause.message);
+        emitCached(out, dir, at, want, cause.message, generatedAt);
       } catch (cacheCause) {
         // Rule 3: nothing to fall back to.
         throw new Error(`${want.repo} could not be fetched (${cause.message}) and there is no usable copy in the tree (${cacheCause.message})`);
       }
       continue;
     }
-    emitFetched(out, dir, want, fetched.commit, fetched.files);
+    emitFetched(out, dir, want, fetched.commit, fetched.files, generatedAt);
   }
 
   return out.response();
@@ -164,8 +165,8 @@ export function webRepo(name) {
 }
 
 /** The fragment for one repository at one commit: a catalog with one pin. */
-export function pin(repo, commit) {
-  return `${JSON.stringify({ contexts: [], defs: {}, flows: [], adrs: [], repos: [{ repo: webRepo(repo), commit }] }, null, 2)}\n`;
+export function pin(repo, commit, generatedAt = "") {
+  return `${JSON.stringify({ ...(generatedAt ? { generatedAt } : {}), contexts: [], defs: {}, flows: [], adrs: [], repos: [{ repo: webRepo(repo), commit }] }, null, 2)}\n`;
 }
 
 /** The lock, written the way every generated file here is written. */
@@ -195,15 +196,15 @@ function live(url, want, out, env) {
   return { commit, files };
 }
 
-function emitFetched(out, dir, want, commit, files) {
+function emitFetched(out, dir, want, commit, files, generatedAt) {
   const entry = { repo: want.repo, commit, paths: want.paths ?? [], files: [] };
   for (const path of [...files.keys()].sort()) {
     const contents = files.get(path);
-    out.file(posix.join(dir, path), contents.toString("utf8"));
+    out.file(posix.join(dir, path), contents);
     entry.files.push({ path, sha256: digestOf(contents), size: contents.length });
   }
   out.file(posix.join(dir, LOCK_NAME), encodeLock(entry));
-  out.file(posix.join(dir, PIN_NAME), pin(want.repo, commit));
+  out.file(posix.join(dir, PIN_NAME), pin(want.repo, commit, generatedAt));
 }
 
 /**
@@ -211,18 +212,18 @@ function emitFetched(out, dir, want, commit, files) {
  * online run wrote, so `gen:check` sees no drift and CI can verify an estate
  * whose services live in repositories it never clones.
  */
-function emitCached(out, dir, at, want, why) {
+function emitCached(out, dir, at, want, why, generatedAt = "") {
   if (!want.commit) throw new Error(`${want.repo} is not pinned to a commit, so there is nothing to replay`);
   const held = replay(at);
   if (held.lock.commit !== want.commit) {
     throw new Error(`${want.repo} holds commit ${held.lock.commit} but the manifest pins ${want.commit}; fetch it`);
   }
-  for (const file of held.lock.files) out.file(posix.join(dir, file.path), held.files.get(file.path).toString("utf8"));
+  for (const file of held.lock.files) out.file(posix.join(dir, file.path), held.files.get(file.path));
   out.file(posix.join(dir, LOCK_NAME), encodeLock(held.lock));
   // From the LOCK's commit, not the manifest's. They are equal by the check
   // above, and taking it from the copy is what keeps the fragment describing
   // what is actually on disk rather than what was asked for.
-  out.file(posix.join(dir, PIN_NAME), pin(want.repo, held.lock.commit));
+  out.file(posix.join(dir, PIN_NAME), pin(want.repo, held.lock.commit, generatedAt));
   out.warn(want.repo, `not fetched (${why}); the copy committed in this repository is used unchanged`);
 }
 
@@ -366,7 +367,16 @@ class Builder {
   warnings = [];
 
   file(name, contents) {
-    this.files.push({ name, contents });
+    if (!Buffer.isBuffer(contents)) {
+      this.files.push({ name, contents });
+      return;
+    }
+    const text = contents.toString("utf8");
+    this.files.push(
+      Buffer.from(text, "utf8").equals(contents)
+        ? { name, contents: text }
+        : { name, contents: contents.toString("base64"), encoding: "base64" },
+    );
   }
 
   warn(ref, message) {

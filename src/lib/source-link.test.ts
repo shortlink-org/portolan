@@ -149,5 +149,8 @@ describe("treeHref", () => {
     expect(treeHref("vendor/repos/acme/shop/services/oms", shop, PINS, GH)).toBe(
       "https://github.com/acme/shop/tree/c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0/services/oms",
     );
+    expect(treeHref("vendor/repos/acme/shop", shop, PINS, GH)).toBe(
+      "https://github.com/acme/shop/tree/c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0",
+    );
   });
 });

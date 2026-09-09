@@ -13,6 +13,14 @@ describe("plugin response validation", () => {
     });
   });
 
+  it("accepts canonical base64 files and rejects malformed binary output", () => {
+    expect(validateResponse("fixture", { files: [{ name: "image.png", contents: "iVBORw==", encoding: "base64" }] })).toEqual({
+      files: [{ name: "image.png", contents: "iVBORw==", encoding: "base64" }],
+    });
+    expect(() => validateResponse("fixture", { files: [{ name: "image.png", contents: "not base64", encoding: "base64" }] })).toThrow("not valid base64");
+    expect(() => validateResponse("fixture", { files: [{ name: "image.png", contents: "x", encoding: "binary" }] })).toThrow("encoding is not supported");
+  });
+
   it.each(["../secret", "/tmp/result", "C:\\tmp\\result", "a/../../secret", "./result"])(
     "rejects unsafe output name %s",
     (name) => {

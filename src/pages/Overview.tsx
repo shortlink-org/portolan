@@ -105,6 +105,12 @@ export function Overview() {
   const issueCount = issues.length;
   const errorCount = issues.filter((p) => p.severity === "error").length;
 
+  if (catalog.contexts.length === 0) {
+    return (
+      <div className="h-full overflow-y-auto p-gutter"><div className="mx-auto mt-[12vh] max-w-2xl rounded-card border border-accent bg-canvas p-6 shadow-xs"><div className="label mb-2">welcome to Portolan</div><h1 className="text-xl font-semibold text-ink">Turn your first project into an architecture catalog</h1><p className="mt-2 text-muted">Start with one repository. Portolan detects its components and contracts, lets you review the evidence, then generates a navigable map.</p><div className="mt-5 flex flex-wrap gap-2"><Link to={paths.settingsProjects()} className="product-primary">Connect your first project</Link><Link to={paths.settings()} className="tbtn">Open setup guide</Link></div><div className="mono mt-5 border-t border-line pt-4 text-muted">source → context → evidence → preview → map</div></div></div>
+    );
+  }
+
   return (
     <div className="h-full overflow-y-auto p-gutter">
       <div className="flex flex-col items-start gap-1 sm:flex-row sm:items-start sm:gap-x-4">

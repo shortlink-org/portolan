@@ -31,11 +31,12 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 		GeneratedAt: in.GeneratedAt,
 		Commit:      in.Commit,
 		Contexts: []catalog.BoundedContext{{
-			ID:      group,
-			Slug:    group,
-			Name:    firstNonEmpty(opts.GroupName, title(group)),
-			Summary: opts.GroupSummary,
-			Kind:    catalog.GroupKind(firstNonEmpty(opts.GroupKind, string(catalog.GroupKindSystem))),
+			ID:             group,
+			Slug:           group,
+			Name:           firstNonEmpty(opts.GroupName, title(group)),
+			Summary:        opts.GroupSummary,
+			Kind:           catalog.GroupKind(firstNonEmpty(opts.GroupKind, string(catalog.GroupKindSystem))),
+			Classification: catalog.Classification(opts.Classification),
 			Services: []catalog.Service{{
 				ID:           group + "." + component,
 				Slug:         component,

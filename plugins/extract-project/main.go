@@ -10,10 +10,11 @@ import (
 )
 
 type Options struct {
-	Group        string `json:"group,omitempty"`
-	GroupName    string `json:"groupName,omitempty"`
-	GroupSummary string `json:"groupSummary,omitempty"`
-	GroupKind    string `json:"groupKind,omitempty"`
+	Group          string `json:"group,omitempty"`
+	GroupName      string `json:"groupName,omitempty"`
+	GroupSummary   string `json:"groupSummary,omitempty"`
+	GroupKind      string `json:"groupKind,omitempty"`
+	Classification string `json:"classification,omitempty"`
 
 	Component     string   `json:"component,omitempty"`
 	ComponentName string   `json:"componentName,omitempty"`

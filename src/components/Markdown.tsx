@@ -17,6 +17,7 @@ import { headingSlug } from "../lib/derive";
 import { Mermaid } from "./Mermaid";
 import { MarkdownTable } from "./MarkdownTable";
 import { remarkTableDirective } from "../lib/table-directive";
+import { readmeAssetHref } from "../lib/readme-assets";
 
 function textOf(node: React.ReactNode): string {
   if (typeof node === "string" || typeof node === "number") return String(node);
@@ -146,9 +147,11 @@ function Pre(props: ComponentPropsWithoutRef<"pre">) {
 export function Markdown({
   children,
   mermaid = false,
+  sourceRoot,
 }: {
   children: string;
   mermaid?: boolean;
+  sourceRoot?: string;
 }) {
   return (
     <div className="prose">
@@ -164,6 +167,20 @@ export function Markdown({
           // said not to.
           table: MarkdownTable,
           ...(mermaid ? { pre: Pre } : {}),
+          ...(sourceRoot ? {
+            a: (props: ComponentPropsWithoutRef<"a">) => {
+              const href = typeof props.href === "string"
+                ? readmeAssetHref(sourceRoot, props.href, import.meta.env.BASE_URL)
+                : null;
+              return <a {...props} href={href ?? props.href} {...(href ? { target: "_blank", rel: "noreferrer" } : {})} />;
+            },
+            img: (props: ComponentPropsWithoutRef<"img">) => {
+              const src = typeof props.src === "string"
+                ? readmeAssetHref(sourceRoot, props.src, import.meta.env.BASE_URL)
+                : null;
+              return <img {...props} src={src ?? props.src} />;
+            },
+          } : {}),
         }}
       >
         {children}

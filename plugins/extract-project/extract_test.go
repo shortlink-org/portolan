@@ -50,7 +50,7 @@ func TestExtractsANeutralApplicationWithoutDDD(t *testing.T) {
 
 func TestExplicitKindsWin(t *testing.T) {
 	root := t.TempDir()
-	response, err := extract(plugin.Input{Root: root}, Options{Group: "platform", GroupKind: "team", Component: "tools", ComponentKind: "cli"})
+	response, err := extract(plugin.Input{Root: root}, Options{Group: "platform", GroupKind: "team", Classification: "supporting", Component: "tools", ComponentKind: "cli"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,6 +60,9 @@ func TestExplicitKindsWin(t *testing.T) {
 	}
 	if got.Contexts[0].Kind != catalog.GroupKindTeam || got.Contexts[0].Services[0].Kind != catalog.ComponentKindCLI {
 		t.Fatalf("explicit kinds were lost: %+v", got.Contexts[0])
+	}
+	if got.Contexts[0].Classification != catalog.ClassificationSupporting {
+		t.Fatalf("classification = %q", got.Contexts[0].Classification)
 	}
 }
 

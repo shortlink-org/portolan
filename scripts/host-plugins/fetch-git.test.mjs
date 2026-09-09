@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -30,6 +30,7 @@ function repository() {
   write("services/oms/internal/domain/order/order.go", "package order\n");
   write("services/oms/README.md", "# OMS\n");
   write("proto/shop/v1/orders.proto", 'syntax = "proto3";\n');
+  write("docs/example.png", Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0xff, 0x00]));
   write("README.md", "# shop\n");
   git(["add", "."]);
   git(["commit", "--quiet", "-m", "the estate"]);
@@ -48,21 +49,22 @@ function cache() {
 const online = { CI: "", [OFFLINE_ENV]: "" };
 const offline = { CI: "", [OFFLINE_ENV]: "1" };
 const options = (remote, cacheDir, paths) => ({ cache: cacheDir, repos: [{ repo: remote.url, commit: remote.commit, ...(paths ? { paths } : {}) }] });
-const fetch = (opts, env) => run({ options: opts }, { env: { ...process.env, ...env } });
+const fetch = (opts, env, input) => run({ options: opts, ...(input ? { input } : {}) }, { env: { ...process.env, ...env } });
 const names = (response) => response.files.map((file) => file.name).sort();
 const contentsOf = (response, name) => response.files.find((file) => file.name === name)?.contents ?? "";
 // What the host does with a response.
 const write = (dir, response) => {
   for (const file of response.files) {
     mkdirSync(dirname(join(dir, file.name)), { recursive: true });
-    writeFileSync(join(dir, file.name), file.contents);
+    writeFileSync(join(dir, file.name), file.encoding === "base64" ? Buffer.from(file.contents, "base64") : file.contents);
   }
 };
 
 describe("fetch-git", () => {
   it("writes the narrowed copy, a lock and a pin", () => {
     const remote = repository();
-    const response = fetch(options(remote, cache(), ["services/oms", "proto"]), online);
+    const generatedAt = "2026-09-09T03:00:00.000Z";
+    const response = fetch(options(remote, cache(), ["services/oms", "proto"]), online, { generatedAt });
     // The directory is owner/name, read off the URL; the paths inside are
     // the repository's own, so an extractor can read the copy as a checkout.
     const dir = remote.copyDir;
@@ -82,7 +84,7 @@ describe("fetch-git", () => {
 
     // The fragment is the lock's commit said in the shape the catalog reads.
     const fragment = contentsOf(response, `${dir}/git.repo.json`);
-    expect(JSON.parse(fragment)).toEqual({ contexts: [], defs: {}, flows: [], adrs: [], repos: [{ repo: remote.dir.slice(1), commit: remote.commit }] });
+    expect(JSON.parse(fragment)).toEqual({ generatedAt, contexts: [], defs: {}, flows: [], adrs: [], repos: [{ repo: remote.dir.slice(1), commit: remote.commit }] });
     expect(fragment.endsWith("\n")).toBe(true);
   });
 
@@ -101,6 +103,20 @@ describe("fetch-git", () => {
     // CI verifies what was committed and never opens a socket.
     const inCi = fetch(options(remote, cacheDir, ["services/oms"]), { CI: "true", [OFFLINE_ENV]: "" });
     expect(inCi.warnings).toHaveLength(1);
+  });
+
+  it("preserves binary blobs online and from the offline cache", () => {
+    const remote = repository();
+    const cacheDir = cache();
+    const first = fetch(options(remote, cacheDir, ["docs/example.png"]), online);
+    const name = `${remote.copyDir}/docs/example.png`;
+    const image = first.files.find((file) => file.name === name);
+    expect(image?.encoding).toBe("base64");
+    write(cacheDir, first);
+    expect(readFileSync(join(cacheDir, name))).toEqual(readFileSync(join(remote.dir, "docs/example.png")));
+
+    const replayed = fetch(options(remote, cacheDir, ["docs/example.png"]), offline);
+    expect(replayed.files.find((file) => file.name === name)).toEqual(image);
   });
 
   it("names the edited file when a vendored copy no longer matches its lock", () => {
@@ -202,6 +218,10 @@ describe("names", () => {
     const fragment = pin("git@github.com:acme/shop.git", "c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0");
     expect(fragment).toBe(`${JSON.stringify({ contexts: [], defs: {}, flows: [], adrs: [], repos: [{ repo: "github.com/acme/shop", commit: "c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0" }] }, null, 2)}\n`);
     expect(pin("github.com/acme/shop", "c1d2e3f")).toBe(pin("github.com/acme/shop", "c1d2e3f"));
+    expect(JSON.parse(pin("github.com/acme/shop", "c1d2e3f", "2026-09-09T03:00:00.000Z"))).toMatchObject({
+      generatedAt: "2026-09-09T03:00:00.000Z",
+      repos: [{ repo: "github.com/acme/shop", commit: "c1d2e3f" }],
+    });
 
     const lock = encodeLock({ repo: "github.com/acme/shop", commit: "abc", paths: ["services/oms", "proto"], files: [{ path: "b", sha256: "2", size: 1 }, { path: "a", sha256: "1", size: 1 }] });
     expect(JSON.parse(lock)).toEqual({ repos: [{ repo: "github.com/acme/shop", commit: "abc", paths: ["proto", "services/oms"], files: [{ path: "a", sha256: "1", size: 1 }, { path: "b", sha256: "2", size: 1 }] }] });

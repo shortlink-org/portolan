@@ -41,6 +41,13 @@ function generate(catalog) {
 }
 
 describe("the LikeC4 generator", () => {
+  it("emits valid fallback views for an empty catalog", () => {
+    const { model, views } = generate({ contexts: [], flows: [] });
+    expect(model).toContain("model {");
+    expect(views).toContain("view landscape");
+    expect(views).toContain("include *");
+  });
+
   it("treats dots in a root participant id as data, not containment", () => {
     const { model, views } = generate({
       contexts: [
