@@ -23,6 +23,7 @@ import { plural } from "../lib/format";
 import { comparisonQuery, comparisonSide, forgeKeys, forgeRefsQuery } from "../lib/queries";
 import { useForgeAccess } from "../app/forge-access";
 import { CatEmptyState } from "../components/CatIllustration";
+import { CommitLink } from "../components/CommitLink";
 
 const LABEL: Record<Severity, string> = {
   breaking: "Breaking",
@@ -35,10 +36,6 @@ const TONE: Record<Severity, string> = {
   addition: "text-declared border-declared/30 bg-declared/5",
   change: "text-accent border-accent/30 bg-accent/5",
 };
-
-function short(sha: string): string {
-  return sha.slice(0, 7) || "unknown";
-}
 
 function forgeName(repo: ForgeRepo): string {
   return repo.provider === "gitlab" ? "GitLab" : "GitHub";
@@ -302,8 +299,8 @@ export function Changes() {
             )}
 
             <div className="mono mt-4 flex flex-wrap gap-x-4 gap-y-1 border-t border-line pt-3 text-xs text-muted">
-              <span>{base} · {short(loaded.baseSha)}</span>
-              <span>{head} · {short(loaded.headSha)}</span>
+              <span>{base} · <CommitLink commit={loaded.baseSha} repo={repo} /></span>
+              <span>{head} · <CommitLink commit={loaded.headSha} repo={repo} /></span>
               <span className="ml-auto">loaded from {repo?.provider === "gitlab" ? "GitLab" : "GitHub"} at runtime</span>
             </div>
           </>

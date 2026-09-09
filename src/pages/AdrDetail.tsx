@@ -1,8 +1,6 @@
 import { useDocumentTitle } from "../app/title";
-import { useId, useState } from "react";
 import { Link, useParams } from "react-router";
 import { ArrowRight, ArrowLeft } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
 import { index } from "../data";
 import type { Adr, AdrCommit } from "../catalog";
 import { adrNumber } from "../lib/adr";
@@ -16,14 +14,7 @@ import {
 import { eventPath, paths, servicePath } from "../routes";
 import { PinButton } from "../app/pins";
 import { NotFound } from "./NotFound";
-import { buildInfo, repositoryCommitHref } from "../lib/build-info";
-import { forgeRepoFromUrl } from "../lib/github-catalog";
-import type { ForgeCommit } from "../lib/github-catalog";
-import { forgeCommitQuery } from "../lib/queries";
-import { useForgeAccess } from "../app/forge-access";
-import { absoluteTime, relativeTime } from "../lib/format";
-
-const buildRepo = forgeRepoFromUrl(buildInfo.repoUrl, buildInfo.forge);
+import { CommitLink } from "../components/CommitLink";
 
 /**
  * The body's own H1 repeats the title in the header of this page; MADR files
@@ -240,99 +231,13 @@ export function AdrDetail() {
 
 /** Who wrote the record down and when, from git: "committed by Ada Lovelace · 2026-01-01 · 0a1b2c3". */
 function CommitLine({ label, commit }: { label: string; commit: AdrCommit }) {
-  const href = repositoryCommitHref(commit.commit);
-  if (!href || !buildRepo) {
-    return (
-      <span title={`${label} in ${commit.commit}`}>
-        {label} by <span className="text-ink">{commit.author || "unknown"}</span>
-        {" · "}
-        {commit.date.slice(0, 10)}
-        {" · "}
-        <Ident value={commit.commit}>{commit.commit.slice(0, 7)}</Ident>
-      </span>
-    );
-  }
-
   return (
     <span>
       {label} by <span className="text-ink">{commit.author || "unknown"}</span>
       {" · "}
       {commit.date.slice(0, 10)}
       {" · "}
-      <CommitHoverLink commit={commit} href={href} />
-    </span>
-  );
-}
-
-function CommitHoverLink({ commit, href }: { commit: AdrCommit; href: string }) {
-  const [open, setOpen] = useState(false);
-  const id = useId();
-  const access = useForgeAccess();
-  const token = access.tokenFor(buildRepo!);
-  const details = useQuery({
-    ...forgeCommitQuery(buildRepo, token, commit.commit),
-    enabled: open,
-  });
-
-  return (
-    <span
-      className="relative inline-flex"
-      onPointerEnter={() => setOpen(true)}
-      onPointerLeave={() => setOpen(false)}
-    >
-      <a
-        href={href}
-        target="_blank"
-        rel="noreferrer"
-        aria-label={`Open commit ${commit.commit} on the forge`}
-        aria-describedby={open ? id : undefined}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setOpen(false)}
-        className="rounded-[4px] text-accent underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent"
-      >
-        {commit.commit.slice(0, 7)}
-      </a>
-      {open ? (
-        <span className="absolute left-0 top-full z-50 block pt-1">
-          <span
-            id={id}
-            role="tooltip"
-            className="palette-in pointer-events-none block w-80 max-w-[calc(100vw-2rem)] rounded-control border bg-canvas p-3 normal-case border-line-strong shadow-md"
-          >
-            <span className="label block">commit</span>
-            {details.isPending ? (
-              <span className="mt-2 block text-muted">loading commit…</span>
-            ) : details.isError ? (
-              <span className="mt-2 block text-muted">commit details unavailable</span>
-            ) : (
-              <CommitHoverContent commit={details.data} />
-            )}
-          </span>
-        </span>
-      ) : null}
-    </span>
-  );
-}
-
-function CommitHoverContent({ commit }: { commit: ForgeCommit }) {
-  const hasStats = commit.additions !== null || commit.deletions !== null;
-  const body = commit.body.replace(/\s+/g, " ").trim();
-  const summary = body.length > 180 ? `${body.slice(0, 177).trimEnd()}…` : body;
-  return (
-    <span className="mt-2 block">
-      <span className="flex items-center gap-2">
-        {commit.avatarUrl ? <img src={commit.avatarUrl} alt="" className="size-7 rounded-full" /> : null}
-        <span className="min-w-0">
-          <span className="block truncate text-ink">{commit.author}</span>
-          {commit.authoredAt ? <span className="block text-faint" title={absoluteTime(commit.authoredAt)}>{relativeTime(commit.authoredAt)}</span> : null}
-        </span>
-      </span>
-      <span className="mt-2 block font-sans font-medium text-ink">{commit.title}</span>
-      {summary ? <span className="mt-1 block font-sans text-muted">{summary}</span> : null}
-      <span className="mt-2 flex items-center gap-3 border-t pt-2 border-line text-faint">
-        <span className="truncate" title={commit.sha}>{commit.sha}</span>
-        {hasStats ? <span className="ml-auto shrink-0"><span className="text-verified">+{commit.additions ?? 0}</span>{" "}<span className="text-unresolved">−{commit.deletions ?? 0}</span></span> : null}
-      </span>
+      <CommitLink commit={commit.commit} />
     </span>
   );
 }

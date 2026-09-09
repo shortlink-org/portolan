@@ -56,6 +56,7 @@ import { MachineDocs } from "../components/MachineDocs";
 import { DeliverySettings } from "./settings/DeliverySettings";
 import { PreferencesSettings } from "./settings/PreferencesSettings";
 import { CatEmptyState, CatIllustration } from "../components/CatIllustration";
+import { CommitLink } from "../components/CommitLink";
 
 type Health = "healthy" | "changed" | "failed" | "unchecked";
 type ProjectSource = ProjectDraft["source"];
@@ -339,7 +340,7 @@ function ProjectCard({ project, onRemove }: { project: SetupProject; onRemove?: 
         <dt>scope</dt><dd className="truncate text-ink">{project.components?.length ? `${project.group ?? project.context} · ${project.components.length} components` : [project.group ?? project.context, project.component ?? project.service].filter(Boolean).join(" · ") || "estate"}</dd>
         <dt>pipeline</dt><dd className="text-ink">{declared.length} {plural(declared.length, "step")}</dd>
         <dt>fragments</dt><dd className="text-ink">{sources.length}</dd>
-        <dt>commit</dt><dd className="truncate text-ink" title={commits.join(", ")}>{commits.length === 0 ? "not stamped" : commits.length === 1 ? commits[0] : `${commits.length} source commits`}</dd>
+        <dt>commit</dt><dd className="truncate text-ink" title={commits.join(", ")}>{commits.length === 0 ? "not stamped" : commits.length === 1 ? <CommitLink commit={commits[0]!} repository={project.repository} length={12} /> : `${commits.length} source commits`}</dd>
       </dl>
 
       <div className="mt-4 flex flex-wrap gap-1.5" aria-label="Active plugins">
@@ -894,7 +895,7 @@ function Wizard({ open, initialSource, onClose, onAdded, onRunStarted }: { open:
             <section><div className="label mb-2">extractor results</div><div className="divide-y divide-line rounded-control border border-line">{(trial?.steps ?? completedSteps).map((step) => <div key={`${step.plugin}:${"ordinal" in step ? step.ordinal : "trial"}`} className="grid gap-1 px-3 py-2 sm:grid-cols-[1fr_auto_auto]"><span><span className="font-medium text-ink">{CAPABILITIES[step.plugin]?.title ?? step.plugin}</span><span className="mono ml-2 text-faint">{step.plugin}</span>{step.message ? <span className="mt-1 block text-unresolved">{step.message}</span> : null}</span><span className="mono text-muted">{step.fileCount} {plural(step.fileCount, "file")}</span><span className={`chip ${step.status === "failed" ? "status-unresolved" : "status-verified"}`}>{step.status === "failed" ? "failed" : "read"}</span></div>)}</div></section>
             {trial?.warnings.length ? <section><div className="label mb-2">warnings · {trial.warnings.length}</div><div className="space-y-2">{trial.warnings.map((warning, index) => <div key={`${warning.plugin}:${index}`} className="flex gap-2 rounded-control border border-declared px-3 py-2 text-muted"><CircleAlert size={15} className="mt-0.5 shrink-0 text-declared" /><span><span className="mono text-ink">{warning.plugin}</span> · {warning.message}</span></div>)}</div></section> : null}
             {finished?.status === "failed" && logs.length ? <details><summary className="cursor-pointer text-muted">Generator log · {logs.length} lines</summary><pre className="mono mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded-control bg-surface p-3 text-muted">{logs.map((event) => event.message).join("\n")}</pre></details> : null}
-            {trial ? <div><div className="label mb-2">changes after apply</div><dl className="mono grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-muted"><dt>project</dt><dd className="text-ink">{plan.project.id}</dd>{plan.fetch ? <><dt>pin</dt><dd className="truncate text-ink">{plan.fetch.commit.slice(0, 12)}</dd></> : null}<dt>source</dt><dd className="truncate text-ink">{plan.source}</dd><dt>pipeline</dt><dd className="text-ink">{plan.steps.length + (plan.fetch ? 1 : 0)} {plural(plan.steps.length + (plan.fetch ? 1 : 0), "extract step")}</dd><dt>fragments</dt><dd className="text-ink">{trial.generatedFiles} generated</dd></dl></div> : null}
+            {trial ? <div><div className="label mb-2">changes after apply</div><dl className="mono grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-muted"><dt>project</dt><dd className="text-ink">{plan.project.id}</dd>{plan.fetch ? <><dt>pin</dt><dd className="truncate text-ink"><CommitLink commit={plan.fetch.commit} repository={plan.fetch.repo} length={12} /></dd></> : null}<dt>source</dt><dd className="truncate text-ink">{plan.source}</dd><dt>pipeline</dt><dd className="text-ink">{plan.steps.length + (plan.fetch ? 1 : 0)} {plural(plan.steps.length + (plan.fetch ? 1 : 0), "extract step")}</dd><dt>fragments</dt><dd className="text-ink">{trial.generatedFiles} generated</dd></dl></div> : null}
           </div>
         ) : null}
         {error ? repositoryError ? <RepositoryFailure failure={repositoryError} message={error} token={credentialToken} onTokenChange={setCredentialToken} onForget={() => void forgetCredential()} busy={busy} /> : <div role="alert" className="mt-4 rounded-control border border-unresolved px-3 py-2 text-unresolved">{error}</div> : null}
