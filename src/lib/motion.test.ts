@@ -102,10 +102,12 @@ describe("presence", () => {
     expect(rise.initial.y).toBe(8);
   });
 
-  it("a page arrives on the page duration and leaves faster, opacity only", () => {
+  it("a page rises in and lifts out faster", () => {
     expect(page.animate.transition).toBe(transitions.page);
     expect(page.exit.transition).toBe(transitions.micro);
-    expect(Object.keys(page.exit)).toEqual(["opacity", "transition"]);
+    expect(page.initial.y).toBe(8);
+    expect(page.animate.y).toBe(0);
+    expect(page.exit.y).toBe(-4);
   });
 
   it("scaleIn grows the two percent palette-in grows", () => {

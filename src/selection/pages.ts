@@ -9,7 +9,7 @@ import { walkSteps } from "../catalog";
 import { catalog, index } from "../data";
 import { paths } from "../routes";
 import type { Selection } from "./model";
-import { parseFlowStepId, resolveSelection } from "./model";
+import { parseFlowStepId, resolveSelection, sameSelection } from "./model";
 
 /** The page that owns a selection, or null when it has no page of its own. */
 export function selectionPath(selection: Selection): string | null {
@@ -257,12 +257,18 @@ export function pageContains(pathname: string, selection: Selection): boolean {
  * and only for something that flow actually draws. That is the one place where
  * leaving is the wrong answer — picking an event there is a question about
  * *this* sequence ("where does it appear?"), and the flow page answers it by
- * lighting the matching steps.
+ * lighting the matching steps. Clicking the highlighted selection again is an
+ * explicit request to follow the tree link to its own page.
  */
 export function selectsInPlace(
   pathname: string,
   selection: Selection,
+  current: Selection | null,
 ): boolean {
   const route = parseRoute(pathname);
-  return route.kind === "flow" && pageContains(pathname, selection);
+  return (
+    !sameSelection(current, selection) &&
+    route.kind === "flow" &&
+    pageContains(pathname, selection)
+  );
 }

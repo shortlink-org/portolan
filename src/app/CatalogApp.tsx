@@ -355,9 +355,9 @@ function Shell() {
       {narrow ? (
         <>
           {/* `key` on the route content is what makes the page transition
-              fire: a new pathname is a new element. The old one leaves first,
-              on the micro duration, then the new one rises. */}
-          <AnimatePresence mode="wait">
+              fire: a new pathname is a new element. `popLayout` lets the old
+              page lift away while the new one rises, without a blank frame. */}
+          <AnimatePresence mode="popLayout" initial={false}>
             <m.main
               key={pathname}
               {...page}
@@ -398,7 +398,7 @@ function Shell() {
           <Panel id="main" className="h-full min-w-0" onResize={settle}>
             {/* The detail rail rides along with every page that draws a
                 diagram, so a selection made anywhere has somewhere to be read. */}
-            <AnimatePresence mode="wait">
+            <AnimatePresence mode="popLayout" initial={false}>
               <m.main
                 key={pathname}
                 {...page}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pageContains, selectionPath } from "./pages";
+import { pageContains, selectionPath, selectsInPlace } from "./pages";
 import { selectionFor } from "./model";
 
 const dispatched = selectionFor("delivery.core.shipment.ShipmentDispatched");
@@ -41,6 +41,19 @@ describe("selectionPath", () => {
       "/c/delivery/core/shipment/shipment-dispatched",
     );
     expect(selectionPath(money)).toBeNull();
+  });
+});
+
+describe("selectsInPlace", () => {
+  const flow = "/flows/cart-checkout";
+  const shop = selectionFor("shop");
+
+  it("selects a flow context on the flow the first time", () => {
+    expect(selectsInPlace(flow, shop, null)).toBe(true);
+  });
+
+  it("lets a repeated selection follow its link to the context page", () => {
+    expect(selectsInPlace(flow, shop, shop)).toBe(false);
   });
 });
 

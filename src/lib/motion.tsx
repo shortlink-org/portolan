@@ -91,14 +91,15 @@ export const scaleIn: Presence = {
 };
 
 /**
- * A route: rises the eight pixels on the page duration, and leaves on the
- * micro duration, opacity only. The reader has already asked for the next
- * page; the old one should be out of the way, not making an exit.
+ * A route: rises the eight pixels on the page duration while the old page
+ * lifts four pixels and fades on the micro duration. Route presence uses
+ * `popLayout`, so those two short movements overlap instead of inserting a
+ * blank beat between pages.
  */
 export const page: Presence = {
   initial: { opacity: 0, y: 8 },
   animate: { opacity: 1, y: 0, transition: transitions.page },
-  exit: { opacity: 0, transition: transitions.micro },
+  exit: { opacity: 0, y: -4, transition: transitions.micro },
 };
 
 /** A row, a toast: rises the same eight pixels a page rises. */
