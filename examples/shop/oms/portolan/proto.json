@@ -40,7 +40,8 @@
                     {
                       "name": "order_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     }
                   ]
                 },
@@ -50,7 +51,8 @@
                     {
                       "name": "order",
                       "type": "Order",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     }
                   ]
                 },
@@ -60,7 +62,8 @@
                     {
                       "name": "order_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     }
                   ]
                 },
@@ -70,7 +73,8 @@
                     {
                       "name": "order",
                       "type": "Order",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     }
                   ]
                 },
@@ -80,37 +84,44 @@
                     {
                       "name": "id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     },
                     {
                       "name": "customer_id",
                       "type": "string",
-                      "doc": "The customer auth vouched for at checkout. Opaque here, as everywhere."
+                      "doc": "The customer auth vouched for at checkout. Opaque here, as everywhere.",
+                      "number": 2
                     },
                     {
                       "name": "basket_id",
                       "type": "string",
-                      "doc": "The basket this order was placed from, so a reader can walk back to it."
+                      "doc": "The basket this order was placed from, so a reader can walk back to it.",
+                      "number": 3
                     },
                     {
                       "name": "status",
                       "type": "OrderStatus",
-                      "doc": ""
+                      "doc": "",
+                      "number": 4
                     },
                     {
                       "name": "lines",
                       "type": "[]Line",
-                      "doc": ""
+                      "doc": "",
+                      "number": 5
                     },
                     {
                       "name": "total",
                       "type": "Money",
-                      "doc": "The quoted total, tax and promotions included."
+                      "doc": "The quoted total, tax and promotions included.",
+                      "number": 6
                     },
                     {
                       "name": "placed_at",
                       "type": "Timestamp",
-                      "doc": ""
+                      "doc": "",
+                      "number": 7
                     }
                   ]
                 },
@@ -120,17 +131,20 @@
                     {
                       "name": "sku",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     },
                     {
                       "name": "quantity",
                       "type": "int32",
-                      "doc": ""
+                      "doc": "",
+                      "number": 2
                     },
                     {
                       "name": "unit_price",
                       "type": "Money",
-                      "doc": ""
+                      "doc": "",
+                      "number": 3
                     }
                   ]
                 },
@@ -140,12 +154,14 @@
                     {
                       "name": "amount_minor",
                       "type": "int64",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     },
                     {
                       "name": "currency",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 2
                     }
                   ]
                 }

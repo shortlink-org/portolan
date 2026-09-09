@@ -181,6 +181,52 @@ describe("mergeCatalogs", () => {
     expect(service?.provides.map((p) => p.id)).toEqual(["auth.v1.Users"]);
   });
 
+  it("retains and unions vendored proto descriptors across service fragments", () => {
+    const first = context("shop", ["shop.oms"]);
+    first.services[0]!.copies = [
+      {
+        id: "pricing.v1.Pricing",
+        source: "pricing.proto",
+        methods: [{ name: "GetQuote" }],
+        enums: [
+          {
+            name: "Status",
+            values: [{ name: "STATUS_UNSPECIFIED", number: 0 }],
+          },
+        ],
+      },
+    ];
+    const second = context("shop", ["shop.oms"]);
+    second.services[0]!.copies = [
+      {
+        id: "pricing.v1.Pricing",
+        source: "pricing.proto",
+        methods: [{ name: "WatchPrices" }],
+        enums: [
+          {
+            name: "Status",
+            values: [{ name: "STATUS_READY", number: 1 }],
+          },
+        ],
+      },
+    ];
+
+    const merged = mergeCatalogs([
+      source("a.json", { contexts: [first] }),
+      source("b.json", { contexts: [second] }),
+    ]);
+    const copy = merged.catalog.contexts[0]?.services[0]?.copies?.[0];
+
+    expect(copy?.methods.map((method) => method.name)).toEqual([
+      "GetQuote",
+      "WatchPrices",
+    ]);
+    expect(copy?.enums?.[0]?.values.map((value) => value.name)).toEqual([
+      "STATUS_UNSPECIFIED",
+      "STATUS_READY",
+    ]);
+  });
+
   it("unions a service's commands by the line to type", () => {
     const domain = context("shop", ["shop.cart"]);
     domain.services = domain.services.map((s) => ({

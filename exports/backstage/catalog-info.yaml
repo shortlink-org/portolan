@@ -508,12 +508,14 @@ spec:
                 {
                   "name": "shipment_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 },
                 {
                   "name": "tracking",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 2
                 }
               ]
             },
@@ -523,12 +525,14 @@ spec:
                 {
                   "name": "shipment_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 },
                 {
                   "name": "status",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 2
                 }
               ]
             },
@@ -538,17 +542,20 @@ spec:
                 {
                   "name": "shipment_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 },
                 {
                   "name": "parcel_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 2
                 },
                 {
                   "name": "location",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 3
                 }
               ]
             },
@@ -558,7 +565,8 @@ spec:
                 {
                   "name": "shipment_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 }
               ]
             },
@@ -568,12 +576,14 @@ spec:
                 {
                   "name": "shipment_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 },
                 {
                   "name": "signed_by",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 2
                 }
               ]
             },
@@ -583,7 +593,8 @@ spec:
                 {
                   "name": "shipment_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 }
               ]
             },
@@ -593,7 +604,8 @@ spec:
                 {
                   "name": "tracking",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 }
               ]
             },
@@ -603,17 +615,20 @@ spec:
                 {
                   "name": "shipment_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 },
                 {
                   "name": "status",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 2
                 },
                 {
                   "name": "scans",
                   "type": "[]ScanView",
-                  "doc": ""
+                  "doc": "",
+                  "number": 3
                 }
               ]
             },
@@ -623,7 +638,8 @@ spec:
                 {
                   "name": "shipment_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 }
               ]
             },
@@ -633,27 +649,32 @@ spec:
                 {
                   "name": "shipment_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 },
                 {
                   "name": "order_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 2
                 },
                 {
                   "name": "status",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 3
                 },
                 {
                   "name": "tracking",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 4
                 },
                 {
                   "name": "parcels",
                   "type": "int32",
-                  "doc": ""
+                  "doc": "",
+                  "number": 5
                 }
               ]
             },
@@ -663,17 +684,20 @@ spec:
                 {
                   "name": "parcel_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 },
                 {
                   "name": "location",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 2
                 },
                 {
                   "name": "scanned_at",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 3
                 }
               ]
             }
@@ -737,17 +761,20 @@ spec:
                 {
                   "name": "vehicle",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 },
                 {
                   "name": "planned_for",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 2
                 },
                 {
                   "name": "shipment_ids",
                   "type": "[]string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 3
                 }
               ]
             },
@@ -757,12 +784,14 @@ spec:
                 {
                   "name": "route_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 },
                 {
                   "name": "stops",
                   "type": "int32",
-                  "doc": ""
+                  "doc": "",
+                  "number": 2
                 }
               ]
             },
@@ -772,7 +801,8 @@ spec:
                 {
                   "name": "route_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 }
               ]
             },
@@ -782,7 +812,8 @@ spec:
                 {
                   "name": "route_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 }
               ]
             },
@@ -792,7 +823,8 @@ spec:
                 {
                   "name": "route_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 }
               ]
             },
@@ -802,7 +834,8 @@ spec:
                 {
                   "name": "route_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 }
               ]
             },
@@ -812,7 +845,8 @@ spec:
                 {
                   "name": "route_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 }
               ]
             },
@@ -822,22 +856,26 @@ spec:
                 {
                   "name": "route_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 },
                 {
                   "name": "vehicle",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 2
                 },
                 {
                   "name": "status",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 3
                 },
                 {
                   "name": "stops",
                   "type": "[]StopView",
-                  "doc": ""
+                  "doc": "",
+                  "number": 4
                 }
               ]
             },
@@ -847,22 +885,26 @@ spec:
                 {
                   "name": "seq",
                   "type": "int32",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 },
                 {
                   "name": "shipment_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 2
                 },
                 {
                   "name": "address",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 3
                 },
                 {
                   "name": "done",
                   "type": "bool",
-                  "doc": ""
+                  "doc": "",
+                  "number": 4
                 }
               ]
             }
@@ -973,22 +1015,26 @@ spec:
                 {
                   "name": "payment_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 },
                 {
                   "name": "order_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 2
                 },
                 {
                   "name": "amount_minor",
                   "type": "int64",
-                  "doc": ""
+                  "doc": "",
+                  "number": 3
                 },
                 {
                   "name": "currency",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 4
                 }
               ]
             },
@@ -998,17 +1044,20 @@ spec:
                 {
                   "name": "payment_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 },
                 {
                   "name": "authorized",
                   "type": "bool",
-                  "doc": ""
+                  "doc": "",
+                  "number": 3
                 },
                 {
                   "name": "reason",
                   "type": "string",
-                  "doc": "Why not, when not: a name from the ledger's closed set (CARD_REFUSED,\nORDER_CANCELLED). Empty when authorized."
+                  "doc": "Why not, when not: a name from the ledger's closed set (CARD_REFUSED,\nORDER_CANCELLED). Empty when authorized.",
+                  "number": 4
                 }
               ]
             },
@@ -1018,7 +1067,8 @@ spec:
                 {
                   "name": "payment_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 }
               ]
             },
@@ -1028,12 +1078,14 @@ spec:
                 {
                   "name": "payment_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 },
                 {
                   "name": "captured_at",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 2
                 }
               ]
             },
@@ -1043,7 +1095,8 @@ spec:
                 {
                   "name": "payment_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 }
               ]
             },
@@ -1053,27 +1106,32 @@ spec:
                 {
                   "name": "payment_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 },
                 {
                   "name": "order_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 2
                 },
                 {
                   "name": "status",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 3
                 },
                 {
                   "name": "amount_minor",
                   "type": "int64",
-                  "doc": ""
+                  "doc": "",
+                  "number": 4
                 },
                 {
                   "name": "currency",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 5
                 }
               ]
             }
@@ -1125,27 +1183,32 @@ spec:
                 {
                   "name": "refund_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 },
                 {
                   "name": "payment_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 2
                 },
                 {
                   "name": "amount_minor",
                   "type": "int64",
-                  "doc": ""
+                  "doc": "",
+                  "number": 3
                 },
                 {
                   "name": "currency",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 4
                 },
                 {
                   "name": "reason",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 5
                 }
               ]
             },
@@ -1155,12 +1218,14 @@ spec:
                 {
                   "name": "refund_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 },
                 {
                   "name": "issued",
                   "type": "bool",
-                  "doc": ""
+                  "doc": "",
+                  "number": 2
                 }
               ]
             },
@@ -1170,7 +1235,8 @@ spec:
                 {
                   "name": "payment_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 }
               ]
             },
@@ -1180,7 +1246,8 @@ spec:
                 {
                   "name": "refunds",
                   "type": "[]RefundView",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 }
               ]
             },
@@ -1190,22 +1257,26 @@ spec:
                 {
                   "name": "refund_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 },
                 {
                   "name": "amount_minor",
                   "type": "int64",
-                  "doc": ""
+                  "doc": "",
+                  "number": 2
                 },
                 {
                   "name": "currency",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 3
                 },
                 {
                   "name": "status",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 4
                 }
               ]
             }
@@ -1851,7 +1922,8 @@ spec:
                 {
                   "name": "order_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 }
               ]
             },
@@ -1861,7 +1933,8 @@ spec:
                 {
                   "name": "order",
                   "type": "Order",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 }
               ]
             },
@@ -1871,7 +1944,8 @@ spec:
                 {
                   "name": "order_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 }
               ]
             },
@@ -1881,7 +1955,8 @@ spec:
                 {
                   "name": "order",
                   "type": "Order",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 }
               ]
             },
@@ -1891,37 +1966,44 @@ spec:
                 {
                   "name": "id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 },
                 {
                   "name": "customer_id",
                   "type": "string",
-                  "doc": "The customer auth vouched for at checkout. Opaque here, as everywhere."
+                  "doc": "The customer auth vouched for at checkout. Opaque here, as everywhere.",
+                  "number": 2
                 },
                 {
                   "name": "basket_id",
                   "type": "string",
-                  "doc": "The basket this order was placed from, so a reader can walk back to it."
+                  "doc": "The basket this order was placed from, so a reader can walk back to it.",
+                  "number": 3
                 },
                 {
                   "name": "status",
                   "type": "OrderStatus",
-                  "doc": ""
+                  "doc": "",
+                  "number": 4
                 },
                 {
                   "name": "lines",
                   "type": "[]Line",
-                  "doc": ""
+                  "doc": "",
+                  "number": 5
                 },
                 {
                   "name": "total",
                   "type": "Money",
-                  "doc": "The quoted total, tax and promotions included."
+                  "doc": "The quoted total, tax and promotions included.",
+                  "number": 6
                 },
                 {
                   "name": "placed_at",
                   "type": "Timestamp",
-                  "doc": ""
+                  "doc": "",
+                  "number": 7
                 }
               ]
             },
@@ -1931,17 +2013,20 @@ spec:
                 {
                   "name": "sku",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 },
                 {
                   "name": "quantity",
                   "type": "int32",
-                  "doc": ""
+                  "doc": "",
+                  "number": 2
                 },
                 {
                   "name": "unit_price",
                   "type": "Money",
-                  "doc": ""
+                  "doc": "",
+                  "number": 3
                 }
               ]
             },
@@ -1951,12 +2036,14 @@ spec:
                 {
                   "name": "amount_minor",
                   "type": "int64",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 },
                 {
                   "name": "currency",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 2
                 }
               ]
             }
@@ -2038,17 +2125,20 @@ spec:
                 {
                   "name": "basket_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 },
                 {
                   "name": "currency",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 2
                 },
                 {
                   "name": "items",
                   "type": "[]Item",
-                  "doc": ""
+                  "doc": "",
+                  "number": 3
                 }
               ]
             },
@@ -2058,22 +2148,26 @@ spec:
                 {
                   "name": "quote_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 },
                 {
                   "name": "total_minor",
                   "type": "int64",
-                  "doc": ""
+                  "doc": "",
+                  "number": 2
                 },
                 {
                   "name": "currency",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 3
                 },
                 {
                   "name": "expires_at",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 4
                 }
               ]
             },
@@ -2083,12 +2177,14 @@ spec:
                 {
                   "name": "quote_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 },
                 {
                   "name": "basket_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 2
                 }
               ]
             },
@@ -2098,32 +2194,38 @@ spec:
                 {
                   "name": "quote_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 },
                 {
                   "name": "basket_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 2
                 },
                 {
                   "name": "total_minor",
                   "type": "int64",
-                  "doc": ""
+                  "doc": "",
+                  "number": 3
                 },
                 {
                   "name": "currency",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 4
                 },
                 {
                   "name": "state",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 5
                 },
                 {
                   "name": "expires_at",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 6
                 }
               ]
             },
@@ -2133,12 +2235,14 @@ spec:
                 {
                   "name": "sku",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 },
                 {
                   "name": "quantity",
                   "type": "int32",
-                  "doc": ""
+                  "doc": "",
+                  "number": 2
                 }
               ]
             }
@@ -2184,22 +2288,26 @@ spec:
                 {
                   "name": "name",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 },
                 {
                   "name": "currency",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 2
                 },
                 {
                   "name": "valid_from",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 3
                 },
                 {
                   "name": "rows",
                   "type": "[]PriceRow",
-                  "doc": ""
+                  "doc": "",
+                  "number": 4
                 }
               ]
             },
@@ -2209,12 +2317,14 @@ spec:
                 {
                   "name": "price_list_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 },
                 {
                   "name": "rows",
                   "type": "int32",
-                  "doc": ""
+                  "doc": "",
+                  "number": 2
                 }
               ]
             },
@@ -2224,7 +2334,8 @@ spec:
                 {
                   "name": "price_list_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 }
               ]
             },
@@ -2234,7 +2345,8 @@ spec:
                 {
                   "name": "price_list_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 }
               ]
             },
@@ -2248,7 +2360,8 @@ spec:
                 {
                   "name": "lists",
                   "type": "[]PriceListSummary",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 }
               ]
             },
@@ -2258,12 +2371,14 @@ spec:
                 {
                   "name": "sku",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 },
                 {
                   "name": "amount_minor",
                   "type": "int64",
-                  "doc": ""
+                  "doc": "",
+                  "number": 2
                 }
               ]
             },
@@ -2273,27 +2388,32 @@ spec:
                 {
                   "name": "price_list_id",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 1
                 },
                 {
                   "name": "name",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 2
                 },
                 {
                   "name": "currency",
                   "type": "string",
-                  "doc": ""
+                  "doc": "",
+                  "number": 3
                 },
                 {
                   "name": "rows",
                   "type": "int32",
-                  "doc": ""
+                  "doc": "",
+                  "number": 4
                 },
                 {
                   "name": "archived",
                   "type": "bool",
-                  "doc": ""
+                  "doc": "",
+                  "number": 5
                 }
               ]
             }

@@ -46,22 +46,26 @@
                     {
                       "name": "payment_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     },
                     {
                       "name": "order_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 2
                     },
                     {
                       "name": "amount_minor",
                       "type": "int64",
-                      "doc": ""
+                      "doc": "",
+                      "number": 3
                     },
                     {
                       "name": "currency",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 4
                     }
                   ]
                 },
@@ -71,17 +75,20 @@
                     {
                       "name": "payment_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     },
                     {
                       "name": "authorized",
                       "type": "bool",
-                      "doc": ""
+                      "doc": "",
+                      "number": 3
                     },
                     {
                       "name": "reason",
                       "type": "string",
-                      "doc": "Why not, when not: a name from the ledger's closed set (CARD_REFUSED,\nORDER_CANCELLED). Empty when authorized."
+                      "doc": "Why not, when not: a name from the ledger's closed set (CARD_REFUSED,\nORDER_CANCELLED). Empty when authorized.",
+                      "number": 4
                     }
                   ]
                 },
@@ -91,7 +98,8 @@
                     {
                       "name": "payment_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     }
                   ]
                 },
@@ -101,12 +109,14 @@
                     {
                       "name": "payment_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     },
                     {
                       "name": "captured_at",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 2
                     }
                   ]
                 },
@@ -116,7 +126,8 @@
                     {
                       "name": "payment_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     }
                   ]
                 },
@@ -126,27 +137,32 @@
                     {
                       "name": "payment_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     },
                     {
                       "name": "order_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 2
                     },
                     {
                       "name": "status",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 3
                     },
                     {
                       "name": "amount_minor",
                       "type": "int64",
-                      "doc": ""
+                      "doc": "",
+                      "number": 4
                     },
                     {
                       "name": "currency",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 5
                     }
                   ]
                 }
@@ -177,27 +193,32 @@
                     {
                       "name": "refund_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     },
                     {
                       "name": "payment_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 2
                     },
                     {
                       "name": "amount_minor",
                       "type": "int64",
-                      "doc": ""
+                      "doc": "",
+                      "number": 3
                     },
                     {
                       "name": "currency",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 4
                     },
                     {
                       "name": "reason",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 5
                     }
                   ]
                 },
@@ -207,12 +228,14 @@
                     {
                       "name": "refund_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     },
                     {
                       "name": "issued",
                       "type": "bool",
-                      "doc": ""
+                      "doc": "",
+                      "number": 2
                     }
                   ]
                 },
@@ -222,7 +245,8 @@
                     {
                       "name": "payment_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     }
                   ]
                 },
@@ -232,7 +256,8 @@
                     {
                       "name": "refunds",
                       "type": "[]RefundView",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     }
                   ]
                 },
@@ -242,22 +267,26 @@
                     {
                       "name": "refund_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     },
                     {
                       "name": "amount_minor",
                       "type": "int64",
-                      "doc": ""
+                      "doc": "",
+                      "number": 2
                     },
                     {
                       "name": "currency",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 3
                     },
                     {
                       "name": "status",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 4
                     }
                   ]
                 }

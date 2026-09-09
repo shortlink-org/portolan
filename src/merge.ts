@@ -473,8 +473,11 @@ function mergeService(
   if (!existing) {
     services.set(incoming.id, {
       ...incoming,
-      provides: [...incoming.provides],
+      provides: incoming.provides.map(copyInterface),
       consumes: [...incoming.consumes],
+      ...(incoming.copies
+        ? { copies: incoming.copies.map(copyInterface) }
+        : {}),
       aggregates: incoming.aggregates.map(copyAggregate),
       ...(incoming.stores ? { stores: [...incoming.stores] } : {}),
       ...(incoming.modules ? { modules: [...incoming.modules] } : {}),
@@ -534,6 +537,11 @@ function mergeService(
 
   mergeInterfaces(existing.provides, incoming.provides);
   appendNew(existing.consumes, incoming.consumes, (c) => c.id, raise);
+  if (incoming.copies?.length) {
+    const copies = existing.copies ?? [];
+    mergeInterfaces(copies, incoming.copies);
+    existing.copies = copies;
+  }
   mergeAggregates(existing.aggregates, incoming.aggregates);
 
   if (incoming.stores?.length) {
@@ -713,6 +721,24 @@ function mergeInterfaces(target: RpcService[], incoming: RpcService[]): void {
       }
     }
     if (messages.length > 0) mine.messages = messages;
+
+    const enums = mine.enums ?? [];
+    for (const item of theirs.enums ?? []) {
+      const existing = enums.find((candidate) => candidate.name === item.name);
+      if (!existing) {
+        enums.push({
+          ...item,
+          values: item.values.map((value) => ({ ...value })),
+        });
+        continue;
+      }
+      appendNew(
+        existing.values,
+        item.values.map((value) => ({ ...value })),
+        (value) => value.name,
+      );
+    }
+    if (enums.length > 0) mine.enums = enums;
   }
 }
 
@@ -733,6 +759,14 @@ function copyInterface(provided: RpcService): RpcService {
                   },
                 }
               : {}),
+          })),
+        }
+      : {}),
+    ...(provided.enums
+      ? {
+          enums: provided.enums.map((item) => ({
+            ...item,
+            values: item.values.map((value) => ({ ...value })),
           })),
         }
       : {}),

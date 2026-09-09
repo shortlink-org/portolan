@@ -895,6 +895,22 @@ describe("validateCatalog: interfaces and modules", () => {
     expect(() => validateCatalog(bad)).toThrow(/not in this catalog/);
   });
 
+  it("rejects a vendored interface naming a module nobody declared", () => {
+    const bad = clone();
+    const service = bad.contexts[0]?.services[0];
+    if (!service) throw new Error("nothing to break");
+    service.copies = [
+      {
+        id: "pricing.v1.Pricing",
+        methods: [{ name: "GetQuote" }],
+        source: "internal/pricing.proto",
+        module: "buf.build/acme/nowhere",
+      },
+    ];
+
+    expect(() => validateCatalog(bad)).toThrow(/not in this catalog/);
+  });
+
   it("rejects a module owned by something that is not a service", () => {
     const bad = withModule(clone());
     const module = bad.modules?.[0];

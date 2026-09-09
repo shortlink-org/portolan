@@ -420,6 +420,7 @@ export type ProblemKind =
   | "column-type"
   | "outbox-payload"
   | "proto-missing"
+  | "proto-drift"
   | "shared-channel"
   | "channel-undeclared"
   | "channel-unpublished"

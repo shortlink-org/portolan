@@ -1,7 +1,7 @@
 // Every reading the catalog makes of itself, in one list.
 //
 // Four readers, each answering a different question: edges that resolve to
-// nothing, schemas that name a method the module lacks, tables and columns
+// nothing, producer and consumer schemas that disagree, tables and columns
 // that disagree with the model, and channels that documents and events do not
 // agree on. The problems page, the overview and the landing all want the
 // union, errors first - a boundary leak is not the same kind of news as a

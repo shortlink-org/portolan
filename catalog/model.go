@@ -129,7 +129,11 @@ type Service struct {
 	Technologies []string      `json:"technologies,omitempty"`
 	Provides     []RpcService  `json:"provides"`
 	Consumes     []RpcCall     `json:"consumes"`
-	Aggregates   []Aggregate   `json:"aggregates"`
+	// Copies are interfaces read from vendored proto modules. They are kept
+	// apart from Provides because this service calls rather than implements
+	// them, but retain the shapes needed to compare the copy with its publisher.
+	Copies     []RpcService `json:"copies,omitempty"`
+	Aggregates []Aggregate  `json:"aggregates"`
 	// Stores this service touches, by id. Ownership is not stated here - a
 	// store names its own owner, so an id in this list that the store does not
 	// call its owner is a read.
@@ -550,6 +554,9 @@ type Field struct {
 	Type string `json:"type"`
 	Doc  string `json:"doc"`
 	Ref  string `json:"ref,omitempty"`
+	// Number is the protobuf field number when the source carries one. Other
+	// schema and domain extractors leave it absent.
+	Number int `json:"number,omitempty"`
 }
 
 type TypeDef struct {

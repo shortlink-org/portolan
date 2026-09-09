@@ -67,6 +67,7 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 
 	var provides []catalog.RpcService
 	var consumes []catalog.RpcCall
+	var copies []catalog.RpcService
 	var modules []catalog.ProtoModule
 	moduleIDs := map[string]bool{}
 
@@ -91,6 +92,12 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 			moduleIDs[module.ID] = true
 		}
 		consumes = append(consumes, calls(dir.files, opts.Peers, module.ID, b)...)
+		// Keep the consumer's descriptor as well as its call edges. A per-copy
+		// index is intentional: a narrowed copy must not borrow declarations
+		// from the producer or another vendored module merely because this
+		// extractor happened to read both directories in one run.
+		copyIndex := NewIndex(dir.files)
+		copies = append(copies, interfaces(copyIndex, dir.files, module.ID, newShared(false), b)...)
 	}
 
 	sort.Slice(modules, func(i, j int) bool { return modules[i].ID < modules[j].ID })
@@ -103,6 +110,7 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 		// filled these in from a proto package would be inventing.
 		Provides:   nonNilProvides(provides),
 		Consumes:   nonNilCalls(consumes),
+		Copies:     copies,
 		Aggregates: []catalog.Aggregate{},
 		Modules:    sortedCopy(keysOf(moduleIDs)),
 	}

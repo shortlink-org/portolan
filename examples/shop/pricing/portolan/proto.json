@@ -40,17 +40,20 @@
                     {
                       "name": "basket_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     },
                     {
                       "name": "currency",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 2
                     },
                     {
                       "name": "items",
                       "type": "[]Item",
-                      "doc": ""
+                      "doc": "",
+                      "number": 3
                     }
                   ]
                 },
@@ -60,22 +63,26 @@
                     {
                       "name": "quote_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     },
                     {
                       "name": "total_minor",
                       "type": "int64",
-                      "doc": ""
+                      "doc": "",
+                      "number": 2
                     },
                     {
                       "name": "currency",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 3
                     },
                     {
                       "name": "expires_at",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 4
                     }
                   ]
                 },
@@ -85,12 +92,14 @@
                     {
                       "name": "quote_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     },
                     {
                       "name": "basket_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 2
                     }
                   ]
                 },
@@ -100,32 +109,38 @@
                     {
                       "name": "quote_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     },
                     {
                       "name": "basket_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 2
                     },
                     {
                       "name": "total_minor",
                       "type": "int64",
-                      "doc": ""
+                      "doc": "",
+                      "number": 3
                     },
                     {
                       "name": "currency",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 4
                     },
                     {
                       "name": "state",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 5
                     },
                     {
                       "name": "expires_at",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 6
                     }
                   ]
                 },
@@ -135,12 +150,14 @@
                     {
                       "name": "sku",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     },
                     {
                       "name": "quantity",
                       "type": "int32",
-                      "doc": ""
+                      "doc": "",
+                      "number": 2
                     }
                   ]
                 }
@@ -177,22 +194,26 @@
                     {
                       "name": "name",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     },
                     {
                       "name": "currency",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 2
                     },
                     {
                       "name": "valid_from",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 3
                     },
                     {
                       "name": "rows",
                       "type": "[]PriceRow",
-                      "doc": ""
+                      "doc": "",
+                      "number": 4
                     }
                   ]
                 },
@@ -202,12 +223,14 @@
                     {
                       "name": "price_list_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     },
                     {
                       "name": "rows",
                       "type": "int32",
-                      "doc": ""
+                      "doc": "",
+                      "number": 2
                     }
                   ]
                 },
@@ -217,7 +240,8 @@
                     {
                       "name": "price_list_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     }
                   ]
                 },
@@ -227,7 +251,8 @@
                     {
                       "name": "price_list_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     }
                   ]
                 },
@@ -241,7 +266,8 @@
                     {
                       "name": "lists",
                       "type": "[]PriceListSummary",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     }
                   ]
                 },
@@ -251,12 +277,14 @@
                     {
                       "name": "sku",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     },
                     {
                       "name": "amount_minor",
                       "type": "int64",
-                      "doc": ""
+                      "doc": "",
+                      "number": 2
                     }
                   ]
                 },
@@ -266,27 +294,32 @@
                     {
                       "name": "price_list_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     },
                     {
                       "name": "name",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 2
                     },
                     {
                       "name": "currency",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 3
                     },
                     {
                       "name": "rows",
                       "type": "int32",
-                      "doc": ""
+                      "doc": "",
+                      "number": 4
                     },
                     {
                       "name": "archived",
                       "type": "bool",
-                      "doc": ""
+                      "doc": "",
+                      "number": 5
                     }
                   ]
                 }

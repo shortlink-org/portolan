@@ -156,7 +156,7 @@ func messagesFrom(ix *Index, queue []string, seen map[string]bool, sh *shared, w
 					shortName(fqn)+"."+f.Name+" is listed with the type as written")
 			}
 
-			field := catalog.Field{Name: f.Name, Type: ref.Written, Doc: f.Doc}
+			field := catalog.Field{Name: f.Name, Type: ref.Written, Doc: f.Doc, Number: f.Number}
 
 			if ref.FQN != "" {
 				if !seen[ref.FQN] {
@@ -219,7 +219,7 @@ func (sh *shared) promote(ix *Index, fqn, where string, b *plugin.Builder) strin
 	fields := make([]catalog.Field, 0, len(msg.Fields))
 	for _, f := range msg.Fields {
 		ref := ix.resolveType(fqn, f)
-		fields = append(fields, catalog.Field{Name: f.Name, Type: ref.Written, Doc: f.Doc})
+		fields = append(fields, catalog.Field{Name: f.Name, Type: ref.Written, Doc: f.Doc, Number: f.Number})
 	}
 
 	sh.from[key] = fqn

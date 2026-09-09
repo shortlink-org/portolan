@@ -58,12 +58,14 @@
                     {
                       "name": "shipment_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     },
                     {
                       "name": "tracking",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 2
                     }
                   ]
                 },
@@ -73,12 +75,14 @@
                     {
                       "name": "shipment_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     },
                     {
                       "name": "status",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 2
                     }
                   ]
                 },
@@ -88,17 +92,20 @@
                     {
                       "name": "shipment_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     },
                     {
                       "name": "parcel_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 2
                     },
                     {
                       "name": "location",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 3
                     }
                   ]
                 },
@@ -108,7 +115,8 @@
                     {
                       "name": "shipment_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     }
                   ]
                 },
@@ -118,12 +126,14 @@
                     {
                       "name": "shipment_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     },
                     {
                       "name": "signed_by",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 2
                     }
                   ]
                 },
@@ -133,7 +143,8 @@
                     {
                       "name": "shipment_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     }
                   ]
                 },
@@ -143,7 +154,8 @@
                     {
                       "name": "tracking",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     }
                   ]
                 },
@@ -153,17 +165,20 @@
                     {
                       "name": "shipment_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     },
                     {
                       "name": "status",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 2
                     },
                     {
                       "name": "scans",
                       "type": "[]ScanView",
-                      "doc": ""
+                      "doc": "",
+                      "number": 3
                     }
                   ]
                 },
@@ -173,7 +188,8 @@
                     {
                       "name": "shipment_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     }
                   ]
                 },
@@ -183,27 +199,32 @@
                     {
                       "name": "shipment_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     },
                     {
                       "name": "order_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 2
                     },
                     {
                       "name": "status",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 3
                     },
                     {
                       "name": "tracking",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 4
                     },
                     {
                       "name": "parcels",
                       "type": "int32",
-                      "doc": ""
+                      "doc": "",
+                      "number": 5
                     }
                   ]
                 },
@@ -213,17 +234,20 @@
                     {
                       "name": "parcel_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     },
                     {
                       "name": "location",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 2
                     },
                     {
                       "name": "scanned_at",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 3
                     }
                   ]
                 }
@@ -266,17 +290,20 @@
                     {
                       "name": "vehicle",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     },
                     {
                       "name": "planned_for",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 2
                     },
                     {
                       "name": "shipment_ids",
                       "type": "[]string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 3
                     }
                   ]
                 },
@@ -286,12 +313,14 @@
                     {
                       "name": "route_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     },
                     {
                       "name": "stops",
                       "type": "int32",
-                      "doc": ""
+                      "doc": "",
+                      "number": 2
                     }
                   ]
                 },
@@ -301,7 +330,8 @@
                     {
                       "name": "route_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     }
                   ]
                 },
@@ -311,7 +341,8 @@
                     {
                       "name": "route_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     }
                   ]
                 },
@@ -321,7 +352,8 @@
                     {
                       "name": "route_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     }
                   ]
                 },
@@ -331,7 +363,8 @@
                     {
                       "name": "route_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     }
                   ]
                 },
@@ -341,7 +374,8 @@
                     {
                       "name": "route_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     }
                   ]
                 },
@@ -351,22 +385,26 @@
                     {
                       "name": "route_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     },
                     {
                       "name": "vehicle",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 2
                     },
                     {
                       "name": "status",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 3
                     },
                     {
                       "name": "stops",
                       "type": "[]StopView",
-                      "doc": ""
+                      "doc": "",
+                      "number": 4
                     }
                   ]
                 },
@@ -376,22 +414,26 @@
                     {
                       "name": "seq",
                       "type": "int32",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     },
                     {
                       "name": "shipment_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 2
                     },
                     {
                       "name": "address",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 3
                     },
                     {
                       "name": "done",
                       "type": "bool",
-                      "doc": ""
+                      "doc": "",
+                      "number": 4
                     }
                   ]
                 }

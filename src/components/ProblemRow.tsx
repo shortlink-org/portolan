@@ -27,6 +27,7 @@ const KIND_OF: Record<Problem["kind"], "service" | "event" | "table"> = {
   "column-type": "table",
   "outbox-payload": "table",
   "proto-missing": "service",
+  "proto-drift": "service",
   "shared-channel": "event",
   "channel-undeclared": "event",
   "channel-unpublished": "service",
@@ -44,6 +45,7 @@ const KIND_NOTE: Record<Problem["kind"], string> = {
   "outbox-payload": "an outbox with no payload column",
   "proto-missing":
     "the provider is in the catalog but answers on no such method",
+  "proto-drift": "the vendored proto and provider schema disagree",
   "shared-channel": "a second service publishes on this channel",
   "channel-undeclared":
     "this event goes out on a channel the service does not declare",
@@ -60,6 +62,7 @@ function nearPath(problem: Problem): string | null {
     // peer is nobody; this is a call whose peer is known and whose method is
     // not - and in both the thing to go and look at is the caller.
     case "proto-missing":
+    case "proto-drift":
       return servicePath(problem.service);
     case "consumer":
     case "channel-undeclared":

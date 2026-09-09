@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildIndex, type Catalog, type Service } from "../catalog";
+import type { Catalog, CatalogIndex, Service } from "../catalog";
 import { protoProblems } from "./proto-problems";
 
 function service(id: string, overrides: Partial<Service> = {}): Service {
@@ -43,8 +43,39 @@ const pricing = () =>
     provides: [
       {
         id: "pricing.v1.Pricing",
-        methods: [{ name: "GetQuote" }],
+        methods: [
+          {
+            name: "GetQuote",
+            request: "GetQuoteRequest",
+            response: "Quote",
+          },
+        ],
         source: "proto/pricing/v1/pricing.proto:7",
+        messages: [
+          {
+            name: "GetQuoteRequest",
+            fields: [
+              { name: "sku", type: "string", number: 1, doc: "" },
+              { name: "locale", type: "string", number: 2, doc: "" },
+            ],
+          },
+          {
+            name: "Quote",
+            fields: [
+              { name: "amount", type: "int64", number: 1, doc: "" },
+              { name: "status", type: "QuoteStatus", number: 2, doc: "" },
+            ],
+          },
+        ],
+        enums: [
+          {
+            name: "QuoteStatus",
+            values: [
+              { name: "QUOTE_STATUS_UNSPECIFIED", number: 0 },
+              { name: "QUOTE_STATUS_READY", number: 1 },
+            ],
+          },
+        ],
       },
     ],
   });
@@ -61,8 +92,75 @@ const calling = (id: string, status: "declared" | "unresolved" = "declared") =>
     ],
   });
 
+const copiedPricing = (overrides = {}) =>
+  service("shop.oms", {
+    consumes: [
+      {
+        id: "pricing.v1.Pricing/GetQuote",
+        peer: "shop.pricing",
+        status: "declared",
+        source: "internal/infrastructure/pricing/pricing.proto:8",
+      },
+    ],
+    copies: [
+      {
+        id: "pricing.v1.Pricing",
+        methods: [
+          {
+            name: "GetQuote",
+            request: "GetQuoteRequest",
+            response: "Quote",
+          },
+        ],
+        source: "internal/infrastructure/pricing/pricing.proto:7",
+        messages: [
+          {
+            name: "GetQuoteRequest",
+            fields: [{ name: "sku", type: "string", number: 1, doc: "" }],
+          },
+          {
+            name: "Quote",
+            fields: [
+              { name: "amount", type: "int64", number: 1, doc: "" },
+              { name: "status", type: "QuoteStatus", number: 2, doc: "" },
+            ],
+          },
+        ],
+        enums: [
+          {
+            name: "QuoteStatus",
+            values: [
+              { name: "QUOTE_STATUS_UNSPECIFIED", number: 0 },
+              { name: "QUOTE_STATUS_READY", number: 1 },
+            ],
+          },
+        ],
+        ...overrides,
+      },
+    ],
+  });
+
 function found(catalog: Catalog) {
-  return protoProblems(catalog, buildIndex(catalog));
+  const serviceById = new Map<string, Service>();
+  const serviceContext = new Map<string, Catalog["contexts"][number]>();
+  const rpcProviderByMethod = new Map<string, Service>();
+  for (const context of catalog.contexts) {
+    for (const item of context.services) {
+      serviceById.set(item.id, item);
+      serviceContext.set(item.id, context);
+      for (const provided of item.provides) {
+        for (const method of provided.methods) {
+          rpcProviderByMethod.set(`${provided.id}/${method.name}`, item);
+        }
+      }
+    }
+  }
+  const index = {
+    serviceById,
+    serviceContext,
+    rpcProviderByMethod,
+  } as CatalogIndex;
+  return protoProblems(catalog, index);
 }
 
 describe("protoProblems", () => {
@@ -117,5 +215,74 @@ describe("protoProblems", () => {
 
   it("finds nothing in a catalog where nobody calls anybody", () => {
     expect(found(catalogWith([pricing()]))).toEqual([]);
+  });
+
+  it("accepts a narrowed copy whose retained fields and enum agree", () => {
+    expect(found(catalogWith([pricing(), copiedPricing()]))).toEqual([]);
+  });
+
+  it("reports copied fields whose type, number, or existence drifted", () => {
+    const caller = copiedPricing({
+      messages: [
+        {
+          name: "GetQuoteRequest",
+          fields: [
+            { name: "sku", type: "bytes", number: 3, doc: "" },
+            { name: "currency", type: "string", number: 4, doc: "" },
+          ],
+        },
+      ],
+    });
+
+    const problems = found(catalogWith([pricing(), caller]));
+
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toMatchObject({
+      kind: "proto-drift",
+      severity: "warning",
+      service: "shop.oms",
+      id: "pricing.v1.Pricing",
+      peer: "shop.pricing",
+    });
+    expect(problems[0]?.note).toContain("GetQuoteRequest.sku is bytes");
+    expect(problems[0]?.note).toContain("GetQuoteRequest.sku is field 3");
+    expect(problems[0]?.note).toContain(
+      "GetQuoteRequest.currency is absent from the provider",
+    );
+  });
+
+  it("reports enum values added, removed, or renumbered", () => {
+    const caller = copiedPricing({
+      enums: [
+        {
+          name: "QuoteStatus",
+          values: [
+            { name: "QUOTE_STATUS_UNSPECIFIED", number: 0 },
+            { name: "QUOTE_STATUS_READY", number: 7 },
+            { name: "QUOTE_STATUS_OLD", number: 1 },
+          ],
+        },
+      ],
+    });
+
+    const [problem] = found(catalogWith([pricing(), caller]));
+
+    expect(problem?.note).toContain("QUOTE_STATUS_READY is 7, provider has 1");
+    expect(problem?.note).toContain("QUOTE_STATUS_OLD is absent from the provider");
+  });
+
+  it("reports an enum value present only in the provider", () => {
+    const caller = copiedPricing({
+      enums: [
+        {
+          name: "QuoteStatus",
+          values: [{ name: "QUOTE_STATUS_UNSPECIFIED", number: 0 }],
+        },
+      ],
+    });
+
+    const [problem] = found(catalogWith([pricing(), caller]));
+
+    expect(problem?.note).toContain("QUOTE_STATUS_READY is missing from the copy");
   });
 });

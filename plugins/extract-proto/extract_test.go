@@ -234,6 +234,35 @@ func TestVendoredProtosBecomeCalls(t *testing.T) {
 	}
 }
 
+// Calls carry the graph edge; copies retain the descriptor needed to compare
+// the consumer's fields and enum numbers with the publisher after merge.
+func TestVendoredDescriptorsAreRetainedForDriftChecks(t *testing.T) {
+	copies := service(t).Copies
+	if len(copies) != 1 {
+		t.Fatalf("copies: %+v", copies)
+	}
+	pricing := copies[0]
+	if pricing.ID != "pricing.v1.Pricing" || pricing.Module == "" {
+		t.Fatalf("copy identity: %+v", pricing)
+	}
+
+	var quote *catalog.RpcMessage
+	for i := range pricing.Messages {
+		if pricing.Messages[i].Name == "Quote" {
+			quote = &pricing.Messages[i]
+		}
+	}
+	if quote == nil || len(quote.Fields) != 3 {
+		t.Fatalf("copy messages: %+v", pricing.Messages)
+	}
+	if quote.Fields[2].Name != "status" || quote.Fields[2].Number != 3 {
+		t.Errorf("copy field lost its wire number: %+v", quote.Fields[2])
+	}
+	if len(pricing.Enums) != 1 || pricing.Enums[0].Values[1].Number != 1 {
+		t.Errorf("copy enum values: %+v", pricing.Enums)
+	}
+}
+
 // THE INVARIANT MOST LIKELY TO BE HELPFULLY BROKEN LATER.
 //
 // Reading a .proto proves the call was WRITTEN DOWN, which is what `declared`

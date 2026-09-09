@@ -65,28 +65,33 @@
                     {
                       "name": "customer_id",
                       "type": "string",
-                      "doc": "Who is buying."
+                      "doc": "Who is buying.",
+                      "number": 1
                     },
                     {
                       "name": "items",
                       "type": "[]LineItem",
-                      "doc": ""
+                      "doc": "",
+                      "number": 2
                     },
                     {
                       "name": "coupon",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 3
                     },
                     {
                       "name": "metadata",
                       "type": "map[string]string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 4
                     },
                     {
                       "name": "total",
                       "type": "Money",
                       "doc": "",
-                      "ref": "Money"
+                      "ref": "Money",
+                      "number": 5
                     }
                   ]
                 },
@@ -96,12 +101,14 @@
                     {
                       "name": "order_id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     },
                     {
                       "name": "status",
                       "type": "Status",
-                      "doc": ""
+                      "doc": "",
+                      "number": 2
                     }
                   ]
                 },
@@ -111,7 +118,8 @@
                     {
                       "name": "id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     }
                   ]
                 },
@@ -121,33 +129,39 @@
                     {
                       "name": "id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     },
                     {
                       "name": "status",
                       "type": "Status",
-                      "doc": ""
+                      "doc": "",
+                      "number": 2
                     },
                     {
                       "name": "ship_to",
                       "type": "Address",
-                      "doc": ""
+                      "doc": "",
+                      "number": 3
                     },
                     {
                       "name": "paid",
                       "type": "Money",
                       "doc": "",
-                      "ref": "Money"
+                      "ref": "Money",
+                      "number": 4
                     },
                     {
                       "name": "invoice_ref",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 5
                     },
                     {
                       "name": "channel",
                       "type": "Channel",
-                      "doc": ""
+                      "doc": "",
+                      "number": 6
                     }
                   ]
                 },
@@ -157,7 +171,8 @@
                     {
                       "name": "kind",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     }
                   ]
                 },
@@ -167,7 +182,8 @@
                     {
                       "name": "accepted",
                       "type": "int32",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     }
                   ]
                 },
@@ -177,7 +193,8 @@
                     {
                       "name": "id",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     }
                   ]
                 },
@@ -187,7 +204,8 @@
                     {
                       "name": "sku",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     }
                   ]
                 },
@@ -197,12 +215,14 @@
                     {
                       "name": "currency",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     },
                     {
                       "name": "amount_minor",
                       "type": "int64",
-                      "doc": ""
+                      "doc": "",
+                      "number": 2
                     }
                   ]
                 },
@@ -212,12 +232,14 @@
                     {
                       "name": "city",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 1
                     },
                     {
                       "name": "postcode",
                       "type": "string",
-                      "doc": ""
+                      "doc": "",
+                      "number": 2
                     }
                   ]
                 }
@@ -273,6 +295,77 @@
               "module": "local:internal/infrastructure/pricing"
             }
           ],
+          "copies": [
+            {
+              "id": "pricing.v1.Pricing",
+              "methods": [
+                {
+                  "name": "GetQuote",
+                  "request": "GetQuoteRequest",
+                  "response": "Quote"
+                },
+                {
+                  "name": "WatchPrices",
+                  "request": "GetQuoteRequest",
+                  "response": "Quote",
+                  "streaming": "server"
+                }
+              ],
+              "source": "testdata/estate/internal/infrastructure/pricing/pricing.proto:9",
+              "messages": [
+                {
+                  "name": "GetQuoteRequest",
+                  "fields": [
+                    {
+                      "name": "sku",
+                      "type": "string",
+                      "doc": "",
+                      "number": 1
+                    }
+                  ]
+                },
+                {
+                  "name": "Quote",
+                  "fields": [
+                    {
+                      "name": "sku",
+                      "type": "string",
+                      "doc": "",
+                      "number": 1
+                    },
+                    {
+                      "name": "total",
+                      "type": "Money",
+                      "doc": "Money is declared in a file nobody vendored beside this copy, which is\nexactly the case a compiler cannot read and this parser can.",
+                      "number": 2
+                    },
+                    {
+                      "name": "status",
+                      "type": "QuoteStatus",
+                      "doc": "",
+                      "number": 3
+                    }
+                  ]
+                }
+              ],
+              "enums": [
+                {
+                  "name": "QuoteStatus",
+                  "values": [
+                    {
+                      "name": "QUOTE_STATUS_UNSPECIFIED",
+                      "number": 0
+                    },
+                    {
+                      "name": "QUOTE_STATUS_READY",
+                      "number": 1
+                    }
+                  ]
+                }
+              ],
+              "module": "local:internal/infrastructure/pricing"
+            }
+          ],
           "aggregates": [],
           "modules": [
             "buf.build/acme/shop",
@@ -288,12 +381,14 @@
         {
           "name": "currency",
           "type": "string",
-          "doc": ""
+          "doc": "",
+          "number": 1
         },
         {
           "name": "amount_minor",
           "type": "int64",
-          "doc": ""
+          "doc": "",
+          "number": 2
         }
       ]
     }
