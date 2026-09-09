@@ -16,6 +16,7 @@ import {
   REDIS_OPERATIONS,
   STORE_KINDS,
   STREAMING,
+  TABLE_OPERATIONS,
   TABLE_ROLES,
   aggregateBlocks,
   allAggregates,
@@ -121,6 +122,18 @@ function validateChannels(service: Service): void {
       if (message.direction !== "send" && message.direction !== "receive") {
         fail(
           `message "${message.name}" on channel "${channel.address}" travels "${message.direction}", which is neither send nor receive`,
+          `service ${service.id} / channel ${channel.address}`,
+        );
+      }
+      if (message.encoding !== undefined && (typeof message.encoding !== "string" || message.encoding === "")) {
+        fail(
+          `message "${message.name}" on channel "${channel.address}" has an empty encoding`,
+          `service ${service.id} / channel ${channel.address}`,
+        );
+      }
+      if (message.contentType !== undefined && (typeof message.contentType !== "string" || message.contentType === "")) {
+        fail(
+          `message "${message.name}" on channel "${channel.address}" has an empty content type`,
           `service ${service.id} / channel ${channel.address}`,
         );
       }
@@ -1009,6 +1022,14 @@ function validateStores(catalog: Catalog): void {
           `table "${table.id}" has role "${table.role}"; expected one of ${TABLE_ROLES.join(", ")}`,
           where,
         );
+      }
+      for (const access of table.accesses ?? []) {
+        if (!TABLE_OPERATIONS.includes(access.operation)) {
+          fail(
+            `table "${table.id}" has access operation "${access.operation}"; expected one of ${TABLE_OPERATIONS.join(", ")}`,
+            where,
+          );
+        }
       }
 
       const own = columnsOfTable.get(table.id) ?? new Set<string>();

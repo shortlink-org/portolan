@@ -442,6 +442,7 @@ function foldMaps(catalog: Catalog, stores: Store[]): Store[] {
       if (!aggregate) return table;
       return {
         ...table,
+        ...(table.accesses ? { accesses: table.accesses.map((access) => ({ ...access })) } : {}),
         columns: table.columns.map((column) => {
           if (!column.maps) return column;
           const maps = fold(aggregate, column.maps);
@@ -608,6 +609,21 @@ function mergeService(
           mine.messages,
           theirs.messages,
           (m) => `${m.direction} ${m.name}`,
+          (held, offered) => {
+            for (const field of ["encoding", "contentType"] as const) {
+              if (!held[field] && offered[field]) {
+                held[field] = offered[field];
+              } else if (held[field] && offered[field] && held[field] !== offered[field]) {
+                conflicts.push({
+                  path,
+                  where: incoming.id,
+                  message: `message "${held.name}" on channel "${mine.address}" of service "${incoming.id}" has ${field} ${offered[field]} here and ${held[field]} in ${owner}; the first one is used`,
+                });
+              }
+            }
+
+            return undefined;
+          },
         );
 
         // Mutated in place: the channel that was here keeps its prose and its
@@ -620,7 +636,7 @@ function mergeService(
 }
 
 function copyChannel(channel: Channel): Channel {
-  return { ...channel, messages: [...channel.messages] };
+  return { ...channel, messages: channel.messages.map((message) => ({ ...message })) };
 }
 
 /**

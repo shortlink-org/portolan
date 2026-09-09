@@ -45,6 +45,23 @@ describe("store validation", () => {
     expect(() => validateCatalog(clone())).not.toThrow();
   });
 
+  it("accepts source-backed table readers and writers", () => {
+    const good = clone();
+    omsStore(good).tables[0]!.accesses = [
+      { operation: "read", method: "Postgres.ByID", source: "postgres.go:40" },
+      { operation: "write", method: "Postgres.Save", source: "postgres.go:20" },
+    ];
+    expect(() => validateCatalog(good)).not.toThrow();
+  });
+
+  it("rejects an unknown table access operation", () => {
+    const bad = clone();
+    omsStore(bad).tables[0]!.accesses = [
+      { operation: "merge" as "read", method: "Postgres.Save" },
+    ];
+    expect(failureOf(bad).message).toContain("access operation");
+  });
+
   it("rejects a foreign key into a table nobody declared", () => {
     const bad = clone();
     const table = omsStore(bad).tables.find((t) => t.name === "order_items");

@@ -68,7 +68,24 @@
           "persists": {
             "aggregate": "auth.auth.lockout"
           },
-          "role": "aggregate-root"
+          "role": "aggregate-root",
+          "accesses": [
+            {
+              "operation": "read",
+              "method": "Postgres.ByUserID",
+              "source": "examples/auth/internal/lockout/infrastructure/repository/postgres.go:100"
+            },
+            {
+              "operation": "write",
+              "method": "Postgres.Save",
+              "source": "examples/auth/internal/lockout/infrastructure/repository/postgres.go:61"
+            },
+            {
+              "operation": "write",
+              "method": "Postgres.Save",
+              "source": "examples/auth/internal/lockout/infrastructure/repository/postgres.go:78"
+            }
+          ]
         },
         {
           "id": "auth.auth.pg.sessions",
@@ -137,7 +154,34 @@
           "persists": {
             "aggregate": "auth.auth.session"
           },
-          "role": "aggregate-root"
+          "role": "aggregate-root",
+          "accesses": [
+            {
+              "operation": "read",
+              "method": "Postgres.ByID",
+              "source": "examples/auth/internal/session/infrastructure/repository/postgres.go:126"
+            },
+            {
+              "operation": "read",
+              "method": "Postgres.ByToken",
+              "source": "examples/auth/internal/session/infrastructure/repository/postgres.go:126"
+            },
+            {
+              "operation": "read",
+              "method": "Postgres.ByUserID",
+              "source": "examples/auth/internal/session/infrastructure/repository/postgres.go:104"
+            },
+            {
+              "operation": "write",
+              "method": "Postgres.Save",
+              "source": "examples/auth/internal/session/infrastructure/repository/postgres.go:59"
+            },
+            {
+              "operation": "write",
+              "method": "Postgres.Save",
+              "source": "examples/auth/internal/session/infrastructure/repository/postgres.go:73"
+            }
+          ]
         },
         {
           "id": "auth.auth.pg.users",
@@ -186,7 +230,29 @@
           "persists": {
             "aggregate": "auth.auth.user"
           },
-          "role": "aggregate-root"
+          "role": "aggregate-root",
+          "accesses": [
+            {
+              "operation": "read",
+              "method": "Postgres.ByEmail",
+              "source": "examples/auth/internal/user/infrastructure/repository/postgres.go:136"
+            },
+            {
+              "operation": "read",
+              "method": "Postgres.ByID",
+              "source": "examples/auth/internal/user/infrastructure/repository/postgres.go:136"
+            },
+            {
+              "operation": "write",
+              "method": "Postgres.Save",
+              "source": "examples/auth/internal/user/infrastructure/repository/postgres.go:73"
+            },
+            {
+              "operation": "write",
+              "method": "Postgres.Save",
+              "source": "examples/auth/internal/user/infrastructure/repository/postgres.go:95"
+            }
+          ]
         }
       ],
       "source": "examples/auth/internal/*/infrastructure/repository"

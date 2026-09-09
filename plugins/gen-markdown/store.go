@@ -98,6 +98,19 @@ func (s *site) renderTable(b *strings.Builder, self string, store *catalog.Store
 		b.WriteString(tbl.Doc + "\n\n")
 	}
 
+	accesses := make([][]string, 0, len(tbl.Accesses))
+	for i := range tbl.Accesses {
+		access := &tbl.Accesses[i]
+		source := ""
+		if access.Source != "" {
+			source = s.source(self, access.Source, s.services[store.Owner])
+		}
+		accesses = append(accesses, []string{string(access.Operation), code(access.Method), source})
+	}
+	if rendered := table([]string{"Access", "Method", "Source"}, accesses); rendered != "" {
+		b.WriteString(rendered + "\n")
+	}
+
 	b.WriteString(s.columnTable(self, store, tbl.Columns))
 
 	indexes := make([][]string, 0, len(tbl.Indexes))

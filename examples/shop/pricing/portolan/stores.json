@@ -85,7 +85,29 @@
           "persists": {
             "aggregate": "shop.pricing.price-list"
           },
-          "role": "aggregate-root"
+          "role": "aggregate-root",
+          "accesses": [
+            {
+              "operation": "read",
+              "method": "Repository.All",
+              "source": "examples/shop/pricing/internal/infrastructure/repository/price_list/repository.go:70"
+            },
+            {
+              "operation": "read",
+              "method": "Repository.ByID",
+              "source": "examples/shop/pricing/internal/infrastructure/repository/price_list/repository.go:56"
+            },
+            {
+              "operation": "read",
+              "method": "Repository.Current",
+              "source": "examples/shop/pricing/internal/infrastructure/repository/price_list/repository.go:62"
+            },
+            {
+              "operation": "write",
+              "method": "Repository.Save",
+              "source": "examples/shop/pricing/internal/infrastructure/repository/price_list/repository.go:33"
+            }
+          ]
         },
         {
           "id": "shop.pricing.pg.price_rows",
@@ -120,7 +142,24 @@
           "persists": {
             "aggregate": "shop.pricing.price-list"
           },
-          "role": "child"
+          "role": "child",
+          "accesses": [
+            {
+              "operation": "read",
+              "method": "Repository.ByID",
+              "source": "examples/shop/pricing/internal/infrastructure/repository/price_list/repository.go:103"
+            },
+            {
+              "operation": "read",
+              "method": "Repository.Current",
+              "source": "examples/shop/pricing/internal/infrastructure/repository/price_list/repository.go:103"
+            },
+            {
+              "operation": "write",
+              "method": "Repository.Save",
+              "source": "examples/shop/pricing/internal/infrastructure/repository/price_list/repository.go:43"
+            }
+          ]
         },
         {
           "id": "shop.pricing.pg.quotes",
@@ -190,7 +229,29 @@
           "persists": {
             "aggregate": "shop.pricing.quote"
           },
-          "role": "aggregate-root"
+          "role": "aggregate-root",
+          "accesses": [
+            {
+              "operation": "read",
+              "method": "Repository.ByBasket",
+              "source": "examples/shop/pricing/internal/infrastructure/repository/quote/repository.go:83"
+            },
+            {
+              "operation": "read",
+              "method": "Repository.ByID",
+              "source": "examples/shop/pricing/internal/infrastructure/repository/quote/repository.go:79"
+            },
+            {
+              "operation": "read",
+              "method": "Repository.OpenBefore",
+              "source": "examples/shop/pricing/internal/infrastructure/repository/quote/repository.go:91"
+            },
+            {
+              "operation": "write",
+              "method": "Repository.Save",
+              "source": "examples/shop/pricing/internal/infrastructure/repository/quote/repository.go:40"
+            }
+          ]
         },
         {
           "id": "shop.pricing.pg.quote_lines",
@@ -237,7 +298,14 @@
           "persists": {
             "aggregate": "shop.pricing.quote"
           },
-          "role": "child"
+          "role": "child",
+          "accesses": [
+            {
+              "operation": "write",
+              "method": "Repository.Save",
+              "source": "examples/shop/pricing/internal/infrastructure/repository/quote/repository.go:50"
+            }
+          ]
         },
         {
           "id": "shop.pricing.pg.outbox",
@@ -306,7 +374,14 @@
               "unique": true
             }
           ],
-          "role": "outbox"
+          "role": "outbox",
+          "accesses": [
+            {
+              "operation": "write",
+              "method": "Repository.Save",
+              "source": "examples/shop/pricing/internal/infrastructure/repository/quote/repository.go:65"
+            }
+          ]
         }
       ],
       "views": [

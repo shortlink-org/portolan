@@ -34,7 +34,7 @@ import { stepLabel } from "../flow/labels";
 import { KIND_LABEL } from "../lib/kinds";
 import { eventScope, resolveShape } from "../lib/shape";
 import { stepsInto } from "../lib/backlinks";
-import { treeHref } from "../lib/source-link";
+import { sourceLocation, treeHref } from "../lib/source-link";
 import { walkSteps } from "../catalog";
 import { methodCount } from "../lib/api";
 import {
@@ -49,6 +49,7 @@ import { upstreamOf } from "../er/lineage";
 import type { LineageMaps } from "../er/lineage";
 import { ctxStyle } from "../lib/context-color";
 import { Ident } from "../components/Ident";
+import { SourcePreviewLink } from "../components/SourcePreview";
 import { StatusChip } from "../components/primitives";
 import { StepDetailBody } from "../flow/StepDetail";
 import {
@@ -417,6 +418,50 @@ function TableBody({
               ) : null}
             </Row>
           ))}
+        </>
+      ) : null}
+
+      {(table.accesses ?? []).length > 0 ? (
+        <>
+          <Label>Reads / writes</Label>
+          {(table.accesses ?? []).map((access, accessIndex) => {
+            const location = access.source
+              ? sourceLocation(
+                  access.source,
+                  index.serviceById.get(store.owner),
+                  allRepos(catalog),
+                )
+              : null;
+            const tone =
+              access.operation === "read"
+                ? "text-accent"
+                : access.operation === "write"
+                  ? "text-verified"
+                  : "text-unresolved";
+            return (
+              <div
+                key={`${access.operation}:${access.method}:${access.source}:${accessIndex}`}
+                className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-2 gap-y-0.5 py-1"
+              >
+                <span className={`chip self-start uppercase ${tone}`}>
+                  {access.operation}
+                </span>
+                <div className="min-w-0">
+                  <div className="mono break-all text-ink">
+                    {access.method ?? "SQL client call"}
+                  </div>
+                  {access.source ? (
+                    <SourcePreviewLink
+                      location={location}
+                      className="mono block break-all text-muted hover:text-accent"
+                    >
+                      {access.source}
+                    </SourcePreviewLink>
+                  ) : null}
+                </div>
+              </div>
+            );
+          })}
         </>
       ) : null}
 

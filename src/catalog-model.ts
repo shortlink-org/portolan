@@ -627,6 +627,10 @@ export interface ChannelMessage {
   title?: string;
   doc?: string;
   direction: ChannelDirection;
+  /** Normalized payload serialization, such as `msgpack`. */
+  encoding?: string;
+  /** Exact media type declared by the source contract. */
+  contentType?: string;
 }
 export interface EventConsumer {
   service: string;
@@ -771,6 +775,23 @@ export interface Table {
   /** The domain object this table holds: an aggregate id, and optionally a block id. */
   persists?: { aggregate?: string; block?: string };
   role?: TableRole;
+  /** Source-backed repository methods that read or write this table. */
+  accesses?: TableAccess[];
+}
+
+export type TableOperation = "read" | "write" | "delete";
+
+export const TABLE_OPERATIONS: readonly TableOperation[] = [
+  "read",
+  "write",
+  "delete",
+] as const;
+
+export interface TableAccess {
+  operation: TableOperation;
+  /** Enclosing adapter method, for example `Postgres.Save`. */
+  method?: string;
+  source?: string;
 }
 
 export interface TableIndex {

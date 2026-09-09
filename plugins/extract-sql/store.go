@@ -24,10 +24,12 @@ import (
 func readStore(root string, layout storageLayout, storeID, owner string, b *plugin.Builder) ([]catalog.Table, []catalog.View) {
 	tables := []catalog.Table{}
 	views := []catalog.View{}
+	accesses := map[string][]catalog.TableAccess{}
 
 	for _, repository := range layout.repositories {
 		aggregate := repository.name
 		dir := repository.migrations
+		mergeTableAccesses(accesses, readTableAccesses(root, repository.dir, aggregate))
 
 		state, copies, _, ok := readMigrations(root, dir, storeID, owner, b)
 		if !ok {
@@ -105,6 +107,7 @@ func readStore(root string, layout storageLayout, storeID, owner string, b *plug
 	// when it is written there (`-- aggregate:`) and left out when it is not.
 	for _, projector := range layout.projectors {
 		dir := projector.migrations
+		mergeTableAccesses(accesses, readTableAccesses(root, projector.dir, projector.name))
 
 		state, copies, projected, ok := readMigrations(root, dir, storeID, owner, b)
 		if !ok {
@@ -136,6 +139,7 @@ func readStore(root string, layout storageLayout, storeID, owner string, b *plug
 	for i := range views {
 		views[i] = resolveView(views[i], storeID, tables)
 	}
+	attachTableAccesses(tables, accesses)
 
 	return tables, views
 }

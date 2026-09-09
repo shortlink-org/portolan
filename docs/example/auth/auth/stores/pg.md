@@ -14,6 +14,12 @@
 
 aggregate-root · persists [auth.auth.lockout](../aggregates/lockout.md)
 
+| Access | Method | Source |
+| --- | --- | --- |
+| read | `Postgres.ByUserID` | [`examples/auth/internal/lockout/infrastructure/repository/postgres.go:100`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/infrastructure/repository/postgres.go#L100) |
+| write | `Postgres.Save` | [`examples/auth/internal/lockout/infrastructure/repository/postgres.go:61`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/infrastructure/repository/postgres.go#L61) |
+| write | `Postgres.Save` | [`examples/auth/internal/lockout/infrastructure/repository/postgres.go:78`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/lockout/infrastructure/repository/postgres.go#L78) |
+
 | Column | Type | Null | Key | Maps |
 | --- | --- | --- | --- | --- |
 | `user_id` | `text` | not null | PK | Lockout.UserID |
@@ -25,6 +31,14 @@ aggregate-root · persists [auth.auth.lockout](../aggregates/lockout.md)
 ### sessions
 
 aggregate-root · persists [auth.auth.session](../aggregates/session.md)
+
+| Access | Method | Source |
+| --- | --- | --- |
+| read | `Postgres.ByID` | [`examples/auth/internal/session/infrastructure/repository/postgres.go:126`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/repository/postgres.go#L126) |
+| read | `Postgres.ByToken` | [`examples/auth/internal/session/infrastructure/repository/postgres.go:126`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/repository/postgres.go#L126) |
+| read | `Postgres.ByUserID` | [`examples/auth/internal/session/infrastructure/repository/postgres.go:104`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/repository/postgres.go#L104) |
+| write | `Postgres.Save` | [`examples/auth/internal/session/infrastructure/repository/postgres.go:59`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/repository/postgres.go#L59) |
+| write | `Postgres.Save` | [`examples/auth/internal/session/infrastructure/repository/postgres.go:73`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/session/infrastructure/repository/postgres.go#L73) |
 
 | Column | Type | Null | Key | Maps |
 | --- | --- | --- | --- | --- |
@@ -45,6 +59,13 @@ aggregate-root · persists [auth.auth.session](../aggregates/session.md)
 ### users
 
 aggregate-root · persists [auth.auth.user](../aggregates/user.md)
+
+| Access | Method | Source |
+| --- | --- | --- |
+| read | `Postgres.ByEmail` | [`examples/auth/internal/user/infrastructure/repository/postgres.go:136`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/infrastructure/repository/postgres.go#L136) |
+| read | `Postgres.ByID` | [`examples/auth/internal/user/infrastructure/repository/postgres.go:136`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/infrastructure/repository/postgres.go#L136) |
+| write | `Postgres.Save` | [`examples/auth/internal/user/infrastructure/repository/postgres.go:73`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/infrastructure/repository/postgres.go#L73) |
+| write | `Postgres.Save` | [`examples/auth/internal/user/infrastructure/repository/postgres.go:95`](https://github.com/shortlink-org/portolan/blob/main/examples/auth/internal/user/infrastructure/repository/postgres.go#L95) |
 
 | Column | Type | Null | Key | Maps |
 | --- | --- | --- | --- | --- |

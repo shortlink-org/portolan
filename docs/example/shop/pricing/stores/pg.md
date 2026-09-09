@@ -14,6 +14,13 @@
 
 aggregate-root · persists [shop.pricing.price-list](../aggregates/price-list.md)
 
+| Access | Method | Source |
+| --- | --- | --- |
+| read | `Repository.All` | [`examples/shop/pricing/internal/infrastructure/repository/price_list/repository.go:70`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/repository/price_list/repository.go#L70) |
+| read | `Repository.ByID` | [`examples/shop/pricing/internal/infrastructure/repository/price_list/repository.go:56`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/repository/price_list/repository.go#L56) |
+| read | `Repository.Current` | [`examples/shop/pricing/internal/infrastructure/repository/price_list/repository.go:62`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/repository/price_list/repository.go#L62) |
+| write | `Repository.Save` | [`examples/shop/pricing/internal/infrastructure/repository/price_list/repository.go:33`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/repository/price_list/repository.go#L33) |
+
 | Column | Type | Null | Key | Maps |
 | --- | --- | --- | --- | --- |
 | `id` | `text` | not null | PK | PriceList.id |
@@ -31,6 +38,12 @@ aggregate-root · persists [shop.pricing.price-list](../aggregates/price-list.md
 
 child · persists [shop.pricing.price-list](../aggregates/price-list.md)
 
+| Access | Method | Source |
+| --- | --- | --- |
+| read | `Repository.ByID` | [`examples/shop/pricing/internal/infrastructure/repository/price_list/repository.go:103`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/repository/price_list/repository.go#L103) |
+| read | `Repository.Current` | [`examples/shop/pricing/internal/infrastructure/repository/price_list/repository.go:103`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/repository/price_list/repository.go#L103) |
+| write | `Repository.Save` | [`examples/shop/pricing/internal/infrastructure/repository/price_list/repository.go:43`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/repository/price_list/repository.go#L43) |
+
 | Column | Type | Null | Key | Maps |
 | --- | --- | --- | --- | --- |
 | `price_list_id` | `text` | not null | PK | PriceList.id |
@@ -41,6 +54,13 @@ child · persists [shop.pricing.price-list](../aggregates/price-list.md)
 ### quotes
 
 aggregate-root · persists [shop.pricing.quote](../aggregates/quote.md)
+
+| Access | Method | Source |
+| --- | --- | --- |
+| read | `Repository.ByBasket` | [`examples/shop/pricing/internal/infrastructure/repository/quote/repository.go:83`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/repository/quote/repository.go#L83) |
+| read | `Repository.ByID` | [`examples/shop/pricing/internal/infrastructure/repository/quote/repository.go:79`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/repository/quote/repository.go#L79) |
+| read | `Repository.OpenBefore` | [`examples/shop/pricing/internal/infrastructure/repository/quote/repository.go:91`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/repository/quote/repository.go#L91) |
+| write | `Repository.Save` | [`examples/shop/pricing/internal/infrastructure/repository/quote/repository.go:40`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/repository/quote/repository.go#L40) |
 
 | Column | Type | Null | Key | Maps |
 | --- | --- | --- | --- | --- |
@@ -62,6 +82,10 @@ aggregate-root · persists [shop.pricing.quote](../aggregates/quote.md)
 
 child · persists [shop.pricing.quote](../aggregates/quote.md)
 
+| Access | Method | Source |
+| --- | --- | --- |
+| write | `Repository.Save` | [`examples/shop/pricing/internal/infrastructure/repository/quote/repository.go:50`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/repository/quote/repository.go#L50) |
+
 | Column | Type | Null | Key | Maps |
 | --- | --- | --- | --- | --- |
 | `quote_id` | `text` | not null | PK | Quote.id |
@@ -74,6 +98,10 @@ child · persists [shop.pricing.quote](../aggregates/quote.md)
 ### outbox
 
 outbox
+
+| Access | Method | Source |
+| --- | --- | --- |
+| write | `Repository.Save` | [`examples/shop/pricing/internal/infrastructure/repository/quote/repository.go:65`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/repository/quote/repository.go#L65) |
 
 | Column | Type | Null | Key |
 | --- | --- | --- | --- |

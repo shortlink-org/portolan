@@ -531,6 +531,14 @@ type ChannelMessage struct {
 	Title     string           `json:"title,omitempty"`
 	Doc       string           `json:"doc,omitempty"`
 	Direction ChannelDirection `json:"direction"`
+	// Encoding is the normalized payload serialization, for example msgpack.
+	// It is deliberately open-ended: a catalog must be able to carry a format
+	// before Portolan learns special presentation or compatibility rules for it.
+	Encoding string `json:"encoding,omitempty"`
+	// ContentType keeps the exact media type declared by a contract. Kafka
+	// client code commonly proves an encoding without declaring a media type,
+	// so the two facts are independent.
+	ContentType string `json:"contentType,omitempty"`
 }
 
 type EventConsumer struct {
@@ -645,6 +653,24 @@ type Table struct {
 	Indexes  []TableIndex `json:"indexes,omitempty"`
 	Persists *Persists    `json:"persists,omitempty"`
 	Role     TableRole    `json:"role,omitempty"`
+	// Accesses are the source-backed repository methods that touch this table.
+	// They answer who reads or writes the rows; the DDL alone cannot.
+	Accesses []TableAccess `json:"accesses,omitempty"`
+}
+
+type TableOperation string
+
+const (
+	TableOperationRead   TableOperation = "read"
+	TableOperationWrite  TableOperation = "write"
+	TableOperationDelete TableOperation = "delete"
+)
+
+// TableAccess is one SQL statement proved inside a repository method.
+type TableAccess struct {
+	Operation TableOperation `json:"operation"`
+	Method    string         `json:"method,omitempty"`
+	Source    string         `json:"source,omitempty"`
 }
 
 // Persists is the link back to the model: which domain object these rows hold.
