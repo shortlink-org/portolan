@@ -1,12 +1,12 @@
 *llms-full.txt: every page of Portolan, one after another. A page begins with a comment naming its file, and the links inside it are relative to that file's directory.*
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 <!-- README.md -->
 
 # Portolan
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 
 ## Contexts
@@ -38,7 +38,7 @@
 
 # Portolan
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Id:** `portolan`
 - **Kind:** system
@@ -74,7 +74,7 @@ The tool that reads an architecture catalog from the code and specifications tha
 
 # Glossary — Portolan
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Context:** [Portolan](README.md)
 - **Terms:** 44
@@ -133,7 +133,7 @@ One meaning per word inside this context, as the glossary beside the code states
 
 # Host
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Id:** `portolan.host`
 - **Group:** [Portolan](../README.md)
@@ -220,7 +220,7 @@ one estate and validates the union. Nothing here draws anything.
 
 # Plugins
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Id:** `portolan.plugins`
 - **Group:** [Portolan](../README.md)
@@ -1433,7 +1433,7 @@ plainly.
 
 # Site
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Id:** `portolan.site`
 - **Group:** [Portolan](../README.md)
@@ -1483,7 +1483,7 @@ Static end to end; there is no backend and no runtime query.
 
 # Flows
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 | Flow | Owner | Summary |
 | --- | --- | --- |
@@ -1493,7 +1493,7 @@ Static end to end; there is no backend and no runtime query.
 
 # npm run gen
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Id:** `flow.gen`
 - **Owner:** [portolan](../portolan/README.md)
@@ -1592,7 +1592,7 @@ sequenceDiagram
 
 # Decision records
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 | ADR | Title | Status | Date | Scope |
 | --- | --- | --- | --- | --- |
@@ -1609,7 +1609,7 @@ sequenceDiagram
 
 # portolan.0001 — A plugin names files and never writes them
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-02
@@ -1683,7 +1683,7 @@ shape rather than a restriction worked around.
 
 # portolan.0002 — The host stamps a fragment from its input's last commit
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-02
@@ -1753,7 +1753,7 @@ a build that must reproduce.
 
 # portolan.0003 — The Go catalog is a mirror held by a round-trip test
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-02
@@ -1823,7 +1823,7 @@ is not.
 
 # portolan.0004 — `contexts` and `services` stay the wire format
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-06
@@ -1893,7 +1893,7 @@ glossary: `GLOSSARY.md` names all four and says which is the term.
 
 # portolan.0005 — CSS moves what appears; Motion moves what leaves or changes place
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-06
@@ -1983,7 +1983,7 @@ library by one careless import.
 
 # portolan.0006 — An extractor runs as wasm over a preopened workspace
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-08
@@ -2070,7 +2070,7 @@ because it keeps the failure where new users meet it first.
 
 # portolan.0007 — The host reads history for a plugin that asks
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-08
@@ -2157,7 +2157,7 @@ process was the state this record replaces.
 
 # portolan.0008 — A plugin that needs a socket runs inside the host
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `6 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-08

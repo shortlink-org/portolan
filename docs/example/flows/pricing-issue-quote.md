@@ -36,7 +36,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **shop.pricing** — IssueQuote → IssueQuoteResponse
-   status: declared · [`examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go:28`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go#L28)
+   `shop.v1.Pricing/IssueQuote` · status: declared · [`examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go:28`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go#L28)
 <a id="step-s2"></a>
 2. **shop.pricing** → **pricing-pg** — Current
    status: declared · [`examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:35`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go#L35)

@@ -590,10 +590,11 @@ function containerPredicates(pairs, carried, indent) {
  * in a `break` frame, which is what a sequence diagram calls a branch that
  * leaves the flow rather than rejoining it.
  */
-// --- what comes back from a call (mirrors src/flow/answers.ts) -------------
-// Standalone calls keep the contract answer on the request label. Composition
-// turns a proven synchronous return into an explicit response step, so the
-// request then keeps only its own label and the return gets a dashed arrow.
+// --- request and response edges (mirrors src/flow/answers.ts) --------------
+// A unary RPC is two messages, not one long edge label. When composition has
+// already materialised a response step, that step is the return. Otherwise we
+// draw the contract response: immediately for a nested call, and at the end of
+// the flow for the actor request that opened it.
 const methodOf = new Map();
 const serviceById = new Map();
 for (const context of catalog.contexts) {
@@ -615,29 +616,43 @@ for (const external of catalog.externals ?? []) {
   }
 }
 
-function answerOf(step) {
-  if (step.kind !== "rpc") return "";
-  if (step.ref) return methodOf.get(step.ref)?.response ?? "";
+function contractOf(step) {
+  if (step.kind !== "rpc") return null;
+  if (step.ref) return methodOf.get(step.ref) ?? null;
   const service = serviceById.get(step.to);
-  if (!service || !step.label) return "";
+  if (!service || !step.label) return null;
   for (const provided of service.provides) {
     const found = provided.methods.find((m) => m.name === step.label);
-    if (found) return found.response ?? "";
+    if (found) return found;
   }
-  return "";
+  return null;
 }
 
-function emitSteps(nodes, out, indent, replied) {
+function emitSyntheticResponse(out, indent, node, response) {
+  out.push(
+    `${indent}${participantRef(node.to)} -> ${participantRef(node.from)} ${q(response)} {`,
+  );
+  out.push(
+    `${indent}  color ${node.status}  line dashed  head ${KIND_HEAD.response}`,
+  );
+  out.push(`${indent}}`);
+}
+
+function emitSteps(nodes, out, indent, replied, deferredResponseId) {
   for (const node of nodes) {
     if (node.type === "step") {
-      const answer = replied.has(node.id) ? "" : answerOf(node);
+      const contract = contractOf(node);
+      const request = contract?.request ?? "";
+      const response = replied.has(node.id) ? "" : (contract?.response ?? "");
       const storeLabel =
         node.storeAccess?.operation && node.storeAccess?.keyspace
           ? `${node.storeAccess.operation.toUpperCase()} ${node.storeAccess.keyspace}`
           : "";
       const label =
-        (storeLabel || node.label || node.ref || node.kind) +
-        (answer ? ` → ${answer}` : "");
+        storeLabel ||
+        (node.kind === "rpc" && request
+          ? request
+          : node.label || node.ref || node.kind);
       const attrs = [
         `color ${node.http?.outcome === "error" ? "response_error" : node.status}`,
         `line ${node.kind === "response" ? "dashed" : "solid"}`,
@@ -656,18 +671,21 @@ function emitSteps(nodes, out, indent, replied) {
       if (notes.length > 0)
         out.push(`${indent}  notes ${q(notes.join(" — "))}`);
       out.push(`${indent}}`);
+      if (response && node.id !== deferredResponseId) {
+        emitSyntheticResponse(out, indent, node, response);
+      }
       continue;
     }
     if (node.type === "parallel") {
       out.push(`${indent}par ${node.title ? `${q(node.title)} ` : ""}{`);
       for (const branch of node.branches)
-        emitSteps(branch, out, `${indent}  `, replied);
+        emitSteps(branch, out, `${indent}  `, replied, deferredResponseId);
       out.push(`${indent}}`);
       continue;
     }
     if (node.type === "loop") {
       out.push(`${indent}loop ${q(node.title)} {`);
-      emitSteps(node.steps, out, `${indent}  `, replied);
+      emitSteps(node.steps, out, `${indent}  `, replied, deferredResponseId);
       out.push(`${indent}}`);
       continue;
     }
@@ -678,10 +696,22 @@ function emitSteps(nodes, out, indent, replied) {
         out.push(`${indent}  ${keyword} ${q(branch.title)} {`);
         if (branch.terminal) {
           out.push(`${indent}    break 'ends the flow' {`);
-          emitSteps(branch.steps, out, `${indent}      `, replied);
+          emitSteps(
+            branch.steps,
+            out,
+            `${indent}      `,
+            replied,
+            deferredResponseId,
+          );
           out.push(`${indent}    }`);
         } else {
-          emitSteps(branch.steps, out, `${indent}    `, replied);
+          emitSteps(
+            branch.steps,
+            out,
+            `${indent}    `,
+            replied,
+            deferredResponseId,
+          );
         }
         out.push(`${indent}  }`);
       });
@@ -961,16 +991,34 @@ views.push("");
 for (const flow of catalog.flows) {
   const contexts = new Map(flow.participants.map((p) => [p.id, p.context]));
   const contextOf = (id) => contexts.get(id) ?? null;
+  const actorIds = new Set(
+    flow.participants.filter((p) => p.kind === "actor").map((p) => p.id),
+  );
   const replied = new Set();
   walkFlowSteps(flow.steps, (step) => {
     if (step.kind === "response" && step.replyTo) replied.add(step.replyTo);
+  });
+  let deferredResponse = null;
+  walkFlowSteps(flow.steps, (step) => {
+    if (deferredResponse || step.kind !== "rpc" || !actorIds.has(step.from))
+      return;
+    const response = replied.has(step.id) ? "" : (contractOf(step)?.response ?? "");
+    if (response) deferredResponse = { step, response };
   });
 
   views.push(`  dynamic view ${flowViewId(flow)} {`);
   views.push(`    title ${q(flow.name)}`);
   views.push(`    description ${q(flow.summary)}`);
   const body = [];
-  emitSteps(flow.steps, body, "    ", replied);
+  emitSteps(flow.steps, body, "    ", replied, deferredResponse?.step.id);
+  if (deferredResponse) {
+    emitSyntheticResponse(
+      body,
+      "    ",
+      deferredResponse.step,
+      deferredResponse.response,
+    );
+  }
   views.push(...body);
   views.push("  }");
   views.push("");
@@ -979,7 +1027,17 @@ for (const flow of catalog.flows) {
   views.push(`  dynamic view ${flowCrossViewId(flow)} {`);
   views.push(`    title ${q(`${flow.name} — crossings only`)}`);
   const crossBody = [];
-  emitSteps(cross, crossBody, "    ", replied);
+  const crossStepIds = new Set();
+  walkFlowSteps(cross, (step) => crossStepIds.add(step.id));
+  emitSteps(cross, crossBody, "    ", replied, deferredResponse?.step.id);
+  if (deferredResponse && crossStepIds.has(deferredResponse.step.id)) {
+    emitSyntheticResponse(
+      crossBody,
+      "    ",
+      deferredResponse.step,
+      deferredResponse.response,
+    );
+  }
   if (crossBody.length === 0) {
     // A flow with no crossing at all still needs a renderable view.
     const first = flow.participants[0];

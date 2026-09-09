@@ -142,6 +142,15 @@ export function validateCatalog(catalog: Catalog): Catalog {
 
   const eventIds = new Set<string>();
   const rpcIds = new Set<string>();
+  const providedRpcRefs = new Set(
+    allExternals(catalog).flatMap((external) =>
+      external.provides.flatMap((provided) =>
+        provided.methods.map(
+          (method) => `${external.id}|${provided.id}/${method.name}`,
+        ),
+      ),
+    ),
+  );
   const storeIds = new Set(allStores(catalog).map((store) => store.id));
 
   assertUniqueSlugs(
@@ -232,6 +241,13 @@ export function validateCatalog(catalog: Catalog): Catalog {
         technologies.add(technology);
       }
       for (const call of service.consumes) rpcIds.add(call.id);
+      for (const provided of service.provides) {
+        for (const method of provided.methods) {
+          providedRpcRefs.add(
+            `${service.id}|${provided.id}/${method.name}`,
+          );
+        }
+      }
       for (const provided of [
         ...service.provides,
         ...(service.copies ?? []),
@@ -589,10 +605,14 @@ export function validateCatalog(catalog: Catalog): Catalog {
         );
       }
       if (step.ref !== undefined && step.status !== "unresolved") {
-        const resolves = eventIds.has(step.ref) || rpcIds.has(step.ref);
+        const resolves =
+          eventIds.has(step.ref) ||
+          rpcIds.has(step.ref) ||
+          (step.kind === "rpc" &&
+            providedRpcRefs.has(`${step.to}|${step.ref}`));
         if (!resolves) {
           fail(
-            `flow "${flow.slug}" step "${step.id}": ref "${step.ref}" resolves to neither an Event nor an RpcCall, and status is "${step.status}" rather than "unresolved"`,
+            `flow "${flow.slug}" step "${step.id}": ref "${step.ref}" resolves to neither an Event, an RpcCall nor a method provided by "${step.to}", and status is "${step.status}" rather than "unresolved"`,
             `flow ${flow.id} / step ${step.id}`,
           );
         }

@@ -3,10 +3,9 @@
 // id across, so the two are paired by position.
 //
 // That is sound because it is the same walk twice: the generator emits steps in
-// the order walkSteps visits them — a step, then each branch of a parallel,
-// then each branch of an alt, then the body of a loop — and the view keeps that
-// order in its edge list. If the two lists ever differ in length the pairing is
-// abandoned rather than guessed at, and the diagram simply stops highlighting.
+// catalog order and this module inserts the same contract-response edges in the
+// same places. If the two lists ever differ in length the pairing is abandoned
+// rather than guessed at, and the diagram simply stops highlighting.
 
 import type { Flow } from "../catalog";
 import { walkSteps } from "../catalog";
@@ -15,13 +14,16 @@ import { hiddenStepIds } from "../flow/cross-context";
 export interface EdgeStepPairing {
   /** LikeC4 edge id -> catalog step id */
   stepOf: Map<string, string>;
-  /** catalog step id -> LikeC4 edge id */
+  /** catalog step id -> its primary LikeC4 edge id */
   edgeOf: Map<string, string>;
+  /** catalog step id -> every edge it draws, including a contract response */
+  edgesOf: Map<string, string[]>;
 }
 
 export const EMPTY_PAIRING: EdgeStepPairing = {
   stepOf: new Map(),
   edgeOf: new Map(),
+  edgesOf: new Map(),
 };
 
 export function pairEdgesToSteps(
@@ -31,13 +33,17 @@ export function pairEdgesToSteps(
   if (edgeIds.length !== stepIds.length) return EMPTY_PAIRING;
   const stepOf = new Map<string, string>();
   const edgeOf = new Map<string, string>();
+  const edgesOf = new Map<string, string[]>();
   edgeIds.forEach((edgeId, i) => {
     const stepId = stepIds[i];
     if (stepId === undefined) return;
     stepOf.set(edgeId, stepId);
-    edgeOf.set(stepId, edgeId);
+    if (!edgeOf.has(stepId)) edgeOf.set(stepId, edgeId);
+    const edges = edgesOf.get(stepId) ?? [];
+    edges.push(edgeId);
+    edgesOf.set(stepId, edges);
   });
-  return { stepOf, edgeOf };
+  return { stepOf, edgeOf, edgesOf };
 }
 
 /**
@@ -86,4 +92,34 @@ export function drawnStepIds(flow: Flow, crossOnly: boolean): string[] {
   if (!crossOnly) return steps.map((s) => s.id);
   const hidden = hiddenStepIds(flow);
   return steps.filter((s) => !hidden.has(s.id)).map((s) => s.id);
+}
+
+/**
+ * One step id per generated edge, including contract responses synthesized by
+ * the LikeC4 generator. Nested RPCs return immediately; the actor request that
+ * opened the flow returns after its final step.
+ */
+export function drawnEdgeStepIds(
+  flow: Flow,
+  crossOnly: boolean,
+  responseStepIds: ReadonlySet<string>,
+): string[] {
+  const steps = walkSteps(flow.steps);
+  const actorIds = new Set(
+    flow.participants.filter((p) => p.kind === "actor").map((p) => p.id),
+  );
+  const deferred = steps.find(
+    (step) =>
+      step.kind === "rpc" &&
+      actorIds.has(step.from) &&
+      responseStepIds.has(step.id),
+  )?.id;
+  const drawn = drawnStepIds(flow, crossOnly);
+  const out: string[] = [];
+  for (const stepId of drawn) {
+    out.push(stepId);
+    if (stepId !== deferred && responseStepIds.has(stepId)) out.push(stepId);
+  }
+  if (deferred && drawn.includes(deferred)) out.push(deferred);
+  return out;
 }

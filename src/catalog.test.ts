@@ -105,7 +105,7 @@ describe("validateCatalog", () => {
     if (!step) throw new Error("fixture has no steps");
     step.ref = "shop.oms.order.NoSuchEvent";
     expect(() => validateCatalog(bad)).toThrowError(
-      /resolves to neither an Event nor an RpcCall/,
+      /resolves to neither an Event, an RpcCall nor a method/,
     );
     step.status = "unresolved";
     expect(() => validateCatalog(bad)).not.toThrow();

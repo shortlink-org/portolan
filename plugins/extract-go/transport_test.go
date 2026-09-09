@@ -1,11 +1,23 @@
 package extractgo
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/shortlink-org/portolan/plugin"
 )
+
+func writeTestFile(t *testing.T, name, contents string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(name), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(name, []byte(contents), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
 
 const handlerSource = `package user
 
@@ -109,6 +121,32 @@ func TestHelpersAreNotEndpoints(t *testing.T) {
 				t.Errorf("%s was paired with a helper", useCase)
 			}
 		}
+	}
+}
+
+func TestGrpcMethodRefUsesGeneratedFullMethodName(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "go.mod"), "module github.com/example/pricing\n")
+	writeTestFile(t, filepath.Join(root, "gen/shop/v1/price_lists_grpc.pb.go"), `package shopv1
+
+const PriceLists_ArchivePriceList_FullMethodName = "/shop.v1.PriceLists/ArchivePriceList"
+`)
+	writeTestFile(t, filepath.Join(root, "transport/handler.go"), `package transport
+
+import shopv1 "github.com/example/pricing/gen/shop/v1"
+
+type Handler struct {
+	shopv1.UnimplementedPriceListsServer
+}
+`)
+
+	handlerPkg, err := parsePkg(root, "transport")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := grpcMethodRef(root, handlerPkg, "Handler", "ArchivePriceList")
+	if want := "shop.v1.PriceLists/ArchivePriceList"; got != want {
+		t.Fatalf("grpc method ref = %q, want %q", got, want)
 	}
 }
 

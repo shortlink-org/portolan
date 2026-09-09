@@ -100,18 +100,14 @@ export function FlowView({
 
   const highlightEdges = useMemo(
     () =>
-      marked
-        .map((stepId) => pairing.edgeOf.get(stepId))
-        .filter((id): id is string => id !== undefined),
+      marked.flatMap((stepId) => pairing.edgesOf.get(stepId) ?? []),
     [marked, pairing],
   );
 
   const focusedPathEdges = useMemo(
     () =>
       pathSteps
-        ? pathSteps
-            .map((stepId) => pairing.edgeOf.get(stepId))
-            .filter((id): id is string => id !== undefined)
+        ? pathSteps.flatMap((stepId) => pairing.edgesOf.get(stepId) ?? [])
         : null,
     [pathSteps, pairing],
   );

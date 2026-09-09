@@ -352,6 +352,7 @@
           "from": "client",
           "to": "shop.pricing",
           "kind": "rpc",
+          "ref": "shop.v1.PriceLists/ArchivePriceList",
           "label": "ArchivePriceList",
           "status": "declared",
           "line": "examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:50"
@@ -417,6 +418,7 @@
           "from": "client",
           "to": "shop.pricing",
           "kind": "rpc",
+          "ref": "shop.v1.Pricing/GetQuote",
           "label": "GetQuote",
           "status": "declared",
           "line": "examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go:52"
@@ -498,6 +500,7 @@
           "from": "client",
           "to": "shop.pricing",
           "kind": "rpc",
+          "ref": "shop.v1.PriceLists/ImportPriceList",
           "label": "ImportPriceList",
           "status": "declared",
           "line": "examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:30"
@@ -554,6 +557,7 @@
           "from": "client",
           "to": "shop.pricing",
           "kind": "rpc",
+          "ref": "shop.v1.Pricing/IssueQuote",
           "label": "IssueQuote",
           "status": "declared",
           "line": "examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go:28"
@@ -630,6 +634,7 @@
           "from": "client",
           "to": "shop.pricing",
           "kind": "rpc",
+          "ref": "shop.v1.PriceLists/ListPriceLists",
           "label": "ListPriceLists",
           "status": "declared",
           "line": "examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:60"

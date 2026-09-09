@@ -864,14 +864,13 @@ describe("enrichCatalog: calls from rpc steps", () => {
     expect(() => validateCatalog(catalog)).not.toThrow();
   });
 
-  it("is what lets a step naming a provided method validate: the call is now known", () => {
-    // The validator resolves a step's ref against declared calls, not against
-    // what peers provide. Before this pass the step names a method no service
-    // is on record as calling; after it, shop.oms is.
+  it("keeps a step naming a provided method valid while recording its caller", () => {
+    // The provided method is enough to resolve the flow step. Enrichment adds
+    // the separate fact that shop.oms is one of its callers.
     const c = estate([
       flow("a", [step("shop.oms", "shop.pricing", "rpc", { ref: METHOD })]),
     ]);
-    expect(() => validateCatalog(c)).toThrow(/resolves to neither/);
+    expect(() => validateCatalog(c)).not.toThrow();
     expect(() => validateCatalog(enrichCatalog(c).catalog)).not.toThrow();
   });
 

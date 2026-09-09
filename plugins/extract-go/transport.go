@@ -29,7 +29,7 @@ func extractTransport(root string, layout sourceLayout, b *plugin.Builder) (map[
 	var endpoints []endpointDecl
 
 	for _, dir := range layout.http {
-		for _, endpoint := range readTransportPackage(root, dir, layout, isHandler, lowerFirst, b) {
+		for _, endpoint := range readTransportPackage(root, dir, layout, isHandler, lowerFirst, nil, b) {
 			endpoints = append(endpoints, endpoint)
 			for _, useCase := range endpoint.useCases {
 				out[useCase] = appendOnce(out[useCase], endpoint.id)
@@ -42,7 +42,7 @@ func extractTransport(root string, layout sourceLayout, b *plugin.Builder) (map[
 	// An rpc is named the same on both sides - GetQuote is GetQuote - so the
 	// method name is the id, and it is the id extract-proto puts in `provides`.
 	for _, dir := range layout.grpc {
-		for _, endpoint := range readTransportPackage(root, dir, layout, isRpcHandler, sameName, b) {
+		for _, endpoint := range readTransportPackage(root, dir, layout, isRpcHandler, sameName, grpcMethodRef, b) {
 			endpoints = append(endpoints, endpoint)
 			for _, useCase := range endpoint.useCases {
 				out[useCase] = appendOnce(out[useCase], endpoint.id)
@@ -63,7 +63,7 @@ func extractTransport(root string, layout sourceLayout, b *plugin.Builder) (map[
 
 // readTransportPackage reads one discovered handler package: a struct per
 // server, and the methods of it that answer something.
-func readTransportPackage(root, dir string, layout sourceLayout, handler func(*ast.FuncDecl) bool, id func(string) string, b *plugin.Builder) []endpointDecl {
+func readTransportPackage(root, dir string, layout sourceLayout, handler func(*ast.FuncDecl) bool, id func(string) string, ref func(string, *pkg, string, string) string, b *plugin.Builder) []endpointDecl {
 	var endpoints []endpointDecl
 
 	pkg, err := parsePkg(root, dir)
@@ -72,7 +72,13 @@ func readTransportPackage(root, dir string, layout sourceLayout, handler func(*a
 	}
 
 	for name, useCase := range handlerFields(pkg, layout) {
-		endpoints = append(endpoints, operationsRunning(pkg, name, useCase, handler, id, b)...)
+		found := operationsRunning(pkg, name, useCase, handler, id, b)
+		if ref != nil {
+			for i := range found {
+				found[i].ref = ref(root, pkg, name, found[i].id)
+			}
+		}
+		endpoints = append(endpoints, found...)
 	}
 
 	return endpoints
@@ -177,9 +183,66 @@ func useCaseImports(file *ast.File, layouts ...sourceLayout) map[string]string {
 // things in that order, and a picture that swapped them would be wrong.
 type endpointDecl struct {
 	id       string
+	ref      string
 	useCases []string
 	source   string
 	line     int
+}
+
+// grpcMethodRef resolves the generated server embedded by a handler back to
+// the protocol identifier carried by protoc-gen-go-grpc. The handler method
+// gives us only ArchivePriceList; the generated constant gives us the stable
+// shop.v1.PriceLists/ArchivePriceList that joins the flow to its contract.
+func grpcMethodRef(root string, handlerPkg *pkg, structName, method string) string {
+	var generatedPkg *pkg
+	serviceName := ""
+
+	for _, declared := range handlerPkg.structs() {
+		if declared.name != structName || declared.fields == nil || declared.fields.Fields == nil {
+			continue
+		}
+		for _, field := range declared.fields.Fields.List {
+			if len(field.Names) != 0 {
+				continue
+			}
+
+			typeName := strings.TrimPrefix(types.ExprString(field.Type), "*")
+			selector, embedded, qualified := strings.Cut(typeName, ".")
+			if !qualified {
+				embedded = selector
+				generatedPkg = handlerPkg
+			} else {
+				importPath := importsOf(handlerPkg)[selector]
+				module := modulePath(root)
+				rel, local := strings.CutPrefix(importPath, module+"/")
+				if importPath == "" || module == "" || !local {
+					continue
+				}
+				parsed, err := parsePkg(root, rel)
+				if err != nil {
+					continue
+				}
+				generatedPkg = parsed
+			}
+
+			name, ok := strings.CutPrefix(embedded, "Unimplemented")
+			if !ok {
+				continue
+			}
+			name, ok = strings.CutSuffix(name, "Server")
+			if !ok || name == "" {
+				continue
+			}
+			serviceName = name
+			break
+		}
+	}
+
+	if generatedPkg == nil || serviceName == "" {
+		return ""
+	}
+	clients, _ := readClients(generatedPkg)
+	return clients[serviceName+"Client"].methods[method]
 }
 
 // operationsRunning finds the handler methods on a struct and the use cases

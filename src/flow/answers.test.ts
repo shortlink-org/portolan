@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { catalog, index } from "../data";
 import { walkSteps } from "../catalog";
-import { flowAnswers, stepAnswer } from "./answers";
+import { flowAnswers, stepAnswer, stepRpcContract } from "./answers";
 
 const flow = (slug: string) => {
   const found = catalog.flows.find((f) => f.slug === slug);
@@ -16,6 +16,23 @@ const step = (slug: string, id: string) => {
 };
 
 describe("stepAnswer", () => {
+  it("resolves an incoming endpoint to its full request and response contract", () => {
+    const contract = stepRpcContract(
+      index,
+      step("pricing-archive-price-list", "s1"),
+    );
+
+    expect(contract?.id).toBe("shop.v1.PriceLists/ArchivePriceList");
+    expect(contract?.provider.id).toBe("shop.pricing");
+    expect(contract?.method.request).toBe("ArchivePriceListRequest");
+    expect(contract?.method.response).toBe("ArchivePriceListResponse");
+    expect(
+      contract?.provided.messages?.find(
+        (message) => message.name === contract.method.request,
+      )?.fields.map((field) => field.name),
+    ).toEqual(["price_list_id"]);
+  });
+
   it("reads the answer of an endpoint off the document that declares it", () => {
     // billing's ViewSet is exposed by billing.v1.Invoices, and the document
     // says a void answers 204 and an issue answers with the invoice's id.

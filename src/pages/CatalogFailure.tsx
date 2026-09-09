@@ -26,8 +26,8 @@ const HINTS: { test: RegExp; hint: string }[] = [
     hint: "A step names a lane the flow never declared. Add the service to the flow's `participants`, or point the step at one that is already there.",
   },
   {
-    test: /resolves to neither an Event nor an RpcCall/,
-    hint: "Either the ref is stale — the event was renamed or removed — or the step really does point at something outside the catalog, in which case its status belongs as `unresolved`.",
+    test: /resolves to neither an Event, an RpcCall nor a method/,
+    hint: "Either the ref is stale — the event or RPC method was renamed or removed — or the step really does point at something outside the catalog, in which case its status belongs as `unresolved`.",
   },
   {
     test: /must have id/,

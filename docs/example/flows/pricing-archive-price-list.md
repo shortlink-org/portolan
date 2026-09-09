@@ -33,7 +33,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **shop.pricing** — ArchivePriceList → ArchivePriceListResponse
-   status: declared · [`examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:50`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go#L50)
+   `shop.v1.PriceLists/ArchivePriceList` · status: declared · [`examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:50`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go#L50)
 <a id="step-s2"></a>
 2. **shop.pricing** → **pricing-pg** — ByID
    status: declared · [`examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:22`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go#L22)

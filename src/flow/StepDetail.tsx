@@ -12,7 +12,7 @@ import { sourceLocation } from "../lib/source-link";
 import { AdrNumber, StatusChip } from "../components/primitives";
 import { ShapeRows } from "../components/ShapeRows";
 import { shapeFor } from "../components/MethodRows";
-import { stepAnswer } from "./answers";
+import { stepAnswer, stepRpcContract } from "./answers";
 import {
   aggregatePath,
   paths,
@@ -154,12 +154,28 @@ function EventDetail({ step, flow }: { step: Step; flow: Flow }) {
 }
 
 function RpcDetail({ step, flow }: { step: Step; flow: Flow }) {
-  const method = step.ref ?? step.label ?? "(unknown method)";
+  const contract = stepRpcContract(index, step);
+  const method = contract?.id ?? step.ref ?? step.label ?? "(unknown method)";
   const call = step.ref ? index.rpcById.get(step.ref) : undefined;
-  const provider = step.ref
-    ? index.rpcProviderByMethod.get(step.ref)
+  const provider = contract?.provider;
+  const internalProvider = provider
+    ? index.serviceById.get(provider.id)
     : undefined;
-  const providerPath = provider ? servicePath(provider.id) : null;
+  const providerPath = internalProvider ? servicePath(internalProvider.id) : null;
+  const requestFields = contract
+    ? shapeFor(
+        contract.provided,
+        contract.method.request,
+        contract.method.requestRef,
+      )
+    : null;
+  const responseFields = contract
+    ? shapeFor(
+        contract.provided,
+        contract.method.response,
+        contract.method.responseRef,
+      )
+    : null;
   // The flow records the hop; what comes back is the contract's to say.
   const answer = stepAnswer(index, step);
 
@@ -185,10 +201,12 @@ function RpcDetail({ step, flow }: { step: Step; flow: Flow }) {
           ) : null}
           <dt className="mono text-muted">Provider</dt>
           <dd>
-            {provider && providerPath ? (
+            {internalProvider && providerPath ? (
               <Link to={providerPath} className="mono text-accent">
-                {provider.id} →
+                {internalProvider.id} →
               </Link>
+            ) : provider ? (
+              <span className="mono text-ink">{provider.id}</span>
             ) : (
               <span className="mono inline-flex items-center gap-1.5 rounded-control border px-1.5 py-0.5 status-unresolved">
                 <AlertTriangle size={11} aria-hidden />
@@ -204,6 +222,34 @@ function RpcDetail({ step, flow }: { step: Step; flow: Flow }) {
           ) : null}
         </dl>
       </DetailSection>
+
+      {contract?.method.request ? (
+        <DetailSection title="Request" meta={contract.method.request}>
+          {requestFields ? (
+            <ShapeRows
+              fields={requestFields}
+              enums={contract.provided.enums}
+              showHeader
+            />
+          ) : (
+            <div className="mono text-muted">shape not recorded</div>
+          )}
+        </DetailSection>
+      ) : null}
+
+      {contract?.method.response ? (
+        <DetailSection title="Response" meta={contract.method.response}>
+          {responseFields ? (
+            <ShapeRows
+              fields={responseFields}
+              enums={contract.provided.enums}
+              showHeader
+            />
+          ) : (
+            <div className="mono text-muted">shape not recorded</div>
+          )}
+        </DetailSection>
+      ) : null}
 
       <DetailSection title="Source">
         {call ? (

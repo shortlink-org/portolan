@@ -819,8 +819,8 @@ type Step struct {
 	// To is a participant id. From == To is a self-message.
 	To   string   `json:"to"`
 	Kind StepKind `json:"kind"`
-	// Ref is an Event.id or an RpcCall.id. It resolves, or Status says
-	// unresolved; there is no third option.
+	// Ref is an Event.id, an RpcCall.id or a provided RPC method id. It
+	// resolves, or Status says unresolved; there is no third option.
 	Ref    string `json:"ref,omitempty"`
 	Label  string `json:"label,omitempty"`
 	Status Status `json:"status"`

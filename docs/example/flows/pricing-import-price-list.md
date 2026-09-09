@@ -32,7 +32,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **shop.pricing** — ImportPriceList → ImportPriceListResponse
-   status: declared · [`examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:30`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go#L30)
+   `shop.v1.PriceLists/ImportPriceList` · status: declared · [`examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:30`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go#L30)
 <a id="step-s2"></a>
 2. **shop.pricing** → **pricing-pg** — Save
    status: declared · [`examples/shop/pricing/internal/application/price_list/usecases/import_price_list/usecase.go:43`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/import_price_list/usecase.go#L43)

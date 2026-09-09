@@ -8892,7 +8892,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **shop.pricing** — ArchivePriceList → ArchivePriceListResponse
-   status: declared · [`examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:50`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go#L50)
+   `shop.v1.PriceLists/ArchivePriceList` · status: declared · [`examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:50`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go#L50)
 <a id="step-s2"></a>
 2. **shop.pricing** → **pricing-pg** — ByID
    status: declared · [`examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:22`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go#L22)
@@ -8989,7 +8989,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **shop.pricing** — GetQuote → GetQuoteResponse
-   status: declared · [`examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go:52`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go#L52)
+   `shop.v1.Pricing/GetQuote` · status: declared · [`examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go:52`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go#L52)
 
 > **One of**
 >
@@ -9041,7 +9041,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **shop.pricing** — ImportPriceList → ImportPriceListResponse
-   status: declared · [`examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:30`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go#L30)
+   `shop.v1.PriceLists/ImportPriceList` · status: declared · [`examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:30`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go#L30)
 <a id="step-s2"></a>
 2. **shop.pricing** → **pricing-pg** — Save
    status: declared · [`examples/shop/pricing/internal/application/price_list/usecases/import_price_list/usecase.go:43`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/import_price_list/usecase.go#L43)
@@ -9086,7 +9086,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **shop.pricing** — IssueQuote → IssueQuoteResponse
-   status: declared · [`examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go:28`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go#L28)
+   `shop.v1.Pricing/IssueQuote` · status: declared · [`examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go:28`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go#L28)
 <a id="step-s2"></a>
 2. **shop.pricing** → **pricing-pg** — Current
    status: declared · [`examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:35`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go#L35)
@@ -9133,7 +9133,7 @@ sequenceDiagram
 
 <a id="step-s1"></a>
 1. **client** → **shop.pricing** — ListPriceLists → ListPriceListsResponse
-   status: declared · [`examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:60`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go#L60)
+   `shop.v1.PriceLists/ListPriceLists` · status: declared · [`examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:60`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go#L60)
 <a id="step-s2"></a>
 2. **shop.pricing** → **pricing-pg** — All
    status: declared · [`examples/shop/pricing/internal/application/price_list/usecases/list_price_lists/usecase.go:22`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/pricing/internal/application/price_list/usecases/list_price_lists/usecase.go#L22)

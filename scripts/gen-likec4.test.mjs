@@ -164,11 +164,34 @@ describe("the LikeC4 generator", () => {
             },
           ],
         },
+        {
+          id: "flow.get-book-contract",
+          slug: "get-book-contract",
+          name: "Get book contract",
+          summary: "",
+          owner: "demo",
+          participants: [
+            { id: "demo.api", kind: "service", context: "demo" },
+            { id: "demo.book", kind: "service", context: "demo" },
+          ],
+          steps: [
+            {
+              type: "step",
+              id: "request",
+              from: "demo.api",
+              to: "demo.book",
+              kind: "rpc",
+              ref: "book.v1.Book/Get",
+              label: "Get",
+              status: "declared",
+            },
+          ],
+        },
       ],
     });
 
     expect(views).toContain(
-      "demo.api -> demo.book 'Get' {\n      color declared  line solid  head normal",
+      "demo.api -> demo.book 'GetRequest' {\n      color declared  line solid  head normal",
     );
     expect(views).toContain(
       "demo.book -> demo.api 'GetResponse' {\n      color declared  line dashed  head normal",
@@ -177,7 +200,7 @@ describe("the LikeC4 generator", () => {
       "demo.book -> demo.api '500 · Error' {\n      color response_error  line dashed  head normal",
     );
     expect(spec).toContain("color response_error #b7646b");
-    expect(views).not.toContain("Get → GetResponse");
+    expect(views).not.toContain("GetRequest → GetResponse");
   });
 
   it("treats dots in a root participant id as data, not containment", () => {

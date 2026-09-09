@@ -8,7 +8,9 @@
 import { pickViewBounds } from "likec4/react";
 import { likec4model } from "./generated";
 import type { Flow } from "../catalog";
-import { drawnStepIds, pairEdgesToSteps } from "./flow-edges";
+import { index } from "../data";
+import { flowAnswers } from "../flow/answers";
+import { drawnEdgeStepIds, pairEdgesToSteps } from "./flow-edges";
 import type { EdgeStepPairing } from "./flow-edges";
 import { EMPTY_PAIRING } from "./flow-edges";
 import { flowCrossViewId, flowViewId } from "./ids";
@@ -70,8 +72,12 @@ export function flowPairing(flow: Flow, crossOnly: boolean): EdgeStepPairing {
   const viewId = crossOnly ? flowCrossViewId(flow) : flowViewId(flow);
   const cached = pairings.get(viewId);
   if (cached) return cached;
+  const responseStepIds = new Set(flowAnswers(index, flow).keys());
   const pairing = shapeOf(viewId).edgeIds.length
-    ? pairEdgesToSteps(shapeOf(viewId).edgeIds, drawnStepIds(flow, crossOnly))
+    ? pairEdgesToSteps(
+        shapeOf(viewId).edgeIds,
+        drawnEdgeStepIds(flow, crossOnly, responseStepIds),
+      )
     : EMPTY_PAIRING;
   pairings.set(viewId, pairing);
   return pairing;

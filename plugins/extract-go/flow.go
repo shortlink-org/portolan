@@ -173,6 +173,7 @@ func (r *flowReader) endpointFlow(endpoint endpointDecl) (catalog.Flow, bool) {
 		To:    r.opts.svcID,
 		Kind:  catalog.StepRPC,
 		Label: endpoint.id,
+		Ref:   endpoint.ref,
 		Line:  at(endpoint.source, endpoint.line),
 	})
 

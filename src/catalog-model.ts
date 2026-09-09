@@ -893,7 +893,7 @@ export interface Step {
   from: string;
   to: string; // participant ids; from === to is a self-message
   kind: "rpc" | "event" | "call" | "response";
-  ref?: string; // Event.id or RpcCall.id - resolvable, or status must be unresolved
+  ref?: string; // Event.id, RpcCall.id or provided RPC method id; otherwise unresolved
   label?: string;
   status: Status;
   note?: string;
