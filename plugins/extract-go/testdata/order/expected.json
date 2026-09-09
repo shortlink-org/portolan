@@ -1,0 +1,108 @@
+{
+  "generatedAt": "2026-01-01T00:00:00Z",
+  "commit": "abc1234",
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "Shop",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.order",
+          "slug": "order",
+          "name": "Order Service",
+          "repo": "example.com/order",
+          "path": "testdata/order",
+          "readme": "# Order Service\n\nPlaces and tracks customer orders.",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [
+            {
+              "id": "shop.order.order",
+              "slug": "order",
+              "name": "Order",
+              "readme": "# Order\n\nHolds the order aggregate.",
+              "root": "Order",
+              "entities": [
+                {
+                  "id": "shop.order.order.order",
+                  "slug": "order",
+                  "name": "Order",
+                  "doc": "Order is a customer's purchase.",
+                  "fields": [
+                    {
+                      "name": "ID",
+                      "type": "string",
+                      "doc": ""
+                    },
+                    {
+                      "name": "Status",
+                      "type": "Status",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [],
+              "operations": [
+                {
+                  "id": "Place",
+                  "kind": "command",
+                  "doc": "Package place places a draft order."
+                }
+              ],
+              "events": [
+                {
+                  "id": "shop.order.order.Placed",
+                  "slug": "placed",
+                  "name": "Placed",
+                  "versions": [
+                    {
+                      "version": "v1",
+                      "doc": "Placed says an order is ready to fulfil.",
+                      "source": "testdata/order/internal/domain/order/event/placed.go",
+                      "fields": [
+                        {
+                          "name": "OrderID",
+                          "type": "string",
+                          "doc": ""
+                        }
+                      ]
+                    }
+                  ],
+                  "consumers": [],
+                  "wire": {
+                    "name": "order.Placed",
+                    "channel": "shop.order"
+                  }
+                }
+              ],
+              "enums": [
+                {
+                  "id": "shop.order.order.status",
+                  "slug": "status",
+                  "name": "Status",
+                  "doc": "Status is the stage an order has reached.",
+                  "values": [
+                    {
+                      "name": "draft",
+                      "doc": ""
+                    },
+                    {
+                      "name": "placed",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": []
+}

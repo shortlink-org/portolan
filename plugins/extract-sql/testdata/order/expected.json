@@ -1,0 +1,142 @@
+{
+  "generatedAt": "2026-01-01T00:00:00Z",
+  "commit": "abc1234",
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.order",
+          "slug": "order",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "stores": [
+            "shop.order.pg"
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": [],
+  "stores": [
+    {
+      "id": "shop.order.pg",
+      "slug": "pg",
+      "name": "Order database",
+      "kind": "postgres",
+      "owner": "shop.order",
+      "tables": [
+        {
+          "id": "shop.order.pg.orders",
+          "name": "orders",
+          "columns": [
+            {
+              "name": "id",
+              "type": "uuid",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "status",
+              "type": "order_status enum(draft | placed)",
+              "nullable": false
+            },
+            {
+              "name": "customer_id",
+              "type": "uuid",
+              "nullable": false
+            }
+          ],
+          "indexes": [
+            {
+              "name": "orders_customer_id_key",
+              "columns": [
+                "customer_id"
+              ],
+              "unique": true
+            }
+          ],
+          "persists": {
+            "aggregate": "shop.order.order"
+          },
+          "role": "aggregate-root"
+        },
+        {
+          "id": "shop.order.pg.order_lines",
+          "name": "order_lines",
+          "columns": [
+            {
+              "name": "order_id",
+              "type": "uuid",
+              "nullable": false,
+              "pk": true,
+              "fk": {
+                "table": "shop.order.pg.orders",
+                "column": "id",
+                "onDelete": "cascade"
+              }
+            },
+            {
+              "name": "line_no",
+              "type": "integer",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "sku",
+              "type": "text",
+              "nullable": false
+            }
+          ],
+          "persists": {
+            "aggregate": "shop.order.order"
+          },
+          "role": "child"
+        }
+      ],
+      "views": [
+        {
+          "id": "shop.order.pg.placed_orders",
+          "name": "placed_orders",
+          "columns": [
+            {
+              "name": "id",
+              "type": "uuid",
+              "nullable": false,
+              "from": [
+                "shop.order.pg.orders.id"
+              ]
+            },
+            {
+              "name": "customer_id",
+              "type": "uuid",
+              "nullable": false,
+              "from": [
+                "shop.order.pg.orders.customer_id"
+              ]
+            }
+          ],
+          "reads": [
+            "shop.order.pg.orders"
+          ],
+          "definition": "CREATE VIEW placed_orders AS\nSELECT id, customer_id\nFROM orders\nWHERE status = 'placed';",
+          "persists": {
+            "aggregate": "shop.order.order"
+          },
+          "source": "internal/order/infrastructure/repository/migrations/001_orders.sql"
+        }
+      ],
+      "source": "testdata/order/internal/order/infrastructure/repository"
+    }
+  ]
+}

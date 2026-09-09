@@ -1,0 +1,182 @@
+{
+  "generatedAt": "2026-01-01T00:00:00Z",
+  "commit": "abc1234",
+  "contexts": [
+    {
+      "id": "sales",
+      "slug": "sales",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "sales.mailer",
+          "slug": "mailer",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "channels": [
+            {
+              "address": "mail.error",
+              "title": "Watermill topic",
+              "doc": "Messages routed through github.com/ThreeDotsLabs/watermill. Configured by `MAIL_ERROR_TOPIC`; extracted address is its source default.",
+              "messages": [
+                {
+                  "name": "Failure",
+                  "title": "Failure",
+                  "doc": "Payload `Failure`: `reason string`.",
+                  "direction": "send"
+                }
+              ],
+              "source": "app/router.go:30"
+            },
+            {
+              "address": "mail.input",
+              "title": "Watermill topic",
+              "doc": "Messages routed through github.com/ThreeDotsLabs/watermill. Configured by `MAIL_INPUT_TOPIC`; extracted address is its source default.",
+              "messages": [
+                {
+                  "name": "Input",
+                  "title": "Input",
+                  "doc": "Input `Input`: `id string`, `valid bool`.",
+                  "direction": "receive"
+                }
+              ],
+              "source": "app/router.go:26"
+            },
+            {
+              "address": "mail.output",
+              "title": "Watermill topic",
+              "doc": "Messages routed through github.com/ThreeDotsLabs/watermill. Configured by `MAIL_OUTPUT_TOPIC`; extracted address is its source default.",
+              "messages": [
+                {
+                  "name": "Output",
+                  "title": "Output",
+                  "doc": "Payload `Output`: `accepted bool`.",
+                  "direction": "send"
+                }
+              ],
+              "source": "app/router.go:36"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [
+    {
+      "id": "flow.mailer-watermill-mail-router",
+      "slug": "mailer-watermill-mail-router",
+      "name": "Mail Router",
+      "summary": "Watermill handler `mail_router` consumes `mail.input` and source control flow branches to `mail.error` or `mail.output`.",
+      "source": "app/router.go:26",
+      "trigger": {
+        "kind": "event",
+        "label": "mail.input",
+        "confidence": "high"
+      },
+      "owner": "sales",
+      "participants": [
+        {
+          "id": "sales.mailer",
+          "kind": "service",
+          "context": "sales"
+        },
+        {
+          "id": "watermill.mail-input",
+          "kind": "broker",
+          "context": null,
+          "label": "Watermill · mail.input"
+        },
+        {
+          "id": "watermill.mail-error",
+          "kind": "broker",
+          "context": null,
+          "label": "Watermill · mail.error"
+        },
+        {
+          "id": "watermill.mail-output",
+          "kind": "broker",
+          "context": null,
+          "label": "Watermill · mail.output"
+        }
+      ],
+      "steps": [
+        {
+          "type": "step",
+          "id": "receive",
+          "from": "watermill.mail-input",
+          "to": "sales.mailer",
+          "kind": "event",
+          "label": "mail_router",
+          "status": "declared",
+          "note": "Input `Input`: `id string`, `valid bool`. Consumer group `mail-workers`.",
+          "line": "app/router.go:26",
+          "handoff": {
+            "kind": "message",
+            "transport": "watermill",
+            "channel": "mail.input",
+            "direction": "receive"
+          }
+        },
+        {
+          "type": "alt",
+          "id": "outcome",
+          "branches": [
+            {
+              "title": "!input.Valid",
+              "steps": [
+                {
+                  "type": "step",
+                  "id": "publish-1",
+                  "from": "sales.mailer",
+                  "to": "watermill.mail-error",
+                  "kind": "event",
+                  "label": "publish Failure",
+                  "status": "declared",
+                  "note": "Payload `Failure`: `reason string`.",
+                  "line": "app/router.go:30",
+                  "handoff": {
+                    "kind": "message",
+                    "transport": "watermill",
+                    "channel": "mail.error",
+                    "direction": "send"
+                  }
+                }
+              ],
+              "terminal": true
+            },
+            {
+              "title": "not (!input.Valid)",
+              "steps": [
+                {
+                  "type": "step",
+                  "id": "publish-2",
+                  "from": "sales.mailer",
+                  "to": "watermill.mail-output",
+                  "kind": "event",
+                  "label": "publish Output",
+                  "status": "declared",
+                  "note": "Payload `Output`: `accepted bool`.",
+                  "line": "app/router.go:36",
+                  "handoff": {
+                    "kind": "message",
+                    "transport": "watermill",
+                    "channel": "mail.output",
+                    "direction": "send"
+                  }
+                }
+              ],
+              "terminal": true
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "adrs": []
+}

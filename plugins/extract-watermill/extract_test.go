@@ -36,59 +36,7 @@ func extracted(t *testing.T, root string) (catalog.Catalog, plugin.Response) {
 }
 
 func TestExtractsConfiguredHandlerAndHelperPublications(t *testing.T) {
-	root := t.TempDir()
-	write(t, root, "go.mod", "module example.com/mailer\n")
-	write(t, root, "config/config.go", `package config
-type Bus struct {
-  Input string `+"`envconfig:\"MAIL_INPUT_TOPIC\" default:\"mail.input\"`"+`
-  Output string `+"`envconfig:\"MAIL_OUTPUT_TOPIC\" default:\"mail.output\"`"+`
-  Errors string `+"`envconfig:\"MAIL_ERROR_TOPIC\" default:\"mail.error\"`"+`
-}
-`)
-	write(t, root, "api/messages.go", `package api
-type Input struct {
-  ID string `+"`json:\"id\"`"+`
-  Valid bool `+"`json:\"valid\"`"+`
-}
-type Output struct { Accepted bool `+"`json:\"accepted\"`"+` }
-type Failure struct { Reason string `+"`json:\"reason\"`"+` }
-`)
-	write(t, root, "app/router.go", `package app
-import (
-  "encoding/json"
-  "github.com/ThreeDotsLabs/watermill"
-  "github.com/ThreeDotsLabs/watermill/message"
-  "example.com/mailer/api"
-  "example.com/mailer/config"
-)
-const ConsumerGroup = "mail-workers"
-func NewSubscriber(config.Bus, string) (message.Subscriber, error) { return nil, nil }
-func publishFailure(pub message.Publisher, topic string) error {
-  value := api.Failure{Reason: "bad"}
-  payload, _ := json.Marshal(value)
-  msg := message.NewMessage(watermill.NewUUID(), payload)
-  return pub.Publish(topic, msg)
-}
-func Register(r *message.Router, cfg config.Bus, pub message.Publisher) {
-  sub, _ := NewSubscriber(cfg, ConsumerGroup)
-  handlerName := "mail_router"
-  r.AddHandler(handlerName, cfg.Input, sub, "", nil, func(msg *message.Message) ([]*message.Message, error) {
-    var input api.Input
-    _ = json.Unmarshal(msg.Payload, &input)
-    if !input.Valid {
-      _ = publishFailure(pub, cfg.Errors)
-      return nil, nil
-    }
-    value := api.Output{Accepted: true}
-    payload, _ := json.Marshal(value)
-    out := message.NewMessage(watermill.NewUUID(), payload)
-    _ = pub.Publish(cfg.Output, out)
-    return nil, nil
-  })
-}
-`)
-
-	out, _ := extracted(t, root)
+	out, _ := extracted(t, "testdata/mailer")
 	service := out.Contexts[0].Services[0]
 	if len(service.Channels) != 3 {
 		t.Fatalf("channels = %+v", service.Channels)

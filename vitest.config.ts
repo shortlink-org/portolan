@@ -14,10 +14,10 @@ const exampleCatalogTests = [
   "src/trail/model.test.ts",
 ];
 const allTests = [
-  "src/**/*.test.ts",
+  "src/**/*.test.{ts,tsx}",
   "scripts/**/*.test.mjs",
   "cli/**/*.test.mjs",
-  "plugins/extract-ts/**/*.test.ts",
+  "plugins/extract-ts/**/*.test.{ts,tsx}",
 ];
 const excludedTests = ["**/node_modules/**", "plugins/extract-ts/testdata/**"];
 
