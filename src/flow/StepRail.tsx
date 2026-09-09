@@ -2,6 +2,7 @@ import { useEffect, useId, useRef } from "react";
 import { Link } from "react-router";
 import { LayoutGroup, m, transitions } from "../lib/motion";
 import {
+  AlertCircle,
   ArrowRight,
   ChevronDown,
   ChevronRight,
@@ -17,8 +18,6 @@ import { railRows } from "./chapters";
 import type { Chapter, ChapterGroup } from "./chapters";
 import type { Continuation } from "./continues";
 import type { OutlineFrame, OutlineStep } from "./outline";
-
-
 
 /**
  * A chapter header. The one row on the rail that is a control rather than a
@@ -68,7 +67,10 @@ function ChapterRow({
           {chapter.kind}
         </span>
       )}
-      <span className="mono min-w-0 flex-1 truncate text-ink" title={chapter.title}>
+      <span
+        className="mono min-w-0 flex-1 truncate text-ink"
+        title={chapter.title}
+      >
         {chapter.title}
       </span>
       {/* The contexts this episode touches, as colour and nothing else: the
@@ -89,7 +91,11 @@ function ChapterRow({
       <span className="mono flex shrink-0 items-center gap-1 text-muted">
         {STATUSES.filter((status) => chapter.status[status] > 0).map(
           (status) => (
-            <span key={status} className="flex items-center gap-0.5" title={status}>
+            <span
+              key={status}
+              className="flex items-center gap-0.5"
+              title={status}
+            >
               <span
                 aria-hidden
                 className="size-1.5 rounded-[1px]"
@@ -168,7 +174,9 @@ function CrossChip({ step, context }: { step: Step; context: string | null }) {
   return (
     <span
       className="chip shrink-0 ctx"
-      style={context ? ctxStyle(context) : { borderColor: "var(--border-strong)" }}
+      style={
+        context ? ctxStyle(context) : { borderColor: "var(--border-strong)" }
+      }
       title={`crosses into ${label}`}
     >
       → {label}
@@ -202,6 +210,7 @@ function StepRow({
   const { step, number, depth, hidden, offPath, offStatus } = row;
   const self = step.from === step.to;
   const crosses = crossContext !== undefined;
+  const errorResponse = step.http?.outcome === "error";
   return (
     <div
       onMouseEnter={() => onHover(step.id)}
@@ -226,8 +235,11 @@ function StepRow({
         style={{
           borderLeftWidth: 2,
           borderLeftStyle: "solid",
-          borderLeftColor: "transparent",
+          borderLeftColor: errorResponse
+            ? "var(--response-error)"
+            : "transparent",
           paddingLeft: 8 + depth * 10,
+          background: errorResponse ? "var(--response-error-bg)" : undefined,
         }}
         aria-current={active ? "true" : undefined}
       >
@@ -251,14 +263,17 @@ function StepRow({
                 a character. Both sit on their content and the answer, weighted
                 to give way ten times faster, is the one that loses. */}
             <span
-              className="min-w-0 truncate text-ink"
+              className="min-w-0 truncate"
+              style={{
+                color: errorResponse ? "var(--response-error)" : "var(--fg)",
+              }}
               title={step.label ?? step.ref ?? step.kind}
             >
               {step.label ?? step.ref ?? step.kind}
             </span>
-            {/* The reply is not a step of its own - it is the far end of this
-                one - so it is read on the same line, and only where a contract
-                says what comes back. */}
+            {/* A standalone call keeps its contract answer on this line. Once
+                composition proves the nested return, the answer becomes its
+                own response step and is omitted from this map. */}
             {/* Only where there is room for it: two truncated halves read
                 worse than one whole label, so on a rail dragged narrow the
                 answer steps aside and the step's own panel still says it. */}
@@ -290,6 +305,14 @@ function StepRow({
         </span>
         {full ? (
           <span className="mono shrink-0 text-muted">{step.kind}</span>
+        ) : null}
+        {errorResponse ? (
+          <AlertCircle
+            size={12}
+            aria-label="error response"
+            className="mt-0.5 shrink-0"
+            style={{ color: "var(--response-error)" }}
+          />
         ) : null}
         {crosses ? <CrossChip step={step} context={crossContext} /> : null}
         {hidden ? (

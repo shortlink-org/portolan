@@ -42,17 +42,28 @@ function emit(
   for (const node of nodes) {
     switch (node.type) {
       case "step": {
-        // An event is drawn with the async arrow. A reader who cannot tell a
-        // call from a publication is reading a different flow.
-        const arrow = node.kind === "event" ? "-)" : "->>";
-        // The reply rides on the hop's own label rather than coming back as a
-        // second message: `autonumber` counts messages, and the numbers here
-        // are the numbers of the step list beside the diagram.
-        out.push(`${indent}${of(node.from)}${arrow}${of(node.to)}: ${text(labelWithAnswer(node, answers))}`);
+        // Events use the async arrow; synthesized responses use the standard
+        // dashed return. A reader can now distinguish all three directions.
+        const arrow =
+          node.kind === "response"
+            ? "-->>"
+            : node.kind === "event"
+              ? "-)"
+              : "->>";
+        const message = `${of(node.from)}${arrow}${of(node.to)}: ${text(labelWithAnswer(node, answers))}`;
+        if (node.http?.outcome === "error") {
+          out.push(`${indent}rect rgba(183, 100, 107, 0.12)`);
+          out.push(`${indent}    ${message}`);
+          out.push(`${indent}end`);
+        } else {
+          out.push(`${indent}${message}`);
+        }
         break;
       }
       case "parallel": {
-        out.push(`${indent}par ${text(node.title?.trim() ? node.title : "in parallel")}`);
+        out.push(
+          `${indent}par ${text(node.title?.trim() ? node.title : "in parallel")}`,
+        );
         node.branches.forEach((branch, i) => {
           if (i > 0) out.push(`${indent}and`);
           emit(branch, of, depth + 1, out, answers);
@@ -62,14 +73,18 @@ function emit(
       }
       case "alt": {
         node.branches.forEach((branch, i) => {
-          out.push(`${indent}${i === 0 ? "alt " : "else "}${text(branch.title)}`);
+          out.push(
+            `${indent}${i === 0 ? "alt " : "else "}${text(branch.title)}`,
+          );
           emit(branch.steps, of, depth + 1, out, answers);
           // A branch that ends the flow has to say so inside the diagram, or
           // the steps drawn after the alt read as if they follow it too.
           if (branch.terminal) {
             const last = lastParticipant(branch.steps);
             if (last)
-              out.push(`${"    ".repeat(depth + 1)}Note over ${of(last)}: flow ends here`);
+              out.push(
+                `${"    ".repeat(depth + 1)}Note over ${of(last)}: flow ends here`,
+              );
           }
         });
         out.push(`${indent}end`);

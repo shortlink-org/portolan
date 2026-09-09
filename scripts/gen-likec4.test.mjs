@@ -1,9 +1,4 @@
-import {
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  writeFileSync,
-} from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,7 +7,12 @@ import { execFileSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
 
 const generator = fileURLToPath(new URL("./gen-likec4.mjs", import.meta.url));
-const likec4 = join(dirname(dirname(generator)), "node_modules", ".bin", "likec4");
+const likec4 = join(
+  dirname(dirname(generator)),
+  "node_modules",
+  ".bin",
+  "likec4",
+);
 
 /** Runs the generator over one catalog in a scratch tree, and validates what it wrote. */
 function generate(catalog) {
@@ -35,6 +35,7 @@ function generate(catalog) {
   execFileSync(process.execPath, [generator], { cwd: root });
   execFileSync(likec4, ["validate", "likec4"], { cwd: root });
   return {
+    spec: readFileSync(join(root, "likec4", "spec.c4"), "utf8"),
     model: readFileSync(join(root, "likec4", "model.c4"), "utf8"),
     views: readFileSync(join(root, "likec4", "views.c4"), "utf8"),
   };
@@ -52,17 +53,131 @@ describe("the LikeC4 generator", () => {
 
   it("makes the implicit default profile include the complete catalog", () => {
     const { views } = generate({
-      contexts: [{
-        id: "platform", slug: "platform", name: "Platform", summary: "", services: [{
-          id: "platform.api", slug: "api", name: "API", repo: "example/platform", path: "", readme: "", provides: [], consumes: [], aggregates: [],
-        }],
-      }],
+      contexts: [
+        {
+          id: "platform",
+          slug: "platform",
+          name: "Platform",
+          summary: "",
+          services: [
+            {
+              id: "platform.api",
+              slug: "api",
+              name: "API",
+              repo: "example/platform",
+              path: "",
+              readme: "",
+              provides: [],
+              consumes: [],
+              aggregates: [],
+            },
+          ],
+        },
+      ],
       flows: [],
     });
     expect(views).toContain("view landscape_default");
     expect(views).toContain("include platform");
     expect(views).toContain("view containers_default");
     expect(views).toContain("include platform, platform.api");
+  });
+
+  it("draws synchronous requests solid and synthesized responses dashed", () => {
+    const service = (slug, provides = []) => ({
+      id: `demo.${slug}`,
+      slug,
+      name: slug,
+      repo: "example/demo",
+      path: slug,
+      readme: "",
+      provides,
+      consumes: [],
+      aggregates: [],
+    });
+    const { spec, views } = generate({
+      contexts: [
+        {
+          id: "demo",
+          slug: "demo",
+          name: "Demo",
+          summary: "",
+          services: [
+            service("api"),
+            service("book", [
+              {
+                id: "book.v1.Book",
+                source: "book.proto",
+                methods: [
+                  {
+                    name: "Get",
+                    request: "GetRequest",
+                    response: "GetResponse",
+                  },
+                ],
+              },
+            ]),
+          ],
+        },
+      ],
+      flows: [
+        {
+          id: "flow.get-book",
+          slug: "get-book",
+          name: "Get book",
+          summary: "",
+          owner: "demo",
+          participants: [
+            { id: "demo.api", kind: "service", context: "demo" },
+            { id: "demo.book", kind: "service", context: "demo" },
+          ],
+          steps: [
+            {
+              type: "step",
+              id: "request",
+              from: "demo.api",
+              to: "demo.book",
+              kind: "rpc",
+              ref: "book.v1.Book/Get",
+              label: "Get",
+              status: "declared",
+            },
+            {
+              type: "step",
+              id: "response",
+              from: "demo.book",
+              to: "demo.api",
+              kind: "response",
+              label: "GetResponse",
+              status: "declared",
+              replyTo: "request",
+            },
+            {
+              type: "step",
+              id: "failure",
+              from: "demo.book",
+              to: "demo.api",
+              kind: "response",
+              label: "500 · Error",
+              status: "declared",
+              replyTo: "request",
+              http: { status: 500, outcome: "error" },
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(views).toContain(
+      "demo.api -> demo.book 'Get' {\n      color declared  line solid  head normal",
+    );
+    expect(views).toContain(
+      "demo.book -> demo.api 'GetResponse' {\n      color declared  line dashed  head normal",
+    );
+    expect(views).toContain(
+      "demo.book -> demo.api '500 · Error' {\n      color response_error  line dashed  head normal",
+    );
+    expect(spec).toContain("color response_error #b7646b");
+    expect(views).not.toContain("Get → GetResponse");
   });
 
   it("treats dots in a root participant id as data, not containment", () => {
@@ -176,7 +291,12 @@ describe("the LikeC4 generator", () => {
                       slug: "basket-checked-out",
                       name: "BasketCheckedOut",
                       versions: [
-                        { version: "v1", doc: "", source: "cart.go:1", fields: [] },
+                        {
+                          version: "v1",
+                          doc: "",
+                          source: "cart.go:1",
+                          fields: [],
+                        },
                       ],
                       consumers: [{ service: "shop.oms", status: "declared" }],
                     },
@@ -255,13 +375,21 @@ describe("the LikeC4 generator", () => {
     expect(model).toContain("technology 'postgres'");
     // Every relation says what kind of fact it is; a call carries its protocol.
     expect(model).toContain("shop.oms -[calls]-> shop.cart 'getBasket' 'HTTP'");
-    expect(model).toContain("shop.cart -[consumes]-> shop.oms 'BasketCheckedOut'");
+    expect(model).toContain(
+      "shop.cart -[consumes]-> shop.oms 'BasketCheckedOut'",
+    );
     // The hop through the broker, once per direction, with the step's status.
-    expect(model).toContain("shop.cart -[bus]-> bus 'BasketCheckedOut' {\n    style { color verified");
-    expect(model).toContain("bus -[bus]-> shop.oms 'BasketCheckedOut' {\n    style { color declared");
+    expect(model).toContain(
+      "shop.cart -[bus]-> bus 'BasketCheckedOut' {\n    style { color verified",
+    );
+    expect(model).toContain(
+      "bus -[bus]-> shop.oms 'BasketCheckedOut' {\n    style { color declared",
+    );
 
     // The estate's containers: contexts opened, stores and the bus named.
-    expect(views).toMatch(/view containers \{[^}]*include shop, shop\.cart, shop\.oms, shop\.cart\.pg, bus\n/);
+    expect(views).toMatch(
+      /view containers \{[^}]*include shop, shop\.cart, shop\.oms, shop\.cart\.pg, bus\n/,
+    );
     // One edge per pair, counted, with the protocol and the best status.
     const pair =
       "include shop.oms -> shop.cart with { title '2 calls'  technology 'HTTP'  color verified  line solid }";
@@ -277,6 +405,8 @@ describe("the LikeC4 generator", () => {
         "  }",
     );
     // The neighbours view keeps every method as its own relation.
-    expect(views).toMatch(/view svc_shop_oms of shop\.oms \{\n    title[^\n]*\n    include \*, -> \*, \* ->\n  \}/);
+    expect(views).toMatch(
+      /view svc_shop_oms of shop\.oms \{\n    title[^\n]*\n    include \*, -> \*, \* ->\n  \}/,
+    );
   });
 });

@@ -10,6 +10,8 @@ import { SourcePreviewButton } from "../components/SourcePreview";
 import { flowRepoService } from "../lib/derive";
 import { sourceLocation } from "../lib/source-link";
 import { AdrNumber, StatusChip } from "../components/primitives";
+import { ShapeRows } from "../components/ShapeRows";
+import { shapeFor } from "../components/MethodRows";
 import { stepAnswer } from "./answers";
 import { paths, eventPath, servicePath } from "../routes";
 
@@ -195,6 +197,186 @@ function RpcDetail({ step, flow }: { step: Step; flow: Flow }) {
   );
 }
 
+function ResponseSection({
+  title,
+  meta,
+  children,
+}: {
+  title: string;
+  meta?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="border-b border-line px-3 py-3 last:border-b-0">
+      <div className="mb-2 flex items-baseline justify-between gap-3">
+        <h3 className="label">{title}</h3>
+        {meta ? <span className="mono text-muted">{meta}</span> : null}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function ResponseDetail({ step, flow }: { step: Step; flow: Flow }) {
+  const response = step.http;
+  if (!response) {
+    return (
+      <>
+        <div className="mono text-[13px]">{step.label ?? "response"}</div>
+        <Label>Source</Label>
+        <Where step={step} flow={flow} />
+      </>
+    );
+  }
+
+  const cut = response.bodyRef?.lastIndexOf("/") ?? -1;
+  const interfaceId = cut >= 0 ? response.bodyRef!.slice(0, cut) : "";
+  const methodName = cut >= 0 ? response.bodyRef!.slice(cut + 1) : "";
+  const provider = response.bodyRef
+    ? index.rpcProviderByMethod.get(response.bodyRef)
+    : undefined;
+  const provided = provider?.provides.find((item) => item.id === interfaceId);
+  const method = provided?.methods.find((item) => item.name === methodName);
+  const fields = provided
+    ? shapeFor(provided, method?.response ?? response.body, method?.responseRef)
+    : (response.fields ?? null);
+  const providerPath = provider ? servicePath(provider.id) : null;
+  const error = response.outcome === "error";
+  const headerCount = response.contentType ? 1 : 0;
+
+  return (
+    <section
+      aria-label="HTTP response contract"
+      className="overflow-hidden rounded-card border shadow-xs"
+      style={{
+        borderColor: error ? "var(--response-error)" : "var(--border)",
+      }}
+    >
+      <header
+        className="border-b border-line px-3 py-2.5"
+        style={{
+          background: error ? "var(--response-error-bg)" : "var(--surface)",
+        }}
+      >
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="label">Response contract</h2>
+          <span
+            className="mono rounded-[4px] border px-1.5 py-px"
+            style={{
+              borderColor: error
+                ? "var(--response-error)"
+                : "var(--status-verified)",
+              color: error
+                ? "var(--response-error)"
+                : "var(--status-verified)",
+            }}
+          >
+            {error ? "error path" : "success"}
+          </span>
+        </div>
+        <div className="mt-2 flex flex-wrap items-baseline gap-2">
+          <span className="mono text-sm font-medium text-ink">
+            HTTP {response.status ?? "status unknown"}
+          </span>
+          <span className="mono text-muted">{response.body ?? "response"}</span>
+        </div>
+      </header>
+
+      <ResponseSection title="Headers" meta={headerCount}>
+        {headerCount > 0 ? (
+          <dl className="grid grid-cols-[minmax(7rem,auto)_minmax(0,1fr)] gap-x-4 gap-y-1.5">
+            <dt className="mono text-muted">Content-Type</dt>
+            <dd className="mono break-all text-ink">{response.contentType}</dd>
+          </dl>
+        ) : (
+          <div className="mono text-muted">no explicit headers detected</div>
+        )}
+      </ResponseSection>
+
+      <ResponseSection
+        title="Body"
+        meta={
+          fields
+            ? `${fields.length} field${fields.length === 1 ? "" : "s"}`
+            : undefined
+        }
+      >
+        <div className="flex flex-col gap-3">
+          <dl className="grid grid-cols-[minmax(7rem,auto)_minmax(0,1fr)] gap-x-4 gap-y-1.5">
+            <dt className="mono text-muted">Schema</dt>
+            <dd className="mono break-all text-ink">
+              {response.body ?? "unknown"}
+            </dd>
+            {response.encoding ? (
+              <>
+                <dt className="mono text-muted">Encoding</dt>
+                <dd className="mono text-ink">{response.encoding}</dd>
+              </>
+            ) : null}
+          </dl>
+
+          {fields ? (
+            <div className="overflow-x-auto rounded-control border border-line bg-canvas px-2.5 py-2">
+              {fields.length > 0 ? (
+                <ShapeRows
+                  fields={fields}
+                  enums={provided?.enums}
+                  showHeader
+                />
+              ) : (
+                <div className="mono text-muted">empty message</div>
+              )}
+            </div>
+          ) : null}
+        </div>
+      </ResponseSection>
+
+      {response.bodyRef ? (
+        <ResponseSection title="Contract lineage">
+          <dl className="grid grid-cols-[minmax(7rem,auto)_minmax(0,1fr)] gap-x-4 gap-y-1.5">
+            <dt className="mono text-muted">RPC response</dt>
+            <dd>
+              <Ident block value={response.bodyRef} className="text-ink" />
+            </dd>
+            {provider && providerPath ? (
+              <>
+                <dt className="mono text-muted">Provider</dt>
+                <dd>
+                  <Link to={providerPath} className="mono text-accent">
+                    {provider.id} →
+                  </Link>
+                </dd>
+              </>
+            ) : null}
+          </dl>
+        </ResponseSection>
+      ) : null}
+
+      {response.warning ? (
+        <ResponseSection title="Diagnostics" meta="1 issue">
+          <div
+            className="flex items-start gap-2 rounded-control border px-2.5 py-2"
+            style={{
+              borderColor: "var(--response-error)",
+              color: "var(--response-error)",
+              background: "var(--response-error-bg)",
+            }}
+          >
+            <AlertTriangle size={13} aria-hidden className="mt-0.5 shrink-0" />
+            <span>{response.warning}</span>
+          </div>
+        </ResponseSection>
+      ) : null}
+
+      {step.line ? (
+        <ResponseSection title="Observed at">
+          <SourceWhere where={step.line} flow={flow} structured />
+        </ResponseSection>
+      ) : null}
+    </section>
+  );
+}
+
 const FRAME_KEYWORD: Record<StepFrame["kind"], string> = {
   alt: "alt",
   parallel: "par",
@@ -202,68 +384,96 @@ const FRAME_KEYWORD: Record<StepFrame["kind"], string> = {
 };
 
 /**
- * The frames this step sits inside, outermost first. Selecting a step from a
- * graph or the palette gives no sense of where in the flow it is, and a step
- * pulled out of an alt is the one most likely to be misread: it does not run
- * on every path, and nothing else on this panel would say so.
+ * Where a step travels and the frames that allow it to run. Selecting a step
+ * from a graph gives no sense of its branch, so route and condition are one
+ * execution context rather than two loose lines above the contract.
  */
-function Frames({ step, flow }: { step: Step; flow: Flow }) {
+function ExecutionContext({ step, flow }: { step: Step; flow: Flow }) {
   const frames = useMemo(
     () => stepFrames(flow.steps).get(step.id) ?? [],
     [flow, step.id],
   );
-  if (frames.length === 0) return null;
-
   const conditional = frames.some((f) => f.kind === "alt");
 
   return (
-    <div className="mb-3">
-      <div className="label mb-1">
-        {conditional ? "Runs only when" : "Runs inside"}
+    <section className="mb-3 overflow-hidden rounded-card border shadow-xs border-line">
+      <header className="flex items-center justify-between gap-3 border-b px-3 py-2 border-line bg-surface">
+        <h2 className="label">Execution context</h2>
+        {conditional ? (
+          <span className="mono rounded-[4px] border px-1.5 py-px border-line-strong text-muted">
+            conditional
+          </span>
+        ) : null}
+      </header>
+
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-3 py-2.5">
+        <div className="min-w-0">
+          <div className="label mb-1">From</div>
+          <div className="mono break-all text-ink">{step.from}</div>
+        </div>
+        <span className="mono text-muted" aria-hidden>
+          →
+        </span>
+        <div className="min-w-0">
+          <div className="label mb-1">To</div>
+          <div className="mono break-all text-ink">{step.to}</div>
+        </div>
       </div>
-      <div className="flex flex-col gap-1">
-        {frames.map((frame, i) => {
-          const alt = frame.kind === "alt";
-          const text =
-            frame.kind === "parallel"
-              ? [frame.title, `branch ${frame.branch}`]
-                  .filter(Boolean)
-                  .join(" · ")
-              : (frame.branch ?? frame.title ?? "");
-          return (
-            <div
-              key={`${frame.id}:${i}`}
-              className="flex items-baseline gap-1.5 border-l-2 py-0.5 pl-2"
-              style={{
-                borderColor: alt ? "var(--border-strong)" : "var(--border)",
-              }}
-            >
-              <span
-                className="mono shrink-0 border px-1 uppercase"
-                style={{
-                  borderColor: alt ? "var(--border-strong)" : "var(--border)",
-                  color: alt ? "var(--fg)" : "var(--fg-muted)",
-                }}
-              >
-                {FRAME_KEYWORD[frame.kind]}
-              </span>
-              <span className="mono min-w-0 flex-1" title={text}>
-                {text}
-              </span>
-              {frame.terminal ? (
-                <span
-                  className="mono shrink-0"
-                  style={{ color: "var(--status-unresolved)" }}
-                  title="This branch ends the flow — the steps drawn after it do not follow this one"
+
+      {frames.length > 0 ? (
+        <div className="border-t px-3 py-2.5 border-line">
+          <div className="mb-2 flex items-baseline justify-between gap-3">
+            <h3 className="label">
+              {conditional ? "Runs only when" : "Runs inside"}
+            </h3>
+            <span className="mono text-muted">
+              {frames.length} frame{frames.length === 1 ? "" : "s"}
+            </span>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            {frames.map((frame, i) => {
+              const alt = frame.kind === "alt";
+              const text =
+                frame.kind === "parallel"
+                  ? [frame.title, `branch ${frame.branch}`]
+                      .filter(Boolean)
+                      .join(" · ")
+                  : (frame.branch ?? frame.title ?? "");
+              return (
+                <div
+                  key={`${frame.id}:${i}`}
+                  className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-control border px-2 py-1.5 border-line bg-canvas"
                 >
-                  ends flow
-                </span>
-              ) : null}
-            </div>
-          );
-        })}
-      </div>
-    </div>
+                  <span
+                    className="mono shrink-0 rounded-[4px] border px-1.5 py-px uppercase"
+                    style={{
+                      borderColor: alt
+                        ? "var(--border-strong)"
+                        : "var(--border)",
+                      color: alt ? "var(--fg)" : "var(--fg-muted)",
+                    }}
+                  >
+                    {FRAME_KEYWORD[frame.kind]}
+                  </span>
+                  <span className="mono min-w-0 break-words text-ink" title={text}>
+                    {text}
+                  </span>
+                  {frame.terminal ? (
+                    <span
+                      className="mono shrink-0"
+                      style={{ color: "var(--status-unresolved)" }}
+                      title="This branch ends the flow — the steps drawn after it do not follow this one"
+                    >
+                      ends flow
+                    </span>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+    </section>
   );
 }
 
@@ -276,24 +486,61 @@ function Frames({ step, flow }: { step: Step; flow: Flow }) {
  * `file:line` in the repository this was built from opens on the line; a
  * trace id or a path in another repository stays as it is, to copy.
  */
-function SourceWhere({ where, flow }: { where: string; flow: Flow }) {
-  const location = sourceLocation(where, flowRepoService(catalog, flow), allRepos(catalog));
-  return (
-    <div className="mono flex flex-wrap items-center gap-2 break-all text-muted">
-      <Ident block value={where} className="text-muted" />
-      <SourcePreviewButton location={location} />
+function SourceWhere({
+  where,
+  flow,
+  structured = false,
+}: {
+  where: string;
+  flow: Flow;
+  structured?: boolean;
+}) {
+  const location = sourceLocation(
+    where,
+    flowRepoService(catalog, flow),
+    allRepos(catalog),
+  );
+
+  const actions = (
+    <>
+      <SourcePreviewButton
+        location={location}
+        className="border px-2 py-1 border-line bg-canvas hover:bg-raised hover:no-underline"
+      />
       {location?.href ? (
         <a
           href={location.href}
           target="_blank"
           rel="noreferrer"
-          className="rounded-control text-accent hover:underline"
+          className="mono inline-flex items-center rounded-control border px-2 py-1 border-line bg-canvas text-accent hover:bg-raised"
           title="Open on the forge, at the built commit"
         >
-          open ↗
+          forge ↗
         </a>
       ) : null}
-      <EditorLink location={location} variant="text" />
+      <EditorLink
+        location={location}
+        variant="text"
+        className="inline-flex items-center border px-2 py-1 border-line bg-canvas hover:bg-raised hover:no-underline"
+      />
+    </>
+  );
+
+  if (structured) {
+    return (
+      <div className="flex min-w-0 flex-col gap-2">
+        <div className="mono min-w-0 break-all text-muted">
+          <Ident block value={where} className="text-muted" />
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">{actions}</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mono flex flex-wrap items-center gap-2 break-all text-muted">
+      <Ident block value={where} className="text-muted" />
+      {actions}
     </div>
   );
 }
@@ -308,13 +555,7 @@ export function StepDetailBody({ step, flow }: { step: Step; flow: Flow }) {
 
   return (
     <>
-      <div className="mono mb-3 flex items-center gap-1.5 text-muted">
-        <span>{step.from}</span>
-        <span>&rarr;</span>
-        <span>{step.to}</span>
-      </div>
-
-      <Frames step={step} flow={flow} />
+      <ExecutionContext step={step} flow={flow} />
 
       {/* A decision that names this step's event is the reason the step
           looks the way it does. It belongs next to the step, not three
@@ -341,6 +582,8 @@ export function StepDetailBody({ step, flow }: { step: Step; flow: Flow }) {
         <EventDetail step={step} flow={flow} />
       ) : step.kind === "rpc" ? (
         <RpcDetail step={step} flow={flow} />
+      ) : step.kind === "response" ? (
+        <ResponseDetail step={step} flow={flow} />
       ) : (
         <>
           <div className="mono text-[13px]">
@@ -369,7 +612,7 @@ export function StepDetailBody({ step, flow }: { step: Step; flow: Flow }) {
         </>
       ) : null}
 
-      {step.line && step.kind !== "call" ? (
+      {step.line && step.kind !== "call" && step.kind !== "response" ? (
         <>
           <Label>Observed at</Label>
           <Where step={step} flow={flow} />

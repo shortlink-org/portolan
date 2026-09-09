@@ -783,9 +783,10 @@ func (n *FlowNodes) UnmarshalJSON(data []byte) error {
 type StepKind string
 
 const (
-	StepRPC   StepKind = "rpc"
-	StepEvent StepKind = "event"
-	StepCall  StepKind = "call"
+	StepRPC      StepKind = "rpc"
+	StepEvent    StepKind = "event"
+	StepCall     StepKind = "call"
+	StepResponse StepKind = "response"
 )
 
 type Step struct {
@@ -802,6 +803,14 @@ type Step struct {
 	Status Status `json:"status"`
 	Note   string `json:"note,omitempty"`
 	Line   string `json:"line,omitempty"`
+	// ReplyTo names the synchronous request step this synthesized response
+	// returns from. Extractors record requests; composition adds the response
+	// only when it can prove the nested HTTP or unary RPC execution returns.
+	ReplyTo string `json:"replyTo,omitempty"`
+	// HTTP describes the wire response when source inspection can prove it.
+	// BodyRef names the RPC method whose response is serialized, so the merged
+	// catalog can resolve the schema without copying it into every flow.
+	HTTP *HTTPResponse `json:"http,omitempty"`
 	// ContinuesAt names the source function execution enters after this step.
 	// The merge uses it only when exactly one flow declares that entry point.
 	ContinuesAt string `json:"continuesAt,omitempty"`
@@ -815,6 +824,18 @@ type Step struct {
 }
 
 func (*Step) NodeType() string { return "step" }
+
+type HTTPResponse struct {
+	Status      int     `json:"status,omitempty"`
+	ContentType string  `json:"contentType,omitempty"`
+	Body        string  `json:"body,omitempty"`
+	BodyRef     string  `json:"bodyRef,omitempty"`
+	Encoding    string  `json:"encoding,omitempty"`
+	Outcome     string  `json:"outcome,omitempty"`
+	Warning     string  `json:"warning,omitempty"`
+	Source      string  `json:"source,omitempty"`
+	Fields      []Field `json:"fields,omitempty"`
+}
 
 type FlowHandoff struct {
 	Kind      string `json:"kind"`

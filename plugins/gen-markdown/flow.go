@@ -87,7 +87,9 @@ func (s *site) renderFlow(flow *catalog.Flow) {
 	}
 	section(&b, "Participants", table([]string{"Participant", "Kind", "Context", "Label"}, participants))
 
-	section(&b, "Sequence", fence("mermaid", flowmermaid.Sequence(flow, s.labelWithAnswer)))
+	section(&b, "Sequence", fence("mermaid", flowmermaid.Sequence(flow, func(step *catalog.Step) string {
+		return s.flowStepLabel(flow, step)
+	})))
 
 	counter := 0
 	section(&b, "Steps", s.stepList(self, flow, flow.Steps, &counter))
@@ -115,7 +117,7 @@ func (s *site) stepList(self string, flow *catalog.Flow, nodes catalog.FlowNodes
 			if n.From == n.To {
 				arrow = " ↺ "
 			}
-			b.WriteString(strconv.Itoa(*counter) + ". **" + n.From + "**" + arrow + "**" + n.To + "** — " + s.labelWithAnswer(n) + "\n")
+			b.WriteString(strconv.Itoa(*counter) + ". **" + n.From + "**" + arrow + "**" + n.To + "** — " + s.flowStepLabel(flow, n) + "\n")
 
 			var notes []string
 			if n.Ref != "" {
@@ -133,6 +135,35 @@ func (s *site) stepList(self string, flow *catalog.Flow, nodes catalog.FlowNodes
 			}
 			if n.Note != "" {
 				notes = append(notes, n.Note)
+			}
+			if n.HTTP != nil {
+				wire := []string{"HTTP"}
+				if n.HTTP.Status != 0 {
+					wire = append(wire, strconv.Itoa(n.HTTP.Status))
+				}
+				if n.HTTP.ContentType != "" {
+					wire = append(wire, code(n.HTTP.ContentType))
+				}
+				if n.HTTP.Encoding != "" {
+					wire = append(wire, n.HTTP.Encoding)
+				}
+				if n.HTTP.Outcome != "" {
+					wire = append(wire, n.HTTP.Outcome)
+				}
+				notes = append(notes, strings.Join(wire, " · "))
+				if n.HTTP.BodyRef != "" {
+					notes = append(notes, "body derived from "+code(n.HTTP.BodyRef))
+				}
+				if len(n.HTTP.Fields) > 0 {
+					fields := make([]string, 0, len(n.HTTP.Fields))
+					for _, field := range n.HTTP.Fields {
+						fields = append(fields, field.Name+": "+field.Type)
+					}
+					notes = append(notes, "fields: "+strings.Join(fields, ", "))
+				}
+				if n.HTTP.Warning != "" {
+					notes = append(notes, "warning: "+n.HTTP.Warning)
+				}
 			}
 			if len(notes) > 0 {
 				// Three spaces line the continuation up under the "1. " marker.
@@ -242,6 +273,46 @@ func (s *site) labelWithAnswer(step *catalog.Step) string {
 	}
 
 	return stepLabel(step)
+}
+
+// flowStepLabel keeps the response type on its own dashed return arrow once
+// composition has synthesized one. Flows without a proven nested return keep
+// the compact request → answer label they had before.
+func (s *site) flowStepLabel(flow *catalog.Flow, step *catalog.Step) string {
+	if step.Kind == catalog.StepResponse {
+		return stepLabel(step)
+	}
+	for _, candidate := range flowSteps(flow.Steps) {
+		if candidate.Kind == catalog.StepResponse && candidate.ReplyTo == step.ID {
+			return stepLabel(step)
+		}
+	}
+	return s.labelWithAnswer(step)
+}
+
+func flowSteps(nodes catalog.FlowNodes) []*catalog.Step {
+	var out []*catalog.Step
+	var walk func(catalog.FlowNodes)
+	walk = func(list catalog.FlowNodes) {
+		for _, node := range list {
+			switch n := node.(type) {
+			case *catalog.Step:
+				out = append(out, n)
+			case *catalog.Parallel:
+				for _, branch := range n.Branches {
+					walk(branch)
+				}
+			case *catalog.Alt:
+				for _, branch := range n.Branches {
+					walk(branch.Steps)
+				}
+			case *catalog.Loop:
+				walk(n.Steps)
+			}
+		}
+	}
+	walk(nodes)
+	return out
 }
 
 // answer is what the far end of an rpc hands back, as the contract names it.

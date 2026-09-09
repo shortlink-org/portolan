@@ -1066,16 +1066,7 @@ function FlowStepBody({
 }: {
   resolved: Extract<Resolved, { kind: "flow-step" }>;
 }) {
-  return (
-    <>
-      <div className="mono mt-1 mb-2 flex items-center gap-2 text-muted">
-        <Link to={paths.flow(resolved.flow.slug)} className="text-accent">
-          {resolved.flow.slug}
-        </Link>
-      </div>
-      <StepDetailBody step={resolved.step} flow={resolved.flow} />
-    </>
-  );
+  return <StepDetailBody step={resolved.step} flow={resolved.flow} />;
 }
 
 /**
@@ -1208,6 +1199,40 @@ function pinFor(
   }
 }
 
+function DetailNavigation({
+  resolved,
+  page,
+}: {
+  resolved: Resolved | null;
+  page: string | null;
+}) {
+  if (!page) return null;
+
+  const flowStep = resolved?.kind === "flow-step" ? resolved : null;
+  const destination = flowStep?.flow.slug ?? "catalog page";
+
+  return (
+    <nav
+      aria-label="Selection navigation"
+      className="my-3 flex min-w-0 items-center gap-2 rounded-control border px-2.5 py-2 border-line bg-surface"
+    >
+      <span className="label shrink-0">{flowStep ? "Flow" : "Page"}</span>
+      <span className="mono trunc text-muted" title={destination}>
+        {destination}
+      </span>
+      <Link
+        to={page}
+        className="mono ml-auto inline-flex shrink-0 items-center rounded-control border px-2 py-1 border-line-strong bg-canvas text-accent t-micro transition-colors hover:bg-raised"
+      >
+        {flowStep ? "open flow" : "open"}
+        <span aria-hidden className="ml-1">
+          →
+        </span>
+      </Link>
+    </nav>
+  );
+}
+
 export function DetailPanel() {
   const selection = useSelectionStore((s) => s.selection);
   const clear = useSelectionStore((s) => s.clear);
@@ -1225,34 +1250,33 @@ export function DetailPanel() {
       className="panel-in pane flex h-full w-full flex-col border-l border-line bg-canvas"
       aria-label="Selection detail"
     >
-      <div className="sticky-bar flex shrink-0 items-center gap-2 border-b px-4 py-2.5 border-line">
+      <div className="sticky-bar sticky top-0 z-10 flex shrink-0 items-center gap-2 border-b px-4 py-2 border-line">
         <span className="label">{kindLabel(selection, resolved)}</span>
         {resolved?.kind === "flow-step" ? (
           <StatusChip status={resolved.step.status} />
         ) : null}
-        {/* Right-aligned beside the close: both are about the panel rather
-            than about what is in it. */}
-        {pin ? (
-          <span className="ml-auto flex items-center">
-            <PinButton kind={pin.kind} id={pin.id} size={14} />
-          </span>
-        ) : null}
-        <button
-          type="button"
-          onClick={() => clear("panel")}
-          aria-label="Close selection detail (Esc)"
-          title="Esc"
-          className="rounded-control p-1 text-muted t-micro transition-colors hover:bg-surface hover:text-ink"
-        >
-          <X size={16} aria-hidden />
-        </button>
+        {/* Panel controls own the far edge even when this selection cannot be
+            pinned. The close button used to sit immediately after the status
+            in that case, which made it look attached to the status itself. */}
+        <div className="ml-auto flex shrink-0 items-center gap-1">
+          {pin ? <PinButton kind={pin.kind} id={pin.id} size={14} /> : null}
+          <button
+            type="button"
+            onClick={() => clear("panel")}
+            aria-label="Close selection detail (Esc)"
+            title="Close · Esc"
+            className="inline-flex size-7 items-center justify-center rounded-control border border-transparent text-muted t-micro transition-colors hover:border-line hover:bg-surface hover:text-ink"
+          >
+            <X size={16} aria-hidden />
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">
         <div className="flex flex-wrap items-baseline gap-x-2">
-          <span className="mono break-all text-sm text-ink">
+          <h2 className="mono break-all text-sm font-medium text-ink">
             {titleOf(resolved, selection)}
-          </span>
+          </h2>
           {resolved?.kind === "event" ||
           resolved?.kind === "service" ||
           resolved?.kind === "aggregate" ? (
@@ -1274,14 +1298,7 @@ export function DetailPanel() {
           <Ident block value={selection.id} className="mt-0.5 text-muted" />
         ) : null}
 
-        {page ? (
-          <Link
-            to={page}
-            className="mono mt-3 inline-block rounded-control text-accent hover:underline"
-          >
-            open page →
-          </Link>
-        ) : null}
+        <DetailNavigation resolved={resolved} page={page} />
 
         {resolved === null ? (
           <UnknownBody selection={selection} />

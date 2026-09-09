@@ -1,12 +1,9 @@
 // What comes back from a call, when a contract says.
 //
-// The catalog records hops - a call was made, an event was published - and
-// never a reply: a reply is not a second thing that happened, it is the far end
-// of the same one. But a reader of a sequence still wants to see what the far
-// end hands over, and for an rpc the answer is already written down twice over:
-// in the proto that declares the method, and in the OpenAPI document that
-// declares the operation. So it is looked up rather than recorded, and a step
-// whose method nobody in the catalog provides simply has no answer to draw.
+// The catalog's source facts are hops - a call was made, an event was
+// published. Composition may synthesize a response when a proven synchronous
+// continuation returns, but standalone calls still need their answer read from
+// the contract and shown on the request itself.
 //
 // Only an rpc has one. A `call` lands inside a service - a repository, a
 // queryset - which no interface in the catalog describes; an event is a
@@ -47,10 +44,16 @@ export function stepAnswer(index: CatalogIndex, step: Step): string | undefined 
   return methodOf(index, step)?.response || undefined;
 }
 
-/** Every step of a flow that has one, by step id. */
+/** Every request without an explicit response step that has an answer. */
 export function flowAnswers(index: CatalogIndex, flow: Flow): Map<string, string> {
   const out = new Map<string, string>();
+  const explicit = new Set(
+    walkSteps(flow.steps)
+      .filter((step) => step.kind === "response" && step.replyTo)
+      .map((step) => step.replyTo as string),
+  );
   for (const step of walkSteps(flow.steps)) {
+    if (explicit.has(step.id)) continue;
     const answer = stepAnswer(index, step);
     if (answer) out.set(step.id, answer);
   }

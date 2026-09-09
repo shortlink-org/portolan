@@ -290,6 +290,39 @@ describe("validateCatalog: flow frames", () => {
     expect(() => validateCatalog(bad)).toThrow(/job handoff with no message/);
   });
 
+  it("validates that a response reverses the rpc request it names", () => {
+    const good = clone();
+    const flow = good.flows[0]!;
+    const request = walkSteps(flow.steps).find((step) => step.kind === "rpc")!;
+    flow.steps.push({
+      type: "step",
+      id: "response-test",
+      from: request.to,
+      to: request.from,
+      kind: "response",
+      label: "Response",
+      status: request.status,
+      replyTo: request.id,
+    });
+    expect(() => validateCatalog(good)).not.toThrow();
+
+    const bad = clone();
+    const badRequest = walkSteps(bad.flows[0]!.steps).find(
+      (step) => step.kind === "rpc",
+    )!;
+    bad.flows[0]!.steps.push({
+      type: "step",
+      id: "response-test",
+      from: badRequest.to,
+      to: badRequest.from,
+      kind: "response",
+      label: "Response",
+      status: "declared",
+      replyTo: "missing-request",
+    });
+    expect(() => validateCatalog(bad)).toThrow(/not an rpc request/);
+  });
+
   it("rejects an alt with a single branch", () => {
     const { bad, node } = alt();
     node.branches = node.branches.slice(0, 1);

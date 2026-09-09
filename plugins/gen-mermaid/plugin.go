@@ -39,7 +39,18 @@ func render(req plugin.Request, opts Options) plugin.Response {
 	for i := range flows {
 		flow := &flows[i]
 		name := flow.Slug + ".mmd"
-		b.File(name, flowmermaid.Sequence(flow, label))
+		replied := map[string]bool{}
+		walkSteps(flow.Steps, func(step *catalog.Step) {
+			if step.Kind == catalog.StepResponse && step.ReplyTo != "" {
+				replied[step.ReplyTo] = true
+			}
+		})
+		b.File(name, flowmermaid.Sequence(flow, func(step *catalog.Step) string {
+			if step.Kind == catalog.StepResponse || replied[step.ID] {
+				return baseLabel(step)
+			}
+			return label(step)
+		}))
 		readme.WriteString("- [" + flow.Name + "](" + name + ") — `" + flow.ID + "`\n")
 		entries = append(entries, indexEntry{ID: flow.ID, Slug: flow.Slug, Name: flow.Name, Owner: flow.Owner, Source: flow.Source, Diagram: name})
 	}
@@ -47,6 +58,35 @@ func render(req plugin.Request, opts Options) plugin.Response {
 	b.File("README.md", readme.String())
 	b.File("index.json", string(encoded)+"\n")
 	return b.Response()
+}
+
+func baseLabel(step *catalog.Step) string {
+	if step.Label != "" {
+		return step.Label
+	}
+	if step.Ref != "" {
+		return step.Ref
+	}
+	return string(step.Kind)
+}
+
+func walkSteps(nodes catalog.FlowNodes, visit func(*catalog.Step)) {
+	for _, node := range nodes {
+		switch n := node.(type) {
+		case *catalog.Step:
+			visit(n)
+		case *catalog.Parallel:
+			for _, branch := range n.Branches {
+				walkSteps(branch, visit)
+			}
+		case *catalog.Alt:
+			for _, branch := range n.Branches {
+				walkSteps(branch.Steps, visit)
+			}
+		case *catalog.Loop:
+			walkSteps(n.Steps, visit)
+		}
+	}
 }
 
 func labeler(cat catalog.Catalog) func(*catalog.Step) string {

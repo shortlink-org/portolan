@@ -26,7 +26,9 @@ const profiles = catalogProfiles(manifest);
 const RESERVED = new Set(reserved);
 const safeId = (raw) => {
   const cleaned = raw.replace(/[^A-Za-z0-9_]/g, "_");
-  return /^[0-9]/.test(cleaned) || RESERVED.has(cleaned) ? `_${cleaned}` : cleaned;
+  return /^[0-9]/.test(cleaned) || RESERVED.has(cleaned)
+    ? `_${cleaned}`
+    : cleaned;
 };
 const fqn = (id) => id.split(".").map(safeId).join(".");
 const flowViewId = (flow) => `flow_${safeId(flow.slug)}`;
@@ -36,18 +38,24 @@ const serviceViewId = (s) => `svc_${safeId(s.id)}`;
 const serviceInsideViewId = (s) => `${serviceViewId(s)}_inside`;
 const LANDSCAPE_VIEW = "landscape";
 const CONTAINERS_VIEW = "containers";
-const profileLandscapeViewId = (profile) => `${LANDSCAPE_VIEW}_${safeId(profile.id)}`;
-const profileContainersViewId = (profile) => `${CONTAINERS_VIEW}_${safeId(profile.id)}`;
-const includeTargets = (targets) => targets.length > 0 ? targets.join(", ") : "*";
+const profileLandscapeViewId = (profile) =>
+  `${LANDSCAPE_VIEW}_${safeId(profile.id)}`;
+const profileContainersViewId = (profile) =>
+  `${CONTAINERS_VIEW}_${safeId(profile.id)}`;
+const includeTargets = (targets) =>
+  targets.length > 0 ? targets.join(", ") : "*";
 
-const q = (text) => `'${String(text).replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
+const q = (text) =>
+  `'${String(text).replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
 
 // The protocol a call travels on, read off the document that declares it.
 // Mirrors sourceDocKind in src/lib/source-doc.ts, plus the generated stub a
 // Go client is read from when no proto is vendored. Empty when the source
 // says nothing a reader could name.
 const protocolOf = (source) => {
-  const path = String(source ?? "").replace(/:\d+$/, "").toLowerCase();
+  const path = String(source ?? "")
+    .replace(/:\d+$/, "")
+    .toLowerCase();
   if (path.endsWith(".proto") || path.endsWith(".pb.go")) return "gRPC";
   if (path.endsWith(".wsdl")) return "SOAP";
   if (path.endsWith(".graphql") || path.endsWith(".graphqls")) return "GraphQL";
@@ -60,29 +68,57 @@ const protocolOf = (source) => {
 // contracts it provides. Both are facts the catalog holds; neither is guessed.
 const technologyOf = (service) => {
   const protocols = new Set(
-    service.provides.map((provided) => protocolOf(provided.source)).filter(Boolean),
+    service.provides
+      .map((provided) => protocolOf(provided.source))
+      .filter(Boolean),
   );
-  return [...(service.technologies ?? []), ...[...protocols].sort()].join(" · ");
+  return [...(service.technologies ?? []), ...[...protocols].sort()].join(
+    " · ",
+  );
 };
 
 // --- shared visual language ------------------------------------------------
 // These hex values are the light/dark-neutral midpoints of the --ctx-N and
 // --status-* tokens in src/index.css. LikeC4 bakes colours into its own theme,
 // so the seam between renderers is kept invisible by hand here.
-const CTX_COLORS = ["#4a86c8", "#9a66cc", "#2aa196", "#c4703f", "#6b7cb4", "#b46b8b"];
+const CTX_COLORS = [
+  "#4a86c8",
+  "#9a66cc",
+  "#2aa196",
+  "#c4703f",
+  "#6b7cb4",
+  "#b46b8b",
+];
 const STATUS_COLORS = {
   verified: "#2f9e63",
   declared: "#b8912f",
   unresolved: "#e0453f",
 };
-const STATUS_LINE = { verified: "solid", declared: "dashed", unresolved: "dotted" };
+const RESPONSE_ERROR_COLOR = "#b7646b";
+const STATUS_LINE = {
+  verified: "solid",
+  declared: "dashed",
+  unresolved: "dotted",
+};
 const STATUS_RANK = { verified: 0, declared: 1, unresolved: 2 };
-const KIND_HEAD = { event: "onormal", rpc: "normal", call: "none" };
+const KIND_HEAD = {
+  event: "onormal",
+  rpc: "normal",
+  call: "none",
+  response: "normal",
+};
 
 // Every relation carries the kind of fact it is, so a view can say which
 // facts it draws: a level-2 picture with the bus on it leaves out the arrows
 // that skip the bus, and nothing else has to change for it to do so.
-const RELATION_KINDS = ["consumes", "calls", "bus", "reads", "persists", "uses"];
+const RELATION_KINDS = [
+  "consumes",
+  "calls",
+  "bus",
+  "reads",
+  "persists",
+  "uses",
+];
 
 const contextColorName = (contextId) => {
   const i = catalog.contexts.findIndex((c) => c.id === contextId);
@@ -104,7 +140,10 @@ for (const flow of catalog.flows) {
 // not a flow has walked to it yet: a call recorded on `consumes` lands on it,
 // and the catalog knows what it is called, which a lane's bare id does not.
 for (const external of catalog.externals ?? []) {
-  rootParticipants.set(external.id, { kind: "external", label: external.name || external.id });
+  rootParticipants.set(external.id, {
+    kind: "external",
+    label: external.name || external.id,
+  });
 }
 // Event consumers that no service accounts for are real dependencies too.
 for (const context of catalog.contexts) {
@@ -130,7 +169,8 @@ for (const context of catalog.contexts) {
 // one participant, joined by the label the lane kept, so the call resolves to
 // the lane and not to a `v1` nested inside a `risk` that nobody declared.
 const participantByLabel = new Map();
-for (const [id, meta] of rootParticipants) participantByLabel.set(meta.label, id);
+for (const [id, meta] of rootParticipants)
+  participantByLabel.set(meta.label, id);
 // A dot means containment only for catalog services. Root participants are
 // declared as one safe identifier, so a broker named `river.orders` must be
 // referenced as `river_orders`, not as an undeclared `orders` inside `river`.
@@ -158,9 +198,11 @@ for (const store of catalog.stores ?? []) {
 function walkFlowSteps(nodes, visit) {
   for (const node of nodes) {
     if (node.type === "step") visit(node);
-    else if (node.type === "parallel") node.branches.forEach((b) => walkFlowSteps(b, visit));
+    else if (node.type === "parallel")
+      node.branches.forEach((b) => walkFlowSteps(b, visit));
     else if (node.type === "loop") walkFlowSteps(node.steps, visit);
-    else if (node.type === "alt") node.branches.forEach((b) => walkFlowSteps(b.steps, visit));
+    else if (node.type === "alt")
+      node.branches.forEach((b) => walkFlowSteps(b.steps, visit));
   }
 }
 
@@ -168,12 +210,15 @@ function walkFlowSteps(nodes, visit) {
 // specification
 // ---------------------------------------------------------------------------
 const spec = [];
-spec.push("// GENERATED by scripts/gen-likec4.mjs from the merged catalog — do not edit.");
+spec.push(
+  "// GENERATED by scripts/gen-likec4.mjs from the merged catalog — do not edit.",
+);
 spec.push("specification {");
 CTX_COLORS.forEach((hex, i) => spec.push(`  color ctx${i} ${hex}`));
 for (const [name, hex] of Object.entries(STATUS_COLORS)) {
   spec.push(`  color ${name} ${hex}`);
 }
+spec.push(`  color response_error ${RESPONSE_ERROR_COLOR}`);
 spec.push("");
 spec.push("  element context {");
 spec.push("    style { shape rectangle  opacity 5%  border dashed }");
@@ -219,16 +264,22 @@ model.push("");
 
 for (const context of catalog.contexts) {
   model.push(`  ${safeId(context.id)} = context ${q(context.name)} {`);
-  model.push(`    description ${q([context.kind, context.summary].filter(Boolean).join(" · "))}`);
+  model.push(
+    `    description ${q([context.kind, context.summary].filter(Boolean).join(" · "))}`,
+  );
   model.push(`    style { color ${contextColorName(context.id)} }`);
   for (const service of context.services) {
     model.push(`    ${safeId(service.slug)} = service ${q(service.name)} {`);
-    model.push(`      description ${q([service.kind, ...(service.technologies ?? []), `${service.repo}/${service.path}`].filter(Boolean).join(" · "))}`);
+    model.push(
+      `      description ${q([service.kind, ...(service.technologies ?? []), `${service.repo}/${service.path}`].filter(Boolean).join(" · "))}`,
+    );
     const technology = technologyOf(service);
     if (technology) model.push(`      technology ${q(technology)}`);
     model.push(`      style { color ${contextColorName(context.id)} }`);
     for (const aggregate of service.aggregates) {
-      model.push(`      ${safeId(aggregate.slug)} = aggregate ${q(aggregate.name)} {`);
+      model.push(
+        `      ${safeId(aggregate.slug)} = aggregate ${q(aggregate.name)} {`,
+      );
       for (const event of aggregate.events) {
         const latest = event.versions[event.versions.length - 1];
         model.push(`        ${safeId(event.name)} = event ${q(event.name)} {`);
@@ -304,14 +355,20 @@ for (const store of catalog.stores ?? []) {
     const aggregate = table.persists?.aggregate;
     if (!aggregate) continue;
     const key = `${aggregate}|${store.id}`;
-    const edge = persists.get(key) ?? { aggregate, store: store.id, tables: [] };
+    const edge = persists.get(key) ?? {
+      aggregate,
+      store: store.id,
+      tables: [],
+    };
     edge.tables.push(table.name);
     persists.set(key, edge);
   }
 }
 for (const edge of persists.values()) {
   const label =
-    edge.tables.length > 3 ? `${edge.tables.length} tables` : edge.tables.join(", ");
+    edge.tables.length > 3
+      ? `${edge.tables.length} tables`
+      : edge.tables.join(", ");
   relations.push(
     `  ${fqn(edge.aggregate)} -[persists]-> ${fqn(edge.store)} ${q(label)} {\n` +
       `    style { color declared  line ${STATUS_LINE.declared}  head normal }\n` +
@@ -326,11 +383,14 @@ for (const edge of persists.values()) {
 // however many events or jobs travel that way — so a level-2 picture can put
 // the bus between publisher and subscriber instead of an arrow that skips it.
 const brokerIds = new Set(
-  [...rootParticipants].filter(([, meta]) => meta.kind === "broker").map(([id]) => id),
+  [...rootParticipants]
+    .filter(([, meta]) => meta.kind === "broker")
+    .map(([id]) => id),
 );
 const busEdges = new Map(); // "from|to" -> { from, to, kind, labels:Set, status }
 for (const flow of catalog.flows) {
   walkFlowSteps(flow.steps, (step) => {
+    if (step.kind === "response") return;
     if (brokerIds.has(step.from) === brokerIds.has(step.to)) return;
     const key = `${step.from}|${step.to}`;
     const edge = busEdges.get(key) ?? {
@@ -341,7 +401,8 @@ for (const flow of catalog.flows) {
       status: "unresolved",
     };
     if (step.label) edge.labels.add(step.label);
-    if (STATUS_RANK[step.status] < STATUS_RANK[edge.status]) edge.status = step.status;
+    if (STATUS_RANK[step.status] < STATUS_RANK[edge.status])
+      edge.status = step.status;
     busEdges.set(key, edge);
   });
 }
@@ -361,7 +422,9 @@ for (const edge of busEdges.values()) {
 // the only evidence that they touch the estate at all, so it is read as a
 // relation — once per pair, however many flows walk it.
 const actorIds = new Set(
-  [...rootParticipants].filter(([, meta]) => meta.kind === "actor").map(([id]) => id),
+  [...rootParticipants]
+    .filter(([, meta]) => meta.kind === "actor")
+    .map(([id]) => id),
 );
 //
 // The lane is a fallback, though: an extractor opens every inbound endpoint
@@ -383,6 +446,7 @@ for (const context of catalog.contexts) {
 const actorEdges = new Map(); // "from|to" -> { from, to, flows:Set, status }
 for (const flow of catalog.flows) {
   walkFlowSteps(flow.steps, (step) => {
+    if (step.kind === "response") return;
     if (!actorIds.has(step.from) && !actorIds.has(step.to)) return;
     if (step.from === step.to) return;
     const key = `${step.from}|${step.to}`;
@@ -395,7 +459,8 @@ for (const flow of catalog.flows) {
     edge.flows.add(flow.name);
     // The best evidence any step offers: one observed crossing is enough to
     // say the actor really does touch the estate there.
-    if (STATUS_RANK[step.status] < STATUS_RANK[edge.status]) edge.status = step.status;
+    if (STATUS_RANK[step.status] < STATUS_RANK[edge.status])
+      edge.status = step.status;
     actorEdges.set(key, edge);
   });
 }
@@ -437,7 +502,8 @@ for (const context of catalog.contexts) {
       pair.methods.push(call.id.split("/").pop() ?? call.id);
       const protocol = protocolOf(call.source);
       if (protocol) pair.protocols.add(protocol);
-      if (STATUS_RANK[call.status] < STATUS_RANK[pair.status]) pair.status = call.status;
+      if (STATUS_RANK[call.status] < STATUS_RANK[pair.status])
+        pair.status = call.status;
       callPairs.set(key, pair);
     }
   }
@@ -446,7 +512,9 @@ for (const context of catalog.contexts) {
 /** The `include a -> b with { … }` line that labels one pair's folded edge. */
 function pairEdge(pair) {
   const title =
-    pair.methods.length === 1 ? pair.methods[0] : `${pair.methods.length} calls`;
+    pair.methods.length === 1
+      ? pair.methods[0]
+      : `${pair.methods.length} calls`;
   const technology = [...pair.protocols].sort().join(" · ");
   const props = [
     `title ${q(title)}`,
@@ -473,7 +541,9 @@ for (const context of catalog.contexts) {
     consumers.delete(service.id);
     for (const consumer of consumers) {
       const via = [...brokerIds].some(
-        (broker) => busEdges.has(`${service.id}|${broker}`) && busEdges.has(`${broker}|${consumer}`),
+        (broker) =>
+          busEdges.has(`${service.id}|${broker}`) &&
+          busEdges.has(`${broker}|${consumer}`),
       );
       if (via) carriedByBus.push([service.id, consumer]);
     }
@@ -509,10 +579,9 @@ function containerPredicates(pairs, carried, indent) {
  * leaves the flow rather than rejoining it.
  */
 // --- what comes back from a call (mirrors src/flow/answers.ts) -------------
-// The catalog records hops and never replies, so a reply is looked up in the
-// contract the step reaches. It rides on the step's own label rather than
-// becoming an arrow of its own: a dynamic view numbers its steps, and those
-// numbers are the ones the rail beside the canvas counts.
+// Standalone calls keep the contract answer on the request label. Composition
+// turns a proven synchronous return into an explicit response step, so the
+// request then keeps only its own label and the return gets a dashed arrow.
 const methodOf = new Map();
 const serviceById = new Map();
 for (const context of catalog.contexts) {
@@ -546,15 +615,15 @@ function answerOf(step) {
   return "";
 }
 
-function emitSteps(nodes, out, indent) {
+function emitSteps(nodes, out, indent, replied) {
   for (const node of nodes) {
     if (node.type === "step") {
-      const answer = answerOf(node);
+      const answer = replied.has(node.id) ? "" : answerOf(node);
       const label =
         (node.label ?? node.ref ?? node.kind) + (answer ? ` → ${answer}` : "");
       const attrs = [
-        `color ${node.status}`,
-        `line ${STATUS_LINE[node.status]}`,
+        `color ${node.http?.outcome === "error" ? "response_error" : node.status}`,
+        `line ${node.kind === "response" ? "dashed" : "solid"}`,
         `head ${KIND_HEAD[node.kind]}`,
       ];
       // The condition used to be pasted onto every label because there was no
@@ -562,21 +631,25 @@ function emitSteps(nodes, out, indent) {
       const notes = [];
       if (node.note) notes.push(node.note);
       if (node.line) notes.push(node.line);
-      out.push(`${indent}${participantRef(node.from)} -> ${participantRef(node.to)} ${q(label)} {`);
+      out.push(
+        `${indent}${participantRef(node.from)} -> ${participantRef(node.to)} ${q(label)} {`,
+      );
       out.push(`${indent}  ${attrs.join("  ")}`);
-      if (notes.length > 0) out.push(`${indent}  notes ${q(notes.join(" — "))}`);
+      if (notes.length > 0)
+        out.push(`${indent}  notes ${q(notes.join(" — "))}`);
       out.push(`${indent}}`);
       continue;
     }
     if (node.type === "parallel") {
       out.push(`${indent}par ${node.title ? `${q(node.title)} ` : ""}{`);
-      for (const branch of node.branches) emitSteps(branch, out, `${indent}  `);
+      for (const branch of node.branches)
+        emitSteps(branch, out, `${indent}  `, replied);
       out.push(`${indent}}`);
       continue;
     }
     if (node.type === "loop") {
       out.push(`${indent}loop ${q(node.title)} {`);
-      emitSteps(node.steps, out, `${indent}  `);
+      emitSteps(node.steps, out, `${indent}  `, replied);
       out.push(`${indent}}`);
       continue;
     }
@@ -587,10 +660,10 @@ function emitSteps(nodes, out, indent) {
         out.push(`${indent}  ${keyword} ${q(branch.title)} {`);
         if (branch.terminal) {
           out.push(`${indent}    break 'ends the flow' {`);
-          emitSteps(branch.steps, out, `${indent}      `);
+          emitSteps(branch.steps, out, `${indent}      `, replied);
           out.push(`${indent}    }`);
         } else {
-          emitSteps(branch.steps, out, `${indent}    `);
+          emitSteps(branch.steps, out, `${indent}    `, replied);
         }
         out.push(`${indent}  }`);
       });
@@ -649,7 +722,9 @@ const outside = [...rootParticipants]
 views.push(`  view ${LANDSCAPE_VIEW} {`);
 views.push("    title 'Estate'");
 views.push(
-  catalog.contexts.some((context) => context.kind && context.kind !== "bounded-context")
+  catalog.contexts.some(
+    (context) => context.kind && context.kind !== "bounded-context",
+  )
     ? "    description 'Every architecture group, and everything outside the estate that touches one.'"
     : "    description 'Every bounded context, and everything outside the estate that touches one.'",
 );
@@ -667,13 +742,19 @@ views.push("");
 // mean when they ask for "the architecture".
 const brokersOfService = new Map(); // service id -> Set of broker ids
 for (const edge of busEdges.values()) {
-  const [service, broker] = brokerIds.has(edge.to) ? [edge.from, edge.to] : [edge.to, edge.from];
+  const [service, broker] = brokerIds.has(edge.to)
+    ? [edge.from, edge.to]
+    : [edge.to, edge.from];
   const set = brokersOfService.get(service) ?? new Set();
   set.add(broker);
   brokersOfService.set(service, set);
 }
 const allServices = catalog.contexts.flatMap((c) => c.services);
-const drawnBrokers = [...new Set(allServices.flatMap((s) => [...(brokersOfService.get(s.id) ?? [])]))];
+const drawnBrokers = [
+  ...new Set(
+    allServices.flatMap((s) => [...(brokersOfService.get(s.id) ?? [])]),
+  ),
+];
 views.push(`  view ${CONTAINERS_VIEW} {`);
 views.push("    title 'Containers'");
 views.push(
@@ -688,7 +769,9 @@ views.push(
     ...outside,
   ])}`,
 );
-views.push(...containerPredicates([...callPairs.values()], carriedByBus, "    "));
+views.push(
+  ...containerPredicates([...callPairs.values()], carriedByBus, "    "),
+);
 views.push("  }");
 views.push("");
 
@@ -702,16 +785,25 @@ for (const profile of profiles) {
   // the generated views must do the same or it asks for landscape_default
   // while the bundle only contains the unscoped landscape view.
   const profileContexts = profile.contexts.length
-    ? catalog.contexts.filter((context) => profile.contexts.includes(context.id))
+    ? catalog.contexts.filter((context) =>
+        profile.contexts.includes(context.id),
+      )
     : catalog.contexts;
-  const profileContextIds = new Set(profileContexts.map((context) => context.id));
-  const profileServices = profileContexts.flatMap((context) => context.services);
-  const profileServiceIds = new Set(profileServices.map((service) => service.id));
+  const profileContextIds = new Set(
+    profileContexts.map((context) => context.id),
+  );
+  const profileServices = profileContexts.flatMap(
+    (context) => context.services,
+  );
+  const profileServiceIds = new Set(
+    profileServices.map((service) => service.id),
+  );
   const profileRoots = new Set();
   for (const flow of catalog.flows) {
     if (!profileContextIds.has(flow.owner)) continue;
     for (const participant of flow.participants) {
-      if (!profileServiceIds.has(participant.id)) profileRoots.add(participant.id);
+      if (!profileServiceIds.has(participant.id))
+        profileRoots.add(participant.id);
     }
   }
   for (const service of profileServices) {
@@ -722,7 +814,8 @@ for (const profile of profiles) {
     for (const aggregate of service.aggregates) {
       for (const event of aggregate.events) {
         for (const consumer of event.consumers) {
-          if (!profileServiceIds.has(consumer.service)) profileRoots.add(consumer.service);
+          if (!profileServiceIds.has(consumer.service))
+            profileRoots.add(consumer.service);
         }
       }
     }
@@ -733,30 +826,48 @@ for (const profile of profiles) {
   const profileBrokers = [...profileRoots]
     .filter((id) => rootParticipants.get(id)?.kind === "broker")
     .map(safeId);
-  const profileStores = (catalog.stores ?? []).filter((store) => profileServiceIds.has(store.owner));
+  const profileStores = (catalog.stores ?? []).filter((store) =>
+    profileServiceIds.has(store.owner),
+  );
 
   views.push(`  view ${profileLandscapeViewId(profile)} {`);
   views.push(`    title ${q(profile.title)}`);
-  views.push(`    description 'The groups and outside systems selected by this catalog profile.'`);
-  views.push(`    include ${includeTargets([...profileContexts.map((context) => safeId(context.id)), ...profileOutside])}`);
+  views.push(
+    `    description 'The groups and outside systems selected by this catalog profile.'`,
+  );
+  views.push(
+    `    include ${includeTargets([...profileContexts.map((context) => safeId(context.id)), ...profileOutside])}`,
+  );
   views.push("  }");
   views.push("");
 
   views.push(`  view ${profileContainersViewId(profile)} {`);
   views.push(`    title ${q(`${profile.title} containers`)}`);
-  views.push(`    description 'The services, stores and transports selected by this catalog profile.'`);
-  views.push(`    include ${includeTargets([
-    ...profileContexts.map((context) => safeId(context.id)),
-    ...profileServices.map((service) => fqn(service.id)),
-    ...profileStores.map((store) => fqn(store.id)),
-    ...profileBrokers,
-    ...profileOutside,
-  ])}`);
-  views.push(...containerPredicates(
-    [...callPairs.values()].filter((pair) => profileServiceIds.has(pair.from) && profileServiceIds.has(pair.to)),
-    carriedByBus.filter((pair) => profileServiceIds.has(pair.from) && profileServiceIds.has(pair.to)),
-    "    ",
-  ));
+  views.push(
+    `    description 'The services, stores and transports selected by this catalog profile.'`,
+  );
+  views.push(
+    `    include ${includeTargets([
+      ...profileContexts.map((context) => safeId(context.id)),
+      ...profileServices.map((service) => fqn(service.id)),
+      ...profileStores.map((store) => fqn(store.id)),
+      ...profileBrokers,
+      ...profileOutside,
+    ])}`,
+  );
+  views.push(
+    ...containerPredicates(
+      [...callPairs.values()].filter(
+        (pair) =>
+          profileServiceIds.has(pair.from) && profileServiceIds.has(pair.to),
+      ),
+      carriedByBus.filter(
+        (pair) =>
+          profileServiceIds.has(pair.from) && profileServiceIds.has(pair.to),
+      ),
+      "    ",
+    ),
+  );
   views.push("  }");
   views.push("");
 }
@@ -774,7 +885,8 @@ for (const context of catalog.contexts) {
   const contextStores = new Set();
   const contextServiceIds = new Set(context.services.map((s) => s.id));
   for (const service of context.services) {
-    for (const store of storesByOwner.get(service.id) ?? []) contextStores.add(store.id);
+    for (const store of storesByOwner.get(service.id) ?? [])
+      contextStores.add(store.id);
     for (const storeId of service.stores ?? []) {
       if (storeById.has(storeId)) contextStores.add(storeId);
     }
@@ -783,12 +895,17 @@ for (const context of catalog.contexts) {
   // Only the pairs the picture holds both ends of: a neighbour in another
   // context is drawn folded into its context, and naming one of its services
   // would unfold it into a second box.
-  const inside = ([from, to]) => contextServiceIds.has(from) && contextServiceIds.has(to);
-  const pairs = [...callPairs.values()].filter((pair) => inside([pair.from, pair.to]));
+  const inside = ([from, to]) =>
+    contextServiceIds.has(from) && contextServiceIds.has(to);
+  const pairs = [...callPairs.values()].filter((pair) =>
+    inside([pair.from, pair.to]),
+  );
   views.push(`  view ${contextViewId(context)} of ${safeId(context.id)} {`);
   views.push(`    title ${q(context.name)}`);
   views.push(`    include ${include}`);
-  views.push(...containerPredicates(pairs, carriedByBus.filter(inside), "    "));
+  views.push(
+    ...containerPredicates(pairs, carriedByBus.filter(inside), "    "),
+  );
   views.push("  }");
 
   for (const service of context.services) {
@@ -799,7 +916,9 @@ for (const context of catalog.contexts) {
     // read from inside `auth.auth` resolves to nothing at all.
     const parts = [
       ...service.aggregates.map((a) => safeId(a.slug)),
-      ...(storesByOwner.get(service.id) ?? []).map((store) => safeId(store.slug)),
+      ...(storesByOwner.get(service.id) ?? []).map((store) =>
+        safeId(store.slug),
+      ),
     ];
     views.push(`  view ${serviceViewId(service)} of ${fqn(service.id)} {`);
     views.push(`    title ${q(`${service.name} — neighbours`)}`);
@@ -811,7 +930,9 @@ for (const context of catalog.contexts) {
     // Its aggregates and its stores. Events are in the model but not in this
     // picture: a service with eleven of them would draw a wall of boxes where
     // the page already lists them, one line each.
-    views.push(`  view ${serviceInsideViewId(service)} of ${fqn(service.id)} {`);
+    views.push(
+      `  view ${serviceInsideViewId(service)} of ${fqn(service.id)} {`,
+    );
     views.push(`    title ${q(`${service.name} — inside`)}`);
     views.push("    include *");
     views.push("  }");
@@ -822,12 +943,16 @@ views.push("");
 for (const flow of catalog.flows) {
   const contexts = new Map(flow.participants.map((p) => [p.id, p.context]));
   const contextOf = (id) => contexts.get(id) ?? null;
+  const replied = new Set();
+  walkFlowSteps(flow.steps, (step) => {
+    if (step.kind === "response" && step.replyTo) replied.add(step.replyTo);
+  });
 
   views.push(`  dynamic view ${flowViewId(flow)} {`);
   views.push(`    title ${q(flow.name)}`);
   views.push(`    description ${q(flow.summary)}`);
   const body = [];
-  emitSteps(flow.steps, body, "    ");
+  emitSteps(flow.steps, body, "    ", replied);
   views.push(...body);
   views.push("  }");
   views.push("");
@@ -836,7 +961,7 @@ for (const flow of catalog.flows) {
   views.push(`  dynamic view ${flowCrossViewId(flow)} {`);
   views.push(`    title ${q(`${flow.name} — crossings only`)}`);
   const crossBody = [];
-  emitSteps(cross, crossBody, "    ");
+  emitSteps(cross, crossBody, "    ", replied);
   if (crossBody.length === 0) {
     // A flow with no crossing at all still needs a renderable view.
     const first = flow.participants[0];
@@ -853,8 +978,14 @@ views.push("}");
 
 mkdirSync("likec4", { recursive: true });
 writeFileSync("likec4/spec.c4", `${spec.join("\n")}\n`);
-writeFileSync("likec4/model.c4", `// GENERATED — do not edit.\n${model.join("\n")}\n`);
-writeFileSync("likec4/views.c4", `// GENERATED — do not edit.\n${views.join("\n")}\n`);
+writeFileSync(
+  "likec4/model.c4",
+  `// GENERATED — do not edit.\n${model.join("\n")}\n`,
+);
+writeFileSync(
+  "likec4/views.c4",
+  `// GENERATED — do not edit.\n${views.join("\n")}\n`,
+);
 
 console.log(
   `wrote likec4/spec.c4, likec4/model.c4, likec4/views.c4 ` +

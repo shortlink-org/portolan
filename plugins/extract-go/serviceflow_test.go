@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/shortlink-org/portolan/catalog"
@@ -24,11 +25,22 @@ func TestServiceStyleHTTPAndGRPCFlowsComposeByEntrypoint(t *testing.T) {
 	}
 	write("go.mod", "module example.com/platform\n")
 	write("internal/api/http/api.go", `package http
-import book_rpc "example.com/platform/internal/book/infrastructure/rpc"
+import (
+  book_rpc "example.com/platform/internal/book/infrastructure/rpc"
+  "google.golang.org/protobuf/encoding/protojson"
+)
 type API struct { BookService book_rpc.BookRPCClient }
 func (api *API) Run() { r.Mount("/book", api.BookRoutes()) }
 func (api *API) BookRoutes() Router { r.Post("/rent/{bookId}", api.RentBook); return r }
-func (api *API) RentBook(w Writer, req *Request) { _, _ = api.BookService.Rent(req.Context(), &book_rpc.RentRequest{}) }
+func (api *API) RentBook(w Writer, req *Request) {
+  w.Header().Add("Content-type", "application/json")
+  resp, err := api.BookService.Rent(req.Context(), &book_rpc.RentRequest{})
+  if err != nil { _, _ = w.Write([]byte(`+"`"+`{"error":"boom"}`+"`"+`)); return }
+  m := protojson.MarshalOptions{}
+  payload, err := m.Marshal(resp)
+  if err != nil { _, _ = w.Write([]byte(`+"`"+`{"error":"encode"}`+"`"+`)) }
+  _, _ = w.Write(payload)
+}
 `)
 	write("internal/book/infrastructure/rpc/book_grpc.pb.go", `package book_rpc
 type BookRPCClient interface { Rent(context.Context, *RentRequest, ...grpc.CallOption) (*RentResponse, error) }
@@ -71,6 +83,21 @@ func (c *userRPCClient) Get(ctx context.Context, in *GetRequest, opts ...grpc.Ca
 	call := apiSteps[1].(*catalog.Step)
 	if call.Ref != "book_rpc.BookRPC/Rent" || call.To != "platform.book" || call.ContinuesAt != "internal/book/infrastructure/rpc:BookServer.Rent" {
 		t.Fatalf("api rpc = %+v", call)
+	}
+	if len(apiSteps) != 5 {
+		t.Fatalf("api steps = %+v", apiSteps)
+	}
+	failure := apiSteps[2].(*catalog.Alt).Branches[0].Steps[0].(*catalog.Step)
+	if failure.Kind != catalog.StepResponse || failure.ReplyTo != "s1" || failure.HTTP == nil || failure.HTTP.Outcome != "error" || failure.HTTP.Status != 200 || failure.HTTP.Fields[0].Name != "error" || failure.HTTP.Warning == "" {
+		t.Fatalf("error response = %+v", failure)
+	}
+	encodeFailure := apiSteps[3].(*catalog.Alt).Branches[0].Steps[0].(*catalog.Step)
+	if encodeFailure.HTTP == nil || !strings.Contains(encodeFailure.HTTP.Warning, "may append another response") {
+		t.Fatalf("continuing error response = %+v", encodeFailure)
+	}
+	success := apiSteps[4].(*catalog.Step)
+	if success.Kind != catalog.StepResponse || success.HTTP == nil || success.HTTP.BodyRef != "book_rpc.BookRPC/Rent" || success.HTTP.Encoding != "protojson" || success.HTTP.ContentType != "application/json" {
+		t.Fatalf("success response = %+v", success)
 	}
 
 	book, err := extract(plugin.Input{Root: root}, Options{Context: "platform", Service: "book", Scope: "book", Store: "redis", Peers: map[string]string{"user_rpc": "platform.user"}})

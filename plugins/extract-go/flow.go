@@ -2,6 +2,7 @@ package extractgo
 
 import (
 	"go/ast"
+	"go/token"
 	"go/types"
 	"path"
 	"sort"
@@ -89,6 +90,10 @@ type flowReader struct {
 	calls      map[string]catalog.RpcCall
 	rpcEntries map[string]string
 	warnedPeer map[string]bool
+	// httpResponses is populated only while one net/http handler is walked.
+	// Keying by the exact call position lets the ordinary statement walker put
+	// response arrows inside the same if/else frame as the source write.
+	httpResponses map[token.Pos]catalog.HTTPResponse
 }
 
 // extractFlows reads every sequence the service runs, in a fixed order:
@@ -723,6 +728,14 @@ func endsWithReturn(block *ast.BlockStmt) bool {
 }
 
 func (r *flowReader) call(d *flowDraft, s *scope, site callSite, depth int) {
+	if response, ok := r.httpResponses[site.call.Pos()]; ok {
+		d.add(catalog.Step{
+			From: r.opts.svcID, To: laneClient, Kind: catalog.StepResponse,
+			Label: httpResponseLabel(response), Line: response.Source,
+			ReplyTo: "s1", HTTP: &response,
+		})
+		return
+	}
 	if ident, ok := site.call.Fun.(*ast.Ident); ok && ident.Name == "append" {
 		// Preserve an event while it is collected into a variadic slice before
 		// Save(ctx, aggregate, events...). The slice is still carrying that

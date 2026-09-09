@@ -88,7 +88,14 @@ function pricing(): Service {
     provides: [
       {
         id: "pricing.v1.Pricing",
-        methods: [{ name: "Quote", doc: "" }],
+        methods: [
+          {
+            name: "Quote",
+            doc: "",
+            request: "QuoteRequest",
+            response: "QuoteResponse",
+          },
+        ],
         source: "pricing.proto",
       },
     ],
@@ -113,7 +120,7 @@ beforeEach(() => {
 function step(
   from: string,
   to: string,
-  kind: "rpc" | "event" | "call",
+  kind: "rpc" | "event" | "call" | "response",
   extra: Partial<Extract<FlowNode, { type: "step" }>> = {},
 ): FlowNode {
   n += 1;
@@ -287,6 +294,7 @@ describe("enrichCatalog: asynchronous outbound continuations", () => {
       "enqueue void",
       "VoidWorker.Work",
       "POST /cancel",
+      "HTTP response",
     ]);
     expect(root.includes).toEqual(["void-job", "void-http"]);
     expect(once.flows.map((item) => item.slug)).toEqual([
@@ -345,6 +353,7 @@ describe("enrichCatalog: asynchronous outbound continuations", () => {
       "POST /invoices/{id}/issue",
       "enqueue send_invoice_email",
       "send_invoice_email",
+      "HTTP response",
     ]);
     expect(root.includes).toEqual(["send-invoice-email"]);
     expect(enrichCatalog(result).catalog).toEqual(result);
@@ -402,6 +411,127 @@ describe("enrichCatalog: asynchronous outbound continuations", () => {
     ]);
     expect(root.includes).toEqual(["email-handler", "email-http"]);
     expect(enrichCatalog(once).catalog).toEqual(once);
+  });
+
+  it("synthesizes returns for nested unary rpc and the HTTP root", () => {
+    const entrypoint = "pricing/rpc:Server.Quote";
+    const api = {
+      ...flow("quote-api", [
+        step("client", "shop.oms", "rpc", { label: "GET /quote" }),
+        step("shop.oms", "shop.pricing", "rpc", {
+          ref: METHOD,
+          label: "Quote",
+          continuesAt: entrypoint,
+        }),
+      ]),
+      trigger: {
+        kind: "http",
+        label: "GET /quote",
+        confidence: "high",
+      } as const,
+    };
+    const provider = {
+      ...flow("quote-rpc", [
+        step("shop.pricing", "shop.pricing", "call", {
+          label: "load quote",
+        }),
+      ]),
+      entrypoint,
+      trigger: {
+        kind: "unproven",
+        label: METHOD,
+        confidence: "high",
+      } as const,
+    };
+
+    const once = enrichCatalog(estate([api, provider])).catalog;
+    const root = once.flows.find((item) => item.slug === "quote-api")!;
+    const steps = walkSteps(root.steps);
+
+    expect(
+      steps.map((item) => [item.kind, item.from, item.to, item.label]),
+    ).toEqual([
+      ["rpc", "client", "shop.oms", "GET /quote"],
+      ["rpc", "shop.oms", "shop.pricing", "Quote"],
+      ["call", "shop.pricing", "shop.pricing", "load quote"],
+      ["response", "shop.pricing", "shop.oms", "QuoteResponse"],
+      ["response", "shop.oms", "client", "HTTP response"],
+    ]);
+    expect(steps[3]!.replyTo).toBe(steps[1]!.id);
+    expect(steps[4]!.replyTo).toBe(steps[0]!.id);
+    expect(enrichCatalog(once).catalog).toEqual(once);
+  });
+
+  it("hydrates a source-proven HTTP body from the serialized rpc response", () => {
+    const api = {
+      ...flow("quote-api", [
+        step("client", "shop.oms", "rpc", { label: "GET /quote" }),
+        step("shop.oms", "shop.pricing", "rpc", {
+          ref: METHOD,
+          label: "Quote",
+        }),
+        step("shop.oms", "client", "response", {
+          label: "200 · HTTP response",
+          replyTo: "s1",
+          http: {
+            status: 200,
+            contentType: "application/json",
+            bodyRef: METHOD,
+            encoding: "protojson",
+            outcome: "success",
+          },
+        }),
+      ]),
+      trigger: {
+        kind: "http",
+        label: "GET /quote",
+        confidence: "high",
+      } as const,
+    };
+
+    const once = enrichCatalog(estate([api])).catalog;
+    const response = walkSteps(once.flows[0]!.steps).at(-1)!;
+
+    expect(response.label).toBe("200 · QuoteResponse");
+    expect(response.http?.body).toBe("QuoteResponse");
+    expect(response.http?.bodyRef).toBe(METHOD);
+    expect(enrichCatalog(once).catalog).toEqual(once);
+  });
+
+  it("does not synthesize a unary return for a streaming rpc", () => {
+    const entrypoint = "pricing/rpc:Server.Watch";
+    const api = {
+      ...flow("watch-api", [
+        step("client", "shop.oms", "rpc", { label: "GET /watch" }),
+        step("shop.oms", "shop.pricing", "rpc", {
+          ref: METHOD,
+          label: "Quote",
+          continuesAt: entrypoint,
+        }),
+      ]),
+      trigger: {
+        kind: "http",
+        label: "GET /watch",
+        confidence: "high",
+      } as const,
+    };
+    const provider = {
+      ...flow("watch-rpc", [
+        step("shop.pricing", "shop.pricing", "call", { label: "watch" }),
+      ]),
+      entrypoint,
+    };
+    const streaming = pricing();
+    streaming.provides[0]!.methods[0]!.streaming = "server";
+
+    const result = enrichCatalog(
+      estate([api, provider], [oms(), streaming]),
+    ).catalog;
+    const responses = walkSteps(result.flows[0]!.steps).filter(
+      (item) => item.kind === "response",
+    );
+
+    expect(responses.map((item) => item.label)).toEqual(["HTTP response"]);
   });
 
   it("refuses an ambiguous message handoff", () => {

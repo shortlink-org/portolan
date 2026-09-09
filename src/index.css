@@ -54,6 +54,10 @@
   /* Domain events are the loudest leaf in the tree. Amber, but a step darker
      than amber-600 so 12px mono still clears contrast on white. */
   --kind-event: #b45309;
+  /* Error paths should be unmistakable without turning the diagram into an
+     alarm panel: dusty rose on a very pale wash. */
+  --response-error: #b7646b;
+  --response-error-bg: #faedef;
 
   /* GitHub paints `[!IMPORTANT]` purple. Purple already exists in the context
      ramp, where it means "this context"; the alert gets a name of its own so
@@ -170,6 +174,8 @@
   --status-unresolved: #ff6b63;
 
   --kind-event: #e8a33d;
+  --response-error: #d98288;
+  --response-error-bg: #2a1c20;
 
   --alert-important: #b98cf0;
 

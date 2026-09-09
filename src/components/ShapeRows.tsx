@@ -44,10 +44,13 @@ function EnumRows({ set }: { set: RpcEnum }) {
 export function ShapeRows({
   fields,
   enums,
+  showHeader = false,
 }: {
   fields: Field[];
   /** The interface's enums, so a field typed by one can open its values. */
   enums?: RpcEnum[];
+  /** A contract panel needs named columns; compact inline shapes do not. */
+  showHeader?: boolean;
 }) {
   const [open, setOpen] = useState<Set<string>>(new Set());
   const toggle = (name: string) =>
@@ -60,6 +63,15 @@ export function ShapeRows({
 
   return (
     <table className="w-full">
+      {showHeader ? (
+        <thead>
+          <tr className="label border-b border-line text-left">
+            <th className="pb-1 pr-3 font-normal">Field</th>
+            <th className="pb-1 pr-3 font-normal">Type</th>
+            <th className="pb-1 font-normal">Description</th>
+          </tr>
+        </thead>
+      ) : null}
       <tbody>
         {fields.map((field) => {
           const set = enumFor(enums, field);

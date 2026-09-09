@@ -705,12 +705,7 @@ export interface Store {
 }
 
 export type RedisOperation =
-  | "read"
-  | "write"
-  | "delete"
-  | "exists"
-  | "expire"
-  | "count";
+  "read" | "write" | "delete" | "exists" | "expire" | "count";
 
 export const REDIS_OPERATIONS: readonly RedisOperation[] = [
   "read",
@@ -880,18 +875,35 @@ export interface Step {
   id: string;
   from: string;
   to: string; // participant ids; from === to is a self-message
-  kind: "rpc" | "event" | "call";
+  kind: "rpc" | "event" | "call" | "response";
   ref?: string; // Event.id or RpcCall.id - resolvable, or status must be unresolved
   label?: string;
   status: Status;
   note?: string;
   line?: string;
+  /** Synchronous request step this synthesized response returns from. */
+  replyTo?: string;
+  /** Proven HTTP wire contract for a response step. */
+  http?: HTTPResponse;
   /** Source function execution enters here, when an extractor can prove it. */
   continuesAt?: string;
   /** Source functions proven to execute on the path represented by this step. */
   reaches?: string[];
   /** Exact asynchronous send/receive evidence used for flow composition. */
   handoff?: FlowHandoff;
+}
+export interface HTTPResponse {
+  status?: number;
+  contentType?: string;
+  body?: string;
+  /** RPC method whose response value is serialized into this body. */
+  bodyRef?: string;
+  encoding?: string;
+  outcome?: "success" | "error";
+  warning?: string;
+  source?: string;
+  /** Shape recovered directly from a literal response body. */
+  fields?: Field[];
 }
 export interface FlowHandoff {
   kind: "message" | "job";
@@ -2161,6 +2173,7 @@ export function validateCatalog(catalog: Catalog): Catalog {
 
     const steps = walkSteps(flow.steps);
     const stepIds = new Set<string>();
+    const stepById = new Map<string, Step>();
     for (const step of steps) {
       if (stepIds.has(step.id)) {
         fail(
@@ -2169,6 +2182,16 @@ export function validateCatalog(catalog: Catalog): Catalog {
         );
       }
       stepIds.add(step.id);
+      stepById.set(step.id, step);
+
+      if (
+        !(["rpc", "event", "call", "response"] as const).includes(step.kind)
+      ) {
+        fail(
+          `flow "${flow.slug}" step "${step.id}" has unknown kind "${step.kind}"`,
+          `flow ${flow.id} / step ${step.id}`,
+        );
+      }
 
       if (step.reaches?.some((entrypoint) => entrypoint.length === 0)) {
         fail(
@@ -2208,6 +2231,32 @@ export function validateCatalog(catalog: Catalog): Catalog {
           );
         }
       }
+      if (step.http) {
+        if (step.kind !== "response") {
+          fail(
+            `flow "${flow.slug}" step "${step.id}" has HTTP response metadata but is not a response`,
+            `flow ${flow.id} / step ${step.id}`,
+          );
+        }
+        if (
+          step.http.status !== undefined &&
+          (step.http.status < 100 || step.http.status > 599)
+        ) {
+          fail(
+            `flow "${flow.slug}" response "${step.id}" has invalid HTTP status ${step.http.status}`,
+            `flow ${flow.id} / step ${step.id}`,
+          );
+        }
+        if (
+          step.http.outcome !== undefined &&
+          !(["success", "error"] as const).includes(step.http.outcome)
+        ) {
+          fail(
+            `flow "${flow.slug}" response "${step.id}" has unknown HTTP outcome "${step.http.outcome}"`,
+            `flow ${flow.id} / step ${step.id}`,
+          );
+        }
+      }
 
       if (!lanes.has(step.from)) {
         fail(
@@ -2229,6 +2278,37 @@ export function validateCatalog(catalog: Catalog): Catalog {
             `flow ${flow.id} / step ${step.id}`,
           );
         }
+      }
+    }
+
+    for (const step of steps) {
+      if (step.kind !== "response") {
+        if (step.replyTo !== undefined) {
+          fail(
+            `flow "${flow.slug}" step "${step.id}" is not a response but names replyTo "${step.replyTo}"`,
+            `flow ${flow.id} / step ${step.id}`,
+          );
+        }
+        continue;
+      }
+      if (!step.replyTo) {
+        fail(
+          `flow "${flow.slug}" response "${step.id}" names no request in replyTo`,
+          `flow ${flow.id} / step ${step.id}`,
+        );
+      }
+      const request = stepById.get(step.replyTo);
+      if (!request || request.kind !== "rpc") {
+        fail(
+          `flow "${flow.slug}" response "${step.id}" replies to "${step.replyTo}", which is not an rpc request`,
+          `flow ${flow.id} / step ${step.id}`,
+        );
+      }
+      if (step.from !== request.to || step.to !== request.from) {
+        fail(
+          `flow "${flow.slug}" response "${step.id}" does not reverse request "${request.id}"`,
+          `flow ${flow.id} / step ${step.id}`,
+        );
       }
     }
   }
@@ -2511,7 +2591,10 @@ function validateStores(catalog: Catalog): void {
       }
       keyPatterns.add(keyspace.pattern);
       if (keyspace.operations.length === 0) {
-        fail(`Redis key pattern "${keyspace.pattern}" has no operations`, where);
+        fail(
+          `Redis key pattern "${keyspace.pattern}" has no operations`,
+          where,
+        );
       }
       const operations = new Set<string>();
       for (const operation of keyspace.operations) {

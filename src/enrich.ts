@@ -237,6 +237,7 @@ export function enrichCatalog(input: Catalog): Enriched {
  * participate. Ambiguous seams compose nothing.
  */
 function composeExecutionContinuations(input: Catalog): Catalog {
+  const responses = synchronousResponses(input);
   const byEntry = new Map<string, Flow | null>();
   const byHandoff = new Map<string, Flow | null>();
   for (const flow of input.flows) {
@@ -259,10 +260,6 @@ function composeExecutionContinuations(input: Catalog): Catalog {
       });
     }
   }
-  if (byEntry.size === 0 && byHandoff.size === 0) {
-    return input;
-  }
-
   const consumed = new Set<string>();
   let any = false;
   const flows = input.flows.map((flow) => {
@@ -275,8 +272,27 @@ function composeExecutionContinuations(input: Catalog): Catalog {
       byEntry,
       byHandoff,
       consumed,
+      responses,
     );
-    if (expansion.includes.length === 0) return flow;
+    let steps = expansion.nodes;
+    const opening = walkSteps(steps)[0];
+    if (
+      flow.trigger?.kind === "http" &&
+      opening?.kind === "rpc" &&
+      !hasResponseFor(steps, opening.id)
+    ) {
+      steps = appendResponseAtExits(
+        steps,
+        responseStep(
+          opening,
+          responses.get(opening.ref ?? "")?.label || "HTTP response",
+          "HTTP handler return",
+        ),
+      );
+    }
+    steps = hydrateHTTPResponseContracts(steps, responses);
+    if (expansion.includes.length === 0 && steps === expansion.nodes)
+      return flow;
     any = true;
 
     const participants = [...flow.participants];
@@ -295,7 +311,7 @@ function composeExecutionContinuations(input: Catalog): Catalog {
         " Source-backed cross-protocol continuations are included.",
       includes: unique([...(flow.includes ?? []), ...expansion.includes]),
       participants,
-      steps: expansion.nodes,
+      steps,
     };
   });
 
@@ -324,6 +340,7 @@ function expandExecution(
   byEntry: ReadonlyMap<string, Flow | null>,
   byHandoff: ReadonlyMap<string, Flow | null>,
   consumed: Set<string>,
+  responses: ReadonlyMap<string, SynchronousResponse>,
 ): ExecutionExpansion {
   const out: FlowNode[] = [];
   const includes: string[] = [];
@@ -333,12 +350,15 @@ function expandExecution(
       case "step": {
         out.push(node);
         if (path.length > 12) break;
-        for (const continuation of continuationsFor(
+        let continuationNodes: FlowNode[] = [];
+        let synchronous = false;
+        for (const continuationMatch of continuationsFor(
           root,
           node,
           byEntry,
           byHandoff,
         )) {
+          const continuation = continuationMatch.flow;
           if (
             path.includes(continuation.slug) ||
             existing.has(continuation.slug)
@@ -354,9 +374,11 @@ function expandExecution(
             byEntry,
             byHandoff,
             consumed,
+            responses,
           );
           const prefix = `continuation-${continuation.slug}-${node.id}`;
-          out.push(...prefixFlowNodes(nested.nodes, prefix));
+          continuationNodes.push(...prefixFlowNodes(nested.nodes, prefix));
+          synchronous ||= continuationMatch.synchronous;
           includes.push(
             continuation.slug,
             ...(continuation.includes ?? []),
@@ -370,6 +392,19 @@ function expandExecution(
             consumed.add(continuation.slug);
           }
         }
+        const response = responses.get(node.ref ?? "");
+        if (
+          synchronous &&
+          node.kind === "rpc" &&
+          response &&
+          !hasResponseFor(nodes, node.id)
+        ) {
+          continuationNodes = appendResponseAtExits(
+            continuationNodes,
+            responseStep(node, response.label, "unary gRPC return"),
+          );
+        }
+        out.push(...continuationNodes);
         break;
       }
       case "alt":
@@ -383,6 +418,7 @@ function expandExecution(
               byEntry,
               byHandoff,
               consumed,
+              responses,
             );
             includes.push(...expanded.includes);
             fragments.push(...expanded.fragments);
@@ -405,6 +441,7 @@ function expandExecution(
               byEntry,
               byHandoff,
               consumed,
+              responses,
             );
             includes.push(...expanded.includes);
             fragments.push(...expanded.fragments);
@@ -426,6 +463,7 @@ function expandExecution(
             byEntry,
             byHandoff,
             consumed,
+            responses,
           );
           includes.push(...expanded.includes);
           fragments.push(...expanded.fragments);
@@ -444,26 +482,36 @@ function expandExecution(
   };
 }
 
+interface ContinuationMatch {
+  flow: Flow;
+  synchronous: boolean;
+}
+
 function continuationsFor(
   root: Flow,
   step: Step,
   byEntry: ReadonlyMap<string, Flow | null>,
   byHandoff: ReadonlyMap<string, Flow | null>,
-): Flow[] {
-  const found: Flow[] = [];
+): ContinuationMatch[] {
+  const found: ContinuationMatch[] = [];
   const sourceEntries = [step.continuesAt, ...(step.reaches ?? [])].filter(
     (entry): entry is string => Boolean(entry),
   );
   for (const entry of sourceEntries) {
     const continuation = byEntry.get(entry);
     if (!continuation || continuation.owner !== root.owner) continue;
-    found.push(continuation);
+    found.push({ flow: continuation, synchronous: true });
   }
   if (step.handoff?.direction === "send") {
     const continuation = byHandoff.get(handoffKey(step.handoff));
-    if (continuation) found.push(continuation);
+    if (continuation) found.push({ flow: continuation, synchronous: false });
   }
-  return uniqueFlows(found);
+  const matches = new Map<string, ContinuationMatch>();
+  for (const match of found) {
+    const previous = matches.get(match.flow.slug);
+    if (!previous || match.synchronous) matches.set(match.flow.slug, match);
+  }
+  return [...matches.values()];
 }
 
 function handoffKey(handoff: NonNullable<Step["handoff"]>): string {
@@ -501,7 +549,11 @@ function prefixFlowNodes(nodes: FlowNode[], prefix: string): FlowNode[] {
     const id = `${prefix}-${node.id}`;
     switch (node.type) {
       case "step":
-        return { ...node, id };
+        return {
+          ...node,
+          id,
+          ...(node.replyTo ? { replyTo: `${prefix}-${node.replyTo}` } : {}),
+        };
       case "alt":
         return {
           ...node,
@@ -523,6 +575,147 @@ function prefixFlowNodes(nodes: FlowNode[], prefix: string): FlowNode[] {
         return { ...node, id, steps: prefixFlowNodes(node.steps, prefix) };
     }
   });
+}
+
+interface SynchronousResponse {
+  label: string;
+}
+
+/** Resolve a source-proven serialized RPC result to its response message. */
+function hydrateHTTPResponseContracts(
+  nodes: FlowNode[],
+  responses: ReadonlyMap<string, SynchronousResponse>,
+): FlowNode[] {
+  let changed = false;
+  const visit = (list: FlowNode[]): FlowNode[] =>
+    list.map((node): FlowNode => {
+      if (node.type === "step") {
+        if (node.kind !== "response" || !node.http) return node;
+        const contract = node.http.bodyRef
+          ? responses.get(node.http.bodyRef)
+          : undefined;
+        const body =
+          node.http.body ||
+          contract?.label ||
+          node.label?.replace(/^\d{3}\s*·\s*/, "") ||
+          "HTTP response";
+        const label = node.http.status ? `${node.http.status} · ${body}` : body;
+        if (node.http.body === body && node.label === label) return node;
+        changed = true;
+        return { ...node, label, http: { ...node.http, body } };
+      }
+      if (node.type === "alt") {
+        const branches = node.branches.map((branch) => ({
+          ...branch,
+          steps: visit(branch.steps),
+        }));
+        return branches.some(
+          (branch, index) => branch.steps !== node.branches[index]!.steps,
+        )
+          ? { ...node, branches }
+          : node;
+      }
+      if (node.type === "parallel") {
+        const branches = node.branches.map(visit);
+        return branches.some((branch, index) => branch !== node.branches[index])
+          ? { ...node, branches }
+          : node;
+      }
+      const nested = visit(node.steps);
+      return nested === node.steps ? node : { ...node, steps: nested };
+    });
+
+  const hydrated = visit(nodes);
+  return changed ? hydrated : nodes;
+}
+
+/** Unary contract responses keyed by `<interface>/<method>`. */
+function synchronousResponses(
+  catalog: Catalog,
+): Map<string, SynchronousResponse> {
+  const out = new Map<string, SynchronousResponse>();
+  const collect = (provided: Service["provides"][number]): void => {
+    for (const method of provided.methods) {
+      if (method.streaming || !method.response) continue;
+      out.set(`${provided.id}/${method.name}`, { label: method.response });
+    }
+  };
+  for (const context of catalog.contexts) {
+    for (const service of context.services) {
+      for (const provided of service.provides) collect(provided);
+    }
+  }
+  for (const external of catalog.externals ?? []) {
+    for (const provided of external.provides) collect(provided);
+  }
+  return out;
+}
+
+function responseStep(request: Step, label: string, protocol: string): Step {
+  return {
+    type: "step",
+    id: `response-${request.id}`,
+    from: request.to,
+    to: request.from,
+    kind: "response",
+    label,
+    status: request.status,
+    note: `Synthesized from the proven synchronous ${protocol}.`,
+    replyTo: request.id,
+  };
+}
+
+function hasResponseFor(nodes: FlowNode[], requestId: string): boolean {
+  return walkSteps(nodes).some(
+    (step) => step.kind === "response" && step.replyTo === requestId,
+  );
+}
+
+/**
+ * Adds a response to every way a synchronous execution can return. A terminal
+ * alt branch gets its own copy inside the branch; the normal fallthrough gets
+ * the unsuffixed response after the nested fragment.
+ */
+function appendResponseAtExits(nodes: FlowNode[], response: Step): FlowNode[] {
+  let emitted = 0;
+  const nextResponse = (): Step => {
+    emitted += 1;
+    return emitted === 1
+      ? response
+      : { ...response, id: `${response.id}-exit-${emitted}` };
+  };
+
+  const visit = (
+    list: FlowNode[],
+    respondAtEnd: boolean,
+  ): { nodes: FlowNode[]; fallsThrough: boolean } => {
+    let fallsThrough = true;
+    const out = list.map((node): FlowNode => {
+      if (node.type === "step") return node;
+      if (node.type === "parallel") {
+        return {
+          ...node,
+          branches: node.branches.map((branch) => visit(branch, false).nodes),
+        };
+      }
+      if (node.type === "loop") {
+        return { ...node, steps: visit(node.steps, false).nodes };
+      }
+
+      const branches = node.branches.map((branch) => {
+        const nested = visit(branch.steps, Boolean(branch.terminal));
+        return { ...branch, steps: nested.nodes };
+      });
+      if (branches.length > 0 && branches.every((branch) => branch.terminal)) {
+        fallsThrough = false;
+      }
+      return { ...node, branches };
+    });
+    if (respondAtEnd && fallsThrough) out.push(nextResponse());
+    return { nodes: out, fallsThrough };
+  };
+
+  return visit(nodes, true).nodes;
 }
 
 /**

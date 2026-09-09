@@ -42,7 +42,7 @@ export function flowHealth(flow: Flow): FlowHealth {
   const steps = walkSteps(flow.steps);
   const statuses: Status[] = steps.map((s) => s.status);
   if (statuses.some((s) => s === "unresolved")) return "unresolved";
-  const hops = steps.filter((s) => s.kind !== "call");
+  const hops = steps.filter((s) => s.kind !== "call" && s.kind !== "response");
   if (hops.length > 0 && hops.every((s) => s.status === "verified"))
     return "verified";
   return "declared";

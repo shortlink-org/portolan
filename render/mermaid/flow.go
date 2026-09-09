@@ -40,10 +40,19 @@ func renderNodes(b *strings.Builder, nodes catalog.FlowNodes, aliases map[string
 		switch n := node.(type) {
 		case *catalog.Step:
 			arrow := "->>"
-			if n.Kind == catalog.StepEvent {
+			if n.Kind == catalog.StepResponse {
+				arrow = "-->>"
+			} else if n.Kind == catalog.StepEvent {
 				arrow = "-)"
 			}
-			b.WriteString(indent + aliases[n.From] + arrow + aliases[n.To] + ": " + Text(label(n)) + "\n")
+			message := aliases[n.From] + arrow + aliases[n.To] + ": " + Text(label(n))
+			if n.HTTP != nil && n.HTTP.Outcome == "error" {
+				b.WriteString(indent + "rect rgba(183, 100, 107, 0.12)\n")
+				b.WriteString(indent + "    " + message + "\n")
+				b.WriteString(indent + "end\n")
+			} else {
+				b.WriteString(indent + message + "\n")
+			}
 		case *catalog.Parallel:
 			b.WriteString(indent + "par " + Text(defaulted(n.Title, "in parallel")) + "\n")
 			for i, branch := range n.Branches {

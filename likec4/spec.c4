@@ -9,6 +9,7 @@ specification {
   color verified #2f9e63
   color declared #b8912f
   color unresolved #e0453f
+  color response_error #b7646b
 
   element context {
     style { shape rectangle  opacity 5%  border dashed }
