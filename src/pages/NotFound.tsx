@@ -1,4 +1,3 @@
-import type { PointerEvent as ReactPointerEvent } from "react";
 import { House, Search } from "lucide-react";
 import { Link, useLocation } from "react-router";
 import { useDocumentTitle } from "../app/title";
@@ -36,38 +35,15 @@ export function NotFound({ kind, id }: { kind: string; id?: string }) {
   );
 }
 
-function moveArtwork(event: ReactPointerEvent<HTMLDivElement>) {
-  const bounds = event.currentTarget.getBoundingClientRect();
-  const x = (event.clientX - bounds.left) / bounds.width - 0.5;
-  const y = (event.clientY - bounds.top) / bounds.height - 0.5;
-  event.currentTarget.style.setProperty("--parallax-x", x.toFixed(3));
-  event.currentTarget.style.setProperty("--parallax-y", y.toFixed(3));
-}
-
-function resetArtwork(event: ReactPointerEvent<HTMLDivElement>) {
-  event.currentTarget.style.setProperty("--parallax-x", "0");
-  event.currentTarget.style.setProperty("--parallax-y", "0");
-}
-
 function LostExplorer() {
   return (
-    <div
-      className="not-found-art"
-      onPointerMove={moveArtwork}
-      onPointerLeave={resetArtwork}
-    >
-      <div className="not-found-art-grid" aria-hidden />
-      <span className="not-found-number mono" aria-hidden>
-        404
-      </span>
-      <div className="not-found-cat-layer">
-        <img
-          src={`${import.meta.env.BASE_URL}404-cat-v1.webp`}
-          alt="An explorer cat studying a folded map with a missing route"
-          className="not-found-cat"
-          draggable={false}
-        />
-      </div>
+    <div className="not-found-art">
+      <img
+        src={`${import.meta.env.BASE_URL}404-cat-v1.webp`}
+        alt="An explorer cat studying a folded map with a missing route"
+        className="not-found-cat"
+        draggable={false}
+      />
     </div>
   );
 }
