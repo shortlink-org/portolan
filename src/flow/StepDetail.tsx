@@ -158,46 +158,67 @@ function RpcDetail({ step, flow }: { step: Step; flow: Flow }) {
   const answer = stepAnswer(index, step);
 
   return (
-    <>
-      <Ident block value={method} className="text-ink" />
-
-      {answer ? (
-        <>
-          <Label>Answers with</Label>
-          <div className="mono text-muted">{answer}</div>
-        </>
-      ) : null}
-
-      <Label>Provider</Label>
-      {provider && providerPath ? (
-        <Link to={providerPath} className="mono text-accent">
-          {provider.id} →
-        </Link>
-      ) : (
-        <div className="mono inline-flex items-center gap-1.5 border px-1.5 py-0.5 status-unresolved">
-          <AlertTriangle size={11} aria-hidden />
-          no provider found
+    <section
+      aria-label="RPC contract"
+      className="overflow-hidden rounded-card border shadow-xs border-line"
+    >
+      <header className="border-b px-3 py-2.5 border-line bg-surface">
+        <h2 className="label">RPC contract</h2>
+        <div className="mt-2">
+          <Ident block value={method} className="text-ink" />
         </div>
-      )}
+      </header>
 
-      {call ? (
-        <>
-          <Label>Declared by</Label>
-          <div className="mono text-muted">peer: {call.peer}</div>
-          <Label>Source</Label>
-          <SourceWhere where={call.source} flow={flow} />
-        </>
-      ) : (
-        <>
-          <Label>Source</Label>
-          <Where step={step} flow={flow} />
-        </>
-      )}
-    </>
+      <DetailSection title="Contract">
+        <dl className="grid grid-cols-[minmax(7rem,auto)_minmax(0,1fr)] gap-x-4 gap-y-2">
+          {answer ? (
+            <>
+              <dt className="mono text-muted">Answers with</dt>
+              <dd className="mono break-all text-ink">{answer}</dd>
+            </>
+          ) : null}
+          <dt className="mono text-muted">Provider</dt>
+          <dd>
+            {provider && providerPath ? (
+              <Link to={providerPath} className="mono text-accent">
+                {provider.id} →
+              </Link>
+            ) : (
+              <span className="mono inline-flex items-center gap-1.5 rounded-control border px-1.5 py-0.5 status-unresolved">
+                <AlertTriangle size={11} aria-hidden />
+                no provider found
+              </span>
+            )}
+          </dd>
+          {call ? (
+            <>
+              <dt className="mono text-muted">Declared by</dt>
+              <dd className="mono break-all text-ink">{call.peer}</dd>
+            </>
+          ) : null}
+        </dl>
+      </DetailSection>
+
+      <DetailSection title="Source">
+        {call ? (
+          <SourceWhere where={call.source} flow={flow} structured />
+        ) : step.line ? (
+          <SourceWhere where={step.line} flow={flow} structured />
+        ) : (
+          <div className="mono text-muted">not recorded</div>
+        )}
+      </DetailSection>
+
+      {step.line ? (
+        <DetailSection title="Observed at">
+          <SourceWhere where={step.line} flow={flow} structured />
+        </DetailSection>
+      ) : null}
+    </section>
   );
 }
 
-function ResponseSection({
+function DetailSection({
   title,
   meta,
   children,
@@ -266,9 +287,7 @@ function ResponseDetail({ step, flow }: { step: Step; flow: Flow }) {
               borderColor: error
                 ? "var(--response-error)"
                 : "var(--status-verified)",
-              color: error
-                ? "var(--response-error)"
-                : "var(--status-verified)",
+              color: error ? "var(--response-error)" : "var(--status-verified)",
             }}
           >
             {error ? "error path" : "success"}
@@ -282,7 +301,7 @@ function ResponseDetail({ step, flow }: { step: Step; flow: Flow }) {
         </div>
       </header>
 
-      <ResponseSection title="Headers" meta={headerCount}>
+      <DetailSection title="Headers" meta={headerCount}>
         {headerCount > 0 ? (
           <dl className="grid grid-cols-[minmax(7rem,auto)_minmax(0,1fr)] gap-x-4 gap-y-1.5">
             <dt className="mono text-muted">Content-Type</dt>
@@ -291,9 +310,9 @@ function ResponseDetail({ step, flow }: { step: Step; flow: Flow }) {
         ) : (
           <div className="mono text-muted">no explicit headers detected</div>
         )}
-      </ResponseSection>
+      </DetailSection>
 
-      <ResponseSection
+      <DetailSection
         title="Body"
         meta={
           fields
@@ -318,21 +337,17 @@ function ResponseDetail({ step, flow }: { step: Step; flow: Flow }) {
           {fields ? (
             <div className="overflow-x-auto rounded-control border border-line bg-canvas px-2.5 py-2">
               {fields.length > 0 ? (
-                <ShapeRows
-                  fields={fields}
-                  enums={provided?.enums}
-                  showHeader
-                />
+                <ShapeRows fields={fields} enums={provided?.enums} showHeader />
               ) : (
                 <div className="mono text-muted">empty message</div>
               )}
             </div>
           ) : null}
         </div>
-      </ResponseSection>
+      </DetailSection>
 
       {response.bodyRef ? (
-        <ResponseSection title="Contract lineage">
+        <DetailSection title="Contract lineage">
           <dl className="grid grid-cols-[minmax(7rem,auto)_minmax(0,1fr)] gap-x-4 gap-y-1.5">
             <dt className="mono text-muted">RPC response</dt>
             <dd>
@@ -349,11 +364,11 @@ function ResponseDetail({ step, flow }: { step: Step; flow: Flow }) {
               </>
             ) : null}
           </dl>
-        </ResponseSection>
+        </DetailSection>
       ) : null}
 
       {response.warning ? (
-        <ResponseSection title="Diagnostics" meta="1 issue">
+        <DetailSection title="Diagnostics" meta="1 issue">
           <div
             className="flex items-start gap-2 rounded-control border px-2.5 py-2"
             style={{
@@ -365,13 +380,13 @@ function ResponseDetail({ step, flow }: { step: Step; flow: Flow }) {
             <AlertTriangle size={13} aria-hidden className="mt-0.5 shrink-0" />
             <span>{response.warning}</span>
           </div>
-        </ResponseSection>
+        </DetailSection>
       ) : null}
 
       {step.line ? (
-        <ResponseSection title="Observed at">
+        <DetailSection title="Observed at">
           <SourceWhere where={step.line} flow={flow} structured />
-        </ResponseSection>
+        </DetailSection>
       ) : null}
     </section>
   );
@@ -455,7 +470,10 @@ function ExecutionContext({ step, flow }: { step: Step; flow: Flow }) {
                   >
                     {FRAME_KEYWORD[frame.kind]}
                   </span>
-                  <span className="mono min-w-0 break-words text-ink" title={text}>
+                  <span
+                    className="mono min-w-0 break-words text-ink"
+                    title={text}
+                  >
                     {text}
                   </span>
                   {frame.terminal ? (
@@ -612,7 +630,10 @@ export function StepDetailBody({ step, flow }: { step: Step; flow: Flow }) {
         </>
       ) : null}
 
-      {step.line && step.kind !== "call" && step.kind !== "response" ? (
+      {step.line &&
+      step.kind !== "call" &&
+      step.kind !== "rpc" &&
+      step.kind !== "response" ? (
         <>
           <Label>Observed at</Label>
           <Where step={step} flow={flow} />
