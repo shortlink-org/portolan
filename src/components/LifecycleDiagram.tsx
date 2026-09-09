@@ -3,6 +3,12 @@ import type { Aggregate } from "../catalog";
 import { layoutLifecycle, METRICS } from "../lib/lifecycle";
 import { KindIcon } from "./kind";
 
+function transitionTone(on: string) {
+  if (on === "Fail") return { color: "var(--status-unresolved)", marker: "lc-arrow-fail" };
+  if (on === "Succeed") return { color: "var(--status-verified)", marker: "lc-arrow-succeed" };
+  return { color: "var(--fg-muted)", marker: "lc-arrow" };
+}
+
 /**
  * The aggregate's state machine, as the code wrote it down. Boxes and arrows
  * are SVG; the labels are HTML laid over it, because a label holds a link to
@@ -29,18 +35,27 @@ export function LifecycleDiagram({
             <marker id="lc-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
               <path d="M 0 0 L 8 4 L 0 8 z" fill="var(--fg-muted)" />
             </marker>
+            <marker id="lc-arrow-fail" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+              <path d="M 0 0 L 8 4 L 0 8 z" fill="var(--status-unresolved)" />
+            </marker>
+            <marker id="lc-arrow-succeed" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+              <path d="M 0 0 L 8 4 L 0 8 z" fill="var(--status-verified)" />
+            </marker>
           </defs>
-          {edges.map((e) => (
-            <path
-              key={`${e.from}-${e.to}-${e.on}`}
-              d={e.path}
-              fill="none"
-              stroke="var(--fg-muted)"
-              strokeWidth={1.25}
-              strokeDasharray={e.back ? "4 3" : undefined}
-              markerEnd="url(#lc-arrow)"
-            />
-          ))}
+          {edges.map((e) => {
+            const tone = transitionTone(e.on);
+            return (
+              <path
+                key={`${e.from}-${e.to}-${e.on}`}
+                d={e.path}
+                fill="none"
+                stroke={tone.color}
+                strokeWidth={1.25}
+                strokeDasharray={e.back ? "4 3" : undefined}
+                markerEnd={`url(#${tone.marker})`}
+              />
+            );
+          })}
           {boxes.map((b) => (
             <g key={b.state}>
               <rect
@@ -80,11 +95,12 @@ export function LifecycleDiagram({
         ))}
         {edges.map((e) => {
           const to = e.emits ? eventPath(e.emits) : null;
+          const tone = transitionTone(e.on);
           return (
             <div
               key={`${e.from}-${e.to}-${e.on}-label`}
               className="mono absolute flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 whitespace-nowrap rounded-control bg-bg px-1 text-muted"
-              style={{ left: e.labelX, top: e.labelY }}
+              style={{ left: e.labelX, top: e.labelY, color: tone.color }}
               title={e.source ? `made at ${e.source}` : undefined}
             >
               {e.on}
