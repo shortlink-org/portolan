@@ -127,6 +127,54 @@ func (c *Cache) Query(ctx context.Context, provider, pnr string, value []byte, t
 	}
 }
 
+func TestExtractsProtoJSONAggregateAccessesAndSelectorKeys(t *testing.T) {
+	root := t.TempDir()
+	writeGo(t, root, "go.mod", "module example.com/books\n")
+	writeGo(t, root, "redis.go", `package books
+import (
+  "context"
+  "github.com/redis/go-redis/v9"
+  "google.golang.org/protobuf/encoding/protojson"
+)
+type Book struct { Title string }
+type Store struct { client *redis.Client }
+func New() *Store { return &Store{client: redis.NewClient(&redis.Options{})} }
+func (s *Store) Get(ctx context.Context, id string) (*Book, error) {
+  value, err := s.client.Get(ctx, id).Result()
+  if err != nil { return nil, err }
+  var book Book
+  if err := protojson.Unmarshal([]byte(value), &book); err != nil { return nil, err }
+  return &book, nil
+}
+func (s *Store) Add(ctx context.Context, in *Book) (*Book, error) {
+  m := protojson.MarshalOptions{}
+  value, _ := m.Marshal(in)
+  if err := s.client.Set(ctx, in.Title, value, 0).Err(); err != nil { return nil, err }
+  return in, nil
+}
+func (s *Store) Update(ctx context.Context, in *Book) (*Book, error) {
+  m := protojson.MarshalOptions{}
+  value, _ := m.Marshal(in)
+  if err := s.client.Set(ctx, in.Title, value, 0).Err(); err != nil { return nil, err }
+  return in, nil
+}
+`)
+
+	out, _ := extracted(t, root, Options{Context: "library", Service: "book"})
+	keyspaces := out.Stores[0].Keyspaces
+	if len(keyspaces) != 2 {
+		t.Fatalf("keyspaces = %+v", keyspaces)
+	}
+	read := keyspaces[0]
+	if read.Pattern != "{id}" || read.Value != "Book" || len(read.Accesses) != 1 || read.Accesses[0].Method != "Store.Get" || read.Accesses[0].Operation != catalog.RedisOperationRead {
+		t.Fatalf("read keyspace = %+v", read)
+	}
+	written := keyspaces[1]
+	if written.Pattern != "{in.Title}" || written.Value != "Book" || written.TTL != "none" || len(written.Accesses) != 2 || written.Accesses[0].Method != "Store.Add" || written.Accesses[1].Method != "Store.Update" {
+		t.Fatalf("written keyspace = %+v", written)
+	}
+}
+
 func TestRecognizesSupportedRedisClients(t *testing.T) {
 	cases := []struct {
 		name       string

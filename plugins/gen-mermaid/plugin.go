@@ -61,6 +61,9 @@ func render(req plugin.Request, opts Options) plugin.Response {
 }
 
 func baseLabel(step *catalog.Step) string {
+	if step.StoreAccess != nil && step.StoreAccess.Operation != "" && step.StoreAccess.Keyspace != "" {
+		return strings.ToUpper(string(step.StoreAccess.Operation)) + " " + step.StoreAccess.Keyspace
+	}
 	if step.Label != "" {
 		return step.Label
 	}

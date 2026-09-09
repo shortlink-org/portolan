@@ -1022,6 +1022,83 @@ describe("enrichCatalog: invariants", () => {
   });
 });
 
+describe("enrichCatalog: Redis store accesses", () => {
+  it("joins a repository call to one concrete Redis key access", () => {
+    const c = estate([
+      flow("load-order", [
+        step("shop.oms", "oms-db", "call", {
+          label: "Get",
+          storeAccess: { store: "shop.oms.redis", method: "Get" },
+        }),
+      ]),
+    ]);
+    c.stores = [
+      {
+        id: "shop.oms.redis",
+        slug: "redis",
+        name: "OMS Redis",
+        kind: "redis",
+        owner: "shop.oms",
+        tables: [],
+        keyspaces: [
+          {
+            pattern: "order:{id}",
+            operations: ["read"],
+            accesses: [
+              {
+                operation: "read",
+                method: "Store.Get",
+                source: "repository/redis.go:20",
+              },
+            ],
+          },
+        ],
+      },
+    ];
+
+    const result = enrichCatalog(c).catalog;
+    expect(walkSteps(result.flows[0]!.steps)[0]!.storeAccess).toEqual({
+      store: "shop.oms.redis",
+      method: "Get",
+      operation: "read",
+      keyspace: "order:{id}",
+      source: "repository/redis.go:20",
+    });
+    expect(enrichCatalog(result).catalog).toBe(result);
+  });
+
+  it("leaves an ambiguous repository method unresolved", () => {
+    const c = estate([
+      flow("load-order", [
+        step("shop.oms", "oms-db", "call", {
+          storeAccess: { store: "shop.oms.redis", method: "Get" },
+        }),
+      ]),
+    ]);
+    c.stores = [
+      {
+        id: "shop.oms.redis",
+        slug: "redis",
+        name: "OMS Redis",
+        kind: "redis",
+        owner: "shop.oms",
+        tables: [],
+        keyspaces: ["order:{id}", "order-by-number:{number}"].map(
+          (pattern) => ({
+            pattern,
+            operations: ["read" as const],
+            accesses: [{ operation: "read" as const, method: "Store.Get" }],
+          }),
+        ),
+      },
+    ];
+
+    expect(
+      walkSteps(enrichCatalog(c).catalog.flows[0]!.steps)[0]!.storeAccess,
+    ).toEqual({ store: "shop.oms.redis", method: "Get" });
+  });
+});
+
 describe("enrichCatalog: the auth fragment", () => {
   // The three fragments together, the way the app reads them: the domain one
   // alone names endpoints the api one declares.

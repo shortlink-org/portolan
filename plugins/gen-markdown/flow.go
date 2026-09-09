@@ -242,6 +242,8 @@ func (s *site) stepRef(self string, step *catalog.Step) string {
 
 func stepLabel(step *catalog.Step) string {
 	switch {
+	case step.StoreAccess != nil && step.StoreAccess.Operation != "" && step.StoreAccess.Keyspace != "":
+		return strings.ToUpper(string(step.StoreAccess.Operation)) + " " + code(step.StoreAccess.Keyspace)
 	case step.Label != "":
 		return step.Label
 	case step.Ref != "":

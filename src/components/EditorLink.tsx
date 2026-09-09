@@ -44,6 +44,18 @@ export function useWorkspace(): string | null {
     : null;
 }
 
+export function useEditorTarget(location: SourceLocation | null): {
+  href: string;
+  name: string;
+} | null {
+  const workspace = useWorkspace();
+  const editor = useEditorStore((s) => s.editor);
+  if (!workspace || !location) return null;
+  const where = editorWhere(location);
+  const href = where ? editorHref(editor, workspace, where) : null;
+  return href ? { href, name: editorName(editor) } : null;
+}
+
 export function EditorLink({
   location,
   variant = "icon",
@@ -54,14 +66,9 @@ export function EditorLink({
   variant?: "icon" | "text";
   className?: string;
 }) {
-  const workspace = useWorkspace();
-  const editor = useEditorStore((s) => s.editor);
-  if (!workspace || !location) return null;
-  const where = editorWhere(location);
-  const href = where ? editorHref(editor, workspace, where) : null;
-  if (!href) return null;
-
-  const name = editorName(editor);
+  const target = useEditorTarget(location);
+  if (!target) return null;
+  const { href, name } = target;
   // No target: a scheme URL hands off to the editor and leaves the page
   // where it is. A new tab would be a blank tab.
   return variant === "icon" ? (

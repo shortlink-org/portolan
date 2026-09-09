@@ -349,7 +349,7 @@ for (const context of catalog.contexts) {
 // and the tables that carry it are the label. A table persisting an aggregate
 // another service owns draws the same arrow across the boundary, which is the
 // crossing the Problems page reports.
-const persists = new Map(); // "aggregate|store" -> { aggregate, store, tables:[] }
+const persists = new Map(); // "aggregate|store" -> { aggregate, store, labels:[] }
 for (const store of catalog.stores ?? []) {
   for (const table of store.tables) {
     const aggregate = table.persists?.aggregate;
@@ -358,17 +358,29 @@ for (const store of catalog.stores ?? []) {
     const edge = persists.get(key) ?? {
       aggregate,
       store: store.id,
-      tables: [],
+      labels: [],
     };
-    edge.tables.push(table.name);
+    edge.labels.push(table.name);
+    persists.set(key, edge);
+  }
+  for (const keyspace of store.keyspaces ?? []) {
+    const aggregate = keyspace.persists?.aggregate;
+    if (!aggregate) continue;
+    const key = `${aggregate}|${store.id}`;
+    const edge = persists.get(key) ?? {
+      aggregate,
+      store: store.id,
+      labels: [],
+    };
+    edge.labels.push(keyspace.pattern);
     persists.set(key, edge);
   }
 }
 for (const edge of persists.values()) {
   const label =
-    edge.tables.length > 3
-      ? `${edge.tables.length} tables`
-      : edge.tables.join(", ");
+    edge.labels.length > 3
+      ? `${edge.labels.length} persisted shapes`
+      : edge.labels.join(", ");
   relations.push(
     `  ${fqn(edge.aggregate)} -[persists]-> ${fqn(edge.store)} ${q(label)} {\n` +
       `    style { color declared  line ${STATUS_LINE.declared}  head normal }\n` +
@@ -619,8 +631,13 @@ function emitSteps(nodes, out, indent, replied) {
   for (const node of nodes) {
     if (node.type === "step") {
       const answer = replied.has(node.id) ? "" : answerOf(node);
+      const storeLabel =
+        node.storeAccess?.operation && node.storeAccess?.keyspace
+          ? `${node.storeAccess.operation.toUpperCase()} ${node.storeAccess.keyspace}`
+          : "";
       const label =
-        (node.label ?? node.ref ?? node.kind) + (answer ? ` → ${answer}` : "");
+        (storeLabel || node.label || node.ref || node.kind) +
+        (answer ? ` → ${answer}` : "");
       const attrs = [
         `color ${node.http?.outcome === "error" ? "response_error" : node.status}`,
         `line ${node.kind === "response" ? "dashed" : "solid"}`,
@@ -631,6 +648,7 @@ function emitSteps(nodes, out, indent, replied) {
       const notes = [];
       if (node.note) notes.push(node.note);
       if (node.line) notes.push(node.line);
+      if (node.storeAccess?.source) notes.push(node.storeAccess.source);
       out.push(
         `${indent}${participantRef(node.from)} -> ${participantRef(node.to)} ${q(label)} {`,
       );

@@ -70,4 +70,37 @@ describe("flowMermaid", () => {
       "rect rgba(183, 100, 107, 0.12)\n        p1-->>p0: 500 · Error\n    end",
     );
   });
+
+  it("labels a resolved Redis call by its concrete operation and key", () => {
+    const flow: Flow = {
+      id: "flow.redis",
+      slug: "redis",
+      name: "Redis",
+      summary: "",
+      owner: "shop",
+      participants: [
+        { id: "shop.api", kind: "service", context: "shop" },
+        { id: "shop.redis", kind: "store", context: "shop" },
+      ],
+      steps: [
+        {
+          type: "step",
+          id: "read",
+          from: "shop.api",
+          to: "shop.redis",
+          kind: "call",
+          label: "Get",
+          status: "verified",
+          storeAccess: {
+            store: "shop.redis",
+            method: "Store.Get",
+            operation: "read",
+            keyspace: "{id}",
+          },
+        },
+      ],
+    };
+
+    expect(flowMermaid(flow)).toContain("p0->>p1: READ {id}");
+  });
 });

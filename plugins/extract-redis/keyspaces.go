@@ -156,9 +156,11 @@ func (s *keyspaceScanner) scanMethod(file *goscan.File, fn *ast.FuncDecl, receiv
 		kind := s.PrintNode(field.Type)
 		for _, name := range field.Names {
 			patterns[name.Name] = "{" + name.Name + "}"
-			values[name.Name] = kind
+			values[name.Name] = catalogValueType(kind)
 		}
 	}
+	method := shortTypeName(s.TypeKey(fn.Recv.List[0].Type, file)) + "." + fn.Name.Name
+	readValue := methodResultValue(s, fn)
 
 	for _, stmt := range fn.Body.List {
 		s.applyAssignments(file, stmt, patterns, values)
@@ -187,10 +189,34 @@ func (s *keyspaceScanner) scanMethod(file *goscan.File, fn *ast.FuncDecl, receiv
 			if valueArg >= 0 && len(call.Args) > valueArg {
 				value = valueType(call.Args[valueArg], values)
 			}
-			s.record(pattern, operation, ttl, value, s.At(call.Pos()).String())
+			if value == "" && operation == catalog.RedisOperationRead {
+				value = readValue
+			}
+			s.record(pattern, operation, method, ttl, value, s.At(call.Pos()).String())
 			return true
 		})
 	}
+}
+
+func shortTypeName(value string) string {
+	value = strings.TrimPrefix(value, "*")
+	if at := strings.LastIndex(value, "."); at >= 0 {
+		return value[at+1:]
+	}
+	return value
+}
+
+func methodResultValue(s *keyspaceScanner, fn *ast.FuncDecl) string {
+	if fn.Type.Results == nil {
+		return ""
+	}
+	for _, result := range fn.Type.Results.List {
+		kind := catalogValueType(s.PrintNode(result.Type))
+		if kind != "" && kind != "error" {
+			return kind
+		}
+	}
+	return ""
 }
 
 func callsRedisField(expr ast.Expr, receiver string, fields map[string]bool) bool {
@@ -281,7 +307,12 @@ func (s *keyspaceScanner) patternOf(file *goscan.File, expr ast.Expr, env map[st
 		}
 		return s.StringOf(value, file, nil)
 	case *ast.SelectorExpr:
-		return s.StringOf(value, file, nil)
+		if known := s.StringOf(value, file, nil); known != "" {
+			return known
+		}
+		if path := dynamicSelectorPath(value, env); path != "" {
+			return "{" + path + "}"
+		}
 	case *ast.BinaryExpr:
 		if value.Op == token.ADD {
 			left := s.patternOf(file, value.X, env, depth+1)
@@ -311,6 +342,20 @@ func (s *keyspaceScanner) patternOf(file *goscan.File, expr ast.Expr, env map[st
 				}
 				return s.patternOf(builder.file, builder.result, bound, depth+1)
 			}
+		}
+	}
+	return ""
+}
+
+func dynamicSelectorPath(expr ast.Expr, env map[string]string) string {
+	switch value := goscan.Unwrap(expr).(type) {
+	case *ast.Ident:
+		if env[value.Name] != "" {
+			return value.Name
+		}
+	case *ast.SelectorExpr:
+		if base := dynamicSelectorPath(value.X, env); base != "" {
+			return base + "." + value.Sel.Name
 		}
 	}
 	return ""
@@ -396,14 +441,13 @@ func (s *keyspaceScanner) valueOf(file *goscan.File, expr ast.Expr, values map[s
 	case *ast.Ident:
 		return values[value.Name]
 	case *ast.CompositeLit:
-		return s.PrintNode(value.Type)
+		return catalogValueType(s.PrintNode(value.Type))
 	case *ast.CallExpr:
 		sel, ok := value.Fun.(*ast.SelectorExpr)
 		if !ok || sel.Sel.Name != "Marshal" || len(value.Args) == 0 {
 			return ""
 		}
-		pkg, ok := sel.X.(*ast.Ident)
-		if !ok || file.Imports[pkg.Name] != "encoding/json" {
+		if !isJSONMarshalReceiver(file, sel.X, values) {
 			return ""
 		}
 		return valueType(value.Args[0], values)
@@ -411,10 +455,22 @@ func (s *keyspaceScanner) valueOf(file *goscan.File, expr ast.Expr, values map[s
 	return ""
 }
 
+func isJSONMarshalReceiver(file *goscan.File, expr ast.Expr, values map[string]string) bool {
+	ident, ok := goscan.Unwrap(expr).(*ast.Ident)
+	if !ok {
+		return false
+	}
+	importPath := file.Imports[ident.Name]
+	if importPath == "encoding/json" || strings.HasSuffix(importPath, "/protojson") {
+		return true
+	}
+	return strings.HasSuffix(values[ident.Name], "MarshalOptions")
+}
+
 func valueType(expr ast.Expr, values map[string]string) string {
 	switch value := goscan.Unwrap(expr).(type) {
 	case *ast.Ident:
-		return values[value.Name]
+		return catalogValueType(values[value.Name])
 	case *ast.BasicLit:
 		if value.Kind == token.STRING {
 			return "string"
@@ -423,7 +479,15 @@ func valueType(expr ast.Expr, values map[string]string) string {
 	return ""
 }
 
-func (s *keyspaceScanner) record(pattern string, operation catalog.RedisOperation, ttl, value, source string) {
+func catalogValueType(value string) string {
+	value = strings.TrimSpace(value)
+	for strings.HasPrefix(value, "*") {
+		value = strings.TrimPrefix(value, "*")
+	}
+	return value
+}
+
+func (s *keyspaceScanner) record(pattern string, operation catalog.RedisOperation, method, ttl, value, source string) {
 	found := s.keyspaces[pattern]
 	if found == nil {
 		found = &catalog.RedisKeyspace{Pattern: pattern, Operations: []catalog.RedisOperation{}, Source: source}
@@ -438,6 +502,13 @@ func (s *keyspaceScanner) record(pattern string, operation catalog.RedisOperatio
 	if found.Value == "" && value != "" {
 		found.Value = value
 	}
+	found.Accesses = append(found.Accesses, catalog.RedisAccess{
+		Operation: operation,
+		Method:    method,
+		TTL:       ttl,
+		Value:     value,
+		Source:    source,
+	})
 }
 
 func containsOperation(operations []catalog.RedisOperation, wanted catalog.RedisOperation) bool {

@@ -364,7 +364,11 @@
           "kind": "call",
           "label": "ByID",
           "status": "declared",
-          "line": "examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:22"
+          "line": "examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:22",
+          "storeAccess": {
+            "store": "shop.pricing.pg",
+            "method": "ByID"
+          }
         },
         {
           "type": "step",
@@ -374,7 +378,11 @@
           "kind": "call",
           "label": "Save",
           "status": "declared",
-          "line": "examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:28"
+          "line": "examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:28",
+          "storeAccess": {
+            "store": "shop.pricing.pg",
+            "method": "Save"
+          }
         }
       ]
     },
@@ -428,7 +436,11 @@
                   "kind": "call",
                   "label": "ByID",
                   "status": "declared",
-                  "line": "examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go:27"
+                  "line": "examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go:27",
+                  "storeAccess": {
+                    "store": "shop.pricing.pg",
+                    "method": "ByID"
+                  }
                 }
               ]
             },
@@ -443,7 +455,11 @@
                   "kind": "call",
                   "label": "ByBasket",
                   "status": "declared",
-                  "line": "examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go:29"
+                  "line": "examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go:29",
+                  "storeAccess": {
+                    "store": "shop.pricing.pg",
+                    "method": "ByBasket"
+                  }
                 }
               ]
             }
@@ -494,7 +510,11 @@
           "kind": "call",
           "label": "Save",
           "status": "declared",
-          "line": "examples/shop/pricing/internal/application/price_list/usecases/import_price_list/usecase.go:43"
+          "line": "examples/shop/pricing/internal/application/price_list/usecases/import_price_list/usecase.go:43",
+          "storeAccess": {
+            "store": "shop.pricing.pg",
+            "method": "Save"
+          }
         }
       ]
     },
@@ -546,7 +566,11 @@
           "kind": "call",
           "label": "Current",
           "status": "declared",
-          "line": "examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:35"
+          "line": "examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:35",
+          "storeAccess": {
+            "store": "shop.pricing.pg",
+            "method": "Current"
+          }
         },
         {
           "type": "step",
@@ -556,7 +580,11 @@
           "kind": "call",
           "label": "Save",
           "status": "declared",
-          "line": "examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:55"
+          "line": "examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:55",
+          "storeAccess": {
+            "store": "shop.pricing.pg",
+            "method": "Save"
+          }
         },
         {
           "type": "step",
@@ -614,7 +642,11 @@
           "kind": "call",
           "label": "All",
           "status": "declared",
-          "line": "examples/shop/pricing/internal/application/price_list/usecases/list_price_lists/usecase.go:22"
+          "line": "examples/shop/pricing/internal/application/price_list/usecases/list_price_lists/usecase.go:22",
+          "storeAccess": {
+            "store": "shop.pricing.pg",
+            "method": "All"
+          }
         }
       ]
     },
@@ -662,7 +694,11 @@
           "kind": "call",
           "label": "ByBasket",
           "status": "declared",
-          "line": "examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:41"
+          "line": "examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:41",
+          "storeAccess": {
+            "store": "shop.pricing.pg",
+            "method": "ByBasket"
+          }
         },
         {
           "type": "step",
@@ -672,7 +708,11 @@
           "kind": "call",
           "label": "Save",
           "status": "declared",
-          "line": "examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:55"
+          "line": "examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:55",
+          "storeAccess": {
+            "store": "shop.pricing.pg",
+            "method": "Save"
+          }
         },
         {
           "type": "step",

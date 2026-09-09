@@ -14,7 +14,7 @@ import { STATUSES } from "../catalog";
 import { contextName, ctxStyle } from "../lib/context-color";
 import { paths } from "../routes";
 import { statusVar } from "../components/primitives";
-import { railRows } from "./chapters";
+import { railRows, stepTitle } from "./chapters";
 import type { Chapter, ChapterGroup } from "./chapters";
 import type { Continuation } from "./continues";
 import type { OutlineFrame, OutlineStep } from "./outline";
@@ -267,9 +267,9 @@ function StepRow({
               style={{
                 color: errorResponse ? "var(--response-error)" : "var(--fg)",
               }}
-              title={step.label ?? step.ref ?? step.kind}
+              title={stepTitle(step)}
             >
-              {step.label ?? step.ref ?? step.kind}
+              {stepTitle(step)}
             </span>
             {/* A standalone call keeps its contract answer on this line. Once
                 composition proves the nested return, the answer becomes its

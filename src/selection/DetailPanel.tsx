@@ -30,6 +30,7 @@ import {
   viewReads,
 } from "../catalog";
 import { flowsForService, usesOfDef } from "../lib/derive";
+import { stepLabel } from "../flow/labels";
 import { KIND_LABEL } from "../lib/kinds";
 import { eventScope, resolveShape } from "../lib/shape";
 import { stepsInto } from "../lib/backlinks";
@@ -730,7 +731,7 @@ function titleOf(resolved: Resolved | null, selection: Selection): string {
     case "column":
       return `${resolved.view?.name ?? resolved.table?.name ?? resolved.store.slug}.${resolved.column.name}`;
     case "flow-step":
-      return resolved.step.label ?? resolved.step.ref ?? resolved.step.kind;
+      return stepLabel(resolved.step);
     case "bundle":
       return `${resolved.bundle.from} → ${resolved.bundle.to}`;
     // `acme/shop`, not the registry host as well: the host is the same for

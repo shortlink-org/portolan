@@ -12,7 +12,11 @@ import type {
   Enum,
 } from "../catalog";
 import { markdownOutline } from "../lib/derive";
-import { tablesPersisting, viewsPresenting } from "../lib/data-model";
+import {
+  redisKeyspacesPersisting,
+  tablesPersisting,
+  viewsPresenting,
+} from "../lib/data-model";
 import { plural } from "../lib/format";
 import { KIND_LABEL, KIND_PLURAL } from "../lib/kinds";
 import type { LeafKind } from "../lib/kinds";
@@ -352,6 +356,7 @@ export function AggregatePage() {
   const root = rootEntity(aggregate);
   const persistence = tablesPersisting(index, aggregate.id);
   const presented = viewsPresenting(index, aggregate.id);
+  const redisKeyspaces = redisKeyspacesPersisting(index, aggregate.id);
 
   // The readme's own headings first, then the five sections the page adds
   // under it. One rail, in the order the page is actually written in.
@@ -618,17 +623,17 @@ export function AggregatePage() {
               anchor={AGGREGATE_SECTION.persistence}
               right={
                 <span>
-                  one row per table that holds it
+                  tables and Redis keys that hold it
                   {presented.length > 0 ? ", then the views over it" : ""}
                 </span>
               }
             >
               Persistence
             </SectionTitle>
-            {persistence.length === 0 ? (
+            {persistence.length === 0 && redisKeyspaces.length === 0 ? (
               <Empty>
                 No persistence found for {aggregate.name} — the extractor maps
-                tables via `persists` in migrations metadata
+                tables and Redis key families via `persists`
               </Empty>
             ) : (
               /* icon, name, what it is, store, width, actions. Tables and
@@ -673,6 +678,31 @@ export function AggregatePage() {
                     </div>
                   );
                 })}
+                {redisKeyspaces.map(({ keyspace, store }) => (
+                  <div
+                    key={`${store.id}:${keyspace.pattern}`}
+                    className="row px-2 py-1.5"
+                  >
+                    <KindIcon kind="store" />
+                    <Link
+                      to={paths.store(context.id, service.slug, store.slug)}
+                      data-nav-item
+                      className="mono min-w-0 break-all rounded-control"
+                    >
+                      {keyspace.pattern}
+                    </Link>
+                    <span className="chip">redis key</span>
+                    <span className="mono text-muted">{store.slug}</span>
+                    <span className="mono text-muted">
+                      {keyspace.operations.join("/")}
+                    </span>
+                    <RowActions
+                      copy={keyspace.pattern}
+                      reveal={store.id}
+                      label={keyspace.pattern}
+                    />
+                  </div>
+                ))}
                 {/* A view is not persistence — it holds nothing — but it is
                     how this aggregate is actually read back, and a reader who
                     has found the tables wants the reports over them next. */}

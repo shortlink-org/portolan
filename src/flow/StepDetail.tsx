@@ -13,7 +13,13 @@ import { AdrNumber, StatusChip } from "../components/primitives";
 import { ShapeRows } from "../components/ShapeRows";
 import { shapeFor } from "../components/MethodRows";
 import { stepAnswer } from "./answers";
-import { paths, eventPath, servicePath } from "../routes";
+import {
+  aggregatePath,
+  paths,
+  eventPath,
+  servicePath,
+  storePath,
+} from "../routes";
 
 function Label({ children }: { children: React.ReactNode }) {
   return <div className="label mt-3 mb-1">{children}</div>;
@@ -568,6 +574,94 @@ function Where({ step, flow }: { step: Step; flow: Flow }) {
   return <SourceWhere where={step.line} flow={flow} />;
 }
 
+function StoreCallDetail({ step, flow }: { step: Step; flow: Flow }) {
+  const access = step.storeAccess!;
+  const store = index.storeById.get(access.store);
+  const keyspace = store?.keyspaces?.find(
+    (candidate) => candidate.pattern === access.keyspace,
+  );
+  const aggregateId = keyspace?.persists?.aggregate;
+  const toStore = storePath(access.store);
+  const toAggregate = aggregateId ? aggregatePath(aggregateId) : null;
+
+  return (
+    <section
+      aria-label="Store access"
+      className="overflow-hidden rounded-card border shadow-xs border-line"
+    >
+      <header className="border-b border-line bg-surface px-3 py-2.5">
+        <h2 className="label">Store access</h2>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          {access.operation ? (
+            <span className="chip uppercase text-accent">
+              {access.operation}
+            </span>
+          ) : null}
+          <code className="mono break-all text-ink">
+            {access.keyspace ?? access.method ?? step.label ?? "repository call"}
+          </code>
+        </div>
+      </header>
+
+      <DetailSection title="Target">
+        <dl className="grid grid-cols-[minmax(6rem,auto)_minmax(0,1fr)] gap-x-4 gap-y-2">
+          <dt className="mono text-muted">Store</dt>
+          <dd>
+            {toStore ? (
+              <Link to={toStore} className="mono text-accent">
+                {access.store} →
+              </Link>
+            ) : (
+              <Ident value={access.store} className="text-muted" />
+            )}
+          </dd>
+          {access.method ? (
+            <>
+              <dt className="mono text-muted">Repository</dt>
+              <dd className="mono text-ink">{access.method}</dd>
+            </>
+          ) : null}
+          {aggregateId ? (
+            <>
+              <dt className="mono text-muted">Aggregate</dt>
+              <dd>
+                {toAggregate ? (
+                  <Link to={toAggregate} className="mono text-accent">
+                    {aggregateId} →
+                  </Link>
+                ) : (
+                  <Ident value={aggregateId} className="text-muted" />
+                )}
+              </dd>
+            </>
+          ) : null}
+          {keyspace?.value ? (
+            <>
+              <dt className="mono text-muted">Value</dt>
+              <dd className="mono text-ink">{keyspace.value}</dd>
+            </>
+          ) : null}
+          {keyspace?.ttl ? (
+            <>
+              <dt className="mono text-muted">TTL</dt>
+              <dd className="mono text-ink">{keyspace.ttl}</dd>
+            </>
+          ) : null}
+        </dl>
+      </DetailSection>
+
+      <DetailSection title="Repository call">
+        <Where step={step} flow={flow} />
+      </DetailSection>
+      {access.source ? (
+        <DetailSection title="Redis client call">
+          <SourceWhere where={access.source} flow={flow} />
+        </DetailSection>
+      ) : null}
+    </section>
+  );
+}
+
 export function StepDetailBody({ step, flow }: { step: Step; flow: Flow }) {
   const decisions = step.ref ? (index.adrsByEvent.get(step.ref) ?? []) : [];
 
@@ -602,6 +696,8 @@ export function StepDetailBody({ step, flow }: { step: Step; flow: Flow }) {
         <RpcDetail step={step} flow={flow} />
       ) : step.kind === "response" ? (
         <ResponseDetail step={step} flow={flow} />
+      ) : step.storeAccess ? (
+        <StoreCallDetail step={step} flow={flow} />
       ) : (
         <>
           <div className="mono text-[13px]">

@@ -13,6 +13,7 @@ import { flowStepId } from "../selection/model";
 import { DataTable } from "../table/DataTable";
 import type { ColumnSpec } from "../table/types";
 import type { Chapter } from "./chapters";
+import { stepLabel } from "./labels";
 import type { OutlineStep } from "./outline";
 
 interface Row {
@@ -29,7 +30,13 @@ interface Row {
 }
 
 const COLUMNS: ColumnSpec<Row>[] = [
-  { id: "number", header: "#", type: "number", value: (r) => r.number, size: 56 },
+  {
+    id: "number",
+    header: "#",
+    type: "number",
+    value: (r) => r.number,
+    size: 56,
+  },
   {
     id: "step",
     header: "step",
@@ -45,7 +52,14 @@ const COLUMNS: ColumnSpec<Row>[] = [
     value: (r) => r.route,
     size: 300,
   },
-  { id: "kind", header: "kind", type: "text", value: (r) => r.kind, facet: true, size: 96 },
+  {
+    id: "kind",
+    header: "kind",
+    type: "text",
+    value: (r) => r.kind,
+    facet: true,
+    size: 96,
+  },
   {
     id: "status",
     header: "status",
@@ -93,12 +107,13 @@ export function FlowTable({
   const data = useMemo<Row[]>(() => {
     const chapterOf = new Map<string, string>();
     for (const chapter of chapters) {
-      for (const stepId of chapter.stepIds) chapterOf.set(stepId, chapter.title);
+      for (const stepId of chapter.stepIds)
+        chapterOf.set(stepId, chapter.title);
     }
     return rows.map(({ step, number }) => ({
       id: step.id,
       number,
-      step: step.label ?? step.ref ?? step.kind,
+      step: stepLabel(step),
       route: route(step, contextOf),
       kind: step.kind,
       status: step.status,

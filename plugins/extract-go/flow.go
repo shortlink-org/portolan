@@ -867,7 +867,10 @@ func (r *flowReader) portCall(d *flowDraft, s *scope, field, method string, site
 	aggregate, name, ok := domainSelector(declared, s.imports)
 	if !ok {
 		if storeLike(field, declared, s.imports) {
-			d.add(catalog.Step{From: r.opts.svcID, To: r.storeLane(d), Kind: catalog.StepCall, Label: method, Line: at(source, line)})
+			d.add(catalog.Step{
+				From: r.opts.svcID, To: r.storeLane(d), Kind: catalog.StepCall,
+				Label: method, Line: at(source, line), StoreAccess: r.storeAccess(method),
+			})
 			return
 		}
 		selector, _, _ := strings.Cut(strings.TrimPrefix(declared, "*"), ".")
@@ -887,11 +890,12 @@ func (r *flowReader) portCall(d *flowDraft, s *scope, field, method string, site
 	}
 
 	d.add(catalog.Step{
-		From:  r.opts.svcID,
-		To:    r.storeLane(d),
-		Kind:  catalog.StepCall,
-		Label: method,
-		Line:  at(source, line),
+		From:        r.opts.svcID,
+		To:          r.storeLane(d),
+		Kind:        catalog.StepCall,
+		Label:       method,
+		Line:        at(source, line),
+		StoreAccess: r.storeAccess(method),
 	})
 
 	// The events a change produced are handed to the repository along with the
@@ -1244,6 +1248,16 @@ func (r *flowReader) storeLane(d *flowDraft) string {
 		Kind:    catalog.ParticipantStore,
 		Context: &context,
 	})
+}
+
+func (r *flowReader) storeAccess(method string) *catalog.FlowStoreAccess {
+	if r.opts.store == "" {
+		return nil
+	}
+	return &catalog.FlowStoreAccess{
+		Store:  r.opts.svcID + "." + r.opts.store,
+		Method: method,
+	}
 }
 
 // ---------------------------------------------------------------------------

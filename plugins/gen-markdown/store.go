@@ -34,11 +34,31 @@ func (s *site) renderStore(store *catalog.Store) {
 		for _, operation := range keyspace.Operations {
 			operations = append(operations, string(operation))
 		}
+		aggregate := ""
+		if keyspace.Persists != nil && keyspace.Persists.Aggregate != "" {
+			aggregate = s.ref(self, keyspace.Persists.Aggregate, keyspace.Persists.Aggregate)
+		}
 		keyspaces = append(keyspaces, []string{
-			code(keyspace.Pattern), strings.Join(operations, ", "), code(keyspace.Value), code(keyspace.TTL), source,
+			code(keyspace.Pattern), strings.Join(operations, ", "), code(keyspace.Value), code(keyspace.TTL), aggregate, source,
 		})
 	}
-	section(&b, "Redis key patterns", table([]string{"Pattern", "Operations", "Value", "TTL", "Source"}, keyspaces))
+	section(&b, "Redis key patterns", table([]string{"Pattern", "Operations", "Value", "TTL", "Aggregate", "Source"}, keyspaces))
+
+	accesses := [][]string{}
+	for i := range store.Keyspaces {
+		keyspace := &store.Keyspaces[i]
+		for j := range keyspace.Accesses {
+			access := &keyspace.Accesses[j]
+			source := ""
+			if access.Source != "" {
+				source = s.source(self, access.Source, s.services[store.Owner])
+			}
+			accesses = append(accesses, []string{
+				code(keyspace.Pattern), string(access.Operation), code(access.Method), code(access.Value), code(access.TTL), source,
+			})
+		}
+	}
+	section(&b, "Redis accesses", table([]string{"Pattern", "Operation", "Method", "Value", "TTL", "Source"}, accesses))
 
 	var tables strings.Builder
 	for i := range store.Tables {

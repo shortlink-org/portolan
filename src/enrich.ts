@@ -59,7 +59,9 @@ export function enrichCatalog(input: Catalog): Enriched {
   // everything below - and every consumer derived from it - sees the event
   // rather than the name.
   const catalog = resolveForeignKeys(
-    composeExecutionContinuations(resolveWireNames(input)),
+    resolveStoreAccesses(
+      composeExecutionContinuations(resolveWireNames(input)),
+    ),
   );
 
   const serviceById = new Map<string, Service>();
@@ -224,6 +226,80 @@ export function enrichCatalog(input: Catalog): Enriched {
   }));
 
   return { catalog: { ...catalog, contexts }, derived };
+}
+
+/**
+ * Joins the use-case-side repository call emitted by extract-go to the
+ * concrete Redis client call emitted independently by extract-redis. Method
+ * name and store id are deliberately both required; a name such as `Get`
+ * alone is far too common to be evidence. Ambiguous matches stay unresolved.
+ */
+function resolveStoreAccesses(input: Catalog): Catalog {
+  const byMethod = new Map<
+    string,
+    Array<{
+      operation: NonNullable<Step["storeAccess"]>["operation"];
+      keyspace: string;
+      source?: string;
+    }>
+  >();
+
+  for (const store of input.stores ?? []) {
+    for (const keyspace of store.keyspaces ?? []) {
+      for (const access of keyspace.accesses ?? []) {
+        if (!access.method) continue;
+        const method = access.method.split(".").pop() ?? access.method;
+        const key = `${store.id}\u0000${method}`;
+        const matches = byMethod.get(key) ?? [];
+        matches.push({
+          operation: access.operation,
+          keyspace: keyspace.pattern,
+          ...(access.source ? { source: access.source } : {}),
+        });
+        byMethod.set(key, matches);
+      }
+    }
+  }
+
+  let changed = false;
+  const mapNodes = (nodes: FlowNode[]): FlowNode[] =>
+    nodes.map((node): FlowNode => {
+      if (node.type === "step") {
+        const storeAccess = node.storeAccess;
+        if (
+          !storeAccess ||
+          !storeAccess.method ||
+          (storeAccess.operation && storeAccess.keyspace)
+        ) {
+          return node;
+        }
+        const method = storeAccess.method.split(".").pop() ?? storeAccess.method;
+        const matches = byMethod.get(`${storeAccess.store}\u0000${method}`) ?? [];
+        if (matches.length !== 1) return node;
+        changed = true;
+        return {
+          ...node,
+          storeAccess: { ...storeAccess, ...matches[0] },
+        };
+      }
+      if (node.type === "alt") {
+        const branches = node.branches.map((branch) => ({
+          ...branch,
+          steps: mapNodes(branch.steps),
+        }));
+        return { ...node, branches };
+      }
+      if (node.type === "parallel") {
+        return { ...node, branches: node.branches.map(mapNodes) };
+      }
+      return { ...node, steps: mapNodes(node.steps) };
+    });
+
+  const flows = input.flows.map((flow) => ({
+    ...flow,
+    steps: mapNodes(flow.steps),
+  }));
+  return changed ? { ...input, flows } : input;
 }
 
 /**

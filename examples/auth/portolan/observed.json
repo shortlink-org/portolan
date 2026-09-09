@@ -122,7 +122,11 @@
           "kind": "call",
           "label": "ByToken",
           "status": "declared",
-          "line": "examples/auth/internal/session/application/validate/usecase.go:33"
+          "line": "examples/auth/internal/session/application/validate/usecase.go:33",
+          "storeAccess": {
+            "store": "auth.auth.pg",
+            "method": "ByToken"
+          }
         },
         {
           "type": "step",
@@ -132,7 +136,11 @@
           "kind": "call",
           "label": "ByID",
           "status": "declared",
-          "line": "examples/auth/internal/user/application/change_password/usecase.go:32"
+          "line": "examples/auth/internal/user/application/change_password/usecase.go:32",
+          "storeAccess": {
+            "store": "auth.auth.pg",
+            "method": "ByID"
+          }
         },
         {
           "type": "step",
@@ -142,7 +150,11 @@
           "kind": "call",
           "label": "Save",
           "status": "declared",
-          "line": "examples/auth/internal/user/application/change_password/usecase.go:48"
+          "line": "examples/auth/internal/user/application/change_password/usecase.go:48",
+          "storeAccess": {
+            "store": "auth.auth.pg",
+            "method": "Save"
+          }
         },
         {
           "type": "step",
@@ -202,7 +214,11 @@
           "kind": "call",
           "label": "ByID",
           "status": "declared",
-          "line": "examples/auth/internal/user/application/get/usecase.go:22"
+          "line": "examples/auth/internal/user/application/get/usecase.go:22",
+          "storeAccess": {
+            "store": "auth.auth.pg",
+            "method": "ByID"
+          }
         }
       ]
     },
@@ -272,7 +288,11 @@
           "kind": "call",
           "label": "ByEmail",
           "status": "declared",
-          "line": "examples/auth/internal/user/application/check_credentials/usecase.go:42"
+          "line": "examples/auth/internal/user/application/check_credentials/usecase.go:42",
+          "storeAccess": {
+            "store": "auth.auth.pg",
+            "method": "ByEmail"
+          }
         },
         {
           "type": "step",
@@ -293,7 +313,11 @@
           "kind": "call",
           "label": "ByUserID",
           "status": "declared",
-          "line": "examples/auth/internal/lockout/application/check/usecase.go:26"
+          "line": "examples/auth/internal/lockout/application/check/usecase.go:26",
+          "storeAccess": {
+            "store": "auth.auth.pg",
+            "method": "ByUserID"
+          }
         },
         {
           "type": "alt",
@@ -322,7 +346,11 @@
                   "label": "ByUserID",
                   "status": "declared",
                   "note": "inside a loop over `retries`.",
-                  "line": "examples/auth/internal/lockout/application/record_failure/usecase.go:36"
+                  "line": "examples/auth/internal/lockout/application/record_failure/usecase.go:36",
+                  "storeAccess": {
+                    "store": "auth.auth.pg",
+                    "method": "ByUserID"
+                  }
                 },
                 {
                   "type": "step",
@@ -333,7 +361,11 @@
                   "label": "Save",
                   "status": "declared",
                   "note": "inside a loop over `retries`.",
-                  "line": "examples/auth/internal/lockout/application/record_failure/usecase.go:53"
+                  "line": "examples/auth/internal/lockout/application/record_failure/usecase.go:53",
+                  "storeAccess": {
+                    "store": "auth.auth.pg",
+                    "method": "Save"
+                  }
                 },
                 {
                   "type": "step",
@@ -376,7 +408,11 @@
           "label": "ByUserID",
           "status": "declared",
           "note": "inside a loop over `retries`.",
-          "line": "examples/auth/internal/lockout/application/record_success/usecase.go:31"
+          "line": "examples/auth/internal/lockout/application/record_success/usecase.go:31",
+          "storeAccess": {
+            "store": "auth.auth.pg",
+            "method": "ByUserID"
+          }
         },
         {
           "type": "step",
@@ -387,7 +423,11 @@
           "label": "Save",
           "status": "declared",
           "note": "inside a loop over `retries`.",
-          "line": "examples/auth/internal/lockout/application/record_success/usecase.go:43"
+          "line": "examples/auth/internal/lockout/application/record_success/usecase.go:43",
+          "storeAccess": {
+            "store": "auth.auth.pg",
+            "method": "Save"
+          }
         },
         {
           "type": "step",
@@ -415,7 +455,11 @@
                   "kind": "call",
                   "label": "ByUserID",
                   "status": "declared",
-                  "line": "examples/auth/internal/session/application/login/usecase.go:91"
+                  "line": "examples/auth/internal/session/application/login/usecase.go:91",
+                  "storeAccess": {
+                    "store": "auth.auth.pg",
+                    "method": "ByUserID"
+                  }
                 },
                 {
                   "type": "step",
@@ -426,7 +470,11 @@
                   "label": "Save",
                   "status": "declared",
                   "note": "inside a loop over `sessions`.",
-                  "line": "examples/auth/internal/session/application/login/usecase.go:101"
+                  "line": "examples/auth/internal/session/application/login/usecase.go:101",
+                  "storeAccess": {
+                    "store": "auth.auth.pg",
+                    "method": "Save"
+                  }
                 },
                 {
                   "type": "step",
@@ -457,7 +505,11 @@
           "kind": "call",
           "label": "Save",
           "status": "declared",
-          "line": "examples/auth/internal/session/application/login/usecase.go:77"
+          "line": "examples/auth/internal/session/application/login/usecase.go:77",
+          "storeAccess": {
+            "store": "auth.auth.pg",
+            "method": "Save"
+          }
         },
         {
           "type": "step",
@@ -522,7 +574,11 @@
           "kind": "call",
           "label": "ByToken",
           "status": "declared",
-          "line": "examples/auth/internal/session/application/logout/usecase.go:34"
+          "line": "examples/auth/internal/session/application/logout/usecase.go:34",
+          "storeAccess": {
+            "store": "auth.auth.pg",
+            "method": "ByToken"
+          }
         },
         {
           "type": "step",
@@ -532,7 +588,11 @@
           "kind": "call",
           "label": "Save",
           "status": "declared",
-          "line": "examples/auth/internal/session/application/logout/usecase.go:48"
+          "line": "examples/auth/internal/session/application/logout/usecase.go:48",
+          "storeAccess": {
+            "store": "auth.auth.pg",
+            "method": "Save"
+          }
         },
         {
           "type": "step",
@@ -597,7 +657,11 @@
           "kind": "call",
           "label": "ByEmail",
           "status": "declared",
-          "line": "examples/auth/internal/user/application/register/usecase.go:36"
+          "line": "examples/auth/internal/user/application/register/usecase.go:36",
+          "storeAccess": {
+            "store": "auth.auth.pg",
+            "method": "ByEmail"
+          }
         },
         {
           "type": "step",
@@ -607,7 +671,11 @@
           "kind": "call",
           "label": "Save",
           "status": "declared",
-          "line": "examples/auth/internal/user/application/register/usecase.go:53"
+          "line": "examples/auth/internal/user/application/register/usecase.go:53",
+          "storeAccess": {
+            "store": "auth.auth.pg",
+            "method": "Save"
+          }
         },
         {
           "type": "step",
@@ -701,7 +769,11 @@
           "kind": "call",
           "label": "ByToken",
           "status": "declared",
-          "line": "examples/auth/internal/session/application/validate/usecase.go:33"
+          "line": "examples/auth/internal/session/application/validate/usecase.go:33",
+          "storeAccess": {
+            "store": "auth.auth.pg",
+            "method": "ByToken"
+          }
         }
       ]
     }

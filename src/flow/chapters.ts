@@ -21,6 +21,7 @@
 import type { Flow, FlowNode, Status, Step } from "../catalog";
 import { walkSteps } from "../catalog";
 import { contextResolver } from "./cross-context";
+import { stepLabel } from "./labels";
 import type { OutlineRow } from "./outline";
 
 export type ChapterKind = "alt" | "par" | "loop" | "steps";
@@ -55,7 +56,7 @@ export interface ChapterGroup {
 
 /** What a step is called when it has to name something. */
 export function stepTitle(step: Step): string {
-  return step.label ?? step.ref ?? step.kind;
+  return stepLabel(step);
 }
 
 const NO_STATUS: Record<Status, number> = {

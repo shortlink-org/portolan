@@ -1036,3 +1036,58 @@ describe("mergeCatalogs: maps", () => {
     );
   });
 });
+
+describe("mergeCatalogs: Redis persistence", () => {
+  it("links a Redis value type to the one matching owned aggregate", () => {
+    const books = context("library", ["library.book"]);
+    books.services[0]!.aggregates = [
+      {
+        id: "library.book.book",
+        slug: "book",
+        name: "Book",
+        readme: "",
+        root: "Book",
+        entities: [
+          {
+            id: "library.book.book.book",
+            slug: "book",
+            name: "Book",
+            doc: "",
+            fields: [],
+          },
+        ],
+        valueObjects: [],
+        operations: [],
+        events: [],
+      },
+    ];
+
+    const merged = mergeCatalogs([
+      source("domain.json", { contexts: [books] }),
+      source("redis.json", {
+        contexts: [context("library", ["library.book"])],
+        stores: [
+          {
+            id: "library.book.redis",
+            slug: "redis",
+            name: "Book Redis",
+            kind: "redis",
+            owner: "library.book",
+            tables: [],
+            keyspaces: [
+              {
+                pattern: "{id}",
+                operations: ["read"],
+                value: "domain.Book",
+              },
+            ],
+          },
+        ],
+      }),
+    ]);
+
+    expect(merged.catalog.stores?.[0]?.keyspaces?.[0]?.persists).toEqual({
+      aggregate: "library.book.book",
+    });
+  });
+});

@@ -601,6 +601,22 @@ type RedisKeyspace struct {
 	TTL        string           `json:"ttl,omitempty"`
 	Value      string           `json:"value,omitempty"`
 	Source     string           `json:"source,omitempty"`
+	// Persists links the value stored under this key family back to the domain
+	// model. It is optional because a counter, lock or coordination key may not
+	// hold an aggregate at all.
+	Persists *Persists     `json:"persists,omitempty"`
+	Accesses []RedisAccess `json:"accesses,omitempty"`
+}
+
+// RedisAccess is one proved client call, kept separately even when several
+// calls use the same key family. Operations is the compact schema summary;
+// accesses answers who performs each read or write and where the proof lives.
+type RedisAccess struct {
+	Operation RedisOperation `json:"operation"`
+	Method    string         `json:"method,omitempty"`
+	TTL       string         `json:"ttl,omitempty"`
+	Value     string         `json:"value,omitempty"`
+	Source    string         `json:"source,omitempty"`
 }
 
 type TableRole string
@@ -821,6 +837,10 @@ type Step struct {
 	// Handoff identifies a source-backed send or receive through an asynchronous
 	// channel. Matching is exact on kind, channel, and message.
 	Handoff *FlowHandoff `json:"handoff,omitempty"`
+	// StoreAccess identifies the repository method at extraction time and is
+	// enriched with its Redis operation and key family after store fragments
+	// have been merged into the catalog.
+	StoreAccess *FlowStoreAccess `json:"storeAccess,omitempty"`
 }
 
 func (*Step) NodeType() string { return "step" }
@@ -843,6 +863,14 @@ type FlowHandoff struct {
 	Channel   string `json:"channel"`
 	Message   string `json:"message,omitempty"`
 	Direction string `json:"direction"`
+}
+
+type FlowStoreAccess struct {
+	Store     string         `json:"store"`
+	Method    string         `json:"method,omitempty"`
+	Operation RedisOperation `json:"operation,omitempty"`
+	Keyspace  string         `json:"keyspace,omitempty"`
+	Source    string         `json:"source,omitempty"`
 }
 
 type Parallel struct {

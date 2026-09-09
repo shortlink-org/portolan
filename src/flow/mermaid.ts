@@ -7,6 +7,7 @@
 // the catalog has a dotted service id.
 
 import type { Flow, FlowNode, Step } from "../catalog";
+import { stepLabel } from "./labels";
 
 /**
  * `answers` is what each step's callee hands back, by step id - see
@@ -98,10 +99,6 @@ function emit(
       }
     }
   }
-}
-
-function stepLabel(step: Step): string {
-  return step.label || step.ref || step.kind;
 }
 
 function lastParticipant(nodes: FlowNode[]): string {

@@ -23,7 +23,10 @@ import { buildInfo } from "./build-info";
 import type { BuildInfo } from "./build-info";
 
 /** A `file:line` split, or the whole thing as a path when it is not one. */
-export function splitLine(where: string): { path: string; line: number | null } {
+export function splitLine(where: string): {
+  path: string;
+  line: number | null;
+} {
   const m = /^(\S+?):(\d+)$/.exec(where);
   if (m) return { path: m[1]!, line: Number(m[2]) };
   return { path: where, line: null };
@@ -52,8 +55,13 @@ export function looksLikePath(path: string): boolean {
 function sameRepo(repo: string, info: BuildInfo): boolean {
   if (!info.repoUrl) return false;
   if (!repo) return true;
-
-  return bare(info.repoUrl) === bare(repo);
+  const built = bare(info.repoUrl);
+  const declared = bare(repo);
+  if (built === declared) return true;
+  // Project extractors sometimes only know the checkout's directory name.
+  // It still identifies this build when it is a single segment matching the
+  // repository name at the end of the forge URL.
+  return !declared.includes("/") && built.split("/").at(-1) === declared;
 }
 
 /** A repository as `host/owner/name`, however it was spelled. */
@@ -135,7 +143,8 @@ function providerFor(url: string, info: BuildInfo): "github" | "gitlab" | null {
   } catch {
     return null;
   }
-  if (info.repoUrl && bare(info.repoUrl) === bare(url) && info.forge) return info.forge;
+  if (info.repoUrl && bare(info.repoUrl) === bare(url) && info.forge)
+    return info.forge;
   if (host === "github.com" || host.endsWith(".github.com")) return "github";
   if (host === "gitlab.com" || host.includes("gitlab")) return "gitlab";
   return null;
@@ -199,6 +208,10 @@ export function treeHref(
   const at = whereFor(service?.repo ?? "", pins, info);
   if (!at) return null;
 
-  const remotePath = repositoryPath(path.replace(/\/$/, ""), service?.repo ?? "", info);
+  const remotePath = repositoryPath(
+    path.replace(/\/$/, ""),
+    service?.repo ?? "",
+    info,
+  );
   return `${at.url}${blobPath(at.url).replace("blob", "tree")}${at.ref}${remotePath ? `/${remotePath}` : ""}`;
 }

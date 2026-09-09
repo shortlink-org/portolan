@@ -6,7 +6,7 @@ import {
   Pin,
   X,
 } from "lucide-react";
-import { EditorLink } from "./EditorLink";
+import { EditorLink, useEditorTarget } from "./EditorLink";
 import {
   useCallback,
   useEffect,
@@ -140,7 +140,8 @@ function CodeWindow({
     [file.content, location.line],
   );
   const highlighted = useMemo(
-    () => highlightSource(location.path, rows.map((row) => row.text).join("\n")),
+    () =>
+      highlightSource(location.path, rows.map((row) => row.text).join("\n")),
     [location.path, rows],
   );
   const focusedIndex = rows.findIndex((row) => row.focused);
@@ -149,7 +150,9 @@ function CodeWindow({
     if (node.type === "text") return node.value;
     const names = node.properties?.className;
     const className = Array.isArray(names)
-      ? names.filter((name): name is string => typeof name === "string").join(" ")
+      ? names
+          .filter((name): name is string => typeof name === "string")
+          .join(" ")
       : typeof names === "string"
         ? names
         : undefined;
@@ -187,7 +190,9 @@ function CodeWindow({
           ))}
         </div>
         <pre className="source-code relative z-10 min-w-max pl-3 pr-4 text-ink">
-          <code>{highlighted.map((node, index) => renderNode(node, String(index)))}</code>
+          <code>
+            {highlighted.map((node, index) => renderNode(node, String(index)))}
+          </code>
         </pre>
       </div>
     </div>
@@ -315,18 +320,25 @@ function PreviewPanel({
   );
 }
 
-/** Hover/focus for a glance; click pins the same preview for scrolling and copying. */
-export function SourcePreviewButton({
+function SourcePreviewTrigger({
   location,
+  children,
   className = "",
+  href,
+  external = false,
+  title,
 }: {
-  location: SourceLocation | null;
+  location: SourceLocation;
+  children: ReactNode;
   className?: string;
+  href?: string;
+  external?: boolean;
+  title: string;
 }) {
   const [open, setOpen] = useState(false);
   const [pinned, setPinned] = useState(false);
   const [position, setPosition] = useState<Position | null>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
+  const triggerRef = useRef<HTMLElement | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const pinnedRef = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -386,41 +398,59 @@ export function SourcePreviewButton({
     return () => document.removeEventListener("pointerdown", outside);
   }, [close, pinned]);
 
-  if (!location) return null;
-
   const hover = (event: ReactPointerEvent) => {
     if (event.pointerType === "mouse" || event.pointerType === "pen")
       openSoon();
   };
 
+  const triggerProps = {
+    "aria-haspopup": "dialog" as const,
+    "aria-expanded": open,
+    "aria-controls": open ? id : undefined,
+    className: `mono inline-flex items-center gap-1 rounded-control text-accent hover:underline focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent ${className}`,
+    title,
+    onPointerEnter: hover,
+    onPointerLeave: closeSoon,
+    onFocus: () => setOpen(true),
+    onBlur: closeSoon,
+  };
+
   return (
     <>
-      <button
-        ref={triggerRef}
-        type="button"
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        aria-controls={open ? id : undefined}
-        className={`mono inline-flex items-center gap-1 rounded-control text-accent hover:underline focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent ${className}`}
-        title="Preview source · click to pin"
-        onPointerEnter={hover}
-        onPointerLeave={closeSoon}
-        onFocus={() => setOpen(true)}
-        onBlur={closeSoon}
-        onClick={() => {
-          cancelTimer();
-          if (open && pinned) {
-            close();
-            return;
-          }
-          setOpen(true);
-          pinnedRef.current = true;
-          setPinned(true);
-          setTimeout(() => panelRef.current?.focus(), 0);
-        }}
-      >
-        <Code2 size={13} aria-hidden /> preview
-      </button>
+      {href ? (
+        <a
+          ref={(node) => {
+            triggerRef.current = node;
+          }}
+          href={href}
+          target={external ? "_blank" : undefined}
+          rel={external ? "noreferrer" : undefined}
+          {...triggerProps}
+        >
+          {children}
+        </a>
+      ) : (
+        <button
+          ref={(node) => {
+            triggerRef.current = node;
+          }}
+          type="button"
+          {...triggerProps}
+          onClick={() => {
+            cancelTimer();
+            if (open && pinned) {
+              close();
+              return;
+            }
+            setOpen(true);
+            pinnedRef.current = true;
+            setPinned(true);
+            setTimeout(() => panelRef.current?.focus(), 0);
+          }}
+        >
+          {children}
+        </button>
+      )}
       {open && position && typeof document !== "undefined"
         ? createPortal(
             <PreviewPanel
@@ -437,5 +467,63 @@ export function SourcePreviewButton({
           )
         : null}
     </>
+  );
+}
+
+/** Hover/focus for a glance; click pins the same preview for scrolling and copying. */
+export function SourcePreviewButton({
+  location,
+  className = "",
+}: {
+  location: SourceLocation | null;
+  className?: string;
+}) {
+  if (!location) return null;
+  return (
+    <SourcePreviewTrigger
+      location={location}
+      className={className}
+      title="Preview source · click to pin"
+    >
+      <Code2 size={13} aria-hidden /> preview
+    </SourcePreviewTrigger>
+  );
+}
+
+/**
+ * A compact source path: preview on hover, then open the configured editor in
+ * local mode or the immutable forge location in a static build.
+ */
+export function SourcePreviewLink({
+  location,
+  children,
+  className = "",
+}: {
+  location: SourceLocation | null;
+  children: ReactNode;
+  className?: string;
+}) {
+  const editor = useEditorTarget(location);
+  if (!location) return <span className={className}>{children}</span>;
+  const href = editor?.href ?? location.href ?? undefined;
+  const destination = editor
+    ? editor.name
+    : location.href
+      ? "repository"
+      : null;
+  return (
+    <SourcePreviewTrigger
+      location={location}
+      className={className}
+      href={href}
+      external={!editor && Boolean(location.href)}
+      title={
+        destination
+          ? `Preview on hover · click to open in ${destination}`
+          : "Preview source · click to pin"
+      }
+    >
+      {children}
+    </SourcePreviewTrigger>
   );
 }

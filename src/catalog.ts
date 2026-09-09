@@ -725,6 +725,19 @@ export interface RedisKeyspace {
   /** Value type where a write or marshal call proves it. */
   value?: string;
   source?: string;
+  /** Aggregate or block whose value this key family holds, when provable. */
+  persists?: { aggregate?: string; block?: string };
+  /** Individual client calls, before they are folded into `operations`. */
+  accesses?: RedisAccess[];
+}
+
+export interface RedisAccess {
+  operation: RedisOperation;
+  /** Enclosing adapter method, for example `Store.Get`. */
+  method?: string;
+  ttl?: string;
+  value?: string;
+  source?: string;
 }
 
 /**
@@ -891,6 +904,8 @@ export interface Step {
   reaches?: string[];
   /** Exact asynchronous send/receive evidence used for flow composition. */
   handoff?: FlowHandoff;
+  /** Repository call resolved to a concrete store operation after merge. */
+  storeAccess?: FlowStoreAccess;
 }
 export interface HTTPResponse {
   status?: number;
@@ -911,6 +926,14 @@ export interface FlowHandoff {
   channel: string;
   message?: string;
   direction: "send" | "receive";
+}
+export interface FlowStoreAccess {
+  store: string;
+  method?: string;
+  operation?: RedisOperation;
+  keyspace?: string;
+  /** Concrete adapter call rather than the use-case-side repository call. */
+  source?: string;
 }
 export interface Parallel {
   type: "parallel";
@@ -1422,6 +1445,8 @@ export interface CatalogIndex {
   tablesByAggregate: Map<string, Table[]>;
   /** aggregate id -> views naming it in `persists`, in catalog order */
   viewsByAggregate: Map<string, View[]>;
+  /** aggregate id -> Redis key families holding it, in catalog order */
+  keyspacesByAggregate: Map<string, RedisKeyspaceOwner[]>;
   /** block id -> columns whose `maps` path lands in that block */
   columnsByBlock: Map<string, ColumnOwner[]>;
   /** table id -> the columns pointing at it through a foreign key */
@@ -1454,6 +1479,11 @@ export interface CatalogIndex {
 export interface InterfaceOwner {
   service: Service;
   provided: RpcService;
+}
+
+export interface RedisKeyspaceOwner {
+  keyspace: RedisKeyspace;
+  store: Store;
 }
 
 export function buildIndex(catalog: Catalog): CatalogIndex {
@@ -1504,6 +1534,7 @@ export function buildIndex(catalog: Catalog): CatalogIndex {
   const storesOwnedBy = new Map<string, Store[]>();
   const tablesByAggregate = new Map<string, Table[]>();
   const viewsByAggregate = new Map<string, View[]>();
+  const keyspacesByAggregate = new Map<string, RedisKeyspaceOwner[]>();
   const columnsByBlock = new Map<string, ColumnOwner[]>();
   const fkIntoTable = new Map<string, ColumnOwner[]>();
 
@@ -1598,6 +1629,14 @@ export function buildIndex(catalog: Catalog): CatalogIndex {
     const owned = storesOwnedBy.get(store.owner) ?? [];
     owned.push(store);
     storesOwnedBy.set(store.owner, owned);
+
+    for (const keyspace of store.keyspaces ?? []) {
+      const aggregateId = keyspace.persists?.aggregate;
+      if (!aggregateId) continue;
+      const list = keyspacesByAggregate.get(aggregateId) ?? [];
+      list.push({ keyspace, store });
+      keyspacesByAggregate.set(aggregateId, list);
+    }
 
     for (const table of store.tables) {
       tableById.set(table.id, { table, store });
@@ -1732,6 +1771,7 @@ export function buildIndex(catalog: Catalog): CatalogIndex {
     servicesUsingModule,
     tablesByAggregate,
     viewsByAggregate,
+    keyspacesByAggregate,
     columnsByBlock,
     fkIntoTable,
   };
@@ -1851,6 +1891,7 @@ export function validateCatalog(catalog: Catalog): Catalog {
 
   const eventIds = new Set<string>();
   const rpcIds = new Set<string>();
+  const storeIds = new Set(allStores(catalog).map((store) => store.id));
 
   assertUniqueSlugs(
     catalog.contexts.map((c) => c.id),
@@ -2227,6 +2268,29 @@ export function validateCatalog(catalog: Catalog): Catalog {
         if (!(["send", "receive"] as const).includes(step.handoff.direction)) {
           fail(
             `flow "${flow.slug}" step "${step.id}" has unknown handoff direction "${step.handoff.direction}"`,
+            `flow ${flow.id} / step ${step.id}`,
+          );
+        }
+      }
+      if (step.storeAccess) {
+        if (step.kind !== "call") {
+          fail(
+            `flow "${flow.slug}" step "${step.id}" has store access metadata but is not a call`,
+            `flow ${flow.id} / step ${step.id}`,
+          );
+        }
+        if (!storeIds.has(step.storeAccess.store)) {
+          fail(
+            `flow "${flow.slug}" step "${step.id}" names unknown store "${step.storeAccess.store}"`,
+            `flow ${flow.id} / step ${step.id}`,
+          );
+        }
+        if (
+          step.storeAccess.operation !== undefined &&
+          !REDIS_OPERATIONS.includes(step.storeAccess.operation)
+        ) {
+          fail(
+            `flow "${flow.slug}" step "${step.id}" has unknown store operation "${step.storeAccess.operation}"`,
             `flow ${flow.id} / step ${step.id}`,
           );
         }
@@ -2611,6 +2675,41 @@ function validateStores(catalog: Catalog): void {
           );
         }
         operations.add(operation);
+      }
+      const aggregateId = keyspace.persists?.aggregate;
+      if (aggregateId && !aggregates.has(aggregateId)) {
+        fail(
+          `Redis key pattern "${keyspace.pattern}" persists unknown aggregate "${aggregateId}"`,
+          where,
+        );
+      }
+      const blockId = keyspace.persists?.block;
+      if (blockId) {
+        const blockAggregate =
+          aggregates.get(blockId.split(".").slice(0, -1).join("."));
+        const belongs = blockAggregate
+          ? aggregateBlocks(blockAggregate).some(({ block }) => block.id === blockId)
+          : false;
+        if (!belongs) {
+          fail(
+            `Redis key pattern "${keyspace.pattern}" persists unknown block "${blockId}"`,
+            where,
+          );
+        }
+      }
+      for (const access of keyspace.accesses ?? []) {
+        if (!REDIS_OPERATIONS.includes(access.operation)) {
+          fail(
+            `Redis key pattern "${keyspace.pattern}" has access operation "${access.operation}"; expected one of ${REDIS_OPERATIONS.join(", ")}`,
+            where,
+          );
+        }
+        if (!operations.has(access.operation)) {
+          fail(
+            `Redis key pattern "${keyspace.pattern}" has ${access.operation} access absent from its operations summary`,
+            where,
+          );
+        }
       }
     }
 

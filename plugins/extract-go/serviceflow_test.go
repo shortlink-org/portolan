@@ -121,7 +121,7 @@ func (c *userRPCClient) Get(ctx context.Context, in *GetRequest, opts ...grpc.Ca
 	if rpc := flow.Steps[1].(*catalog.Step); rpc.Ref != "user_rpc.UserRPC/Get" || rpc.To != "platform.user" {
 		t.Fatalf("user rpc = %+v", rpc)
 	}
-	if store := flow.Steps[2].(*catalog.Step); store.To != "book-redis" || store.Label != "Update" {
+	if store := flow.Steps[2].(*catalog.Step); store.To != "book-redis" || store.Label != "Update" || store.StoreAccess == nil || store.StoreAccess.Store != "platform.book.redis" || store.StoreAccess.Method != "Update" {
 		t.Fatalf("store = %+v", store)
 	}
 }

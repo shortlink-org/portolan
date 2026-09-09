@@ -403,8 +403,38 @@ function foldMaps(catalog: Catalog, stores: Store[]): Store[] {
     return spelled.join(".");
   };
 
+  const aggregateForValue = (
+    store: Store,
+    value: string | undefined,
+  ): Aggregate | undefined => {
+    const name = value?.match(/[A-Za-z_][A-Za-z0-9_]*$/)?.[0];
+    if (!name) return undefined;
+    const matches = [...aggregates.values()].filter(
+      (aggregate) =>
+        aggregate.id.startsWith(`${store.owner}.`) &&
+        (aggregate.root === name ||
+          aggregate.entities.some((entity) => entity.name === name)),
+    );
+    return matches.length === 1 ? matches[0] : undefined;
+  };
+
   return stores.map((store) => ({
     ...store,
+    ...(store.keyspaces
+      ? {
+          keyspaces: store.keyspaces.map((keyspace) => {
+            if (keyspace.persists?.aggregate || keyspace.persists?.block)
+              return keyspace;
+            const aggregate = aggregateForValue(store, keyspace.value);
+            return aggregate
+              ? {
+                  ...keyspace,
+                  persists: { aggregate: aggregate.id },
+                }
+              : keyspace;
+          }),
+        }
+      : {}),
     tables: store.tables.map((table) => {
       const aggregate = table.persists?.aggregate
         ? aggregates.get(table.persists.aggregate)

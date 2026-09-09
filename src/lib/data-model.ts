@@ -15,6 +15,7 @@ import type {
   Column,
   ColumnOwner,
   Field,
+  RedisKeyspace,
   Service,
   Store,
   Table,
@@ -126,6 +127,19 @@ export function viewsPresenting(
 export interface PersistedTable {
   table: Table;
   store: Store;
+}
+
+export interface PersistedRedisKeyspace {
+  keyspace: RedisKeyspace;
+  store: Store;
+}
+
+/** Redis key families whose serialized value is an aggregate snapshot. */
+export function redisKeyspacesPersisting(
+  index: CatalogIndex,
+  aggregateId: string,
+): PersistedRedisKeyspace[] {
+  return index.keyspacesByAggregate.get(aggregateId) ?? [];
 }
 
 /**
