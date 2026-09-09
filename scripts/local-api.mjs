@@ -1435,7 +1435,13 @@ export function localApiPlugin(workspace = process.cwd(), publicSetupFrom) {
             return send(res, 200, { local: true, workspace: realpathSync(workspace), setup: setup(workspace, publicSetupFrom), activeRun: active ? { id: active.id, mode: active.mode } : null });
           }
           if (req.method === "GET" && url.pathname === `${LOCAL_API_PREFIX}/delivery-presets`) {
-            return send(res, 200, publicDeliveryPreset(planDeliveryPreset(workspace, url.searchParams.get("provider"))));
+            const features = url.searchParams.has("features")
+              ? url.searchParams.get("features").split(",").filter(Boolean)
+              : undefined;
+            return send(res, 200, publicDeliveryPreset(planDeliveryPreset(workspace, {
+              provider: url.searchParams.get("provider") || undefined,
+              features,
+            })));
           }
           const eventMatch = url.pathname.match(/^\/__portolan\/runs\/([^/]+)\/events$/);
           if (req.method === "GET" && eventMatch) {

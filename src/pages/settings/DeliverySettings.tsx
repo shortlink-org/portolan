@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
+import { Switch } from "@headlessui/react";
 import {
-  Check,
   ChevronDown,
   CircleAlert,
   FolderGit2,
@@ -14,6 +14,7 @@ import {
   previewDeliveryPreset,
 } from "../../lib/local-api";
 import type {
+  DeliveryFeatureId,
   DeliveryPreset,
   DeliveryProvider,
 } from "../../lib/local-api";
@@ -24,6 +25,7 @@ const STATUS_CLASS: Record<
 > = {
   added: "status-verified",
   changed: "status-declared",
+  removed: "status-unresolved",
   unchanged: "status-verified",
   conflict: "status-unresolved",
 };
@@ -35,12 +37,12 @@ export function DeliverySettings({ local }: { local: boolean }) {
   const [error, setError] = useState("");
   const say = useToastStore((state) => state.say);
 
-  const load = useCallback(async (provider?: DeliveryProvider) => {
+  const load = useCallback(async (provider?: DeliveryProvider, features?: DeliveryFeatureId[]) => {
     if (!local) return;
     setLoading(true);
     setError("");
     try {
-      setPlan(await previewDeliveryPreset(provider));
+      setPlan(await previewDeliveryPreset(provider, features));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
     } finally {
@@ -60,6 +62,7 @@ export function DeliverySettings({ local }: { local: boolean }) {
       const installed = await installDeliveryPreset(
         plan.provider,
         plan.revision,
+        plan.features.filter((feature) => feature.selected).map((feature) => feature.id),
       );
       setPlan(installed);
       say(
@@ -74,6 +77,23 @@ export function DeliverySettings({ local }: { local: boolean }) {
     } finally {
       setInstalling(false);
     }
+  }
+
+  function selectFeature(id: DeliveryFeatureId) {
+    if (!plan) return;
+    const feature = plan.features.find((item) => item.id === id);
+    if (!feature?.available) return;
+    const selected = new Set(
+      plan.features.filter((item) => item.selected).map((item) => item.id),
+    );
+    if (selected.has(id)) {
+      selected.delete(id);
+      if (id === "diff") selected.delete("sarif");
+    } else {
+      selected.add(id);
+      for (const required of feature.requires) selected.add(required);
+    }
+    void load(plan.provider, [...selected]);
   }
 
   if (!local) {
@@ -96,8 +116,8 @@ export function DeliverySettings({ local }: { local: boolean }) {
             <FolderGit2 size={16} className="text-accent" /> Delivery automation
           </div>
           <p className="mt-1 max-w-prose text-muted">
-            Install review checks and static catalog publishing directly into
-            this repository.
+            Choose the automation this repository needs, preview the generated
+            jobs, then install them together.
           </p>
         </div>
         <div
@@ -111,7 +131,12 @@ export function DeliverySettings({ local }: { local: boolean }) {
               type="button"
               disabled={loading || installing}
               aria-pressed={plan?.provider === provider}
-              onClick={() => void load(provider)}
+              onClick={() => void load(
+                provider,
+                plan?.features
+                  .filter((feature) => feature.selected && (feature.id !== "sarif" || provider === "github"))
+                  .map((feature) => feature.id),
+              )}
               className={`capitalize ${plan?.provider === provider ? "is-on" : ""}`}
             >
               {provider === "github" ? "GitHub" : "GitLab"}
@@ -157,15 +182,46 @@ export function DeliverySettings({ local }: { local: boolean }) {
             )}
           </div>
 
-          <ul className="mt-4 grid gap-2 text-muted sm:grid-cols-2">
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
             {plan.features.map((feature) => (
-              <li key={feature} className="flex items-center gap-2">
-                <Check size={14} className="shrink-0 text-verified" /> {feature}
-              </li>
+              <div
+                key={feature.id}
+                className={`flex items-start gap-3 rounded-control border px-3 py-3 transition-colors ${
+                  feature.available
+                    ? feature.selected
+                      ? "border-accent bg-surface"
+                      : "border-line hover:bg-surface"
+                    : "border-line opacity-60"
+                }`}
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block font-medium text-ink">{feature.label}</span>
+                  <span className="mt-0.5 block text-muted">{feature.description}</span>
+                  {!feature.available ? (
+                    <span className="mt-1 block text-faint">Available for GitHub only.</span>
+                  ) : feature.requires.length > 0 ? (
+                    <span className="mt-1 block text-faint">
+                      Enables {feature.requires.map((required) => plan.features.find((item) => item.id === required)?.label).join(", ")}.
+                    </span>
+                  ) : null}
+                </span>
+                <Switch
+                  checked={feature.selected}
+                  disabled={!feature.available || loading || installing}
+                  onChange={() => selectFeature(feature.id)}
+                  aria-label={feature.label}
+                  className="group mt-0.5 inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-line-strong bg-surface transition-colors outline-none data-checked:border-accent data-checked:bg-accent focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-not-allowed"
+                >
+                  <span
+                    aria-hidden
+                    className="size-3.5 translate-x-0.5 rounded-full bg-muted shadow-xs transition-transform group-data-checked:translate-x-[18px] group-data-checked:bg-canvas"
+                  />
+                </Switch>
+              </div>
             ))}
-          </ul>
+          </div>
 
-          <div className="mt-4 divide-y divide-line overflow-hidden rounded-control border border-line">
+          {plan.files.length > 0 ? <div className="mt-4 divide-y divide-line overflow-hidden rounded-control border border-line">
             {plan.files.map((file) => (
               <details
                 key={file.path}
@@ -194,7 +250,7 @@ export function DeliverySettings({ local }: { local: boolean }) {
                 </div>
               </details>
             ))}
-          </div>
+          </div> : <div className="empty mt-4">No delivery jobs selected.</div>}
 
           {error ? <p className="mt-3 text-unresolved">{error}</p> : null}
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
@@ -204,12 +260,12 @@ export function DeliverySettings({ local }: { local: boolean }) {
             </p>
             {plan.status === "installed" ? (
               <span className="flex items-center gap-1.5 text-verified">
-                <ShieldCheck size={15} /> Preset installed
+                <ShieldCheck size={15} /> Selection installed
               </span>
             ) : (
               <button
                 type="button"
-                className="btn-accent"
+                className="product-primary"
                 disabled={installing || conflicts.length > 0}
                 onClick={() => void install()}
               >

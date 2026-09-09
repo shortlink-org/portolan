@@ -72,6 +72,44 @@ describe("local project setup", () => {
     expect(installDeliveryPreset(root, { provider: "github", revision: installed.revision }).written).toEqual([]);
   });
 
+  it("generates only the selected GitHub jobs and keeps elevated permissions isolated", () => {
+    const root = gitWorkspace("github");
+    const preview = planDeliveryPreset(root, { provider: "github", features: ["check", "diff", "sarif"] });
+    expect(preview.features.filter((feature) => feature.selected).map((feature) => feature.id)).toEqual(["check", "diff", "sarif"]);
+    expect(preview.files.map((file) => file.path)).toEqual([
+      ".github/workflows/portolan-check.yml",
+      ".github/workflows/portolan-review.yml",
+    ]);
+    const installed = installDeliveryPreset(root, {
+      provider: "github",
+      features: ["check", "diff", "sarif"],
+      revision: preview.revision,
+    });
+    expect(installed.status).toBe("installed");
+    const check = readFileSync(join(root, ".github/workflows/portolan-check.yml"), "utf8");
+    const review = readFileSync(join(root, ".github/workflows/portolan-review.yml"), "utf8");
+    expect(check).not.toContain("pull-requests: write");
+    expect(review).toContain("command: diff");
+    expect(review).toContain("pull-requests: write");
+    expect(review).toContain("security-events: write");
+    expect(review).toContain("github/codeql-action/upload-sarif@v4");
+    expect(existsSync(join(root, ".github/workflows/portolan-pages.yml"))).toBe(false);
+    expect(planDeliveryPreset(root).features.filter((feature) => feature.selected).map((feature) => feature.id)).toEqual(["check", "diff", "sarif"]);
+  });
+
+  it("removes a disabled GitHub job only when Portolan owns the file", () => {
+    const root = gitWorkspace("github");
+    const initial = planDeliveryPreset(root, { provider: "github", features: ["check", "diff"] });
+    installDeliveryPreset(root, { provider: "github", features: ["check", "diff"], revision: initial.revision });
+    const withoutDiff = planDeliveryPreset(root, { provider: "github", features: ["check"] });
+    expect(withoutDiff.files.find((file) => file.path.endsWith("portolan-review.yml"))?.status).toBe("removed");
+    installDeliveryPreset(root, { provider: "github", features: ["check"], revision: withoutDiff.revision });
+    expect(existsSync(join(root, ".github/workflows/portolan-review.yml"))).toBe(false);
+
+    writeFileSync(join(root, ".github/workflows/portolan-review.yml"), "name: Mine\n");
+    expect(planDeliveryPreset(root, { provider: "github", features: ["check"] }).files.some((file) => file.path.endsWith("portolan-review.yml"))).toBe(false);
+  });
+
   it("refuses to overwrite an unmanaged GitHub workflow or apply a stale preview", () => {
     const root = gitWorkspace("github");
     mkdirSync(join(root, ".github/workflows"), { recursive: true });
@@ -110,6 +148,18 @@ describe("local project setup", () => {
     expect(pipeline).toContain("# >>> Portolan delivery preset >>>");
     expect(pipeline).toContain("pages:\n    publish: dist");
     expect(existsSync(join(root, ".github"))).toBe(false);
+  });
+
+  it("builds the GitLab managed region from selected jobs", () => {
+    const root = gitWorkspace("gitlab");
+    const preview = planDeliveryPreset(root, { provider: "gitlab", features: ["diff"] });
+    expect(preview.files[0].diff).toContain('+"portolan:review":');
+    expect(preview.files[0].diff).not.toContain('+"portolan:check":');
+    expect(preview.files[0].diff).not.toContain('+"portolan:pages":');
+    const installed = installDeliveryPreset(root, { provider: "gitlab", features: ["diff"], revision: preview.revision });
+    expect(planDeliveryPreset(root).features.filter((feature) => feature.selected).map((feature) => feature.id)).toEqual(["diff"]);
+    expect(installed.status).toBe("installed");
+    expect(() => planDeliveryPreset(root, { provider: "gitlab", features: ["sarif"] })).toThrow(/only for GitHub/);
   });
 
   it("classifies repository authentication, authorization, and timeout failures", () => {

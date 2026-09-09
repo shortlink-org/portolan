@@ -70,10 +70,20 @@ export interface GeneratedFileDiff {
 }
 
 export type DeliveryProvider = "github" | "gitlab";
+export type DeliveryFeatureId = "check" | "diff" | "sarif" | "pages";
+
+export interface DeliveryFeature {
+  id: DeliveryFeatureId;
+  label: string;
+  description: string;
+  selected: boolean;
+  available: boolean;
+  requires: DeliveryFeatureId[];
+}
 
 export interface DeliveryPresetFile {
   path: string;
-  status: "added" | "changed" | "unchanged" | "conflict";
+  status: "added" | "changed" | "removed" | "unchanged" | "conflict";
   diff: string;
   message?: string;
 }
@@ -86,7 +96,7 @@ export interface DeliveryPreset {
   defaultBranch: string;
   status: "available" | "installed" | "update" | "conflict";
   revision: string;
-  features: string[];
+  features: DeliveryFeature[];
   files: DeliveryPresetFile[];
 }
 
@@ -168,16 +178,18 @@ export async function localStatus(): Promise<{ local: true; workspace: string; s
   return json("/status");
 }
 
-export async function previewDeliveryPreset(provider?: DeliveryProvider): Promise<DeliveryPreset> {
-  const query = provider ? `?provider=${encodeURIComponent(provider)}` : "";
-  return json(`/delivery-presets${query}`);
+export async function previewDeliveryPreset(provider?: DeliveryProvider, features?: DeliveryFeatureId[]): Promise<DeliveryPreset> {
+  const query = new URLSearchParams();
+  if (provider) query.set("provider", provider);
+  if (features) query.set("features", features.join(","));
+  return json(`/delivery-presets${query.size ? `?${query}` : ""}`);
 }
 
-export async function installDeliveryPreset(provider: DeliveryProvider, revision: string): Promise<DeliveryPreset & { written: string[] }> {
+export async function installDeliveryPreset(provider: DeliveryProvider, revision: string, features: DeliveryFeatureId[]): Promise<DeliveryPreset & { written: string[] }> {
   return json("/delivery-presets/install", {
     method: "POST",
     headers: LOCAL_HEADER,
-    body: JSON.stringify({ provider, revision }),
+    body: JSON.stringify({ provider, revision, features }),
   });
 }
 

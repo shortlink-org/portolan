@@ -106,7 +106,7 @@ function AccessForm({
         <button
           type="submit"
           disabled={!draft.trim()}
-          className="btn-accent shrink-0 disabled:opacity-40"
+          className="product-primary shrink-0 disabled:opacity-40"
         >
           {connected ? "Replace token" : "Connect"}
         </button>

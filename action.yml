@@ -1,5 +1,5 @@
 name: Portolan architecture catalog
-description: Generate, verify, or build a Portolan architecture catalog.
+description: Generate, verify, build, or review a Portolan architecture catalog.
 author: shortlink-org
 
 branding:
@@ -8,7 +8,7 @@ branding:
 
 inputs:
   command:
-    description: One of generate, check, or build.
+    description: One of generate, check, build, or diff.
     required: false
     default: check
   version:
@@ -39,6 +39,30 @@ inputs:
     description: URL base for the build command.
     required: false
     default: /
+  base-ref:
+    description: Git ref to compare against for the diff command.
+    required: false
+    default: origin/main
+  site:
+    description: Published catalog URL linked from the diff report.
+    required: false
+    default: ""
+  head-ref:
+    description: Head branch linked from the diff report.
+    required: false
+    default: ""
+  diff-output:
+    description: Markdown output path for the diff command.
+    required: false
+    default: .portolan/diff.md
+  sarif-output:
+    description: Optional SARIF output path for the diff command.
+    required: false
+    default: ""
+  comment:
+    description: Post or update the architecture diff on the pull request.
+    required: false
+    default: "false"
 
 runs:
   using: composite
@@ -67,6 +91,12 @@ runs:
         PORTOLAN_VERSION: ${{ inputs.version }}
         PORTOLAN_OUTPUT: ${{ inputs.output }}
         PORTOLAN_BASE: ${{ inputs.base }}
+        PORTOLAN_BASE_REF: ${{ inputs.base-ref }}
+        PORTOLAN_SITE: ${{ inputs.site }}
+        PORTOLAN_HEAD_REF: ${{ inputs.head-ref }}
+        PORTOLAN_DIFF_OUTPUT: ${{ inputs.diff-output }}
+        PORTOLAN_SARIF_OUTPUT: ${{ inputs.sarif-output }}
+        PORTOLAN_COMMENT: ${{ inputs.comment }}
       run: |
         case "$PORTOLAN_COMMAND" in
           generate|check)
@@ -75,8 +105,21 @@ runs:
           build)
             npm exec --yes --package="@shortlink-org/portolan@$PORTOLAN_VERSION" -- portolan build --output "$PORTOLAN_OUTPUT" --base "$PORTOLAN_BASE"
             ;;
+          diff)
+            args=("$PORTOLAN_BASE_REF" --output "$PORTOLAN_DIFF_OUTPUT")
+            if [ -n "$PORTOLAN_SITE" ]; then args+=(--site "$PORTOLAN_SITE"); fi
+            if [ -n "$PORTOLAN_HEAD_REF" ]; then args+=(--head "$PORTOLAN_HEAD_REF"); fi
+            npm exec --yes --package="@shortlink-org/portolan@$PORTOLAN_VERSION" -- portolan diff "${args[@]}"
+            if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then cat "$PORTOLAN_DIFF_OUTPUT" >> "$GITHUB_STEP_SUMMARY"; fi
+            if [ "$PORTOLAN_COMMENT" = "true" ]; then
+              npm exec --yes --package="@shortlink-org/portolan@$PORTOLAN_VERSION" -- portolan comment "$PORTOLAN_DIFF_OUTPUT"
+            fi
+            if [ -n "$PORTOLAN_SARIF_OUTPUT" ]; then
+              npm exec --yes --package="@shortlink-org/portolan@$PORTOLAN_VERSION" -- portolan diff "$PORTOLAN_BASE_REF" --format sarif --output "$PORTOLAN_SARIF_OUTPUT"
+            fi
+            ;;
           *)
-            echo "Portolan action: command must be generate, check, or build" >&2
+            echo "Portolan action: command must be generate, check, build, or diff" >&2
             exit 2
             ;;
         esac

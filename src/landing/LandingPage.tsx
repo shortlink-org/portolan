@@ -97,7 +97,7 @@ function Header() {
           >
             <GitBranch size={15} /> GitHub
           </a>
-          <Link to={exampleTo} className="btn-accent landing-primary">
+          <Link to={exampleTo} className="landing-primary">
             Explore example <ArrowRight size={14} />
           </Link>
         </div>
@@ -319,7 +319,7 @@ export function LandingPage() {
               >
                 <Link
                   to={exampleTo}
-                  className="btn-accent landing-primary px-4 py-2.5"
+                  className="landing-primary px-4 py-2.5"
                 >
                   Explore example catalog <ArrowRight size={15} />
                 </Link>
@@ -647,7 +647,7 @@ export function LandingPage() {
               <div className="mt-4 flex flex-wrap gap-3">
                 <Link
                   to={exampleTo}
-                  className="btn-accent landing-primary px-4 py-2.5"
+                  className="landing-primary px-4 py-2.5"
                 >
                   Open the example <ArrowRight size={15} />
                 </Link>
@@ -719,7 +719,7 @@ export function LandingPage() {
             <div className="mt-8 flex flex-wrap justify-center gap-3">
               <Link
                 to={exampleTo}
-                className="btn-accent landing-primary px-4 py-2.5"
+                className="landing-primary px-4 py-2.5"
               >
                 Explore example catalog <ArrowRight size={15} />
               </Link>

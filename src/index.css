@@ -573,22 +573,6 @@
     background: color-mix(in srgb, var(--accent) 10%, transparent);
   }
 
-  /* Sanctioned gradient 2 - the accent surface. Reserved for a primary button;
-     white on --accent-lo clears 4.5:1 in both themes. */
-  .btn-accent {
-    @apply mono flex items-center gap-1.5 rounded-control px-3 py-1.5;
-    color: #fff;
-    background-image: linear-gradient(
-      to bottom,
-      var(--accent-hi),
-      var(--accent-lo)
-    );
-    transition: filter var(--dur-micro) var(--ease-out);
-  }
-  .btn-accent:hover {
-    filter: brightness(1.06);
-  }
-
   /* The landing's primary action should feel like a control from the map,
      not a bright rectangle pasted over it. The depth is always present; the
      brief chart-line sweep only appears when a reader points at the action. */
@@ -697,7 +681,6 @@
     outline: 2px solid color-mix(in srgb, var(--accent) 55%, white);
     outline-offset: 3px;
   }
-  .btn-accent:disabled,
   .product-primary:disabled,
   .tbtn:disabled {
     cursor: not-allowed;

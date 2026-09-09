@@ -201,8 +201,13 @@ for against what is on `PATH`. The Docker image contains all of them.
 
 While `portolan dev` is running, open **Settings → Delivery presets**. Portolan
 detects GitHub or GitLab from the repository's `origin`, previews the exact CI
-changes, and installs architecture checks and static catalog publishing in one
-step. Existing unmanaged workflow files are never overwritten.
+changes, and generates only the jobs selected there. Architecture checks and
+static catalog publishing are selected by default; pull-request architecture
+diffs and GitHub SARIF annotations are opt-in. Check, review, and publication
+live in separate GitHub workflows, while SARIF augments the review workflow, so
+comment and code-scanning permissions are granted only when those capabilities
+are enabled. Existing unmanaged workflow files are never overwritten, and
+disabling a capability removes only files managed by Portolan.
 
 ### Run without installing Node or language toolchains
 

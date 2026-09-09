@@ -54,7 +54,10 @@ export async function main(argv = process.argv.slice(2)) {
       return dev(workspace, parsed);
     case "diff":
       if (!parsed.positionals[0]) fail("diff requires a base branch, tag, or commit");
-      return runScript("scripts/diff.mjs", parsed.positionals, workspace);
+      return runScript("scripts/diff.mjs", diffArgs(parsed), workspace);
+    case "comment":
+      if (!parsed.positionals[0]) fail("comment requires a markdown file");
+      return runScript("scripts/forge-comment.mjs", [parsed.positionals[0]], workspace);
     case "doctor":
       return doctor(workspace);
     default:
@@ -68,7 +71,7 @@ function parse(argv) {
     const arg = argv[index];
     if (arg === "--help" || arg === "-h") value.help = true;
     else if (arg === "--version" || arg === "-v") value.version = true;
-    else if (["--cwd", "--output", "--base", "--host", "--port"].includes(arg)) {
+    else if (["--cwd", "--output", "--base", "--host", "--port", "--format", "--site", "--head"].includes(arg)) {
       const next = argv[++index];
       if (!next) fail(`${arg} requires a value`);
       value[arg.slice(2)] = next;
@@ -78,6 +81,14 @@ function parse(argv) {
     else value.positionals.push(arg);
   }
   return value;
+}
+
+function diffArgs(parsed) {
+  const args = [parsed.positionals[0]];
+  for (const name of ["format", "output", "site", "head"]) {
+    if (parsed[name]) args.push(`--${name}`, parsed[name]);
+  }
+  return args;
 }
 
 function help() {
@@ -92,6 +103,7 @@ Commands:
   check      fail when committed generated files are out of date
   build      build the static site
   diff BASE  describe architecture changes against BASE
+  comment FILE  post or update a pull-request comment from Markdown
   doctor     check the local runtime and project configuration
   version    print the CLI version
 
@@ -99,6 +111,9 @@ Options:
   --cwd DIR       project directory (default: current directory)
   --output DIR    build output (default: dist)
   --base PATH     deployed URL base (default: /)
+  --format TYPE   diff format: markdown, json, or sarif
+  --site URL      catalog URL linked from an architecture diff
+  --head BRANCH   head branch linked from an architecture diff
   --host HOST     dev server host (default: 127.0.0.1)
   --port PORT     dev server port
   --yes, -y       init without questions: take every detected default`);
