@@ -20,6 +20,7 @@ import { KindIcon } from "./kind";
 import { MessageList, MethodRows } from "./MethodRows";
 import { paths } from "../routes";
 import { packageOf } from "../lib/registry";
+import { GrpcMethodReference } from "./GrpcMethodReference";
 
 /** The interfaces of one module, as the service page's spec tab shows them. */
 export function ModuleSpec({ moduleId }: { moduleId: string }) {
@@ -46,17 +47,24 @@ export function ModuleSpec({ moduleId }: { moduleId: string }) {
 
   return (
     <div className="max-w-table">
-      <div className="mono flex flex-wrap items-center gap-x-3">
-        <KindIcon kind="module" />
-        <Link
-          to={paths.module(module.slug)}
-          className="text-ink hover:underline"
-        >
-          {module.name}
-        </Link>
-        {module.commit ? (
-          <Ident value={module.commit.slice(0, 12)} className="text-muted" />
-        ) : null}
+      <div className="rounded-card border border-line bg-surface px-4 py-3">
+        <div className="mono flex flex-wrap items-center gap-x-3">
+          <KindIcon kind="module" />
+          <span className="chip">gRPC</span>
+          <Link
+            to={paths.module(module.slug)}
+            className="text-ink hover:underline"
+          >
+            {module.name}
+          </Link>
+          {module.commit ? (
+            <Ident value={module.commit.slice(0, 12)} className="text-muted" />
+          ) : null}
+        </div>
+        <p className="mt-1.5 text-muted">
+          Methods and message shapes extracted from Protocol Buffers. Open a
+          method&apos;s local call to copy a ProtoJSON body or a grpcurl command.
+        </p>
       </div>
 
       {declared.length === 0 ? (
@@ -72,7 +80,14 @@ export function ModuleSpec({ moduleId }: { moduleId: string }) {
             <div className="mono border-b px-3 py-1.5 border-line bg-surface">
               <Ident value={provided.id} className="text-ink" />
             </div>
-            <MethodRows provided={provided} open={open} onToggle={toggle} />
+            <MethodRows
+              provided={provided}
+              open={open}
+              onToggle={toggle}
+              reference={(method) => (
+                <GrpcMethodReference provided={provided} method={method} />
+              )}
+            />
             <MessageList provided={provided} open={open} onToggle={toggle} />
           </div>
         </section>

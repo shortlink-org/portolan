@@ -128,6 +128,7 @@ export function MethodRows({
   open,
   onToggle,
   runs,
+  reference,
 }: {
   provided: RpcService;
   /** Which shapes are expanded, keyed `<interface>/<method>/req|res`. */
@@ -135,6 +136,8 @@ export function MethodRows({
   onToggle: (key: string) => void;
   /** What the method runs, when the page knows — the service page does. */
   runs?: (method: RpcMethod) => ReactNode;
+  /** Protocol-specific tools shown below the method, when its reference has one. */
+  reference?: (method: RpcMethod) => ReactNode;
 }) {
   return (
     <ul data-nav-list>
@@ -227,6 +230,8 @@ export function MethodRows({
 
               {runs?.(method)}
 
+              {reference?.(method)}
+
               {open.has(reqKey) && reqFields ? (
                 <div className="mt-2">
                   <DiscriminatorRows discriminator={reqDiscriminator} />
@@ -240,7 +245,9 @@ export function MethodRows({
                 </div>
               ) : null}
             </div>
-            <RowActions copy={id} />
+            <span className="self-start pt-0.5">
+              <RowActions copy={id} />
+            </span>
           </li>
         );
       })}
