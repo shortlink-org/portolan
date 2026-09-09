@@ -46,6 +46,7 @@ export const paths = {
   settingsPipeline: () => "/settings/pipeline",
   settingsDelivery: () => "/settings/delivery",
   settingsPreferences: () => "/settings/preferences",
+  settingsAbout: () => "/settings/about",
   external: (slug: string) => `/externals/${slug}`,
   registry: () => "/registry",
   /**
@@ -374,7 +375,7 @@ const ROUTES: RegExp[] = [
   /^\/language$/,
   /^\/problems$/,
   /^\/changes$/,
-  /^\/settings(?:\/(?:projects|pipeline|delivery|preferences))?$/,
+  /^\/settings(?:\/(?:projects|pipeline|delivery|preferences|about))?$/,
   /^\/externals\/[^/]+$/,
   /^\/map$/,
   /^\/adrs\/[^/]+$/,

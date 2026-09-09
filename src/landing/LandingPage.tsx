@@ -30,8 +30,12 @@ import { DraggableReveal } from "./DraggableReveal";
 import { heroColumn, heroLine, Reveal } from "./motion";
 import { ProductFrame } from "./ProductFrame";
 import { ProductTour } from "./ProductTour";
+import {
+  PRODUCT_LICENSE,
+  PRODUCT_README,
+  PRODUCT_REPOSITORY,
+} from "../lib/product";
 
-const REPOSITORY = "https://github.com/shortlink-org/portolan";
 const EXAMPLE_DOCS = "https://shortlink-org.github.io/portolan/docs/example";
 const exampleTo = catalogTo(paths.overview());
 
@@ -86,7 +90,7 @@ function Header() {
             {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
           </button>
           <a
-            href={REPOSITORY}
+            href={PRODUCT_REPOSITORY}
             className="tbtn hidden sm:flex"
             target="_blank"
             rel="noreferrer"
@@ -362,7 +366,7 @@ export function LandingPage() {
             <div className="shrink-0">
               <div className="mono text-faint">BUILT-IN INPUTS</div>
               <a
-                href={`${REPOSITORY}#plugins`}
+                href={`${PRODUCT_REPOSITORY}#plugins`}
                 target="_blank"
                 rel="noreferrer"
                 className="mt-1 inline-flex items-center gap-1 text-sm text-accent hover:underline"
@@ -648,7 +652,7 @@ export function LandingPage() {
                   Open the example <ArrowRight size={15} />
                 </Link>
                 <a
-                  href={`${REPOSITORY}#use-it-in-your-project`}
+                  href={`${PRODUCT_REPOSITORY}#use-it-in-your-project`}
                   className="tbtn px-4 py-2.5 text-ink"
                   target="_blank"
                   rel="noreferrer"
@@ -720,7 +724,7 @@ export function LandingPage() {
                 Explore example catalog <ArrowRight size={15} />
               </Link>
               <a
-                href={REPOSITORY}
+                href={PRODUCT_REPOSITORY}
                 target="_blank"
                 rel="noreferrer"
                 className="tbtn px-4 py-2.5 text-ink"
@@ -737,16 +741,16 @@ export function LandingPage() {
           <Wordmark />
           <span className="sm:ml-3">Architecture from code and evidence.</span>
           <div className="flex gap-5 sm:ml-auto">
-            <a className="hover:text-ink" href={`${REPOSITORY}#readme`}>
+            <a className="hover:text-ink" href={PRODUCT_README}>
               Docs
             </a>
             <a
               className="hover:text-ink"
-              href={`${REPOSITORY}/blob/main/LICENSE`}
+              href={PRODUCT_LICENSE}
             >
               MIT License
             </a>
-            <a className="hover:text-ink" href={REPOSITORY}>
+            <a className="hover:text-ink" href={PRODUCT_REPOSITORY}>
               GitHub
             </a>
           </div>

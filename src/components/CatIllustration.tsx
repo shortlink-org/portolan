@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
 
-type CatScene = "clear" | "unchanged" | "onboarding" | "search" | "trial";
+type CatScene = "about" | "clear" | "unchanged" | "onboarding" | "search" | "trial";
 
 const IMAGE: Record<CatScene, string> = {
+  about: "cat-about-v1.webp",
   clear: "cat-clear-skies-v1.webp",
   unchanged: "cat-no-changes-v1.webp",
   onboarding: "cat-onboarding-v1.webp",

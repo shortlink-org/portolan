@@ -170,11 +170,13 @@ describe("routes", () => {
     expect(paths.settingsPipeline()).toBe("/settings/pipeline");
     expect(paths.settingsDelivery()).toBe("/settings/delivery");
     expect(paths.settingsPreferences()).toBe("/settings/preferences");
+    expect(paths.settingsAbout()).toBe("/settings/about");
     for (const path of [
       paths.settingsProjects(),
       paths.settingsPipeline(),
       paths.settingsDelivery(),
       paths.settingsPreferences(),
+      paths.settingsAbout(),
     ]) expect(isRoutable(path)).toBe(true);
     expect(isRoutable("/settings/nope")).toBe(false);
     expect(allCatalogPaths(catalog)).toContain(paths.settings());
