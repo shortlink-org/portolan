@@ -55,6 +55,7 @@ import { Modal } from "../components/Overlay";
 import { MachineDocs } from "../components/MachineDocs";
 import { DeliverySettings } from "./settings/DeliverySettings";
 import { PreferencesSettings } from "./settings/PreferencesSettings";
+import { CatEmptyState, CatIllustration } from "../components/CatIllustration";
 
 type Health = "healthy" | "changed" | "failed" | "unchecked";
 type ProjectSource = ProjectDraft["source"];
@@ -541,9 +542,12 @@ function AddProjectCard({ onAdd }: { onAdd: (source: ProjectSource) => void }) {
 function OnboardingCard({ starter, onAdd, onRemove }: { starter?: SetupProject; onAdd: (source: ProjectSource) => void; onRemove: (project: SetupProject) => void }) {
   return (
     <article className="mb-grid overflow-hidden rounded-card border border-accent bg-canvas shadow-xs">
-      <div className="border-b border-line bg-surface px-card py-3">
-        <div className="font-semibold text-ink">Start with your architecture</div>
-        <p className="mt-1 text-muted">Replace the starter catalog with the project you actually want to describe.</p>
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-b border-line bg-surface px-card py-3">
+        <div>
+          <div className="font-semibold text-ink">Start with your architecture</div>
+          <p className="mt-1 text-muted">Replace the starter catalog with the project you actually want to describe.</p>
+        </div>
+        <CatIllustration scene="onboarding" className="cat-onboarding-illustration" />
       </div>
       <div className="grid gap-0 md:grid-cols-2">
         <div className="flex items-start gap-3 p-card md:border-r md:border-line">
@@ -877,7 +881,10 @@ function Wizard({ open, initialSource, onClose, onAdded, onRunStarted }: { open:
         ) : stage === "trial" && plan ? (
           <div className="space-y-5">
             <div className={`rounded-control border px-3 py-3 ${trial ? "border-verified bg-surface" : finished?.status === "failed" ? "border-unresolved" : "border-line bg-surface"}`}>
-              <div className="flex items-start gap-3">{trial ? <Check size={18} className="mt-0.5 shrink-0 text-verified" /> : finished?.status === "failed" ? <CircleAlert size={18} className="mt-0.5 shrink-0 text-unresolved" /> : <LoaderCircle size={18} className="mt-0.5 shrink-0 animate-spin text-accent" />}<div><div className="font-medium text-ink">{trial ? "Extraction succeeded — repository unchanged" : finished?.status === "failed" ? "Trial extraction failed" : activeStep ? `Running ${activeStep.plugin}` : "Creating an isolated workspace…"}</div><p className="mt-0.5 text-muted">{trial ? "These results came from real catalog fragments. Apply is now safe to continue." : "Portolan is running the selected extractors without writing to portolan.json or your project."}</p></div></div>
+              <div className={trial ? "grid items-center gap-3 sm:grid-cols-[minmax(0,1fr)_120px]" : ""}>
+                <div className="flex items-start gap-3">{trial ? <Check size={18} className="mt-0.5 shrink-0 text-verified" /> : finished?.status === "failed" ? <CircleAlert size={18} className="mt-0.5 shrink-0 text-unresolved" /> : <LoaderCircle size={18} className="mt-0.5 shrink-0 animate-spin text-accent" />}<div><div className="font-medium text-ink">{trial ? "Extraction succeeded — repository unchanged" : finished?.status === "failed" ? "Trial extraction failed" : activeStep ? `Running ${activeStep.plugin}` : "Creating an isolated workspace…"}</div><p className="mt-0.5 text-muted">{trial ? "These results came from real catalog fragments. Apply is now safe to continue." : "Portolan is running the selected extractors without writing to portolan.json or your project."}</p></div></div>
+                {trial ? <CatIllustration scene="trial" className="cat-trial-illustration" /> : null}
+              </div>
               {trial?.previewUrl ? <a className="product-primary mt-3 inline-flex" href={trial.previewUrl} target="_blank" rel="noreferrer">Open catalog preview ↗</a> : null}
               {trial?.previewError ? <p className="mt-2 text-declared">The extraction is valid, but the temporary site could not start: {trial.previewError}</p> : null}
               {!finished ? <><div className="mt-3 h-1.5 overflow-hidden rounded-full bg-canvas"><div className="h-full bg-accent transition-[width]" style={{ width: `${percent}%` }} /></div><div className="mono mt-1 text-right text-muted">{completedSteps.length} / {totalSteps || "?"} steps</div></> : null}
@@ -1052,7 +1059,7 @@ function ProjectsSettings({ local, onAdd, onRemove }: { local: boolean; onAdd: (
     <section>
       <SectionTitle right={local ? <div className="flex items-center gap-3"><span className="hidden sm:inline">editable in local mode</span><button type="button" className="tbtn text-ink" onClick={() => onAdd("local")}><Plus size={14} aria-hidden /> Add project</button></div> : "declared in portolan.json"}>Projects</SectionTitle>
       {local && (starter || setupInfo.projects.length === 0) ? <OnboardingCard starter={starter} onAdd={onAdd} onRemove={onRemove} /> : null}
-      {setupInfo.projects.length === 0 && !local ? <Empty>portolan.json names no projects — every input here is the estate's own</Empty> : <div className="grid gap-grid xl:grid-cols-2">{setupInfo.projects.map((project) => <ProjectCard key={project.id} project={project} onRemove={local ? onRemove : undefined} />)}{local ? <AddProjectCard onAdd={onAdd} /> : null}</div>}
+      {setupInfo.projects.length === 0 && !local ? <CatEmptyState scene="onboarding" title="No projects connected">portolan.json names no projects — every input here is the estate's own.</CatEmptyState> : <div className="grid gap-grid xl:grid-cols-2">{setupInfo.projects.map((project) => <ProjectCard key={project.id} project={project} onRemove={local ? onRemove : undefined} />)}{local ? <AddProjectCard onAdd={onAdd} /> : null}</div>}
     </section>
   );
 }

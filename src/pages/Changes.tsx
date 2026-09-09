@@ -22,6 +22,7 @@ import type { ForgeRepo } from "../lib/github-catalog";
 import { plural } from "../lib/format";
 import { comparisonQuery, comparisonSide, forgeKeys, forgeRefsQuery } from "../lib/queries";
 import { useForgeAccess } from "../app/forge-access";
+import { CatEmptyState } from "../components/CatIllustration";
 
 const LABEL: Record<Severity, string> = {
   breaking: "Breaking",
@@ -273,9 +274,9 @@ export function Changes() {
             </div>
 
             {loaded.changes.length === 0 ? (
-              <div className="empty mt-4">
-                No architectural change between these branch heads.
-              </div>
+              <CatEmptyState scene="unchanged" title="No architectural changes" className="mt-4 max-w-prose">
+                These branch heads describe the same catalog.
+              </CatEmptyState>
             ) : shown.length === 0 ? (
               <div className="empty mt-4">No changes match these filters.</div>
             ) : (

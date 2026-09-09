@@ -31,6 +31,7 @@ import { pageContains, selectionPath } from "../selection/pages";
 import { selectionHash } from "../selection/hash";
 import { selectionFor } from "../selection/model";
 import { useSelectionStore } from "../selection/store";
+import { CatIllustration } from "../components/CatIllustration";
 
 const ITEMS = paletteItems(catalog);
 
@@ -247,8 +248,12 @@ export function CommandPalette({
           </div>
 
           {shown === 0 ? (
-            <div className="glow mono px-4 py-8 text-center text-muted">
-              no match
+            <div className="cat-search-empty glow">
+              <CatIllustration scene="search" className="cat-search-illustration" />
+              <div className="mono">
+                <div className="text-ink">no match</div>
+                <div className="mt-1 text-faint">try another name or a kind prefix</div>
+              </div>
             </div>
           ) : (
             /* `static` because the list is the palette: there is no closed

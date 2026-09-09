@@ -14,6 +14,7 @@ import { contextVar } from "../lib/context-color";
 import { absoluteTime, plural, relativeTime } from "../lib/format";
 import { SectionTitle } from "../components/PageHeader";
 import { ProblemRow } from "../components/ProblemRow";
+import { CatEmptyState } from "../components/CatIllustration";
 
 export function Problems() {
   useDocumentTitle("Problems");
@@ -160,14 +161,15 @@ export function Problems() {
 /** The one line the reader wants to see. Nothing else earns the space. */
 function ClearSkies({ checked }: { checked: number }) {
   return (
-    <div className="empty mt-section max-w-table">
+    <CatEmptyState
+      scene="clear"
+      title={checked === 0 ? "Nothing to resolve yet" : "Clear skies"}
+      className="mt-section max-w-prose"
+      meta={<span title={absoluteTime(catalog.generatedAt)}>last checked {relativeTime(catalog.generatedAt)}</span>}
+    >
       {checked === 0
-        ? "Nothing to resolve yet — no service calls another, and no event has a consumer."
-        : `Clear skies — all ${checked} ${plural(checked, "edge")} resolved.`}
-      <span className="ml-2" title={absoluteTime(catalog.generatedAt)}>
-        last checked {relativeTime(catalog.generatedAt)}
-      </span>
-    </div>
+        ? "No service calls another, and no event has a consumer."
+        : `All ${checked} ${plural(checked, "edge")} resolved.`}
+    </CatEmptyState>
   );
 }
-

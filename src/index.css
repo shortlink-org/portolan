@@ -1018,6 +1018,72 @@
     font-size: var(--text-meta);
   }
 
+  /* Cats mark rare, positive empty states and milestones rather than routine gaps. */
+  .cat-illustration {
+    display: block;
+    object-fit: contain;
+    pointer-events: none;
+    user-select: none;
+    filter: drop-shadow(0 12px 18px rgb(10 18 26 / 10%));
+  }
+
+  .cat-empty-state {
+    @apply glow grid items-center gap-5 rounded-card border border-dashed border-line-strong px-5 py-4;
+    grid-template-columns: 180px minmax(0, 1fr);
+  }
+
+  .cat-empty-illustration {
+    width: 180px;
+    height: 126px;
+    justify-self: center;
+  }
+
+  .cat-onboarding-illustration {
+    width: 104px;
+    height: 82px;
+    margin-block: -10px;
+  }
+
+  .cat-search-empty {
+    @apply glow flex items-center justify-center gap-4 px-4 py-4;
+    min-height: 104px;
+  }
+
+  .cat-search-illustration {
+    width: 92px;
+    height: 68px;
+  }
+
+  .cat-trial-illustration {
+    width: 120px;
+    height: 88px;
+    margin-block: -8px;
+    justify-self: center;
+  }
+
+  @media (max-width: 520px) {
+    .cat-empty-state {
+      grid-template-columns: 104px minmax(0, 1fr);
+      gap: 16px;
+      padding: 16px;
+    }
+
+    .cat-empty-illustration {
+      width: 104px;
+      height: 92px;
+    }
+
+    .cat-onboarding-illustration {
+      width: 76px;
+      height: 66px;
+    }
+
+    .cat-trial-illustration {
+      width: 90px;
+      height: 72px;
+    }
+  }
+
   /* The 404 is a small editorial moment inside the catalog rather than a
      centred error dialog. Copy keeps a readable left edge; the transparent
      explorer sits quietly beside it. */
