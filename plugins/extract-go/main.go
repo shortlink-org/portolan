@@ -29,6 +29,11 @@ type Options struct {
 	Service     string `json:"service"`
 	ServiceName string `json:"serviceName,omitempty"`
 	Repo        string `json:"repo,omitempty"`
+	// Scope is the deployable name in a shared Go module. When present, the
+	// extractor owns only internal/<scope> and reads its HTTP/gRPC entrypoints;
+	// imported packages are still followed so a handler can reach application
+	// code in the same feature slice.
+	Scope string `json:"scope,omitempty"`
 
 	// Store is the slug of the database this service keeps its state in - the
 	// same one the SQL extractor is given. It is here for the flows: a call on

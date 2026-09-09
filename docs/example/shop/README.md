@@ -14,7 +14,7 @@ What a customer is buying, what it costs and what they owe for it: the basket wh
 | [Billing](billing/README.md) | `examples/shop/billing` | Invoice |
 | [Shopping Cart](cart/README.md) | `examples/shop/cart` | Basket |
 | [Order Management](oms/README.md) | `examples/shop/oms` | Order |
-| [Pricing](pricing/README.md) | `examples/shop/pricing` | Price List, Quote |
+| [Pricing](pricing/README.md) | `examples/shop/pricing` | PriceList, Quote |
 
 ## Language
 

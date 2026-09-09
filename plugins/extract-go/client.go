@@ -88,7 +88,71 @@ func readClients(pkg *pkg) (map[string]client, string) {
 		}
 	}
 
+	// protoc-gen-go-grpc before FullMethodName constants wrote the method path
+	// directly into cc.Invoke. Keep supporting those stubs: the literal is the
+	// same protocol fact, merely stored in the generated method body.
+	for _, file := range pkg.files {
+		for _, decl := range file.Decls {
+			fn, ok := decl.(*ast.FuncDecl)
+			if !ok || fn.Recv == nil || fn.Body == nil {
+				continue
+			}
+			recv := receiverName(fn.Recv.List[0].Type)
+			if !strings.HasSuffix(strings.ToLower(recv), "client") {
+				continue
+			}
+			full := ""
+			ast.Inspect(fn.Body, func(node ast.Node) bool {
+				call, ok := node.(*ast.CallExpr)
+				if !ok {
+					return true
+				}
+				sel, ok := call.Fun.(*ast.SelectorExpr)
+				if !ok || sel.Sel.Name != "Invoke" {
+					return true
+				}
+				for _, arg := range call.Args {
+					lit, ok := arg.(*ast.BasicLit)
+					if !ok || lit.Kind != token.STRING {
+						continue
+					}
+					value, err := strconv.Unquote(lit.Value)
+					if err == nil && strings.HasPrefix(value, "/") {
+						full = value
+						return false
+					}
+				}
+				return true
+			})
+			if full == "" {
+				continue
+			}
+			service, method, found := strings.Cut(strings.TrimPrefix(full, "/"), "/")
+			if !found || method == "" || strings.Contains(method, "/") {
+				continue
+			}
+			name := upperFirst(recv)
+			c := out[name]
+			if c.methods == nil {
+				c = client{pkg: lastDotPrefix(service), methods: map[string]string{}, source: pkg.paths[file]}
+			}
+			c.methods[fn.Name.Name] = service + "/" + method
+			out[name] = c
+		}
+	}
+
 	return out, ""
+}
+
+func upperFirst(name string) string {
+	if name == "" {
+		return name
+	}
+	runes := []rune(name)
+	if runes[0] >= 'a' && runes[0] <= 'z' {
+		runes[0] = runes[0] - 'a' + 'A'
+	}
+	return string(runes)
 }
 
 // splitFullMethod reads `RiskService_Assess_FullMethodName = "/risk.v1.RiskService/Assess"`
@@ -156,9 +220,29 @@ func (r *flowReader) clientOf(declared string, imports map[string]string) (clien
 	if !found {
 		return client{}, false
 	}
-	client, ok := r.clientPkg(imports[selector])[name]
+	client, ok := r.clientPkg(r.importPath(selector, imports))[name]
 
 	return client, ok
+}
+
+// importPath resolves both ordinary imports (whose package name equals the
+// final path segment) and legacy/generated packages such as a path ending in
+// /rpc that declares package book_rpc.
+func (r *flowReader) importPath(selector string, imports map[string]string) string {
+	if direct := imports[selector]; direct != "" {
+		return direct
+	}
+	for _, candidate := range imports {
+		rel, ok := r.relDir(candidate)
+		if !ok {
+			continue
+		}
+		p, err := parsePkg(r.root, rel)
+		if err == nil && p.name == selector {
+			return candidate
+		}
+	}
+	return ""
 }
 
 // rpcHop is one call on a port that turns out to be another service's rpc.

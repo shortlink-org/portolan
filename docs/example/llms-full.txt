@@ -3295,7 +3295,7 @@ What a customer is buying, what it costs and what they owe for it: the basket wh
 | [Billing](billing/README.md) | `examples/shop/billing` | Invoice |
 | [Shopping Cart](cart/README.md) | `examples/shop/cart` | Basket |
 | [Order Management](oms/README.md) | `examples/shop/oms` | Order |
-| [Pricing](pricing/README.md) | `examples/shop/pricing` | Price List, Quote |
+| [Pricing](pricing/README.md) | `examples/shop/pricing` | PriceList, Quote |
 
 ## Language
 
@@ -4648,7 +4648,7 @@ log, and nothing arrives.
 
 | Aggregate | Root | Commands | Queries | Events |
 | --- | --- | --- | --- | --- |
-| [Price List](aggregates/price-list.md) | `PriceList` | 2 commands | 1 query | 0 events |
+| [PriceList](aggregates/price-list.md) | `PriceList` | 2 commands | 1 query | 0 events |
 | [Quote](aggregates/quote.md) | `Quote` | 2 commands | 1 query | 2 events |
 
 ## Provides
@@ -4853,7 +4853,7 @@ Source: [`internal/di/app.go:67`](https://github.com/shortlink-org/portolan/blob
 
 <!-- shop/pricing/aggregates/price-list.md -->
 
-# Price List
+# PriceList
 
 *Generated from the portolan catalog · commit `6 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
 

@@ -235,6 +235,8 @@ describe("local project setup", () => {
     for (const service of ["billing", "book", "user"]) {
       mkdirSync(join(platform, "internal", service, "infrastructure/rpc"), { recursive: true });
       writeFileSync(join(platform, "internal", service, "infrastructure/rpc", `${service}.proto`), `syntax = "proto3"; package ${service}; service ${service}RPC {}\n`);
+      mkdirSync(join(platform, "internal", service, "domain"), { recursive: true });
+      writeFileSync(join(platform, "internal", service, "domain", `${service}.go`), `package domain\ntype ${service[0].toUpperCase() + service.slice(1)} struct{}\n`);
     }
     mkdirSync(join(platform, "internal/db/redis"), { recursive: true });
     mkdirSync(join(platform, "internal/di"), { recursive: true });
@@ -248,7 +250,7 @@ describe("local project setup", () => {
 
     const manifest = JSON.parse(readFileSync(join(root, "portolan.json"), "utf8"));
     const plan = planProject(root, manifest, {
-      root: "services/platform", id: "platform", name: "Platform", group: "platform", component: "platform", componentKind: "application", plugins: ["project", "proto", "redis"],
+      root: "services/platform", id: "platform", name: "Platform", group: "platform", component: "platform", componentKind: "application", plugins: ["project", "go-domain", "proto", "redis"],
     });
     expect(plan.project).toMatchObject({ group: "platform", components: ["api", "billing", "book", "user"] });
     expect(plan.project).not.toHaveProperty("component");
@@ -259,6 +261,13 @@ describe("local project setup", () => {
     expect(plan.steps.filter((step) => step.plugin === "redis").map((step) => [step.options.service, step.options.out])).toEqual([
       ["book", "redis-book.json"],
     ]);
+    expect(plan.steps.filter((step) => step.plugin === "go-domain").map((step) => [step.options.service, step.options.scope, step.options.store, step.options.peers, step.options.out])).toEqual([
+      ["api", "api", undefined, { billing: "platform.billing", book: "platform.book", user: "platform.user" }, "go-domain-api.json"],
+      ["billing", "billing", undefined, { billing: "platform.billing", book: "platform.book", user: "platform.user" }, "go-domain-billing.json"],
+      ["book", "book", "redis", { billing: "platform.billing", book: "platform.book", user: "platform.user" }, "go-domain-book.json"],
+      ["user", "user", undefined, { billing: "platform.billing", book: "platform.book", user: "platform.user" }, "go-domain-user.json"],
+    ]);
+    expect(plan.steps[0].options.groupKind).toBe("system");
   });
 
   it("only offers the Go domain extractor when the layout contains an aggregate root", () => {
@@ -283,6 +292,14 @@ describe("local project setup", () => {
     expect(discovery.detections.find((item) => item.plugin === "go-domain")?.evidence).toBe("internal/invoice/domain/invoice.go");
     expect(discovery.detections.find((item) => item.plugin === "sql")?.options).toEqual({});
     expect(discovery.detections.find((item) => item.plugin === "sql")?.evidence).toBe("2 repository packages");
+  });
+
+  it("accepts a feature domain package named domain", () => {
+    const root = workspace();
+    mkdirSync(join(root, "services/billing/internal/invoice/domain"), { recursive: true });
+    writeFileSync(join(root, "services/billing/internal/invoice/domain/invoice.go"), "package domain\n\ntype Invoice struct{}\n");
+    const discovery = discoverProject(root, "services/billing");
+    expect(discovery.detections.find((item) => item.plugin === "go-domain")?.evidence).toBe("internal/invoice/domain/invoice.go");
   });
 
   it("offers the River extractor when the Go module uses River", () => {
@@ -489,6 +506,20 @@ describe("local project setup", () => {
     expect(added.steps[0].options).toMatchObject({ group: "avia", groupKind: "bounded-context" });
     const manifest = { sources: ["portolan/*.json"], projects: [], extract: [] };
     expect(manifestWithProject(manifest, added).sources).toEqual(["services/billing/portolan/*.json"]);
+  });
+
+  it("does not duplicate an existing external fetch when a project is re-added", () => {
+    const fetch = { repo: "https://github.com/acme/orders", commit: "a".repeat(40), paths: [] };
+    const manifest = {
+      sources: ["vendor/repos/*/*/git.repo.json"], projects: [],
+      extract: [{ plugin: "git", in: "vendor", out: "vendor/repos", options: { cache: "vendor/repos", repos: [fetch] } }],
+    };
+    const plan = {
+      project: { id: "orders", root: "vendor/repos/acme/orders", group: "orders", component: "orders" },
+      steps: [{ plugin: "project", in: "vendor/repos/acme/orders", out: "vendor/repos/acme/orders/portolan", options: {} }],
+      source: "vendor/repos/**/portolan/*.json", fetch,
+    };
+    expect(manifestWithProject(manifest, plan).extract[0].options.repos).toEqual([fetch]);
   });
 
   it("adds the project slice to the default catalog profile", () => {

@@ -28,7 +28,15 @@ func extractAggregate(root, aggregateName, domainPath string, layout sourceLayou
 	}
 
 	id := aggregateID(svcID, slug(aggregateName))
-	name := title(pkg.name)
+	rootName := pascal(pkg.name)
+	// Feature slices often use the deliberately generic package name `domain`:
+	// internal/book/domain declares package domain and type Book. The directory
+	// is still the aggregate boundary, so its name supplies the root in that
+	// layout rather than rejecting a valid model for lacking type Domain.
+	if pkg.name == "domain" {
+		rootName = pascal(aggregateName)
+	}
+	name := title(rootName)
 
 	aggregate := catalog.Aggregate{
 		ID:           id,
@@ -61,7 +69,7 @@ func extractAggregate(root, aggregateName, domainPath string, layout sourceLayou
 	// whichever struct came first instead would put a package of error types
 	// on the page as a model with a root and seven fields, and a reader
 	// believes a table; a warning and no page is the honest answer.
-	aggregate.Root = pascal(pkg.name)
+	aggregate.Root = rootName
 	if !hasBlock(aggregate.Entities, aggregate.Root) {
 		if len(aggregate.Entities) == 0 {
 			b.Warn(id, domainPath+" declares no exported struct, so the aggregate has no root")
@@ -69,7 +77,7 @@ func extractAggregate(root, aggregateName, domainPath string, layout sourceLayou
 			return catalog.Aggregate{}, false
 		}
 
-		b.Warn(id, domainPath+" has no struct called "+pascal(pkg.name)+", so it is not read as an aggregate; the root is the struct named after its package")
+		b.Warn(id, domainPath+" has no struct called "+rootName+", so it is not read as an aggregate; the root is the struct named by its package or feature directory")
 
 		return catalog.Aggregate{}, false
 	}

@@ -25,6 +25,17 @@ type RiskServiceClient interface {
 }
 `
 
+const legacyGeneratedClient = `package riskpb
+
+type RiskServiceClient interface { Assess(context.Context, *Request, ...grpc.CallOption) (*Response, error) }
+type riskServiceClient struct { cc grpc.ClientConnInterface }
+func (c *riskServiceClient) Assess(ctx context.Context, in *Request, opts ...grpc.CallOption) (*Response, error) {
+	out := new(Response)
+	if err := c.cc.Invoke(ctx, "/risk.v1.RiskService/Assess", in, out, opts...); err != nil { return nil, err }
+	return out, nil
+}
+`
+
 // The rpc is read off the constant protoc-gen-go-grpc writes for it, which is
 // the one place in the tree the full name appears as a string.
 func TestClientsAreReadOffTheGeneratedNames(t *testing.T) {
@@ -52,6 +63,21 @@ func TestClientsAreReadOffTheGeneratedNames(t *testing.T) {
 	}
 	if client.source != "risk_grpc.pb.go" {
 		t.Errorf("source = %q", client.source)
+	}
+}
+
+func TestLegacyClientsAreReadOffInvokeLiterals(t *testing.T) {
+	pkg, err := parseSource("risk_grpc.pb.go", legacyGeneratedClient)
+	if err != nil {
+		t.Fatal(err)
+	}
+	clients, problem := readClients(pkg)
+	if problem != "" {
+		t.Fatal(problem)
+	}
+	client, ok := clients["RiskServiceClient"]
+	if !ok || client.pkg != "risk.v1" || client.methods["Assess"] != "risk.v1.RiskService/Assess" {
+		t.Fatalf("legacy client = %+v, present %v", client, ok)
 	}
 }
 

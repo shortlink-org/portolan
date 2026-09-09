@@ -236,7 +236,7 @@ function goDomainEvidence(root, files) {
       .join("");
     let source = "";
     try { source = readFileSync(join(root, name), "utf8"); } catch { continue; }
-    const packagePattern = new RegExp(`\\bpackage\\s+${packageName}\\b`);
+    const packagePattern = new RegExp(`\\bpackage\\s+(?:${packageName}|domain)\\b`);
     const rootPattern = new RegExp(`\\btype\\s+${rootName}\\s+struct\\s*\\{`);
     if (packagePattern.test(source) && rootPattern.test(source)) return name;
   }
@@ -692,6 +692,30 @@ function deployableProtoPaths(paths, deployable) {
   return (paths ?? []).filter((path) => prefixes.some((prefix) => `${path}/`.startsWith(prefix)));
 }
 
+function deployableProtoPeers(root, files, deployables, context) {
+  const peers = new Map();
+  const ambiguous = new Set();
+  for (const name of matches(files, /\.proto$/i)) {
+    const owner = deployables.find((candidate) =>
+      name.startsWith(`internal/${candidate.slug}/`) || name.startsWith(`cmd/${candidate.slug}/`) || name.startsWith(`services/${candidate.slug}/`),
+    );
+    if (!owner) continue;
+    let source = "";
+    try { source = readFileSync(join(root, name), "utf8"); } catch { continue; }
+    const packageName = /(?:^|[;\n])\s*package\s+([A-Za-z_][A-Za-z0-9_.]*)\s*;/m.exec(source)?.[1];
+    if (!packageName || ambiguous.has(packageName)) continue;
+    const service = `${context}.${owner.slug}`;
+    const existing = peers.get(packageName);
+    if (existing && existing !== service) {
+      peers.delete(packageName);
+      ambiguous.add(packageName);
+    } else {
+      peers.set(packageName, service);
+    }
+  }
+  return Object.fromEntries([...peers].sort(([a], [b]) => a.localeCompare(b)));
+}
+
 function goModule(root) {
   try {
     const match = /^\s*module\s+(\S+)/m.exec(readFileSync(join(root, "go.mod"), "utf8"));
@@ -766,7 +790,7 @@ export function planProject(workspace, manifest, request) {
   const detectionByPlugin = new Map(discovery.detections.map((item) => [item.plugin, item]));
   const hasDomainModel = plugins.some((plugin) => ["go-domain", "ts-domain", "rust-domain", "java-domain", "django-domain"].includes(plugin));
   const projectDetectionOptions = {
-    groupKind: hasDomainModel ? "bounded-context" : "system",
+    groupKind: splitDeployables ? "system" : hasDomainModel ? "bounded-context" : "system",
     ...(hasDomainModel ? { componentKind: "service" } : {}),
     ...(String(request.contextName ?? "").trim() ? { groupName: String(request.contextName).trim() } : {}),
     ...(String(request.contextSummary ?? "").trim() ? { groupSummary: String(request.contextSummary).trim() } : {}),
@@ -781,6 +805,10 @@ export function planProject(workspace, manifest, request) {
   });
   const rootAbsolute = resolve(workspace, inspectedRoot);
   const rootFiles = splitDeployables ? walk(rootAbsolute) : new Set();
+  const protoPeers = splitDeployables ? deployableProtoPeers(rootAbsolute, rootFiles, confirmedDeployables, project.group ?? project.context ?? id) : {};
+  const redisOwners = splitDeployables
+    ? new Set(deployableEvidenceOwners(rootAbsolute, rootFiles, confirmedDeployables, detectionByPlugin.get("redis")?.candidates).map((owner) => owner.slug))
+    : new Set();
   const steps = plugins.flatMap((plugin) => {
     if (!splitDeployables) {
       const options = plugin === "project"
@@ -797,10 +825,15 @@ export function planProject(workspace, manifest, request) {
     let owners = confirmedDeployables;
     if (plugin === "proto") owners = confirmedDeployables.filter((candidate) => deployableProtoPaths(detectedOptions.paths, candidate).length > 0);
     else if (plugin === "redis") owners = deployableEvidenceOwners(rootAbsolute, rootFiles, confirmedDeployables, detectionByPlugin.get(plugin)?.candidates);
+    else if (plugin === "go-domain") owners = confirmedDeployables;
     else owners = confirmedDeployables.slice(0, 1);
     return owners.map((owner) => {
       const scopedProject = { ...project, component: owner.slug, componentKind: owner.kind, name: owner.name };
-      const scopedOptions = plugin === "proto" ? { ...detectedOptions, paths: deployableProtoPaths(detectedOptions.paths, owner) } : detectedOptions;
+      const scopedOptions = plugin === "proto"
+        ? { ...detectedOptions, paths: deployableProtoPaths(detectedOptions.paths, owner) }
+        : plugin === "go-domain"
+          ? { ...detectedOptions, scope: owner.slug, ...(Object.keys(protoPeers).length ? { peers: protoPeers } : {}), ...(redisOwners.has(owner.slug) ? { store: "redis" } : {}) }
+          : detectedOptions;
       return {
         plugin,
         in: finalRoot,
@@ -821,7 +854,11 @@ export function manifestWithProject(manifest, plan, { isolated = false } = {}) {
     if (!builtinPluginNames().has("git") && !manifest.plugins?.some((plugin) => plugin.name === "git")) throw new Error("The built-in git fetcher is not available.");
     if (!isolated && fetchIndex >= 0) {
       const fetchStep = extract[fetchIndex];
-      extract[fetchIndex] = { ...fetchStep, options: { ...fetchStep.options, repos: [...(fetchStep.options?.repos ?? []), plan.fetch] } };
+      const repos = [...(fetchStep.options?.repos ?? []), plan.fetch].filter((repo, index, all) => {
+        const key = `${repo.repo}\0${repo.commit}\0${[...(repo.paths ?? [])].sort().join("\0")}`;
+        return all.findIndex((candidate) => `${candidate.repo}\0${candidate.commit}\0${[...(candidate.paths ?? [])].sort().join("\0")}` === key) === index;
+      });
+      extract[fetchIndex] = { ...fetchStep, options: { ...fetchStep.options, repos } };
     } else {
       extract.unshift({ plugin: "git", in: "vendor", out: "vendor/repos", options: { cache: "vendor/repos", repos: [plan.fetch] } });
     }

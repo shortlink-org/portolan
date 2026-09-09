@@ -30,7 +30,7 @@ Every link below is a markdown page beside this file. [llms-full.txt](llms-full.
 - [Billing](shop/billing/README.md): in Shop. Aggregates: Invoice
 - [Shopping Cart](shop/cart/README.md): in Shop. Aggregates: Basket
 - [Order Management](shop/oms/README.md): in Shop. Aggregates: Order
-- [Pricing](shop/pricing/README.md): in Shop. Aggregates: Price List, Quote
+- [Pricing](shop/pricing/README.md): in Shop. Aggregates: PriceList, Quote
 - [Storefront BFF](storefront/bff/README.md): in Storefront
 
 ## Aggregates
@@ -45,7 +45,7 @@ Every link below is a markdown page beside this file. [llms-full.txt](llms-full.
 - [Invoice](shop/billing/aggregates/invoice.md): in [Billing](shop/billing/README.md). root `Invoice`. 4 commands, 1 query, 3 events. What a customer owes for one order, and what happens to it between being drawn up and being closed
 - [Basket](shop/cart/aggregates/basket.md): in [Shopping Cart](shop/cart/README.md). root `Basket`. 6 commands, 1 query, 6 events. The one mutable thing between a customer arriving and an order existing: a visitor's or a customer's lines, under one lock
 - [Order](shop/oms/aggregates/order.md): in [Order Management](shop/oms/README.md). root `Order`. 3 commands, 1 query, 3 events. What a basket became at checkout: the lines and the total the customer agreed to, copied and never repriced, under one lock
-- [Price List](shop/pricing/aggregates/price-list.md): in [Pricing](shop/pricing/README.md). root `PriceList`. 2 commands, 1 query, 0 events. What things cost before anybody asks
+- [PriceList](shop/pricing/aggregates/price-list.md): in [Pricing](shop/pricing/README.md). root `PriceList`. 2 commands, 1 query, 0 events. What things cost before anybody asks
 - [Quote](shop/pricing/aggregates/quote.md): in [Pricing](shop/pricing/README.md). root `Quote`. 2 commands, 1 query, 2 events. What a basket costs, promised until a moment
 
 ## Outside the estate

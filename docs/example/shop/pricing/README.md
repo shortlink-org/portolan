@@ -69,7 +69,7 @@ log, and nothing arrives.
 
 | Aggregate | Root | Commands | Queries | Events |
 | --- | --- | --- | --- | --- |
-| [Price List](aggregates/price-list.md) | `PriceList` | 2 commands | 1 query | 0 events |
+| [PriceList](aggregates/price-list.md) | `PriceList` | 2 commands | 1 query | 0 events |
 | [Quote](aggregates/quote.md) | `Quote` | 2 commands | 1 query | 2 events |
 
 ## Provides

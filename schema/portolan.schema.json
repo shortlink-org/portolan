@@ -1186,6 +1186,14 @@
           "type": "string",
           "description": "What the service is called on the page. Defaults to the title of its README, and failing that to the slug, titled."
         },
+        "scope": {
+          "type": "string",
+          "description": "Deployable name in a shared Go module. Limits owned source to internal/<scope> while allowing calls to imported application packages to be followed.",
+          "examples": [
+            "api",
+            "billing"
+          ]
+        },
         "repo": {
           "type": "string",
           "description": "Where the source lives. Defaults to the module path in go.mod.",

@@ -21,7 +21,7 @@
             {
               "id": "shop.pricing.price-list",
               "slug": "price-list",
-              "name": "Price List",
+              "name": "PriceList",
               "readme": "What things cost before anybody asks.\n\nA list is imported whole and never edited: a change is another list, valid from\nits own moment, and the old one is archived rather than deleted so that a quote\npriced against it stays readable. Nothing here is announced on the bus - a\nprice list changing is this service's business until somebody asks for a quote.",
               "root": "PriceList",
               "entities": [

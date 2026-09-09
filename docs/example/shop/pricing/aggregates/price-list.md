@@ -1,4 +1,4 @@
-# Price List
+# PriceList
 
 *Generated from the portolan catalog · commit `6 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
 

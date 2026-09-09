@@ -166,7 +166,7 @@ for: whoever moves money listens for this.'
       description 'github.com/shortlink-org/portolan/examples/shop/pricing'
       technology 'gRPC'
       style { color ctx3 }
-      price_list = aggregate 'Price List' {
+      price_list = aggregate 'PriceList' {
       }
       quote = aggregate 'Quote' {
         QuoteExpired = event 'QuoteExpired' {

@@ -30,6 +30,9 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 
 	svcID := serviceID(opts.Context, opts.Service)
 	layout := discoverLayout(root)
+	if opts.Scope != "" {
+		layout = layout.scoped(opts.Scope)
+	}
 
 	readme := readFile(filepath.Join(root, "README.md"))
 	service := catalog.Service{
@@ -64,7 +67,9 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	}
 
 	if len(service.Aggregates) == 0 {
-		b.Warn(svcID, "no aggregate domain packages found; supported layouts include internal/domain/<aggregate> and internal/<aggregate>/domain")
+		if opts.Scope == "" {
+			b.Warn(svcID, "no aggregate domain packages found; supported layouts include internal/domain/<aggregate> and internal/<aggregate>/domain")
+		}
 		service.Aggregates = []catalog.Aggregate{}
 	}
 
@@ -85,6 +90,11 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 		externals: opts.Externals,
 		events:    opts.Events,
 	}, layout, endpoints, eventIDs(service.Aggregates), b)
+	if opts.Scope != "" {
+		serviceFlows, serviceCalls := extractServiceFlows(root, opts, b)
+		flows = append(flows, serviceFlows...)
+		calls = mergeRPCCalls(calls, serviceCalls)
+	}
 	// What the service calls is read off its flows: the generated client in
 	// the tree names the rpc, and a step on it is the call being made.
 	service.Consumes = calls

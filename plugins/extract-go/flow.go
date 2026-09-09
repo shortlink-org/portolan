@@ -60,6 +60,9 @@ type flowOptions struct {
 	// events maps the import path a foreign event is vendored under to the
 	// aggregate that raised it.
 	events map[string]string
+	// serviceStyle allows conventional service structs to contain utilities
+	// such as loggers without reporting each one as an unknown application port.
+	serviceStyle bool
 }
 
 type flowReader struct {
@@ -84,6 +87,7 @@ type flowReader struct {
 	clients        map[string]map[string]client
 	// calls are the rpcs some step made, by id, for the service's consumes.
 	calls      map[string]catalog.RpcCall
+	rpcEntries map[string]string
 	warnedPeer map[string]bool
 }
 
@@ -115,7 +119,7 @@ func newFlowReader(root string, opts flowOptions, b *plugin.Builder, layouts ...
 		layout = layouts[0]
 	}
 
-	return &flowReader{
+	r := &flowReader{
 		root:           root,
 		opts:           opts,
 		layout:         layout,
@@ -131,6 +135,8 @@ func newFlowReader(root string, opts flowOptions, b *plugin.Builder, layouts ...
 		referenced:     map[string]bool{},
 		warnedPeer:     map[string]bool{},
 	}
+	r.rpcEntries = rpcImplementationEntries(root)
+	return r
 }
 
 // consumes is every rpc the flows made, in id order, so the fragment is the
@@ -744,11 +750,11 @@ func (r *flowReader) call(d *flowDraft, s *scope, site callSite, depth int) {
 	switch x := selector.X.(type) {
 	case *ast.SelectorExpr:
 		// uc.<port>.<Method>(...): the only shape that is a hop.
-		receiver, ok := x.X.(*ast.Ident)
-		if !ok || receiver.Name != s.recv {
+		field, ok := receiverField(x, s.recv)
+		if !ok {
 			return
 		}
-		r.portCall(d, s, x.Sel.Name, method, site, depth)
+		r.portCall(d, s, field, method, site, depth)
 
 	case *ast.Ident:
 		switch {
@@ -802,6 +808,22 @@ func (r *flowReader) portCall(d *flowDraft, s *scope, field, method string, site
 		return
 	}
 
+	// A conventional service object is a local application boundary rather
+	// than a UseCase.Handle. Follow it with the same source-order walker. This
+	// is common in older feature-sliced Go services and in small gRPC servers.
+	if targetPkg, targetType, target := r.localMethod(s.pkg, declared, s.imports, method); target != nil {
+		key := targetPkg.dir + ":" + targetType + "." + method
+		if !d.seen[key] && depth <= maxInline {
+			d.seen[key] = true
+			d.add(catalog.Step{From: r.opts.svcID, To: r.opts.svcID, Kind: catalog.StepCall, Label: method, Line: at(source, line)})
+			r.walkBody(d, &scope{
+				pkg: targetPkg, key: key, fields: fieldsOfStruct(targetPkg, targetType), imports: importsOf(targetPkg),
+				vars: map[string]domainRef{}, recv: receiverIdent(target), recvType: targetType,
+			}, target, depth+1)
+		}
+		return
+	}
+
 	// A port this use case declares, bound in assembly to another use case:
 	// by method when the adapter reaches several, by port otherwise.
 	target, ok := r.bindings[s.key+"."+declared+"."+method]
@@ -831,11 +853,20 @@ func (r *flowReader) portCall(d *flowDraft, s *scope, field, method string, site
 	// A port of the domain: the store is at the other end of it.
 	aggregate, name, ok := domainSelector(declared, s.imports)
 	if !ok {
+		if storeLike(field, declared, s.imports) {
+			d.add(catalog.Step{From: r.opts.svcID, To: r.storeLane(d), Kind: catalog.StepCall, Label: method, Line: at(source, line)})
+			return
+		}
 		selector, _, _ := strings.Cut(strings.TrimPrefix(declared, "*"), ".")
 		if applicationSupportImport(s.imports[selector]) {
 			// Application services such as password hashing are local work,
 			// not a hop to another participant in the architecture flow.
 			return
+		}
+		if r.opts.serviceStyle {
+			if imported := r.importPath(selector, s.imports); imported != "" && (r.module == "" || !strings.HasPrefix(imported, r.module+"/")) {
+				return
+			}
 		}
 		r.b.Warn(s.key, s.pkg.dir+": port `"+field+" "+declared+"` is neither a domain port nor a use case; its calls are left out of the flow")
 
@@ -891,13 +922,14 @@ func (r *flowReader) rpcHop(d *flowDraft, hop rpcHop, line string) {
 	// operationId - rather than the Go method the client offers it under:
 	// GetUserWithResponse is how the client is called, getUser is what runs.
 	d.add(catalog.Step{
-		From:   r.opts.svcID,
-		To:     lane,
-		Kind:   catalog.StepRPC,
-		Ref:    id,
-		Label:  id[strings.LastIndex(id, "/")+1:],
-		Status: status,
-		Line:   line,
+		From:        r.opts.svcID,
+		To:          lane,
+		Kind:        catalog.StepRPC,
+		Ref:         id,
+		Label:       id[strings.LastIndex(id, "/")+1:],
+		Status:      status,
+		Line:        line,
+		ContinuesAt: r.rpcEntries[id],
 	})
 
 	if _, seen := r.calls[id]; !seen {
@@ -1312,6 +1344,11 @@ func importsOf(pkg *pkg) map[string]string {
 				name = spec.Name.Name
 			}
 			out[name] = importPath
+			// Several imports may share their final path segment while declaring
+			// distinct package names (billing_rpc, book_rpc, user_rpc all live in
+			// directories named rpc). Retain every path so clientOf can resolve
+			// the declared package name from the imported package itself.
+			out[importPath] = importPath
 
 			// A feature-sliced domain commonly lives in .../user/domain while
 			// declaring `package user`. Go binds the declared package name, not

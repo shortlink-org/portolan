@@ -22,6 +22,53 @@ type sourceLayout struct {
 	grpc              []string
 }
 
+// scoped keeps the packages owned by one deployable in a shared Go module.
+// The flow reader may still follow explicit imports outside this set; the
+// scope decides ownership, not reachability.
+func (l sourceLayout) scoped(scope string) sourceLayout {
+	prefix := "internal/" + strings.Trim(scope, "/") + "/"
+	keep := func(dir string) bool { return dir == strings.TrimSuffix(prefix, "/") || strings.HasPrefix(dir, prefix) }
+	out := sourceLayout{
+		domains: map[string]string{}, useCases: map[string]string{}, integrationEvents: map[string]string{},
+	}
+	for _, dir := range l.packages {
+		if keep(dir) {
+			out.packages = append(out.packages, dir)
+		}
+	}
+	for name, dir := range l.domains {
+		if keep(dir) {
+			out.domains[name] = dir
+		}
+	}
+	for name, dir := range l.useCases {
+		if keep(dir) {
+			out.useCases[name] = dir
+		}
+	}
+	for name, dir := range l.integrationEvents {
+		if keep(dir) {
+			out.integrationEvents[name] = dir
+		}
+	}
+	for _, dir := range l.policies {
+		if keep(dir) {
+			out.policies = append(out.policies, dir)
+		}
+	}
+	for _, dir := range l.http {
+		if keep(dir) {
+			out.http = append(out.http, dir)
+		}
+	}
+	for _, dir := range l.grpc {
+		if keep(dir) {
+			out.grpc = append(out.grpc, dir)
+		}
+	}
+	return out
+}
+
 func discoverLayout(root string) sourceLayout {
 	layout := sourceLayout{
 		packages:          goPackageDirs(root, "internal"),
