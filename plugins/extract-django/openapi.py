@@ -2,7 +2,7 @@
 
 The same rules as `plugins/openapi/ids.go`, spelled a second time so that a
 Django caller and the service that answers spell one call the same way:
-`auth.v1.Sessions/validateSession` on both sides, or the call would never
+`auth.v1/validateSession` on both sides, or the call would never
 resolve to the method.
 
 The reader underneath is a small one. A document is a mapping of mappings with
@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
@@ -30,18 +29,9 @@ def api_id(title: str, version: str) -> str:
     return name + ".v" + major if major else name
 
 
-def title_of(name: str) -> str:
-    """users becomes Users, price_list becomes PriceList: it sits in an id
-    beside a proto-shaped service name."""
-    out = ""
-    for word in re.split(r"[_\-\s]+", name):
-        if word:
-            out += word[0].upper() + word[1:]
-    return out
-
-
-def interface_id(api: str, tag: str) -> str:
-    return api + "." + title_of(tag) if tag else api
+def interface_id(api: str, _tag: str) -> str:
+    """Tags organise operations inside a contract; they do not create interfaces."""
+    return api
 
 
 @dataclass

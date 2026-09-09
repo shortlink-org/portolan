@@ -29,7 +29,7 @@ sequenceDiagram
     participant p4 as shop.pricing
     participant p5 as bus
     p0->>p1: checkout → CheckedOut
-    p1->>p2: validateSession
+    p1->>p2: validateSession → SessionInfo
     p1->>p3: byId
     p1->>p4: GetQuote → GetQuoteResponse
     p1->>p3: save
@@ -42,8 +42,8 @@ sequenceDiagram
 1. **client** → **shop.cart** — checkout → CheckedOut
    [`examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:60`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts#L60) · Seen running in telemetry/traces.jsonl (1 trace).
 <a id="step-s2"></a>
-2. **shop.cart** → **auth.auth** — validateSession
-   `auth.v1.Sessions/validateSession` · status: declared · [`examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:44`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts#L44)
+2. **shop.cart** → **auth.auth** — validateSession → SessionInfo
+   `auth.v1/validateSession` · [`examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:44`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts#L44) · Seen running in telemetry/traces.jsonl (1 trace).
 <a id="step-s3"></a>
 3. **shop.cart** → **cart-pg** — byId
    status: declared · [`examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:48`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts#L48)

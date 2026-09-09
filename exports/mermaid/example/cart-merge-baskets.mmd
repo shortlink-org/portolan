@@ -6,7 +6,7 @@ sequenceDiagram
     participant p3 as cart-pg
     participant p4 as bus
     p0->>p1: mergeBaskets → Basket
-    p1->>p2: validateSession
+    p1->>p2: validateSession → SessionInfo
     p1->>p3: openFor
     p1->>p3: save
     p1-)p4: BasketCreated

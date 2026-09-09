@@ -27,7 +27,7 @@ sequenceDiagram
     participant p3 as cart-pg
     participant p4 as bus
     p0->>p1: mergeBaskets → Basket
-    p1->>p2: validateSession
+    p1->>p2: validateSession → SessionInfo
     p1->>p3: openFor
     p1->>p3: save
     p1-)p4: BasketCreated
@@ -42,8 +42,8 @@ sequenceDiagram
 1. **client** → **shop.cart** — mergeBaskets → Basket
    [`examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:54`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts#L54) · Seen running in telemetry/traces.jsonl (1 trace).
 <a id="step-s2"></a>
-2. **shop.cart** → **auth.auth** — validateSession
-   `auth.v1.Sessions/validateSession` · status: declared · [`examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:28`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts#L28)
+2. **shop.cart** → **auth.auth** — validateSession → SessionInfo
+   `auth.v1/validateSession` · [`examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:28`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts#L28) · Seen running in telemetry/traces.jsonl (1 trace).
 <a id="step-s3"></a>
 3. **shop.cart** → **cart-pg** — openFor
    status: declared · [`examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:35`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts#L35)

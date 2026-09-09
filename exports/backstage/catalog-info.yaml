@@ -1253,6 +1253,8 @@ metadata:
         backstage.io/source-location: url:https://github.com/shortlink-org/portolan/tree/main/examples/shop/billing
         portolan.io/id: shop.billing
 spec:
+    consumesApis:
+        - api:default/auth-v1
     dependsOn:
         - component:default/auth-auth
         - resource:default/shop-billing-pg
@@ -2384,6 +2386,8 @@ metadata:
           type: command
 spec:
     consumesApis:
+        - api:default/auth-v1
+        - api:default/cart-v1
         - api:default/delivery-v1-delivery
         - api:default/shop-v1-orderservice
     dependsOn:

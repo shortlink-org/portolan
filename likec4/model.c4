@@ -311,13 +311,10 @@ payment was captured, and what that means for a parcel is decided here.'
     style { color declared  line dashed  head onormal }
   }
   shop.cart -[calls]-> auth.auth 'validateSession' 'HTTP' {
-    style { color declared  line dashed  head normal }
+    style { color verified  line solid  head normal }
   }
   shop.cart -[calls]-> shop.pricing 'GetQuote' 'gRPC' {
     style { color declared  line dashed  head normal }
-  }
-  shop.cart -[calls]-> auth.auth 'validateSession' {
-    style { color verified  line solid  head normal }
   }
   shop.oms -[consumes]-> payments.ledger 'OrderCancelled' {
     style { color declared  line dashed  head onormal }

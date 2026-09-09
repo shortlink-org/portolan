@@ -2,7 +2,7 @@
 
 The route is in the code and the document beside this file says which operation
 answers on it, so the call is recorded under the id auth's own extractor gives
-it: `auth.v1.Sessions/validateSession`.
+it: `auth.v1/validateSession`.
 """
 
 import os

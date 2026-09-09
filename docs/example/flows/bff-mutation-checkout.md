@@ -25,7 +25,7 @@ sequenceDiagram
     participant p1 as storefront.bff
     participant p2 as shop.cart
     p0->>p1: Mutation.checkout → Checkout
-    p1->>p2: checkout
+    p1->>p2: checkout → CheckedOut
 ```
 
 ## Steps
@@ -34,5 +34,5 @@ sequenceDiagram
 1. **client** → **storefront.bff** — Mutation.checkout → Checkout
    status: declared · [`examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts:11`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts#L11)
 <a id="step-s2"></a>
-2. **storefront.bff** → **shop.cart** — checkout
-   `cart.v1.Baskets/checkout` · status: declared · [`examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts:12`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts#L12)
+2. **storefront.bff** → **shop.cart** — checkout → CheckedOut
+   `cart.v1/checkout` · status: declared · [`examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts:12`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts#L12)

@@ -1,9 +1,48 @@
 import { defineConfig } from "vitest/config";
 
+const exampleCatalogTests = [
+  "src/routes.test.ts",
+  "src/flow/answers.test.ts",
+  "src/flow/cross-context.test.ts",
+  "src/lib/api.test.ts",
+  "src/lib/palette.test.ts",
+  "src/likec4/mapping.test.ts",
+  "src/selection/hash.test.ts",
+  "src/selection/model.test.ts",
+  "src/selection/pages.test.ts",
+  "src/selection/store.test.ts",
+  "src/trail/model.test.ts",
+];
+const allTests = [
+  "src/**/*.test.ts",
+  "scripts/**/*.test.mjs",
+  "cli/**/*.test.mjs",
+  "plugins/extract-ts/**/*.test.ts",
+];
+const excludedTests = ["**/node_modules/**", "plugins/extract-ts/testdata/**"];
+
 export default defineConfig({
   test: {
-    environment: "node",
-    include: ["src/**/*.test.ts", "scripts/**/*.test.mjs", "cli/**/*.test.mjs", "plugins/extract-ts/**/*.test.ts"],
-    exclude: ["**/node_modules/**", "plugins/extract-ts/testdata/**"],
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: "example catalog",
+          environment: "node",
+          setupFiles: ["./src/testing/setup.ts"],
+          include: exampleCatalogTests,
+          exclude: excludedTests,
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: "default catalog",
+          environment: "node",
+          include: allTests,
+          exclude: [...excludedTests, ...exampleCatalogTests],
+        },
+      },
+    ],
   },
 });

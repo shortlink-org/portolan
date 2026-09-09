@@ -81,7 +81,7 @@
           ],
           "consumes": [
             {
-              "id": "pricing.v1.Quotes/createQuote",
+              "id": "pricing.v1/createQuote",
               "peer": "shop.pricing",
               "status": "declared",
               "source": "plugins/extract-django/testdata/billing/invoices/clients/pricing/openapi.yaml"
@@ -567,7 +567,7 @@
                   "kind": "rpc",
                   "label": "createQuote",
                   "status": "declared",
-                  "ref": "pricing.v1.Quotes/createQuote",
+                  "ref": "pricing.v1/createQuote",
                   "line": "plugins/extract-django/testdata/billing/invoices/services.py:20"
                 }
               ]

@@ -8,7 +8,7 @@ sequenceDiagram
     participant p5 as Celery · billing
     participant p6 as bus
     p0->>p1: invoice_issue
-    p1->>p2: validateSession
+    p1->>p2: validateSession → SessionInfo
     p1->>p3: Invoice.objects.get
     p1->>p3: Invoice.save
     p1->>p4: enqueue send_invoice_email

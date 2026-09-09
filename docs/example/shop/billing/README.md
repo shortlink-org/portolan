@@ -147,7 +147,7 @@ celery -A config worker -Q billing,billing.mail
 
 | Call | Peer | Status | Source |
 | --- | --- | --- | --- |
-| `auth.v1.Sessions/validateSession` | [auth.auth](../../auth/auth/README.md) | declared | [`examples/shop/billing/invoices/clients/auth/openapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/clients/auth/openapi.yaml) |
+| `auth.v1/validateSession` | [auth.auth](../../auth/auth/README.md) | declared | [`examples/shop/billing/invoices/clients/auth/openapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/clients/auth/openapi.yaml) |
 
 ## Publishes
 

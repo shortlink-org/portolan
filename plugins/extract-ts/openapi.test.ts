@@ -2,7 +2,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { apiID, callID, documentApiID, findOperation, interfaceID, readSpec, tagTitle } from "./openapi.ts";
+import { apiID, callID, documentApiID, findOperation, interfaceID, readSpec } from "./openapi.ts";
 
 // The same cases plugins/openapi/ids_test.go holds the Go side to.
 describe("openapi ids", () => {
@@ -14,9 +14,8 @@ describe("openapi ids", () => {
     expect(documentApiID(" stripe.v1 ", "Stripe API", "2026-08-26.dahlia")).toBe("stripe.v1");
     expect(documentApiID("", "Stripe API", "2026-08-26.dahlia")).toBe("stripe-api.v2026-08-26");
   });
-  it("titles tags and builds interface ids", () => {
-    expect(tagTitle("price_list")).toBe("PriceList");
-    expect(interfaceID("auth.v1", "sessions")).toBe("auth.v1.Sessions");
+  it("keeps tags inside the document's interface", () => {
+    expect(interfaceID("auth.v1", "sessions")).toBe("auth.v1");
     expect(interfaceID("auth.v1", "")).toBe("auth.v1");
   });
 });
@@ -55,9 +54,9 @@ describe("readSpec and findOperation", () => {
   });
   it("finds a route however the parameter is spelled", () => {
     const login = findOperation(spec, "post", "/v1/sessions")!;
-    expect(callID(spec, login)).toBe("auth.v1.Sessions/login");
-    expect(callID(spec, findOperation(spec, "GET", "/v1/users/{userId}")!)).toBe("auth.v1.Users/getUser");
-    expect(callID(spec, findOperation(spec, "GET", "/v1/users/${id}")!)).toBe("auth.v1.Users/getUser");
+    expect(callID(spec, login)).toBe("auth.v1/login");
+    expect(callID(spec, findOperation(spec, "GET", "/v1/users/{userId}")!)).toBe("auth.v1/getUser");
+    expect(callID(spec, findOperation(spec, "GET", "/v1/users/${id}")!)).toBe("auth.v1/getUser");
     expect(callID(spec, findOperation(spec, "GET", "/v1/health")!)).toBe("auth.v1/GET /v1/health");
     expect(findOperation(spec, "DELETE", "/v1/sessions")).toBeUndefined();
   });

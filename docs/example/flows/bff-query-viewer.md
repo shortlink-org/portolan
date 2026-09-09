@@ -25,7 +25,7 @@ sequenceDiagram
     participant p1 as storefront.bff
     participant p2 as auth.auth
     p0->>p1: Query.viewer → Viewer
-    p1->>p2: validateSession
+    p1->>p2: validateSession → SessionInfo
 ```
 
 ## Steps
@@ -34,5 +34,5 @@ sequenceDiagram
 1. **client** → **storefront.bff** — Query.viewer → Viewer
    status: declared · [`examples/bff/src/schema/viewer/resolvers/Query/viewer.ts:8`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/viewer/resolvers/Query/viewer.ts#L8)
 <a id="step-s2"></a>
-2. **storefront.bff** → **auth.auth** — validateSession
-   `auth.v1.Sessions/validateSession` · status: declared · [`examples/bff/src/schema/viewer/resolvers/Query/viewer.ts:9`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/viewer/resolvers/Query/viewer.ts#L9)
+2. **storefront.bff** → **auth.auth** — validateSession → SessionInfo
+   `auth.v1/validateSession` · status: declared · [`examples/bff/src/schema/viewer/resolvers/Query/viewer.ts:9`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/viewer/resolvers/Query/viewer.ts#L9)

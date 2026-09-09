@@ -18,7 +18,7 @@ import type { WarningSink } from "./domain.ts";
 
 /** One call the adapter makes, in the catalog's terms. */
 export interface RpcHop {
-  /** "auth.v1.Sessions/validateSession" or "shop.v1.Pricing/GetQuote" */
+  /** "auth.v1/validateSession" or "shop.v1.Pricing/GetQuote" */
   id: string;
   /** What the manifest's peers map is keyed by: the api id or the proto package. */
   pkg: string;

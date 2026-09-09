@@ -265,7 +265,7 @@ class Reading(unittest.TestCase):
         self.assertEqual(wire["InvoiceIssued"], {"name": "billing.InvoiceIssued", "channel": "shop.billing.invoice"})
 
     def test_a_client_call_is_the_id_the_callee_would_give_it(self):
-        self.assertEqual([c["id"] for c in self.service["consumes"]], ["pricing.v1.Quotes/createQuote"])
+        self.assertEqual([c["id"] for c in self.service["consumes"]], ["pricing.v1/createQuote"])
         self.assertEqual(self.service["consumes"][0]["peer"], "shop.pricing")
 
     def test_the_http_contract_points_at_the_generated_openapi_document(self):

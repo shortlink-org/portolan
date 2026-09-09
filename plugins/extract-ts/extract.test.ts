@@ -114,7 +114,7 @@ describe("the service", () => {
 
   it("records what it calls, named the way the callee names the method", () => {
     expect(svc.consumes.map((c: { id: string; peer: string; status: string }) => `${c.id}→${c.peer}:${c.status}`)).toEqual([
-      "auth.v1.Sessions/validateSession→auth.auth:declared",
+      "auth.v1/validateSession→auth.auth:declared",
       "shop.v1.Pricing/GetQuote→shop.pricing:declared",
     ]);
   });
@@ -146,7 +146,7 @@ describe("the flows", () => {
     ]);
     expect(checkout.participants.map((p) => `${p.id}/${p.kind}`)).toContain("auth.auth/service");
     const rpc = checkout.steps[1] as Step;
-    expect(rpc.ref).toBe("auth.v1.Sessions/validateSession");
+    expect(rpc.ref).toBe("auth.v1/validateSession");
   });
 
   it("opens a policy on the bus and draws its choices", () => {

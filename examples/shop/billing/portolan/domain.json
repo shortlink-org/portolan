@@ -81,7 +81,7 @@
           ],
           "consumes": [
             {
-              "id": "auth.v1.Sessions/validateSession",
+              "id": "auth.v1/validateSession",
               "peer": "auth.auth",
               "status": "declared",
               "source": "examples/shop/billing/invoices/clients/auth/openapi.yaml"
@@ -604,7 +604,7 @@
           "kind": "rpc",
           "label": "validateSession",
           "status": "declared",
-          "ref": "auth.v1.Sessions/validateSession",
+          "ref": "auth.v1/validateSession",
           "line": "examples/shop/billing/invoices/services.py:40"
         },
         {

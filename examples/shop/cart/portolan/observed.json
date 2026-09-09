@@ -153,9 +153,10 @@
           "from": "shop.cart",
           "to": "auth.auth",
           "kind": "rpc",
-          "ref": "auth.v1.Sessions/validateSession",
+          "ref": "auth.v1/validateSession",
           "label": "validateSession",
-          "status": "declared",
+          "status": "verified",
+          "note": "Seen running in telemetry/traces.jsonl (1 trace).",
           "line": "examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:44"
         },
         {
@@ -353,9 +354,10 @@
           "from": "shop.cart",
           "to": "auth.auth",
           "kind": "rpc",
-          "ref": "auth.v1.Sessions/validateSession",
+          "ref": "auth.v1/validateSession",
           "label": "validateSession",
-          "status": "declared",
+          "status": "verified",
+          "note": "Seen running in telemetry/traces.jsonl (1 trace).",
           "line": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:28"
         },
         {

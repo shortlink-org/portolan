@@ -25,7 +25,7 @@ sequenceDiagram
     participant p1 as storefront.bff
     participant p2 as shop.cart
     p0->>p1: Query.basket → Basket
-    p1->>p2: getBasket
+    p1->>p2: getBasket → Basket
 ```
 
 ## Steps
@@ -34,5 +34,5 @@ sequenceDiagram
 1. **client** → **storefront.bff** — Query.basket → Basket
    status: declared · [`examples/bff/src/schema/basket/resolvers/Query/basket.ts:4`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Query/basket.ts#L4)
 <a id="step-s2"></a>
-2. **storefront.bff** → **shop.cart** — getBasket
-   `cart.v1.Baskets/getBasket` · status: declared · [`examples/bff/src/schema/basket/resolvers/Query/basket.ts:5`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Query/basket.ts#L5)
+2. **storefront.bff** → **shop.cart** — getBasket → Basket
+   `cart.v1/getBasket` · status: declared · [`examples/bff/src/schema/basket/resolvers/Query/basket.ts:5`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Query/basket.ts#L5)

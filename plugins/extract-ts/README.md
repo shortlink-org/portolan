@@ -221,7 +221,7 @@ bus; a field read off one is not.
 the path in the code - `client.GET("/v1/sessions/current", …)` - and the
 document vendored beside `gen/types.ts` says which operation answers on that
 route and which interface it belongs to, spelled by `plugins/openapi` so the
-call and the method on the other side share one id: `auth.v1.Sessions/validateSession`.
+call and the method on the other side share one id: `auth.v1/validateSession`.
 **gRPC peer.** A Connect-ES client is created from a service descriptor whose
 `typeName` is the proto service, `shop.v1.Pricing`, and a call on it is the
 method in the descriptor's own case: `client.getQuote(…)` is

@@ -3478,7 +3478,7 @@ celery -A config worker -Q billing,billing.mail
 
 | Call | Peer | Status | Source |
 | --- | --- | --- | --- |
-| `auth.v1.Sessions/validateSession` | [auth.auth](../../auth/auth/README.md) | declared | [`examples/shop/billing/invoices/clients/auth/openapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/clients/auth/openapi.yaml) |
+| `auth.v1/validateSession` | [auth.auth](../../auth/auth/README.md) | declared | [`examples/shop/billing/invoices/clients/auth/openapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/clients/auth/openapi.yaml) |
 
 ## Publishes
 
@@ -3862,8 +3862,7 @@ Docker the tests that need Postgres or NATS are skipped.
 
 | Call | Peer | Status | Source |
 | --- | --- | --- | --- |
-| `auth.v1.Sessions/validateSession` | [auth.auth](../../auth/auth/README.md) | declared | [`examples/shop/cart/src/infrastructure/auth/gen/openapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/auth/gen/openapi.yaml) |
-| `auth.v1/validateSession` | [auth.auth](../../auth/auth/README.md) | verified | [`telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/telemetry/traces.jsonl) |
+| `auth.v1/validateSession` | [auth.auth](../../auth/auth/README.md) | verified | [`examples/shop/cart/src/infrastructure/auth/gen/openapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/auth/gen/openapi.yaml) |
 | `shop.v1.Pricing/GetQuote` | [shop.pricing](../pricing/README.md) | declared | [`examples/shop/cart/src/infrastructure/pricing/proto/shop/v1/pricing.proto`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/pricing/proto/shop/v1/pricing.proto) |
 
 ## Publishes
@@ -5380,11 +5379,11 @@ schema. `npm run generate` reproduces them.
 
 | Call | Peer | Status | Source |
 | --- | --- | --- | --- |
-| `auth.v1.Sessions/validateSession` | [auth.auth](../../auth/auth/README.md) | declared | [`examples/bff/src/infrastructure/auth/gen/openapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/infrastructure/auth/gen/openapi.yaml) |
-| `cart.v1.Baskets/addItem` | [shop.cart](../../shop/cart/README.md) | declared | [`examples/bff/src/infrastructure/cart/gen/openapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/infrastructure/cart/gen/openapi.yaml) |
-| `cart.v1.Baskets/checkout` | [shop.cart](../../shop/cart/README.md) | declared | [`examples/bff/src/infrastructure/cart/gen/openapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/infrastructure/cart/gen/openapi.yaml) |
-| `cart.v1.Baskets/getBasket` | [shop.cart](../../shop/cart/README.md) | declared | [`examples/bff/src/infrastructure/cart/gen/openapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/infrastructure/cart/gen/openapi.yaml) |
-| `cart.v1.Baskets/removeItem` | [shop.cart](../../shop/cart/README.md) | declared | [`examples/bff/src/infrastructure/cart/gen/openapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/infrastructure/cart/gen/openapi.yaml) |
+| `auth.v1/validateSession` | [auth.auth](../../auth/auth/README.md) | declared | [`examples/bff/src/infrastructure/auth/gen/openapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/infrastructure/auth/gen/openapi.yaml) |
+| `cart.v1/addItem` | [shop.cart](../../shop/cart/README.md) | declared | [`examples/bff/src/infrastructure/cart/gen/openapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/infrastructure/cart/gen/openapi.yaml) |
+| `cart.v1/checkout` | [shop.cart](../../shop/cart/README.md) | declared | [`examples/bff/src/infrastructure/cart/gen/openapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/infrastructure/cart/gen/openapi.yaml) |
+| `cart.v1/getBasket` | [shop.cart](../../shop/cart/README.md) | declared | [`examples/bff/src/infrastructure/cart/gen/openapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/infrastructure/cart/gen/openapi.yaml) |
+| `cart.v1/removeItem` | [shop.cart](../../shop/cart/README.md) | declared | [`examples/bff/src/infrastructure/cart/gen/openapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/infrastructure/cart/gen/openapi.yaml) |
 | `delivery.v1.Delivery/GetShipment` | [delivery.core](../../delivery/core/README.md) | declared | [`examples/bff/src/infrastructure/delivery/proto/delivery/v1/delivery.proto`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/infrastructure/delivery/proto/delivery/v1/delivery.proto) |
 | `shop.v1.OrderService/CancelOrder` | [shop.oms](../../shop/oms/README.md) | declared | [`examples/bff/src/infrastructure/oms/proto/shop/v1/orders.proto`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/infrastructure/oms/proto/shop/v1/orders.proto) |
 | `shop.v1.OrderService/GetOrder` | [shop.oms](../../shop/oms/README.md) | declared | [`examples/bff/src/infrastructure/oms/proto/shop/v1/orders.proto`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/infrastructure/oms/proto/shop/v1/orders.proto) |
@@ -6628,7 +6627,7 @@ sequenceDiagram
     participant p1 as storefront.bff
     participant p2 as shop.cart
     p0->>p1: Mutation.addItem → Basket
-    p1->>p2: addItem
+    p1->>p2: addItem → Basket
 ```
 
 ## Steps
@@ -6637,8 +6636,8 @@ sequenceDiagram
 1. **client** → **storefront.bff** — Mutation.addItem → Basket
    status: declared · [`examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts:8`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts#L8)
 <a id="step-s2"></a>
-2. **storefront.bff** → **shop.cart** — addItem
-   `cart.v1.Baskets/addItem` · status: declared · [`examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts:9`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts#L9)
+2. **storefront.bff** → **shop.cart** — addItem → Basket
+   `cart.v1/addItem` · status: declared · [`examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts:9`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts#L9)
 
 <!-- flows/bff-mutation-cancel-order.md -->
 
@@ -6710,7 +6709,7 @@ sequenceDiagram
     participant p1 as storefront.bff
     participant p2 as shop.cart
     p0->>p1: Mutation.checkout → Checkout
-    p1->>p2: checkout
+    p1->>p2: checkout → CheckedOut
 ```
 
 ## Steps
@@ -6719,8 +6718,8 @@ sequenceDiagram
 1. **client** → **storefront.bff** — Mutation.checkout → Checkout
    status: declared · [`examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts:11`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts#L11)
 <a id="step-s2"></a>
-2. **storefront.bff** → **shop.cart** — checkout
-   `cart.v1.Baskets/checkout` · status: declared · [`examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts:12`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts#L12)
+2. **storefront.bff** → **shop.cart** — checkout → CheckedOut
+   `cart.v1/checkout` · status: declared · [`examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts:12`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts#L12)
 
 <!-- flows/bff-mutation-remove-item.md -->
 
@@ -6749,7 +6748,7 @@ sequenceDiagram
     participant p1 as storefront.bff
     participant p2 as shop.cart
     p0->>p1: Mutation.removeItem → Basket
-    p1->>p2: removeItem
+    p1->>p2: removeItem → Basket
 ```
 
 ## Steps
@@ -6758,8 +6757,8 @@ sequenceDiagram
 1. **client** → **storefront.bff** — Mutation.removeItem → Basket
    status: declared · [`examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts:3`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts#L3)
 <a id="step-s2"></a>
-2. **storefront.bff** → **shop.cart** — removeItem
-   `cart.v1.Baskets/removeItem` · status: declared · [`examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts:4`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts#L4)
+2. **storefront.bff** → **shop.cart** — removeItem → Basket
+   `cart.v1/removeItem` · status: declared · [`examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts:4`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts#L4)
 
 <!-- flows/bff-query-basket.md -->
 
@@ -6790,7 +6789,7 @@ sequenceDiagram
     participant p1 as storefront.bff
     participant p2 as shop.cart
     p0->>p1: Query.basket → Basket
-    p1->>p2: getBasket
+    p1->>p2: getBasket → Basket
 ```
 
 ## Steps
@@ -6799,8 +6798,8 @@ sequenceDiagram
 1. **client** → **storefront.bff** — Query.basket → Basket
    status: declared · [`examples/bff/src/schema/basket/resolvers/Query/basket.ts:4`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Query/basket.ts#L4)
 <a id="step-s2"></a>
-2. **storefront.bff** → **shop.cart** — getBasket
-   `cart.v1.Baskets/getBasket` · status: declared · [`examples/bff/src/schema/basket/resolvers/Query/basket.ts:5`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Query/basket.ts#L5)
+2. **storefront.bff** → **shop.cart** — getBasket → Basket
+   `cart.v1/getBasket` · status: declared · [`examples/bff/src/schema/basket/resolvers/Query/basket.ts:5`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Query/basket.ts#L5)
 
 <!-- flows/bff-query-order.md -->
 
@@ -6909,7 +6908,7 @@ sequenceDiagram
     participant p1 as storefront.bff
     participant p2 as auth.auth
     p0->>p1: Query.viewer → Viewer
-    p1->>p2: validateSession
+    p1->>p2: validateSession → SessionInfo
 ```
 
 ## Steps
@@ -6918,8 +6917,8 @@ sequenceDiagram
 1. **client** → **storefront.bff** — Query.viewer → Viewer
    status: declared · [`examples/bff/src/schema/viewer/resolvers/Query/viewer.ts:8`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/viewer/resolvers/Query/viewer.ts#L8)
 <a id="step-s2"></a>
-2. **storefront.bff** → **auth.auth** — validateSession
-   `auth.v1.Sessions/validateSession` · status: declared · [`examples/bff/src/schema/viewer/resolvers/Query/viewer.ts:9`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/viewer/resolvers/Query/viewer.ts#L9)
+2. **storefront.bff** → **auth.auth** — validateSession → SessionInfo
+   `auth.v1/validateSession` · status: declared · [`examples/bff/src/schema/viewer/resolvers/Query/viewer.ts:9`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/viewer/resolvers/Query/viewer.ts#L9)
 
 <!-- flows/bff-subscription-order-status.md -->
 
@@ -7232,7 +7231,7 @@ sequenceDiagram
     participant p5 as Celery · billing
     participant p6 as bus
     p0->>p1: invoice_issue → InvoiceId
-    p1->>p2: validateSession
+    p1->>p2: validateSession → SessionInfo
     p1->>p3: Invoice.objects.get
     p1->>p3: Invoice.save
     p1->>p4: enqueue send_invoice_email
@@ -7250,8 +7249,8 @@ sequenceDiagram
 1. **client** → **shop.billing** — invoice_issue → InvoiceId
    status: declared · [`examples/shop/billing/invoices/views.py:29`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/views.py#L29)
 <a id="step-s2"></a>
-2. **shop.billing** → **auth.auth** — validateSession
-   `auth.v1.Sessions/validateSession` · status: declared · [`examples/shop/billing/invoices/services.py:40`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L40)
+2. **shop.billing** → **auth.auth** — validateSession → SessionInfo
+   `auth.v1/validateSession` · status: declared · [`examples/shop/billing/invoices/services.py:40`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L40)
 <a id="step-s3"></a>
 3. **shop.billing** → **billing-pg** — Invoice.objects.get
    status: declared · [`examples/shop/billing/invoices/services.py:41`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L41)
@@ -7504,7 +7503,7 @@ sequenceDiagram
     participant p4 as shop.pricing
     participant p5 as bus
     p0->>p1: checkout → CheckedOut
-    p1->>p2: validateSession
+    p1->>p2: validateSession → SessionInfo
     p1->>p3: byId
     p1->>p4: GetQuote → GetQuoteResponse
     p1->>p3: save
@@ -7517,8 +7516,8 @@ sequenceDiagram
 1. **client** → **shop.cart** — checkout → CheckedOut
    [`examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:60`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts#L60) · Seen running in telemetry/traces.jsonl (1 trace).
 <a id="step-s2"></a>
-2. **shop.cart** → **auth.auth** — validateSession
-   `auth.v1.Sessions/validateSession` · status: declared · [`examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:44`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts#L44)
+2. **shop.cart** → **auth.auth** — validateSession → SessionInfo
+   `auth.v1/validateSession` · [`examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:44`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts#L44) · Seen running in telemetry/traces.jsonl (1 trace).
 <a id="step-s3"></a>
 3. **shop.cart** → **cart-pg** — byId
    status: declared · [`examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:48`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts#L48)
@@ -7641,7 +7640,7 @@ sequenceDiagram
     participant p3 as cart-pg
     participant p4 as bus
     p0->>p1: mergeBaskets → Basket
-    p1->>p2: validateSession
+    p1->>p2: validateSession → SessionInfo
     p1->>p3: openFor
     p1->>p3: save
     p1-)p4: BasketCreated
@@ -7656,8 +7655,8 @@ sequenceDiagram
 1. **client** → **shop.cart** — mergeBaskets → Basket
    [`examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts:54`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/transport/http/basket/handlers.ts#L54) · Seen running in telemetry/traces.jsonl (1 trace).
 <a id="step-s2"></a>
-2. **shop.cart** → **auth.auth** — validateSession
-   `auth.v1.Sessions/validateSession` · status: declared · [`examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:28`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts#L28)
+2. **shop.cart** → **auth.auth** — validateSession → SessionInfo
+   `auth.v1/validateSession` · [`examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:28`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts#L28) · Seen running in telemetry/traces.jsonl (1 trace).
 <a id="step-s3"></a>
 3. **shop.cart** → **cart-pg** — openFor
    status: declared · [`examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:35`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts#L35)

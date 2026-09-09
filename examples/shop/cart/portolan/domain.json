@@ -19,7 +19,7 @@
           "provides": [],
           "consumes": [
             {
-              "id": "auth.v1.Sessions/validateSession",
+              "id": "auth.v1/validateSession",
               "peer": "auth.auth",
               "status": "declared",
               "source": "examples/shop/cart/src/infrastructure/auth/gen/openapi.yaml"
@@ -636,7 +636,7 @@
           "kind": "rpc",
           "label": "validateSession",
           "status": "declared",
-          "ref": "auth.v1.Sessions/validateSession",
+          "ref": "auth.v1/validateSession",
           "line": "examples/shop/cart/src/application/basket/usecases/checkout/usecase.ts:44"
         },
         {
@@ -831,7 +831,7 @@
           "kind": "rpc",
           "label": "validateSession",
           "status": "declared",
-          "ref": "auth.v1.Sessions/validateSession",
+          "ref": "auth.v1/validateSession",
           "line": "examples/shop/cart/src/application/basket/usecases/merge_baskets/usecase.ts:28"
         },
         {

@@ -25,16 +25,9 @@ export function documentApiID(declared: string, title: string, version: string):
 }
 
 /** users → Users, price_list → PriceList. */
-export function tagTitle(name: string): string {
-  return name
-    .split(/[_\- ]+/)
-    .filter(Boolean)
-    .map((w) => (w[0]! >= "a" && w[0]! <= "z" ? w[0]!.toUpperCase() + w.slice(1) : w))
-    .join("");
-}
-
-export function interfaceID(api: string, tag: string): string {
-  return tag ? `${api}.${tagTitle(tag)}` : api;
+/** Tags organise operations inside an OpenAPI contract; they do not create interfaces. */
+export function interfaceID(api: string, _tag: string): string {
+  return api;
 }
 
 export const VERBS = ["get", "put", "post", "delete", "options", "head", "patch", "trace"];

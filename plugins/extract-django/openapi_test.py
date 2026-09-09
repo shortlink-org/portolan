@@ -20,9 +20,9 @@ class Ids(unittest.TestCase):
         self.assertEqual(openapi.api_id("Price List", "2.1.0"), "price-list.v2")
         self.assertEqual(openapi.api_id("", ""), "api")
 
-    def test_an_interface_is_the_api_and_the_first_tag(self):
-        self.assertEqual(openapi.interface_id("auth.v1", "sessions"), "auth.v1.Sessions")
-        self.assertEqual(openapi.interface_id("auth.v1", "price_list"), "auth.v1.PriceList")
+    def test_tags_stay_inside_the_document_interface(self):
+        self.assertEqual(openapi.interface_id("auth.v1", "sessions"), "auth.v1")
+        self.assertEqual(openapi.interface_id("auth.v1", "price_list"), "auth.v1")
         self.assertEqual(openapi.interface_id("auth.v1", ""), "auth.v1")
 
     def test_a_parameter_is_compared_by_position(self):
@@ -39,7 +39,7 @@ class Read(unittest.TestCase):
         self.assertEqual([o.id for o in spec.operations], ["createQuote"])
         found = spec.find("POST", "/v1/quotes")
         self.assertIsNotNone(found)
-        self.assertEqual(found.call_id(spec.api), "pricing.v1.Quotes/createQuote")
+        self.assertEqual(found.call_id(spec.api), "pricing.v1/createQuote")
 
     def test_a_route_the_document_does_not_declare_finds_nothing(self):
         spec = openapi.read(DOCUMENT)

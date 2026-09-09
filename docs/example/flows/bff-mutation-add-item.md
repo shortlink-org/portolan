@@ -25,7 +25,7 @@ sequenceDiagram
     participant p1 as storefront.bff
     participant p2 as shop.cart
     p0->>p1: Mutation.addItem → Basket
-    p1->>p2: addItem
+    p1->>p2: addItem → Basket
 ```
 
 ## Steps
@@ -34,5 +34,5 @@ sequenceDiagram
 1. **client** → **storefront.bff** — Mutation.addItem → Basket
    status: declared · [`examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts:8`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts#L8)
 <a id="step-s2"></a>
-2. **storefront.bff** → **shop.cart** — addItem
-   `cart.v1.Baskets/addItem` · status: declared · [`examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts:9`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts#L9)
+2. **storefront.bff** → **shop.cart** — addItem → Basket
+   `cart.v1/addItem` · status: declared · [`examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts:9`](https://github.com/shortlink-org/portolan/blob/main/examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts#L9)

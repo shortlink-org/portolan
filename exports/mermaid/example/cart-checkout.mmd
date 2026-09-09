@@ -7,7 +7,7 @@ sequenceDiagram
     participant p4 as shop.pricing
     participant p5 as bus
     p0->>p1: checkout → CheckedOut
-    p1->>p2: validateSession
+    p1->>p2: validateSession → SessionInfo
     p1->>p3: byId
     p1->>p4: GetQuote → GetQuoteResponse
     p1->>p3: save

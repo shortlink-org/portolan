@@ -244,7 +244,7 @@ without it the wrapper is shown as an operation inside the current service.
 vendored from. The code names the verb and the route —
 `self._http.post("/v1/quotes")`, httpx or requests alike — and the document
 says which operation answers there, so the call is recorded under the id the
-callee's own extractor gives it: `pricing.v1.Quotes/createQuote`, spelled by
+callee's own extractor gives it: `pricing.v1/createQuote`, spelled by
 the same rules as `plugins/openapi`. The peer is the manifest's `peers` entry
 for that api id; without one the lane is `unknown` and the step unresolved.
 Without a document there is no id to share, and the call is recorded against

@@ -167,8 +167,7 @@ Docker the tests that need Postgres or NATS are skipped.
 
 | Call | Peer | Status | Source |
 | --- | --- | --- | --- |
-| `auth.v1.Sessions/validateSession` | [auth.auth](../../auth/auth/README.md) | declared | [`examples/shop/cart/src/infrastructure/auth/gen/openapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/auth/gen/openapi.yaml) |
-| `auth.v1/validateSession` | [auth.auth](../../auth/auth/README.md) | verified | [`telemetry/traces.jsonl`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/telemetry/traces.jsonl) |
+| `auth.v1/validateSession` | [auth.auth](../../auth/auth/README.md) | verified | [`examples/shop/cart/src/infrastructure/auth/gen/openapi.yaml`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/auth/gen/openapi.yaml) |
 | `shop.v1.Pricing/GetQuote` | [shop.pricing](../pricing/README.md) | declared | [`examples/shop/cart/src/infrastructure/pricing/proto/shop/v1/pricing.proto`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/cart/src/infrastructure/pricing/proto/shop/v1/pricing.proto) |
 
 ## Publishes

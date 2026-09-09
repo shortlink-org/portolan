@@ -19,31 +19,31 @@
           "provides": [],
           "consumes": [
             {
-              "id": "auth.v1.Sessions/validateSession",
+              "id": "auth.v1/validateSession",
               "peer": "auth.auth",
               "status": "declared",
               "source": "examples/bff/src/infrastructure/auth/gen/openapi.yaml"
             },
             {
-              "id": "cart.v1.Baskets/addItem",
+              "id": "cart.v1/addItem",
               "peer": "shop.cart",
               "status": "declared",
               "source": "examples/bff/src/infrastructure/cart/gen/openapi.yaml"
             },
             {
-              "id": "cart.v1.Baskets/checkout",
+              "id": "cart.v1/checkout",
               "peer": "shop.cart",
               "status": "declared",
               "source": "examples/bff/src/infrastructure/cart/gen/openapi.yaml"
             },
             {
-              "id": "cart.v1.Baskets/getBasket",
+              "id": "cart.v1/getBasket",
               "peer": "shop.cart",
               "status": "declared",
               "source": "examples/bff/src/infrastructure/cart/gen/openapi.yaml"
             },
             {
-              "id": "cart.v1.Baskets/removeItem",
+              "id": "cart.v1/removeItem",
               "peer": "shop.cart",
               "status": "declared",
               "source": "examples/bff/src/infrastructure/cart/gen/openapi.yaml"
@@ -117,7 +117,7 @@
           "kind": "rpc",
           "label": "getBasket",
           "status": "declared",
-          "ref": "cart.v1.Baskets/getBasket",
+          "ref": "cart.v1/getBasket",
           "line": "examples/bff/src/schema/basket/resolvers/Query/basket.ts:5"
         }
       ]
@@ -261,7 +261,7 @@
           "kind": "rpc",
           "label": "validateSession",
           "status": "declared",
-          "ref": "auth.v1.Sessions/validateSession",
+          "ref": "auth.v1/validateSession",
           "line": "examples/bff/src/schema/viewer/resolvers/Query/viewer.ts:9"
         }
       ]
@@ -309,7 +309,7 @@
           "kind": "rpc",
           "label": "addItem",
           "status": "declared",
-          "ref": "cart.v1.Baskets/addItem",
+          "ref": "cart.v1/addItem",
           "line": "examples/bff/src/schema/basket/resolvers/Mutation/addItem.ts:9"
         }
       ]
@@ -357,7 +357,7 @@
           "kind": "rpc",
           "label": "checkout",
           "status": "declared",
-          "ref": "cart.v1.Baskets/checkout",
+          "ref": "cart.v1/checkout",
           "line": "examples/bff/src/schema/basket/resolvers/Mutation/checkout.ts:12"
         }
       ]
@@ -405,7 +405,7 @@
           "kind": "rpc",
           "label": "removeItem",
           "status": "declared",
-          "ref": "cart.v1.Baskets/removeItem",
+          "ref": "cart.v1/removeItem",
           "line": "examples/bff/src/schema/basket/resolvers/Mutation/removeItem.ts:4"
         }
       ]

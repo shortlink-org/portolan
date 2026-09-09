@@ -33,7 +33,7 @@ sequenceDiagram
     participant p5 as Celery · billing
     participant p6 as bus
     p0->>p1: invoice_issue → InvoiceId
-    p1->>p2: validateSession
+    p1->>p2: validateSession → SessionInfo
     p1->>p3: Invoice.objects.get
     p1->>p3: Invoice.save
     p1->>p4: enqueue send_invoice_email
@@ -51,8 +51,8 @@ sequenceDiagram
 1. **client** → **shop.billing** — invoice_issue → InvoiceId
    status: declared · [`examples/shop/billing/invoices/views.py:29`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/views.py#L29)
 <a id="step-s2"></a>
-2. **shop.billing** → **auth.auth** — validateSession
-   `auth.v1.Sessions/validateSession` · status: declared · [`examples/shop/billing/invoices/services.py:40`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L40)
+2. **shop.billing** → **auth.auth** — validateSession → SessionInfo
+   `auth.v1/validateSession` · status: declared · [`examples/shop/billing/invoices/services.py:40`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L40)
 <a id="step-s3"></a>
 3. **shop.billing** → **billing-pg** — Invoice.objects.get
    status: declared · [`examples/shop/billing/invoices/services.py:41`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/billing/invoices/services.py#L41)

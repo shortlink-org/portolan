@@ -45,13 +45,13 @@ describe("a service read through its resolvers", () => {
   it("follows the port on the context to the peer behind it", () => {
     const [, second] = flow("bff-query-viewer").steps as Step[];
 
-    expect(second).toMatchObject({ from: "storefront.bff", to: "auth.auth", ref: "auth.v1.Sessions/validateSession" });
+    expect(second).toMatchObject({ from: "storefront.bff", to: "auth.auth", ref: "auth.v1/validateSession" });
   });
 
   it("names the call among what the service consumes", () => {
     const { consumes } = fragment().contexts[0]!.services[0]!;
 
-    expect(consumes).toEqual([{ id: "auth.v1.Sessions/validateSession", peer: "auth.auth", status: "declared", source: `${ROOT}/src/infrastructure/auth/gen/openapi.yaml` }]);
+    expect(consumes).toEqual([{ id: "auth.v1/validateSession", peer: "auth.auth", status: "declared", source: `${ROOT}/src/infrastructure/auth/gen/openapi.yaml` }]);
   });
 
   // A resolver that answers out of its arguments reaches nothing, and the flow

@@ -23,15 +23,13 @@ function auth(): Service {
 
 describe("interfaceDeclaring", () => {
   it("finds the interface a method belongs to", () => {
-    expect(interfaceDeclaring(auth(), "registerUser")?.id).toBe(
-      "auth.v1.Users",
-    );
-    expect(interfaceDeclaring(auth(), "login")?.id).toBe("auth.v1.Sessions");
+    expect(interfaceDeclaring(auth(), "registerUser")?.id).toBe("auth.v1");
+    expect(interfaceDeclaring(auth(), "login")?.id).toBe("auth.v1");
     expect(interfaceDeclaring(auth(), "nothing")).toBeUndefined();
   });
 
   it("writes a method the way the rest of the app writes one", () => {
-    expect(methodId(auth(), "registerUser")).toBe("auth.v1.Users/registerUser");
+    expect(methodId(auth(), "registerUser")).toBe("auth.v1/registerUser");
   });
 });
 
@@ -92,7 +90,7 @@ describe("methods, now that a method is more than a name", () => {
     const declared = declaredMethods(auth());
 
     expect(declared.length).toBe(methodCount(auth()));
-    expect(declared[0]?.provided.id).toBe("auth.v1.Users");
+    expect(declared[0]?.provided.id).toBe("auth.v1");
     expect(declared.map((d) => d.method.name)).toContain("login");
   });
 
