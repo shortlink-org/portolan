@@ -1,12 +1,11 @@
 import { useMemo } from "react";
 import { Link } from "react-router";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, FileCode2 } from "lucide-react";
 import { allRepos, stepFrames } from "../catalog";
 import type { Flow, Step, StepFrame } from "../catalog";
 import { catalog, index } from "../data";
 import { Ident } from "../components/Ident";
-import { EditorLink } from "../components/EditorLink";
-import { SourcePreviewButton } from "../components/SourcePreview";
+import { SourcePreviewLink } from "../components/SourcePreview";
 import { flowRepoService } from "../lib/derive";
 import { sourceLocation } from "../lib/source-link";
 import { AdrNumber, StatusChip } from "../components/primitives";
@@ -571,53 +570,58 @@ function SourceWhere({
     allRepos(catalog),
   );
 
-  const actions = (
-    <>
-      <SourcePreviewButton
-        location={location}
-        className="border px-2 py-1 border-line bg-canvas hover:bg-raised hover:no-underline"
-      />
-      {location?.href ? (
-        <a
-          href={location.href}
-          target="_blank"
-          rel="noreferrer"
-          className="mono inline-flex items-center rounded-control border px-2 py-1 border-line bg-canvas text-accent hover:bg-raised"
-          title="Open on the forge, at the built commit"
-        >
-          forge ↗
-        </a>
-      ) : null}
-      <EditorLink
-        location={location}
-        variant="text"
-        className="inline-flex items-center border px-2 py-1 border-line bg-canvas hover:bg-raised hover:no-underline"
-      />
-    </>
+  const source = (
+    <SourcePreviewLink
+      location={location}
+      className={
+        structured
+          ? "w-full min-w-0 border px-2.5 py-2 border-line bg-canvas text-ink hover:border-line-strong hover:bg-raised hover:no-underline"
+          : "max-w-full min-w-0 text-muted hover:text-accent"
+      }
+    >
+      <FileCode2 size={14} aria-hidden className="shrink-0" />
+      <span className="min-w-0 break-all text-left">{where}</span>
+    </SourcePreviewLink>
   );
 
   if (structured) {
-    return (
-      <div className="flex min-w-0 flex-col gap-2">
-        <div className="mono min-w-0 break-all text-muted">
-          <Ident block value={where} className="text-muted" />
-        </div>
-        <div className="flex flex-wrap items-center gap-1.5">{actions}</div>
-      </div>
-    );
+    return <div className="min-w-0">{source}</div>;
   }
 
-  return (
-    <div className="mono flex flex-wrap items-center gap-2 break-all text-muted">
-      <Ident block value={where} className="text-muted" />
-      {actions}
-    </div>
-  );
+  return <div className="min-w-0">{source}</div>;
 }
 
 function Where({ step, flow }: { step: Step; flow: Flow }) {
   if (!step.line) return <div className="mono text-muted">not recorded</div>;
   return <SourceWhere where={step.line} flow={flow} />;
+}
+
+function CallDetail({ step, flow }: { step: Step; flow: Flow }) {
+  return (
+    <section
+      aria-label="Call detail"
+      className="overflow-hidden rounded-card border shadow-xs border-line"
+    >
+      <header className="border-b px-3 py-2.5 border-line bg-surface">
+        <h2 className="label">Call</h2>
+        <div className="mt-2">
+          <Ident
+            block
+            value={step.label ?? "internal call"}
+            className="text-ink"
+          />
+        </div>
+      </header>
+
+      <DetailSection title="Source">
+        {step.line ? (
+          <SourceWhere where={step.line} flow={flow} structured />
+        ) : (
+          <div className="mono text-muted">not recorded</div>
+        )}
+      </DetailSection>
+    </section>
+  );
 }
 
 function StoreCallDetail({ step, flow }: { step: Step; flow: Flow }) {
@@ -745,13 +749,7 @@ export function StepDetailBody({ step, flow }: { step: Step; flow: Flow }) {
       ) : step.storeAccess ? (
         <StoreCallDetail step={step} flow={flow} />
       ) : (
-        <>
-          <div className="mono text-[13px]">
-            {step.label ?? "internal call"}
-          </div>
-          <Label>Source</Label>
-          <Where step={step} flow={flow} />
-        </>
+        <CallDetail step={step} flow={flow} />
       )}
 
       {step.note ? (
