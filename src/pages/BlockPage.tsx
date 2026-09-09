@@ -218,7 +218,13 @@ export function BlockPage({ kind }: { kind: BlockKind }) {
       <PageHeader
         kind={
           <>
-            {KIND_LABEL[kind]} ·{" "}
+            <span className="inline-flex items-center gap-1.5 font-semibold text-accent">
+              <KindIcon kind={kind} size={13} />
+              {KIND_LABEL[kind]}
+            </span>
+            <span aria-hidden className="mx-1.5 text-faint">
+              ·
+            </span>
             <Link
               to={paths.aggregate(context.id, service.slug, aggregate.slug)}
               className="rounded-control hover:text-ink hover:underline"
@@ -230,15 +236,18 @@ export function BlockPage({ kind }: { kind: BlockKind }) {
         name={block.name}
         id={block.id}
         right={
-          <span className="flex items-center gap-2">
+          <span className="flex -translate-y-0.5 items-center gap-2">
             {isRoot ? (
-              <span className="chip status-verified" title="aggregate root">
+              <span className="chip-lg status-verified" title="aggregate root">
                 <span aria-hidden className="dot" />
                 root
               </span>
             ) : null}
             {block.deprecated ? (
-              <span className="chip" title="marked @deprecated in the source">
+              <span
+                className="chip-lg"
+                title="marked @deprecated in the source"
+              >
                 deprecated
               </span>
             ) : null}
@@ -252,34 +261,32 @@ export function BlockPage({ kind }: { kind: BlockKind }) {
           </span>
         }
       >
-        <p className="mt-2 max-w-prose text-muted">{block.doc}</p>
-        <div className="mono mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-muted">
-          {block.ref ? (
-            <span className="flex items-center gap-1.5">
-              shared type
-              <Ident value={block.ref} className="text-ink" />— the same shape
-              wherever it is named
-            </span>
-          ) : (
-            <span>local to {aggregate.id} — no shared type</span>
-          )}
-          <span aria-hidden className="h-4 w-px bg-line-strong" />
-          <a
-            href={`#${BLOCK_ANCHOR.shape}`}
-            className="rounded-control hover:text-ink"
-          >
-            <span className="tnum">{fields.length}</span> fields
-          </a>
-          {block.ref ? (
-            <a
-              href={`#${LINKS_HERE}`}
-              className="rounded-control hover:text-ink"
-            >
-              <span className="tnum">{backlinkCount(links)}</span>{" "}
-              {plural(backlinkCount(links), "reference")}
-            </a>
-          ) : null}
-        </div>
+        {block.doc ? (
+          <p className="mt-2 max-w-prose text-muted">{block.doc}</p>
+        ) : null}
+        {block.ref ? (
+          <dl className="mt-2.5 grid grid-cols-1 items-start gap-x-8 gap-y-2 sm:grid-cols-[minmax(0,max-content)_max-content] sm:justify-start">
+            <div className="min-w-0">
+              <dt className="label mb-1">Type scope</dt>
+              <dd className="mono flex min-w-0 flex-wrap items-center gap-1.5 text-muted">
+                <span>shared</span>
+                <Ident value={block.ref} className="text-ink" />
+              </dd>
+            </div>
+            <div>
+              <dt className="label mb-1">References</dt>
+              <dd>
+                <a
+                  href={`#${LINKS_HERE}`}
+                  className="mono rounded-control text-ink hover:text-accent hover:underline"
+                >
+                  <span className="tnum">{backlinkCount(links)}</span>{" "}
+                  {plural(backlinkCount(links), "reference")}
+                </a>
+              </dd>
+            </div>
+          </dl>
+        ) : null}
       </PageHeader>
 
       <div className="flex gap-section p-gutter">
