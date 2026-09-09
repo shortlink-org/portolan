@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { prepareSite } from "./portolan.mjs";
+import { prepareSite, VERSION } from "./portolan.mjs";
 
 const roots = [];
 afterEach(() => {
@@ -17,7 +17,9 @@ describe("site staging", () => {
     writeFileSync(join(root, "portolan.json"), `${JSON.stringify({ sources: ["portolan/*.json"], projects: [], extract: [], verify: [], generate: [] }, null, 2)}\n`);
 
     const stage = await prepareSite(root);
+    const stagedPackage = JSON.parse(readFileSync(join(stage, "package.json"), "utf8"));
     const stagedManifest = JSON.parse(readFileSync(join(stage, "portolan.json"), "utf8"));
+    expect(stagedPackage.version).toBe(VERSION);
     expect(stagedManifest.sources).toEqual(["portolan/source-0000.json"]);
     expect(existsSync(join(stage, "portolan/source-0000.json"))).toBe(true);
   });

@@ -189,7 +189,7 @@ export async function prepareSite(workspace) {
   for (const file of ["index.html", "vite.config.ts", "tsconfig.json"]) {
     copyFileSync(resolve(installRoot, file), resolve(stage, file));
   }
-  writeFileSync(resolve(stage, "package.json"), '{"private":true,"type":"module"}\n');
+  writeFileSync(resolve(stage, "package.json"), `${JSON.stringify({ private: true, type: "module", version: VERSION })}\n`);
 
   const patternSets = [manifest.sources ?? [], ...(manifest.catalogs ?? []).map((profile) => profile.sources ?? [])];
   const allSources = new Set();
@@ -344,7 +344,7 @@ function prepareHost(workspace) {
   mkdirSync(host, { recursive: true });
   cpSync(resolve(installRoot, "scripts"), resolve(host, "scripts"), { recursive: true });
   cpSync(resolve(installRoot, "src"), resolve(host, "src"), { recursive: true });
-  writeFileSync(resolve(host, "package.json"), '{"private":true,"type":"module"}\n');
+  writeFileSync(resolve(host, "package.json"), `${JSON.stringify({ private: true, type: "module", version: VERSION })}\n`);
   symlinkSync(dependencyRoot(), resolve(host, "node_modules"), process.platform === "win32" ? "junction" : "dir");
   return host;
 }
