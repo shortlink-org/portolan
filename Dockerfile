@@ -5,7 +5,7 @@
 # host (portolan.0008), so nothing runs `go` once the image is built. Trixie
 # provides Java 21 and Python 3 for the extractors that still run in their own
 # toolchains; the Rust extractor arrives as a binary built in its own stage.
-FROM rust:1.98.0-trixie AS rust-builder
+FROM rust:1.98.1-trixie AS rust-builder
 
 WORKDIR /opt/portolan
 COPY plugins/extract-rust plugins/extract-rust
