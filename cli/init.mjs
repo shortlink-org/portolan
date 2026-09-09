@@ -75,13 +75,14 @@ export async function init(workspace, { version, ask = defaultAnswers, log = con
   writeManifest(manifestPath, manifest);
   log("created portolan.json");
 
-  const scripts = projectPackage ? await ask.scripts(Object.keys(SCRIPTS).filter((name) => !(name in (projectPackage.scripts ?? {})))) : false;
-  if (scripts) {
+  const addScripts = projectPackage ? await ask.scripts(Object.keys(SCRIPTS).filter((name) => !(name in (projectPackage.scripts ?? {})))) : false;
+  if (addScripts) {
     const merged = { ...(projectPackage.scripts ?? {}) };
     for (const [name, command] of Object.entries(SCRIPTS)) if (!(name in merged)) merged[name] = command;
     writeFileSync(resolve(workspace, "package.json"), `${JSON.stringify({ ...projectPackage, scripts: merged }, null, 2)}\n`);
     log("added architecture scripts to package.json");
   }
+  const scriptsReady = Boolean(projectPackage) && Object.keys(SCRIPTS).every((name) => addScripts || name in (projectPackage.scripts ?? {}));
 
   const ignorePath = resolve(workspace, ".gitignore");
   const ignore = existsSync(ignorePath) ? readFileSync(ignorePath, "utf8") : "";
@@ -90,8 +91,15 @@ export async function init(workspace, { version, ask = defaultAnswers, log = con
   }
 
   const generate = await ask.generate();
-  ask.finish(generate);
+  ask.finish(generate, scriptsReady);
   return { manifest, projects, generate };
+}
+
+export function nextStep(generate, scriptsReady) {
+  const command = scriptsReady
+    ? generate ? "npm run architecture" : "npm run architecture:gen && npm run architecture"
+    : generate ? "npx @shortlink-org/portolan dev" : "npx @shortlink-org/portolan generate && npx @shortlink-org/portolan dev";
+  return `${generate ? "Generating; then" : "Next"}: ${command}`;
 }
 
 /** Every question answered with its default: the `--yes` and CI path. */
@@ -103,7 +111,7 @@ export const defaultAnswers = {
   write: () => true,
   scripts: (names) => names.length > 0,
   generate: () => false,
-  finish: (generate) => { if (!generate) console.log("next: portolan generate && portolan dev"); },
+  finish: (generate, scriptsReady) => { if (!generate) console.log(nextStep(generate, scriptsReady)); },
 };
 
 /** The same questions, asked in a terminal with @clack/prompts. */
@@ -163,8 +171,8 @@ export function promptAnswers(version) {
     async generate() {
       return answer(await p.confirm({ message: "Run portolan generate now?", initialValue: true }));
     },
-    finish(generate) {
-      p.outro(generate ? "Generating; then: portolan dev" : "Next: portolan generate && portolan dev");
+    finish(generate, scriptsReady) {
+      p.outro(nextStep(generate, scriptsReady));
     },
   };
 }

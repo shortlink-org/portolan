@@ -38,6 +38,7 @@ import {
   forgetRepositoryCredential,
   inspectRepository,
   LocalApiError,
+  removeProject as removeLocalProject,
   saveRepositoryCredential,
   startGeneration,
   startProjectTrial,
@@ -288,7 +289,7 @@ function StepWarnings({ warnings }: { warnings: string[] }) {
   );
 }
 
-function ProjectCard({ project }: { project: SetupProject }) {
+function ProjectCard({ project, onRemove }: { project: SetupProject; onRemove?: (project: SetupProject) => void }) {
   const setupInfo = useSetup();
   const declared = setupInfo.steps.filter((step) => step.projectId === project.id);
   const runSteps = setupInfo.run?.steps.filter((step) => step.projectId === project.id) ?? [];
@@ -321,6 +322,7 @@ function ProjectCard({ project }: { project: SetupProject }) {
             ) : null}
           </div>
         </div>
+        {onRemove ? <button type="button" className="tbtn shrink-0 p-1.5 text-unresolved" onClick={() => onRemove(project)} aria-label={`Remove ${project.name}`} title={`Remove ${project.name}`}><Trash2 size={15} aria-hidden /></button> : null}
       </div>
 
       <dl className="mono mt-4 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-muted">
@@ -512,6 +514,35 @@ function AddProjectCard({ onAdd }: { onAdd: (source: ProjectSource) => void }) {
   );
 }
 
+function OnboardingCard({ starter, onAdd, onRemove }: { starter?: SetupProject; onAdd: (source: ProjectSource) => void; onRemove: (project: SetupProject) => void }) {
+  return (
+    <article className="mb-grid overflow-hidden rounded-card border border-accent bg-canvas shadow-xs">
+      <div className="border-b border-line bg-surface px-card py-3">
+        <div className="font-semibold text-ink">Start with your architecture</div>
+        <p className="mt-1 text-muted">Replace the starter catalog with the project you actually want to describe.</p>
+      </div>
+      <div className="grid gap-0 md:grid-cols-2">
+        <div className="flex items-start gap-3 p-card md:border-r md:border-line">
+          <span className={`flex size-7 shrink-0 items-center justify-center rounded-full ${starter ? "bg-surface text-muted" : "bg-verified text-canvas"}`}>{starter ? "1" : <Check size={15} aria-hidden />}</span>
+          <div className="min-w-0 flex-1">
+            <div className="font-medium text-ink">Remove starter documentation</div>
+            <p className="mt-1 text-muted">Drop the Portolan example project and its dedicated catalog configuration.</p>
+            {starter ? <button type="button" className="tbtn mt-3 text-unresolved" onClick={() => onRemove(starter)}><Trash2 size={14} aria-hidden /> Remove Portolan documentation</button> : <div className="mono mt-2 text-verified">starter removed</div>}
+          </div>
+        </div>
+        <div className="flex items-start gap-3 p-card">
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-surface text-muted">2</span>
+          <div className="min-w-0 flex-1">
+            <div className="font-medium text-ink">Add your project</div>
+            <p className="mt-1 text-muted">For example, connect <span className="mono text-ink">aviaadmin</span> and place it in bounded context <span className="mono text-ink">avia</span>.</p>
+            <div className="mt-3 flex flex-wrap gap-2"><button type="button" className="product-primary" onClick={() => onAdd("local")}><FolderGit2 size={14} aria-hidden /> Local folder</button><button type="button" className="tbtn" onClick={() => onAdd("external")}><GitBranch size={14} aria-hidden /> Git repository</button></div>
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 const CAPABILITIES: Record<string, { title: string; summary: string }> = {
   project: { title: "Component metadata", summary: "Name, ownership, repository and runnable commands." },
   "go-domain": { title: "Go domain model", summary: "Aggregates, entities, value objects and domain events." },
@@ -631,7 +662,9 @@ function Wizard({ open, initialSource, onClose, onAdded, onRunStarted }: { open:
 
   function configure(found: Discovery, commit: string, selectedSourcePath: string, projectId?: string) {
     setDiscovery(found);
-    setDraft({ source, root: found.root, repository, ref, commit, sourcePath: selectedSourcePath, ...found.defaults, ...(projectId ? { id: projectId } : {}), plugins: found.detections.filter((item) => item.selected).map((item) => item.plugin) });
+    const plugins = found.detections.filter((item) => item.selected).map((item) => item.plugin);
+    const domainModel = plugins.some((plugin) => ["go-domain", "ts-domain", "rust-domain", "java-domain", "django-domain"].includes(plugin));
+    setDraft({ source, root: found.root, repository, ref, commit, sourcePath: selectedSourcePath, ...found.defaults, ...(projectId ? { id: projectId } : {}), groupKind: domainModel ? "bounded-context" : "system", componentKind: domainModel ? "service" : "application", plugins });
     setStage("configure");
   }
 
@@ -769,8 +802,9 @@ function Wizard({ open, initialSource, onClose, onAdded, onRunStarted }: { open:
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="project name" value={draft.name} onChange={(name) => setDraft({ ...draft, name })} required />
               <Field label="project id" value={draft.id} onChange={(id) => setDraft({ ...draft, id })} required />
-              <Field label="group" value={draft.group} onChange={(group) => setDraft({ ...draft, group })} />
+              <Field label="bounded context / group" value={draft.group} onChange={(group) => setDraft({ ...draft, group })} placeholder="avia" />
               <Field label="component slug" value={draft.component} onChange={(component) => setDraft({ ...draft, component })} />
+              <label className="block"><span className="label mb-1.5 block">group kind</span><select className={FIELD} value={draft.groupKind ?? "system"} onChange={(event) => setDraft({ ...draft, groupKind: event.target.value as ProjectDraft["groupKind"] })}><option value="bounded-context">bounded context</option><option value="system">system</option><option value="product">product</option><option value="team">team</option><option value="namespace">namespace</option></select></label>
             </div>
             <div><div className="label mb-2">detected capabilities</div>
               {discovery.detections.length ? <div className="grid gap-2">{discovery.detections.map((item) => {
@@ -912,12 +946,14 @@ function OverviewSettings() {
   );
 }
 
-function ProjectsSettings({ local, onAdd }: { local: boolean; onAdd: (source: ProjectSource) => void }) {
+function ProjectsSettings({ local, onAdd, onRemove }: { local: boolean; onAdd: (source: ProjectSource) => void; onRemove: (project: SetupProject) => void }) {
   const setupInfo = useSetup();
+  const starter = setupInfo.projects.find((project) => project.id === "portolan" && project.root === ".");
   return (
     <section>
       <SectionTitle right={local ? <div className="flex items-center gap-3"><span className="hidden sm:inline">editable in local mode</span><button type="button" className="tbtn text-ink" onClick={() => onAdd("local")}><Plus size={14} aria-hidden /> Add project</button></div> : "declared in portolan.json"}>Projects</SectionTitle>
-      {setupInfo.projects.length === 0 && !local ? <Empty>portolan.json names no projects — every input here is the estate's own</Empty> : <div className="grid gap-grid xl:grid-cols-2">{setupInfo.projects.map((project) => <ProjectCard key={project.id} project={project} />)}{local ? <AddProjectCard onAdd={onAdd} /> : null}</div>}
+      {local && (starter || setupInfo.projects.length === 0) ? <OnboardingCard starter={starter} onAdd={onAdd} onRemove={onRemove} /> : null}
+      {setupInfo.projects.length === 0 && !local ? <Empty>portolan.json names no projects — every input here is the estate's own</Empty> : <div className="grid gap-grid xl:grid-cols-2">{setupInfo.projects.map((project) => <ProjectCard key={project.id} project={project} onRemove={local ? onRemove : undefined} />)}{local ? <AddProjectCard onAdd={onAdd} /> : null}</div>}
     </section>
   );
 }
@@ -947,7 +983,7 @@ function PipelineSettings() {
   );
 }
 
-function SettingsContent({ local, onAdd, onGenerate }: { local: boolean; onAdd: (source: ProjectSource) => void; onGenerate: () => void }) {
+function SettingsContent({ local, onAdd, onRemove, onGenerate }: { local: boolean; onAdd: (source: ProjectSource) => void; onRemove: (project: SetupProject) => void; onGenerate: () => void }) {
   return (
     <div className="h-full overflow-y-auto p-gutter">
       <div className="max-w-table">
@@ -962,7 +998,7 @@ function SettingsContent({ local, onAdd, onGenerate }: { local: boolean; onAdd: 
         <div className="mt-section">
           <Routes>
             <Route index element={<OverviewSettings />} />
-            <Route path="projects" element={<ProjectsSettings local={local} onAdd={onAdd} />} />
+            <Route path="projects" element={<ProjectsSettings local={local} onAdd={onAdd} onRemove={onRemove} />} />
             <Route path="pipeline" element={<PipelineSettings />} />
             <Route path="delivery" element={<section><SectionTitle right={local ? "preview before writing" : "local mode required"}>Delivery presets</SectionTitle><DeliverySettings local={local} /></section>} />
             <Route path="preferences" element={<PreferencesSettings />} />
@@ -985,6 +1021,8 @@ export function Settings() {
   const [wizardSource, setWizardSource] = useState<ProjectSource | null>(null);
   const [runId, setRunId] = useState<string | null>(null);
   const [runOpen, setRunOpen] = useState(false);
+  const [removeTarget, setRemoveTarget] = useState<SetupProject | null>(null);
+  const [removeBusy, setRemoveBusy] = useState(false);
   const say = useToastStore((state) => state.say);
   const activeRunId = status.data?.activeRun?.id ?? null;
   useEffect(() => {
@@ -1008,10 +1046,30 @@ export function Settings() {
       say(cause instanceof Error ? cause.message : String(cause));
     }
   }
+  async function confirmRemove() {
+    if (!removeTarget) return;
+    setRemoveBusy(true);
+    try {
+      const result = await removeLocalProject(removeTarget.id);
+      setSetup(result.setup);
+      setRemoveTarget(null);
+      say(`${result.project.name} removed from portolan.json.`);
+      await generate();
+    } catch (cause) {
+      say(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setRemoveBusy(false);
+    }
+  }
   return (
     <SetupContext.Provider value={setup}>
-      <SettingsContent local={local} onAdd={setWizardSource} onGenerate={() => void generate()} />
+      <SettingsContent local={local} onAdd={setWizardSource} onRemove={setRemoveTarget} onGenerate={() => void generate()} />
       <Wizard open={wizardSource !== null} initialSource={wizardSource ?? "local"} onClose={() => setWizardSource(null)} onAdded={setSetup} onRunStarted={(id) => { setRunId(id); setRunOpen(true); }} />
+      <Modal open={removeTarget !== null} onClose={removeBusy ? () => {} : () => setRemoveTarget(null)} label={`Remove ${removeTarget?.name ?? "project"}`} width="min(520px,92vw)">
+        <div className="border-b border-line px-5 py-4"><div className="font-semibold text-ink">Remove {removeTarget?.name}?</div></div>
+        <div className="p-5"><p className="text-muted">This removes the project, its extraction steps and its dedicated catalog configuration from <span className="mono text-ink">portolan.json</span>. Your source code stays untouched.</p><p className="mt-3 text-muted">Next, Portolan opens a generated-file preview so documentation changes remain reviewable before they are applied.</p></div>
+        <div className="flex justify-end gap-2 border-t border-line px-5 py-4"><button type="button" className="tbtn" onClick={() => setRemoveTarget(null)} disabled={removeBusy}>Cancel</button><button type="button" className="product-primary" onClick={() => void confirmRemove()} disabled={removeBusy}>{removeBusy ? <LoaderCircle size={15} className="animate-spin" /> : <Trash2 size={15} />} Remove project</button></div>
+      </Modal>
       <RunDialog runId={runId} open={runOpen} onClose={() => setRunOpen(false)} onFinished={refresh} onApply={(preview) => void generate(preview)} />
     </SetupContext.Provider>
   );

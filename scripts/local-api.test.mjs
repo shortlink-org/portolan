@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { rmSync } from "node:fs";
 
-import { classifyRepositoryFailure, diffGeneratedFiles, discoverProject, forgetRepositoryCredential, inspectionRoot, localApiPath, planProject, readLocalSource, resolveRepositoryCommit, storeRepositoryCredential, summarizeProjectTrial, writeProject } from "./local-api.mjs";
+import { classifyRepositoryFailure, diffGeneratedFiles, discoverProject, forgetRepositoryCredential, inspectionRoot, localApiPath, manifestWithoutProject, manifestWithProject, planProject, readLocalSource, resolveRepositoryCommit, storeRepositoryCredential, summarizeProjectTrial, writeProject } from "./local-api.mjs";
 import { installDeliveryPreset, planDeliveryPreset, providerFromRemote, publicDeliveryPreset } from "./delivery-presets.mjs";
 
 const PACKAGE_VERSION = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).version;
@@ -381,6 +381,62 @@ describe("local project setup", () => {
     expect(manifest.sources).toContain("services/billing/portolan/*.json");
     expect(manifest.extract.map((step) => step.plugin)).toEqual(["project", "openapi"]);
     expect(() => writeProject(root, { ...request, id: "another" })).toThrow(/already exists/);
+  });
+
+  it("removes a project's complete catalog slice without touching its neighbour", () => {
+    const manifest = {
+      sources: ["portolan/*.json", "services/billing/portolan/*.json"],
+      defaultCatalog: "portolan",
+      catalogs: [
+        { id: "portolan", title: "Portolan", sources: ["portolan/*.json"], contexts: ["portolan"], projects: ["portolan"] },
+        { id: "billing", title: "Billing", sources: ["services/billing/portolan/*.json"], contexts: ["finance"], projects: ["billing"] },
+      ],
+      projects: [
+        { id: "portolan", name: "Portolan", root: ".", group: "portolan", component: "portolan" },
+        { id: "billing", name: "Billing", root: "services/billing", group: "finance", component: "billing" },
+      ],
+      extract: [
+        { plugin: "project", in: ".", out: "portolan", options: {} },
+        { plugin: "commands", in: "scripts", out: "portolan", options: {} },
+        { plugin: "project", in: "services/billing", out: "services/billing/portolan", options: {} },
+      ],
+      verify: [
+        { plugin: "otel", in: ".", out: "portolan", options: {} },
+        { plugin: "otel", in: "services/billing", out: "services/billing/portolan", options: {} },
+      ],
+      generate: [
+        { plugin: "markdown", catalog: "portolan", out: "docs", options: {} },
+        { plugin: "markdown", catalog: "billing", out: "docs/billing", options: {} },
+      ],
+    };
+    const result = manifestWithoutProject(manifest, "portolan");
+    expect(result.manifest.projects.map((project) => project.id)).toEqual(["billing"]);
+    expect(result.manifest.sources).toEqual(["services/billing/portolan/*.json"]);
+    expect(result.manifest.extract.map((step) => step.out)).toEqual(["services/billing/portolan"]);
+    expect(result.manifest.verify.map((step) => step.out)).toEqual(["services/billing/portolan"]);
+    expect(result.manifest.catalogs.map((catalog) => catalog.id)).toEqual(["billing"]);
+    expect(result.manifest.defaultCatalog).toBe("billing");
+    expect(result.manifest.generate.map((step) => step.catalog)).toEqual(["billing"]);
+    expect(result.removedOutputs).toEqual(["docs"]);
+  });
+
+  it("keeps a valid empty-workspace source and replaces it when a project is added", () => {
+    const removed = manifestWithoutProject({
+      sources: ["portolan/*.json"],
+      projects: [{ id: "portolan", name: "Portolan", root: ".", group: "portolan", component: "portolan" }],
+      extract: [{ plugin: "project", in: ".", out: "portolan", options: {} }],
+      generate: [{ plugin: "markdown", out: "docs", options: {} }],
+    }, "portolan");
+    expect(removed.manifest).toMatchObject({ sources: ["portolan/*.json"], projects: [], extract: [] });
+    expect(removed.removedOutputs).toEqual(["docs"]);
+
+    const added = planProject(workspace(), { sources: ["portolan/*.json"], projects: [], extract: [] }, {
+      root: "services/billing", id: "aviaadmin", name: "Avia Admin", group: "avia", groupKind: "bounded-context", component: "aviaadmin", plugins: ["project"],
+    });
+    expect(added.project).toMatchObject({ id: "aviaadmin", group: "avia", groupKind: "bounded-context" });
+    expect(added.steps[0].options).toMatchObject({ group: "avia", groupKind: "bounded-context" });
+    const manifest = { sources: ["portolan/*.json"], projects: [], extract: [] };
+    expect(manifestWithProject(manifest, added).sources).toEqual(["services/billing/portolan/*.json"]);
   });
 
   it("plans a pinned external repository through the built-in git fetcher", () => {

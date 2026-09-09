@@ -693,15 +693,76 @@ export function manifestWithProject(manifest, plan, { isolated = false } = {}) {
     }
   }
   extract.push(...plan.steps);
+  const emptyStarterSources = !isolated
+    && (manifest.projects ?? []).length === 0
+    && (manifest.extract ?? []).length === 0
+    && (manifest.sources ?? []).length === 1
+    && manifest.sources[0] === "portolan/*.json";
   return {
     ...manifest,
     projects: isolated ? [plan.project] : [...(manifest.projects ?? []), plan.project],
     sources: isolated
       ? [...(plan.fetch ? ["vendor/repos/*/*/git.repo.json"] : []), plan.source]
-      : [...new Set([...(manifest.sources ?? []), ...(plan.fetch ? ["vendor/repos/*/*/git.repo.json"] : []), plan.source])],
+      : [...new Set([...(emptyStarterSources ? [] : (manifest.sources ?? [])), ...(plan.fetch ? ["vendor/repos/*/*/git.repo.json"] : []), plan.source])],
     extract,
     ...(isolated ? { verify: [], generate: [] } : {}),
   };
+}
+
+/**
+ * Remove one project's complete catalog slice while leaving neighbouring
+ * projects and shared estate inputs intact. A single placeholder source is
+ * retained when the workspace becomes empty because `sources` is the one
+ * required manifest field; the next added project replaces that placeholder.
+ */
+export function manifestWithoutProject(manifest, projectId) {
+  const id = String(projectId ?? "").trim();
+  const project = (manifest.projects ?? []).find((candidate) => candidate.id === id);
+  if (!project) throw new Error(`Project \"${id}\" does not exist.`);
+
+  const projects = (manifest.projects ?? []).filter((candidate) => candidate.id !== id);
+  const projectOut = posix.join(project.root, "portolan");
+  const projectSource = `${projectOut}/*.json`;
+  const projectGroup = project.group ?? project.context;
+  const groupStillUsed = projectGroup && projects.some((candidate) => (candidate.group ?? candidate.context) === projectGroup);
+  const belongsToProject = (step) => step?.out === projectOut;
+  const extract = (manifest.extract ?? []).filter((step) => !belongsToProject(step));
+  const verify = (manifest.verify ?? []).filter((step) => !belongsToProject(step));
+  let sources = (manifest.sources ?? []).filter((source) => source !== projectSource);
+  if (sources.length === 0) sources = ["portolan/*.json"];
+
+  const removedCatalogs = [];
+  const catalogs = (manifest.catalogs ?? []).flatMap((catalog) => {
+    const affected = catalog.projects.includes(id) || catalog.sources.includes(projectSource);
+    if (!affected) return [catalog];
+    const next = {
+      ...catalog,
+      sources: catalog.sources.filter((source) => source !== projectSource),
+      contexts: projectGroup && !groupStillUsed ? catalog.contexts.filter((context) => context !== projectGroup) : catalog.contexts,
+      projects: catalog.projects.filter((candidate) => candidate !== id),
+    };
+    if (next.sources.length > 0 && next.contexts.length > 0) return [next];
+    removedCatalogs.push(catalog.id);
+    return [];
+  });
+  const generate = (manifest.generate ?? []).filter((step) => !removedCatalogs.includes(step.catalog));
+  const removedOutputs = [
+    ...new Set((manifest.generate ?? [])
+      .filter((step) => removedCatalogs.includes(step.catalog) || (!(manifest.catalogs ?? []).length && (manifest.projects ?? []).length === 1))
+      .map((step) => step.out)
+      .filter(Boolean)),
+  ];
+
+  const next = { ...manifest, projects, sources, extract, verify, generate };
+  if (manifest.catalogs) {
+    if (catalogs.length > 0) next.catalogs = catalogs;
+    else delete next.catalogs;
+  }
+  if (removedCatalogs.includes(manifest.defaultCatalog)) {
+    if (catalogs[0]) next.defaultCatalog = catalogs[0].id;
+    else delete next.defaultCatalog;
+  }
+  return { manifest: next, project, removedOutputs };
 }
 
 export function writeManifest(path, manifest) {
@@ -723,6 +784,14 @@ export function writeProject(workspace, request) {
   const plan = planProject(workspace, manifest, request);
   writeManifest(manifestPath, manifestWithProject(manifest, plan));
   return plan;
+}
+
+export function removeProject(workspace, projectId) {
+  const manifestPath = join(workspace, "portolan.json");
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+  const result = manifestWithoutProject(manifest, projectId);
+  writeManifest(manifestPath, result.manifest);
+  return { project: result.project, removedOutputs: result.removedOutputs };
 }
 
 function setup(workspace, publicSetupFrom) {
@@ -1167,6 +1236,12 @@ export function localApiPlugin(workspace = process.cwd(), publicSetupFrom) {
           if (url.pathname === `${LOCAL_API_PREFIX}/projects`) {
             const result = writeProject(workspace, input);
             return send(res, 201, { ...result, setup: setup(workspace, publicSetupFrom) });
+          }
+          const removeProjectMatch = url.pathname.match(/^\/__portolan\/projects\/([^/]+)\/remove$/);
+          if (removeProjectMatch) {
+            if ([...jobs.values()].some((job) => job.status === "running")) return send(res, 409, { error: "A generator run is already active." });
+            const result = removeProject(workspace, decodeURIComponent(removeProjectMatch[1]));
+            return send(res, 200, { ...result, setup: setup(workspace, publicSetupFrom) });
           }
           if (url.pathname === `${LOCAL_API_PREFIX}/runs`) {
             if ([...jobs.values()].some((job) => job.status === "running")) return send(res, 409, { error: "A generator run is already active." });

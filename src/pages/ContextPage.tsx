@@ -144,22 +144,29 @@ export function ContextPage() {
                   className="card card-tagged stagger-in"
                   style={{ ...staggerStyle(i), ...ctxStyle(context.id) }}
                 >
-                  <div className="flex items-baseline gap-2">
+                  <div className="flex min-w-0 items-baseline gap-2">
                     <Link
                       to={paths.service(context.id, service.slug)}
                       data-nav-item
-                      className="card-link rounded-control font-semibold"
+                      className="card-link min-w-0 truncate rounded-control font-semibold"
                       title={service.name}
                     >
                       {service.name}
                     </Link>
-                    <Ident value={service.id} className="text-muted" />
                     <RowActions
                       copy={service.id}
                       reveal={service.id}
                       label={service.name}
                     />
-                    <span className="chip">{componentKind(service)}</span>
+                  </div>
+                  {/* The id and kind get their own metadata row. Keeping the
+                      kind after the hidden row actions made it overflow the
+                      card before those actions were even visible. */}
+                  <div className="mt-1.5 flex min-w-0 items-center justify-between gap-2">
+                    <span className="min-w-0 overflow-hidden">
+                      <Ident value={service.id} className="block truncate text-muted" />
+                    </span>
+                    <span className="chip shrink-0">{componentKind(service)}</span>
                   </div>
                   {/* Each number is a link into the part of the service page
                       that lists what it counted. */}

@@ -1,4 +1,4 @@
-import type { SetupInfo, SetupPhase, SetupRunStepStatus } from "./setup-info";
+import type { SetupInfo, SetupPhase, SetupProject, SetupRunStepStatus } from "./setup-info";
 
 const ROOT = `${import.meta.env.BASE_URL}__portolan`;
 const LOCAL_HEADER = { "Content-Type": "application/json", "X-Portolan-Local": "1" };
@@ -198,6 +198,10 @@ export async function previewProject(draft: ProjectDraft): Promise<ProjectPlan> 
 
 export async function addProject(draft: ProjectDraft): Promise<ProjectPlan & { setup: SetupInfo }> {
   return json("/projects", { method: "POST", headers: LOCAL_HEADER, body: JSON.stringify(draft) });
+}
+
+export async function removeProject(id: string): Promise<{ project: SetupProject; removedOutputs: string[]; setup: SetupInfo }> {
+  return json(`/projects/${encodeURIComponent(id)}/remove`, { method: "POST", headers: LOCAL_HEADER, body: "{}" });
 }
 
 export async function startProjectTrial(draft: ProjectDraft): Promise<{ runId: string; mode: "project-preview"; plan: ProjectPlan }> {

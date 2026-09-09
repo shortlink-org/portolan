@@ -4,7 +4,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import { InitError, defaultAnswers, init } from "./init.mjs";
+import { InitError, defaultAnswers, init, nextStep } from "./init.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const created = [];
@@ -36,6 +36,13 @@ const goService = {
 };
 
 describe("init with defaults", () => {
+  it("prints runnable next commands with and without package scripts", () => {
+    expect(nextStep(false, true)).toBe("Next: npm run architecture:gen && npm run architecture");
+    expect(nextStep(true, true)).toBe("Generating; then: npm run architecture");
+    expect(nextStep(false, false)).toBe("Next: npx @shortlink-org/portolan generate && npx @shortlink-org/portolan dev");
+    expect(nextStep(true, false)).toBe("Generating; then: npx @shortlink-org/portolan dev");
+  });
+
   it("reads what the repository contains into one project at the root", async () => {
     const dir = workspace({
       "package.json": '{"name":"@acme/order-service","scripts":{"test":"vitest"}}\n',
