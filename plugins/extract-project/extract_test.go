@@ -66,6 +66,42 @@ func TestExplicitKindsWin(t *testing.T) {
 	}
 }
 
+func TestExtractsSeveralDeployablesFromOneRepository(t *testing.T) {
+	root := t.TempDir()
+	mustWrite(t, filepath.Join(root, "README.md"), "# Commerce platform\n")
+	mustWrite(t, filepath.Join(root, "go.mod"), "module example.com/commerce\nrequire github.com/go-redis/redis v6.15.9+incompatible\n")
+	mustWrite(t, filepath.Join(root, "Dockerfile"), "FROM scratch\n")
+
+	response, err := extract(plugin.Input{Root: root}, Options{
+		Group: "commerce",
+		Components: []ComponentOptions{
+			{Slug: "api", Name: "API", Kind: "application"},
+			{Slug: "billing", Name: "Billing", Kind: "service"},
+			{Slug: "billing", Name: "Duplicate"},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got catalog.Catalog
+	if err := json.Unmarshal([]byte(response.Files[0].Contents), &got); err != nil {
+		t.Fatal(err)
+	}
+	services := got.Contexts[0].Services
+	if len(services) != 2 {
+		t.Fatalf("services = %+v", services)
+	}
+	if services[0].ID != "commerce.api" || services[0].Name != "API" || services[0].Kind != catalog.ComponentKindApplication {
+		t.Errorf("api = %+v", services[0])
+	}
+	if services[1].ID != "commerce.billing" || services[1].Kind != catalog.ComponentKindService {
+		t.Errorf("billing = %+v", services[1])
+	}
+	if len(services[0].Technologies) != 2 || services[0].Technologies[0] != "Go" || services[0].Technologies[1] != "Docker" {
+		t.Errorf("shared technologies = %v", services[0].Technologies)
+	}
+}
+
 func TestMarkdownTitleIgnoresShellCommentsInsideFences(t *testing.T) {
 	md := "## Getting started\n\n```sh\nmake migrate\n# add superuser\n```\n\n# Actual service\n"
 	if got := markdownTitle(md); got != "Actual service" {

@@ -17,6 +17,7 @@ export interface SetupProject {
   service?: string;
   group?: string;
   component?: string;
+  components?: string[];
   groupKind?: string;
   componentKind?: string;
   repository?: string;
@@ -99,6 +100,7 @@ interface ManifestProject {
   service?: unknown;
   group?: unknown;
   component?: unknown;
+  components?: unknown;
   groupKind?: unknown;
   componentKind?: unknown;
   repository?: unknown;
@@ -289,6 +291,9 @@ function projectFrom(value: unknown): SetupProject | null {
     ...(typeof item.service === "string" ? { service: item.service } : {}),
     ...(typeof item.group === "string" ? { group: item.group } : {}),
     ...(typeof item.component === "string" ? { component: item.component } : {}),
+    ...(array(item.components).every((component) => typeof component === "string") && array(item.components).length > 0
+      ? { components: array(item.components) as string[] }
+      : {}),
     ...(typeof item.groupKind === "string" ? { groupKind: item.groupKind } : {}),
     ...(typeof item.componentKind === "string" ? { componentKind: item.componentKind } : {}),
     ...(repository ? { repository } : {}),

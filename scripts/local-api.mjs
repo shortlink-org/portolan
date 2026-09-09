@@ -156,6 +156,51 @@ function componentCandidates(files) {
     });
 }
 
+function titleFromSlug(value) {
+  const acronyms = new Set(["api", "cli", "grpc", "http"]);
+  return value.split(/[^a-zA-Z0-9]+/).filter(Boolean).map((part) => acronyms.has(part.toLowerCase()) ? part.toUpperCase() : part[0]?.toUpperCase() + part.slice(1)).join(" ") || value;
+}
+
+// cmd/* is a convention, not an architectural boundary by itself: many Go
+// repositories keep migrations and administrative tools there. A runnable is
+// promoted to a deployable only when build/deployment evidence independently
+// names the same entrypoint.
+function goDeployables(root, files) {
+  if (!files.has("go.mod")) return [];
+  const mains = new Map();
+  for (const name of matches(files, /^cmd\/[^/]+\/[^/]+\.go$/)) {
+    let source = "";
+    try { source = readFileSync(join(root, name), "utf8"); } catch { continue; }
+    if (!/^\s*package\s+main\b/m.test(source) || !/\bfunc\s+main\s*\(/.test(source)) continue;
+    const component = name.split("/")[1];
+    const found = mains.get(component) ?? [];
+    found.push(name);
+    mains.set(component, found);
+  }
+
+  const buildFiles = matches(files, /(^|\/)(?:Dockerfile|[^/]+\.Dockerfile|Makefile|[^/]*compose[^/]*\.ya?ml|[^/]+\.ya?ml)$/i);
+  const out = [];
+  for (const [component, entrypoints] of [...mains].sort(([a], [b]) => a.localeCompare(b))) {
+    const escaped = component.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const target = new RegExp(`(?:^|[\\s"'=])(?:\\./)?cmd/${escaped}(?=$|[\\s"'])`, "m");
+    const corroboration = [];
+    for (const name of buildFiles) {
+      let source = "";
+      try { source = readFileSync(join(root, name), "utf8"); } catch { continue; }
+      if (target.test(source)) corroboration.push(name);
+    }
+    out.push({
+      slug: slug(component),
+      name: titleFromSlug(component),
+      path: `cmd/${component}`,
+      kind: "service",
+      confidence: corroboration.length ? "high" : "medium",
+      evidence: [...entrypoints, ...corroboration],
+    });
+  }
+  return out;
+}
+
 function detected(plugin, candidates, options = {}, label = candidates[0], ambiguous = false, selected = true) {
   if (!candidates.length) return null;
   return {
@@ -346,12 +391,14 @@ export function discoverProject(workspace, input) {
   const files = walk(absolute);
   const detections = detectionsFor(absolute, files);
   const components = componentCandidates(files);
+  const deployables = goDeployables(absolute, files);
   return {
     root,
     filesScanned: files.size,
     truncated: files.size >= MAX_FILES,
     components,
     componentsTruncated: components.length >= MAX_COMPONENTS,
+    deployables,
     defaults: projectDefaults(basename(absolute)),
     detections,
   };
@@ -640,13 +687,53 @@ function pluginOptions(plugin, project, detectedOptions = {}) {
   return {};
 }
 
+function deployableProtoPaths(paths, deployable) {
+  const prefixes = [`internal/${deployable.slug}/`, `cmd/${deployable.slug}/`, `services/${deployable.slug}/`];
+  return (paths ?? []).filter((path) => prefixes.some((prefix) => `${path}/`.startsWith(prefix)));
+}
+
+function goModule(root) {
+  try {
+    const match = /^\s*module\s+(\S+)/m.exec(readFileSync(join(root, "go.mod"), "utf8"));
+    return match?.[1] ?? "";
+  } catch { return ""; }
+}
+
+function deployableEvidenceOwners(root, files, deployables, evidence) {
+  const module = goModule(root);
+  if (!module) return [];
+  const evidenceDirs = [...new Set((evidence ?? []).flatMap((name) => {
+    const parts = posix.dirname(name).split("/");
+    const out = [];
+    while (parts.length > 1) { out.push(parts.join("/")); parts.pop(); }
+    return out;
+  }))];
+  return deployables.filter((deployable) => {
+    if ((evidence ?? []).some((name) => name.startsWith(`internal/${deployable.slug}/`) || name.startsWith(`cmd/${deployable.slug}/`))) return true;
+    const scoped = [...files].filter((name) =>
+      name.endsWith(".go") && (
+        name.startsWith(`cmd/${deployable.slug}/`) ||
+        name.startsWith(`internal/${deployable.slug}/`) ||
+        name === `internal/di/${deployable.slug}.go`
+      ),
+    );
+    return scoped.some((name) => {
+      let source = "";
+      try { source = readFileSync(join(root, name), "utf8"); } catch { return false; }
+      return evidenceDirs.some((dir) => source.includes(`"${module}/${dir}"`));
+    });
+  });
+}
+
 export function planProject(workspace, manifest, request) {
   const external = request.source === "external";
   const repo = external ? repositoryParts(request.repository) : null;
   const sourcePath = external ? cleanSourcePath(request.sourcePath) : "";
   if (external && !/^[0-9a-f]{40}$/i.test(String(request.commit ?? ""))) throw new Error("Inspect the repository to resolve an immutable commit first.");
   const inspectedRoot = external ? inspectionRoot(repo.value, String(request.commit), sourcePath) : request.root;
-  const discovery = discoverProject(workspace, inspectedRoot);
+  const discovered = discoverProject(workspace, inspectedRoot);
+  const discovery = external ? { ...discovered, defaults: externalProjectDefaults(repo.value, sourcePath) } : discovered;
+  const confirmedDeployables = discovery.deployables.filter((candidate) => candidate.confidence === "high");
   const declared = new Set([
     ...builtinPluginNames(),
     ...(manifest.plugins ?? []).map((plugin) => plugin.name),
@@ -662,44 +749,66 @@ export function planProject(workspace, manifest, request) {
     ? ["vendor", "repos", repo.owner, repo.name, sourcePath].filter(Boolean).join("/")
     : discovery.root;
   if ((manifest.projects ?? []).some((project) => project.root === finalRoot)) throw new Error(`Project path \"${finalRoot}\" already exists.`);
+  const requestedComponent = slug(String(request.component ?? request.service ?? ""));
+  const splitDeployables = confirmedDeployables.length > 1 && requestedComponent === discovery.defaults.component;
   const project = {
     id,
     name: String(request.name ?? "").trim() || discovery.defaults.name,
     root: finalRoot,
     ...(String(request.group ?? request.context ?? "").trim() ? { group: slug(String(request.group ?? request.context)) } : {}),
-    ...(String(request.component ?? request.service ?? "").trim() ? { component: slug(String(request.component ?? request.service)) } : {}),
+    ...(!splitDeployables && String(request.component ?? request.service ?? "").trim() ? { component: requestedComponent } : {}),
     ...(String(request.groupKind ?? "").trim() ? { groupKind: String(request.groupKind).trim() } : {}),
-    ...(String(request.componentKind ?? "").trim() ? { componentKind: String(request.componentKind).trim() } : {}),
+    ...(!splitDeployables && String(request.componentKind ?? "").trim() ? { componentKind: String(request.componentKind).trim() } : {}),
+    ...(splitDeployables ? { components: confirmedDeployables.map((candidate) => candidate.slug) } : {}),
     ...(String(request.repository ?? "").trim() ? { repository: String(request.repository).trim() } : {}),
   };
   const out = posix.join(finalRoot, "portolan");
   const detectionByPlugin = new Map(discovery.detections.map((item) => [item.plugin, item]));
   const hasDomainModel = plugins.some((plugin) => ["go-domain", "ts-domain", "rust-domain", "java-domain", "django-domain"].includes(plugin));
-  const steps = plugins.map((plugin) => ({
-    plugin,
-    in: finalRoot,
-    out,
-    options: pluginOptions(
-      plugin,
-      project,
-      plugin === "project"
-        ? {
-            groupKind: hasDomainModel ? "bounded-context" : "system",
-            ...(hasDomainModel ? { componentKind: "service" } : {}),
-            ...(String(request.contextName ?? "").trim() ? { groupName: String(request.contextName).trim() } : {}),
-            ...(String(request.contextSummary ?? "").trim() ? { groupSummary: String(request.contextSummary).trim() } : {}),
-            ...(String(request.classification ?? "").trim() ? { classification: String(request.classification).trim() } : {}),
-          }
+  const projectDetectionOptions = {
+    groupKind: hasDomainModel ? "bounded-context" : "system",
+    ...(hasDomainModel ? { componentKind: "service" } : {}),
+    ...(String(request.contextName ?? "").trim() ? { groupName: String(request.contextName).trim() } : {}),
+    ...(String(request.contextSummary ?? "").trim() ? { groupSummary: String(request.contextSummary).trim() } : {}),
+    ...(String(request.classification ?? "").trim() ? { classification: String(request.classification).trim() } : {}),
+    ...(splitDeployables ? { components: confirmedDeployables.map(({ slug, name, kind }) => ({ slug, name, kind })) } : {}),
+  };
+  const domainDetectionOptions = (plugin) => ({
+    ...detectionByPlugin.get(plugin)?.options,
+    ...(String(request.contextName ?? "").trim() ? { contextName: String(request.contextName).trim() } : {}),
+    ...(String(request.contextSummary ?? "").trim() ? { contextSummary: String(request.contextSummary).trim() } : {}),
+    ...(String(request.classification ?? "").trim() ? { classification: String(request.classification).trim() } : {}),
+  });
+  const rootAbsolute = resolve(workspace, inspectedRoot);
+  const rootFiles = splitDeployables ? walk(rootAbsolute) : new Set();
+  const steps = plugins.flatMap((plugin) => {
+    if (!splitDeployables) {
+      const options = plugin === "project"
+        ? projectDetectionOptions
         : ["go-domain", "ts-domain", "rust-domain", "java-domain", "django-domain"].includes(plugin)
-          ? {
-              ...detectionByPlugin.get(plugin)?.options,
-              ...(String(request.contextName ?? "").trim() ? { contextName: String(request.contextName).trim() } : {}),
-              ...(String(request.contextSummary ?? "").trim() ? { contextSummary: String(request.contextSummary).trim() } : {}),
-              ...(String(request.classification ?? "").trim() ? { classification: String(request.classification).trim() } : {}),
-            }
-        : detectionByPlugin.get(plugin)?.options,
-    ),
-  }));
+          ? domainDetectionOptions(plugin)
+          : detectionByPlugin.get(plugin)?.options;
+      return [{ plugin, in: finalRoot, out, options: pluginOptions(plugin, project, options) }];
+    }
+    if (plugin === "project") {
+      return [{ plugin, in: finalRoot, out, options: pluginOptions(plugin, project, projectDetectionOptions) }];
+    }
+    const detectedOptions = detectionByPlugin.get(plugin)?.options ?? {};
+    let owners = confirmedDeployables;
+    if (plugin === "proto") owners = confirmedDeployables.filter((candidate) => deployableProtoPaths(detectedOptions.paths, candidate).length > 0);
+    else if (plugin === "redis") owners = deployableEvidenceOwners(rootAbsolute, rootFiles, confirmedDeployables, detectionByPlugin.get(plugin)?.candidates);
+    else owners = confirmedDeployables.slice(0, 1);
+    return owners.map((owner) => {
+      const scopedProject = { ...project, component: owner.slug, componentKind: owner.kind, name: owner.name };
+      const scopedOptions = plugin === "proto" ? { ...detectedOptions, paths: deployableProtoPaths(detectedOptions.paths, owner) } : detectedOptions;
+      return {
+        plugin,
+        in: finalRoot,
+        out,
+        options: { ...pluginOptions(plugin, scopedProject, scopedOptions), out: `${plugin}-${owner.slug}.json` },
+      };
+    });
+  });
   const source = external ? "vendor/repos/**/portolan/*.json" : `${out}/*.json`;
   const fetch = external ? { repo: repo.value, commit: String(request.commit), paths: sourcePath ? [sourcePath] : [] } : null;
   return { project, plugins, steps, source, discovery, fetch };
@@ -1197,7 +1306,7 @@ async function startProjectPreview(job) {
   job.previewChild = child;
   await waitForPreview(origin, child);
   const context = job.projectPlan.project.group ?? job.projectPlan.discovery.defaults.group;
-  const component = job.projectPlan.project.component ?? job.projectPlan.discovery.defaults.component;
+  const component = job.projectPlan.project.components?.[0] ?? job.projectPlan.project.component ?? job.projectPlan.discovery.defaults.component;
   job.previewUrl = `${origin}/c/${encodeURIComponent(context)}/${encodeURIComponent(component)}`;
   job.previewTimer = setTimeout(() => disposeProjectTrial(job), PROJECT_PREVIEW_TTL_MS);
   job.previewTimer.unref();

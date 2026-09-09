@@ -45,7 +45,24 @@ describe("the LikeC4 generator", () => {
     const { model, views } = generate({ contexts: [], flows: [] });
     expect(model).toContain("model {");
     expect(views).toContain("view landscape");
+    expect(views).toContain("view landscape_default");
+    expect(views).toContain("view containers_default");
     expect(views).toContain("include *");
+  });
+
+  it("makes the implicit default profile include the complete catalog", () => {
+    const { views } = generate({
+      contexts: [{
+        id: "platform", slug: "platform", name: "Platform", summary: "", services: [{
+          id: "platform.api", slug: "api", name: "API", repo: "example/platform", path: "", readme: "", provides: [], consumes: [], aggregates: [],
+        }],
+      }],
+      flows: [],
+    });
+    expect(views).toContain("view landscape_default");
+    expect(views).toContain("include platform");
+    expect(views).toContain("view containers_default");
+    expect(views).toContain("include platform, platform.api");
   });
 
   it("treats dots in a root participant id as data, not containment", () => {
@@ -249,7 +266,7 @@ describe("the LikeC4 generator", () => {
     const pair =
       "include shop.oms -> shop.cart with { title '2 calls'  technology 'HTTP'  color verified  line solid }";
     expect(views).toContain(`view containers {\n    title 'Containers'`);
-    expect(views.split(pair)).toHaveLength(3); // containers, and ctx_shop
+    expect(views.split(pair)).toHaveLength(4); // containers, containers_default, and ctx_shop
     // With the bus on the picture the direct consumer arrow is not drawn twice.
     expect(views).toContain(
       "view ctx_shop of shop {\n" +

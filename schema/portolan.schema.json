@@ -888,6 +888,16 @@
           "minLength": 1,
           "description": "Component slug inside the group."
         },
+        "components": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Deployable component slugs discovered inside one repository-backed project."
+        },
         "groupKind": {
           "enum": [
             "bounded-context",
@@ -1065,6 +1075,41 @@
         "repo": {
           "type": "string",
           "description": "Source repository identity. Defaults to a Go module, package.json repository, Cargo package, or Maven coordinates when present."
+        },
+        "components": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "slug"
+            ],
+            "properties": {
+              "slug": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "enum": [
+                  "service",
+                  "application",
+                  "webapp",
+                  "worker",
+                  "job",
+                  "function",
+                  "cli",
+                  "library",
+                  "data-pipeline"
+                ]
+              }
+            }
+          },
+          "description": "Independently deployable runtime components found inside one repository. When present, the singular component fields are ignored."
         },
         "out": {
           "type": "string",

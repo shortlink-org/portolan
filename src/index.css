@@ -588,7 +588,7 @@
      brief chart-line sweep only appears when a reader points at the action. */
   .landing-primary,
   .product-primary {
-    @apply mono flex items-center gap-1.5 rounded-control px-3 py-1.5;
+    @apply mono flex cursor-pointer items-center gap-1.5 rounded-control px-3 py-1.5;
     position: relative;
     isolation: isolate;
     overflow: hidden;
@@ -1013,6 +1013,134 @@
   .empty {
     @apply glow rounded-card border border-dashed border-line-strong px-4 py-3 text-muted;
     font-size: var(--text-meta);
+  }
+
+  /* The 404 is a small editorial moment inside the catalog rather than a
+     centred error dialog. Copy keeps a readable left edge; the transparent
+     explorer sits beside it and moves at a shallower depth than the dot field. */
+  .not-found-page {
+    @apply glow flex h-full min-h-0 items-center justify-center overflow-y-auto p-gutter;
+  }
+  .not-found-state {
+    display: grid;
+    grid-template-columns: minmax(260px, 0.9fr) minmax(360px, 1fr);
+    align-items: center;
+    gap: clamp(32px, 6vw, 72px);
+    width: min(100%, 980px);
+    margin: auto;
+  }
+  .not-found-copy {
+    max-width: 480px;
+  }
+  .not-found-art {
+    --parallax-x: 0;
+    --parallax-y: 0;
+    position: relative;
+    isolation: isolate;
+    aspect-ratio: 4 / 3;
+  }
+  .not-found-art::before {
+    position: absolute;
+    z-index: -2;
+    inset: 14% 3% 8%;
+    content: "";
+    border-radius: 50%;
+    background: radial-gradient(
+      circle,
+      color-mix(in srgb, var(--accent) 10%, var(--surface)) 0,
+      color-mix(in srgb, var(--accent) 4%, transparent) 58%,
+      transparent 72%
+    );
+  }
+  .not-found-art-grid {
+    position: absolute;
+    z-index: -1;
+    inset: 9% -2% 0;
+    opacity: 0.72;
+    background-image: radial-gradient(var(--flow-dot) 1px, transparent 1px);
+    background-size: 18px 18px;
+    mask-image: radial-gradient(ellipse at center, #000 25%, transparent 72%);
+    transform: translate3d(
+      calc(var(--parallax-x) * -8px),
+      calc(var(--parallax-y) * -8px),
+      0
+    );
+  }
+  .not-found-number {
+    position: absolute;
+    z-index: -1;
+    top: 8%;
+    left: 5%;
+    font-size: clamp(64px, 8vw, 104px);
+    font-weight: 650;
+    letter-spacing: -0.08em;
+    color: var(--fg-faint);
+    opacity: 0.2;
+    transform: translate3d(
+      calc(var(--parallax-x) * -13px),
+      calc(var(--parallax-y) * -13px),
+      0
+    );
+  }
+  .not-found-cat-layer {
+    position: absolute;
+    inset: -2% -8% -4% -5%;
+    transform: translate3d(
+        calc(var(--parallax-x) * 10px),
+        calc(var(--parallax-y) * 8px),
+        0
+      )
+      rotate(calc(var(--parallax-x) * 0.7deg));
+  }
+  .not-found-art-grid,
+  .not-found-number,
+  .not-found-cat-layer {
+    transition: transform var(--dur-panel) var(--ease-out);
+    will-change: transform;
+  }
+  .not-found-cat {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    user-select: none;
+    filter: drop-shadow(0 18px 22px rgb(10 18 26 / 0.12));
+  }
+  .not-found-request {
+    @apply grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-control border border-line bg-surface px-3 py-2;
+  }
+  .not-found-key {
+    margin-left: 2px;
+    padding: 0 4px;
+    border: 1px solid color-mix(in srgb, var(--fg) 22%, transparent);
+    border-radius: 4px;
+    color: inherit;
+  }
+
+  @media (max-width: 760px) {
+    .not-found-page {
+      align-items: flex-start;
+    }
+    .not-found-state {
+      grid-template-columns: 1fr;
+      gap: 8px;
+      width: min(100%, 520px);
+    }
+    .not-found-art {
+      width: min(88%, 380px);
+      margin-inline: auto;
+    }
+    .not-found-copy {
+      max-width: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .not-found-art-grid,
+    .not-found-number,
+    .not-found-cat-layer {
+      transform: none;
+      transition: none;
+    }
   }
 
   /* ---------------------------------------------------------------------

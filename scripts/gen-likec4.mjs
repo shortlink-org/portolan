@@ -11,12 +11,13 @@ import { writeFileSync, mkdirSync } from "node:fs";
 
 import { loadCatalog } from "./catalog-sources.mjs";
 import reserved from "../src/likec4/reserved.json" with { type: "json" };
+import { catalogProfiles } from "../src/catalog-profile.ts";
 
 // Every source, not one file: a service that publishes its own facts gets a
 // C4 view like any other, and generating from a single file would leave it out
 // of the pictures while the rest of the app knows about it.
 const { catalog, manifest } = await loadCatalog();
-const profiles = manifest.catalogs ?? [];
+const profiles = catalogProfiles(manifest);
 
 // --- ids (mirrors src/likec4/ids.ts; kept in step by src/likec4/ids.test.ts) ---
 // The reserved words are not mirrored, they are the same file: a word the
@@ -696,7 +697,13 @@ views.push("");
 // UI uses: only the configured groups and the outsiders their own flows name
 // are included.
 for (const profile of profiles) {
-  const profileContexts = catalog.contexts.filter((context) => profile.contexts.includes(context.id));
+  // An empty context selection is the historical single-catalog manifest's
+  // implicit `default` profile. The browser treats it as the whole catalog;
+  // the generated views must do the same or it asks for landscape_default
+  // while the bundle only contains the unscoped landscape view.
+  const profileContexts = profile.contexts.length
+    ? catalog.contexts.filter((context) => profile.contexts.includes(context.id))
+    : catalog.contexts;
   const profileContextIds = new Set(profileContexts.map((context) => context.id));
   const profileServices = profileContexts.flatMap((context) => context.services);
   const profileServiceIds = new Set(profileServices.map((service) => service.id));

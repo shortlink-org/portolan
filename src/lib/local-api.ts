@@ -18,6 +18,7 @@ export interface Discovery {
   truncated: boolean;
   components: Array<{ path: string; name: string; markers: string[]; technologies: string[] }>;
   componentsTruncated: boolean;
+  deployables: Array<{ slug: string; name: string; path: string; kind: "service"; confidence: "high" | "medium"; evidence: string[] }>;
   defaults: { id: string; name: string; group: string; component: string; context: string; service: string };
   detections: Detection[];
 }
@@ -45,7 +46,7 @@ export interface ProjectDraft {
 }
 
 export interface ProjectPlan {
-  project: { id: string; name: string; root: string; group?: string; component?: string; groupKind?: string; componentKind?: string; context?: string; service?: string; repository?: string };
+  project: { id: string; name: string; root: string; group?: string; component?: string; components?: string[]; groupKind?: string; componentKind?: string; context?: string; service?: string; repository?: string };
   plugins: string[];
   steps: Array<{ plugin: string; in: string; out: string; options: Record<string, unknown> }>;
   source: string;

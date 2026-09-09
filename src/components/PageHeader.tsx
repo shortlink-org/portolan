@@ -156,6 +156,40 @@ export function Empty({ children }: { children: ReactNode }) {
 }
 
 /**
+ * A page-level absence with a useful next move.
+ *
+ * Unlike `Empty`, this is not the result of a filter, and unlike `Blank` it
+ * does more than document the catalog field that is missing. It is used when
+ * the reader can take a concrete setup action to make the page useful.
+ */
+export function CapabilityEmpty({
+  title,
+  children,
+  actions,
+  signal,
+}: {
+  title: string;
+  children: ReactNode;
+  actions?: ReactNode;
+  /** The source evidence or catalog fact that will fill this page. */
+  signal?: ReactNode;
+}) {
+  return (
+    <div className="rounded-card border border-accent/60 bg-surface p-5 shadow-xs">
+      <div className="label text-accent">next useful step</div>
+      <h2 className="mt-1 text-md font-semibold text-ink">{title}</h2>
+      <div className="mt-2 max-w-prose text-muted">{children}</div>
+      {actions ? <div className="mt-4 flex flex-wrap gap-2">{actions}</div> : null}
+      {signal ? (
+        <div className="mono mt-4 border-t border-line pt-3 text-faint">
+          {signal}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/**
  * What a page says before the catalog has anything to put on it.
  *
  * `Empty` answers a question the reader asked - a filter, a lookup - with

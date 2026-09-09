@@ -1,6 +1,7 @@
 import { useDocumentTitle } from "../app/title";
 import { useMemo } from "react";
-import { CATALOG_PATH, catalog } from "../data";
+import { Link } from "react-router";
+import { catalog } from "../data";
 import type { Adr } from "../catalog";
 import { scopeLabel, sortAdrs } from "../lib/adr";
 import {
@@ -8,7 +9,7 @@ import {
   AdrScopePill,
   AdrStatusChip,
 } from "../components/primitives";
-import { Blank, Empty } from "../components/PageHeader";
+import { CapabilityEmpty, Empty } from "../components/PageHeader";
 import { RowActions } from "../components/RowActions";
 import { DataTable } from "../table/DataTable";
 import type { ColumnSpec } from "../table/types";
@@ -85,11 +86,13 @@ export function AdrIndex() {
 
       {bare ? (
         <div className="mt-section">
-          <Blank where={CATALOG_PATH}>
-            Nothing on the record yet — an ADR is a decision as it was made,
-            frozen. They are read from the repositories’ markdown and land in{" "}
-            <span className="text-ink">adrs[]</span>.
-          </Blank>
+          <CapabilityEmpty
+            title="No architecture decisions on the record yet"
+            signal="Signal: ADR markdown discovered by the project extractor → adrs[]."
+            actions={<Link className="product-primary" to={catalog.contexts.length === 0 ? paths.settingsProjects() : paths.settingsPipeline()}>{catalog.contexts.length === 0 ? "Connect a project" : "Review extraction"}</Link>}
+          >
+            An ADR preserves a decision as it was made. Add or expose the repository’s decision markdown so Portolan can place it beside the affected architecture.
+          </CapabilityEmpty>
         </div>
       ) : (
         <div className="mt-section max-w-table">

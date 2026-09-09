@@ -221,6 +221,46 @@ describe("local project setup", () => {
     ]);
   });
 
+  it("splits corroborated Go cmd entrypoints into deployable services", () => {
+    const root = workspace();
+    const platform = join(root, "services/platform");
+    mkdirSync(platform, { recursive: true });
+    writeFileSync(join(platform, "go.mod"), "module example.com/platform\nrequire github.com/go-redis/redis v6.15.9+incompatible\n");
+    for (const service of ["api", "billing", "book", "user"]) {
+      mkdirSync(join(platform, "cmd", service), { recursive: true });
+      mkdirSync(join(platform, "ops/dockerfile"), { recursive: true });
+      writeFileSync(join(platform, "cmd", service, `${service}.go`), "package main\nfunc main() {}\n");
+      writeFileSync(join(platform, "ops/dockerfile", `${service}.Dockerfile`), `FROM golang\nRUN go build -o app ./cmd/${service}\n`);
+    }
+    for (const service of ["billing", "book", "user"]) {
+      mkdirSync(join(platform, "internal", service, "infrastructure/rpc"), { recursive: true });
+      writeFileSync(join(platform, "internal", service, "infrastructure/rpc", `${service}.proto`), `syntax = "proto3"; package ${service}; service ${service}RPC {}\n`);
+    }
+    mkdirSync(join(platform, "internal/db/redis"), { recursive: true });
+    mkdirSync(join(platform, "internal/di"), { recursive: true });
+    writeFileSync(join(platform, "internal/db/redis/redis.go"), "package redisdb\nimport redis \"github.com/go-redis/redis\"\nfunc Open() { _ = redis.NewClient(nil) }\n");
+    writeFileSync(join(platform, "internal/di/book.go"), "package di\nimport _ \"example.com/platform/internal/db\"\n");
+
+    const discovery = discoverProject(root, "services/platform");
+    expect(discovery.deployables.map(({ slug, confidence }) => [slug, confidence])).toEqual([
+      ["api", "high"], ["billing", "high"], ["book", "high"], ["user", "high"],
+    ]);
+
+    const manifest = JSON.parse(readFileSync(join(root, "portolan.json"), "utf8"));
+    const plan = planProject(root, manifest, {
+      root: "services/platform", id: "platform", name: "Platform", group: "platform", component: "platform", componentKind: "application", plugins: ["project", "proto", "redis"],
+    });
+    expect(plan.project).toMatchObject({ group: "platform", components: ["api", "billing", "book", "user"] });
+    expect(plan.project).not.toHaveProperty("component");
+    expect(plan.steps[0].options.components.map((component) => component.slug)).toEqual(["api", "billing", "book", "user"]);
+    expect(plan.steps.filter((step) => step.plugin === "proto").map((step) => [step.options.service, step.options.out])).toEqual([
+      ["billing", "proto-billing.json"], ["book", "proto-book.json"], ["user", "proto-user.json"],
+    ]);
+    expect(plan.steps.filter((step) => step.plugin === "redis").map((step) => [step.options.service, step.options.out])).toEqual([
+      ["book", "redis-book.json"],
+    ]);
+  });
+
   it("only offers the Go domain extractor when the layout contains an aggregate root", () => {
     const root = workspace();
     mkdirSync(join(root, "services/billing/internal/domain/invoice"), { recursive: true });

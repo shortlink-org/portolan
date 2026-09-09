@@ -1,8 +1,9 @@
 import { useDocumentTitle } from "../app/title";
 import { useMemo, useState } from "react";
+import { Link } from "react-router";
 import { catalog } from "../data";
 import { plural } from "../lib/format";
-import { Empty } from "../components/PageHeader";
+import { CapabilityEmpty, Empty } from "../components/PageHeader";
 import {
   bundles,
   edgeCount,
@@ -14,6 +15,7 @@ import { statusColor, statusDash } from "../graph/theme";
 import { DependencyGraphPane } from "../graph/DependencyGraph";
 import type { GraphMode } from "../graph/dependency-layout";
 import type { Status } from "../catalog";
+import { paths } from "../routes";
 
 const STATUSES: { status: Status; note: string }[] = [
   { status: "verified", note: "consumption observed" },
@@ -183,8 +185,8 @@ export function GraphPage() {
       <div className="min-h-0 flex-1">
         {nothing ? (
           <div className="p-gutter">
-            <Empty>
-              {filtered ? (
+            {filtered ? (
+              <Empty>
                 <>
                   no event passes these filters.{" "}
                   <button
@@ -198,10 +200,22 @@ export function GraphPage() {
                     show everything
                   </button>
                 </>
-              ) : (
-                "no events in the catalog yet"
-              )}
-            </Empty>
+              </Empty>
+            ) : (
+              <CapabilityEmpty
+                title={catalog.contexts.length === 0 ? "Connect a project before mapping dependencies" : "No dependency graph yet"}
+                signal="Signals: domain events, message consumers, AsyncAPI channels and integration contracts."
+                actions={<>
+                  <Link className="product-primary" to={paths.settingsProjects()}>{catalog.contexts.length === 0 ? "Connect a project" : "Review project extraction"}</Link>
+                  {catalog.contexts.length > 0 ? <Link className="tbtn" to={paths.map()}>Open context map</Link> : null}
+                </>}
+              >
+                {catalog.contexts.length === 0
+                  ? "Portolan needs at least one project before it can discover events and their consumers."
+                  : "The catalog has components, but no events or consumers to connect yet. Review the selected extractors and the evidence they found."
+                }
+              </CapabilityEmpty>
+            )}
           </div>
         ) : (
           <DependencyGraphPane

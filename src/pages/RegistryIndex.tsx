@@ -1,8 +1,9 @@
 import { useDocumentTitle } from "../app/title";
 import { useMemo } from "react";
-import { CATALOG_PATH, catalog, index } from "../data";
+import { Link } from "react-router";
+import { catalog, index } from "../data";
 import type { ProtoModule } from "../catalog";
-import { Blank, Empty } from "../components/PageHeader";
+import { CapabilityEmpty, Empty } from "../components/PageHeader";
 import { RowActions } from "../components/RowActions";
 import { DataTable } from "../table/DataTable";
 import type { ColumnSpec } from "../table/types";
@@ -88,12 +89,13 @@ export function RegistryIndex() {
 
       {bare ? (
         <div className="mt-section">
-          <Blank where={CATALOG_PATH}>
-            No schema modules yet — a module is the .proto files an interface
-            was declared in, named and versioned by a registry. They are read
-            from the protos in each repository and land in{" "}
-            <span className="text-ink">modules[]</span>.
-          </Blank>
+          <CapabilityEmpty
+            title="No schema modules discovered yet"
+            signal="Signals: .proto files and registry metadata from BSR or local modules → modules[]."
+            actions={<Link className="product-primary" to={catalog.contexts.length === 0 ? paths.settingsProjects() : paths.settingsPipeline()}>{catalog.contexts.length === 0 ? "Connect a project" : "Review extraction"}</Link>}
+          >
+            Registry modules show where shared contracts are published, pinned and consumed. Review the project’s protobuf and registry extractors to populate this index.
+          </CapabilityEmpty>
         </div>
       ) : (
         <div className="mt-section max-w-table">

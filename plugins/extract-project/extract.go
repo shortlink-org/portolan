@@ -27,6 +27,25 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 		b.Warn(root, warning)
 	}
 
+	services := []catalog.Service{}
+	if len(opts.Components) == 0 {
+		services = append(services, projectService(root, group, component, firstNonEmpty(opts.ComponentName, markdownTitle(readme), title(component)), firstNonEmpty(opts.ComponentKind, inferredKind(root)), firstNonEmpty(opts.Repo, repository(root)), readme, opts.Technologies, cmds))
+	} else {
+		seen := map[string]bool{}
+		componentTechnologies := opts.Technologies
+		if len(componentTechnologies) == 0 {
+			componentTechnologies = sharedTechnologies(root)
+		}
+		for _, candidate := range opts.Components {
+			componentSlug := slug(candidate.Slug)
+			if componentSlug == "" || seen[componentSlug] {
+				continue
+			}
+			seen[componentSlug] = true
+			services = append(services, projectService(root, group, componentSlug, firstNonEmpty(candidate.Name, title(componentSlug)), firstNonEmpty(candidate.Kind, string(catalog.ComponentKindService)), firstNonEmpty(opts.Repo, repository(root)), readme, componentTechnologies, cmds))
+		}
+	}
+
 	fragment := catalog.Catalog{
 		GeneratedAt: in.GeneratedAt,
 		Commit:      in.Commit,
@@ -37,20 +56,7 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 			Summary:        opts.GroupSummary,
 			Kind:           catalog.GroupKind(firstNonEmpty(opts.GroupKind, string(catalog.GroupKindSystem))),
 			Classification: catalog.Classification(opts.Classification),
-			Services: []catalog.Service{{
-				ID:           group + "." + component,
-				Slug:         component,
-				Name:         firstNonEmpty(opts.ComponentName, markdownTitle(readme), title(component)),
-				Repo:         firstNonEmpty(opts.Repo, repository(root)),
-				Path:         filepath.ToSlash(root),
-				Readme:       readme,
-				Kind:         catalog.ComponentKind(firstNonEmpty(opts.ComponentKind, inferredKind(root))),
-				Technologies: stated(opts.Technologies, technologies(root)),
-				Provides:     []catalog.RpcService{},
-				Consumes:     []catalog.RpcCall{},
-				Aggregates:   []catalog.Aggregate{},
-				Commands:     cmds,
-			}},
+			Services:       services,
 		}},
 		Defs:  map[string]catalog.TypeDef{},
 		Flows: []catalog.Flow{},
@@ -63,6 +69,34 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	}
 	b.File(firstNonEmpty(opts.Out, "project.json"), string(encoded)+"\n")
 	return b.Response(), nil
+}
+
+func sharedTechnologies(root string) []string {
+	shareable := map[string]bool{"Go": true, "Node.js": true, "Rust": true, "Java": true, "Python": true, "Docker": true, "Helm": true}
+	var out []string
+	for _, technology := range technologies(root) {
+		if shareable[technology] {
+			out = append(out, technology)
+		}
+	}
+	return out
+}
+
+func projectService(root, group, component, name, kind, repo, readme string, statedTechnologies []string, cmds []catalog.Command) catalog.Service {
+	return catalog.Service{
+		ID:           group + "." + component,
+		Slug:         component,
+		Name:         name,
+		Repo:         repo,
+		Path:         filepath.ToSlash(root),
+		Readme:       readme,
+		Kind:         catalog.ComponentKind(kind),
+		Technologies: stated(statedTechnologies, technologies(root)),
+		Provides:     []catalog.RpcService{},
+		Consumes:     []catalog.RpcCall{},
+		Aggregates:   []catalog.Aggregate{},
+		Commands:     cmds,
+	}
 }
 
 func repository(root string) string {

@@ -91,6 +91,13 @@ describe("publicSetupFrom", () => {
     });
   });
 
+  it("publishes the deployable components of one repository", () => {
+    const setup = publicSetupFrom({
+      projects: [{ id: "platform", name: "Platform", root: "platform", group: "platform", components: ["api", "billing", "book", "user"] }],
+    });
+    expect(setup.projects[0]?.components).toEqual(["api", "billing", "book", "user"]);
+  });
+
   it("claims the sandbox only for a plugin that declares a module", () => {
     const setup = publicSetupFrom({
       plugins: [

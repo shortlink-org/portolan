@@ -13,9 +13,9 @@
 import { useDocumentTitle } from "../app/title";
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import { CATALOG_PATH, catalog, index } from "../data";
+import { catalog, index } from "../data";
 import { allTerms } from "../catalog";
-import { Blank, Empty, SectionTitle } from "../components/PageHeader";
+import { CapabilityEmpty, Empty, SectionTitle } from "../components/PageHeader";
 import { ContextPill } from "../components/primitives";
 import { contextVar } from "../lib/context-color";
 import { plural } from "../lib/format";
@@ -73,13 +73,13 @@ export function Language() {
       <div className="h-full overflow-y-auto p-gutter">
         <h1 className="text-lg font-semibold">Language</h1>
         <div className="mt-section">
-          <Blank where={CATALOG_PATH}>
-            No glossary yet — one file per bounded context, beside its README,
-            saying what each word means inside the boundary and what it does
-            not. They are read from every <span className="text-ink">GLOSSARY.md</span>{" "}
-            the manifest points at and land in{" "}
-            <span className="text-ink">terms[]</span>.
-          </Blank>
+          <CapabilityEmpty
+            title="No bounded-context language yet"
+            signal="Signal: GLOSSARY.md files discovered beside project documentation → terms[]."
+            actions={<Link className="product-primary" to={catalog.contexts.length === 0 ? paths.settingsProjects() : paths.settingsPipeline()}>{catalog.contexts.length === 0 ? "Connect a project" : "Review extraction"}</Link>}
+          >
+            A glossary records what a word means inside one boundary—and what it does not. Portolan combines those files to reveal shared terms and conflicting meanings.
+          </CapabilityEmpty>
         </div>
       </div>
     );

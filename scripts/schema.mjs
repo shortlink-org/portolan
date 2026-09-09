@@ -207,6 +207,13 @@ function compose() {
             minLength: 1,
             description: "Component slug inside the group.",
           },
+          components: {
+            type: "array",
+            minItems: 2,
+            uniqueItems: true,
+            items: { type: "string", minLength: 1 },
+            description: "Deployable component slugs discovered inside one repository-backed project.",
+          },
           groupKind: {
             enum: ["bounded-context", "system", "product", "team", "namespace"],
             description: "Semantic role of the project's top-level group.",

@@ -16,12 +16,22 @@ type Options struct {
 	GroupKind      string `json:"groupKind,omitempty"`
 	Classification string `json:"classification,omitempty"`
 
-	Component     string   `json:"component,omitempty"`
-	ComponentName string   `json:"componentName,omitempty"`
-	ComponentKind string   `json:"componentKind,omitempty"`
-	Technologies  []string `json:"technologies,omitempty"`
-	Repo          string   `json:"repo,omitempty"`
-	Out           string   `json:"out,omitempty"`
+	Component     string             `json:"component,omitempty"`
+	ComponentName string             `json:"componentName,omitempty"`
+	ComponentKind string             `json:"componentKind,omitempty"`
+	Technologies  []string           `json:"technologies,omitempty"`
+	Repo          string             `json:"repo,omitempty"`
+	Components    []ComponentOptions `json:"components,omitempty"`
+	Out           string             `json:"out,omitempty"`
+}
+
+// ComponentOptions names one independently deployable runtime found inside a
+// repository. The repository-level fields above remain the fallback for the
+// ordinary one-component project.
+type ComponentOptions struct {
+	Slug string `json:"slug"`
+	Name string `json:"name,omitempty"`
+	Kind string `json:"kind,omitempty"`
 }
 
 // Serve answers one request on stdin with one response on stdout. The

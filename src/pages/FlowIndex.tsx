@@ -2,7 +2,7 @@ import { useDocumentTitle } from "../app/title";
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { ArrowUpDown, X } from "lucide-react";
-import { CATALOG_PATH, catalog } from "../data";
+import { catalog } from "../data";
 import { allRepos, flowContexts, walkSteps } from "../catalog";
 import { FLOW_HEALTH_NOTE, flowHealth, flowOwner, statusCounts } from "../lib/flow-tree";
 import type { FlowHealth } from "../lib/flow-tree";
@@ -15,9 +15,10 @@ import { middleTruncate } from "../lib/format";
 import { staggerStyle } from "../lib/motion";
 import { Ident } from "../components/Ident";
 import { RowActions } from "../components/RowActions";
-import { Blank, Empty } from "../components/PageHeader";
+import { CapabilityEmpty, Empty } from "../components/PageHeader";
 import { ContextPill } from "../components/primitives";
 import { FlowTrigger } from "../components/FlowTrigger";
+import { paths } from "../routes";
 
 type Sort = "contexts" | "name" | "steps" | "health";
 
@@ -189,11 +190,19 @@ export function FlowIndex() {
 
       {bare ? (
         <div className="mt-section">
-          <Blank where={CATALOG_PATH}>
-            No flows yet — a flow is one run across the estate, reconstructed
-            from an integration test or written down by hand. Either way it
-            arrives in <span className="text-ink">flows[]</span>.
-          </Blank>
+          <CapabilityEmpty
+            title={catalog.contexts.length === 0 ? "Connect a project before tracing flows" : "No end-to-end flows yet"}
+            signal="Signals: integration tests, message handlers or authored flows[] catalog fragments."
+            actions={<>
+              <Link className="product-primary" to={catalog.contexts.length === 0 ? paths.settingsProjects() : paths.settingsPipeline()}>{catalog.contexts.length === 0 ? "Connect a project" : "Review extraction"}</Link>
+              {catalog.contexts.length > 0 ? <Link className="tbtn" to={paths.map()}>Open context map</Link> : null}
+            </>}
+          >
+            {catalog.contexts.length === 0
+              ? "Portolan needs a project before it can reconstruct a journey through the architecture."
+              : "A flow is one run across the estate. Portolan can reconstruct it from integration evidence or read an authored flow from the catalog."
+            }
+          </CapabilityEmpty>
         </div>
       ) : rows.length === 0 ? (
         <div className="mt-section">

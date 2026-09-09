@@ -98,7 +98,13 @@ function ChatLoading() {
  * way out the router already says the next address, and the page leaving
  * must keep drawing the one it was.
  */
-function AppRoutes({ location }: { location: Location }) {
+function AppRoutes({
+  location,
+  onOpenSearch,
+}: {
+  location: Location;
+  onOpenSearch: () => void;
+}) {
   return (
     <Routes location={location}>
       <Route path="/" element={<Overview />} />
@@ -200,7 +206,10 @@ function AppRoutes({ location }: { location: Location }) {
         }
       />
       <Route path="/index.html" element={<Navigate to="/" replace />} />
-      <Route path="*" element={<NotFoundPage />} />
+      <Route
+        path="*"
+        element={<NotFoundPage onOpenSearch={onOpenSearch} />}
+      />
     </Routes>
   );
 }
@@ -354,7 +363,10 @@ function Shell() {
               {...page}
               className="min-h-0 flex-1 overflow-hidden"
             >
-              <AppRoutes location={location} />
+              <AppRoutes
+                location={location}
+                onOpenSearch={() => setPalette(true)}
+              />
             </m.main>
           </AnimatePresence>
           <SidebarDrawer />
@@ -392,7 +404,10 @@ function Shell() {
                 {...page}
                 className="h-full overflow-hidden"
               >
-                <AppRoutes location={location} />
+                <AppRoutes
+                  location={location}
+                  onOpenSearch={() => setPalette(true)}
+                />
               </m.main>
             </AnimatePresence>
           </Panel>
