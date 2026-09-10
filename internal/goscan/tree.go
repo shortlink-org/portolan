@@ -12,19 +12,37 @@ package goscan
 import (
 	"fmt"
 	"go/ast"
+	"go/build"
 	"go/parser"
 	"go/token"
 	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
 )
 
+// ReadOptions controls a source snapshot. Generated declarations can be used
+// for type/contract resolution without treating them as handwritten behavior.
+type ReadOptions struct {
+	IncludeGenerated bool
+	AllowPartial     bool
+	GOOS             string
+	GOARCH           string
+	Tags             []string
+	// Directories restricts parsing to these module-relative directories.
+	Directories []string
+}
+
 // Tree is one Go module's source, read once.
 type Tree struct {
+	Diagnostics []string
+	ByDir       map[string][]*File
+	Options     ReadOptions
+
 	Root   string
 	Module string
 	Fset   *token.FileSet
@@ -44,8 +62,30 @@ type Tree struct {
 // Read parses the tree under root. Test files, generated files, vendored
 // code and dot-directories are left out: they are not what the service
 // says about itself.
-func Read(root string) (*Tree, error) {
-	t := &Tree{Root: root, Module: ModulePath(root), Fset: token.NewFileSet(), Constants: map[string]ConstExpr{}}
+func Read(root string) (*Tree, error) { return ReadWithOptions(root, ReadOptions{}) }
+
+func ReadWithOptions(root string, options ReadOptions) (*Tree, error) {
+	root = filepath.Clean(root)
+	t := &Tree{Root: root, Module: ModulePath(root), Fset: token.NewFileSet(), Constants: map[string]ConstExpr{}, ByDir: map[string][]*File{}, Options: options}
+	buildContext := build.Default
+	if options.GOOS != "" {
+		buildContext.GOOS = options.GOOS
+	} else if target := os.Getenv("GOOS"); target != "" {
+		buildContext.GOOS = target
+	}
+	if options.GOARCH != "" {
+		buildContext.GOARCH = options.GOARCH
+	} else if target := os.Getenv("GOARCH"); target != "" {
+		buildContext.GOARCH = target
+	}
+	buildContext.BuildTags = append([]string(nil), options.Tags...)
+	// The WASI host supplies the target platform. Never silently analyze the
+	// wasip1 runtime's file set when running the syntax extractor as a plugin.
+	matchBuild := runtime.GOOS != "wasip1" || options.GOOS != "" || os.Getenv("GOOS") != ""
+	allowed := map[string]bool{}
+	for _, dir := range options.Directories {
+		allowed[filepath.ToSlash(filepath.Clean(dir))] = true
+	}
 
 	var names []string
 	err := filepath.WalkDir(root, func(name string, entry fs.DirEntry, err error) error {
@@ -53,11 +93,16 @@ func Read(root string) (*Tree, error) {
 			return err
 		}
 		if entry.IsDir() {
+			if name != root {
+				if _, err := os.Stat(filepath.Join(name, "go.mod")); err == nil {
+					return filepath.SkipDir
+				}
+			}
 			if name != root && strings.HasPrefix(entry.Name(), ".") {
 				return filepath.SkipDir
 			}
 			switch entry.Name() {
-			case ".git", ".portolan", "node_modules", "vendor":
+			case ".git", ".portolan", "node_modules", "vendor", "testdata":
 				if name != root {
 					return filepath.SkipDir
 				}
@@ -65,7 +110,23 @@ func Read(root string) (*Tree, error) {
 			return nil
 		}
 		base := entry.Name()
-		if !strings.HasSuffix(base, ".go") || strings.HasSuffix(base, "_test.go") || strings.HasSuffix(base, ".gen.go") || strings.HasSuffix(base, "_generated.go") {
+		if !strings.HasSuffix(base, ".go") || strings.HasSuffix(base, "_test.go") {
+			return nil
+		}
+		rel, _ := filepath.Rel(root, filepath.Dir(name))
+		if len(allowed) > 0 && !allowed[filepath.ToSlash(rel)] {
+			return nil
+		}
+		if matchBuild {
+			match, err := buildContext.MatchFile(filepath.Dir(name), base)
+			if err != nil {
+				return err
+			}
+			if !match {
+				return nil
+			}
+		}
+		if !options.IncludeGenerated && generatedName(base) {
 			return nil
 		}
 		names = append(names, name)
@@ -79,15 +140,43 @@ func Read(root string) (*Tree, error) {
 	for _, name := range names {
 		node, err := parser.ParseFile(t.Fset, name, nil, parser.ParseComments)
 		if err != nil {
-			return nil, fmt.Errorf("parse %s: %w", name, err)
+			if !options.AllowPartial {
+				return nil, fmt.Errorf("parse %s: %w", name, err)
+			}
+			t.Diagnostics = append(t.Diagnostics, fmt.Sprintf("parse %s: %v", name, err))
+			continue
+		}
+		generated := IsGenerated(name, node)
+		if generated && !options.IncludeGenerated {
+			continue
 		}
 		rel, _ := filepath.Rel(root, name)
 		t.Files = append(t.Files, &File{
-			Name:    filepath.ToSlash(rel),
-			Pkg:     t.PackagePath(filepath.Dir(name)),
-			Imports: ImportsOf(node),
-			Node:    node,
+			Name:      filepath.ToSlash(rel),
+			Generated: generated,
+			Pkg:       t.PackagePath(filepath.Dir(name)),
+			Imports:   ImportsOf(node),
+			Node:      node,
 		})
+	}
+	// Index actual local package names after all declarations are known.
+	namesByImport := map[string]string{}
+	for _, file := range t.Files {
+		namesByImport[file.Pkg] = file.Node.Name.Name
+		dir := filepath.ToSlash(filepath.Dir(file.Name))
+		t.ByDir[dir] = append(t.ByDir[dir], file)
+	}
+	for _, file := range t.Files {
+		for _, spec := range file.Node.Imports {
+			if spec.Name != nil {
+				continue
+			}
+			imported, _ := strconv.Unquote(spec.Path.Value)
+			if name := namesByImport[imported]; name != "" {
+				delete(file.Imports, path.Base(imported))
+				file.Imports[name] = imported
+			}
+		}
 	}
 	t.indexConstants()
 
@@ -152,4 +241,38 @@ func ImportsOf(node *ast.File) map[string]string {
 		}
 	}
 	return out
+}
+
+func generatedName(name string) bool {
+	return strings.HasSuffix(name, ".gen.go") || strings.HasSuffix(name, "_generated.go") || strings.HasSuffix(name, ".generated.go")
+}
+
+func IsGenerated(name string, file *ast.File) bool {
+	return generatedName(name) || ast.IsGenerated(file)
+}
+
+// PackageFiles and PackageDirs use the same immutable source selection in
+// every consumer; repeated lookups reuse the AST and token positions.
+func (t *Tree) PackageFiles(dir string) []*File {
+	return t.ByDir[filepath.ToSlash(filepath.Clean(dir))]
+}
+func (t *Tree) PackageDirs(prefix string) []string {
+	prefix = filepath.ToSlash(filepath.Clean(prefix))
+	var dirs []string
+	for dir := range t.ByDir {
+		if prefix == "." || dir == prefix || strings.HasPrefix(dir, prefix+"/") {
+			dirs = append(dirs, dir)
+		}
+	}
+	sort.Strings(dirs)
+	return dirs
+}
+
+// PackageIndex also serves small standalone readers and tests. Extractors
+// should pass their request-scoped index to reuse parsing across passes.
+func PackageIndex(root, dir string, indexes ...*Tree) (*Tree, error) {
+	if len(indexes) > 0 && indexes[0] != nil {
+		return indexes[0], nil
+	}
+	return ReadWithOptions(root, ReadOptions{IncludeGenerated: true, AllowPartial: true})
 }

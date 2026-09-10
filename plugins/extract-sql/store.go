@@ -1,8 +1,8 @@
 package extractsql
 
 import (
-	"go/parser"
-	"go/token"
+	"go/ast"
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/shortlink-org/portolan/catalog"
+	"github.com/shortlink-org/portolan/internal/goscan"
 	"github.com/shortlink-org/portolan/plugin"
 )
 
@@ -25,13 +26,28 @@ func readStore(root string, layout storageLayout, storeID, owner string, b *plug
 	tables := []catalog.Table{}
 	views := []catalog.View{}
 	accesses := map[string][]catalog.TableAccess{}
+	readAccesses := map[string]bool{}
+	collectAccesses := func(dir, aggregate string) {
+		if readAccesses[dir] {
+			return
+		}
+		readAccesses[dir] = true
+		mergeTableAccesses(accesses, readTableAccesses(root, dir, aggregate, layout.index))
+	}
 
 	for _, repository := range layout.repositories {
 		aggregate := repository.name
 		dir := repository.migrations
-		mergeTableAccesses(accesses, readTableAccesses(root, repository.dir, aggregate))
+		collectAccesses(repository.dir, aggregate)
+		// Plain migration directories do not locate their SQL callers. Reuse
+		// the module index to find accesses in storage packages elsewhere.
+		if packageName(strings.Split(repository.dir, "/"), "repository") == "" && layout.index != nil {
+			for _, sourceDir := range layout.index.PackageDirs(".") {
+				collectAccesses(sourceDir, "")
+			}
+		}
 
-		state, copies, _, ok := readMigrations(root, dir, storeID, owner, b)
+		state, copies, declaredAggregates, ok := readMigrations(root, dir, storeID, owner, b)
 		if !ok {
 			// A repository package with no migrations of its own is normal:
 			// not every adapter keeps rows.
@@ -40,10 +56,14 @@ func readStore(root string, layout storageLayout, storeID, owner string, b *plug
 
 		// The directory names the aggregate, and an id spells it the way every
 		// extractor spells one: price_list is price-list.
-		aggregateID := owner + "." + slug(aggregate)
+		aggregateRef := ""
+		domainSource := repositoryDomain(root, aggregate, layout.index)
+		if domainSource != "" {
+			aggregateRef = owner + "." + slug(aggregate)
+		}
 		// Which column carries which field, read from the statements that
 		// write the rows rather than from the column names.
-		mapped := readMaps(root, repository.dir, aggregate, b)
+		mapped := readMaps(root, repository.dir, aggregate, b, layout.index)
 		for _, more := range []map[string]map[string]string{
 			readMapsTS(root, repository.dir, aggregate, b),
 			readMapsRust(root, repository.dir, aggregate, b),
@@ -73,11 +93,19 @@ func readStore(root string, layout storageLayout, storeID, owner string, b *plug
 			// The layout is the claim: these rows exist because this
 			// aggregate exists, and its schema lives beside the code that
 			// reads it.
-			table.Persists = &catalog.Persists{Aggregate: aggregateID}
+			target := firstNonEmpty(forTable(declaredAggregates, table.Name), aggregateRef)
+			if target != "" {
+				rule := "domain-root-and-repository-layout"
+				evidence := []catalog.RelationEvidence{{Kind: "binding", Rule: rule, Source: domainSource, Symbol: target}}
+				if explicit := forTable(declaredAggregates, table.Name); explicit != "" {
+					evidence = []catalog.RelationEvidence{{Kind: "binding", Rule: "migration-aggregate-annotation", Source: forTable(state.aggregateSources, table.Name), Symbol: explicit}}
+				}
+				table.Persists = &catalog.Persists{Aggregate: target, Evidence: evidence}
+			}
 
 			mapping := forTable(mapped, table.Name)
 			for i := range table.Columns {
-				if field, ok := mapping[table.Columns[i].Name]; ok {
+				if field, ok := mapping[table.Columns[i].Name]; ok && table.Persists != nil {
 					table.Columns[i].Maps = field
 				}
 			}
@@ -85,6 +113,10 @@ func readStore(root string, layout storageLayout, storeID, owner string, b *plug
 
 			// The first table an aggregate creates holds the aggregate
 			// itself; anything it creates afterwards hangs off it.
+			if table.Persists == nil {
+				tables = append(tables, table)
+				continue
+			}
 			if first {
 				table.Role = catalog.TableRoleAggregateRoot
 				first = false
@@ -107,7 +139,7 @@ func readStore(root string, layout storageLayout, storeID, owner string, b *plug
 	// when it is written there (`-- aggregate:`) and left out when it is not.
 	for _, projector := range layout.projectors {
 		dir := projector.migrations
-		mergeTableAccesses(accesses, readTableAccesses(root, projector.dir, projector.name))
+		collectAccesses(projector.dir, projector.name)
 
 		state, copies, projected, ok := readMigrations(root, dir, storeID, owner, b)
 		if !ok {
@@ -118,7 +150,7 @@ func readStore(root string, layout storageLayout, storeID, owner string, b *plug
 			table := finishTable(relation, state, storeID)
 			table.Role = catalog.TableRoleProjection
 			if aggregate := forTable(projected, table.Name); aggregate != "" {
-				table.Persists = &catalog.Persists{Aggregate: aggregate}
+				table.Persists = &catalog.Persists{Aggregate: aggregate, Evidence: []catalog.RelationEvidence{{Kind: "binding", Rule: "migration-aggregate-annotation", Source: forTable(state.aggregateSources, table.Name), Symbol: aggregate}}}
 			}
 			// No `maps`: the upsert in a projector writes what an event
 			// carries, and an event's field is not a field of the aggregate
@@ -191,6 +223,7 @@ func readMigrations(root, dir, storeID, owner string, b *plugin.Builder) (*ddlSt
 		}
 		for table, aggregate := range readProjected(string(sql), owner) {
 			projected[table] = aggregate
+			state.aggregateSources[table] = source
 		}
 		unread, err := state.apply(string(sql), source)
 		if err != nil {
@@ -328,44 +361,24 @@ func resolveForeignKeys(storeID string, tables []catalog.Table, b *plugin.Builde
 // package by. `userrepo.Migrations` and `sdkoutbox.Migrations` look equally
 // foreign as identifiers, and only the path says that one of them is the
 // repository package next door.
-func foreignSchemas(root, module string, b *plugin.Builder, storeID string) {
+func foreignSchemas(root, module string, b *plugin.Builder, storeID string, indexes ...*goscan.Tree) {
 	if module == "" {
 		return
 	}
 
 	reported := map[string]bool{}
-	fset := token.NewFileSet()
-
-	_ = filepath.WalkDir(filepath.Join(root, "internal"), func(p string, entry os.DirEntry, err error) error {
-		if err != nil || entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") {
-			return nil
+	index, err := goscan.PackageIndex(root, ".", indexes...)
+	if err != nil {
+		return
+	}
+	for _, file := range index.Files {
+		if file.Generated {
+			continue
 		}
-		if strings.HasSuffix(entry.Name(), "_test.go") {
-			// A test standing up its own schema says nothing about what the
-			// service deploys.
-			return nil
-		}
-
-		file, err := parser.ParseFile(fset, p, nil, parser.ImportsOnly|parser.SkipObjectResolution)
+		paths := file.Imports
+		source, err := os.ReadFile(filepath.Join(root, file.Name))
 		if err != nil {
-			return nil
-		}
-
-		paths := map[string]string{}
-		for _, spec := range file.Imports {
-			importPath := strings.Trim(spec.Path.Value, `"`)
-			name := path.Base(importPath)
-			if spec.Name != nil {
-				name = spec.Name.Name
-			}
-			paths[name] = importPath
-		}
-
-		// Imports only got parsed above, so the bodies are gone; the file is
-		// read again for the one selector that matters.
-		source, err := os.ReadFile(p)
-		if err != nil {
-			return nil
+			continue
 		}
 
 		for _, match := range migrationsRef.FindAllStringSubmatch(string(source), -1) {
@@ -381,8 +394,7 @@ func foreignSchemas(root, module string, b *plugin.Builder, storeID string) {
 			b.Warn(storeID, "migrations are applied from "+importPath+", whose schema is not in this tree; the tables it creates are missing from this store")
 		}
 
-		return nil
-	})
+	}
 }
 
 // migrationsRef finds `<pkg>.Migrations`, which is how a migration set is
@@ -421,4 +433,58 @@ func subdirs(root, rel string) []string {
 	}
 
 	return out
+}
+
+// A conventional repository is not itself an aggregate. For Go, require the
+// same root struct and domain layout accepted by the domain extractor.
+func repositoryDomain(root, name string, index *goscan.Tree) string {
+	if index != nil {
+		for _, dir := range []string{"internal/domain/" + name, "internal/" + name + "/domain"} {
+			for _, file := range index.PackageFiles(dir) {
+				if file.Generated {
+					continue
+				}
+				rootName := title(file.Node.Name.Name)
+				if file.Node.Name.Name == "domain" {
+					rootName = title(name)
+				}
+				for _, decl := range file.Node.Decls {
+					gen, ok := decl.(*ast.GenDecl)
+					if !ok {
+						continue
+					}
+					for _, spec := range gen.Specs {
+						typ, ok := spec.(*ast.TypeSpec)
+						if !ok || typ.Name.Name != rootName {
+							continue
+						}
+						if _, ok := typ.Type.(*ast.StructType); ok {
+							return index.At(typ.Pos()).String()
+						}
+					}
+				}
+			}
+		}
+	}
+	for _, candidate := range []string{
+		"src/domain/" + name + "/" + name + ".ts",
+		"src/domain/" + name + "/mod.rs",
+		"src/main/java/domain/" + name + "/" + title(name) + ".java",
+	} {
+		if info, err := os.Stat(filepath.Join(root, candidate)); err == nil && !info.IsDir() {
+			return candidate
+		}
+	}
+	var javaSource string
+	_ = filepath.WalkDir(filepath.Join(root, "src/main/java"), func(filename string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		if !entry.IsDir() && strings.HasSuffix(filepath.ToSlash(filename), "/domain/"+name+"/"+title(name)+".java") {
+			rel, _ := filepath.Rel(root, filename)
+			javaSource = filepath.ToSlash(rel)
+		}
+		return nil
+	})
+	return javaSource
 }

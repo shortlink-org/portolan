@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/shortlink-org/portolan/internal/goscan"
 )
 
 // sourceLayout is the small amount of filesystem knowledge the extractor
@@ -14,6 +16,7 @@ import (
 // of the extractor deals in aggregate/use-case keys and concrete package
 // directories, not in one repository-wide directory convention.
 type sourceLayout struct {
+	index             *goscan.Tree
 	packages          []string
 	domains           map[string]string
 	useCases          map[string]string
@@ -30,6 +33,7 @@ func (l sourceLayout) scoped(scope string) sourceLayout {
 	prefix := "internal/" + strings.Trim(scope, "/") + "/"
 	keep := func(dir string) bool { return dir == strings.TrimSuffix(prefix, "/") || strings.HasPrefix(dir, prefix) }
 	out := sourceLayout{
+		index:   l.index,
 		domains: map[string]string{}, useCases: map[string]string{}, integrationEvents: map[string]string{},
 	}
 	for _, dir := range l.packages {
@@ -70,9 +74,17 @@ func (l sourceLayout) scoped(scope string) sourceLayout {
 	return out
 }
 
-func discoverLayout(root string) sourceLayout {
+func discoverLayout(root string, indexes ...*goscan.Tree) sourceLayout {
+	var index *goscan.Tree
+	if len(indexes) > 0 {
+		index = indexes[0]
+	}
+	if index == nil {
+		index, _ = goscan.ReadWithOptions(root, goscan.ReadOptions{IncludeGenerated: true, AllowPartial: true})
+	}
 	layout := sourceLayout{
-		packages:          goPackageDirs(root, "internal"),
+		index:             index,
+		packages:          goPackageDirs(root, "internal", index),
 		domains:           map[string]string{},
 		useCases:          map[string]string{},
 		integrationEvents: map[string]string{},
@@ -88,7 +100,7 @@ func discoverLayout(root string) sourceLayout {
 			layout.integrationEvents[aggregate] = dir
 		}
 		if aggregate, name, ok := useCaseDir(parts); ok {
-			pkg, err := parsePkg(root, dir)
+			pkg, err := parsePkg(root, dir, index)
 			if err == nil && hasStructNamed(pkg, "UseCase") {
 				layout.useCases[aggregate+"/"+name] = dir
 			}
@@ -181,7 +193,10 @@ func isTransportPackage(parts []string, protocol string) bool {
 	return false
 }
 
-func goPackageDirs(root, rel string) []string {
+func goPackageDirs(root, rel string, indexes ...*goscan.Tree) []string {
+	if len(indexes) > 0 && indexes[0] != nil {
+		return indexes[0].PackageDirs(rel)
+	}
 	base := filepath.Join(root, filepath.FromSlash(rel))
 	seen := map[string]bool{}
 

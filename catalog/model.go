@@ -334,12 +334,13 @@ type HTTPDestinationResolution struct {
 }
 
 type RpcCall struct {
-	Destination *HTTPDestination `json:"destination,omitempty"`
-	ID          string           `json:"id"`
-	Peer        string           `json:"peer"`
-	Status      Status           `json:"status"`
-	Source      string           `json:"source"`
-	Note        string           `json:"note,omitempty"`
+	Evidence    []RelationEvidence `json:"evidence,omitempty"`
+	Destination *HTTPDestination   `json:"destination,omitempty"`
+	ID          string             `json:"id"`
+	Peer        string             `json:"peer"`
+	Status      Status             `json:"status"`
+	Source      string             `json:"source"`
+	Note        string             `json:"note,omitempty"`
 
 	// Module is the module the vendored copy this call was read from belongs to.
 	Module string `json:"module,omitempty"`
@@ -680,13 +681,14 @@ const (
 )
 
 type Table struct {
-	ID       string       `json:"id"`
-	Name     string       `json:"name"`
-	Doc      string       `json:"doc,omitempty"`
-	Columns  []Column     `json:"columns"`
-	Indexes  []TableIndex `json:"indexes,omitempty"`
-	Persists *Persists    `json:"persists,omitempty"`
-	Role     TableRole    `json:"role,omitempty"`
+	Evidence []RelationEvidence `json:"evidence,omitempty"`
+	ID       string             `json:"id"`
+	Name     string             `json:"name"`
+	Doc      string             `json:"doc,omitempty"`
+	Columns  []Column           `json:"columns"`
+	Indexes  []TableIndex       `json:"indexes,omitempty"`
+	Persists *Persists          `json:"persists,omitempty"`
+	Role     TableRole          `json:"role,omitempty"`
 	// Accesses are the source-backed repository methods that touch this table.
 	// They answer who reads or writes the rows; the DDL alone cannot.
 	Accesses []TableAccess `json:"accesses,omitempty"`
@@ -709,8 +711,9 @@ type TableAccess struct {
 
 // Persists is the link back to the model: which domain object these rows hold.
 type Persists struct {
-	Aggregate string `json:"aggregate,omitempty"`
-	Block     string `json:"block,omitempty"`
+	Evidence  []RelationEvidence `json:"evidence,omitempty"`
+	Aggregate string             `json:"aggregate,omitempty"`
+	Block     string             `json:"block,omitempty"`
 }
 
 type TableIndex struct {
@@ -872,11 +875,22 @@ const (
 	StepResponse StepKind = "response"
 )
 
+// RelationEvidence records why an extractor or catalog resolution produced a
+// relationship. It describes source evidence, never observed execution.
+type RelationEvidence struct {
+	Kind       string   `json:"kind"`
+	Rule       string   `json:"rule"`
+	Source     string   `json:"source,omitempty"`
+	Symbol     string   `json:"symbol,omitempty"`
+	Candidates []string `json:"candidates,omitempty"`
+}
+
 type Step struct {
-	Destination *HTTPDestination `json:"destination,omitempty"`
-	Type        string           `json:"type"`
-	ID          string           `json:"id"`
-	From        string           `json:"from"`
+	Evidence    []RelationEvidence `json:"evidence,omitempty"`
+	Destination *HTTPDestination   `json:"destination,omitempty"`
+	Type        string             `json:"type"`
+	ID          string             `json:"id"`
+	From        string             `json:"from"`
 	// To is a participant id. From == To is a self-message.
 	To   string   `json:"to"`
 	Kind StepKind `json:"kind"`

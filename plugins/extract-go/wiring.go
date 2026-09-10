@@ -1,6 +1,8 @@
 package extractgo
 
 import (
+	"github.com/shortlink-org/portolan/catalog"
+	"github.com/shortlink-org/portolan/internal/goscan"
 	"go/ast"
 	"go/types"
 	"strings"
@@ -58,7 +60,7 @@ func readPortBindings(root string, layouts ...sourceLayout) (map[string]string, 
 	}
 
 	for _, dir := range packages {
-		pkg, err := parsePkg(root, dir)
+		pkg, err := parsePkg(root, dir, layoutIndex(layouts))
 		if err != nil {
 			continue
 		}
@@ -349,7 +351,7 @@ func adapterBindings(root string, layouts ...sourceLayout) map[string]adapterDec
 	}
 
 	for _, dir := range packages {
-		pkg, err := parsePkg(root, dir)
+		pkg, err := parsePkg(root, dir, layoutIndex(layouts))
 		if err != nil {
 			continue
 		}
@@ -410,7 +412,7 @@ func wireBoundPorts(root string, layouts ...sourceLayout) map[string]bool {
 	}
 
 	for _, dir := range packages {
-		pkg, err := parsePkg(root, dir)
+		pkg, err := parsePkg(root, dir, layoutIndex(layouts))
 		if err != nil {
 			continue
 		}
@@ -485,5 +487,38 @@ func params(fn *ast.FuncDecl) []ast.Expr {
 		out = append(out, param.Type)
 	}
 
+	return out
+}
+
+func layoutIndex(layouts []sourceLayout) *goscan.Tree {
+	if len(layouts) > 0 {
+		return layouts[0].index
+	}
+	return nil
+}
+
+func portBindingEvidence(root string, layout sourceLayout) map[string][]catalog.RelationEvidence {
+	out := map[string][]catalog.RelationEvidence{}
+	for _, dir := range layout.packages {
+		p, err := parsePkg(root, dir, layout.index)
+		if err != nil {
+			continue
+		}
+		for _, file := range p.files {
+			useCases := useCaseImports(file, layout)
+			for _, decl := range file.Decls {
+				fn, ok := decl.(*ast.FuncDecl)
+				if !ok || fn.Recv != nil || fn.Type.Results == nil || len(fn.Type.Results.List) != 1 {
+					continue
+				}
+				port, ok := portName(fn.Type.Results.List[0].Type, useCases)
+				if !ok {
+					continue
+				}
+				source, line := p.position(fn.Pos())
+				out[port] = append(out[port], catalog.RelationEvidence{Kind: "binding", Rule: "provider-signature", Source: at(source, line), Symbol: fn.Name.Name})
+			}
+		}
+	}
 	return out
 }

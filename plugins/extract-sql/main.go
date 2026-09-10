@@ -77,7 +77,7 @@ func extract(in plugin.Input, opts Options) plugin.Response {
 
 	tables, views := readStore(root, layout, storeID, owner, b)
 	resolveForeignKeys(storeID, tables, b)
-	foreignSchemas(root, modulePath(root), b, storeID)
+	foreignSchemas(root, modulePath(root), b, storeID, layout.index)
 
 	fragment := catalog.Catalog{
 		GeneratedAt: in.GeneratedAt,

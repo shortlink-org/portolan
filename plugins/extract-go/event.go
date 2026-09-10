@@ -15,7 +15,7 @@ import (
 func extractEvents(root, aggregateName, domainPath string, layout sourceLayout, aggID string, b *plugin.Builder) []catalog.Event {
 	out := []catalog.Event{}
 
-	pkg, err := parsePkg(root, path.Join(domainPath, "event"))
+	pkg, err := parsePkg(root, path.Join(domainPath, "event"), layout.index)
 	if err != nil {
 		return out
 	}
@@ -40,7 +40,7 @@ func channelOf(root, aggregateName string, layout sourceLayout) string {
 	if dir == "" {
 		return ""
 	}
-	pkg, err := parsePkg(root, dir)
+	pkg, err := parsePkg(root, dir, layout.index)
 	if err != nil {
 		return ""
 	}

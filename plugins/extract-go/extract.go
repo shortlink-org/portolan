@@ -30,6 +30,11 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 
 	svcID := serviceID(opts.Context, opts.Service)
 	layout := discoverLayout(root)
+	if layout.index != nil {
+		for _, diagnostic := range layout.index.Diagnostics {
+			b.Warn(svcID, diagnostic)
+		}
+	}
 	if opts.Scope != "" {
 		layout = layout.scoped(opts.Scope)
 	}
@@ -93,7 +98,7 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	for _, endpoint := range endpoints {
 		covered[at(endpoint.source, endpoint.line)] = true
 	}
-	serviceFlows, serviceCalls := extractServiceFlows(root, opts, b, covered)
+	serviceFlows, serviceCalls := extractServiceFlows(root, opts, b, covered, layout)
 	flows = append(flows, serviceFlows...)
 	calls = mergeRPCCalls(calls, serviceCalls)
 	if len(service.Aggregates) == 0 && len(flows) == 0 && opts.Scope == "" {

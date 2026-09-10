@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/shortlink-org/portolan/internal/goscan"
 )
 
 type storagePackage struct {
@@ -16,6 +18,7 @@ type storagePackage struct {
 }
 
 type storageLayout struct {
+	index        *goscan.Tree
 	repositories []storagePackage
 	projectors   []storagePackage
 	source       string
@@ -26,6 +29,7 @@ type storageLayout struct {
 // omitted roots discover both horizontal and feature-sliced Go layouts.
 func discoverStorageLayout(root, repositories, projectors string) storageLayout {
 	var layout storageLayout
+	layout.index, _ = goscan.ReadWithOptions(root, goscan.ReadOptions{IncludeGenerated: true, AllowPartial: true})
 
 	if repositories != "" {
 		layout.repositories = packagesUnder(root, repositories, "repository")
@@ -63,6 +67,11 @@ func packagesUnder(root, base, kind string) []storagePackage {
 	base = filepath.ToSlash(filepath.Clean(base))
 	var out []storagePackage
 
+	// An explicit migrations directory is also a complete schema input.
+	if hasUpMigrations(root, base) {
+		return []storagePackage{{name: path.Base(path.Dir(base)), dir: path.Dir(base), migrations: base}}
+	}
+
 	// A feature slice points directly at its repository adapter, with
 	// migrations immediately below it.
 	if hasUpMigrations(root, path.Join(base, "migrations")) {
@@ -86,7 +95,7 @@ func packagesUnder(root, base, kind string) []storagePackage {
 }
 
 func discoverPackages(root, kind string) []storagePackage {
-	base := filepath.Join(root, "internal")
+	base := filepath.Clean(root)
 	seen := map[string]bool{}
 	var out []storagePackage
 
@@ -97,10 +106,19 @@ func discoverPackages(root, kind string) []storagePackage {
 		if !entry.IsDir() {
 			return nil
 		}
+		if filename != base {
+			switch entry.Name() {
+			case "vendor", "node_modules", "testdata":
+				return filepath.SkipDir
+			}
+			if _, err := os.Stat(filepath.Join(filename, "go.mod")); err == nil {
+				return filepath.SkipDir
+			}
+		}
 		if filename != base && strings.HasPrefix(entry.Name(), ".") {
 			return filepath.SkipDir
 		}
-		if entry.Name() != "migrations" {
+		if entry.Name() != "migrations" && entry.Name() != "migration" {
 			return nil
 		}
 
@@ -115,6 +133,9 @@ func discoverPackages(root, kind string) []storagePackage {
 		dir := path.Dir(migrations)
 		parts := strings.Split(dir, "/")
 		name := packageName(parts, kind)
+		if name == "" && kind == "repository" && packageName(parts, "projector") == "" {
+			name = path.Base(dir)
+		}
 		if name == "" || seen[dir] {
 			return filepath.SkipDir
 		}

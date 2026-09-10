@@ -43,7 +43,7 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 		}
 		consumes = append(consumes, catalog.RpcCall{
 			ID: call.ID, Peer: peer, Status: status, Source: source,
-			Note: callNote(call), Destination: call.Destination,
+			Note: callNote(call), Destination: call.Destination, Evidence: httpCallEvidence(call),
 		})
 	}
 	sort.Slice(consumes, func(i, j int) bool { return consumes[i].ID < consumes[j].ID })
@@ -228,7 +228,7 @@ func flowsOfGroupsExcept(serviceID, context string, groups []gohttp.FlowGroup, o
 			callSteps = append(callSteps, &catalog.Step{
 				Type: "step", ID: "s" + strconv.Itoa(index+1), From: serviceID, To: participant.ID,
 				Kind: catalog.StepRPC, Ref: call.ID, Label: callLabel(call), Status: status,
-				Note: note, Line: call.Source.String(), Destination: call.Destination,
+				Note: note, Line: call.Source.String(), Destination: call.Destination, Evidence: httpCallEvidence(call),
 			})
 		}
 		steps := catalog.FlowNodes{}
@@ -329,7 +329,7 @@ func flowsOfRoots(serviceID, context string, roots []gohttp.RootFlow, opts Optio
 			steps = append(steps, &catalog.Step{
 				Type: "step", ID: "s" + strconv.Itoa(index+2), From: serviceID, To: participant.ID,
 				Kind: catalog.StepRPC, Ref: call.ID, Label: callLabel(call), Status: status,
-				Note: note, Line: call.Source.String(), Destination: call.Destination,
+				Note: note, Line: call.Source.String(), Destination: call.Destination, Evidence: httpCallEvidence(call),
 			})
 		}
 		reached := append([]string{}, root.Covered...)
@@ -413,7 +413,7 @@ func flowsOfEndpoints(serviceID, context string, endpoints []gohttp.EndpointFlow
 				steps = append(steps, &catalog.Step{
 					Type: "step", ID: "s" + strconv.Itoa(stepIndex), From: serviceID, To: participant.ID,
 					Kind: catalog.StepRPC, Ref: call.ID, Label: callLabel(call), Status: status,
-					Note: note, Line: call.Source.String(), Destination: call.Destination,
+					Note: note, Line: call.Source.String(), Destination: call.Destination, Evidence: httpCallEvidence(call),
 				})
 				stepIndex++
 			}
@@ -700,6 +700,17 @@ func uniqueStrings(values []string) []string {
 			seen[value] = true
 			out = append(out, value)
 		}
+	}
+	return out
+}
+
+func httpCallEvidence(call gohttp.Call) []catalog.RelationEvidence {
+	out := []catalog.RelationEvidence{{Kind: "call-site", Rule: "http-expression", Source: call.Source.String(), Symbol: call.Method + " " + call.Path}}
+	for _, function := range call.Chain {
+		out = append(out, catalog.RelationEvidence{Kind: "function", Rule: "analyzed-call-path", Symbol: function})
+	}
+	if call.Contract != "" {
+		out = append(out, catalog.RelationEvidence{Kind: "contract", Rule: "client-contract", Source: call.Contract, Symbol: call.ID})
 	}
 	return out
 }

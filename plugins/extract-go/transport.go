@@ -66,7 +66,7 @@ func extractTransport(root string, layout sourceLayout, b *plugin.Builder) (map[
 func readTransportPackage(root, dir string, layout sourceLayout, handler func(*ast.FuncDecl) bool, id func(string) string, ref func(string, *pkg, string, string) string, b *plugin.Builder) []endpointDecl {
 	var endpoints []endpointDecl
 
-	pkg, err := parsePkg(root, dir)
+	pkg, err := parsePkg(root, dir, layout.index)
 	if err != nil {
 		return endpoints
 	}
@@ -218,7 +218,7 @@ func grpcMethodRef(root string, handlerPkg *pkg, structName, method string) stri
 				if importPath == "" || module == "" || !local {
 					continue
 				}
-				parsed, err := parsePkg(root, rel)
+				parsed, err := parsePkg(root, rel, handlerPkg.index)
 				if err != nil {
 					continue
 				}

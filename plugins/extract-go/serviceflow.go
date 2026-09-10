@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/shortlink-org/portolan/catalog"
+	"github.com/shortlink-org/portolan/internal/goscan"
 	"github.com/shortlink-org/portolan/plugin"
 )
 
@@ -31,16 +32,16 @@ type serviceEndpoint struct {
 	fn         *ast.FuncDecl
 }
 
-func extractServiceFlows(root string, opts Options, b *plugin.Builder, covered ...map[string]bool) ([]catalog.Flow, []catalog.RpcCall) {
+func extractServiceFlows(root string, opts Options, b *plugin.Builder, covered map[string]bool, layouts ...sourceLayout) ([]catalog.Flow, []catalog.RpcCall) {
 	r := newFlowReader(root, flowOptions{
 		context: opts.Context, svcID: serviceID(opts.Context, opts.Service), service: opts.Service,
 		store: opts.Store, peers: opts.Peers, externals: opts.Externals, events: opts.Events, serviceStyle: true,
-	}, b)
+	}, b, layouts...)
 
 	var out []catalog.Flow
-	for _, endpoint := range serviceEndpoints(root, opts.Scope) {
+	for _, endpoint := range serviceEndpoints(root, opts.Scope, r.layout.index) {
 		file, line := endpoint.pkg.position(endpoint.fn.Pos())
-		if len(covered) > 0 && covered[0][at(file, line)] {
+		if covered[at(file, line)] {
 			continue
 		}
 		d := newDraft()
@@ -454,14 +455,14 @@ func mergeRPCCalls(left, right []catalog.RpcCall) []catalog.RpcCall {
 	return out
 }
 
-func serviceEndpoints(root, scope string) []serviceEndpoint {
+func serviceEndpoints(root, scope string, indexes ...*goscan.Tree) []serviceEndpoint {
 	var out []serviceEndpoint
 	owned := "internal/" + strings.Trim(scope, "/")
-	for _, dir := range goPackageDirs(root, ".") {
+	for _, dir := range goPackageDirs(root, ".", indexes...) {
 		if scope != "" && dir != owned && !strings.HasPrefix(dir, owned+"/") {
 			continue
 		}
-		p, err := parsePkg(root, dir)
+		p, err := parsePkg(root, dir, indexes...)
 		if err != nil {
 			continue
 		}
@@ -785,11 +786,11 @@ func typesString(expr ast.Expr) string {
 	return strings.TrimSpace(types.ExprString(expr))
 }
 
-func rpcImplementationEntries(root string) map[string]string {
+func rpcImplementationEntries(root string, indexes ...*goscan.Tree) map[string]string {
 	out := map[string]string{}
 	ambiguous := map[string]bool{}
-	for _, dir := range goPackageDirs(root, "internal") {
-		p, err := parsePkg(root, dir)
+	for _, dir := range goPackageDirs(root, "internal", indexes...) {
+		p, err := parsePkg(root, dir, indexes...)
 		if err != nil {
 			continue
 		}
@@ -826,7 +827,7 @@ func (r *flowReader) localMethod(current *pkg, declared string, imports map[stri
 		if !ok {
 			return nil, "", nil
 		}
-		parsed, err := parsePkg(r.root, rel)
+		parsed, err := parsePkg(r.root, rel, r.layout.index)
 		if err != nil {
 			return nil, "", nil
 		}

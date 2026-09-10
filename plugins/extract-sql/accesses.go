@@ -2,15 +2,15 @@ package extractsql
 
 import (
 	"go/ast"
-	"go/parser"
 	"go/token"
-	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
 
 	"github.com/shortlink-org/portolan/catalog"
+
+	"github.com/shortlink-org/portolan/internal/goscan"
 )
 
 // table accesses are read from runtime SQL rather than from migrations. The
@@ -21,24 +21,16 @@ type foundTableAccess struct {
 	access catalog.TableAccess
 }
 
-func readTableAccesses(root, repositoryDir, aggregate string) map[string][]catalog.TableAccess {
+func readTableAccesses(root, repositoryDir, aggregate string, indexes ...*goscan.Tree) map[string][]catalog.TableAccess {
 	dir := mapSourceDir(root, repositoryDir, aggregate)
-	entries, err := os.ReadDir(filepath.Join(root, filepath.FromSlash(dir)))
+	index, err := goscan.PackageIndex(root, dir, indexes...)
 	if err != nil {
 		return nil
 	}
-
-	fset := token.NewFileSet()
-	files := make([]*ast.File, 0, len(entries))
-	for _, entry := range entries {
-		name := entry.Name()
-		if entry.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
-			continue
-		}
-		file, err := parser.ParseFile(fset, filepath.Join(root, filepath.FromSlash(dir), name), nil, parser.SkipObjectResolution)
-		if err == nil {
-			files = append(files, file)
-		}
+	fset := index.Fset
+	var files []*ast.File
+	for _, file := range index.PackageFiles(dir) {
+		files = append(files, file.Node)
 	}
 
 	constants := stringConstants(files)

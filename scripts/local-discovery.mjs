@@ -270,6 +270,18 @@ function goDomainEvidence(root, files) {
   return "";
 }
 
+// This is a discovery hint; the Go AST extractor proves the handler binding.
+function goHTTPServerEvidence(root, files) {
+  for (const name of matches(files, /\.go$/).filter((name) => !/(?:_test|\.gen|_generated)\.go$/.test(name) && !/(?:^|\/)(?:testdata|vendor)\//.test(name))) {
+    let source;
+    try { source = readFileSync(join(root, name), "utf8"); } catch { continue; }
+    if (/Code generated .*DO NOT EDIT/.test(source)) continue;
+    if (/"net\/http"/.test(source) && /\.Handle(?:Func)?\s*\(/.test(source)) return name;
+    if (/"github\.com\/(?:go-chi\/chi|gin-gonic\/gin|labstack\/echo)(?:\/v\d+)?"/.test(source) && /\.(?:Get|Post|Put|Patch|Delete|GET|POST|PUT|PATCH|DELETE)\s*\(/.test(source)) return name;
+  }
+  return "";
+}
+
 function laidOutDomainEvidence(root, files, language) {
   const extension = language === "typescript" ? "ts" : language === "rust" ? "rs" : "java";
   const prefix = language === "java" ? /(?:^|\/)domain\/([^/]+)\/[^/]+\.java$/i : /^src\/domain\/([^/]+)\/[^/]+\.(?:ts|rs)$/i;
@@ -368,7 +380,7 @@ function detectionsFor(root, files) {
   const protoDirs = compactDirectories(protos);
   const projectMarkers = ["go.mod", "package.json", "Cargo.toml", "pom.xml", "build.gradle", "build.gradle.kts", "manage.py", "Dockerfile", "README.md"].filter((name) => files.has(name));
   const projectEvidence = projectMarkers.length ? projectMarkers : [[...files].sort()[0]].filter(Boolean);
-  const goDomain = files.has("go.mod") ? goDomainEvidence(root, files) : "";
+  const goDomain = files.has("go.mod") ? goDomainEvidence(root, files) || goHTTPServerEvidence(root, files) : "";
   const goHTTPClient = files.has("go.mod") ? goHTTPClientEvidence(root, files) : "";
   const goSOAPClient = files.has("go.mod") ? goSOAPClientEvidence(root, files) : "";
   const goRedis = files.has("go.mod") ? goRedisEvidence(root, files) : "";

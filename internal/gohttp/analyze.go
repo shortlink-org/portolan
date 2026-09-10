@@ -8,10 +8,8 @@ import (
 	"bytes"
 	"fmt"
 	"go/ast"
-	"go/parser"
 	"go/printer"
 	"go/token"
-	"io/fs"
 	"mime"
 	"net/url"
 	"os"
@@ -22,6 +20,7 @@ import (
 	"unicode"
 
 	"github.com/shortlink-org/portolan/catalog"
+	"github.com/shortlink-org/portolan/internal/goscan"
 	"github.com/shortlink-org/portolan/internal/wsdl"
 	"github.com/shortlink-org/portolan/plugins/openapi"
 )
@@ -1201,59 +1200,22 @@ func (s *scanner) readWSDLContracts() {
 }
 
 func (s *scanner) read() error {
-	var names []string
-	err := filepath.WalkDir(s.root, func(name string, entry fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if entry.IsDir() {
-			if name != s.root && (strings.HasPrefix(entry.Name(), ".") || entry.Name() == "vendor" || entry.Name() == "node_modules") {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if !strings.HasSuffix(entry.Name(), ".go") || strings.HasSuffix(entry.Name(), "_test.go") {
-			return nil
-		}
-		names = append(names, name)
-		return nil
-	})
+	tree, err := goscan.ReadWithOptions(s.root, goscan.ReadOptions{IncludeGenerated: true})
 	if err != nil {
 		return err
 	}
-	sort.Strings(names)
-	for _, name := range names {
-		node, err := parser.ParseFile(s.fset, name, nil, parser.ParseComments)
-		if err != nil {
-			return fmt.Errorf("parse %s: %w", name, err)
-		}
-		rel, _ := filepath.Rel(s.root, name)
-		file := &parsedFile{
-			abs:       name,
-			rel:       filepath.ToSlash(rel),
-			dir:       filepath.ToSlash(filepath.Dir(rel)),
-			pkg:       node.Name.Name,
-			imports:   importsOf(node),
-			node:      node,
-			generated: generatedFile(name, node),
-		}
-		s.files = append(s.files, file)
+	s.fset = tree.Fset
+	for _, file := range tree.Files {
+		s.files = append(s.files, &parsedFile{
+			abs: filepath.Join(s.root, filepath.FromSlash(file.Name)), rel: file.Name,
+			dir: filepath.ToSlash(filepath.Dir(file.Name)), pkg: file.Node.Name.Name,
+			imports: file.Imports, node: file.Node, generated: file.Generated,
+		})
 	}
 	return nil
 }
 
-func generatedFile(name string, node *ast.File) bool {
-	base := filepath.Base(name)
-	if strings.HasSuffix(base, ".gen.go") || strings.HasSuffix(base, ".generated.go") || strings.HasSuffix(base, "_generated.go") {
-		return true
-	}
-	for _, group := range node.Comments {
-		if strings.Contains(group.Text(), "Code generated") && strings.Contains(group.Text(), "DO NOT EDIT") {
-			return true
-		}
-	}
-	return false
-}
+func generatedFile(name string, node *ast.File) bool { return goscan.IsGenerated(name, node) }
 
 func importsOf(node *ast.File) map[string]string {
 	out := map[string]string{}

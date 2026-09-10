@@ -37,6 +37,14 @@
       "owner": "payments.ledger",
       "tables": [
         {
+          "evidence": [
+            {
+              "kind": "contract",
+              "rule": "sql-create-table",
+              "source": "src/main/java/org/portolan/payments/ledger/infrastructure/repository/payment/migrations/1001_payments.sql",
+              "symbol": "payments"
+            }
+          ],
           "id": "payments.ledger.pg.payments",
           "name": "payments",
           "columns": [
@@ -108,11 +116,27 @@
             }
           ],
           "persists": {
+            "evidence": [
+              {
+                "kind": "binding",
+                "rule": "domain-root-and-repository-layout",
+                "source": "src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java",
+                "symbol": "payments.ledger.payment"
+              }
+            ],
             "aggregate": "payments.ledger.payment"
           },
           "role": "aggregate-root"
         },
         {
+          "evidence": [
+            {
+              "kind": "contract",
+              "rule": "sql-create-table",
+              "source": "src/main/java/org/portolan/payments/ledger/infrastructure/repository/payment/migrations/1001_payments.sql",
+              "symbol": "postings"
+            }
+          ],
           "id": "payments.ledger.pg.postings",
           "name": "postings",
           "columns": [
@@ -169,11 +193,27 @@
             }
           ],
           "persists": {
+            "evidence": [
+              {
+                "kind": "binding",
+                "rule": "domain-root-and-repository-layout",
+                "source": "src/main/java/org/portolan/payments/ledger/domain/payment/Payment.java",
+                "symbol": "payments.ledger.payment"
+              }
+            ],
             "aggregate": "payments.ledger.payment"
           },
           "role": "child"
         },
         {
+          "evidence": [
+            {
+              "kind": "contract",
+              "rule": "sql-create-table",
+              "source": "src/main/java/org/portolan/payments/ledger/infrastructure/repository/refund/migrations/2001_refunds.sql",
+              "symbol": "refunds"
+            }
+          ],
           "id": "payments.ledger.pg.refunds",
           "name": "refunds",
           "columns": [
@@ -242,6 +282,14 @@
             }
           ],
           "persists": {
+            "evidence": [
+              {
+                "kind": "binding",
+                "rule": "domain-root-and-repository-layout",
+                "source": "src/main/java/org/portolan/payments/ledger/domain/refund/Refund.java",
+                "symbol": "payments.ledger.refund"
+              }
+            ],
             "aggregate": "payments.ledger.refund"
           },
           "role": "aggregate-root"

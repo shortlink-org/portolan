@@ -385,6 +385,7 @@ export interface HTTPBaseURL {
   optionSource?: string;
 }
 export interface RpcCall {
+  evidence?: RelationEvidence[];
   destination?: HTTPDestination;
   id: string; // "<proto.package.Service>/<Method>"
   peer: string; // service id if resolved, else raw name
@@ -760,7 +761,7 @@ export interface RedisKeyspace {
   value?: string;
   source?: string;
   /** Aggregate or block whose value this key family holds, when provable. */
-  persists?: { aggregate?: string; block?: string };
+  persists?: { aggregate?: string; block?: string; evidence?: RelationEvidence[] };
   /** Individual client calls, before they are folded into `operations`. */
   accesses?: RedisAccess[];
 }
@@ -793,13 +794,14 @@ export const TABLE_ROLES: readonly TableRole[] = [
 ] as const;
 
 export interface Table {
+  evidence?: RelationEvidence[];
   id: string; // "<store id>.<table>"
   name: string;
   doc?: string;
   columns: Column[];
   indexes?: TableIndex[];
   /** The domain object this table holds: an aggregate id, and optionally a block id. */
-  persists?: { aggregate?: string; block?: string };
+  persists?: { aggregate?: string; block?: string; evidence?: RelationEvidence[] };
   role?: TableRole;
   /** Source-backed repository methods that read or write this table. */
   accesses?: TableAccess[];
@@ -879,7 +881,7 @@ export interface View {
   /** The SELECT, as the migration declares it. Shown, never parsed. */
   definition?: string;
   /** The domain object this view presents, when it presents exactly one. */
-  persists?: { aggregate?: string; block?: string };
+  persists?: { aggregate?: string; block?: string; evidence?: RelationEvidence[] };
   /** Migration or model file, as a reader would open it. */
   source?: string;
 }
@@ -934,7 +936,17 @@ export interface Participant {
   label?: string;
 }
 export type FlowNode = Step | Parallel | Alt | Loop;
+/** Source facts used to derive a relationship; not a runtime trace. */
+export interface RelationEvidence {
+  kind: "call-site" | "function" | "binding" | "contract" | "resolution" | "unresolved";
+  rule: string;
+  source?: string;
+  symbol?: string;
+  candidates?: string[];
+}
+
 export interface Step {
+  evidence?: RelationEvidence[];
   destination?: HTTPDestination;
   type: "step";
   id: string;

@@ -1,6 +1,6 @@
 {
   "generatedAt": "2026-09-08T01:21:14Z",
-  "commit": "654eb94",
+  "commit": "654eb94b",
   "contexts": [
     {
       "id": "auth",
@@ -37,6 +37,14 @@
       "owner": "auth.auth",
       "tables": [
         {
+          "evidence": [
+            {
+              "kind": "contract",
+              "rule": "sql-create-table",
+              "source": "internal/lockout/infrastructure/repository/migrations/0001_lockouts.up.sql",
+              "symbol": "lockouts"
+            }
+          ],
           "id": "auth.auth.pg.lockouts",
           "name": "lockouts",
           "columns": [
@@ -66,6 +74,14 @@
             }
           ],
           "persists": {
+            "evidence": [
+              {
+                "kind": "binding",
+                "rule": "domain-root-and-repository-layout",
+                "source": "internal/lockout/domain/lockout.go:27",
+                "symbol": "auth.auth.lockout"
+              }
+            ],
             "aggregate": "auth.auth.lockout"
           },
           "role": "aggregate-root",
@@ -88,6 +104,14 @@
           ]
         },
         {
+          "evidence": [
+            {
+              "kind": "contract",
+              "rule": "sql-create-table",
+              "source": "internal/session/infrastructure/repository/migrations/0001_sessions.up.sql",
+              "symbol": "sessions"
+            }
+          ],
           "id": "auth.auth.pg.sessions",
           "name": "sessions",
           "columns": [
@@ -152,6 +176,14 @@
             }
           ],
           "persists": {
+            "evidence": [
+              {
+                "kind": "binding",
+                "rule": "domain-root-and-repository-layout",
+                "source": "internal/session/domain/session.go:23",
+                "symbol": "auth.auth.session"
+              }
+            ],
             "aggregate": "auth.auth.session"
           },
           "role": "aggregate-root",
@@ -184,6 +216,14 @@
           ]
         },
         {
+          "evidence": [
+            {
+              "kind": "contract",
+              "rule": "sql-create-table",
+              "source": "internal/user/infrastructure/repository/migrations/0001_users.up.sql",
+              "symbol": "users"
+            }
+          ],
           "id": "auth.auth.pg.users",
           "name": "users",
           "columns": [
@@ -228,6 +268,14 @@
             }
           ],
           "persists": {
+            "evidence": [
+              {
+                "kind": "binding",
+                "rule": "domain-root-and-repository-layout",
+                "source": "internal/user/domain/user.go:19",
+                "symbol": "auth.auth.user"
+              }
+            ],
             "aggregate": "auth.auth.user"
           },
           "role": "aggregate-root",

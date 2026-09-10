@@ -1,6 +1,6 @@
 {
   "generatedAt": "2026-09-08T01:21:14Z",
-  "commit": "654eb94",
+  "commit": "654eb94b",
   "contexts": [
     {
       "id": "shop",
@@ -37,6 +37,14 @@
       "owner": "shop.pricing",
       "tables": [
         {
+          "evidence": [
+            {
+              "kind": "contract",
+              "rule": "sql-create-table",
+              "source": "internal/infrastructure/repository/price_list/migrations/0001_price_lists.sql",
+              "symbol": "price_lists"
+            }
+          ],
           "id": "shop.pricing.pg.price_lists",
           "name": "price_lists",
           "columns": [
@@ -83,6 +91,14 @@
             }
           ],
           "persists": {
+            "evidence": [
+              {
+                "kind": "binding",
+                "rule": "domain-root-and-repository-layout",
+                "source": "internal/domain/price_list/price_list.go:14",
+                "symbol": "shop.pricing.price-list"
+              }
+            ],
             "aggregate": "shop.pricing.price-list"
           },
           "role": "aggregate-root",
@@ -110,6 +126,14 @@
           ]
         },
         {
+          "evidence": [
+            {
+              "kind": "contract",
+              "rule": "sql-create-table",
+              "source": "internal/infrastructure/repository/price_list/migrations/0001_price_lists.sql",
+              "symbol": "price_rows"
+            }
+          ],
           "id": "shop.pricing.pg.price_rows",
           "name": "price_rows",
           "columns": [
@@ -140,6 +164,14 @@
             }
           ],
           "persists": {
+            "evidence": [
+              {
+                "kind": "binding",
+                "rule": "domain-root-and-repository-layout",
+                "source": "internal/domain/price_list/price_list.go:14",
+                "symbol": "shop.pricing.price-list"
+              }
+            ],
             "aggregate": "shop.pricing.price-list"
           },
           "role": "child",
@@ -162,6 +194,14 @@
           ]
         },
         {
+          "evidence": [
+            {
+              "kind": "contract",
+              "rule": "sql-create-table",
+              "source": "internal/infrastructure/repository/quote/migrations/0001_quotes.sql",
+              "symbol": "quotes"
+            }
+          ],
           "id": "shop.pricing.pg.quotes",
           "name": "quotes",
           "columns": [
@@ -227,6 +267,14 @@
             }
           ],
           "persists": {
+            "evidence": [
+              {
+                "kind": "binding",
+                "rule": "domain-root-and-repository-layout",
+                "source": "internal/domain/quote/quote.go:24",
+                "symbol": "shop.pricing.quote"
+              }
+            ],
             "aggregate": "shop.pricing.quote"
           },
           "role": "aggregate-root",
@@ -254,6 +302,14 @@
           ]
         },
         {
+          "evidence": [
+            {
+              "kind": "contract",
+              "rule": "sql-create-table",
+              "source": "internal/infrastructure/repository/quote/migrations/0001_quotes.sql",
+              "symbol": "quote_lines"
+            }
+          ],
           "id": "shop.pricing.pg.quote_lines",
           "name": "quote_lines",
           "columns": [
@@ -296,6 +352,14 @@
             }
           ],
           "persists": {
+            "evidence": [
+              {
+                "kind": "binding",
+                "rule": "domain-root-and-repository-layout",
+                "source": "internal/domain/quote/quote.go:24",
+                "symbol": "shop.pricing.quote"
+              }
+            ],
             "aggregate": "shop.pricing.quote"
           },
           "role": "child",
@@ -308,6 +372,20 @@
           ]
         },
         {
+          "evidence": [
+            {
+              "kind": "contract",
+              "rule": "sql-create-table",
+              "source": "internal/infrastructure/repository/quote/migrations/0001_quotes.sql",
+              "symbol": "outbox"
+            },
+            {
+              "kind": "contract",
+              "rule": "sql-alter-table",
+              "source": "internal/infrastructure/repository/quote/migrations/0002_outbox_payload.sql",
+              "symbol": "outbox"
+            }
+          ],
           "id": "shop.pricing.pg.outbox",
           "name": "outbox",
           "columns": [

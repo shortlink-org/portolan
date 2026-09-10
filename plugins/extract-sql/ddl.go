@@ -45,15 +45,16 @@ type declaredView struct {
 // emitted every CREATE it saw and could neither attach a later index nor
 // account for ALTER, RENAME and DROP.
 type ddlState struct {
-	relations  []relation
-	relationAt map[string]int
-	views      []declaredView
-	viewAt     map[string]int
-	enums      map[string][]string
+	aggregateSources map[string]string
+	relations        []relation
+	relationAt       map[string]int
+	views            []declaredView
+	viewAt           map[string]int
+	enums            map[string][]string
 }
 
 func newDDLState() *ddlState {
-	return &ddlState{relationAt: map[string]int{}, viewAt: map[string]int{}, enums: map[string][]string{}}
+	return &ddlState{aggregateSources: map[string]string{}, relationAt: map[string]int{}, viewAt: map[string]int{}, enums: map[string][]string{}}
 }
 
 // readDDL turns one migration into the tables and views it creates, in the
@@ -82,7 +83,9 @@ func (s *ddlState) apply(sql, source string) ([]string, error) {
 	for _, item := range tree.Items {
 		switch stmt := item.(type) {
 		case *nodes.CreateStmt:
-			s.addRelation(readRelation(stmt))
+			relation := readRelation(stmt)
+			relation.table.Evidence = []catalog.RelationEvidence{{Kind: "contract", Rule: "sql-create-table", Source: source, Symbol: relation.table.Name}}
+			s.addRelation(relation)
 
 		case *nodes.CreateSchemaStmt:
 			// Schemas namespace the relations and types below; they do not need
@@ -119,6 +122,9 @@ func (s *ddlState) apply(sql, source string) ([]string, error) {
 			s.relations[at].indexes = append(s.relations[at].indexes, readIndex(stmt))
 
 		case *nodes.AlterTableStmt:
+			if at, known := s.relationAt[relationName(stmt.Relation)]; known {
+				s.relations[at].table.Evidence = append(s.relations[at].table.Evidence, catalog.RelationEvidence{Kind: "contract", Rule: "sql-alter-table", Source: source, Symbol: relationName(stmt.Relation)})
+			}
 			unread = append(unread, s.alter(stmt)...)
 
 		case *nodes.RenameStmt:

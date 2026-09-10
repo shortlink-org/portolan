@@ -10,7 +10,10 @@ async function run() {
     const wasi = new WASI({
       version: "preview1",
       args: [workerData.name],
-      env: {},
+      env: {
+        GOOS: process.env.GOOS || ({ win32: "windows" }[process.platform] ?? process.platform),
+        GOARCH: process.env.GOARCH || ({ x64: "amd64", ia32: "386" }[process.arch] ?? process.arch),
+      },
       // Empty for a generator or a describe request. An extract or verify
       // step gets the workspace as `/`, and nothing else (portolan.0006).
       preopens: workerData.workspace ? { "/": workerData.workspace } : {},

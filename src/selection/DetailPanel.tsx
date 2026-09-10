@@ -1,3 +1,4 @@
+import { RelationEvidencePanel } from "../components/RelationEvidence";
 // The right rail. One panel, one selection, every page that draws a diagram.
 //
 // It renders by kind rather than by page, so an event opened from a flow reads
@@ -238,6 +239,10 @@ function ViewBody({
   return (
     <>
       {view.doc ? <p className="mt-2 text-muted">{view.doc}</p> : null}
+      <RelationEvidencePanel items={[
+        ...(view.source ? [{ kind: "contract" as const, rule: "sql-view-definition", source: view.source, symbol: view.name }] : []),
+        ...(view.persists?.evidence ?? []),
+      ]} renderSource={(source) => <SchemaEvidenceSource source={source} owner={store.owner} />} />
 
       <Label>Store</Label>
       <SelectLink id={store.id}>{store.id}</SelectLink>
@@ -344,6 +349,7 @@ function TableBody({
   return (
     <>
       {table.doc ? <p className="mt-2 text-muted">{table.doc}</p> : null}
+      <RelationEvidencePanel items={[...(table.evidence ?? []), ...(table.persists?.evidence ?? [])]} renderSource={(source) => <SchemaEvidenceSource source={source} owner={store.owner} />} />
 
       <Label>Store</Label>
       <SelectLink id={store.id}>{store.id}</SelectLink>
@@ -534,6 +540,11 @@ function ColumnBody({
   return (
     <>
       {column.doc ? <p className="mt-2 text-muted">{column.doc}</p> : null}
+      {(column.fk || column.from?.length || column.maps) ? <RelationEvidencePanel items={[
+        ...(table?.evidence ?? []),
+        ...(table?.persists?.evidence ?? []),
+        ...(view?.source ? [{ kind: "contract" as const, rule: "sql-view-definition", source: view.source, symbol: view.name }] : []),
+      ]} renderSource={(source) => <SchemaEvidenceSource source={source} owner={resolved.store.owner} />} /> : null}
 
       <Label>{view ? "View" : "Table"}</Label>
       {view ? (
@@ -1549,4 +1560,8 @@ export function WithDetail({
       </Panel>
     </SavedGroup>
   );
+}
+
+function SchemaEvidenceSource({ source, owner }: { source: string; owner: string }) {
+  return <SourcePreviewLink location={sourceLocation(source, index.serviceById.get(owner), allRepos(catalog))} className="mono break-all text-muted hover:text-accent">{source}</SourcePreviewLink>;
 }

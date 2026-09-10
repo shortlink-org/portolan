@@ -1,6 +1,6 @@
 {
   "generatedAt": "2026-09-10T11:34:08+07:00",
-  "commit": "1710b2c",
+  "commit": "1710b2c9",
   "contexts": [
     {
       "id": "shop",
@@ -37,6 +37,14 @@
       "owner": "shop.cart",
       "tables": [
         {
+          "evidence": [
+            {
+              "kind": "contract",
+              "rule": "sql-create-table",
+              "source": "src/infrastructure/repository/basket/migrations/0001_baskets.sql",
+              "symbol": "baskets"
+            }
+          ],
           "id": "shop.cart.pg.baskets",
           "name": "baskets",
           "columns": [
@@ -100,11 +108,27 @@
             }
           ],
           "persists": {
+            "evidence": [
+              {
+                "kind": "binding",
+                "rule": "domain-root-and-repository-layout",
+                "source": "src/domain/basket/basket.ts",
+                "symbol": "shop.cart.basket"
+              }
+            ],
             "aggregate": "shop.cart.basket"
           },
           "role": "aggregate-root"
         },
         {
+          "evidence": [
+            {
+              "kind": "contract",
+              "rule": "sql-create-table",
+              "source": "src/infrastructure/repository/basket/migrations/0001_baskets.sql",
+              "symbol": "basket_items"
+            }
+          ],
           "id": "shop.cart.pg.basket_items",
           "name": "basket_items",
           "columns": [
@@ -147,11 +171,27 @@
             }
           ],
           "persists": {
+            "evidence": [
+              {
+                "kind": "binding",
+                "rule": "domain-root-and-repository-layout",
+                "source": "src/domain/basket/basket.ts",
+                "symbol": "shop.cart.basket"
+              }
+            ],
             "aggregate": "shop.cart.basket"
           },
           "role": "child"
         },
         {
+          "evidence": [
+            {
+              "kind": "contract",
+              "rule": "sql-create-table",
+              "source": "src/infrastructure/repository/basket/migrations/0002_outbox.sql",
+              "symbol": "outbox"
+            }
+          ],
           "id": "shop.cart.pg.outbox",
           "name": "outbox",
           "columns": [

@@ -1,6 +1,6 @@
 {
   "generatedAt": "2026-09-10T11:34:08+07:00",
-  "commit": "1710b2c",
+  "commit": "1710b2c9",
   "contexts": [
     {
       "id": "delivery",
@@ -37,6 +37,14 @@
       "owner": "delivery.core",
       "tables": [
         {
+          "evidence": [
+            {
+              "kind": "contract",
+              "rule": "sql-create-table",
+              "source": "src/infrastructure/repository/route/migrations/0001_routes.sql",
+              "symbol": "routes"
+            }
+          ],
           "id": "delivery.core.pg.routes",
           "name": "routes",
           "columns": [
@@ -77,11 +85,27 @@
             }
           ],
           "persists": {
+            "evidence": [
+              {
+                "kind": "binding",
+                "rule": "domain-root-and-repository-layout",
+                "source": "src/domain/route/route.ts",
+                "symbol": "delivery.core.route"
+              }
+            ],
             "aggregate": "delivery.core.route"
           },
           "role": "aggregate-root"
         },
         {
+          "evidence": [
+            {
+              "kind": "contract",
+              "rule": "sql-create-table",
+              "source": "src/infrastructure/repository/route/migrations/0001_routes.sql",
+              "symbol": "route_stops"
+            }
+          ],
           "id": "delivery.core.pg.route_stops",
           "name": "route_stops",
           "columns": [
@@ -144,11 +168,27 @@
             }
           ],
           "persists": {
+            "evidence": [
+              {
+                "kind": "binding",
+                "rule": "domain-root-and-repository-layout",
+                "source": "src/domain/route/route.ts",
+                "symbol": "delivery.core.route"
+              }
+            ],
             "aggregate": "delivery.core.route"
           },
           "role": "child"
         },
         {
+          "evidence": [
+            {
+              "kind": "contract",
+              "rule": "sql-create-table",
+              "source": "src/infrastructure/repository/shipment/migrations/0001_packages.sql",
+              "symbol": "packages"
+            }
+          ],
           "id": "delivery.core.pg.packages",
           "name": "packages",
           "columns": [
@@ -217,11 +257,27 @@
             }
           ],
           "persists": {
+            "evidence": [
+              {
+                "kind": "binding",
+                "rule": "domain-root-and-repository-layout",
+                "source": "src/domain/shipment/shipment.ts",
+                "symbol": "delivery.core.shipment"
+              }
+            ],
             "aggregate": "delivery.core.shipment"
           },
           "role": "aggregate-root"
         },
         {
+          "evidence": [
+            {
+              "kind": "contract",
+              "rule": "sql-create-table",
+              "source": "src/infrastructure/repository/shipment/migrations/0001_packages.sql",
+              "symbol": "parcels"
+            }
+          ],
           "id": "delivery.core.pg.parcels",
           "name": "parcels",
           "columns": [
@@ -257,11 +313,27 @@
             }
           ],
           "persists": {
+            "evidence": [
+              {
+                "kind": "binding",
+                "rule": "domain-root-and-repository-layout",
+                "source": "src/domain/shipment/shipment.ts",
+                "symbol": "delivery.core.shipment"
+              }
+            ],
             "aggregate": "delivery.core.shipment"
           },
           "role": "child"
         },
         {
+          "evidence": [
+            {
+              "kind": "contract",
+              "rule": "sql-create-table",
+              "source": "src/infrastructure/repository/shipment/migrations/0001_packages.sql",
+              "symbol": "scans"
+            }
+          ],
           "id": "delivery.core.pg.scans",
           "name": "scans",
           "columns": [
@@ -306,11 +378,27 @@
             }
           ],
           "persists": {
+            "evidence": [
+              {
+                "kind": "binding",
+                "rule": "domain-root-and-repository-layout",
+                "source": "src/domain/shipment/shipment.ts",
+                "symbol": "delivery.core.shipment"
+              }
+            ],
             "aggregate": "delivery.core.shipment"
           },
           "role": "child"
         },
         {
+          "evidence": [
+            {
+              "kind": "contract",
+              "rule": "sql-create-table",
+              "source": "src/infrastructure/repository/shipment/migrations/0002_outbox.sql",
+              "symbol": "outbox"
+            }
+          ],
           "id": "delivery.core.pg.outbox",
           "name": "outbox",
           "columns": [

@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/shortlink-org/portolan/catalog"
+	"github.com/shortlink-org/portolan/internal/goscan"
 )
 
 // A parsed package: the files that make it up, and where they came from.
@@ -19,6 +20,7 @@ import (
 // a helper struct in one is not part of the domain however much it looks like
 // it.
 type pkg struct {
+	index *goscan.Tree
 	dir   string // as a reader would open it, relative to the repository
 	name  string
 	files []*ast.File
@@ -26,40 +28,20 @@ type pkg struct {
 	paths map[*ast.File]string
 }
 
-func parsePkg(root, rel string) (*pkg, error) {
-	dir := filepath.Join(root, rel)
-
-	entries, err := os.ReadDir(dir)
+func parsePkg(root, rel string, indexes ...*goscan.Tree) (*pkg, error) {
+	index, err := goscan.PackageIndex(root, rel, indexes...)
 	if err != nil {
 		return nil, err
 	}
-
-	p := &pkg{
-		dir:   path.Join(filepath.ToSlash(root), rel),
-		fset:  token.NewFileSet(),
-		paths: map[*ast.File]string{},
+	p := &pkg{dir: path.Join(filepath.ToSlash(root), rel), index: index, fset: index.Fset, paths: map[*ast.File]string{}}
+	for _, file := range index.PackageFiles(rel) {
+		p.name = file.Node.Name.Name
+		p.files = append(p.files, file.Node)
+		p.paths[file.Node] = filepath.ToSlash(filepath.Join(root, file.Name))
 	}
-
-	for _, entry := range entries {
-		name := entry.Name()
-		if entry.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
-			continue
-		}
-
-		file, err := parser.ParseFile(p.fset, filepath.Join(dir, name), nil, parser.ParseComments)
-		if err != nil {
-			return nil, err
-		}
-
-		p.name = file.Name.Name
-		p.files = append(p.files, file)
-		p.paths[file] = path.Join(p.dir, name)
-	}
-
 	if len(p.files) == 0 {
 		return nil, os.ErrNotExist
 	}
-
 	return p, nil
 }
 

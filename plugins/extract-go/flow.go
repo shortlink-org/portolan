@@ -72,6 +72,7 @@ type flowReader struct {
 	layout            sourceLayout
 	b                 *plugin.Builder
 	bindings          map[string]string
+	bindingEvidence   map[string][]catalog.RelationEvidence
 	ambiguousBindings map[string][]string
 	useCases          map[string]*pkg
 	domains           map[string]*pkg
@@ -121,9 +122,11 @@ func extractFlows(root string, opts flowOptions, layout sourceLayout, endpoints 
 }
 
 func newFlowReader(root string, opts flowOptions, b *plugin.Builder, layouts ...sourceLayout) *flowReader {
-	layout := discoverLayout(root)
+	var layout sourceLayout
 	if len(layouts) > 0 {
 		layout = layouts[0]
+	} else {
+		layout = discoverLayout(root)
 	}
 
 	r := &flowReader{
@@ -142,7 +145,8 @@ func newFlowReader(root string, opts flowOptions, b *plugin.Builder, layouts ...
 		warnedPeer:     map[string]bool{},
 	}
 	r.bindings, r.ambiguousBindings = readPortBindings(root, layout)
-	r.rpcEntries = rpcImplementationEntries(root)
+	r.bindingEvidence = portBindingEvidence(root, layout)
+	r.rpcEntries = rpcImplementationEntries(root, layout.index)
 	return r
 }
 
@@ -219,7 +223,7 @@ func (r *flowReader) policyFlows() []catalog.Flow {
 func (r *flowReader) policyFlowsIn(dir string) []catalog.Flow {
 	out := []catalog.Flow{}
 
-	pkg, err := parsePkg(r.root, dir)
+	pkg, err := parsePkg(r.root, dir, r.layout.index)
 	if err != nil {
 		return out
 	}
@@ -448,6 +452,12 @@ func (r *flowReader) walkBody(d *flowDraft, s *scope, fn *ast.FuncDecl, depth in
 	r.walking[key] = true
 	defer delete(r.walking, key)
 	s.locals = localDeclaredTypes(fn)
+	previous := d.evidence
+	source, line := s.pkg.position(fn.Pos())
+	d.evidence = append(append([]catalog.RelationEvidence{}, previous...), catalog.RelationEvidence{
+		Kind: "function", Rule: "source-function", Source: at(source, line), Symbol: key,
+	})
+	defer func() { d.evidence = previous }()
 	r.walkStmts(d, s, fn.Body.List, depth)
 }
 
@@ -863,7 +873,7 @@ func (r *flowReader) portCall(d *flowDraft, s *scope, field, method string, site
 		target, ok = r.bindings[s.key+"."+declared]
 	}
 	if ok {
-		r.useCaseHop(d, target, "Port `"+declared+"`, bound at assembly to the "+operationName(target)+" use case.", at(source, line), depth)
+		r.useCaseHop(d, target, "Port `"+declared+"`, bound at assembly to the "+operationName(target)+" use case.", at(source, line), depth, r.bindingEvidence[s.key+"."+declared]...)
 
 		return
 	}
@@ -872,7 +882,8 @@ func (r *flowReader) portCall(d *flowDraft, s *scope, field, method string, site
 		note := "ambiguous-binding: cannot choose an implementation for " + declared + "." + method + "; candidates: " + strings.Join(candidates, ", ")
 		r.b.Warn(at(source, line), note)
 		d.add(catalog.Step{From: r.opts.svcID, To: r.opts.svcID, Kind: catalog.StepCall,
-			Label: declared + "." + method, Status: catalog.StatusUnresolved, Note: note, Line: at(source, line)})
+			Label: declared + "." + method, Status: catalog.StatusUnresolved, Note: note, Line: at(source, line),
+			Evidence: append(append([]catalog.RelationEvidence{}, r.bindingEvidence[s.key+"."+declared]...), catalog.RelationEvidence{Kind: "unresolved", Rule: "ambiguous-binding", Candidates: candidates})})
 		return
 	}
 
@@ -897,6 +908,7 @@ func (r *flowReader) portCall(d *flowDraft, s *scope, field, method string, site
 			d.add(catalog.Step{
 				From: r.opts.svcID, To: r.storeLane(d), Kind: catalog.StepCall,
 				Label: method, Line: at(source, line), StoreAccess: r.storeAccess(method),
+				Evidence: []catalog.RelationEvidence{{Kind: "binding", Rule: "store-port-convention", Source: at(source, line), Symbol: field + " " + declared}},
 			})
 			return
 		}
@@ -923,6 +935,7 @@ func (r *flowReader) portCall(d *flowDraft, s *scope, field, method string, site
 		Label:       method,
 		Line:        at(source, line),
 		StoreAccess: r.storeAccess(method),
+		Evidence:    []catalog.RelationEvidence{{Kind: "binding", Rule: "domain-port-convention", Source: at(source, line), Symbol: declared}},
 	})
 
 	// The events a change produced are handed to the repository along with the
@@ -966,6 +979,7 @@ func (r *flowReader) rpcHop(d *flowDraft, hop rpcHop, line string) {
 	// operationId - rather than the Go method the client offers it under:
 	// GetUserWithResponse is how the client is called, getUser is what runs.
 	d.add(catalog.Step{
+		Evidence:    []catalog.RelationEvidence{{Kind: "contract", Rule: "generated-client-method", Source: hop.client.source, Symbol: id}},
 		From:        r.opts.svcID,
 		To:          lane,
 		Kind:        catalog.StepRPC,
@@ -983,14 +997,15 @@ func (r *flowReader) rpcHop(d *flowDraft, hop rpcHop, line string) {
 
 // useCaseHop is a call into another use case of the same service: a message to
 // itself, and then that use case's own steps.
-func (r *flowReader) useCaseHop(d *flowDraft, target, note, line string, depth int) {
+func (r *flowReader) useCaseHop(d *flowDraft, target, note, line string, depth int, evidence ...catalog.RelationEvidence) {
 	d.add(catalog.Step{
-		From:  r.opts.svcID,
-		To:    r.opts.svcID,
-		Kind:  catalog.StepCall,
-		Label: operationName(target),
-		Note:  note,
-		Line:  line,
+		Evidence: evidence,
+		From:     r.opts.svcID,
+		To:       r.opts.svcID,
+		Kind:     catalog.StepCall,
+		Label:    operationName(target),
+		Note:     note,
+		Line:     line,
 	})
 
 	r.walkUseCase(d, target, depth+1)
@@ -1138,8 +1153,9 @@ func bind(s *scope, site callSite, results []domainRef) {
 // ---------------------------------------------------------------------------
 
 type flowDraft struct {
-	lanes []catalog.Participant
-	steps catalog.FlowNodes
+	evidence []catalog.RelationEvidence
+	lanes    []catalog.Participant
+	steps    catalog.FlowNodes
 	// sinks is where the next node goes: the arm of an alt being read, or,
 	// with nothing pushed, the flow's own list.
 	sinks []*catalog.FlowNodes
@@ -1224,6 +1240,10 @@ func (d *flowDraft) add(step catalog.Step) {
 	step.Type = "step"
 	step.ID = "s" + strconv.Itoa(d.n)
 	step.Note = d.note(step.Note)
+	step.Evidence = append(append([]catalog.RelationEvidence{}, d.evidence...), step.Evidence...)
+	if step.Line != "" {
+		step.Evidence = append(step.Evidence, catalog.RelationEvidence{Kind: "call-site", Rule: "source-expression", Source: step.Line, Symbol: step.Label})
+	}
 	// Nothing here has been watched running. `declared` is the whole of what
 	// reading source can claim - unless the step already says less.
 	if step.Status == "" {
@@ -1465,7 +1485,7 @@ func (r *flowReader) useCasePkg(key string) *pkg {
 	}
 
 	dir := r.layout.useCases[key]
-	pkg, err := parsePkg(r.root, dir)
+	pkg, err := parsePkg(r.root, dir, r.layout.index)
 	if err != nil {
 		r.b.Warn(key, dir+" could not be parsed; its steps are missing from every flow that runs it")
 		pkg = nil
@@ -1480,7 +1500,7 @@ func (r *flowReader) domainPkg(aggregate string) *pkg {
 		return cached
 	}
 
-	pkg, err := parsePkg(r.root, r.layout.domains[aggregate])
+	pkg, err := parsePkg(r.root, r.layout.domains[aggregate], r.layout.index)
 	if err != nil {
 		pkg = nil
 	}

@@ -1,6 +1,6 @@
 {
   "generatedAt": "2026-09-08T01:21:14Z",
-  "commit": "654eb94",
+  "commit": "654eb94b",
   "contexts": [
     {
       "id": "shop",
@@ -347,6 +347,14 @@
       ],
       "steps": [
         {
+          "evidence": [
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:50",
+              "symbol": "ArchivePriceList"
+            }
+          ],
           "type": "step",
           "id": "s1",
           "from": "client",
@@ -358,6 +366,26 @@
           "line": "examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:50"
         },
         {
+          "evidence": [
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:21",
+              "symbol": "examples/shop/pricing/internal/application/price_list/usecases/archive_price_list:UseCase.Handle"
+            },
+            {
+              "kind": "binding",
+              "rule": "domain-port-convention",
+              "source": "examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:22",
+              "symbol": "price_list.Repository"
+            },
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:22",
+              "symbol": "ByID"
+            }
+          ],
           "type": "step",
           "id": "s2",
           "from": "shop.pricing",
@@ -372,6 +400,26 @@
           }
         },
         {
+          "evidence": [
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:21",
+              "symbol": "examples/shop/pricing/internal/application/price_list/usecases/archive_price_list:UseCase.Handle"
+            },
+            {
+              "kind": "binding",
+              "rule": "domain-port-convention",
+              "source": "examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:28",
+              "symbol": "price_list.Repository"
+            },
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/shop/pricing/internal/application/price_list/usecases/archive_price_list/usecase.go:28",
+              "symbol": "Save"
+            }
+          ],
           "type": "step",
           "id": "s3",
           "from": "shop.pricing",
@@ -413,6 +461,14 @@
       ],
       "steps": [
         {
+          "evidence": [
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go:52",
+              "symbol": "GetQuote"
+            }
+          ],
           "type": "step",
           "id": "s1",
           "from": "client",
@@ -431,6 +487,26 @@
               "title": "in.QuoteID != \"\"",
               "steps": [
                 {
+                  "evidence": [
+                    {
+                      "kind": "function",
+                      "rule": "source-function",
+                      "source": "examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go:21",
+                      "symbol": "examples/shop/pricing/internal/application/quote/usecases/get_quote:UseCase.Handle"
+                    },
+                    {
+                      "kind": "binding",
+                      "rule": "domain-port-convention",
+                      "source": "examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go:27",
+                      "symbol": "quote.Repository"
+                    },
+                    {
+                      "kind": "call-site",
+                      "rule": "source-expression",
+                      "source": "examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go:27",
+                      "symbol": "ByID"
+                    }
+                  ],
                   "type": "step",
                   "id": "s2",
                   "from": "shop.pricing",
@@ -450,6 +526,26 @@
               "title": "otherwise",
               "steps": [
                 {
+                  "evidence": [
+                    {
+                      "kind": "function",
+                      "rule": "source-function",
+                      "source": "examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go:21",
+                      "symbol": "examples/shop/pricing/internal/application/quote/usecases/get_quote:UseCase.Handle"
+                    },
+                    {
+                      "kind": "binding",
+                      "rule": "domain-port-convention",
+                      "source": "examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go:29",
+                      "symbol": "quote.Repository"
+                    },
+                    {
+                      "kind": "call-site",
+                      "rule": "source-expression",
+                      "source": "examples/shop/pricing/internal/application/quote/usecases/get_quote/usecase.go:29",
+                      "symbol": "ByBasket"
+                    }
+                  ],
                   "type": "step",
                   "id": "s3",
                   "from": "shop.pricing",
@@ -495,6 +591,14 @@
       ],
       "steps": [
         {
+          "evidence": [
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:30",
+              "symbol": "ImportPriceList"
+            }
+          ],
           "type": "step",
           "id": "s1",
           "from": "client",
@@ -506,6 +610,26 @@
           "line": "examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:30"
         },
         {
+          "evidence": [
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/shop/pricing/internal/application/price_list/usecases/import_price_list/usecase.go:24",
+              "symbol": "examples/shop/pricing/internal/application/price_list/usecases/import_price_list:UseCase.Handle"
+            },
+            {
+              "kind": "binding",
+              "rule": "domain-port-convention",
+              "source": "examples/shop/pricing/internal/application/price_list/usecases/import_price_list/usecase.go:43",
+              "symbol": "price_list.Repository"
+            },
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/shop/pricing/internal/application/price_list/usecases/import_price_list/usecase.go:43",
+              "symbol": "Save"
+            }
+          ],
           "type": "step",
           "id": "s2",
           "from": "shop.pricing",
@@ -552,6 +676,14 @@
       ],
       "steps": [
         {
+          "evidence": [
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go:28",
+              "symbol": "IssueQuote"
+            }
+          ],
           "type": "step",
           "id": "s1",
           "from": "client",
@@ -563,6 +695,26 @@
           "line": "examples/shop/pricing/internal/infrastructure/transport/grpc/quote/handler.go:28"
         },
         {
+          "evidence": [
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:34",
+              "symbol": "examples/shop/pricing/internal/application/quote/usecases/issue_quote:UseCase.Handle"
+            },
+            {
+              "kind": "binding",
+              "rule": "domain-port-convention",
+              "source": "examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:35",
+              "symbol": "price_list.Repository"
+            },
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:35",
+              "symbol": "Current"
+            }
+          ],
           "type": "step",
           "id": "s2",
           "from": "shop.pricing",
@@ -577,6 +729,26 @@
           }
         },
         {
+          "evidence": [
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:34",
+              "symbol": "examples/shop/pricing/internal/application/quote/usecases/issue_quote:UseCase.Handle"
+            },
+            {
+              "kind": "binding",
+              "rule": "domain-port-convention",
+              "source": "examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:55",
+              "symbol": "quote.Repository"
+            },
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:55",
+              "symbol": "Save"
+            }
+          ],
           "type": "step",
           "id": "s3",
           "from": "shop.pricing",
@@ -591,6 +763,20 @@
           }
         },
         {
+          "evidence": [
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:34",
+              "symbol": "examples/shop/pricing/internal/application/quote/usecases/issue_quote:UseCase.Handle"
+            },
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/shop/pricing/internal/application/quote/usecases/issue_quote/usecase.go:55",
+              "symbol": "QuoteIssued"
+            }
+          ],
           "type": "step",
           "id": "s4",
           "from": "shop.pricing",
@@ -629,6 +815,14 @@
       ],
       "steps": [
         {
+          "evidence": [
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:60",
+              "symbol": "ListPriceLists"
+            }
+          ],
           "type": "step",
           "id": "s1",
           "from": "client",
@@ -640,6 +834,26 @@
           "line": "examples/shop/pricing/internal/infrastructure/transport/grpc/price_list/handler.go:60"
         },
         {
+          "evidence": [
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/shop/pricing/internal/application/price_list/usecases/list_price_lists/usecase.go:21",
+              "symbol": "examples/shop/pricing/internal/application/price_list/usecases/list_price_lists:UseCase.Handle"
+            },
+            {
+              "kind": "binding",
+              "rule": "domain-port-convention",
+              "source": "examples/shop/pricing/internal/application/price_list/usecases/list_price_lists/usecase.go:22",
+              "symbol": "price_list.Repository"
+            },
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/shop/pricing/internal/application/price_list/usecases/list_price_lists/usecase.go:22",
+              "symbol": "All"
+            }
+          ],
           "type": "step",
           "id": "s2",
           "from": "shop.pricing",
@@ -681,6 +895,14 @@
       ],
       "steps": [
         {
+          "evidence": [
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:35",
+              "symbol": "BasketCheckedOut"
+            }
+          ],
           "type": "step",
           "id": "s1",
           "from": "bus",
@@ -692,6 +914,26 @@
           "line": "examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:35"
         },
         {
+          "evidence": [
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:35",
+              "symbol": "examples/shop/pricing/internal/application/policy:ExpireQuoteOnCheckout.Handle"
+            },
+            {
+              "kind": "binding",
+              "rule": "domain-port-convention",
+              "source": "examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:41",
+              "symbol": "quote.Repository"
+            },
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:41",
+              "symbol": "ByBasket"
+            }
+          ],
           "type": "step",
           "id": "s2",
           "from": "shop.pricing",
@@ -706,6 +948,26 @@
           }
         },
         {
+          "evidence": [
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:35",
+              "symbol": "examples/shop/pricing/internal/application/policy:ExpireQuoteOnCheckout.Handle"
+            },
+            {
+              "kind": "binding",
+              "rule": "domain-port-convention",
+              "source": "examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:55",
+              "symbol": "quote.Repository"
+            },
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:55",
+              "symbol": "Save"
+            }
+          ],
           "type": "step",
           "id": "s3",
           "from": "shop.pricing",
@@ -720,6 +982,20 @@
           }
         },
         {
+          "evidence": [
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:35",
+              "symbol": "examples/shop/pricing/internal/application/policy:ExpireQuoteOnCheckout.Handle"
+            },
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/shop/pricing/internal/application/policy/expire_quote_on_checkout.go:55",
+              "symbol": "QuoteExpired"
+            }
+          ],
           "type": "step",
           "id": "s4",
           "from": "shop.pricing",

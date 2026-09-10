@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/shortlink-org/portolan/catalog"
+	"github.com/shortlink-org/portolan/internal/goscan"
 	"github.com/shortlink-org/portolan/plugin"
 )
 
@@ -18,7 +19,7 @@ import (
 // package that does not follow the layout produces a diagnostic instead of a
 // half-right aggregate.
 func extractAggregate(root, aggregateName, domainPath string, layout sourceLayout, svcID string, b *plugin.Builder) (catalog.Aggregate, bool) {
-	pkg, err := parsePkg(root, domainPath)
+	pkg, err := parsePkg(root, domainPath, layout.index)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			b.Warn(aggregateID(svcID, aggregateName), domainPath+" could not be parsed: "+err.Error())
@@ -82,7 +83,7 @@ func extractAggregate(root, aggregateName, domainPath string, layout sourceLayou
 		return catalog.Aggregate{}, false
 	}
 
-	aggregate.ValueObjects = extractValueObjects(root, domainPath, id, b)
+	aggregate.ValueObjects = extractValueObjects(root, domainPath, id, b, pkg.index)
 	aggregate.Enums = extractEnums(root, domainPath, id, pkg, b)
 	aggregate.Events = extractEvents(root, aggregateName, domainPath, layout, id, b)
 	aggregate.Lifecycle = readLifecycle(pkg, aggregate.Root, aggregate.Events, id, b)
@@ -95,7 +96,7 @@ func extractAggregate(root, aggregateName, domainPath string, layout sourceLayou
 // Each directory there is one value object, and the exported struct inside it
 // is its shape. `rules/` is skipped: a validation specification is how the
 // value object refuses a value, not part of what it holds.
-func extractValueObjects(root, domainPath, aggID string, b *plugin.Builder) []catalog.Block {
+func extractValueObjects(root, domainPath, aggID string, b *plugin.Builder, indexes ...*goscan.Tree) []catalog.Block {
 	out := []catalog.Block{}
 
 	for _, name := range subdirs(root, path.Join(domainPath, "vo")) {
@@ -103,7 +104,7 @@ func extractValueObjects(root, domainPath, aggID string, b *plugin.Builder) []ca
 			continue
 		}
 
-		pkg, err := parsePkg(root, path.Join(domainPath, "vo", name))
+		pkg, err := parsePkg(root, path.Join(domainPath, "vo", name), indexes...)
 		if err != nil {
 			continue
 		}

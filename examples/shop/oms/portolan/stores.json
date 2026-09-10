@@ -1,6 +1,6 @@
 {
   "generatedAt": "2026-09-10T11:34:08+07:00",
-  "commit": "1710b2c",
+  "commit": "1710b2c9",
   "contexts": [
     {
       "id": "shop",
@@ -37,6 +37,14 @@
       "owner": "shop.oms",
       "tables": [
         {
+          "evidence": [
+            {
+              "kind": "contract",
+              "rule": "sql-create-table",
+              "source": "src/infrastructure/repository/order/migrations/0001_orders.sql",
+              "symbol": "orders"
+            }
+          ],
           "id": "shop.oms.pg.orders",
           "name": "orders",
           "columns": [
@@ -93,11 +101,27 @@
             }
           ],
           "persists": {
+            "evidence": [
+              {
+                "kind": "binding",
+                "rule": "domain-root-and-repository-layout",
+                "source": "src/domain/order/mod.rs",
+                "symbol": "shop.oms.order"
+              }
+            ],
             "aggregate": "shop.oms.order"
           },
           "role": "aggregate-root"
         },
         {
+          "evidence": [
+            {
+              "kind": "contract",
+              "rule": "sql-create-table",
+              "source": "src/infrastructure/repository/order/migrations/0001_orders.sql",
+              "symbol": "order_lines"
+            }
+          ],
           "id": "shop.oms.pg.order_lines",
           "name": "order_lines",
           "columns": [
@@ -139,11 +163,27 @@
             }
           ],
           "persists": {
+            "evidence": [
+              {
+                "kind": "binding",
+                "rule": "domain-root-and-repository-layout",
+                "source": "src/domain/order/mod.rs",
+                "symbol": "shop.oms.order"
+              }
+            ],
             "aggregate": "shop.oms.order"
           },
           "role": "child"
         },
         {
+          "evidence": [
+            {
+              "kind": "contract",
+              "rule": "sql-create-table",
+              "source": "src/infrastructure/repository/order/migrations/0002_outbox.sql",
+              "symbol": "outbox"
+            }
+          ],
           "id": "shop.oms.pg.outbox",
           "name": "outbox",
           "columns": [

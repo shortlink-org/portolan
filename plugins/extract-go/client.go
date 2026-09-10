@@ -190,7 +190,7 @@ func (r *flowReader) clientPkg(importPath string) map[string]client {
 
 	var out map[string]client
 	if rel, ok := r.relDir(importPath); ok {
-		if pkg, err := parsePkg(r.root, rel); err == nil {
+		if pkg, err := parsePkg(r.root, rel, r.layout.index); err == nil {
 			var problem string
 			out, problem = readClients(pkg)
 			if problem != "" {
@@ -237,7 +237,7 @@ func (r *flowReader) importPath(selector string, imports map[string]string) stri
 		if !ok {
 			continue
 		}
-		p, err := parsePkg(r.root, rel)
+		p, err := parsePkg(r.root, rel, r.layout.index)
 		if err == nil && p.name == selector {
 			return candidate
 		}
@@ -380,7 +380,7 @@ func (r *flowReader) adapterOf(binding adapterDecl) (string, *pkg, bool) {
 		if !ok {
 			return "", nil, false
 		}
-		pkg, err := parsePkg(r.root, rel)
+		pkg, err := parsePkg(r.root, rel, r.layout.index)
 		if err != nil {
 			return "", nil, false
 		}
@@ -421,7 +421,7 @@ func (r *flowReader) typeIn(expr ast.Expr, binding adapterDecl) (string, *pkg, b
 		if !ok {
 			return "", nil, false
 		}
-		pkg, err := parsePkg(r.root, rel)
+		pkg, err := parsePkg(r.root, rel, r.layout.index)
 		if err != nil {
 			return "", nil, false
 		}

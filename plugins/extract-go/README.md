@@ -27,3 +27,21 @@ This extractor remains syntax-only and runs in WASI. The shared native typed
 analysis API lives in `internal/gocall`; its first consumer is the HTTP client
 sidecar. Adopting that API in additional extractors is a separate migration,
 without imposing a Go toolchain on this syntax path.
+
+Go-domain, HTTP analysis and Go SQL readers now share `internal/goscan` for
+source selection, imports, constants and package lookup. Each invocation reuses
+its parsed AST across passes. Generated declarations remain available for
+contract lookup but are marked separately. The index respects GOOS/GOARCH,
+build constraints and nested module boundaries; it is not a cache shared across
+plugin processes. Native type analysis still uses the Go package loader.
+
+Flow steps carry structured `evidence`: source expressions, enclosing functions,
+provider signatures and unresolved candidates. Provider signatures are marked as
+inference, and static paths do not claim that a call ran. The detail panel also
+explains older fragments from their recorded source and contract references.
+
+For a service with plain SQL migrations, combine `go-domain` and `sql` with the
+same context, service and store. SQL discovers `migrations`/`migration` directories
+outside `internal` too. Without a matching domain root or an explicit
+`-- aggregate: <id>` annotation, tables and views remain independent of aggregates;
+their schema, foreign keys and SQL accesses are retained.

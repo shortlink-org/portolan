@@ -22,10 +22,11 @@ func (s Source) String() string {
 // File is one parsed file: its path under the root, the import path of its
 // package, its imports by local name, and the syntax.
 type File struct {
-	Name    string
-	Pkg     string
-	Imports map[string]string
-	Node    *ast.File
+	Generated bool
+	Name      string
+	Pkg       string
+	Imports   map[string]string
+	Node      *ast.File
 }
 
 // ConstExpr is a constant as it was declared: the expression, and the file it

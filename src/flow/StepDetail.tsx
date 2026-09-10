@@ -1,3 +1,5 @@
+import { RelationEvidencePanel } from "../components/RelationEvidence";
+import { stepRelationEvidence } from "./evidence";
 import { HTTPDestinationEvidence } from "../components/HTTPDestinationEvidence";
 import { useMemo } from "react";
 import { Link } from "react-router";
@@ -721,6 +723,7 @@ export function StepDetailBody({ step, flow }: { step: Step; flow: Flow }) {
   return (
     <>
       <ExecutionContext step={step} flow={flow} />
+      <RelationEvidencePanel items={stepRelationEvidence(index, step)} renderSource={(where) => <SourceWhere where={where} flow={flow} structured />} />
 
       {/* A decision that names this step's event is the reason the step
           looks the way it does. It belongs next to the step, not three

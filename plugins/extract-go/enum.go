@@ -32,7 +32,7 @@ func extractEnums(root, domainPath, aggID string, main *pkg, b *plugin.Builder) 
 		if name == "rules" {
 			continue
 		}
-		p, err := parsePkg(root, path.Join(domainPath, "vo", name))
+		p, err := parsePkg(root, path.Join(domainPath, "vo", name), main.index)
 		if err != nil {
 			continue
 		}
@@ -41,7 +41,7 @@ func extractEnums(root, domainPath, aggID string, main *pkg, b *plugin.Builder) 
 		out = append(out, enumsIn(p, aggID, p.name)...)
 	}
 
-	if p, err := parsePkg(root, path.Join(domainPath, "event")); err == nil {
+	if p, err := parsePkg(root, path.Join(domainPath, "event"), main.index); err == nil {
 		out = append(out, enumsIn(p, aggID, "")...)
 	}
 

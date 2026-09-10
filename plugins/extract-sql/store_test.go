@@ -138,6 +138,7 @@ func writeTree(t *testing.T, files map[string]string) string {
 // by. The repository packages beside it are read exactly as before.
 func TestProjectorPackagesAreProjections(t *testing.T) {
 	root := writeTree(t, map[string]string{
+		"internal/domain/route/route.go": `package route; type Route struct { ID string }`,
 		"internal/infrastructure/repository/route/migrations/0001_routes.sql": `
 CREATE TABLE routes (
     id      text PRIMARY KEY,

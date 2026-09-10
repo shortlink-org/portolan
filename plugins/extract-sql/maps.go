@@ -2,11 +2,8 @@ package extractsql
 
 import (
 	"go/ast"
-	"go/parser"
 	"go/token"
-	"os"
 	"path"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -15,6 +12,8 @@ import (
 	pgsql "github.com/pgplex/pgparser/parser"
 
 	"github.com/shortlink-org/portolan/plugin"
+
+	"github.com/shortlink-org/portolan/internal/goscan"
 )
 
 // Which domain field a column carries.
@@ -38,38 +37,20 @@ import (
 // to argument to field is unambiguous, or the column gets no `maps` at all -
 // a blank is a reader looking the column up themselves, and a wrong one is a
 // reader believing something untrue.
-func readMaps(root, repositoryDir, aggregate string, b *plugin.Builder) map[string]map[string]string {
+func readMaps(root, repositoryDir, aggregate string, b *plugin.Builder, indexes ...*goscan.Tree) map[string]map[string]string {
 	out := map[string]map[string]string{}
 
 	dir := mapSourceDir(root, repositoryDir, aggregate)
-	entries, err := os.ReadDir(filepath.Join(root, filepath.FromSlash(dir)))
+	index, err := goscan.PackageIndex(root, dir, indexes...)
 	if err != nil {
-		return out
+		return nil
 	}
-
-	// The root type is the one the aggregate's package is named after, which is
-	// the same rule the domain extractor used to pick it.
+	var files []*ast.File
+	for _, file := range index.PackageFiles(dir) {
+		files = append(files, file.Node)
+	}
 	root_ := title(aggregate)
-	fset := token.NewFileSet()
 
-	files := make([]*ast.File, 0, len(entries))
-
-	for _, entry := range entries {
-		name := entry.Name()
-		if entry.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
-			continue
-		}
-
-		file, err := parser.ParseFile(fset, filepath.Join(root, filepath.FromSlash(dir), name), nil, parser.SkipObjectResolution)
-		if err != nil {
-			continue
-		}
-		files = append(files, file)
-	}
-
-	// A statement is routinely assembled from a shared column list rather than
-	// written whole, so the package's string constants are collected before
-	// anything is read and folded into the literals that name them.
 	constants := stringConstants(files)
 
 	for _, file := range files {

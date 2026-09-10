@@ -37,6 +37,14 @@
       "owner": "shop.order",
       "tables": [
         {
+          "evidence": [
+            {
+              "kind": "contract",
+              "rule": "sql-create-table",
+              "source": "internal/order/infrastructure/repository/migrations/001_orders.sql",
+              "symbol": "orders"
+            }
+          ],
           "id": "shop.order.pg.orders",
           "name": "orders",
           "columns": [
@@ -67,11 +75,27 @@
             }
           ],
           "persists": {
+            "evidence": [
+              {
+                "kind": "binding",
+                "rule": "domain-root-and-repository-layout",
+                "source": "internal/order/domain/order.go:3",
+                "symbol": "shop.order.order"
+              }
+            ],
             "aggregate": "shop.order.order"
           },
           "role": "aggregate-root"
         },
         {
+          "evidence": [
+            {
+              "kind": "contract",
+              "rule": "sql-create-table",
+              "source": "internal/order/infrastructure/repository/migrations/001_orders.sql",
+              "symbol": "order_lines"
+            }
+          ],
           "id": "shop.order.pg.order_lines",
           "name": "order_lines",
           "columns": [
@@ -99,6 +123,14 @@
             }
           ],
           "persists": {
+            "evidence": [
+              {
+                "kind": "binding",
+                "rule": "domain-root-and-repository-layout",
+                "source": "internal/order/domain/order.go:3",
+                "symbol": "shop.order.order"
+              }
+            ],
             "aggregate": "shop.order.order"
           },
           "role": "child"

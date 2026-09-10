@@ -1,6 +1,6 @@
 {
   "generatedAt": "2026-09-08T01:21:14Z",
-  "commit": "654eb94",
+  "commit": "654eb94b",
   "contexts": [
     {
       "id": "auth",
@@ -104,6 +104,14 @@
       ],
       "steps": [
         {
+          "evidence": [
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/auth/internal/user/infrastructure/http/change_password.go:20",
+              "symbol": "changePassword"
+            }
+          ],
           "type": "step",
           "id": "s1",
           "from": "client",
@@ -115,6 +123,26 @@
           "line": "examples/auth/internal/user/infrastructure/http/change_password.go:20"
         },
         {
+          "evidence": [
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/auth/internal/session/application/validate/usecase.go:28",
+              "symbol": "examples/auth/internal/session/application/validate:UseCase.Handle"
+            },
+            {
+              "kind": "binding",
+              "rule": "domain-port-convention",
+              "source": "examples/auth/internal/session/application/validate/usecase.go:33",
+              "symbol": "session.Repository"
+            },
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/auth/internal/session/application/validate/usecase.go:33",
+              "symbol": "ByToken"
+            }
+          ],
           "type": "step",
           "id": "s2",
           "from": "auth.auth",
@@ -129,6 +157,26 @@
           }
         },
         {
+          "evidence": [
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/auth/internal/user/application/change_password/usecase.go:31",
+              "symbol": "examples/auth/internal/user/application/change_password:UseCase.Handle"
+            },
+            {
+              "kind": "binding",
+              "rule": "domain-port-convention",
+              "source": "examples/auth/internal/user/application/change_password/usecase.go:32",
+              "symbol": "user.Repository"
+            },
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/auth/internal/user/application/change_password/usecase.go:32",
+              "symbol": "ByID"
+            }
+          ],
           "type": "step",
           "id": "s3",
           "from": "auth.auth",
@@ -143,6 +191,26 @@
           }
         },
         {
+          "evidence": [
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/auth/internal/user/application/change_password/usecase.go:31",
+              "symbol": "examples/auth/internal/user/application/change_password:UseCase.Handle"
+            },
+            {
+              "kind": "binding",
+              "rule": "domain-port-convention",
+              "source": "examples/auth/internal/user/application/change_password/usecase.go:48",
+              "symbol": "user.Repository"
+            },
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/auth/internal/user/application/change_password/usecase.go:48",
+              "symbol": "Save"
+            }
+          ],
           "type": "step",
           "id": "s4",
           "from": "auth.auth",
@@ -157,6 +225,20 @@
           }
         },
         {
+          "evidence": [
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/auth/internal/user/application/change_password/usecase.go:31",
+              "symbol": "examples/auth/internal/user/application/change_password:UseCase.Handle"
+            },
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/auth/internal/user/application/change_password/usecase.go:48",
+              "symbol": "PasswordChanged"
+            }
+          ],
           "type": "step",
           "id": "s5",
           "from": "auth.auth",
@@ -196,6 +278,14 @@
       ],
       "steps": [
         {
+          "evidence": [
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/auth/internal/user/infrastructure/http/get.go:11",
+              "symbol": "getUser"
+            }
+          ],
           "type": "step",
           "id": "s1",
           "from": "client",
@@ -207,6 +297,26 @@
           "line": "examples/auth/internal/user/infrastructure/http/get.go:11"
         },
         {
+          "evidence": [
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/auth/internal/user/application/get/usecase.go:21",
+              "symbol": "examples/auth/internal/user/application/get:UseCase.Handle"
+            },
+            {
+              "kind": "binding",
+              "rule": "domain-port-convention",
+              "source": "examples/auth/internal/user/application/get/usecase.go:22",
+              "symbol": "user.Repository"
+            },
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/auth/internal/user/application/get/usecase.go:22",
+              "symbol": "ByID"
+            }
+          ],
           "type": "step",
           "id": "s2",
           "from": "auth.auth",
@@ -259,6 +369,14 @@
       ],
       "steps": [
         {
+          "evidence": [
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/auth/internal/session/infrastructure/http/login.go:11",
+              "symbol": "login"
+            }
+          ],
           "type": "step",
           "id": "s1",
           "from": "client",
@@ -270,6 +388,26 @@
           "line": "examples/auth/internal/session/infrastructure/http/login.go:11"
         },
         {
+          "evidence": [
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/auth/internal/session/application/login/usecase.go:56",
+              "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+            },
+            {
+              "kind": "binding",
+              "rule": "provider-signature",
+              "source": "examples/auth/internal/session/infrastructure/identity/adapter.go:19",
+              "symbol": "NewAuthenticator"
+            },
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/auth/internal/session/application/login/usecase.go:57",
+              "symbol": "CheckCredentials"
+            }
+          ],
           "type": "step",
           "id": "s2",
           "from": "auth.auth",
@@ -281,6 +419,32 @@
           "line": "examples/auth/internal/session/application/login/usecase.go:57"
         },
         {
+          "evidence": [
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/auth/internal/session/application/login/usecase.go:56",
+              "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+            },
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/auth/internal/user/application/check_credentials/usecase.go:37",
+              "symbol": "examples/auth/internal/user/application/check_credentials:UseCase.Handle"
+            },
+            {
+              "kind": "binding",
+              "rule": "domain-port-convention",
+              "source": "examples/auth/internal/user/application/check_credentials/usecase.go:42",
+              "symbol": "user.Repository"
+            },
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/auth/internal/user/application/check_credentials/usecase.go:42",
+              "symbol": "ByEmail"
+            }
+          ],
           "type": "step",
           "id": "s3",
           "from": "auth.auth",
@@ -295,6 +459,32 @@
           }
         },
         {
+          "evidence": [
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/auth/internal/session/application/login/usecase.go:56",
+              "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+            },
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/auth/internal/user/application/check_credentials/usecase.go:37",
+              "symbol": "examples/auth/internal/user/application/check_credentials:UseCase.Handle"
+            },
+            {
+              "kind": "binding",
+              "rule": "provider-signature",
+              "source": "examples/auth/internal/user/infrastructure/lockout/adapter.go:21",
+              "symbol": "New"
+            },
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/auth/internal/user/application/check_credentials/usecase.go:50",
+              "symbol": "Check"
+            }
+          ],
           "type": "step",
           "id": "s4",
           "from": "auth.auth",
@@ -306,6 +496,38 @@
           "line": "examples/auth/internal/user/application/check_credentials/usecase.go:50"
         },
         {
+          "evidence": [
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/auth/internal/session/application/login/usecase.go:56",
+              "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+            },
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/auth/internal/user/application/check_credentials/usecase.go:37",
+              "symbol": "examples/auth/internal/user/application/check_credentials:UseCase.Handle"
+            },
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/auth/internal/lockout/application/check/usecase.go:25",
+              "symbol": "examples/auth/internal/lockout/application/check:UseCase.Handle"
+            },
+            {
+              "kind": "binding",
+              "rule": "domain-port-convention",
+              "source": "examples/auth/internal/lockout/application/check/usecase.go:26",
+              "symbol": "lockout.Repository"
+            },
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/auth/internal/lockout/application/check/usecase.go:26",
+              "symbol": "ByUserID"
+            }
+          ],
           "type": "step",
           "id": "s5",
           "from": "auth.auth",
@@ -327,6 +549,32 @@
               "title": "!uc.verifier.Verify(in.Password, u.Password)",
               "steps": [
                 {
+                  "evidence": [
+                    {
+                      "kind": "function",
+                      "rule": "source-function",
+                      "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                      "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+                    },
+                    {
+                      "kind": "function",
+                      "rule": "source-function",
+                      "source": "examples/auth/internal/user/application/check_credentials/usecase.go:37",
+                      "symbol": "examples/auth/internal/user/application/check_credentials:UseCase.Handle"
+                    },
+                    {
+                      "kind": "binding",
+                      "rule": "provider-signature",
+                      "source": "examples/auth/internal/user/infrastructure/lockout/adapter.go:21",
+                      "symbol": "New"
+                    },
+                    {
+                      "kind": "call-site",
+                      "rule": "source-expression",
+                      "source": "examples/auth/internal/user/application/check_credentials/usecase.go:59",
+                      "symbol": "RecordFailure"
+                    }
+                  ],
                   "type": "step",
                   "id": "s6",
                   "from": "auth.auth",
@@ -338,6 +586,38 @@
                   "line": "examples/auth/internal/user/application/check_credentials/usecase.go:59"
                 },
                 {
+                  "evidence": [
+                    {
+                      "kind": "function",
+                      "rule": "source-function",
+                      "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                      "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+                    },
+                    {
+                      "kind": "function",
+                      "rule": "source-function",
+                      "source": "examples/auth/internal/user/application/check_credentials/usecase.go:37",
+                      "symbol": "examples/auth/internal/user/application/check_credentials:UseCase.Handle"
+                    },
+                    {
+                      "kind": "function",
+                      "rule": "source-function",
+                      "source": "examples/auth/internal/lockout/application/record_failure/usecase.go:34",
+                      "symbol": "examples/auth/internal/lockout/application/record_failure:UseCase.Handle"
+                    },
+                    {
+                      "kind": "binding",
+                      "rule": "domain-port-convention",
+                      "source": "examples/auth/internal/lockout/application/record_failure/usecase.go:36",
+                      "symbol": "lockout.Repository"
+                    },
+                    {
+                      "kind": "call-site",
+                      "rule": "source-expression",
+                      "source": "examples/auth/internal/lockout/application/record_failure/usecase.go:36",
+                      "symbol": "ByUserID"
+                    }
+                  ],
                   "type": "step",
                   "id": "s7",
                   "from": "auth.auth",
@@ -353,6 +633,38 @@
                   }
                 },
                 {
+                  "evidence": [
+                    {
+                      "kind": "function",
+                      "rule": "source-function",
+                      "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                      "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+                    },
+                    {
+                      "kind": "function",
+                      "rule": "source-function",
+                      "source": "examples/auth/internal/user/application/check_credentials/usecase.go:37",
+                      "symbol": "examples/auth/internal/user/application/check_credentials:UseCase.Handle"
+                    },
+                    {
+                      "kind": "function",
+                      "rule": "source-function",
+                      "source": "examples/auth/internal/lockout/application/record_failure/usecase.go:34",
+                      "symbol": "examples/auth/internal/lockout/application/record_failure:UseCase.Handle"
+                    },
+                    {
+                      "kind": "binding",
+                      "rule": "domain-port-convention",
+                      "source": "examples/auth/internal/lockout/application/record_failure/usecase.go:53",
+                      "symbol": "lockout.Repository"
+                    },
+                    {
+                      "kind": "call-site",
+                      "rule": "source-expression",
+                      "source": "examples/auth/internal/lockout/application/record_failure/usecase.go:53",
+                      "symbol": "Save"
+                    }
+                  ],
                   "type": "step",
                   "id": "s8",
                   "from": "auth.auth",
@@ -368,6 +680,32 @@
                   }
                 },
                 {
+                  "evidence": [
+                    {
+                      "kind": "function",
+                      "rule": "source-function",
+                      "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                      "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+                    },
+                    {
+                      "kind": "function",
+                      "rule": "source-function",
+                      "source": "examples/auth/internal/user/application/check_credentials/usecase.go:37",
+                      "symbol": "examples/auth/internal/user/application/check_credentials:UseCase.Handle"
+                    },
+                    {
+                      "kind": "function",
+                      "rule": "source-function",
+                      "source": "examples/auth/internal/lockout/application/record_failure/usecase.go:34",
+                      "symbol": "examples/auth/internal/lockout/application/record_failure:UseCase.Handle"
+                    },
+                    {
+                      "kind": "call-site",
+                      "rule": "source-expression",
+                      "source": "examples/auth/internal/lockout/application/record_failure/usecase.go:53",
+                      "symbol": "AccountLocked"
+                    }
+                  ],
                   "type": "step",
                   "id": "s9",
                   "from": "auth.auth",
@@ -389,6 +727,32 @@
           ]
         },
         {
+          "evidence": [
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/auth/internal/session/application/login/usecase.go:56",
+              "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+            },
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/auth/internal/user/application/check_credentials/usecase.go:37",
+              "symbol": "examples/auth/internal/user/application/check_credentials:UseCase.Handle"
+            },
+            {
+              "kind": "binding",
+              "rule": "provider-signature",
+              "source": "examples/auth/internal/user/infrastructure/lockout/adapter.go:21",
+              "symbol": "New"
+            },
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/auth/internal/user/application/check_credentials/usecase.go:68",
+              "symbol": "RecordSuccess"
+            }
+          ],
           "type": "step",
           "id": "s11",
           "from": "auth.auth",
@@ -400,6 +764,38 @@
           "line": "examples/auth/internal/user/application/check_credentials/usecase.go:68"
         },
         {
+          "evidence": [
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/auth/internal/session/application/login/usecase.go:56",
+              "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+            },
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/auth/internal/user/application/check_credentials/usecase.go:37",
+              "symbol": "examples/auth/internal/user/application/check_credentials:UseCase.Handle"
+            },
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/auth/internal/lockout/application/record_success/usecase.go:29",
+              "symbol": "examples/auth/internal/lockout/application/record_success:UseCase.Handle"
+            },
+            {
+              "kind": "binding",
+              "rule": "domain-port-convention",
+              "source": "examples/auth/internal/lockout/application/record_success/usecase.go:31",
+              "symbol": "lockout.Repository"
+            },
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/auth/internal/lockout/application/record_success/usecase.go:31",
+              "symbol": "ByUserID"
+            }
+          ],
           "type": "step",
           "id": "s12",
           "from": "auth.auth",
@@ -415,6 +811,38 @@
           }
         },
         {
+          "evidence": [
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/auth/internal/session/application/login/usecase.go:56",
+              "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+            },
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/auth/internal/user/application/check_credentials/usecase.go:37",
+              "symbol": "examples/auth/internal/user/application/check_credentials:UseCase.Handle"
+            },
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/auth/internal/lockout/application/record_success/usecase.go:29",
+              "symbol": "examples/auth/internal/lockout/application/record_success:UseCase.Handle"
+            },
+            {
+              "kind": "binding",
+              "rule": "domain-port-convention",
+              "source": "examples/auth/internal/lockout/application/record_success/usecase.go:43",
+              "symbol": "lockout.Repository"
+            },
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/auth/internal/lockout/application/record_success/usecase.go:43",
+              "symbol": "Save"
+            }
+          ],
           "type": "step",
           "id": "s13",
           "from": "auth.auth",
@@ -430,6 +858,26 @@
           }
         },
         {
+          "evidence": [
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/auth/internal/session/application/login/usecase.go:56",
+              "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+            },
+            {
+              "kind": "contract",
+              "rule": "generated-client-method",
+              "source": "examples/auth/internal/session/infrastructure/risk/gen/riskpb/risk_grpc.pb.go",
+              "symbol": "risk.v1.RiskService/Assess"
+            },
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/auth/internal/session/application/login/usecase.go:62",
+              "symbol": "Assess"
+            }
+          ],
           "type": "step",
           "id": "s14",
           "from": "auth.auth",
@@ -448,6 +896,32 @@
               "title": "verdict == VerdictBlock",
               "steps": [
                 {
+                  "evidence": [
+                    {
+                      "kind": "function",
+                      "rule": "source-function",
+                      "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                      "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+                    },
+                    {
+                      "kind": "function",
+                      "rule": "source-function",
+                      "source": "examples/auth/internal/session/application/login/usecase.go:90",
+                      "symbol": "examples/auth/internal/session/application/login:UseCase.endAll"
+                    },
+                    {
+                      "kind": "binding",
+                      "rule": "domain-port-convention",
+                      "source": "examples/auth/internal/session/application/login/usecase.go:91",
+                      "symbol": "session.Repository"
+                    },
+                    {
+                      "kind": "call-site",
+                      "rule": "source-expression",
+                      "source": "examples/auth/internal/session/application/login/usecase.go:91",
+                      "symbol": "ByUserID"
+                    }
+                  ],
                   "type": "step",
                   "id": "s15",
                   "from": "auth.auth",
@@ -462,6 +936,32 @@
                   }
                 },
                 {
+                  "evidence": [
+                    {
+                      "kind": "function",
+                      "rule": "source-function",
+                      "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                      "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+                    },
+                    {
+                      "kind": "function",
+                      "rule": "source-function",
+                      "source": "examples/auth/internal/session/application/login/usecase.go:90",
+                      "symbol": "examples/auth/internal/session/application/login:UseCase.endAll"
+                    },
+                    {
+                      "kind": "binding",
+                      "rule": "domain-port-convention",
+                      "source": "examples/auth/internal/session/application/login/usecase.go:101",
+                      "symbol": "session.Repository"
+                    },
+                    {
+                      "kind": "call-site",
+                      "rule": "source-expression",
+                      "source": "examples/auth/internal/session/application/login/usecase.go:101",
+                      "symbol": "Save"
+                    }
+                  ],
                   "type": "step",
                   "id": "s16",
                   "from": "auth.auth",
@@ -477,6 +977,26 @@
                   }
                 },
                 {
+                  "evidence": [
+                    {
+                      "kind": "function",
+                      "rule": "source-function",
+                      "source": "examples/auth/internal/session/application/login/usecase.go:56",
+                      "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+                    },
+                    {
+                      "kind": "function",
+                      "rule": "source-function",
+                      "source": "examples/auth/internal/session/application/login/usecase.go:90",
+                      "symbol": "examples/auth/internal/session/application/login:UseCase.endAll"
+                    },
+                    {
+                      "kind": "call-site",
+                      "rule": "source-expression",
+                      "source": "examples/auth/internal/session/application/login/usecase.go:101",
+                      "symbol": "SessionEnded"
+                    }
+                  ],
                   "type": "step",
                   "id": "s17",
                   "from": "auth.auth",
@@ -498,6 +1018,26 @@
           ]
         },
         {
+          "evidence": [
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/auth/internal/session/application/login/usecase.go:56",
+              "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+            },
+            {
+              "kind": "binding",
+              "rule": "domain-port-convention",
+              "source": "examples/auth/internal/session/application/login/usecase.go:77",
+              "symbol": "session.Repository"
+            },
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/auth/internal/session/application/login/usecase.go:77",
+              "symbol": "Save"
+            }
+          ],
           "type": "step",
           "id": "s19",
           "from": "auth.auth",
@@ -512,6 +1052,20 @@
           }
         },
         {
+          "evidence": [
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/auth/internal/session/application/login/usecase.go:56",
+              "symbol": "examples/auth/internal/session/application/login:UseCase.Handle"
+            },
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/auth/internal/session/application/login/usecase.go:77",
+              "symbol": "SessionStarted"
+            }
+          ],
           "type": "step",
           "id": "s20",
           "from": "auth.auth",
@@ -556,6 +1110,14 @@
       ],
       "steps": [
         {
+          "evidence": [
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/auth/internal/session/infrastructure/http/logout.go:15",
+              "symbol": "logout"
+            }
+          ],
           "type": "step",
           "id": "s1",
           "from": "client",
@@ -567,6 +1129,26 @@
           "line": "examples/auth/internal/session/infrastructure/http/logout.go:15"
         },
         {
+          "evidence": [
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/auth/internal/session/application/logout/usecase.go:29",
+              "symbol": "examples/auth/internal/session/application/logout:UseCase.Handle"
+            },
+            {
+              "kind": "binding",
+              "rule": "domain-port-convention",
+              "source": "examples/auth/internal/session/application/logout/usecase.go:34",
+              "symbol": "session.Repository"
+            },
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/auth/internal/session/application/logout/usecase.go:34",
+              "symbol": "ByToken"
+            }
+          ],
           "type": "step",
           "id": "s2",
           "from": "auth.auth",
@@ -581,6 +1163,26 @@
           }
         },
         {
+          "evidence": [
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/auth/internal/session/application/logout/usecase.go:29",
+              "symbol": "examples/auth/internal/session/application/logout:UseCase.Handle"
+            },
+            {
+              "kind": "binding",
+              "rule": "domain-port-convention",
+              "source": "examples/auth/internal/session/application/logout/usecase.go:48",
+              "symbol": "session.Repository"
+            },
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/auth/internal/session/application/logout/usecase.go:48",
+              "symbol": "Save"
+            }
+          ],
           "type": "step",
           "id": "s3",
           "from": "auth.auth",
@@ -595,6 +1197,20 @@
           }
         },
         {
+          "evidence": [
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/auth/internal/session/application/logout/usecase.go:29",
+              "symbol": "examples/auth/internal/session/application/logout:UseCase.Handle"
+            },
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/auth/internal/session/application/logout/usecase.go:48",
+              "symbol": "SessionEnded"
+            }
+          ],
           "type": "step",
           "id": "s4",
           "from": "auth.auth",
@@ -639,6 +1255,14 @@
       ],
       "steps": [
         {
+          "evidence": [
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/auth/internal/user/infrastructure/http/register.go:16",
+              "symbol": "registerUser"
+            }
+          ],
           "type": "step",
           "id": "s1",
           "from": "client",
@@ -650,6 +1274,26 @@
           "line": "examples/auth/internal/user/infrastructure/http/register.go:16"
         },
         {
+          "evidence": [
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/auth/internal/user/application/register/usecase.go:31",
+              "symbol": "examples/auth/internal/user/application/register:UseCase.Handle"
+            },
+            {
+              "kind": "binding",
+              "rule": "domain-port-convention",
+              "source": "examples/auth/internal/user/application/register/usecase.go:36",
+              "symbol": "user.Repository"
+            },
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/auth/internal/user/application/register/usecase.go:36",
+              "symbol": "ByEmail"
+            }
+          ],
           "type": "step",
           "id": "s2",
           "from": "auth.auth",
@@ -664,6 +1308,26 @@
           }
         },
         {
+          "evidence": [
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/auth/internal/user/application/register/usecase.go:31",
+              "symbol": "examples/auth/internal/user/application/register:UseCase.Handle"
+            },
+            {
+              "kind": "binding",
+              "rule": "domain-port-convention",
+              "source": "examples/auth/internal/user/application/register/usecase.go:53",
+              "symbol": "user.Repository"
+            },
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/auth/internal/user/application/register/usecase.go:53",
+              "symbol": "Save"
+            }
+          ],
           "type": "step",
           "id": "s3",
           "from": "auth.auth",
@@ -678,6 +1342,20 @@
           }
         },
         {
+          "evidence": [
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/auth/internal/user/application/register/usecase.go:31",
+              "symbol": "examples/auth/internal/user/application/register:UseCase.Handle"
+            },
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/auth/internal/user/application/register/usecase.go:53",
+              "symbol": "UserRegistered"
+            }
+          ],
           "type": "step",
           "id": "s4",
           "from": "auth.auth",
@@ -712,6 +1390,14 @@
       ],
       "steps": [
         {
+          "evidence": [
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/auth/internal/session/infrastructure/messaging/policy/revoke_sessions_on_password_change.go:47",
+              "symbol": "PasswordChanged"
+            }
+          ],
           "type": "step",
           "id": "s1",
           "from": "bus",
@@ -751,6 +1437,14 @@
       ],
       "steps": [
         {
+          "evidence": [
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/auth/internal/session/infrastructure/http/validate.go:12",
+              "symbol": "validateSession"
+            }
+          ],
           "type": "step",
           "id": "s1",
           "from": "client",
@@ -762,6 +1456,26 @@
           "line": "examples/auth/internal/session/infrastructure/http/validate.go:12"
         },
         {
+          "evidence": [
+            {
+              "kind": "function",
+              "rule": "source-function",
+              "source": "examples/auth/internal/session/application/validate/usecase.go:28",
+              "symbol": "examples/auth/internal/session/application/validate:UseCase.Handle"
+            },
+            {
+              "kind": "binding",
+              "rule": "domain-port-convention",
+              "source": "examples/auth/internal/session/application/validate/usecase.go:33",
+              "symbol": "session.Repository"
+            },
+            {
+              "kind": "call-site",
+              "rule": "source-expression",
+              "source": "examples/auth/internal/session/application/validate/usecase.go:33",
+              "symbol": "ByToken"
+            }
+          ],
           "type": "step",
           "id": "s2",
           "from": "auth.auth",

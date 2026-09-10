@@ -22,7 +22,7 @@ func extractOperations(root string, layout sourceLayout, exposures map[string][]
 	for _, key := range sortedKeys(layout.useCases) {
 		aggregate, name, _ := strings.Cut(key, "/")
 		dir := layout.useCases[key]
-		pkg, err := parsePkg(root, dir)
+		pkg, err := parsePkg(root, dir, layout.index)
 		if err != nil {
 			b.Warn(aggregate, dir+" could not be parsed; skipped")
 
