@@ -17,6 +17,10 @@ import { localApiPlugin } from "./scripts/local-api.mjs";
 // generator wrote them; the build copies the same files into dist.
 // @ts-expect-error plain JavaScript module intentionally has no browser types
 import { siteDocsPlugin } from "./scripts/site-docs.mjs";
+// When each catalog source last changed, read from git at build time and
+// served to the app as one virtual module (portolan.0010).
+// @ts-expect-error plain JavaScript module intentionally has no browser types
+import { provenancePlugin } from "./scripts/provenance.mjs";
 
 /** A git answer, or "" when there is nothing to answer with (no repo, no git). */
 function git(args: string): string {
@@ -160,6 +164,7 @@ export default defineConfig({
     // TypeScript below node_modules.
     localApiPlugin(workspace, publicSetupFrom),
     siteDocsPlugin(workspace),
+    provenancePlugin(workspace),
     react(),
     tailwindcss(),
     // The AsyncAPI reference brings a parser written for Node, and it calls

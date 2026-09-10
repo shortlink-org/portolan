@@ -122,8 +122,6 @@ pub fn extract(input: &Input, opts: &Options, cwd: &Path) -> Response {
     }
 
     let fragment = Catalog {
-        generated_at: input.generated_at.clone(),
-        commit: input.commit.clone(),
         contexts: vec![Context {
             id: context.clone(),
             slug: context.clone(),

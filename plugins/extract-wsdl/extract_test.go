@@ -23,7 +23,7 @@ func TestWSDLBecomesStructuredExternalAPI(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "payments.wsdl"), []byte(spec), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	resp, err := extract(plugin.Input{Root: root, Commit: "abc", GeneratedAt: "2026-01-01T00:00:00Z"}, Options{Mode: "external", Spec: "payments.wsdl"})
+	resp, err := extract(plugin.Input{Root: root}, Options{Mode: "external", Spec: "payments.wsdl"})
 	if err != nil {
 		t.Fatal(err)
 	}

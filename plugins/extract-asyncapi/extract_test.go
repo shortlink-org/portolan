@@ -14,7 +14,7 @@ func run3(t *testing.T, root string, opts Options) plugin.Response {
 	t.Helper()
 
 	resp, err := extract(
-		plugin.Input{Root: root, Commit: "abc1234", GeneratedAt: "2026-01-01T00:00:00Z"},
+		plugin.Input{Root: root},
 		opts,
 	)
 	if err != nil {

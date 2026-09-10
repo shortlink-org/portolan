@@ -18,14 +18,11 @@ final class Protocol {
 
     private Protocol() {}
 
-    /** Where the source is, and the stamp the host put on this run. */
-    record Input(String root, String commit, String generatedAt) {
+    /** Where the source is. */
+    record Input(String root) {
         static Input of(Object raw) {
             Map<String, Object> map = Json.object(raw);
-            return new Input(
-                    Json.string(map.get("root")),
-                    Json.string(map.get("commit")),
-                    Json.string(map.get("generatedAt")));
+            return new Input(Json.string(map.get("root")));
         }
     }
 

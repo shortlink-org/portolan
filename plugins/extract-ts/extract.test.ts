@@ -8,7 +8,7 @@ const ROOT = "plugins/extract-ts/testdata/cart";
 const options = { context: "shop", service: "cart", store: "pg", peers: { "auth.v1": "auth.auth", "shop.v1": "shop.pricing" } };
 
 function run() {
-  return extract({ root: ROOT, commit: "abc1234", generatedAt: "2026-09-04T00:00:00Z" }, options);
+  return extract({ root: ROOT }, options);
 }
 
 function fragment() {
@@ -200,7 +200,7 @@ describe("the JavaScript twin", () => {
     );
 
   it("reads to the fragment the TypeScript tree reads to", () => {
-    const twin = extract({ root: JS, commit: "abc1234", generatedAt: "2026-09-04T00:00:00Z" }, options);
+    const twin = extract({ root: JS }, options);
     const golden = JSON.parse(readFileSync(`${ROOT}/expected.json`, "utf8"));
     expect(sameShape(JSON.parse(twin.files[0]!.contents))).toEqual(sameShape(golden));
     expect(twin.warnings.map((d) => d.ref)).toEqual(["getBasket"]);

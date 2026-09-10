@@ -1331,10 +1331,12 @@ describe("enrichCatalog: Redis store accesses", () => {
 
 describe("enrichCatalog: the auth fragment", () => {
   // The three fragments together, the way the app reads them: the domain one
-  // alone names endpoints the api one declares.
+  // alone names endpoints the api one declares. A fragment carries no stamp
+  // of its own (portolan.0010); the reader hands the history's over beside it.
   const raw = mergeCatalogs(
     ["domain", "api", "stores"].map((name) => ({
       path: `${name}.json`,
+      stamp: { commit: "abc1234", generatedAt: "2026-09-05T00:00:00Z" },
       catalog: JSON.parse(
         readFileSync(
           new URL(`../examples/auth/portolan/${name}.json`, import.meta.url),

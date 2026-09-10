@@ -124,7 +124,7 @@ func runVerifyOn(t *testing.T, cat catalog.Catalog, traces string, opts Options)
 		opts.Traces = []string{"telemetry/*.jsonl"}
 	}
 
-	resp, err := verify(plugin.Request{Catalog: cat, Input: plugin.Input{Root: root, Commit: "abc1234", GeneratedAt: "2026-01-01T00:00:00Z"}}, opts)
+	resp, err := verify(plugin.Request{Catalog: cat, Input: plugin.Input{Root: root}}, opts)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -46,8 +46,6 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	}
 
 	fragment := catalog.Catalog{
-		GeneratedAt: in.GeneratedAt,
-		Commit:      in.Commit,
 		Contexts: []catalog.BoundedContext{{
 			ID:   context,
 			Slug: context,

@@ -2,7 +2,7 @@ use std::path::Path;
 
 pub fn response() -> serde_json::Value {
     let cwd = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let request = r#"{"input":{"root":"testdata/oms","commit":"abc1234","generatedAt":"2026-09-05T00:00:00Z"},"options":{"context":"shop","contextName":"Shop","service":"oms","store":"pg","peers":{"payments.v1":"payments.ledger"},"events":{"crate::infrastructure::cart":"shop.cart.basket"}}}"#;
+    let request = r#"{"input":{"root":"testdata/oms"},"options":{"context":"shop","contextName":"Shop","service":"oms","store":"pg","peers":{"payments.v1":"payments.ledger"},"events":{"crate::infrastructure::cart":"shop.cart.basket"}}}"#;
     let raw = portolan_extract_rust::serve(request, cwd).expect("the fixture extracts");
     serde_json::from_str(&raw).expect("the response is JSON")
 }

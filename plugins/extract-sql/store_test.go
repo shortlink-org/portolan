@@ -15,7 +15,7 @@ func fragment(t *testing.T) (catalog.Catalog, []plugin.Warning) {
 	t.Helper()
 
 	resp := extract(
-		plugin.Input{Root: "../../examples/auth", Commit: "abc1234", GeneratedAt: "2026-01-01T00:00:00Z"},
+		plugin.Input{Root: "../../examples/auth"},
 		Options{Context: "auth", Service: "auth", Store: "pg", Name: "Auth database"},
 	)
 	if len(resp.Files) != 1 {

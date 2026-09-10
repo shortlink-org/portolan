@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { fileHistory, forgetHistory, historyFor, parseLog } from "./history.mjs";
+import { changedSince, fileHistory, forgetHistory, historyFor, lastCommitTouching, parseLog, stampsFor } from "./history.mjs";
 
 const created = [];
 afterEach(() => {

@@ -1,6 +1,6 @@
 # Plugins
 
-*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog. Do not edit by hand.*
 
 - **Id:** `portolan.plugins`
 - **Group:** [Portolan](../README.md)
@@ -473,9 +473,10 @@ far side.
 The demo estate's org-wide and context-wide records live in `data/adr`, and are
 read by a step that points at that directory with a glob of its own. Root
 `docs/` is where `gen-markdown` writes, so nothing hand-written can live there.
-`in` is the directory of records rather than `data` itself: a step's fragment is
-only left out of its own stamp when the output is *inside* the input root, and
-`in: data` with `out: data` would be stamped from the file it writes.
+`in` is the directory of records rather than `data` itself: what `gen --check`
+lists as changed inputs is the root less the output directories inside it, and
+`in: data` with `out: data` would list the file the step writes among the
+reasons it was rewritten.
 
 ```json
 {
@@ -794,9 +795,9 @@ enforces: a team that owns a directory is a team that gets the pull request.
 ```
 
 Point `in` at the directory the file is in, not at the repository root: the
-host dates a fragment from the last commit to touch the step's input, and the
-subject of this one is the `CODEOWNERS` file. Rooted at the repository, it
-would be restamped by every commit ever made. Left with no `file`, the three
+subject of this step is the `CODEOWNERS` file, and `gen --check` explains a
+changed fragment by what moved under the step's input. Rooted at the
+repository, every commit ever made would be named. Left with no `file`, the three
 places a forge looks are tried in order - `CODEOWNERS`, `.github/CODEOWNERS`,
 `docs/CODEOWNERS` - and a `file` that names something absent fails the run,
 because answering "nobody owns anything" to a typo is only noticed a month
@@ -946,11 +947,12 @@ Nothing else can say it. A service says which repository it lives in, and an
 extractor reads a directory as a pure function of what is on disk; neither has
 any idea which commit somebody fetched. Without that line, every source path
 of every vendored service is dead text on the page - the file and the line are
-known, and there is nowhere to send a reader - and every fragment read out of
-the copy is stamped with the commit that VENDORED it, so the service looks
-fresh whenever the fetch is re-run and unchanged when its own repository
-moves. With it, `sourceHref` links the line at the commit it was read at and
-`stampFor` dates the fragment from the code rather than the vendoring.
+known, and there is nowhere to send a reader. With it, `sourceHref` links the
+line at the commit it was read at. The fragments read out of the copy are
+dated, like every other source, by the commit of THIS repository that last
+changed them (portolan.0010) - which is the fetch that brought the change in,
+and is what "how fresh is this" means to the estate that vendored it; the pin
+is what says which upstream commit that was.
 
 One more line is needed for the app itself: `SOURCE_GLOBS` in `src/data.ts`,
 where the same patterns are written out a second time because

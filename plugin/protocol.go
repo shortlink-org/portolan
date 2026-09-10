@@ -50,13 +50,13 @@ type Input struct {
 	// catalog entry needs to point at a generated companion document.
 	Output string `json:"output,omitempty"`
 
-	// Commit and GeneratedAt stamp the fragment (portolan.0002). The host works them out - the
-	// last commit that touched Root, and its date - rather than the plugin
-	// reading a clock, because a fragment that changes on every run cannot be
-	// committed and cannot be checked. Stamped this way it changes exactly when
-	// the source it describes changes.
-	Commit      string `json:"commit"`
-	GeneratedAt string `json:"generatedAt"`
+	// Provenance is not part of the request (portolan.0010). A fragment used
+	// to carry a commit and a date that the host worked out from the last
+	// commit touching Root and every plugin copied to the top of its output.
+	// The host now reads both from the git history of the fragment it wrote,
+	// so a plugin has nothing to stamp and no clock to read: its output
+	// changes exactly when the source it describes changes, and when that was
+	// is a fact about the file, not a field in it.
 
 	// History is when each file under Root was first committed and last
 	// changed, keyed by the file's path as the plugin would name it - the same

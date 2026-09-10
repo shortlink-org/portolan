@@ -114,12 +114,10 @@ func verify(req plugin.Request, opts Options) (plugin.Response, error) {
 	}
 
 	fragment := catalog.Catalog{
-		GeneratedAt: req.Input.GeneratedAt,
-		Commit:      req.Input.Commit,
-		Contexts:    contexts,
-		Defs:        map[string]catalog.TypeDef{},
-		Flows:       []catalog.Flow{},
-		Adrs:        []catalog.Adr{},
+		Contexts: contexts,
+		Defs:     map[string]catalog.TypeDef{},
+		Flows:    []catalog.Flow{},
+		Adrs:     []catalog.Adr{},
 	}
 	encoded, err := json.MarshalIndent(fragment, "", "  ")
 	if err != nil {

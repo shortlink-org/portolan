@@ -1,4 +1,8 @@
 import { defineConfig } from "vitest/config";
+// The app's sources are dated from git at build time (portolan.0010); a test
+// that imports src/data.ts needs the same virtual module the site gets.
+// @ts-expect-error plain JavaScript module intentionally has no browser types
+import { provenancePlugin } from "./scripts/provenance.mjs";
 
 const exampleCatalogTests = [
   "src/routes.test.ts",
@@ -22,6 +26,7 @@ const allTests = [
 const excludedTests = ["**/node_modules/**", "plugins/extract-ts/testdata/**"];
 
 export default defineConfig({
+  plugins: [provenancePlugin(".")],
   test: {
     projects: [
       {

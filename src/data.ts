@@ -33,6 +33,10 @@ import type {
 } from "./merge";
 import manifestJson from "../portolan.json";
 import { catalogDocs } from "./catalog-docs";
+// When each source last changed, as the checkout's history says - served by
+// scripts/provenance.mjs at build time, because a fragment carries no
+// provenance of its own (portolan.0010) and a browser cannot ask git.
+import provenance from "virtual:portolan-provenance";
 
 const manifest = manifestJson as CatalogProfileManifest & { sources: string[] };
 export const catalogProfiles: CatalogProfile[] = profilesFromManifest(manifest);
@@ -127,9 +131,10 @@ function load(): Loaded {
       // Vite keys a glob by its pattern-relative path; the leading ../ is an
       // artefact of this file's location, not part of where anything lives.
       path: path.replace(/^\.\.\//, ""),
-      // A SOURCE, not a catalog: the two stamps are optional in a file, and
-      // the estate's authored facts carry neither.
+      // A SOURCE, not a catalog: a file carries no stamp of its own, and the
+      // history's travels beside it (portolan.0010).
       catalog: catalog as SourceCatalog,
+      stamp: provenance[path.replace(/^\.\.\//, "")],
     }))
     .filter((source) => profileIncludesSource(activeCatalogProfile, source.path));
 

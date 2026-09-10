@@ -25,7 +25,7 @@ func write(t *testing.T, root, name, contents string) {
 
 func extracted(t *testing.T, root string) (catalog.Catalog, plugin.Response) {
 	t.Helper()
-	resp, err := extract(plugin.Input{Root: root, Commit: "abc", GeneratedAt: "2026-01-01T00:00:00Z"}, Options{Context: "shop", Service: "pricing"})
+	resp, err := extract(plugin.Input{Root: root}, Options{Context: "shop", Service: "pricing"})
 	if err != nil {
 		t.Fatal(err)
 	}

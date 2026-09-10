@@ -28,8 +28,6 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 
 	serviceID := opts.Context + "." + opts.Service
 	fragment := catalog.Catalog{
-		GeneratedAt: in.GeneratedAt,
-		Commit:      in.Commit,
 		Contexts: []catalog.BoundedContext{{
 			ID:   opts.Context,
 			Slug: opts.Context,

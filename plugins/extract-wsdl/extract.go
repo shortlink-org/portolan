@@ -33,7 +33,6 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 		b.Warn(in.Root, warning)
 	}
 	fragment := catalog.Catalog{
-		GeneratedAt: in.GeneratedAt, Commit: in.Commit,
 		Contexts: []catalog.BoundedContext{}, Defs: map[string]catalog.TypeDef{},
 		Flows: []catalog.Flow{}, Adrs: []catalog.Adr{}, Externals: []catalog.External{},
 	}

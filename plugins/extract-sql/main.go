@@ -80,8 +80,6 @@ func extract(in plugin.Input, opts Options) plugin.Response {
 	foreignSchemas(root, modulePath(root), b, storeID, layout.index)
 
 	fragment := catalog.Catalog{
-		GeneratedAt: in.GeneratedAt,
-		Commit:      in.Commit,
 		Contexts: []catalog.BoundedContext{{
 			ID:   opts.Context,
 			Slug: opts.Context,

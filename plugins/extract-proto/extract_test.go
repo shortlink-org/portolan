@@ -34,12 +34,8 @@ func options() Options {
 }
 
 func input() plugin.Input {
-	// The stamp comes from the host, which derives it from git. A plugin that
-	// read a clock would write a different file every run.
 	return plugin.Input{
-		Root:        "testdata/estate",
-		Commit:      "abc1234",
-		GeneratedAt: "2024-01-01T00:00:00Z",
+		Root: "testdata/estate",
 	}
 }
 

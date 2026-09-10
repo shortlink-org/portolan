@@ -6,23 +6,25 @@ import { absoluteTime, plural, relativeTime } from "../lib/format";
 /**
  * Where the catalog on this page came from, and when.
  *
- * The header says one date and one commit, and both are summaries of a corpus:
- * the date is the OLDEST of the sources, because a merged catalog is exactly
- * as fresh as its stalest part, and the commit is a count whenever the sources
- * do not agree on one. A summary of many numbers is the right thing to put in
- * a header and the wrong thing to leave a reader with - "6 sources · 15 hours
+ * A source is dated by the commit that last changed it, read off the
+ * checkout's history rather than out of the file (portolan.0010). The header
+ * says one date and one commit, and both are summaries of a corpus: the date
+ * is the OLDEST of the sources, because a merged catalog is exactly as fresh
+ * as its stalest part, and the commit is a count whenever the sources do not
+ * agree on one. A summary of many numbers is the right thing to put in a
+ * header and the wrong thing to leave a reader with - "6 sources · 15 hours
  * ago" answers "is this current" and refuses "which part is not", which is the
  * question anyone who did not like the first answer asks next.
  *
  * So the stamp opens. Behind it is one row per commit, newest first, and the
  * row the header is quoting says so. Rows are per COMMIT and not per file
- * because twenty-eight fragments written by one commit are one source of
+ * because twenty-eight fragments changed by one commit are one source of
  * facts, and it is the same count the header prints.
  */
 export function CatalogStamp() {
   const groups = byCommit(catalogSources);
   const authored = catalogSources.filter((source) => !source.commit);
-  const summary = `catalog generated ${absoluteTime(catalog.generatedAt)} from commit ${catalog.commit}`;
+  const summary = `catalog last changed ${absoluteTime(catalog.generatedAt)}, ${catalog.commit}`;
 
   return (
     <Popover className="ml-auto">
@@ -43,7 +45,7 @@ export function CatalogStamp() {
       >
         <div className="label mb-1.5 px-1">
           {groups.length} {plural(groups.length, "source")}, by the commit each
-          was generated from
+          last changed in
         </div>
         <dl className="mono grid grid-cols-[auto_1fr_auto] items-baseline gap-x-3 gap-y-1 px-1">
           {groups.map((group, i) => (

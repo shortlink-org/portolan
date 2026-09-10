@@ -17,7 +17,7 @@ func fixtureResponse(t *testing.T) plugin.Response {
 	t.Helper()
 
 	resp, err := extract(
-		plugin.Input{Root: "testdata/mailer", Commit: "abc1234", GeneratedAt: "2026-01-01T00:00:00Z"},
+		plugin.Input{Root: "testdata/mailer"},
 		Options{Context: "sales", Service: "mailer"},
 	)
 	if err != nil {

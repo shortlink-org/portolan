@@ -120,7 +120,7 @@ func Cancel(ctx context.Context, client soap.HTTPClient, request, response any) 
 </definitions>
 `)
 
-	resp, err := extract(plugin.Input{Root: root, Commit: "abc", GeneratedAt: "2026-01-01T00:00:00Z"}, Options{Context: "edge", Service: "gateway"})
+	resp, err := extract(plugin.Input{Root: root}, Options{Context: "edge", Service: "gateway"})
 	if err != nil {
 		t.Fatal(err)
 	}

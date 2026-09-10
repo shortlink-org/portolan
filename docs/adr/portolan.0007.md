@@ -1,6 +1,6 @@
 # portolan.0007 — The host reads history for a plugin that asks
 
-*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-08

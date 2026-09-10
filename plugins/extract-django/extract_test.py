@@ -36,7 +36,7 @@ OPTIONS = {
 def run(options):
     b = Builder()
     extract(
-        Input(root=FIXTURE, output=FIXTURE + "/portolan", commit="abc1234", generated_at="2026-09-05T00:00:00Z"),
+        Input(root=FIXTURE, output=FIXTURE + "/portolan"),
         Options.of(options),
         b,
         cwd=ROOT,

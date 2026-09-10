@@ -82,7 +82,7 @@ func TestDiscoverLayoutFindsFeaturePackages(t *testing.T) {
 
 func TestExtractsFeatureSlicedAuthExample(t *testing.T) {
 	root := filepath.Join("..", "..", "examples", "auth")
-	resp, err := extract(plugin.Input{Root: root, Commit: "test", GeneratedAt: "2026-01-01T00:00:00Z"}, Options{
+	resp, err := extract(plugin.Input{Root: root}, Options{
 		Context: "auth", Service: "auth", Store: "pg",
 	})
 	if err != nil {

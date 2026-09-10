@@ -132,8 +132,6 @@ final class Extract {
         contextObject.put("services", List.of(serviceObject));
 
         Map<String, Object> fragment = Catalog.map(
-                "generatedAt", input.generatedAt(),
-                "commit", input.commit(),
                 "contexts", List.of(contextObject),
                 "defs", Catalog.map(),
                 "flows", flows,

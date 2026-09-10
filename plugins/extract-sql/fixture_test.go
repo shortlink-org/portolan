@@ -19,7 +19,7 @@ func fixtureResponse(t *testing.T) plugin.Response {
 	t.Helper()
 
 	resp := extract(
-		plugin.Input{Root: "testdata/order", Commit: "abc1234", GeneratedAt: "2026-01-01T00:00:00Z"},
+		plugin.Input{Root: "testdata/order"},
 		Options{Context: "shop", Service: "order", Store: "pg", Name: "Order database"},
 	)
 	if len(resp.Files) != 1 || resp.Files[0].Name != "stores.json" {

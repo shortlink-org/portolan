@@ -23,7 +23,7 @@ class PythonKafka(unittest.TestCase):
         fixture = os.path.join(HERE, "testdata", "service")
         builder = Builder()
         extract(
-            Input(root=os.path.relpath(fixture, ROOT), commit="abc1234", generated_at="2026-09-08T00:00:00Z"),
+            Input(root=os.path.relpath(fixture, ROOT)),
             Options.of({"context": "shop", "service": "orders", "settings": "config.settings"}),
             builder,
             cwd=ROOT,

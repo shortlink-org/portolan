@@ -7,8 +7,6 @@ use serde::Serialize;
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Catalog {
-    pub generated_at: String,
-    pub commit: String,
     pub contexts: Vec<Context>,
     pub defs: serde_json::Map<String, serde_json::Value>,
     pub flows: Vec<Flow>,

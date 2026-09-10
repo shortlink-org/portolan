@@ -1,6 +1,4 @@
 {
-  "generatedAt": "2026-09-10T18:43:59+07:00",
-  "commit": "e67f9a5",
   "contexts": [],
   "defs": {},
   "flows": [],
@@ -30,19 +28,25 @@
       "slug": "portolan-0002-the-host-stamps-a-fragment-from-its-inputs-last-commit",
       "number": 2,
       "title": "The host stamps a fragment from its input's last commit",
-      "status": "accepted",
+      "status": "superseded",
       "date": "2026-09-02",
       "scope": {
         "kind": "context",
         "context": "portolan"
       },
       "body": "## Context and Problem Statement\n\nA fragment says when it was read and at which commit, so the estate can be\ndated and a source path can be a link. Who works that out?\n\nThe obvious answer is the extractor: read the clock, ask the repository for\nits head. A clock makes a different fragment on every run, which cannot be\ncommitted and cannot be checked. Version control in the plugin makes a plugin\nthat can never be sandboxed, and a plugin that reads its own output\ndirectory's history stamps itself out of date on every run.\n\n## Decision Drivers\n\n- A committed fragment must be byte-identical across runs of the same source,\n  so `--check` means something.\n- A fragment must change exactly when its subject changes.\n- A plugin must know no clock and no repository.\n- A copy of another repository must be dated by the commit it is a copy of,\n  not by when it was copied.\n\n## Considered Options\n\n1. **The host stamps from the last commit that touched the input root**,\n   excluding the output directory when it sits inside that root.\n2. **The extractor reads the clock and the repository** and writes what it\n   found.\n3. **No stamp; a content hash** — the fragment is dated by what it says.\n\n## Decision Outcome\n\nChosen option: **the host stamps from the last commit that touched the input\nroot**.\n\n| | reproducible | sandboxable | says when |\n|---|---|---|---|\n| host, from history | yes | yes | the last change to the subject |\n| plugin, clock and repository | no | no | now |\n| content hash | yes | yes | never |\n\nWhat is given up is a stamp for a root that is the whole repository: every\ncommit anywhere moves it, so the fragment of a repository that describes\nitself, portolan's own `portolan/project.json` included, is re-stamped after\nevery commit. That is accepted because it is true: every commit to the\nrepository is a commit to the component. A tree with no history is stamped\n`uncommitted` with the wall clock, and `PORTOLAN_GENERATED_AT` pins that for\na build that must reproduce.\n\n### Consequences\n\n- Good: `gen --check` is a real check; a fragment diffs only when its source\n  does; a fetched repository is dated by the commit its lock names.\n- Bad: a shallow clone cannot stamp, and the host refuses rather than guesses:\n  fetch the full history first.\n- Bad: two extractors on one root carry the same stamp even when only one's\n  subject changed.\n- Neutral: the stamp is the commit that last touched the directory, which is\n  not the commit the code was built from.\n",
+      "supersededBy": "portolan.0010",
       "relates": {},
       "source": "adr/0002-the-host-stamps-a-fragment-from-its-inputs-last-commit.md",
       "created": {
         "commit": "229c1fb4f2b8ee1d4fe60d35c2be9d122f75c34c",
         "author": "Victor Login",
         "date": "2026-09-06T18:48:02+07:00"
+      },
+      "revised": {
+        "commit": "edb37fc83ca252538255a33a78a6679e0f3591ea",
+        "author": "Victor Login",
+        "date": "2026-09-10T21:43:45+07:00"
       }
     },
     {
@@ -198,6 +202,29 @@
         "commit": "e67f9a53caf770219dc9526e16a54455b0ecb7b1",
         "author": "Victor Login",
         "date": "2026-09-10T18:43:59+07:00"
+      }
+    },
+    {
+      "id": "portolan.0010",
+      "slug": "portolan-0010-provenance-is-read-from-the-history-never-written-into-a-fragment",
+      "number": 10,
+      "title": "Provenance is read from the history, never written into a fragment",
+      "status": "accepted",
+      "date": "2026-09-10",
+      "scope": {
+        "kind": "context",
+        "context": "portolan"
+      },
+      "body": "## Context and Problem Statement\n\nportolan.0002 had the host stamp every fragment with the last commit to touch\nits input root, and that commit's date, so that a committed fragment was\nreproducible and dated. Two things followed that were not wanted.\n\nThe stamp moved with every commit to the root, whether or not a fact changed:\na dependency bump under a service re-stamped its seven fragments, and\nportolan's own fragments, rooted at the repository, moved with every commit\nat all. And every generated page carried the merge's summary of those stamps -\n`6 sources`, the oldest date - so one moved stamp rewrote every page. After a\nrun of focused fixes, `npm run gen` changed about 200 tracked files; 166 of\n171 pages differed only in that line; and `gen --check` was red on the very\ncommit that had regenerated everything, because that commit had moved the\nstamp again.\n\nUnderneath is a limit no stamp written into a file escapes: it cannot name\nthe commit the file lands in. Regenerated before the commit it is the parent;\nregenerated after, it needs a second commit to catch up. Either way the\nrecord of when a fact changed sits one commit away from the change.\n\n## Decision Drivers\n\n- Regenerating from the same sources must change no byte - from a fresh\n  checkout or over an existing one.\n- A change to one fact must change the fragment that carries it and the pages\n  that show it, and nothing else.\n- Provenance must stay exact: when a fact last changed, and in which commit.\n- A plugin must know no clock and no repository (kept from portolan.0002).\n- `gen --check` must say why an artifact is out of date.\n\n## Considered Options\n\n1. **Provenance is the history's.** Nothing is written into a fragment;\n   whoever reads the catalog asks git when each source file last changed.\n2. **Keep the stamp in the fragment, but keep the old one while the content\n   stands.**\n3. **Stamp from a hash of the input tree** instead of from a commit.\n4. **Record the commit of the last generation in one file** and diff the\n   inputs against it.\n\n## Decision Outcome\n\nChosen option: **provenance is the history's**.\n\nA fragment is content and nothing else. The request carries no `commit` and\nno `generatedAt`; a plugin that used to copy them writes nothing in their\nplace. When the catalog is read - by `gen`, by the LikeC4 generator, by the\narchitecture diff, by the site as Vite builds it - the host asks the history\nwhen each source file last changed (`scripts/history.mjs`, one `git log` per\ncheckout, cached for the process) and hands that to the merge as the source's\nstamp. A file with uncommitted changes is `uncommitted` and dated by its\nmtime; a file outside any repository is the same. A generated page carries\nonly the sentence that says it is generated; when it was generated, and from\nwhat, is the page's own history.\n\n`gen --check` explains drift with the same history. The commit that last\ntouched a step's output is when the output was last generated, and `git diff`\nfrom there over the step's inputs - its root and the manifest, less the\noutput directories inside the root - lists what moved. When nothing did, the\nplugin did. Beside that, every file that differs names the first path or line\nwhere it does.\n\n| | same sources, same bytes | fresh = incremental | says when | needs git to read |\n|---|---|---|---|---|\n| the history's | yes | yes | the commit the change landed in | yes |\n| stamp kept while content stands | yes | no | the parent, or a second commit | no |\n| hash of the input tree | yes | yes | never | no |\n| recorded last-generation commit | yes | no | the parent | no |\n\nOption 2 makes a stamp that depends on what was on disk before: a fresh\nregeneration and an incremental one disagree, and neither names its own\ncommit. Option 3 dates nothing, and at the granularity of a root it is the\ncommit again under another name. Option 4 records what the history already\nholds - the commit that last touched the output IS the last generation - and\na commit recorded before the commit it lands in is the parent, the same\noff-by-one portolan.0002 had.\n\n### Consequences\n\n- Good: `npm run gen` after unrelated commits is a no-op. A regenerated\n  catalog lands in the same commit as the change that moved it, and\n  `--check` is green on that commit.\n- Good: two extractors on one root are dated separately, each by its own\n  fragment's history.\n- Good: `PORTOLAN_GENERATED_AT`, the vendored-copy stamp and the refusal of\n  shallow clones leave the host; `stampFor` and `vendor-lock.mjs` are gone.\n- Bad: reading provenance needs git where the catalog is read. The site gets\n  it from a Vite plugin at build time. A shallow checkout dates everything by\n  the one commit it has and says so once; the Pages workflow fetches the full\n  history.\n- Bad: a fragment from before this decision still carries a stamp. The merge\n  takes the history's when it has one and the file's otherwise, so a copy\n  vendored from an older portolan is dated by the fetch that brought it in -\n  which is what freshness means to the estate that vendored it; the pin says\n  which upstream commit that was.\n- Neutral: the dev server re-reads provenance when a source changes, not when\n  a commit is made; a commit shows after a restart.\n",
+      "supersedes": [
+        "portolan.0002"
+      ],
+      "relates": {},
+      "source": "adr/0010-provenance-is-read-from-the-history-never-written-into-a-fragment.md",
+      "created": {
+        "commit": "edb37fc83ca252538255a33a78a6679e0f3591ea",
+        "author": "Victor Login",
+        "date": "2026-09-10T21:43:45+07:00"
       }
     }
   ]

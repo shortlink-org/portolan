@@ -14,7 +14,7 @@ const estate = "testdata/estate"
 func fragmentFrom(t *testing.T, opts Options) (catalog.Catalog, plugin.Response) {
 	t.Helper()
 
-	resp, err := extract(plugin.Input{Root: estate, Commit: "abc123", GeneratedAt: "2026-09-05T00:00:00Z"}, opts)
+	resp, err := extract(plugin.Input{Root: estate}, opts)
 	if err != nil {
 		t.Fatal(err)
 	}

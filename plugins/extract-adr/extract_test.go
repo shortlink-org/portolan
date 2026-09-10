@@ -25,12 +25,8 @@ var update = flag.Bool("update", false, "rewrite the golden fragment instead of 
 const goldenPath = "testdata/golden/adr.json"
 
 func input(root string) plugin.Input {
-	// The stamp comes from the host, which derives it from git. A plugin that
-	// read a clock would write a different file every run.
 	return plugin.Input{
-		Root:        root,
-		Commit:      "abc1234",
-		GeneratedAt: "2024-01-01T00:00:00Z",
+		Root: root,
 	}
 }
 
@@ -82,9 +78,6 @@ func TestTheFragmentSaysNothingItDidNotRead(t *testing.T) {
 	cat := fragment(t)
 	if len(cat.Contexts) != 0 || len(cat.Flows) != 0 || len(cat.Defs) != 0 {
 		t.Errorf("the fragment claims more than its records: %+v", cat)
-	}
-	if cat.Commit != "abc1234" || cat.GeneratedAt != "2024-01-01T00:00:00Z" {
-		t.Errorf("stamp = %q %q", cat.Commit, cat.GeneratedAt)
 	}
 }
 

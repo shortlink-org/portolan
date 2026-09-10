@@ -237,7 +237,7 @@ func TestAPackageWithoutItsRootIsNotAnAggregate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	resp, err := extract(plugin.Input{Root: root, Commit: "abc1234", GeneratedAt: "2026-01-01T00:00:00Z"}, Options{Context: "avia", Service: "svc"})
+	resp, err := extract(plugin.Input{Root: root}, Options{Context: "avia", Service: "svc"})
 	if err != nil {
 		t.Fatal(err)
 	}

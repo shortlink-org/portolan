@@ -157,8 +157,12 @@ function catalogAt(ref) {
     throw new Error(ref + " holds no catalog sources matching " + JSON.stringify(manifest.sources));
   }
 
+  // The base is one commit, and a commit is its own provenance: every source
+  // there is dated by it (portolan.0010), whatever an older fragment says.
+  const [commit = "", generatedAt = ""] = git(["log", "-1", "--format=%h %cI", ref]).split(" ");
+  const stamp = { commit, generatedAt };
   const merged = mergeCatalogs(
-    paths.map((path) => ({ path, catalog: JSON.parse(git(["show", ref + ":" + path])) })),
+    paths.map((path) => ({ path, catalog: JSON.parse(git(["show", ref + ":" + path])), stamp })),
   );
 
   // Enriched before it is compared, exactly as the app and the generators see

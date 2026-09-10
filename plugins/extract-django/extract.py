@@ -169,8 +169,6 @@ def extract(input_: Input, opts: Options, b: Builder, cwd: str = "") -> None:
     }
 
     fragment = {
-        "generatedAt": input_.generated_at,
-        "commit": input_.commit,
         "contexts": [
             {
                 "id": context,
@@ -223,8 +221,6 @@ def extract(input_: Input, opts: Options, b: Builder, cwd: str = "") -> None:
     )
     store_id = "%s.%s" % (svc_id, effective_store)
     stores_fragment = {
-        "generatedAt": input_.generated_at,
-        "commit": input_.commit,
         "contexts": [
             {
                 "id": context,

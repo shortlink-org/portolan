@@ -13,7 +13,7 @@ func fragment(t *testing.T) catalog.Catalog {
 	t.Helper()
 
 	resp, err := extract(
-		plugin.Input{Root: "testdata", Commit: "abc1234", GeneratedAt: "2026-01-01T00:00:00Z"},
+		plugin.Input{Root: "testdata"},
 		Options{Context: "storefront", Service: "bff", Schema: "schema", API: "storefront.v1"},
 	)
 	if err != nil {

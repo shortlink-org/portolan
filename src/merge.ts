@@ -42,13 +42,14 @@ import type {
  * A catalog as a FILE may carry it, which is not quite a catalog as a reader
  * gets one: the two stamps are optional here and required downstream.
  *
- * The host stamps what it generates, from the last commit that touched the
- * input the fragment was read from. A file nobody generates - the estate's
- * hand-written facts - is stamped by nobody, and a provenance typed in by hand
- * is a claim no process keeps true: it stays where it was typed while the
- * estate moves on, and being the oldest stamp in the corpus it then dates the
- * whole merged catalog. So a source is allowed to carry no stamp at all, and
- * saying nothing is treated as what it is - an absence of evidence, which
+ * A fragment carries no stamp of its own (portolan.0010). When it last
+ * changed, and in which commit, is what the history of the checkout says,
+ * and whoever reads the file asks the history and hands the answer over
+ * beside it. A file may still say something - a fragment written before
+ * portolan.0010 does - and that is taken only when nobody read the history.
+ * A provenance typed in by hand is a claim no process keeps true, so a source
+ * that says nothing and was read outside any history is stamped by nobody,
+ * and saying nothing is treated as what it is - an absence of evidence, which
  * drops out of the merge rather than voting in it.
  */
 export type SourceCatalog = Omit<Catalog, "generatedAt" | "commit"> &
@@ -59,6 +60,12 @@ export interface CatalogSource {
   /** Where it was read from, as a reader would type it. */
   path: string;
   catalog: SourceCatalog;
+  /**
+   * When the file last changed and in which commit, as the reader found out
+   * from the history of the checkout (portolan.0010). Left out when there
+   * was no history to ask, and the file then speaks for itself.
+   */
+  stamp?: Pick<SourceStamp, "generatedAt" | "commit">;
 }
 
 /**
@@ -120,8 +127,8 @@ export function mergeCatalogs(sources: CatalogSource[]): MergeResult {
 
   const stamps: SourceStamp[] = ordered.map((source) => ({
     path: source.path,
-    generatedAt: source.catalog.generatedAt ?? "",
-    commit: source.catalog.commit ?? "",
+    generatedAt: source.stamp?.generatedAt ?? source.catalog.generatedAt ?? "",
+    commit: source.stamp?.commit ?? source.catalog.commit ?? "",
   }));
 
   for (const { path, catalog } of ordered) {

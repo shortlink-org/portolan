@@ -1,6 +1,6 @@
 # cart.0006 — Abandonment is a sweep inside the service, and it publishes
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-05T13:47:23+07:00. Do not edit by hand.*
+*Generated from the portolan catalog. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-04

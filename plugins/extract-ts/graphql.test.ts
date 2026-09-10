@@ -13,7 +13,7 @@ const ROOT = "plugins/extract-ts/testdata/storefront";
 const options = { context: "storefront", service: "bff", graphql: "src/schema", peers: { "auth.v1": "auth.auth" } };
 
 function run() {
-  return extract({ root: ROOT, commit: "abc1234", generatedAt: "2026-09-05T00:00:00Z" }, options);
+  return extract({ root: ROOT }, options);
 }
 
 function fragment() {

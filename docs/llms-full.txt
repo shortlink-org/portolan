@@ -1,12 +1,12 @@
 *llms-full.txt: every page of Portolan, one after another. A page begins with a comment naming its file, and the links inside it are relative to that file's directory.*
 
-*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog. Do not edit by hand.*
 
 <!-- README.md -->
 
 # Portolan
 
-*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog. Do not edit by hand.*
 
 
 ## Contexts
@@ -26,7 +26,7 @@
 | ADR | Title | Status | Date |
 | --- | --- | --- | --- |
 | [portolan.0001](adr/portolan.0001.md) | A plugin names files and never writes them | accepted | 2026-09-02 |
-| [portolan.0002](adr/portolan.0002.md) | The host stamps a fragment from its input's last commit | accepted | 2026-09-02 |
+| [portolan.0002](adr/portolan.0002.md) | The host stamps a fragment from its input's last commit | superseded | 2026-09-02 |
 | [portolan.0003](adr/portolan.0003.md) | The Go catalog is a mirror held by a round-trip test | accepted | 2026-09-02 |
 | [portolan.0004](adr/portolan.0004.md) | `contexts` and `services` stay the wire format | accepted | 2026-09-06 |
 | [portolan.0005](adr/portolan.0005.md) | CSS moves what appears; Motion moves what leaves or changes place | accepted | 2026-09-06 |
@@ -34,12 +34,13 @@
 | [portolan.0007](adr/portolan.0007.md) | The host reads history for a plugin that asks | accepted | 2026-09-08 |
 | [portolan.0008](adr/portolan.0008.md) | A plugin that needs a socket runs inside the host | accepted | 2026-09-08 |
 | [portolan.0009](adr/portolan.0009.md) | The typed Go call graph runs as a native sidecar | accepted | 2026-09-10 |
+| [portolan.0010](adr/portolan.0010.md) | Provenance is read from the history, never written into a fragment | accepted | 2026-09-10 |
 
 <!-- portolan/README.md -->
 
 # Portolan
 
-*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog. Do not edit by hand.*
 
 - **Id:** `portolan`
 - **Kind:** system
@@ -63,7 +64,7 @@ The tool that reads an architecture catalog from the code and specifications tha
 | ADR | Title | Status | Date |
 | --- | --- | --- | --- |
 | [portolan.0001](../adr/portolan.0001.md) | A plugin names files and never writes them | accepted | 2026-09-02 |
-| [portolan.0002](../adr/portolan.0002.md) | The host stamps a fragment from its input's last commit | accepted | 2026-09-02 |
+| [portolan.0002](../adr/portolan.0002.md) | The host stamps a fragment from its input's last commit | superseded | 2026-09-02 |
 | [portolan.0003](../adr/portolan.0003.md) | The Go catalog is a mirror held by a round-trip test | accepted | 2026-09-02 |
 | [portolan.0004](../adr/portolan.0004.md) | `contexts` and `services` stay the wire format | accepted | 2026-09-06 |
 | [portolan.0005](../adr/portolan.0005.md) | CSS moves what appears; Motion moves what leaves or changes place | accepted | 2026-09-06 |
@@ -71,12 +72,13 @@ The tool that reads an architecture catalog from the code and specifications tha
 | [portolan.0007](../adr/portolan.0007.md) | The host reads history for a plugin that asks | accepted | 2026-09-08 |
 | [portolan.0008](../adr/portolan.0008.md) | A plugin that needs a socket runs inside the host | accepted | 2026-09-08 |
 | [portolan.0009](../adr/portolan.0009.md) | The typed Go call graph runs as a native sidecar | accepted | 2026-09-10 |
+| [portolan.0010](../adr/portolan.0010.md) | Provenance is read from the history, never written into a fragment | accepted | 2026-09-10 |
 
 <!-- portolan/glossary.md -->
 
 # Glossary — Portolan
 
-*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog. Do not edit by hand.*
 
 - **Context:** [Portolan](README.md)
 - **Terms:** 44
@@ -135,7 +137,7 @@ One meaning per word inside this context, as the glossary beside the code states
 
 # Host
 
-*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog. Do not edit by hand.*
 
 - **Id:** `portolan.host`
 - **Group:** [Portolan](../README.md)
@@ -145,8 +147,8 @@ One meaning per word inside this context, as the glossary beside the code states
 - **Technologies:** Node.js
 
 The side of portolan that runs. `npm run gen` reads the manifest, runs every
-plugin it names, stamps and writes what comes back, merges the sources into
-one estate and validates the union. Nothing here draws anything.
+plugin it names, writes what comes back, merges the sources into one estate
+and validates the union. Nothing here draws anything.
 
 ## What it does
 
@@ -154,21 +156,25 @@ one estate and validates the union. Nothing here draws anything.
   the schema `npm run schema` composes out of what every declared plugin says
   it can be told.
 - Runs three phases in order, extract, verify, generate, and hands each
-  plugin one JSON message: the input root, output directory and stamp for an
+  plugin one JSON message: the input root and output directory for an
   extractor, the merged catalog for a verifier or a generator, the step's
   options unread. The output path lets a fragment point at a companion file
   returned in the same response without letting the plugin write it itself.
-- Stamps a fragment from the last commit that touched its input, never from a
-  clock, so a committed fragment changes exactly when its subject does
-  (portolan.0002).
+- Writes no provenance into a fragment. When a source last changed, and in
+  which commit, is read from the history of the checkout wherever the catalog
+  is read - here, by the LikeC4 generator, by the architecture diff and by
+  the site as Vite builds it - so a fragment is content and nothing else, and
+  regenerating from the same sources changes no byte (portolan.0010).
 - Writes the files a plugin named, refuses a name that climbs out of the
   step's output directory, keeps a listing per step of what it wrote, and
   deletes what stopped being generated (portolan.0001).
 - Merges every source the manifest's globs find and validates the union with
   the code the site runs: `src/merge.ts`, `src/catalog.ts`, `src/enrich.ts`.
 - In `--check` mode writes nothing and fails on the first file that differs
-  from disk. Either way it leaves `.portolan/build-report.json` for the
-  Settings page.
+  from disk, saying where the file first differs and what changed among the
+  step's inputs since its output was last committed - the history is the
+  record of the last generation, so nothing else has to be. Either way it
+  leaves `.portolan/build-report.json` for the Settings page.
 
 ## What it does not do
 
@@ -191,38 +197,40 @@ one estate and validates the union. Nothing here draws anything.
   that report put on the pull request as one comment kept current;
   `forge-release.mjs`, the same report as one section of a release's notes;
   `forge.mjs`, what those two share - which forge the CI is, and how to talk
-  to it; `vendor-lock.mjs`,
-  the commit a fetched copy is of; `site-docs.mjs`, generated documentation
-  put into the built site; `local-api.mjs`, what the dev server answers the
-  site with.
+  to it; `history.mjs`, what the checkout's history says about every file,
+  for a plugin that asks and for the provenance of every source;
+  `provenance.mjs`, that provenance handed to the site as one virtual module;
+  `output-diff.mjs`, where a generated file first differs from what the
+  generator produces; `site-docs.mjs`, generated documentation put into the
+  built site; `local-api.mjs`, what the dev server answers the site with.
 
 ## Commands
 
 | Run | Body | Source |
 | --- | --- | --- |
-| `npm run dev` | `node cli/portolan.mjs dev` | [`package.json:58`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L58) |
-| `npm run build` | `node cli/portolan.mjs build` | [`package.json:59`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L59) |
-| `npm run preview` | `vite preview` | [`package.json:60`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L60) |
-| `npm test` | `vitest run` | [`package.json:61`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L61) |
-| `npm run test:go` | `go test ./...` | [`package.json:62`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L62) |
-| `npm run test:package` | `node scripts/package-smoke.mjs` | [`package.json:64`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L64) |
-| `npm run test:watch` | `vitest` | [`package.json:65`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L65) |
-| `npm run typecheck` | `tsc --noEmit && tsc -p plugins/extract-ts` | [`package.json:66`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L66) |
-| `npm run likec4:gen` | `node scripts/gen-likec4.mjs && likec4 gen react likec4 -o src/likec4/generated.jsx --no-use-dot` | [`package.json:67`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L67) |
-| `npm run likec4:validate` | `likec4 validate likec4` | [`package.json:68`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L68) |
-| `npm run plugins:build` | `GOOS=wasip1 GOARCH=wasm go build -trimpath -ldflags="-s -w" -o plugins/portolan-go.wasm ./plugins/cmd/portolan-go && javac --release 21 -d plugins/extract-java/build plugins/extract-java/src/org/portolan/extract/*.java` | [`package.json:70`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L70) |
-| `npm run schema` | `npm run plugins:build && node scripts/schema.mjs` | [`package.json:71`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L71) |
-| `npm run schema:check` | `npm run plugins:build && node scripts/schema.mjs --check` | [`package.json:72`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L72) |
-| `npm run gen` | `npm run plugins:build && node scripts/gen.mjs` | [`package.json:73`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L73) |
-| `npm run gen:check` | `npm run plugins:build && node scripts/gen.mjs --check` | [`package.json:74`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L74) |
-| `npm run diff` | `node scripts/diff.mjs` | [`package.json:75`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L75) |
-| `npm run prepack` | `npm run plugins:build` | [`package.json:76`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L76) |
+| `npm run dev` | `node cli/portolan.mjs dev` | [`package.json:60`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L60) |
+| `npm run build` | `node cli/portolan.mjs build` | [`package.json:61`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L61) |
+| `npm run preview` | `vite preview` | [`package.json:62`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L62) |
+| `npm test` | `vitest run` | [`package.json:63`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L63) |
+| `npm run test:go` | `go test ./...` | [`package.json:64`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L64) |
+| `npm run test:package` | `node scripts/package-smoke.mjs` | [`package.json:66`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L66) |
+| `npm run test:watch` | `vitest` | [`package.json:67`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L67) |
+| `npm run typecheck` | `tsc --noEmit && tsc -p plugins/extract-ts` | [`package.json:68`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L68) |
+| `npm run likec4:gen` | `node scripts/gen-likec4.mjs && likec4 gen react likec4 -o src/likec4/generated.jsx --no-use-dot` | [`package.json:69`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L69) |
+| `npm run likec4:validate` | `likec4 validate likec4` | [`package.json:70`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L70) |
+| `npm run plugins:build` | `GOOS=wasip1 GOARCH=wasm go build -trimpath -ldflags="-s -w" -o plugins/portolan-go.wasm ./plugins/cmd/portolan-go && javac --release 21 -d plugins/extract-java/build plugins/extract-java/src/org/portolan/extract/*.java` | [`package.json:72`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L72) |
+| `npm run schema` | `npm run plugins:build && node scripts/schema.mjs` | [`package.json:73`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L73) |
+| `npm run schema:check` | `npm run plugins:build && node scripts/schema.mjs --check` | [`package.json:74`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L74) |
+| `npm run gen` | `npm run plugins:build && node scripts/gen.mjs` | [`package.json:75`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L75) |
+| `npm run gen:check` | `npm run plugins:build && node scripts/gen.mjs --check` | [`package.json:76`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L76) |
+| `npm run diff` | `node scripts/diff.mjs` | [`package.json:77`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L77) |
+| `npm run prepack` | `npm run plugins:build` | [`package.json:78`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L78) |
 
 <!-- portolan/plugins/README.md -->
 
 # Plugins
 
-*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog. Do not edit by hand.*
 
 - **Id:** `portolan.plugins`
 - **Group:** [Portolan](../README.md)
@@ -695,9 +703,10 @@ far side.
 The demo estate's org-wide and context-wide records live in `data/adr`, and are
 read by a step that points at that directory with a glob of its own. Root
 `docs/` is where `gen-markdown` writes, so nothing hand-written can live there.
-`in` is the directory of records rather than `data` itself: a step's fragment is
-only left out of its own stamp when the output is *inside* the input root, and
-`in: data` with `out: data` would be stamped from the file it writes.
+`in` is the directory of records rather than `data` itself: what `gen --check`
+lists as changed inputs is the root less the output directories inside it, and
+`in: data` with `out: data` would list the file the step writes among the
+reasons it was rewritten.
 
 ```json
 {
@@ -1016,9 +1025,9 @@ enforces: a team that owns a directory is a team that gets the pull request.
 ```
 
 Point `in` at the directory the file is in, not at the repository root: the
-host dates a fragment from the last commit to touch the step's input, and the
-subject of this one is the `CODEOWNERS` file. Rooted at the repository, it
-would be restamped by every commit ever made. Left with no `file`, the three
+subject of this step is the `CODEOWNERS` file, and `gen --check` explains a
+changed fragment by what moved under the step's input. Rooted at the
+repository, every commit ever made would be named. Left with no `file`, the three
 places a forge looks are tried in order - `CODEOWNERS`, `.github/CODEOWNERS`,
 `docs/CODEOWNERS` - and a `file` that names something absent fails the run,
 because answering "nobody owns anything" to a typo is only noticed a month
@@ -1168,11 +1177,12 @@ Nothing else can say it. A service says which repository it lives in, and an
 extractor reads a directory as a pure function of what is on disk; neither has
 any idea which commit somebody fetched. Without that line, every source path
 of every vendored service is dead text on the page - the file and the line are
-known, and there is nowhere to send a reader - and every fragment read out of
-the copy is stamped with the commit that VENDORED it, so the service looks
-fresh whenever the fetch is re-run and unchanged when its own repository
-moves. With it, `sourceHref` links the line at the commit it was read at and
-`stampFor` dates the fragment from the code rather than the vendoring.
+known, and there is nowhere to send a reader. With it, `sourceHref` links the
+line at the commit it was read at. The fragments read out of the copy are
+dated, like every other source, by the commit of THIS repository that last
+changed them (portolan.0010) - which is the fetch that brought the change in,
+and is what "how fresh is this" means to the estate that vendored it; the pin
+is what says which upstream commit that was.
 
 One more line is needed for the app itself: `SOURCE_GLOBS` in `src/data.ts`,
 where the same patterns are written out a second time because
@@ -1477,7 +1487,7 @@ leave only the local route available.
 
 # Site
 
-*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog. Do not edit by hand.*
 
 - **Id:** `portolan.site`
 - **Group:** [Portolan](../README.md)
@@ -1527,7 +1537,7 @@ Static end to end; there is no backend and no runtime query.
 
 # Flows
 
-*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog. Do not edit by hand.*
 
 | Flow | Owner | Summary |
 | --- | --- | --- |
@@ -1537,7 +1547,7 @@ Static end to end; there is no backend and no runtime query.
 
 # npm run gen
 
-*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog. Do not edit by hand.*
 
 - **Id:** `flow.gen`
 - **Owner:** [portolan](../portolan/README.md)
@@ -1636,12 +1646,12 @@ sequenceDiagram
 
 # Decision records
 
-*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog. Do not edit by hand.*
 
 | ADR | Title | Status | Date | Scope |
 | --- | --- | --- | --- | --- |
 | [portolan.0001](portolan.0001.md) | A plugin names files and never writes them | accepted | 2026-09-02 | [portolan](../portolan/README.md) |
-| [portolan.0002](portolan.0002.md) | The host stamps a fragment from its input's last commit | accepted | 2026-09-02 | [portolan](../portolan/README.md) |
+| [portolan.0002](portolan.0002.md) | The host stamps a fragment from its input's last commit | superseded | 2026-09-02 | [portolan](../portolan/README.md) |
 | [portolan.0003](portolan.0003.md) | The Go catalog is a mirror held by a round-trip test | accepted | 2026-09-02 | [portolan](../portolan/README.md) |
 | [portolan.0004](portolan.0004.md) | `contexts` and `services` stay the wire format | accepted | 2026-09-06 | [portolan](../portolan/README.md) |
 | [portolan.0005](portolan.0005.md) | CSS moves what appears; Motion moves what leaves or changes place | accepted | 2026-09-06 | [portolan](../portolan/README.md) |
@@ -1649,12 +1659,13 @@ sequenceDiagram
 | [portolan.0007](portolan.0007.md) | The host reads history for a plugin that asks | accepted | 2026-09-08 | [portolan](../portolan/README.md) |
 | [portolan.0008](portolan.0008.md) | A plugin that needs a socket runs inside the host | accepted | 2026-09-08 | [portolan](../portolan/README.md) |
 | [portolan.0009](portolan.0009.md) | The typed Go call graph runs as a native sidecar | accepted | 2026-09-10 | [portolan](../portolan/README.md) |
+| [portolan.0010](portolan.0010.md) | Provenance is read from the history, never written into a fragment | accepted | 2026-09-10 | [portolan](../portolan/README.md) |
 
 <!-- adr/portolan.0001.md -->
 
 # portolan.0001 — A plugin names files and never writes them
 
-*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-02
@@ -1728,13 +1739,15 @@ shape rather than a restriction worked around.
 
 # portolan.0002 — The host stamps a fragment from its input's last commit
 
-*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog. Do not edit by hand.*
 
-- **Status:** accepted
+- **Status:** superseded
 - **Date:** 2026-09-02
 - **Scope:** [portolan](../portolan/README.md)
 - **Source:** [`adr/0002-the-host-stamps-a-fragment-from-its-inputs-last-commit.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0002-the-host-stamps-a-fragment-from-its-inputs-last-commit.md)
 - **Committed:** Victor Login, 2026-09-06 (`229c1fb`)
+- **Revised:** Victor Login, 2026-09-10 (`edb37fc`)
+- **Superseded by:** [portolan.0010](portolan.0010.md)
 
 ### Context and Problem Statement
 
@@ -1798,7 +1811,7 @@ a build that must reproduce.
 
 # portolan.0003 — The Go catalog is a mirror held by a round-trip test
 
-*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-02
@@ -1868,7 +1881,7 @@ is not.
 
 # portolan.0004 — `contexts` and `services` stay the wire format
 
-*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-06
@@ -1938,7 +1951,7 @@ glossary: `GLOSSARY.md` names all four and says which is the term.
 
 # portolan.0005 — CSS moves what appears; Motion moves what leaves or changes place
 
-*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-06
@@ -2028,7 +2041,7 @@ library by one careless import.
 
 # portolan.0006 — An extractor runs as wasm over a preopened workspace
 
-*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-08
@@ -2119,7 +2132,7 @@ because it keeps the failure where new users meet it first.
 
 # portolan.0007 — The host reads history for a plugin that asks
 
-*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-08
@@ -2206,7 +2219,7 @@ process was the state this record replaces.
 
 # portolan.0008 — A plugin that needs a socket runs inside the host
 
-*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-08
@@ -2295,7 +2308,7 @@ Go for exactly the users this is for.
 
 # portolan.0009 — The typed Go call graph runs as a native sidecar
 
-*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-10
@@ -2372,3 +2385,115 @@ removed for every other Go extractor.
 - Bad: selecting `http-clients` requires a Go toolchain and grants this trusted
   built-in process access to the workspace and the process environment.
 - Bad: the npm package includes the analyzer's Go source and module metadata.
+
+<!-- adr/portolan.0010.md -->
+
+# portolan.0010 — Provenance is read from the history, never written into a fragment
+
+*Generated from the portolan catalog. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-09-10
+- **Scope:** [portolan](../portolan/README.md)
+- **Source:** [`adr/0010-provenance-is-read-from-the-history-never-written-into-a-fragment.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0010-provenance-is-read-from-the-history-never-written-into-a-fragment.md)
+- **Committed:** Victor Login, 2026-09-10 (`edb37fc`)
+- **Supersedes:** [portolan.0002](portolan.0002.md)
+
+### Context and Problem Statement
+
+portolan.0002 had the host stamp every fragment with the last commit to touch
+its input root, and that commit's date, so that a committed fragment was
+reproducible and dated. Two things followed that were not wanted.
+
+The stamp moved with every commit to the root, whether or not a fact changed:
+a dependency bump under a service re-stamped its seven fragments, and
+portolan's own fragments, rooted at the repository, moved with every commit
+at all. And every generated page carried the merge's summary of those stamps -
+`6 sources`, the oldest date - so one moved stamp rewrote every page. After a
+run of focused fixes, `npm run gen` changed about 200 tracked files; 166 of
+171 pages differed only in that line; and `gen --check` was red on the very
+commit that had regenerated everything, because that commit had moved the
+stamp again.
+
+Underneath is a limit no stamp written into a file escapes: it cannot name
+the commit the file lands in. Regenerated before the commit it is the parent;
+regenerated after, it needs a second commit to catch up. Either way the
+record of when a fact changed sits one commit away from the change.
+
+### Decision Drivers
+
+- Regenerating from the same sources must change no byte - from a fresh
+  checkout or over an existing one.
+- A change to one fact must change the fragment that carries it and the pages
+  that show it, and nothing else.
+- Provenance must stay exact: when a fact last changed, and in which commit.
+- A plugin must know no clock and no repository (kept from portolan.0002).
+- `gen --check` must say why an artifact is out of date.
+
+### Considered Options
+
+1. **Provenance is the history's.** Nothing is written into a fragment;
+   whoever reads the catalog asks git when each source file last changed.
+2. **Keep the stamp in the fragment, but keep the old one while the content
+   stands.**
+3. **Stamp from a hash of the input tree** instead of from a commit.
+4. **Record the commit of the last generation in one file** and diff the
+   inputs against it.
+
+### Decision Outcome
+
+Chosen option: **provenance is the history's**.
+
+A fragment is content and nothing else. The request carries no `commit` and
+no `generatedAt`; a plugin that used to copy them writes nothing in their
+place. When the catalog is read - by `gen`, by the LikeC4 generator, by the
+architecture diff, by the site as Vite builds it - the host asks the history
+when each source file last changed (`scripts/history.mjs`, one `git log` per
+checkout, cached for the process) and hands that to the merge as the source's
+stamp. A file with uncommitted changes is `uncommitted` and dated by its
+mtime; a file outside any repository is the same. A generated page carries
+only the sentence that says it is generated; when it was generated, and from
+what, is the page's own history.
+
+`gen --check` explains drift with the same history. The commit that last
+touched a step's output is when the output was last generated, and `git diff`
+from there over the step's inputs - its root and the manifest, less the
+output directories inside the root - lists what moved. When nothing did, the
+plugin did. Beside that, every file that differs names the first path or line
+where it does.
+
+| | same sources, same bytes | fresh = incremental | says when | needs git to read |
+|---|---|---|---|---|
+| the history's | yes | yes | the commit the change landed in | yes |
+| stamp kept while content stands | yes | no | the parent, or a second commit | no |
+| hash of the input tree | yes | yes | never | no |
+| recorded last-generation commit | yes | no | the parent | no |
+
+Option 2 makes a stamp that depends on what was on disk before: a fresh
+regeneration and an incremental one disagree, and neither names its own
+commit. Option 3 dates nothing, and at the granularity of a root it is the
+commit again under another name. Option 4 records what the history already
+holds - the commit that last touched the output IS the last generation - and
+a commit recorded before the commit it lands in is the parent, the same
+off-by-one portolan.0002 had.
+
+#### Consequences
+
+- Good: `npm run gen` after unrelated commits is a no-op. A regenerated
+  catalog lands in the same commit as the change that moved it, and
+  `--check` is green on that commit.
+- Good: two extractors on one root are dated separately, each by its own
+  fragment's history.
+- Good: `PORTOLAN_GENERATED_AT`, the vendored-copy stamp and the refusal of
+  shallow clones leave the host; `stampFor` and `vendor-lock.mjs` are gone.
+- Bad: reading provenance needs git where the catalog is read. The site gets
+  it from a Vite plugin at build time. A shallow checkout dates everything by
+  the one commit it has and says so once; the Pages workflow fetches the full
+  history.
+- Bad: a fragment from before this decision still carries a stamp. The merge
+  takes the history's when it has one and the file's otherwise, so a copy
+  vendored from an older portolan is dated by the fetch that brought it in -
+  which is what freshness means to the estate that vendored it; the pin says
+  which upstream commit that was.
+- Neutral: the dev server re-reads provenance when a source changes, not when
+  a commit is made; a commit shows after a restart.

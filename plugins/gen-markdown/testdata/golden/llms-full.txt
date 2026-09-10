@@ -1,12 +1,12 @@
 *llms-full.txt: every page of Golden estate, one after another. A page begins with a comment naming its file, and the links inside it are relative to that file's directory.*
 
-*Generated from the portolan catalog · commit `abc1234` · at 2026-01-02T03:04:05Z. Do not edit by hand.*
+*Generated from the portolan catalog. Do not edit by hand.*
 
 <!-- README.md -->
 
 # Golden estate
 
-*Generated from the portolan catalog · commit `abc1234` · at 2026-01-02T03:04:05Z. Do not edit by hand.*
+*Generated from the portolan catalog. Do not edit by hand.*
 
 
 ## Contexts
@@ -43,7 +43,7 @@
 
 # Shared types
 
-*Generated from the portolan catalog · commit `abc1234` · at 2026-01-02T03:04:05Z. Do not edit by hand.*
+*Generated from the portolan catalog. Do not edit by hand.*
 
 Types named by more than one aggregate, event or message. A field that
 refers to one of these is knowably the same shape everywhere it appears.
@@ -61,7 +61,7 @@ refers to one of these is knowably the same shape everywhere it appears.
 
 # Schema modules
 
-*Generated from the portolan catalog · commit `abc1234` · at 2026-01-02T03:04:05Z. Do not edit by hand.*
+*Generated from the portolan catalog. Do not edit by hand.*
 
 | Module | Publisher | Registry | Commit | Packages |
 | --- | --- | --- | --- | --- |
@@ -71,7 +71,7 @@ refers to one of these is knowably the same shape everywhere it appears.
 
 # Billing contracts
 
-*Generated from the portolan catalog · commit `abc1234` · at 2026-01-02T03:04:05Z. Do not edit by hand.*
+*Generated from the portolan catalog. Do not edit by hand.*
 
 - **Id:** `buf.build/example/billing`
 - **Registry:** buf.build
@@ -135,7 +135,7 @@ What the invoice is for.
 
 # Billing
 
-*Generated from the portolan catalog · commit `abc1234` · at 2026-01-02T03:04:05Z. Do not edit by hand.*
+*Generated from the portolan catalog. Do not edit by hand.*
 
 - **Id:** `billing`
 - **Classification:** core
@@ -162,7 +162,7 @@ Money owed and money taken.
 
 # Glossary — Billing
 
-*Generated from the portolan catalog · commit `abc1234` · at 2026-01-02T03:04:05Z. Do not edit by hand.*
+*Generated from the portolan catalog. Do not edit by hand.*
 
 - **Context:** [Billing](README.md)
 - **Terms:** 2
@@ -179,7 +179,7 @@ One meaning per word inside this context, as the glossary beside the code states
 
 # Invoices
 
-*Generated from the portolan catalog · commit `abc1234` · at 2026-01-02T03:04:05Z. Do not edit by hand.*
+*Generated from the portolan catalog. Do not edit by hand.*
 
 - **Id:** `billing.invoices`
 - **Context:** [Billing](../README.md)
@@ -275,7 +275,7 @@ Source: `api/asyncapi.yaml`
 
 # Invoice
 
-*Generated from the portolan catalog · commit `abc1234` · at 2026-01-02T03:04:05Z. Do not edit by hand.*
+*Generated from the portolan catalog. Do not edit by hand.*
 
 - **Id:** `billing.invoices.invoice`
 - **Service:** [Invoices](../README.md)
@@ -379,7 +379,7 @@ Source: `api/events/v2/invoice_raised.proto`
 
 # Invoices Postgres
 
-*Generated from the portolan catalog · commit `abc1234` · at 2026-01-02T03:04:05Z. Do not edit by hand.*
+*Generated from the portolan catalog. Do not edit by hand.*
 
 - **Id:** `billing.invoices.pg`
 - **Kind:** postgres
@@ -436,7 +436,7 @@ SELECT id, total_minor FROM invoices
 
 # PSP gateway
 
-*Generated from the portolan catalog · commit `abc1234` · at 2026-01-02T03:04:05Z. Do not edit by hand.*
+*Generated from the portolan catalog. Do not edit by hand.*
 
 - **Id:** `psp-gateway`
 - **Where:** outside the estate
@@ -474,7 +474,7 @@ The card network the invoices are settled through. Nobody here builds it; the co
 
 # Flows
 
-*Generated from the portolan catalog · commit `abc1234` · at 2026-01-02T03:04:05Z. Do not edit by hand.*
+*Generated from the portolan catalog. Do not edit by hand.*
 
 | Flow | Owner | Summary |
 | --- | --- | --- |
@@ -484,7 +484,7 @@ The card network the invoices are settled through. Nobody here builds it; the co
 
 # Raise an invoice
 
-*Generated from the portolan catalog · commit `abc1234` · at 2026-01-02T03:04:05Z. Do not edit by hand.*
+*Generated from the portolan catalog. Do not edit by hand.*
 
 - **Id:** `flow.raise-invoice`
 - **Owner:** [billing](../billing/README.md)
@@ -567,7 +567,7 @@ sequenceDiagram
 
 # Decision records
 
-*Generated from the portolan catalog · commit `abc1234` · at 2026-01-02T03:04:05Z. Do not edit by hand.*
+*Generated from the portolan catalog. Do not edit by hand.*
 
 | ADR | Title | Status | Date | Scope |
 | --- | --- | --- | --- | --- |
@@ -577,7 +577,7 @@ sequenceDiagram
 
 # billing.0001 — One currency per invoice
 
-*Generated from the portolan catalog · commit `abc1234` · at 2026-01-02T03:04:05Z. Do not edit by hand.*
+*Generated from the portolan catalog. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-01-01

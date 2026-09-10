@@ -46,7 +46,7 @@ func request(t *testing.T, codeowners string) plugin.Request {
 	}
 
 	return plugin.Request{
-		Input:   plugin.Input{Root: root, Commit: "abc1234", GeneratedAt: "2026-01-01T00:00:00Z"},
+		Input:   plugin.Input{Root: root},
 		Catalog: estate(),
 	}
 }
@@ -195,14 +195,17 @@ func TestANamedFileThatIsNotThereFailsTheRun(t *testing.T) {
 	}
 }
 
-func TestTheFragmentCarriesTheHostsStamp(t *testing.T) {
+// The fragment carries no stamp (portolan.0010): when it was written and from
+// what is the git history of the file, which the host reads back, never a
+// field a plugin fills in.
+func TestTheFragmentCarriesNoStamp(t *testing.T) {
 	resp, err := verify(request(t, "* @acme/platform\n"), Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	fragment := fragmentOf(t, resp)
-	if fragment.Commit != "abc1234" || fragment.GeneratedAt != "2026-01-01T00:00:00Z" {
+	if fragment.Commit != "" || fragment.GeneratedAt != "" {
 		t.Errorf("stamp = %q %q", fragment.Commit, fragment.GeneratedAt)
 	}
 	// A context in the fragment is a shell the merge fills in, and its slug

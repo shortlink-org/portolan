@@ -40,7 +40,7 @@ public final class ExtractTest {
                 }
                 """));
         Extract.run(
-                new Protocol.Input("plugins/extract-java/testdata/ledger", "abc1234", "2026-09-05T00:00:00Z"),
+                new Protocol.Input("plugins/extract-java/testdata/ledger"),
                 options,
                 b,
                 cwd);

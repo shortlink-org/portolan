@@ -21,6 +21,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          # The site dates every catalog source from the history of the
+          # checkout (portolan.0010); a shallow one dates everything by the
+          # single commit it has.
+          fetch-depth: 0
 
       - uses: actions/setup-node@v7
         with:

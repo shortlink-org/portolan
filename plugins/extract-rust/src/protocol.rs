@@ -24,10 +24,6 @@ pub struct Input {
     pub root: String,
     #[serde(default)]
     pub output: String,
-    #[serde(default)]
-    pub commit: String,
-    #[serde(default)]
-    pub generated_at: String,
 }
 
 #[derive(Debug, Default, Serialize)]

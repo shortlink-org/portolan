@@ -17,12 +17,10 @@ from typing import Any, Dict, List
 
 @dataclass
 class Input:
-    """Where the source is, and the stamp the host put on this run."""
+    """Where the source is."""
 
     root: str = ""
     output: str = ""
-    commit: str = ""
-    generated_at: str = ""
 
     @staticmethod
     def of(raw: Any) -> "Input":
@@ -30,8 +28,6 @@ class Input:
         return Input(
             root=raw.get("root", ""),
             output=raw.get("output", ""),
-            commit=raw.get("commit", ""),
-            generated_at=raw.get("generatedAt", ""),
         )
 
 

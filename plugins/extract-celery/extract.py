@@ -155,8 +155,6 @@ def extract(input_: Input, opts: Options, b: Builder, cwd: str = "") -> None:
     flows.sort(key=lambda f: f["slug"])
 
     fragment: Dict[str, Any] = {
-        "generatedAt": input_.generated_at,
-        "commit": input_.commit,
         "contexts": [
             {
                 "id": context,

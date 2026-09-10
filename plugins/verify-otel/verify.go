@@ -470,12 +470,10 @@ func requestPath(a map[string]string) string {
 // and calls the traces prove, hung on copies of the entities that own them.
 func (v *verifier) fragment(in plugin.Input) catalog.Catalog {
 	out := catalog.Catalog{
-		GeneratedAt: in.GeneratedAt,
-		Commit:      in.Commit,
-		Contexts:    []catalog.BoundedContext{},
-		Defs:        map[string]catalog.TypeDef{},
-		Flows:       []catalog.Flow{},
-		Adrs:        []catalog.Adr{},
+		Contexts: []catalog.BoundedContext{},
+		Defs:     map[string]catalog.TypeDef{},
+		Flows:    []catalog.Flow{},
+		Adrs:     []catalog.Adr{},
 	}
 
 	ids := make([]string, 0, len(v.overlays))

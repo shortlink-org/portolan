@@ -14,6 +14,7 @@ import { validateCatalog } from "../src/catalog.ts";
 import { filterCatalogForProfile } from "../src/catalog-profile.ts";
 import { enrichCatalog } from "../src/enrich.ts";
 import { mergeCatalogs } from "../src/merge.ts";
+import { stampsFor } from "./history.mjs";
 import { readManifest } from "./manifest.mjs";
 
 /**
@@ -48,10 +49,15 @@ export async function loadCatalog(manifestPath = "portolan.json", { exclude = []
     );
   }
 
+  // A source is dated by the history, not by itself (portolan.0010): the
+  // commit that last changed the file, and its date, read here and never
+  // written into the file.
+  const stamps = stampsFor(process.cwd(), paths);
   const merged = mergeCatalogs(
     paths.map((path) => ({
       path,
       catalog: JSON.parse(readFileSync(path, "utf8")),
+      stamp: stamps.get(path),
     })),
   );
   if (paths.length === 0) {

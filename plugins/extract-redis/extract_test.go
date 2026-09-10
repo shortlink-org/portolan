@@ -23,7 +23,7 @@ func writeGo(t *testing.T, root, name, contents string) {
 
 func extracted(t *testing.T, root string, opts Options) (catalog.Catalog, plugin.Response) {
 	t.Helper()
-	response, err := extract(plugin.Input{Root: root, Commit: "abc", GeneratedAt: "2026-01-01T00:00:00Z"}, opts)
+	response, err := extract(plugin.Input{Root: root}, opts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,9 +47,6 @@ func New() *redisv9.Client {
 	out, response := extracted(t, root, Options{Context: "sales", Service: "catalog"})
 	if len(response.Warnings()) != 0 {
 		t.Fatalf("warnings = %+v", response.Warnings())
-	}
-	if out.Commit != "abc" || out.GeneratedAt != "2026-01-01T00:00:00Z" {
-		t.Fatalf("stamp = %q %q", out.Commit, out.GeneratedAt)
 	}
 	if len(out.Stores) != 1 {
 		t.Fatalf("stores = %+v", out.Stores)

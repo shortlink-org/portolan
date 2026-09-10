@@ -18,7 +18,7 @@ func TestExtractsANeutralApplicationWithoutDDD(t *testing.T) {
 	mustWrite(t, filepath.Join(root, "Dockerfile"), "FROM scratch\n")
 	mustWrite(t, filepath.Join(root, "Makefile"), "build: ## Compile the binary\n\tgo build ./cmd/support\n")
 
-	response, err := extract(plugin.Input{Root: root, Commit: "abc", GeneratedAt: "2026-09-06T00:00:00Z"}, Options{Group: "avia", Component: "support"})
+	response, err := extract(plugin.Input{Root: root}, Options{Group: "avia", Component: "support"})
 	if err != nil {
 		t.Fatal(err)
 	}

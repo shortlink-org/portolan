@@ -15,9 +15,8 @@ import {
   rmSync,
   statSync,
 } from "node:fs";
-import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { join, relative, resolve } from "node:path";
+import { isAbsolute, join, relative } from "node:path";
 
 import {
   addBuildStep,
@@ -26,10 +25,10 @@ import {
   writeBuildReport,
 } from "./build-report.mjs";
 import { loadCatalog } from "./catalog-sources.mjs";
-import { historyFor } from "./history.mjs";
+import { changedSince, fileAt, historyFor, lastCommitTouching } from "./history.mjs";
 import { loadManifest, stepKeys } from "./manifest.mjs";
 import { describePlugin, runPlugin } from "./plugin-host.mjs";
-import { vendoredCommit } from "./vendor-lock.mjs";
+import { explainChange } from "./output-diff.mjs";
 import {
   removeOutputFile,
   safeOutputPath,
@@ -123,9 +122,12 @@ async function generate() {
 
   // Extractors run first and write catalog fragments; only then is there a
   // catalog for anything else to read.
+  //
+  // No stamp travels with the request (portolan.0010). A fragment is content
+  // and nothing else; when it last changed is what the history of the
+  // fragment says, read wherever the catalog is read.
   for (const step of manifest.extract ?? []) {
     const plugin = pluginNamed(step.plugin);
-    const stamp = stampFor(step.in, step.out);
     // A plugin that asks for history gets the root's, read once per checkout
     // (portolan.0007); left out when the root is not in a checkout, which the
     // plugin reports in its own words.
@@ -136,13 +138,11 @@ async function generate() {
         input: {
           root: step.in,
           output: step.out,
-          commit: stamp.commit,
-          generatedAt: stamp.generatedAt,
           ...(history ? { history } : {}),
         },
         options: step.options ?? {},
       }, {}, { workspace: process.cwd() }),
-    );
+    inputsOf(step));
   }
 
   // Verifiers read observed evidence against the merged catalog while leaving
@@ -153,17 +153,16 @@ async function generate() {
   // carry it into the generators and into the next run.
   for (const step of manifest.verify ?? []) {
     const plugin = pluginNamed(step.plugin);
-    const stamp = stampFor(step.in, step.out);
     const own = (previous(step.out)[keys.keyOf(step)] ?? []).map((name) => join(step.out, name));
-    const { catalog } = await loadSources({ exclude: [...own, ...staleAll()] });
+    const { catalog, sources } = await loadSources({ exclude: [...own, ...staleAll()] });
     await executeStep("verify", step, `${step.plugin} ⇐ ${step.in}`, async () =>
       runPlugin(plugin, {
         portolanVersion: PORTOLAN_VERSION,
-        input: { root: step.in, output: step.out, commit: stamp.commit, generatedAt: stamp.generatedAt },
+        input: { root: step.in, output: step.out },
         catalog,
         options: step.options ?? {},
       }, {}, { workspace: process.cwd() }),
-    );
+    inputsOf(step, sources.map((source) => source.path)));
   }
 
   // What a dropped extract step wrote is not part of the catalog, so it is
@@ -183,16 +182,16 @@ async function generate() {
 
   for (const step of manifest.generate ?? []) {
     const plugin = pluginNamed(step.plugin);
-    const generatedCatalog = step.catalog
-      ? (await loadSources({ profile: step.catalog })).catalog
-      : catalog;
+    const generated = step.catalog
+      ? await loadSources({ profile: step.catalog })
+      : { catalog, sources };
     await executeStep("generate", step, `${step.plugin} → ${step.out}`, async () =>
       runPlugin(plugin, {
         portolanVersion: PORTOLAN_VERSION,
-        catalog: generatedCatalog,
+        catalog: generated.catalog,
         options: step.options ?? {},
       }),
-    );
+    { inputs: generated.sources.map((source) => source.path), excludes: [] });
   }
 
   sweepAll();
@@ -250,7 +249,13 @@ function staleIn(out) {
   return stale;
 }
 
-async function executeStep(phase, step, label, work) {
+/**
+ * Runs one step and settles its files. `reads` is what the step reads - paths,
+ * and the output directories among them to leave out - so that an output
+ * that moved can be explained by what moved among its inputs since the
+ * output was last committed.
+ */
+async function executeStep(phase, step, label, work, reads) {
   const startedAt = Date.now();
   event({ type: "step-started", ordinal: report.steps.length, phase, plugin: step.plugin, input: step.in, output: step.out });
   try {
@@ -263,7 +268,8 @@ async function executeStep(phase, step, label, work) {
       phase,
     });
     const changes = apply(files, step.out, keys.keyOf(step), check);
-    const changed = summarise(label, files, changes, diagnostics);
+    const since = changes.length > 0 ? whyChanged(step, files.map((file) => join(step.out, file.name)), reads) : null;
+    const changed = summarise(label, files, changes, diagnostics, since);
     drifted = changed || drifted;
     const result = {
       phase,
@@ -275,6 +281,9 @@ async function executeStep(phase, step, label, work) {
       fileCount: files.length,
       changedCount: changes.length,
       changes,
+      // What moved among the inputs since the output was last committed, when
+      // something in the output moved; the Settings page can say why.
+      ...(since ? { since } : {}),
       files: files.map((file) => join(step.out, file.name)),
       // What the plugin could not read, in its own words. Already printed as
       // it ran; kept here so the Settings page can list it beside the step.
@@ -352,8 +361,13 @@ async function needsOf(plugin) {
   return pluginNeeds.get(plugin.name);
 }
 
-/** Prints what a step did, and says whether it left the tree out of date. */
-function summarise(label, files, changes, diagnostics = []) {
+/**
+ * Prints what a step did, and says whether it left the tree out of date. A
+ * file that differs says where it first differs, and the step says what moved
+ * among its inputs since the output was last committed - or that nothing
+ * did, which points at the plugin.
+ */
+function summarise(label, files, changes, diagnostics = [], since = null) {
   const suppressed = diagnostics.filter((diagnostic) => diagnostic.suppressed).length;
   const said = diagnostics.length > 0
     ? `, ${diagnostics.length} warning${diagnostics.length === 1 ? "" : "s"}${suppressed ? ` (${suppressed} suppressed)` : ""}`
@@ -368,120 +382,84 @@ function summarise(label, files, changes, diagnostics = []) {
 
   if (!check) {
     console.log(`${summary}, ${changes.length} written`);
+    if (since) console.log(`  ${describeSince(since)}`);
 
     return false;
   }
 
   console.error(`${summary}, ${changes.length} out of date:`);
-  for (const change of changes.slice(0, 20)) console.error(`  ${change.kind.padEnd(8)} ${change.path}`);
+  for (const change of changes.slice(0, 20)) {
+    console.error(`  ${change.kind.padEnd(8)} ${change.path}${change.reason ? ` — ${change.reason}` : ""}`);
+  }
   if (changes.length > 20) console.error(`  ... and ${changes.length - 20} more`);
+  if (since) console.error(`  ${describeSince(since)}`);
 
   return true;
 }
 
 /**
- * When the source a fragment describes last changed, and at which commit
- * (portolan.0002).
- *
- * The host works this out rather than the extractor, for two reasons. A plugin
- * that reads a clock produces a different fragment on every run, which cannot
- * be committed and cannot be checked; and a plugin that shells out to git is a
- * plugin that can never be sandboxed. Stamped from the last commit to touch the
- * directory, a fragment changes exactly when its subject does.
- *
- * The output is excluded from that history, and it has to be: a fragment
- * written beside the code it describes is inside the directory it is stamped
- * from, so committing one would move the stamp, which would make the fragment
- * out of date, which would rewrite it - and `--check` would never come back
- * clean two runs in a row.
+ * What a step reads, for saying why its output moved: its root and whatever
+ * else it was handed, less every output directory inside the root, because a
+ * fragment written beside the code it describes is not an input to itself.
  */
-function stampFor(root, out) {
-  // A copy of another repository is dated by the commit it is a copy OF, which
-  // the fetch step wrote down beside it. Read before git, and without touching
-  // git at all: the local history of a vendored directory says when somebody
-  // ran the fetch, which is a fact about this repository and not about the
-  // service the fragment describes.
-  //
-  // Short, like every other stamp, because a stamp is read rather than
-  // resolved. The full sha travels separately, in the pin the fetch also
-  // wrote, where a link is built from it.
-  const vendored = vendoredCommit(root);
-  if (vendored) {
-    // No date. Nothing here knows when that commit was made - the lock records
-    // what was fetched, not when it was authored - and a date invented from
-    // the local clock would make the merge call this the stalest source in the
-    // estate every time it ran.
-    return { commit: vendored.slice(0, 7), generatedAt: "" };
+function inputsOf(step, extra = []) {
+  const excludes = [];
+  for (const other of allSteps()) {
+    if (!other.out || other.out === step.in) continue;
+    const inside = relative(step.in, other.out);
+    if (inside && !inside.startsWith("..") && !isAbsolute(inside)) excludes.push(other.out);
   }
-
-  // The history read is the one the root lives in. A manifest pointed at a
-  // checkout elsewhere on the disk - the service being documented, not a copy
-  // of it vendored here - is stamped from that checkout's history, because the
-  // fragment describes that service and not the repository the manifest sits
-  // in. A root with no repository around it is stamped as uncommitted.
-  const repo = repositoryOf(root);
-  if (!repo) {
-    return { commit: "uncommitted", generatedAt: process.env.PORTOLAN_GENERATED_AT || new Date().toISOString() };
-  }
-
-  // A shallow clone has no history to read: the one commit that was fetched has
-  // no parent, so every path looks as though it changed there and every fragment
-  // is stamped with the checkout rather than with its subject. That is wrong
-  // quietly - the fragments regenerate, `--check` reports drift, and nothing
-  // says why - so it is refused here instead.
-  if (shallow(repo)) {
-    fail(
-      `${repo} is a shallow clone, where every path looks as though it changed in ` +
-        "the single commit that was fetched, so a fragment cannot be stamped " +
-        "with the commit it describes. Fetch the full history first " +
-        "(git fetch --unshallow, or actions/checkout with fetch-depth: 0).",
-    );
-  }
-
-  // Only an output INSIDE the root is excluded. An output beside it, or above
-  // it, is not in the root's history to begin with - and excluding a parent
-  // would exclude the root itself, leaving nothing to read and a stamp that
-  // moved on every commit.
-  const rootInRepo = relative(repo, resolve(root)) || ".";
-  const outInRepo = out ? relative(repo, resolve(out)) : "";
-  const inside = out && (outInRepo === rootInRepo || outInRepo.startsWith(`${rootInRepo.replace(/\/$/, "")}/`) || rootInRepo === ".");
-  const exclude = inside && outInRepo !== rootInRepo && !outInRepo.startsWith("..") ? [`:(exclude)${outInRepo}`] : [];
-
-  for (const args of [
-    ["log", "-1", "--format=%h %cI", "--", rootInRepo, ...exclude],
-    ["log", "-1", "--format=%h %cI"],
-  ]) {
-    const answer = git(repo, args);
-    if (!answer) continue;
-    const [commit, generatedAt] = answer.split(" ");
-    if (commit && generatedAt) return { commit, generatedAt };
-  }
-
-  return { commit: "uncommitted", generatedAt: process.env.PORTOLAN_GENERATED_AT || new Date().toISOString() };
+  return { inputs: [step.in, ...extra], excludes };
 }
 
-/** Runs git in a repository and answers with its trimmed output, or "" when it refused. */
-function git(repo, args) {
+function allSteps() {
+  return [...(manifest.extract ?? []), ...(manifest.verify ?? []), ...(manifest.generate ?? [])];
+}
+
+/**
+ * Why a step's output is not what it was: the commit that last touched the
+ * output is when it was last generated, and what changed among the inputs
+ * since then is the reason. The history is the record of the last generation
+ * (portolan.0010); nothing is written down to know this.
+ *
+ * The manifest counts as an input only where this step's own entry moved.
+ * The whole file changes whenever any step is touched, and naming it for
+ * every other step would explain nothing.
+ */
+function whyChanged(step, outputs, reads) {
+  const committed = lastCommitTouching(process.cwd(), outputs);
+  if (!committed) return { committed: null, changed: [] };
+  const changed = changedSince(process.cwd(), committed.commit, reads.inputs, reads.excludes);
+  if (stepEntryChanged(committed.commit, step)) changed.push("portolan.json (this step's entry)");
+  return { committed, changed };
+}
+
+/** Whether the manifest at `commit` told this step the same thing it is told now. */
+function stepEntryChanged(commit, step) {
+  let then;
   try {
-    return execFileSync("git", ["-C", repo, ...args], {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    }).trim();
+    then = JSON.parse(fileAt(process.cwd(), commit, "portolan.json"));
   } catch {
-    // Not a repository, or no commit touches this path yet. git has already
-    // said so on its own stderr, which is not this run's log.
-    return "";
+    return true; // No manifest there, or not one that parses: everything about the step is new.
   }
+  const phase = ["extract", "verify", "generate"].find((name) => (manifest[name] ?? []).includes(step));
+  const before = (then[phase] ?? []).find(
+    (other) =>
+      other.plugin === step.plugin &&
+      (other.in ?? "") === (step.in ?? "") &&
+      other.out === step.out &&
+      (other.options?.out ?? "") === (step.options?.out ?? ""),
+  );
+  return !before || JSON.stringify(before) !== JSON.stringify(step);
 }
 
-/** The working tree a directory belongs to, or "" when no repository holds it. */
-function repositoryOf(dir) {
-  return git(dir, ["rev-parse", "--show-toplevel"]);
-}
-
-/** Whether the history this runs against is truncated. */
-function shallow(repo) {
-  return git(repo, ["rev-parse", "--is-shallow-repository"]) === "true";
+function describeSince({ committed, changed }) {
+  if (!committed) return "the output has never been committed, so there is nothing to compare its inputs against";
+  const when = `${committed.commit} (${committed.date}), when the output was last committed`;
+  if (changed.length === 0) return `no input changed since ${when}; the plugin itself did`;
+  const shown = changed.slice(0, 6).join(", ");
+  const more = changed.length > 6 ? ` and ${changed.length - 6} more` : "";
+  return `since ${when}, ${changed.length} input${changed.length === 1 ? "" : "s"} changed: ${shown}${more}`;
 }
 
 /** Reads, merges and validates every source the manifest names. */
@@ -518,7 +496,11 @@ function apply(files, out, key, checkOnly) {
 
     if (binary ? Buffer.isBuffer(current) && current.equals(wanted) : current === wanted) continue;
 
-    changes.push({ kind: current === null ? "added" : "changed", path: join(out, file.name) });
+    changes.push({
+      kind: current === null ? "added" : "changed",
+      path: join(out, file.name),
+      reason: explainChange(current, wanted, file.name),
+    });
     if (checkOnly) continue;
 
     try {

@@ -54,8 +54,6 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	drop(defs, b, service)
 
 	fragment := catalog.Catalog{
-		GeneratedAt: in.GeneratedAt,
-		Commit:      in.Commit,
 		Contexts: []catalog.BoundedContext{{
 			ID:   opts.Context,
 			Slug: opts.Context,

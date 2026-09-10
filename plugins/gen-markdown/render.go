@@ -301,19 +301,13 @@ func (s *site) title() string {
 	return "Architecture catalog"
 }
 
-// stamp is the provenance line every page carries. A generated page that does
-// not say what it was generated from is indistinguishable from a hand-written
-// one that has gone stale.
+// stamp is the line every page opens with. It says only that the page is
+// generated, so that it is not mistaken for hand-written text. When it was
+// generated, and from what, is the git history of the page itself and is
+// never written into it (portolan.0010): stamping the merged catalog's
+// aggregate here rewrote every page whenever any one source moved.
 func (s *site) stamp() string {
-	parts := []string{"Generated from the portolan catalog"}
-	if s.cat.Commit != "" {
-		parts = append(parts, "commit "+code(s.cat.Commit))
-	}
-	if s.cat.GeneratedAt != "" {
-		parts = append(parts, "at "+s.cat.GeneratedAt)
-	}
-
-	return "*" + strings.Join(parts, " · ") + ". Do not edit by hand.*\n"
+	return "*Generated from the portolan catalog. Do not edit by hand.*\n"
 }
 
 func firstLine(s string) string {

@@ -5,6 +5,9 @@
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { basename, join, relative, resolve } from "node:path";
 import type { Catalog, Service } from "../../src/catalog.ts";
+
+/** What an extractor writes: a catalog less the stamps, which are the history's to give (portolan.0010). */
+type Fragment = Omit<Catalog, "generatedAt" | "commit">;
 import { readAggregates, type WarningSink } from "./domain.ts";
 import { operationOf, readUseCases } from "./operations.ts";
 import { readBindings } from "./wiring.ts";
@@ -39,8 +42,6 @@ export interface Options {
 export interface Input {
   root: string;
   output?: string;
-  commit: string;
-  generatedAt: string;
 }
 
 export interface Warning {
@@ -151,9 +152,7 @@ export function extract(input: Input, opts: Options, cwd = process.cwd()): Respo
     for (const e of source.errors) b.warn(rel(source.path), `${rel(e.at)}: ${e.message}; the file is read only up to here`);
   }
 
-  const fragment: Catalog = {
-    generatedAt: input.generatedAt,
-    commit: input.commit,
+  const fragment: Fragment = {
     contexts: [
       {
         id: context,

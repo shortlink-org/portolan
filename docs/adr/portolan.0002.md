@@ -1,12 +1,14 @@
 # portolan.0002 — The host stamps a fragment from its input's last commit
 
-*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog. Do not edit by hand.*
 
-- **Status:** accepted
+- **Status:** superseded
 - **Date:** 2026-09-02
 - **Scope:** [portolan](../portolan/README.md)
 - **Source:** [`adr/0002-the-host-stamps-a-fragment-from-its-inputs-last-commit.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0002-the-host-stamps-a-fragment-from-its-inputs-last-commit.md)
 - **Committed:** Victor Login, 2026-09-06 (`229c1fb`)
+- **Revised:** Victor Login, 2026-09-10 (`edb37fc`)
+- **Superseded by:** [portolan.0010](portolan.0010.md)
 
 ### Context and Problem Statement
 

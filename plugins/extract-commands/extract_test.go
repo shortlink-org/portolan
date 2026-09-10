@@ -35,7 +35,7 @@ func TestListsCommandsOnTheNamedService(t *testing.T) {
 	mustWrite(t, filepath.Join(root, "Makefile"), "test: ## Run the tests\n\tgo test ./...\n")
 	mustWrite(t, filepath.Join(root, "package.json"), `{"scripts":{"build":"tsc"}}`)
 
-	resp, err := extract(plugin.Input{Root: root, Commit: "abc", GeneratedAt: "2026-09-07T00:00:00Z"}, Options{})
+	resp, err := extract(plugin.Input{Root: root}, Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,7 +43,7 @@ func TestListsCommandsOnTheNamedService(t *testing.T) {
 		t.Errorf("file = %q", resp.Files[0].Name)
 	}
 	got := fragment(t, resp)
-	if got.Commit != "abc" || len(got.Contexts) != 1 || got.Contexts[0].ID != "shop" {
+	if len(got.Contexts) != 1 || got.Contexts[0].ID != "shop" {
 		t.Fatalf("fragment = %+v", got)
 	}
 	svc := got.Contexts[0].Services[0]

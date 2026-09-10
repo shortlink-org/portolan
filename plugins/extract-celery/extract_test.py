@@ -27,7 +27,7 @@ ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 def run(fixture, options):
     b = Builder()
     extract(
-        Input(root=os.path.relpath(os.path.join(HERE, "testdata", fixture), ROOT), commit="abc1234", generated_at="2026-09-05T00:00:00Z"),
+        Input(root=os.path.relpath(os.path.join(HERE, "testdata", fixture), ROOT)),
         Options.of(options),
         b,
         cwd=ROOT,

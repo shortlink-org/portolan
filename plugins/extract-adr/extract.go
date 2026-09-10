@@ -90,12 +90,10 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	}
 
 	fragment := catalog.Catalog{
-		GeneratedAt: in.GeneratedAt,
-		Commit:      in.Commit,
-		Contexts:    []catalog.BoundedContext{},
-		Defs:        map[string]catalog.TypeDef{},
-		Flows:       []catalog.Flow{},
-		Adrs:        adrs,
+		Contexts: []catalog.BoundedContext{},
+		Defs:     map[string]catalog.TypeDef{},
+		Flows:    []catalog.Flow{},
+		Adrs:     adrs,
 	}
 	encoded, err := json.MarshalIndent(fragment, "", "  ")
 	if err != nil {

@@ -1,6 +1,7 @@
 # portolan.0002 — The host stamps a fragment from its input's last commit
 
-- **Status:** accepted
+- **Status:** superseded
+- **Superseded by:** portolan.0010
 - **Date:** 2026-09-02
 - **Scope:** portolan
 

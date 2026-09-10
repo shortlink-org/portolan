@@ -16,7 +16,7 @@ func fragment(t *testing.T) catalog.Catalog {
 	t.Helper()
 
 	resp, err := extract(
-		plugin.Input{Root: "testdata", Commit: "abc1234", GeneratedAt: "2026-01-01T00:00:00Z"},
+		plugin.Input{Root: "testdata"},
 		Options{Context: "billing", Service: "invoices", Spec: "openapi.yaml"},
 	)
 	if err != nil {
@@ -381,7 +381,7 @@ func TestShapesOnEitherSide(t *testing.T) {
 // answers on, under the id the manifest gave it.
 func TestExternalCarriesNoService(t *testing.T) {
 	resp, err := extract(
-		plugin.Input{Root: "testdata", Commit: "abc1234", GeneratedAt: "2026-01-01T00:00:00Z"},
+		plugin.Input{Root: "testdata"},
 		Options{External: "psp", ExternalName: "PSP", ExternalURL: "https://psp.example/docs", API: "psp.v1", Spec: "openapi.yaml"},
 	)
 	if err != nil {
@@ -421,7 +421,7 @@ func TestExternalCarriesNoService(t *testing.T) {
 // exactly as well as one that writes 3.
 func TestSwagger2DefinitionsAndBodyParameters(t *testing.T) {
 	resp, err := extract(
-		plugin.Input{Root: "testdata/swagger2", Commit: "abc1234", GeneratedAt: "2026-01-01T00:00:00Z"},
+		plugin.Input{Root: "testdata/swagger2"},
 		Options{Context: "avia", Service: "aviasupp", Spec: "swagger.yaml"},
 	)
 	if err != nil {
@@ -485,7 +485,7 @@ func TestATreeSaysWhatIsImplementedAndWhatIsCalled(t *testing.T) {
 	read := func(opts Options) (catalog.Catalog, plugin.Response) {
 		t.Helper()
 		opts.Context, opts.Service = "avia", "aviasupp"
-		resp, err := extract(plugin.Input{Root: "testdata/discover", Commit: "abc1234", GeneratedAt: "2026-01-01T00:00:00Z"}, opts)
+		resp, err := extract(plugin.Input{Root: "testdata/discover"}, opts)
 		if err != nil {
 			t.Fatal(err)
 		}
