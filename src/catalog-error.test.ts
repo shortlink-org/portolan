@@ -21,6 +21,21 @@ function failureOf(catalog: Catalog): CatalogError {
 }
 
 describe("CatalogError.path", () => {
+  it("allows rootless source groups while preserving aggregate root validation", () => {
+    const data = clone();
+    const aggregate = data.contexts[0]!.services[0]!.aggregates[0]!;
+    aggregate.root = "";
+    delete aggregate.lifecycle;
+    expect(() => validateCatalog(data)).toThrow(/names no root/);
+    aggregate.kind = "model-group";
+    expect(() => validateCatalog(data)).not.toThrow();
+    aggregate.root = aggregate.entities[0]!.name;
+    expect(() => validateCatalog(data)).toThrow(/cannot declare an aggregate root/);
+    aggregate.root = "";
+    aggregate.lifecycle = { states: ["Active"], transitions: [] };
+    expect(() => validateCatalog(data)).toThrow(/cannot declare an aggregate root or lifecycle/);
+  });
+
   it("names the flow and the step for a step that points at a missing lane", () => {
     const bad = clone();
     const flow = bad.flows[0];

@@ -1,3 +1,6 @@
+import { djangoAggregateCandidates, djangoAggregateMessage } from "./django-aggregates";
+import type { DjangoAggregateCandidates } from "./django-aggregates";
+
 export type WarningSeverity = "error" | "warning" | "info";
 
 export interface RawWarning {
@@ -6,6 +9,7 @@ export interface RawWarning {
 }
 
 export interface WarningDiagnostic extends RawWarning {
+  aggregateCandidates?: DjangoAggregateCandidates;
   rule: string;
   severity: WarningSeverity;
   action: string;
@@ -93,6 +97,12 @@ const RULES: RuleDefinition[] = [
     action: "Declare the event name used by the handler or correct the handler mapping.",
   },
   {
+    id: "django.invalid-aggregate-root",
+    matches: /\baggregates names .+ and no model there is called that\b/i,
+    severity: "warning",
+    action: "Choose an existing concrete model for the application's aggregates option.",
+  },
+  {
     id: "django.ambiguous-aggregate-root",
     matches: /\bmodels to choose from: name the root in the aggregates option\b/i,
     severity: "warning",
@@ -177,6 +187,8 @@ export function warningDiagnostic(
 
   return {
     ...warning,
+    message: djangoAggregateMessage(warning.message),
+    ...(djangoAggregateCandidates(warning.message) ? { aggregateCandidates: djangoAggregateCandidates(warning.message)! } : {}),
     rule,
     severity: definition?.severity ?? "warning",
     action: definition?.action ?? FALLBACK_ACTION,

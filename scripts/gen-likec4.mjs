@@ -278,7 +278,7 @@ for (const context of catalog.contexts) {
     model.push(`      style { color ${contextColorName(context.id)} }`);
     for (const aggregate of service.aggregates) {
       model.push(
-        `      ${safeId(aggregate.slug)} = aggregate ${q(aggregate.name)} {`,
+        `      ${safeId(aggregate.slug)} = aggregate ${q(aggregate.kind === "model-group" ? `${aggregate.name} (model group)` : aggregate.name)} {`,
       );
       for (const event of aggregate.events) {
         const latest = event.versions[event.versions.length - 1];

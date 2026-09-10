@@ -30,6 +30,7 @@ const RULES = [
   rule("flow.unknown-port", /\bis neither a domain port nor a use case\b/i, "warning", "Model this dependency as a domain port or use case, or accept that its calls stay outside the flow."),
   rule("flow.unreached-event", /\bno flow reaches this event\b/i, "warning", "Connect the event to its publisher flow or remove the stale event declaration."),
   rule("flow.unknown-event", /\breacts to the message named .+ which no event .+ declares is called\b/i, "warning", "Declare the event name used by the handler or correct the handler mapping."),
+  rule("django.invalid-aggregate-root", /\baggregates names .+ and no model there is called that\b/i, "warning", "Choose an existing concrete model for the application's aggregates option."),
   rule("django.ambiguous-aggregate-root", /\bmodels to choose from: name the root in the aggregates option\b/i, "warning", "Choose the aggregate root explicitly in the django-domain aggregates option."),
   rule("django.unknown-http-verb", /\bmounted as an HTTP view, but no HTTP verb is declared\b/i, "warning", "Declare the accepted HTTP methods on the view or route."),
   rule("river.missing-worker", /\bno registered Worker\b/i, "warning", "Register the River worker in this component or remove the unmatched insert."),

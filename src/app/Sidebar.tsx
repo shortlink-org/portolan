@@ -878,15 +878,15 @@ function AggregateNode({
         depth={2}
         open={aopen}
         onToggle={() => toggle(akey, false)}
-        label={`aggregate ${aggregate.name}`}
+        label={`${aggregate.kind === "model-group" ? "model group" : "aggregate"} ${aggregate.name}`}
         selId={aggregate.id}
         under={
           <div
             className="mono truncate pr-2 text-muted"
             style={{ paddingLeft: indent(3), fontSize: 11 }}
-            title={`aggregate root: ${aggregate.root}`}
+            title={aggregate.kind === "model-group" ? "Model group; aggregate boundary not specified" : `aggregate root: ${aggregate.root}`}
           >
-            root: {aggregate.root}
+            {aggregate.kind === "model-group" ? "model group" : `root: ${aggregate.root}`}
           </div>
         }
         right={

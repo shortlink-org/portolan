@@ -1352,6 +1352,15 @@ function validateBlocks(catalog: Catalog, aggregate: Aggregate): void {
 
   validateEnums(aggregate);
 
+  if (aggregate.kind !== undefined && aggregate.kind !== "model-group") {
+    fail(`aggregate "${aggregate.id}" has an unknown kind`, `aggregate ${aggregate.id}`);
+  }
+  if (aggregate.kind === "model-group") {
+    if (aggregate.root !== "" || aggregate.lifecycle) {
+      fail(`model group "${aggregate.id}" cannot declare an aggregate root or lifecycle`, `aggregate ${aggregate.id}`);
+    }
+    return;
+  }
   if (!aggregate.root) {
     fail(
       `aggregate "${aggregate.id}" names no root entity`,

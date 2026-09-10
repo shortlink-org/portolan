@@ -31,7 +31,7 @@ var catalogCoverage = map[reflect.Type]string{
 	reflect.TypeOf(catalog.RpcCall{}):          "id peer status source note module via",
 	reflect.TypeOf(catalog.EdgeVia{}):          "flow step",
 	reflect.TypeOf(catalog.ProtoModule{}):      "id slug name registry owner commit digest packages files deps source",
-	reflect.TypeOf(catalog.Aggregate{}):        "id slug name readme root entities valueObjects operations events enums lifecycle",
+	reflect.TypeOf(catalog.Aggregate{}):        "id slug name readme kind root entities valueObjects operations events enums lifecycle",
 	reflect.TypeOf(catalog.Enum{}):             "id slug name doc deprecated values",
 	reflect.TypeOf(catalog.EnumValue{}):        "name doc deprecated",
 	reflect.TypeOf(catalog.Lifecycle{}):        "states transitions",

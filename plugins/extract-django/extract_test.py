@@ -10,6 +10,7 @@ import ast
 import json
 import os
 import sys
+import tempfile
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -193,10 +194,62 @@ class Fragment(unittest.TestCase):
         self.assertIn("ledger_ledgerentry", tables)
         self.assertIn("ledger_auditrecord", tables)
         self.assertNotIn("ledger_ledgerentryproxy", tables)
-        self.assertNotIn("persists", tables["ledger_ledgerentry"])
+        self.assertEqual(tables["ledger_ledgerentry"]["persists"], {"aggregate": "shop.billing.models-ledger", "block": "shop.billing.models-ledger.ledger-entry"})
         self.assertNotIn("role", tables["ledger_ledgerentry"])
         service = json.loads(self.files["domain.json"])["contexts"][0]["services"][0]
         self.assertFalse(any(aggregate["slug"] == "ledger-entry" for aggregate in service["aggregates"]))
+
+    def test_ambiguous_apps_keep_all_concrete_models_without_requiring_a_root(self):
+        service = json.loads(self.files["domain.json"])["contexts"][0]["services"][0]
+        group = next(a for a in service["aggregates"] if a["slug"] == "models-ledger")
+        self.assertEqual(group["kind"], "model-group")
+        self.assertEqual(group["root"], "")
+        self.assertEqual([m["name"] for m in group["entities"]], ["LedgerEntry", "AuditRecord"])
+        self.assertNotIn("lifecycle", group)
+        self.assertFalse(any("models to choose from" in w.message or (w.ref == group["id"] and "no services module" in w.message) for w in self.warnings))
+
+    def test_rootless_group_keeps_app_operations_and_events_once(self):
+        with tempfile.TemporaryDirectory() as root:
+            app = os.path.join(root, "records")
+            os.mkdir(app)
+            for name, source in {
+                "models.py": "from django.db import models\nclass Alpha(models.Model):\n    name = models.CharField(max_length=30)\nclass Beta(models.Model):\n    owner = models.ForeignKey(Alpha, on_delete=models.CASCADE)\n",
+                "services.py": "def list_records():\n    return []\n",
+                "events.py": 'from dataclasses import dataclass\n@dataclass\nclass RecordsChanged:\n    name = "records.Changed"\n    record_id: int\n',
+            }.items():
+                with open(os.path.join(app, name), "w") as handle:
+                    handle.write(source)
+            builder = Builder()
+            extract(Input(root=root), Options.of({"context": "shop", "service": "records"}), builder, cwd=ROOT)
+            fragment = json.loads(next(f.contents for f in builder.files if f.name == "domain.json"))
+            groups = fragment["contexts"][0]["services"][0]["aggregates"]
+            self.assertEqual(len(groups), 1)
+            self.assertEqual(groups[0]["kind"], "model-group")
+            self.assertEqual(len(groups[0]["entities"]), 2)
+            self.assertEqual([op["id"] for op in groups[0]["operations"]], ["ListRecords"])
+            self.assertEqual([event["name"] for event in groups[0]["events"]], ["RecordsChanged"])
+
+    def test_explicit_root_replaces_the_group_without_duplicating_models(self):
+        files, warnings = run(dict(OPTIONS, aggregates={"ledger": "LedgerEntry"}))
+        self.assertFalse(any("models to choose from" in w.message for w in warnings))
+        service = json.loads(files["domain.json"])["contexts"][0]["services"][0]
+        aggregate = next(a for a in service["aggregates"] if a["slug"] == "ledger-entry")
+        self.assertEqual(aggregate["entities"][0]["name"], "LedgerEntry")
+        self.assertNotIn("kind", aggregate)
+        self.assertFalse(any(a["slug"] == "models-ledger" for a in service["aggregates"]))
+        store = json.loads(files["stores.json"])["stores"][0]
+        table = next(t for t in store["tables"] if t["name"] == "ledger_ledgerentry")
+        self.assertEqual(table["role"], "aggregate-root")
+
+    def test_invalid_or_proxy_root_offers_a_replacement(self):
+        for root in ["Missing", "LedgerEntryProxy", "RecordBase"]:
+            files, warnings = run(dict(OPTIONS, aggregates={"ledger": root}))
+            service = json.loads(files["domain.json"])["contexts"][0]["services"][0]
+            group = next(a for a in service["aggregates"] if a["slug"] == "models-ledger")
+            self.assertEqual(len(group["entities"]), 2)
+            warning = next(w for w in warnings if "aggregates names" in w.message)
+            candidates = json.loads(warning.message.split("; aggregate candidates: ")[1])
+            self.assertEqual([m["name"] for m in candidates["models"]], ["AuditRecord", "LedgerEntry"])
 
     def test_abstract_fields_custom_postgres_fields_and_unresolved_relations_are_described(self):
         store = json.loads(self.files["stores.json"])["stores"][0]

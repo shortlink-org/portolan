@@ -202,39 +202,50 @@
             {
               "name": "created_at",
               "type": "timestamptz",
-              "nullable": false
+              "nullable": false,
+              "maps": "LedgerEntry.created_at"
             },
             {
               "name": "updated_at",
               "type": "timestamptz",
-              "nullable": false
+              "nullable": false,
+              "maps": "LedgerEntry.updated_at"
             },
             {
               "name": "reference",
               "type": "varchar(64)",
-              "nullable": false
+              "nullable": false,
+              "maps": "LedgerEntry.reference"
             },
             {
               "name": "tags",
               "type": "varchar(16)[4]",
-              "nullable": false
+              "nullable": false,
+              "maps": "LedgerEntry.tags"
             },
             {
               "name": "modes",
               "type": "varchar(32)",
-              "nullable": false
+              "nullable": false,
+              "maps": "LedgerEntry.modes"
             },
             {
               "name": "audit_code",
               "type": "varchar(12)",
-              "nullable": false
+              "nullable": false,
+              "maps": "AuditRecord.code"
             },
             {
               "name": "owner_id",
               "type": "integer",
-              "nullable": false
+              "nullable": false,
+              "maps": "LedgerEntry.owner"
             }
-          ]
+          ],
+          "persists": {
+            "aggregate": "shop.billing.models-ledger",
+            "block": "shop.billing.models-ledger.ledger-entry"
+          }
         },
         {
           "id": "shop.billing.pg.ledger_ledgerentry_audits",
@@ -292,22 +303,26 @@
             {
               "name": "created_at",
               "type": "timestamptz",
-              "nullable": false
+              "nullable": false,
+              "maps": "AuditRecord.created_at"
             },
             {
               "name": "updated_at",
               "type": "timestamptz",
-              "nullable": false
+              "nullable": false,
+              "maps": "AuditRecord.updated_at"
             },
             {
               "name": "code",
               "type": "varchar(12)",
-              "nullable": false
+              "nullable": false,
+              "maps": "AuditRecord.code"
             },
             {
               "name": "note",
               "type": "text",
-              "nullable": false
+              "nullable": false,
+              "maps": "AuditRecord.note"
             }
           ],
           "indexes": [
@@ -318,7 +333,11 @@
               ],
               "unique": true
             }
-          ]
+          ],
+          "persists": {
+            "aggregate": "shop.billing.models-ledger",
+            "block": "shop.billing.models-ledger.audit-record"
+          }
         }
       ],
       "source": "plugins/extract-django/testdata/billing"

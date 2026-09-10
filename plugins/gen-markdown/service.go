@@ -173,7 +173,7 @@ func (s *site) aggregateTable(from string, svc *catalog.Service) string {
 
 		rows = append(rows, []string{
 			s.ref(from, agg.ID, agg.Name),
-			code(agg.Root),
+			aggregateRootLabel(agg),
 			plural(commands, "command"),
 			plural(queries, "query", "queries"),
 			plural(len(agg.Events), "event"),

@@ -77,14 +77,14 @@ function BuildingBlocks({
       </div>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
         <span className="mono flex items-center gap-1.5 text-muted">
-          root
+          {aggregate.kind === "model-group" ? "aggregate boundary" : "root"}
           <KindIcon kind="entity" />
           {rootTo ? (
             <Link to={rootTo} className="text-ink hover:underline">
               {aggregate.root}
             </Link>
           ) : (
-            <span className="text-ink">{aggregate.root}</span>
+            <span className="text-ink">{aggregate.kind === "model-group" ? "not specified" : aggregate.root}</span>
           )}
         </span>
         <span aria-hidden className="h-4 w-px bg-line-strong" />
@@ -385,7 +385,7 @@ export function AggregatePage() {
       <PageHeader
         kind={
           <>
-            aggregate ·{" "}
+            {aggregate.kind === "model-group" ? "model group" : "aggregate"} ·{" "}
             <Link
               to={paths.service(context.id, service.slug)}
               className="rounded-control hover:text-ink hover:underline"
@@ -410,6 +410,7 @@ export function AggregatePage() {
           />
 
           <Markdown mermaid>{aggregate.readme}</Markdown>
+          {aggregate.kind === "model-group" ? <p className="mb-section text-muted">Models discovered in this application. Their relationships are extracted from the source; aggregate boundaries have not been specified.</p> : null}
 
           <div
             className="mt-section max-w-prose"
@@ -583,14 +584,14 @@ export function AggregatePage() {
                 anchor={AGGREGATE_ANCHOR.commands}
                 right={
                   <span>
-                    they change the aggregate — one row lock each
+                    {aggregate.kind === "model-group" ? "write operations discovered in this application" : "they change the aggregate — one row lock each"}
                   </span>
                 }
               >
                 Commands
               </SectionTitle>
               {commands.length === 0 ? (
-                <Empty>nothing changes this aggregate from outside</Empty>
+                <Empty>{aggregate.kind === "model-group" ? "no application commands discovered" : "nothing changes this aggregate from outside"}</Empty>
               ) : null}
               <OperationList kind="command" operations={commands} service={service} />
             </div>
@@ -606,7 +607,7 @@ export function AggregatePage() {
                 Queries
               </SectionTitle>
               {queries.length === 0 ? (
-                <Empty>nothing reads this aggregate by name</Empty>
+                <Empty>{aggregate.kind === "model-group" ? "no application queries discovered" : "nothing reads this aggregate by name"}</Empty>
               ) : null}
               <OperationList kind="query" operations={queries} service={service} />
             </div>
@@ -750,7 +751,7 @@ export function AggregatePage() {
           />
         </div>
 
-        <Toc items={toc} label="Sections of this aggregate" title="Outline" />
+        <Toc items={toc} label={aggregate.kind === "model-group" ? "Sections of this model group" : "Sections of this aggregate"} title="Outline" />
       </div>
     </div>
   );

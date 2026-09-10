@@ -130,6 +130,7 @@ export function ServicePage() {
     .find((source) => source !== undefined && hasAsyncSpec(source));
   const showDomain =
     componentKind(service) === "service" || service.aggregates.length > 0;
+  const hasModelGroups = service.aggregates.some((aggregate) => aggregate.kind === "model-group");
   const integrations = integrationsFor(service, catalog);
 
   const counts: Record<Tab, number | null> = {
@@ -219,7 +220,7 @@ export function ServicePage() {
               className="rounded-control hover:text-ink"
             >
               <span className="tnum">{service.aggregates.length}</span>{" "}
-              {plural(service.aggregates.length, "aggregate")}
+              {plural(service.aggregates.length, hasModelGroups ? "group" : "aggregate")}
             </a>
           ) : null}
           {showDomain ? (
@@ -312,7 +313,7 @@ export function ServicePage() {
                 className="mt-section max-w-table"
               >
                 <SectionTitle anchor={SERVICE_ANCHOR.aggregates}>
-                  Aggregates
+                  {hasModelGroups ? "Aggregates and model groups" : "Aggregates"}
                 </SectionTitle>
                 {/* icon, slug, name, event count, actions - one column each,
                   so the counts stack up instead of drifting with the name. */}
@@ -336,7 +337,7 @@ export function ServicePage() {
                         >
                           {aggregate.slug}
                         </Link>
-                        <span className="meta">{aggregate.name}</span>
+                        <span className="meta">{aggregate.name}{aggregate.kind === "model-group" ? " · model group" : ""}</span>
                         <Link
                           to={`${to}#bb-events`}
                           className="mono rounded-control hover:underline"

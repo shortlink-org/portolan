@@ -57,6 +57,8 @@ import { DeliverySettings } from "./settings/DeliverySettings";
 import { PreferencesSettings } from "./settings/PreferencesSettings";
 import { AboutSettings } from "./settings/AboutSettings";
 import { IntegrationsSettings } from "./settings/IntegrationsSettings";
+import { DjangoAggregateChoices } from "./settings/DjangoAggregateChoices";
+import { djangoAggregateCandidates, djangoAggregateMessage } from "../lib/django-aggregates";
 import { CatEmptyState, CatIllustration } from "../components/CatIllustration";
 import { CommitLink } from "../components/CommitLink";
 import { groupDiagnostics, warningDiagnostic } from "../lib/warnings";
@@ -324,7 +326,8 @@ function WarningPanel({ diagnostics, compact = false }: { diagnostics: WarningDi
       </div>
       {shown.length ? <div className="space-y-2">{shown.map((group) => {
         const color = group.severity === "error" ? "text-unresolved" : group.severity === "warning" ? "text-declared" : "text-muted";
-        const examples = group.messages.slice(0, compact ? 3 : 12);
+        const candidates = group.messages.filter((warning) => warning.aggregateCandidates || djangoAggregateCandidates(warning.message));
+        const examples = group.messages.filter((warning) => !warning.aggregateCandidates && !djangoAggregateCandidates(warning.message)).slice(0, compact ? 3 : 12);
         return <details key={`${group.plugin}:${group.rule}:${group.suppressed}`} className={`rounded-control border px-3 py-2 ${group.suppressed ? "border-line opacity-75" : group.severity === "error" ? "border-unresolved" : "border-line"}`} open={!compact && shown.length <= 4}>
           <summary className="cursor-pointer list-none">
             <span className="flex flex-wrap items-center gap-2">
@@ -338,9 +341,10 @@ function WarningPanel({ diagnostics, compact = false }: { diagnostics: WarningDi
             {group.suppressionReason ? <span className="mt-1 block text-muted"><span className="font-medium text-ink">Suppressed:</span> {group.suppressionReason}</span> : null}
           </summary>
           <ul className="mono mt-2 space-y-1 text-muted">
-            {examples.map((warning, index) => <li key={`${index}:${warning.message}`} className="break-words border-l-2 border-line pl-2">{warning.message}</li>)}
+            {examples.map((warning, index) => <li key={`${index}:${warning.message}`} className="break-words border-l-2 border-line pl-2">{djangoAggregateMessage(warning.message)}</li>)}
           </ul>
-          {group.count > examples.length ? <p className="mono mt-2 text-faint">{group.count - examples.length} more occurrences</p> : null}
+          {candidates.length ? <DjangoAggregateChoices warnings={candidates} /> : null}
+          {group.count > examples.length + candidates.length ? <p className="mono mt-2 text-faint">{group.count - examples.length - candidates.length} more occurrences</p> : null}
         </details>;
       })}</div> : <p className="rounded-control border border-line px-3 py-2 text-muted">No warnings match these filters.</p>}
       {!compact && groups.some((group) => !group.suppressed) ? <p className="text-faint">Suppress a reviewed limitation with a typed CEL entry in <span className="mono">portolan.json → warningPolicies</span>. The reason is required and remains visible here after regeneration.</p> : null}

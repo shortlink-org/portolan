@@ -471,7 +471,9 @@ export interface Aggregate {
   slug: string;
   name: string;
   readme: string;
-  /** Name of the entity that is the aggregate root; must be one of `entities`. */
+  /** A source grouping has no confirmed aggregate boundary. Omitted for aggregates. */
+  kind?: "model-group";
+  /** Name of the root entity; empty only for a model-group. */
   root: string;
   entities: Entity[];
   valueObjects: ValueObject[];

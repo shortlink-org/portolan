@@ -1,4 +1,5 @@
 import type { SetupDiagnostic, SetupInfo, SetupPhase, SetupProject, SetupRunStepStatus } from "./setup-info";
+import type { DjangoAggregateCandidates } from "./django-aggregates";
 
 const ROOT = `${import.meta.env.BASE_URL}__portolan`;
 const LOCAL_HEADER = { "Content-Type": "application/json", "X-Portolan-Local": "1" };
@@ -179,6 +180,20 @@ export class LocalApiError extends Error {
 
 export async function localStatus(): Promise<{ local: true; workspace: string; setup: SetupInfo; activeRun: { id: string; mode: "write" | "check" | "preview" } | null }> {
   return json("/status");
+}
+
+export interface DjangoAggregateProposals {
+  revision: string;
+  stale: boolean;
+  proposals: Array<DjangoAggregateCandidates & { id: string; step: number; plugin: string; input: string; output: string; message: string }>;
+}
+
+export async function djangoAggregateProposals(): Promise<DjangoAggregateProposals> {
+  return json("/django-aggregates");
+}
+
+export async function saveDjangoAggregates(revision: string, selections: Array<{ id: string; model: string }>): Promise<{ saved: number }> {
+  return json("/django-aggregates", { method: "POST", headers: LOCAL_HEADER, body: JSON.stringify({ revision, selections }) });
 }
 
 export async function previewDeliveryPreset(provider?: DeliveryProvider, features?: DeliveryFeatureId[]): Promise<DeliveryPreset> {

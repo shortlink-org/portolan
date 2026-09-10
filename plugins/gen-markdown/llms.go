@@ -114,7 +114,7 @@ func (s *site) llmsIndex() string {
 				aggregates = append(aggregates, entry(
 					s.ref(self, agg.ID, agg.Name),
 					"in "+s.ref(self, svc.ID, svc.Name),
-					"root "+code(agg.Root),
+					"root "+aggregateRootLabel(agg),
 					strings.Join(shape, ", "),
 					firstSentence(body(agg.Readme, agg.Name)),
 				))

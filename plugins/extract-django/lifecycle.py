@@ -160,6 +160,8 @@ def movers(model: ModelDef, status: str, choices: Dict[str, Dict[str, str]], eve
 
 def read(agg: Aggregate, events: Dict[str, object], b) -> Optional[Dict[str, object]]:
     model = agg.root
+    if model is None:
+        return None
     status = status_field(model)
     if status is None:
         return None

@@ -7,6 +7,8 @@
  * bundle.
  */
 
+import { djangoAggregateCandidates, djangoAggregateMessage } from "./django-aggregates.ts";
+
 export type SetupPhase = "extract" | "verify" | "generate";
 
 export interface SetupProject {
@@ -65,6 +67,7 @@ export interface SetupRunStep extends SetupStep {
 export type SetupDiagnosticSeverity = "error" | "warning" | "info";
 
 export interface SetupDiagnostic {
+  aggregateCandidates?: import("./django-aggregates").DjangoAggregateCandidates;
   plugin: string;
   rule: string;
   severity: SetupDiagnosticSeverity;
@@ -314,7 +317,8 @@ function diagnosticFrom(value: unknown, plugin: string, phase: SetupPhase): Setu
     rule: item.rule,
     severity: item.severity as SetupDiagnosticSeverity,
     action: item.action.slice(0, MAX_WARNING_LENGTH),
-    message: item.message.slice(0, MAX_WARNING_LENGTH),
+    message: djangoAggregateMessage(item.message).slice(0, MAX_WARNING_LENGTH),
+    ...(djangoAggregateCandidates(item.message) ? { aggregateCandidates: djangoAggregateCandidates(item.message)! } : {}),
     count: item.count,
     project: item.project.slice(0, MAX_WARNING_LENGTH),
     phase,

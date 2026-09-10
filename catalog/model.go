@@ -398,10 +398,12 @@ type ProtoModule struct {
 }
 
 type Aggregate struct {
-	ID           string      `json:"id"`
-	Slug         string      `json:"slug"`
-	Name         string      `json:"name"`
-	Readme       string      `json:"readme"`
+	ID     string `json:"id"`
+	Slug   string `json:"slug"`
+	Name   string `json:"name"`
+	Readme string `json:"readme"`
+	// Kind is "model-group" for a source grouping without an aggregate boundary.
+	Kind         string      `json:"kind,omitempty"`
 	Root         string      `json:"root"`
 	Entities     []Block     `json:"entities"`
 	ValueObjects []Block     `json:"valueObjects"`

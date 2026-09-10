@@ -39,15 +39,24 @@ resolves them without a type checker.
 
 ## What becomes what
 
-**Aggregate.** One per application. The root is the model named after the
-application — `invoices` holds `Invoice` — or the only model there is, or the
-one `aggregates` names in the manifest; an application with several models and
-no such name is reported and skipped, because guessing which of them the others
-hang off is how an aggregate boundary gets drawn wrong and stays wrong. The
-aggregate is named and slugged after the root, so a Django `invoices` and a Go
-`invoice` package land on the same id. Every concrete model of the application
-is an entity, the root included and first; abstract models are not. The
-readme is `README.md` in the application, or the root's docstring.
+**Models and aggregates.** Every concrete, non-proxy model is visible. When
+an application has an explicitly configured root, a model named after the
+application (`invoices` → `Invoice`), or just one concrete model, it retains
+its existing aggregate representation and stable root-based id.
+
+Otherwise the application is emitted as a `kind: "model-group"` entry with
+an empty `root` and an id ending in `models-<application-package>`. All of its
+concrete models appear once, alongside the application's value objects,
+operations and events. This is a source grouping, not a claim that the models
+share a transactional boundary. Its tables link to the model blocks without
+being labelled aggregate roots or children. No root-selection warning is
+emitted, and no configuration is required to browse the models.
+
+`options.aggregates` remains an optional refinement: selecting a root replaces
+the source group with an aggregate. A configured root that no longer exists
+produces a warning with concrete candidates, while retaining every model in
+the group. Settings can help repair that configuration and save the choice to
+the matching extraction step. Regenerate to apply it; other options are kept.
 
 **Field.** Each model attribute assigned a field, with the type as written:
 `CharField`, `DateTimeField`, and a relation as `ForeignKey[Invoice]`. The doc
@@ -267,8 +276,7 @@ The primary store is inferred from `DATABASES["default"]` when that setting is
 statically readable; `store` remains the override for settings assembled at
 runtime or for a catalog that needs a different stable slug. Every concrete,
 non-proxy model becomes a table even when its application has several possible
-aggregate roots: ambiguity limits the domain model, not the persistence
-schema. Fields from abstract model bases are copied into those tables
+aggregate roots: both the model group and persistence schema stay visible. Fields from abstract model bases are copied into those tables
 regardless of which model module sorts first. `DEFAULT_AUTO_FIELD` supplies
 implicit primary-key types. PostgreSQL `ArrayField` nesting and
 `MultiSelectField` storage are rendered as their database types; `to_field`
@@ -323,9 +331,8 @@ Everything else means what it means for `extract-ts`.
 
 These cases do not become facts in the fragment:
 
-- a domain aggregate for an application with no models, or with several and no
-  root among them named after it (its statically resolvable HTTP routes are
-  still included);
+- a domain aggregate for an application with no models (its statically
+  resolvable HTTP routes are still included);
 - a model that declares no fields;
 - an events module holding a class with no wire name, and a signal with no
   payload;

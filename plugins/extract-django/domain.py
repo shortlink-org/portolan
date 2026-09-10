@@ -1,15 +1,15 @@
 """`models.py` read as the model.
 
-A Django application is one aggregate: the root is the model named after the
-application, the other models in it are its entities, and the frozen
-dataclasses in `values.py` are its value objects. Nothing is annotated for the
-catalog - the application is the claim, the same way a directory is the claim
-in `extract-ts`.
+A Django application groups its models. When a root is known, the group is
+an aggregate; otherwise it remains a model-group with no asserted boundary.
+Frozen dataclasses in `values.py` are its value objects. Ambiguity never hides
+the concrete models or requires configuration to browse them.
 """
 
 from __future__ import annotations
 
 import ast
+import json
 from dataclasses import dataclass, field as dc_field
 from typing import Dict, List, Optional
 
@@ -90,7 +90,7 @@ class Aggregate:
     """One application, and the catalog object being built from it."""
 
     app: App
-    root: ModelDef
+    root: Optional[ModelDef]
     models: List[ModelDef]
     aggregate: Dict[str, object]
 
@@ -257,7 +257,7 @@ def root_of(app: App, models: List[ModelDef], named: Dict[str, str], b) -> Optio
         for m in concrete:
             if m.name == want:
                 return m
-        b.warn(app.rel, "aggregates names %s for %s, and no model there is called that" % (want, app.label))
+        b.warn(app.rel, "aggregates names %s for %s, and no model there is called that%s" % (want, app.label, aggregate_candidates(app, concrete)))
         return None
     for candidate in (pascal(singular(app.label)), pascal(app.label)):
         for m in concrete:
@@ -268,11 +268,18 @@ def root_of(app: App, models: List[ModelDef], named: Dict[str, str], b) -> Optio
     if not concrete:
         b.warn(app.rel, "no models in this application: nothing here to be an aggregate")
         return None
-    b.warn(
-        app.rel,
-        "no model called %s, and %d models to choose from: name the root in the aggregates option" % (pascal(singular(app.label)), len(concrete)),
-    )
     return None
+
+
+def aggregate_candidates(app: App, models: List[ModelDef]) -> str:
+    """Keep candidate evidence in the warning-only plugin protocol."""
+    return "; aggregate candidates: " + json.dumps({
+        "app": app.dotted,
+        "models": [
+            {"name": model.name, "path": model.module.rel, "line": model.node.lineno}
+            for model in sorted(models, key=lambda model: (model.name, model.module.rel))
+        ],
+    }, ensure_ascii=True)
 
 
 def read_aggregates(
@@ -289,14 +296,18 @@ def read_aggregates(
         if models is None:
             models = read_models(app)
         root = root_of(app, models, named, b)
-        if root is None:
-            continue
         concrete = [m for m in models if m.concrete]
-        ordered = [root] + [m for m in concrete if m is not root]
-        agg_slug = slug(root.name)
+        if not concrete:
+            continue
+        ordered = [root] + [m for m in concrete if m is not root] if root else concrete
+        # An application is a source grouping, not proof of a transactional
+        # boundary. Keep every model visible without inventing such a boundary.
+        agg_slug = slug(root.name) if root else "models-" + slug(app.dotted.replace(".", "-"))
         agg_id = aggregate_id(svc_id, agg_slug)
-        readme = app.readme or (ast.get_docstring(root.node, clean=True) or "").strip()
-        obj = catalog.aggregate(agg_id, agg_slug, root.name, readme, root.name)
+        readme = app.readme or ((ast.get_docstring(root.node, clean=True) or "").strip() if root else "")
+        obj = catalog.aggregate(agg_id, agg_slug, root.name if root else app.dotted, readme, root.name if root else "")
+        if root is None:
+            obj["kind"] = "model-group"
         for model in ordered:
             obj["entities"].append(
                 catalog.block(

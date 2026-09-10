@@ -20,6 +20,7 @@ import { basename, dirname, join, posix, relative, resolve, sep } from "node:pat
 
 import { loadManifest, readManifest, readManifestText } from "./manifest.mjs";
 import { builtinPluginNames } from "./builtin-plugins.mjs";
+import { djangoAggregateCandidates } from "../src/lib/django-aggregates.ts";
 import { installDeliveryPreset, planDeliveryPreset, publicDeliveryPreset } from "./delivery-presets.mjs";
 import {
   discoverProject,
@@ -617,6 +618,52 @@ export function writeManifest(path, manifest) {
   }
 }
 
+export function djangoAggregateProposals(workspace) {
+  const path = join(workspace, "portolan.json");
+  const text = readFileSync(path, "utf8");
+  const manifest = readManifestText(text, path);
+  const revision = createHash("sha256").update(text).digest("hex");
+  let report;
+  try { report = JSON.parse(readFileSync(join(workspace, ".portolan/build-report.json"), "utf8")); } catch {}
+  const proposals = [];
+  for (const step of report?.steps ?? []) {
+    if (step.phase !== "extract") continue;
+    const matches = (manifest.extract ?? []).map((entry, index) => ({ entry, index }))
+      .filter(({ entry }) => entry.plugin === step.plugin && entry.in === step.input && entry.out === step.output);
+    if (matches.length !== 1) continue;
+    const { entry, index } = matches[0];
+    for (const message of step.warnings ?? []) {
+      const candidates = djangoAggregateCandidates(message);
+      if (!candidates) continue;
+      const id = `${index}:${candidates.app}`;
+      if (proposals.some((proposal) => proposal.id === id)) continue;
+      proposals.push({ id, step: index, plugin: entry.plugin, input: entry.in, output: entry.out, message, ...candidates });
+    }
+  }
+  return { revision, stale: !report || report.manifestSha256 !== revision || report.status === "running", proposals };
+}
+
+export function saveDjangoAggregates(workspace, request) {
+  const current = djangoAggregateProposals(workspace);
+  if (current.stale || request.revision !== current.revision) {
+    throw new Error("The manifest or extraction report has changed. Regenerate and review the candidates again.");
+  }
+  if (!Array.isArray(request.selections) || !request.selections.length) throw new Error("Choose at least one aggregate root.");
+  const manifest = readManifest(join(workspace, "portolan.json"));
+  const seen = new Set();
+  for (const choice of request.selections) {
+    const proposal = current.proposals.find((candidate) => candidate.id === choice?.id);
+    if (!proposal || !proposal.models.some((model) => model.name === choice.model) || seen.has(choice.id)) {
+      throw new Error("Choose one of the reported models for each application.");
+    }
+    seen.add(choice.id);
+    const step = manifest.extract[proposal.step];
+    step.options = { ...step.options, aggregates: { ...step.options?.aggregates, [proposal.app]: choice.model } };
+  }
+  writeManifest(join(workspace, "portolan.json"), manifest);
+  return { saved: request.selections.length };
+}
+
 export function writeProject(workspace, request) {
   const manifestPath = join(workspace, "portolan.json");
   const before = readFileSync(manifestPath, "utf8");
@@ -1080,6 +1127,9 @@ export function localApiPlugin(workspace = process.cwd(), publicSetupFrom) {
             const active = [...jobs.values()].find((job) => job.status === "running");
             return send(res, 200, { local: true, workspace: realpathSync(workspace), setup: setup(workspace, publicSetupFrom), activeRun: active ? { id: active.id, mode: active.mode } : null });
           }
+          if (req.method === "GET" && url.pathname === `${LOCAL_API_PREFIX}/django-aggregates`) {
+            return send(res, 200, djangoAggregateProposals(workspace));
+          }
           if (req.method === "GET" && url.pathname === `${LOCAL_API_PREFIX}/delivery-presets`) {
             const features = url.searchParams.has("features")
               ? url.searchParams.get("features").split(",").filter(Boolean)
@@ -1103,6 +1153,10 @@ export function localApiPlugin(workspace = process.cwd(), publicSetupFrom) {
             return send(res, 405, { error: "Use a local JSON request." });
           }
           const input = await body(req);
+          if (url.pathname === `${LOCAL_API_PREFIX}/django-aggregates`) {
+            if ([...jobs.values()].some((job) => job.status === "running")) throw new Error("Wait for the current generation to finish before saving aggregate roots.");
+            return send(res, 200, saveDjangoAggregates(workspace, input));
+          }
           if (url.pathname === `${LOCAL_API_PREFIX}/delivery-presets/install`) {
             return send(res, 201, installDeliveryPreset(workspace, input));
           }

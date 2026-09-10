@@ -37,6 +37,7 @@ export function ContextPage() {
   );
   const neutral = groupKind(context) !== "bounded-context";
   const showDomain = !neutral || aggregates.length > 0;
+  const hasModelGroups = aggregates.some(({ aggregate }) => aggregate.kind === "model-group");
   const toc: TocItem[] = [
     { id: CONTEXT_ANCHOR.services, label: neutral ? "Components" : "Services" },
     ...(showDomain
@@ -86,7 +87,7 @@ export function ContextPage() {
           {showDomain ? (
             <>
               <a href={`#${CONTEXT_ANCHOR.aggregates}`} className="rounded-control hover:text-ink">
-                <span className="tnum">{stats.aggregates}</span>{" "}{plural(stats.aggregates, "aggregate")}
+                <span className="tnum">{stats.aggregates}</span>{" "}{plural(stats.aggregates, hasModelGroups ? "group" : "aggregate")}
               </a>
               <a href={`#${CONTEXT_ANCHOR.events}`} className="rounded-control hover:text-ink">
                 <span className="tnum">{stats.events}</span>{" "}{plural(stats.events, "event")}
@@ -173,7 +174,7 @@ export function ContextPage() {
                   <div className="mono mt-4 flex flex-wrap gap-x-4 text-muted">
                     {service.aggregates.length > 0 || componentKind(service) === "service" ? (
                       <Link to={`${paths.service(context.id, service.slug)}#svc-aggregates`} className="rounded-control hover:text-ink">
-                        <span className="tnum">{service.aggregates.length}</span>{" "}{plural(service.aggregates.length, "aggregate")}
+                        <span className="tnum">{service.aggregates.length}</span>{" "}{plural(service.aggregates.length, service.aggregates.some((aggregate) => aggregate.kind === "model-group") ? "group" : "aggregate")}
                       </Link>
                     ) : null}
                     <Link
@@ -234,11 +235,11 @@ export function ContextPage() {
               anchor={CONTEXT_ANCHOR.aggregates}
               right={
                 <span>
-                  every aggregate this domain owns, whichever service holds it
+                  {hasModelGroups ? "models grouped by their source application or aggregate" : "every aggregate this domain owns, whichever service holds it"}
                 </span>
               }
             >
-              Aggregates
+              {hasModelGroups ? "Aggregates and model groups" : "Aggregates"}
             </SectionTitle>
             {aggregates.length === 0 ? (
               <Empty>this domain owns nothing yet — only services</Empty>
@@ -264,7 +265,7 @@ export function ContextPage() {
                       {aggregate.name}
                     </Link>
                     <span className="meta">{service.slug}</span>
-                    <span className="meta">root {aggregate.root}</span>
+                    <span className="meta">{aggregate.kind === "model-group" ? "model group · boundary not specified" : `root ${aggregate.root}`}</span>
                     <RowActions
                       copy={aggregate.id}
                       reveal={aggregate.id}

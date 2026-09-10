@@ -17,14 +17,14 @@ func (s *site) renderAggregate(svc *catalog.Service, agg *catalog.Aggregate) {
 	b.WriteString(defList([][]string{
 		{"Id", code(agg.ID)},
 		{"Service", s.ref(self, svc.ID, svc.Name)},
-		{"Root", code(agg.Root)},
+		{"Root", aggregateRootLabel(agg)},
 	}))
 
 	if readme := body(agg.Readme, agg.Name); readme != "" {
 		b.WriteString("\n" + readme + "\n")
 	}
 
-	if !hasBlock(agg.Entities, agg.Root) {
+	if agg.Kind != "model-group" && !hasBlock(agg.Entities, agg.Root) {
 		s.b.warn(agg.ID, "aggregate %q names %q as its root, which is not one of its entities", agg.ID, agg.Root)
 	}
 
@@ -36,6 +36,13 @@ func (s *site) renderAggregate(svc *catalog.Service, agg *catalog.Aggregate) {
 	section(&b, "Events", s.eventsBlock(self, svc, agg))
 
 	s.b.file(self, b.String())
+}
+
+func aggregateRootLabel(agg *catalog.Aggregate) string {
+	if agg.Kind == "model-group" {
+		return "not specified (model group)"
+	}
+	return code(agg.Root)
 }
 
 // lifecycle draws the root's state machine as the code wrote it down, and

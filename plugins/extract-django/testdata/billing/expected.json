@@ -351,6 +351,95 @@
                   }
                 ]
               }
+            },
+            {
+              "id": "shop.billing.models-ledger",
+              "slug": "models-ledger",
+              "name": "ledger",
+              "readme": "",
+              "root": "",
+              "entities": [
+                {
+                  "id": "shop.billing.models-ledger.ledger-entry",
+                  "slug": "ledger-entry",
+                  "name": "LedgerEntry",
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "created_at",
+                      "type": "DateTimeField",
+                      "doc": ""
+                    },
+                    {
+                      "name": "updated_at",
+                      "type": "DateTimeField",
+                      "doc": ""
+                    },
+                    {
+                      "name": "reference",
+                      "type": "CharField",
+                      "doc": ""
+                    },
+                    {
+                      "name": "tags",
+                      "type": "ArrayField",
+                      "doc": ""
+                    },
+                    {
+                      "name": "modes",
+                      "type": "MultiSelectField",
+                      "doc": ""
+                    },
+                    {
+                      "name": "audit_code",
+                      "type": "ForeignKey[AuditRecord]",
+                      "doc": ""
+                    },
+                    {
+                      "name": "owner",
+                      "type": "ForeignKey[auth.User]",
+                      "doc": ""
+                    },
+                    {
+                      "name": "audits",
+                      "type": "ManyToManyField[AuditRecord]",
+                      "doc": ""
+                    }
+                  ]
+                },
+                {
+                  "id": "shop.billing.models-ledger.audit-record",
+                  "slug": "audit-record",
+                  "name": "AuditRecord",
+                  "doc": "",
+                  "fields": [
+                    {
+                      "name": "created_at",
+                      "type": "DateTimeField",
+                      "doc": ""
+                    },
+                    {
+                      "name": "updated_at",
+                      "type": "DateTimeField",
+                      "doc": ""
+                    },
+                    {
+                      "name": "code",
+                      "type": "CharField",
+                      "doc": ""
+                    },
+                    {
+                      "name": "note",
+                      "type": "TextField",
+                      "doc": ""
+                    }
+                  ]
+                }
+              ],
+              "valueObjects": [],
+              "operations": [],
+              "events": [],
+              "kind": "model-group"
             }
           ]
         }

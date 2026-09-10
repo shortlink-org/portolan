@@ -87,7 +87,7 @@ def read_use_cases(agg: Aggregate, b) -> List[UseCase]:
                     kind="command" if writes(node) else "query",
                 )
             )
-    if not out:
+    if not out and agg.root is not None:
         b.warn(agg.id, "no services module under %s: the aggregate has no operations, only whatever the views do inline" % agg.app.rel)
     return sorted(out, key=lambda u: u.id)
 

@@ -345,7 +345,7 @@ def model_table(
         columns,
         indexes(model, name, by_field),
         {"aggregate": aggregate.id, "block": block} if aggregate is not None else None,
-        "aggregate-root" if aggregate is not None and model is aggregate.root else "child" if aggregate is not None else "",
+        "aggregate-root" if aggregate is not None and model is aggregate.root else "child" if aggregate is not None and aggregate.root is not None else "",
         meta_str(model, "verbose_name"),
     )
 
