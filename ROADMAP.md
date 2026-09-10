@@ -162,7 +162,7 @@ server-side HTTP routes по verb и нормализованному path. Сн
 
 Осталось отдельными задачами: `dynamic endpoint`, маршруты Django без
 определённого HTTP verb и сохранение base-URL provenance непосредственно в
-HTTP client extractor вместо suffix inference.
+HTTP client extractor вместо suffix inference. Они вынесены в PORTOLAN-18—20.
 
 **Done when:** известный вызов `aviacore -> aviasupp` отображается на context map
 с источником доказательства и не требует ручного редактирования generated JSON.
@@ -267,6 +267,87 @@ UI автоматически разместил `aviacore` и `aviasupp` как
 generation, лимиты по типам flows, grouping и генерация подробного view только
 по запросу.
 
+### PORTOLAN-17. Не создавать массовый metadata-only diff при генерации
+
+**Status:** investigate
+
+После сфокусированных исправлений обязательный `npm run gen` изменил около 200
+tracked-файлов: главным образом `generatedAt`, commit stamps и производные
+строки в Markdown. Полезное изменение теряется в большом механическом diff, а
+коммит generated artifacts становится трудно проверять.
+
+Нужно разделить content identity и build provenance: не переписывать файл, если
+его содержательная часть не изменилась, хранить общий build stamp отдельно либо
+явно определить политику обновления provenance. `gen --check` должен объяснять,
+почему конкретный artifact считается устаревшим.
+
+**Done when:** повторная генерация из одинаковых source revisions даёт нулевой
+diff, а изменение одного extractor result не обновляет несвязанные документы
+только ради общего timestamp или агрегированного commit label.
+
+### PORTOLAN-18. Сохранять destination provenance HTTP-вызова
+
+**Status:** investigate
+
+Сейчас HTTP client extractor сохраняет verb, локальный path и текстовую note,
+но часто теряет base URL за functional options и config fields. После merge
+приходится использовать уникальный suffix route, например
+`/get-admin-settings` -> `/settings/get-admin-settings`.
+
+Нужна структурированная provenance-модель: call site, endpoint expression,
+base URL/config field, service-discovery alias и полный path после доказуемого
+join. UI должен показывать, на каком именно evidence основана связь.
+
+**Done when:** вызов через `WithBaseURL(cfg.SettingAddr)` связывается с
+`aviaadmin` по восстановленному `/settings/...`, а не только по уникальности
+суффикса среди текущих проектов.
+
+### PORTOLAN-19. Не склеивать одинаковые HTTP routes к разным destinations
+
+**Status:** open
+
+HTTP client extractor дедуплицирует consumers по `call.ID`. Два реальных
+вызова `POST /foo` к разным hosts получают одинаковый ID и могут схлопнуться в
+одну запись до того, как merged catalog увидит destination evidence.
+
+Нужно определить устойчивую identity outbound call: protocol operation плюс
+destination identity или отдельный call-site ID. Несколько call sites к одному
+контракту можно агрегировать только после разрешения peer, сохраняя список
+provenance.
+
+**Done when:** fixture с двумя `POST /foo` к разным сервисам создаёт две
+корректные связи и ни порядок обхода файлов, ни deduplication не меняют
+результат.
+
+### PORTOLAN-20. Выводить HTTP verb для mounted Django views
+
+**Status:** investigate
+
+Django extractor видит URLConf и flow для views вроде `Planet.fetch`, но
+исключает route из inferred OpenAPI, если verb не объявлен явно. Из-за этого
+известный путь `/geo/planet/fetch` нельзя сопоставить с outbound HTTP call.
+
+Нужно собирать evidence из `require_http_methods`, DRF action metadata,
+`http_method_names`, branch logic по `request.method` и вызываемых wrappers.
+Если verb всё равно неизвестен, route можно хранить как диагностический
+кандидат без автоматического подтверждения связи.
+
+**Done when:** поддержанные декларативные Django-паттерны дают verb + mounted
+path; неизвестный verb остаётся явно неизвестным и не исчезает из модели.
+
+### PORTOLAN-21. Устранить zero-size warning React Flow при reload карты
+
+**Status:** open; low priority
+
+При restart/reload context map React Flow иногда пишет, что parent container не
+имеет width и height. После завершения layout карта отображается, но warning
+засоряет консоль и может указывать на race между layout shell и инициализацией
+canvas.
+
+**Done when:** context map монтирует canvas только после измерения контейнера
+или задаёт ему стабильный minimum size; reload и resize не создают warning и
+не показывают пустой кадр.
+
 ## Предлагаемый порядок
 
 1. **Safety pass:** PORTOLAN-1 и PORTOLAN-2.
@@ -275,8 +356,11 @@ generation, лимиты по типам flows, grouping и генерация �
 3. **Architecture value:** PORTOLAN-6 и PORTOLAN-7, потому что без них карта
    межсервисных связей остаётся неполной.
 4. **UI trust:** PORTOLAN-8 и PORTOLAN-9.
-5. **Extractor depth:** PORTOLAN-10—PORTOLAN-16 по фактической ценности для
-   следующих подключаемых проектов.
+5. **Extractor depth:** PORTOLAN-10—PORTOLAN-16 и PORTOLAN-18—20 по фактической
+   ценности для следующих подключаемых проектов.
+6. **Generated output hygiene:** PORTOLAN-17, чтобы обязательная регенерация
+   оставалась проверяемой в code review.
+7. **UI polish:** PORTOLAN-21 после correctness-задач.
 
 ## Решения, которые нужно принять
 
@@ -298,4 +382,6 @@ generation, лимиты по типам flows, grouping и генерация �
 - `npm run gen` — passed.
 - `npm run likec4:gen` — passed.
 - Итоговый ETG catalog с тремя проектами отрисован в UI; Settings показывает
-  три healthy проекта, context map показывает три домена.
+  три healthy проекта, context map показывает три домена и `2 of 3 pairs
+  joined`: 21 вызов `aviacore -> aviasupp`, 18 вызовов
+  `aviacore -> aviaadmin` и один обратный вызов `aviasupp -> aviacore`.
