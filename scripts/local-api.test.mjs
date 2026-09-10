@@ -148,7 +148,9 @@ describe("local project setup", () => {
     expect(pipeline).toContain("# >>> Portolan delivery preset >>>");
     expect(pipeline).toContain("\npages:\n");
     expect(pipeline).not.toContain('"portolan:pages":');
-    expect(pipeline).toContain("pages:\n    publish: dist");
+    expect(pipeline).toContain("portolan build --output public");
+    expect(pipeline).toContain("artifacts:\n    paths:\n      - public");
+    expect(pipeline).not.toContain("publish:");
     expect(existsSync(join(root, ".github"))).toBe(false);
   });
 

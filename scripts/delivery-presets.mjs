@@ -268,9 +268,10 @@ function gitlabPages() {
     GIT_DEPTH: "0"
   script:
     - BASE_PATH="$(node -p 'new URL(process.env.CI_PAGES_URL).pathname.replace(/\\/?$/, "/") || "/"')"
-    - portolan build --output dist --base "$BASE_PATH"
-  pages:
-    publish: dist
+    - portolan build --output public --base "$BASE_PATH"
+  artifacts:
+    paths:
+      - public
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
 `;
