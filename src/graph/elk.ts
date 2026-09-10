@@ -191,6 +191,84 @@ export async function layoutWithElk(input: LayoutInput): Promise<LayoutResult> {
 }
 
 // ---------------------------------------------------------------------------
+// Groups of nodes, packed
+// ---------------------------------------------------------------------------
+
+export interface GroupLayoutInput {
+  groups: {
+    id: string;
+    nodes: { id: string; width: number; height: number }[];
+    /** Edges between this group's own nodes; one across groups is not laid out. */
+    edges: { id: string; source: string; target: string }[];
+  }[];
+  /** Width over height the packed whole should come out near: the canvas's. */
+  aspectRatio: number;
+  layerSpacing?: number;
+  nodeSpacing?: number;
+  /** Room between two groups' frames. */
+  groupSpacing?: number;
+  /** Room a frame keeps above its nodes, for its label. */
+  labelHeight?: number;
+}
+
+export interface GroupLayoutResult {
+  /** Every node, in the coordinates of the whole picture. */
+  positions: Record<string, Point>;
+  /** Each group's frame, in the same coordinates. */
+  frames: Record<string, { x: number; y: number; width: number; height: number }>;
+  width: number;
+  height: number;
+}
+
+/**
+ * A layered layout inside each group and the groups packed as rectangles
+ * outside, to an aspect ratio. This is for a graph that a single layered pass
+ * cannot draw: one with a layer of fifty nodes, which comes out as a column
+ * whatever direction it is read in. Packing ignores the edges between
+ * groups, deliberately - the caller draws those itself, and a packing that
+ * tried to shorten them would trade the readable shape for it.
+ */
+export async function layoutGroupsWithElk(input: GroupLayoutInput): Promise<GroupLayoutResult> {
+  const labelHeight = input.labelHeight ?? 28;
+  const graph: ElkNode = {
+    id: "root",
+    layoutOptions: {
+      "elk.algorithm": "rectpacking",
+      "elk.aspectRatio": String(input.aspectRatio),
+      "elk.spacing.nodeNode": String(input.groupSpacing ?? 40),
+      "elk.padding": "[top=16,left=16,bottom=16,right=16]",
+    },
+    children: input.groups.map((group) => ({
+      id: group.id,
+      layoutOptions: {
+        "elk.algorithm": "layered",
+        "elk.direction": "RIGHT",
+        "elk.layered.spacing.nodeNodeBetweenLayers": String(input.layerSpacing ?? 120),
+        "elk.spacing.nodeNode": String(input.nodeSpacing ?? 24),
+        "elk.layered.nodePlacement.strategy": "NETWORK_SIMPLEX",
+        "elk.padding": `[top=${labelHeight},left=12,bottom=12,right=12]`,
+      },
+      children: group.nodes.map((n) => ({ id: n.id, width: n.width, height: n.height })),
+      edges: group.edges.map((e) => ({ id: e.id, sources: [e.source], targets: [e.target] })),
+    })),
+    edges: [],
+  };
+
+  const laid = await elk.layout(graph);
+  const positions: Record<string, Point> = {};
+  const frames: GroupLayoutResult["frames"] = {};
+  for (const group of laid.children ?? []) {
+    const gx = group.x ?? 0;
+    const gy = group.y ?? 0;
+    frames[group.id] = { x: gx, y: gy, width: group.width ?? 0, height: group.height ?? 0 };
+    for (const child of group.children ?? []) {
+      positions[child.id] = { x: gx + (child.x ?? 0), y: gy + (child.y ?? 0) };
+    }
+  }
+  return { positions, frames, width: laid.width ?? 0, height: laid.height ?? 0 };
+}
+
+// ---------------------------------------------------------------------------
 // Drawing what elk answered
 // ---------------------------------------------------------------------------
 

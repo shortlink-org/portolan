@@ -21,7 +21,7 @@ import {
 } from "@xyflow/react";
 import type { Edge } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Columns3, Eye, FileCode2, ImageDown, Maximize2, Search, Waypoints } from "lucide-react";
+import { Columns3, Eye, FileCode2, ImageDown, LayoutGrid, Maximize2, Search, Waypoints, Workflow } from "lucide-react";
 import type { Store } from "../catalog";
 import { storeViews } from "../catalog";
 import { index } from "../data";
@@ -29,10 +29,13 @@ import { DiagramSkeleton } from "../components/DiagramSkeleton";
 import { useSelectionStore } from "../selection/store";
 import { TableNodeCard } from "./TableNode";
 import { ViewNodeCard } from "./ViewNode";
+import { GroupNodeCard } from "./GroupNode";
+import type { ErGroupNode } from "./GroupNode";
 import type { ErFlowNode } from "./RelationCard";
 import { EDGE_W, EDGE_W_LIT } from "../graph/theme";
 import { ErMarkers, MARKER_FLOW, MARKER_MANY, MARKER_ONE } from "./markers";
-import { layoutEr } from "./layout";
+import { canGroup, layoutEr } from "./layout";
+import type { ErGroupFrame } from "./layout";
 import { lineageChain } from "./lineage";
 import type { LineageMaps } from "./lineage";
 import { erSpec, matchingNodes } from "./spec";
@@ -42,7 +45,10 @@ import { saveCanvasImage, viewportOf } from "../lib/export-canvas";
 import type { ImageKind } from "../lib/export-canvas";
 
 /** Stable across renders: React Flow re-mounts every node when this changes. */
-const erNodeTypes = { erTable: TableNodeCard, erView: ViewNodeCard };
+const erNodeTypes = { erTable: TableNodeCard, erView: ViewNodeCard, erGroup: GroupNodeCard };
+
+/** One flow, roots first; or the cards by model group, the groups packed. */
+type Arrangement = "flow" | "groups";
 
 const DIM = 0.25;
 
@@ -93,8 +99,12 @@ function Canvas({
   const [hoverEdge, setHoverEdge] = useState<string | null>(null);
   const [layout, setLayout] = useState<{
     positions: Record<string, { x: number; y: number }>;
+    groups: ErGroupFrame[];
     ready: boolean;
-  }>({ positions: {}, ready: false });
+  }>({ positions: {}, groups: [], ready: false });
+  // Null until the reader chooses: a schema big enough is grouped, the rest
+  // flow, and the toggle only appears where the choice exists.
+  const [chosen, setChosen] = useState<Arrangement | null>(null);
 
   const select = useSelectionStore((s) => s.select);
   const clear = useSelectionStore((s) => s.clear);
@@ -119,16 +129,27 @@ function Canvas({
   const [cursor, setCursor] = useState(-1);
   useEffect(() => setCursor(-1), [term]);
 
+  const groupable = useMemo(() => canGroup(spec), [spec]);
+  const arrangement: Arrangement = groupable ? (chosen ?? "groups") : "flow";
+
   useEffect(() => {
     let cancelled = false;
     setLayout((prev) => ({ ...prev, ready: false }));
-    void layoutEr(spec).then((result) => {
-      if (!cancelled) setLayout({ positions: result.positions, ready: true });
+    // The packing aims at the box the picture is drawn in; a box not yet on
+    // screen has no shape, and 2:1 is what the service page's canvas is.
+    const box = wrapper.current;
+    const aspectRatio = box && box.clientWidth > 0 && box.clientHeight > 0 ? box.clientWidth / box.clientHeight : 2;
+    void layoutEr(spec, {
+      grouped: arrangement === "groups",
+      aspectRatio,
+      nameOf: (aggregate) => index.aggregateById.get(aggregate)?.name ?? (aggregate.split(".").at(-1) ?? aggregate),
+    }).then((result) => {
+      if (!cancelled) setLayout({ positions: result.positions, groups: result.groups, ready: true });
     });
     return () => {
       cancelled = true;
     };
-  }, [spec]);
+  }, [spec, arrangement]);
 
   // Which columns need an anchor, per table. A column with no relationship
   // gets no handle: React Flow measures every handle it is given, and a wide
@@ -255,7 +276,28 @@ function Canvas({
       : null;
   }, [selectionId]);
 
-  const nodes: ErFlowNode[] = useMemo(
+  // The frames go first so that they are drawn under the cards; nothing
+  // about them is interactive but the label, so a click on one reaches the
+  // pane and clears the selection like empty canvas would.
+  const frames: ErGroupNode[] = useMemo(
+    () =>
+      layout.groups.map((group) => ({
+        id: `group:${group.id}`,
+        type: "erGroup" as const,
+        position: { x: group.x, y: group.y },
+        width: group.width,
+        height: group.height,
+        draggable: false,
+        selectable: false,
+        connectable: false,
+        focusable: false,
+        zIndex: -1,
+        data: { name: group.name, aggregate: group.aggregate, count: group.count },
+      })),
+    [layout.groups],
+  );
+
+  const cards: ErFlowNode[] = useMemo(
     () =>
       spec.nodes.map((node) => ({
         id: node.id,
@@ -292,6 +334,7 @@ function Canvas({
       onColumnClick,
     ],
   );
+  const nodes: (ErFlowNode | ErGroupNode)[] = useMemo(() => [...frames, ...cards], [frames, cards]);
 
   const edges: Edge[] = useMemo(
     () =>
@@ -351,7 +394,7 @@ function Canvas({
     [spec, layout.positions, litEdges],
   );
 
-  const fitKey = layout.ready ? `fit-${nodes.length}-${mode}` : "pending";
+  const fitKey = layout.ready ? `fit-${nodes.length}-${mode}-${arrangement}` : "pending";
   const views = storeViews(store).length;
 
   return (
@@ -372,6 +415,8 @@ function Canvas({
         hits={matched.size}
         cursor={cursor}
         onJump={onJump}
+        arrangement={groupable ? arrangement : null}
+        onArrangement={setChosen}
         views={views}
         showViews={showViews}
         onShowViews={setShowViews}
@@ -386,7 +431,9 @@ function Canvas({
           nodes={nodes}
           edges={edges}
           nodeTypes={erNodeTypes}
-          onNodeClick={(_, node) => select(node.id, "diagram")}
+          onNodeClick={(_, node) => {
+            if (node.type !== "erGroup") select(node.id, "diagram");
+          }}
           onPaneClick={() => clear("diagram")}
           onEdgeMouseEnter={(_, edge) => setHoverEdge(edge.id)}
           onEdgeMouseLeave={() => setHoverEdge(null)}
@@ -417,6 +464,8 @@ function Toolbar({
   hits,
   cursor,
   onJump,
+  arrangement,
+  onArrangement,
   views,
   showViews,
   onShowViews,
@@ -433,6 +482,9 @@ function Toolbar({
   /** The hit the reader stepped to with Enter, -1 for none yet. */
   cursor: number;
   onJump: () => void;
+  /** How the cards are laid out; null when the schema is too small for the choice to matter. */
+  arrangement: Arrangement | null;
+  onArrangement: (value: Arrangement) => void;
   /** How many views this store has; with none, the toggle is not a choice. */
   views: number;
   showViews: boolean;
@@ -515,6 +567,31 @@ function Toolbar({
           <Columns3 size={11} aria-hidden className="inline" /> all
         </button>
       </div>
+
+      {/* Only a schema big enough to come out as a column offers the choice;
+          on a small one the flow is the picture and a frame would be noise. */}
+      {arrangement ? (
+        <div className="seg bg-canvas" role="group" aria-label="Arrangement">
+          <button
+            type="button"
+            onClick={() => onArrangement("flow")}
+            aria-pressed={arrangement === "flow"}
+            className={arrangement === "flow" ? "is-on" : ""}
+            title="One flow, roots on the left"
+          >
+            <Workflow size={11} aria-hidden className="inline" /> flow
+          </button>
+          <button
+            type="button"
+            onClick={() => onArrangement("groups")}
+            aria-pressed={arrangement === "groups"}
+            className={arrangement === "groups" ? "is-on" : ""}
+            title="Tables by the model group they persist, groups packed to the canvas"
+          >
+            <LayoutGrid size={11} aria-hidden className="inline" /> groups
+          </button>
+        </div>
+      ) : null}
 
       {/* Two toggles rather than one: a reader who wants the tables alone and a
           reader who wants the views without the web of lines that joins them

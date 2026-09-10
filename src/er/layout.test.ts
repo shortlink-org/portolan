@@ -8,7 +8,8 @@ import { describe, expect, it } from "vitest";
 import { buildIndex, validateCatalog } from "../catalog";
 import { pathologicalCatalog, wideCatalog } from "../lib/scenarios";
 import { erSpec } from "./spec";
-import { layoutEr, layoutInput } from "./layout";
+import type { ErNode, ErSpec } from "./spec";
+import { canGroup, groupsOf, layoutEr, layoutInput } from "./layout";
 
 describe("layoutInput", () => {
   const bad = pathologicalCatalog();
@@ -82,7 +83,77 @@ describe("layoutEr", () => {
 
   it("answers for an empty store without asking elk anything", async () => {
     const result = await layoutEr({ nodes: [], edges: [] });
-    expect(result).toEqual({ positions: {}, width: 0, height: 0 });
+    expect(result).toEqual({ positions: {}, width: 0, height: 0, groups: [] });
+  });
+});
+
+describe("grouping a big schema", () => {
+  /** A card with only what grouping and packing read off it. */
+  const card = (id: string, aggregate: string | null): ErNode =>
+    ({ id, aggregate, width: 208, height: 120, name: id.split(".").at(-1) }) as unknown as ErNode;
+  /** `count` tables over `aggregates` groups, plus `loose` that persist nothing. */
+  const schema = (count: number, aggregates: string[], loose = 0): ErSpec => {
+    const nodes: ErNode[] = [];
+    for (let i = 0; i < count; i += 1) {
+      nodes.push(card(`s.t${i}`, aggregates[i % aggregates.length] ?? null));
+    }
+    for (let i = 0; i < loose; i += 1) nodes.push(card(`s.l${i}`, null));
+    return { nodes, edges: [] };
+  };
+
+  it("groups the cards by the model they persist, biggest first, the loose ones last", () => {
+    const spec = schema(7, ["a.big", "a.small", "a.big"], 2);
+    const groups = groupsOf(spec.nodes, (a) => a.split(".").at(-1)?.toUpperCase() ?? a);
+    expect(groups.map((g) => `${g.name}:${g.nodes.length}`)).toEqual(["BIG:5", "SMALL:2", "other:2"]);
+    expect(groups[2]?.aggregate).toBeNull();
+  });
+
+  it("offers grouping only past the size where one flow becomes a column", () => {
+    expect(canGroup(schema(39, ["a", "b", "c"]))).toBe(false);
+    expect(canGroup(schema(60, ["a", "b"]))).toBe(false);
+    expect(canGroup(schema(60, ["a", "b", "c"]))).toBe(true);
+    // Loose tables count as size but not as a group.
+    expect(canGroup(schema(10, ["a", "b", "c"], 40))).toBe(true);
+    expect(canGroup(schema(10, ["a", "b"], 40))).toBe(false);
+  });
+
+  it("packs the groups and keeps every card inside its own frame", async () => {
+    const spec = schema(48, ["a.x", "a.y", "a.z"], 6);
+    // A key inside a group and one across, which the packing ignores.
+    spec.edges.push(
+      { id: "in", kind: "fk", from: "s.t3", to: "s.t0", fromColumn: "x_id", toColumn: "id", onDelete: null } as unknown as ErSpec["edges"][number],
+      { id: "across", kind: "fk", from: "s.t1", to: "s.t0", fromColumn: "x_id", toColumn: "id", onDelete: null } as unknown as ErSpec["edges"][number],
+    );
+    const laid = await layoutEr(spec, { grouped: true, aspectRatio: 2 });
+    expect(laid.groups.map((g) => g.id)).toEqual(["a.x", "a.y", "a.z", "other"]);
+    for (const node of spec.nodes) {
+      const at = laid.positions[node.id];
+      expect(at).toBeDefined();
+      const frame = laid.groups.find((g) => g.id === (node.aggregate ?? "other"));
+      expect(frame).toBeDefined();
+      if (!at || !frame) continue;
+      expect(at.x).toBeGreaterThanOrEqual(frame.x);
+      expect(at.y).toBeGreaterThanOrEqual(frame.y);
+      expect(at.x + node.width).toBeLessThanOrEqual(frame.x + frame.width + 0.5);
+      expect(at.y + node.height).toBeLessThanOrEqual(frame.y + frame.height + 0.5);
+    }
+    // Frames do not overlap.
+    for (const a of laid.groups) {
+      for (const b of laid.groups) {
+        if (a.id === b.id) continue;
+        const apart = a.x + a.width <= b.x || b.x + b.width <= a.x || a.y + a.height <= b.y || b.y + b.height <= a.y;
+        expect(apart).toBe(true);
+      }
+    }
+    // Packed near the box's shape rather than as a column.
+    expect(laid.width / laid.height).toBeGreaterThan(1);
+    // The key inside a group put its parent left of its child.
+    expect(laid.positions["s.t0"]?.x ?? 0).toBeLessThan(laid.positions["s.t3"]?.x ?? 0);
+  });
+
+  it("stays one flow unless asked", async () => {
+    const laid = await layoutEr(schema(45, ["a", "b", "c"]));
+    expect(laid.groups).toEqual([]);
   });
 });
 
