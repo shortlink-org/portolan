@@ -302,12 +302,44 @@ type RpcVariant struct {
 	Message string `json:"message"`
 }
 
+type HTTPDestination struct {
+	Transforms            []HTTPDestinationJoin      `json:"transforms,omitempty"`
+	CallSite              string                     `json:"callSite"`
+	EndpointExpression    string                     `json:"endpointExpression"`
+	Method                string                     `json:"method"`
+	LocalPath             string                     `json:"localPath,omitempty"`
+	BaseURL               *HTTPBaseURL               `json:"baseURL,omitempty"`
+	ServiceDiscoveryAlias string                     `json:"serviceDiscoveryAlias,omitempty"`
+	FullPath              string                     `json:"fullPath,omitempty"`
+	Join                  *HTTPDestinationJoin       `json:"join,omitempty"`
+	Resolution            *HTTPDestinationResolution `json:"resolution,omitempty"`
+}
+type HTTPBaseURL struct {
+	Expression          string `json:"expression"`
+	ConfigField         string `json:"configField,omitempty"`
+	EnvironmentVariable string `json:"environmentVariable,omitempty"`
+	Value               string `json:"value,omitempty"`
+	Kind                string `json:"kind"`
+	Source              string `json:"source"`
+	OptionSource        string `json:"optionSource,omitempty"`
+}
+type HTTPDestinationJoin struct {
+	Expression string `json:"expression"`
+	Source     string `json:"source"`
+}
+type HTTPDestinationResolution struct {
+	Basis    string `json:"basis"`
+	Provider string `json:"provider"`
+	Route    string `json:"route"`
+}
+
 type RpcCall struct {
-	ID     string `json:"id"`
-	Peer   string `json:"peer"`
-	Status Status `json:"status"`
-	Source string `json:"source"`
-	Note   string `json:"note,omitempty"`
+	Destination *HTTPDestination `json:"destination,omitempty"`
+	ID          string           `json:"id"`
+	Peer        string           `json:"peer"`
+	Status      Status           `json:"status"`
+	Source      string           `json:"source"`
+	Note        string           `json:"note,omitempty"`
 
 	// Module is the module the vendored copy this call was read from belongs to.
 	Module string `json:"module,omitempty"`
@@ -839,9 +871,10 @@ const (
 )
 
 type Step struct {
-	Type string `json:"type"`
-	ID   string `json:"id"`
-	From string `json:"from"`
+	Destination *HTTPDestination `json:"destination,omitempty"`
+	Type        string           `json:"type"`
+	ID          string           `json:"id"`
+	From        string           `json:"from"`
 	// To is a participant id. From == To is a self-message.
 	To   string   `json:"to"`
 	Kind StepKind `json:"kind"`

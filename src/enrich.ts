@@ -24,6 +24,7 @@ import type {
   Flow,
   FlowNode,
   RpcCall,
+  HTTPDestination,
   Service,
   Status,
   Step,
@@ -245,7 +246,8 @@ interface HTTPProvider {
  * OpenAPI or framework fragment knows only what its own service provides.
  * The merged catalog is the first place both facts exist.
  *
- * Exact routes win. A unique suffix match is also accepted because mounted
+ * Proven full paths are authoritative and never fall back to a suffix.
+ * Legacy calls can still use a unique suffix because mounted
  * applications commonly see only their local route (`/get-admin-settings`)
  * while the server extractor records the mount too
  * (`/settings/get-admin-settings`). Ambiguous matches and possible self-calls
@@ -274,14 +276,19 @@ function resolveHTTPCalls(input: Catalog): Catalog {
   const resolvedByCaller = new Map<string, Map<string, HTTPProvider>>();
   const resolve = (caller: string, call: RpcCall): HTTPProvider | undefined => {
     if (call.status !== "unresolved") return undefined;
-    const route = rawHTTPRoute(call.id);
+    const raw = rawHTTPRoute(call.id);
+    const route = call.destination?.fullPath
+      ? { method: call.destination.method, path: call.destination.fullPath }
+      : raw;
     if (!route) return undefined;
 
     const candidates = providers.filter(
       (provider) =>
         provider.service !== caller &&
         provider.method === route.method &&
-        sameHTTPPath(provider.path, route.path),
+        (call.destination?.fullPath
+          ? sameHTTPShape(provider.path, route.path)
+          : sameHTTPPath(provider.path, route.path)),
     );
     const exact = uniqueHTTPProviders(
       candidates.filter((provider) => sameHTTPShape(provider.path, route.path)),
@@ -290,6 +297,17 @@ function resolveHTTPCalls(input: Catalog): Catalog {
     return matches.length === 1 ? matches[0] : undefined;
   };
 
+  const evidence = (call: Pick<RpcCall, "id" | "source" | "destination">, provider: HTTPProvider): HTTPDestination => {
+    const raw = rawHTTPRoute(call.id);
+    const destination = call.destination ?? {
+      callSite: call.source, endpointExpression: raw?.path ?? call.id,
+      method: raw?.method ?? provider.method, localPath: raw?.path,
+    };
+    return { ...destination, resolution: {
+      basis: destination.fullPath ? "full-path" : sameHTTPShape(provider.path, raw?.path ?? "") ? "exact-route" : "unique-suffix",
+      provider: provider.service, route: provider.path,
+    } };
+  };
   let changed = false;
   const contexts = input.contexts.map((context) => ({
     ...context,
@@ -303,6 +321,7 @@ function resolveHTTPCalls(input: Catalog): Catalog {
         return {
           ...call,
           id: provider.ref,
+          destination: evidence(call, provider),
           peer: provider.service,
           status: "declared" as const,
         };
@@ -329,6 +348,7 @@ function resolveHTTPCalls(input: Catalog): Catalog {
       return {
         ...step,
         ref: provider.ref,
+        destination: evidence({ id: step.ref, source: step.line ?? "", destination: step.destination }, provider),
         to: provider.service,
         status: "declared",
       };

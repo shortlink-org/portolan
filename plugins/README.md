@@ -1219,3 +1219,23 @@ it, the call before the decorator before `task_routes` before the default,
 and `transaction.on_commit(...)` around an enqueue is a note on the step,
 which is the one fact about *when* a message leaves that the code states
 plainly.
+
+### HTTP destination provenance
+
+`extract-http-clients` emits structured `destination` evidence on HTTP consumes
+and flow steps: the request call site and endpoint expression, local path,
+base URL expression, config field and environment variable, source locations,
+and a full path when source proves the join. Functional options that assign a
+URL field to a returned client are followed through adapter constructors.
+Bindings belong to the adapter's client field; conflicting construction sites
+remain unresolved instead of sharing another client's settings.
+
+A Go `default` struct tag is recorded as `config-default`, not as the effective
+runtime configuration. For example, `WithBaseURL(cfg.SettingAddr)` with
+`default:"http://localhost:8000/settings"` and a concatenated
+`/get-admin-settings` yields `/settings/get-admin-settings`. The merge matches
+that full path exactly and never falls back to a suffix if it is absent.
+Legacy suffix matches remain explicitly labeled `unique-suffix` in the evidence
+shown in RPC step details. Later runtime URL modifiers are listed separately;
+the recovered full path describes the static join. Unreadable options may
+leave only the local route available.

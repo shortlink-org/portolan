@@ -1339,3 +1339,83 @@ func Check(client *Client, request, response any) error {
 		t.Fatalf("method = %+v", method)
 	}
 }
+
+func TestDestinationThroughFunctionalOption(t *testing.T) {
+	for _, ambiguous := range []bool{false, true} {
+		t.Run(fmt.Sprint(ambiguous), func(t *testing.T) {
+			root := t.TempDir()
+			writeHTTPFixture(t, root, "go.mod", "module example.com/destination\n")
+			writeHTTPFixture(t, root, "client.go", `package destination
+import "net/http"
+type Config struct { SettingAddr string `+"`envconfig:\"SETTINGS_ADDR\" default:\"http://localhost:8000/settings\"`"+` }
+type Client struct { baseURL string }
+type Option func(*Client)
+func WithBaseURL(value string) Option { return func(c *Client) { c.baseURL = value } }
+func NewClient(options ...Option) *Client {
+ c := &Client{}
+ for _, opt := range options { opt(c) }
+ return c
+}
+func runtimeURL(path string) string { return path }
+func (c *Client) request(method, path string) { path = c.baseURL + path; path = runtimeURL(path); http.NewRequest(method, path, nil) }
+func (c *Client) POST(path string) { c.request(http.MethodPost, path) }
+type Manager struct { client *Client }
+func New(client *Client) *Manager { return &Manager{client: client} }
+func Build(cfg Config) *Manager { return New(NewClient(WithBaseURL(cfg.SettingAddr))) }
+func (m *Manager) Settings() { m.client.POST("/get-admin-settings") }
+type Other struct { client *Client }
+func NewOther(client *Client) *Other { return &Other{client: client} }
+func BuildOther() *Other { return NewOther(NewClient(WithBaseURL("http://other/billing"))) }
+func (m *Other) Settings() { m.client.POST("/get-admin-settings") }
+`)
+			if ambiguous {
+				writeHTTPFixture(t, root, "other.go", `package destination
+func Unknown(value string) *Manager { return New(NewClient(WithBaseURL(value))) }
+`)
+			}
+			resp, err := extract(plugin.Input{Root: root}, Options{Context: "avia", Service: "aviacore"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			var got catalog.Catalog
+			if err := json.Unmarshal([]byte(resp.Files[0].Contents), &got); err != nil {
+				t.Fatal(err)
+			}
+			found := false
+			for _, flow := range got.Flows {
+				if flow.EntryPoint == "Other.Settings" {
+					step := flow.Steps[0].(*catalog.Step)
+					if d := step.Destination; d == nil || d.FullPath != "/billing/get-admin-settings" || d.ServiceDiscoveryAlias != "other" {
+						t.Fatalf("other client destination = %+v", d)
+					}
+				}
+				if flow.EntryPoint != "Manager.Settings" {
+					continue
+				}
+				for _, node := range flow.Steps {
+					step, ok := node.(*catalog.Step)
+					if !ok || step.Kind != catalog.StepRPC {
+						continue
+					}
+					found = true
+					d := step.Destination
+					if d == nil {
+						t.Fatalf("missing destination: %+v", step)
+					}
+					if ambiguous {
+						if d.FullPath != "" {
+							t.Fatalf("ambiguous destination resolved: %+v", d)
+						}
+						continue
+					}
+					if d.FullPath != "/settings/get-admin-settings" || d.LocalPath != "/get-admin-settings" || d.BaseURL == nil || d.BaseURL.ConfigField != "Config.SettingAddr" || d.BaseURL.EnvironmentVariable != "SETTINGS_ADDR" || d.BaseURL.Kind != "config-default" || d.Join == nil || d.Join.Expression != "c.baseURL + path" || len(d.Transforms) != 1 || d.Transforms[0].Expression != "runtimeURL(path)" {
+						t.Fatalf("destination = %+v; base = %+v", d, d.BaseURL)
+					}
+				}
+			}
+			if !found {
+				t.Fatalf("no Manager.Settings flow: %+v", got.Flows)
+			}
+		})
+	}
+}

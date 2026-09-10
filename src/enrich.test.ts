@@ -306,7 +306,7 @@ describe("enrichCatalog: HTTP route correlation", () => {
 
     const resolved = enrichCatalog(merged).catalog;
     const call = serviceOf(resolved, "aviacore.aviacore").consumes[0];
-    expect(call).toEqual({
+    expect(call).toMatchObject({
       id: "api/book_post",
       peer: "aviasupp.aviasupp",
       status: "declared",
@@ -358,6 +358,23 @@ describe("enrichCatalog: HTTP route correlation", () => {
         status: "declared",
       }),
     );
+  });
+
+  it("uses a proven full path even when another project has the same suffix", () => {
+    const caller = httpCaller("/get-admin-settings");
+    caller.consumes[0]!.destination = {
+      callSite: "client.go:10", endpointExpression: "c.baseURL + path", method: "POST",
+      localPath: "/get-admin-settings", fullPath: "/settings/get-admin-settings",
+      baseURL: { expression: "cfg.SettingAddr", configField: "Config.SettingAddr", environmentVariable: "SETTINGS_ADDR", kind: "config-default", value: "http://localhost:8000/settings", source: "config.go:84" },
+      join: { expression: "c.baseURL + path", source: "client.go:10" },
+    };
+    const admin = httpProvider("aviaadmin", "settings", "/settings/get-admin-settings");
+    const other = httpProvider("other", "settings", "/other/get-admin-settings");
+    const result = enrichCatalog(estate([], [caller, admin, other])).catalog;
+    expect(serviceOf(result, "shop.oms").consumes[0]).toMatchObject({ peer: "shop.aviaadmin", destination: { resolution: { basis: "full-path", route: "/settings/get-admin-settings" }, baseURL: { configField: "Config.SettingAddr" } } });
+    const missing = enrichCatalog(estate([], [caller, other])).catalog;
+    expect(serviceOf(missing, "shop.oms").consumes[0]!.status).toBe("unresolved");
+    expect(enrichCatalog(result).catalog).toEqual(result);
   });
 
   it("leaves ambiguous routes and possible self-calls unresolved", () => {

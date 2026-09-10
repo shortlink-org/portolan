@@ -1,3 +1,4 @@
+import { HTTPDestinationEvidence } from "../components/HTTPDestinationEvidence";
 import { useMemo } from "react";
 import { Link } from "react-router";
 import { AlertTriangle, FileCode2 } from "lucide-react";
@@ -189,6 +190,8 @@ function RpcDetail({ step, flow }: { step: Step; flow: Flow }) {
           <Ident block value={method} className="text-ink" />
         </div>
       </header>
+
+      {step.destination ? <HTTPDestinationEvidence destination={step.destination} /> : null}
 
       <DetailSection title="Contract">
         <dl className="grid grid-cols-[minmax(7rem,auto)_minmax(0,1fr)] gap-x-4 gap-y-2">

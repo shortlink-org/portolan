@@ -43,7 +43,7 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 		}
 		consumes = append(consumes, catalog.RpcCall{
 			ID: call.ID, Peer: peer, Status: status, Source: source,
-			Note: callNote(call),
+			Note: callNote(call), Destination: call.Destination,
 		})
 	}
 	sort.Slice(consumes, func(i, j int) bool { return consumes[i].ID < consumes[j].ID })
@@ -228,7 +228,7 @@ func flowsOfGroupsExcept(serviceID, context string, groups []gohttp.FlowGroup, o
 			callSteps = append(callSteps, &catalog.Step{
 				Type: "step", ID: "s" + strconv.Itoa(index+1), From: serviceID, To: participant.ID,
 				Kind: catalog.StepRPC, Ref: call.ID, Label: callLabel(call), Status: status,
-				Note: note, Line: call.Source.String(),
+				Note: note, Line: call.Source.String(), Destination: call.Destination,
 			})
 		}
 		steps := catalog.FlowNodes{}
@@ -329,7 +329,7 @@ func flowsOfRoots(serviceID, context string, roots []gohttp.RootFlow, opts Optio
 			steps = append(steps, &catalog.Step{
 				Type: "step", ID: "s" + strconv.Itoa(index+2), From: serviceID, To: participant.ID,
 				Kind: catalog.StepRPC, Ref: call.ID, Label: callLabel(call), Status: status,
-				Note: note, Line: call.Source.String(),
+				Note: note, Line: call.Source.String(), Destination: call.Destination,
 			})
 		}
 		reached := append([]string{}, root.Covered...)
@@ -413,7 +413,7 @@ func flowsOfEndpoints(serviceID, context string, endpoints []gohttp.EndpointFlow
 				steps = append(steps, &catalog.Step{
 					Type: "step", ID: "s" + strconv.Itoa(stepIndex), From: serviceID, To: participant.ID,
 					Kind: catalog.StepRPC, Ref: call.ID, Label: callLabel(call), Status: status,
-					Note: note, Line: call.Source.String(),
+					Note: note, Line: call.Source.String(), Destination: call.Destination,
 				})
 				stepIndex++
 			}

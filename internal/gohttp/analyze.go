@@ -21,6 +21,7 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/shortlink-org/portolan/catalog"
 	"github.com/shortlink-org/portolan/internal/wsdl"
 	"github.com/shortlink-org/portolan/plugins/openapi"
 )
@@ -65,6 +66,7 @@ type SOAPOperation struct {
 }
 
 type Call struct {
+	Destination *catalog.HTTPDestination
 	Function    string
 	Source      Source
 	Protocol    string
@@ -160,6 +162,7 @@ type constValue struct {
 }
 
 type scanner struct {
+	destinations        map[string]destinationObject
 	root                string
 	fset                *token.FileSet
 	files               []*parsedFile
@@ -183,6 +186,7 @@ type functionDecl struct {
 }
 
 type localEdge struct {
+	fun    ast.Expr
 	target string
 	line   int
 	args   []ast.Expr
@@ -238,6 +242,7 @@ func Analyze(root string) (Result, error) {
 	s.indexConcreteFieldTypes()
 	s.indexFieldOrigins()
 	s.resolveFieldOriginsAtCallSites()
+	s.indexDestinations()
 	s.readContracts()
 	s.readWSDLContracts()
 	s.indexSOAPWrappers()
@@ -2107,14 +2112,14 @@ func (s *scanner) flowGroups(calls []Call) []FlowGroup {
 				for index, argument := range call.Args {
 					args[index] = closureArgument(fn.fn, call.Pos(), argument)
 				}
-				edges[key] = append(edges[key], localEdge{target: target, line: s.fset.Position(call.Pos()).Line, args: args})
+				edges[key] = append(edges[key], localEdge{target: target, line: s.fset.Position(call.Pos()).Line, args: args, fun: call.Fun})
 			}
 			return true
 		})
 	}
 	groups := map[string][]Call{}
 	for key := range s.functions {
-		collected := s.collectCalls(key, edges, direct, nil, nil, map[string]bool{}, 0)
+		collected := s.collectCalls(key, edges, direct, nil, nil, nil, map[string]bool{}, 0)
 		if len(collected) > 0 {
 			groups[key] = collected
 		}
@@ -2211,7 +2216,7 @@ func fieldListNames(fields *ast.FieldList) []string {
 	return out
 }
 
-func (s *scanner) collectCalls(key string, edges map[string][]localEdge, direct map[string][]Call, chain []string, bindings map[string]string, visiting map[string]bool, depth int) []Call {
+func (s *scanner) collectCalls(key string, edges map[string][]localEdge, direct map[string][]Call, chain []string, bindings map[string]string, origins destinationObject, visiting map[string]bool, depth int) []Call {
 	if depth > 6 || visiting[key] {
 		return nil
 	}
@@ -2221,7 +2226,22 @@ func (s *scanner) collectCalls(key string, edges map[string][]localEdge, direct 
 	declaration := s.functions[key]
 	locals := map[string]string{}
 	if declaration != nil {
-		locals = s.localStringsBound(declaration.file, declaration.fn, bindings)
+		if origins == nil && declaration.fn.Recv != nil {
+			typ, ok := s.typeExpression(declaration.file, declaration.fn.Recv.List[0].Type)
+			if ok {
+				origins = s.destinations[fieldTypeKey(typ, "")]
+			}
+		}
+		seeded := map[string]string{}
+		for name, value := range bindings {
+			seeded[name] = value
+		}
+		for field, base := range origins {
+			if base.Value != "" {
+				seeded[receiverVariable(declaration.fn)+"."+field] = base.Value
+			}
+		}
+		locals = s.localStringsBound(declaration.file, declaration.fn, seeded)
 	}
 	type event struct {
 		line   int
@@ -2259,6 +2279,7 @@ func (s *scanner) collectCalls(key string, edges map[string][]localEdge, direct 
 					copy.Path = resolvedPath
 				}
 				copy.ID = rawCallID(copy.Method, copy.Path)
+				copy.Destination = s.destinationFor(copy, declaration, origins)
 			}
 			copy.Chain = append([]string(nil), path...)
 			out = append(out, copy)
@@ -2280,7 +2301,21 @@ func (s *scanner) collectCalls(key string, edges map[string][]localEdge, direct 
 				}
 			}
 		}
-		out = append(out, s.collectCalls(item.edge.target, edges, direct, path, nextBindings, visiting, depth+1)...)
+		nextOrigins := destinationObject{}
+		if selector, ok := item.edge.fun.(*ast.SelectorExpr); ok && declaration != nil {
+			root := receiverVariable(declaration.fn)
+			prefix := strings.TrimPrefix(expression(selector.X), root+".")
+			if expression(selector.X) == root {
+				nextOrigins = origins
+			} else {
+				for field, base := range origins {
+					if rest, ok := strings.CutPrefix(field, prefix+"."); ok {
+						nextOrigins[rest] = base
+					}
+				}
+			}
+		}
+		out = append(out, s.collectCalls(item.edge.target, edges, direct, path, nextBindings, nextOrigins, visiting, depth+1)...)
 	}
 	return uniqueFlowCalls(out)
 }

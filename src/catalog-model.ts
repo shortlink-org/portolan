@@ -361,7 +361,31 @@ export interface EdgeVia {
   flow: string; // Flow.slug
   step: string; // Step.id
 }
+/** Source facts remain separate from the merge's choice of provider. */
+export interface HTTPDestination {
+  callSite: string;
+  endpointExpression: string;
+  method: string;
+  localPath?: string;
+  baseURL?: HTTPBaseURL;
+  serviceDiscoveryAlias?: string;
+  fullPath?: string;
+  join?: { expression: string; source: string };
+  /** Runtime URL modifiers after the proven join; not evaluated statically. */
+  transforms?: { expression: string; source: string }[];
+  resolution?: { basis: "full-path" | "exact-route" | "unique-suffix"; provider: string; route: string };
+}
+export interface HTTPBaseURL {
+  expression: string;
+  configField?: string;
+  environmentVariable?: string;
+  value?: string;
+  kind: "literal" | "config-default" | "symbolic";
+  source: string;
+  optionSource?: string;
+}
 export interface RpcCall {
+  destination?: HTTPDestination;
   id: string; // "<proto.package.Service>/<Method>"
   peer: string; // service id if resolved, else raw name
   status: Status;
@@ -909,6 +933,7 @@ export interface Participant {
 }
 export type FlowNode = Step | Parallel | Alt | Loop;
 export interface Step {
+  destination?: HTTPDestination;
   type: "step";
   id: string;
   from: string;
