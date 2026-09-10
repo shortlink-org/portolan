@@ -29,14 +29,22 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 
 	serviceID := opts.Context + "." + opts.Service
 	externals := externalCatalog(result.Contracts, result.Calls, opts)
+	// One consumer entry per call identity. A raw call's ID already carries its
+	// destination (see gohttp.withCallID), so two `POST /foo` against different
+	// hosts land as two entries; a generated client's ID is its contract
+	// operation, whose peer is known. Several call sites that share an identity
+	// are one dependency: the entry keeps the first site in source order (the
+	// analyzer sorts by file and line, so traversal order cannot change it) and
+	// carries every site as evidence.
 	consumes := make([]catalog.RpcCall, 0, len(result.Calls))
-	seenCalls := map[string]bool{}
+	consumeAt := map[string]int{}
 	for _, call := range result.Calls {
 		peer, status := peerOf(call, opts)
-		if seenCalls[call.ID] {
+		if at, seen := consumeAt[call.ID]; seen {
+			consumes[at].Evidence = appendEvidence(consumes[at].Evidence, httpCallEvidence(call))
 			continue
 		}
-		seenCalls[call.ID] = true
+		consumeAt[call.ID] = len(consumes)
 		source := call.Source.String()
 		if call.Contract != "" {
 			source = call.Contract
@@ -700,6 +708,24 @@ func uniqueStrings(values []string) []string {
 		}
 	}
 	return out
+}
+
+// appendEvidence adds the evidence of another call site to an aggregated
+// consumer entry, skipping items it already carries.
+func appendEvidence(existing, more []catalog.RelationEvidence) []catalog.RelationEvidence {
+	for _, item := range more {
+		duplicate := false
+		for _, have := range existing {
+			if have.Kind == item.Kind && have.Rule == item.Rule && have.Source == item.Source && have.Symbol == item.Symbol {
+				duplicate = true
+				break
+			}
+		}
+		if !duplicate {
+			existing = append(existing, item)
+		}
+	}
+	return existing
 }
 
 func httpCallEvidence(call gohttp.Call) []catalog.RelationEvidence {

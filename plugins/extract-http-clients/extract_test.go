@@ -1419,3 +1419,143 @@ func Unknown(value string) *Manager { return New(NewClient(WithBaseURL(value))) 
 		})
 	}
 }
+
+// PORTOLAN-19: the verb and path are not a call identity. One shared request
+// helper addressed to two hosts is two dependencies, and neither the analyzer's
+// call-site deduplication nor the consumer list may glue them together.
+func TestSameRouteToDifferentHostsStaysTwoCalls(t *testing.T) {
+	root := t.TempDir()
+	writeHTTPFixture(t, root, "go.mod", "module example.com/clients\n")
+	writeHTTPFixture(t, root, "client.go", `package clients
+import "net/http"
+type Client struct { baseURL string }
+type Option func(*Client)
+func WithBaseURL(value string) Option { return func(c *Client) { c.baseURL = value } }
+func NewClient(options ...Option) *Client {
+ c := &Client{}
+ for _, opt := range options { opt(c) }
+ return c
+}
+func (c *Client) request(method, path string) { path = c.baseURL + path; http.NewRequest(method, path, nil) }
+func (c *Client) post(path string) { c.request(http.MethodPost, path) }
+type Payments struct { client *Client }
+func NewPayments(client *Client) *Payments { return &Payments{client: client} }
+func BuildPayments() *Payments { return NewPayments(NewClient(WithBaseURL("https://payments.internal"))) }
+func (p *Payments) Settle() { p.client.post("/foo") }
+type Ledger struct { client *Client }
+func NewLedger(client *Client) *Ledger { return &Ledger{client: client} }
+func BuildLedger() *Ledger { return NewLedger(NewClient(WithBaseURL("https://ledger.internal"))) }
+func (l *Ledger) Record() { l.client.post("/foo") }
+`)
+	resp, err := extract(plugin.Input{Root: root}, Options{Context: "shop", Service: "checkout"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got catalog.Catalog
+	if err := json.Unmarshal([]byte(resp.Files[0].Contents), &got); err != nil {
+		t.Fatal(err)
+	}
+	consumes := got.Contexts[0].Services[0].Consumes
+	if len(consumes) != 2 {
+		t.Fatalf("consumes = %+v", consumes)
+	}
+	byID := map[string]catalog.RpcCall{}
+	for _, call := range consumes {
+		byID[call.ID] = call
+	}
+	for host, peer := range map[string]string{"ledger.internal": "ledger-internal", "payments.internal": "payments-internal"} {
+		call, ok := byID["http-client/POST /foo @ "+host]
+		if !ok {
+			t.Fatalf("no consume for %s in %+v", host, consumes)
+		}
+		if call.Peer != peer || call.Status != catalog.StatusUnresolved || call.Destination == nil || call.Destination.ServiceDiscoveryAlias != host || call.Destination.FullPath != "/foo" {
+			t.Fatalf("%s = %+v (destination %+v)", host, call, call.Destination)
+		}
+	}
+	refs := map[string]string{}
+	for _, flow := range got.Flows {
+		for _, node := range flow.Steps {
+			if step, ok := node.(*catalog.Step); ok && step.Kind == catalog.StepRPC {
+				refs[flow.EntryPoint] = step.Ref
+			}
+		}
+	}
+	if refs["Payments.Settle"] != "http-client/POST /foo @ payments.internal" || refs["Ledger.Record"] != "http-client/POST /foo @ ledger.internal" {
+		t.Fatalf("flow refs = %+v", refs)
+	}
+}
+
+// Several call sites addressed to one destination are one dependency: the entry
+// keeps the first site in source order and every site as evidence, and the
+// order files are visited in cannot change which entries exist.
+func TestCallSitesToOneDestinationAggregateWithProvenance(t *testing.T) {
+	settle := `package clients
+import "net/http"
+func Settle() { http.Post("https://payments.internal/foo", "application/json", nil) }
+`
+	retry := `package clients
+import "net/http"
+func Retry() { http.Post("https://payments.internal/foo", "application/json", nil) }
+`
+	record := `package clients
+import "net/http"
+func Record() { http.Post("https://ledger.internal/foo", "application/json", nil) }
+`
+	run := func(files map[string]string) []catalog.RpcCall {
+		root := t.TempDir()
+		writeHTTPFixture(t, root, "go.mod", "module example.com/clients\n")
+		for name, contents := range files {
+			writeHTTPFixture(t, root, name, contents)
+		}
+		resp, err := extract(plugin.Input{Root: root}, Options{Context: "shop", Service: "checkout"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got catalog.Catalog
+		if err := json.Unmarshal([]byte(resp.Files[0].Contents), &got); err != nil {
+			t.Fatal(err)
+		}
+		return got.Contexts[0].Services[0].Consumes
+	}
+	consumes := run(map[string]string{"a_settle.go": settle, "b_retry.go": retry, "c_record.go": record})
+	if len(consumes) != 2 {
+		t.Fatalf("consumes = %+v", consumes)
+	}
+	var payments *catalog.RpcCall
+	for i := range consumes {
+		if consumes[i].ID == "http-client/POST /foo @ payments.internal" {
+			payments = &consumes[i]
+		}
+	}
+	if payments == nil || payments.Source != "a_settle.go:3" {
+		t.Fatalf("payments = %+v", payments)
+	}
+	var sites []string
+	for _, item := range payments.Evidence {
+		if item.Kind == "call-site" {
+			sites = append(sites, item.Source)
+		}
+	}
+	if strings.Join(sites, ",") != "a_settle.go:3,b_retry.go:3" {
+		t.Fatalf("call sites = %v", sites)
+	}
+
+	// Reverse the file order: the same identities come out, only the first
+	// site (and with it the entry's source) follows the new order.
+	reversed := run(map[string]string{"c_settle.go": settle, "b_retry.go": retry, "a_record.go": record})
+	ids := func(calls []catalog.RpcCall) []string {
+		var out []string
+		for _, call := range calls {
+			out = append(out, call.ID+" -> "+call.Peer)
+		}
+		return out
+	}
+	if strings.Join(ids(consumes), "\n") != strings.Join(ids(reversed), "\n") {
+		t.Fatalf("file order changed the result:\n%v\n%v", ids(consumes), ids(reversed))
+	}
+	for _, call := range reversed {
+		if call.ID == "http-client/POST /foo @ payments.internal" && call.Source != "b_retry.go:3" {
+			t.Fatalf("reversed payments source = %q", call.Source)
+		}
+	}
+}

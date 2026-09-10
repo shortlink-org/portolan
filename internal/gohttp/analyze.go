@@ -1537,11 +1537,11 @@ func (s *scanner) call(file *parsedFile, function string, call *ast.CallExpr, co
 		}
 		endpoint := s.value(file, call.Args[urlAt], locals, map[string]bool{})
 		path := pathOf(call.Args[urlAt], endpoint)
-		return Call{
+		return withCallID(Call{
 			Function: function, Source: s.source(file, call.Pos()), Protocol: "HTTP", Method: method,
-			Path: path, Endpoint: endpoint, ID: rawCallID(method, path), Conditions: append([]string(nil), conditions...),
+			Path: path, Endpoint: endpoint, Conditions: append([]string(nil), conditions...),
 			URLTrace: s.urlTrace(function), template: &callTemplate{method: call.Args[methodAt], endpoint: call.Args[urlAt]},
-		}, true
+		}), true
 	}
 
 	if (name == "Get" || name == "Post" || name == "PostForm" || name == "Head") && s.netHTTPCall(file, call.Fun) {
@@ -1553,7 +1553,7 @@ func (s *scanner) call(file *parsedFile, function string, call *ast.CallExpr, co
 		}
 		endpoint := s.value(file, call.Args[0], locals, map[string]bool{})
 		path := pathOf(call.Args[0], endpoint)
-		return Call{Function: function, Source: s.source(file, call.Pos()), Protocol: "HTTP", Method: strings.ToUpper(strings.TrimSuffix(name, "Form")), Path: path, Endpoint: endpoint, ID: rawCallID(strings.ToUpper(strings.TrimSuffix(name, "Form")), path), Conditions: append([]string(nil), conditions...), URLTrace: s.urlTrace(function), template: &callTemplate{endpoint: call.Args[0]}}, true
+		return withCallID(Call{Function: function, Source: s.source(file, call.Pos()), Protocol: "HTTP", Method: strings.ToUpper(strings.TrimSuffix(name, "Form")), Path: path, Endpoint: endpoint, Conditions: append([]string(nil), conditions...), URLTrace: s.urlTrace(function), template: &callTemplate{endpoint: call.Args[0]}}), true
 	}
 
 	if (name == "Call" || name == "CallContext") && s.looksLikeSOAP(file, call) {
@@ -1990,6 +1990,63 @@ func rawCallID(method, path string) string {
 	return "http-client/" + method + " " + path
 }
 
+// withCallID stamps a raw HTTP call with its identity: the protocol operation
+// (verb and path) qualified by where the call is addressed. The verb and path
+// alone are not an identity - `POST /foo` against the payments host and
+// `POST /foo` against the ledger host are two dependencies - so every later
+// deduplication (uniqueCalls, the consumer list, the host merge) keys on this
+// ID and never glues calls to different destinations together.
+func withCallID(call Call) Call {
+	call.ID = rawCallID(call.Method, call.Path)
+	if identity := destinationIdentity(call); identity != "" {
+		call.ID += " @ " + identity
+	}
+	return call
+}
+
+// destinationIdentity names what a raw HTTP call is addressed to, as far as
+// source proves it: a host recovered from a literal URL, otherwise the
+// configuration field, environment variable or expression the base URL is
+// read from, otherwise the host of the endpoint expression itself. Empty when
+// nothing in source says where the call goes; such calls share one identity
+// per operation because no evidence can tell them apart.
+func destinationIdentity(call Call) string {
+	if d := call.Destination; d != nil {
+		if d.ServiceDiscoveryAlias != "" {
+			return d.ServiceDiscoveryAlias
+		}
+		if base := d.BaseURL; base != nil {
+			if base.ConfigField != "" {
+				return base.ConfigField
+			}
+			if base.EnvironmentVariable != "" {
+				return base.EnvironmentVariable
+			}
+			if host := endpointHost(base.Value); host != "" {
+				return host
+			}
+			if base.Expression != "" {
+				return base.Expression
+			}
+		}
+	}
+	return endpointHost(call.Endpoint)
+}
+
+// endpointHost returns the host (with port) of an absolute URL and "" for a
+// bare path or an expression that is not a URL. The port is kept because two
+// local processes differ only by it.
+func endpointHost(endpoint string) string {
+	if !strings.Contains(endpoint, "://") {
+		return ""
+	}
+	parsed, err := url.Parse(endpoint)
+	if err != nil {
+		return ""
+	}
+	return parsed.Host
+}
+
 func selectorName(expr ast.Expr) string {
 	if sel, ok := expr.(*ast.SelectorExpr); ok {
 		return sel.Sel.Name
@@ -2240,8 +2297,8 @@ func (s *scanner) collectCalls(key string, edges map[string][]localEdge, direct 
 				if resolvedPath := pathOf(copy.template.endpoint, copy.Endpoint); resolvedPath != "" {
 					copy.Path = resolvedPath
 				}
-				copy.ID = rawCallID(copy.Method, copy.Path)
 				copy.Destination = s.destinationFor(copy, declaration, origins)
+				copy = withCallID(copy)
 			}
 			copy.Chain = append([]string(nil), path...)
 			out = append(out, copy)

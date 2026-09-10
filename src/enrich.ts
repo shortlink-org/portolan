@@ -375,7 +375,10 @@ function resolveHTTPCalls(input: Catalog): Catalog {
 function rawHTTPRoute(
   id: string,
 ): { method: string; path: string } | undefined {
-  const match = /^http-client\/([A-Z]+)\s+(\/\S*)$/.exec(id);
+  // The extractor qualifies a raw call with its destination after " @ "
+  // (`http-client/POST /foo @ payments.internal`) so that the same route to two
+  // hosts stays two calls; the route itself is what resolves against providers.
+  const match = /^http-client\/([A-Z]+)\s+(\/\S*)(?: @ .+)?$/.exec(id);
   return match ? { method: match[1]!, path: match[2]! } : undefined;
 }
 

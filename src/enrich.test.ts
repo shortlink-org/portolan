@@ -406,6 +406,72 @@ describe("enrichCatalog: HTTP route correlation", () => {
       httpCaller("/").consumes[0],
     );
   });
+
+  // PORTOLAN-19: the extractor qualifies a raw call with its destination, so
+  // the same route addressed to two hosts arrives as two consumes. They must
+  // stay two - resolved to two providers when the estate has them, or two
+  // unresolved calls when it does not - never one glued entry.
+  it("keeps the same route to two hosts as two calls", () => {
+    const toHost = (host: string): Service["consumes"][number] => ({
+      id: `http-client/POST /foo @ ${host}`,
+      peer: host.replace(".", "-"),
+      status: "unresolved",
+      source: "client.go:11",
+      destination: {
+        callSite: "client.go:11",
+        endpointExpression: "path",
+        method: "POST",
+        localPath: "/foo",
+        fullPath: "/foo",
+        serviceDiscoveryAlias: host,
+      },
+    });
+    const caller = service("shop", "oms", {
+      consumes: [toHost("payments.internal"), toHost("ledger.internal")],
+    });
+    const payments = httpProvider("payments", "POST /foo", "/foo");
+    const ledger = httpProvider("ledger", "POST /foo", "/foo");
+
+    const ambiguous = enrichCatalog(
+      estate([], [caller, payments, ledger]),
+    ).catalog;
+    expect(
+      serviceOf(ambiguous, "shop.oms").consumes.map((call) => [
+        call.id,
+        call.peer,
+        call.status,
+      ]),
+    ).toEqual([
+      ["http-client/POST /foo @ payments.internal", "payments-internal", "unresolved"],
+      ["http-client/POST /foo @ ledger.internal", "ledger-internal", "unresolved"],
+    ]);
+  });
+
+  it("resolves a destination-qualified route like a bare one", () => {
+    const caller = service("shop", "oms", {
+      consumes: [
+        {
+          id: "http-client/POST /book @ Config.SupplierURL",
+          peer: "http-peer",
+          status: "unresolved",
+          source: "client.go:10",
+        },
+      ],
+    });
+    const supp = httpProvider("aviasupp", "POST /book", "/book");
+    const once = enrichCatalog(estate([], [caller, supp])).catalog;
+    expect(serviceOf(once, "shop.oms").consumes).toEqual([
+      expect.objectContaining({
+        id: "api/POST /book",
+        peer: "shop.aviasupp",
+        status: "declared",
+        destination: expect.objectContaining({
+          resolution: { basis: "exact-route", provider: "shop.aviasupp", route: "/book" },
+        }),
+      }),
+    ]);
+    expect(enrichCatalog(once).catalog).toEqual(once);
+  });
 });
 
 // ---------------------------------------------------------------------------

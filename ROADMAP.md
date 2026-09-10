@@ -129,23 +129,6 @@ join. UI должен показывать, на каком именно evidenc
 `aviaadmin` по восстановленному `/settings/...`, а не только по уникальности
 суффикса среди текущих проектов.
 
-### PORTOLAN-19. Не склеивать одинаковые HTTP routes к разным destinations
-
-**Status:** open
-
-HTTP client extractor дедуплицирует consumers по `call.ID`. Два реальных
-вызова `POST /foo` к разным hosts получают одинаковый ID и могут схлопнуться в
-одну запись до того, как merged catalog увидит destination evidence.
-
-Нужно определить устойчивую identity outbound call: protocol operation плюс
-destination identity или отдельный call-site ID. Несколько call sites к одному
-контракту можно агрегировать только после разрешения peer, сохраняя список
-provenance.
-
-**Done when:** fixture с двумя `POST /foo` к разным сервисам создаёт две
-корректные связи и ни порядок обхода файлов, ни deduplication не меняют
-результат.
-
 ### PORTOLAN-20. Выводить HTTP verb для mounted Django views
 
 **Status:** investigate
