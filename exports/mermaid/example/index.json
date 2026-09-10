@@ -393,14 +393,6 @@
       "diagram": "oms-cancel-order.mmd"
     },
     {
-      "id": "flow.oms-confirm-order-on-payment-authorized",
-      "slug": "oms-confirm-order-on-payment-authorized",
-      "name": "Confirm order on payment authorized",
-      "owner": "shop",
-      "source": "examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs",
-      "diagram": "oms-confirm-order-on-payment-authorized.mmd"
-    },
-    {
       "id": "flow.oms-get-order",
       "slug": "oms-get-order",
       "name": "Get order",

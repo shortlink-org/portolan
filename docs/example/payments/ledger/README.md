@@ -116,8 +116,12 @@ use cases with closed answers, a policy fed from the bus, and the records
 above. What it deliberately does not have yet, and the review skill will
 name: no version on the aggregates, so a stale copy is not refused; events
 published after the save rather than with it, so there is no outbox and a
-crash between the two loses the fact; no tests; no tracing. Each is a known
+crash between the two loses the fact; only the checkout wire-contract test so far; no tracing. Each is a known
 gap, not an oversight, and none of them changes what the catalog shows.
+
+The [checkout scenario](https://github.com/shortlink-org/portolan/blob/main/examples/scenarios/README.md) runs the real cart and OMS
+against this ledger, with an isolated local gateway. It also verifies the
+consumer/provider protobuf subsets and the authorization event payload.
 
 ## Aggregates
 
@@ -280,7 +284,7 @@ gap, not an oversight, and none of them changes what the catalog shows.
 
 | Event | Latest | Consumers |
 | --- | --- | --- |
-| [`PaymentAuthorized`](aggregates/payment.md#event-payments-ledger-payment-paymentauthorized) | v1 | [shop.oms (declared)](../../shop/oms/README.md) |
+| [`PaymentAuthorized`](aggregates/payment.md#event-payments-ledger-payment-paymentauthorized) | v1 | — |
 | [`PaymentCaptured`](aggregates/payment.md#event-payments-ledger-payment-paymentcaptured) | v1 | [shop.billing (declared)](../../shop/billing/README.md), [delivery.core (declared)](../../delivery/core/README.md) |
 | [`PaymentDeclined`](aggregates/payment.md#event-payments-ledger-payment-paymentdeclined) | v1 | — |
 | [`RefundIssued`](aggregates/refund.md#event-payments-ledger-refund-refundissued) | v1 | — |

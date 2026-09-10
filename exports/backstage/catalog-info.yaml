@@ -1889,10 +1889,7 @@ metadata:
           title: cargo xtask ci — Run fmt, clippy and the tests the way CI does
           type: command
 spec:
-    consumesApis:
-        - api:default/payments-v1-paymentservice
     dependsOn:
-        - component:default/payments-ledger
         - resource:default/buf-build-shortlink-org-portolan-shop-order
         - resource:default/shop-oms-pg
     lifecycle: production

@@ -88,19 +88,48 @@
       "slug": "oms-0005-confirmation-waits-for-a-payment-that-does-not-exist-yet",
       "number": 5,
       "title": "Confirmation waits for a payment service that does not exist yet",
-      "status": "accepted",
+      "status": "superseded",
       "date": "2026-09-05",
       "scope": {
         "kind": "service",
         "service": "shop.oms"
       },
       "body": "## Context and Problem Statement\n\nAn order is confirmed when its total is authorised. The service that does\nthat, `payments`, is not written. Does confirmation wait for it, or is every\norder confirmed on placing?\n\n## Decision Outcome\n\nIt waits, and the waiting is written down twice. `ConfirmOrder` asks a\n`Payments` port for an authorisation; the adapter over `payments.v1` is a\nnarrowed copy of a contract nobody serves, so the catalog shows the call\nunresolved, and a stand-in that grants everything fills the port when no\naddress is configured. A policy reacts to `payments.PaymentAuthorized`, an\nevent nothing publishes, and the catalog shows that too. When the ledger\narrives it fills both places and nothing here changes shape.\n\n### Consequences\n\n- Good: the estate's gaps are in the catalog rather than in somebody's head.\n- Bad: with the stand-in, an order is confirmed by whoever calls\n  `ConfirmOrder` - which nothing does yet, so no order is confirmed at all\n  until the ledger exists.\n",
+      "supersededBy": "oms.0006",
       "relates": {},
       "source": "examples/shop/oms/docs/adr/0005-confirmation-waits-for-a-payment-that-does-not-exist-yet.md",
       "created": {
         "commit": "96ce9caf5ffa4648e6c26941b08b09081497cc6f",
         "author": "Victor Login",
         "date": "2026-09-05T03:02:05+07:00"
+      },
+      "revised": {
+        "commit": "243180950de27ec33b0b6c860cbb4aeab5b161bc",
+        "author": "Victor Login",
+        "date": "2026-09-10T21:59:11+07:00"
+      }
+    },
+    {
+      "id": "oms.0006",
+      "slug": "oms-0006-order-placed-requests-ledger-authorization",
+      "number": 6,
+      "title": "OrderPlaced requests ledger authorization; confirmation applies a fact",
+      "status": "accepted",
+      "date": "2026-09-10",
+      "scope": {
+        "kind": "service",
+        "service": "shop.oms"
+      },
+      "body": "## Context and Problem Statement\n\nThe ledger now provides PaymentService, but OMS's old narrowed proto has\nincompatible field numbers and its authorization subscription disagrees with\nthe producer's event name. Nothing requests payment after placement, while the\nold authorization-event policy calls Authorize again.\n\n## Decision Drivers\n\n- Start payment only after the order is committed and readable by ledger.\n- Use the provider's real public contract and preserve refusal versus outage.\n- Retrying delivery must reuse one payment id and must not reconfirm an order.\n\n## Considered Options\n\n1. Ask ledger inside the checkout subscriber immediately after placing the order.\n2. React to the durable OrderPlaced and apply either the RPC answer or the ledger fact.\n3. Introduce a durable workflow engine for the entire fulfilment process now.\n\n## Decision Outcome\n\nChoose option 2. OrderPlaced is already in the transactional outbox and survives\nan OMS crash after placement. Its policy invokes request_payment using the order\nid as payment id for this one checkout attempt. The adapter consumes payment_id,\nauthorized and the closed refusal set from ledger's actual proto.\n\nThe separate confirm_order operation has no payment port. Both a successful\nRPC answer and ledger.PaymentAuthorized reach it, validating the payment/order\nidentity and amount. Confirmed or cancelled orders do not transition again.\nOptimistic conflicts fail delivery, which can be retried against current state.\nThe existing OrderConfirmed authorizationId field carries the public payment id\nfor compatibility; it never carries the private gateway handle.\n\nA confirmed decline is acknowledged and leaves the order placed. A timeout or\nunknown contract outcome remains an error. A new payment attempt, capture,\ncompensation and fulfilment orchestration are separate decisions.\n\n## Consequences\n\n- State is committed before ledger's GetOrder call.\n- Repeated checkout, OrderPlaced and authorization deliveries cannot emit another confirmation.\n- Confirmation from the RPC answer can recover a stored ledger result even if\n  its event publication failed; ledger still needs its own outbox for other consumers.\n- This does not resolve an external gateway success lost before ledger persisted\n  it, concurrent ledger requests, or cancellation racing a remote authorization.\n  Those require gateway idempotency and durable compensation, not a proto change.\n",
+      "supersedes": [
+        "oms.0005"
+      ],
+      "relates": {},
+      "source": "examples/shop/oms/docs/adr/0006-order-placed-requests-ledger-authorization.md",
+      "created": {
+        "commit": "243180950de27ec33b0b6c860cbb4aeab5b161bc",
+        "author": "Victor Login",
+        "date": "2026-09-10T21:59:11+07:00"
       }
     }
   ]

@@ -20,7 +20,9 @@ told.
 - Places an order from a checked-out basket, once per basket, copying the
   lines and the total the customer agreed to.
 - Answers `GetOrder` and `CancelOrder` over gRPC, `shop.v1.OrderService`.
-- Confirms an order once its total is authorised with payments, and says so.
+- Requests ledger authorization from the committed `OrderPlaced`, with the order
+  id as the stable payment id. Confirms from the RPC answer or
+  `ledger.PaymentAuthorized`, once, without authorizing again.
 - Publishes `OrderPlaced`, `OrderConfirmed` and `OrderCancelled` through an
   outbox, over NATS JetStream.
 
@@ -29,8 +31,10 @@ told.
 Does not price anything, move money or ship: the lines and the total are the
 basket's, the money is `payments`' and the parcel is `delivery`'s. Does not
 hold a catalogue or know who a customer is beyond the id the cart passed on.
-Nothing in the estate provides `payments.v1` yet, so the authorisation is a
-stand-in until something does, and the catalog says so.
+The provider is `examples/payments/ledger`. The consumer-owned protobuf subset
+matches its field numbers and outcomes; no gateway authorization handle leaves
+ledger. A declined payment leaves the order placed for an explicit cancellation
+or a future payment-retry decision; an unavailable ledger fails delivery for retry.
 
 ## Decisions
 
@@ -38,7 +42,9 @@ stand-in until something does, and the catalog says so.
 - [oms.0002](../../adr/oms.0002.md) — An order is placed from a checked-out basket, not by a call
 - [oms.0003](../../adr/oms.0003.md) — Lines and the total are copied from the basket, never repriced
 - [oms.0004](../../adr/oms.0004.md) — Cancelling is allowed until the parcel moves
-- [oms.0005](../../adr/oms.0005.md) — Confirmation waits for a payment service that does not exist yet
+- [oms.0005](../../adr/oms.0005.md) — Original placeholder for payment confirmation (superseded by oms.0006)
+
+- [oms.0006](../../adr/oms.0006.md) — OrderPlaced requests authorization; confirmation applies the fact idempotently
 
 ## Running it
 
@@ -53,11 +59,14 @@ every authorisation is granted. `TRACER_URI` switches tracing on. `cargo test`
 runs everything; without Docker the tests that need Postgres or NATS are
 skipped.
 
+For the real cart → OMS → ledger scenario and contract checks, see
+[checkout scenario](https://github.com/shortlink-org/portolan/blob/main/examples/scenarios/README.md).
+
 ## Aggregates
 
 | Aggregate | Root | Commands | Queries | Events |
 | --- | --- | --- | --- | --- |
-| [Order](aggregates/order.md) | `Order` | 3 commands | 1 query | 3 events |
+| [Order](aggregates/order.md) | `Order` | 3 commands | 2 queries | 3 events |
 
 ## Provides
 
@@ -158,12 +167,6 @@ a contract change rather than a string somebody starts sending.
 
 </details>
 
-## Consumes
-
-| Call | Peer | Status | Source |
-| --- | --- | --- | --- |
-| `payments.v1.PaymentService/Authorize` | [payments.ledger](../../payments/ledger/README.md) | declared | [`examples/shop/oms/src/infrastructure/payments/proto/payments/v1/payments.proto`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/infrastructure/payments/proto/payments/v1/payments.proto) |
-
 ## Publishes
 
 | Event | Latest | Consumers |
@@ -200,4 +203,5 @@ a contract change rather than a string somebody starts sending.
 | [oms.0002](../../adr/oms.0002.md) | An order is placed from a checked-out basket, not by a call | accepted | 2026-09-05 |
 | [oms.0003](../../adr/oms.0003.md) | Lines and the total are copied from the basket, never repriced | accepted | 2026-09-05 |
 | [oms.0004](../../adr/oms.0004.md) | Cancelling is allowed until the parcel moves | accepted | 2026-09-05 |
-| [oms.0005](../../adr/oms.0005.md) | Confirmation waits for a payment service that does not exist yet | accepted | 2026-09-05 |
+| [oms.0005](../../adr/oms.0005.md) | Confirmation waits for a payment service that does not exist yet | superseded | 2026-09-05 |
+| [oms.0006](../../adr/oms.0006.md) | OrderPlaced requests ledger authorization; confirmation applies a fact | accepted | 2026-09-10 |

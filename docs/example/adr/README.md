@@ -41,7 +41,8 @@
 | [oms.0002](oms.0002.md) | An order is placed from a checked-out basket, not by a call | accepted | 2026-09-05 | [shop.oms](../shop/oms/README.md) |
 | [oms.0003](oms.0003.md) | Lines and the total are copied from the basket, never repriced | accepted | 2026-09-05 | [shop.oms](../shop/oms/README.md) |
 | [oms.0004](oms.0004.md) | Cancelling is allowed until the parcel moves | accepted | 2026-09-05 | [shop.oms](../shop/oms/README.md) |
-| [oms.0005](oms.0005.md) | Confirmation waits for a payment service that does not exist yet | accepted | 2026-09-05 | [shop.oms](../shop/oms/README.md) |
+| [oms.0005](oms.0005.md) | Confirmation waits for a payment service that does not exist yet | superseded | 2026-09-05 | [shop.oms](../shop/oms/README.md) |
+| [oms.0006](oms.0006.md) | OrderPlaced requests ledger authorization; confirmation applies a fact | accepted | 2026-09-10 | [shop.oms](../shop/oms/README.md) |
 | [org.0001](org.0001.md) | Client proto copies live in the consumer's infrastructure layer | accepted | 2025-03-11 | org |
 | [org.0002](org.0002.md) | Domain event schema version is encoded in the package path (events/v1) | accepted | 2025-05-02 | org |
 | [org.0003](org.0003.md) | Ownership is read from CODEOWNERS, never typed and never resolved | accepted | 2026-09-05 | org |

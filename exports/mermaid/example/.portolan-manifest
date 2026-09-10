@@ -51,7 +51,6 @@
     "ledger-list-refunds.mmd",
     "ledger-void-payment-on-order-cancelled.mmd",
     "oms-cancel-order.mmd",
-    "oms-confirm-order-on-payment-authorized.mmd",
     "oms-get-order.mmd",
     "oms-place-order-on-basket-checked-out.mmd",
     "pricing-archive-price-list.mmd",

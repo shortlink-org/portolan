@@ -90,7 +90,6 @@
 | [List refunds](flows/ledger-list-refunds.md) | [payments](payments/README.md) | Every refund against one payment, newest first. |
 | [Void payment on order cancelled](flows/ledger-void-payment-on-order-cancelled.md) | [payments](payments/README.md) | Gives back what was held once the order it was held for is gone. |
 | [Cancel order](flows/oms-cancel-order.md) | [shop](shop/README.md) | Reads one order by id. |
-| [Confirm order on payment authorized](flows/oms-confirm-order-on-payment-authorized.md) | [shop](shop/README.md) | Confirms the order once the payment for it is authorised (ADR oms.0005). The publisher is `payments.ledger`, and the name is the one it puts on the message: every service on this bus names its events after itself. |
 | [Get order](flows/oms-get-order.md) | [shop](shop/README.md) | Reads one order by id. |
 | [Place order on basket checked out](flows/oms-place-order-on-basket-checked-out.md) | [shop](shop/README.md) | Places the order the basket was checked out for (ADR oms.0002). The order takes the basket's id, so the same checkout heard twice places one order. |
 | [Archive price list](flows/pricing-archive-price-list.md) | [shop](shop/README.md) | Package archive_price_list takes a price list out of use without losing it. |
@@ -141,7 +140,8 @@
 | [oms.0002](adr/oms.0002.md) | An order is placed from a checked-out basket, not by a call | accepted | 2026-09-05 |
 | [oms.0003](adr/oms.0003.md) | Lines and the total are copied from the basket, never repriced | accepted | 2026-09-05 |
 | [oms.0004](adr/oms.0004.md) | Cancelling is allowed until the parcel moves | accepted | 2026-09-05 |
-| [oms.0005](adr/oms.0005.md) | Confirmation waits for a payment service that does not exist yet | accepted | 2026-09-05 |
+| [oms.0005](adr/oms.0005.md) | Confirmation waits for a payment service that does not exist yet | superseded | 2026-09-05 |
+| [oms.0006](adr/oms.0006.md) | OrderPlaced requests ledger authorization; confirmation applies a fact | accepted | 2026-09-10 |
 | [org.0001](adr/org.0001.md) | Client proto copies live in the consumer's infrastructure layer | accepted | 2025-03-11 |
 | [org.0002](adr/org.0002.md) | Domain event schema version is encoded in the package path (events/v1) | accepted | 2025-05-02 |
 | [org.0003](adr/org.0003.md) | Ownership is read from CODEOWNERS, never typed and never resolved | accepted | 2026-09-05 |
@@ -2799,8 +2799,12 @@ use cases with closed answers, a policy fed from the bus, and the records
 above. What it deliberately does not have yet, and the review skill will
 name: no version on the aggregates, so a stale copy is not refused; events
 published after the save rather than with it, so there is no outbox and a
-crash between the two loses the fact; no tests; no tracing. Each is a known
+crash between the two loses the fact; only the checkout wire-contract test so far; no tracing. Each is a known
 gap, not an oversight, and none of them changes what the catalog shows.
+
+The [checkout scenario](https://github.com/shortlink-org/portolan/blob/main/examples/scenarios/README.md) runs the real cart and OMS
+against this ledger, with an isolated local gateway. It also verifies the
+consumer/provider protobuf subsets and the authorization event payload.
 
 ## Aggregates
 
@@ -2963,7 +2967,7 @@ gap, not an oversight, and none of them changes what the catalog shows.
 
 | Event | Latest | Consumers |
 | --- | --- | --- |
-| [`PaymentAuthorized`](aggregates/payment.md#event-payments-ledger-payment-paymentauthorized) | v1 | [shop.oms (declared)](../../shop/oms/README.md) |
+| [`PaymentAuthorized`](aggregates/payment.md#event-payments-ledger-payment-paymentauthorized) | v1 | — |
 | [`PaymentCaptured`](aggregates/payment.md#event-payments-ledger-payment-paymentcaptured) | v1 | [shop.billing (declared)](../../shop/billing/README.md), [delivery.core (declared)](../../delivery/core/README.md) |
 | [`PaymentDeclined`](aggregates/payment.md#event-payments-ledger-payment-paymentdeclined) | v1 | — |
 | [`RefundIssued`](aggregates/refund.md#event-payments-ledger-refund-refundissued) | v1 | — |
@@ -3127,10 +3131,6 @@ stateDiagram-v2
 `payments.ledger.payment.PaymentAuthorized`
 
 On the wire as `ledger.PaymentAuthorized`, on `payments.ledger.payment`.
-
-| Consumer | Status | Via |
-| --- | --- | --- |
-| [shop.oms](../../../shop/oms/README.md) | declared | `oms-confirm-order-on-payment-authorized#s1` |
 
 #### v1 — current
 
@@ -4212,7 +4212,9 @@ told.
 - Places an order from a checked-out basket, once per basket, copying the
   lines and the total the customer agreed to.
 - Answers `GetOrder` and `CancelOrder` over gRPC, `shop.v1.OrderService`.
-- Confirms an order once its total is authorised with payments, and says so.
+- Requests ledger authorization from the committed `OrderPlaced`, with the order
+  id as the stable payment id. Confirms from the RPC answer or
+  `ledger.PaymentAuthorized`, once, without authorizing again.
 - Publishes `OrderPlaced`, `OrderConfirmed` and `OrderCancelled` through an
   outbox, over NATS JetStream.
 
@@ -4221,8 +4223,10 @@ told.
 Does not price anything, move money or ship: the lines and the total are the
 basket's, the money is `payments`' and the parcel is `delivery`'s. Does not
 hold a catalogue or know who a customer is beyond the id the cart passed on.
-Nothing in the estate provides `payments.v1` yet, so the authorisation is a
-stand-in until something does, and the catalog says so.
+The provider is `examples/payments/ledger`. The consumer-owned protobuf subset
+matches its field numbers and outcomes; no gateway authorization handle leaves
+ledger. A declined payment leaves the order placed for an explicit cancellation
+or a future payment-retry decision; an unavailable ledger fails delivery for retry.
 
 ## Decisions
 
@@ -4230,7 +4234,9 @@ stand-in until something does, and the catalog says so.
 - [oms.0002](../../adr/oms.0002.md) — An order is placed from a checked-out basket, not by a call
 - [oms.0003](../../adr/oms.0003.md) — Lines and the total are copied from the basket, never repriced
 - [oms.0004](../../adr/oms.0004.md) — Cancelling is allowed until the parcel moves
-- [oms.0005](../../adr/oms.0005.md) — Confirmation waits for a payment service that does not exist yet
+- [oms.0005](../../adr/oms.0005.md) — Original placeholder for payment confirmation (superseded by oms.0006)
+
+- [oms.0006](../../adr/oms.0006.md) — OrderPlaced requests authorization; confirmation applies the fact idempotently
 
 ## Running it
 
@@ -4245,11 +4251,14 @@ every authorisation is granted. `TRACER_URI` switches tracing on. `cargo test`
 runs everything; without Docker the tests that need Postgres or NATS are
 skipped.
 
+For the real cart → OMS → ledger scenario and contract checks, see
+[checkout scenario](https://github.com/shortlink-org/portolan/blob/main/examples/scenarios/README.md).
+
 ## Aggregates
 
 | Aggregate | Root | Commands | Queries | Events |
 | --- | --- | --- | --- | --- |
-| [Order](aggregates/order.md) | `Order` | 3 commands | 1 query | 3 events |
+| [Order](aggregates/order.md) | `Order` | 3 commands | 2 queries | 3 events |
 
 ## Provides
 
@@ -4350,12 +4359,6 @@ a contract change rather than a string somebody starts sending.
 
 </details>
 
-## Consumes
-
-| Call | Peer | Status | Source |
-| --- | --- | --- | --- |
-| `payments.v1.PaymentService/Authorize` | [payments.ledger](../../payments/ledger/README.md) | declared | [`examples/shop/oms/src/infrastructure/payments/proto/payments/v1/payments.proto`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/infrastructure/payments/proto/payments/v1/payments.proto) |
-
 ## Publishes
 
 | Event | Latest | Consumers |
@@ -4392,7 +4395,8 @@ a contract change rather than a string somebody starts sending.
 | [oms.0002](../../adr/oms.0002.md) | An order is placed from a checked-out basket, not by a call | accepted | 2026-09-05 |
 | [oms.0003](../../adr/oms.0003.md) | Lines and the total are copied from the basket, never repriced | accepted | 2026-09-05 |
 | [oms.0004](../../adr/oms.0004.md) | Cancelling is allowed until the parcel moves | accepted | 2026-09-05 |
-| [oms.0005](../../adr/oms.0005.md) | Confirmation waits for a payment service that does not exist yet | accepted | 2026-09-05 |
+| [oms.0005](../../adr/oms.0005.md) | Confirmation waits for a payment service that does not exist yet | superseded | 2026-09-05 |
+| [oms.0006](../../adr/oms.0006.md) | OrderPlaced requests ledger authorization; confirmation applies a fact | accepted | 2026-09-10 |
 
 <!-- shop/oms/aggregates/order.md -->
 
@@ -4501,9 +4505,10 @@ stateDiagram-v2
 | Operation | Kind | Exposed by | Doc |
 | --- | --- | --- | --- |
 | `CancelOrder` | command | `CancelOrder` | Cancels an order that has not been dispatched, and says so with `OrderCancelled`. Cancelling twice is not an error: the second call finds a cancelled order and changes nothing. |
-| `ConfirmOrder` | command | *internal* | Confirms a placed order once its total is authorised with payments, and says so with `OrderConfirmed`. Payments is asked synchronously, because the answer is what decides; no service in the estate provides `payments.v1` yet, so the call is a stand-in until one does (ADR oms.0005). |
+| `ConfirmOrder` | command | *internal* | Applies an authorization fact containing order id, public payment id, amount and occurrence time. Checks identity and total, then confirms a placed order. There is no ledger client on this operation. |
 | `GetOrder` | query | `CancelOrder`, `GetOrder` | Reads one order by id. |
 | `PlaceOrder` | command | *internal* | Places an order from a checked-out basket, once: a second `BasketCheckedOut` for the same basket places nothing and answers with the order already there. The lines and the total are the basket's, copied and never repriced. |
+| `RequestPayment` | query | *internal* | Loads a committed order. If it is still placed, asks ledger to authorize its exact total, using the order id as the stable payment id for this checkout. |
 
 ## Events
 
@@ -6230,7 +6235,6 @@ The card network the ledger moves money through. Nobody in the estate provides i
 | [List refunds](ledger-list-refunds.md) | [payments](../payments/README.md) | Every refund against one payment, newest first. |
 | [Void payment on order cancelled](ledger-void-payment-on-order-cancelled.md) | [payments](../payments/README.md) | Gives back what was held once the order it was held for is gone. |
 | [Cancel order](oms-cancel-order.md) | [shop](../shop/README.md) | Reads one order by id. |
-| [Confirm order on payment authorized](oms-confirm-order-on-payment-authorized.md) | [shop](../shop/README.md) | Confirms the order once the payment for it is authorised (ADR oms.0005). The publisher is `payments.ledger`, and the name is the one it puts on the message: every service on this bus names its events after itself. |
 | [Get order](oms-get-order.md) | [shop](../shop/README.md) | Reads one order by id. |
 | [Place order on basket checked out](oms-place-order-on-basket-checked-out.md) | [shop](../shop/README.md) | Places the order the basket was checked out for (ADR oms.0002). The order takes the basket's id, so the same checkout heard twice places one order. |
 | [Archive price list](pricing-archive-price-list.md) | [shop](../shop/README.md) | Package archive_price_list takes a price list out of use without losing it. |
@@ -8751,65 +8755,6 @@ sequenceDiagram
 5. **shop.oms** → **oms-pg** — by_id
    status: declared · [`examples/shop/oms/src/application/order/usecases/get_order/mod.rs:42`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/get_order/mod.rs#L42)
 
-<!-- flows/oms-confirm-order-on-payment-authorized.md -->
-
-# Confirm order on payment authorized
-
-*Generated from the portolan catalog. Do not edit by hand.*
-
-- **Id:** `flow.oms-confirm-order-on-payment-authorized`
-- **Owner:** [shop](../shop/README.md)
-- **Source:** [`examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs)
-
-Confirms the order once the payment for it is authorised (ADR oms.0005). The publisher is `payments.ledger`, and the name is the one it puts on the message: every service on this bus names its events after itself.
-
-## Participants
-
-| Participant | Kind | Context |
-| --- | --- | --- |
-| `bus` | broker | — |
-| `shop.oms` | service | [shop](../shop/README.md) |
-| `oms-pg` | store | [shop](../shop/README.md) |
-| `payments.ledger` | service | [payments](../payments/README.md) |
-
-## Sequence
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant p0 as bus
-    participant p1 as shop.oms
-    participant p2 as oms-pg
-    participant p3 as payments.ledger
-    p0-)p1: PaymentAuthorized
-    p1->>p1: ConfirmOrder
-    p1->>p2: by_id
-    p1->>p3: Authorize → AuthorizeResponse
-    p1->>p2: save
-    p1-)p0: OrderConfirmed
-```
-
-## Steps
-
-<a id="step-s1"></a>
-1. **bus** → **shop.oms** — PaymentAuthorized
-   [`payments.ledger.payment.PaymentAuthorized`](../payments/ledger/aggregates/payment.md#event-payments-ledger-payment-paymentauthorized) · status: declared · [`examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs:20`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs#L20) · Reacts to the message named `ledger.PaymentAuthorized`, which is not an event this repository declares.
-<a id="step-s2"></a>
-2. **shop.oms** ↺ **shop.oms** — ConfirmOrder
-   status: declared · [`examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs:27`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs#L27)
-<a id="step-s3"></a>
-3. **shop.oms** → **oms-pg** — by_id
-   status: declared · [`examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:31`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs#L31)
-<a id="step-s4"></a>
-4. **shop.oms** → **payments.ledger** — Authorize → AuthorizeResponse
-   `payments.v1.PaymentService/Authorize` · status: declared · [`examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:32`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs#L32)
-<a id="step-s5"></a>
-5. **shop.oms** → **oms-pg** — save
-   status: declared · [`examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:34`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs#L34)
-<a id="step-s6"></a>
-6. **shop.oms** → **bus** — OrderConfirmed
-   [`shop.oms.order.OrderConfirmed`](../shop/oms/aggregates/order.md#event-shop-oms-order-orderconfirmed) · status: declared · [`examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:34`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs#L34)
-
 <!-- flows/oms-get-order.md -->
 
 # Get order
@@ -9232,7 +9177,8 @@ sequenceDiagram
 | [oms.0002](oms.0002.md) | An order is placed from a checked-out basket, not by a call | accepted | 2026-09-05 | [shop.oms](../shop/oms/README.md) |
 | [oms.0003](oms.0003.md) | Lines and the total are copied from the basket, never repriced | accepted | 2026-09-05 | [shop.oms](../shop/oms/README.md) |
 | [oms.0004](oms.0004.md) | Cancelling is allowed until the parcel moves | accepted | 2026-09-05 | [shop.oms](../shop/oms/README.md) |
-| [oms.0005](oms.0005.md) | Confirmation waits for a payment service that does not exist yet | accepted | 2026-09-05 | [shop.oms](../shop/oms/README.md) |
+| [oms.0005](oms.0005.md) | Confirmation waits for a payment service that does not exist yet | superseded | 2026-09-05 | [shop.oms](../shop/oms/README.md) |
+| [oms.0006](oms.0006.md) | OrderPlaced requests ledger authorization; confirmation applies a fact | accepted | 2026-09-10 | [shop.oms](../shop/oms/README.md) |
 | [org.0001](org.0001.md) | Client proto copies live in the consumer's infrastructure layer | accepted | 2025-03-11 | org |
 | [org.0002](org.0002.md) | Domain event schema version is encoded in the package path (events/v1) | accepted | 2025-05-02 | org |
 | [org.0003](org.0003.md) | Ownership is read from CODEOWNERS, never typed and never resolved | accepted | 2026-09-05 | org |
@@ -11195,11 +11141,13 @@ so today every cancellation is before dispatch, and the table has no
 
 *Generated from the portolan catalog. Do not edit by hand.*
 
-- **Status:** accepted
+- **Status:** superseded
 - **Date:** 2026-09-05
 - **Scope:** [shop.oms](../shop/oms/README.md)
 - **Source:** [`examples/shop/oms/docs/adr/0005-confirmation-waits-for-a-payment-that-does-not-exist-yet.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/docs/adr/0005-confirmation-waits-for-a-payment-that-does-not-exist-yet.md)
 - **Committed:** Victor Login, 2026-09-05 (`96ce9ca`)
+- **Revised:** Victor Login, 2026-09-10 (`2431809`)
+- **Superseded by:** [oms.0006](oms.0006.md)
 
 ### Context and Problem Statement
 
@@ -11223,6 +11171,66 @@ arrives it fills both places and nothing here changes shape.
 - Bad: with the stand-in, an order is confirmed by whoever calls
   `ConfirmOrder` - which nothing does yet, so no order is confirmed at all
   until the ledger exists.
+
+<!-- adr/oms.0006.md -->
+
+# oms.0006 — OrderPlaced requests ledger authorization; confirmation applies a fact
+
+*Generated from the portolan catalog. Do not edit by hand.*
+
+- **Status:** accepted
+- **Date:** 2026-09-10
+- **Scope:** [shop.oms](../shop/oms/README.md)
+- **Source:** [`examples/shop/oms/docs/adr/0006-order-placed-requests-ledger-authorization.md`](https://github.com/shortlink-org/portolan/blob/main/examples/shop/oms/docs/adr/0006-order-placed-requests-ledger-authorization.md)
+- **Committed:** Victor Login, 2026-09-10 (`2431809`)
+- **Supersedes:** [oms.0005](oms.0005.md)
+
+### Context and Problem Statement
+
+The ledger now provides PaymentService, but OMS's old narrowed proto has
+incompatible field numbers and its authorization subscription disagrees with
+the producer's event name. Nothing requests payment after placement, while the
+old authorization-event policy calls Authorize again.
+
+### Decision Drivers
+
+- Start payment only after the order is committed and readable by ledger.
+- Use the provider's real public contract and preserve refusal versus outage.
+- Retrying delivery must reuse one payment id and must not reconfirm an order.
+
+### Considered Options
+
+1. Ask ledger inside the checkout subscriber immediately after placing the order.
+2. React to the durable OrderPlaced and apply either the RPC answer or the ledger fact.
+3. Introduce a durable workflow engine for the entire fulfilment process now.
+
+### Decision Outcome
+
+Choose option 2. OrderPlaced is already in the transactional outbox and survives
+an OMS crash after placement. Its policy invokes request_payment using the order
+id as payment id for this one checkout attempt. The adapter consumes payment_id,
+authorized and the closed refusal set from ledger's actual proto.
+
+The separate confirm_order operation has no payment port. Both a successful
+RPC answer and ledger.PaymentAuthorized reach it, validating the payment/order
+identity and amount. Confirmed or cancelled orders do not transition again.
+Optimistic conflicts fail delivery, which can be retried against current state.
+The existing OrderConfirmed authorizationId field carries the public payment id
+for compatibility; it never carries the private gateway handle.
+
+A confirmed decline is acknowledged and leaves the order placed. A timeout or
+unknown contract outcome remains an error. A new payment attempt, capture,
+compensation and fulfilment orchestration are separate decisions.
+
+### Consequences
+
+- State is committed before ledger's GetOrder call.
+- Repeated checkout, OrderPlaced and authorization deliveries cannot emit another confirmation.
+- Confirmation from the RPC answer can recover a stored ledger result even if
+  its event publication failed; ledger still needs its own outbox for other consumers.
+- This does not resolve an external gateway success lost before ledger persisted
+  it, concurrent ledger requests, or cancellation racing a remote authorization.
+  Those require gateway idempotency and durable compensation, not a proto change.
 
 <!-- adr/org.0001.md -->
 

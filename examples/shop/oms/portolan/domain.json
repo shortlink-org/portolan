@@ -12,16 +12,9 @@
           "name": "Order Management",
           "repo": "github.com/shortlink-org/portolan",
           "path": "examples/shop/oms",
-          "readme": "# Order Management\n\nService `oms` — bounded context **shop**. Rust on Tokio.\n\nOwns the order: what a basket became at checkout, from the moment the cart\nsays `BasketCheckedOut` until the order is confirmed or cancelled. It is the\nonly writer of order state; every other service holds a copy of what it was\ntold.\n\n## What it does\n\n- Places an order from a checked-out basket, once per basket, copying the\n  lines and the total the customer agreed to.\n- Answers `GetOrder` and `CancelOrder` over gRPC, `shop.v1.OrderService`.\n- Confirms an order once its total is authorised with payments, and says so.\n- Publishes `OrderPlaced`, `OrderConfirmed` and `OrderCancelled` through an\n  outbox, over NATS JetStream.\n\n## What it does not do\n\nDoes not price anything, move money or ship: the lines and the total are the\nbasket's, the money is `payments`' and the parcel is `delivery`'s. Does not\nhold a catalogue or know who a customer is beyond the id the cart passed on.\nNothing in the estate provides `payments.v1` yet, so the authorisation is a\nstand-in until something does, and the catalog says so.\n\n## Decisions\n\n- [oms.0001](docs/adr/0001-rust-on-tokio.md) — Rust on Tokio, and the stack around it\n- [oms.0002](docs/adr/0002-an-order-is-placed-from-a-checked-out-basket.md) — An order is placed from a checked-out basket, not by a call\n- [oms.0003](docs/adr/0003-lines-are-copied-never-repriced.md) — Lines and the total are copied from the basket, never repriced\n- [oms.0004](docs/adr/0004-cancel-is-allowed-until-dispatch.md) — Cancelling is allowed until the parcel moves\n- [oms.0005](docs/adr/0005-confirmation-waits-for-a-payment-that-does-not-exist-yet.md) — Confirmation waits for a payment service that does not exist yet\n\n## Running it\n\n```bash\ndocker compose up -d\ncargo run\n```\n\n`NATS_URL` is where events arrive and leave; without it the bus is in process\nand nothing does. `PAYMENTS_ADDR` points confirmation at a ledger; without it\nevery authorisation is granted. `TRACER_URI` switches tracing on. `cargo test`\nruns everything; without Docker the tests that need Postgres or NATS are\nskipped.",
+          "readme": "# Order Management\n\nService `oms` — bounded context **shop**. Rust on Tokio.\n\nOwns the order: what a basket became at checkout, from the moment the cart\nsays `BasketCheckedOut` until the order is confirmed or cancelled. It is the\nonly writer of order state; every other service holds a copy of what it was\ntold.\n\n## What it does\n\n- Places an order from a checked-out basket, once per basket, copying the\n  lines and the total the customer agreed to.\n- Answers `GetOrder` and `CancelOrder` over gRPC, `shop.v1.OrderService`.\n- Requests ledger authorization from the committed `OrderPlaced`, with the order\n  id as the stable payment id. Confirms from the RPC answer or\n  `ledger.PaymentAuthorized`, once, without authorizing again.\n- Publishes `OrderPlaced`, `OrderConfirmed` and `OrderCancelled` through an\n  outbox, over NATS JetStream.\n\n## What it does not do\n\nDoes not price anything, move money or ship: the lines and the total are the\nbasket's, the money is `payments`' and the parcel is `delivery`'s. Does not\nhold a catalogue or know who a customer is beyond the id the cart passed on.\nThe provider is `examples/payments/ledger`. The consumer-owned protobuf subset\nmatches its field numbers and outcomes; no gateway authorization handle leaves\nledger. A declined payment leaves the order placed for an explicit cancellation\nor a future payment-retry decision; an unavailable ledger fails delivery for retry.\n\n## Decisions\n\n- [oms.0001](docs/adr/0001-rust-on-tokio.md) — Rust on Tokio, and the stack around it\n- [oms.0002](docs/adr/0002-an-order-is-placed-from-a-checked-out-basket.md) — An order is placed from a checked-out basket, not by a call\n- [oms.0003](docs/adr/0003-lines-are-copied-never-repriced.md) — Lines and the total are copied from the basket, never repriced\n- [oms.0004](docs/adr/0004-cancel-is-allowed-until-dispatch.md) — Cancelling is allowed until the parcel moves\n- [oms.0005](docs/adr/0005-confirmation-waits-for-a-payment-that-does-not-exist-yet.md) — Original placeholder for payment confirmation (superseded by oms.0006)\n\n- [oms.0006](docs/adr/0006-order-placed-requests-ledger-authorization.md) — OrderPlaced requests authorization; confirmation applies the fact idempotently\n\n## Running it\n\n```bash\ndocker compose up -d\ncargo run\n```\n\n`NATS_URL` is where events arrive and leave; without it the bus is in process\nand nothing does. `PAYMENTS_ADDR` points confirmation at a ledger; without it\nevery authorisation is granted. `TRACER_URI` switches tracing on. `cargo test`\nruns everything; without Docker the tests that need Postgres or NATS are\nskipped.\n\nFor the real cart → OMS → ledger scenario and contract checks, see\n[checkout scenario](../../scenarios/README.md).",
           "provides": [],
-          "consumes": [
-            {
-              "id": "payments.v1.PaymentService/Authorize",
-              "peer": "payments.ledger",
-              "status": "declared",
-              "source": "examples/shop/oms/src/infrastructure/payments/proto/payments/v1/payments.proto"
-            }
-          ],
+          "consumes": [],
           "aggregates": [
             {
               "id": "shop.oms.order",
@@ -134,7 +127,7 @@
                 {
                   "id": "ConfirmOrder",
                   "kind": "command",
-                  "doc": "Confirms a placed order once its total is authorised with payments, and says so with `OrderConfirmed`. Payments is asked synchronously, because the answer is what decides; no service in the estate provides `payments.v1` yet, so the call is a stand-in until one does (ADR oms.0005)."
+                  "doc": "Applies an authorization fact containing order id, public payment id, amount and occurrence time. Checks identity and total, then confirms a placed order. There is no ledger client on this operation."
                 },
                 {
                   "id": "GetOrder",
@@ -149,6 +142,11 @@
                   "id": "PlaceOrder",
                   "kind": "command",
                   "doc": "Places an order from a checked-out basket, once: a second `BasketCheckedOut` for the same basket places nothing and answers with the order already there. The lines and the total are the basket's, copied and never repriced."
+                },
+                {
+                  "id": "RequestPayment",
+                  "kind": "query",
+                  "doc": "Loads a committed order. If it is still placed, asks ledger to authorize its exact total, using the order id as the stable payment id for this checkout."
                 }
               ],
               "events": [
@@ -469,101 +467,6 @@
           "label": "by_id",
           "status": "declared",
           "line": "examples/shop/oms/src/application/order/usecases/get_order/mod.rs:42"
-        }
-      ]
-    },
-    {
-      "id": "flow.oms-confirm-order-on-payment-authorized",
-      "slug": "oms-confirm-order-on-payment-authorized",
-      "name": "Confirm order on payment authorized",
-      "summary": "Confirms the order once the payment for it is authorised (ADR oms.0005). The publisher is `payments.ledger`, and the name is the one it puts on the message: every service on this bus names its events after itself.",
-      "source": "examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs",
-      "owner": "shop",
-      "participants": [
-        {
-          "id": "bus",
-          "kind": "broker",
-          "context": null
-        },
-        {
-          "id": "shop.oms",
-          "kind": "service",
-          "context": "shop"
-        },
-        {
-          "id": "oms-pg",
-          "kind": "store",
-          "context": "shop"
-        },
-        {
-          "id": "payments.ledger",
-          "kind": "service",
-          "context": "payments"
-        }
-      ],
-      "steps": [
-        {
-          "type": "step",
-          "id": "s1",
-          "from": "bus",
-          "to": "shop.oms",
-          "kind": "event",
-          "label": "PaymentAuthorized",
-          "status": "unresolved",
-          "note": "Reacts to the message named `ledger.PaymentAuthorized`, which is not an event this repository declares.",
-          "line": "examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs:20"
-        },
-        {
-          "type": "step",
-          "id": "s2",
-          "from": "shop.oms",
-          "to": "shop.oms",
-          "kind": "call",
-          "label": "ConfirmOrder",
-          "status": "declared",
-          "line": "examples/shop/oms/src/application/policy/confirm_order_on_payment_authorized.rs:27"
-        },
-        {
-          "type": "step",
-          "id": "s3",
-          "from": "shop.oms",
-          "to": "oms-pg",
-          "kind": "call",
-          "label": "by_id",
-          "status": "declared",
-          "line": "examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:31"
-        },
-        {
-          "type": "step",
-          "id": "s4",
-          "from": "shop.oms",
-          "to": "payments.ledger",
-          "kind": "rpc",
-          "label": "Authorize",
-          "status": "declared",
-          "ref": "payments.v1.PaymentService/Authorize",
-          "line": "examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:32"
-        },
-        {
-          "type": "step",
-          "id": "s5",
-          "from": "shop.oms",
-          "to": "oms-pg",
-          "kind": "call",
-          "label": "save",
-          "status": "declared",
-          "line": "examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:34"
-        },
-        {
-          "type": "step",
-          "id": "s6",
-          "from": "shop.oms",
-          "to": "bus",
-          "kind": "event",
-          "label": "OrderConfirmed",
-          "status": "declared",
-          "ref": "shop.oms.order.OrderConfirmed",
-          "line": "examples/shop/oms/src/application/order/usecases/confirm_order/mod.rs:34"
         }
       ]
     },
