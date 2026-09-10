@@ -5,8 +5,14 @@
 // the literal behind it.
 //
 // It is the part of a Go extractor that has nothing to do with what the
-// extractor is looking for. River and Watermill read the tree this way, and the
-// next Go extractor should not have to copy it a third time.
+// extractor is looking for. River, Watermill and go-nats read the tree this
+// way, and the next Go extractor should not have to copy it a fourth time.
+//
+// Index, over a Tree, is the second shared part: the structs with their field
+// types and tag defaults, the interfaces by method name, and every function
+// with its parameters and results, so that a value - a subject, a topic, a
+// queue, a job type - is followed through locals, fields, constructors and
+// parameters up to the callers that pass it, the same way in each extractor.
 package goscan
 
 import (

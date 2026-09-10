@@ -6,7 +6,6 @@ import (
 	"go/ast"
 	"go/token"
 	"path"
-	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -16,7 +15,10 @@ import (
 	"github.com/shortlink-org/portolan/plugin"
 )
 
-const watermillMessageImport = "github.com/ThreeDotsLabs/watermill/message"
+const (
+	watermillMessageImport = "github.com/ThreeDotsLabs/watermill/message"
+	watermillCQRSImport    = "github.com/ThreeDotsLabs/watermill/components/cqrs"
+)
 
 type goType struct {
 	key    string
@@ -26,22 +28,10 @@ type goType struct {
 	at     goscan.Source
 }
 
-type configField struct {
-	value string
-	env   string
-}
-
-type function struct {
-	key      string
-	name     string
-	receiver string
-	file     *goscan.File
-	decl     *ast.FuncDecl
-	params   []string
-	types    map[string]string
-	results  []string
-}
-
+// topic is an address as far as one function can tell: the string, when it
+// resolved; the parameter index, when the function was handed it and the
+// callers decide; and always the expression as written, so an unresolved
+// one can still be named.
 type topic struct {
 	address string
 	env     string
@@ -60,6 +50,9 @@ type publication struct {
 	terminal   bool
 }
 
+// handler is one way messages enter this service: a router handler, a CQRS
+// handler, or a direct Subscribe. An input with no address is one that was
+// mounted but whose topic nothing resolved - kept, and said to be so.
 type handler struct {
 	name          string
 	input         topic
@@ -68,6 +61,7 @@ type handler struct {
 	entrypoint    string
 	publications  []publication
 	at            goscan.Source
+	direct        bool
 }
 
 type cqrsHandler struct {
@@ -81,7 +75,12 @@ type channelState struct {
 	seen    map[string]bool
 }
 
+// analysisState is what one function body knows about its names: the type
+// each local has, the strings, the JSON payloads and messages built, and
+// which locals are parameters - plus the function itself, for what the
+// shared index can say about names this state cannot.
 type analysisState struct {
+	fn           *goscan.Function
 	types        map[string]string
 	strings      map[string]topic
 	bytesPayload map[string]string
@@ -99,19 +98,33 @@ type pathState struct {
 	publications []int
 }
 
-// scanner is the tree, and what Watermill leaves in it: the types and
-// functions, what each function publishes, and the handlers registered on a
-// router or a CQRS processor.
+// registration is one Router.AddHandler or AddNoPublisherHandler as read
+// at its call, before the parameters it was handed are filled in by the
+// callers. A wrapper that registers handlers for the whole service is one
+// registration with parameters; each caller makes it a concrete one.
+type registration struct {
+	method     string
+	name       topic
+	input      topic
+	output     topic
+	callback   ast.Expr
+	callbackFn *goscan.Function
+	callbackSt *analysisState
+	subscriber string
+	fn         *goscan.Function
+	at         goscan.Source
+}
+
+// scanner is the shared Go index, and what Watermill leaves in it: the
+// payload types, what each function publishes, and the handlers registered
+// on a router or a CQRS processor or subscribed directly.
 type scanner struct {
-	*goscan.Tree
-	types         map[string]*goType
-	configFields  map[string]configField
-	functions     map[string]*function
-	methodResults map[string]string
-	methodChoices map[string]map[string]bool
-	summaries     map[string][]publication
-	handlers      []handler
-	transport     string
+	*goscan.Index
+	types     map[string]*goType
+	summaries map[string][]publication
+	outer     map[string]*analysisState
+	handlers  []handler
+	transport string
 }
 
 func extract(in plugin.Input, opts Options) (plugin.Response, error) {
@@ -121,13 +134,10 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 		return plugin.Response{}, err
 	}
 	s := &scanner{
-		Tree:          tree,
-		types:         map[string]*goType{},
-		configFields:  map[string]configField{},
-		functions:     map[string]*function{},
-		methodResults: map[string]string{},
-		methodChoices: map[string]map[string]bool{},
-		summaries:     map[string][]publication{},
+		Index:     goscan.NewIndex(tree),
+		types:     map[string]*goType{},
+		summaries: map[string][]publication{},
+		outer:     map[string]*analysisState{},
 	}
 	for _, file := range s.Files {
 		for _, imported := range file.Imports {
@@ -139,7 +149,7 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 	serviceID := opts.Context + "." + opts.Service
 	channels, flows := s.catalog(serviceID, opts.Context)
 	if len(s.handlers) == 0 {
-		b.Warn(in.Root, "no Watermill Router.AddHandler or AddNoPublisherHandler declaration was found")
+		b.Warn(in.Root, "no Watermill Router.AddHandler, AddNoPublisherHandler, CQRS handler or Subscriber.Subscribe declaration was found")
 	}
 
 	fragment := catalog.Catalog{
@@ -184,145 +194,65 @@ func (s *scanner) index(b *plugin.Builder) {
 	for _, file := range s.Files {
 		s.indexDeclarations(file)
 	}
-	s.finalizeMethodResults()
-	for _, fn := range s.functions {
-		if fn.decl.Body == nil {
-			continue
-		}
-		state := s.stateFor(fn)
-		s.summaries[fn.key] = s.analyzeBlock(fn.decl.Body, fn.file, state, false).publications
+	for _, fn := range s.SortedFunctions() {
+		s.summaries[fn.Key] = s.analyzeBlock(fn.Decl.Body, fn.File, s.stateFor(fn), false).publications
 	}
-	for _, fn := range s.functions {
-		if fn.decl.Body != nil {
-			s.indexHandlers(fn, b)
-			s.indexCQRS(fn, b)
-		}
+	for _, fn := range s.SortedFunctions() {
+		s.indexHandlers(fn, b)
+		s.indexCQRS(fn, b)
+		s.indexSubscribes(fn, b)
 	}
 }
 
 func (s *scanner) indexDeclarations(file *goscan.File) {
 	for _, decl := range file.Node.Decls {
-		switch item := decl.(type) {
-		case *ast.GenDecl:
-			if item.Tok != token.TYPE {
+		gen, ok := decl.(*ast.GenDecl)
+		if !ok || gen.Tok != token.TYPE {
+			continue
+		}
+		for _, raw := range gen.Specs {
+			spec := raw.(*ast.TypeSpec)
+			body, ok := spec.Type.(*ast.StructType)
+			if !ok {
 				continue
 			}
-			for _, raw := range item.Specs {
-				s.indexType(file, item, raw.(*ast.TypeSpec))
+			key := file.Pkg + "." + spec.Name.Name
+			doc := ""
+			if spec.Doc != nil {
+				doc = strings.TrimSpace(spec.Doc.Text())
+			} else if gen.Doc != nil {
+				doc = strings.TrimSpace(gen.Doc.Text())
 			}
-		case *ast.FuncDecl:
-			s.indexFunction(file, item)
+			s.types[key] = &goType{key: key, name: spec.Name.Name, doc: doc, fields: s.FieldsOf(body), at: s.At(spec.Pos())}
 		}
 	}
 }
 
-func (s *scanner) indexType(file *goscan.File, gen *ast.GenDecl, spec *ast.TypeSpec) {
-	key := file.Pkg + "." + spec.Name.Name
-	switch body := spec.Type.(type) {
-	case *ast.StructType:
-		doc := ""
-		if spec.Doc != nil {
-			doc = strings.TrimSpace(spec.Doc.Text())
-		} else if gen.Doc != nil {
-			doc = strings.TrimSpace(gen.Doc.Text())
-		}
-		s.types[key] = &goType{key: key, name: spec.Name.Name, doc: doc, fields: s.FieldsOf(body), at: s.At(spec.Pos())}
-		for _, field := range body.Fields.List {
-			if field.Tag == nil {
-				continue
-			}
-			tagText, _ := strconv.Unquote(field.Tag.Value)
-			tag := reflect.StructTag(tagText)
-			for _, name := range field.Names {
-				s.configFields[key+"."+name.Name] = configField{value: tag.Get("default"), env: tag.Get("envconfig")}
-			}
-		}
-	case *ast.InterfaceType:
-		for _, field := range body.Methods.List {
-			fnType, ok := field.Type.(*ast.FuncType)
-			if !ok || len(field.Names) == 0 {
-				continue
-			}
-			results := s.resultTypes(fnType.Results, file)
-			if len(results) > 0 {
-				s.addMethodResult(key, field.Names[0].Name, results[0])
-			}
-		}
-	}
-}
-
-func (s *scanner) indexFunction(file *goscan.File, decl *ast.FuncDecl) {
-	key := file.Pkg + "." + decl.Name.Name
-	receiver := ""
-	if decl.Recv != nil && len(decl.Recv.List) > 0 {
-		receiver = s.TypeKey(decl.Recv.List[0].Type, file)
-		key = receiver + "." + decl.Name.Name
-	}
-	fn := &function{key: key, name: decl.Name.Name, receiver: receiver, file: file, decl: decl, types: map[string]string{}, results: s.resultTypes(decl.Type.Results, file)}
-	if decl.Type.Params != nil {
-		for _, field := range decl.Type.Params.List {
-			typeKey := s.TypeKey(field.Type, file)
-			for _, name := range field.Names {
-				fn.params = append(fn.params, name.Name)
-				fn.types[name.Name] = typeKey
-			}
-		}
-	}
-	s.functions[key] = fn
-	if receiver != "" && len(fn.results) > 0 {
-		s.addMethodResult(receiver, fn.name, fn.results[0])
-	}
-}
-
-func (s *scanner) resultTypes(fields *ast.FieldList, file *goscan.File) []string {
-	if fields == nil {
-		return nil
-	}
-	var out []string
-	for _, field := range fields.List {
-		count := max(1, len(field.Names))
-		for range count {
-			out = append(out, s.TypeKey(field.Type, file))
-		}
-	}
-	return out
-}
-
-func (s *scanner) addMethodResult(receiver, name, result string) {
-	if result == "" {
-		return
-	}
-	for _, key := range []string{receiver + "." + name, name} {
-		if s.methodChoices[key] == nil {
-			s.methodChoices[key] = map[string]bool{}
-		}
-		s.methodChoices[key][result] = true
-	}
-}
-
-func (s *scanner) finalizeMethodResults() {
-	for key, choices := range s.methodChoices {
-		if len(choices) == 1 {
-			for result := range choices {
-				s.methodResults[key] = result
-			}
-		}
-	}
-}
-
-func (s *scanner) stateFor(fn *function) *analysisState {
-	state := &analysisState{types: map[string]string{}, strings: map[string]topic{}, bytesPayload: map[string]string{}, messages: map[string]string{}, topicParams: map[string]int{}}
-	for name, kind := range fn.types {
+func (s *scanner) stateFor(fn *goscan.Function) *analysisState {
+	state := &analysisState{fn: fn, types: map[string]string{}, strings: map[string]topic{}, bytesPayload: map[string]string{}, messages: map[string]string{}, topicParams: map[string]int{}}
+	for name, kind := range fn.Types {
 		state.types[name] = kind
 	}
-	for i, name := range fn.params {
+	for i, name := range fn.Params {
 		state.topicParams[name] = i
 	}
 	return state
 }
 
+// outerState is a function's state with its body's assignments read, kept
+// so that a function reached from several registrations is read once.
+func (s *scanner) outerState(fn *goscan.Function) *analysisState {
+	if found := s.outer[fn.Key]; found != nil {
+		return found
+	}
+	state := s.stateFor(fn)
+	s.collectAssignments(fn.Decl.Body, fn.File, state)
+	s.outer[fn.Key] = state
+	return state
+}
+
 func cloneState(parent *analysisState) *analysisState {
-	state := &analysisState{types: map[string]string{}, strings: map[string]topic{}, bytesPayload: map[string]string{}, messages: map[string]string{}, topicParams: map[string]int{}}
+	state := &analysisState{fn: parent.fn, types: map[string]string{}, strings: map[string]topic{}, bytesPayload: map[string]string{}, messages: map[string]string{}, topicParams: map[string]int{}}
 	for key, value := range parent.types {
 		state.types[key] = value
 	}
@@ -496,15 +426,17 @@ func (s *scanner) publicationsIn(statement ast.Stmt, file *goscan.File, state *a
 			return true
 		}
 		if sel, ok := call.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == "Publish" && len(call.Args) >= 2 {
-			resolved := s.topicValue(call.Args[0], file, state, map[string]bool{})
-			if resolved.valid() {
-				resolved.at = s.At(call.Args[0].Pos())
-				out = append(out, publication{topic: resolved, payload: s.payloadOf(call.Args[1], file, state), at: s.At(call.Pos())})
+			payload := s.payloadOf(call.Args[1], file, state)
+			for _, resolved := range s.topicValues(call.Args[0], file, state) {
+				if resolved.valid() {
+					resolved.at = s.At(call.Args[0].Pos())
+					out = append(out, publication{topic: resolved, payload: payload, at: s.At(call.Pos())})
+				}
 			}
 		}
-		if includeHelpers {
-			if key := s.functionKey(call.Fun, file); key != "" {
-				for _, summary := range s.summaries[key] {
+		if includeHelpers && state.fn != nil {
+			for _, target := range s.Targets(call.Fun, state.fn) {
+				for _, summary := range s.summaries[target.Key] {
 					pub := summary
 					if pub.topic.param >= 0 && pub.topic.param < len(call.Args) {
 						index := pub.topic.param
@@ -544,10 +476,26 @@ func unionPublicationIndexes(groups ...[]pathState) []int {
 	return out
 }
 
-func (s *scanner) indexHandlers(fn *function, b *plugin.Builder) {
-	outer := s.stateFor(fn)
-	s.collectAssignments(fn.decl.Body, fn.file, outer)
-	ast.Inspect(fn.decl.Body, func(node ast.Node) bool {
+// --- router handlers ---------------------------------------------------------
+
+func usesImport(fn *goscan.Function, importPath string) bool {
+	for _, imported := range fn.File.Imports {
+		if imported == importPath {
+			return true
+		}
+	}
+	return false
+}
+
+// indexHandlers reads every Router.AddHandler and AddNoPublisherHandler in
+// a function. A registration inside a wrapper - a function handed the name,
+// the topic or the handler as parameters - is made concrete once per caller.
+func (s *scanner) indexHandlers(fn *goscan.Function, b *plugin.Builder) {
+	if !usesImport(fn, watermillMessageImport) {
+		return
+	}
+	outer := s.outerState(fn)
+	ast.Inspect(fn.Decl.Body, func(node ast.Node) bool {
 		if _, ok := node.(*ast.FuncLit); ok {
 			return false
 		}
@@ -556,96 +504,190 @@ func (s *scanner) indexHandlers(fn *function, b *plugin.Builder) {
 			return true
 		}
 		sel, ok := call.Fun.(*ast.SelectorExpr)
-		if !ok || (sel.Sel.Name != "AddHandler" && sel.Sel.Name != "AddNoPublisherHandler") {
+		if !ok || (sel.Sel.Name != "AddHandler" && sel.Sel.Name != "AddNoPublisherHandler") || len(call.Args) < 4 {
 			return true
 		}
-		usesMessage := false
-		for _, imported := range fn.file.Imports {
-			if imported == watermillMessageImport {
-				usesMessage = true
-			}
+		reg := registration{
+			method:     sel.Sel.Name,
+			name:       s.topicValue(call.Args[0], fn.File, outer, map[string]bool{}),
+			input:      s.topicValue(call.Args[1], fn.File, outer, map[string]bool{}),
+			output:     topic{param: -1},
+			callback:   call.Args[len(call.Args)-1],
+			callbackFn: fn,
+			callbackSt: outer,
+			fn:         fn,
+			at:         s.At(call.Pos()),
 		}
-		if !usesMessage || len(call.Args) < 4 {
-			return true
-		}
-		callbackIndex := len(call.Args) - 1
-		input := s.topicValue(call.Args[1], fn.file, outer, map[string]bool{})
-		if input.address == "" {
-			b.Warn(s.At(call.Args[1].Pos()).String(), "Watermill handler topic could not be resolved to a literal, constant, or config default")
-			return false
-		}
-		name := s.topicValue(call.Args[0], fn.file, outer, map[string]bool{}).address
-		if name == "" {
-			name = s.PrintNode(call.Args[0])
-		}
-		callbackState := cloneState(outer)
-		var body *ast.BlockStmt
-		entrypoint := ""
-		switch cb := goscan.Unwrap(call.Args[callbackIndex]).(type) {
-		case *ast.FuncLit:
-			body = cb.Body
-			if cb.Type.Params != nil {
-				for _, field := range cb.Type.Params.List {
-					for _, param := range field.Names {
-						callbackState.types[param.Name] = s.TypeKey(field.Type, fn.file)
-					}
-				}
-			}
-		case *ast.Ident:
-			if target := s.functions[fn.file.Pkg+"."+cb.Name]; target != nil {
-				body = target.decl.Body
-				callbackState = s.stateFor(target)
-				entrypoint = watermillFunctionKey(target)
-			}
-		}
-		if body == nil {
-			b.Warn(s.At(call.Args[callbackIndex].Pos()).String(), "Watermill handler body could not be resolved")
-			return false
-		}
-		found := s.analyzeBlock(body, fn.file, callbackState, true)
-		if sel.Sel.Name == "AddHandler" && len(call.Args) >= 7 {
-			output := s.topicValue(call.Args[3], fn.file, outer, map[string]bool{})
-			if output.address != "" {
-				found.publications = append(found.publications, publication{topic: output, at: s.At(call.Args[3].Pos())})
-			}
-		}
-		group := ""
 		if subscriber, ok := call.Args[2].(*ast.Ident); ok {
-			group = s.subscriberGroup(fn.decl.Body, fn.file, outer, subscriber.Name)
+			reg.subscriber = s.subscriberGroup(fn.Decl.Body, fn.File, outer, subscriber.Name)
 		}
-		s.handlers = append(s.handlers, handler{name: name, input: input, inputPayload: found.input, consumerGroup: group, entrypoint: entrypoint, publications: uniquePublications(found.publications), at: s.At(call.Pos())})
+		// AddHandler(name, subscribeTopic, subscriber, publishTopic, publisher, handler)
+		if sel.Sel.Name == "AddHandler" && len(call.Args) >= 6 {
+			reg.output = s.topicValue(call.Args[3], fn.File, outer, map[string]bool{})
+		}
+		for _, concrete := range s.expand(reg, 0) {
+			s.register(concrete, b)
+		}
 		return false
 	})
 }
 
-func watermillFunctionKey(fn *function) string {
-	name := fn.name
-	if fn.receiver != "" {
-		name = goscan.LastSegment(fn.receiver) + "." + name
+// expand fills a registration's parameters in from its callers, one
+// concrete registration per call site, up to Hops levels. A registration
+// nothing calls is kept as it is: its topic will read as unresolved.
+func (s *scanner) expand(reg registration, depth int) []registration {
+	callbackParam := -1
+	if ident, ok := goscan.Unwrap(reg.callback).(*ast.Ident); ok && reg.callbackFn == reg.fn {
+		callbackParam = goscan.ParamIndex(reg.fn, ident.Name)
 	}
-	dir := path.Dir(fn.file.Name)
+	if reg.name.param < 0 && reg.input.param < 0 && reg.output.param < 0 && callbackParam < 0 {
+		return []registration{reg}
+	}
+	if depth >= s.Hops {
+		return []registration{reg}
+	}
+	var out []registration
+	for _, site := range s.CallSites(reg.fn) {
+		state := s.outerState(site.Fn)
+		fill := func(value topic) topic {
+			if value.param < 0 || value.param >= len(site.Call.Args) {
+				return value
+			}
+			filled := s.topicValue(site.Call.Args[value.param], site.Fn.File, state, map[string]bool{})
+			filled.at = s.At(site.Call.Args[value.param].Pos())
+			return filled
+		}
+		concrete := reg
+		concrete.fn = site.Fn
+		concrete.name = fill(reg.name)
+		concrete.input = fill(reg.input)
+		concrete.output = fill(reg.output)
+		if callbackParam >= 0 && callbackParam < len(site.Call.Args) {
+			concrete.callback = site.Call.Args[callbackParam]
+			concrete.callbackFn = site.Fn
+			concrete.callbackSt = state
+		}
+		out = append(out, s.expand(concrete, depth+1)...)
+	}
+	if len(out) == 0 {
+		return []registration{reg}
+	}
+	return out
+}
+
+// register turns one concrete registration into a handler: the body read
+// for what it publishes, the input kept even when its topic did not resolve.
+func (s *scanner) register(reg registration, b *plugin.Builder) {
+	name := reg.name.address
+	if name == "" {
+		name = goscan.FirstNonEmpty(reg.name.expr, reg.method)
+	}
+	if reg.input.address == "" {
+		b.Warn(reg.at.String(), "Watermill handler "+name+" is registered on topic `"+goscan.FirstNonEmpty(reg.input.expr, "?")+"`, which this reader cannot resolve to a literal, a constant, a config default or a caller's argument; the handler is kept with its topic unresolved")
+	}
+	body, state, entrypoint := s.callbackBody(reg.callback, reg.callbackFn, reg.callbackSt)
+	found := analysis{}
+	if body == nil {
+		b.Warn(s.At(reg.callback.Pos()).String(), "Watermill handler body for "+name+" could not be resolved: not a function literal, a function or method of this tree, or a constructor returning one; its publications are not read")
+	} else {
+		found = s.analyzeBlock(body, state.fn.File, state, true)
+	}
+	if reg.method == "AddHandler" && reg.output.address != "" {
+		found.publications = append(found.publications, publication{topic: reg.output, at: reg.output.at})
+	}
+	s.handlers = append(s.handlers, handler{name: name, input: reg.input, inputPayload: found.input, consumerGroup: reg.subscriber, entrypoint: entrypoint, publications: uniquePublications(found.publications), at: reg.at})
+}
+
+// callbackBody is the body a handler value stands for, with the state to
+// read it in: a function literal, in the registering function's state; a
+// function or method of the tree, in its own; a constructor whose whole
+// body returns a literal, in the constructor's.
+func (s *scanner) callbackBody(expr ast.Expr, fn *goscan.Function, outer *analysisState) (*ast.BlockStmt, *analysisState, string) {
+	switch value := goscan.Unwrap(expr).(type) {
+	case *ast.FuncLit:
+		state := cloneState(outer)
+		if value.Type.Params != nil {
+			for _, field := range value.Type.Params.List {
+				for _, param := range field.Names {
+					state.types[param.Name] = s.TypeKey(field.Type, fn.File)
+				}
+			}
+		}
+		return value.Body, state, ""
+	case *ast.CallExpr:
+		for _, target := range s.Callees(value, fn) {
+			if lit, ok := goscan.Unwrap(goscan.SingleReturn(target)).(*ast.FuncLit); ok {
+				return s.callbackBody(lit, target, s.outerState(target))
+			}
+		}
+	default:
+		for _, target := range s.Targets(expr, fn) {
+			if target.Decl.Body != nil {
+				return target.Decl.Body, s.stateFor(target), functionKey(target)
+			}
+		}
+	}
+	return nil, nil, ""
+}
+
+func functionKey(fn *goscan.Function) string {
+	name := fn.Name
+	if fn.Receiver != "" {
+		name = goscan.LastSegment(fn.Receiver) + "." + name
+	}
+	dir := path.Dir(fn.File.Name)
 	if dir == "." || dir == "" {
 		return name
 	}
 	return dir + ":" + name
 }
 
-func (s *scanner) indexCQRS(fn *function, b *plugin.Builder) {
-	usesCQRS := false
-	for _, imported := range fn.file.Imports {
-		if imported == "github.com/ThreeDotsLabs/watermill/components/cqrs" {
-			usesCQRS = true
-		}
-	}
-	if !usesCQRS {
+// indexSubscribes reads Subscriber.Subscribe(ctx, topic) outside a router:
+// the messages are read from the returned channel in the same function, so
+// the function is the handler and its entrypoint.
+func (s *scanner) indexSubscribes(fn *goscan.Function, b *plugin.Builder) {
+	if !usesImport(fn, watermillMessageImport) {
 		return
 	}
-	state := s.stateFor(fn)
-	s.collectAssignments(fn.decl.Body, fn.file, state)
+	outer := s.outerState(fn)
+	ast.Inspect(fn.Decl.Body, func(node ast.Node) bool {
+		call, ok := node.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		sel, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok || sel.Sel.Name != "Subscribe" || len(call.Args) != 2 {
+			return true
+		}
+		if recv := s.TypeOf(sel.X, fn); recv != watermillMessageImport+".Subscriber" && recv != "" {
+			return true
+		}
+		values := s.topicValues(call.Args[1], fn.File, outer)
+		if len(values) == 0 {
+			values = []topic{{expr: s.PrintNode(call.Args[1]), param: -1}}
+		}
+		for _, value := range values {
+			if value.address == "" {
+				b.Warn(s.At(call.Pos()).String(), "Subscribe in "+fn.Name+" names topic `"+goscan.FirstNonEmpty(value.expr, "?")+"`, which this reader cannot resolve to a literal, a constant, a config default or a caller's argument; the subscription is kept with its topic unresolved")
+			}
+			value.at = s.At(call.Args[1].Pos())
+			s.handlers = append(s.handlers, handler{name: fn.Name, input: value, entrypoint: functionKey(fn), at: s.At(call.Pos()), direct: true})
+		}
+		return true
+	})
+}
+
+// --- CQRS --------------------------------------------------------------------
+
+func (s *scanner) indexCQRS(fn *goscan.Function, b *plugin.Builder) {
+	if !usesImport(fn, watermillCQRSImport) {
+		return
+	}
+	state := s.outerState(fn)
 	processorTopics := map[string]topic{}
 	handlers := map[string]cqrsHandler{}
 
-	ast.Inspect(fn.decl.Body, func(node ast.Node) bool {
+	ast.Inspect(fn.Decl.Body, func(node ast.Node) bool {
 		assign, ok := node.(*ast.AssignStmt)
 		if !ok || len(assign.Rhs) == 0 {
 			return true
@@ -659,19 +701,19 @@ func (s *scanner) indexCQRS(fn *function, b *plugin.Builder) {
 			if !ok || name.Name == "_" {
 				continue
 			}
-			if processorKind := s.cqrsCallName(call, fn.file); processorKind == "NewEventProcessorWithConfig" || processorKind == "NewCommandProcessorWithConfig" || processorKind == "NewEventProcessor" || processorKind == "NewCommandProcessor" {
-				if resolved := s.cqrsProcessorTopic(call, fn.file, state); resolved.valid() {
+			if processorKind := s.cqrsCallName(call, fn.File); processorKind == "NewEventProcessorWithConfig" || processorKind == "NewCommandProcessorWithConfig" || processorKind == "NewEventProcessor" || processorKind == "NewCommandProcessor" {
+				if resolved := s.cqrsProcessorTopic(call, fn.File, state); resolved.valid() {
 					processorTopics[name.Name] = resolved
 				}
 			}
-			if built, ok := s.cqrsHandler(call, fn.file, state); ok {
+			if built, ok := s.cqrsHandler(call, fn.File, state); ok {
 				handlers[name.Name] = built
 			}
 		}
 		return true
 	})
 
-	ast.Inspect(fn.decl.Body, func(node ast.Node) bool {
+	ast.Inspect(fn.Decl.Body, func(node ast.Node) bool {
 		call, ok := node.(*ast.CallExpr)
 		if !ok {
 			return true
@@ -691,7 +733,7 @@ func (s *scanner) indexCQRS(fn *function, b *plugin.Builder) {
 		start := 0
 		group := ""
 		if sel.Sel.Name == "AddHandlersGroup" && len(call.Args) > 0 {
-			group = s.topicValue(call.Args[0], fn.file, state, map[string]bool{}).address
+			group = s.topicValue(call.Args[0], fn.File, state, map[string]bool{}).address
 			start = 1
 		}
 		for _, arg := range call.Args[start:] {
@@ -701,7 +743,7 @@ func (s *scanner) indexCQRS(fn *function, b *plugin.Builder) {
 			case *ast.Ident:
 				built, found = handlers[value.Name]
 			case *ast.CallExpr:
-				built, found = s.cqrsHandler(value, fn.file, state)
+				built, found = s.cqrsHandler(value, fn.File, state)
 			}
 			if !found {
 				continue
@@ -737,7 +779,7 @@ func (s *scanner) cqrsCallName(call *ast.CallExpr, file *goscan.File) string {
 		return ""
 	}
 	base, ok := sel.X.(*ast.Ident)
-	if !ok || file.Imports[base.Name] != "github.com/ThreeDotsLabs/watermill/components/cqrs" {
+	if !ok || file.Imports[base.Name] != watermillCQRSImport {
 		return ""
 	}
 	return sel.Sel.Name
@@ -780,9 +822,6 @@ func (s *scanner) cqrsHandler(call *ast.CallExpr, file *goscan.File, state *anal
 func (s *scanner) cqrsProcessorTopic(call *ast.CallExpr, file *goscan.File, state *analysisState) topic {
 	name := s.cqrsCallName(call, file)
 	index := 1
-	if name == "NewEventProcessor" || name == "NewCommandProcessor" {
-		index = 1
-	}
 	if len(call.Args) <= index {
 		return topic{param: -1}
 	}
@@ -850,6 +889,8 @@ func (s *scanner) subscriberGroup(body *ast.BlockStmt, file *goscan.File, state 
 	return group
 }
 
+// --- the catalog -------------------------------------------------------------
+
 func (s *scanner) catalog(serviceID, owner string) ([]catalog.Channel, []catalog.Flow) {
 	channels := map[string]*channelState{}
 	ensure := func(value topic) *channelState {
@@ -872,8 +913,10 @@ func (s *scanner) catalog(serviceID, owner string) ([]catalog.Channel, []catalog
 	flows := []catalog.Flow{}
 	for _, found := range s.handlers {
 		inputPayload := goscan.FirstNonEmpty(goscan.LastSegment(found.inputPayload), found.name)
-		input := ensure(found.input)
-		addMessage(input, catalog.ChannelMessage{Name: inputPayload, Title: inputPayload, Doc: s.payloadDescription(found.inputPayload, "Input"), Direction: catalog.ChannelReceive})
+		if found.input.address != "" {
+			input := ensure(found.input)
+			addMessage(input, catalog.ChannelMessage{Name: inputPayload, Title: inputPayload, Doc: s.payloadDescription(found.inputPayload, "Input"), Direction: catalog.ChannelReceive})
+		}
 		if len(found.publications) == 0 {
 			flows = append(flows, s.flow(serviceID, owner, found, nil))
 		}
@@ -890,6 +933,19 @@ func (s *scanner) catalog(serviceID, owner string) ([]catalog.Channel, []catalog
 				pub := found.publications[i]
 				flows = append(flows, s.flow(serviceID, owner, found, &pub))
 			}
+		}
+	}
+	// What the service publishes outside any handler - from an HTTP handler,
+	// a use case, a cron - is a send on the topic all the same, and the
+	// other side of somebody else's receive.
+	for _, fn := range s.SortedFunctions() {
+		for _, pub := range s.summaries[fn.Key] {
+			if pub.topic.address == "" {
+				continue
+			}
+			output := ensure(pub.topic)
+			payload := goscan.FirstNonEmpty(goscan.LastSegment(pub.payload), "message")
+			addMessage(output, catalog.ChannelMessage{Name: payload, Title: payload, Doc: s.payloadDescription(pub.payload, "Payload"), Direction: catalog.ChannelSend})
 		}
 	}
 	addresses := make([]string, 0, len(channels))
@@ -974,17 +1030,40 @@ func addMessage(channel *channelState, message catalog.ChannelMessage) {
 	channel.channel.Messages = append(channel.channel.Messages, message)
 }
 
-func (s *scanner) flow(serviceID, owner string, found handler, pub *publication) catalog.Flow {
-	inputBroker := "watermill." + goscan.Slug(found.input.address)
-	ending := "consume"
-	name := goscan.Title(found.name)
-	summary := "Watermill handler `" + found.name + "` consumes `" + found.input.address + "`"
-	participants := []catalog.Participant{{ID: serviceID, Kind: catalog.ParticipantService, Context: stringPtr(owner)}, {ID: inputBroker, Kind: catalog.ParticipantBroker, Label: goscan.FirstNonEmpty(s.transport, "Watermill") + " · " + found.input.address}}
+// inputLane is the broker lane a handler receives on: the topic, or - when
+// the topic did not resolve - one lane that says so.
+func (s *scanner) inputLane(found handler) (id, label string, status catalog.Status) {
+	if found.input.address == "" {
+		return "watermill", goscan.FirstNonEmpty(s.transport, "Watermill") + " · topic not proven", catalog.StatusUnresolved
+	}
+	return "watermill." + goscan.Slug(found.input.address), goscan.FirstNonEmpty(s.transport, "Watermill") + " · " + found.input.address, catalog.StatusDeclared
+}
+
+func (s *scanner) receiveNote(found handler) string {
 	note := s.payloadDescription(found.inputPayload, "Input")
+	if found.direct {
+		note = "Subscribed directly, without a router; messages are read in `" + found.name + "`."
+	}
 	if found.consumerGroup != "" {
 		note += " Consumer group `" + found.consumerGroup + "`."
 	}
-	steps := catalog.FlowNodes{&catalog.Step{Type: "step", ID: "receive", From: inputBroker, To: serviceID, Kind: catalog.StepEvent, Label: found.name, Status: catalog.StatusDeclared, Note: strings.TrimSpace(note), Line: found.at.String(), ContinuesAt: found.entrypoint, Handoff: s.messageHandoff(found.input.address, "receive")}}
+	if found.input.address == "" {
+		note += " Topic `" + goscan.FirstNonEmpty(found.input.expr, "?") + "` is not resolvable statically."
+	}
+	return strings.TrimSpace(note)
+}
+
+func (s *scanner) flow(serviceID, owner string, found handler, pub *publication) catalog.Flow {
+	inputBroker, inputLabel, status := s.inputLane(found)
+	topicName := goscan.FirstNonEmpty(found.input.address, found.input.expr, "?")
+	ending := "consume"
+	name := goscan.Title(found.name)
+	summary := "Watermill handler `" + found.name + "` consumes `" + topicName + "`"
+	if found.direct {
+		summary = "`" + found.name + "` subscribes to `" + topicName + "`"
+	}
+	participants := []catalog.Participant{{ID: serviceID, Kind: catalog.ParticipantService, Context: stringPtr(owner)}, {ID: inputBroker, Kind: catalog.ParticipantBroker, Label: inputLabel}}
+	steps := catalog.FlowNodes{&catalog.Step{Type: "step", ID: "receive", From: inputBroker, To: serviceID, Kind: catalog.StepEvent, Label: found.name, Status: status, Note: s.receiveNote(found), Line: found.at.String(), ContinuesAt: found.entrypoint, Handoff: s.messageHandoff(found.input.address, "receive")}}
 	if pub != nil {
 		ending = pub.topic.address
 		outputBroker := "watermill." + goscan.Slug(pub.topic.address)
@@ -998,14 +1077,15 @@ func (s *scanner) flow(serviceID, owner string, found handler, pub *publication)
 	}
 	summary += "."
 	slugged := goscan.Slug(goscan.LastSegment(serviceID) + "-watermill-" + found.name + "-" + ending)
-	return catalog.Flow{ID: "flow." + slugged, Slug: slugged, Name: name, Summary: summary, Source: found.at.String(), Trigger: &catalog.FlowTrigger{Kind: "event", Label: found.input.address, Confidence: "high"}, Owner: owner, Participants: participants, Steps: steps}
+	return catalog.Flow{ID: "flow." + slugged, Slug: slugged, Name: name, Summary: summary, Source: found.at.String(), Trigger: &catalog.FlowTrigger{Kind: "event", Label: topicName, Confidence: "high"}, Owner: owner, Participants: participants, Steps: steps}
 }
 
 func (s *scanner) branchedFlow(serviceID, owner string, found handler) catalog.Flow {
-	inputBroker := "watermill." + goscan.Slug(found.input.address)
+	inputBroker, inputLabel, status := s.inputLane(found)
+	topicName := goscan.FirstNonEmpty(found.input.address, found.input.expr, "?")
 	participants := []catalog.Participant{
 		{ID: serviceID, Kind: catalog.ParticipantService, Context: stringPtr(owner)},
-		{ID: inputBroker, Kind: catalog.ParticipantBroker, Label: goscan.FirstNonEmpty(s.transport, "Watermill") + " · " + found.input.address},
+		{ID: inputBroker, Kind: catalog.ParticipantBroker, Label: inputLabel},
 	}
 	participantSeen := map[string]bool{serviceID: true, inputBroker: true}
 	branches := make([]catalog.AltBranch, 0, len(found.publications))
@@ -1036,12 +1116,8 @@ func (s *scanner) branchedFlow(serviceID, owner string, found handler) catalog.F
 		})
 		addresses = append(addresses, "`"+pub.topic.address+"`")
 	}
-	note := s.payloadDescription(found.inputPayload, "Input")
-	if found.consumerGroup != "" {
-		note += " Consumer group `" + found.consumerGroup + "`."
-	}
 	steps := catalog.FlowNodes{
-		&catalog.Step{Type: "step", ID: "receive", From: inputBroker, To: serviceID, Kind: catalog.StepEvent, Label: found.name, Status: catalog.StatusDeclared, Note: strings.TrimSpace(note), Line: found.at.String(), ContinuesAt: found.entrypoint, Handoff: s.messageHandoff(found.input.address, "receive")},
+		&catalog.Step{Type: "step", ID: "receive", From: inputBroker, To: serviceID, Kind: catalog.StepEvent, Label: found.name, Status: status, Note: s.receiveNote(found), Line: found.at.String(), ContinuesAt: found.entrypoint, Handoff: s.messageHandoff(found.input.address, "receive")},
 		&catalog.Alt{Type: "alt", ID: "outcome", Branches: branches},
 	}
 	slugged := goscan.Slug(goscan.LastSegment(serviceID) + "-watermill-" + found.name)
@@ -1049,9 +1125,9 @@ func (s *scanner) branchedFlow(serviceID, owner string, found handler) catalog.F
 		ID:           "flow." + slugged,
 		Slug:         slugged,
 		Name:         goscan.Title(found.name),
-		Summary:      "Watermill handler `" + found.name + "` consumes `" + found.input.address + "` and source control flow branches to " + strings.Join(addresses, " or ") + ".",
+		Summary:      "Watermill handler `" + found.name + "` consumes `" + topicName + "` and source control flow branches to " + strings.Join(addresses, " or ") + ".",
 		Source:       found.at.String(),
-		Trigger:      &catalog.FlowTrigger{Kind: "event", Label: found.input.address, Confidence: "high"},
+		Trigger:      &catalog.FlowTrigger{Kind: "event", Label: topicName, Confidence: "high"},
 		Owner:        owner,
 		Participants: participants,
 		Steps:        steps,
@@ -1104,6 +1180,15 @@ func uniquePublications(values []publication) []publication {
 	return out
 }
 
+// --- names and values --------------------------------------------------------
+
+// topicValue is what one expression is worth to the function reading it: a
+// literal; a local given a string; a parameter, marked as such so that the
+// callers decide; a constant, own or imported; a config field's default,
+// through the local's type or the index's; and past those, whatever the
+// shared index can prove - a concatenation, a `string(...)` of a typed
+// constant, a single-return helper, a nested config field - when it proves
+// exactly one thing. Otherwise the expression as written, unresolved.
 func (s *scanner) topicValue(expr ast.Expr, file *goscan.File, state *analysisState, visiting map[string]bool) topic {
 	expr = goscan.Unwrap(expr)
 	switch value := expr.(type) {
@@ -1119,22 +1204,67 @@ func (s *scanner) topicValue(expr ast.Expr, file *goscan.File, state *analysisSt
 		if index, ok := state.topicParams[value.Name]; ok {
 			return topic{param: index, expr: value.Name}
 		}
-		return s.constantValue(file.Pkg+"."+value.Name, visiting)
+		if found := s.constantValue(file.Pkg+"."+value.Name, visiting); found.address != "" {
+			return found
+		}
 	case *ast.SelectorExpr:
-		base, ok := value.X.(*ast.Ident)
-		if !ok {
-			break
+		if base, ok := value.X.(*ast.Ident); ok {
+			if imported := file.Imports[base.Name]; imported != "" {
+				if found := s.constantValue(imported+"."+value.Sel.Name, visiting); found.address != "" {
+					return found
+				}
+			}
+			if found, ok := s.configDefault(state.types[base.Name], value.Sel.Name, expr); ok {
+				return found
+			}
 		}
-		if imported := file.Imports[base.Name]; imported != "" {
-			return s.constantValue(imported+"."+value.Sel.Name, visiting)
-		}
-		if kind := state.types[base.Name]; kind != "" {
-			if field, ok := s.configFields[kind+"."+value.Sel.Name]; ok && field.value != "" {
-				return topic{address: field.value, env: field.env, expr: s.PrintNode(expr), param: -1, at: s.At(expr.Pos())}
+		if state.fn != nil {
+			if found, ok := s.configDefault(s.TypeOf(value.X, state.fn), value.Sel.Name, expr); ok {
+				return found
 			}
 		}
 	}
+	if state.fn != nil {
+		if values := s.Resolve(expr, state.fn, 0, visiting); len(values) == 1 {
+			return topic{address: values[0].Value, expr: s.PrintNode(expr), param: -1, at: s.At(expr.Pos())}
+		}
+	}
 	return topic{param: -1, expr: s.PrintNode(expr)}
+}
+
+// topicValues is every address an expression can be: one, the way
+// topicValue reads it, or several when the shared index follows a
+// parameter to callers that pass different constants.
+func (s *scanner) topicValues(expr ast.Expr, file *goscan.File, state *analysisState) []topic {
+	single := s.topicValue(expr, file, state, map[string]bool{})
+	// A parameter stays a parameter here: the function's summary carries the
+	// marker, and each call site fills it in with its own argument and its
+	// own provenance, which a walk up the callers from here would flatten.
+	if single.address != "" || single.param >= 0 || state.fn == nil {
+		return []topic{single}
+	}
+	values := s.Resolve(expr, state.fn, 0, map[string]bool{})
+	if len(values) == 0 {
+		return []topic{single}
+	}
+	var out []topic
+	seen := map[string]bool{}
+	for _, value := range values {
+		if seen[value.Value] {
+			continue
+		}
+		seen[value.Value] = true
+		out = append(out, topic{address: value.Value, expr: s.PrintNode(expr), param: -1, at: s.At(expr.Pos())})
+	}
+	return out
+}
+
+func (s *scanner) configDefault(structKey, field string, expr ast.Expr) (topic, bool) {
+	st := s.Structs[structKey]
+	if st == nil || st.Defaults[field] == "" {
+		return topic{}, false
+	}
+	return topic{address: st.Defaults[field], env: st.Env[field], expr: s.PrintNode(expr), param: -1, at: s.At(expr.Pos())}, true
 }
 
 func (s *scanner) constantValue(key string, visiting map[string]bool) topic {
@@ -1153,12 +1283,21 @@ func (s *scanner) constantValue(key string, visiting map[string]bool) topic {
 
 func (s *scanner) payloadOf(expr ast.Expr, file *goscan.File, state *analysisState) string {
 	expr = goscan.Unwrap(expr)
-	if ident, ok := expr.(*ast.Ident); ok {
-		if payload := state.messages[ident.Name]; payload != "" {
+	switch value := expr.(type) {
+	case *ast.Ident:
+		if payload := state.messages[value.Name]; payload != "" {
 			return payload
 		}
-		if payload := state.bytesPayload[ident.Name]; payload != "" {
+		if payload := state.bytesPayload[value.Name]; payload != "" {
 			return payload
+		}
+	case *ast.CallExpr:
+		// message.NewMessage(id, payload) written in the Publish call itself.
+		if s.isPackageCall(value, file, watermillMessageImport, "NewMessage") && len(value.Args) > 1 {
+			return s.payloadOf(value.Args[1], file, state)
+		}
+		if s.isPackageCall(value, file, "encoding/json", "Marshal") && len(value.Args) > 0 {
+			return s.typeOf(value.Args[0], file, state)
 		}
 	}
 	return s.typeOf(expr, file, state)
@@ -1170,48 +1309,50 @@ func (s *scanner) typeOf(expr ast.Expr, file *goscan.File, state *analysisState)
 	case *ast.CompositeLit:
 		return s.TypeKey(value.Type, file)
 	case *ast.Ident:
-		return state.types[value.Name]
+		if kind := state.types[value.Name]; kind != "" {
+			return kind
+		}
 	case *ast.CallExpr:
 		results := s.callResults(value, file, state)
 		if len(results) > 0 {
 			return results[0]
 		}
 	}
+	if state.fn != nil {
+		return s.TypeOf(expr, state.fn)
+	}
 	return ""
 }
 
 func (s *scanner) callResults(call *ast.CallExpr, file *goscan.File, state *analysisState) []string {
-	if key := s.functionKey(call.Fun, file); key != "" {
-		if fn := s.functions[key]; fn != nil {
-			return fn.results
-		}
-	}
 	if sel, ok := call.Fun.(*ast.SelectorExpr); ok {
 		if base, ok := sel.X.(*ast.Ident); ok {
 			if receiver := state.types[base.Name]; receiver != "" {
-				if result := s.methodResults[receiver+"."+sel.Sel.Name]; result != "" {
-					return []string{result}
+				if target := s.Functions[receiver+"."+sel.Sel.Name]; target != nil {
+					return target.Results
+				}
+				if s.Interfaces[receiver] != nil {
+					// Every implementation agreeing on the result is the result.
+					var agreed []string
+					for _, candidate := range s.ByName[sel.Sel.Name] {
+						if s.Implements(candidate.Receiver, receiver) && len(candidate.Results) > 0 {
+							if agreed != nil && agreed[0] != candidate.Results[0] {
+								return nil
+							}
+							agreed = candidate.Results
+						}
+					}
+					if agreed != nil {
+						return agreed
+					}
 				}
 			}
 		}
-		if result := s.methodResults[sel.Sel.Name]; result != "" {
-			return []string{result}
-		}
+	}
+	if state.fn != nil {
+		return s.ResultsOf(call, state.fn)
 	}
 	return nil
-}
-
-func (s *scanner) functionKey(expr ast.Expr, file *goscan.File) string {
-	switch value := expr.(type) {
-	case *ast.Ident:
-		return file.Pkg + "." + value.Name
-	case *ast.SelectorExpr:
-		base, ok := value.X.(*ast.Ident)
-		if ok && file.Imports[base.Name] != "" {
-			return file.Imports[base.Name] + "." + value.Sel.Name
-		}
-	}
-	return ""
 }
 
 func (s *scanner) isPackageCall(call *ast.CallExpr, file *goscan.File, pkg, name string) bool {

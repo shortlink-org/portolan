@@ -47,19 +47,6 @@ preview.
 
 ## P2 — качество извлечения и UX
 
-### PORTOLAN-14. Улучшить River и Watermill discovery
-
-**Status:** investigate
-
-В `aviacore` River inserts не сопоставились с частью workers, а Watermill topics
-оказались динамическими и Router handlers не были найдены. Нужны:
-
-- разрешение constants/config defaults и простых wrapper functions;
-- поиск registration composition root;
-- связь producer/consumer через тип аргументов и topic aliases;
-- отдельное различие между «доказано отсутствует» и «анализатор не смог
-  разрешить».
-
 ### PORTOLAN-15. Проверять автоматическое architecture placement
 
 **Status:** investigate
@@ -83,7 +70,7 @@ generation, лимиты по типам flows, grouping и генерация �
 ## Предлагаемый порядок
 
 1. **Correctness:** PORTOLAN-3 и PORTOLAN-8.
-2. **Extractor depth:** PORTOLAN-14—16 по
+2. **Extractor depth:** PORTOLAN-15 и PORTOLAN-16 по
    фактической ценности для следующих подключаемых проектов.
 
 ## Решения, которые нужно принять

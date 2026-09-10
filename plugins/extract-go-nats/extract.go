@@ -18,7 +18,6 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 		return plugin.Response{}, err
 	}
 	s := newScanner(tree)
-	s.index()
 
 	sites := s.sites()
 	if len(sites) == 0 {
@@ -78,21 +77,21 @@ func (s *scanner) catalog(sites []site, b *plugin.Builder) []catalog.Channel {
 			continue
 		}
 		for _, subject := range found.subjects {
-			values := s.resolve(subject, found.fn, 0, map[string]bool{})
+			values := s.Resolve(subject, found.fn, 0, map[string]bool{})
 			if len(values) == 0 {
 				b.Warn(found.at.String(), "subject of "+found.method+" could not be resolved to a literal, a constant, a config default or a caller's argument")
 				continue
 			}
 			for _, value := range values {
-				state := states[value.value]
+				state := states[value.Value]
 				if state == nil {
-					state = &channelState{address: value.value, api: found.api, notes: map[string]bool{}, messages: map[string]catalog.ChannelMessage{}}
-					states[value.value] = state
+					state = &channelState{address: value.Value, api: found.api, notes: map[string]bool{}, messages: map[string]catalog.ChannelMessage{}}
+					states[value.Value] = state
 				}
-				state.sources = append(state.sources, value.at.String())
+				state.sources = append(state.sources, value.At.String())
 				state.notes[s.note(found)] = true
-				if value.name != "" {
-					state.messages[string(found.direction)+" "+value.name] = catalog.ChannelMessage{Name: value.name, Title: value.name, Direction: found.direction}
+				if value.Name != "" {
+					state.messages[string(found.direction)+" "+value.Name] = catalog.ChannelMessage{Name: value.Name, Title: value.Name, Direction: found.direction}
 				}
 			}
 		}
@@ -140,7 +139,7 @@ func (s *scanner) note(found site) string {
 	if found.direction == catalog.ChannelSend {
 		verb = "Published"
 	}
-	text := verb + " by `" + goscan.LastSegment(found.fn.receiver) + dot(found.fn.receiver) + found.fn.name + "`"
+	text := verb + " by `" + goscan.LastSegment(found.fn.Receiver) + dot(found.fn.Receiver) + found.fn.Name + "`"
 	if found.api == "JetStream" {
 		text += " over JetStream"
 	}
@@ -163,13 +162,13 @@ func dot(receiver string) string {
 // literal is a string an expression is worth without leaving the function:
 // a durable name or queue group is documentation, and following it up the
 // callers would be more than it is worth.
-func (s *scanner) literal(expr ast.Expr, fn *function) string {
+func (s *scanner) literal(expr ast.Expr, fn *goscan.Function) string {
 	if expr == nil {
 		return ""
 	}
-	values := s.resolve(expr, fn, hops, map[string]bool{})
+	values := s.Resolve(expr, fn, hops, map[string]bool{})
 	if len(values) != 1 {
 		return ""
 	}
-	return values[0].value
+	return values[0].Value
 }

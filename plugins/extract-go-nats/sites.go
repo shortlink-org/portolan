@@ -91,7 +91,7 @@ var natsCalls = map[string]map[string]natsCall{
 // that name the subject, the queue group and the durable consumer - still
 // expressions, since what they are worth may be decided by a caller.
 type site struct {
-	fn         *function
+	fn         *goscan.Function
 	method     string
 	direction  catalog.ChannelDirection
 	api        string
@@ -105,8 +105,8 @@ type site struct {
 // sites is every nats.go call in the tree, in source order.
 func (s *scanner) sites() []site {
 	var out []site
-	for _, fn := range s.sortedFunctions() {
-		ast.Inspect(fn.decl.Body, func(node ast.Node) bool {
+	for _, fn := range s.SortedFunctions() {
+		ast.Inspect(fn.Decl.Body, func(node ast.Node) bool {
 			call, ok := node.(*ast.CallExpr)
 			if !ok {
 				return true
@@ -115,7 +115,7 @@ func (s *scanner) sites() []site {
 			if !ok {
 				return true
 			}
-			spec, known := natsCalls[s.typeOf(sel.X, fn)][sel.Sel.Name]
+			spec, known := natsCalls[s.TypeOf(sel.X, fn)][sel.Sel.Name]
 			if !known {
 				return true
 			}
@@ -126,7 +126,7 @@ func (s *scanner) sites() []site {
 	return out
 }
 
-func (s *scanner) site(fn *function, call *ast.CallExpr, method string, spec natsCall) site {
+func (s *scanner) site(fn *goscan.Function, call *ast.CallExpr, method string, spec natsCall) site {
 	found := site{fn: fn, method: method, direction: spec.direction, api: spec.api, at: s.At(call.Pos())}
 	arg := func(index int) ast.Expr {
 		if index >= 0 && index < len(call.Args) {
@@ -152,7 +152,7 @@ func (s *scanner) site(fn *function, call *ast.CallExpr, method string, spec nat
 	}
 	// The legacy API takes the durable name as an option.
 	for _, option := range call.Args {
-		if optionCall, ok := option.(*ast.CallExpr); ok && s.externalKey(optionCall, fn) == natsPkg+".Durable" && len(optionCall.Args) == 1 {
+		if optionCall, ok := option.(*ast.CallExpr); ok && s.ExternalKey(optionCall, fn) == natsPkg+".Durable" && len(optionCall.Args) == 1 {
 			found.durable = optionCall.Args[0]
 		}
 	}
@@ -161,14 +161,14 @@ func (s *scanner) site(fn *function, call *ast.CallExpr, method string, spec nat
 
 // messageSubject is the subject a *nats.Msg was built with: nats.NewMsg(x),
 // &nats.Msg{Subject: x}, or a local that was given one of those.
-func (s *scanner) messageSubject(expr ast.Expr, fn *function, seen map[string]bool) ast.Expr {
+func (s *scanner) messageSubject(expr ast.Expr, fn *goscan.Function, seen map[string]bool) ast.Expr {
 	switch value := goscan.Unwrap(expr).(type) {
 	case *ast.CallExpr:
-		if s.externalKey(value, fn) == natsPkg+".NewMsg" && len(value.Args) == 1 {
+		if s.ExternalKey(value, fn) == natsPkg+".NewMsg" && len(value.Args) == 1 {
 			return value.Args[0]
 		}
 	case *ast.CompositeLit:
-		if s.TypeKey(value.Type, fn.file) == natsPkg+".Msg" {
+		if s.TypeKey(value.Type, fn.File) == natsPkg+".Msg" {
 			return field(value, "Subject")
 		}
 	case *ast.Ident:
@@ -176,8 +176,8 @@ func (s *scanner) messageSubject(expr ast.Expr, fn *function, seen map[string]bo
 			return nil
 		}
 		seen[value.Name] = true
-		if given, ok := s.assignedTo(fn, value.Name); ok && given.index == 0 {
-			return s.messageSubject(given.expr, fn, seen)
+		if given, ok := s.AssignedTo(fn, value.Name); ok && given.Index == 0 {
+			return s.messageSubject(given.Expr, fn, seen)
 		}
 	}
 	return nil
@@ -185,12 +185,12 @@ func (s *scanner) messageSubject(expr ast.Expr, fn *function, seen map[string]bo
 
 // consumerConfig is what a JetStream consumer config filters on and is
 // called: FilterSubject, or each of FilterSubjects, and Durable.
-func (s *scanner) consumerConfig(expr ast.Expr, fn *function) (subjects []ast.Expr, durable ast.Expr) {
+func (s *scanner) consumerConfig(expr ast.Expr, fn *goscan.Function) (subjects []ast.Expr, durable ast.Expr) {
 	lit, ok := goscan.Unwrap(expr).(*ast.CompositeLit)
 	if !ok {
 		if ident, isIdent := goscan.Unwrap(expr).(*ast.Ident); isIdent {
-			if given, found := s.assignedTo(fn, ident.Name); found && given.index == 0 {
-				lit, ok = goscan.Unwrap(given.expr).(*ast.CompositeLit)
+			if given, found := s.AssignedTo(fn, ident.Name); found && given.Index == 0 {
+				lit, ok = goscan.Unwrap(given.Expr).(*ast.CompositeLit)
 			}
 		}
 	}

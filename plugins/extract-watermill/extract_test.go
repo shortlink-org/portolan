@@ -193,3 +193,138 @@ func TestBranchesRequireSourceBackedConditions(t *testing.T) {
 		t.Fatalf("branch conditions = %v", got)
 	}
 }
+
+func TestFollowsRegistrationsThroughWrappersMethodValuesAndConfig(t *testing.T) {
+	root := t.TempDir()
+	write(t, root, "go.mod", "module example.com/orders\n")
+	write(t, root, "config/config.go", `package config
+type Kafka struct {
+  Orders string `+"`envconfig:\"ORDERS_TOPIC\" default:\"orders.placed\"`"+`
+}
+type Config struct { Kafka Kafka }
+`)
+	write(t, root, "topics/topics.go", `package topics
+type Name string
+const Prefix = "shop"
+const Shipped Name = "shop.shipped"
+`)
+	write(t, root, "handlers/order.go", `package handlers
+import (
+  "encoding/json"
+  "github.com/ThreeDotsLabs/watermill/message"
+)
+type OrderPlaced struct { ID string `+"`json:\"id\"`"+` }
+type Handlers struct{}
+func (h *Handlers) OnOrder(msg *message.Message) error {
+  var placed OrderPlaced
+  return json.Unmarshal(msg.Payload, &placed)
+}
+func OnShipped(msg *message.Message) error { return nil }
+`)
+	write(t, root, "app/wire.go", `package app
+import (
+  "context"
+  "os"
+  "encoding/json"
+  "github.com/ThreeDotsLabs/watermill"
+  "github.com/ThreeDotsLabs/watermill/message"
+  "example.com/orders/config"
+  "example.com/orders/handlers"
+  "example.com/orders/topics"
+)
+type Module struct { sub message.Subscriber; pub message.Publisher; h *handlers.Handlers }
+type Refund struct { ID string `+"`json:\"id\"`"+` }
+
+func (m *Module) handle(r *message.Router, name, topic string, fn message.NoPublishHandlerFunc) {
+  r.AddNoPublisherHandler(name, topic, m.sub, fn)
+}
+
+func (m *Module) Register(r *message.Router, cfg config.Config) {
+  m.handle(r, "on_order", cfg.Kafka.Orders, m.h.OnOrder)
+  m.handle(r, "on_shipped", string(topics.Shipped), handlers.OnShipped)
+  r.AddHandler("forward", topics.Prefix+".returns", m.sub, topics.Prefix+".refunds", m.pub, func(msg *message.Message) ([]*message.Message, error) { return nil, nil })
+  r.AddNoPublisherHandler("dynamic", os.Getenv("DYNAMIC_TOPIC"), m.sub, handlers.OnShipped)
+}
+
+func (m *Module) Listen(ctx context.Context) {
+  messages, _ := m.sub.Subscribe(ctx, "shop.audit")
+  for msg := range messages { _ = msg }
+}
+
+func (m *Module) Refund(id string) error {
+  payload, _ := json.Marshal(Refund{ID: id})
+  return m.pub.Publish("shop.refunds", message.NewMessage(watermill.NewUUID(), payload))
+}
+`)
+
+	out, resp := extracted(t, root)
+	service := out.Contexts[0].Services[0]
+	byAddress := map[string]catalog.Channel{}
+	for _, channel := range service.Channels {
+		byAddress[channel.Address] = channel
+	}
+	var addresses []string
+	for address := range byAddress {
+		addresses = append(addresses, address)
+	}
+	// Through the wrapper: a nested config default, and a typed constant
+	// through string(); the callbacks are a method value and a function of
+	// another package, so the payload is read from their bodies.
+	if got := byAddress["orders.placed"]; len(got.Messages) != 1 || got.Messages[0].Name != "OrderPlaced" || !strings.Contains(got.Doc, "ORDERS_TOPIC") {
+		t.Fatalf("orders.placed = %+v (channels %v)", got, addresses)
+	}
+	if got := byAddress["shop.shipped"]; len(got.Messages) != 1 || got.Messages[0].Direction != catalog.ChannelReceive {
+		t.Fatalf("shop.shipped = %+v", got)
+	}
+	// AddHandler's publish topic, and constants concatenated on both sides.
+	if got := byAddress["shop.returns"]; len(got.Messages) != 1 || got.Messages[0].Direction != catalog.ChannelReceive {
+		t.Fatalf("shop.returns = %+v", got)
+	}
+	refunds := byAddress["shop.refunds"]
+	if len(refunds.Messages) != 2 || refunds.Messages[0].Name != "message" || refunds.Messages[1].Name != "Refund" || refunds.Messages[1].Direction != catalog.ChannelSend {
+		t.Fatalf("shop.refunds = %+v", refunds)
+	}
+	// A direct Subscribe is a receive too.
+	if got := byAddress["shop.audit"]; len(got.Messages) != 1 || got.Messages[0].Name != "Listen" {
+		t.Fatalf("shop.audit = %+v", got)
+	}
+	if len(service.Channels) != 5 {
+		t.Fatalf("channels = %v", addresses)
+	}
+
+	flows := map[string]catalog.Flow{}
+	for _, flow := range out.Flows {
+		flows[flow.Slug] = flow
+	}
+	// The topic from the environment is not resolvable; the handler stays,
+	// with its receive unresolved and no channel claimed.
+	dynamic, ok := flows["mailer-watermill-dynamic-consume"]
+	if !ok {
+		t.Fatalf("dynamic flow missing: %v", keysOf(flows))
+	}
+	step := dynamic.Steps[0].(*catalog.Step)
+	if step.Status != catalog.StatusUnresolved || step.From != "watermill" || step.Handoff.Channel != "" || !strings.Contains(step.Note, `os.Getenv("DYNAMIC_TOPIC")`) {
+		t.Fatalf("dynamic step = %+v", step)
+	}
+	if got := flows["mailer-watermill-on-order-consume"].Steps[0].(*catalog.Step).ContinuesAt; got != "handlers:Handlers.OnOrder" {
+		t.Fatalf("on_order continuation = %q", got)
+	}
+	if got := flows["mailer-watermill-listen-consume"].Steps[0].(*catalog.Step); got.ContinuesAt != "app:Module.Listen" || !strings.Contains(got.Note, "without a router") {
+		t.Fatalf("listen step = %+v", got)
+	}
+	warnings := []string{}
+	for _, warning := range resp.Warnings() {
+		warnings = append(warnings, warning.Message)
+	}
+	if len(warnings) != 1 || !strings.Contains(warnings[0], "handler dynamic is registered on topic `os.Getenv(\"DYNAMIC_TOPIC\")`") {
+		t.Fatalf("warnings = %v", warnings)
+	}
+}
+
+func keysOf(flows map[string]catalog.Flow) []string {
+	out := []string{}
+	for key := range flows {
+		out = append(out, key)
+	}
+	return out
+}
