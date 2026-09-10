@@ -543,3 +543,42 @@ func TestATreeSaysWhatIsImplementedAndWhatIsCalled(t *testing.T) {
 		t.Errorf("externals = %v", ids)
 	}
 }
+
+// A document that leaves ids off is one limitation of that document, so the
+// contract gets one warning naming the count and the routes, not one per route.
+func TestMissingOperationIDsAreReportedOncePerContract(t *testing.T) {
+	doc := testDocument(t, `
+openapi: 3.0.3
+info: {title: Fleet, version: 1.0.0}
+paths:
+  /a: {get: {responses: {"200": {description: ok}}}}
+  /b: {get: {responses: {"200": {description: ok}}}, post: {responses: {"200": {description: ok}}}}
+  /c: {get: {responses: {"200": {description: ok}}}}
+  /d: {get: {responses: {"200": {description: ok}}}}
+  /e: {get: {responses: {"200": {description: ok}}}}
+  /f: {get: {responses: {"200": {description: ok}}}}
+  /named: {get: {operationId: listNamed, responses: {"200": {description: ok}}}}
+`)
+	b := &plugin.Builder{}
+	rpcServices(doc, "fleet.v1", "test.yaml", b)
+
+	if len(b.Warnings) != 1 {
+		t.Fatalf("warnings = %+v, want one", b.Warnings)
+	}
+	w := b.Warnings[0]
+	want := "no operationId on 7 of 8 operations; listed by verb and path: GET /a, GET /b, POST /b, GET /c, GET /d and 2 more"
+	if w.Ref != "fleet.v1" || w.Message != want {
+		t.Errorf("warning = %+v\nwant ref fleet.v1 and %q", w, want)
+	}
+
+	b = &plugin.Builder{}
+	rpcServices(testDocument(t, `
+openapi: 3.0.3
+info: {title: Fleet, version: 1.0.0}
+paths:
+  /named: {get: {operationId: listNamed, responses: {"200": {description: ok}}}}
+`), "fleet.v1", "test.yaml", b)
+	if len(b.Warnings) != 0 {
+		t.Errorf("a fully named document warned: %+v", b.Warnings)
+	}
+}

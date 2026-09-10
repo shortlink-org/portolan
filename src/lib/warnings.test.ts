@@ -5,7 +5,7 @@ describe("warning diagnostics", () => {
   it("assigns a stable rule, severity and action to known warnings", () => {
     const diagnostic = warningDiagnostic({
       plugin: "openapi",
-      message: "aviacore-api: /book POST has no operationId; listed by verb and path",
+      message: "aviacore-api: no operationId on 2 of 9 operations; listed by verb and path: POST /book, POST /cancel",
     });
 
     expect(diagnostic).toMatchObject({
@@ -20,8 +20,8 @@ describe("warning diagnostics", () => {
 
   it("groups repetitions by plugin, rule and severity", () => {
     const groups = groupWarnings([
-      { plugin: "openapi", message: "api: /book POST has no operationId; listed by verb and path" },
-      { plugin: "openapi", message: "api: /cancel POST has no operationId; listed by verb and path" },
+      { plugin: "openapi", message: "api.v1: no operationId on 1 of 3 operations; listed by verb and path: POST /book" },
+      { plugin: "openapi", message: "api.v2: no operationId on 1 of 3 operations; listed by verb and path: POST /cancel" },
       { plugin: "wsdl", message: "schema.xsd: duplicate declaration CodeType; the first declaration is used" },
     ]);
 
@@ -37,7 +37,7 @@ describe("warning diagnostics", () => {
   });
 
   it("groups persisted policy decisions without evaluating policies in the browser", () => {
-    const diagnostic = warningDiagnostic({ plugin: "openapi", message: "api: /book POST has no operationId; listed by verb and path" });
+    const diagnostic = warningDiagnostic({ plugin: "openapi", message: "api: no operationId on 1 of 3 operations; listed by verb and path: POST /book" });
     const groups = groupDiagnostics([{ ...diagnostic, suppressed: true, suppressionReason: "Owned upstream." }]);
     expect(groups[0]).toMatchObject({ suppressed: true, suppressionReason: "Owned upstream.", count: 1 });
   });

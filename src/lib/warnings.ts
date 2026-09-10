@@ -44,7 +44,7 @@ interface RuleDefinition {
 const RULES: RuleDefinition[] = [
   {
     id: "openapi.missing-operation-id",
-    matches: /\bhas no operationId\b/i,
+    matches: /\bno operationId\b/i,
     severity: "warning",
     action: "Add stable operationId values to the OpenAPI operations.",
   },

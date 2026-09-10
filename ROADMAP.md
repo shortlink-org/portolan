@@ -47,18 +47,6 @@ preview.
 
 ## P2 — качество извлечения и UX
 
-### PORTOLAN-10. OpenAPI без `operationId`
-
-**Status:** source quality
-
-В `aviacore` найдено 53, в `aviasupp` — 25 операций без `operationId`. Сейчас
-они перечисляются по verb и path, что корректно, но создаёт шум и менее стабильные
-идентификаторы.
-
-Идея: генерировать стабильный synthetic ID из method + normalized path, помечать
-его provenance как inferred и выдавать одно агрегированное предупреждение на
-контракт.
-
 ### PORTOLAN-11. Дубликаты деклараций WSDL/XSD
 
 **Status:** source quality / investigate
@@ -107,7 +95,7 @@ generation, лимиты по типам flows, grouping и генерация �
 ## Предлагаемый порядок
 
 1. **Correctness:** PORTOLAN-3 и PORTOLAN-8.
-2. **Extractor depth:** PORTOLAN-10, PORTOLAN-11 и PORTOLAN-14—16 по
+2. **Extractor depth:** PORTOLAN-11 и PORTOLAN-14—16 по
    фактической ценности для следующих подключаемых проектов.
 
 ## Решения, которые нужно принять

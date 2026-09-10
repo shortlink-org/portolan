@@ -125,6 +125,7 @@ func rpcServices(doc *document, api, source string, b *plugin.Builder) []catalog
 	schemas := []schemaRef{}
 	seen := map[string]bool{}
 	visited := map[string]bool{}
+	unnamed := []string{}
 
 	for _, p := range entries(child(doc.root, "paths")) {
 		for _, verb := range verbs {
@@ -139,7 +140,7 @@ func rpcServices(doc *document, api, source string, b *plugin.Builder) []catalog
 				// still an endpoint, and a reader looking for it wants to find
 				// it under something.
 				method = strings.ToUpper(verb) + " " + p.key
-				b.Warn(api, p.key+" "+strings.ToUpper(verb)+" has no operationId; listed by verb and path")
+				unnamed = append(unnamed, method)
 			}
 
 			// The name, the route, and the shapes on either side. The
@@ -160,6 +161,7 @@ func rpcServices(doc *document, api, source string, b *plugin.Builder) []catalog
 	if len(methods) == 0 {
 		return []catalog.RpcService{}
 	}
+	warnUnnamed(b, api, len(methods), unnamed)
 
 	return []catalog.RpcService{{
 		ID:       openapi.InterfaceID(api, ""),
@@ -167,6 +169,28 @@ func rpcServices(doc *document, api, source string, b *plugin.Builder) []catalog
 		Source:   source,
 		Messages: messages(doc, schemas, seen, visited, b),
 	}}
+}
+
+// unnamedShown is how many nameless routes the warning spells out before it
+// counts the rest.
+const unnamedShown = 5
+
+// warnUnnamed says once per contract which operations the document left
+// without an operationId. A document missing fifty ids is one limitation of
+// that document, not fifty; a reader fixing it wants the count and enough
+// routes to find the pattern, and a check run wants one line, not a page.
+func warnUnnamed(b *plugin.Builder, api string, total int, unnamed []string) {
+	if len(unnamed) == 0 {
+		return
+	}
+	shown := unnamed
+	rest := ""
+	if len(shown) > unnamedShown {
+		shown = shown[:unnamedShown]
+		rest = fmt.Sprintf(" and %d more", len(unnamed)-unnamedShown)
+	}
+	b.Warn(api, fmt.Sprintf("no operationId on %d of %d operations; listed by verb and path: %s%s",
+		len(unnamed), total, strings.Join(shown, ", "), rest))
 }
 
 // messages turns every schema the group's operations reach into a named shape.
