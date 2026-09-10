@@ -35,6 +35,7 @@ const RULES = [
   rule("river.missing-worker", /\bno registered Worker\b/i, "warning", "Register the River worker in this component or remove the unmatched insert."),
   rule("watermill.unresolved-topic", /\bWatermill .+\btopic (?:generator could not be resolved|unresolved)\b/i, "warning", "Use a literal, constant, or configuration default for the Watermill topic."),
   rule("messaging.unresolved-subject", /\bsubject of .+ could not be resolved\b/i, "warning", "Use a literal, constant, configuration default, or visible caller argument for the subject."),
+  rule("messaging.unresolved-queue", /\bqueue of .+ could not be resolved\b/i, "warning", "Use a literal, constant, configuration default, constructor argument, or visible caller argument for the queue."),
   rule("store.external-migrations", /\bmigrations are applied from .+ whose schema is not in this tree\b/i, "warning", "Vendor or expose the external migrations so their tables can be included in the store."),
   rule("store.missing-foreign-table", /\bcolumn .+ references .+ which no migration here creates\b/i, "warning", "Include the referenced table migration or correct the foreign-key target."),
   rule("schema.unresolved-type", /\bis not declared in the protos read here\b/i, "warning", "Include the imported protobuf declaration or map the type to an external schema."),

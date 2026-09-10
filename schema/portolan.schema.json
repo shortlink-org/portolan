@@ -89,6 +89,7 @@
               "river",
               "watermill",
               "go-nats",
+              "go-sqs",
               "asyncapi",
               "graphql",
               "sql",
@@ -436,6 +437,25 @@
               "properties": {
                 "options": {
                   "$ref": "#/$defs/options.go-nats"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "plugin"
+              ],
+              "properties": {
+                "plugin": {
+                  "const": "go-sqs"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "options": {
+                  "$ref": "#/$defs/options.go-sqs"
                 }
               }
             }
@@ -2259,6 +2279,31 @@
           "type": "string",
           "description": "Name of the fragment file, inside the step's output directory.",
           "default": "nats.json"
+        }
+      }
+    },
+    "options.go-sqs": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "Slug of the bounded context this service belongs to. Defaults to the name of the input directory.",
+          "examples": [
+            "shop"
+          ]
+        },
+        "service": {
+          "type": "string",
+          "description": "Slug of the service. Defaults to the name of the input directory.",
+          "examples": [
+            "fulfillment"
+          ]
+        },
+        "out": {
+          "type": "string",
+          "description": "Name of the fragment file, inside the step's output directory.",
+          "default": "sqs.json"
         }
       }
     },

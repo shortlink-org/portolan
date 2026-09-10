@@ -252,6 +252,22 @@ channel's doc. A subject read off a database row is a warning at the call,
 not a channel. Consumer configs give the filter subject and the durable name;
 streams, wildcard subjects and work-queue retention are not read yet.
 
+`extract-go-sqs` is its twin for Amazon SQS through aws-sdk-go-v2. A call is
+known by being made on `*sqs.Client` - `SendMessage`, `SendMessageBatch`,
+`ReceiveMessage` - and the queue is the `QueueUrl` of the input struct,
+written inline or built into a local first. `aws.String` and `aws.ToString`
+are taken off, and the `QueueUrl` of a `GetQueueUrl` result is read as the
+`QueueName` that was asked for. The queue is then followed like a subject: to
+a literal, a constant, a config default, or a parameter up to two hops through
+the callers, and when it sits in a field of the receiver, to the constructor
+that filled the field and on to that constructor's callers - the worker's
+shape, where the queue comes in at `New` and is read at `Run`. A URL becomes
+the queue's name, its last path segment. Channels are `message` streams, not
+domain events: a queue is point to point, and the event model is not asked to
+match it. A port that takes exactly one other string beside the queue names
+the message; a direct call names none. `DeleteMessage`, visibility changes and
+`CreateQueue` say nothing about direction and are not read; SNS is not read.
+
 `extract-python-kafka` is the framework-independent Kafka enrichment for
 Python. It recognizes confluent-kafka, kafka-python and aiokafka by their
 imported client types, follows literal topics through constants, environment

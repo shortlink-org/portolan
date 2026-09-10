@@ -17,7 +17,7 @@ The tool that reads an architecture catalog from the code and specifications tha
 
 ## Language
 
-- [Glossary](glossary.md) — 44 terms this context spells one way
+- [Glossary](glossary.md) — 45 terms this context spells one way
 
 ## Decisions
 

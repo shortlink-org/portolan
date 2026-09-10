@@ -68,6 +68,7 @@ describe("warning classification", () => {
     ["watermill", "internal/bus/router.go:12:3: Watermill handler orders is registered on topic `cfg.Topic`, which this reader cannot resolve to a literal, a constant, a config default or a caller's argument; the handler is kept with its topic unresolved", "watermill.unresolved-topic"],
     ["watermill", "internal/bus/cqrs.go:40:5: Watermill CQRS handler topic generator could not be resolved", "watermill.unresolved-topic"],
     ["go-nats", "internal/pub.go:8:2: subject of Publish could not be resolved to a literal, a constant, a config default or a caller's argument", "messaging.unresolved-subject"],
+    ["go-sqs", "internal/relay.go:15:2: queue of SendMessage could not be resolved to a literal, a constant, a config default, a constructor's argument or a caller's argument", "messaging.unresolved-queue"],
     ["git", "github.com/acme/ledger: not fetched (offline); the copy committed in this repository is used unchanged", "source.offline-cache"],
     ["markdown", "flow.checkout step \"pay\" is unresolved: POST /pay", "flow.unresolved-step"],
     ["rust-domain", "Confirm: src/policy.rs: Confirm.handle reacts to the message named \"payment.authorized\", which no event this repository declares is called; the step is unresolved", "flow.unknown-event"],

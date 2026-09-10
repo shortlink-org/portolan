@@ -3,7 +3,7 @@
 *Generated from the portolan catalog. Do not edit by hand.*
 
 - **Context:** [Portolan](README.md)
-- **Terms:** 44
+- **Terms:** 45
 - **Read from:** [`GLOSSARY.md`](https://github.com/shortlink-org/portolan/blob/main/GLOSSARY.md)
 
 One meaning per word inside this context, as the glossary beside the code states it.
@@ -13,6 +13,7 @@ One meaning per word inside this context, as the glossary beside the code states
 - **ADR** — A decision an estate wrote down with the alternative it rejected, read out of the record files a manifest step names and frozen: the body goes into the catalog exactly as written and is never regenerated from the model.
 - **Aggregate** — What a domain extractor read as one thing: a root, its entities and value objects, the events it publishes, the commands and queries on it, and its lifecycle when the code keeps a table of one.
 - **Answer** — What comes back from an rpc step, looked up in the contract that declares the method rather than recorded: a reply is the far end of the same hop, not a second thing that happened.
+- **Bridge** — A service that more than half of the shortest paths between two contexts' services run through, counted on the undirected graph of who exchanges anything with whom. Ranked by betweenness - the share of shortest paths between every other pair of services that pass through it. Derived, never declared: the overview lists them and the service page wears the chip.
 - **Catalog** — One source of facts in the shape `src/catalog.ts` decides: contexts, defs, flows, adrs, stores, modules, terms, repos and externals. A reader never sees one; the estate is the merge of several.
 - **Chain** — What happens after an event, as far as the flows can say: each consumer followed into the flow where it hears the event, what it publishes after that, and the same question asked of those events.
 - **Component** — The neutral reading of a service, for a repository that was not laid out for a domain model: an application, a webapp, a worker, a job, a function, a CLI, a library or a data pipeline, said by its kind. The wire and the code say service; the README and the setup wizard say component when the kind is neutral. Decided in portolan.0004.

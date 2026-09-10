@@ -24,6 +24,7 @@ import (
 	extractglossary "github.com/shortlink-org/portolan/plugins/extract-glossary"
 	extractgo "github.com/shortlink-org/portolan/plugins/extract-go"
 	extractgonats "github.com/shortlink-org/portolan/plugins/extract-go-nats"
+	extractgosqs "github.com/shortlink-org/portolan/plugins/extract-go-sqs"
 	extractgraphql "github.com/shortlink-org/portolan/plugins/extract-graphql"
 	extractopenapi "github.com/shortlink-org/portolan/plugins/extract-openapi"
 	extractproject "github.com/shortlink-org/portolan/plugins/extract-project"
@@ -52,6 +53,7 @@ var Plugins = map[string]func(io.Reader, io.Writer) error{
 	"river":        extractriver.Serve,
 	"watermill":    extractwatermill.Serve,
 	"go-nats":      extractgonats.Serve,
+	"go-sqs":       extractgosqs.Serve,
 	"asyncapi":     extractasyncapi.Serve,
 	"graphql":      extractgraphql.Serve,
 	"sql":          extractsql.Serve,
