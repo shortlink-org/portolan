@@ -167,9 +167,9 @@ describe("centrality", () => {
   });
 
   it("does not call a service the road between two contexts when there is another as good", () => {
-    // auth.a reaches pay.p through shop.x or shop.y: neither carries more
-    // than half, so neither stands between auth and pay.
-    const c = centrality(
+    // auth.a reaches pay.p through shop.x or shop.y: each carries exactly
+    // half, and half is not more than half, so neither stands between.
+    const even = centrality(
       estate({ auth: ["a"], shop: ["x", "y"], pay: ["p"] }, [
         "auth.a -> shop.x",
         "auth.a -> shop.y",
@@ -177,22 +177,25 @@ describe("centrality", () => {
         "shop.y -> pay.p",
       ]),
     );
-    expect(by(c, "shop.x").between).toEqual([
-      { a: "auth", b: "pay", share: BROKER_SHARE },
-    ]);
-    // Add a third road through y's side and x drops under the line.
+    expect(by(even, "shop.x").between).toEqual([]);
+    expect(by(even, "shop.y").between).toEqual([]);
+    expect(by(even, "shop.x").betweenness).toBeGreaterThan(0);
+    // A second auth service that reaches pay only through x tilts it: x now
+    // carries (1 + 0.5) of the 2 pairs, y carries 0.5 of them.
     const tilted = centrality(
-      estate({ auth: ["a"], shop: ["x", "y", "z"], pay: ["p"] }, [
-        "auth.a -> shop.x",
-        "auth.a -> shop.y",
-        "auth.a -> shop.z",
+      estate({ auth: ["a1", "a2"], shop: ["x", "y"], pay: ["p"] }, [
+        "auth.a1 -> shop.x",
+        "auth.a1 -> shop.y",
+        "auth.a2 -> shop.x",
         "shop.x -> pay.p",
         "shop.y -> pay.p",
-        "shop.z -> pay.p",
       ]),
     );
-    expect(by(tilted, "shop.x").between).toEqual([]);
-    expect(by(tilted, "shop.x").betweenness).toBeGreaterThan(0);
+    expect(by(tilted, "shop.x").between).toEqual([
+      { a: "auth", b: "pay", share: 0.75 },
+    ]);
+    expect(by(tilted, "shop.y").between).toEqual([]);
+    expect(BROKER_SHARE).toBe(0.5);
   });
 
   it("does not count the roads a service is at the end of as roads it is between", () => {

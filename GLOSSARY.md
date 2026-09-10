@@ -16,7 +16,7 @@ on it, and its lifecycle when the code keeps a table of one.
 declares the method rather than recorded: a reply is the far end of the same
 hop, not a second thing that happened.
 
-**Bridge.** A service that at least half of the shortest paths between two
+**Bridge.** A service that more than half of the shortest paths between two
 contexts' services run through, counted on the undirected graph of who
 exchanges anything with whom. Ranked by betweenness - the share of shortest
 paths between every other pair of services that pass through it. Derived,

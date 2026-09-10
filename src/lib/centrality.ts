@@ -19,7 +19,7 @@
 //
 //   betweenness - Brandes' number, normalised so 1 means every shortest path
 //                 between every other pair runs through this service. It ranks.
-//   between     - the pairs of CONTEXTS for which at least half of the
+//   between     - the pairs of CONTEXTS for which more than half of the
 //                 shortest paths between their services run through this one.
 //                 It is the finding: "auth reaches payments only through cart".
 //
@@ -49,8 +49,9 @@ export interface Centrality {
 }
 
 /**
- * The least share of a context pair's paths a service must carry to be said to
- * stand between them. Half: below it there is another road as good.
+ * The share of a context pair's paths a service must carry MORE than to be
+ * said to stand between them. Half, strictly: two equal roads are two roads,
+ * and a service on one of them is not what the other side depends on.
  */
 export const BROKER_SHARE = 0.5;
 
@@ -197,7 +198,7 @@ export function centrality(catalog: Catalog): Centrality[] {
       if (own === a) total -= reach.get(id)?.get(b) ?? 0;
       else if (own === b) total -= reach.get(id)?.get(a) ?? 0;
       const share = total > 0 ? sum / 2 / total : 0;
-      if (a !== b && share >= BROKER_SHARE) between.push({ a, b, share });
+      if (a !== b && share > BROKER_SHARE) between.push({ a, b, share });
     }
     between.sort(
       (x, y) =>
