@@ -2,7 +2,7 @@
   "name": "@shortlink-org/portolan",
   "description": "Generate a navigable architecture catalog from code and specifications.",
   "private": false,
-  "version": "0.2.4",
+  "version": "0.3.0",
   "type": "module",
   "license": "MIT",
   "homepage": "https://github.com/shortlink-org/portolan#readme",
