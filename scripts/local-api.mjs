@@ -865,6 +865,7 @@ export function summarizeProjectTrial(snapshot, plan, events) {
       fileCount: event.fileCount,
       changedCount: event.changedCount,
       warnings: event.warnings ?? [],
+      diagnostics: event.diagnostics ?? [],
       ...(event.message ? { message: event.message } : {}),
     }));
   const facts = new Map(TRIAL_FACTS.map(([key]) => [key, new Set()]));
@@ -912,10 +913,12 @@ export function summarizeProjectTrial(snapshot, plan, events) {
     for (const term of fragment.terms ?? []) add("terms", term.id ?? term.slug ?? term.name);
   }
   const warnings = steps.flatMap((step) => step.warnings.map((message) => ({ plugin: step.plugin, message })));
+  const diagnostics = steps.flatMap((step) => step.diagnostics);
   return {
     steps,
     facts: TRIAL_FACTS.map(([key, label]) => ({ key, label, count: facts.get(key)?.size ?? 0 })).filter((fact) => fact.count > 0),
     warnings,
+    diagnostics,
     generatedFiles: files.length,
   };
 }

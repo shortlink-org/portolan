@@ -137,6 +137,29 @@ Each plugin describes its own options; `npm run schema` asks all of them and
 composes `schema/portolan.schema.json`, which editors complete against and `gen`
 checks before running anything.
 
+Non-fatal extractor diagnostics remain attached to their pipeline step. The
+Settings page groups repetitions by plugin, stable rule and severity, and shows
+the recommended next action. A reviewed limitation can be hidden from the
+active view without discarding it:
+
+```json
+{
+  "warningPolicies": [
+    {
+      "when": "plugin == 'openapi' && rule == 'openapi.missing-operation-id' && project == 'aviacore'",
+      "action": "suppress",
+      "reason": "The partner-owned contract cannot be changed in this repository."
+    }
+  ]
+}
+```
+
+The rule id is shown beside the warning. CEL expressions can read `plugin`,
+`rule`, `severity`, `project`, `phase`, `ref`, `message`, and the integer
+`count` for that rule in the step. Expressions are type-checked when the
+manifest is read, must return `bool`, and run during generation. A suppression
+requires a reason and remains available through the `suppressed` filter.
+
 ## Use it in your project
 
 Run the setup once from the root of a repository:

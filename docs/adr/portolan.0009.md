@@ -1,11 +1,12 @@
 # portolan.0009 — The typed Go call graph runs as a native sidecar
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-10
 - **Scope:** [portolan](../portolan/README.md)
 - **Source:** [`adr/0009-the-typed-go-call-graph-runs-as-a-native-sidecar.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0009-the-typed-go-call-graph-runs-as-a-native-sidecar.md)
+- **Committed:** Victor Login, 2026-09-10 (`e67f9a5`)
 
 ### Context and Problem Statement
 

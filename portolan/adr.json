@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-09-08T18:39:24+07:00",
-  "commit": "711bc59",
+  "generatedAt": "2026-09-10T18:43:59+07:00",
+  "commit": "e67f9a5",
   "contexts": [],
   "defs": {},
   "flows": [],
@@ -128,6 +128,11 @@
         "commit": "7cd7fee348fe7c0d5efd79dc6c42afdc39a50054",
         "author": "Victor Login",
         "date": "2026-09-08T16:29:08+07:00"
+      },
+      "revised": {
+        "commit": "e67f9a53caf770219dc9526e16a54455b0ecb7b1",
+        "author": "Victor Login",
+        "date": "2026-09-10T18:43:59+07:00"
       }
     },
     {
@@ -188,7 +193,12 @@
       },
       "body": "## Context and Problem Statement\n\nThe HTTP client extractor has two layers. Its syntax pass reads outbound calls,\ncontracts, routes and factories directly from the tree. When interface dispatch\nhides the remaining edge, it loads the project with `go/packages`, builds SSA,\nand applies VTA. That second layer was placed in the same `wasip1` module as the\nsyntax extractors.\n\n`go/packages` does not load a module from files alone. It invokes the Go\ntoolchain and communicates with it over pipes. A WASI module has neither\nprocesses nor pipes, so a project that needed the typed edge always reported\n`pipe: Not implemented on wasip1` and silently kept the less precise syntax\nresult. The failure depended on the source shape: the capability appeared\navailable until a sufficiently indirect call graph exercised it.\n\n## Decision Drivers\n\n- Interface calls must keep the precision of the existing SSA/VTA analysis.\n- Build tags, replacements, private modules and the project's Go version must\n  have the same meaning they have to the project.\n- A toolchain requirement must be visible to `init` and `doctor` before the\n  extractor runs.\n- Extractors that only read syntax should retain the small, toolchain-free WASI\n  path chosen in portolan.0006.\n\n## Considered Options\n\n1. **Run only `http-clients` as a native Go sidecar.**\n2. Reimplement enough of module loading and type checking inside WASI.\n3. Keep the runtime fallback and make its warning more prominent.\n4. Ship one prebuilt analyzer binary for every supported platform.\n\n## Decision Outcome\n\nChosen option: **run only `http-clients` as a native Go sidecar**.\n\nThe built-in is declared as a Go process instead of an entry in\n`portolan-go.wasm`. The package ships the command and its transitive Go source.\nThe process adapter builds that command into `.portolan/bin/go` using\nPortolan's shipped module, then executes the binary with the user's workspace\nas its current directory. The plugin protocol is unchanged: one request on\nstdin, one response on stdout, named output files, and bounded execution.\nThe analyzer canonicalizes the request's root before matching AST positions to\nSSA positions; manifests normally pass `.` or another relative path, while the\nGo loader reports absolute filenames.\n\nBuilding and running are deliberately separate. Running `go run` from the\nworkspace cannot resolve Portolan's module; running it from the installed\npackage makes the relative input root point at the package instead of the\nproject. A native binary has neither ambiguity. Rebuilding on each invocation\nlets the Go build cache do the reuse and prevents a package upgrade from\nleaving a stale workspace sidecar.\n\nReimplementing module loading inside WASI was rejected because it would be a\nsecond, incomplete Go build system and would still need dependency source that\nthe sandbox does not expose. A warning-only fallback loses the exact quality\nthis pass exists to add. A binary matrix repeats the packaging burden WASI\nremoved for every other Go extractor.\n\n### Consequences\n\n- Good: typed interface edges use the existing `go/packages`, SSA and VTA path\n  against the real project module.\n- Good: `init` and `doctor` derive the Go requirement from the plugin\n  declaration; other Go extractors still require only Node and WASI.\n- Good: the capability no longer fails conditionally inside WASI.\n- Bad: selecting `http-clients` requires a Go toolchain and grants this trusted\n  built-in process access to the workspace and the process environment.\n- Bad: the npm package includes the analyzer's Go source and module metadata.\n",
       "relates": {},
-      "source": "adr/0009-the-typed-go-call-graph-runs-as-a-native-sidecar.md"
+      "source": "adr/0009-the-typed-go-call-graph-runs-as-a-native-sidecar.md",
+      "created": {
+        "commit": "e67f9a53caf770219dc9526e16a54455b0ecb7b1",
+        "author": "Victor Login",
+        "date": "2026-09-10T18:43:59+07:00"
+      }
     }
   ]
 }

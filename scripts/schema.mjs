@@ -116,6 +116,13 @@ function compose() {
         description:
           "The source projects that make up the estate. A project gives repeated pipeline inputs one name for the generated site's Settings page; estate-wide inputs such as flows need no project.",
       },
+      warningPolicies: {
+        type: "array",
+        maxItems: 100,
+        items: { $ref: "#/$defs/warningPolicy" },
+        description:
+          "CEL policies for reviewed extraction limitations. Expressions are type-checked when the manifest is read and suppression always requires a reason.",
+      },
       plugins: {
         type: "array",
         items: { $ref: "#/$defs/plugin" },
@@ -139,6 +146,28 @@ function compose() {
       },
     },
     $defs: {
+      warningPolicy: {
+        type: "object",
+        additionalProperties: false,
+        required: ["when", "action", "reason"],
+        properties: {
+          when: {
+            type: "string",
+            minLength: 1,
+            maxLength: 1000,
+            description: "Boolean CEL expression over plugin, rule, severity, project, phase, ref, message and count.",
+          },
+          action: {
+            const: "suppress",
+            description: "Suppress matching diagnostics from the active view while retaining them in the report.",
+          },
+          reason: {
+            type: "string",
+            minLength: 1,
+            description: "Why this limitation is consciously accepted.",
+          },
+        },
+      },
       catalogProfile: {
         type: "object",
         additionalProperties: false,

@@ -59,6 +59,8 @@ import { AboutSettings } from "./settings/AboutSettings";
 import { IntegrationsSettings } from "./settings/IntegrationsSettings";
 import { CatEmptyState, CatIllustration } from "../components/CatIllustration";
 import { CommitLink } from "../components/CommitLink";
+import { groupDiagnostics, warningDiagnostic } from "../lib/warnings";
+import type { WarningDiagnostic, WarningSeverity } from "../lib/warnings";
 import { AnimatePresence, m, rise } from "../lib/motion";
 
 type Health = "healthy" | "changed" | "failed" | "unchecked";
@@ -262,44 +264,87 @@ function PipelineSteps({ steps }: { steps: SetupRunStep[] }) {
   if (steps.length === 0) {
     return <p className="mono text-muted">No result recorded for these steps.</p>;
   }
+  const warnings = steps.flatMap((step) => step.warnings.map((message) => ({ plugin: step.plugin, message })));
+  const diagnostics = steps.flatMap((step) => step.diagnostics.length
+    ? step.diagnostics
+    : step.warnings.map((message) => warningDiagnostic({ plugin: step.plugin, message })));
   return (
-    <div className="divide-y divide-line rounded-control border border-line">
-      {steps.map((step) => (
-        <div key={step.ordinal} className="px-3 py-2">
-          <div className="grid gap-2 sm:grid-cols-[5rem_minmax(7rem,1fr)_auto_auto] sm:items-center">
-            <span className="mono text-muted">{step.phase}</span>
-            <span className="mono truncate text-ink" title={step.plugin}>{step.plugin}</span>
-            <span className="mono text-muted">{step.fileCount} {plural(step.fileCount, "file")}</span>
-            <div className="flex items-center justify-between gap-2 sm:justify-end">
-              <span className="mono text-muted">{duration(step.durationMs)}</span>
-              <StepStatus status={step.status} />
+    <div className="space-y-2">
+      <div className="divide-y divide-line rounded-control border border-line">
+        {steps.map((step) => (
+          <div key={step.ordinal} className="px-3 py-2">
+            <div className="grid gap-2 sm:grid-cols-[5rem_minmax(7rem,1fr)_auto_auto] sm:items-center">
+              <span className="mono text-muted">{step.phase}</span>
+              <span className="mono truncate text-ink" title={step.plugin}>{step.plugin}</span>
+              <span className="mono text-muted">{step.fileCount} {plural(step.fileCount, "file")}</span>
+              <div className="flex items-center justify-between gap-2 sm:justify-end">
+                <span className="mono text-muted">{duration(step.durationMs)}</span>
+                <StepStatus status={step.status} />
+              </div>
             </div>
           </div>
-          <StepWarnings warnings={step.warnings} />
-        </div>
-      ))}
+        ))}
+      </div>
+      {warnings.length ? <details open={warnings.length <= 5}>
+        <summary className="mono cursor-pointer text-muted">{warnings.length} {plural(warnings.length, "warning")}</summary>
+        <div className="mt-2"><WarningPanel diagnostics={diagnostics} compact /></div>
+      </details> : null}
     </div>
   );
 }
 
-// What a plugin could not read, in its own words. For a tree the extractor
-// only half understood this is the list of what to fix, so it is shown where
-// the step is rather than left on the terminal it scrolled off.
-function StepWarnings({ warnings }: { warnings: string[] }) {
-  if (warnings.length === 0) return null;
+function WarningPanel({ diagnostics, compact = false }: { diagnostics: WarningDiagnostic[]; compact?: boolean }) {
+  const groups = groupDiagnostics(diagnostics);
+  const plugins = [...new Set(groups.map((group) => group.plugin))].sort();
+  const rules = [...new Set(groups.map((group) => group.rule))].sort();
+  const [plugin, setPlugin] = useState("all");
+  const [rule, setRule] = useState("all");
+  const [severity, setSeverity] = useState<WarningSeverity | "all">("all");
+  const [visibility, setVisibility] = useState<"active" | "suppressed" | "all">("active");
+  const shown = groups.filter((group) =>
+    (plugin === "all" || group.plugin === plugin)
+    && (rule === "all" || group.rule === rule)
+    && (severity === "all" || group.severity === severity)
+    && (visibility === "all" || (visibility === "suppressed") === group.suppressed),
+  );
+  const activeCount = groups.filter((group) => !group.suppressed).reduce((sum, group) => sum + group.count, 0);
+  const suppressedCount = diagnostics.length - activeCount;
+
   return (
-    <details className="mt-2" open={warnings.length <= 5}>
-      <summary className="mono cursor-pointer text-muted">
-        {warnings.length} {plural(warnings.length, "warning")}
-      </summary>
-      <ul className="mono mt-1 space-y-1 text-muted">
-        {warnings.map((warning, index) => (
-          <li key={`${index}:${warning}`} className="break-words border-l-2 border-line pl-2">
-            {warning}
-          </li>
-        ))}
-      </ul>
-    </details>
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="mono text-muted">{activeCount} active · {groups.length} {plural(groups.length, "rule")}</span>
+        {suppressedCount ? <span className="chip status-verified">{suppressedCount} suppressed</span> : null}
+        <div className="flex flex-wrap gap-2 sm:ml-auto">
+          {plugins.length > 1 ? <select aria-label="Filter warnings by plugin" className={`${FIELD} w-auto py-1`} value={plugin} onChange={(event) => setPlugin(event.target.value)}><option value="all">all plugins</option>{plugins.map((name) => <option key={name} value={name}>{name}</option>)}</select> : null}
+          {rules.length > 1 ? <select aria-label="Filter warnings by rule" className={`${FIELD} w-auto py-1`} value={rule} onChange={(event) => setRule(event.target.value)}><option value="all">all rules</option>{rules.map((name) => <option key={name} value={name}>{name}</option>)}</select> : null}
+          <select aria-label="Filter warnings by severity" className={`${FIELD} w-auto py-1`} value={severity} onChange={(event) => setSeverity(event.target.value as WarningSeverity | "all")}><option value="all">all severities</option><option value="error">error</option><option value="warning">warning</option><option value="info">info</option></select>
+          <select aria-label="Filter active or suppressed warnings" className={`${FIELD} w-auto py-1`} value={visibility} onChange={(event) => setVisibility(event.target.value as "active" | "suppressed" | "all")}><option value="active">active</option><option value="suppressed">suppressed</option><option value="all">all</option></select>
+        </div>
+      </div>
+      {shown.length ? <div className="space-y-2">{shown.map((group) => {
+        const color = group.severity === "error" ? "text-unresolved" : group.severity === "warning" ? "text-declared" : "text-muted";
+        const examples = group.messages.slice(0, compact ? 3 : 12);
+        return <details key={`${group.plugin}:${group.rule}:${group.suppressed}`} className={`rounded-control border px-3 py-2 ${group.suppressed ? "border-line opacity-75" : group.severity === "error" ? "border-unresolved" : "border-line"}`} open={!compact && shown.length <= 4}>
+          <summary className="cursor-pointer list-none">
+            <span className="flex flex-wrap items-center gap-2">
+              <CircleAlert size={15} className={`shrink-0 ${color}`} />
+              <span className="mono text-ink">{group.plugin}</span>
+              <span className={`chip ${group.severity === "error" ? "status-unresolved" : group.severity === "warning" ? "status-declared" : ""}`}>{group.severity}</span>
+              <span className="mono text-muted">{group.rule}</span>
+              <span className="chip ml-auto">×{group.count}</span>
+            </span>
+            <span className="mt-1 block text-muted"><span className="font-medium text-ink">Next:</span> {group.action}</span>
+            {group.suppressionReason ? <span className="mt-1 block text-muted"><span className="font-medium text-ink">Suppressed:</span> {group.suppressionReason}</span> : null}
+          </summary>
+          <ul className="mono mt-2 space-y-1 text-muted">
+            {examples.map((warning, index) => <li key={`${index}:${warning.message}`} className="break-words border-l-2 border-line pl-2">{warning.message}</li>)}
+          </ul>
+          {group.count > examples.length ? <p className="mono mt-2 text-faint">{group.count - examples.length} more occurrences</p> : null}
+        </details>;
+      })}</div> : <p className="rounded-control border border-line px-3 py-2 text-muted">No warnings match these filters.</p>}
+      {!compact && groups.some((group) => !group.suppressed) ? <p className="text-faint">Suppress a reviewed limitation with a typed CEL entry in <span className="mono">portolan.json → warningPolicies</span>. The reason is required and remains visible here after regeneration.</p> : null}
+    </div>
   );
 }
 
@@ -830,11 +875,15 @@ function Wizard({ open, initialSource, onClose, onAdded, onRunStarted }: { open:
   const trialRunning = stage === "trial" && !finished;
   const confirmedDeployables = discovery?.deployables.filter((candidate) => candidate.confidence === "high") ?? [];
   const splitsDeployables = confirmedDeployables.length > 1 && draft?.component === discovery?.defaults.component;
+  const trialDiagnostics = trial?.diagnostics ?? [];
+  const trialActiveWarnings = trial
+    ? groupDiagnostics(trialDiagnostics).filter((group) => !group.suppressed).reduce((sum, group) => sum + group.count, 0)
+    : 0;
   const quality = trial && draft ? [
     { label: "Stable project identity", done: Boolean(draft.id.trim() && draft.name.trim()) },
     { label: "Architecture placement", done: Boolean(draft.group.trim() && (splitsDeployables || draft.component.trim())) },
     { label: "Catalog facts extracted", done: trial.facts.some((fact) => fact.count > 0) },
-    { label: "Extraction without warnings", done: trial.warnings.length === 0 },
+    { label: "Extraction without active warnings", done: trialActiveWarnings === 0 },
   ] : [];
   const totalSteps = pipeline?.stepCount ?? plan?.steps.length ?? 0;
   const percent = totalSteps ? Math.round((completedSteps.length / totalSteps) * 100) : 0;
@@ -896,7 +945,7 @@ function Wizard({ open, initialSource, onClose, onAdded, onRunStarted }: { open:
             {trial ? <section><div className="label mb-2">what Portolan found</div>{trial.facts.length ? <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{trial.facts.map((fact) => <div key={fact.key} className="rounded-control border border-line bg-canvas px-3 py-2"><div className="tnum text-lg font-semibold text-ink">{fact.count}</div><div className="text-muted">{fact.label}</div></div>)}</div> : <div className="rounded-control border border-line bg-surface px-3 py-3 text-muted">Only component metadata was found. You can add APIs, domain models and stores later without re-adding the project.</div>}</section> : null}
             {trial ? <section><div className="label mb-2">catalog readiness</div><div className="grid gap-2 sm:grid-cols-2">{quality.map((item) => <div key={item.label} className="flex items-center gap-2 rounded-control border border-line px-3 py-2"><span className={`flex size-5 items-center justify-center rounded-full ${item.done ? "bg-verified text-canvas" : "bg-surface text-declared"}`}>{item.done ? <Check size={12} aria-hidden /> : <CircleAlert size={12} aria-hidden />}</span><span className={item.done ? "text-ink" : "text-muted"}>{item.label}</span></div>)}</div></section> : null}
             <section><div className="label mb-2">extractor results</div><div className="divide-y divide-line rounded-control border border-line">{(trial?.steps ?? completedSteps).map((step) => <div key={`${step.plugin}:${"ordinal" in step ? step.ordinal : "trial"}`} className="grid gap-1 px-3 py-2 sm:grid-cols-[1fr_auto_auto]"><span><span className="font-medium text-ink">{CAPABILITIES[step.plugin]?.title ?? step.plugin}</span><span className="mono ml-2 text-faint">{step.plugin}</span>{step.message ? <span className="mt-1 block text-unresolved">{step.message}</span> : null}</span><span className="mono text-muted">{step.fileCount} {plural(step.fileCount, "file")}</span><span className={`chip ${step.status === "failed" ? "status-unresolved" : "status-verified"}`}>{step.status === "failed" ? "failed" : "read"}</span></div>)}</div></section>
-            {trial?.warnings.length ? <section><div className="label mb-2">warnings · {trial.warnings.length}</div><div className="space-y-2">{trial.warnings.map((warning, index) => <div key={`${warning.plugin}:${index}`} className="flex gap-2 rounded-control border border-declared px-3 py-2 text-muted"><CircleAlert size={15} className="mt-0.5 shrink-0 text-declared" /><span><span className="mono text-ink">{warning.plugin}</span> · {warning.message}</span></div>)}</div></section> : null}
+            {trialDiagnostics.length ? <section><div className="label mb-2">diagnostics · {trialDiagnostics.length}</div><WarningPanel diagnostics={trialDiagnostics} /></section> : null}
             {finished?.status === "failed" && logs.length ? <details><summary className="cursor-pointer text-muted">Generator log · {logs.length} lines</summary><pre className="mono mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded-control bg-surface p-3 text-muted">{logs.map((event) => event.message).join("\n")}</pre></details> : null}
             {trial ? <div><div className="label mb-2">changes after apply</div><dl className="mono grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-muted"><dt>project</dt><dd className="text-ink">{plan.project.id}</dd>{plan.fetch ? <><dt>pin</dt><dd className="truncate text-ink"><CommitLink commit={plan.fetch.commit} repository={plan.fetch.repo} length={12} /></dd></> : null}<dt>source</dt><dd className="truncate text-ink">{plan.source}</dd><dt>pipeline</dt><dd className="text-ink">{plan.steps.length + (plan.fetch ? 1 : 0)} {plural(plan.steps.length + (plan.fetch ? 1 : 0), "extract step")}</dd><dt>fragments</dt><dd className="text-ink">{trial.generatedFiles} generated</dd></dl></div> : null}
           </div>

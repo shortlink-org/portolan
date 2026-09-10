@@ -1,12 +1,13 @@
 # portolan.0006 — An extractor runs as wasm over a preopened workspace
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-08
 - **Scope:** [portolan](../portolan/README.md)
 - **Source:** [`adr/0006-an-extractor-runs-as-wasm-over-a-preopened-workspace.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0006-an-extractor-runs-as-wasm-over-a-preopened-workspace.md)
 - **Committed:** Victor Login, 2026-09-08 (`7cd7fee`)
+- **Revised:** Victor Login, 2026-09-10 (`e67f9a5`)
 
 ### Context and Problem Statement
 

@@ -82,6 +82,7 @@
     "@clack/prompts": "^1.8.0",
     "@floating-ui/react": "^0.27.20",
     "@headlessui/react": "^2.2.10",
+    "@marcbachmann/cel-js": "^8.0.0",
     "@scalar/api-reference-react": "^0.9.66",
     "@tailwindcss/vite": "^4.0.0",
     "@tanstack/react-query": "^5.102.8",

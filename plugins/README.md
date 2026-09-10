@@ -54,7 +54,10 @@ Three obligations, and they are the whole of it:
    unsafe filename or invalid response fails the run. Non-fatal extraction
    notes go to stderr; there is no advisory response property a caller may
    accidentally ignore. A note that opens with `warning: ` is kept beside the
-   step in `.portolan/build-report.json` and listed on the Settings page.
+   step in `.portolan/build-report.json`. The Settings page classifies and
+   groups those notes by plugin, stable rule and severity. Typed CEL policies
+   in `portolan.json` can suppress reviewed diagnostics only with an explicit
+   reason; the host evaluates them and records the decision in the build report.
 
 The repository enforces those obligations with schema/field coverage tests,
 byte-for-byte permutation tests, generated-link and anchor checks, Mermaid

@@ -58,6 +58,30 @@ describe("the manifest schema", () => {
     expect(check(good)).toEqual([]);
   });
 
+  it("accepts a typed CEL warning policy only with an action and reason", () => {
+    expect(check({
+      ...good,
+      warningPolicies: [{
+        when: "plugin == 'openapi' && rule == 'openapi.missing-operation-id' && count > 10",
+        action: "suppress",
+        reason: "The contract is owned upstream.",
+      }],
+    })).toEqual([]);
+
+    const problems = check({
+      ...good,
+      warningPolicies: [{ when: "plugin == 'openapi'", action: "suppress" }],
+    });
+    expect(problems.join("\n")).toContain('warningPolicies/0: "reason" is missing');
+  });
+
+  it("refuses a CEL warning policy with unknown variables or a non-boolean result", () => {
+    expect(check({ ...good, warningPolicies: [{ when: "owner == 'team'", action: "suppress", reason: "test" }] }).join("\n"))
+      .toContain("Unknown variable: owner");
+    expect(check({ ...good, warningPolicies: [{ when: "plugin", action: "suppress", reason: "test" }] }).join("\n"))
+      .toContain("CEL expression must return bool");
+  });
+
   it("refuses an unstable project id", () => {
     const problems = check({
       ...good,

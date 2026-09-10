@@ -723,7 +723,7 @@ describe("local project setup", () => {
       plugins: ["openapi", "redis"],
       steps: [{ plugin: "openapi", out: output }, { plugin: "redis", out: output }],
     }, [
-      { type: "step-finished", phase: "extract", plugin: "openapi", output, status: "written", durationMs: 4, fileCount: 1, changedCount: 1, files: [`${output}/api.json`], warnings: ["one route has no description"] },
+      { type: "step-finished", phase: "extract", plugin: "openapi", output, status: "written", durationMs: 4, fileCount: 1, changedCount: 1, files: [`${output}/api.json`], warnings: ["one route has no description"], diagnostics: [{ plugin: "openapi", rule: "plugin.openapi.other-test", severity: "warning", action: "Inspect it.", message: "one route has no description", count: 1, project: "billing", phase: "extract", suppressed: true, suppressionReason: "Owned upstream." }] },
       { type: "step-finished", phase: "extract", plugin: "redis", output, status: "written", durationMs: 3, fileCount: 1, changedCount: 1, files: [`${output}/redis.json`], warnings: [] },
       { type: "step-finished", phase: "generate", plugin: "markdown", output: "docs", status: "written", durationMs: 2, fileCount: 10, changedCount: 10, files: ["docs/index.md"], warnings: [] },
     ]);
@@ -741,6 +741,7 @@ describe("local project setup", () => {
     });
     expect(result.steps.map((step) => step.plugin)).toEqual(["openapi", "redis"]);
     expect(result.warnings).toEqual([{ plugin: "openapi", message: "one route has no description" }]);
+    expect(result.diagnostics).toEqual([expect.objectContaining({ rule: "plugin.openapi.other-test", suppressed: true })]);
     expect(result.generatedFiles).toBe(2);
   });
 });

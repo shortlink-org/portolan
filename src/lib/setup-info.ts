@@ -59,6 +59,23 @@ export interface SetupRunStep extends SetupStep {
    * fix; a failed step's error stays out, because an error may quote anything.
    */
   warnings: string[];
+  diagnostics: SetupDiagnostic[];
+}
+
+export type SetupDiagnosticSeverity = "error" | "warning" | "info";
+
+export interface SetupDiagnostic {
+  plugin: string;
+  rule: string;
+  severity: SetupDiagnosticSeverity;
+  action: string;
+  message: string;
+  count: number;
+  project: string;
+  phase: SetupPhase;
+  ref?: string;
+  suppressed: boolean;
+  suppressionReason?: string;
 }
 
 export interface SetupRun {
@@ -249,6 +266,10 @@ function runStepFrom(
     .filter((warning): warning is string => typeof warning === "string" && warning.trim() !== "")
     .slice(0, MAX_WARNINGS)
     .map((warning) => warning.slice(0, MAX_WARNING_LENGTH));
+  const diagnostics = array(item.diagnostics)
+    .map((diagnostic) => diagnosticFrom(diagnostic, item.plugin as string, item.phase as SetupPhase))
+    .filter((diagnostic): diagnostic is SetupDiagnostic => diagnostic !== null)
+    .slice(0, MAX_WARNINGS);
 
   return {
     ordinal: item.ordinal,
@@ -267,6 +288,39 @@ function runStepFrom(
     changedCount: item.changedCount,
     files,
     warnings,
+    diagnostics,
+  };
+}
+
+function diagnosticFrom(value: unknown, plugin: string, phase: SetupPhase): SetupDiagnostic | null {
+  const item = record(value);
+  if (
+    item.plugin !== plugin || item.phase !== phase ||
+    typeof item.rule !== "string" || !/^[a-z0-9]+(?:[.-][a-z0-9]+)*$/.test(item.rule) ||
+    !["error", "warning", "info"].includes(item.severity as string) ||
+    typeof item.action !== "string" || item.action.trim() === "" ||
+    typeof item.message !== "string" || item.message.trim() === "" ||
+    !wholeNumber(item.count) || item.count < 1 ||
+    typeof item.project !== "string" ||
+    typeof item.suppressed !== "boolean"
+  ) return null;
+  const ref = typeof item.ref === "string" && item.ref.trim() !== "" ? item.ref.slice(0, MAX_WARNING_LENGTH) : undefined;
+  const suppressionReason = typeof item.suppressionReason === "string" && item.suppressionReason.trim() !== ""
+    ? item.suppressionReason.slice(0, MAX_WARNING_LENGTH)
+    : undefined;
+  if (item.suppressed && !suppressionReason) return null;
+  return {
+    plugin,
+    rule: item.rule,
+    severity: item.severity as SetupDiagnosticSeverity,
+    action: item.action.slice(0, MAX_WARNING_LENGTH),
+    message: item.message.slice(0, MAX_WARNING_LENGTH),
+    count: item.count,
+    project: item.project.slice(0, MAX_WARNING_LENGTH),
+    phase,
+    ...(ref ? { ref } : {}),
+    suppressed: item.suppressed,
+    ...(suppressionReason ? { suppressionReason } : {}),
   };
 }
 

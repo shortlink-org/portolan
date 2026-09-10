@@ -1,6 +1,6 @@
 # Plugins
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Id:** `portolan.plugins`
 - **Group:** [Portolan](../README.md)
@@ -65,7 +65,10 @@ Three obligations, and they are the whole of it:
    unsafe filename or invalid response fails the run. Non-fatal extraction
    notes go to stderr; there is no advisory response property a caller may
    accidentally ignore. A note that opens with `warning: ` is kept beside the
-   step in `.portolan/build-report.json` and listed on the Settings page.
+   step in `.portolan/build-report.json`. The Settings page classifies and
+   groups those notes by plugin, stable rule and severity. Typed CEL policies
+   in `portolan.json` can suppress reviewed diagnostics only with an explicit
+   reason; the host evaluates them and records the decision in the build report.
 
 The repository enforces those obligations with schema/field coverage tests,
 byte-for-byte permutation tests, generated-link and anchor checks, Mermaid
@@ -877,11 +880,17 @@ written.
 `fetch-git` is `fetch-bsr` for a repository rather than a registry, and it
 lives by the same four rules. A pin is a repository, a commit and the paths
 actually read; the step fetches exactly those directories at exactly that
-commit and hands them back as files, so the host writes them into the tree
+commit and hands their text files back, so the host writes them into the tree
 beside a `git.lock.json` naming the commit and the digest of every file. The
 paths inside the copy are the repository's own, which is the point: the
 extract step that follows points its `in` at the vendored service and reads
 it exactly as it would read that service's checkout.
+
+Binary files are not part of the extractor input. Known binary extensions are
+discarded before their blobs are read; files without a known extension are
+sniffed for NUL bytes and invalid UTF-8 before the response is assembled. The
+lock records only their path, byte size and skip reason, never Base64 content,
+so online fetch and offline replay produce the same bounded text-only copy.
 
 It runs inside the host (`scripts/host-plugins/fetch-git.mjs`,
 portolan.0008) rather than as a module, because it needs a git binary and a
@@ -1038,7 +1047,8 @@ workflow already does.
 
 Four rules govern what happens when a fetch does not:
 
-1. Fetch succeeded → the fetched files and a regenerated lock.
+1. Fetch succeeded → the fetched text files, binary-skip metadata and a
+   regenerated lock.
 2. Skipped or failed, cache complete and matching its digests → the cached files
    byte-identically, plus a warning. Output unchanged, so `--check` stays clean.
 3. Failed **and** no usable cache → a non-zero exit, never a short file list. The

@@ -12,6 +12,7 @@ import { readFileSync } from "node:fs";
 import { normalize } from "node:path";
 
 import Ajv from "ajv/dist/2020.js";
+import { warningPolicyProblems } from "./warning-policy.mjs";
 
 // Read when asked, not when loaded: the CLI sets PORTOLAN_SCHEMA after its imports.
 const schemaFile = () => process.env.PORTOLAN_SCHEMA || "schema/portolan.schema.json";
@@ -38,20 +39,21 @@ export function loadManifest(path = "portolan.json") {
  */
 export function parseManifest(text, path = "portolan.json") {
   const manifest = JSON.parse(text);
+  const policyProblems = warningPolicyProblems(manifest.warningPolicies, path);
 
   let schema;
   try {
     schema = JSON.parse(readFileSync(schemaFile(), "utf8"));
   } catch {
-    return { manifest, problems: [] };
+    return { manifest, problems: policyProblems };
   }
 
   const ajv = new Ajv({ allErrors: true, strictSchema: false });
   const validate = ajv.compile(schema);
 
-  if (validate(manifest)) return { manifest, problems: [] };
+  if (validate(manifest)) return { manifest, problems: policyProblems };
 
-  return { manifest, problems: explain(validate.errors ?? [], manifest, schema, path) };
+  return { manifest, problems: [...explain(validate.errors ?? [], manifest, schema, path), ...policyProblems] };
 }
 
 /**

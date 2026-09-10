@@ -36,6 +36,7 @@ import {
   writeOutputFile,
 } from "./output-path.mjs";
 import { builtinPlugin } from "./builtin-plugins.mjs";
+import { diagnoseWarnings } from "./warning-policy.mjs";
 
 const PORTOLAN_VERSION = "0.1.0";
 const EVENTS = process.env.PORTOLAN_EVENTS === "1";
@@ -254,8 +255,15 @@ async function executeStep(phase, step, label, work) {
   event({ type: "step-started", ordinal: report.steps.length, phase, plugin: step.plugin, input: step.in, output: step.out });
   try {
     const { files, warnings = [] } = await work();
+    const diagnostics = diagnoseWarnings({
+      plugin: step.plugin,
+      warnings,
+      policies: manifest.warningPolicies,
+      project: projectForStep(step),
+      phase,
+    });
     const changes = apply(files, step.out, keys.keyOf(step), check);
-    const changed = summarise(label, files, changes, warnings);
+    const changed = summarise(label, files, changes, diagnostics);
     drifted = changed || drifted;
     const result = {
       phase,
@@ -271,6 +279,7 @@ async function executeStep(phase, step, label, work) {
       // What the plugin could not read, in its own words. Already printed as
       // it ran; kept here so the Settings page can list it beside the step.
       warnings,
+      diagnostics,
     };
     addBuildStep(report, result);
     persistReport();
@@ -294,6 +303,15 @@ async function executeStep(phase, step, label, work) {
     event({ type: "step-finished", ordinal: report.steps.length - 1, ...result, message: cause instanceof Error ? cause.message : String(cause) });
     throw cause;
   }
+}
+
+function projectForStep(step) {
+  if (!step.in) return "";
+  const input = String(step.in).replace(/\\/g, "/").replace(/\/+$/, "");
+  const projects = (manifest.projects ?? [])
+    .filter((project) => typeof project?.id === "string" && typeof project?.root === "string")
+    .sort((left, right) => right.root.length - left.root.length);
+  return projects.find((project) => input === project.root || input.startsWith(`${project.root}/`))?.id ?? "";
 }
 
 function persistReport() {
@@ -335,8 +353,11 @@ async function needsOf(plugin) {
 }
 
 /** Prints what a step did, and says whether it left the tree out of date. */
-function summarise(label, files, changes, warnings = []) {
-  const said = warnings.length > 0 ? `, ${warnings.length} warning${warnings.length === 1 ? "" : "s"}` : "";
+function summarise(label, files, changes, diagnostics = []) {
+  const suppressed = diagnostics.filter((diagnostic) => diagnostic.suppressed).length;
+  const said = diagnostics.length > 0
+    ? `, ${diagnostics.length} warning${diagnostics.length === 1 ? "" : "s"}${suppressed ? ` (${suppressed} suppressed)` : ""}`
+    : "";
   const summary = `${label}: ${files.length} file${files.length === 1 ? "" : "s"}${said}`;
 
   if (changes.length === 0) {

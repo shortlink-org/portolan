@@ -174,6 +174,18 @@ describe("publicSetupFrom", () => {
             changedCount: 0,
             files: ["data/shop/catalog.json", "../../private-key"],
             warnings: ["shop.cart: internal/domain/errors has no struct called Errors", "", 42],
+            diagnostics: [{
+              plugin: "domain",
+              rule: "domain.missing-root",
+              severity: "warning",
+              action: "Name the root.",
+              message: "shop.cart: internal/domain/errors has no struct called Errors",
+              count: 1,
+              project: "shop",
+              phase: "extract",
+              suppressed: true,
+              suppressionReason: "Legacy package.",
+            }],
             error: "secret token",
           },
         ],
@@ -187,6 +199,11 @@ describe("publicSetupFrom", () => {
       status: "failed",
       files: ["data/shop/catalog.json"],
       warnings: ["shop.cart: internal/domain/errors has no struct called Errors"],
+      diagnostics: [{
+        rule: "domain.missing-root",
+        suppressed: true,
+        suppressionReason: "Legacy package.",
+      }],
     });
     expect(JSON.stringify(setup)).not.toContain("secret token");
     expect(JSON.stringify(setup)).not.toContain("private-key");

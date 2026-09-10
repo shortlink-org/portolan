@@ -1,12 +1,12 @@
 *llms-full.txt: every page of Portolan, one after another. A page begins with a comment naming its file, and the links inside it are relative to that file's directory.*
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 <!-- README.md -->
 
 # Portolan
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 
 ## Contexts
@@ -33,12 +33,13 @@
 | [portolan.0006](adr/portolan.0006.md) | An extractor runs as wasm over a preopened workspace | accepted | 2026-09-08 |
 | [portolan.0007](adr/portolan.0007.md) | The host reads history for a plugin that asks | accepted | 2026-09-08 |
 | [portolan.0008](adr/portolan.0008.md) | A plugin that needs a socket runs inside the host | accepted | 2026-09-08 |
+| [portolan.0009](adr/portolan.0009.md) | The typed Go call graph runs as a native sidecar | accepted | 2026-09-10 |
 
 <!-- portolan/README.md -->
 
 # Portolan
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Id:** `portolan`
 - **Kind:** system
@@ -69,12 +70,13 @@ The tool that reads an architecture catalog from the code and specifications tha
 | [portolan.0006](../adr/portolan.0006.md) | An extractor runs as wasm over a preopened workspace | accepted | 2026-09-08 |
 | [portolan.0007](../adr/portolan.0007.md) | The host reads history for a plugin that asks | accepted | 2026-09-08 |
 | [portolan.0008](../adr/portolan.0008.md) | A plugin that needs a socket runs inside the host | accepted | 2026-09-08 |
+| [portolan.0009](../adr/portolan.0009.md) | The typed Go call graph runs as a native sidecar | accepted | 2026-09-10 |
 
 <!-- portolan/glossary.md -->
 
 # Glossary — Portolan
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Context:** [Portolan](README.md)
 - **Terms:** 44
@@ -133,7 +135,7 @@ One meaning per word inside this context, as the glossary beside the code states
 
 # Host
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Id:** `portolan.host`
 - **Group:** [Portolan](../README.md)
@@ -198,29 +200,29 @@ one estate and validates the union. Nothing here draws anything.
 
 | Run | Body | Source |
 | --- | --- | --- |
-| `npm run dev` | `node cli/portolan.mjs dev` | [`package.json:49`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L49) |
-| `npm run build` | `node cli/portolan.mjs build` | [`package.json:50`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L50) |
-| `npm run preview` | `vite preview` | [`package.json:51`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L51) |
-| `npm test` | `vitest run` | [`package.json:52`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L52) |
-| `npm run test:go` | `go test ./...` | [`package.json:53`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L53) |
-| `npm run test:package` | `node scripts/package-smoke.mjs` | [`package.json:55`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L55) |
-| `npm run test:watch` | `vitest` | [`package.json:56`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L56) |
-| `npm run typecheck` | `tsc --noEmit && tsc -p plugins/extract-ts` | [`package.json:57`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L57) |
-| `npm run likec4:gen` | `node scripts/gen-likec4.mjs && likec4 gen react likec4 -o src/likec4/generated.jsx --no-use-dot` | [`package.json:58`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L58) |
-| `npm run likec4:validate` | `likec4 validate likec4` | [`package.json:59`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L59) |
-| `npm run plugins:build` | `GOOS=wasip1 GOARCH=wasm go build -trimpath -ldflags="-s -w" -o plugins/portolan-go.wasm ./plugins/cmd/portolan-go && javac --release 21 -d plugins/extract-java/build plugins/extract-java/src/org/portolan/extract/*.java` | [`package.json:61`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L61) |
-| `npm run schema` | `npm run plugins:build && node scripts/schema.mjs` | [`package.json:62`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L62) |
-| `npm run schema:check` | `npm run plugins:build && node scripts/schema.mjs --check` | [`package.json:63`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L63) |
-| `npm run gen` | `npm run plugins:build && node scripts/gen.mjs` | [`package.json:64`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L64) |
-| `npm run gen:check` | `npm run plugins:build && node scripts/gen.mjs --check` | [`package.json:65`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L65) |
-| `npm run diff` | `node scripts/diff.mjs` | [`package.json:66`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L66) |
-| `npm run prepack` | `npm run plugins:build` | [`package.json:67`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L67) |
+| `npm run dev` | `node cli/portolan.mjs dev` | [`package.json:58`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L58) |
+| `npm run build` | `node cli/portolan.mjs build` | [`package.json:59`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L59) |
+| `npm run preview` | `vite preview` | [`package.json:60`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L60) |
+| `npm test` | `vitest run` | [`package.json:61`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L61) |
+| `npm run test:go` | `go test ./...` | [`package.json:62`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L62) |
+| `npm run test:package` | `node scripts/package-smoke.mjs` | [`package.json:64`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L64) |
+| `npm run test:watch` | `vitest` | [`package.json:65`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L65) |
+| `npm run typecheck` | `tsc --noEmit && tsc -p plugins/extract-ts` | [`package.json:66`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L66) |
+| `npm run likec4:gen` | `node scripts/gen-likec4.mjs && likec4 gen react likec4 -o src/likec4/generated.jsx --no-use-dot` | [`package.json:67`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L67) |
+| `npm run likec4:validate` | `likec4 validate likec4` | [`package.json:68`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L68) |
+| `npm run plugins:build` | `GOOS=wasip1 GOARCH=wasm go build -trimpath -ldflags="-s -w" -o plugins/portolan-go.wasm ./plugins/cmd/portolan-go && javac --release 21 -d plugins/extract-java/build plugins/extract-java/src/org/portolan/extract/*.java` | [`package.json:70`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L70) |
+| `npm run schema` | `npm run plugins:build && node scripts/schema.mjs` | [`package.json:71`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L71) |
+| `npm run schema:check` | `npm run plugins:build && node scripts/schema.mjs --check` | [`package.json:72`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L72) |
+| `npm run gen` | `npm run plugins:build && node scripts/gen.mjs` | [`package.json:73`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L73) |
+| `npm run gen:check` | `npm run plugins:build && node scripts/gen.mjs --check` | [`package.json:74`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L74) |
+| `npm run diff` | `node scripts/diff.mjs` | [`package.json:75`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L75) |
+| `npm run prepack` | `npm run plugins:build` | [`package.json:76`](https://github.com/shortlink-org/portolan/blob/main/scripts/package.json#L76) |
 
 <!-- portolan/plugins/README.md -->
 
 # Plugins
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Id:** `portolan.plugins`
 - **Group:** [Portolan](../README.md)
@@ -285,7 +287,10 @@ Three obligations, and they are the whole of it:
    unsafe filename or invalid response fails the run. Non-fatal extraction
    notes go to stderr; there is no advisory response property a caller may
    accidentally ignore. A note that opens with `warning: ` is kept beside the
-   step in `.portolan/build-report.json` and listed on the Settings page.
+   step in `.portolan/build-report.json`. The Settings page classifies and
+   groups those notes by plugin, stable rule and severity. Typed CEL policies
+   in `portolan.json` can suppress reviewed diagnostics only with an explicit
+   reason; the host evaluates them and records the decision in the build report.
 
 The repository enforces those obligations with schema/field coverage tests,
 byte-for-byte permutation tests, generated-link and anchor checks, Mermaid
@@ -1097,11 +1102,17 @@ written.
 `fetch-git` is `fetch-bsr` for a repository rather than a registry, and it
 lives by the same four rules. A pin is a repository, a commit and the paths
 actually read; the step fetches exactly those directories at exactly that
-commit and hands them back as files, so the host writes them into the tree
+commit and hands their text files back, so the host writes them into the tree
 beside a `git.lock.json` naming the commit and the digest of every file. The
 paths inside the copy are the repository's own, which is the point: the
 extract step that follows points its `in` at the vendored service and reads
 it exactly as it would read that service's checkout.
+
+Binary files are not part of the extractor input. Known binary extensions are
+discarded before their blobs are read; files without a known extension are
+sniffed for NUL bytes and invalid UTF-8 before the response is assembled. The
+lock records only their path, byte size and skip reason, never Base64 content,
+so online fetch and offline replay produce the same bounded text-only copy.
 
 It runs inside the host (`scripts/host-plugins/fetch-git.mjs`,
 portolan.0008) rather than as a module, because it needs a git binary and a
@@ -1258,7 +1269,8 @@ workflow already does.
 
 Four rules govern what happens when a fetch does not:
 
-1. Fetch succeeded → the fetched files and a regenerated lock.
+1. Fetch succeeded → the fetched text files, binary-skip metadata and a
+   regenerated lock.
 2. Skipped or failed, cache complete and matching its digests → the cached files
    byte-identically, plus a warning. Output unchanged, so `--check` stays clean.
 3. Failed **and** no usable cache → a non-zero exit, never a short file list. The
@@ -1445,7 +1457,7 @@ plainly.
 
 # Site
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Id:** `portolan.site`
 - **Group:** [Portolan](../README.md)
@@ -1495,7 +1507,7 @@ Static end to end; there is no backend and no runtime query.
 
 # Flows
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 | Flow | Owner | Summary |
 | --- | --- | --- |
@@ -1505,7 +1517,7 @@ Static end to end; there is no backend and no runtime query.
 
 # npm run gen
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Id:** `flow.gen`
 - **Owner:** [portolan](../portolan/README.md)
@@ -1604,7 +1616,7 @@ sequenceDiagram
 
 # Decision records
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 | ADR | Title | Status | Date | Scope |
 | --- | --- | --- | --- | --- |
@@ -1616,12 +1628,13 @@ sequenceDiagram
 | [portolan.0006](portolan.0006.md) | An extractor runs as wasm over a preopened workspace | accepted | 2026-09-08 | [portolan](../portolan/README.md) |
 | [portolan.0007](portolan.0007.md) | The host reads history for a plugin that asks | accepted | 2026-09-08 | [portolan](../portolan/README.md) |
 | [portolan.0008](portolan.0008.md) | A plugin that needs a socket runs inside the host | accepted | 2026-09-08 | [portolan](../portolan/README.md) |
+| [portolan.0009](portolan.0009.md) | The typed Go call graph runs as a native sidecar | accepted | 2026-09-10 | [portolan](../portolan/README.md) |
 
 <!-- adr/portolan.0001.md -->
 
 # portolan.0001 — A plugin names files and never writes them
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-02
@@ -1695,7 +1708,7 @@ shape rather than a restriction worked around.
 
 # portolan.0002 — The host stamps a fragment from its input's last commit
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-02
@@ -1765,7 +1778,7 @@ a build that must reproduce.
 
 # portolan.0003 — The Go catalog is a mirror held by a round-trip test
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-02
@@ -1835,7 +1848,7 @@ is not.
 
 # portolan.0004 — `contexts` and `services` stay the wire format
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-06
@@ -1905,7 +1918,7 @@ glossary: `GLOSSARY.md` names all four and says which is the term.
 
 # portolan.0005 — CSS moves what appears; Motion moves what leaves or changes place
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-06
@@ -1995,13 +2008,14 @@ library by one careless import.
 
 # portolan.0006 — An extractor runs as wasm over a preopened workspace
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-08
 - **Scope:** [portolan](../portolan/README.md)
 - **Source:** [`adr/0006-an-extractor-runs-as-wasm-over-a-preopened-workspace.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0006-an-extractor-runs-as-wasm-over-a-preopened-workspace.md)
 - **Committed:** Victor Login, 2026-09-08 (`7cd7fee`)
+- **Revised:** Victor Login, 2026-09-10 (`e67f9a5`)
 
 ### Context and Problem Statement
 
@@ -2085,7 +2099,7 @@ because it keeps the failure where new users meet it first.
 
 # portolan.0007 — The host reads history for a plugin that asks
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-08
@@ -2172,7 +2186,7 @@ process was the state this record replaces.
 
 # portolan.0008 — A plugin that needs a socket runs inside the host
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-08
@@ -2261,12 +2275,13 @@ Go for exactly the users this is for.
 
 # portolan.0009 — The typed Go call graph runs as a native sidecar
 
-*Generated from the portolan catalog · commit `5 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
+*Generated from the portolan catalog · commit `3 sources` · at 2026-09-06T20:39:44+07:00. Do not edit by hand.*
 
 - **Status:** accepted
 - **Date:** 2026-09-10
 - **Scope:** [portolan](../portolan/README.md)
 - **Source:** [`adr/0009-the-typed-go-call-graph-runs-as-a-native-sidecar.md`](https://github.com/shortlink-org/portolan/blob/main/adr/0009-the-typed-go-call-graph-runs-as-a-native-sidecar.md)
+- **Committed:** Victor Login, 2026-09-10 (`e67f9a5`)
 
 ### Context and Problem Statement
 
