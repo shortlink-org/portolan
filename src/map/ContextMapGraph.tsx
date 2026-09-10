@@ -16,7 +16,14 @@
 // status among everything the line carries: a relationship is known no better
 // than its least-known hop.
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useNavigate } from "react-router";
 import {
   Background,
@@ -79,6 +86,36 @@ export interface ContextMapGraphProps {
   inactiveNodeOpacity?: number;
 }
 
+// React Flow reads its parent box during mount. The page shell and embedded
+// hero can both briefly be 0×0 while their layout settles, so keep the flow
+// out of that box until a real size has been observed.
+function useMeasuredCanvas() {
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const [hasSize, setHasSize] = useState(false);
+
+  useLayoutEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const measure = (): void => {
+      const next = canvas.clientWidth > 0 && canvas.clientHeight > 0;
+      setHasSize((current) => (current === next ? current : next));
+    };
+
+    measure();
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", measure);
+      return () => window.removeEventListener("resize", measure);
+    }
+
+    const observer = new ResizeObserver(measure);
+    observer.observe(canvas);
+    return () => observer.disconnect();
+  }, []);
+
+  return { canvasRef, hasSize };
+}
+
 export function ContextMapGraph({
   catalog,
   relations,
@@ -97,6 +134,7 @@ export function ContextMapGraph({
     edges: [],
     ready: false,
   });
+  const { canvasRef, hasSize } = useMeasuredCanvas();
 
   // One entry per pair the catalog has anything to say about. `back` is what
   // turns an arrow into a double-headed one; elk only ever sees a -> b, so the
@@ -257,37 +295,43 @@ export function ContextMapGraph({
   );
 
   return (
-    <div className="canvas-motion relative h-full w-full">
-      {drawn.ready ? null : <DiagramSkeleton />}
-      <ReactFlow
-        nodes={shownNodes}
-        edges={shownEdges}
-        nodeTypes={contextNodeTypes}
-        edgeTypes={mapEdgeTypes}
-        onNodeClick={onNodeClick}
-        onNodeDoubleClick={onNodeDoubleClick}
-        onPaneClick={() => clear("diagram")}
-        nodesDraggable={false}
-        nodesConnectable={false}
-        elementsSelectable
-        proOptions={{ hideAttribution: true }}
-        fitView
-        fitViewOptions={{ padding: compactLayout ? 0.06 : 0.16 }}
-        zoomOnScroll={zoomOnScroll}
-        preventScrolling={zoomOnScroll}
-        minZoom={0.2}
-        maxZoom={1.6}
-        key={fitKey}
-      >
-        <Background gap={20} size={2} />
-        {/* The map has no modes to switch, so its only control is the way
-            out: the drawing as a file, for the page that explains it. */}
-        {showExport ? (
-          <Panel position="top-right">
-            <ExportSeg name="context-map" />
-          </Panel>
-        ) : null}
-      </ReactFlow>
+    <div
+      ref={canvasRef}
+      className="canvas-motion relative h-full w-full"
+    >
+      {drawn.ready && hasSize ? (
+        <ReactFlow
+          nodes={shownNodes}
+          edges={shownEdges}
+          nodeTypes={contextNodeTypes}
+          edgeTypes={mapEdgeTypes}
+          onNodeClick={onNodeClick}
+          onNodeDoubleClick={onNodeDoubleClick}
+          onPaneClick={() => clear("diagram")}
+          nodesDraggable={false}
+          nodesConnectable={false}
+          elementsSelectable
+          proOptions={{ hideAttribution: true }}
+          fitView
+          fitViewOptions={{ padding: compactLayout ? 0.06 : 0.16 }}
+          zoomOnScroll={zoomOnScroll}
+          preventScrolling={zoomOnScroll}
+          minZoom={0.2}
+          maxZoom={1.6}
+          key={fitKey}
+        >
+          <Background gap={20} size={2} />
+          {/* The map has no modes to switch, so its only control is the way
+              out: the drawing as a file, for the page that explains it. */}
+          {showExport ? (
+            <Panel position="top-right">
+              <ExportSeg name="context-map" />
+            </Panel>
+          ) : null}
+        </ReactFlow>
+      ) : (
+        <DiagramSkeleton />
+      )}
     </div>
   );
 }
