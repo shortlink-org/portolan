@@ -140,15 +140,18 @@ describe("local project setup", () => {
     writeFileSync(join(root, ".gitlab-ci.yml"), "lint:\n  script: echo lint\n");
     const preview = planDeliveryPreset(root);
     expect(preview).toMatchObject({ provider: "gitlab", detectedProvider: "gitlab", status: "available" });
-    expect(preview.files[0].diff).toContain("+\"portolan:check\":");
+    expect(preview.features.filter((feature) => feature.selected).map((feature) => feature.id)).toEqual(["pages"]);
+    expect(preview.files[0].diff).not.toContain("+\"portolan:check\":");
     const installed = installDeliveryPreset(root, { provider: "gitlab", revision: preview.revision });
     expect(installed.status).toBe("installed");
     const pipeline = readFileSync(join(root, ".gitlab-ci.yml"), "utf8");
     expect(pipeline).toContain("lint:\n  script: echo lint");
     expect(pipeline).toContain("# >>> Portolan delivery preset >>>");
-    expect(pipeline).toContain('"portolan:pages":');
-    expect(pipeline).toContain("portolan build --output dist");
-    expect(pipeline).toContain("pages:\n    publish: dist");
+    expect(pipeline).toContain("\npages:\n");
+    expect(pipeline).toContain("stage: deploy");
+    expect(pipeline).toContain("tags:\n    - runner-type:docker");
+    expect(pipeline).toContain("portolan build --output public");
+    expect(pipeline).toContain("artifacts:\n    paths:\n      - public");
     expect(existsSync(join(root, ".github"))).toBe(false);
   });
 

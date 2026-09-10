@@ -23,7 +23,10 @@ const GITLAB_START = "# >>> Portolan delivery preset >>>";
 const GITLAB_END = "# <<< Portolan delivery preset <<<";
 const PROVIDERS = new Set(["github", "gitlab"]);
 const FEATURE_IDS = ["check", "diff", "sarif", "pages"];
-const DEFAULT_FEATURES = ["check", "pages"];
+const DEFAULT_FEATURES = {
+  github: ["check", "pages"],
+  gitlab: ["pages"],
+};
 const FEATURE_DETAILS = {
   check: {
     label: "Architecture check",
@@ -225,7 +228,9 @@ ${upload}`;
 
 function gitlabCheck() {
   return `"portolan:check":
-  stage: .pre
+  stage: test
+  tags:
+    - runner-type:docker
   image:
     name: ghcr.io/shortlink-org/portolan:${VERSION}
     entrypoint: [""]
@@ -242,7 +247,9 @@ function gitlabCheck() {
 function gitlabDiff({ pages }) {
   const site = pages ? ' --site "$CI_PAGES_URL"' : "";
   return `"portolan:review":
-  stage: .pre
+  stage: test
+  tags:
+    - runner-type:docker
   image:
     name: ghcr.io/shortlink-org/portolan:${VERSION}
     entrypoint: [""]
@@ -259,8 +266,10 @@ function gitlabDiff({ pages }) {
 }
 
 function gitlabPages() {
-  return `"portolan:pages":
-  stage: .post
+  return `pages:
+  stage: deploy
+  tags:
+    - runner-type:docker
   image:
     name: ghcr.io/shortlink-org/portolan:${VERSION}
     entrypoint: [""]
@@ -268,9 +277,10 @@ function gitlabPages() {
     GIT_DEPTH: "0"
   script:
     - BASE_PATH="$(node -p 'new URL(process.env.CI_PAGES_URL).pathname.replace(/\\/?$/, "/") || "/"')"
-    - portolan build --output dist --base "$BASE_PATH"
-  pages:
-    publish: dist
+    - portolan build --output public --base "$BASE_PATH"
+  artifacts:
+    paths:
+      - public
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
 `;
@@ -299,7 +309,7 @@ function mergeGitlab(existing, features) {
       .replace(/^\n+|\n+$/g, "");
     return { content: content ? `${content}\n` : "" };
   }
-  if (/^[ \t]*["']?portolan:(?:check|review|pages)["']?\s*:/m.test(existing)) {
+  if (/^(?:["']?portolan:(?:check|review|pages)["']?|["']?pages["']?)\s*:/m.test(existing)) {
     return { conflict: "This pipeline already declares a Portolan job outside the managed region." };
   }
   const block = gitlabBlock(features);
@@ -421,14 +431,14 @@ function installedFeatures(workspace, provider) {
   );
   if (/^[ \t]*["']?portolan:check["']?\s*:/m.test(managed)) selected.add("check");
   if (/^[ \t]*["']?portolan:review["']?\s*:/m.test(managed)) selected.add("diff");
-  if (/^[ \t]*["']?portolan:pages["']?\s*:/m.test(managed)) selected.add("pages");
+  if (/^(?:["']?portolan:pages["']?|["']?pages["']?)\s*:/m.test(managed)) selected.add("pages");
   return selected;
 }
 
 function selectedFeatures(workspace, request, provider) {
   const installed = request.features == null ? installedFeatures(workspace, provider) : null;
   const raw = request.features == null
-    ? installed.size > 0 ? [...installed] : DEFAULT_FEATURES
+    ? installed.size > 0 ? [...installed] : DEFAULT_FEATURES[provider]
     : Array.isArray(request.features)
       ? request.features
       : String(request.features).split(",").filter(Boolean);
