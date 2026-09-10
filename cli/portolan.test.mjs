@@ -52,7 +52,9 @@ describe("site staging", () => {
       }));
       expect(sources).toHaveLength(1);
       expect(sources[0].catalog.generatedAt).toBeUndefined();
-      expect(sources[0].stamp).toEqual({ commit, generatedAt: "2026-03-03T03:00:00Z" });
+      // The stamp is the workspace file's, and it says which file: the path a
+      // project's root is a prefix of, which the flattened name is not.
+      expect(sources[0].stamp).toEqual({ commit, generatedAt: "2026-03-03T03:00:00Z", source: i === 0 ? "data/self.json" : "examples/shop/portolan/domain.json" });
       const catalog = validateCatalog(mergeCatalogs(sources).catalog);
       expect(catalog.contexts.map((context) => context.id)).toEqual([i === 0 ? "portolan" : "shop"]);
     }

@@ -20,16 +20,24 @@ const RESOLVED = `\0${PROVENANCE_MODULE}`;
  * The stamp of every source the manifest's patterns find under `workspace`,
  * keyed by its path as the manifest spells it.
  *
+ * A staged site (`portolan dev`, `portolan build`) imports its sources under
+ * flattened names, `portolan/source-0007.json`, and keeps the way back in
+ * `.portolan/source-paths.json`. Such a stamp is keyed by the staged name the
+ * browser imports and carries `source`, the path the file has in the
+ * workspace - the one a project's root is a prefix of, and the one a link to
+ * the file has to name. Without it the site would know its sources only by
+ * names nobody typed.
+ *
  * @param {string} workspace
  * @param {string} siteRoot  Vite's root, which may contain flattened sources
- * @returns {Record<string, {commit: string, generatedAt: string}>}
+ * @returns {Record<string, {commit: string, generatedAt: string, source?: string}>}
  */
 export function provenance(workspace, siteRoot = workspace) {
   const sourceMap = join(siteRoot, ".portolan/source-paths.json");
   if (existsSync(sourceMap)) {
     const paths = JSON.parse(readFileSync(sourceMap, "utf8"));
     const stamps = stampsFor(workspace, Object.values(paths));
-    return Object.fromEntries(Object.entries(paths).map(([staged, source]) => [staged, stamps.get(source)]));
+    return Object.fromEntries(Object.entries(paths).map(([staged, source]) => [staged, { ...stamps.get(source), source }]));
   }
   const manifest = readManifest(join(workspace, "portolan.json"));
   const paths = [];

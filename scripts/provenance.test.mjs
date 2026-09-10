@@ -126,4 +126,24 @@ describe("the site's provenance module", () => {
       "services/oms/portolan/domain.json": { commit: head, generatedAt: "2026-03-03T03:00:00Z" },
     });
   });
+
+  // A staged site imports flattened copies. The stamp is the workspace file's,
+  // keyed by the name the browser imports, and it says which file that was -
+  // the path a project's root is a prefix of.
+  it("keys a staged site's sources by their flattened names and says where each came from", () => {
+    const { root, git, write } = repository();
+    write("portolan.json", JSON.stringify({ sources: ["services/*/portolan/*.json"] }));
+    write("services/oms/portolan/domain.json", "{}\n");
+    git(["add", "."]);
+    git(["commit", "-q", "-m", "one"], "2026-03-03T03:00:00Z");
+    const head = git(["rev-parse", "--short=7", "HEAD"]);
+    const stage = join(root, ".portolan", "site");
+    write(".portolan/site/.portolan/source-paths.json", JSON.stringify({
+      "portolan/source-0001.json": "services/oms/portolan/domain.json",
+    }));
+
+    expect(provenance(root, stage)).toEqual({
+      "portolan/source-0001.json": { commit: head, generatedAt: "2026-03-03T03:00:00Z", source: "services/oms/portolan/domain.json" },
+    });
+  });
 });

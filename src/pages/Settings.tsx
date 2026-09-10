@@ -48,7 +48,7 @@ import {
 import type { Discovery, ProjectDraft, ProjectPlan, RunEvent } from "../lib/local-api";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { localKeys, localStatusQuery } from "../lib/queries";
-import { sourceHref, treeHref } from "../lib/source-link";
+import { bare, sourceHref, treeHref } from "../lib/source-link";
 import { paths } from "../routes";
 import { CapabilityEmpty, Empty, SectionTitle } from "../components/PageHeader";
 import { Modal } from "../components/Overlay";
@@ -357,11 +357,22 @@ function ProjectCard({ project, onRemove }: { project: SetupProject; onRemove?: 
   const declared = setupInfo.steps.filter((step) => step.projectId === project.id);
   const runSteps = setupInfo.run?.steps.filter((step) => step.projectId === project.id) ?? [];
   const pluginNames = [...new Set(declared.map((step) => step.plugin))];
+  // A project rooted at the repository itself owns every source in it.
+  const rootedAtRepository = project.root === "." || project.root === "";
   const sources = catalogSources.filter(
-    (source) => source.path === project.root || source.path.startsWith(`${project.root}/`),
+    (source) => rootedAtRepository || source.path === project.root || source.path.startsWith(`${project.root}/`),
   );
   const outputs = [...new Set(runSteps.flatMap((step) => step.files))];
+  // A vendored project's provenance is its pin: the upstream commit the copy
+  // was fetched at, which is also what its source links open. The history of
+  // THIS checkout says when the copy landed here, which is a different fact.
+  const pin = project.repository
+    ? catalog.repos?.find((held) => bare(held.repo) === bare(project.repository!))
+    : undefined;
   const commits = [...new Set(sources.map((source) => source.commit).filter(Boolean))];
+  // "uncommitted" is what the history says of a file it does not hold yet;
+  // it is not a commit, and a link built from it would open nothing.
+  const committed = commits.filter((commit) => commit !== "uncommitted");
   const href = projectHref(project);
   const sourceLink = forge(project);
   const health = healthFor(runSteps, declared.length, setupInfo);
@@ -392,7 +403,7 @@ function ProjectCard({ project, onRemove }: { project: SetupProject; onRemove?: 
         <dt>scope</dt><dd className="truncate text-ink">{project.components?.length ? `${project.group ?? project.context} · ${project.components.length} components` : [project.group ?? project.context, project.component ?? project.service].filter(Boolean).join(" · ") || "estate"}</dd>
         <dt>pipeline</dt><dd className="text-ink">{declared.length} {plural(declared.length, "step")}</dd>
         <dt>fragments</dt><dd className="text-ink">{sources.length}</dd>
-        <dt>commit</dt><dd className="truncate text-ink" title={commits.join(", ")}>{commits.length === 0 ? "not stamped" : commits.length === 1 ? <CommitLink commit={commits[0]!} repository={project.repository} length={12} /> : `${commits.length} source commits`}</dd>
+        <dt>commit</dt><dd className="truncate text-ink" title={pin ? pin.commit : commits.join(", ")}>{pin ? <CommitLink commit={pin.commit} repository={project.repository} length={12} /> : committed.length === 1 ? <CommitLink commit={committed[0]!} repository={project.repository} length={12} /> : committed.length > 1 ? `${committed.length} source commits` : commits.length > 0 ? "uncommitted" : "not stamped"}</dd>
       </dl>
 
       <div className="mt-4 flex flex-wrap gap-1.5" aria-label="Active plugins">

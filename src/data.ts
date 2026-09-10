@@ -127,16 +127,26 @@ interface Loaded {
 
 function load(): Loaded {
   const sources: CatalogSource[] = Object.entries(modules)
-    .map(([path, catalog]) => ({
+    .map(([key, catalog]) => {
       // Vite keys a glob by its pattern-relative path; the leading ../ is an
       // artefact of this file's location, not part of where anything lives.
-      path: path.replace(/^\.\.\//, ""),
+      const imported = key.replace(/^\.\.\//, "");
       // A SOURCE, not a catalog: a file carries no stamp of its own, and the
       // history's travels beside it (portolan.0010).
-      catalog: catalog as SourceCatalog,
-      stamp: provenance[path.replace(/^\.\.\//, "")],
-    }))
-    .filter((source) => profileIncludesSource(activeCatalogProfile, source.path));
+      const { source, ...stamp } = provenance[imported] ?? {};
+      return {
+        imported,
+        // A staged site imports a source under a flattened name; the file is
+        // still the one in the workspace, and that is the path a project's
+        // root is a prefix of and a link to the file names.
+        path: source ?? imported,
+        catalog: catalog as SourceCatalog,
+        stamp: "commit" in stamp ? stamp : undefined,
+      };
+    })
+    // The profile spells its sources the way the site imports them.
+    .filter((source) => profileIncludesSource(activeCatalogProfile, source.imported))
+    .map(({ imported: _imported, ...source }) => source);
 
   const merged = mergeCatalogs(sources);
   // Enriched before it is validated: the edges the flows imply are part of
