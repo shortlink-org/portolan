@@ -169,7 +169,7 @@ function goDeployables(root, files) {
   return out;
 }
 
-function detected(plugin, candidates, options = {}, label = candidates[0], ambiguous = false, selected = true) {
+function detected(plugin, candidates, options = {}, label = candidates[0], ambiguous = false, selected = true, preview = []) {
   if (!candidates.length) return null;
   return {
     plugin,
@@ -178,15 +178,74 @@ function detected(plugin, candidates, options = {}, label = candidates[0], ambig
     candidates,
     options,
     selected,
+    ...(preview.length ? { preview } : {}),
+  };
+}
+
+const ADR_STATUSES = new Map([
+  ["proposed", "proposed"], ["draft", "proposed"], ["pending", "proposed"], ["на рассмотрении", "proposed"],
+  ["accepted", "accepted"], ["approved", "accepted"], ["adopted", "accepted"], ["принято", "accepted"], ["принят", "accepted"],
+  ["superseded", "superseded"], ["заменено", "superseded"], ["заменён", "superseded"],
+  ["deprecated", "deprecated"], ["obsolete", "deprecated"], ["устарело", "deprecated"],
+  ["rejected", "rejected"], ["declined", "rejected"], ["отклонено", "rejected"],
+]);
+
+function normalizedAdrStatus(value) {
+  return ADR_STATUSES.get(value.trim().replace(/[.:]+$/, "").toLowerCase()) ?? "";
+}
+
+// Discovery mirrors the tolerant shapes accepted by extract-adr closely
+// enough to enable the capability with confidence and to show what it found.
+// Git-backed dates are resolved by the extractor, so a format without an
+// explicit Date can still be previewed here without inventing one.
+function adrPreview(root, name) {
+  let source = "";
+  try { source = readFileSync(join(root, name), "utf8").replaceAll("\r\n", "\n"); } catch { return null; }
+  const lines = source.split("\n");
+  const heading = lines.find((line) => line.trim()) ?? "";
+  const base = posix.basename(name, ".md");
+  const numberedFile = /^(\d+)-([a-z0-9]+(?:-[a-z0-9]+)*)$/.exec(base);
+
+  let number = "";
+  let title = "";
+  let match = /^#\s+[a-z][a-z0-9.-]*\.(\d{4})\s+—\s+(.+?)\s*$/i.exec(heading);
+  if (match) [number, title] = match.slice(1);
+  else if ((match = /^#\s+(\d+)\.\s+(.+?)\s*$/.exec(heading))) [number, title] = match.slice(1);
+  else if ((match = /^#\s+ADR[-\s]?0*(\d+)\s*[.:—-]\s*(.+?)\s*$/i.exec(heading))) [number, title] = match.slice(1);
+  else if (numberedFile && (match = /^#\s+(.+?)\s*$/.exec(heading))) {
+    number = numberedFile[1];
+    title = match[1];
+  }
+  if (!number || !title || !numberedFile || Number(numberedFile[1]) !== Number(number)) return null;
+  if (!lines.some((line) => /^#{2,6}\s/.test(line))) return null;
+
+  let status = "";
+  const bullet = /^-\s+\*\*Status:\*\*\s*(.*?)\s*$/mi.exec(source);
+  if (bullet) status = normalizedAdrStatus(bullet[1]);
+  if (!status) {
+    const at = lines.findIndex((line) => /^#{2,6}\s+(?:Status|Статус)\s*:?/i.test(line));
+    if (at >= 0) {
+      const inline = /^#{2,6}\s+(?:Status|Статус)\s*:?\s*(.*?)\s*$/i.exec(lines[at])?.[1] ?? "";
+      const following = lines.slice(at + 1).find((line) => line.trim() && !/^#{1,6}\s/.test(line)) ?? "";
+      status = normalizedAdrStatus(inline || following);
+    }
+  }
+  if (!status) return null;
+
+  const writtenDate = /^(?:-\s+\*\*Date:\*\*|Date:)\s*(\S.*?)\s*$/mi.exec(source)?.[1];
+  if (writtenDate) {
+    const stamp = new Date(`${writtenDate}T00:00:00Z`);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(writtenDate) || Number.isNaN(stamp.getTime()) || stamp.toISOString().slice(0, 10) !== writtenDate) return null;
+  }
+  const date = writtenDate ?? "from git history";
+  return {
+    file: name,
+    fields: { number: String(Number(number)), title: title.trim(), status, date },
   };
 }
 
 function compatibleAdrs(root, candidates) {
-  return candidates.filter((name) => {
-    let source = "";
-    try { source = readFileSync(join(root, name), "utf8"); } catch { return false; }
-    return /^#\s+[^\n]+\.\d{4}\s+[—-]/m.test(source) && /^-\s+\*\*Status:\*\*/mi.test(source) && /^-\s+\*\*Date:\*\*/mi.test(source);
-  });
+  return candidates.map((name) => adrPreview(root, name)).filter(Boolean);
 }
 
 function goDomainEvidence(root, files) {
@@ -291,8 +350,9 @@ function detectionsFor(root, files) {
   const graphql = matches(files, /\.graphqls?$/i);
   const protos = matches(files, /\.proto$/i);
   const sql = matches(files, /(^|\/)(migrations?|repository)(\/|.*\/).*\.sql$/i);
-  const adrs = matches(files, /(^|\/)(docs\/adr|adr)\/.*\.md$/i);
-  const supportedAdrs = compatibleAdrs(root, adrs);
+  const adrs = matches(files, /(^|\/)(docs\/adr|adr)\/.*\.md$/i).filter((name) => posix.basename(name).toLowerCase() !== "readme.md");
+  const adrPreviews = compatibleAdrs(root, adrs);
+  const supportedAdrs = adrPreviews.map((item) => item.file);
   const glossaries = matches(files, /(^|\/)glossary\.md$/i);
   // The app module is the one file a Celery project always has; the tasks
   // and the calls that enqueue them are found from there.
@@ -349,6 +409,7 @@ function detectionsFor(root, files) {
       supportedAdrs[0] ? `${posix.dirname(supportedAdrs[0])}/*.md` : `${posix.dirname(adrs[0] ?? "docs/adr/x.md")}/*.md (format not recognized)`,
       !supportedAdrs.length,
       supportedAdrs.length > 0,
+      adrPreviews,
     ),
     detected("glossary", glossaries, glossaries.length ? { files: glossaries } : {}, glossaries.join(", ")),
   ].filter(Boolean);

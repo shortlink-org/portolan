@@ -244,6 +244,33 @@ describe("local project setup", () => {
     expect(discovery.detections.find((item) => item.plugin === "adr")?.selected).toBe(false);
   });
 
+  it("recognizes common ADR markdown variants and previews extracted fields", () => {
+    const root = workspace();
+    const adrRoot = join(root, "services/billing/docs/adr");
+    rmSync(join(adrRoot, "0001.md"));
+    writeFileSync(join(adrRoot, "0001-store-invoices.md"), "# 1. Store invoices\n\nDate: 2025-01-02\n\n## Status\n\nAccepted\n\n## Decision\n\nUse Postgres.\n");
+    writeFileSync(join(adrRoot, "02-package-layout.md"), "# ADR-2. Архитектура пакетов\n\n#### Статус: на рассмотрении\n\n### Решение\n\nУпростить структуру.\n");
+
+    const discovery = discoverProject(root, "services/billing");
+    const adr = discovery.detections.find((item) => item.plugin === "adr");
+    expect(adr).toMatchObject({
+      selected: true,
+      confidence: "high",
+      evidence: "docs/adr/*.md",
+      options: { files: ["docs/adr/*.md"] },
+    });
+    expect(adr?.preview).toEqual([
+      { file: "docs/adr/0001-store-invoices.md", fields: { number: "1", title: "Store invoices", status: "accepted", date: "2025-01-02" } },
+      { file: "docs/adr/02-package-layout.md", fields: { number: "2", title: "Архитектура пакетов", status: "proposed", date: "from git history" } },
+    ]);
+
+    const manifest = JSON.parse(readFileSync(join(root, "portolan.json"), "utf8"));
+    const plan = planProject(root, manifest, {
+      root: "services/billing", id: "billing", name: "Billing", group: "finance", component: "billing", plugins: ["adr"],
+    });
+    expect(plan.steps[0].options).toEqual({ files: ["docs/adr/*.md"], scope: "finance.billing", out: "adr.json" });
+  });
+
   it("names external projects from the repository or selected component instead of the inspection cache", () => {
     expect(externalProjectDefaults("https://github.com/batazor/microservice-template-ddd")).toEqual({
       id: "microservice-template-ddd",

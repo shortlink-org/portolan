@@ -403,3 +403,44 @@ func TestATitleWithNoNumberIsNumberedByItsFile(t *testing.T) {
 		t.Errorf("errors: %v", errs)
 	}
 }
+
+// Older hand-written trees often use an ADR-prefixed title, a short numeric
+// filename, a localised status heading, and no explicit date. Those are still
+// records: the containing step supplies their scope and git supplies the day
+// the file first appeared.
+func TestACommonHandWrittenRecordUsesItsHistoryAndLocalisedStatus(t *testing.T) {
+	src := `# ADR-1. Архитектура пакетов в aviacore.
+
+#### Статус: на рассмотрении
+
+### Проблема:
+
+Структура пакетов запутана.
+
+### Решение
+
+Сделать её плоской.
+`
+	adr, errs := parseAdr("aviacore/docs/ADR/01-file-structure.md", src, defaults{
+		Scope: "avia.aviacore",
+		Date:  "2024-05-17",
+	})
+	if len(errs) > 0 {
+		t.Fatalf("errors: %s", strings.Join(errs, "\n"))
+	}
+	if adr.ID != "aviacore.0001" || adr.Number != 1 || adr.Title != "Архитектура пакетов в aviacore." {
+		t.Errorf("id %q, number %d, title %q", adr.ID, adr.Number, adr.Title)
+	}
+	if adr.Slug != "aviacore-0001-file-structure" {
+		t.Errorf("slug = %q", adr.Slug)
+	}
+	if adr.Status != catalog.AdrProposed || adr.Date != "2024-05-17" {
+		t.Errorf("status %q, date %q", adr.Status, adr.Date)
+	}
+	if adr.Scope != (catalog.AdrScope{Kind: "service", Service: "avia.aviacore"}) {
+		t.Errorf("scope = %+v", adr.Scope)
+	}
+	if !strings.HasPrefix(adr.Body, "#### Статус: на рассмотрении") || !strings.Contains(adr.Body, "### Решение") {
+		t.Errorf("body = %q", adr.Body)
+	}
+}

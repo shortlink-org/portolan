@@ -341,6 +341,40 @@ func TestWhoCommittedARecordComesFromTheRequest(t *testing.T) {
 	}
 }
 
+func TestARecordWithoutADateUsesTheDayItWasFirstCommitted(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "docs", "adr")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	file := filepath.Join(dir, "01-package-layout.md")
+	if err := os.WriteFile(file, []byte("# ADR-1. Package layout\n\n## Status: approved\n\n## Decision\n\nKeep packages flat.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	in := input(root)
+	in.History = map[string]plugin.FileHistory{
+		filepath.ToSlash(file): {Created: plugin.Commit{
+			Commit: strings.Repeat("c", 40),
+			Author: "Ada Lovelace",
+			Date:   "2025-02-03T14:15:16Z",
+		}},
+	}
+	resp, err := extract(in, Options{Scope: "platform.api"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cat catalog.Catalog
+	if err := json.Unmarshal([]byte(resp.Files[0].Contents), &cat); err != nil {
+		t.Fatal(err)
+	}
+	if len(cat.Adrs) != 1 {
+		t.Fatalf("adrs = %+v; warnings = %+v", cat.Adrs, resp.Warnings())
+	}
+	if adr := cat.Adrs[0]; adr.Date != "2025-02-03" || adr.Status != catalog.AdrAccepted || adr.ID != "api.0001" {
+		t.Errorf("adr = %+v", adr)
+	}
+}
+
 // The descriptor is how the host learns to send the history at all.
 func TestTheDescriptorAsksForHistory(t *testing.T) {
 	if needs := descriptor().Needs; len(needs) != 1 || needs[0] != plugin.NeedHistory {

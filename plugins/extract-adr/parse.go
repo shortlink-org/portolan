@@ -68,15 +68,16 @@ import (
 var (
 	titleLine  = regexp.MustCompile(`^#\s+(\S+)\s+—\s+(.+?)\s*$`)
 	toolsTitle = regexp.MustCompile(`^#\s+(\d+)\.\s+(.+?)\s*$`)
+	adrTitle   = regexp.MustCompile(`(?i)^#\s+ADR[-\s]?0*(\d+)\s*[.:—-]\s*(.+?)\s*$`)
 	plainTitle = regexp.MustCompile(`^#\s+(.+?)\s*$`)
-	toolsDate  = regexp.MustCompile(`^Date:\s*(.+?)\s*$`)
+	toolsDate  = regexp.MustCompile(`(?i)^Date:\s*(.+?)\s*$`)
 	toolsLink  = regexp.MustCompile(`\[\s*(\d+)\.[^\]]*\]\([^)]*\)`)
 	toolsBare  = regexp.MustCompile(`(?i)^(?:adr[-\s]?)?0*(\d+)$`)
-	statusHead = regexp.MustCompile(`^##\s+Status\s*$`)
-	sectionAny = regexp.MustCompile(`^#{1,2}\s`)
+	statusHead = regexp.MustCompile(`(?i)^#{2,6}\s+(?:Status|Статус)\s*:?\s*(.*?)\s*$`)
+	sectionAny = regexp.MustCompile(`^#{1,6}\s`)
 	bulletLine = regexp.MustCompile(`^-\s+\*\*([^*:]+):\*\*\s*(.*?)\s*$`)
-	bodyStart  = regexp.MustCompile(`^##\s`)
-	fileName   = regexp.MustCompile(`^(\d{4})-([a-z0-9]+(?:-[a-z0-9]+)*)$`)
+	bodyStart  = regexp.MustCompile(`^#{2,6}\s`)
+	fileName   = regexp.MustCompile(`^(\d+)-([a-z0-9]+(?:-[a-z0-9]+)*)$`)
 	adrID      = regexp.MustCompile(`^([a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*)\.(\d+)$`)
 	scopeValue = regexp.MustCompile(`^[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)?$`)
 	flowSlug   = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
@@ -85,11 +86,30 @@ var (
 )
 
 var statuses = map[string]catalog.AdrStatus{
-	"proposed":   catalog.AdrProposed,
-	"accepted":   catalog.AdrAccepted,
-	"superseded": catalog.AdrSuperseded,
-	"deprecated": catalog.AdrDeprecated,
-	"rejected":   catalog.AdrRejected,
+	"proposed":        catalog.AdrProposed,
+	"draft":           catalog.AdrProposed,
+	"pending":         catalog.AdrProposed,
+	"на рассмотрении": catalog.AdrProposed,
+	"accepted":        catalog.AdrAccepted,
+	"approved":        catalog.AdrAccepted,
+	"adopted":         catalog.AdrAccepted,
+	"принято":         catalog.AdrAccepted,
+	"принят":          catalog.AdrAccepted,
+	"superseded":      catalog.AdrSuperseded,
+	"заменено":        catalog.AdrSuperseded,
+	"заменён":         catalog.AdrSuperseded,
+	"deprecated":      catalog.AdrDeprecated,
+	"obsolete":        catalog.AdrDeprecated,
+	"устарело":        catalog.AdrDeprecated,
+	"rejected":        catalog.AdrRejected,
+	"declined":        catalog.AdrRejected,
+	"отклонено":       catalog.AdrRejected,
+}
+
+func statusOf(value string) (catalog.AdrStatus, bool) {
+	key := strings.ToLower(strings.Trim(strings.TrimSpace(value), ".: "))
+	status, ok := statuses[key]
+	return status, ok
 }
 
 // defaults are what the manifest says about a tree of records, for the
@@ -100,6 +120,12 @@ type defaults struct {
 	// the prefix of its id, which is the last segment: the service, the
 	// context, or "org".
 	Scope string
+
+	// Date is the day the file was first committed. Common ADR templates do
+	// not all carry an explicit decision date, so the extractor uses this
+	// provenance-backed value rather than dropping an otherwise readable
+	// record. An explicit Date in the markdown always wins.
+	Date string
 }
 
 type parser struct {
@@ -175,6 +201,9 @@ func (p *parser) title() int {
 			if tools := toolsTitle.FindStringSubmatch(line); tools != nil {
 				return p.toolsTitleLine(i, tools)
 			}
+			if common := adrTitle.FindStringSubmatch(line); common != nil {
+				return p.toolsTitleLine(i, common)
+			}
 			// A title with no number at all is numbered by its file, unless
 			// it opens with something shaped like an id: that is a MADR
 			// title with the wrong dash, and reading it as a plain one would
@@ -182,7 +211,7 @@ func (p *parser) title() int {
 			if plain := plainTitle.FindStringSubmatch(line); plain != nil && !adrID.MatchString(strings.Fields(plain[1])[0]) {
 				return p.plainTitleLine(i, plain[1])
 			}
-			p.fail(i, `a record opens with "# <id> — <title>", an em dash between the two, or with "# <n>. <title>" as adr-tools writes it`)
+			p.fail(i, `a record opens with "# <id> — <title>" (an em dash), "# <n>. <title>", "# ADR-<n>. <title>", or a title numbered by its file`)
 
 			return -1
 		}
@@ -289,7 +318,11 @@ func (p *parser) toolsMeta(from int) int {
 		switch {
 		case bodyStart.MatchString(line):
 			if p.adr.Date == "" {
-				p.fail(from-1, `the record says no "Date:"`)
+				if p.d.Date != "" {
+					p.adr.Date = p.d.Date
+				} else {
+					p.fail(from-1, `the record says no "Date:" and its history supplies no creation date`)
+				}
 			}
 			p.scope(from-1, p.d.Scope)
 
@@ -325,9 +358,11 @@ func (p *parser) toolsMeta(from int) int {
 // and then superseded has both written down, in that order.
 func (p *parser) toolsStatus(body int) {
 	head := -1
+	inline := ""
 	for i := body; i < len(p.lines); i++ {
-		if statusHead.MatchString(p.lines[i]) {
+		if match := statusHead.FindStringSubmatch(p.lines[i]); match != nil {
 			head = i
+			inline = strings.TrimSpace(match[1])
 
 			break
 		}
@@ -339,6 +374,10 @@ func (p *parser) toolsStatus(body int) {
 	}
 
 	statements := 0
+	if inline != "" {
+		statements++
+		p.toolsStatement(head, inline)
+	}
 	for i := head + 1; i < len(p.lines) && !sectionAny.MatchString(p.lines[i]); i++ {
 		statement := strings.TrimSpace(p.lines[i])
 		if statement == "" {
@@ -356,8 +395,8 @@ func (p *parser) toolsStatus(body int) {
 }
 
 func (p *parser) toolsStatement(at int, statement string) {
-	lower := strings.ToLower(strings.TrimRight(statement, ". "))
-	if status, ok := statuses[lower]; ok {
+	lower := strings.ToLower(strings.Trim(strings.TrimSpace(statement), ".: "))
+	if status, ok := statusOf(lower); ok {
 		p.adr.Status = status
 
 		return
@@ -425,7 +464,7 @@ func (p *parser) checkFileName() {
 
 	match := fileName.FindStringSubmatch(base)
 	if match == nil {
-		p.fail(0, "the file is named "+strconv.Quote(base+".md")+`, not "NNNN-kebab-slug.md"`)
+		p.fail(0, "the file is named "+strconv.Quote(base+".md")+`, not "<number>-kebab-slug.md"`)
 
 		return
 	}
@@ -494,9 +533,14 @@ func (p *parser) meta(from int) int {
 // reported against the title rather than against the missing line, because
 // there is no missing line to point at.
 func (p *parser) require(at int, seen map[string]bool) {
-	for _, key := range []string{"Status", "Date"} {
-		if !seen[key] {
-			p.fail(at, "the record says no "+strconv.Quote(key))
+	if !seen["Status"] {
+		p.fail(at, `the record says no "Status"`)
+	}
+	if !seen["Date"] {
+		if p.d.Date != "" {
+			p.adr.Date = p.d.Date
+		} else {
+			p.fail(at, `the record says no "Date" and its history supplies no creation date`)
 		}
 	}
 	// A record that does not say what it is about is about what the step says
@@ -530,7 +574,7 @@ func (p *parser) checkSupersession(at int) {
 func (p *parser) bullet(at int, key, value string) {
 	switch key {
 	case "Status":
-		status, ok := statuses[value]
+		status, ok := statusOf(value)
 		if !ok {
 			p.fail(at, strconv.Quote(value)+" is not a status: proposed, accepted, superseded, deprecated or rejected")
 

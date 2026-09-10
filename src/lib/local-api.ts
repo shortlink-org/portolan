@@ -10,6 +10,7 @@ export interface Detection {
   candidates: string[];
   options: Record<string, unknown>;
   selected: boolean;
+  preview?: Array<{ file: string; fields: Record<string, string> }>;
 }
 
 export interface Discovery {

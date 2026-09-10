@@ -2,6 +2,7 @@ package extractadr
 
 import (
 	"path/filepath"
+	"time"
 
 	"github.com/shortlink-org/portolan/catalog"
 	"github.com/shortlink-org/portolan/plugin"
@@ -61,4 +62,17 @@ func commitOf(commit plugin.Commit) *catalog.AdrCommit {
 	}
 
 	return &catalog.AdrCommit{Commit: commit.Commit, Author: commit.Author, Date: commit.Date}
+}
+
+func decisionDate(created *catalog.AdrCommit) string {
+	if created == nil {
+		return ""
+	}
+	if stamp, err := time.Parse(time.RFC3339, created.Date); err == nil {
+		return stamp.Format("2006-01-02")
+	}
+	if day, err := time.Parse("2006-01-02", created.Date); err == nil {
+		return day.Format("2006-01-02")
+	}
+	return ""
 }

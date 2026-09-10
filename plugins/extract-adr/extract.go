@@ -63,7 +63,8 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 			return plugin.Response{}, err
 		}
 		rel := filepath.ToSlash(file)
-		adr, errs := parseAdr(rel, string(src), defaults{Scope: opts.Scope})
+		created, revised := history.of(file)
+		adr, errs := parseAdr(rel, string(src), defaults{Scope: opts.Scope, Date: decisionDate(created)})
 		if len(errs) > 0 {
 			b.Warn(rel, "left out of the fragment: "+strings.Join(errs, "; "))
 
@@ -81,7 +82,7 @@ func extract(in plugin.Input, opts Options) (plugin.Response, error) {
 		}
 		ids[adr.ID] = rel
 		slugs[adr.Slug] = rel
-		adr.Created, adr.Revised = history.of(file)
+		adr.Created, adr.Revised = created, revised
 		adrs = append(adrs, adr)
 	}
 	if problems := supersessions(adrs, ids); len(problems) > 0 {

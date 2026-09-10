@@ -325,7 +325,7 @@ function pluginOptions(plugin, project, detectedOptions = {}) {
   if (plugin === "graphql") return { ...common, ...detectedOptions, out: "graphql.json" };
   if (plugin === "proto") return { ...common, ...detectedOptions, out: "proto.json" };
   if (plugin === "glossary") return { context: group, ...detectedOptions, out: "glossary.json" };
-  if (plugin === "adr") return { ...detectedOptions, out: "adr.json" };
+  if (plugin === "adr") return { scope: [group, component].filter(Boolean).join(".") || "org", ...detectedOptions, out: "adr.json" };
   return {};
 }
 
