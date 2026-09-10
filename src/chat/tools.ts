@@ -6,19 +6,14 @@
 
 import { jsonSchema, tool } from "ai";
 import { clipPage, pagePath, TOOL_SPECS } from "./prompt";
-import { activeCatalogProfile } from "../data";
-
-const base = import.meta.env.BASE_URL;
-const profileSuffix =
-  activeCatalogProfile.id === "portolan" ? "" : `${activeCatalogProfile.id}/`;
-const docsBase = `${base}docs/${profileSuffix}`;
-const indexUrl = profileSuffix ? `${docsBase}llms.txt` : `${base}llms.txt`;
+import { activeCatalogDocs } from "../data";
 
 /** One page of the generated docs, as the model gets it. */
 export async function readPage(raw: unknown): Promise<string> {
   const path = pagePath(raw);
   if (!path) return "That is not a page of the catalog. Use a path from the index.";
-  const response = await fetch(`${docsBase}${path.slice("docs/".length)}`);
+  if (!activeCatalogDocs) return "No documentation is configured for this catalog.";
+  const response = await fetch(`${activeCatalogDocs.pages}${path.slice("docs/".length)}`);
   if (!response.ok) return `No page at ${path}. Use a path from the index.`;
   return clipPage(await response.text());
 }
@@ -26,7 +21,8 @@ export async function readPage(raw: unknown): Promise<string> {
 /** llms.txt, once per session. */
 let indexPromise: Promise<string> | null = null;
 export function loadIndex(): Promise<string> {
-  indexPromise ??= fetch(indexUrl).then((response) => {
+  if (!activeCatalogDocs) return Promise.reject(new Error("No documentation is configured for this catalog."));
+  indexPromise ??= fetch(activeCatalogDocs.index).then((response) => {
     if (!response.ok) {
       indexPromise = null;
       throw new Error("the catalog index (llms.txt) could not be read");

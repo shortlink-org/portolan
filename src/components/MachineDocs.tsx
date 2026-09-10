@@ -1,5 +1,5 @@
 import { FileText } from "lucide-react";
-import { activeCatalogProfile } from "../data";
+import { activeCatalogDocs, activeCatalogProfile } from "../data";
 
 // The site as a language model reads it. The build (scripts/site-docs.mjs)
 // places the generated markdown under docs/ and llms.txt at the root, in the
@@ -10,11 +10,12 @@ import { activeCatalogProfile } from "../data";
 const base = import.meta.env.BASE_URL;
 
 const suffix = activeCatalogProfile.id === "portolan" ? "" : `${activeCatalogProfile.id}/`;
-const docs = `${base}docs/${suffix}`;
 const FILES = [
-  { href: suffix ? `${docs}llms.txt` : `${base}llms.txt`, label: "llms.txt", title: "An index of every page, for a model that fetches on demand" },
-  { href: suffix ? `${docs}llms-full.txt` : `${base}llms-full.txt`, label: "llms-full.txt", title: "Every page in one file, for a model with a context window" },
-  { href: docs, label: "docs/", title: "The generated markdown, page by page" },
+  ...(activeCatalogDocs ? [
+    { href: activeCatalogDocs.index, label: "llms.txt", title: "An index of every page, for a model that fetches on demand" },
+    { href: activeCatalogDocs.full, label: "llms-full.txt", title: "Every page in one file, for a model with a context window" },
+    { href: activeCatalogDocs.pages, label: "docs/", title: "The generated markdown, page by page" },
+  ] : []),
   { href: `${base}exports/mermaid/${suffix}`, label: "Mermaid", title: "Standalone sequence diagrams for every architecture flow" },
   ...(activeCatalogProfile.id === "example"
     ? [{ href: `${base}exports/backstage/catalog-info.yaml`, label: "Backstage", title: "Components, systems, APIs and resources for a Backstage catalog" }]

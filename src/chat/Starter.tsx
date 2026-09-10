@@ -6,7 +6,7 @@
 
 import { KindIcon } from "../components/kind";
 import type { Kind } from "../lib/kinds";
-import { activeCatalogProfile, catalog } from "../data";
+import { activeCatalogDocs, catalog } from "../data";
 import type { ChatPageContext } from "./page-context";
 import { contextQuestions } from "./page-context";
 
@@ -36,8 +36,6 @@ function examples(): Example[] {
   return out;
 }
 
-const base = import.meta.env.BASE_URL;
-
 export function Starter({
   onAsk,
   page,
@@ -51,10 +49,6 @@ export function Starter({
         question,
       }))
     : examples();
-  const profileSuffix =
-    activeCatalogProfile.id === "portolan" ? "" : `${activeCatalogProfile.id}/`;
-  const docsRoot = `${base}docs/${profileSuffix}`;
-  const indexHref = profileSuffix ? `${docsRoot}llms.txt` : `${base}llms.txt`;
 
   return (
     <div className="pt-1">
@@ -79,10 +73,10 @@ export function Starter({
               <div className="mono truncate text-muted" title={page.id}>{page.id}</div>
             </div>
           </div>
-          <div className="mono mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-line pt-2 text-muted">
+          {activeCatalogDocs ? <div className="mono mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-line pt-2 text-muted">
             <span className="text-faint">model context</span>
             <a
-              href={indexHref}
+              href={activeCatalogDocs.index}
               target="_blank"
               rel="noreferrer"
               className="rounded-control text-accent hover:underline"
@@ -91,7 +85,7 @@ export function Starter({
             </a>
             {page.docPath ? (
               <a
-                href={`${docsRoot}${page.docPath}`}
+                href={`${activeCatalogDocs.pages}${page.docPath}`}
                 target="_blank"
                 rel="noreferrer"
                 className="max-w-full truncate rounded-control text-accent hover:underline"
@@ -100,7 +94,7 @@ export function Starter({
                 current catalog page
               </a>
             ) : null}
-          </div>
+          </div> : null}
         </div>
       ) : null}
       <div className="label mt-5 mb-1">try one</div>

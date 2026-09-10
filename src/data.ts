@@ -32,6 +32,7 @@ import type {
   SourceStamp,
 } from "./merge";
 import manifestJson from "../portolan.json";
+import { catalogDocs } from "./catalog-docs";
 
 const manifest = manifestJson as CatalogProfileManifest & { sources: string[] };
 export const catalogProfiles: CatalogProfile[] = profilesFromManifest(manifest);
@@ -55,6 +56,8 @@ export const activeCatalogProfile = catalogProfileNamed(
   manifest,
   requestedProfileFromUrl(),
 );
+
+export const activeCatalogDocs = catalogDocs(manifestJson, activeCatalogProfile.id, import.meta.env.BASE_URL);
 
 /**
  * Where sources are looked for. The patterns are written out because
