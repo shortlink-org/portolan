@@ -169,12 +169,14 @@ describe("routes", () => {
     expect(paths.settingsProjects()).toBe("/settings/projects");
     expect(paths.settingsPipeline()).toBe("/settings/pipeline");
     expect(paths.settingsDelivery()).toBe("/settings/delivery");
+    expect(paths.settingsIntegrations()).toBe("/settings/integrations");
     expect(paths.settingsPreferences()).toBe("/settings/preferences");
     expect(paths.settingsAbout()).toBe("/settings/about");
     for (const path of [
       paths.settingsProjects(),
       paths.settingsPipeline(),
       paths.settingsDelivery(),
+      paths.settingsIntegrations(),
       paths.settingsPreferences(),
       paths.settingsAbout(),
     ]) expect(isRoutable(path)).toBe(true);

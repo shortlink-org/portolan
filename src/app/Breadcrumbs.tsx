@@ -51,6 +51,7 @@ export function crumbsFor(pathname: string): Crumb[] {
       projects: "projects",
       pipeline: "pipeline",
       delivery: "delivery",
+      integrations: "integrations",
       preferences: "preferences",
     };
     return [

@@ -31,6 +31,10 @@ describe("crumbsFor", () => {
       { label: "settings", to: "/settings" },
       { label: "delivery", to: "/settings/delivery" },
     ]);
+    expect(crumbsFor("/settings/integrations")).toEqual([
+      { label: "settings", to: "/settings" },
+      { label: "integrations", to: "/settings/integrations" },
+    ]);
   });
 
   it("reads 'data' as a literal, not as an aggregate", () => {

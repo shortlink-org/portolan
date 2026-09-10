@@ -13,12 +13,21 @@
 // Problems page says which; a row that quietly dropped it would be the site
 // hiding the interesting case.
 
+import { ExternalLink } from "lucide-react";
 import { Link } from "react-router";
 import type { Channel, ChannelMessage } from "../catalog";
-import { index } from "../data";
+import { catalog, index } from "../data";
+import {
+  isKafkaChannel,
+  kafkaHandoffChannels,
+  kafkaUiTopicUrl,
+  useKafkaUi,
+} from "../lib/kafka-ui";
 import { eventPath } from "../routes";
 import { Ident } from "./Ident";
 import { RowActions } from "./RowActions";
+
+const KAFKA_HANDOFF_CHANNELS = kafkaHandoffChannels(catalog);
 
 /** The event that goes out under a wire name, when the catalog knows one. */
 function publisherOf(name: string) {
@@ -97,19 +106,52 @@ export function ChannelRows({
   channels: Channel[];
   service: string;
 }) {
+  const kafkaUi = useKafkaUi((state) => state.url);
+  return (
+    <ChannelRowsContent
+      channels={channels}
+      service={service}
+      kafkaUi={kafkaUi}
+    />
+  );
+}
+
+/** The presentational half is exported so the generated links can be rendered in isolation. */
+export function ChannelRowsContent({
+  channels,
+  service,
+  kafkaUi,
+}: {
+  channels: Channel[];
+  service: string;
+  kafkaUi: string;
+}) {
   return (
     <div className="flex flex-col gap-section" data-nav-list>
       {channels.map((channel) => (
         <div key={channel.address} className="rounded-card border border-line">
-          <div className="flex flex-wrap items-baseline gap-x-2 border-b border-line px-3 py-2">
-            <Ident value={channel.address} />
-            {channel.kind === "job" ? (
-              <span className="chip">work queue</span>
-            ) : channel.kind === "message" ? (
-              <span className="chip">message stream</span>
-            ) : null}
-            {channel.title ? (
-              <span className="text-muted">{channel.title}</span>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line px-3 py-2">
+            <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2">
+              <Ident value={channel.address} />
+              {channel.kind === "job" ? (
+                <span className="chip">work queue</span>
+              ) : channel.kind === "message" ? (
+                <span className="chip">message stream</span>
+              ) : null}
+              {channel.title ? (
+                <span className="text-muted">{channel.title}</span>
+              ) : null}
+            </div>
+            {kafkaUi && isKafkaChannel(channel, KAFKA_HANDOFF_CHANNELS) ? (
+              <a
+                href={kafkaUiTopicUrl(kafkaUi, channel.address) ?? kafkaUi}
+                target="_blank"
+                rel="noreferrer"
+                className="mono inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-control text-accent hover:underline"
+                title={`Open ${channel.address} in Kafka UI`}
+              >
+                view in Kafka UI <ExternalLink size={12} aria-hidden />
+              </a>
             ) : null}
           </div>
           {channel.doc ? (

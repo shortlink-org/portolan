@@ -56,6 +56,7 @@ import { MachineDocs } from "../components/MachineDocs";
 import { DeliverySettings } from "./settings/DeliverySettings";
 import { PreferencesSettings } from "./settings/PreferencesSettings";
 import { AboutSettings } from "./settings/AboutSettings";
+import { IntegrationsSettings } from "./settings/IntegrationsSettings";
 import { CatEmptyState, CatIllustration } from "../components/CatIllustration";
 import { CommitLink } from "../components/CommitLink";
 
@@ -954,6 +955,7 @@ const SETTINGS_LINKS = [
   ["Projects", paths.settingsProjects()],
   ["Pipeline", paths.settingsPipeline()],
   ["Delivery", paths.settingsDelivery()],
+  ["Integrations", paths.settingsIntegrations()],
   ["Preferences", paths.settingsPreferences()],
   ["About", paths.settingsAbout()],
 ] as const;
@@ -1046,6 +1048,10 @@ function OverviewSettings({ local, onGenerate }: { local: boolean; onGenerate: (
           <div className="font-semibold text-ink">Delivery</div>
           <p className="mt-1 text-muted">Install review checks and static catalog publishing for GitHub or GitLab.</p>
         </Link>
+        <Link to={paths.settingsIntegrations()} className="card">
+          <div className="font-semibold text-ink">Integrations</div>
+          <p className="mt-1 text-muted">Connect operational tools such as Kafka UI to the catalog.</p>
+        </Link>
         <Link to={paths.settingsPreferences()} className="card">
           <div className="font-semibold text-ink">Preferences</div>
           <p className="mt-1 text-muted">Theme, row density, source editor and Ask the catalog.</p>
@@ -1112,15 +1118,16 @@ function SettingsContent({ local, onAdd, onRemove, onGenerate }: { local: boolea
   const pathname = useLocation().pathname.replace(/\/$/, "");
   const overview = pathname === paths.settings();
   const about = pathname === paths.settingsAbout();
+  const browserIntegration = pathname === paths.settingsIntegrations();
   return (
     <div className="h-full overflow-y-auto p-gutter">
       <div className="max-w-table">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="flex items-center gap-2"><h1 className="text-lg font-semibold">Settings</h1>{local ? <span className="chip status-verified">local mode</span> : null}</div>
-            <p className="mt-1 max-w-prose text-muted">Configure projects, extraction, delivery automation and local preferences. {local ? "This local session can write reviewed changes." : "Build configuration is read-only here."}</p>
+            <p className="mt-1 max-w-prose text-muted">Configure projects, extraction, delivery automation, integrations and local preferences. {local ? "This local session can write reviewed changes." : "Build configuration is read-only here."}</p>
           </div>
-          {local && !overview && !about ? <button type="button" className="product-primary" onClick={onGenerate}><Play size={15} /> Preview generated diff</button> : null}
+          {local && !overview && !about && !browserIntegration ? <button type="button" className="product-primary" onClick={onGenerate}><Play size={15} /> Preview generated diff</button> : null}
         </div>
         <SettingsNav />
         <div className="mt-section">
@@ -1129,12 +1136,13 @@ function SettingsContent({ local, onAdd, onRemove, onGenerate }: { local: boolea
             <Route path="projects" element={<ProjectsSettings local={local} onAdd={onAdd} onRemove={onRemove} />} />
             <Route path="pipeline" element={<PipelineSettings />} />
             <Route path="delivery" element={<section><SectionTitle right={local ? "preview before writing" : "local mode required"}>Delivery presets</SectionTitle><DeliverySettings local={local} /></section>} />
+            <Route path="integrations" element={<IntegrationsSettings />} />
             <Route path="preferences" element={<PreferencesSettings />} />
             <Route path="about" element={<AboutSettings />} />
             <Route path="*" element={<Navigate to={paths.settings()} replace />} />
           </Routes>
         </div>
-        {!about ? <div className="mono mt-section flex items-center gap-2 pb-section text-muted"><Box size={14} aria-hidden />{local ? "Changes are written only after preview; generated files remain reviewable in git." : "Configuration is embedded at build time; changing it requires a new catalog build."}</div> : null}
+        {!about ? <div className="mono mt-section flex items-center gap-2 pb-section text-muted"><Box size={14} aria-hidden />{browserIntegration ? "Integration settings stay in this browser and do not change the generated catalog." : local ? "Changes are written only after preview; generated files remain reviewable in git." : "Configuration is embedded at build time; changing it requires a new catalog build."}</div> : null}
       </div>
     </div>
   );
