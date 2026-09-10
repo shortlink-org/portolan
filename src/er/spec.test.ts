@@ -294,6 +294,23 @@ describe("matchingNodes", () => {
   it("matches nothing on an empty term", () => {
     expect(matchingNodes(spec, "  ").size).toBe(0);
   });
+
+  it("puts the best hit first: the table named so, then names, then columns and SQL", () => {
+    // `orders` is the table's own name; the two views contain it in theirs
+    // and come after, in the order they are drawn.
+    expect([...matchingNodes(spec, "orders")]).toEqual([
+      "shop.oms.pg.orders",
+      "shop.oms.pg.v_open_orders",
+      "shop.oms.pg.mv_orders_daily",
+    ]);
+    // A hit by name outranks a hit by column: `order_items` is named for
+    // orders, `outbox` only keys on one.
+    const byOrder = [...matchingNodes(spec, "order")];
+    expect(byOrder.indexOf("shop.oms.pg.order_items")).toBeLessThan(
+      byOrder.indexOf("shop.oms.pg.outbox") < 0 ? Infinity : byOrder.indexOf("shop.oms.pg.outbox"),
+    );
+    expect(byOrder[0]).toBe("shop.oms.pg.orders");
+  });
 });
 
 describe("the pathological store", () => {

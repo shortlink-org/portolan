@@ -46,6 +46,9 @@ const erNodeTypes = { erTable: TableNodeCard, erView: ViewNodeCard };
 
 const DIM = 0.25;
 
+/** More hits than this is most of a schema; framing them is framing everything. */
+const SEARCH_FRAME_LIMIT = 30;
+
 /** The catalog's lineage graph, walked on hover. Built once, with the index. */
 const LINEAGE: LineageMaps = {
   from: index.lineageFrom,
@@ -110,6 +113,11 @@ function Canvas({
   );
 
   const matched = useMemo(() => matchingNodes(spec, term), [spec, term]);
+  const matchedIds = useMemo(() => [...matched], [matched]);
+  // Which match the reader is standing on: -1 is "all of them", what typing
+  // gives; Enter steps through them one at a time.
+  const [cursor, setCursor] = useState(-1);
+  useEffect(() => setCursor(-1), [term]);
 
   useEffect(() => {
     let cancelled = false;
@@ -197,6 +205,34 @@ function Canvas({
     observer.observe(box);
     return () => observer.disconnect();
   }, [flow, layout.ready]);
+
+  // A search moves the camera, not only the lights. One hit is brought up
+  // close; a handful are framed together; more than that is most of the
+  // schema, so the view stays and the dimming does the work. Clearing the box
+  // fits everything again, so the reader is not left zoomed into a corner.
+  const hadTerm = useRef(false);
+  useEffect(() => {
+    if (!layout.ready) return;
+    if (term.trim() === "") {
+      if (hadTerm.current) flow.fitView({ padding: 0.1, duration: 250 });
+      hadTerm.current = false;
+      return;
+    }
+    hadTerm.current = true;
+    const target = cursor >= 0 ? matchedIds.slice(cursor, cursor + 1) : matchedIds;
+    if (target.length === 0 || target.length > SEARCH_FRAME_LIMIT) return;
+    void flow.fitView({
+      nodes: target.map((id) => ({ id })),
+      padding: target.length === 1 ? 0.35 : 0.2,
+      maxZoom: 1.25,
+      duration: 250,
+    });
+  }, [flow, layout.ready, term, matchedIds, cursor]);
+
+  const onJump = useCallback(() => {
+    if (matchedIds.length === 0) return;
+    setCursor((prev) => (prev + 1) % matchedIds.length);
+  }, [matchedIds]);
 
   const onToggle = useCallback((tableId: string) => {
     setExpanded((prev) => {
@@ -334,6 +370,8 @@ function Canvas({
         mode={mode}
         onMode={setMode}
         hits={matched.size}
+        cursor={cursor}
+        onJump={onJump}
         views={views}
         showViews={showViews}
         onShowViews={setShowViews}
@@ -377,6 +415,8 @@ function Toolbar({
   mode,
   onMode,
   hits,
+  cursor,
+  onJump,
   views,
   showViews,
   onShowViews,
@@ -390,6 +430,9 @@ function Toolbar({
   mode: ColumnMode;
   onMode: (value: ColumnMode) => void;
   hits: number;
+  /** The hit the reader stepped to with Enter, -1 for none yet. */
+  cursor: number;
+  onJump: () => void;
   /** How many views this store has; with none, the toggle is not a choice. */
   views: number;
   showViews: boolean;
@@ -428,13 +471,27 @@ function Toolbar({
         <input
           value={term}
           onChange={(e) => onTerm(e.target.value)}
+          onKeyDown={(e) => {
+            // Enter walks the hits, best first; Escape lets go of the search
+            // and the camera with it.
+            if (e.key === "Enter") {
+              e.preventDefault();
+              onJump();
+            } else if (e.key === "Escape") {
+              e.preventDefault();
+              onTerm("");
+            }
+          }}
           placeholder="find a table or column"
           spellCheck={false}
           aria-label="Find a table or column"
+          title="Enter steps through the hits, Escape clears"
           className="mono w-44 bg-transparent outline-none placeholder:text-muted"
         />
         {term ? (
-          <span className="mono tnum shrink-0 text-muted">{hits}</span>
+          <span className="mono tnum shrink-0 text-muted" aria-live="polite">
+            {cursor >= 0 ? `${cursor + 1}/${hits}` : hits}
+          </span>
         ) : null}
       </label>
 

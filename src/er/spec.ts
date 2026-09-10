@@ -407,20 +407,33 @@ export function outboundLineage(
 /**
  * Cards matching a search term, by name, column name, or the aggregate they
  * hold. Returns ids so the canvas can light them without re-deriving anything.
+ *
+ * The set is ordered, best match first, because the canvas jumps to the first
+ * one and cycles from there: a card whose name IS the term, then cards whose
+ * name contains it, then the aggregate, then a column, the doc or the SQL.
+ * Within a rank, the order the spec lists them in - which is the order they
+ * are drawn in.
  */
 export function matchingNodes(spec: ErSpec, term: string): Set<string> {
   const needle = term.trim().toLowerCase();
   if (!needle) return new Set();
-  const out = new Set<string>();
+  const ranked: { id: string; rank: number }[] = [];
   for (const node of spec.nodes) {
-    const hay = [
-      node.name,
-      node.aggregate ?? "",
-      node.doc ?? "",
-      node.view?.definition ?? "",
-      ...node.columns.map((c) => c.name),
-    ];
-    if (hay.some((h) => h.toLowerCase().includes(needle))) out.add(node.id);
+    const name = node.name.toLowerCase();
+    const rank =
+      name === needle
+        ? 0
+        : name.includes(needle)
+          ? 1
+          : (node.aggregate ?? "").toLowerCase().includes(needle)
+            ? 2
+            : [node.doc ?? "", node.view?.definition ?? "", ...node.columns.map((c) => c.name)].some(
+                  (h) => h.toLowerCase().includes(needle),
+                )
+              ? 3
+              : -1;
+    if (rank >= 0) ranked.push({ id: node.id, rank });
   }
-  return out;
+  ranked.sort((a, b) => a.rank - b.rank);
+  return new Set(ranked.map((r) => r.id));
 }
