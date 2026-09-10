@@ -119,13 +119,25 @@ func read(t *tree, b *plugin.Builder) *infra {
 		s := r.scope
 		switch r.Type {
 		case typeQueue:
-			name, ok := named(s, r, "name", b)
+			name, ok := named(r, "name", b)
 			if !ok {
 				continue
 			}
 			q := &queue{r: r, name: name}
-			q.fifo, _ = s.boolOf(attr(r.Body, "fifo_queue"))
-			if policy := attr(r.Body, "redrive_policy"); policy != nil {
+			q.fifo, _ = s.boolOf(r.attr("fifo_queue"))
+			// The registry module makes the dead-letter queue itself when
+			// asked, named after the queue unless told otherwise, and wires
+			// the redrive policy to it.
+			if dlq := r.derived["dlq"]; dlq != nil {
+				dlqName, ok := s.stringOf(r.attr("dlq_name"), nil)
+				if !ok || dlqName == "" {
+					dlqName = name + "-dlq"
+				}
+				dlq.fixedName = dlqName
+				q.dlq = dlq
+				in.queues = append(in.queues, &queue{r: dlq, name: dlqName, fifo: q.fifo})
+			}
+			if policy := r.attr("redrive_policy"); policy != nil {
 				for _, found := range s.refsOf(policy, nil) {
 					if found.target.Type == typeQueue {
 						q.dlq = found.target
@@ -143,48 +155,46 @@ func read(t *tree, b *plugin.Builder) *infra {
 			}
 			in.queues = append(in.queues, q)
 		case typeTopic:
-			name, ok := named(s, r, "name", b)
+			name, ok := named(r, "name", b)
 			if !ok {
 				continue
 			}
 			tp := &topic{r: r, name: name}
-			tp.fifo, _ = s.boolOf(attr(r.Body, "fifo_topic"))
+			tp.fifo, _ = s.boolOf(r.attr("fifo_topic"))
 			in.topics = append(in.topics, tp)
+			// The registry module takes its subscriptions as an input.
+			for _, entry := range r.nested("subscriptions") {
+				if sub := readSubscription(r, r, entry.attr("protocol"), entry.attr("endpoint"), b); sub != nil {
+					in.subscriptions = append(in.subscriptions, sub)
+				}
+			}
 		case typeSubscription:
-			sub := &subscription{r: r}
-			sub.protocol, _ = s.stringOf(attr(r.Body, "protocol"), nil)
-			sub.topic = firstRef(s, attr(r.Body, "topic_arn"), typeTopic)
-			if sub.topic == nil {
+			topicRef := firstRef(s, r.attr("topic_arn"), typeTopic)
+			if topicRef == nil {
 				b.Warn(r.Source, "topic_arn of "+r.Address()+" could not be followed to an aws_sns_topic declared here")
 				continue
 			}
-			switch sub.protocol {
-			case "sqs":
-				sub.endpoint = firstRef(s, attr(r.Body, "endpoint"), typeQueue)
-			case "lambda":
-				sub.endpoint = firstRef(s, attr(r.Body, "endpoint"), typeFunction)
-			default:
-				// Email, HTTP and the rest leave the estate; the topic is
-				// still declared, the subscriber is not a component.
-				continue
+			if sub := readSubscription(r, topicRef, r.attr("protocol"), r.attr("endpoint"), b); sub != nil {
+				in.subscriptions = append(in.subscriptions, sub)
 			}
-			if sub.endpoint == nil {
-				b.Warn(r.Source, "endpoint of "+r.Address()+" could not be followed to a resource declared here")
-				continue
-			}
-			in.subscriptions = append(in.subscriptions, sub)
 		case typeFunction:
-			name, ok := named(s, r, "function_name", b)
+			if r.module != nil {
+				// The registry module also makes layers, and can be told to
+				// make nothing at all; neither is a function.
+				if layer, _ := s.boolOf(r.attr("create_layer")); layer {
+					continue
+				}
+				if create, ok := s.boolOf(r.attr("create")); ok && !create {
+					continue
+				}
+			}
+			name, ok := named(r, "function_name", b)
 			if !ok {
 				continue
 			}
 			fn := &function{r: r, name: name, env: map[string][]ref{}}
-			fn.runtime, _ = s.stringOf(attr(r.Body, "runtime"), nil)
-			for _, env := range blocks(r.Body, "environment") {
-				variables, ok := attr(env.Body, "variables").(*hclsyntax.ObjectConsExpr)
-				if !ok {
-					continue
-				}
+			fn.runtime, _ = s.stringOf(r.attr("runtime"), nil)
+			if variables := r.env(); variables != nil {
 				for _, item := range variables.Items {
 					key := keyOf(s, item.KeyExpr)
 					if key == "" {
@@ -196,17 +206,41 @@ func read(t *tree, b *plugin.Builder) *infra {
 				}
 			}
 			in.functions = append(in.functions, fn)
+			// The registry module takes the function's event source
+			// mappings and the permissions that let a bucket invoke it as
+			// inputs; a permission for S3 is the bucket's notification seen
+			// from the function's side.
+			for _, entry := range r.nested("event_source_mapping") {
+				sources := s.refsOf(entry.attr("event_source_arn"), nil)
+				if len(sources) == 0 {
+					b.Warn(r.Source, "event_source_arn of event_source_mapping "+entry.key+" on "+r.Address()+" could not be followed to a queue, a table or a stream declared here")
+					continue
+				}
+				in.mappings = append(in.mappings, &mapping{r: r, source: sources[0], fn: r})
+			}
+			for _, entry := range r.nested("allowed_triggers") {
+				service, _ := s.stringOf(entry.attr("service"), nil)
+				principal, _ := s.stringOf(entry.attr("principal"), nil)
+				if service != "s3" && principal != "s3.amazonaws.com" {
+					continue
+				}
+				bucket := firstRef(s, entry.attr("source_arn"), typeBucket)
+				if bucket == nil {
+					continue
+				}
+				in.notifications = append(in.notifications, &notification{r: r, bucket: bucket, targets: []notificationTarget{{target: r}}})
+			}
 		case typeMapping:
 			m := &mapping{r: r}
-			sources := s.refsOf(attr(r.Body, "event_source_arn"), nil)
+			sources := s.refsOf(r.attr("event_source_arn"), nil)
 			if len(sources) == 0 {
 				b.Warn(r.Source, "event_source_arn of "+r.Address()+" could not be followed to a queue, a table or a stream declared here")
 				continue
 			}
 			m.source = sources[0]
-			m.fn = firstRef(s, attr(r.Body, "function_name"), typeFunction)
+			m.fn = firstRef(s, r.attr("function_name"), typeFunction)
 			if m.fn == nil {
-				m.fn = functionNamed(in, s, attr(r.Body, "function_name"))
+				m.fn = functionNamed(in, s, r.attr("function_name"))
 			}
 			if m.fn == nil {
 				b.Warn(r.Source, "function_name of "+r.Address()+" could not be followed to an aws_lambda_function declared here")
@@ -214,53 +248,51 @@ func read(t *tree, b *plugin.Builder) *infra {
 			}
 			in.mappings = append(in.mappings, m)
 		case typeNotification:
-			n := &notification{r: r, bucket: firstRef(s, attr(r.Body, "bucket"), typeBucket)}
+			n := &notification{r: r, bucket: firstRef(s, r.attr("bucket"), typeBucket)}
 			if n.bucket == nil {
 				b.Warn(r.Source, "bucket of "+r.Address()+" could not be followed to an aws_s3_bucket declared here")
 				continue
 			}
 			for _, kind := range []struct{ block, arn string }{{"lambda_function", "lambda_function_arn"}, {"queue", "queue_arn"}, {"topic", "topic_arn"}} {
-				for _, block := range blocks(r.Body, kind.block) {
-					target := firstRef(s, attr(block.Body, kind.arn), "")
+				for _, entry := range r.nested(kind.block) {
+					target := firstRef(s, entry.attr(kind.arn), "")
 					if target == nil {
-						b.Warn(r.Source, kind.arn+" of "+r.Address()+" could not be followed to a resource declared here")
+						b.Warn(r.Source, r.input(kind.arn)+" of "+r.Address()+" could not be followed to a resource declared here")
 						continue
 					}
-					n.targets = append(n.targets, notificationTarget{target: target, events: stringsOf(s, attr(block.Body, "events"))})
+					n.targets = append(n.targets, notificationTarget{target: target, events: stringsOf(s, entry.attr("events"))})
 				}
 			}
 			in.notifications = append(in.notifications, n)
 		case typeBucket:
-			name, ok := named(s, r, "bucket", b)
+			name, ok := named(r, "bucket", b)
 			if !ok {
 				continue
 			}
-			st := &store{r: r, kind: catalog.StoreKindS3, name: name}
-			in.stores = append(in.stores, st)
+			in.stores = append(in.stores, &store{r: r, kind: catalog.StoreKindS3, name: name})
 		case typeTable:
-			name, ok := named(s, r, "name", b)
+			name, ok := named(r, "name", b)
 			if !ok {
 				continue
 			}
 			st := &store{r: r, kind: catalog.StoreKindDynamoDB, name: name}
-			st.tables = []catalog.Table{dynamoTable(s, r, name)}
+			st.tables = []catalog.Table{dynamoTable(r, name)}
 			in.stores = append(in.stores, st)
 		case typeDBInstance, typeDBCluster:
 			idAttr, nameAttr := "identifier", "db_name"
 			if r.Type == typeDBCluster {
 				idAttr, nameAttr = "cluster_identifier", "database_name"
 			}
-			name, _ := s.stringOf(attr(r.Body, idAttr), nil)
+			name, _ := s.stringOf(r.attr(idAttr), nil)
 			if name == "" {
-				name, _ = s.stringOf(attr(r.Body, nameAttr), nil)
+				name, _ = s.stringOf(r.attr(nameAttr), nil)
 			}
 			if name == "" {
 				b.Warn(r.Source, idAttr+" of "+r.Address()+" could not be resolved to a literal, a variable default, a local or a module argument, so the database goes by its label")
 				name = r.Label
 			}
-			engine, _ := s.stringOf(attr(r.Body, "engine"), nil)
-			st := &store{r: r, kind: engineKind(engine), name: name}
-			in.stores = append(in.stores, st)
+			engine, _ := s.stringOf(r.attr("engine"), nil)
+			in.stores = append(in.stores, &store{r: r, kind: engineKind(engine), name: name})
 		default:
 			if product, known := notYet[r.Type]; known {
 				b.Warn(r.Source, r.Address()+" is not read: "+product+" is not part of this reader yet")
@@ -270,17 +302,43 @@ func read(t *tree, b *plugin.Builder) *infra {
 	return in
 }
 
+// readSubscription is one subscription of a topic: where it goes, when that
+// is a queue or a function declared here. Email, HTTP and the rest leave the
+// estate; the topic is still declared, the subscriber is not a component.
+func readSubscription(at, topicRef *resource, protocolExpr, endpointExpr hclsyntax.Expression, b *plugin.Builder) *subscription {
+	s := at.scope
+	sub := &subscription{r: at, topic: topicRef}
+	sub.protocol, _ = s.stringOf(protocolExpr, nil)
+	switch sub.protocol {
+	case "sqs":
+		sub.endpoint = firstRef(s, endpointExpr, typeQueue)
+	case "lambda":
+		sub.endpoint = firstRef(s, endpointExpr, typeFunction)
+	default:
+		return nil
+	}
+	if sub.endpoint == nil {
+		b.Warn(at.Source, "endpoint of a "+sub.protocol+" subscription on "+at.Address()+" could not be followed to a resource declared here")
+		return nil
+	}
+	return sub
+}
+
 // named is the resolved string of the attribute that names a resource on the
 // wire. A name_prefix is a name decided at apply time and is reported as
 // such; a name nothing resolves is reported as unresolved.
-func named(s *scope, r *resource, field string, b *plugin.Builder) (string, bool) {
-	expr := attr(r.Body, field)
+func named(r *resource, field string, b *plugin.Builder) (string, bool) {
+	if r.fixedName != "" {
+		return r.fixedName, true
+	}
+	s := r.scope
+	expr := r.attr(field)
 	if expr == nil {
-		if prefix := attr(r.Body, field+"_prefix"); prefix != nil {
-			b.Warn(r.Source, r.Address()+" is named with "+field+"_prefix, so its name is decided at apply time and is not read")
+		if prefix := r.attr(field + "_prefix"); prefix != nil {
+			b.Warn(r.Source, r.Address()+" is named with "+r.input(field)+"_prefix, so its name is decided at apply time and is not read")
 			return "", false
 		}
-		b.Warn(r.Source, r.Address()+" sets no "+field+", so its name is decided at apply time and is not read")
+		b.Warn(r.Source, r.Address()+" sets no "+r.input(field)+", so its name is decided at apply time and is not read")
 		return "", false
 	}
 	value, ok := s.stringOf(expr, nil)
@@ -293,10 +351,10 @@ func named(s *scope, r *resource, field string, b *plugin.Builder) (string, bool
 	// what fills the rest. A name that is all hole is no name.
 	shape, holes := s.shapeOf(expr, nil)
 	if len(holes) > 0 && hasLiteral(shape) {
-		b.Warn(line(r.Source, expr), field+" of "+r.Address()+" is `"+shape+"`, with "+strings.Join(holes, ", ")+" decided at apply time")
+		b.Warn(line(r.Source, expr), r.input(field)+" of "+r.Address()+" is `"+shape+"`, with "+strings.Join(holes, ", ")+" decided at apply time")
 		return shape, true
 	}
-	b.Warn(line(r.Source, expr), field+" of "+r.Address()+" could not be resolved to a literal, a variable default, a local or a module argument")
+	b.Warn(line(r.Source, expr), r.input(field)+" of "+r.Address()+" could not be resolved to a literal, a variable default, a local or a module argument")
 	return "", false
 }
 
@@ -408,13 +466,14 @@ func engineKind(engine string) catalog.StoreKind {
 // declares as columns, the hash and range keys as the primary key, and the
 // secondary indexes as indexes. Attributes not in any key are not declared
 // in DynamoDB at all, so the columns are the keys and nothing more.
-func dynamoTable(s *scope, r *resource, name string) catalog.Table {
-	hash, _ := s.stringOf(attr(r.Body, "hash_key"), nil)
-	rng, _ := s.stringOf(attr(r.Body, "range_key"), nil)
+func dynamoTable(r *resource, name string) catalog.Table {
+	s := r.scope
+	hash, _ := s.stringOf(r.attr("hash_key"), nil)
+	rng, _ := s.stringOf(r.attr("range_key"), nil)
 	var columns []catalog.Column
-	for _, block := range blocks(r.Body, "attribute") {
-		colName, _ := s.stringOf(attr(block.Body, "name"), nil)
-		colType, _ := s.stringOf(attr(block.Body, "type"), nil)
+	for _, entry := range r.nested("attribute") {
+		colName, _ := s.stringOf(entry.attr("name"), nil)
+		colType, _ := s.stringOf(entry.attr("type"), nil)
 		if colName == "" {
 			continue
 		}
@@ -425,15 +484,15 @@ func dynamoTable(s *scope, r *resource, name string) catalog.Table {
 	})
 	var indexes []catalog.TableIndex
 	for _, kind := range []string{"global_secondary_index", "local_secondary_index"} {
-		for _, block := range blocks(r.Body, kind) {
-			idxName, _ := s.stringOf(attr(block.Body, "name"), nil)
+		for _, entry := range r.nested(kind) {
+			idxName, _ := s.stringOf(entry.attr("name"), nil)
 			var keys []string
-			if h, ok := s.stringOf(attr(block.Body, "hash_key"), nil); ok {
+			if h, ok := s.stringOf(entry.attr("hash_key"), nil); ok {
 				keys = append(keys, h)
 			} else if kind == "local_secondary_index" {
 				keys = append(keys, hash)
 			}
-			if rk, ok := s.stringOf(attr(block.Body, "range_key"), nil); ok {
+			if rk, ok := s.stringOf(entry.attr("range_key"), nil); ok {
 				keys = append(keys, rk)
 			}
 			if idxName == "" {

@@ -285,8 +285,19 @@ are read as syntax with `hashicorp/hcl`, and a name is followed the way a
 subject is - to a literal, a variable's default, a local, the argument a
 calling `module` block passed in, or a child module's output - and left out
 with a warning when none of those reaches it, never taken from the label.
-Local modules (`source = "./..."`) are read where they are called; registry
-modules are noted and skipped. A reference from one resource to another
+Local modules (`source = "./..."`) are read where they are called. A registry
+module the reader knows - `terraform-aws-modules/lambda`, `sqs`, `sns`,
+`s3-bucket` with its `notification` submodule, `dynamodb-table`, whether
+named through the registry or as the git repository behind it with a ref -
+is read as the resource it wraps: its inputs are that resource's attributes
+under the module's names (`environment_variables`, `attributes = [...]`,
+`event_source_mapping = {...}`, `subscriptions = {...}`, `create_dlq`), and
+its outputs (`lambda_function_arn`, `queue_arn` or `sqs_queue_arn`,
+`dead_letter_queue_arn`, `dynamodb_table_stream_arn`) are references to it,
+so `module.queue` reads as `aws_sqs_queue` would; the dead-letter queue the
+queue module makes beside itself is `module.queue.dlq`, and a layer the
+lambda module makes is not a function. Any other registry module is noted
+and skipped. A reference from one resource to another
 (`aws_sqs_queue.orders.arn`) is the edge itself and needs no value. What
 comes out: an `aws_sqs_queue` is a `message` channel and an `aws_sns_topic`
 an `event` channel, each with `messages: []` and the facts in the doc - FIFO,

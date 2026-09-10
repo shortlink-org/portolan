@@ -32,11 +32,29 @@ type resource struct {
 	Body   *hclsyntax.Body
 	Source string
 	scope  *scope
+	// module is set for a registry module read as this resource: the block
+	// is the module call, and its inputs are read under the module's names.
+	module *knownModule
+	// fixedName is a name the resource is given rather than reads: the
+	// dead-letter queue a module makes beside its queue is called after it.
+	fixedName string
+	// derived is the resource that stands for the "<name>" part of a module
+	// output spelled "<name>:<attribute>" - the dead-letter queue.
+	derived map[string]*resource
+	// parent is the module resource a derived one belongs to.
+	parent *resource
 }
 
 // Address is how Terraform itself names the resource, prefixed by the
-// module path when it lives in a called module.
+// module path when it lives in a called module; a registry module is
+// named as the call, `module.sqs`, and what it made beside itself after it.
 func (r *resource) Address() string {
+	if r.parent != nil {
+		return r.parent.Address() + "." + r.Label
+	}
+	if r.module != nil {
+		return r.scope.prefix + "module." + r.Label
+	}
 	return r.scope.prefix + r.Type + "." + r.Label
 }
 
@@ -171,6 +189,21 @@ func (t *tree) readScope(parser *hclparse.Parser, dir, prefix string, parent *sc
 				call := moduleCall{name: block.Labels[0], body: block.Body, at: at}
 				if attr, ok := block.Body.Attributes["source"]; ok {
 					call.source, _ = s.stringOf(attr.Expr, nil)
+				}
+				if known, _ := knownSource(call.source); known != nil {
+					r := &resource{Type: known.kind, Label: call.name, Body: block.Body, Source: at, scope: s, module: known}
+					// The queue module makes a dead-letter queue beside its
+					// queue when told to; it exists from here so that a
+					// reference to it from any file finds it, and is named
+					// once the queue's own name is known.
+					if known.kind == typeQueue {
+						if makeDLQ, _ := s.boolOf(attr(block.Body, "create_dlq")); makeDLQ {
+							r.derived = map[string]*resource{"dlq": {Type: typeQueue, Label: "dlq", Source: at, scope: s, parent: r}}
+						}
+					}
+					s.resources["module."+call.name] = r
+					s.order = append(s.order, r)
+					continue
 				}
 				calls = append(calls, call)
 			}
@@ -373,6 +406,13 @@ func (s *scope) traversalString(t hcl.Traversal, seen visit) (string, bool) {
 		if len(parts) < 3 {
 			return "", false
 		}
+		if r, ok := s.resources["module."+parts[1]]; ok {
+			target, name := r.output(parts[2])
+			if target == nil {
+				return "", false
+			}
+			return s.stringOf(target.attr(name), seen)
+		}
 		child, ok := s.children[parts[1]]
 		if !ok {
 			return "", false
@@ -467,6 +507,13 @@ func (s *scope) traversalRefs(t hcl.Traversal, seen visit) []ref {
 	case "module":
 		if len(parts) < 3 {
 			return nil
+		}
+		if r, ok := s.resources["module."+parts[1]]; ok {
+			target, name := r.output(parts[2])
+			if target == nil {
+				return nil
+			}
+			return []ref{{target: target, attr: name}}
 		}
 		if child, ok := s.children[parts[1]]; ok {
 			return child.refsOf(child.outputs[parts[2]], seen)
@@ -590,6 +637,13 @@ func (s *scope) traversalShape(t hcl.Traversal, seen visit) (string, []string) {
 			}
 		case "module":
 			if len(parts) >= 3 {
+				if r, ok := s.resources["module."+parts[1]]; ok {
+					if target, name := r.output(parts[2]); target != nil {
+						if value := target.attr(name); value != nil {
+							return s.shapeOf(value, seen)
+						}
+					}
+				}
 				if child, ok := s.children[parts[1]]; ok {
 					if value, ok := child.outputs[parts[2]]; ok {
 						return child.shapeOf(value, seen)
@@ -673,4 +727,26 @@ func jsonNumber(text, key string) string {
 		end++
 	}
 	return rest[:end]
+}
+
+// output is what a registry module's output stands for: the resource it is
+// an attribute of - the module itself, or something it made beside itself -
+// and the attribute's name. An output the table does not list is taken as
+// an attribute of that name, so `module.x.arn` still reaches x.
+func (r *resource) output(name string) (*resource, string) {
+	if r.module == nil {
+		return nil, ""
+	}
+	mapped, ok := r.module.outputs[name]
+	if !ok {
+		mapped = name
+	}
+	if at := strings.Index(mapped, ":"); at >= 0 {
+		derived := r.derived[mapped[:at]]
+		if derived == nil {
+			return nil, ""
+		}
+		return derived, mapped[at+1:]
+	}
+	return r, mapped
 }

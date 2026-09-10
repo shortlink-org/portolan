@@ -1,0 +1,168 @@
+{
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.orders",
+          "slug": "orders",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "stores": [
+            "shop.orders.orders-table",
+            "shop.orders.orders-uploads"
+          ],
+          "channels": [
+            {
+              "address": "orders-inbox-dlq",
+              "kind": "message",
+              "title": "SQS queue",
+              "doc": "Declared in Terraform as module.queue.dlq. Dead-letter queue of `orders-inbox`. Filled by S3 bucket `orders-uploads` on s3:ObjectRemoved:*.",
+              "messages": [],
+              "source": "main.tf:6"
+            }
+          ]
+        },
+        {
+          "id": "shop.orders-audit",
+          "slug": "orders-audit",
+          "name": "orders-audit",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "kind": "function",
+          "technologies": [
+            "AWS Lambda",
+            "nodejs20.x"
+          ],
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "stores": [
+            "shop.orders.orders-table"
+          ],
+          "channels": [
+            {
+              "address": "orders-events",
+              "kind": "event",
+              "title": "SNS topic",
+              "doc": "Declared in Terraform as module.events. Received by `orders-audit` through an SNS subscription.",
+              "messages": [],
+              "source": "main.tf:17"
+            }
+          ]
+        },
+        {
+          "id": "shop.orders-ingest",
+          "slug": "orders-ingest",
+          "name": "orders-ingest",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "kind": "function",
+          "technologies": [
+            "AWS Lambda",
+            "python3.12"
+          ],
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "stores": [
+            "shop.orders.orders-table",
+            "shop.orders.orders-uploads"
+          ],
+          "channels": [
+            {
+              "address": "orders-events",
+              "kind": "event",
+              "title": "SNS topic",
+              "doc": "Declared in Terraform as module.events. Received by `orders-ingest` through SQS queue `orders-inbox`.",
+              "messages": [],
+              "source": "main.tf:17"
+            },
+            {
+              "address": "orders-inbox",
+              "kind": "message",
+              "title": "SQS queue",
+              "doc": "Declared in Terraform as module.queue. Dead letters go to `orders-inbox-dlq` after 5 receives. Received by `orders-ingest` through an event source mapping. Subscribed to SNS topic `orders-events`.",
+              "messages": [],
+              "source": "main.tf:6"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": [],
+  "stores": [
+    {
+      "id": "shop.orders.orders-table",
+      "slug": "orders-table",
+      "name": "orders-table",
+      "kind": "dynamodb",
+      "owner": "shop.orders",
+      "tables": [
+        {
+          "evidence": [
+            {
+              "kind": "contract",
+              "rule": "terraform-aws-dynamodb-table",
+              "source": "main.tf:69",
+              "symbol": "module.table"
+            }
+          ],
+          "id": "shop.orders.orders-table.orders-table",
+          "name": "orders-table",
+          "columns": [
+            {
+              "name": "order_id",
+              "type": "S",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "version",
+              "type": "N",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "customer_id",
+              "type": "S",
+              "nullable": false
+            }
+          ],
+          "indexes": [
+            {
+              "name": "by_customer",
+              "columns": [
+                "customer_id"
+              ],
+              "unique": false
+            }
+          ]
+        }
+      ],
+      "source": "main.tf:69"
+    },
+    {
+      "id": "shop.orders.orders-uploads",
+      "slug": "orders-uploads",
+      "name": "orders-uploads",
+      "kind": "s3",
+      "owner": "shop.orders",
+      "tables": [],
+      "source": "main.tf:39"
+    }
+  ]
+}
