@@ -71,14 +71,6 @@ WSDL и HTTP client extraction.
 Если несколько определений несовместимы, severity должна быть выше обычного
 warning.
 
-### PORTOLAN-13. Помощь с неоднозначными Django aggregates
-
-**Status:** source quality / UX
-
-`aviaadmin` содержит приложения с несколькими моделями, где extractor не может
-сам выбрать aggregate root. Вместо повторяющихся предупреждений UI может
-предложить кандидатов и записать выбор в `aggregates` options.
-
 ### PORTOLAN-14. Улучшить River и Watermill discovery
 
 **Status:** investigate
@@ -112,44 +104,11 @@ UI автоматически разместил `aviacore` и `aviasupp` как
 generation, лимиты по типам flows, grouping и генерация подробного view только
 по запросу.
 
-### PORTOLAN-18. Сохранять destination provenance HTTP-вызова
-
-**Status:** investigate
-
-Сейчас HTTP client extractor сохраняет verb, локальный path и текстовую note,
-но часто теряет base URL за functional options и config fields. После merge
-приходится использовать уникальный suffix route, например
-`/get-admin-settings` -> `/settings/get-admin-settings`.
-
-Нужна структурированная provenance-модель: call site, endpoint expression,
-base URL/config field, service-discovery alias и полный path после доказуемого
-join. UI должен показывать, на каком именно evidence основана связь.
-
-**Done when:** вызов через `WithBaseURL(cfg.SettingAddr)` связывается с
-`aviaadmin` по восстановленному `/settings/...`, а не только по уникальности
-суффикса среди текущих проектов.
-
-### PORTOLAN-20. Выводить HTTP verb для mounted Django views
-
-**Status:** investigate
-
-Django extractor видит URLConf и flow для views вроде `Planet.fetch`, но
-исключает route из inferred OpenAPI, если verb не объявлен явно. Из-за этого
-известный путь `/geo/planet/fetch` нельзя сопоставить с outbound HTTP call.
-
-Нужно собирать evidence из `require_http_methods`, DRF action metadata,
-`http_method_names`, branch logic по `request.method` и вызываемых wrappers.
-Если verb всё равно неизвестен, route можно хранить как диагностический
-кандидат без автоматического подтверждения связи.
-
-**Done when:** поддержанные декларативные Django-паттерны дают verb + mounted
-path; неизвестный verb остаётся явно неизвестным и не исчезает из модели.
-
 ## Предлагаемый порядок
 
 1. **Correctness:** PORTOLAN-3 и PORTOLAN-8.
-2. **Extractor depth:** PORTOLAN-10, PORTOLAN-11, PORTOLAN-13—16 и
-   PORTOLAN-18—20 по фактической ценности для следующих подключаемых проектов.
+2. **Extractor depth:** PORTOLAN-10, PORTOLAN-11 и PORTOLAN-14—16 по
+   фактической ценности для следующих подключаемых проектов.
 
 ## Решения, которые нужно принять
 
