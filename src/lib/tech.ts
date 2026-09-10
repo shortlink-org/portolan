@@ -425,5 +425,6 @@ export const STORE_KIND_GLYPH: Record<StoreKind, TechGlyph | null> = {
   clickhouse: techGlyph("clickhouse"),
   // simple-icons was asked to drop Amazon's marks, S3's among them.
   s3: null,
+  dynamodb: null,
   other: null,
 };

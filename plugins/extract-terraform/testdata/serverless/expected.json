@@ -1,0 +1,269 @@
+{
+  "contexts": [
+    {
+      "id": "shop",
+      "slug": "shop",
+      "name": "",
+      "summary": "",
+      "services": [
+        {
+          "id": "shop.fulfillment",
+          "slug": "fulfillment",
+          "name": "",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "stores": [
+            "shop.fulfillment.fulfillment-archive",
+            "shop.fulfillment.fulfillment-labels",
+            "shop.fulfillment.fulfillment-ledger",
+            "shop.fulfillment.fulfillment-orders",
+            "shop.fulfillment.fulfillment-reporting",
+            "shop.fulfillment.fulfillment-uploads-suffix"
+          ],
+          "channels": [
+            {
+              "address": "fulfillment-events-{account_id}",
+              "kind": "message",
+              "title": "SQS queue",
+              "doc": "Declared in Terraform as aws_sqs_queue.per_account. Nothing in the module receives from it or is configured with it.",
+              "messages": [],
+              "source": "data.tf:79"
+            },
+            {
+              "address": "fulfillment-orders-dlq",
+              "kind": "message",
+              "title": "SQS queue",
+              "doc": "Declared in Terraform as aws_sqs_queue.orders_dlq. Dead-letter queue of `fulfillment-orders`.",
+              "messages": [],
+              "source": "messaging.tf:6"
+            },
+            {
+              "address": "legacy",
+              "kind": "message",
+              "title": "SQS queue",
+              "doc": "Declared in Terraform as aws_sqs_queue.legacy. Dead letters go to `legacy-dlq` after 10 receives. Nothing in the module receives from it or is configured with it.",
+              "messages": [],
+              "source": "messaging.tf:30"
+            },
+            {
+              "address": "legacy-dlq",
+              "kind": "message",
+              "title": "SQS queue",
+              "doc": "Declared in Terraform as aws_sqs_queue.legacy_dlq. Dead-letter queue of `legacy`.",
+              "messages": [],
+              "source": "messaging.tf:26"
+            }
+          ]
+        },
+        {
+          "id": "shop.fulfillment-notify",
+          "slug": "fulfillment-notify",
+          "name": "fulfillment-notify",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "kind": "function",
+          "technologies": [
+            "AWS Lambda",
+            "nodejs20.x"
+          ],
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "stores": [
+            "shop.fulfillment.fulfillment-labels"
+          ],
+          "channels": [
+            {
+              "address": "fulfillment-order-events",
+              "kind": "event",
+              "title": "SNS topic",
+              "doc": "Declared in Terraform as aws_sns_topic.order_events. Received by `fulfillment-notify` through an SNS subscription.",
+              "messages": [],
+              "source": "messaging.tf:1"
+            }
+          ]
+        },
+        {
+          "id": "shop.fulfillment-reindex",
+          "slug": "fulfillment-reindex",
+          "name": "fulfillment-reindex",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "kind": "function",
+          "technologies": [
+            "AWS Lambda",
+            "provided.al2023"
+          ],
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "stores": [
+            "shop.fulfillment.fulfillment-orders"
+          ]
+        },
+        {
+          "id": "shop.fulfillment-ship",
+          "slug": "fulfillment-ship",
+          "name": "fulfillment-ship",
+          "repo": "",
+          "path": "",
+          "readme": "",
+          "kind": "function",
+          "technologies": [
+            "AWS Lambda",
+            "python3.12"
+          ],
+          "provides": [],
+          "consumes": [],
+          "aggregates": [],
+          "stores": [
+            "shop.fulfillment.fulfillment-archive",
+            "shop.fulfillment.fulfillment-labels",
+            "shop.fulfillment.fulfillment-orders"
+          ],
+          "channels": [
+            {
+              "address": "fulfillment-audit.fifo",
+              "kind": "message",
+              "title": "SQS queue",
+              "doc": "Declared in Terraform as aws_sqs_queue.audit. FIFO. Filled by S3 bucket `fulfillment-labels` on s3:ObjectRemoved:*. Handed to `fulfillment-ship` as `AUDIT_QUEUE_URL`; which way messages go is not said here.",
+              "messages": [],
+              "source": "messaging.tf:20"
+            },
+            {
+              "address": "fulfillment-order-events",
+              "kind": "event",
+              "title": "SNS topic",
+              "doc": "Declared in Terraform as aws_sns_topic.order_events. Received by `fulfillment-ship` through SQS queue `fulfillment-orders`.",
+              "messages": [],
+              "source": "messaging.tf:1"
+            },
+            {
+              "address": "fulfillment-orders",
+              "kind": "message",
+              "title": "SQS queue",
+              "doc": "Declared in Terraform as aws_sqs_queue.orders. Dead letters go to `fulfillment-orders-dlq` after 4 receives. Received by `fulfillment-ship` through an event source mapping. Subscribed to SNS topic `fulfillment-order-events`.",
+              "messages": [],
+              "source": "messaging.tf:11"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "defs": {},
+  "flows": [],
+  "adrs": [],
+  "stores": [
+    {
+      "id": "shop.fulfillment.fulfillment-archive",
+      "slug": "fulfillment-archive",
+      "name": "fulfillment-archive",
+      "kind": "s3",
+      "owner": "shop.fulfillment",
+      "tables": [],
+      "source": "modules/archive/main.tf:5"
+    },
+    {
+      "id": "shop.fulfillment.fulfillment-labels",
+      "slug": "fulfillment-labels",
+      "name": "fulfillment-labels",
+      "kind": "s3",
+      "owner": "shop.fulfillment",
+      "tables": [],
+      "source": "data.tf:38"
+    },
+    {
+      "id": "shop.fulfillment.fulfillment-ledger",
+      "slug": "fulfillment-ledger",
+      "name": "fulfillment-ledger",
+      "kind": "mysql",
+      "owner": "shop.fulfillment",
+      "tables": [],
+      "source": "data.tf:64"
+    },
+    {
+      "id": "shop.fulfillment.fulfillment-orders",
+      "slug": "fulfillment-orders",
+      "name": "fulfillment-orders",
+      "kind": "dynamodb",
+      "owner": "shop.fulfillment",
+      "tables": [
+        {
+          "evidence": [
+            {
+              "kind": "contract",
+              "rule": "terraform-aws-dynamodb-table",
+              "source": "data.tf:1",
+              "symbol": "aws_dynamodb_table.orders"
+            }
+          ],
+          "id": "shop.fulfillment.fulfillment-orders.fulfillment-orders",
+          "name": "fulfillment-orders",
+          "columns": [
+            {
+              "name": "order_id",
+              "type": "S",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "version",
+              "type": "N",
+              "nullable": false,
+              "pk": true
+            },
+            {
+              "name": "customer_id",
+              "type": "S",
+              "nullable": false
+            }
+          ],
+          "indexes": [
+            {
+              "name": "by_customer",
+              "columns": [
+                "customer_id",
+                "version"
+              ],
+              "unique": false
+            },
+            {
+              "name": "by_version",
+              "columns": [
+                "order_id",
+                "version"
+              ],
+              "unique": false
+            }
+          ]
+        }
+      ],
+      "source": "data.tf:1"
+    },
+    {
+      "id": "shop.fulfillment.fulfillment-reporting",
+      "slug": "fulfillment-reporting",
+      "name": "fulfillment-reporting",
+      "kind": "postgres",
+      "owner": "shop.fulfillment",
+      "tables": [],
+      "source": "data.tf:56"
+    },
+    {
+      "id": "shop.fulfillment.fulfillment-uploads-suffix",
+      "slug": "fulfillment-uploads-suffix",
+      "name": "fulfillment-uploads-{suffix}",
+      "kind": "s3",
+      "owner": "shop.fulfillment",
+      "tables": [],
+      "source": "data.tf:75"
+    }
+  ]
+}

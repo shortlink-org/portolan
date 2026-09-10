@@ -47,6 +47,10 @@ const (
 	CategoryMessaging = "messaging"
 	// CategoryData reads the stores a service keeps and their shape.
 	CategoryData = "data"
+	// CategoryInfrastructure reads what the service is deployed on - the
+	// queues, topics, functions and stores a Terraform module declares, and
+	// the wiring between them that only the infrastructure knows.
+	CategoryInfrastructure = "infrastructure"
 	// CategoryRepository reads what the repository says about itself: its
 	// metadata, its task runners.
 	CategoryRepository = "repository"

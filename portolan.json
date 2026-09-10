@@ -210,6 +210,12 @@
       }
     },
     {
+      "name": "terraform",
+      "wasm": {
+        "url": "file://plugins/portolan-go.wasm"
+      }
+    },
+    {
       "name": "asyncapi",
       "wasm": {
         "url": "file://plugins/portolan-go.wasm"

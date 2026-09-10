@@ -32,6 +32,7 @@ import (
 	extractredis "github.com/shortlink-org/portolan/plugins/extract-redis"
 	extractriver "github.com/shortlink-org/portolan/plugins/extract-river"
 	extractsql "github.com/shortlink-org/portolan/plugins/extract-sql"
+	extractterraform "github.com/shortlink-org/portolan/plugins/extract-terraform"
 	extractwatermill "github.com/shortlink-org/portolan/plugins/extract-watermill"
 	extractwsdl "github.com/shortlink-org/portolan/plugins/extract-wsdl"
 	genbackstage "github.com/shortlink-org/portolan/plugins/gen-backstage"
@@ -54,6 +55,7 @@ var Plugins = map[string]func(io.Reader, io.Writer) error{
 	"watermill":    extractwatermill.Serve,
 	"go-nats":      extractgonats.Serve,
 	"go-sqs":       extractgosqs.Serve,
+	"terraform":    extractterraform.Serve,
 	"asyncapi":     extractasyncapi.Serve,
 	"graphql":      extractgraphql.Serve,
 	"sql":          extractsql.Serve,

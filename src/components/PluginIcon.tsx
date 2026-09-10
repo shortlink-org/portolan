@@ -5,6 +5,7 @@
 
 import {
   BookOpen,
+  Cloud,
   CodeXml,
   Database,
   FileCode2,
@@ -36,6 +37,7 @@ const GLYPHS: Record<PluginGlyph, LucideIcon> = {
   contract: FileSignature,
   message: MessageSquare,
   database: Database,
+  cloud: Cloud,
   repository: FolderGit2,
   pen: PenLine,
   shield: ShieldCheck,

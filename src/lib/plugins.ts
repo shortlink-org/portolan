@@ -14,6 +14,7 @@ export type PluginCategory =
   | "contracts"
   | "messaging"
   | "data"
+  | "infrastructure"
   | "repository"
   | "documents"
   | "evidence"
@@ -58,6 +59,7 @@ export const CATEGORY_ORDER: PluginCategory[] = [
   "contracts",
   "messaging",
   "data",
+  "infrastructure",
   "repository",
   "documents",
   "evidence",
@@ -75,6 +77,7 @@ export type PluginGlyph =
   | "contract"
   | "message"
   | "database"
+  | "cloud"
   | "repository"
   | "pen"
   | "shield"
@@ -115,6 +118,11 @@ export const CATEGORY_LABEL: Record<PluginCategory, { title: string; what: strin
     title: "Data stores",
     what: "The stores a service keeps, and the shape of what is in them.",
     icon: "database",
+  },
+  infrastructure: {
+    title: "Infrastructure",
+    what: "What a service is deployed on, and the wiring between the pieces that only the infrastructure knows.",
+    icon: "cloud",
   },
   repository: {
     title: "Repository",
@@ -168,6 +176,7 @@ const PLUGIN_META: Record<string, { label: string; icon: PluginIconSpec }> = {
   watermill: { label: "Watermill", icon: { lucide: "workflow" } },
   "go-nats": { label: "NATS", icon: { brand: "NATS" } },
   "go-sqs": { label: "SQS", icon: { lucide: "inbox" } },
+  terraform: { label: "Terraform", icon: { brand: "Terraform" } },
   asyncapi: { label: "AsyncAPI", icon: { lucide: "file-code" } },
   graphql: { label: "GraphQL", icon: { brand: "GraphQL" } },
   sql: { label: "SQL", icon: { lucide: "database" } },

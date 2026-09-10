@@ -274,10 +274,10 @@ recognise, so before this a misspelled option was no option at all and nothing
 said so.
 
 `category` is what the plugin reads or makes, one of `code`, `contracts`,
-`messaging`, `data`, `repository`, `documents`, `evidence`, `sources` and
-`exports` (the constants in `plugin/describe.go`). A phase says where in a run
-a plugin goes; the category says what kind of fact it is after, which is how
-the site's `/plugins` page groups it. `npm run schema` also writes
+`messaging`, `data`, `infrastructure`, `repository`, `documents`, `evidence`,
+`sources` and `exports` (the constants in `plugin/describe.go`). A phase says
+where in a run a plugin goes; the category says what kind of fact it is after,
+which is how the site's `/plugins` page groups it. `npm run schema` also writes
 `src/lib/plugin-index.json` - every declared plugin as it describes itself,
 with how the manifest runs it - and that page and the landing page's list of
 inputs are rendered from it, so a plugin added to `portolan.json` appears on
@@ -519,6 +519,34 @@ domain events: a queue is point to point, and the event model is not asked to
 match it. A port that takes exactly one other string beside the queue names
 the message; a direct call names none. `DeleteMessage`, visibility changes and
 `CreateQueue` say nothing about direction and are not read; SNS is not read.
+
+`extract-terraform` reads the other half: the infrastructure the code runs
+on, from the `*.tf` files of the directory given as `dir` - or the root, or
+the one directory under it that holds any. Nothing is evaluated; the files
+are read as syntax with `hashicorp/hcl`, and a name is followed the way a
+subject is - to a literal, a variable's default, a local, the argument a
+calling `module` block passed in, or a child module's output - and left out
+with a warning when none of those reaches it, never taken from the label.
+Local modules (`source = "./..."`) are read where they are called; registry
+modules are noted and skipped. A reference from one resource to another
+(`aws_sqs_queue.orders.arn`) is the edge itself and needs no value. What
+comes out: an `aws_sqs_queue` is a `message` channel and an `aws_sns_topic`
+an `event` channel, each with `messages: []` and the facts in the doc - FIFO,
+the dead-letter queue and its receive count from `redrive_policy`, the SNS
+subscription that fills a queue, the S3 notification that fills either; an
+`aws_lambda_function` is a component of kind `function` in the same context,
+its runtime among its technologies - or the service itself when its name
+slugs to the `service` option; an `aws_lambda_event_source_mapping` puts the
+queue on the function as received, and a topic reaching the function through
+a subscribed queue is listed on it too; a value in the function's
+`environment` that reaches a queue, topic, table or bucket lists that on the
+function with the variable's name, and without a direction, because
+Terraform does not know one. `aws_s3_bucket`, `aws_dynamodb_table` (keys and
+secondary indexes as the table), `aws_db_instance` and `aws_rds_cluster`
+(kind from `engine`) are stores at the root, owned by the `service` option;
+a queue or topic nothing in the module touches is listed on that service as
+well, and says so. Kinesis, EventBridge, API Gateway, Step Functions,
+ElastiCache, MSK and ECS resources are named once as not read yet.
 
 `extract-python-kafka` is the framework-independent Kafka enrichment for
 Python. It recognizes confluent-kafka, kafka-python and aiokafka by their

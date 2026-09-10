@@ -90,6 +90,7 @@
               "watermill",
               "go-nats",
               "go-sqs",
+              "terraform",
               "asyncapi",
               "graphql",
               "sql",
@@ -456,6 +457,25 @@
               "properties": {
                 "options": {
                   "$ref": "#/$defs/options.go-sqs"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "plugin"
+              ],
+              "properties": {
+                "plugin": {
+                  "const": "terraform"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "options": {
+                  "$ref": "#/$defs/options.terraform"
                 }
               }
             }
@@ -2304,6 +2324,38 @@
           "type": "string",
           "description": "Name of the fragment file, inside the step's output directory.",
           "default": "sqs.json"
+        }
+      }
+    },
+    "options.terraform": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "Slug of the bounded context the module deploys into. Defaults to the name of the input directory.",
+          "examples": [
+            "shop"
+          ]
+        },
+        "service": {
+          "type": "string",
+          "description": "Slug of the service the module sits beside. Queues, topics and stores nothing in the module claims are listed on it, and it owns every store. A Lambda function whose name slugs to this becomes the service itself; any other becomes a component of kind function in the same context. Defaults to the name of the input directory.",
+          "examples": [
+            "fulfillment"
+          ]
+        },
+        "dir": {
+          "type": "string",
+          "description": "Directory of *.tf files to read, relative to the input root. Left out, the root is read when it holds *.tf files, and otherwise the one directory under it that does - when there are several, the first by name, and the rest are named in a warning. Local modules (source = ./...) are followed from wherever they are called; registry modules are not read.",
+          "examples": [
+            "deploy/terraform"
+          ]
+        },
+        "out": {
+          "type": "string",
+          "description": "Name of the fragment file, inside the step's output directory.",
+          "default": "terraform.json"
         }
       }
     },

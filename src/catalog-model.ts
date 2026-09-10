@@ -710,6 +710,7 @@ export type StoreKind =
   | "mongodb"
   | "clickhouse"
   | "s3"
+  | "dynamodb"
   | "other";
 
 export const STORE_KINDS: readonly StoreKind[] = [
@@ -720,6 +721,7 @@ export const STORE_KINDS: readonly StoreKind[] = [
   "mongodb",
   "clickhouse",
   "s3",
+  "dynamodb",
   "other",
 ] as const;
 

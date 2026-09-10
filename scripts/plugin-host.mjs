@@ -226,6 +226,7 @@ export const PLUGIN_CATEGORIES = [
   "contracts",
   "messaging",
   "data",
+  "infrastructure",
   "repository",
   "documents",
   "evidence",

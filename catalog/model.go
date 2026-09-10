@@ -619,6 +619,7 @@ const (
 	StoreKindMongoDB    StoreKind = "mongodb"
 	StoreKindClickHouse StoreKind = "clickhouse"
 	StoreKindS3         StoreKind = "s3"
+	StoreKindDynamoDB   StoreKind = "dynamodb"
 	StoreKindOther      StoreKind = "other"
 )
 
